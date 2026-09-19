@@ -1,17 +1,35 @@
 ---
-status: partial
+status: complete
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-09-19
 superseded_by: null
-blocks_on:
-  - docs/followups/2026-09-19-sb-subagent-lockfile-producer.md
+blocks_on: []
 topic: sb-checkpoint-stash-clobber-fix
 ---
 
-## Re-Review Status (2026-09-13)
+## Re-Review Status (2026-09-19)
 
-**Status**: `partial` — consumer (detector/policy/orchestrator) wired, but the **producer half of the lockfile contract is missing**.
+**Status**: `complete` — both halves of the lockfile contract are wired
+and three runtime hook paths land in mahavishnu via
+`SessionBuddyPool.execute_task` / `execute_batch`.
+
+The producer half shipped in session-buddy commit `149f68e1`
+(`feat(checkpoint): add SubagentDetector.write() + lifecycle hook + CLI + MCP tool`):
+
+- `SubagentDetector.write(active, metadata)` writes the lockfile atomically
+  with a JSON payload (pid, started_at_ms, node_id, parent_agent_id).
+- `SubagentLifecycleHook` Protocol + `DefaultSubagentLifecycleHook`
+  concrete implementation wrap the detector for runtime callers.
+- Three runtime paths: Python API, CLI
+  (`session_buddy checkpoint subagent-marker mark|clear`), and the
+  `subagent_marker` MCP tool.
+
+Mahavishnu's `SessionBuddyPool.execute_task` / `execute_batch` now call
+`subagent_marker mark` before `worker_execute` and `clear` after in a
+`try/finally` so the consumer side (`is_active()`) never sees a stale
+lockfile. Tasks without `working_dir` get no marker (preserves existing
+behavior).
 
 `session_buddy/checkpoint/` ships all planned modules and extras:
 

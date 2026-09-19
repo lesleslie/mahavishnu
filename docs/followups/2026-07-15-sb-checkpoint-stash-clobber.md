@@ -1,12 +1,11 @@
 ---
-status: partial
+status: complete
 role: implementation
 topic: persistence
 date: 2026-07-15
 last_reviewed: 2026-09-19
 superseded_by: null
-blocks_on:
-  - docs/followups/2026-09-19-sb-subagent-lockfile-producer.md
+blocks_on: []
 ---
 # Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation)
 

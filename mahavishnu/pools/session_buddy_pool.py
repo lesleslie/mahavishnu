@@ -151,7 +151,14 @@ class SessionBuddyPool(BasePool):
         """Execute task via Session-Buddy worker_execute.
 
         Args:
-            task: Task specification with pool-specific parameters
+            task: Task specification with pool-specific parameters. When
+                ``task["working_dir"]`` is set, the pool also marks
+                ``<working_dir>/.session-buddy/subagent.lock`` before
+                dispatch and clears it after — wraps the new
+                ``subagent_marker`` MCP tool from session-buddy so the
+                checkpoint subsystem's consumer side
+                (``SubagentDetector.is_active``) sees the producer
+                half of the lockfile contract.
 
         Returns:
             Execution result
@@ -160,6 +167,13 @@ class SessionBuddyPool(BasePool):
             raise RuntimeError("No workers available in pool")
 
         worker_id = next(iter(self._workers.keys()))
+        working_dir = task.get("working_dir")
+
+        if working_dir:
+            await self._call_mcp_tool(
+                "subagent_marker",
+                {"working_dir": working_dir, "action": "mark"},
+            )
 
         start_time = time.time()
         try:
@@ -203,18 +217,59 @@ class SessionBuddyPool(BasePool):
                 "error": str(e),
                 "duration": time.time() - start_time,
             }
+        finally:
+            if working_dir:
+                try:
+                    await self._call_mcp_tool(
+                        "subagent_marker",
+                        {"working_dir": working_dir, "action": "clear"},
+                    )
+                except Exception:
+                    # Best-effort cleanup: a stale marker would cause
+                    # the consumer to fail-open → True indefinitely
+                    # and defer every subsequent checkpoint. Log and
+                    # move on; the marker will be overwritten by the
+                    # next mark.
+                    logger.exception(
+                        "subagent_marker clear failed for %s; consumer "
+                        "may see a stale lockfile until the next mark",
+                        working_dir,
+                    )
 
     async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
         """Execute tasks via Session-Buddy worker_execute_batch.
 
         Args:
-            tasks: List of task specifications
+            tasks: List of task specifications. Each task MAY carry a
+                ``working_dir``; tasks with one are wrapped with
+                ``subagent_marker`` mark/clear so the checkpoint
+                subsystem's consumer side sees the producer half of
+                the lockfile contract for that working tree. Tasks
+                without ``working_dir`` get no marker (preserves
+                existing behavior).
 
         Returns:
             Dictionary mapping task_id -> result
         """
         if not self._workers:
             raise RuntimeError("No workers available in pool")
+
+        # Collect the working_dirs to mark; preserve order while
+        # de-duplicating so a batch with the same working_dir across
+        # tasks marks once and clears once.
+        working_dirs: list[str] = []
+        seen: set[str] = set()
+        for task in tasks:
+            wd = task.get("working_dir")
+            if wd and wd not in seen:
+                seen.add(wd)
+                working_dirs.append(wd)
+
+        for wd in working_dirs:
+            await self._call_mcp_tool(
+                "subagent_marker",
+                {"working_dir": wd, "action": "mark"},
+            )
 
         start_time = time.time()
         try:
@@ -263,6 +318,19 @@ class SessionBuddyPool(BasePool):
                 }
                 for i in range(len(tasks))
             }
+        finally:
+            for wd in working_dirs:
+                try:
+                    await self._call_mcp_tool(
+                        "subagent_marker",
+                        {"working_dir": wd, "action": "clear"},
+                    )
+                except Exception:
+                    logger.exception(
+                        "subagent_marker clear failed for %s; consumer "
+                        "may see a stale lockfile until the next mark",
+                        wd,
+                    )
 
     async def scale(self, target_worker_count: int) -> None:
         """Scale not supported (fixed at 3 workers).

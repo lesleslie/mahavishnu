@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: canonical
 topic: sb-subagent-lockfile-producer
 date: 2026-09-19
@@ -95,3 +95,42 @@ This followup closes to `complete` when:
 - Resolution target: when both blocking plans close to `complete`,
   move this followup to `docs/followups/.archive/` per the
   followups lifecycle policy at `.claude/decisions/followups-lifecycle.md`.
+
+## Resolution (2026-09-19)
+
+Closed on commit-by-commit basis:
+
+- **session-buddy `149f68e1`** — `feat(checkpoint): add SubagentDetector.write() + lifecycle hook + CLI + MCP tool`
+  Adds the producer half: `SubagentDetector.write()` with atomic
+  write-temp+rename, `SubagentMetadata` dataclass, `SubagentLifecycleHook`
+  Protocol + `DefaultSubagentLifecycleHook`, the CLI subcommand
+  `python -m session_buddy checkpoint subagent-marker`, and the
+  `subagent_marker` MCP tool registered in the standard profile.
+  New `docs/checkpoint/STASH_CLOBBER.md` documents the producer/consumer
+  split. 7 new unit tests + 7 new integration tests cover the new code.
+
+- **mahavishnu (this commit)** — `feat(pools): wrap SessionBuddyPool worker_execute with subagent marker`
+  Wires the new MCP tool around `worker_execute` and `worker_execute_batch`
+  so spawned workers automatically create/clear
+  `<working_dir>/.session-buddy/subagent.lock`. The clear runs in a
+  `try/finally` so the consumer cannot see a stale lockfile even when
+  worker_execute raises. Tasks without `working_dir` get no marker
+  (preserves existing behavior). 7 new tests cover the hook.
+
+Closure criteria status:
+
+- [x] `SubagentDetector.write()` implemented + ≥ 90% coverage on new code.
+- [x] Lockfile created/removed by three runtime paths (CLI, MCP tool,
+  Mahavishnu `SessionBuddyPool` hook).
+- [x] "Functionally dormant" caveat removed from
+  `session_buddy/checkpoint/subagent_detector.py`.
+- [x] Two blocking plans updated (`blocks_on:` removed, status promoted):
+  - `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+    (`partial → complete`)
+  - `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
+    (`partial → complete`)
+- [x] PLAN_INDEX.md regenerated via `scripts/regenerate_plan_index.py`.
+
+Archival: this followup now satisfies its own closure criteria and is
+ready to move to `docs/followups/.archive/` per the followups lifecycle
+policy.

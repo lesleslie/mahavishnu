@@ -1346,7 +1346,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `active` | `canonical` |  | `sb-subagent-lockfile-producer` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
+| [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `sb-subagent-lockfile-producer` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../../docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md) | 2026-09-14 | `draft` | `historical` | `audit` | `akosha-hnsw-on-duckdb` | Akosha: HNSW Index Creation Fails on DuckDB |
 | [`docs/followups/2026-09-14-audit-orphans-residual-caller-detection.md`](../../docs/followups/2026-09-14-audit-orphans-residual-caller-detection.md) | 2026-09-14 | `partial` | `implementation` |  | `audit-orphans-residual-caller-detection` | Followup — `audit_orphans.py` residual caller-detection coverage |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
@@ -1378,7 +1378,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-06-29-crow-mcp-client-wiring.md`](../../docs/followups/2026-06-29-crow-mcp-client-wiring.md) | 2026-07-16 | `complete` | `historical` |  | `crow-mcp-client` | Crow Adapter `mcp_client=None` Wiring — Bootstrap Followup |
 | [`docs/followups/2026-06-29-opensearch-diverged-flags.md`](../../docs/followups/2026-06-29-opensearch-diverged-flags.md) | 2026-07-16 | `complete` | `historical` |  | `opensearch-diverged-flags` | Diverged `OPENSEARCH_AVAILABLE` Flags — Architecture Followup |
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `followups-index` | `docs/followups/` index |
-| [`docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`](../../docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md) | 2026-07-15 | `partial` | `implementation` |  | `persistence` | Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation) |
+| [`docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`](../../docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md) | 2026-07-15 | `complete` | `implementation` |  | `persistence` | Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation) |
 
 ### Plans & Specifications (`docs/plans/`)
 
@@ -1585,7 +1585,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md`](../../docs/superpowers/plans/2026-07-13-mcp-server-family-mcpbase-migration.md) | 2026-07-16 | `draft` | `implementation` |  | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
 | [`docs/superpowers/plans/2026-07-14-multi-backend-pty.md`](../../docs/superpowers/plans/2026-07-14-multi-backend-pty.md) | 2026-07-16 | `complete` | `historical` |  | `multi-backend-pty` | Multi-Backend PTY Implementation Plan |
 | [`docs/superpowers/plans/2026-07-15-constellation-tui.md`](../../docs/superpowers/plans/2026-07-15-constellation-tui.md) | 2026-07-16 | `draft` | `implementation` |  | `constellation-tui` | Constellation TUI Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `partial` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`](../../docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md) | 2026-07-16 | `complete` | `implementation` |  | `sb-checkpoint-stash-clobber-fix` | Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`](../../docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md) | 2026-07-16 | `complete` | `implementation` |  | `mcp-design` | Bodai Plugin Standardization Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md`](../../docs/superpowers/plans/2026-07-16-frontmatter-validator-wiring-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `lifecycle` | Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan |
 | [`docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md`](../../docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Plan Lifecycle Unification — Frontmatter Standardization Across Documentation Stores |
@@ -1849,10 +1849,10 @@ Counts of entries per (lifecycle, role) cell across all 50 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 38 | 197 | 3 | 4 | 43 | **285** |
-| `implementation` | 316 | 129 | 15 | 71 | 97 | **628** |
+| `canonical` | 38 | 196 | 3 | 4 | 44 | **285** |
+| `implementation` | 316 | 129 | 13 | 71 | 99 | **628** |
 | `umbrella` | · | 4 | · | · | 4 | **8** |
 | `historical` | 14 | 15 | · | 8 | 273 | **310** |
 | `superseded` | · | · | · | · | 39 | **39** |
 
-| **Total** | **368** | **345** | **18** | **83** | **456** | **1270** |
+| **Total** | **368** | **344** | **16** | **83** | **459** | **1270** |
