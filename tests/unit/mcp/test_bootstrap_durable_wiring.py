@@ -96,16 +96,19 @@ def test_register_worker_contract_block_wires_real_manager_when_tmux_available(
 
 def test_register_worker_contract_block_falls_back_to_noop_when_tmux_missing(
     monkeypatch,
-    caplog,
+    capsys,
 ) -> None:
     """When tmux is not on PATH, the block logs a warning and uses noop.
 
     CI containers and dev machines without Homebrew must still be able to
     start the MCP server — the noop fallback is the documented safety net.
+
+    Note: the warning is emitted via loguru (which writes to stdout
+    by default, not stdlib logging), so we capture via ``capsys`` rather
+    than ``caplog``. The noop state is independently verified via
+    ``server.tool_decorators``.
     """
-    monkeypatch.setattr(
-        bootstrap, "_try_build_durable_worker_manager", lambda: None
-    )
+    monkeypatch.setattr(bootstrap, "_try_build_durable_worker_manager", lambda: None)
     monkeypatch.setattr(bootstrap.shutil, "which", lambda binary: None)
 
     server = _StubServer()
@@ -120,8 +123,8 @@ def test_register_worker_contract_block_falls_back_to_noop_when_tmux_missing(
         _fake_register,
     )
 
-    with caplog.at_level("WARNING"):
-        bootstrap._register_worker_contract_block(server)
+    bootstrap._register_worker_contract_block(server)
+    captured = capsys.readouterr()
 
     # No real manager was wired.
     assert not hasattr(server.app, "_durable_worker_manager")
@@ -130,7 +133,10 @@ def test_register_worker_contract_block_falls_back_to_noop_when_tmux_missing(
         isinstance(entry, tuple) and entry[0] == "registered_manager"
         for entry in server.tool_decorators
     )
-    assert "manager_unconfigured" in caplog.text
+    # Loguru writes the warning to stdout (its default sink targets sys.stdout
+    # unless configured otherwise); the noop fallback is documented to
+    # surface "manager_unconfigured" to operators.
+    assert "manager_unconfigured" in captured.out
 
 
 def test_try_build_durable_worker_manager_returns_none_when_tmux_missing(
@@ -181,9 +187,7 @@ def test_try_build_durable_worker_manager_uses_canonical_publisher_bridge(
         def __init__(self, sink):
             captured["bridge_sink"] = sink
 
-    monkeypatch.setattr(
-        "mahavishnu.terminal.manager._ManagerEventPublisher", _FakeBridge
-    )
+    monkeypatch.setattr("mahavishnu.terminal.manager._ManagerEventPublisher", _FakeBridge)
 
     result = bootstrap._try_build_durable_worker_manager()
 
