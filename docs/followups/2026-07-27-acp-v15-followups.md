@@ -2,16 +2,16 @@
 status: partial
 role: canonical
 date: 2026-07-27
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-19
 topic: acp-v15-followups
 ---
 # 2026-07-27-acp-v15-followups — followup
 
 ## Status
 
-**Open** — 8 items, all deferred from the v1.0 ACP server build plan
-(`docs/plans/2026-07-26-mahavishnu-acp-server.md`, status `active`,
-promoted 2026-07-27 after multi-lens adversarial review).
+**Open** — 7 items, 1 resolved. Originally 8 items deferred from the v1.0 ACP
+server build plan (`docs/plans/2026-07-26-mahavishnu-acp-server.md`, status
+`active`, promoted 2026-07-27 after multi-lens adversarial review).
 
 ## Trigger
 
@@ -26,6 +26,26 @@ follow-up for Toad-integration smoke") is not orphaned.
 The items are listed in the order they appear in the plan's §10, not
 in priority order. Each item has: scope, prerequisite, and shipping
 context (standalone vs. bundled).
+
+## Resolved Items
+
+### v1.5.6 — License declaration reconciliation ✅ (2026-07-27)
+
+**Scope (historical):** Reconcile `pyproject.toml:16` (declared
+`license = {text = "MIT"}`) with the canonical `LICENSE` file
+(BSD-3-Clause). One-line fix; non-blocking for the v1.0 plan.
+
+**Resolution:** **Superseded by commit `3b38eb24`** (quality checkpoint
+2026-07-27). That commit changed `pyproject.toml:16` from
+`license = {text = "MIT"}` to `license = {text = "BSD-3-Clause"}`,
+reconciling it with the `LICENSE` file (BSD 3-Clause). Verified
+2026-09-06: `grep -n license pyproject.toml` returns `BSD-3-Clause`,
+and `head -3 LICENSE` returns `BSD 3-Clause License`. No code change
+needed; this item is closed.
+
+**Origin:** License/Compliance review, 2026-07-27.
+
+---
 
 ### v1.5.1 — ACP session persistence
 
@@ -81,26 +101,6 @@ context (standalone vs. bundled).
 - **Prerequisite:** v1.5.1.
 - **Shipping context:** bundle with the persistence bundle.
 
-### v1.5.6 — License declaration reconciliation
-
-- **Scope:** Reconcile `pyproject.toml:16` (declares
-  `license = {text = "MIT"}`) with the canonical `LICENSE` file
-  (BSD-3-Clause). One-line fix; non-blocking for the v1.0 plan.
-- **Prerequisite:** none; can ship independently of v1.0.
-- **Shipping context:** **standalone, independent ship**. Tracked
-  in a separate GitHub issue (see "Action" below).
-- **Origin:** License/Compliance review, 2026-07-27.
-
-> **Status (2026-09-06):** **Resolved — superseded by commit `3b38eb24`.**
-> That quality checkpoint on 2026-07-27 already changed
-> `pyproject.toml:16` from `license = {text = "MIT"}` to
-> `license = {text = "BSD-3-Clause"}`, reconciling it with the
-> `LICENSE` file (BSD 3-Clause). Verified 2026-09-06:
-> `grep -n license pyproject.toml` returns `BSD-3-Clause`, and
-> `head -3 LICENSE` returns `BSD 3-Clause License`. No code change
-> needed; this item is closed. The "MIT" framing in the scope bullet
-> above is preserved for historical accuracy.
-
 ### v1.5.7 — Toad-integration smoke test
 
 - **Scope:** Manual smoke that wires Toad → Mahavishnu end-to-end,
@@ -137,9 +137,6 @@ context (standalone vs. bundled).
 
 ## Action
 
-1. **Independent ship (now, non-blocking):** v1.5.6 is a one-line
-   fix. The GitHub issue is filed under the v1.5 followup
-   umbrella; it resolves immediately when the issue closes.
 1. **Bundle ship (when v1.0 is `adopted`):** v1.5.1, v1.5.4,
    v1.5.5 form a coherent "persistence bundle" — ship them
    together as v1.5.0. Each item gets its own v1.5 plan file
@@ -174,7 +171,7 @@ A v1.5 release closes this followup by:
 - Source design: `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`
 - TUI companion tracker: `docs/feature-tracking/tui.md` (the
   consumer of v1.5.7)
-- License reconciliation issue: see "Action" item 1 above
+- License reconciliation (v1.5.6): see the **Resolved Items** section above
 - Followups lifecycle policy:
   `docs/followups/README.md` § "Lifecycle" and
   `.claude/decisions/followups-lifecycle.md`
