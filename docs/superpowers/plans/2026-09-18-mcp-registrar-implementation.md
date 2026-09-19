@@ -7,8 +7,15 @@ last_reviewed: 2026-09-19
 superseded_by: null
 blocks_on: []
 topic: mcp-registrar
-revision: 1
+revision: 2
 ---
+
+> **Revision 2 (2026-09-19):** Second-pass fixes from 5-agent re-review.
+> 3 new DEAL-BREAKERS found by the late-arriving
+> mahavishnu-specialist + mcp-integration-expert agents (over-deletion
+> of `_main_cli.py` lines, smoke-test bash command) + 6 round-2
+> follow-ups. See "Revision history" at the end of this document
+> for per-finding disposition.
 
 > **Revision 1 (2026-09-19):** Post-review fixes from 5-agent parallel
 > review pass. 16 DEAL-BREAKERS + 6 RECOMMENDED + 12 OPTIONAL
@@ -1126,10 +1133,12 @@ def test_merge_empty_existing() -> None:
     assert result == {"mcpServers": {"akosha": {"httpUrl": "http://x"}}}
 
 
-def test_merge_with_none_existing() -> None:
-    """Type-hint signature says dict; None is treated as empty dict."""
-    result = merge_qwen_settings({}, {"akosha": {"httpUrl": "http://x"}})  # type: ignore[arg-type]
-    assert "mcpServers" in result
+def test_merge_with_empty_existing() -> None:
+    """An empty `existing` dict deep-merges into just the mcpServers
+    block (no other top-level keys). The signature does NOT accept
+    None — callers must pass `{}` (or omit the argument)."""
+    result = merge_qwen_settings({}, {"akosha": {"httpUrl": "http://x"}})
+    assert result == {"mcpServers": {"akosha": {"httpUrl": "http://x"}}}
 
 
 def test_merge_preserves_unrecognized_top_level_keys() -> None:
@@ -1222,11 +1231,17 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-# Single source of truth for the command the pre-commit hook invokes.
-# Used by PRE_COMMIT_CONTENT (git_hooks.py), the integration test
-# (tests/integration/test_pre_commit_emits_mcp.py), and the rollout
-# runbook. When the command shape changes, edit ONLY this constant
-# and the references update automatically.
+# Source-of-truth for the pre-commit command shape.
+#
+# Note: bash literal `PRE_COMMIT_CONTENT` in `git_hooks.py` cannot
+# import this constant, so the bash template duplicates the string.
+# The integration test (test_pre_commit_invocation_constant_matches_bash_literal)
+# asserts that this constant is a substring of PRE_COMMIT_CONTENT so
+# drift is caught in CI. When changing the command shape:
+#
+#  1. Edit this constant.
+#  2. Edit PRE_COMMIT_CONTENT's bash literal in git_hooks.py to match.
+#  3. Re-run the pre-commit integration test to confirm drift-free.
 PRE_COMMIT_INVOCATION = "mahavishnu mcp sync --target claude"
 
 
@@ -2326,9 +2341,11 @@ def test_migrate_drops_unknown_transport_entries(tmp_path: Path) -> None:
     reg = Registrar(project_root=tmp_path, qwen_settings_path=tmp_path / "q.json")
 
     envelope = reg.migrate_from_json()
-    assert "sse_server" not in envelope.skipped.get("dropped", [])[0:0] or any(
-        "sse_server" in d for d in envelope.skipped.get("dropped", [])
-    )
+    # Assert sse_server IS recorded in dropped (positive case).
+    # The earlier `or any(...)` form had a `[0:0]` slice that always
+    # returned [] — defeating the regression gate.
+    dropped = envelope.skipped.get("dropped", [])
+    assert any("sse_server" in d for d in dropped)
     parsed = yaml.safe_load((tmp_path / "mcp-servers.yaml").read_text())
     assert "akosha" in parsed["servers"]
     assert "sse_server" not in parsed["servers"]
@@ -2365,7 +2382,12 @@ Expected: AttributeError on `Registrar.migrate_from_json`.
 Append to `mahavishnu/mcp/registrar.py`:
 
 ```python
-import yaml  # noqa: E402  (added in Task 4; safe to import here)
+# Module-scope yaml import for `migrate_from_json` (which uses
+# `yaml.safe_dump`). `Registrar.load_yaml` does its own function-
+# local import (line 1888); this module-scope one is for the
+# migration path. Not `# noqa: E402` because there's no preceding
+# annotation this depends on.
+import yaml
 ```
 
 Then append:
@@ -2482,9 +2504,7 @@ Then append:
             envelope.audit = {"violations": 0, "scanned_files": 0}
             return envelope
 
-        import yaml as _yaml
-
-        yaml_text = _yaml.safe_dump(canonical, sort_keys=False)
+        yaml_text = yaml.safe_dump(canonical, sort_keys=False)
         atomic_write_text(self.canonical_yaml, yaml_text)
         # First sync inline (Phase 2 -> 3 gap-free).
         return self.sync(target=target)
@@ -2555,6 +2575,13 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 from mahavishnu.mcp.registrar import Registrar
+
+# Hoisted to module scope (after the sys.path bootstrap above) so
+# `mcp_validate` and `mcp_show` don't need inline imports. The
+# audit script lives at <repo>/scripts/ which isn't on sys.path by
+# default; the bootstrap above makes this import safe at module
+# load time.
+from audit_no_secrets_in_mcp import audit_dict  # noqa: E402
 
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
@@ -2702,12 +2729,28 @@ def add_mcp_commands(app: typer.Typer) -> None:
 
 - [ ] **Step 2: Modify `_main_cli.py`**
 
-Edit `mahavishnu/_main_cli.py`:
+Edit `mahavishnu/_main_cli.py`. **CRITICAL: lines 707-838 are NOT a single contiguous block to delete.** They interleave three things:
 
-1. Remove `DEFAULT_MCP_HOST = "127.0.0.1"` and `DEFAULT_MCP_PORT = 8680` at lines 86-87 (the lifecycle-commands are the only consumers; `mcp_cli.py` now owns these constants).
-2. Remove lines 707-838: the inline `mcp_app = typer.Typer(...)`, `app.add_typer(mcp_app, name="mcp")`, and all 5 `@mcp_app.command(...)` decorators.
+| Lines | Content | Edit |
+|---|---|---|
+| 707 | `# MCP server management` comment | REMOVE |
+| 708 | `mcp_app = typer.Typer(help="MCP server lifecycle management")` | REMOVE |
+| 709 | `app.add_typer(mcp_app, name="mcp")` | REMOVE |
+| 710 | (blank) | KEEP |
+| 711 | `# Ecosystem management` comment | KEEP |
+| 712 | `ecosystem_app = typer.Typer(help="Ecosystem configuration and management")` | **KEEP** |
+| 713 | `app.add_typer(ecosystem_app, name="ecosystem")` | **KEEP** |
+| 714 | (blank) | KEEP |
+| 715 | `# Content ingestion` comment | KEEP |
+| 716 | `add_ingestion_commands()` | **KEEP** |
+| 717-718 | (blank) | KEEP |
+| 719-838 | 5 `@mcp_app.command(...)` decorators + bodies | REMOVE |
+
+**Concretely:**
+1. Delete `DEFAULT_MCP_HOST = "127.0.0.1"` and `DEFAULT_MCP_PORT = 8680` at lines 86-87 (`mcp_cli.py` now owns these constants).
+2. **Delete only lines 707-709 and lines 719-838** (the mcp_app registration + the 5 lifecycle commands). DO NOT delete lines 710-718 — those contain the `ecosystem_app` Typer group registration (lines 711-713, consumed by `add_ecosystem_commands(ecosystem_app)` at line 1339) and the `add_ingestion_commands()` call (line 716). Wholesale removal of 707-838 silently destroys the `ecosystem` and `ingest` subcommands. Verified post-edit with `mahavishnu --help` showing both `ecosystem` and `ingest` subcommand groups.
 3. Add `from .cli.mcp_cli import add_mcp_commands` to the cli-imports block (after `from .cli.index_cli import add_index_commands` at line 23).
-4. Add `add_mcp_commands(app)` call (alphabetically positioned, e.g., after the existing `add_index_commands(app)` call site — search for that first to find the right neighborhood).
+4. Add `add_mcp_commands(app)` call (alphabetically positioned; the right neighborhood is right after the existing `add_index_commands(app)` call site near line 1363).
 5. **Update existing test files that pin these constants on the old module.** Without this step, the refactor silently breaks two tests:
 
    - `tests/unit/test_main.py` lines 94 and 97:
@@ -2920,10 +2963,6 @@ def mcp_validate(
         typer.echo(f"validation failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    # `audit_no_secrets_in_mcp` is importable at module scope thanks
-    # to the sys.path bootstrap at the top of this file.
-    from audit_no_secrets_in_mcp import audit_dict  # noqa: E402
-
     violations = audit_dict(reg.emit_claude(parsed), reg.claude_output)
     if violations:
         typer.echo(f"audit violations: {len(violations)}", err=True)
@@ -2961,7 +3000,7 @@ def mcp_qwen_restore(
     ~/.qwen/settings.json.bak.<unix-timestamp>; one rolling backup is
     retained (older backups are NOT retained).
     """
-    default = Path.home() / ".qwen" / "settings.json"
+    default = Registrar.DEFAULT_QWEN_SETTINGS
     if backup is None:
         # Find the most recent .bak.<timestamp> sibling. Use ns
         # resolution to match the backup-filename format.
@@ -3131,13 +3170,22 @@ cd /tmp && rm -rf mcp-cli-test && mkdir mcp-cli-test && cd mcp-cli-test && git i
 cat > .mcp.json <<'EOF'
 {"mcpServers": {"akosha": {"type": "http", "url": "http://localhost:8682/mcp"}}}
 EOF
-<repo>/.venv/bin/python -m mahavishnu.cli mcp migrate-from-json . --target claude
+# mcp_migrate does NOT accept --target (it always uses target="both"
+# via the inline first-sync). Pass --qwen-settings-path to redirect
+# the Qwen emit to a tmp file so the smoke test does not pollute the
+# operator's real ~/.qwen/settings.json.
+<repo>/.venv/bin/python -m mahavishnu.cli mcp migrate-from-json . \
+    --qwen-settings-path /tmp/mcp-cli-test/qwen-settings.json
 ls mcp-servers.yaml .mcp.json
 <repo>/.venv/bin/python -m mahavishnu.cli mcp validate .
 <repo>/.venv/bin/python -m mahavishnu.cli mcp show .
+rm -rf /tmp/mcp-cli-test   # cleanup smoke test directory
 ```
 
-Expected: `mcp-servers.yaml` and `.mcp.json` both exist; `validate` exits 0; `show` prints the YAML tree.
+Expected: `mcp-servers.yaml` and `.mcp.json` both exist in the test
+directory; `/tmp/mcp-cli-test/qwen-settings.json` exists; the
+operator's `~/.qwen/settings.json` is untouched; `validate` exits 0;
+`show` prints the YAML tree.
 
 - [ ] **Step 5: Commit**
 
@@ -3293,6 +3341,19 @@ def test_pre_commit_uses_target_claude_not_both(
     assert not any("--target both" in line for line in sync_lines)
 
 
+def test_pre_commit_invocation_constant_matches_bash_literal() -> None:
+    """Drift gate between `PRE_COMMIT_INVOCATION` (Python constant in
+    `mahavishnu.mcp.registrar`) and the bash literal in
+    `PRE_COMMIT_CONTENT`. Bash can't import a Python constant, so the
+    string is duplicated — this test catches divergence in CI."""
+    from mahavishnu.mcp.registrar import PRE_COMMIT_INVOCATION
+
+    assert PRE_COMMIT_INVOCATION in PRE_COMMIT_CONTENT, (
+        "PRE_COMMIT_INVOCATION constant and PRE_COMMIT_CONTENT bash "
+        "literal have drifted; update both in the same commit"
+    )
+
+
 def test_pre_commit_exits_1_when_yaml_present_but_mahavishnu_missing(
     tmp_path: Path,
     fixture_audit_script: Path,
@@ -3366,20 +3427,6 @@ def test_pre_commit_preserves_existing_audit_step_exit_code(
     # failure propagated.
     assert result.returncode == 1
     assert "fixture: deliberate failure" in result.stderr
-
-
-def test_pre_commit_template_uses_target_claude_not_both(
-    tmp_path: Path,
-) -> None:
-    """The pre-commit template must use --target claude (per-project
-    side-effect only); --target both is operator-driven."""
-    # Find the line that runs the mcp sync.
-    sync_lines = [
-        line for line in PRE_COMMIT_CONTENT.splitlines() if "mcp sync" in line
-    ]
-    assert sync_lines, "pre-commit template must include `mcp sync` step"
-    assert all("--target claude" in line for line in sync_lines)
-    assert not any("--target both" in line for line in sync_lines)
 
 
 def test_pre_commit_end_to_end_runs_sync(
@@ -3811,7 +3858,7 @@ For audit purposes: every section of the spec maps to one or more tasks in this 
 
 | Spec section | Task(s) |
 |---|---|
-| §Context | Task 0 (preamble) |
+| §Context | Plan preamble (lines 13-23) |
 | §Goals | Tasks 1-11 (every goal addressed) |
 | §Non-goals | Tasks 1 (no SSE), 4 (no plugin resolution) |
 | §Architecture | Tasks 1-4 (schema, helpers, Registrar class) |
@@ -3989,3 +4036,90 @@ One issue surfaced and fixed inline during self-review:
   E2E for every CLI test, fixing existing `scan_file` to skip $VAR
   references. Each is documented with rationale and where it's
   tracked.
+
+- **Revision 2 (2026-09-19)** — Second-pass fixes from 5-agent re-review.
+  Two late-arriving agents surfaced three new DEAL-BREAKERS that
+  round 1 missed, plus six round-2 follow-ups.
+
+  **3 new DEAL-BREAKERS (late-arriving agents):**
+  1. **Task 6 line-range over-deletion.** Plan said "Remove lines
+     707-838" but those lines also contain `ecosystem_app` Typer
+     group registration (lines 711-713, consumed by
+     `add_ecosystem_commands(ecosystem_app)` at line 1339) and the
+     `add_ingestion_commands()` call (line 716). Wholesale
+     removal would silently destroy `mahavishnu ecosystem` and
+     `mahavishnu ingest` subcommands. Fixed: Task 6 Step 2 now
+     contains an explicit line-by-line table showing what to REMOVE
+     vs KEEP, and the prose instructions match (Agent 2 /
+     mahavishnu-specialist).
+  2. **Task 8 Step 4 smoke-test bash uses `--target claude` on
+     `mcp_migrate`** which doesn't accept that flag — Typer exits
+     with `No such option: --target` before the body runs. Fixed:
+     smoke test now uses `mcp migrate-from-json . --qwen-settings-path
+     /tmp/.../qwen-settings.json` (no `--target` since `mcp_migrate`
+     always emits both sides per `target="both"` default). Includes
+     a trailing `rm -rf` for the test directory (Agent 3 /
+     mcp-integration-expert).
+  3. **Task 8 Step 4 smoke-test bash didn't pass
+     `--qwen-settings-path`**, so the inline first-sync would write
+     to the operator's real `~/.qwen/settings.json` — exactly the
+     pollution bug revision 1 was supposed to fix. Combined fix
+     with #2 (Agent 3 / mcp-integration-expert).
+
+  **6 round-2 follow-ups (per reported agents 1, 4, 5):**
+  4. **Broken `[0:0]` slice assertion** in
+     `test_migrate_drops_unknown_transport_entries` — the empty
+     slice made the test always pass regardless of whether
+     `envelope.skipped["dropped"]` contained `sse_server`.
+     Replaced with direct positive assertion `assert any("sse_server"
+     in d for d in dropped)`. (Agents 1, 4, 5.)
+  5. **`mcp_validate` inline `audit_dict` import redundant after
+     bootstrap.** Hoisted to module scope after the `sys.path`
+     bootstrap block. (Agents 1, 5.)
+  6. **`PRE_COMMIT_INVOCATION` docstring claim "edit ONLY this
+     constant" was inaccurate** (bash literal duplicates the
+     string). Rewrote docstring with the explicit 3-step procedure
+     AND added a runtime drift test
+     `test_pre_commit_invocation_constant_matches_bash_literal`
+     that asserts the Python constant is a substring of the bash
+     literal. (Agent 5.)
+  7. **Duplicate test** `test_pre_commit_template_uses_target_claude_not_both`
+     ≡ `test_pre_commit_uses_target_claude_not_both`. Removed
+     the second occurrence (Agents 1, 4).
+  8. **`test_merge_with_none_existing` was misleading** — passed
+     `{}` but docstring claimed it tested None. Renamed to
+     `test_merge_with_empty_existing`, updated docstring, and
+     made the assertion positive (exact dict equality). (Agent 4.)
+  9. **Coverage Matrix still referenced `Task 0 (preamble)`** —
+     no such task exists (Tasks are 1-11). Replaced with `§Context
+     | Plan preamble (lines 13-23)`. (Agent 1.)
+
+  **3 cosmetic polish (round-2 OPTIONALs):**
+  10. **`mcp_qwen_restore` hard-coded `Path.home() / ".qwen" /
+      "settings.json"`** instead of importing `Registrar.DEFAULT_QWEN_SETTINGS`.
+      Switched to the constant (Agent 2).
+  11. **Duplicate `import yaml` in `migrate_from_json`** (function-local
+      shadowing the module-scope one). Removed the local; the
+      module-scope import at the top of the registrar suffices.
+      Cleaned up the stale "(added in Task 4)" comment too (Agent 5).
+  12. **`_route_per_transport` model_validator stays as-is** —
+      already documented in the Deferred items table with rationale
+      (existing `@model_validator(mode="before")` IS the recommended
+      Pydantic v2 pattern for top-level discriminator + flat
+      per-variant fields; `Field(discriminator=...)` is for variant
+      shapes with disjoint fields, which doesn't apply here).
+
+  **Items NOT fixed in this round (acknowledged but deferred):**
+  - Qwen-ONLY violation test isolation (Agent 4 OPTIONAL): would
+    require different Claude vs Qwen emission to express; current
+    headers and env values emit identically to both sides. The
+    defense-in-depth audit-failed path is exercised (R3 from
+    round 1, verified); isolation would require splitting emit_claude
+    and _build_qwen_block emission. Not blocking.
+  - Task 9 `--qwen-settings-path` propagation to `mcp_validate`
+    and `mcp_show` (Agent 4 OPTIONAL): neither command writes to
+    Qwen, so the flag is correctly omitted. The flag is only
+    relevant for write operations (`mcp sync`, `mcp migrate-from-json`).
+  - Cosmetic items N5 (duplicate Typer option declaration) and N6
+    (class-attribute `Path.home()` evaluation) from round 2: kept
+    as-is for readability vs. property refactor tradeoff.
