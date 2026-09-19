@@ -1704,3 +1704,25 @@ _1 tool(s)_
 **Source:** `mahavishnu/mcp/tools/webhook_tools.py:49`
 
 **Description:** Read back a stored `WebhookIngress` for `webhook_id`.
+
+### 28. Jot Type Reference
+
+This section is not a tool category — it documents the shapes returned by
+the Jot drain tools (which live under the parent category's broader
+tool surface). Kept here for one-stop reference.
+
+#### `DrainPlan.action_proposals` field
+
+Each element of `action_proposals` has the shape:
+
+```typescript
+{
+  handle: string;                 // 6-hex short_id; resolves via JotSummary
+  suggested_action: "dispatch" | "defer" | "done" | "delete" | "skip";
+  reason: string;                 // short human-readable rationale
+}
+```
+
+The array is 1:1 with `candidates` (same length, same order). The
+mapping from `JotSummary.dispatch_state` to `suggested_action` is
+locked policy — see parent spec §3.3.4.

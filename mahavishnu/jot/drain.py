@@ -297,6 +297,17 @@ class DrainPlanDict(TypedDict):
 
 
 class ActionProposalDict(TypedDict):
+    """Suggested action for one drain candidate (spec §3.3.4 — locked).
+
+    The mapping from `JotSummary.dispatch_state` to `suggested_action` and
+    `reason` is policy; see parent spec §3.3.4 for the canonical table.
+    Behavior change requires brainstorming re-open.
+
+    Field shape:
+      - handle: str  (6-hex short_id; resolves via JotSummary)
+      - suggested_action: "dispatch" | "defer" | "done" | "delete" | "skip"
+      - reason: str  (short human-readable rationale)
+    """
     handle: str
     suggested_action: Literal["dispatch", "defer", "done", "delete", "skip"]
     reason: str
@@ -727,6 +738,17 @@ class DrainPlan:
     query: str | None
     candidates: list[JotSummary] = field(default_factory=list)
     action_proposals: list[ActionProposalDict] = field(default_factory=list)
+    """Suggested action per drain candidate, 1:1 with `candidates` (same
+    length, same order). Each element is an `ActionProposalDict` with:
+
+      {
+        "handle": str,           # 6-hex short_id; resolves via JotSummary
+        "suggested_action": "dispatch" | "defer" | "done" | "delete" | "skip",
+        "reason": str,           # short human-readable rationale
+      }
+
+    Policy is locked in spec §3.3.4 (see `_propose_action`).
+    """
     error: str | None = None
 
 
