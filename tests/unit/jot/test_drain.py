@@ -259,3 +259,65 @@ def test_delete_jot_writes_event(
     delete_evts = [e for e in events if e["op"] == "delete"]
     assert len(delete_evts) == 1
     assert delete_evts[0]["ctx"]["reason"] == "stale"
+
+
+def test_validate_ctx_rejects_unknown_key_on_dispatch() -> None:
+    from mahavishnu.jot.drain import _validate_ctx
+    from mahavishnu.jot.errors import JotValidationError
+    with pytest.raises(JotValidationError) as excinfo:
+        _validate_ctx(
+            "dispatch",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "pool_selector": "least_loaded",
+                "dispatched_from": "mcp",
+                "mistyped_key": "typo",  # NOT a known key
+            },
+        )
+    assert "mistyped_key" in str(excinfo.value)
+    assert "unknown keys" in str(excinfo.value)
+
+
+def test_validate_ctx_rejects_unknown_key_on_dispatch_failed() -> None:
+    from mahavishnu.jot.drain import _validate_ctx
+    from mahavishnu.jot.errors import JotValidationError
+    with pytest.raises(JotValidationError) as excinfo:
+        _validate_ctx(
+            "dispatch_failed",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "error": "boom",
+                "error_id": "ERROR_TEST",
+                "retry_budget_exhausted": False,
+                "extra_key": "should be rejected",
+            },
+        )
+    assert "extra_key" in str(excinfo.value)
+
+
+def test_validate_ctx_rejects_unknown_key_on_defer() -> None:
+    from mahavishnu.jot.drain import _validate_ctx
+    from mahavishnu.jot.errors import JotValidationError
+    with pytest.raises(JotValidationError) as excinfo:
+        _validate_ctx("defer", {"until": 100, "extra": "x"})
+    assert "extra" in str(excinfo.value)
+
+
+def test_validate_ctx_accepts_started_at_ms_on_dispatch() -> None:
+    """Regression guard: started_at_ms is auto-filled by _append_event;
+    it MUST be in the whitelist or dispatch breaks at runtime.
+    """
+    from mahavishnu.jot.drain import _validate_ctx
+    # Should NOT raise. (started_at_ms is auto-filled before _validate_ctx.)
+    _validate_ctx(
+        "dispatch",
+        {
+            "workflow_id": "wf-1",
+            "attempt": 1,
+            "pool_selector": "least_loaded",
+            "dispatched_from": "mcp",
+            "started_at_ms": 1700000000000,
+        },
+    )

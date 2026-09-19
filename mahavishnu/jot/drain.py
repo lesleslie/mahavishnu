@@ -120,6 +120,21 @@ _LITERAL_KEYS = {
     "dispatched_from": ("cli", "mcp", "slash"),
 }
 
+# Keys that _append_event auto-fills before _validate_ctx runs.
+# MUST be in the per-op whitelist or the unknown-key check (below)
+# rejects auto-filled values at runtime, breaking dispatch.
+_AUTO_FILLED_KEYS: tuple[str, ...] = ("started_at_ms",)
+
+# Per-op whitelist of known keys (required ∪ typed ∪ auto-filled).
+# Computed once at module import; _validate_ctx looks up the op's
+# whitelist and rejects any ctx key not in it.
+_KNOWN_KEYS_PER_OP: dict[str, frozenset[str]] = {
+    op: frozenset(_REQUIRED_KEYS[op]).union(
+        _INT_KEYS, _BOOL_KEYS, _STR_KEYS, _AUTO_FILLED_KEYS, _LITERAL_KEYS.keys(),
+    )
+    for op in _REQUIRED_KEYS
+}
+
 
 # =============================================================================
 # Helpers
@@ -251,6 +266,13 @@ def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
             error_id="ERROR_JOT_VALIDATION",
         )
     _check_required_keys(op, ctx)
+    unknown = set(ctx) - _KNOWN_KEYS_PER_OP[op]
+    if unknown:
+        raise JotValidationError(
+            f"unknown keys for op={op!r}: {sorted(unknown)}",
+            field=f"ctx.{sorted(unknown)[0]}",
+            error_id="ERROR_JOT_VALIDATION",
+        )
     _check_typed_keys(op, ctx, _INT_KEYS, "int", _is_pure_int)
     _check_typed_keys(op, ctx, _BOOL_KEYS, "bool", _is_bool)
     _check_typed_keys(op, ctx, _STR_KEYS, "str", _is_str)
