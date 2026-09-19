@@ -44,7 +44,7 @@ ______________________________________________________________________
 1. **Python backend** — `dpkt` for parsing, `pcapy-ng` (with ctypes fallback) for live capture, numpy where helpful, Oneiric for config.
 1. **Single source of truth for IPC** — `.proto` files generating both Python (betterproto2) and Swift (SwiftProtobuf) types via two `SOCK_SEQPACKET` Unix-domain sockets (one for data, one for control).
 1. **Multi-channel distribution** — `pip install flowscape`, `uvx flowscape`, `brew install les/tap/flowscape`, signed `.app` bundle with launchd helper for `/dev/bpf*` ACL.
-1. **Heuristics for live traffic patterns** — beaconing, port-scan, top-N churn. v1 versions are simple statistical detectors with realistic thresholds (see [Out of scope](#out-of-scope--future-work) for ML deferral).
+1. **Heuristics for live traffic patterns** — beaconing, port-scan. v1 ships beaconing and port-scan; **Top-N churn detector ships in v1.1 per plan §5.1. The settings exist in v1 for forward compatibility.** (see [Out of scope](#out-of-scope--future-work) for ML deferral).
 1. **Structural no-payload guarantee** — packet bytes never leave the capture process. Wire format carries metadata + a 32-byte SHA-256 prefix per edge; no payload bytes, period.
 
 ## Non-Goals
@@ -100,15 +100,25 @@ The Swift app spawns the embedded Python at launch. **Two SOCK_SEQPACKET Unix-do
 
 1. **Latest-wins backpressure on the data plane.** If Python's `socket.send` blocks for >50 ms (kernel buffer full), Python discards the *currently-prepared* `GraphSnapshot` and resumes on the next tick. Drop count is exposed via heartbeat. Control-plane alerts are exempt from the drop policy.
 
-1. **Active consent gate.** On first launch (and on interface or SSID change, or after 30 days), the Swift app shows a blocking modal: "Confirm you own or are authorized to monitor this network. Unauthorized packet capture may violate federal law (18 U.S.C. §§ 2511, 1030) and state wiretap statutes." Acknowledge button disabled for 5 s to prevent misclick. Stored consent (`~/.flowscape/consent.json`) records timestamp + hashed network identifier.
+1. **Active consent gate.** On first launch (and on interface or SSID change, or after 30 days), the Swift app shows a blocking modal: "Confirm you own or are authorized to monitor this network. Unauthorized packet capture may violate federal law (18 U.S.C. §§ 2511, 1030) and state wiretap statutes." Acknowledge button disabled for 5 s to prevent misclick. Stored consent (`~/Library/Application Support/Flowscape/consent.json` per macOS convention; plan §6 reconciliation) records timestamp + hashed network identifier.
 
 1. **No GPL/LGPL in our dep tree.** All direct deps are permissively licensed (BSD, MIT, Apache-2.0). `dpkt` for parsing, `pcapy-ng` for live capture, `betterproto2` (MIT), `protobuf` (BSD-3), `libpcap` (BSD), `py2app` (MIT), `SwiftProtobuf` (Apache-2.0). Verified in CI via `pip-licenses --fail-on="GPL;LGPL;AGPL"`.
 
 1. **Swift 6 strict concurrency from day one.** IPCSocket is an `actor`. Renderer is an `actor` (MTKView's delegate methods forward to it via `Task`). LayoutState is a `Sendable` struct with copy-on-write positions, triple-buffered across frames-in-flight. No `@unchecked Sendable` escapes.
 
+1. **IPCSocket → Layout snapshot handoff is lock-free.** IPCSocket actor writes new snapshots into a triple-buffered SnapshotSlot (same pattern as the Choreographer handoff: producer writes to slot ((idx + 1) % 3), atomically publishes slot index). Layout's first action per frame is to atomically load the latest index, then read the snapshot. No cross-actor await — IPCSocket can keep publishing while Layout reads. This guarantees the data plane stays decoupled from the layout pass. Memory ordering: producer publishes index with release ordering; consumer loads index with acquire ordering. Primitive: `ManagedAtomic<Int>` (Swift Atomics), per A15.
+
 ### Repo placement
 
 Fresh repo at `/Users/les/Projects/flowscape` (GitLab private; GitHub public option later). Bodai-maintained but not Bodai-core. Follows Bodai conventions (Oneiric config, crackerjack quality gates, PEP 735 optional dep groups).
+
+### MCP integration scope (v1 client-mode; server-mode still gated)
+
+v1 (rev 3): Client-mode scapy-mcp enrichment via flowscape doctor --enrichment and the EnrichmentRegistry plug-in pattern. Hooks are DI-injected; the v1 default is no-op (no enrichment). See ADR 0016 for the client-mode design and the regulatory posture distinction.
+
+v2 (future): Server-mode MCP server (Flowscape serving an MCP surface). Gated on ADR 0007 + DPIA. Not in v1 scope.
+
+The MCP server is a regulatory event (passive network observation exposed to LLM control surfaces); it is not the same posture as client-mode enrichment (where flowscape calls out to a network analysis MCP server). Plan references to "MCP integration scope" should resolve here.
 
 ______________________________________________________________________
 
@@ -123,7 +133,7 @@ ______________________________________________________________________
 | `decode.py` | Consumes raw packets via `dpkt`. Emits structured `FlowEvent`s with `tcp_flags`, `payload_sha256_prefix` (32 bytes; source buffer zeroed immediately). Zeroes buffer via context manager. | 350 |
 | `aggregate.py` | Stateful: per-flow rolling counters + per-host byte totals over 60s sliding window. Two-tier window: fast (10Hz, 60s) for visualization, slow (every 30s, 10min sparse timestamps) for periodicity heuristics. | 500 |
 | `graph.py` | Pure data: derives current `GraphState` from aggregator on tick; per-tick batched `EnrichmentRegistry.get_provider(EnrichmentSettings.default_provider).enrich_batch(edges)` layers enrichment metadata. (Was `EnrichmentRegistry.default().enrich_edge()` per edge — per-edge × 5000 edges/tick = broken timeout math; see ADR 0016 v2 §Architecture.) | 200 |
-| `heuristics.py` | Reads aggregator stream, emits `Alert` events. Beaconing (jitter 20%, slow window), port-scan (SYN packets/sec, distinct dst ports, vertical/horizontal distinction), top-N churn (sustained 3+ ticks, scaled with active host count). Optional `EnrichmentHook` (DI) boosts detector confidence via scapy-mcp call. | 350 |
+| `heuristics.py` | Reads aggregator stream, emits `Alert` events. Beaconing (jitter 20%, slow window), port-scan (SYN packets/sec, distinct dst ports, vertical/horizontal distinction). **Top-N churn detector is v1.1 per plan §5.1; the `TopNChurnSettings` schema and `HeuristicName.TOP_N_CHURN` enum value are present in v1 for forward compatibility, but no detector implementation ships.** Optional `EnrichmentHook` (DI) boosts detector confidence via scapy-mcp call. | 350 |
 | `enrichment.py` (new in rev 3) | `EnrichmentRegistry`, `EnrichmentHook` protocol, scapy-mcp adapter. Mirrors `capture_registry.py` plug-in pattern (spec A16). Pure-Python no-op default. | 200 |
 | `publisher.py` | Encodes graph snapshots + alerts as protobuf on data.sock. Custom ring buffer (NOT `asyncio.Queue`) for drop-oldest semantics. | 200 |
 | `ipc_server.py` | Reads JSON-RPC on control.sock. JSON Schema validation via `oneiric.actions.schema_validation`. | 250 |
@@ -139,8 +149,8 @@ ______________________________________________________________________
 | `App.swift` | SwiftUI `App` entrypoint; consent gate; window + menu commands. | 200 |
 | `Sidebar.swift` | Capture source picker, filter controls, legend, alerts list, status indicator. | 400 |
 | `SceneView.swift` | `NSViewRepresentable` wrapping `MTKView`; the GPU scene lives here. | 200 |
-| `Renderer/` (actor) | Metal pipeline + custom shaders. **Edge rendering strategy: compute-pass writes line segments (cylinder quads) into a shared vertex buffer, instanced per-edge.** MTKView config pinned: `colorPixelFormat=.bgra10_xr_srgb`, `depthStencilPixelFormat=.depth32Float`, `sampleCount=4`, `enableSetNeedsDisplay=false`, `preferredFramesPerSecond` follows `RenderSettings.target_fps` (default 60, configurable up to 120 for ProMotion). MTLBuffer pools allocated once at startup with capacity = `max_nodes * node_size + max_edges * edge_size`, never reallocated during runtime. Edge bundles (Holten HEB) thread through the same cylinder-quad path — bundling changes *which control points* the cylinders connect, not the render path itself. Hosts the `Choreographer` actor for opacity ramps and camera intro (see §"Visual rendering details"). | 1,500-2,000 |
-| `Layout/` | 3D force-directed (GPU compute kernel, not CPU on render thread). Triple-buffered positions. Three-state convergence machine (`converged` / `active` / `capped`) per §"Layout convergence state machine" — ε=1e-3, 24 iters/frame, 12-frame soft window. Holten HEB control-point computation lives here too: per-edge LCP lookup, 8-point Catmull-Rom arc generation. | 500-600 |
+| `Renderer/` (actor) | Metal pipeline + custom shaders. **Edge rendering strategy: compute-pass writes line segments (cylinder quads) into a shared vertex buffer, instanced per-edge.** MTKView config pinned: `colorPixelFormat=.bgra10_xr_srgb`, `depthStencilPixelFormat=.depth32Float`, `sampleCount=4`, `enableSetNeedsDisplay=false`, `preferredFramesPerSecond` follows `RenderSettings.target_fps` (default 60, configurable up to 120 for ProMotion). MTLBuffer pools allocated once at startup with capacity = `max_nodes * node_size + max_edges * edge_size`, never reallocated during runtime. Edge bundles (Holten HEB) thread through the same cylinder-quad path — bundling changes *which control points* the cylinders connect, not the render path itself. Consumes per-host opacity via Sendable `ChoreographerState` struct, atomic-swapped once per frame from the Choreographer task group (see §"Initial-frame choreography"). **Cylinder-quad shader work scales 8× with HEB** (8 segments vs 1 for straight edges); aggregate GPU fragment throughput grows accordingly. | 1,800-2,300 |
+| `Layout/` | 3D force-directed (Metal compute kernel primary; Barnes-Hut O(n log n) CPU fallback for non-Apple-Silicon runners). Triple-buffered positions. Three-state convergence machine (`converged` / `active` / `capped`) per §"Layout convergence state machine" — ε=1e-3, 24 iters/frame (GPU compute), 12-frame soft window. Per-frame energy reduction in-register. Holten HEB control-point computation lives here too: per-edge LCP lookup against `HostNode.subnet_path`, 8-point Catmull-Rom arc generation. `dirty_set` lives in Layout actor state, populated by Layout's local `SnapshotBuffer` diff — no cross-actor handoff. `HostNode.id`-keyed position slots live in Layout actor state, separate from the triple-buffer MTLBuffer (deterministic re-seed across reappearances). | 800-1,000 |
 | `IPCSocket.swift` (actor) | Two `SOCK_SEQPACKET` Unix-socket clients. Partial-read state machine. JSON-RPC dispatcher on control.sock. Bidirectional heartbeat. | 600 |
 | `AlertModel.swift` | Heuristic alerts surfaced in sidebar (dismissable, severity-aware, TTL-aware). | 150 |
 | `HelperInstall/` | Launchd plist + helper binary source for the privileged ChmodBPF-style helper. | 300 |
@@ -157,13 +167,22 @@ ______________________________________________________________________
 
 All generated outputs gitignored. The `.proto` file is committed.
 
+### Proto schema additions (Phase 0b.1 codegen pre-req for Phase 4)
+
+The Phase 4 architectural additions require two new fields on `HostNode` (specified in `proto/flowscape.proto`):
+
+- `first_seen_frame uint32 = 9` — populated by `aggregate.py` on first sight of a host; consumed by Renderer vertex shader for opacity ramp. uint32 is sufficient (~4.3 × 10⁹ frames at 60 Hz ≈ 2.3 years of continuous capture).
+- `subnet_path repeated uint32 = 10` — populated by `aggregate.py` lazily on first sight; consumed by Layout for Holten HEB LCP lookup. Max `subnet_hierarchy_levels = 5` entries.
+
+Both fields are structural metadata (NOT packet-payload-derived) and pass the existing "structural no-payload guarantee" lint regex (`payload|body|raw` not present in field names). Field numbers 9 and 10 follow proto3 schema evolution (append, never reuse).
+
 ### Public CLI surface
 
 ```
 flowscape live [--interface en0] [--filter "tcp port 80"]   # primary command
 flowscape replay capture.pcap [--speed 1x]                # offline replay
 flowscape interfaces                                      # list libpcap-discoverable interfaces
-flowscape doctor [--config] [--consent-check]            # config + permission validation
+flowscape doctor [--config] [--consent-check] [--enrichment]            # config + permission validation
 flowscape version
 flowscape mcp                                              # v2: server-mode MCP server (Flowscape serving an MCP surface; gated on ADR 0007 + DPIA). v1 ships `flowscape doctor --enrichment` for the client-side scapy-mcp provider instead.
 ```
@@ -241,12 +260,12 @@ T+900ms  Python begins packet ingest
 T+1000ms First snapshot arrives → first render frame
          Layout seeds positions (deterministic SHA-256 of HostNode.id; see §"Visual rendering details")
          Choreographer initialises with per-node opacity = 0
-T+1000ms Camera intro begins — 1.2 s ease-out arc from far vantage → working distance
+T+1000ms Camera intro begins — 1.0 s ease-out arc from far vantage → working distance
 T+1200ms Layout soft-convergence hits for first ~30% of nodes (12-frame window elapsed)
 T+1200ms Per-node opacity ramp begins — 0→1 over 600 ms, staggered by `first_seen_frame` index
          (older nodes finish first; new nodes still ramping)
-T+1800ms Camera intro complete; ≥90% nodes at full opacity
-T+2000ms Steady state — only late-arriving nodes ramp in; departures fade out over 200 ms,
+T+1800ms Per-node opacity ramp complete; ≥90% nodes at full opacity
+T+2000ms Camera intro complete; steady state — only late-arriving nodes ramp in; departures fade out over 200 ms,
          then buffer slot is reused for the next host with that identity (deterministic re-seed)
 ```
 
@@ -274,25 +293,80 @@ States:
 
 Re-entry from `converged` to `active` is triggered by any graph mutation that invalidates the equilibrium (new edge with displacement above a per-edge threshold; new node; removed node). Maintained cheaply via a `dirty_set` in `ForceDirectedLayout`, populated by `SnapshotBuffer` diff, drained at frame start.
 
-**p99 ≤ 16 ms DoD math** (per Phase 4 spec): 24 iterations × 1000 nodes² repulsion × ~50 ns/op ≈ 1.2 ms force computation + 0.3 ms spring pass + 0.2 ms damping integration + 0.1 ms atomic buffer swap + 14 ms render budget headroom = ~16 ms ceiling on Apple M2 Pro.
+**p99 ≤ 16 ms DoD math** (corrected from earlier 1000× error):
+
+**Primary path (GPU compute)**:
+24 iterations × 1,000,000 pairs × ~25 FLOPs/pair = 600 MFLOPs ÷ 4.4 TFLOPS (Apple M2 Pro) ≈ **0.14 ms** repulsion. Plus 0.3 ms spring + 0.05 ms damping + 0.1 ms atomic buffer swap + 15 ms render budget headroom = ~16 ms ceiling.
+
+**Fallback path (Barnes-Hut O(n log n))**: Activates when any of:
+1. MTLDevice.supportsFeatureFamily(.macOS_GPUCommon4) == false (rare on Apple Silicon; possible on older devices or under Rosetta)
+2. flowscape.layout.gpu_compute_enabled == false (user setting)
+3. The last 3 compute dispatches errored (compile or runtime failure)
+4. (Compiler future-proofing) Metal SDK update breaks shader compilation
+
+When fallback is active, max_iterations_per_frame drops from 24 → 4. Metrics flowscape.layout.fallback_active (gauge) and flowscape.layout.fallback_reason{kind=...} (counter) report state.
+
+**Earlier arithmetic error (now corrected)**: 24 × 1000² × 50 ns = 1.2 × 10⁹ ns = 1.2 *seconds*, not 1.2 ms. The original spec text mis-placed a decimal.
+
+### CI budget gate for p99 frame time
+
+The 16 ms p99 DoD is a theoretical ceiling based on peak FLOPS. To catch measurement noise (a single slow dispatch, thermal throttling, command-queue contention with the Choreographer task group), CI gates on a tighter bound:
+
+- p99 frame_time_ms over 300 frames must be ≤ 14 ms (giving 2 ms margin for the 16 ms DoD)
+- Test capacity: tests/integration/test_frame_time_p99.py runs the capacity workload (1000 nodes + 5000 edges) and asserts the gate
+- Reference: docs/plans/2026-08-31-flowscape.md §Phase 4 measurable DoD
+
+If the gate fails, the failure is attributed via the metrics surface (flowscape.layout.* and flowscape.heb.*) — see §"Required metrics for budget verification".
+
+**Energy computation**: per-node KE = ½‖v‖², computed inside the layout kernel (velocities already in registers alongside position updates). Per-frame reduction = `max(energy[i])` over in-buffer range; cost < 5 µs at 1000 nodes. The convergence gate fires when `max(energy[i]) < convergence_energy_per_node_epsilon`.
+
+**CPU position map → GPU MTLBuffer upload**: every frame, filtered to active nodes (snapshot's node set). At 1000 active nodes: 1000 × 12 bytes = 12 KB/frame ≈ 0.7 MB/s memory bandwidth (negligible). The historical identity-keyed positions (used for WiFi-roam re-seed) are NOT uploaded — only active positions are. Identity-keyed entries live only in Layout actor state.
+
+### Required metrics for budget verification
+
+The following counters/histograms/gauges must be exposed via OSSignposter so p99 over-budget events can be attributed to a specific subsystem:
+
+- `flowscape.layout.iterations_per_frame` (histogram) — validate `max_iterations_per_frame` is hit; distinguish steady-state < 24 from capped=24
+- `flowscape.layout.energy_max` (gauge) — convergence gate value
+- `flowscape.layout.repulsion_ms` (histogram) — isolate dominant cost
+- `flowscape.layout.spring_ms` (histogram)
+- `flowscape.layout.damping_ms` (histogram)
+- `flowscape.layout.dirty_set_size` (histogram)
+- `flowscape.layout.energy_total` (gauge) — second-order convergence signal
+- `flowscape.heb.cpu_compute_ms` (histogram)
+- `flowscape.heb.bundled_edges_total` (gauge)
+- `flowscape.heb.straight_edges_total` (gauge)
+- `flowscape.choreographer.ticked_nodes_total` (gauge)
+- `flowscape.camera_intro.frame_index` (gauge)
+- OSSignposter interval `flowscape.layout.iteration` — per-iteration timing
 
 ### Initial-frame choreography
 
 The cold-start timestamps above specify *when* things happen; this section specifies *what is seen* between them.
 
-**Per-node visibility ramp.** Each `HostNode` carries a `first_seen_frame` index (computed by `aggregate.py`, included in `GraphSnapshot`). The Renderer vertex shader reads `(current_frame_index - first_seen_frame) / fade_in_duration_frames` as an alpha multiplier, clamped to `[0, 1]`. Default `fade_in_duration_frames = 36` (600 ms at 60 Hz). New nodes ramp in linearly while older nodes have already finished ramping.
+**Per-node visibility ramp.** Each `HostNode` carries a `first_seen_frame` index (computed by `aggregate.py`, included in `GraphSnapshot`). The Renderer vertex shader reads `(current_frame_index - first_seen_frame) / fade_in_duration_frames` as an alpha multiplier, clamped to `[0, 1]`. Default `fade_in_duration_frames = 36` (600 ms at 60 Hz).
+
+**Synthetic stagger (cold start)**: To prevent first-snapshot stagger collapse, the initial stagger distribution is applied at the producer — aggregate.py synthesizes first_seen_frame per host on first sight:
+- Cold start (first snapshot of any session, live or replay): first_seen_frame = current_frame_index + (hash(HostNode.id) % fade_in_duration_frames). Identity-deterministic, session-stable. The vertex shader's existing math (current_frame_index - first_seen_frame) / fade_in_duration_frames produces a per-host stagger offset without modification.
+- Late arrival (subsequent snapshots): first_seen_frame = current_frame_index (no offset; the host gets the full 600 ms fade-in starting from arrival).
+
+**Edge fade-in 80% threshold**: Edges start fading in slightly before their endpoints fully resolve, suggesting connection rather than waiting for completion. Documented so the threshold isn't "corrected" to 100% in code review.
+
+**Easing**: Per-node fade-in is linear. The camera intro's ease-out cubic on pitch/yaw + cosine on distance is the primary visual motion; the node fade-in is a quiet supporting layer.
 
 **Per-edge visibility ramp.** Edges become visible only when both endpoint nodes are ≥ 80% opacity (`fade_in_edge_duration_frames = 18`, 300 ms). Avoids the visual dissonance of "edge arrives before its endpoints exist."
 
-**Departure behavior.** When a node disappears from the aggregator for ≥ 1 slow-window tick, the Choreographer kicks off a 200 ms linear fade-out (`fade_out_duration_frames = 12`). Edges to the departing node fade out in lockstep. After the fade, the buffer slot reverts to the pool — but the layout position is keyed by `HostNode.id`, so when a host with the same identity returns (e.g. WiFi roam), its prior position is reseeded deterministically rather than assigned a fresh slot.
+**Departure behavior.** When a node disappears from the aggregator for ≥ 1 fast-window tick (300ms hysteresis), the Choreographer kicks off a 200 ms linear fade-out (`fade_out_duration_frames = 12`). Edges to the departing node fade out in lockstep. After the fade, the buffer slot reverts to the pool — but the layout position is keyed by `HostNode.id` and stored in the Layout actor's position map (NOT in the triple-buffer MTLBuffer), so when a host with the same identity returns (e.g., WiFi roam), its prior position is reseeded deterministically rather than assigned a fresh slot. This resolves the contradiction with A10's MTLBuffer capacity formula (which only counts *active* slots, not historical identity-keyed positions).
 
-**Camera intro.** A 1.2 s ease-out arc from a far vantage point to the working distance (`camera_intro_duration_frames = 72`). Driven entirely on the Renderer side; no IPC. The arc is deterministic (cosine easing on distance, ease-out cubic on pitch/yaw).
+**Camera intro.** A 1.0 s ease-out arc from a far vantage point to the working distance (`camera_intro_duration_frames = 60`). Driven entirely on the Renderer side; no IPC. The arc is deterministic (cosine easing on distance, ease-out cubic on pitch/yaw).
 
 **Why staggered, not synchronized?** Synchronized fade-in reads as "curtain raising" — theatrical, but signals "loading." Staggered by arrival order reads as "system coming alive" — incremental discovery. The same principle applies to most "system is alive" UX cues: avoid patterns that suggest "the system was waiting."
 
+**Choreographer architecture**. The Choreographer is **not** an actor — it is a task group running on a dedicated DispatchQueue. Per frame: walks per-host opacity state, advances opacities toward targets, computes the camera intro arc, and writes the result into a Sendable `ChoreographerState` struct (opacities keyed by `HostNode.id` + camera position/orientation). **Handoff mechanism**: Triple-buffer with atomic slot index. Producer (Layout kernel for position; Choreographer for opacity) writes new state into slot ((idx + 1) % 3), then atomically publishes the new index via ManagedAtomic<Int>.store(_, ordering: .releasing). Consumer (Renderer) atomically loads the index ManagedAtomic<Int>.load(ordering: .acquiring) then reads slot slots[idx]. The acquire/release pairing ensures the buffer contents are visible before the slot index is published. Per-slot write/read is uncontended; cost ~5 ns/frame for the atomic load. The Renderer reads the buffer synchronously in its draw pass — no per-edge await. This avoids the 1.8M-actor-awaits-per-frame death at 50k edges that an actor-as-Choreographer pattern would cause.
+
 ### Edge bundling (Holten HEB)
 
-At the spec'd 50k-edge capacity, un-bundled cylinder quads become visual spaghetti. The renderer ships **Holten's Hierarchical Edge Bundling (Holten 2006)** as the v1 visual differentiator over Etherape.
+At the spec'd 5k-edge capacity, un-bundled cylinder quads become visual spaghetti. The renderer ships **Holten's Hierarchical Edge Bundling (Holten 2006)** as the v1 visual differentiator over Etherape.
 
 **Why HEB and not the alternatives:**
 
@@ -304,18 +378,20 @@ At the spec'd 50k-edge capacity, un-bundled cylinder quads become visual spaghet
 
 **Hierarchy synthesis.** The hierarchy is computed lazily in `aggregate.py` on first sight of each host and serialized into `HostNode.subnet_path` as a `repeated uint32` proto field (root → /8 → /16 → /24 → IP, max `subnet_hierarchy_levels = 5` levels). Lives in the proto, not derived at render time — bundling must work even before the Python backend has had time to compute a hierarchy from scratch (e.g. on reconnect, after backend restart).
 
+**subnet_path semantics**: `HostNode.subnet_path` is computed for IPv4 and IPv6 hosts only. Non-IP hosts (ARP, multicast, IPv6 link-local) get an empty `subnet_path` (zero entries) and are never bundled — they render as straight cylinder quads, falling through the compatibility test automatically. For IPv6, the prefix chain is root → /32 → /48 → /64 → /128 (5 entries, matching `subnet_hierarchy_levels = 5`).
+
 **Per-edge control points.** For edge `(src, dst)`: walk `src.subnet_path ∩ dst.subnet_path` to find the longest common prefix (LCP). The spline control points are `src_pos + N points along arc to LCP centroid + N points along arc to dst_pos + dst_pos`, where `N = edge_bundling_subdivision_levels` (default 4, giving an 8-point Catmull-Rom path). Each control-point arc is a quadratic Bézier through the LCP centroid.
 
 **Tessellation.** Existing `EdgeRenderer` cylinder-quad code is reused unchanged: subdivide the spline into `M = edge_bundling_subdivision_levels + 4` segments, draw M+1 oriented cylinders between consecutive sample points. The render path itself is bundling-agnostic — HEB just changes *which control points* the cylinder quads thread through.
 
-**Compatibility test (Holten §3.2).** Edges are only bundled when angle compatibility and length-scale compatibility both pass (default angle threshold: `edge_bundling_compatibility_angle_rad = π/6`). Incompatible edges fall back to straight cylinder quads with zero bundling overhead — the visual worst case is identical to no-bundling behavior.
+**Compatibility test (Holten §3.2).** Edges are only bundled when angle compatibility and length-scale compatibility both pass (default angle threshold: `edge_bundling_compatibility_angle_rad = pi / 6`). Incompatible edges fall back to straight cylinder quads with zero bundling overhead — the visual worst case is identical to no-bundling behavior.
 
 **Tunables (on `RenderSettings`):**
 
 ```python
 edge_bundling_enabled: bool = True
 edge_bundling_subdivision_levels: PositiveInt = 4
-edge_bundling_compatibility_angle_rad: float = π/6
+edge_bundling_compatibility_angle_rad: float = pi / 6
 edge_bundling_fade_with_zoom: bool = True  # un-bundle when zoomed in past threshold
 ```
 
@@ -323,7 +399,11 @@ edge_bundling_fade_with_zoom: bool = True  # un-bundle when zoomed in past thres
 
 - **Color** — same protocol hue, but lightness reduced by 10% when bundled, pushing bundled edges visually behind the un-bundled focal edges.
 - **Thickness** — clamped to `[0.5, 2.0]` px on bundled edges (vs `[0.5, 4.0]` on un-bundled), so the byte-volume signal stays visible without overwhelming the bundle aesthetic.
-- **Animation** — bundled edges oscillate in hue by ±5% at 0.5 Hz per protocol class, so the bundle visually "breathes." Un-bundled edges stay static.
+- **Animation** — bundled edges oscillate in hue by ±5% at 0.5 Hz per protocol class, computed via `sin()` in the GPU fragment shader (NOT a CPU upload — keeping it GPU-resident avoids re-uploading the MTLBuffer every frame). Un-bundled edges stay static.
+
+**v1 capacity target**: 5k bundled edges at p99 ≤ 16 ms. The 50k-edge capacity is documented as a v2 roadmap item; attempting 50k at 60 fps in v1 is constrained by HEB CPU compute (LCP walks + Catmull-Rom evaluation consume 35-75% of the budget at that scale). Phase 4 Task 4.3's capacity test asserts 5k, not 50k.
+
+**GPU fragment cost note**: Holten HEB tessellates each bundled edge into 8 cylinder-quad segments (vs 1 for straight edges), giving an 8× multiplier on aggregate GPU vertex and fragment throughput. The per-quad shader work is bundling-agnostic; the aggregate scales linearly with the segment count.
 
 **Enabled by default.** `edge_bundling_enabled` ships as `True` because the visual differentiator is *why a user opens flowscape over Etherape*. Power users can disable via `flowscape config set renderer.edge_bundling_enabled false`.
 
@@ -379,6 +459,8 @@ message HostNode {
   repeated ProtocolCount protocol_breakdown = 6;   // ordered; not a map
   string asn = 7;        // empty if unknown
   string label = 8;      // resolved name or IP literal
+  uint32 first_seen_frame = 9;   // aggregate.py on first sight; Renderer vertex shader uses for opacity ramp
+  repeated uint32 subnet_path = 10;  // aggregate.py on first sight; Layout LCP for Holten HEB; max subnet_hierarchy_levels = 5 entries
 }
 
 message ProtocolCount {
@@ -541,6 +623,7 @@ Layered config lookup order (canonical Oneiric): `defaults → $PROJECT_ROOT/set
 # src/flowscape/settings.py (excerpt)
 from __future__ import annotations
 from enum import Enum
+from math import pi
 from pathlib import Path
 from typing import Annotated
 from pydantic import Field, PositiveInt, NonNegativeFloat, model_validator
@@ -581,14 +664,14 @@ class LayoutSettings(BaseModel):
     bounds_min: tuple[float, float, float] = (-50.0, -50.0, -50.0)
     bounds_max: tuple[float, float, float] = (50.0, 50.0, 50.0)
     # Convergence state machine (see §"Layout convergence state machine")
-    convergence_energy_per_node_epsilon: NonNegativeFloat = 1e-3
-    max_iterations_per_frame: PositiveInt = 24
+    convergence_energy_per_node_epsilon: float = Field(1e-3, gt=0.0, lt=1.0)
+    max_iterations_per_frame: int = Field(24, gt=0, le=128)
     soft_convergence_window_frames: PositiveInt = 12
     # Initial-frame choreography (see §"Initial-frame choreography")
     fade_in_duration_frames: PositiveInt = 36   # 600 ms @ 60 Hz
     fade_in_edge_duration_frames: PositiveInt = 18  # 300 ms
     fade_out_duration_frames: PositiveInt = 12   # 200 ms
-    camera_intro_duration_frames: PositiveInt = 72  # 1.2 s @ 60 Hz
+    camera_intro_duration_frames: PositiveInt = 60  # 1.0 s @ 60 Hz
     # Edge bundling hierarchy (Holten HEB; see §"Edge bundling")
     subnet_hierarchy_levels: PositiveInt = 5  # root → /8 → /16 → /24 → IP
     @model_validator(mode="after")
@@ -600,6 +683,33 @@ class LayoutSettings(BaseModel):
                     f"bounds_min={self.bounds_min} bounds_max={self.bounds_max}"
                 )
         return self
+    @model_validator(mode="after")
+    def _check_fade_in_edge_lt_fade_in(self) -> "LayoutSettings":
+        if self.fade_in_edge_duration_frames >= self.fade_in_duration_frames:
+            raise ValueError(
+                f"fade_in_edge_duration_frames ({self.fade_in_edge_duration_frames}) "
+                f"must be < fade_in_duration_frames ({self.fade_in_duration_frames}); "
+                f"edges should fade in before endpoints fully resolve."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _check_camera_intro_covers_stagger_ramp(self) -> "LayoutSettings":
+        # Soft warning: if camera_intro is shorter than the full stagger ramp envelope,
+        # the last staggered hosts will still be ramping when the camera lands. Intentional
+        # in v1 (the camera lands at T+2000ms; staggered ramp tail extends ~600ms past).
+        if self.camera_intro_duration_frames < self.fade_in_duration_frames * 2 - 1:
+            import warnings
+            warnings.warn(
+                f"camera_intro_duration_frames ({self.camera_intro_duration_frames}) < "
+                f"fade_in_duration_frames * 2 - 1 ({self.fade_in_duration_frames * 2 - 1}); "
+                f"camera will land before staggered hosts finish fading in. "
+                f"This is intentional in v1 but operators who set the camera intro short "
+                f"should expect a brief overlap.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self
 
 class RenderSettings(BaseModel):
     target_fps: PositiveInt = 60  # up to 120 supported for ProMotion
@@ -609,21 +719,32 @@ class RenderSettings(BaseModel):
         Protocol.ICMP: PColor("#ff453a"), Protocol.ARP: PColor("#bf5af2"),
         Protocol.ICMPV6: PColor("#ff453a"),
     })
-    edge_thickness_scale: PositiveInt = 1
+    edge_thickness_scale: NonNegativeFloat = 1.0
     # Edge bundling (Holten HEB); see §"Edge bundling". Enabled by default —
     # it's the headline visual differentiator over Etherape.
     edge_bundling_enabled: bool = True
     edge_bundling_subdivision_levels: PositiveInt = 4  # Catmull-Rom sample count
-    edge_bundling_compatibility_angle_rad: float = 0.5235987755982988  # π/6
+    edge_bundling_compatibility_angle_rad: float = Field(default=pi / 6, gt=0.0, le=pi)
+    edge_bundling_thickness_clamp_bundled: tuple[float, float] = (0.5, 2.0)
+    edge_bundling_thickness_clamp_unbundled: tuple[float, float] = (0.5, 4.0)
     edge_bundling_fade_with_zoom: bool = True  # un-bundle when zoomed past threshold
+
+    @model_validator(mode="after")
+    def _check_thickness_clamp_ordering(self) -> "RenderSettings":
+        for name in ("edge_bundling_thickness_clamp_bundled", "edge_bundling_thickness_clamp_unbundled"):
+            clamp = getattr(self, name)
+            if not clamp[0] < clamp[1]:
+                raise ValueError(f"{name}[0] must be < {name}[1]; got {clamp}")
+        return self
 
 class HeuristicSettings(BaseModel):
     enabled: list[HeuristicName] = Field(default_factory=lambda: [
-        HeuristicName.BEACONING, HeuristicName.PORT_SCAN, HeuristicName.TOP_N_CHURN,
+        HeuristicName.BEACONING, HeuristicName.PORT_SCAN,
+        # HeuristicName.TOP_N_CHURN deferred to v1.1 per plan §5.1; enum value retained for forward compatibility
     ])
     beaconing: "BeaconingSettings" = Field(default_factory=lambda: BeaconingSettings())
     port_scan: "PortScanSettings" = Field(default_factory=lambda: PortScanSettings())
-    top_n_churn: "TopNChurnSettings" = Field(default_factory=lambda: TopNChurnSettings())
+    top_n_churn: "TopNChurnSettings" = Field(default_factory=lambda: TopNChurnSettings())  # v1.1 (deferred)
 
 class BeaconingSettings(BaseModel):
     interval_min_seconds: PositiveInt = 30
@@ -639,6 +760,9 @@ class TopNChurnSettings(BaseModel):
     top_n: PositiveInt = 10
     sustained_ticks: PositiveInt = 3
     delta_threshold_pct: float = 50.0  # base; raised to 70% when active_host_count < min_active_hosts
+    delta_threshold_pct_high_density: float = Field(70.0, ge=0.0, le=100.0)  # raised threshold when active_host_count < min_active_hosts
+
+    # Switching logic (when active_host_count < min_active_hosts swaps delta_threshold_pct -> delta_threshold_pct_high_density) is v1.1 (Top-N churn detector deferred per plan §5.1). The two fields exist in v1 for forward compatibility but the switching behavior is not wired.
     min_active_hosts: PositiveInt = 20
 
 class EnrichmentSettings(BaseModel):
@@ -690,7 +814,7 @@ layout:
   fade_in_duration_frames: 36
   fade_in_edge_duration_frames: 18
   fade_out_duration_frames: 12
-  camera_intro_duration_frames: 72
+  camera_intro_duration_frames: 60
   # Edge bundling hierarchy (Holten HEB)
   subnet_hierarchy_levels: 5
 
@@ -701,16 +825,19 @@ renderer:
     tcp: "#5ac8fa"
     udp: "#ffd60a"
     icmp: "#ff453a"
+    icmpv6: "#ff453a"
     arp: "#bf5af2"
   edge_thickness_scale: 1.0
   # Edge bundling (Holten HEB); see §"Edge bundling". Enabled by default.
   edge_bundling_enabled: true
   edge_bundling_subdivision_levels: 4
-  edge_bundling_compatibility_angle_rad: 0.5235987755982988  # π/6
+  edge_bundling_compatibility_angle_rad: 0.5235987755982988  # pi / 6
+  edge_bundling_thickness_clamp_bundled: [0.5, 2.0]
+  edge_bundling_thickness_clamp_unbundled: [0.5, 4.0]
   edge_bundling_fade_with_zoom: true
 
 heuristics:
-  enabled: ["beaconing", "port_scan", "top_n_churn"]
+  enabled: ["beaconing", "port_scan"]  # top_n_churn ships in v1.1 per plan §5.1; settings below kept for forward compatibility
   beaconing:
     interval_min_seconds: 30
     interval_max_seconds: 1800     # 30 min, not 10 min — covers slow beacons
@@ -719,10 +846,11 @@ heuristics:
     syn_only_pps_threshold: 100
     distinct_dst_ports_per_minute: 50
     distinct_dst_ips_per_minute: 30
-  top_n_churn:
+  top_n_churn:                     # v1.1 (deferred); schema lives in v1 for forward compatibility only
     top_n: 10
     sustained_ticks: 3
     delta_threshold_pct: 50
+    delta_threshold_pct_high_density: 70  # raised threshold when active_host_count < min_active_hosts
     min_active_hosts: 20           # below this, raise threshold to 70%
 
 logging:
@@ -745,7 +873,12 @@ enrichment:                       # v1 (rev 3): CLIENT-MODE scapy-mcp enrichment
   scapy_mcp_enabled: false        # off by default; user opts in via `flowscape config`
   scapy_mcp_host: localhost
   scapy_mcp_port: 3056            # aligns with plans/2026-09-06-port-bodai-reconciliation.md
-  enrichment_timeout_ms: 100      # per-call hard cap; on timeout the hook returns no-op enrichment
+  default_provider: noop          # name-driven lookup (mirrors CaptureSettings.default_kind)
+  timeout_ms: 100                 # PER-TICK batch budget (NOT per-edge); on timeout drops entire snapshot via publisher backpressure
+  max_attempts: 2                 # retry; composes with oneiric.actions.workflow.WorkflowRetryAction
+  base_delay_ms: 10
+  multiplier: 2.0
+  max_delay_ms: 80
 ```
 
 ### Settings validation (`flowscape doctor --config`)
@@ -1056,6 +1189,15 @@ Even though the architecture is local-only, ship `docs/legal/gdpr-posture.md` do
 
 When MCP activates, write a DPIA (Art. 35) before flipping the switch.
 
+### Disclaimer docs
+
+flowscape ships disclaimer text embedded in the .app bundle and the README:
+- macOS .app: .app/Contents/Resources/disclaimers.md (first-launch modal references it)
+- README: top-of-file blockquote with the consent + 18 U.S.C. §§ 2511, 1030 reference
+- The disclaimer is regenerated at every release from templates/disclaimers.md.j2 (single source of truth)
+
+This section is the canonical anchor for plan and CI references. CI lint checks that any flowscape live first-launch experience reads from this canonical file.
+
 ______________________________________________________________________
 
 ## Out of scope / future work
@@ -1090,7 +1232,7 @@ ______________________________________________________________________
 - **GitHub public mirror:** GitLab private at launch; GitHub public mirror is planned for later once v1 stabilizes. Reverse order is also acceptable; defer the decision until we know which org publishes first.
 - **Trademark clearance for "flowscape"** in Class 9 (downloadable software): pending lawyer review before PyPI name reservation.
 
-## Future scope (NOT v1)
+## Future scope
 
 These are explicitly out of scope for v1; included here so future specs can pick them up cleanly.
 
@@ -1137,7 +1279,7 @@ This section resolves ambiguities and prereqs from the final-pass review. **Read
 | A12 | Heuristic labeled corpus source? | Start with `scripts/gen_pcap_fixtures.py` synthetic (deterministic, no real traffic). Expand with real captures only if synthetic isn't enough — and sanitize captures to remove any non-public IPs/hostnames before commit. |
 | A13 | Golden-image baseline? | **macOS 14.6 on Apple M2**, pinned in `tests/swift/renderer/reference_manifest.json`. PR runs on GitHub Actions `macos-14` runner. Nightly re-bakes references when the manifest version bumps. |
 | A14 | PII redaction CI tool? | Bespoke `scripts/check_log_pii.py`: regex over Python source for log statements containing variable names matching `(ip|mac|host|endpoint|payload|packet_body)` (case-insensitive). Build fails on hit. Plus a runtime `Oneiric.log.filter` that drops any record whose `extra` dict has keys starting with `payload`/`body`/`raw`. |
-| A15 | Triple-buffer synchronization primitive? | `OSAllocatedUnfairLock<UInt32>` (macOS-native, lock-free reads in the common case). Three slots, atomic index swap. Producer writes to slot `(idx + 1) % 3`, consumer reads from slot `idx`. |
+| A15 | Triple-buffer synchronization primitive? | `ManagedAtomic<Int>` (Swift Atomics; provides acquire/release load/store primitives). Three slots, atomic index swap. Producer writes to slot `(idx + 1) % 3`, then atomically publishes the new index via `ManagedAtomic<Int>.store(_, ordering: .releasing)`; consumer reads the slot at the published index via `ManagedAtomic<Int>.load(ordering: .acquiring)`. The acquire/release pairing guarantees the buffer contents are visible before the slot index is published. Matches the Initial-frame choreography section and invariant #9. |
 | A16 | CaptureSource registry vs Oneiric adapters? | Local module-level registry in `src/flowscape/capture_registry.py`. NOT Oneiric adapters (the registry framework is heavier than needed for 2 sources). `register_source(name: str, source: CaptureSource)` adds entries; `capture.py` looks up by name from settings. |
 | A17 | Swift package layout for codegen? | Phase 0 scaffolds `Package.swift` with `swift-protobuf` SPM dep + a `Run Script` build phase that calls `scripts/gen_proto.sh`. Both Python (`uv sync`) and Xcode invoke the same script. |
 
@@ -1200,15 +1342,15 @@ These map to spec phases; the `writing-plans` skill will produce a detailed plan
    - SwiftUI ↔ MTKView bridging with actor model
 
 6. **Phase 4b — Layout triple-buffer integration** (2 weeks)
-   - **Layout compute kernel already ships in 4a.** 4b is the wiring: kernel output → `OSAllocatedUnfairLock<UInt32>` index swap → triple-buffer → renderer
+   - **Layout compute kernel already ships in 4a.** 4b is the wiring: kernel output → `ManagedAtomic<Int>` index swap (release/acquire ordering, per A15) → triple-buffer → renderer
    - Convergence tests + energy-decreasing property tests
    - Benchmarks (iterations-to-convergence on 1k-node graph)
-   - Triple-buffer primitives: `[PositionBuffer]` ring of 3 with atomic write/read indices guarded by `OSAllocatedUnfairLock`
+   - Triple-buffer primitives: `[PositionBuffer]` ring of 3 with atomic write/read indices guarded by `ManagedAtomic<Int>` (Swift Atomics)
 
 7. **Phase 5 — Interaction + heuristics** (2 weeks)
    - Click/hover for host inspection
    - In-scene filtering
-   - Heuristics: beaconing (20% jitter, slow window), port-scan (SYN packets/sec), top-N churn (sustained, scaled)
+   - Heuristics: beaconing (20% jitter, slow window), port-scan (SYN packets/sec). **Top-N churn detector ships in v1.1 per plan §5.1; not in Phase 5.**
    - Alerts list in sidebar with TTL awareness
    - Pause/resume control
 
@@ -1251,9 +1393,9 @@ ______________________________________________________________________
 - **`mcp-common` included now**, MCP server features gated on legal review ADR before activation.
 - **Swift 6 strict concurrency from day one.** Actor model (IPCSocket, Renderer), Sendable LayoutState struct, triple-buffer handoff.
 - **Structural no-payload guarantee.** Wire format cannot carry payload bytes. `payload_sha256_prefix` is the only allowed payload-derived field. CI lints for forbidden field names.
-- **Active consent gate.** First-launch modal + on interface/SSID change + every 30 days. Stored in `~/.flowscape/consent.json`.
+- **Active consent gate.** First-launch modal + on interface/SSID change + every 30 days. Stored in `~/Library/Application Support/Flowscape/consent.json` (macOS convention; plan §6 reconciliation).
 - **macOS permission model: non-sandboxed app + ChmodBPF-style launchd helper.** Network Extensions entitlement not pursued in v1.
-- **Heuristic thresholds:** beaconing 20% jitter, port-scan SYN packets/sec, top-N churn sustained 3+ ticks.
+- **Heuristic thresholds:** beaconing 20% jitter, port-scan SYN packets/sec. Top-N churn (sustained 3+ ticks) thresholds are documented in `TopNChurnSettings` for forward compatibility but the detector itself ships in v1.1.
 - **Coverage: 89% Python (crackerjack threshold), 70% Swift (with per-module gates).**
 - **Timeline: 14-20 weeks for one experienced developer.** Phase 4 split into 4a (renderer) + 4b (layout) for de-risking.
 

@@ -172,7 +172,7 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - Create: `Package.swift`, `src/Flowscape/Empty.swift`, `Tests/FlowscapeTests/EmptyTests.swift`, `.github/workflows/build.yml`
 
 **Steps:**
-- [ ] Run `swift package init --type executable --name Flowscape`. (**Spec deviation:** no `.xcodeproj` is generated; SPM-only. See §6 Spec Reconciliation.)
+- [ ] Run `swift package init --type executable --name Flowscape`. (No `.xcodeproj` is generated; SPM-only, per spec. See §6 Spec Reconciliation.)
 - [ ] Add swift-protobuf SPM dep (`https://github.com/apple/swift-protobuf` from `1.27.0`).
 - [ ] Add to `Package.swift`:
   ```swift
@@ -300,6 +300,20 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Add Run Script build phase in `Package.swift` calling `scripts/gen_proto.sh` for Swift codegen.
 - [ ] Run `pytest tests/python/integration/test_proto_roundtrip.py -v` — expect PASS.
 - [ ] Commit "feat(proto): flowscape.proto schema + betterproto2 + swift-protobuf codegen".
+
+#### Task 0b.1a: Proto schema additions (first_seen_frame + subnet_path)
+
+**Pre-req for Phase 4.** Phase 4 architectural additions (convergence state machine, initial-frame choreography, edge bundling) depend on these fields.
+
+**Files:**
+- Modify: `proto/flowscape.proto`
+
+**Steps:**
+- [ ] Add `first_seen_frame uint32 = 9` to HostNode message (field number 9 follows proto3 schema evolution: append, never reuse).
+- [ ] Add `subnet_path repeated uint32 = 10` to HostNode message (max `subnet_hierarchy_levels = 5` entries; field number 10 follows the same append-only rule).
+- [ ] Regenerate via `scripts/gen_proto.sh`; verify diffs are minimal and semantically clean.
+- [ ] Update Phase 0b.1 step list to include the above as pre-reqs for Phase 4 tasks 4.1, 4.3, 4.6.
+- [ ] Commit "feat(proto): add first_seen_frame (field 9) + subnet_path (field 10) to HostNode (Phase 4 pre-req)".
 
 #### Task 0b.2: Phase 0 spike — Swift 6 actor + Metal placeholder
 **Files:**
@@ -429,6 +443,21 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Validate `payload_sha256_prefix` length == 32 before serializing.
 - [ ] **v1 enrichment hook (per-tick batched, NOT per-edge — see ADR 0016 v2 §Architecture):** in `derive_snapshot()`, build the full list of `FlowEdge`s first, then call `EnrichmentRegistry.get_provider(name).enrich_batch(edges)` ONCE per tick (where `name` comes from `EnrichmentSettings.default_provider`). Use `asyncio.wait_for(..., timeout=enrichment.timeout_ms)` with `cancel=True` for the per-tick hard cap. On timeout, drop the entire snapshot via the publisher's existing 50ms backpressure policy (Phase 1 publisher work). Merge returned `EnrichmentMetadata` field-by-field (no `**spread`) into a `FlowEdge.enrichment` sub-message constructed explicitly per L2 I-3.5's `extra="forbid"` Pydantic model. Property test: `payload_sha256_prefix` length invariant still holds post-merge. Per-edge interface preserved as a synchronous shim for unit tests; production call site uses the batched interface. (See `docs/adr/0016-scapy-mcp-integration.md` §"Operational SLOs and Feed Observability" for the 4 mandatory feed-state metrics the registry must emit.)
 - [ ] Commit "feat(graph): derive GraphSnapshot from aggregator".
+
+#### Task 1.4a: aggregate.py populates first_seen_frame + subnet_path
+
+**Pre-req for Phase 4.** Renderer/Layout read these fields; aggregate.py is the producer.
+
+**Files:**
+- Modify: `src/flowscape/aggregate.py`
+
+**Steps:**
+- [ ] On first sight of a host, set `HostNode.first_seen_frame` per the spec "Initial-frame choreography" rule: If this is the first snapshot of the session, set `HostNode.first_seen_frame = current_frame_index + (hash(HostNode.id) % fade_in_duration_frames)` for every host in that snapshot (synthetic cold-start stagger). Otherwise (subsequent snapshots, new host), set `HostNode.first_seen_frame = current_frame_index` (late-arrival: full 600 ms fade-in from arrival).
+- [ ] Compute `subnet_path` lazily on first sight: walk IP through root → /8 → /16 → /24 → /32 for IPv4, root → /32 → /48 → /64 → /128 for IPv6.
+- [ ] Empty `subnet_path` for non-IP hosts (ARP, multicast, IPv6 link-local).
+- [ ] Persist into GraphSnapshot proto.
+- [ ] Tests: `test_aggregate_first_seen_frame_cold_start_uses_hash_offset`, `test_aggregate_first_seen_frame_late_arrival_uses_frame_index`, `test_aggregate_synthetic_stagger_is_deterministic_per_host_id`, `test_aggregate_subnet_path_for_ipv4`, `test_aggregate_subnet_path_for_ipv6`, `test_aggregate_subnet_path_empty_for_non_ip`.
+- [ ] Commit "feat(aggregate): populate first_seen_frame + subnet_path on HostNode".
 
 #### Task 1.5a: CLI `flowscape replay`
 **Files:**
@@ -752,9 +781,9 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 
 ---
 
-### Phase 4: 3D renderer + CPU force-directed layout (5 weeks)
+### Phase 4: 3D renderer + GPU compute force-directed layout (5 weeks)
 
-**Goal:** Real nodes and edges render with CPU force-directed layout. **Measurable DoD** (per spec Phase 4a): on `macos-14` M2 Pro, 1000 nodes + 5000 edges, `flowscape.render.frame_time_ms` **p99 ≤ 16 ms over 300 frames**. Capacity tests are `@pytest.mark.slow` and use p99 metric (not FPS), avoiding CI flake.
+**Goal:** Real nodes and edges render with GPU compute primary (Barnes-Hut CPU fallback). **Measurable DoD** (per spec Phase 4a): on `macos-14` M2 Pro, 1000 nodes + 5000 edges, `flowscape.render.frame_time_ms` **p99 ≤ 16 ms over 300 frames**. Capacity tests are `@pytest.mark.slow` and use p99 metric (not FPS), avoiding CI flake. **50k-edge capacity deferred to v2; v1 target is 5k bundled edges at p99 ≤ 16 ms.**
 
 #### Task 4.1: CPU force-directed layout on DispatchQueue
 **Files:**
@@ -763,15 +792,18 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 **Steps:**
 - [ ] Write failing tests: `test_layout_runs_on_empty_graph`, `test_layout_converges_within_n_iterations`, `test_total_energy_decreases_monotonically`.
 - [ ] Write failing tests: `test_layout_terminates_early_when_converged`, `test_layout_resumes_active_when_graph_changes`, `test_layout_capped_metric_increments`, `test_layout_p99_under_16ms_at_1000_nodes_with_layout_active` (annotated `@pytest.mark.slow`).
-- [ ] Implement `ForceDirectedLayout` running on `DispatchQueue` at `.userInteractive` QoS.
-- [ ] O(n²) repulsion + spring + damping per spec `LayoutSettings`.
+- [ ] Write failing tests: `test_dirty_set_populated_by_snapshot_buffer_diff_on_new_edge`, `test_dirty_set_populated_on_node_addition_and_removal`, `test_dirty_set_drained_at_frame_start_resets_consecutive_frame_counter`, `test_converged_state_re_arms_to_active_when_dirty_set_nonempty`.
+- [ ] Implement `ForceDirectedLayout` orchestrator running on `DispatchQueue` at `.userInteractive` QoS; delegates per-frame force computation to Metal compute kernel.
+- [ ] Implement Metal compute kernel `force_directed_kernel`: handles repulsion (O(n²)), spring pass, damping, and per-node energy reduction (½‖v‖²) in a single dispatch.
 - [ ] Initial positions seeded random-on-sphere, deterministic by SHA-256 of `HostNode.id`.
-- [ ] Implement three-state convergence machine per spec §"Layout convergence state machine": `converged` (skip iteration, render current) / `active` (run up to `max_iterations_per_frame`) / `capped` (budget exhausted, render anyway + emit OSSignposter event). Threshold ε = `convergence_energy_per_node_epsilon`, window = `soft_convergence_window_frames`, budget = `max_iterations_per_frame`.
-- [ ] Maintain `dirty_set` in `ForceDirectedLayout` populated by `SnapshotBuffer` diff; drained at frame start to re-arm `active` state on topology change (new edge, new node, removed node).
-- [ ] Emit `flowscape.layout.capped_ticks_total` counter + `OSSignposter` interval for `capped` state transitions.
-- [ ] Atomic swap of two `MTLBuffer` pointers for snapshot handoff to Renderer (no triple-buffer needed for CPU layout at ≤1000 nodes).
-- [ ] Compute Holten HEB control points per edge per frame: LCP lookup against `HostNode.subnet_path`, 8-point Catmull-Rom path generation (`edge_bundling_subdivision_levels = 4`). Control points feed the same MTLBuffer handoff path; no separate buffer needed.
-- [ ] Commit "feat(layout): CPU force-directed 3D layout with convergence state machine + HEB control points".
+- [ ] Implement three-state convergence machine per spec §"Layout convergence state machine": `converged` (skip iteration, render current) / `active` (run up to `max_iterations_per_frame = 24`) / `capped` (budget exhausted, render anyway + emit OSSignposter event). Threshold ε = `convergence_energy_per_node_epsilon`, window = `soft_convergence_window_frames`.
+- [ ] Energy computation: per-node KE = ½‖v‖², computed inside the kernel; per-frame reduction = `max(energy[i])` over in-buffer range.
+- [ ] Maintain `dirty_set` in Layout actor state, populated by Layout's local SnapshotBuffer diff. IPCSocket writes new snapshots into a triple-buffered SnapshotSlot (atomic slot index, see spec invariant #9); Layout loads the latest snapshot atomically each frame and computes its own diff locally. The cross-actor handoff is lock-free.
+- [ ] Emit `flowscape.layout.capped_ticks_total` counter + `flowscape.layout.iterations_per_frame` histogram + `flowscape.layout.energy_max` gauge + `flowscape.layout.dirty_set_size` histogram.
+- [ ] Implement Barnes-Hut CPU fallback path (O(n log n) with θ≈0.9) for non-Apple-Silicon runners. Fallback triggers when: MTLDevice lacks `.macOS_GPUCommon4` support, `flowscape.layout.gpu_compute_enabled == false`, the last 3 compute dispatches errored, or a Metal SDK update breaks shader compilation. Fallback reduces `max_iterations_per_frame` from 24 → 4 and emits `flowscape.layout.fallback_active` gauge + `flowscape.layout.fallback_reason{kind=...}` counter.
+- [ ] Triple-buffer (3 pre-allocated MTLBuffers) + atomic slot index for snapshot handoff. GPU compute writes are asynchronous; triple-buffer survives a dropped GPU frame that would corrupt a 2-slot atomic swap. See spec section "Layout convergence state machine" for the acquire/release pairing details.
+- [ ] Compute Holten HEB control points per edge per frame: LCP lookup against `HostNode.subnet_path`, 8-point Catmull-Rom path generation (`edge_bundling_subdivision_levels = 4`).
+- [ ] Commit "feat(layout): GPU compute force-directed layout with Barnes-Hut fallback + convergence state machine + HEB control points".
 
 #### Task 4.2: NodeRenderer (instanced spheres, 10k-node capacity)
 **Files:**
@@ -783,20 +815,21 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Node color from `RenderSettings.protocol_colors`.
 - [ ] Commit "feat(renderer): instanced sphere rendering at 10k-node capacity".
 
-#### Task 4.3: EdgeRenderer (instanced lines, 50k-edge capacity)
+#### Task 4.3: EdgeRenderer (instanced lines, 5k-edge v1 capacity)
 **Files:**
 - Create: `src/Flowscape/Renderer/EdgeRenderer.swift`, `Tests/FlowscapeTests/EdgeRendererTests.swift`
 
 **Steps:**
-- [ ] Write failing test: `test_renders_50000_edges_p99_under_16ms` (marked `@pytest.mark.slow`).
+- [ ] Write failing test: `test_renders_5000_edges_p99_under_16ms` (marked `@pytest.mark.slow`).
 - [ ] Write failing tests: `test_bundling_reduces_visual_crossings_in_dense_subgraph`, `test_bundling_disabled_falls_back_to_straight_cylinder`, `test_bundling_subnet_hierarchy_is_deterministic_across_snapshots`, `test_bundling_compatibility_test_falls_back_on_incompatible_edges`.
+- [ ] Write failing tests: `test_bundling_length_scale_incompatibility_falls_back_to_straight`, `test_bundling_both_passes_bundles_the_edge`, `test_bundled_lightness_is_10_percent_below_protocol_color`, `test_bundled_edge_thickness_clamped_at_2_px_max`, `test_unbundled_edge_thickness_clamped_at_4_px_max`, `test_bundling_disables_when_camera_zoomed_past_threshold`, `test_heb_control_points_reproducible_for_same_host_ids_across_runs`.
 - [ ] Implement instanced line-segment rendering for edges (cylinder quads).
 - [ ] Edge thickness scales with `bytes` (clamped); color from sender's protocol.
 - [ ] Integrate Holten HEB edge bundling per spec §"Edge bundling": tessellate the 8-point Catmull-Rom spline from Task 4.1 into `edge_bundling_subdivision_levels + 4 = 8` segments, draw 8 cylinder quads between consecutive sample points.
 - [ ] Apply Holten §3.2 compatibility test; incompatible edges fall back to straight cylinder quads with zero overhead.
 - [ ] Apply bundling-specific visual encoding: 10% lightness reduction on bundled color, thickness clamp `[0.5, 2.0]` px (vs `[0.5, 4.0]` un-bundled), 0.5 Hz hue oscillation per protocol class.
 - [ ] Honour `edge_bundling_fade_with_zoom`: when camera distance drops below zoom threshold, render un-bundled edges only (skip HEB control point computation).
-- [ ] Commit "feat(renderer): instanced edge rendering + Holten HEB bundling at 50k-edge capacity".
+- [ ] Commit "feat(renderer): instanced edge rendering + Holten HEB bundling at 5k-edge v1 capacity (50k deferred to v2)".
 
 #### Task 4.4: Camera controls + SceneFilter
 **Files:**
@@ -818,23 +851,30 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Commit "feat(renderer): click/hover picking".
 
 #### Task 4.6: Choreographer (initial-frame + departure + camera intro)
-**Files:**
-- Create: `src/Flowscape/Renderer/Choreographer.swift`, `Tests/FlowscapeTests/ChoreographerTests.swift`
-- Modify: `src/Flowscape/Renderer/Renderer.swift` (consume Choreographer output per frame)
-- Modify: `src/Flowscape/Renderer/NodeRenderer.swift` (vertex shader reads `first_seen_frame`)
-- Modify: `src/Flowscape/Renderer/EdgeRenderer.swift` (vertex shader reads both endpoint opacities)
 
-**Pre-req (not part of this task; flag for Phase 0b.1 codegen update):** `proto/flowscape.proto` must add `first_seen_frame` (uint64) to `HostNode` so the choreographer has data to read. `aggregate.py` populates this on first sight per host.
+**Files:**
+- Create: `src/Flowscape/Renderer/Choreographer.swift`, `src/Flowscape/Renderer/ChoreographerState.swift`, `Tests/FlowscapeTests/ChoreographerTests.swift`
+- Modify: `src/Flowscape/Renderer/Renderer.swift` (consume `ChoreographerState` via atomic-swap once per frame)
+- Modify: `src/Flowscape/Renderer/NodeRenderer.swift` (vertex shader reads host opacity from ChoreographerState buffer)
+- Modify: `src/Flowscape/Renderer/EdgeRenderer.swift` (vertex shader reads both endpoint opacities from buffer)
 
 **Steps:**
-- [ ] Write failing tests: `test_choreographer_initialises_with_zero_opacity`, `test_node_opacity_reaches_one_after_fade_in_duration`, `test_edge_opacity_gated_by_endpoint_opacity`, `test_camera_intro_arc_completes_in_72_frames`, `test_departure_triggers_fade_out_then_buffer_released`.
-- [ ] Implement `Choreographer` actor: owns per-host opacity state (keyed by `HostNode.id`), per-frame tick that advances opacity toward target, departure detection by comparing current snapshot to previous snapshot.
-- [ ] Implement `CameraIntroController`: deterministic ease-out arc from far vantage to working distance over `camera_intro_duration_frames = 72`. No IPC.
-- [ ] Modify NodeRenderer vertex shader: read `first_seen_frame` and `current_frame_index` from instance buffer, output alpha multiplier = `clamp((current_frame_index - first_seen_frame) / fade_in_duration_frames, 0, 1)`.
-- [ ] Modify EdgeRenderer vertex shader: read both endpoint opacities from Choreographer, output alpha multiplier = `endpoint_a_alpha * endpoint_b_alpha * fade_in_edge_factor`. Edge stays invisible until both endpoints reach ≥80% opacity.
-- [ ] Implement departure fade-out: when a host disappears from the snapshot for ≥ 1 slow-window tick, Choreographer sets opacity target to 0 over `fade_out_duration_frames = 12`; buffer slot reverts to pool after fade completes.
-- [ ] Wire Choreographer → Renderer actor: per-frame `Choreographer.tick()` called from `Renderer.draw(in:)` flow, before the instanced draw calls.
-- [ ] Commit "feat(renderer): Choreographer with opacity ramps + camera intro + departure fade-out".
+- [ ] Write failing tests: `test_choreographer_initialises_with_zero_opacity`, `test_node_opacity_reaches_one_after_fade_in_duration`, `test_edge_opacity_gated_by_endpoint_opacity` (asserts the 80% gate, not just product), `test_camera_intro_arc_completes_in_60_frames_with_bit_equality` (frame-by-frame position+orientation match across two runs), `test_departure_triggers_fade_out_then_buffer_released`.
+- [ ] Write failing tests: `test_choreographer_tick_called_before_instanced_draws_each_frame` (wiring test — ordering observed via recording renderer stub), `test_node_reappearing_after_departure_keeps_position_and_resumes_opacity`.
+- [ ] Implement `Choreographer` as a task group on a dedicated `DispatchQueue` (NOT an actor — see spec §"Initial-frame choreography"). Owns per-host opacity state keyed by `HostNode.id`, advances opacities toward targets per frame.
+- [ ] Implement departure detection: compare current snapshot's host set to previous; missing hosts trigger fade-out.
+- [ ] Implement `CameraIntroController` (inside the Choreographer task group): deterministic cosine easing on distance + ease-out cubic on pitch/yaw over `camera_intro_duration_frames = 60` from far vantage to working distance. No IPC.
+- [ ] Implement `ChoreographerState` Sendable struct: opacities keyed by `HostNode.id` + camera position/orientation.
+- [ ] Implement atomic-swap handoff: Choreographer writes new `ChoreographerState` into a slot; Renderer reads the slot at the atomically-published index (the slot the Choreographer just wrote to) via Swift 6 atomic reference. (No actor hop.)
+- [ ] Renderer actor initializes the Choreographer's DispatchQueue + task group in its init() (not in Choreographer's init — the task group outlives the Choreographer's per-frame state but the DispatchQueue is owned by Renderer).
+- [ ] Choreographer holds weak references to the MTLBuffers it writes to (Renderer owns the buffers).
+- [ ] Renderer.deinit cancels the task group and awaits the in-flight tick() to drain before releasing MTLBuffers.
+- [ ] Add test test_choreographer_drains_on_renderer_deinit asserting no use-after-free.
+- [ ] Modify NodeRenderer vertex shader: read host opacity from ChoreographerState buffer, multiply by per-node first_seen_frame ramp.
+- [ ] Modify EdgeRenderer vertex shader: read both endpoint opacities from ChoreographerState buffer, output alpha multiplier = `endpoint_a * endpoint_b * fade_in_edge_factor`. Edge stays invisible until both endpoints reach ≥80% opacity.
+- [ ] Implement departure fade-out: when a host disappears for ≥ 1 fast-window tick (300ms hysteresis), set opacity target to 0 over `fade_out_duration_frames = 12`; buffer slot reverts after fade.
+- [ ] Wire Choreographer task group → Renderer actor: `Choreographer.tick()` called from `Renderer.draw(in:)` once per frame, before instanced draws.
+- [ ] Commit "feat(renderer): Choreographer task group + opacity buffer atomic-swap + camera intro + departure fade-out".
 
 #### Integration Contract — Phase4
 - **Triggered from:** Phase 3's SceneView with `PlaceholderRenderer` is live; Python's `flowscape live` is emitting.
@@ -1007,6 +1047,16 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Homebrew tap PR (separate repo; uses `HOMEBREW_TAP_TOKEN` PAT).
 - [ ] Commit (in homebrew-tap) "feat(brew): flowscape 0.1.0 formula".
 
+#### Task 6b-PyPI.5: Bundle disclaimers.md into .app
+**Files:**
+- Modify: `py2app setup.py` (or `pyproject.toml` `[tool.py2app]`), `templates/disclaimers.md.j2` (new), `.app/Contents/Resources/disclaimers.md` (build artifact)
+
+**Steps:**
+- [ ] Bundle `templates/disclaimers.md.j2` (with bundled 18 U.S.C. §§ 2511, 1030 + macOS consent text) rendered as `disclaimers.md` into `.app/Contents/Resources/`. The .app's ConsentGate view (Task 3.1) reads from this bundled file; in-place updates after install require re-bundling.
+- [ ] Configure py2app `includes` to copy rendered `disclaimers.md` into the Resources directory during build.
+- [ ] Verify ConsentGate reads from `.app/Contents/Resources/disclaimers.md` (CI smoke test).
+- [ ] Commit "feat(dist): bundle disclaimers.md into .app/Contents/Resources".
+
 #### Integration Contract — Phase6b-PyPI
 - **Triggered from:** GitHub Actions release workflow on tagged commit.
 - **Returns to / updates:** `pip install flowscape` works; `brew install les/tap/flowscape` works; unsigned `.app` available.
@@ -1088,7 +1138,7 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 **Steps:**
 - [ ] Author README with consent text at top (per spec §"Disclaimer docs").
 - [ ] Cover: install, first-launch consent, `flowscape live`, `flowscape replay`, `flowscape doctor`, settings, FAQ, **enabling scapy-mcp enrichment via `flowscape config` (off by default; opt-in per ADR 0016)**.
-- [ ] Ships at end of Phase 5b (handoff to other developers).
+- [ ] Ships at end of Phase 7b.1 (handoff to other developers).
 - [ ] Commit "feat(docs): README".
 
 #### Task 7b.2: MCP deferred decision note (server-mode only)
@@ -1100,7 +1150,7 @@ The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored
 - [ ] Commit "feat(docs): MCP server-mode activation deferred decision note".
 
 #### Integration Contract — Phase7b
-- **Triggered from:** Phase 5b ships (README) and Phase 6b-PyPI ships (MCP note).
+- **Triggered from:** Phase 7b.1 ships (README) and Phase 6b-PyPI ships (MCP note).
 - **Returns to / updates:** Documentation complete; MCP gated.
 - **Demonstrable by:** Fresh macOS user can install + launch + capture + configure + understand errors via README.
 - **Rollback signal:** User feedback indicates major doc gap.
@@ -1125,21 +1175,20 @@ The wire-format no-payload guarantee, the consent gate, and the `payload_sha256_
 
 ```
 src/flowscape/
-├── enrichment.py            (NEW) — EnrichmentRegistry, EnrichmentHook protocol
-├── enrichment_registry.py   (NEW) — module-level register_provider() mirroring capture_registry.py
-├── graph.py                 (MODIFIED) — call EnrichmentRegistry.default().enrich_edge() per edge
+├── enrichment.py            (NEW) — EnrichmentRegistry, EnrichmentHook protocol, scapy-mcp adapter (single module; mirrors capture_registry.py plug-in pattern)
+├── graph.py                 (MODIFIED) — derive_snapshot() calls EnrichmentRegistry.get_provider(EnrichmentSettings.default_provider).enrich_batch(edges) ONCE per tick (per-tick batched, NOT per-edge)
 ├── heuristics.py            (MODIFIED) — detectors accept EnrichmentHook via DI
 └── settings.py              (MODIFIED) — EnrichmentSettings nested in FlowscapeSettings
 ```
 
-The `EnrichmentHook` protocol mirrors the existing `CaptureSource` ABC pattern (lines 384-396 of this plan; spec A16). Module-level `register_provider(name, hook)` parallels `register_source(name, source)`. Default implementation is a pure-Python no-op so `pip install flowscape` works without scapy-mcp present.
+The `EnrichmentHook` protocol mirrors the existing `CaptureSource` ABC pattern (Task 1.1 of this plan; spec A16). Module-level `register_provider(name, hook)` parallels `register_source(name, source)`. Default implementation is a pure-Python no-op so `pip install flowscape` works without scapy-mcp present.
 
 ### Tasks added to existing phases (no new phase introduced)
 
 | Phase | Task | Effort | Description |
 |---|---|---|---|
-| **0a** | 0a.X | XS | Add `[project.optional-dependencies] mcp-enrichment = ["scapy-mcp", "mcp"]` to `pyproject.toml`. Extend `FlowscapeSettings` with `EnrichmentSettings(scapy_mcp_enabled: bool = False, scapy_mcp_host: str = "localhost", scapy_mcp_port: int = 3056, default_provider: str = "noop", enrichment: EnrichmentRetrySettings(max_attempts=2, base_delay_ms=10, multiplier=2.0, max_delay_ms=80, timeout_ms=100))`. (ADR 0016 v2: timeout is per-tick batch budget, composes with `oneiric.actions.workflow.WorkflowRetryAction`.) |
-| **0b** | 0b.X | S | Implement `enrichment.py` (`EnrichmentHook` ABC mirroring `CaptureSource`; `EnrichmentRegistry` with `get_provider(name)` — NO `default()` classmethod, name-driven lookup) + `enrichment_registry.py` (module-level `register_provider(name, hook)` mirroring `register_source`). Pure-Python no-op default; FastMCP-based scapy-mcp adapter (gated on `enrichment.scapy_mcp_enabled`). Emit 4 mandatory feed observability metrics: `flowscape.enrichment.{entities_count, last_updated_timestamp, errors_total, cycles_total}` + `flowscape.enrichment.timeout_total`. |
+| **0a** | 0a.X | XS | Add `[project.optional-dependencies] mcp-enrichment = ["scapy-mcp", "mcp"]` to `pyproject.toml`. Extend `FlowscapeSettings` with `EnrichmentSettings` as a flat Pydantic model (mirroring `CaptureSettings` / `AggregationSettings`) holding `scapy_mcp_enabled: bool = False`, `scapy_mcp_host: str = "localhost"`, `scapy_mcp_port: int = 3056`, `default_provider: str = "noop"`, plus the retry fields directly on the model: `timeout_ms: int = 100` (per-tick batch budget, NOT per-edge), `max_attempts: int = 2`, `base_delay_ms: int = 10`, `multiplier: float = 2.0`, `max_delay_ms: int = 80`. **There is no nested `EnrichmentRetrySettings` class.** (ADR 0016 v2: timeout is per-tick batch budget, composes with `oneiric.actions.workflow.WorkflowRetryAction`.) |
+| **0b** | 0b.X | S | Implement `enrichment.py` (single module): `EnrichmentHook` ABC mirroring `CaptureSource`; `EnrichmentRegistry` with `get_provider(name)` — NO `default()` classmethod, name-driven lookup; module-level `register_provider(name, hook)` mirroring `register_source`; scapy-mcp adapter (FastMCP-based, gated on `enrichment.scapy_mcp_enabled`). Pure-Python no-op default so `pip install flowscape` works without scapy-mcp present. Emit 4 mandatory feed observability metrics: `flowscape.enrichment.{entities_count, last_updated_timestamp, errors_total, cycles_total}` + `flowscape.enrichment.timeout_total`. |
 | **1** | 1.4 (extended) | M | `graph.py:derive_snapshot()` builds the full list of `FlowEdge`s first, then calls `EnrichmentRegistry.get_provider(EnrichmentSettings.default_provider).enrich_batch(edges)` ONCE per tick (per-tick batched, NOT per-edge). Uses `asyncio.wait_for(..., timeout=enrichment.timeout_ms, cancel=True)`; on timeout drops entire snapshot via publisher's 50ms backpressure policy. Merges returned `EnrichmentMetadata` field-by-field (Pydantic `extra="forbid"` per L2 I-3.5) into a `FlowEdge.enrichment` sub-message. |
 | **5** | 5.1 (extended) | S | `BeaconingDetector` and `PortScanDetector` accept `enrichment: EnrichmentHook \| None` via DI; default `None` preserves v0.x behavior. When present, `boost_confidence(event)` adjusts the alert's confidence band. |
 | **7b** | 7b.2 (revised) | XS | Deferred-decision note clarifies server-mode only is gated. ADR 0016 v2 records the posture distinction (pre-1.0 internal-use scope; EU coverage deferred to v3). |
@@ -1155,13 +1204,11 @@ enrichment:                       # v1 (ADR 0016 v2): CLIENT-MODE scapy-mcp enri
   scapy_mcp_host: localhost
   scapy_mcp_port: 3056            # aligns with plans/2026-09-06-port-bodai-reconciliation.md
   default_provider: noop          # name-driven lookup (mirrors CaptureSettings.default_kind per spec A16)
-  enrichment:
-    timeout_ms: 100               # PER-TICK batch budget (NOT per-edge). On timeout drops entire snapshot via publisher backpressure.
-    retry:                        # composes with oneiric.actions.workflow.WorkflowRetryAction
-      max_attempts: 2
-      base_delay_ms: 10
-      multiplier: 2.0
-      max_delay_ms: 80
+  timeout_ms: 100                 # PER-TICK batch budget (NOT per-edge). On timeout drops entire snapshot via publisher backpressure.
+  max_attempts: 2                 # composes with oneiric.actions.workflow.WorkflowRetryAction
+  base_delay_ms: 10
+  multiplier: 2.0
+  max_delay_ms: 80
 ```
 
 ### Testing strategy
@@ -1169,14 +1216,14 @@ enrichment:                       # v1 (ADR 0016 v2): CLIENT-MODE scapy-mcp enri
 - **Unit tests** for `EnrichmentRegistry`: empty registry returns no-op hook; `register_provider` adds correctly; duplicate name raises.
 - **Property tests**: enrichment never breaks the no-payload guarantee (`payload_sha256_prefix` length invariant still holds).
 - **Integration tests** with a FastMCP in-memory mock scapy-mcp server: assert enrichment scores flow through to `GraphSnapshot` and adjust heuristic confidence bands.
-- **Coverage gates**: new modules (`enrichment.py`, `enrichment_registry.py`) at the same 85% per-module gate as `graph.py` / `heuristics.py`.
+- **Coverage gates**: new module (`enrichment.py`) at the same 85% per-module gate as `graph.py` / `heuristics.py`.
 
 ### Risk and rollback
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | scapy-mcp unavailable on host (port 3056 closed, package not installed) | high | Default `scapy_mcp_enabled = false`; no-op registry fallback; `flowscape doctor --enrichment` reports provider health. |
-| Hook latency blows past `enrichment_timeout_ms` | medium | Per-call hard cap; timeout returns no-op enrichment; `flowscape.enrichment.timeout_total` counter. |
+| Hook latency blows past `enrichment.timeout_ms` | medium | Per-call hard cap; timeout returns no-op enrichment; `flowscape.enrichment.timeout_total` counter. |
 | Wire-format regression (enrichment breaks the no-payload guarantee) | low | Property test asserts `payload_sha256_prefix` length == 32 pre/post enrichment; CI lint rejects forbidden field names. |
 | Regulatory posture misread (server-mode and client-mode confused) | medium | ADR 0016 quotes the spec line; the spec's "MCP activation as regulatory event" section is softened to clarify server-mode scope only. |
 
@@ -1186,13 +1233,25 @@ enrichment:                       # v1 (ADR 0016 v2): CLIENT-MODE scapy-mcp enri
 
 ## 6. Spec Reconciliation Note
 
-This plan revision4 incorporates findings from three review rounds. **Three items are spec-vs-plan inconsistencies that the user should know about:**
+This plan revision 4 originally recorded three spec-vs-plan inconsistencies that needed user attention. **All three are now resolved and the spec/plan are aligned** (revision 5+ updates folded the changes in):
 
-1. **Consent file path:** Plan stores at `~/Library/Application Support/Flowscape/consent.json` (macOS convention); spec stores at `~/.flowscape/consent.json` (XDG-style). **Recommendation:** use macOS convention; spec should be updated to match.
+1. **Consent file path:** Both spec and plan use `~/Library/Application Support/Flowscape/consent.json` (macOS convention). Resolved.
 
-2. **`assert` in `_check_bounds`:** Spec example uses `assert a < b`; Bodai CLAUDE.md mandates `raise ValueError(...)`. Plan uses `ValueError`; spec example should be updated.
+2. **`assert` in `_check_bounds`:** Spec example now uses `raise ValueError(...)` per Bodai CLAUDE.md. Resolved.
 
-3. **`Flowscape.xcodeproj` per spec P3:** Spec says Phase 0 scaffolds `Flowscape.xcodeproj`. Plan uses SPM-only (no `.xcodeproj` separately). This is a deliberate deviation — SPM-only works for `swift build` + Xcode-as-editor; a separate `.xcodeproj` is unnecessary for v1.
+3. **`Flowscape.xcodeproj` per spec P3:** Spec acknowledges SPM-only (`swift build` + Xcode-as-editor). Resolved.
+
+No remaining reconciliation needed for the v1 scope.
+
+### Spec ↔ plan reconciliation (Phase 4 additions)
+
+The following architectural decisions were added to the spec and plan in coordination; both sides are kept in sync via CI lint:
+
+- **Layout convergence state machine** (spec §"Layout convergence state machine") ↔ Plan Task 4.1 (GPU compute primary, Barnes-Hut CPU fallback).
+- **Initial-frame choreography** (spec §"Initial-frame choreography") ↔ Plan Task 4.6 (Choreographer task group + opacity buffer atomic-swap).
+- **Edge bundling (Holten HEB)** (spec §"Edge bundling (Holten HEB)") ↔ Plan Task 4.3 (HEB integration steps).
+- **Proto schema additions** (spec §"Proto schema additions") ↔ Plan Task 0b.1a (codegen pre-req).
+- **aggregate.py new fields** (spec §"Initial-frame choreography") ↔ Plan Task 1.4a (producer pre-req).
 
 ## 7. Validation Matrix
 
@@ -1234,7 +1293,7 @@ This plan revision4 incorporates findings from three review rounds. **Three item
 | Heuristic false positives on real traffic | Medium | Negative corpus required (Task 5.2); corpus-tuning test runs both directions together. |
 | `py2app` Python 3.14 support | Low-Medium | Fallback to `briefcase` (BeeWare). |
 | Coverage 89% overall fails despite per-module 70%/85% gates | Low | `capture.py` excluded from overall denominator; per-file gate enforced separately. |
-| Single dev unavailable mid-project | Medium | README ships at end of Phase 5b; handoff protocol in `CONTRIBUTING.md`. |
+| Single dev unavailable mid-project | Medium | README ships at end of Phase 7b.1; handoff protocol in `CONTRIBUTING.md`. |
 | Helper distribution confusion | Medium | `docs/distribution/helper-distribution.md` documents the decision. |
 | `--cov-fail-under=89` CI flakes in Phase 7 | Low | Capture.py excluded from denominator; per-file gates validated separately. |
 
