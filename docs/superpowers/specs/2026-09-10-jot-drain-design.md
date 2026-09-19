@@ -249,6 +249,24 @@ class JotVitalsDict(TypedDict):
 
 **`dispatched_from` provenance:** Each surface (MCP tool wrapper, CLI subcommand, slash command wrapper) sets `dispatched_from` automatically before invoking the dispatch primitive. No caller input required. Encoded as a Literal at the boundary; stored as the string value in the event ctx.
 
+#### 3.3.4 `_propose_action` policy (locked)
+
+For each `JotSummary` in a `DrainPlan.candidates` list, the
+`DrainPlan.action_proposals` field is computed by the following
+deterministic mapping. The mapping is policy, not heuristic — any
+change requires a brainstorming re-open.
+
+| `jot.dispatch_state` | `suggested_action` | `reason` |
+|---|---|---|
+| `IN_FLIGHT` | `skip` | already in flight |
+| `FAILED` | `dispatch` | retry failed dispatch |
+| `SUCCEEDED` | `done` | workflow succeeded; mark done |
+| `None` (never dispatched) | `dispatch` | never dispatched |
+
+The `handle` field of each proposal is `jot.short_id` (6-hex), so
+callers can resolve it without an extra id field. Implementation:
+`mahavishnu/jot/drain.py:794` (`_propose_action`).
+
 ### 3.4 CLI surface (extends `mahavishnu/cli/jot_cli.py`)
 
 ```bash

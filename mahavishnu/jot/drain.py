@@ -792,14 +792,18 @@ def drain_plan(
 
 
 def _propose_action(jot: JotSummary) -> ActionProposalDict:
-    """Heuristic suggested action for a drain candidate (spec §3.3).
+    """Suggested action for a drain candidate (spec §3.3.4 — locked policy).
 
-    Mapping (locked policy — see task-19-brief):
+    Local implementation MUST match the spec table; spec changes require
+    brainstorming re-open. See spec for the canonical `(dispatch_state ->
+    suggested_action)` mapping and the verbatim `reason` strings.
 
-      - IN_FLIGHT  → "skip"  (already running; dispatch is a no-op)
-      - FAILED     → "dispatch" (retry via dispatch_jot — budget exhausted)
-      - SUCCEEDED  → "done" (workflow done; user should mark the jot done)
-      - None       → "dispatch" (never dispatched; first attempt)
+    Mapping:
+
+      - IN_FLIGHT  → "skip"  (already in flight)
+      - FAILED     → "dispatch" (retry failed dispatch)
+      - SUCCEEDED  → "done" (workflow succeeded; mark done)
+      - None       → "dispatch" (never dispatched)
 
     `reason` is a short human-readable string the CLI/MCP can render.
     `handle` is the 6-hex short_id so callers can resolve without an
