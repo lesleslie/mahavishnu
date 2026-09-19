@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-12
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-19
 superseded_by: null
 blocks_on: []
 topic: jot-drain-polish
@@ -11,7 +11,7 @@ topic: jot-drain-polish
 
 # Jot Drain Polish Spec
 
-> **Status:** Draft — pending user review before plan handoff.
+> **Status:** Complete — implementation delivered 2026-09-19 (7 commits on main, drain.py coverage 97.41%).
 > **Date:** 2026-09-12
 > **Sub-plan:** Polish pass for the Jot Drain subsystem (sub-plan 3 of 3 in the Jot Inbox trilogy).
 > **Author:** Brainstorming session output, validated by user.
