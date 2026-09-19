@@ -19,6 +19,7 @@ the topic, the third is the most recent state.
 | File | Topic | Status |
 |------|-------|--------|
 | `README.md` | This file — index of repo-local decisions and follow-up trackers. | Active. |
+| `sdd-bundling-defensive-pattern.md` | In multi-task SDD plans, downstream tasks MUST use `git add <specific-paths>` (never `git add .`) when an upstream task left staged files; detect dirty trees before each commit; the SDD controller audits for unexpected files. Captured from `def3eb7a` in `2026-09-10-jot-drain` execution. | Active. |
 | `2026-08-28-cross-repo-fanout-cwd-isolation.md` | Rules for parallel-fanout CWD isolation: default to sequential per-repo dispatch; if parallel required, parent must `ExitWorktree` first; each agent creates its own `/tmp/<branch>` worktree; aggregate gate on 3 conditions (booleans + commit_sha + branch HEAD). Layer 4 (PreToolUse hook) deferred. Adopted after the 2026-08-26 Phase 3 fanout and the 2026-08-27 cleanup of 16 abandoned worktrees from the 2026-08-21 fanout. | Active. |
 | `2026-08-24-bodai-mcp-routing-pattern.md` | MCP/agent scoping rules for the Bodai ecosystem: secrets in shell env, MCP config in per-project `.mcp.json`, agents scoped to project, plugins preferred over bare URL. Established after the 2026-08-24 ultracode audit. | Active. |
 | `ty-ignore-codes.md` | Canonical ty diagnostic codes for `# ty: ignore[...]`; rules for which code fits which boundary; crackerjack hook's `KNOWN_TY_CODES` is kept in sync via `tests/unit/tools/test_ty_ignore_syntax.py`. | Active. |
