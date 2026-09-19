@@ -5,7 +5,7 @@ kind: decision
 date: 2026-09-05
 last_reviewed: 2026-09-06
 superseded_by: null
-topic: mcp-backend-wiring-discipline
+topic: bodai-mcp-surface-standardization
 amended_by: "2026-09-06 — §7 Consumer-side aggregation added (trigger: ADR 0016 L1 BLOCKER B4 in docs/adr/0016-multi-agent-review.md)"
 ---
 

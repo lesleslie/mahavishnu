@@ -13,7 +13,7 @@ related:
   - "docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
   - "docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
 decision_date: null
-topic: mcp-gateway-pattern
+topic: mcp-routing
 ---
 
 # ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid)

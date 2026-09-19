@@ -6,7 +6,7 @@ date: 2026-08-29
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
-topic: worker-registry-capability-refactor
+topic: adapter-registry
 ---
 
 # Worker Registry Capability Refactor + Engine Composition Layer

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-09-19
+
+### Added
+
+- pools: Wrap SessionBuddyPool worker_execute with subagent marker
+
+### Documentation
+
+- Open cross-repo followup for sb subagent lockfile producer
+- plan: Promote acp-v15.6 license reconciliation to Resolved Items
+
+### Testing
+
+- jot: Lift drain.py coverage to 97.34% via test_drain_error_paths
+
 ## [0.26.0] - 2026-09-19
 
 ### Added
@@ -15,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- dhara-schema: Replace dhara.schema.* imports with local msgspec types
+- dhara-schema: Replace dhara.schema.\* imports with local msgspec types
 - mahavishnu: Subclass oneiric's OTelStorageSettings instead of duplicating it
 - substrate-compat: Drop stamp_dhara_attr helper
 - substrate-compat: Lazy-load dhara; drop bare 'import dhara' from producers
@@ -27,8 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bootstrap: Thread skills_signer+agents+dispatch+jot through legacy path
 - docs: Update CLAUDE.md/README.md tool-count claims to match registry
 - engines/agno_adapter: Resolve mypy syntax error at line 169
-- mcp/bootstrap: Thread rbac_manager to 4 register_*_tools callsites
-- otel_ingester: Catch _get_client failures in check_available
+- mcp/bootstrap: Thread rbac_manager to 4 register\_\*\_tools callsites
+- otel_ingester: Catch \_get_client failures in check_available
 - qc: Re-add module-level httpx attribute for test patching
 - session/checkpoint: Catch httpx transport errors in is_healthy
 - session/checkpoint: Repair test mocks for CommonMCPClient migration
@@ -75,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - lifecycle,wiring: Fix stub + regenerate golden fixtures
 - mcp/tools: Supply fake rbac_manager to capability tool tests (W5 Cluster 1)
 - mcp/tools: Supply fake rbac_manager to webhook/workflow tool tests
-- profiles: Align MINIMAL + jot_* invariants to Phase 1.5/3 canonical
+- profiles: Align MINIMAL + jot\_\* invariants to Phase 1.5/3 canonical
 - profiles: Cover REGISTRATION_MAP as canonical W0 dispatch surface
 - server_core: Check OTel tracing middleware by type, not call count
 - Supply fake rbac_manager to channel_session tool tests (W5 Cluster 2)

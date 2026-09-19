@@ -3,13 +3,12 @@ status: complete
 role: implementation
 date: 2026-09-16
 last_reviewed: 2026-09-16
-topic: dhara-retirement
+topic: dhara-substrate-extension
 related:
   - ../superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md
   - ../adr/013-mahavishnu-dhara-adapter-tool-boundary.md
   - ../adr/017-oneiric-shared-persistence-substrate.md
-blocks_on:
-  - Phase 10 schema migration + drift cleanup (closed 2026-09-16)
+blocks_on: []
 ---
 
 # Dhara MCP Retirement — Cross-Dep Removal Plan (Phase 8 First Pass)

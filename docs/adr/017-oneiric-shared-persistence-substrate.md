@@ -7,7 +7,7 @@ last_reviewed: 2026-09-14
 superseded_by: null
 blocks_on: []
 decision_date: 2026-09-14
-topic: persistence-substrate
+topic: persistence
 ---
 
 # ADR 017: Oneiric as the shared persistence substrate for Bodai

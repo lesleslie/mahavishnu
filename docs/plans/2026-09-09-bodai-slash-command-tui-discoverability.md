@@ -5,7 +5,7 @@ date: 2026-09-09
 last_reviewed: 2026-09-09
 superseded_by: docs/plans/.archive/2026-09-09-bodai-skill-agent-distribution.md
 blocks_on: []
-topic: slash-command-discoverability
+topic: plugin-standardization
 ---
 
 > **Superseded 2026-09-09** by [bodai-skill-agent-distribution.md](.archive/2026-09-09-bodai-skill-agent-distribution.md).

@@ -4,7 +4,7 @@ date: 2026-09-07
 last_reviewed: 2026-09-07
 status: complete
 role: implementation
-topic: mcp-common-auth-primitives
+topic: bodai-auth
 reviewers:
   - python-pro
   - authentication-specialist

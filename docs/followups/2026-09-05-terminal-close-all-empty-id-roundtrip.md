@@ -3,7 +3,7 @@ status: complete
 role: historical
 date: 2026-09-05
 last_reviewed: 2026-09-05
-topic: terminal-close-all-empty-id-roundtrip
+topic: terminal
 ---
 
 # `terminal_close_all` round-trips empty-string IDs to `manager.close_all`

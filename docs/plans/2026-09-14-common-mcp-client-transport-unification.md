@@ -5,7 +5,7 @@ kind: plan
 date: 2026-09-14
 last_reviewed: 2026-09-14
 superseded_by: null
-topic: mcp-transport-unification
+topic: mcpserver-settings-convention
 revision: 2
 ---
 

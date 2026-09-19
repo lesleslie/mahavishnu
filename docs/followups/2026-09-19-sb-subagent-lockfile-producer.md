@@ -1,7 +1,7 @@
 ---
 status: complete
 role: canonical
-topic: sb-subagent-lockfile-producer
+topic: persistence
 date: 2026-09-19
 last_reviewed: 2026-09-19
 superseded_by: null

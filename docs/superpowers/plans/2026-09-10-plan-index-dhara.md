@@ -6,7 +6,7 @@ date: 2026-09-10
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
-topic: plan-index-dhara
+topic: followups-lifecycle
 ---
 
 # Plan Index Dhara-Canonical Metadata Layer Implementation Plan
@@ -5089,7 +5089,7 @@ role: canonical
 date: 2026-09-10
 last_reviewed: 2026-09-10
 superseded_by: null
-topic: plan-index-dhara
+topic: followups-lifecycle
 ---
 
 # Feature: Plan Index Dhara-canonical metadata layer

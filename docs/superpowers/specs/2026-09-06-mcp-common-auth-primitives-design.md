@@ -4,11 +4,9 @@ date: 2026-09-06
 last_reviewed: 2026-09-06
 status: draft
 role: implementation
-topic: mcp-common-auth-primitives
+topic: bodai-auth
 author: brainstormed 2026-09-06
-blocks_on:
-  - mcp-common repo (foundation library; this spec designs modules there)
-  - MCPServerSettings surface (AuthConfig integrates into `MCPServerSettings` at `mcp_common/cli/settings.py:15`)
+blocks_on: []
 blocks:
   - ADR 0016 v3 v4+ deferred items (this spec closes the "mcp-common authentication primitives" item)
   - Flowscape v1 remote-host scapy-mcp (this spec unblocks that path)

@@ -5,7 +5,7 @@ kind: plan
 date: 2026-09-13
 last_reviewed: 2026-09-13
 superseded_by: null
-topic: frontmatter-migration-completion
+topic: bodai-conformance
 ---
 
 # Migrate 39 No-Frontmatter Plans to Schema v1.1

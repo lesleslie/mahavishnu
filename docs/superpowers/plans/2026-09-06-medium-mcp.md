@@ -8,7 +8,7 @@ related:
   - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
 blocks_on:
-- 2026-09-06-port-bodai-reconciliation.md
+- docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md
 ---
 
 

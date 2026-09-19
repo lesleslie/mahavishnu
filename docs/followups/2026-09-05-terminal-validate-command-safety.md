@@ -3,7 +3,7 @@ status: active
 role: implementation
 date: 2026-09-05
 last_reviewed: 2026-09-13
-topic: terminal-validate-command-safety
+topic: terminal
 ---
 
 # `validate_command_safety` substring matches produce real false positives

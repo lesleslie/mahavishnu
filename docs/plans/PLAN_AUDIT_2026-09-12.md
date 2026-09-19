@@ -4,7 +4,7 @@ role: implementation
 kind: audit
 date: 2026-09-12
 last_reviewed: 2026-09-13
-topic: plan-audit-2026-09-12
+topic: followups-lifecycle
 ---
 
 # Plan Audit — 2026-09-12

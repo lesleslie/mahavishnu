@@ -4,7 +4,7 @@ role: implementation
 date: 2026-09-07
 last_reviewed: 2026-09-07
 superseded_by: null
-topic: worktree-cleanup
+topic: worktree-management
 ---
 
 # Bodai Worktree Cleanup Policy — Implementation Plan
@@ -86,7 +86,7 @@ role: canonical
 date: 2026-09-07
 last_reviewed: 2026-09-07
 superseded_by: null
-topic: worktree-cleanup
+topic: worktree-management
 trigger: 2026-09-07 cleanup removed 86 of 117 extra worktrees across 20 Bodai repos; existing policy (worktree-autoremove-policy.md) covers only prune-merged clean-removal; the 86 removals required rules no current decision codified.
 ---
 

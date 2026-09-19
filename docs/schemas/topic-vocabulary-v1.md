@@ -1,6 +1,6 @@
 # Topic Vocabulary v1
 
-**Date:** 2026-07-16
+**Date:** 2026-09-19 (extended)
 **Status:** accepted
 
 ## Goal
@@ -135,6 +135,50 @@ contribution workflow below.
 | `worktree-autoremove-v4-followup` | Followups from the worktree-prune-merged v4 retrospective — items deferred when the v4 cut landed, tracked separately for the next iteration. |
 | `scapy-mcp-integration-review` | Multi-agent review of scapy-mcp integration (ADR 0016 review artifact). |
 | `mcp-enrichment-posture` | MCP enrichment posture — how scapy-mcp integrates with the broader Bodai MCP surface (ADR 0016). |
+| `bodai-tui-shell-surface` | Bodai admin shell + dashboard TUI surface (AdminShell subclass pattern, monitor --tui, shell polish). |
+| `crackerjack-scripts-examples-coverage` | Crackerjack script + example coverage — which scripts/examples have tests, which are missing. |
+| `durable-local-workers` | Durable worker lifecycle via tmux/PTY adapters (session persistence across crash/restart). |
+| `jot-capture` | Jot subsystem: capture primitive (recording raw input into the jot store). |
+| `jot-inbox` | Jot subsystem: inbox primitive (queued items awaiting triage). |
+| `jot-read` | Jot subsystem: read primitive (querying captured jot items). |
+| `jot-drain` | Jot subsystem: drain operation (moving items from inbox to long-term store). |
+| `jot-drain-polish` | Jot subsystem: drain operation polish (edge cases, error paths, idempotency). |
+| `mcp-registrar` | MCP registrar subsystem — server-side agent/skill registration catalog (list_agents/get_agent, list_skills/get_skill, ed25519 signature flow). |
+| `worker-readiness` | Worker readiness probing — liveness/readiness checks before task dispatch (gates dispatch until the worker reports ready). |
+| `agno-memory-field-validator-silent-skip` | Agno memory field validator silently skipping malformed records (defect followup; validation should raise, not skip). |
+| `ai-dep-group-transitive-bloat` | `ai` PEP 735 dep group pulling more than declared (transitive bloat audit; tighten `project.optional-dependencies`). |
+| `akosha-hnsw-on-duckdb` | Akosha HNSW index creation failing on DuckDB backend (defect followup; needs DuckDB-compatible HNSW or alternative). |
+| `audit-orphans-residual-caller-detection` | `scripts/audit_orphans.py` not detecting residual callers of recently-added symbols (false negatives after a feature is wired). |
+| `backup-cli-broad-typer-exit` | Backup CLI `typer.Exit` raised too broadly, masking actual errors behind generic exit codes. |
+| `beartype-pytest-cov-py314` | beartype + pytest-cov interaction broken on Python 3.14 (decorator interferes with coverage instrumentation). |
+| `bodai-openclaw-hermes-inspired-portfolio` | Bodai "OpenClaw / Hermes-inspired" agent portfolio design (cross-cutting AI agent portfolio, post-A2A review). |
+| `changepoint-two-stage-polish` | Change-point detection two-stage algorithm polish (edge cases, false-positive suppression). |
+| `changepoint-two-stage-warn-confirm` | Change-point detection two-stage warn-then-confirm UX flow (defer destructive action behind explicit confirmation). |
+| `crackerjack-c-wire-plan` | Crackerjack C hook execution path wiring plan (low-level integration of the C runner with the hook orchestrator). |
+| `d-lock` | D-lock distributed locking primitive (lockfile-based coordination across processes; complementary to `precommitment-hypothesis-lock`). |
+| `flowscape` | FlowScape product/feature (workflow landscape visualization — graph of plans/followups/ADRs across repos). |
+| `flowscape-v1-bootstrap` | FlowScape v1 bootstrap plan (initial implementation milestone; Phase 1 surface + Phase 2 polish). |
+| `mahavishnu-pool-error-code-attribute` | Mahavishnu pool missing `error_code` attribute on result envelopes (downstream consumers can't programmatically distinguish failure modes). |
+| `merge-semantic-duration-instrumentation` | Merge semantic duration instrumentation — timing merge operations by semantic phase (base / ours / theirs / result), surfaced as OTel spans. |
+| `metrics-schema-confidence-dead-parameter` | Metrics schema `confidence` parameter dead code (unused input; remove from API surface). |
+| `metrics-schema-no-input-validation` | Metrics schema missing input validation on metric definitions (negative values, NaN, out-of-range buckets). |
+| `metrics-schema-p50-formula` | Metrics schema p50 percentile formula correctness (off-by-one or interpolation bug in the histogram reader). |
+| `permissions-accessibility-prompt` | Permissions API accessibility prompt gap (screen reader / keyboard navigation missing on the runtime grant flow). |
+| `permissions-dead-cache-fields` | Permissions cache retains fields from removed permission types (stale data outliving its source schema). |
+| `permissions-mutable-dataclass` | Permissions dataclass should be immutable (mutable default state; convert to `frozen=True`). |
+| `phase3-streaming-tar-plan` | Phase 3 streaming-tar implementation plan — large-archive streaming without full extraction (companion to `streaming-tar-phase3` design). |
+| `ruff-cleanup-waves` | Crackerjack ruff cleanup waves — batch lint-fix passes after a rule addition (one wave per rule, gated on green CI). |
+| `serverless-readiness-and-substitution` | Bodai serverless readiness assessment + component substitution strategy (which Bodai components can run serverless; which need preconditions). |
+| `serverless-readiness-precondition-fixes` | Serverless readiness Phase 1 prerequisite fixes (Python/build/runtime blockers — cold-start, signal handlers, filesystem assumptions). |
+| `settle-semantic-merge` | Settle subsystem semantic 3-way merge (worker output vs base vs theirs; `git merge-file`-backed conflict resolution for bindings). |
+| `streaming-tar-phase3` | Streaming tar Phase 3 design (large-archive streaming without full extraction; supersedes the in-memory stopgap path from ADR 016). |
+| `tier2-hyperbolic-embeddings` | Tier 2 math initiative: hyperbolic-space embeddings for Akosha (negative-curvature representation for hierarchical similarity). |
+| `tier2-multi-metric-drift` | Tier 2 math initiative: multi-metric drift detection (Akosha fitness — composite signal across p50, error rate, queue depth). |
+| `tier2-optimal-transport` | Tier 2 math initiative: optimal-transport-based similarity (Wasserstein-distance cross-domain comparison). |
+| `tier2-phase-d-cross-repo` | Tier 2 Phase D: cross-repo Akosha detector wiring (deferred followup — needs `phase-8-adopted-and-stable` unblock). |
+| `tui` | Original TUI design (2026-04-09 pre-Track 3 era) — generic Textual + Rich framework; superseded by `track3-toad-tui`. |
+| `websocket-broadcaster-default` | WebSocket broadcaster default config/initialization gap (server should come up broadcasting on standard channels without explicit subscribe calls). |
+| `worker-status-isoformat-crash` | Worker status serialization crashes on non-ISO timestamps (e.g., epoch ints, locale-formatted strings) — needs tolerant parsing. |
 
 ## Contribution Workflow
 

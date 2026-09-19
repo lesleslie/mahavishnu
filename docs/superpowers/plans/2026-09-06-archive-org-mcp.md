@@ -5,8 +5,8 @@ date: 2026-09-06
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
-- docs/superpowers/plans/2026-09-06-registry-manifest-migration.md
-- 2026-09-06-port-bodai-reconciliation.md
+- docs/superpowers/plans/.archive/2026-09-06-registry-manifest-migration.md
+- docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md
 related:
   - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation

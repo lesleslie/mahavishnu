@@ -1,7 +1,7 @@
 ---
 status: draft
 role: implementation
-topic: dhara-mcp-decomposition
+topic: dhara-substrate-implementation
 date: 2026-09-14
 last_reviewed: 2026-09-14
 superseded_by: null

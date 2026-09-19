@@ -3,7 +3,7 @@ status: complete
 role: historical
 date: 2026-09-05
 last_reviewed: 2026-09-05
-topic: terminal-send-regex-mismatch
+topic: terminal
 ---
 
 # `SessionID` regex rejects legitimate adapter IDs (e.g. macOS Terminal dots)

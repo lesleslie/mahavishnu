@@ -6,7 +6,7 @@ date: 2026-09-07
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
-topic: worktree-cleanup
+topic: worktree-management
 ---
 
 ---
@@ -15,7 +15,7 @@ date: 2026-09-07
 last_reviewed: 2026-09-07
 status: draft
 role: implementation
-topic: worktree-cleanup
+topic: worktree-management
 author: "brainstormed 2026-09-07 (revised after multi-agent review: security, audit, DX, lateral)"
 blocks_on: []
 blocks: []

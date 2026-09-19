@@ -6,7 +6,7 @@ date: 2026-08-10
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
-topic: auto-checkpoint-safety-and-trigger
+topic: persistence
 ---
 
 # Auto-Checkpoint Safety + Auto-Trigger Implementation Plan

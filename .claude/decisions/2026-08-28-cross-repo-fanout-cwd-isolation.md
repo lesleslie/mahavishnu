@@ -5,7 +5,7 @@ kind: decision
 date: 2026-08-28
 last_reviewed: 2026-08-28
 superseded_by: null
-topic: cross-repo-fanout-cwd-isolation
+topic: session-worktree-isolation
 ---
 
 # Cross-repo fanout CWD isolation

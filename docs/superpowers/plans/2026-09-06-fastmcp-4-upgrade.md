@@ -6,7 +6,7 @@ date: 2026-09-06
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
-topic: fastmcp-upgrade
+topic: fastmcp-3-upgrade
 related:
   - 2026-09-06-archive-org-mcp.md
   - 2026-09-06-medium-mcp.md
