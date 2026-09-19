@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-09-18
