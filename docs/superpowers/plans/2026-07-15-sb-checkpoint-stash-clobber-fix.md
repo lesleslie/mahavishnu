@@ -2,8 +2,10 @@
 status: partial
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-19
 superseded_by: null
+blocks_on:
+  - docs/followups/2026-09-19-sb-subagent-lockfile-producer.md
 topic: sb-checkpoint-stash-clobber-fix
 ---
 
