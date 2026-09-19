@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from mahavishnu.jot import drain as drain_module
 from mahavishnu.jot.drain import (
     DispatchState,
     RECONCILER_TIMEOUT_MS,
@@ -111,41 +112,58 @@ async def test_reconcile_warns_when_no_workflow_id(isolated_log: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_tier2_timeout_attempt_one_preserves_budget(
-    isolated_log: Path,
+    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
 ) -> None:
-    """Timeout on attempt 1 → dispatch_failed + auto-retry scheduled (locked policy)."""
+    """Timeout on attempt 1 → dispatch_failed + auto-retry scheduled (locked policy).
+
+    Adversarial: observes via _retry_waiters[handle] (per-jot asyncio.Event)
+    rather than patching _auto_retry_after. The reconciler schedules the
+    retry as fire-and-forget asyncio.create_task; the test waits for the
+    event to be set, proving the production code path runs end-to-end.
+
+    Note: only ``fast_backoff`` is used (no ``no_async_sleep``) so the
+    test's own ``await asyncio.sleep(0)`` actually yields to the loop.
+    With backoff_s=0, ``asyncio.sleep(0)`` in _auto_retry_after is a
+    0-second real yield — fast enough for the test.
+    """
     s = _make_summary(current_attempt=1, dispatch_started_at_ms=0)
-    auto_retry_called = []
 
-    async def fake_auto_retry(handle: str, backoff_s: int) -> None:
-        auto_retry_called.append((handle, backoff_s))
-
-    with patch("mahavishnu.jot.drain._auto_retry_after", fake_auto_retry), \
-         patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
+    with patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
         await _reconcile_if_in_flight(s)
+    # Yield to event loop so the fire-and-forget task can start.
+    await asyncio.sleep(0)
     parsed = json.loads(isolated_log.read_text().strip().split("\n")[0])
     assert parsed["op"] == "dispatch_failed"
     assert parsed["ctx"]["retry_budget_exhausted"] is False
-    assert len(auto_retry_called) == 1
+    # Auto-retry was scheduled as fire-and-forget; verify the waiter exists.
+    assert s.short_id in drain_module._retry_waiters
+    event = drain_module._retry_waiters[s.short_id]
+    # Wait for the auto-retry background task to complete.
+    await asyncio.wait_for(event.wait(), timeout=5.0)
+    # Cleanup.
+    drain_module._retry_waiters.pop(s.short_id, None)
 
 
 @pytest.mark.asyncio
 async def test_reconcile_tier2_timeout_attempt_two_exhausts_budget(
-    isolated_log: Path,
+    isolated_log: Path, fast_backoff: None,
 ) -> None:
-    """Timeout on attempt 2 → dispatch_failed + retry_budget_exhausted=true."""
+    """Timeout on attempt 2 → dispatch_failed + retry_budget_exhausted=true.
+
+    Adversarial: when the retry budget is exhausted, _auto_retry_after is
+    never called, so _retry_waiters[handle] is never created. Test asserts
+    the absence.
+    """
     s = _make_summary(current_attempt=2, dispatch_started_at_ms=0)
-    auto_retry_called = []
 
-    async def fake_auto_retry(handle: str, backoff_s: int) -> None:
-        auto_retry_called.append(1)
-
-    with patch("mahavishnu.jot.drain._auto_retry_after", fake_auto_retry), \
-         patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
+    with patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
         await _reconcile_if_in_flight(s)
+    # Yield to event loop to ensure no fire-and-forget task could sneak in.
+    await asyncio.sleep(0)
     parsed = json.loads(isolated_log.read_text().strip().split("\n")[0])
     assert parsed["ctx"]["retry_budget_exhausted"] is True
-    assert auto_retry_called == []
+    # No retry was scheduled; the waiter should not exist.
+    assert s.short_id not in drain_module._retry_waiters
 
 
 @pytest.mark.asyncio
@@ -192,41 +210,52 @@ async def test_reconcile_writes_dispatch_done_on_completed(isolated_log: Path) -
 
 @pytest.mark.asyncio
 async def test_reconcile_writes_dispatch_failed_with_budget_exhausted_false_attempt_one(
-    isolated_log: Path,
+    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
 ) -> None:
+    """Substrate FAILED, attempt 1 → dispatch_failed + auto-retry scheduled.
+
+    Adversarial: observes via _retry_waiters[handle].
+    """
     s = _make_summary(current_attempt=1)
 
     async def fake_status(workflow_id: str) -> dict[str, object]:
         return {"status": "FAILED"}
 
-    async def fake_auto_retry(handle: str, backoff_s: int) -> None:
-        pass
-
-    with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status), \
-         patch("mahavishnu.jot.drain._auto_retry_after", fake_auto_retry):
+    with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status):
         await _reconcile_if_in_flight(s)
+    # Yield to event loop so the fire-and-forget task can start.
+    await asyncio.sleep(0)
     parsed = json.loads(isolated_log.read_text().strip().split("\n")[0])
     assert parsed["op"] == "dispatch_failed"
     assert parsed["ctx"]["retry_budget_exhausted"] is False
+    # Auto-retry was scheduled as fire-and-forget.
+    assert s.short_id in drain_module._retry_waiters
+    event = drain_module._retry_waiters[s.short_id]
+    await asyncio.wait_for(event.wait(), timeout=5.0)
+    drain_module._retry_waiters.pop(s.short_id, None)
 
 
 @pytest.mark.asyncio
 async def test_reconcile_writes_dispatch_failed_with_budget_exhausted_true_attempt_two(
-    isolated_log: Path,
+    isolated_log: Path, fast_backoff: None,
 ) -> None:
+    """Substrate FAILED, attempt 2 → dispatch_failed + budget exhausted (no retry).
+
+    Adversarial: when budget exhausted, _auto_retry_after is never
+    scheduled, so _retry_waiters[handle] is never created.
+    """
     s = _make_summary(current_attempt=2)
 
     async def fake_status(workflow_id: str) -> dict[str, object]:
         return {"status": "FAILED"}
 
-    async def fake_auto_retry(handle: str, backoff_s: int) -> None:
-        pytest.fail("auto_retry must NOT be called when budget exhausted")
-
-    with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status), \
-         patch("mahavishnu.jot.drain._auto_retry_after", fake_auto_retry):
+    with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status):
         await _reconcile_if_in_flight(s)
+    # Yield to event loop to ensure no fire-and-forget task could sneak in.
+    await asyncio.sleep(0)
     parsed = json.loads(isolated_log.read_text().strip().split("\n")[0])
     assert parsed["ctx"]["retry_budget_exhausted"] is True
+    assert s.short_id not in drain_module._retry_waiters
 
 
 @pytest.mark.asyncio
@@ -266,26 +295,32 @@ async def test_reconcile_catches_validation_error_propagation(
 
 @pytest.mark.asyncio
 async def test_reconcile_terminal_statuses_include_cancelled_and_timeout(
-    isolated_log: Path,
+    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
 ) -> None:
-    """CANCELLED + TIMEOUT are terminal; reconciliation emits dispatch_failed."""
+    """CANCELLED + TIMEOUT are terminal; reconciliation emits dispatch_failed.
+
+    Adversarial: observes via _retry_waiters[handle] for attempt 1.
+    """
     for term in ("CANCELLED", "TIMEOUT"):
-        s = _make_summary()
+        s = _make_summary(current_attempt=1)
 
         async def fake_status(workflow_id: str, _t: str = term) -> dict[str, object]:
             return {"status": _t}
 
-        async def fake_auto_retry(handle: str, backoff_s: int) -> None:
-            pass
-
-        with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status), \
-             patch("mahavishnu.jot.drain._auto_retry_after", fake_auto_retry):
+        with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status):
             await _reconcile_if_in_flight(s)
+        # Yield to event loop so the fire-and-forget task can start.
+        await asyncio.sleep(0)
         lines = isolated_log.read_text().strip().split("\n")
         last = json.loads(lines[-1])
         assert last["op"] == "dispatch_failed"
         assert term in last["ctx"]["error"]
-        # Reset for next iteration
+        # Auto-retry scheduled (attempt 1, budget not exhausted).
+        assert s.short_id in drain_module._retry_waiters
+        event = drain_module._retry_waiters[s.short_id]
+        await asyncio.wait_for(event.wait(), timeout=5.0)
+        drain_module._retry_waiters.pop(s.short_id, None)
+        # Reset for next iteration.
         isolated_log.write_text("")
 
 
