@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-09-19
+
+### Added
+
+- lock-sentinel: Replace dhara.lock with local in-process Lock
+- mcp/tools: Add 5 ecosystem_state tools (Phase 3 of Dhara decomposition)
+- persistence: Vendor WorkflowOutcome/ApprovalLog/WebhookIngress locally
+
+### Changed
+
+- dhara-schema: Replace dhara.schema.* imports with local msgspec types
+- mahavishnu: Subclass oneiric's OTelStorageSettings instead of duplicating it
+- substrate-compat: Drop stamp_dhara_attr helper
+- substrate-compat: Lazy-load dhara; drop bare 'import dhara' from producers
+- Use oneiric.core.ulid directly, drop dhara fallback chain
+
+### Fixed
+
+- Add 'metrics bodai' subcommand for queue-file rendering
+- bootstrap: Thread skills_signer+agents+dispatch+jot through legacy path
+- docs: Update CLAUDE.md/README.md tool-count claims to match registry
+- engines/agno_adapter: Resolve mypy syntax error at line 169
+- mcp/bootstrap: Thread rbac_manager to 4 register_*_tools callsites
+- otel_ingester: Catch _get_client failures in check_available
+- qc: Re-add module-level httpx attribute for test patching
+- session/checkpoint: Catch httpx transport errors in is_healthy
+- session/checkpoint: Repair test mocks for CommonMCPClient migration
+- test-residue: Wire 5 production drift sites (Cluster 10 Item 5)
+- tests: Align AgnoToolsConfig default URL with mahavishnu port
+- tests: Align otel_ingester mocks with post-Phase 3 CommonMCPClient API
+- tests: Assert MINIMAL profile registers health + skills_signer
+- tests: Migrate DharaThinClient mocks from post() to call_tool()
+- tests: Migrate test_qc_checker to call_tool AsyncMock
+- tests: Mock MCP call_tool instead of HTTP post in chaos buffer test
+- tests: Mock RBAC manager in session_buddy_tools test fixture
+- tests: Patch oneiric DuckdbHotStore in TestInitializeDuckDB
+- tests: Pin crow call site line numbers to current source
+- tests: Regen profile fixtures via production build entry point
+- tests: Skip dead bodai event-bridge helper test
+- tests: Sync ecosystem.yaml with legacy repos.yaml (add www-mcp-servers)
+- Wire jot dispatcher through FastMCP, not FastMCPServer wrapper
+
+### Documentation
+
+- adr: Evaluate gateway pattern (Options A/B/C) for Bodai MCP surface
+- flowscape: Enrich plan + spec with Phase 4 proto schema pre-reqs
+- Mark Phase 8 dhara retirement plan complete; regenerate PLAN_INDEX
+- MCP registrar implementation plan (11 tasks)
+- plan: Revision 1 — apply 27 findings from 5-agent review
+- plan: Revision 2 — apply 5-agent re-review findings
+- plan: Switch status from draft to active
+- plans: Commit Phase 8 dhara retirement plan as historical record
+- registry: Add chat-bridge-mcp to Bodai MCP servers table
+- registry: Update chat-bridge-mcp row to reflect v0.1.0 status (T34)
+- Remove Dhara references from CLAUDE.md + README.md (Phase 8 T16)
+- spec: Draft MCP registrar design — canonical YAML emits .mcp.json + ~/.qwen/settings.json
+- spec: Revision 1 — fold 5-reviewer task-force findings + verify Qwen schema via context7
+
+### Testing
+
+- agno+auth: Restore cluster 6+7 working-tree fixes
+- bootstrap: Capture loguru warning via capsys instead of caplog
+- bootstrap: Init signer+plan_index feeds before /health assertion
+- cleanup: Delete test_substrate_compat_enforcement (tests dead helper)
+- cluster-10: Align 7 stale test invariants to current production
+- Drop dhara.schema stub machinery from 2 webhook tests; fix stale docstring
+- fixtures: Regenerate FULL golden fixture to current production
+- lifecycle,wiring: Fix stub + regenerate golden fixtures
+- mcp/tools: Supply fake rbac_manager to capability tool tests (W5 Cluster 1)
+- mcp/tools: Supply fake rbac_manager to webhook/workflow tool tests
+- profiles: Align MINIMAL + jot_* invariants to Phase 1.5/3 canonical
+- profiles: Cover REGISTRATION_MAP as canonical W0 dispatch surface
+- server_core: Check OTel tracing middleware by type, not call count
+- Supply fake rbac_manager to channel_session tool tests (W5 Cluster 2)
+- tools: Supply fake rbac_manager to git_analytics tool tests (W5 Cluster 4)
+
+### Build
+
+- deps: Drop dhara dep from ecosystem extras (Phase 8 T10)
+- deps: Unlock mcp-common to >=0.27.0
+- uv.lock: Refresh after oneiric dep removal (Phase 8 T10 follow-up)
+
 ## [0.25.0] - 2026-09-16
 
 ### Added

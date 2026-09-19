@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import os
 
-import msgspec
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
+import msgspec
 from oneiric.core.logging import get_logger
 
 from mahavishnu.core._dhara_substrate_compat import dhara_calltime

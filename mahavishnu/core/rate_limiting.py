@@ -56,8 +56,16 @@ try:
     HAS_SLOWAPI = True
 except ImportError:
     HAS_SLOWAPI = False
+    # Shape-compatible placeholder: ``detail`` mirrors slowapi's
+    # attribute so handler code that reads ``exc.detail`` type-checks
+    # regardless of import state. The placeholder is never actually
+    # instantiated in production (slowapi is always installed), but
+    # ty analyzes both branches and the union type must satisfy
+    # ``.detail`` access in ``rate_limit_exceeded_handler``.
     RateLimitExceeded = type(
-        "RateLimitExceeded", (Exception,), {}
+        "RateLimitExceeded",
+        (Exception,),
+        {"detail": None},
     )  # Placeholder for type hints  # ty: ignore[invalid-assignment]
     logger.warning("slowapi not installed, rate limiting will be disabled")
 

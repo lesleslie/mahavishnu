@@ -968,13 +968,15 @@ def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
             },
         ) as probe_span:
             binary = shutil.which("mergiraf")
-            # Pass through ``binary`` unchanged so the attribute records
-            # ``None`` (binary missing) rather than the empty-string
-            # sentinel used downstream by the OTel exporter coercion.
-            # Tests assert ``attrs.get("merge.binary_path") is None`` on
-            # the miss path; the prior ``binary or ""`` synthesized an
-            # empty-string attribute that misled that probe.
-            probe_span.set_attribute("merge.binary_path", binary)
+            # Skip recording the attribute when binary is missing.
+            # Tests assert ``attrs.get("merge.binary_path") is None``
+            # on the miss path; the prior ``binary or ""`` synthesized
+            # an empty-string attribute that misled that probe.
+            # ``dict.get`` returns ``None`` for absent keys, so the
+            # miss-path assertion holds whether the attribute is set
+            # to ``None`` or simply not recorded.
+            if binary is not None:
+                probe_span.set_attribute("merge.binary_path", binary)
             if binary is None:
                 # M2: do NOT clear the degraded stamp here. The
                 # degraded stamp records "we fell back at some point

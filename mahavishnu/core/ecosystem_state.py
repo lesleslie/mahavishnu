@@ -206,9 +206,7 @@ class AsyncEcosystemStateStore:
         put = dhara_calltime("put")
         if put is not None:
             put(_service_key(service_id), builtins)
-            existing_index = (
-                await get_fn(_SERVICES_INDEX_KEY) if get_fn is not None else None
-            )
+            existing_index = await get_fn(_SERVICES_INDEX_KEY) if get_fn is not None else None
             await self._replace_service_index_entry(
                 current_index=_load_index(existing_index, _SERVICES_INDEX_KEY),
                 service_id=service_id,
@@ -329,9 +327,7 @@ class AsyncEcosystemStateStore:
             if full is None:
                 # Index references a missing record — skip silently rather than crashing.
                 continue
-            results.append(
-                msgspec.to_builtins(msgspec.convert(full, EcosystemService))
-            )
+            results.append(msgspec.to_builtins(msgspec.convert(full, EcosystemService)))
         results.sort(key=lambda r: r.get("service_id", ""))
         return results
 
@@ -477,8 +473,8 @@ class AsyncEcosystemStateStore:
 
 
 __all__ = [
+    "EVENT_SCHEMA_VERSION",
+    "REGISTRY_SCHEMA_VERSION",
     "AsyncEcosystemStateStore",
     "EventRetention",
-    "REGISTRY_SCHEMA_VERSION",
-    "EVENT_SCHEMA_VERSION",
 ]

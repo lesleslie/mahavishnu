@@ -81,7 +81,6 @@ or higher.
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| jinja2-custom-delimiters | /Users/les/Projects/jinja2-custom-delimiters/ | n/a | PyCharm plugin for custom Jinja2 delimiter syntax highlighting (Python); role: extension in ecosystem.yaml |
 
 ### Desktop / GUI
 
@@ -137,3 +136,5 @@ _(Hand-maintained footer. Not generated.)_
 
 - `www-mcp-servers/` — no pyproject.toml; docs-only
   Removed from `settings/ecosystem.yaml` 2026-09-09.
+- `jinja2-custom-delimiters/` — IntelliJ Platform Gradle plugin (Kotlin), not Python;
+  no `pyproject.toml`. Was previously listed under `### Extensions` 2026-08-31.

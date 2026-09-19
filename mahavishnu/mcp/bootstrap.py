@@ -850,8 +850,8 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     await server.register_worktree_tools()
     await _register_optional_tools(server, methods_set)
 
-    from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.ecosystem_state_tools import register_ecosystem_state_tools
+    from ..mcp.tools.ecosystem_tools import register_ecosystem_tools
     from ..mcp.tools.health_tools import register_health_tools
     from ..mcp.tools.jot_tools import register as _register_jot_tools
     from ..mcp.tools.webhook_tools import register_webhook_tools

@@ -17,11 +17,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
+from oneiric.adapters.observability.settings import (
+    OTelStorageSettings as _OneiricOTelStorageSettings,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
-
-from oneiric.adapters.observability.settings import OTelStorageSettings as _OneiricOTelStorageSettings
 
 from ..terminal.config import TerminalSettings
 from .paths import get_worktree_base_path
@@ -94,7 +95,7 @@ class AgnoLLMConfig(BaseModel):
         description="Maximum tokens per response",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class AgnoMemoryConfig(BaseModel):
@@ -131,7 +132,7 @@ class AgnoMemoryConfig(BaseModel):
         description="Number of historical runs to retain",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def validate_postgres_backend(self) -> AgnoMemoryConfig:
@@ -199,7 +200,7 @@ class AgnoToolsConfig(BaseModel):
         description="Enable native Agno tools (file operations, code analysis)",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class AgnoAdapterConfig(BaseModel):
@@ -273,7 +274,7 @@ class AgnoAdapterConfig(BaseModel):
         description="Enable OpenTelemetry instrumentation",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ============================================================================
@@ -374,7 +375,7 @@ class PrefectConfig(BaseModel):
             )
         return self
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class PoolConfig(BaseModel):
@@ -445,7 +446,7 @@ class PoolConfig(BaseModel):
         description="Akosha MCP server URL for cross-pool analytics",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class ChangepointConfig(BaseModel):
@@ -565,7 +566,7 @@ class ChangepointConfig(BaseModel):
         ),
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class PiPoolSettings(BaseModel):
@@ -636,7 +637,7 @@ class PiPoolSettings(BaseModel):
         description="npm pinned-version range. Catches silent breaking changes from upstream.",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def _env_allowlist_denylist(self) -> PiPoolSettings:
@@ -778,7 +779,7 @@ class HNSWIndexConfig(BaseModel):
         description="Search depth during queries (10-200, higher = better recall, slower search)",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class OTelStorageConfig(_OneiricOTelStorageSettings):
@@ -850,7 +851,7 @@ class OTelStorageConfig(_OneiricOTelStorageSettings):
 
     @field_validator("connection_string")
     @classmethod
-    def validate_connection_string(cls, v: str, info) -> str:
+    def validate_connection_string(cls, v: str) -> str:
         """Validate OTel storage connection string for security and format.
 
         Stricter than oneiric's base check (which only verifies the
@@ -870,7 +871,6 @@ class OTelStorageConfig(_OneiricOTelStorageSettings):
 
         Args:
             v: Connection string value
-            info: Field validation info
 
         Returns:
             Validated connection string
@@ -939,7 +939,7 @@ class OTelStorageConfig(_OneiricOTelStorageSettings):
             )
         return self
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class OTelIngesterConfig(BaseModel):
@@ -1017,7 +1017,7 @@ class OTelIngesterConfig(BaseModel):
             raise ValueError(f"storage_type must be 'duckdb' or 'postgresql', got {v}")
         return v
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class OpenSearchConfig(BaseModel):
@@ -1052,7 +1052,7 @@ class OpenSearchConfig(BaseModel):
         description="Show SSL warnings for OpenSearch connection",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class DLQConfig(BaseModel):
@@ -1081,7 +1081,7 @@ class DLQConfig(BaseModel):
         ),
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class AuthConfig(BaseModel):
@@ -1116,7 +1116,7 @@ class AuthConfig(BaseModel):
             )
         return self
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class SubscriptionAuthConfig(BaseModel):
@@ -1151,7 +1151,7 @@ class SubscriptionAuthConfig(BaseModel):
             )
         return self
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class SessionBuddyPollingConfig(BaseModel):
@@ -1205,7 +1205,7 @@ class SessionBuddyPollingConfig(BaseModel):
         description="List of MCP tools to poll for metrics",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class QualityControlConfig(BaseModel):
@@ -1242,7 +1242,7 @@ class QualityControlConfig(BaseModel):
         description="Crackerjack MCP server URL",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class SessionConfig(BaseModel):
@@ -1259,7 +1259,7 @@ class SessionConfig(BaseModel):
         description="Checkpoint interval in seconds (10-600)",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class ResilienceConfig(BaseModel):
@@ -1290,7 +1290,7 @@ class ResilienceConfig(BaseModel):
         description="Timeout per repo in seconds (30-3600)",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class ObservabilityConfig(BaseModel):
@@ -1328,7 +1328,7 @@ class ObservabilityConfig(BaseModel):
         ),
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class MonitoringConfig(BaseModel):
@@ -1345,7 +1345,7 @@ class MonitoringConfig(BaseModel):
         description="Enable routing metrics registration on the shared /metrics endpoint",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ============================================================================
@@ -1356,7 +1356,7 @@ class MonitoringConfig(BaseModel):
 class A2ACapabilitiesSettings(BaseModel):
     """Capabilities advertised in our outbound A2A agent card."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     streaming: bool = True
     pushNotifications: bool = False  # noqa: N815
@@ -1365,7 +1365,7 @@ class A2ACapabilitiesSettings(BaseModel):
 class A2ACardSettings(BaseModel):
     """Fields used to build the /.well-known/agent.json response."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     name: str = "Mahavishnu"
     description: str = "Bodai ecosystem orchestrator"
@@ -1387,7 +1387,7 @@ class A2ACardSettings(BaseModel):
 class A2AAgentEntry(BaseModel):
     """One entry in the outbound agent registry (from settings/mahavishnu.yaml)."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     name: str
     url: str
@@ -1408,7 +1408,7 @@ class A2AAgentEntry(BaseModel):
 class A2ASettings(BaseModel):
     """Top-level A2A configuration block."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     require_auth: bool = Field(
@@ -1498,7 +1498,7 @@ class WorkerConfig(BaseModel):
         description="Container worker runtime discovery and socket settings",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 _CAPABILITY_ID_PATTERN = r"^[a-z]+:[a-z0-9._-]+$"
@@ -1579,7 +1579,7 @@ class AdapterConfig(BaseModel):
         description="Enable Hatchet adapter for durable event-driven agent loops",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class HatchetConfig(BaseModel):
@@ -1626,7 +1626,7 @@ class HatchetConfig(BaseModel):
         description="Maximum seconds to wait for a single Hatchet task",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class LLMConfig(BaseModel):
@@ -1641,7 +1641,7 @@ class LLMConfig(BaseModel):
         description="Ollama API endpoint for local LLM access",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class AdapterRegistryConfig(BaseModel):
@@ -1694,7 +1694,7 @@ class AdapterRegistryConfig(BaseModel):
         description="Timeout for adapter discovery operations",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class OneiricMCPConfig(BaseModel):
@@ -1742,7 +1742,7 @@ class OneiricMCPConfig(BaseModel):
         description="Seconds to block adapter after circuit breaker opens (60-3600)",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ============================================================================
@@ -1791,7 +1791,7 @@ class GoalParsingConfig(BaseModel):
         description="Fallback strategy when goal parsing fails",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class GoalTeamsLimitsConfig(BaseModel):
@@ -1829,7 +1829,7 @@ class GoalTeamsLimitsConfig(BaseModel):
         description="Maximum concurrent team executions",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class EventBridgeConfig(BaseModel):
@@ -1941,7 +1941,7 @@ class GoalTeamsFeatureFlags(BaseModel):
         description="Enable custom skills for team creation",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class GoalTeamsConfig(BaseModel):
@@ -1998,7 +1998,7 @@ class GoalTeamsConfig(BaseModel):
         description="Feature flags for controlling access to Goal-Driven Teams features",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ============================================================================
@@ -2073,7 +2073,7 @@ class LearningConfig(BaseModel):
         description="Timeout for Akosha evidence retrieval calls",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ============================================================================
@@ -2130,7 +2130,7 @@ class DependencyConfig(BaseModel):
         description="Use HTTPS for health checks",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class HealthConfig(BaseModel):
@@ -2190,7 +2190,7 @@ class HealthConfig(BaseModel):
         description="Service dependencies to check on startup",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class DharaStatePersistenceConfig(BaseModel):
@@ -2226,7 +2226,7 @@ class DharaStatePersistenceConfig(BaseModel):
         description="Maximum age of routing decisions retained in Dhara",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class IntegrationConfig(BaseModel):
@@ -2267,7 +2267,7 @@ class IntegrationConfig(BaseModel):
         description="Enable cross-platform memory sharing via Session-Buddy/Akosha",
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class DistillSettings(BaseModel):
@@ -2333,7 +2333,7 @@ class DistillSettings(BaseModel):
         ),
     )
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 # ---------------------------------------------------------------------------
@@ -2344,7 +2344,7 @@ class DistillSettings(BaseModel):
 class WorktreeLocalStorageSettings(BaseModel):
     """Local-storage adapter config for the worktree provider."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     base_path: Path = Field(
         default_factory=get_worktree_base_path,
@@ -2359,7 +2359,7 @@ class WorktreeLocalStorageSettings(BaseModel):
 class WorktreeS3StorageSettings(BaseModel):
     """S3-storage adapter config for the worktree provider."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     bucket: str | None = Field(default=None, description="S3 bucket name.")
     region: str | None = Field(default=None, description="S3 region (e.g. us-east-1).")
@@ -2372,7 +2372,7 @@ class WorktreeS3StorageSettings(BaseModel):
 class WorktreeGCSStorageSettings(BaseModel):
     """GCS-storage adapter config for the worktree provider."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     bucket: str | None = Field(default=None, description="GCS bucket name.")
     credentials_path: str | None = Field(
@@ -2383,7 +2383,7 @@ class WorktreeGCSStorageSettings(BaseModel):
 class WorktreeAzureStorageSettings(BaseModel):
     """Azure-storage adapter config for the worktree provider."""
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     container: str | None = Field(default=None, description="Azure Blob storage container name.")
 
@@ -2398,7 +2398,7 @@ class WorktreeStorageSettings(BaseModel):
     (the first configured backend with a healthy adapter wins).
     """
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     backend_preference: list[str] = Field(
         default_factory=lambda: ["local", "s3"],
@@ -2419,7 +2419,7 @@ class WorktreeCacheSettings(BaseModel):
     override ``l2_enabled=False`` and rely on L1 only.
     """
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
     l1_enabled: bool = Field(default=True, description="Enable L1 (memory) tier.")
     l1_max_entries: int = Field(default=1024, ge=1, le=10000)

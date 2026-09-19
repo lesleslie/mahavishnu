@@ -74,7 +74,7 @@ class LocalWorktreeRef(WorktreeRef):
         return "local"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class RemoteWorktreeRef(WorktreeRef):
     """Reference to a worktree stored on a remote (non-local) backend.
 
@@ -91,12 +91,41 @@ class RemoteWorktreeRef(WorktreeRef):
     at construction — there is no default. The previous silent default
     of ``"s3"`` masked bugs where gcs/azure handles would round-trip
     through the Dhara registry as s3 (security review #3).
+
+    ``init=False`` disables dataclass-generated ``__init__`` because
+    with ``slots=True`` the field name ``backend_kind`` shadows the
+    abstract ``@property`` from ``WorktreeRef`` in the MRO scan —
+    ty sees the dataclass field as an instance attribute, not as a
+    method override. The custom ``__init__`` accepts the public
+    ``backend_kind`` keyword but stores the value in a private
+    ``_backend_kind`` slot; the property reads it back. This keeps
+    the public constructor signature stable (callers still pass
+    ``backend_kind=...``) while satisfying ty's abstract-method
+    resolution.
     """
 
     bucket: str
     key: str
     worktree_id: str
-    backend_kind: BackendKind
+    _backend_kind: BackendKind
+
+    def __init__(
+        self,
+        bucket: str,
+        key: str,
+        worktree_id: str,
+        backend_kind: BackendKind,
+    ) -> None:
+        # ``frozen=True`` requires ``object.__setattr__`` to bypass
+        # the frozen slot-setattr guard.
+        object.__setattr__(self, "bucket", bucket)
+        object.__setattr__(self, "key", key)
+        object.__setattr__(self, "worktree_id", worktree_id)
+        object.__setattr__(self, "_backend_kind", backend_kind)
+
+    @property
+    def backend_kind(self) -> str:
+        return self._backend_kind
 
 
 @dataclass(frozen=True, slots=True)

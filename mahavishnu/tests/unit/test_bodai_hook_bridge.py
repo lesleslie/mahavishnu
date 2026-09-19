@@ -130,7 +130,7 @@ def test_handle_pre_tool_use_delegates_to_license_guard_when_present(
 
     monkeypatch.setitem(sys.modules, "mahavishnu.hook_guards", stub_module)
 
-    setattr(stub_module, "license_guard", _blocking_guard)
+    stub_module.license_guard = _blocking_guard  # ty: ignore[unresolved-attribute]
     env_block = CanonicalEnvelope(
         event="PreToolUse",
         harness="claude",
@@ -142,7 +142,7 @@ def test_handle_pre_tool_use_delegates_to_license_guard_when_present(
     )
     assert handle_pre_tool_use(env_block) == 2
 
-    setattr(stub_module, "license_guard", _permissive_guard)
+    stub_module.license_guard = _permissive_guard  # ty: ignore[unresolved-attribute]
     env_permit = CanonicalEnvelope(
         event="PreToolUse",
         harness="claude",

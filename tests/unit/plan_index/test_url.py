@@ -66,14 +66,14 @@ class TestRejection:
             # contains it; concatenating a string variable would let a
             # linter rewrite the source into its escaped form, hiding
             # the regression this test guards against.
-            normalize_repo_url("git@github.com:foo/bar.git ")
+            normalize_repo_url("git@github.com:foo/bar.git")
         assert "control characters" in exc_info.value.reason
 
     def test_unicode_paragraph_separator_rejected(self) -> None:
         with pytest.raises(RepoUrlRejectedError) as exc_info:
             # U+2029 PARAGRAPH SEPARATOR (category Zp) — same rationale
             # as :func:`test_unicode_line_separator_rejected`.
-            normalize_repo_url("git@github.com:foo/bar.git ")
+            normalize_repo_url("git@github.com:foo/bar.git")
         assert "control characters" in exc_info.value.reason
 
     def test_ftp_protocol_rejected(self) -> None:

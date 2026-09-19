@@ -23,10 +23,9 @@ from typing import TYPE_CHECKING
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core.models.persistence import WorkflowOutcome
-
 from mahavishnu.core._dhara_substrate_compat import dhara_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
+from mahavishnu.core.models.persistence import WorkflowOutcome
 
 if TYPE_CHECKING:
     from datetime import datetime

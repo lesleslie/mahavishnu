@@ -42,11 +42,11 @@ import uuid
 
 # Exception classes — shape-compatible with dhara.lock.protocol so
 # any future caller that catches them keeps working.
-class LockTimeout(Exception):
+class LockTimeoutError(Exception):
     """Acquire timed out before the lock became available."""
 
 
-class LockLost(Exception):
+class LockLostError(Exception):
     """Lock holder's entry vanished (TTL expired, owner mismatch, removed)."""
 
 
@@ -108,9 +108,7 @@ class Lock:
 
         now = datetime.now(UTC)
         token = owner_token or uuid.uuid4().hex
-        expires_at = (
-            None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
-        )
+        expires_at = None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
         handle = LockHandle(
             lock_key=lock_key,
             owner_token=token,
@@ -131,7 +129,7 @@ class Lock:
 __all__ = [
     "Lock",
     "LockHandle",
-    "LockLost",
+    "LockLostError",
     "LockPermanentError",
-    "LockTimeout",
+    "LockTimeoutError",
 ]
