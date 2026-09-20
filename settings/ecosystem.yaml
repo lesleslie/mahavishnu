@@ -135,6 +135,29 @@ repos:
   - frontend
   description: "CSS and web components framework for fastblocks \u2014 styling and UI primitives"
   status: active
+- name: flowscape
+  package: flowscape
+  path: /Users/les/Projects/flowscape
+  nickname: flowscape
+  nicknames:
+  - flowscape
+  role: app
+  tags:
+  - app
+  - macos
+  - swiftui
+  - 3d
+  - metal
+  - visualization
+  description: "Modern 3D network visualization for macOS \u2014 SwiftUI + Metal, no-payload wire format (hybrid Swift + Python)"
+  status: active
+  # Per-repo publish config. Operators fill in the real GitLab project ID.
+  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
+  # AND no CLI flag / env var / settings YAML overrides it. See
+  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  publish:
+    url: null
+    token_env: null
 - name: graphics-mcp
   package: graphics_mcp
   path: /Users/les/Projects/graphics-mcp
@@ -266,6 +289,13 @@ repos:
   - gui
   description: macOS SwiftUI desktop app for markdown prompt management (IPC via Unix socket)
   status: active
+  # Per-repo publish config. Operators fill in the real GitLab project ID.
+  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
+  # AND no CLI flag / env var / settings YAML overrides it. See
+  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  publish:
+    url: null
+    token_env: null
 - name: medium-mcp
   package: medium_mcp
   path: /Users/les/Projects/medium-mcp
@@ -426,6 +456,13 @@ repos:
   - python
   description: PWA content management system built from fastblocks
   status: active
+  # Per-repo publish config. Operators fill in the real GitLab project ID.
+  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
+  # AND no CLI flag / env var / settings YAML overrides it. See
+  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  publish:
+    url: null
+    token_env: null
 - name: spline-mcp
   package: spline_mcp
   path: /Users/les/Projects/spline-mcp

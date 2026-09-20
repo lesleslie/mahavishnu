@@ -125,8 +125,11 @@ class TestRegistryIntegrity:
 class TestMigrationOutcome:
     """Post-migration invariants on the canonical manifest."""
 
-    def test_entry_count_is_thirty_five(self) -> None:
-        assert len(_repos(ECOSYSTEM_PATH)) == 35, (
+    def test_entry_count_is_thirty_six(self) -> None:
+        # Bumped 35 → 36 when flowscape was added to the canonical manifest
+        # as a private GitLab repo with a publish block (see
+        # settings/ecosystem.yaml). Renamed the test method in lockstep.
+        assert len(_repos(ECOSYSTEM_PATH)) == 36, (
             "update pinned count to match current canonical manifest"
         )
 
@@ -162,6 +165,24 @@ class TestMigrationOutcome:
             if not required <= repo.keys()
         }
         assert offenders == {}, f"entries missing required keys: {offenders}"
+
+    # Repos that publish to a private GitLab PyPI registry. The publish block
+    # is read by crackerjack's PublishSettings resolution layer when
+    # BODAI_ECOSYSTEM_CONFIG points at this file. Adding a repo here without
+    # updating the pin below is a contract violation that ships silently.
+    PRIVATE_GITLAB_PUBLISH_REPOS = ("mdinject", "flowscape", "splashstand")
+
+    @pytest.mark.parametrize("repo_name", PRIVATE_GITLAB_PUBLISH_REPOS)
+    def test_private_gitlab_repos_have_publish_block(self, repo_name: str) -> None:
+        entry = next(
+            repo for repo in _repos(ECOSYSTEM_PATH) if repo["name"] == repo_name
+        )
+        assert "publish" in entry, (
+            f"{repo_name} must declare a publish: block (private GitLab PyPI registry)"
+        )
+        publish = entry["publish"]
+        assert "url" in publish, f"{repo_name}.publish missing url key"
+        assert "token_env" in publish, f"{repo_name}.publish missing token_env key"
 
 
 @pytest.mark.unit
