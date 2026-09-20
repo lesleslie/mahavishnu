@@ -19,6 +19,8 @@ surface stabilizes (currently only ``topics`` re-exports). Per the plan,
 
 from __future__ import annotations
 
+from mahavishnu.acp.events import EventSynthesizer
+from mahavishnu.acp.protocol import SessionUpdate
 from mahavishnu.acp.topics import (
     ACP_TOPICS,
     TOOL_CALL_COMPLETED,
@@ -29,4 +31,6 @@ __all__ = [
     "ACP_TOPICS",
     "TOOL_CALL_COMPLETED",
     "TOOL_CALL_STARTED",
+    "EventSynthesizer",
+    "SessionUpdate",
 ]
