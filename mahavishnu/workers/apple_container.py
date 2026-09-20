@@ -27,6 +27,10 @@ import time
 from typing import Any
 
 from ..core.errors import AppleContainerUnsupported, ContainerDaemonUnavailable
+from ..core.events.mahavishnu_publisher import (
+    publish_tool_call_completed,
+    publish_tool_call_started,
+)
 from . import _exec_guard
 from .base import BaseWorker, WorkerResult, WorkerStatus
 
@@ -171,6 +175,17 @@ class AppleContainerWorker(BaseWorker):
             self.cpus,
             self.memory,
         )
+        # Emit tool_call.started for ACP consumers (Phase 1 of the v1.0 ACP
+        # server build). session_id is None here — wiring the per-call
+        # session_id from WorkerManager is a follow-on; the dispatcher
+        # (Phase 2) reads these envelopes by topic and synthesizes ACP
+        # notifications. Failures swallowed by the publisher (see
+        # ``mahavishnu_publisher._publish``).
+        await publish_tool_call_started(
+            worker_id="apple-container",
+            task_id=self.container_id,
+            name=self.image,
+        )
         return self.container_id
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
@@ -299,6 +314,9 @@ class AppleContainerWorker(BaseWorker):
         """
         if not self.container_id:
             return
+        # Capture for the completion emission before we clear the field.
+        completed_task_id = self.container_id
+        completed_outcome = "completed"
         try:
             await _run_cli("stop", self.container_id)
             self._status = WorkerStatus.COMPLETED
@@ -306,10 +324,17 @@ class AppleContainerWorker(BaseWorker):
         except OSError as exc:
             logger.exception("Failed to stop apple-container %s", self.container_id)
             self._status = WorkerStatus.FAILED
+            completed_outcome = "failed"
             raise RuntimeError(f"Failed to stop Apple container: {exc}") from exc
         finally:
             self._running = False
             self.container_id = None
+            await publish_tool_call_completed(
+                worker_id="apple-container",
+                task_id=completed_task_id,
+                outcome=completed_outcome,
+                name=self.image,
+            )
 
     async def status(self) -> WorkerStatus:
         """Get microVM status via ``container inspect``.

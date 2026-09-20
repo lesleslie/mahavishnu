@@ -20,6 +20,10 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
+from ..core.events.mahavishnu_publisher import (
+    publish_tool_call_completed,
+    publish_tool_call_started,
+)
 from . import _exec_guard
 from .base import BaseWorker, WorkerResult, WorkerStatus
 
@@ -101,6 +105,15 @@ class E2BSandboxWorker(BaseWorker):
             self.sandbox_id,
             self.template,
             self.timeout,
+        )
+        # Emit tool_call.started for ACP consumers (Phase 1 of the v1.0 ACP
+        # server build). session_id is None here — WorkerManager plumbing
+        # of per-call session_id is a follow-on; the dispatcher (Phase 2)
+        # reads these envelopes by topic and synthesizes ACP notifications.
+        await publish_tool_call_started(
+            worker_id="e2b-sandbox",
+            task_id=self.sandbox_id,
+            name=self.template,
         )
         return self.sandbox_id
 
@@ -234,6 +247,9 @@ class E2BSandboxWorker(BaseWorker):
         """
         if self._sandbox is None:
             return
+        # Capture for the completion emission before we clear the fields.
+        completed_task_id = self.sandbox_id or "e2b-sandbox"
+        completed_outcome = "completed"
         try:
             await self._sandbox.kill()
             self._status = WorkerStatus.COMPLETED
@@ -241,11 +257,18 @@ class E2BSandboxWorker(BaseWorker):
         except Exception as exc:
             logger.exception("Failed to kill e2b sandbox %s", self.sandbox_id)
             self._status = WorkerStatus.FAILED
+            completed_outcome = "failed"
             raise RuntimeError(f"Failed to stop E2B sandbox: {exc}") from exc
         finally:
             self._running = False
             self._sandbox = None
             self.sandbox_id = None
+            await publish_tool_call_completed(
+                worker_id="e2b-sandbox",
+                task_id=completed_task_id,
+                outcome=completed_outcome,
+                name=self.template,
+            )
 
     async def status(self) -> WorkerStatus:
         """Get sandbox status via the SDK's is_running probe when available.

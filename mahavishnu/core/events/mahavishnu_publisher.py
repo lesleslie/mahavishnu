@@ -52,6 +52,12 @@ EVENT_VERSION = "1.0.0"
 TOPIC_WORKFLOW_STARTED = "workflow.started"
 TOPIC_WORKFLOW_COMPLETED = "workflow.completed"
 TOPIC_WORKFLOW_FAILED = "workflow.failed"
+# ACP-related worker lifecycle emissions (Phase 1 of the v1.0 ACP server build).
+# Topic strings match ``mahavishnu.acp.topics`` so the consumer side can use
+# a single import for routing. The dot-separated form matches the Oneiric
+# canonical envelope convention used throughout this module.
+TOPIC_TOOL_CALL_STARTED = "tool_call.started"
+TOPIC_TOOL_CALL_COMPLETED = "tool_call.completed"
 
 
 def _make_envelope(
@@ -162,13 +168,97 @@ async def publish_workflow_failed(
     await _publish(envelope, publisher)
 
 
+async def publish_tool_call_started(
+    worker_id: str,
+    task_id: str,
+    *,
+    name: str | None = None,
+    session_id: str | None = None,
+    publisher: OneiricEventPublisherProtocol | None = None,
+) -> None:
+    """Publish a ``tool_call.started`` event to the Bodai queue.
+
+    Emitted by worker dispatch boundaries (Apple container, E2B sandbox, etc.)
+    when a tool call begins. Consumed by ``mahavishnu.acp.events.EventSynthesizer``
+    which maps it to an ACP ``session/update`` notification of type
+    ``tool_call_update`` with ``status="running"``.
+
+    Args:
+        worker_id: Worker that owns this tool call (e.g. ``apple-container``,
+            ``e2b-sandbox``). Maps to ACP ``title`` on the wire.
+        task_id: Opaque task identifier within the worker. Maps to ACP
+            ``toolCallId``.
+        name: Optional human-readable name for the tool call. Defaults to
+            ``worker_id`` if not provided.
+        session_id: Optional correlation key for ACP routing. Stored in
+            the payload (the synthesizer's third-priority location).
+            Putting it in the payload rather than mutating envelope
+            headers sidesteps the Oneiric envelope's missing direct
+            ``source``/``version`` attributes (those live in
+            ``headers["source"]``).
+        publisher: Injected event publisher. ``None`` is a no-op.
+    """
+    payload: dict[str, Any] = {
+        "worker_id": worker_id,
+        "task_id": task_id,
+        "name": name or worker_id,
+    }
+    if session_id is not None:
+        payload["session_id"] = session_id
+    envelope = _make_envelope(TOPIC_TOOL_CALL_STARTED, SOURCE, payload)
+    await _publish(envelope, publisher)
+
+
+async def publish_tool_call_completed(
+    worker_id: str,
+    task_id: str,
+    *,
+    outcome: str = "completed",
+    name: str | None = None,
+    session_id: str | None = None,
+    publisher: OneiricEventPublisherProtocol | None = None,
+) -> None:
+    """Publish a ``tool_call.completed`` event to the Bodai queue.
+
+    Emitted by worker dispatch boundaries when a tool call ends. Consumed
+    by ``mahavishnu.acp.events.EventSynthesizer`` which maps it to an ACP
+    ``session/update`` notification of type ``tool_call_update`` with
+    ``status="completed"`` or ``"failed"``.
+
+    Args:
+        worker_id: Worker that owns this tool call.
+        task_id: Opaque task identifier within the worker. Maps to ACP
+            ``toolCallId``.
+        outcome: ``"completed"`` (default) or ``"failed"``. Failures
+            should be loud about themselves; the synthesizer honors this
+            field via ``_extract_outcome``.
+        name: Optional human-readable name for the tool call.
+        session_id: Optional correlation key for ACP routing (in payload).
+        publisher: Injected event publisher. ``None`` is a no-op.
+    """
+    payload: dict[str, Any] = {
+        "worker_id": worker_id,
+        "task_id": task_id,
+        "name": name or worker_id,
+        "outcome": outcome,
+    }
+    if session_id is not None:
+        payload["session_id"] = session_id
+    envelope = _make_envelope(TOPIC_TOOL_CALL_COMPLETED, SOURCE, payload)
+    await _publish(envelope, publisher)
+
+
 __all__ = [
     "EVENT_VERSION",
     "SOURCE",
+    "TOPIC_TOOL_CALL_COMPLETED",
+    "TOPIC_TOOL_CALL_STARTED",
     "TOPIC_WORKFLOW_COMPLETED",
     "TOPIC_WORKFLOW_FAILED",
     "TOPIC_WORKFLOW_STARTED",
     "_make_envelope",
+    "publish_tool_call_completed",
+    "publish_tool_call_started",
     "publish_workflow_completed",
     "publish_workflow_failed",
     "publish_workflow_started",
