@@ -1,8 +1,8 @@
 ---
-status: draft
+status: active
 role: implementation
 date: 2026-07-26
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-19
 superseded_by: null
 topic: acp-server
 ---
@@ -20,6 +20,20 @@ topic: acp-server
 
 ## Review history
 
+- **2026-09-19 — Operator signoff (activation).** Frontmatter
+  flipped `draft` → `active`. The plan body's
+  `Status: active, implementation` claim (line 14) was always
+  there from the 2026-07-27 multi-lens review; the operator
+  signoff today is what authorizes that claim to become true
+  end-to-end. No content changes — the 7-phase structure
+  (Phase 1 → 1.5 → 2 → 4, with Phase 3a/3b parallelizable)
+  remains as authored 2026-07-27. Implementation work is a
+  separate project and has not begun; this commit is purely
+  status paperwork. The `docs/followups/2026-07-27-acp-v15-followups.md`
+  trigger-state audit ran in parallel and confirmed all six
+  remaining v1.5 items are correctly partial (external
+  triggers unmet), so the v1.5 followup is not flipped with
+  this activation.
 - **2026-07-27 — Multi-lens adversarial review** (Architecture, Integration Contract, Test Strategy, Security, Spec Conformance, License/Compliance, + synthesis). **Verdict: SHIP-WITH-FIXES.** All six lenses returned PASS WITH NOTES. One critical issue (Phase 6 / Phase 4 typo in §1), ~28 major, ~30 minor, ~20 nits. All top-5 actions and the cross-cutting-theme structural fixes have been applied in this revision. Full deduplicated issue list in the workflow journal (`/private/tmp/claude-501/-Users-les-Projects-mahavishnu/03ad3673-6b33-4c9a-8866-48fbf76281b1/tasks/werg7eois.output`). Ready to flip from `draft` to `active` when the operator signs off.
 
 ## 1. Outcome

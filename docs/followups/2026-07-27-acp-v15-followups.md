@@ -11,7 +11,26 @@ topic: acp-v15-followups
 
 **Open** — 7 items, 1 resolved. Originally 8 items deferred from the v1.0 ACP
 server build plan (`docs/plans/2026-07-26-mahavishnu-acp-server.md`, status
-`active`, promoted 2026-07-27 after multi-lens adversarial review).
+`active`, promoted 2026-07-27 after multi-lens adversarial review and
+operator signoff 2026-09-19 — the latter is what made the frontmatter
+match the body's `Status: active, implementation` claim that had been
+in place since the multi-lens review).
+
+**Trigger-state audit (2026-09-19):** All six remaining items verified
+correctly partial against their triggers:
+
+| Item | Trigger | State |
+|------|---------|-------|
+| v1.5.1 (session persistence) | v1.0 reaches `adopted` | v1.0 now `active`; gate moved from "decide to build" → "ship v1.0" |
+| v1.5.2 (MCP-over-ACP) | upstream RFD lands | unchanged external blocker |
+| v1.5.3 (Remote ACP HTTP) | upstream transport draft stabilizes | unchanged external blocker |
+| v1.5.4 (UUID v7) | v1.5.1 ships | unchanged downstream |
+| v1.5.5 (additional session methods) | v1.5.1 ships | unchanged downstream |
+| v1.5.7 (Toad smoke) | v1.0 ships + Toad configured | gate moved from "decide to build" → "ship v1.0" |
+
+The activation is paperwork — implementation work is a separate project
+and has not begun. Item statuses stay partial until the underlying
+adoption / ship / external-spec events fire.
 
 ## Trigger
 
