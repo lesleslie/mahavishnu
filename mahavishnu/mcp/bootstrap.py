@@ -714,6 +714,18 @@ def _register_search_block(server: FastMCPServer) -> None:
     logger.info("Registered search-tools group (hybrid_search + cross_repo_search)")
 
 
+def _register_ecosystem_publish_url_block(server: FastMCPServer) -> None:
+    """Register the ecosystem publish-URL tool (sibling-tool for crackerjack).
+
+    Like ``_register_search_block`` above, this wires the tool into the
+    LEGACY ``register_profile_tools`` path (``_OPTIONAL_TOOL_BLOCKS``)
+    used by ``mahavishnu mcp start``. The W0 path's ``REGISTRATION_MAP``
+    in ``profiles.py`` is a parallel registration surface — both must
+    list this block, otherwise the CLI path silently drops it.
+    """
+    _register_ecosystem_publish_url_tool(server)
+
+
 def _register_a2a_routes_block(server: FastMCPServer) -> None:
     """Mount the A2A server routes on the Starlette app when enabled.
 
@@ -840,6 +852,9 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     ("_register_openhands_tools", _register_openhands_block),
     ("_register_capability_tools", _register_capability_block),
     ("_register_search_tools", _register_search_block),
+    # Ecosystem publish-URL tool — sibling surface for crackerjack's
+    # layered publish-URL resolution. Read-only, no auth gate.
+    ("_register_ecosystem_publish_url_tool", _register_ecosystem_publish_url_block),
 )
 
 
