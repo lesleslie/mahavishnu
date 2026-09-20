@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from oneiric.adapters.observability.settings import (
     OTelStorageSettings as _OneiricOTelStorageSettings,
@@ -1456,6 +1456,13 @@ class ACPSettings(BaseModel):
 
     ``component_name`` exists so the factory's structured log lines can
     identify which protocol emitted a given execute_fn timeout.
+
+    ``app`` is a runtime injection point: an ACP CLI can construct a
+    ``MahavishnuApp`` (or any object exposing ``.execute(payload)``) and
+    attach it via ``ACPSettings(app=shim)`` so ``build_execute_fn`` wires
+    real work instead of the echo stub. ``exclude=True`` keeps the
+    runtime object out of ``model_dump()`` output — it is never a
+    configuration value sourced from YAML or env vars.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -1489,6 +1496,18 @@ class ACPSettings(BaseModel):
         ge=1,
         le=1024,
         description="Session cap above which ``-32004`` is returned.",
+    )
+    app: Any = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "Runtime injection point — a duck-typed object exposing "
+            "``.execute(payload: dict) -> Awaitable[Any]`` that the factory "
+            "wraps with the configured timeout. Defaults to None, which "
+            "falls back to the echo stub. The ACP CLI attaches a "
+            "``MahavishnuApp``-backed shim here in production; tests attach "
+            "a mock. Excluded from serialization (never a config value)."
+        ),
     )
 
 

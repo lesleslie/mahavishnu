@@ -95,11 +95,23 @@ async def _spawn_server(
 
     The return tuple's last two elements are sentinels used to verify
     that the bearer was *not* leaked into stdout/stderr.
+
+    Default ``extra_env`` opts the subprocess into stub-mode execution
+    (``MAHAVISHNU_ACP_STUB_EXECUTE_FN=1``) — this suite tests protocol
+    behavior (initialize/auth/session envelopes), not the workflow
+    backend, so paying 2-3 s of Oneiric + MahavishnuApp boot per test
+    would just slow the suite. Tests that need the real wire-up can
+    pass ``extra_env={"MAHAVISHNU_ACP_STUB_EXECUTE_FN": "0"}`` to
+    override (or unset via ``del env[...]``).
     """
     binary = _find_mahavishnu_binary().split()
     cmd = binary + ["acp", "serve"]
     env = os.environ.copy()
     env[ACP_BEARER_ENV] = bearer
+    # Force stub-mode for protocol-level e2e. Tests that want the
+    # real wire-up pass ``extra_env={"MAHAVISHNU_ACP_STUB_EXECUTE_FN": "0"}``
+    # which overrides this default.
+    env.setdefault("MAHAVISHNU_ACP_STUB_EXECUTE_FN", "1")
     if extra_env:
         env.update(extra_env)
 

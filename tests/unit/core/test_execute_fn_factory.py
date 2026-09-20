@@ -144,3 +144,86 @@ class TestFactoryErrorEnveloping:
         fn = build_execute_fn(_StubSettings(app=_RaisingApp()))
         with pytest.raises(ValueError, match="boom"):
             asyncio.run(fn({"prompt": "x"}))
+
+
+class TestACPSettingsAppInjection:
+    """``ACPSettings.app`` is the runtime injection point for real wire-ups.
+
+    Phase 1.5 wire-up: the ACP CLI attaches a ``MahavishnuApp``-backed
+    shim via ``ACPSettings(app=shim)`` so production session/prompt
+    payloads route through ``MahavishnuApp.execute_workflow`` rather
+    than the echo stub. These tests pin the contract so a future
+    ``ACPSettings`` refactor doesn't silently break the wire-up.
+    """
+
+    def test_acp_settings_default_app_is_none(self) -> None:
+        """``ACPSettings.app`` defaults to ``None`` (echo stub path)."""
+        from mahavishnu.core.config import ACPSettings
+
+        assert ACPSettings().app is None
+
+    def test_acp_settings_app_is_excluded_from_dump(self) -> None:
+        """``app`` is excluded from ``model_dump()`` so it never leaks to YAML/JSON."""
+        from mahavishnu.core.config import ACPSettings
+
+        sentinel = object()
+        settings = ACPSettings(app=sentinel)  # type: ignore[arg-type]
+        dumped = settings.model_dump()
+        assert "app" not in dumped, (
+            "ACPSettings.app leaked into model_dump() — runtime objects "
+            "must use exclude=True to stay out of YAML/JSON serialization."
+        )
+
+    def test_acp_settings_app_accepts_arbitrary_object(self) -> None:
+        """``ACPSettings.app`` accepts any duck-typed object (no type gate)."""
+        from mahavishnu.core.config import ACPSettings
+
+        # The factory's contract is ``hasattr(app, "execute")``; we
+        # verify the field itself doesn't restrict to a specific type.
+        class _ArbitraryApp:
+            async def execute(self, payload: dict[str, Any]) -> Any:
+                return payload
+
+        settings = ACPSettings(app=_ArbitraryApp())  # type: ignore[arg-type]
+        assert settings.app is not None
+
+    def test_factory_routes_through_acp_settings_app(self) -> None:
+        """``build_execute_fn(ACPSettings(app=shim))`` invokes ``shim.execute``."""
+        from mahavishnu.core.config import ACPSettings
+
+        calls: list[dict[str, Any]] = []
+
+        class _RecordingShim:
+            async def execute(self, payload: dict[str, Any]) -> Any:
+                calls.append(payload)
+                return {"echo": payload.get("prompt", ""), "via": "shim"}
+
+        shim = _RecordingShim()
+        settings = ACPSettings(app=shim)  # type: ignore[arg-type]
+        fn = build_execute_fn(settings)
+        result = asyncio.run(fn({"prompt": "hi"}))
+
+        assert calls == [{"prompt": "hi"}]
+        assert result == {"echo": "hi", "via": "shim"}
+
+    def test_factory_app_injection_short_circuits_stub_path(self) -> None:
+        """When ``ACPSettings.app`` is set, the echo stub path is bypassed.
+
+        Pinned because a future factory refactor that forgets to
+        honor ``settings.app`` would silently regress the wire-up to
+        the echo stub — and the CLI's e2e tests opt into stub mode
+        explicitly, so a regression here wouldn't fail the suite.
+        """
+        from mahavishnu.core.config import ACPSettings
+
+        class _MarkerShim:
+            async def execute(self, payload: dict[str, Any]) -> Any:
+                return {"via": "marker"}
+
+        settings = ACPSettings(app=_MarkerShim())  # type: ignore[arg-type]
+        fn = build_execute_fn(settings)
+        result = asyncio.run(fn({"prompt": "anything"}))
+
+        # If the stub path fired, ``result.output`` would contain
+        # "[v1.0 stub] anything" and the dict path wouldn't run.
+        assert result == {"via": "marker"}
