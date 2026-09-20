@@ -4,7 +4,7 @@ role: canonical
 kind: reference
 topic: followups-index
 date: 2026-07-16
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-19
 blocks_on:
 ---
 # `docs/followups/` index
@@ -65,6 +65,7 @@ repo-wide `.archive/` ignore.
 | `.archive/2026-07-16-session-worktree-isolation.md` | Per-session git worktree isolation (Phase 1-6 + Phase 8 commit `206f23d`). | ✅ All commits referenced are in `HEAD`; frontmatter `status: complete`. Archived 2026-09-05 via `git mv`. |
 | `.archive/2026-07-16-dlq-fail-closed-session-checkpoint.md` | Historical checkpoint from 2026-07-16 session: DLQ fail-closed wiring (Phases 1-3) + followups lifecycle policy. | ✅ Describes completed work, all referenced files in `HEAD`. Archived 2026-09-05 via `git mv`. |
 | `.archive/2026-07-16-multi-session-mcp-contention.md` | Multi-Claude-session MCP contention: 4 concurrent Stop hooks fire `sb_checkpoint.py` simultaneously; `session-buddy` singleton `threading.Lock` blocks uvicorn event loop → `-32000 transport dropped`. | ✅ **Resolved** — single-flight coalescing + `asyncio.to_thread` wrappers landed in session-buddy commits `b86fbcbf`/`3c83f33d`/`d67a531c`/`4e661221`/`8b168816`/`1043ffec`. Integration test `tests/integration/test_concurrent_checkpoint_load.py` flips RED → GREEN (~41s for 6 parallel calls, within 1.5× single-call budget). Plan: `docs/plans/2026-07-16-checkpoint-async-refactor.md`. |
+| `.archive/2026-09-14-audit-orphans-residual-caller-detection.md` | `audit_orphans.py` residual caller-detection coverage: cross-module `__all__` walker + per-symbol wiring for 13 KEEP+DEFER production methods (auth, app, ecosystem, evidence, worktree-coord, capability-tools, pool-queueing, ws-broadcast). | ✅ All 3 acceptance criteria met. (1) Cross-module `__all__` walker shipped in commit `8c503e30` (`scripts/audit_orphans.py:_add_cross_module_all_refs`). (2) KEEP+DEFER symbols wired via the MCP registrar plan `fea18b7b` (11 tasks); 3 `unsubscribe_from_*` examples marked "leave intact" per the followup's own recommendation. (3) Audit re-run exits 0 with `--include-tests --exclude scripts` at 30/90/365-day lookbacks (verified 2026-09-19). |
 
 ## Lifecycle
 
