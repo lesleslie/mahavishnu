@@ -23,40 +23,36 @@ from typing import Any
 import typer
 
 from mahavishnu.acp.server import serve
+from mahavishnu.core.execute_fn_factory import build_execute_fn
 
 logger = logging.getLogger("mahavishnu.acp.cli")
 
 app = typer.Typer(help="ACP server (stdio JSON-RPC 2.0) commands.")
 
 
+class _ACPSettings:
+    """Minimal settings object passed to ``build_execute_fn``.
+
+    The full ``ACPSettings`` is a follow-on; for now we pass a stub
+    with just the fields the factory reads (``component_name`` and
+    ``execute_fn_timeout_seconds``).
+    """
+
+    component_name: str = "acp"
+    execute_fn_timeout_seconds: float = 600.0
+
+
 def _build_default_execute_fn() -> Any:
     """Construct the ``execute_fn`` passed to the dispatcher.
 
-    Phase 1.5 plan: this delegates to ``build_execute_fn(settings)`` from
-    ``mahavishnu.core.execute_fn_factory``. That factory doesn't exist
-    yet — Phase 1.5 is a follow-on. Until then, return a stub that
-    echoes the prompt back. The dispatcher's protocol behavior is
-    fully exercised by this stub; only the actual prompt execution
-    is a placeholder.
+    Phase 1.5 unified this with the A2A path: both protocols now
+    import ``build_execute_fn`` from ``mahavishnu.core.execute_fn_factory``
+    and call it with their protocol-specific settings. When the full
+    ``MahavishnuApp.execute`` refactor lands, the factory wires the
+    app; until then, the factory falls back to a stub ``WorkerResult``
+    echo.
     """
-    try:
-        from mahavishnu.core.execute_fn_factory import (
-            build_execute_fn,  # type: ignore[import-not-found]
-        )
-
-        return build_execute_fn()
-    except ImportError:
-        # Phase 1.5 hasn't landed yet. Return a stub that just echoes the
-        # prompt — enough for the protocol smoke test in Phase 2's
-        # exit criteria.
-        async def _stub_execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
-            return {
-                "echo": payload.get("prompt"),
-                "stub": True,
-                "note": "Phase 1.5 execute_fn not yet wired; this is a stub.",
-            }
-
-        return _stub_execute_fn
+    return build_execute_fn(_ACPSettings())
 
 
 @app.command("serve")
