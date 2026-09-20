@@ -50,10 +50,10 @@ def get_session_tracer() -> Any:
     no-op. The dispatcher must still emit structured log lines
     regardless of OTel state.
     """
-    if not _OTEL_AVAILABLE:
+    if not _OTEL_AVAILABLE or trace is None:
         return None
     try:
-        return trace.get_tracer("mahavishnu.acp.session")  # type: ignore[union-attr]
+        return trace.get_tracer("mahavishnu.acp.session")
     except Exception:  # noqa: BLE001 — best-effort init; missing provider is expected
         # Provider not configured or other init issue — treat as no-op.
         return None

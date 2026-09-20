@@ -47,9 +47,10 @@ from dataclasses import dataclass, field
 import json
 import logging
 import os
+from pathlib import Path
 import sys
 import threading
-from typing import Any
+from typing import Any, cast
 import uuid
 
 from mahavishnu.acp.auth import (
@@ -110,11 +111,13 @@ CANCEL_GRACE_SECONDS: float = 5.0
 
 # === Parse-error sentinel ===
 
+
 class _ACPParseError(Exception):
     """Internal: stdin line exceeded the 1 MB cap (raised before ``json.loads``)."""
 
 
 # === Safe line reader ===
+
 
 class _SafeLineReader:
     """Reads newline-delimited lines from an async stream, capped at *max_bytes*.
@@ -159,13 +162,12 @@ class _SafeLineReader:
         line, _, rest = self._buffer.partition(b"\n")
         self._buffer = bytearray(rest)
         if len(line) > self._max:
-            raise _ACPParseError(
-                f"line exceeds {self._max} bytes (got {len(line)})"
-            )
+            raise _ACPParseError(f"line exceeds {self._max} bytes (got {len(line)})")
         return line.decode("utf-8", errors="replace")
 
 
 # === Session ===
+
 
 @dataclass
 class ACPSession:
@@ -543,9 +545,7 @@ class ACPServer:
 
         async def _run_with_timeout() -> Any:
             try:
-                return await asyncio.wait_for(
-                    _run(), timeout=self._session_timeout
-                )
+                return await asyncio.wait_for(_run(), timeout=self._session_timeout)
             except TimeoutError as exc:
                 logger.warning(
                     "acp.session_timeout session_id=%s timeout_s=%s",
@@ -657,9 +657,7 @@ class ACPServer:
         ).model_dump()
         line = json.dumps(response, default=str) + "\n"
         stdout.write(line.encode("utf-8"))
-        logger.info(
-            "acp.response_sent id=%s error_code=%d", req_id, error.code
-        )
+        logger.info("acp.response_sent id=%s error_code=%d", req_id, error.code)
 
 
 # === Module-level convenience ===
@@ -681,9 +679,7 @@ def _validate_stdin(fd: int) -> None:
     :mod:`mahavishnu.cli.acp_cli` translates it to ``typer.Exit(1)``.
     """
     if fd < 0:
-        raise RuntimeError(
-            f"invalid file descriptor: {fd} (ACP needs a real stdin fd)"
-        )
+        raise RuntimeError(f"invalid file descriptor: {fd} (ACP needs a real stdin fd)")
     try:
         st = os.fstat(fd)
     except OSError as exc:
@@ -696,14 +692,10 @@ def _validate_stdin(fd: int) -> None:
         )
     # Detect /dev/null by comparing device identity (portable across macOS / Linux).
     try:
-        devnull_st = os.stat("/dev/null")
+        devnull_st = Path("/dev/null").stat()
     except OSError:
         devnull_st = None
-    if (
-        devnull_st is not None
-        and st.st_dev == devnull_st.st_dev
-        and st.st_ino == devnull_st.st_ino
-    ):
+    if devnull_st is not None and st.st_dev == devnull_st.st_dev and st.st_ino == devnull_st.st_ino:
         raise RuntimeError(
             "stdin is /dev/null — ACP needs an upstream JSON-RPC stream. "
             "If you meant to test, run with a real pipe: "
@@ -754,7 +746,11 @@ class _SyncStdinFeeder:
             self._loop.call_soon_threadsafe(fn, *args)
         except RuntimeError as exc:
             # Loop is closed (process tearing down). Log and let the thread exit.
-            logger.debug("acp.stdin_feeder_post_after_close fn=%s error=%s", fn.__name__, exc)
+            # ``Callable[..., Any]`` doesn't expose ``__name__`` at the type level;
+            # ``getattr`` keeps the debug log useful when ``fn`` is a real
+            # function/method while staying safe under duck typing.
+            fn_name = getattr(fn, "__name__", repr(fn))
+            logger.debug("acp.stdin_feeder_post_after_close fn=%s error=%s", fn_name, exc)
 
     def _run(self) -> None:
         try:
@@ -831,7 +827,12 @@ async def serve(
         _SyncStdinFeeder(stdin, stdin_fd, loop).start()
     if stdout is None:
         stdout = _SyncStdoutWriter()
-    await server.serve(stdin, stdout, stderr)
+    # ``_SyncStdoutWriter`` duck-types the asyncio ``StreamWriter`` surface
+    # (``write(data: bytes)`` + ``async drain()``) so the server loop
+    # accepts it transparently. The cast tells ``ty`` the duck-typed
+    # value satisfies the declared ``StreamWriter`` parameter type —
+    # no runtime cost, no behavior change.
+    await server.serve(stdin, cast("asyncio.StreamWriter", stdout), stderr)
 
 
 __all__ = [
@@ -842,8 +843,8 @@ __all__ = [
     "ACPError",
     "ACPServer",
     "ACPSession",
-    "new_session_id",
-    "serve",
     "_SyncStdinFeeder",
     "_validate_stdin",
+    "new_session_id",
+    "serve",
 ]
