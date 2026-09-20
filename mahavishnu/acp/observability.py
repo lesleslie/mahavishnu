@@ -76,7 +76,7 @@ def is_otel_active() -> bool:
         from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
 
         return isinstance(provider, TracerProvider)
-    except Exception:
+    except Exception:  # noqa: BLE001 — best-effort OTel provider detection, raise would break the dispatcher's main flow on telemetry misconfiguration
         return False
 
 
@@ -119,7 +119,7 @@ def session_span(
             for k, v in (attributes or {}).items():
                 try:
                     span.set_attribute(k, v)
-                except Exception:  # noqa: BLE001 — non-string attrs are skipped silently
+                except Exception:  # noqa: BLE001, S110 — non-string attrs are skipped silently; raising would break the dispatcher's main flow on telemetry misconfiguration
                     pass
             try:
                 yield state
@@ -131,7 +131,7 @@ def session_span(
                 if state["status"] == "error":
                     try:
                         span.set_status(Status(StatusCode.ERROR))  # type: ignore[arg-type]
-                    except Exception:
+                    except Exception:  # noqa: BLE001, S110 — best-effort error status reporting; raising would mask the original error
                         pass
                 logger.info(
                     "acp.session_completed session_id=%s stop_reason=%s duration_ms=%.1f",

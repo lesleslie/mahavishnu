@@ -130,7 +130,11 @@ _AUTO_FILLED_KEYS: tuple[str, ...] = ("started_at_ms",)
 # whitelist and rejects any ctx key not in it.
 _KNOWN_KEYS_PER_OP: dict[str, frozenset[str]] = {
     op: frozenset(_REQUIRED_KEYS[op]).union(
-        _INT_KEYS, _BOOL_KEYS, _STR_KEYS, _AUTO_FILLED_KEYS, _LITERAL_KEYS.keys(),
+        _INT_KEYS,
+        _BOOL_KEYS,
+        _STR_KEYS,
+        _AUTO_FILLED_KEYS,
+        _LITERAL_KEYS.keys(),
     )
     for op in _REQUIRED_KEYS
 }
@@ -268,9 +272,10 @@ def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
     _check_required_keys(op, ctx)
     unknown = set(ctx) - _KNOWN_KEYS_PER_OP[op]
     if unknown:
+        first_unknown = min(unknown)
         raise JotValidationError(
             f"unknown keys for op={op!r}: {sorted(unknown)}",
-            field=f"ctx.{sorted(unknown)[0]}",
+            field=f"ctx.{first_unknown}",
             error_id="ERROR_JOT_VALIDATION",
         )
     _check_typed_keys(op, ctx, _INT_KEYS, "int", _is_pure_int)
@@ -316,6 +321,7 @@ class ActionProposalDict(TypedDict):
       - suggested_action: "dispatch" | "defer" | "done" | "delete" | "skip"
       - reason: str  (short human-readable rationale)
     """
+
     handle: str
     suggested_action: Literal["dispatch", "defer", "done", "delete", "skip"]
     reason: str
