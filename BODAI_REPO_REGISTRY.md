@@ -30,6 +30,7 @@ or higher.
 
 ## Confirmed Bodai repos (>=3.13 currently; bumping to >=3.14 in Phases 0.1–0.N)
 
+
 ### Core 7 (in-scope for streaming tar Phase 3)
 
 | Repo | Path | Current `requires-python` | Notes |
@@ -57,7 +58,7 @@ or higher.
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
 | archive-org-mcp | /Users/les/Projects/archive-org-mcp/ | >=3.14 | requires-python >=3.14 |
-| chat-bridge-mcp | /Users/les/Projects/chat-bridge-mcp/ | >=3.14 | Bridge MCP for Claude Desktop + ChatGPT Desktop via CDP; v0.1.0 (`2026-09-17`) — 6-tool surface complete, wire-up fixes landed; renamed from cross-llm-mcp (`2026-09-16`). https://github.com/lesleslie/chat-bridge-mcp |
+| cmux-mcp | /Users/les/Projects/cmux-mcp/ | >=3.14 | MCP server for cmux terminal automation; flat-layout migration 2026-09-20 from src-layout |
 | css-mcp | /Users/les/Projects/css-mcp/ | >=3.14 | **Phase 0.8**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | excalidraw-mcp | /Users/les/Projects/excalidraw-mcp/ | >=3.14 | discovered |
 | graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.14 | **Phase 0.8**. pulled in httpcore2/httpx2 transitively. FastMCP **>=4.0.3** (`2026-09-06`) |
@@ -76,16 +77,19 @@ or higher.
 | synxis-crs-mcp | /Users/les/Projects/synxis-crs-mcp/ | >=3.14 | discovered |
 | synxis-pms-mcp | /Users/les/Projects/synxis-pms-mcp/ | >=3.14 | discovered |
 | unifi-mcp | /Users/les/Projects/unifi-mcp/ | >=3.14 | discovered |
+| www-mcp-servers | /Users/les/Projects/www-mcp-servers/ | n/a | active |
 
 ### Extensions
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
+| jinja2-custom-delimiters | /Users/les/Projects/jinja2-custom-delimiters/ | n/a | PyCharm plugin for custom Jinja2 delimiter syntax highlighting (Python); role: extension in ecosystem.yaml |
 
 ### Desktop / GUI
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
+| flowscape | /Users/les/Projects/flowscape/ | >=3.14 | active |
 | mdinject | /Users/les/Projects/mdinject/ | >=3.14 | PySide6 desktop app; also exposes MCP server (mdinject-mcp) |
 
 ### Meta
@@ -105,13 +109,13 @@ or higher.
 
 - Core 7 (in-scope for streaming tar Phase 3): 7
 - Web / framework libraries: 5
-- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 20
+- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 21
 - Extensions: 1
-- Desktop / GUI: 1
+- Desktop / GUI: 2
 - Meta: 1
 - Deprecated/Archived: 2
 
-**Total active Bodai repos: 35**
+**Total active Bodai repos: 37**
 
 ## Per-project MCP server and agent scoping
 
@@ -136,5 +140,3 @@ _(Hand-maintained footer. Not generated.)_
 
 - `www-mcp-servers/` — no pyproject.toml; docs-only
   Removed from `settings/ecosystem.yaml` 2026-09-09.
-- `jinja2-custom-delimiters/` — IntelliJ Platform Gradle plugin (Kotlin), not Python;
-  no `pyproject.toml`. Was previously listed under `### Extensions` 2026-08-31.

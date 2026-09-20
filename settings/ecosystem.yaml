@@ -49,6 +49,22 @@ repos:
   description: Central meta-project for the Bodai ecosystem
   status: active
   mcp: native
+- name: cmux-mcp
+  package: cmux_mcp
+  path: /Users/les/Projects/cmux-mcp
+  nickname: cmux
+  nicknames:
+  - cmux
+  role: tool
+  tags:
+  - mcp
+  - terminal
+  - automation
+  - macos
+  - python
+  description: MCP server for cmux terminal automation (macOS only); v0.1.0 (`2026-09-19`) — 16-tool surface, browser/CDP/cross-process tool registry
+  status: active
+  mcp: 3rd-party
 - name: crackerjack
   package: crackerjack
   path: /Users/les/Projects/crackerjack

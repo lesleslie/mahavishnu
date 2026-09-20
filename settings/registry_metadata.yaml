@@ -163,6 +163,9 @@ repos:
   bodai:
     provenance: brief
     registry_notes: "The Orb — ecosystem meta-project"
+  cmux-mcp:
+    provenance: discovered
+    registry_notes: "MCP server for cmux terminal automation; flat-layout migration 2026-09-20 from src-layout"
   mahavishnu:
     phase: "Phase 0.N"
     provenance: brief
