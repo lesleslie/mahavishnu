@@ -1411,6 +1411,14 @@ class A2ASettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
+    component_name: str = Field(
+        default="a2a",
+        description=(
+            "Identifier used by ``build_execute_fn`` in log lines. Mirror "
+            "field of the same name on ``ACPSettings`` so the factory's "
+            "caller_label discovery works for both protocols."
+        ),
+    )
     require_auth: bool = Field(
         default=True,
         description=(
@@ -1424,8 +1432,64 @@ class A2ASettings(BaseModel):
         le=3600.0,
         description="Maximum seconds to wait for execute_fn on /tasks/sendSubscribe before timing out.",
     )
+    execute_fn_timeout_seconds: float = Field(
+        default=600.0,
+        ge=5.0,
+        le=3600.0,
+        description=(
+            "Maximum seconds for the central ``build_execute_fn`` factory "
+            "to await the underlying executor. Phase 1.5 centralizes this "
+            "knob; A2A and ACP both read from this field on their settings."
+        ),
+    )
     card: A2ACardSettings = A2ACardSettings()
     agents: list[A2AAgentEntry] = []
+
+
+class ACPSettings(BaseModel):
+    """ACP (Agent Client Protocol) settings — stdio JSON-RPC 2.0 dispatcher.
+
+    Configured under ``MahavishnuSettings.acp`` (or ``settings.local.yaml``).
+    The dispatcher reads this at module-level ``serve()`` startup; missing
+    fields default to the historical values that the Phase 2 dispatcher
+    shipped with (600 s execute timeout, 16 concurrent sessions).
+
+    ``component_name`` exists so the factory's structured log lines can
+    identify which protocol emitted a given execute_fn timeout.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    component_name: str = Field(
+        default="acp",
+        description="Identifier used by ``build_execute_fn`` in log lines.",
+    )
+    execute_fn_timeout_seconds: float = Field(
+        default=600.0,
+        ge=5.0,
+        le=3600.0,
+        description=(
+            "Maximum seconds for ``build_execute_fn`` to await the underlying executor. "
+            "Mirrors ``A2ASettings.execute_fn_timeout_seconds``."
+        ),
+    )
+    session_timeout_seconds: float = Field(
+        default=600.0,
+        ge=5.0,
+        le=3600.0,
+        description=(
+            "Per-``session/prompt`` timeout enforced by the dispatcher via "
+            "``asyncio.wait_for``. Independent of the executor-level timeout "
+            "above — the smaller of the two wins when both apply."
+        ),
+    )
+    max_concurrent_sessions: int = Field(
+        default=16,
+        ge=1,
+        le=1024,
+        description="Session cap above which ``-32004`` is returned.",
+    )
 
 
 class OpenHandsSettings(BaseModel):
@@ -2624,6 +2688,11 @@ class MahavishnuSettings(BaseSettings):
 
     # A2A (Agent-to-Agent) protocol configuration (optional)
     a2a: A2ASettings | None = None
+
+    # ACP (Agent Client Protocol) configuration (optional, defaults are
+    # sane — the module-level ``mahavishnu acp serve`` CLI builds its own
+    # ``ACPSettings()`` and does not need this top-level wiring).
+    acp: ACPSettings | None = None
 
     # ===== Grouped Configuration =====
 

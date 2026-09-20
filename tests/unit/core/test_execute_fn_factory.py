@@ -1,10 +1,7 @@
 """Tests for ``mahavishnu.core.execute_fn_factory``.
 
-Per plan §Phase 1.5 Tasks 4. One test per public surface, plus a
-"behavior unchanged for A2A" assertion that exercises the new factory
-through A2A's existing test surface.
-
-The factory has two paths:
+Per plan §Phase 1.5 Tasks 4 + Option C follow-on. The factory has two
+paths:
 
 1. **App-wired path** — when ``settings.app.execute`` is reachable,
    the factory wraps the call in ``asyncio.wait_for(timeout)``.
@@ -13,9 +10,9 @@ The factory has two paths:
    fallback for tests / environments that don't have a full
    ``MahavishnuApp`` instance.
 
-Phase 1.5 ships both paths. The stub-path tests are deterministic
-and fast; the app-wired-path tests are marked xfail until the full
-``MahavishnuApp.execute`` refactor lands (a follow-on).
+Both paths are deterministic — Option C removed the prior
+``xfail`` markers because the factory implementation is correct
+without further ``MahavishnuApp`` refactor work.
 """
 
 from __future__ import annotations
@@ -25,6 +22,7 @@ from typing import Any
 
 import pytest
 
+from mahavishnu.core.config import ACPSettings
 from mahavishnu.core.execute_fn_factory import (
     DEFAULT_EXECUTE_FN_TIMEOUT_SECONDS,
     build_execute_fn,
@@ -34,7 +32,12 @@ pytestmark = pytest.mark.unit
 
 
 class _StubSettings:
-    """Stand-in for ``A2ASettings`` — only the attributes the factory reads."""
+    """Stand-in for ``A2ASettings`` / ``ACPSettings`` — only the attributes the factory reads.
+
+    Pydantic's ``extra="forbid"`` means we can't trivially append
+    ``app`` to ``A2ASettings()`` or ``ACPSettings()``, so for the
+    app-wired path tests we use this duck-typed namespace.
+    """
 
     def __init__(
         self,
@@ -52,7 +55,7 @@ class TestBuildExecuteFnStubPath:
     """Tests for the stub path (no app wired)."""
 
     def test_returns_callable(self) -> None:
-        fn = build_execute_fn(_StubSettings())
+        fn = build_execute_fn(ACPSettings())
         assert callable(fn)
 
     def test_factory_default_timeout_constant(self) -> None:
@@ -62,35 +65,43 @@ class TestBuildExecuteFnStubPath:
     def test_factory_returns_worker_result_when_no_app(self) -> None:
         """Without a configured ``app``, the factory returns a stub WorkerResult.
 
-        The stub echoes the prompt and includes Phase 1.5 metadata so
-        tests can distinguish it from real implementations.
+        The stub echoes the prompt and includes ``v1_0_stub`` metadata
+        so tests can distinguish it from real implementations.
         """
-        fn = build_execute_fn(_StubSettings(component_name="acp-stub"))
+        settings = ACPSettings(component_name="acp-stub")
+        fn = build_execute_fn(settings)
         result = asyncio.run(fn({"prompt": "hello world"}))
         # WorkerResult-shaped: has ``status``, ``output``, ``error``, ``metadata``.
         assert result.status.value == "completed"
         assert "hello world" in result.output
-        assert result.metadata.get("phase_1_5") is True
+        assert result.metadata.get("v1_0_stub") is True
         assert result.metadata.get("echo") == "hello world"
 
     def test_stub_preserves_payload_extra_keys(self) -> None:
         """Non-prompt keys in the payload are preserved in metadata."""
-        fn = build_execute_fn(_StubSettings())
+        settings = ACPSettings()
+        fn = build_execute_fn(settings)
         result = asyncio.run(
             fn({"prompt": "x", "user_id": "u-1", "session_id": "s-1"})
         )
         assert result.metadata.get("echo") == "x"
 
+    def test_factory_accepts_a2a_settings(self) -> None:
+        """``A2ASettings`` (or any object matching the duck-typed shape) is accepted."""
+        from mahavishnu.core.config import A2ASettings
+
+        settings = A2ASettings()
+        fn = build_execute_fn(settings)
+        result = asyncio.run(fn({"prompt": "via a2a"}))
+        assert "via a2a" in result.output
+
 
 class TestBuildExecuteFnAppPath:
-    """Tests for the app-wired path. Marked xfail — the full MahavishnuApp
-    refactor is a follow-on, not Phase 1.5. Pinning the timeout behavior
-    here so a future wiring doesn't accidentally drop it.
-    """
+    """Tests for the app-wired path — factory wraps ``app.execute`` under the timeout."""
 
-    @pytest.mark.xfail(reason="MahavishnuApp.execute refactor is a Phase 1.5 follow-on", strict=False)
     def test_factory_wraps_with_timeout(self) -> None:
         """The factory's wrapper enforces ``settings.execute_fn_timeout_seconds``."""
+
         async def slow_app_execute(payload: dict[str, Any]) -> Any:
             await asyncio.sleep(2)  # exceeds the 0.1s cap
 
@@ -98,11 +109,12 @@ class TestBuildExecuteFnAppPath:
         class _App:
             execute = staticmethod(slow_app_execute)
 
-        fn = build_execute_fn(_StubSettings(app=_App(), execute_fn_timeout_seconds=0.1))
+        fn = build_execute_fn(
+            _StubSettings(app=_App(), execute_fn_timeout_seconds=0.1)
+        )
         with pytest.raises(TimeoutError):
             asyncio.run(fn({"prompt": "x"}))
 
-    @pytest.mark.xfail(reason="MahavishnuApp.execute refactor is a Phase 1.5 follow-on", strict=False)
     def test_factory_strips_no_payload(self) -> None:
         """The factory wraps any payload as-is (no mutation)."""
         payload = {"prompt": "hello", "extra": 1}
@@ -124,7 +136,6 @@ class TestBuildExecuteFnAppPath:
 class TestFactoryErrorEnveloping:
     """Exceptions inside ``execute_fn`` propagate (callers format their own errors)."""
 
-    @pytest.mark.xfail(reason="App-wired path; MahavishnuApp refactor follow-on", strict=False)
     def test_exception_propagates(self) -> None:
         class _RaisingApp:
             async def execute(self, payload: dict[str, Any]) -> Any:

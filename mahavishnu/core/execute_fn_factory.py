@@ -13,6 +13,10 @@ This factory centralizes three things:
 1. **The signature.** ``build_execute_fn(settings) -> Callable`` is
    the single source for "given a settings object, give me the
    dispatcher entry point". Both protocols import it from here.
+   The function returned is ``async`` throughout — the dispatcher
+   ``awaits`` it under its own session timeout, and ACP's
+   ``session/prompt`` handler chains an additional ``asyncio.wait_for``
+   for the per-session cap.
 
 2. **The timeout.** Every ``execute_fn`` invocation runs under
    ``asyncio.wait_for(..., timeout=settings.execute_fn_timeout_seconds)``
@@ -25,12 +29,18 @@ This factory centralizes three things:
    so A2A's ``_result_to_a2a`` can serialize a clean error envelope
    without leaking the raw exception to the client.
 
+The settings field ``execute_fn_timeout_seconds`` is now a **real
+Pydantic field** on both ``A2ASettings`` and ``ACPSettings`` (Option
+C landed this in v1.0). The factory reads it directly; if a caller
+builds its own ad-hoc settings object (e.g. unit tests), the
+annotation is structural — the factory reads ``settings.component_name``
+and ``settings.execute_fn_timeout_seconds``.
+
 The actual worker-dispatch wiring (which adapter, which pool, which
-MahavishnuSettings) is left to a follow-on — Phase 1.5 extracts the
-shape; the full implementation lands when ``MahavishnuApp.execute``
-gets refactored to be dispatcher-callable. For now, the factory
-returns a thin wrapper that calls into the same worker pool the
-existing A2A handler used, so behavior is unchanged.
+MahavishnuSettings) is delegated to ``MahavishnuApp.execute`` when
+the dispatcher is started with a configured app. The factory only
+performs the timeout enforcement and error wrapping; it does not
+itself route to a pool.
 """
 
 from __future__ import annotations
@@ -38,10 +48,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable  # noqa: TC003 — used as runtime Callable type
 import logging
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from mahavishnu.core.config import A2ASettings
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +57,18 @@ logger = logging.getLogger(__name__)
 # is forbidden. The default here is the historical A2A value
 # (600.0s); callers override via ``settings.execute_fn_timeout_seconds``.
 DEFAULT_EXECUTE_FN_TIMEOUT_SECONDS: float = 600.0
+
+
+class _SettingsShape(Protocol):
+    """Structural shape the factory requires of its settings object.
+
+    Both ``A2ASettings`` and ``ACPSettings`` carry these fields, so
+    duck-typing avoids the hard import (which would re-trigger the
+    ``mahavishnu.core.config`` import chain on every factory load).
+    """
+
+    component_name: str
+    execute_fn_timeout_seconds: float
 
 
 async def _wrap_with_timeout(
@@ -82,42 +101,41 @@ async def _wrap_with_timeout(
 
 
 def build_execute_fn(
-    settings: A2ASettings,
+    settings: _SettingsShape,
 ) -> Callable[[dict[str, Any]], Awaitable[Any]]:
     """Build the ``execute_fn`` callable that A2A and ACP dispatchers consume.
 
     Args:
         settings: The protocol-specific settings object. Both
-            ``A2ASettings`` and the ACP dispatcher's settings carry an
-            ``execute_fn_timeout_seconds`` field (or default — see
-            :data:`DEFAULT_EXECUTE_FN_TIMEOUT_SECONDS`).
+            :class:`mahavishnu.core.config.A2ASettings` and
+            :class:`mahavishnu.core.config.ACPSettings` carry the
+            required fields (``component_name`` and
+            ``execute_fn_timeout_seconds``).
 
     Returns:
         A coroutine function ``async def execute_fn(payload) -> Any``
-        that runs the Mahavishnu task pipeline against the given
-        ``payload``. Wraps the actual dispatch in
+        that runs the executor under
         :func:`asyncio.wait_for` so no caller path can hang forever.
 
     Behavior:
-        For Phase 1.5 the factory delegates to ``MahavishnuApp.execute``
-        when an ``app`` is reachable; otherwise it returns a stub that
-        echoes the prompt back (preserving A2A's pre-Phase-1.5
-        behavior under tests). The full worker-dispatch wiring lands
-        as a follow-on.
+        Delegates to ``MahavishnuApp.execute`` when an ``app`` is
+        configured on the settings (``settings.app``); otherwise
+        returns a ``WorkerResult`` stub that echoes the prompt back —
+        this preserves the pre-Phase-1.5 behavior under tests that
+        don't construct a full app.
     """
-    timeout_seconds = getattr(
-        settings, "execute_fn_timeout_seconds", DEFAULT_EXECUTE_FN_TIMEOUT_SECONDS
-    )
-    caller_label = getattr(settings, "component_name", "acp").lower()
+    timeout_seconds = float(settings.execute_fn_timeout_seconds)
+    caller_label = str(settings.component_name).lower()
 
     async def execute_fn(payload: dict[str, Any]) -> Any:
         """The dispatcher-facing entry point.
 
         Looks for a configured ``MahavishnuApp`` on the settings
-        (``settings.app``) and delegates to its ``execute`` method when
-        present. Falls back to a stub echo when no app is wired — this
-        preserves A2A's pre-Phase-1.5 test surface (the test suite
-        passes an ``execute_fn`` directly, not via this factory).
+        (``settings.app``) and delegates to its ``execute`` method
+        when present. Falls back to a stub echo when no app is
+        wired — preserves A2A's pre-Phase-1.5 test surface (the
+        test suite passes an ``execute_fn`` directly, not via
+        this factory).
         """
         app = getattr(settings, "app", None)
         if app is not None and hasattr(app, "execute"):
@@ -135,11 +153,11 @@ def build_execute_fn(
         return WorkerResult(
             worker_id=f"{caller_label}-stub",
             status=WorkerStatus.COMPLETED,
-            output=f"[Phase 1.5 stub] {prompt}",
+            output=f"[v1.0 stub] {prompt}",
             error=None,
             exit_code=0,
             duration_seconds=0.0,
-            metadata={"phase_1_5": True, "echo": prompt},
+            metadata={"v1_0_stub": True, "echo": prompt},
         )
 
     return execute_fn

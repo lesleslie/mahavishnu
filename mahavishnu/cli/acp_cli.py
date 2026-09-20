@@ -23,6 +23,7 @@ from typing import Any
 import typer
 
 from mahavishnu.acp.server import serve
+from mahavishnu.core.config import ACPSettings
 from mahavishnu.core.execute_fn_factory import build_execute_fn
 
 logger = logging.getLogger("mahavishnu.acp.cli")
@@ -30,29 +31,23 @@ logger = logging.getLogger("mahavishnu.acp.cli")
 app = typer.Typer(help="ACP server (stdio JSON-RPC 2.0) commands.")
 
 
-class _ACPSettings:
-    """Minimal settings object passed to ``build_execute_fn``.
-
-    The full ``ACPSettings`` is a follow-on; for now we pass a stub
-    with just the fields the factory reads (``component_name`` and
-    ``execute_fn_timeout_seconds``).
-    """
-
-    component_name: str = "acp"
-    execute_fn_timeout_seconds: float = 600.0
-
-
 def _build_default_execute_fn() -> Any:
     """Construct the ``execute_fn`` passed to the dispatcher.
 
     Phase 1.5 unified this with the A2A path: both protocols now
     import ``build_execute_fn`` from ``mahavishnu.core.execute_fn_factory``
-    and call it with their protocol-specific settings. When the full
-    ``MahavishnuApp.execute`` refactor lands, the factory wires the
-    app; until then, the factory falls back to a stub ``WorkerResult``
-    echo.
+    and call it with their protocol-specific settings (both
+    ``A2ASettings`` and ``ACPSettings`` expose the
+    ``execute_fn_timeout_seconds`` field the factory reads). When
+    the full ``MahavishnuApp.execute`` refactor lands, the factory
+    wires the app; until then, the factory falls back to a stub
+    ``WorkerResult`` echo.
+
+    The CLI builds a standalone ``ACPSettings()`` instance — it
+    does not need the top-level ``MahavishnuSettings.acp`` wiring
+    because the ACP CLI is self-contained by design.
     """
-    return build_execute_fn(_ACPSettings())
+    return build_execute_fn(ACPSettings())
 
 
 @app.command("serve")
