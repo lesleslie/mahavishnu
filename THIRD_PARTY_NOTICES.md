@@ -27,6 +27,7 @@ This file lists third-party projects adopted by Mahavishnu, with version, licens
 | Project | License | URL | Copyright | Mode | AGPL posture |
 |---|---|---|---|---|---|
 | OpenObserve | AGPL-3.0 | https://github.com/openobserve/openobserve | OpenObserve, Inc. | Wrap as service (Docker, port 127.0.0.1:5080) | Unmodified external subprocess; no source linking; no source distribution; Loki/Grafana precedent applies |
+| Toad | AGPL-3.0 | https://github.com/batrachianai/toad | Toad contributors | Run as CLI subprocess (`mahavishnu acp serve` over stdio JSON-RPC 2.0) — Phase 2 of the v1.0 ACP server build | Unmodified external subprocess invoked via stdio JSON-RPC 2.0; no source linking; no source distribution; commercial-license path available for redistribution |
 | Emdash | MIT | https://github.com/generalaction/emdash | General Action, Inc. | Run as CLI subprocess (stateless bridge, separate repo `mahavishnu-emdash-bridge`) | N/A |
 | PageIndex | (TBD) | https://github.com/VectifyAI/PageIndex | Vectify AI | Wrap as service (HTTP MCP server) — pending spike | TBD |
 | Graphify | (TBD) | https://github.com/yoheinakajima/graphify | Yohei Nakajima | Run as CLI subprocess (one-shot folder ingest, JSON output) | TBD |
