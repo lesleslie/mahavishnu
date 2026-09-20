@@ -1587,6 +1587,13 @@ def workers_list_types(
 pool_app = typer.Typer(help="Multi-pool orchestration and management")
 app.add_typer(pool_app, name="pool")
 
+# ACP server (stdio JSON-RPC 2.0) — Phase 2 of the v1.0 ACP server build.
+# Import the sub-app from ``mahavishnu.cli.acp_cli``; commands are
+# registered on the sub-app via ``@app.command`` decorators there.
+from mahavishnu.cli.acp_cli import app as acp_app
+
+app.add_typer(acp_app, name="acp")
+
 
 @pool_app.command("spawn")
 def pool_spawn(
