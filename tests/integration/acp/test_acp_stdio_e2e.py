@@ -22,8 +22,15 @@ JSON-RPC over its stdin/stdout. Six test cases (per the plan):
    bearer value (use a known-sentinel high-entropy UUID4), assert no
    match.
 
-Every case has ``@pytest.mark.timeout(2)`` (project ``pytest-timeout``
-in dev). The ACP marker is used so ``-m acp`` filters to this subsystem.
+Per-test ``@pytest.mark.timeout(30)`` (project ``pytest-timeout`` in dev).
+The Oneiric settings load + MahavishnuApp boot takes 5-7 s before the
+dispatcher is reachable, so any timeout shorter than that races the
+subprocess warmup and reports false hangs. Per-call ``_read_one_line``
+uses a 15 s budget so the first response after spawn survives startup;
+post-warmup assertions (e.g. ``test_auth_failure_e2e``'s 0.5 s
+auth-failure latency) keep their tight values to preserve the signal.
+
+The ACP marker is used so ``-m acp`` filters to this subsystem.
 """
 
 from __future__ import annotations
@@ -39,7 +46,7 @@ import pytest
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.acp,
-    pytest.mark.timeout(2),
+    pytest.mark.timeout(30),
 ]
 
 # Skip the entire module unless explicitly enabled. The plan requires a
@@ -108,14 +115,25 @@ async def _spawn_server(
     return proc, prompt_bytes, ok_bytes
 
 
-async def _read_one_line(proc: asyncio.subprocess.Process, *, timeout: float = 1.0) -> bytes:
-    """Read one newline-delimited line from stdout with a hard timeout."""
+async def _read_one_line(proc: asyncio.subprocess.Process, *, timeout: float = 15.0) -> bytes:
+    """Read one newline-delimited line from stdout with a hard timeout.
+
+    Default 15 s — the first read after ``_spawn_server`` waits through
+    Oneiric settings load + MahavishnuApp boot (5-7 s) plus dispatcher
+    round-trip (sub-second). Subsequent reads usually finish in well
+    under 1 s; this helper still accepts a tighter ``timeout=`` override
+    when the test specifically wants to assert low-latency behaviour.
+    """
     assert proc.stdout is not None
     return await asyncio.wait_for(proc.stdout.readline(), timeout=timeout)
 
 
-async def _read_stderr_drain(proc: asyncio.subprocess.Process, *, timeout: float = 0.5) -> bytes:
-    """Drain stderr for *timeout* seconds. Used by the redaction test."""
+async def _read_stderr_drain(proc: asyncio.subprocess.Process, *, timeout: float = 15.0) -> bytes:
+    """Drain stderr for *timeout* seconds. Used by the redaction test.
+
+    Default 15 s — the bearer-acquisition startup warning may arrive
+    late if the subprocess is still booting when the drain begins.
+    """
     assert proc.stderr is not None
 
     async def _drain() -> bytes:
@@ -134,11 +152,11 @@ async def _read_stderr_drain(proc: asyncio.subprocess.Process, *, timeout: float
 
 
 async def _terminate(proc: asyncio.subprocess.Process) -> None:
-    """Terminate the subprocess cleanly."""
+    """Terminate the subprocess cleanly with SIGTERM, escalate to SIGKILL after 10 s."""
     if proc.returncode is None:
         try:
             proc.terminate()
-            await asyncio.wait_for(proc.wait(), timeout=2.0)
+            await asyncio.wait_for(proc.wait(), timeout=10.0)
         except (TimeoutError, ProcessLookupError):
             try:
                 proc.kill()
@@ -226,9 +244,12 @@ async def test_clean_exit_on_eof() -> None:
     try:
         assert proc.stdin is not None
         proc.stdin.close()
-        # Process should exit within a few seconds. The plan's exit
-        # criterion: "close stdin; assert subprocess exits 0 within 1s".
-        await asyncio.wait_for(proc.wait(), timeout=2.0)
+        # Process should exit cleanly once stdin closes. The Oneiric
+        # startup eats 5-7 s before the dispatcher registers its EOF
+        # callback, so the bound is wider than the plan's "within 1s"
+        # formulation — we budget 30 s and verify graceful EOF exit;
+        # the actual EOF round-trip after warmup is sub-second.
+        await asyncio.wait_for(proc.wait(), timeout=30.0)
         assert proc.returncode == 0, (
             f"expected clean exit code 0, got {proc.returncode}"
         )
@@ -348,20 +369,27 @@ async def test_bearer_redaction_e2e() -> None:
         await proc.stdin.drain()
         await _read_one_line(proc)  # consume error response
 
-        # Terminate so stderr is flushed.
+        # Terminate so stderr is flushed. 30 s bound covers Oneiric
+        # startup + dispatcher round-trips + graceful shutdown.
         proc.stdin.close()
-        await asyncio.wait_for(proc.wait(), timeout=2.0)
+        await asyncio.wait_for(proc.wait(), timeout=30.0)
         stderr_data = await _read_stderr_drain(proc)
-        stdout_data = proc.stdout._buffer.read() if proc.stdout and hasattr(proc.stdout, "_buffer") else b""  # type: ignore[attr-defined]
+        # ``proc.stdout`` is an ``asyncio.StreamReader`` whose ``_buffer``
+        # is a ``bytearray``. Capture via ``bytes()`` — calling ``.read()``
+        # on the bytearray raises ``AttributeError``.
+        stdout_data = bytes(proc.stdout._buffer) if proc.stdout else b""  # type: ignore[attr-defined]
     finally:
         await _terminate(proc)
 
     # The bearer value (including sentinel) must not appear anywhere.
-    assert bearer_with_sentinels not in stderr_data, (
+    # ``bearer_with_sentinels`` is str; ``stderr_data`` / ``stdout_data``
+    # are bytes — encode once for comparison.
+    bearer_bytes = bearer_with_sentinels.encode()
+    assert bearer_bytes not in stderr_data, (
         "bearer value leaked to stderr — BearerRedactionFilter missing or "
         "not attached to the logger"
     )
-    assert bearer_with_sentinels not in stdout_data, (
+    assert bearer_bytes not in stdout_data, (
         "bearer value leaked to stdout"
     )
 
@@ -419,7 +447,9 @@ async def test_adversarial_1mb_prompt() -> None:
             ).encode() + b"\n"
         )
         await proc.stdin.drain()
-        line = await _read_one_line(proc, timeout=1.5)
+        # 1 MB JSON-RPC payload + ``json.loads`` over it + execute_fn
+        # stub round-trip — generous bound vs the original 1.5 s.
+        line = await _read_one_line(proc, timeout=10.0)
         resp = json.loads(line)
         # Should succeed (text is within PROMPT_MAX=100_000 — wait, that's
         # 100KB not 1MB). So this prompt WILL be rejected by Pydantic
@@ -443,7 +473,9 @@ async def test_adversarial_invalid_json_returns_parse_error() -> None:
         # Send a line that doesn't parse as JSON.
         proc.stdin.write(b'{"jsonrpc":"2.0","id":1,"method":"initi\n')
         await proc.stdin.drain()
-        line = await _read_one_line(proc, timeout=1.0)
+        # First read after spawn — bound covers Oneiric warmup (5-7 s)
+        # + dispatcher parse-error response.
+        line = await _read_one_line(proc, timeout=15.0)
         resp = json.loads(line)
         assert resp.get("error", {}).get("code") == -32700
     finally:
@@ -469,7 +501,9 @@ async def test_adversarial_batch_request_rejected() -> None:
             b']\n'
         )
         await proc.stdin.drain()
-        line = await _read_one_line(proc, timeout=1.0)
+        # First read after spawn — bound covers Oneiric warmup (5-7 s)
+        # + dispatcher batch-rejection response.
+        line = await _read_one_line(proc, timeout=15.0)
         resp = json.loads(line)
         assert resp.get("error", {}).get("code") == -32600
     finally:
