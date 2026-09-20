@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 from typing import TYPE_CHECKING
 import uuid
 
@@ -47,7 +48,12 @@ class _A2ABearerMiddleware:
             headers = dict(scope.get("headers", []))
             auth = headers.get(b"authorization", b"").decode()
             expected = f"Bearer {self._token}"
-            if auth != expected:
+            # Use ``secrets.compare_digest`` for constant-time comparison —
+            # plain ``!=`` is timing-attack-vulnerable. Phase 1.5 fix:
+            # the A2A Bearer middleware used ``!=`` which is forbidden.
+            # (This same fix lives in ``mahavishnu/acp/auth.py``; the two
+            # implementations converge via ``build_execute_fn``.)
+            if not secrets.compare_digest(auth.encode(), expected.encode()):
                 response = Response(
                     '{"error":"Unauthorized"}', status_code=401, media_type="application/json"
                 )
