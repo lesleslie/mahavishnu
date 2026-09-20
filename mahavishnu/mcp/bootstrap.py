@@ -949,6 +949,31 @@ def _register_ecosystem_state_tools(server: FastMCPServer) -> None:
     )
 
 
+def _register_ecosystem_publish_url_tool(server: FastMCPServer) -> None:
+    """Register the ecosystem publish-URL tool (sibling-tool for crackerjack).
+
+    Pattern: like ecosystem_state, this is a small read-only surface
+    that sibling Bodai components call to learn ecosystem-wide config.
+    Crackerjack's ``mahavishnu_discovery.probe_publish_url`` issues a
+    JSON-RPC ``tools/call`` to ``mahavishnu_get_publish_url`` at its
+    own startup; this tool is the server side. Soft fallback lives in
+    the client — if this tool isn't registered (tool profile below
+    STANDARD) or the probe times out, crackerjack falls through to its
+    default publish target (public PyPI).
+
+    No ``@require_mcp_auth`` gate — the tool returns only the publish
+    URL, which is non-sensitive operational metadata that sibling
+    components need at startup.
+    """
+    from ..mcp.tools.ecosystem_publish_url_tool import register
+
+    register(server.server)
+    logger.info(
+        "Registered ecosystem publish-URL tool "
+        "(mahavishnu_get_publish_url) with MCP server"
+    )
+
+
 def _register_terminal_tools(server: FastMCPServer) -> None:
     """Register terminal management tools (gated on terminal_manager)."""
     if server.terminal_manager is None:

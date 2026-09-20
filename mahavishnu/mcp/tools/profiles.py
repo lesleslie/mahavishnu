@@ -37,6 +37,7 @@ from ..bootstrap import (
     _register_capability_tools,
     _register_clone_tools,
     _register_dispatch_specialist_tools,
+    _register_ecosystem_publish_url_tool,
     _register_ecosystem_state_tools,
     _register_ecosystem_tools,
     _register_git_analytics_tools,
@@ -90,6 +91,13 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     "_register_session_buddy_tools",
     "_register_openhands_tools",
     "_register_primitive_tools",
+    # Ecosystem publish-URL tool — sibling-surface for crackerjack's
+    # layered publish-URL resolution. Read-only, no auth gate; lets
+    # crackerjack learn its publish target without a settings/local.yaml
+    # in the repo it's publishing. Soft fallback in the client means
+    # STANDARD-tier exposure is sufficient (clients without this tool
+    # just default to public PyPI).
+    "_register_ecosystem_publish_url_tool",
 ]
 STANDARD_REGISTRATIONS.append("_register_capability_tools")
 
@@ -207,6 +215,8 @@ REGISTRATION_MAP: dict[str, Callable] = {
     ),  # type: ignore[attr-defined]
     "_register_git_analytics_tools": lambda s: _register_git_analytics_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Ecosystem publish-URL tool — see STANDARD_REGISTRATIONS rationale.
+    "_register_ecosystem_publish_url_tool": lambda s: _register_ecosystem_publish_url_tool(s._mhv_server),  # type: ignore[attr-defined]
     "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),  # type: ignore[attr-defined]

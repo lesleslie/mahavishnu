@@ -151,13 +151,14 @@ repos:
   - visualization
   description: "Modern 3D network visualization for macOS \u2014 SwiftUI + Metal, no-payload wire format (hybrid Swift + Python)"
   status: active
-  # Per-repo publish config. Operators fill in the real GitLab project ID.
-  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
-  # AND no CLI flag / env var / settings YAML overrides it. See
-  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  # flowscape is a private project on gitlab.com; the GitLab project ID
+  # is 86207024 (verified via /api/v4/projects on 2026-09-20).
+  # token_env is informational \u2014 the actual token is sourced from
+  # $UV_PUBLISH_TOKEN (today); a future feature may auto-resolve from
+  # token_env.
   publish:
-    url: null
-    token_env: null
+    url: https://gitlab.com/api/v4/projects/86207024/packages/pypi/upload
+    token_env: GITLAB_PERSONAL_ACCESS_TOKEN
 - name: graphics-mcp
   package: graphics_mcp
   path: /Users/les/Projects/graphics-mcp
@@ -289,13 +290,17 @@ repos:
   - gui
   description: macOS SwiftUI desktop app for markdown prompt management (IPC via Unix socket)
   status: active
-  # Per-repo publish config. Operators fill in the real GitLab project ID.
-  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
-  # AND no CLI flag / env var / settings YAML overrides it. See
-  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  # Per-repo publish config. mdinject is a private project on gitlab.com;
+  # the GitLab project ID is 77841268 (verified via /api/v4/projects on
+  # 2026-09-20). Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG
+  # points at this file AND no CLI flag / env var / settings YAML
+  # overrides it. See docs/CLI_REFERENCE.md "Private package indexes"
+  # for the full order. token_env is informational — the actual token
+  # is sourced from $UV_PUBLISH_TOKEN (today); a future feature may
+  # auto-resolve from token_env.
   publish:
-    url: null
-    token_env: null
+    url: https://gitlab.com/api/v4/projects/77841268/packages/pypi/upload
+    token_env: GITLAB_PERSONAL_ACCESS_TOKEN
 - name: medium-mcp
   package: medium_mcp
   path: /Users/les/Projects/medium-mcp
@@ -456,13 +461,14 @@ repos:
   - python
   description: PWA content management system built from fastblocks
   status: active
-  # Per-repo publish config. Operators fill in the real GitLab project ID.
-  # Crackerjack reads this when BODAI_ECOSYSTEM_CONFIG points at this file
-  # AND no CLI flag / env var / settings YAML overrides it. See
-  # docs/CLI_REFERENCE.md "Private package indexes" for the full order.
+  # splashstand is a private project on gitlab.com; the GitLab project
+  # ID is 10996879 (verified via /api/v4/projects on 2026-09-20).
+  # token_env is informational — the actual token is sourced from
+  # $UV_PUBLISH_TOKEN (today); a future feature may auto-resolve from
+  # token_env.
   publish:
-    url: null
-    token_env: null
+    url: https://gitlab.com/api/v4/projects/10996879/packages/pypi/upload
+    token_env: GITLAB_PERSONAL_ACCESS_TOKEN
 - name: spline-mcp
   package: spline_mcp
   path: /Users/les/Projects/spline-mcp
