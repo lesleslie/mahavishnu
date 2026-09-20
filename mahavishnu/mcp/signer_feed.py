@@ -178,26 +178,51 @@ class SignerFeedState:
     cycles_total: int = 0
     errors_total: int = 0
     generation: int = 0
+    warm: bool = False
 
     def record_cycle(self) -> None:
-        """Mark a successful feed update. Bumps ``cycles_total`` and
-        ``last_updated_timestamp``.
+        """Mark a successful feed update. Bumps ``cycles_total``,
+        ``last_updated_timestamp``, and flips ``warm`` to ``True``.
         """
         self.cycles_total += 1
         self.last_updated_timestamp = time.time()
+        self.warm = True
 
     def record_error(self) -> None:
-        """Mark a failed feed update. Bumps ``errors_total`` and
-        ``last_updated_timestamp`` (the timestamp is updated even on
-        errors so operators can see the feed is still being polled).
+        """Mark a failed feed update. Bumps ``errors_total``,
+        ``last_updated_timestamp``, and flips ``warm`` to ``True``.
+        Timestamp updates even on errors so operators can see the feed
+        is still being polled.
         """
         self.errors_total += 1
         self.last_updated_timestamp = time.time()
+        self.warm = True
 
     def is_ok(self) -> bool:
-        """True when the feed has at least one entry. Empty manifests
-        return False so the ``/health`` endpoint returns 503.
+        """True when the feed is healthy.
+
+        Two phases:
+
+        - **Warming up** (``warm`` is ``False``): no cycles have run yet,
+          so the manifest may legitimately be empty before the first
+          scan completes. Return ``True`` so the launchd healthcheck
+          wrapper (``launch_with_healthcheck.sh``) doesn't kill the
+          process during the slow Akosha round-trips that complete
+          the warm-up. The wrapper has a hard 180s timeout; this
+          phase normally resolves in 60–90s.
+        - **Warmed up** (``warm`` is ``True``): cycles have run, so an
+          empty manifest is a real failure. Return ``not self.manifest
+          .is_empty()`` so the ``/health`` endpoint returns 503 and
+          operators notice via ``launchctl list`` (exit code -15) +
+          the wrapper's stderr log.
+
+        Without this distinction the wrapper kills the process during
+        the first startup because the manifest is empty until the
+        first cycle populates it — a chicken-and-egg race that
+        crashed-loop the launchd job.
         """
+        if not self.warm:
+            return True
         return not self.manifest.is_empty()
 
     def as_dict(self) -> dict[str, object]:

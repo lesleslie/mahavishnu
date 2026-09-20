@@ -22,15 +22,14 @@ import base64
 from pathlib import Path  # noqa: TC003  # used in pytest tmp_path parameter
 from typing import Any
 
-import pytest
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
+import pytest
 
 # SignerFeedState lives in mahavishnu.mcp (not in the skills_signer
 # package itself), so import it directly. Tests for the package itself
 # import only from the package; tests for the MCP integration import both.
 from mahavishnu.mcp.signer_feed import SignerFeedState
-
 from mahavishnu.skills_signer import (
     InvalidManifestAlgorithmError,
     Keypair,
@@ -79,7 +78,7 @@ class TestCanonicalizePayload:
         """Pydantic v2 models are converted via ``model_dump(mode="json")``."""
 
         class Sample:
-            def model_dump(self, *, mode: str = "python") -> dict[str, Any]:  # noqa: ARG002
+            def model_dump(self, *, mode: str = "python") -> dict[str, Any]:
                 return {"x": 1, "y": "z"}
 
         payload = canonicalize_payload(Sample())
@@ -136,7 +135,7 @@ class TestCanonicalPayloadForSigning:
         """A Pydantic model with ``signature`` field strips it via model_dump."""
 
         class WithSignature:
-            def model_dump(self, *, mode: str = "python") -> dict[str, Any]:  # noqa: ARG002
+            def model_dump(self, *, mode: str = "python") -> dict[str, Any]:
                 return {
                     "name": "akosha-search",
                     "signature": "fake_sig",
@@ -645,20 +644,73 @@ class TestSignerFeedState:
         assert state.is_ok() is True
 
     def test_ok_false_when_manifest_is_empty(self) -> None:
-        """Empty manifest → ``ok=False`` → /health returns 503.
+        """Empty manifest AFTER warming up → ``ok=False`` → /health returns 503.
 
         Fixes review R3-H2: ``ok`` is computed from manifest invariants,
-        not hardcoded. An empty manifest is a degraded state.
+        not hardcoded. An empty manifest is a degraded state — once
+        the feed has actually run cycles and the manifest is *still*
+        empty, that's a real failure that operators should see.
 
         A real :class:`SkillsSigner` is constructed for the empty-manifest
         case so the dataclass field satisfies the required ``signer``
         argument; the signer's identity does not affect ``is_ok()`` which
         only inspects the manifest.
+
+        Note: we must call ``record_cycle()`` first to flip ``warm``
+        from its default ``False`` to ``True`` — see
+        ``test_ok_true_while_warming_up_even_with_empty_manifest``.
+        Without this, an empty manifest returns True (still warming up)
+        and we'd flip the semantics in a misleading way.
         """
         kp = generate_keypair()
         signer = SkillsSigner.from_keypair(kp)
         state = SignerFeedState(manifest=PubkeyManifest(), signer=signer)
+        state.record_cycle()  # flip warm=True
         assert state.is_ok() is False
+
+    def test_ok_true_while_warming_up_even_with_empty_manifest(self) -> None:
+        """During warm-up, ``is_ok()`` returns True even when manifest is empty.
+
+        Distinguishes "warming up" (``warm=False``, no cycles have run)
+        from "failed" (``warm=True``, cycles ran but manifest is empty).
+        This distinction prevents the launchd healthcheck wrapper from
+        killing the process during slow Akosha round-trips before the
+        first cycle populates the manifest — a chicken-and-egg race
+        that crash-looped the launchd job.
+
+        Locked by ``test_ok_false_when_manifest_is_empty`` (warmed-up
+        case) so the contract is: cold = always ok, hot = manifest
+        invariant.
+        """
+        kp = generate_keypair()
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=PubkeyManifest(), signer=signer)
+        # No record_cycle() call — default warm=False.
+        assert state.warm is False
+        assert state.is_ok() is True
+
+    def test_ok_flips_to_warm_on_first_record_cycle(self) -> None:
+        """``record_cycle()`` flips ``warm`` to True; manifest invariant
+        then takes over."""
+        kp = generate_keypair()
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=PubkeyManifest(), signer=signer)
+        assert state.warm is False
+        state.record_cycle()
+        assert state.warm is True
+        # Now the manifest check kicks in — empty manifest = not ok.
+        assert state.is_ok() is False
+
+    def test_ok_flips_to_warm_on_first_record_error(self) -> None:
+        """``record_error()`` also flips ``warm`` to True. Errors are
+        still "cycles have run" — the feed is no longer warming up.
+        """
+        kp = generate_keypair()
+        signer = SkillsSigner.from_keypair(kp)
+        state = SignerFeedState(manifest=PubkeyManifest(), signer=signer)
+        assert state.warm is False
+        state.record_error()
+        assert state.warm is True
 
     def test_as_dict_exposes_all_four_mandatory_signals(self) -> None:
         """``as_dict()`` includes ``feed_entities_count``,
@@ -719,5 +771,9 @@ class TestSignerFeedState:
 
         empty_signer = SkillsSigner.from_keypair(generate_keypair())
         empty_state = SignerFeedState(manifest=PubkeyManifest(), signer=empty_signer)
+        # Flip warm=True so the manifest invariant takes over — without
+        # this, the warming-up branch returns ok=True (different test
+        # covers that contract).
+        empty_state.record_cycle()
         empty_payload = empty_state.as_dict()
         assert empty_payload["ok"] is False

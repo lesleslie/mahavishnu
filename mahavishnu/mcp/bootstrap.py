@@ -267,30 +267,41 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     @server.server.custom_route("/health", methods=["GET"])
     async def health_check(request=None) -> JSONResponse:
         # Phase 1.5 — extend the static body with the skills_signer feed
-        # (per plan §10.3.3). During the brief warm-up window before
-        # start() completes init_signer_feed_state(), report degraded
-        # so launchd's healthcheck wrapper sees the failure surface.
+        # (per plan §10.3.3). During the warm-up window before start()
+        # completes init_signer_feed_state(), report ``ok: True`` with a
+        # "warming up" status (not a degraded error) so the launchd
+        # healthcheck wrapper (``launch_with_healthcheck.sh``) doesn't
+        # kill the process during the slow Akosha round-trips that
+        # complete the warm-up. Mirrors the signer_feed.SignerFeedState
+        # ``warm``-flag contract: cold = always ok, hot = feed invariant.
         from mahavishnu.mcp.signer_feed import get_signer_feed_state
         from mahavishnu.plan_index.health import get_plan_index_feed_state
 
         checks: dict[str, dict[str, object]] = {}
         state = get_signer_feed_state()
         if state is None:
+            # State hasn't been constructed yet — still warming up.
+            # Treating this as ``ok: True`` is the chicken-and-egg fix
+            # that lets the launchd wrapper wait through the full
+            # startup window (now ~3 minutes due to Akosha round-trips).
             checks["skills_signer"] = {
-                "ok": False,
-                "error": "awaiting start()",
+                "ok": True,
+                "status": "warming_up",
+                "feed": "skills_signer",
             }
         else:
             checks["skills_signer"] = state.as_dict()
 
         # Task 13 — plan_index feed (mcp-backend-wiring-discipline 4-signal
-        # contract). None means no rebuild cycle has run on this process yet,
-        # so report degraded rather than silently omitting the feed.
+        # contract). None means no rebuild cycle has run on this process
+        # yet, so report "warming up" rather than degraded. Same fix
+        # as the skills_signer branch above.
         plan_state = get_plan_index_feed_state()
         if plan_state is None:
             checks["plan_index"] = {
-                "ok": False,
-                "error": "awaiting start()",
+                "ok": True,
+                "status": "warming_up",
+                "feed": "plan_index",
             }
         else:
             plan_check: dict[str, object] = dict(plan_state.as_dict())
