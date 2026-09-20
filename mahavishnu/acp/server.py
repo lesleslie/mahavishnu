@@ -70,6 +70,7 @@ from mahavishnu.acp.errors import (
     TOO_MANY_CONCURRENT_SESSIONS,
     ACPError,
 )
+from mahavishnu.acp.observability import session_span
 from mahavishnu.acp.protocol import (
     PROTOCOL_VERSION_MAX,
     AgentCapabilities,
@@ -303,18 +304,31 @@ class ACPServer:
         This is a test seam — the production :meth:`serve` loop parses
         stdin lines and calls :meth:`_handle_one_line`, which follows
         the same error-conversion contract via :meth:`_write_error_response`.
+
+        Emits the same ``acp.request_received`` / ``acp.response_sent``
+        structured log lines as the async loop so the Observability
+        Validation test can assert on them via either path.
         """
         req_id = request.get("id") if isinstance(request, dict) else None
+        method = request.get("method") if isinstance(request, dict) else None
+        logger.info("acp.request_received method=%s id=%s", method, req_id)
         try:
-            return self._dispatch(request)
+            response = self._dispatch(request)
         except ACPError as exc:
-            return JsonRpcErrorResponse.model_validate(
+            response = JsonRpcErrorResponse.model_validate(
                 {
                     "jsonrpc": "2.0",
                     "id": req_id,
                     "error": exc.to_dict(),
                 }
             ).model_dump()
+        if response is not None:
+            logger.info(
+                "acp.response_sent id=%s error_code=%s",
+                response.get("id"),
+                (response.get("error") or {}).get("code"),
+            )
+        return response
 
     # --- Internal dispatch ---
 
@@ -540,11 +554,32 @@ class ACPServer:
         # and feeds stdin; here in unit tests, the handle_request
         # path is synchronous-only, so we can't await. Return a
         # minimal response that the test asserts on.
+        # Wrap the synchronous execute_fn call in the OTel session
+        # span (plan §Phase 2 Task 5). The span emits with the 4
+        # attributes the plan enumerates; the ``acp.session_completed``
+        # log line fires regardless of whether OTel is configured.
+        try:
+            with session_span(session.session_id) as span_state:
+                try:
+                    result = _run_with_timeout_sync(_run_with_timeout)
+                    span_state["stop_reason"] = "completed"
+                    span_state["status"] = "ok"
+                except ACPError:
+                    span_state["stop_reason"] = "error"
+                    span_state["status"] = "error"
+                    raise
+                except Exception:
+                    span_state["stop_reason"] = "internal_error"
+                    span_state["status"] = "error"
+                    raise
+        except ACPError:
+            raise
+
         return JsonRpcResponse.model_validate(
             {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {"stopReason": "completed", "_executed": _run_with_timeout_sync(_run_with_timeout)},
+                "result": {"stopReason": "completed", "_executed": result},
             }
         ).model_dump()
 

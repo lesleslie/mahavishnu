@@ -38,6 +38,7 @@ from mahavishnu.acp.errors import (
     ACPError,
 )
 from mahavishnu.acp.events import EventSynthesizer
+from mahavishnu.acp.observability import session_span
 from mahavishnu.acp.protocol import SessionUpdate
 from mahavishnu.acp.topics import (
     ACP_TOPICS,
@@ -65,5 +66,6 @@ __all__ = [
     "EventSynthesizer",
     "SessionUpdate",
     "acquire_bearer",
+    "session_span",
     "verify_token",
 ]
