@@ -48,6 +48,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from typing import Any
 import uuid
 
@@ -689,6 +690,112 @@ def _run_with_timeout_sync(coro_factory: Callable[[], Any]) -> Any:
 
 # === Module-level convenience ===
 
+
+def _validate_stdin(fd: int) -> None:
+    """Path A: refuse obviously-broken stdin before constructing the feeder.
+
+    The check accepts the typical pipe / FIFO / character-device fds that
+    upstream JSON-RPC clients (Toad, ``echo | ...``, etc.) supply, and
+    rejects fds that would either block forever or yield nothing useful:
+
+    - a negative fd is rejected immediately
+    - an fd that fails ``os.fstat`` (closed by parent) is rejected
+    - a TTY (``os.isatty``) is rejected with a hint to wire a real client
+    - ``/dev/null`` is rejected via device-identity compare (same st_dev + st_ino)
+
+    Raises ``RuntimeError`` with a human-readable message; the CLI in
+    :mod:`mahavishnu.cli.acp_cli` translates it to ``typer.Exit(1)``.
+    """
+    if fd < 0:
+        raise RuntimeError(
+            f"invalid file descriptor: {fd} (ACP needs a real stdin fd)"
+        )
+    try:
+        st = os.fstat(fd)
+    except OSError as exc:
+        raise RuntimeError(f"stdin fd {fd} is not open: {exc}") from exc
+    if os.isatty(fd):
+        raise RuntimeError(
+            "stdin is a TTY — ACP requires a JSON-RPC stream on stdin. "
+            "Run from a JSON-RPC client (Toad, etc.) or a pipe: "
+            "`echo '...' | mahavishnu acp serve`."
+        )
+    # Detect /dev/null by comparing device identity (portable across macOS / Linux).
+    try:
+        devnull_st = os.stat("/dev/null")
+    except OSError:
+        devnull_st = None
+    if (
+        devnull_st is not None
+        and st.st_dev == devnull_st.st_dev
+        and st.st_ino == devnull_st.st_ino
+    ):
+        raise RuntimeError(
+            "stdin is /dev/null — ACP needs an upstream JSON-RPC stream. "
+            "If you meant to test, run with a real pipe: "
+            "`echo '{}' | mahavishnu acp serve`."
+        )
+
+
+class _SyncStdinFeeder:
+    """Path B: background thread that feeds an asyncio.StreamReader from a fd.
+
+    Mirrors :class:`_SyncStdoutWriter` (which addresses Python 3.14's
+    ``connect_write_pipe`` rejection of ``TextIOWrapper`` fds) but on the
+    READ side: macOS's kqueue-based selector (``selector.register``)
+    rejects ``kEVFILT_READ`` on fds that aren't real I/O endpoints with
+    ``OSError(EINVAL)`` — silently inside the ``_add_reader`` callback,
+    which leaves ``connect_read_pipe`` returning a transport that was
+    never registered. The dispatcher's ``await stream.read()`` then waits
+    forever.
+
+    A blocking ``os.read`` loop in a daemon thread works on any fd. Data
+    is posted to the asyncio loop via ``call_soon_threadsafe``; EOF is
+    signalled with :meth:`asyncio.StreamReader.feed_eof`. The thread is
+    daemon=True so a parent ``SIGTERM`` (e.g. from a CLI ``timeout``)
+    cleanly tears down the process.
+    """
+
+    def __init__(
+        self,
+        stream: asyncio.StreamReader,
+        fd: int,
+        loop: asyncio.AbstractEventLoop,
+    ) -> None:
+        self._stream = stream
+        self._fd = fd
+        self._loop = loop
+        self._thread = threading.Thread(
+            target=self._run,
+            daemon=True,
+            name="acp-stdin-feeder",
+        )
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _post(self, fn: Callable[..., Any], *args: Any) -> None:
+        """Schedule ``fn`` to run on the asyncio loop from this thread."""
+        try:
+            self._loop.call_soon_threadsafe(fn, *args)
+        except RuntimeError as exc:
+            # Loop is closed (process tearing down). Log and let the thread exit.
+            logger.debug("acp.stdin_feeder_post_after_close fn=%s error=%s", fn.__name__, exc)
+
+    def _run(self) -> None:
+        try:
+            while True:
+                chunk = os.read(self._fd, 8192)
+                if not chunk:
+                    # EOF: signal the reader and exit the thread.
+                    self._post(self._stream.feed_eof)
+                    return
+                self._post(self._stream.feed_data, chunk)
+        except OSError as exc:
+            logger.error("acp.stdin_read_error error=%s", exc)
+            self._post(self._stream.set_exception, exc)
+
+
 class _SyncStdoutWriter:
     """Synchronous stdout writer that bypasses ``connect_write_pipe``.
 
@@ -724,11 +831,13 @@ async def serve(
     """Module-level convenience: construct ``ACPServer`` and run its ``serve`` loop.
 
     ``stdin`` and ``stdout`` default to the process ``sys.stdin`` /
-    ``sys.stdout``. stdin is wrapped via ``asyncio.StreamReader``
-    (``connect_read_pipe`` works on ``sys.stdin``); stdout is wrapped
-    in :class:`_SyncStdoutWriter` which writes via ``os.write`` to the
-    underlying fd (bypasses asyncio's pipe transport check). The CLI
-    in 2.D wires this.
+    ``sys.stdout``. stdin is read by a background thread
+    (:class:`_SyncStdinFeeder`) which posts bytes to an
+    :class:`asyncio.StreamReader` via ``loop.call_soon_threadsafe`` —
+    bypassing ``loop.connect_read_pipe`` so the dispatcher does NOT hang
+    on macOS kqueue when stdin points at a virtual filesystem fd
+    (``/dev/null`` etc.). stdout is wrapped in :class:`_SyncStdoutWriter`
+    which writes via ``os.write`` to the underlying fd.
     """
     server = ACPServer(
         execute_fn,
@@ -737,10 +846,15 @@ async def serve(
         session_timeout_seconds=session_timeout_seconds,
     )
     if stdin is None:
+        # Path A: refuse obviously-broken stdin (TTY, /dev/null, negative fd).
+        # Path A catches adversarial / accidental runs before we burn a thread
+        # on a fd that will never yield useful data.
+        stdin_fd = sys.stdin.fileno()
+        _validate_stdin(stdin_fd)
         loop = asyncio.get_event_loop()
         stdin = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(stdin)
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+        # Path B: thread-based feeder (see _SyncStdinFeeder below).
+        _SyncStdinFeeder(stdin, stdin_fd, loop).start()
     if stdout is None:
         stdout = _SyncStdoutWriter()
     await server.serve(stdin, stdout, stderr)
@@ -756,4 +870,6 @@ __all__ = [
     "ACPSession",
     "new_session_id",
     "serve",
+    "_SyncStdinFeeder",
+    "_validate_stdin",
 ]

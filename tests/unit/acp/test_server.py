@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 from typing import Any
 
 import pytest
@@ -22,6 +24,8 @@ from mahavishnu.acp.server import (
     ACPSession,
     _ACPParseError,
     _SafeLineReader,
+    _SyncStdinFeeder,
+    _validate_stdin,
     new_session_id,
 )
 
@@ -539,3 +543,215 @@ class TestConstructorFailClosed:
         await server.serve(stdin, stdout)
         text = stdout.get_text()
         assert "Parse error" in text or "-32700" in text
+
+
+# ---------------------------------------------------------------------------
+# _SyncStdinFeeder — Path B: thread-based stdin reader (mirrors _SyncStdoutWriter)
+# ---------------------------------------------------------------------------
+
+
+class TestSyncStdinFeeder:
+    """``_SyncStdinFeeder`` posts data from a blocking ``os.read`` thread into an
+    :class:`asyncio.StreamReader` via ``loop.call_soon_threadsafe``.
+
+    This is the replacement for ``loop.connect_read_pipe(lambda: protocol, sys.stdin)``
+    which fails with ``OSError(EINVAL)`` on macOS kqueue when stdin is a virtual
+    filesystem fd (``/dev/null``, etc.). The thread bypasses the selector
+    entirely — any open, readable fd works.
+    """
+
+    @pytest.mark.asyncio
+    async def test_feeder_posts_chunks_from_pipe_to_stream_reader(self) -> None:
+        """Writing to a pipe is reflected in the asyncio stream reader."""
+        r_fd, w_fd = os.pipe()
+        try:
+            stream = asyncio.StreamReader()
+            loop = asyncio.get_running_loop()
+            feeder = _SyncStdinFeeder(stream, r_fd, loop)
+            feeder.start()
+
+            os.write(w_fd, b"hello stdin\n")
+            data = await asyncio.wait_for(stream.readuntil(b"\n"), timeout=2.0)
+            assert data == b"hello stdin\n"
+        finally:
+            try:
+                os.close(r_fd)
+            except OSError:
+                pass
+            try:
+                os.close(w_fd)
+            except OSError:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_feeder_signals_eof_when_writer_closes(self) -> None:
+        """Closing the write end of the pipe causes ``feed_eof`` to fire."""
+        r_fd, w_fd = os.pipe()
+        try:
+            stream = asyncio.StreamReader()
+            loop = asyncio.get_running_loop()
+            feeder = _SyncStdinFeeder(stream, r_fd, loop)
+            feeder.start()
+
+            os.write(w_fd, b"data\n")
+            assert await asyncio.wait_for(stream.readuntil(b"\n"), timeout=2.0) == b"data\n"
+
+            os.close(w_fd)  # trigger EOF
+            # After EOF, readline() returns b"" (per asyncio StreamReader semantics).
+            tail = await asyncio.wait_for(stream.readline(), timeout=2.0)
+            assert tail == b""
+        finally:
+            try:
+                os.close(r_fd)
+            except OSError:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_feeder_handles_dev_null_as_immediate_eof(self) -> None:
+        """``/dev/null`` yields ``b""`` on first ``os.read``; the feeder surfaces EOF cleanly.
+
+        This is the key behaviour that makes ``mahavishnu acp serve < /dev/null``
+        exit cleanly instead of hanging.
+        """
+        dev_null_fd = os.open("/dev/null", os.O_RDONLY)
+        try:
+            stream = asyncio.StreamReader()
+            loop = asyncio.get_running_loop()
+            feeder = _SyncStdinFeeder(stream, dev_null_fd, loop)
+            feeder.start()
+            # /dev/null read returns b"" immediately → EOF is fed to the stream.
+            tail = await asyncio.wait_for(stream.readline(), timeout=2.0)
+            assert tail == b""
+        finally:
+            os.close(dev_null_fd)
+
+
+# ---------------------------------------------------------------------------
+# _validate_stdin — Path A: pre-flight stdin fitness check
+# ---------------------------------------------------------------------------
+
+
+class TestValidateStdin:
+    """``_validate_stdin`` rejects obviously-broken stdin before constructing the feeder."""
+
+    def test_validate_stdin_accepts_pipe_read_end(self) -> None:
+        r_fd, w_fd = os.pipe()
+        try:
+            # Should accept the read end of a fresh pipe — passes silently.
+            assert _validate_stdin(r_fd) is None
+        finally:
+            os.close(r_fd)
+            os.close(w_fd)
+
+    def test_validate_stdin_rejects_tty_fd(self) -> None:
+        """Opening ``/dev/tty`` (a TTY character device) makes the check refuse with
+        a clear message — interactive terminals are not a JSON-RPC source.
+        """
+        # /dev/tty only opens if there IS a controlling terminal;
+        # skip the test if the test runner has none (CI, etc.).
+        try:
+            tty_fd = os.open("/dev/tty", os.O_RDONLY)
+        except OSError:
+            pytest.skip("no controlling terminal available for the test")
+        try:
+            with pytest.raises(RuntimeError, match="TTY|terminal"):
+                _validate_stdin(tty_fd)
+        finally:
+            os.close(tty_fd)
+
+    def test_validate_stdin_rejects_dev_null_with_clear_message(self) -> None:
+        """``/dev/null`` is rejected with a diagnostic, not silently allowed."""
+        dev_null_fd = os.open("/dev/null", os.O_RDONLY)
+        try:
+            with pytest.raises(RuntimeError, match="/dev/null"):
+                _validate_stdin(dev_null_fd)
+        finally:
+            os.close(dev_null_fd)
+
+    def test_validate_stdin_rejects_negatively_sized_fd(self) -> None:
+        """A negative fd is rejected immediately."""
+        with pytest.raises(RuntimeError, match="invalid file descriptor"):
+            _validate_stdin(-1)
+
+
+# ---------------------------------------------------------------------------
+# Module-level serve() uses the new feeder (integration-shape test)
+# ---------------------------------------------------------------------------
+
+
+class TestServeModuleLevelStdin:
+    """Module-level ``serve()`` must NOT hang on stdin wiring; it must consume the
+    pipe, respond, and return on EOF within bounded time.
+
+    These tests monkeypatch ``sys.stdin`` to point at a real pipe so the
+    module-level wiring (which now uses ``_SyncStdinFeeder``) is exercised
+    end-to-end.
+    """
+
+    @pytest.mark.asyncio
+    async def test_serve_module_level_completes_via_pipe(
+        self, valid_bearer: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``serve()`` with a real pipe as ``sys.stdin`` reads the request,
+        responds, and exits on EOF — no hang.
+        """
+        from mahavishnu.acp.server import serve as serve_module
+
+        r_fd, w_fd = os.pipe()
+        # Wrap r_fd in a FileIO; ``monkeypatch.setattr`` will close it on undo,
+        # so we deliberately do NOT ``os.close(r_fd)`` ourselves here.
+        stdin_wrapper = os.fdopen(r_fd, "rb", buffering=0)
+        monkeypatch.setattr(sys, "stdin", stdin_wrapper)
+
+        async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
+            return {"ok": True}
+
+        class _CapturingStdout:
+            def __init__(self) -> None:
+                self.lines: list[bytes] = []
+
+            def write(self, data: bytes) -> None:
+                self.lines.append(data)
+
+        stdout = _CapturingStdout()
+        os.write(
+            w_fd,
+            b'{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
+            b'{"protocolVersion":"0.0.1","clientInfo":{"name":"smoke","version":"0.0.1"}}}\n',
+        )
+        os.close(w_fd)  # signal EOF; the feeder will see EOF and exit cleanly
+
+        await asyncio.wait_for(
+            serve_module(execute_fn, bearer_token=valid_bearer, stdout=stdout),
+            timeout=8.0,
+        )
+        text = b"".join(stdout.lines).decode("utf-8", errors="replace")
+        assert '"id": 1' in text or '"id":1' in text
+
+    @pytest.mark.asyncio
+    async def test_serve_module_level_refuses_dev_null_with_clear_error(
+        self, valid_bearer: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``serve()`` with ``sys.stdin`` pointing at ``/dev/null`` raises a
+        clear ``RuntimeError`` instead of hanging.
+        """
+        from mahavishnu.acp.server import serve as serve_module
+
+        async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
+            return {"ok": True}
+
+        dev_null_fd = os.open("/dev/null", os.O_RDONLY)
+        # Same lifecycle pattern as above: ``monkeypatch.setattr`` closes the
+        # fd on undo; we never ``os.close`` it ourselves.
+        stdin_wrapper = os.fdopen(dev_null_fd, "rb", buffering=0)
+        monkeypatch.setattr(sys, "stdin", stdin_wrapper)
+
+        class _NopStdout:
+            def write(self, data: bytes) -> None:
+                pass
+
+        with pytest.raises(RuntimeError, match="/dev/null|refuses to start"):
+            await asyncio.wait_for(
+                serve_module(execute_fn, bearer_token=valid_bearer, stdout=_NopStdout()),
+                timeout=3.0,
+            )
