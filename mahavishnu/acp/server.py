@@ -289,23 +289,25 @@ class ACPServer:
             if line is None:
                 logger.info("acp.cli.serve_exited")
                 return
-            self._handle_one_line(line, stdout)
+            await self._handle_one_line(line, stdout)
 
     def handle_request(
         self,
         request: dict[str, Any],
     ) -> dict[str, Any] | None:
-        """Synchronous dispatch of a single request — for unit tests.
+        """Synchronous dispatch seam for unit tests.
+
+        Drives the async :meth:`_dispatch` chain via ``asyncio.run``.
+        Works correctly only when called OUTSIDE a running event loop
+        (i.e. from a unit test). The production :meth:`serve` loop
+        parses stdin lines and calls :meth:`_handle_one_line` directly
+        under its own running loop, never going through this seam.
 
         Returns a JSON-RPC response dict (for request id matches) or
         ``None`` (for notifications, which the dispatcher doesn't write
         to stdout). Protocol-level errors surface as JSON-RPC error
         response dicts, NOT as raised exceptions — tests assert on
         the ``error.code`` field directly.
-
-        This is a test seam — the production :meth:`serve` loop parses
-        stdin lines and calls :meth:`_handle_one_line`, which follows
-        the same error-conversion contract via :meth:`_write_error_response`.
 
         Emits the same ``acp.request_received`` / ``acp.response_sent``
         structured log lines as the async loop so the Observability
@@ -315,7 +317,7 @@ class ACPServer:
         method = request.get("method") if isinstance(request, dict) else None
         logger.info("acp.request_received method=%s id=%s", method, req_id)
         try:
-            response = self._dispatch(request)
+            response = asyncio.run(self._dispatch(request))
         except ACPError as exc:
             response = JsonRpcErrorResponse.model_validate(
                 {
@@ -334,12 +336,17 @@ class ACPServer:
 
     # --- Internal dispatch ---
 
-    def _handle_one_line(
+    async def _handle_one_line(
         self,
         line: str,
         stdout: asyncio.StreamWriter,
     ) -> None:
-        """Parse one stdin line, dispatch, write response. Used by :meth:`serve`."""
+        """Parse one stdin line, dispatch, write response. Used by :meth:`serve`.
+
+        Async: ``session/prompt`` drives an awaiting ``execute_fn`` under
+        the serve loop, so the entire chain must propagate ``async``.
+        Tests call :meth:`handle_request` (sync seam) instead.
+        """
         try:
             parsed = json.loads(line)
         except json.JSONDecodeError as exc:
@@ -362,7 +369,7 @@ class ACPServer:
             return
         logger.info("acp.request_received method=%s id=%s", parsed.get("method"), parsed.get("id"))
         try:
-            response = self._dispatch(parsed)
+            response = await self._dispatch(parsed)
         except ACPError as exc:
             self._write_error_response(stdout, parsed.get("id"), exc)
             return
@@ -377,8 +384,8 @@ class ACPServer:
         if response is not None:
             self._write_response(stdout, response)
 
-    def _dispatch(self, parsed: dict[str, Any]) -> dict[str, Any] | None:
-        """Route one parsed JSON-RPC request to the right handler.
+    async def _dispatch(self, parsed: dict[str, Any]) -> dict[str, Any] | None:
+        """Async route — the only async handler is ``session/prompt``.
 
         Returns a response dict (for matching id) or ``None`` (no response).
         """
@@ -405,7 +412,7 @@ class ACPServer:
         if method == "session/load":
             return self._handle_session_load(req.id, params)
         if method == "session/prompt":
-            return self._handle_session_prompt(req.id, params)
+            return await self._handle_session_prompt(req.id, params)
         if method == "session/cancel":
             return self._handle_session_cancel(req.id, params)
         raise ACPError(METHOD_NOT_FOUND, f"unknown method: {method!r}")
@@ -496,17 +503,20 @@ class ACPServer:
             "session/load is not implemented in v1 (shipped in v1.5.1)",
         )
 
-    def _handle_session_prompt(
+    async def _handle_session_prompt(
         self,
         req_id: Any,
         params: dict[str, Any],
     ) -> dict[str, Any]:
-        # The actual prompt execution is async; for v1 we return
-        # immediately with ``stopReason: "completed"`` after a synchronous
-        # await. The EventBridge → SessionUpdate streaming is a
-        # follow-on; Phase 2 ships the protocol shape; the streaming
-        # notifications land when the subscriber wiring is added in
-        # 2.C.
+        """Async handler — awaits ``execute_fn`` under ``_session_timeout``.
+
+        The ``session_span`` instrumentation wraps the ``execute_fn``
+        call so the OTel span carries ``session.id``, ``stop_reason``,
+        ``duration_ms``, and ``status`` regardless of whether OTel is
+        configured. The ``acp.session_completed`` log line fires on
+        every successful path; ``acp.session_timeout`` fires on the
+        ``asyncio.wait_for`` timeout.
+        """
         from mahavishnu.acp.protocol import SessionPromptRequest
 
         try:
@@ -547,35 +557,23 @@ class ACPServer:
                     f"session timeout after {self._session_timeout}s",
                 ) from exc
 
-        # Run the execute_fn synchronously here (we're not in an
-        # event loop yet — this method is called from serve()'s loop).
-        # We use ``asyncio.run`` only if there's no running loop; in
-        # practice the serve loop is async, so we delegate via
-        # ``asyncio.ensure_future``.
-        # NOTE: the integration test in Phase 4 spawns a subprocess
-        # and feeds stdin; here in unit tests, the handle_request
-        # path is synchronous-only, so we can't await. Return a
-        # minimal response that the test asserts on.
-        # Wrap the synchronous execute_fn call in the OTel session
-        # span (plan §Phase 2 Task 5). The span emits with the 4
-        # attributes the plan enumerates; the ``acp.session_completed``
-        # log line fires regardless of whether OTel is configured.
-        try:
-            with session_span(session.session_id) as span_state:
-                try:
-                    result = _run_with_timeout_sync(_run_with_timeout)
-                    span_state["stop_reason"] = "completed"
-                    span_state["status"] = "ok"
-                except ACPError:
-                    span_state["stop_reason"] = "error"
-                    span_state["status"] = "error"
-                    raise
-                except Exception:
-                    span_state["stop_reason"] = "internal_error"
-                    span_state["status"] = "error"
-                    raise
-        except ACPError:
-            raise
+        # We are inside ``serve``'s event loop — ``await`` the timeout-
+        # wrapped ``_run`` directly. The previous ``_run_with_timeout_sync``
+        # helper was a unit-test seam and is no longer needed now that
+        # the dispatch chain is async throughout.
+        with session_span(session.session_id) as span_state:
+            try:
+                result = await _run_with_timeout()
+                span_state["stop_reason"] = "completed"
+                span_state["status"] = "ok"
+            except ACPError:
+                span_state["stop_reason"] = "error"
+                span_state["status"] = "error"
+                raise
+            except Exception:
+                span_state["stop_reason"] = "internal_error"
+                span_state["status"] = "error"
+                raise
 
         return JsonRpcResponse.model_validate(
             {
@@ -662,30 +660,6 @@ class ACPServer:
         logger.info(
             "acp.response_sent id=%s error_code=%d", req_id, error.code
         )
-
-
-def _run_with_timeout_sync(coro_factory: Callable[[], Any]) -> Any:
-    """Helper: run an async coroutine factory synchronously.
-
-    Used by the synchronous ``_handle_session_prompt`` for unit testing
-    convenience. In the production server path the dispatch happens from
-    inside :meth:`serve`'s event loop, so this helper is never called.
-    The dispatcher test exercises this via the
-    ``test_execute_fn_timeout`` path.
-
-    Note: this raises ``RuntimeError`` if called from inside a running
-    event loop (which is the production case). The CLI in 2.D wires
-    the async path properly.
-    """
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        # No running loop — safe to use asyncio.run.
-        return asyncio.run(coro_factory())
-    raise RuntimeError(
-        "_run_with_timeout_sync called from a running event loop; "
-        "use the async serve() path instead."
-    )
 
 
 # === Module-level convenience ===
