@@ -444,6 +444,7 @@ markers = [
     "hatchet: Tests for Hatchet adapter",
     "mcp: Tests for MCP server functionality",
     "acp: Tests for ACP server functionality",
+    "acp_stdio: Tests for ACP stdio JSON-RPC dispatcher internals",
     "chaos: Chaos and failure-injection tests",
     "requires_network: Tests requiring network access",
     "requires_auth: Tests requiring authentication credentials",
