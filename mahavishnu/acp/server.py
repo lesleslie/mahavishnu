@@ -46,6 +46,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import json
 import logging
+import os
 import sys
 from typing import Any
 import uuid
@@ -688,11 +689,33 @@ def _run_with_timeout_sync(coro_factory: Callable[[], Any]) -> Any:
 
 # === Module-level convenience ===
 
+class _SyncStdoutWriter:
+    """Synchronous stdout writer that bypasses ``connect_write_pipe``.
+
+    Python 3.14's ``connect_write_pipe`` requires the stream to be a
+    raw pipe/socket/character device; the ``TextIOWrapper`` that wraps
+    ``sys.stdout`` fails that check, raising ``ValueError``. ``os.write``
+    on the underlying fd works regardless of whether stdout is a pipe,
+    TTY, or captured stream. JSON-RPC responses are small (one line per
+    request), so a synchronous write is safe. No-op ``drain`` for the
+    asyncio ``StreamWriter`` protocol surface.
+    """
+
+    def __init__(self) -> None:
+        self._fd: int = sys.stdout.fileno()
+
+    def write(self, data: bytes) -> None:
+        os.write(self._fd, data)
+
+    async def drain(self) -> None:
+        return None
+
+
 async def serve(
     execute_fn: ExecuteFn,
     *,
     stdin: asyncio.StreamReader | None = None,
-    stdout: asyncio.StreamWriter | None = None,
+    stdout: Any = None,
     stderr: Any = None,
     bearer_token: str | None = None,
     max_concurrent_sessions: int = MAX_CONCURRENT_SESSIONS,
@@ -701,8 +724,11 @@ async def serve(
     """Module-level convenience: construct ``ACPServer`` and run its ``serve`` loop.
 
     ``stdin`` and ``stdout`` default to the process ``sys.stdin`` /
-    ``sys.stdout`` (wrapped via :class:`asyncio.StreamReader` /
-    :class:`asyncio.StreamWriter`). The CLI in 2.D wires this.
+    ``sys.stdout``. stdin is wrapped via ``asyncio.StreamReader``
+    (``connect_read_pipe`` works on ``sys.stdin``); stdout is wrapped
+    in :class:`_SyncStdoutWriter` which writes via ``os.write`` to the
+    underlying fd (bypasses asyncio's pipe transport check). The CLI
+    in 2.D wires this.
     """
     server = ACPServer(
         execute_fn,
@@ -716,11 +742,7 @@ async def serve(
         protocol = asyncio.StreamReaderProtocol(stdin)
         await loop.connect_read_pipe(lambda: protocol, sys.stdin)
     if stdout is None:
-        loop = asyncio.get_event_loop()
-        stdout_transport, stdout_protocol = await loop.connect_write_pipe(
-            asyncio.streams.FlowControlMixin, sys.stdout
-        )
-        stdout = asyncio.StreamWriter(stdout_transport, stdout_protocol, loop)
+        stdout = _SyncStdoutWriter()
     await server.serve(stdin, stdout, stderr)
 
 

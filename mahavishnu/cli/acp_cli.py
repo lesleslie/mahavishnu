@@ -7,7 +7,8 @@ described in :mod:`mahavishnu.acp.server`.
 The :func:`serve_cmd` is intentionally thin: it acquires the bearer,
 constructs the ``execute_fn`` (lazily using the Phase 1.5 factory
 ``build_execute_fn`` if available, otherwise a stub that echoes the
-prompt back), and hands stdin/stdout to :class:`ACPServer`.
+prompt back), and hands stdin/stdout to the dispatcher via the
+module-level :func:`mahavishnu.acp.server.serve`.
 
 Real execute_fn wiring is Phase 1.5 work; the stub here lets the
 CLI be smoke-tested end-to-end before that lands.
@@ -17,12 +18,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sys
 from typing import Any
 
 import typer
 
-from mahavishnu.acp.server import ACPServer
+from mahavishnu.acp.server import serve
 
 logger = logging.getLogger("mahavishnu.acp.cli")
 
@@ -30,7 +30,7 @@ app = typer.Typer(help="ACP server (stdio JSON-RPC 2.0) commands.")
 
 
 def _build_default_execute_fn() -> Any:
-    """Construct the ``execute_fn`` passed to :class:`ACPServer`.
+    """Construct the ``execute_fn`` passed to the dispatcher.
 
     Phase 1.5 plan: this delegates to ``build_execute_fn(settings)`` from
     ``mahavishnu.core.execute_fn_factory``. That factory doesn't exist
@@ -57,29 +57,6 @@ def _build_default_execute_fn() -> Any:
             }
 
         return _stub_execute_fn
-
-
-def _build_stdin_stream() -> Any:
-    """Build an :class:`asyncio.StreamReader` over ``sys.stdin``.
-
-    Uses ``loop.connect_read_pipe`` per the asyncio stdio best practice.
-    Returns the StreamReader; the actual pipe protocol is owned by
-    :func:`serve` below.
-    """
-    loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader()
-    protocol = asyncio.StreamReaderProtocol(reader)
-    return loop, reader, protocol
-
-
-def _build_stdout_stream() -> Any:
-    """Build an :class:`asyncio.StreamWriter` over ``sys.stdout``."""
-    loop = asyncio.get_event_loop()
-    transport, protocol = loop.connect_write_pipe(
-        asyncio.streams.FlowControlMixin, sys.stdout
-    )
-    writer = asyncio.StreamWriter(transport, protocol, loop)
-    return writer
 
 
 @app.command("serve")
@@ -112,26 +89,15 @@ def serve_cmd(
     env-var and file conventions.
     """
     execute_fn = _build_default_execute_fn()
-    server = ACPServer(
-        execute_fn=execute_fn,
-        bearer_token=bearer_token,
-        max_concurrent_sessions=max_concurrent_sessions,
-        session_timeout_seconds=session_timeout_seconds,
-    )
-
-    async def _run() -> None:
-        loop = asyncio.get_event_loop()
-        reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(reader)
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-        transport, write_proto = await loop.connect_write_pipe(
-            asyncio.streams.FlowControlMixin, sys.stdout
-        )
-        writer = asyncio.StreamWriter(transport, write_proto, loop)
-        await server.serve(reader, writer)
-
     try:
-        asyncio.run(_run())
+        asyncio.run(
+            serve(
+                execute_fn=execute_fn,
+                bearer_token=bearer_token,
+                max_concurrent_sessions=max_concurrent_sessions,
+                session_timeout_seconds=session_timeout_seconds,
+            )
+        )
     except RuntimeError as exc:
         # The dispatcher refuses to start without a bearer; surface
         # the error cleanly with a non-zero exit code.
@@ -144,4 +110,4 @@ def serve_cmd(
         raise typer.Exit(code=130) from None
 
 
-__all__ = ["app", "serve_cmd"]
+__all__ = ["app", "serve", "serve_cmd"]
