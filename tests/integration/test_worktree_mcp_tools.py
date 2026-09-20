@@ -1,6 +1,8 @@
 """Integration tests for the consolidated worktree MCP tool."""
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,7 +10,6 @@ import pytest
 from mahavishnu.core.app import MahavishnuApp
 from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

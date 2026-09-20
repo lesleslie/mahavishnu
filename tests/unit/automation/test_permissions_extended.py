@@ -9,16 +9,14 @@ helpers (``get_permission_checker``, ``check_accessibility_permissions``,
 
 from __future__ import annotations
 
-import importlib
-import sys
 from dataclasses import FrozenInstanceError
+import sys
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from mahavishnu.automation import permissions as perms
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -9,8 +9,6 @@ Provider-specific unit tests are obsolete — they lived with the removed
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
 from mahavishnu.core.embeddings_oneiric import (
@@ -18,9 +16,6 @@ from mahavishnu.core.embeddings_oneiric import (
     OneiricEmbeddingsAdapter,
     get_embeddings_with_oneiric,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class TestOneiricIntegration:

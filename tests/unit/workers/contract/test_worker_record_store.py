@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import datetime as dt
 import json
 import pathlib
-from collections.abc import Iterator
 
 import pytest
 

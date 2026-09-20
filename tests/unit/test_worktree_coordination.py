@@ -12,6 +12,8 @@ Tests comprehensive worktree coordination with safety mechanisms:
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -19,7 +21,6 @@ import pytest
 from mahavishnu.core.errors import ConfigurationError
 from mahavishnu.core.repo_models import Repository
 from mahavishnu.core.worktree_coordination import WorktreeCoordinator
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

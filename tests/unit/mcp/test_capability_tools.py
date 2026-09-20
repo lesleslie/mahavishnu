@@ -20,15 +20,14 @@ import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from mahavishnu.core.capabilities import CapabilityId
 from mahavishnu.core.config import EnginesConfig, WorkerEntry, WorkerRegistryConfig
-from mahavishnu.core.errors import AuthorizationError, ErrorCode, MahavishnuError
+from mahavishnu.core.errors import ErrorCode
 from mahavishnu.mcp.tools import capability_tools as capability_tools_mod
 from mahavishnu.mcp.tools.capability_tools import register_capability_tools
-
 
 pytestmark = pytest.mark.unit
 
@@ -431,7 +430,6 @@ def test_capability_id_is_validated_via_pydantic() -> None:
     """CapabilityId newtype uses TypeAdapter for runtime validation."""
     from pydantic import TypeAdapter, ValidationError
 
-    from mahavishnu.core.capabilities import CapabilityId
 
     adapter: TypeAdapter[str] = TypeAdapter(CapabilityId)
     with pytest.raises(ValidationError):

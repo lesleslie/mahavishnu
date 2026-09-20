@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from mahavishnu.webhooks import mount_durable_webhooks  # noqa: E402
+from mahavishnu.webhooks import mount_durable_webhooks
 from mahavishnu.webhooks import receiver as receiver_module
 
 pytestmark = pytest.mark.unit

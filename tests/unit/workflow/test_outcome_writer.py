@@ -121,7 +121,7 @@ def test_consumer_returns_none_when_dhara_get_unbound(
     # Import inside the test so the monkeypatched module is the one we hit.
     from mahavishnu.mcp.tools import workflow_tools
 
-    async def _exercise() -> "WorkflowOutcome | dict[str, object] | None":
+    async def _exercise() -> WorkflowOutcome | dict[str, object] | None:
         return await workflow_tools.workflow_get_outcome("wf-missing")
 
     with caplog.at_level("WARNING"):

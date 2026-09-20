@@ -16,12 +16,14 @@ import tempfile
 import pytest
 
 try:
-    import zstandard  # noqa: F401
+    import zstandard
 except ImportError:
     pytest.skip(
         "zstandard required; uv sync --group compression-zstd",
         allow_module_level=True,
     )
+
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.errors import ErrorCode, WorktreeError
 from mahavishnu.core.worktree_providers.storage_io import (
@@ -29,7 +31,6 @@ from mahavishnu.core.worktree_providers.storage_io import (
     deserialize_worktree_tar,
     serialize_worktree_tar,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -433,8 +434,7 @@ def test_round_trip_100mb_file(tmp_path: Path) -> None:
     # Stream-write to avoid holding 100MB in Python memory at once.
     with open(big, "wb") as f:
         chunk = b"x" * (1024 * 1024)
-        for _ in range(100):
-            f.write(chunk)
+        f.writelines(chunk for _ in range(100))
     target = tmp_path / "big_target"
     temp_path, byte_count, _sha = _serialize_to_payload(tmp_path)
     # Sanity: compression must shrink a uniform-byte file dramatically.
@@ -463,8 +463,7 @@ def test_round_trip_at_size_boundary(
     if size_bytes > 0:
         chunk = b"a"
         with open(big, "wb") as f:
-            for _ in range(size_bytes):
-                f.write(chunk)
+            f.writelines(chunk for _ in range(size_bytes))
     target = tmp_path / "boundary_target"
     temp_path, _count, sha256 = _serialize_to_payload(tmp_path)
     deserialize_worktree_tar(_chunk_reader(temp_path), target)

@@ -7,12 +7,12 @@ REQ-GOO-002, REQ-GOO-005.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
+import json
 
 import httpx2 as httpx
-import pytest
 from pydantic import SecretStr
+import pytest
 
 from mahavishnu.core.errors import (
     GooseAuthError,

@@ -980,8 +980,7 @@ def _register_ecosystem_publish_url_tool(server: FastMCPServer) -> None:
 
     register(server.server)
     logger.info(
-        "Registered ecosystem publish-URL tool "
-        "(mahavishnu_get_publish_url) with MCP server"
+        "Registered ecosystem publish-URL tool (mahavishnu_get_publish_url) with MCP server"
     )
 
 

@@ -17,8 +17,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import httpx2 as httpx
-import pytest
 from pydantic import SecretStr
+import pytest
 
 from mahavishnu.core.errors import (
     GooseAuthError,
@@ -26,7 +26,6 @@ from mahavishnu.core.errors import (
     GooseUnavailable,
 )
 from mahavishnu.terminal.goose_client import GooseHTTPClient
-
 
 SAMPLE_TOKEN = "this-is-the-bearer-secret-1234567890"
 
@@ -156,7 +155,7 @@ def test_client_uses_response_event_hooks() -> None:
     real_async_client = httpx.AsyncClient
 
     def factory(*args: object, **kwargs: object) -> httpx.AsyncClient:
-        if "event_hooks" in kwargs and kwargs["event_hooks"]:
+        if kwargs.get("event_hooks"):
             captured_hooks.update(kwargs["event_hooks"])
         return real_async_client(*args, **kwargs)
 

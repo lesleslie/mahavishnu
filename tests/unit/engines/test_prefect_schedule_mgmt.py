@@ -8,7 +8,7 @@ These tests cover the Phase 3 features:
 Tests use mocked Prefect clients to avoid requiring a real Prefect server.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

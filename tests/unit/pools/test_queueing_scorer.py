@@ -1,20 +1,17 @@
 """Tests for Phase 2 QueueingScorer + PoolManager queueing integration (REQ-002, REQ-003, REQ-008)."""
 from __future__ import annotations
 
-import time
 from collections import deque
+import time
 
 import pytest
 
-from mahavishnu.pools.base import PoolConfig, PoolMetrics
+from mahavishnu.core.status import PoolStatus
+from mahavishnu.pools.base import PoolMetrics
 from mahavishnu.pools.queueing import MmcQueue
 from mahavishnu.pools.queueing.scorer import (
-    DEFAULT_WARMUP_MIN_OBSERVATIONS,
-    DEFAULT_WARMUP_MIN_SECONDS,
     QueueingObservationBuffer,
 )
-from mahavishnu.core.status import PoolStatus
-
 
 # ---------------------------------------------------------------------------
 # QueueingObservationBuffer
@@ -107,7 +104,6 @@ class TestQueueingObservationBuffer:
 
     def test_append_drops_nan_inf(self) -> None:
         buf = QueueingObservationBuffer(pool_id="test")
-        import math
         buf.append(inter_arrival=float("nan"), service=0.5)
         buf.append(inter_arrival=1.0, service=float("inf"))
         buf.append(inter_arrival=-1.0, service=0.5)
@@ -300,7 +296,7 @@ class TestApplyQueueingPenalty:
 
     def _build_manager(self):  # type: ignore[no-untyped-def]
         """Minimal PoolManager construction with two pools."""
-        from mahavishnu.pools.manager import PoolManager, PoolSelector
+        from mahavishnu.pools.manager import PoolManager
 
         # Real constructor (no __new__) so internal dicts are set.
         try:
@@ -310,7 +306,6 @@ class TestApplyQueueingPenalty:
             # MahavishnuSettings; the apply_queueing_penalty tests
             # only touch _queueing_buffers and _pools, which are
             # both set in __init__.
-            from unittest.mock import MagicMock
 
             mgr = PoolManager.__new__(PoolManager)
             mgr._pools = {}
@@ -498,6 +493,7 @@ class TestRouteTaskExecutionInvariants:
     def _build_manager(self):  # type: ignore[no-untyped-def]
         """Minimal PoolManager construction for the invariant test."""
         from unittest.mock import MagicMock
+
         from mahavishnu.pools.manager import PoolManager, PoolSelector
 
         mgr = PoolManager.__new__(PoolManager)
@@ -518,6 +514,7 @@ class TestRouteTaskExecutionInvariants:
     async def test_route_task_calls_execute_once(self) -> None:
         """CR-1:execute_on_pool called exactly once per routing decision."""
         from unittest.mock import AsyncMock, MagicMock
+
         from mahavishnu.pools.manager import PoolSelector
 
         mgr = self._build_manager()
@@ -545,6 +542,7 @@ class TestRouteTaskExecutionInvariants:
     async def test_route_task_calls_record_arrival_once(self) -> None:
         """CR-2: _record_arrival called exactly once per routing decision."""
         from unittest.mock import AsyncMock, MagicMock
+
         from mahavishnu.pools.manager import PoolSelector
 
         mgr = self._build_manager()

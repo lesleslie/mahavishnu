@@ -6,9 +6,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from mahavishnu.core.capabilities import (
-    Capability, CapabilityId, CapabilityKind, CapabilitySpec,
-    CapabilityState, EngineId, EngineRegistration, ExecutionDAG,
-    TraceId, TypeSchema,
+    Capability,
+    CapabilityId,
+    CapabilityKind,
+    CapabilitySpec,
+    CapabilityState,
+    EngineId,
+    EngineRegistration,
+    TraceId,
+    TypeSchema,
 )
 from mahavishnu.core.conductor import emit_flow, emit_node, plan, resolve
 
@@ -125,9 +131,9 @@ def test_emit_flow_inner_dag_submits_with_wait_for() -> None:
 
 def test_emit_node_raises_not_implemented() -> None:
     """emit_node is a Phase 4 stub; it must raise until dispatchers land."""
-    from mahavishnu.core.capabilities import DAGNode
     from unittest.mock import AsyncMock
-    import pytest
+
+    from mahavishnu.core.capabilities import DAGNode
 
     node = DAGNode(
         node_id="n0",

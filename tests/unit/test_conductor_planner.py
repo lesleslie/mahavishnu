@@ -2,9 +2,17 @@
 from __future__ import annotations
 
 from mahavishnu.core.capabilities import (
-    Capability, CapabilityId, CapabilityKind, CapabilitySpec,
-    CapabilityState, CostHint, EngineId, EngineRegistration,
-    ExecutionDAG, SelectorStrategy, TraceId, TypeSchema,
+    Capability,
+    CapabilityId,
+    CapabilityKind,
+    CapabilitySpec,
+    CapabilityState,
+    EngineId,
+    EngineRegistration,
+    ExecutionDAG,
+    SelectorStrategy,
+    TraceId,
+    TypeSchema,
 )
 from mahavishnu.core.conductor import plan, resolve, select_candidates
 
@@ -58,8 +66,9 @@ def test_plan_emits_edges_when_io_matches() -> None:
 
 
 def test_plan_raises_when_no_engine_provides_a_required_capability() -> None:
-    from mahavishnu.core.errors import MahavishnuError
     import pytest
+
+    from mahavishnu.core.errors import MahavishnuError
 
     spec = CapabilitySpec(
         requires=[CapabilityId("engine:durable-flow"), CapabilityId("engine:nope")],
@@ -78,8 +87,9 @@ def test_plan_raises_when_no_engine_provides_a_required_capability() -> None:
 
 def test_select_candidates_raises_on_empty_list() -> None:
     """select_candidates([]) must raise rather than silently return None."""
-    from mahavishnu.core.errors import MahavishnuError
     import pytest
+
+    from mahavishnu.core.errors import MahavishnuError
 
     with pytest.raises(MahavishnuError):
         select_candidates([], SelectorStrategy.CAPABILITY_SCORE)

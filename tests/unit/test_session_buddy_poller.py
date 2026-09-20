@@ -7,9 +7,9 @@ from contextlib import suppress
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from mcp_common.exceptions import MCPServerError
 import pytest
 
-from mcp_common.exceptions import MCPServerError
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.integrations.session_buddy_poller import SessionBuddyPoller
 from monitoring.metrics import (

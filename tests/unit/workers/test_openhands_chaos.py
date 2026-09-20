@@ -8,7 +8,6 @@ import pytest
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.openhands import OpenHandsClient, OpenHandsConfig, OpenHandsWorker
-
 from tests.unit._httpx_test_helpers import patch_async_client
 
 _TARGET = "mahavishnu.workers.openhands"
@@ -30,7 +29,7 @@ async def test_network_drop_during_polling(monkeypatch: pytest.MonkeyPatch) -> N
     def fail_handler(request: httpx.Request) -> httpx.Response:
         raise httpx.NetworkError("connection reset")
 
-    handler_factory = lambda: (  # noqa: E731
+    handler_factory = lambda: (
         make_response_handler  # not used; placeholder for clarity
     )
     # Build a stateful handler that returns success for /conversations and

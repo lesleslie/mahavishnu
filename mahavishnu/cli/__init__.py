@@ -14,6 +14,7 @@ Note: The main CLI app is defined in mahavishnu/_main_cli.py (separate module).
 
 from .docs_cli import add_docs_commands
 from .events import add_events_commands
+
 # help_cli has Click/Typer incompatibility that hangs Python exit when
 # stdin is redirected (see _main_cli.py comment). Import lazily inside
 # functions that need it rather than at module load time.

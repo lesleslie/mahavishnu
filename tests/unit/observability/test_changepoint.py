@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import math
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
 import pytest
-from hypothesis import given, settings, strategies as st
 
 from mahavishnu.core.errors import ChangePointError
 from mahavishnu.observability.changepoint import (
     AnomalyResult,
-    CUSUMDetector,
     ChangePointDetector,
     ChangePointResult,
+    CUSUMDetector,
     PageHinkleyDetector,
 )
-
 
 # ---------------------------------------------------------------------------
 # CUSUMDetector — construction + validation

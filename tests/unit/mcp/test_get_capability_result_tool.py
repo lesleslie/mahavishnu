@@ -8,12 +8,11 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastmcp import FastMCP
+import pytest
 
 from mahavishnu.core.capabilities import EnvelopeId, TraceId
 from mahavishnu.mcp.tools.get_capability_result_tool import register_get_capability_result
-
 
 pytestmark = pytest.mark.unit
 

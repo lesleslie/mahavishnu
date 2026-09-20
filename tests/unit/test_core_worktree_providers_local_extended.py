@@ -39,10 +39,11 @@ No production code is modified. Helpers stay local to this file.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -725,8 +726,8 @@ class TestRemoveHandle:
             await provider.remove_handle(handle, caller=_principal())
 
     async def test_skips_git_cleanup_on_error(self, monkeypatch):
-        from mahavishnu.core.worktree_providers import local as local_mod_inner
         from mahavishnu.core.worktree_providers import dhara_registry
+        from mahavishnu.core.worktree_providers import local as local_mod_inner
 
         async def _exploding_remove(*_a, **_kw):
             raise RuntimeError("disk gone")
@@ -761,8 +762,8 @@ class TestRemoveHandle:
         assert await provider.remove_handle(handle, caller=_principal()) is True
 
     async def test_runs_dhara_remove_when_client_present(self, monkeypatch):
-        from mahavishnu.core.worktree_providers import local as local_mod_inner
         from mahavishnu.core.worktree_providers import dhara_registry
+        from mahavishnu.core.worktree_providers import local as local_mod_inner
 
         async def _fake_remove(*_a, **_kw):
             return {"success": True}
@@ -773,7 +774,6 @@ class TestRemoveHandle:
             captured["client"] = client
             captured["handle_id"] = handle_id
             captured["caller"] = caller
-            return None
 
         monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _fake_remove)
         monkeypatch.setattr(dhara_registry, "remove_handle", _capture_dhara_remove)

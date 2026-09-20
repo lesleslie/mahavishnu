@@ -16,9 +16,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # AdapterProvider (mahavishnu/core/ecosystem_status.py)
 # ---------------------------------------------------------------------------

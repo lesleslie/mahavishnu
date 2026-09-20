@@ -28,8 +28,8 @@ import typing
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from pydantic.fields import FieldInfo
+import pytest
 
 from mahavishnu.mcp.tools.terminal_tools import (
     DANGEROUS_COMMAND_PATTERNS,

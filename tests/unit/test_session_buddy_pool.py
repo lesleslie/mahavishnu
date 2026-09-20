@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from mcp_common.exceptions import MCPServerError
+import pytest
 
 from mahavishnu.pools.base import PoolConfig, PoolStatus
 from mahavishnu.pools.session_buddy_pool import SessionBuddyPool, _await_if_needed

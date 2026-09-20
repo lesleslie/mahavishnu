@@ -712,13 +712,13 @@ def test_merge_driver_health_emits_probe_span(monkeypatch: pytest.MonkeyPatch) -
     primary assertion source — MagicMock on the tracer would also work
     but the SDK exporter is the canonical verification.
     """
-    import mahavishnu.core.health as health_module
-
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
         InMemorySpanExporter,
     )
+
+    import mahavishnu.core.health as health_module
 
     provider = TracerProvider()
     exporter = InMemorySpanExporter()
@@ -763,13 +763,13 @@ def test_merge_driver_health_probe_span_records_missing_binary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """M10 fix: ``merge.driver.probe`` records ``merge.binary_path=None`` on miss."""
-    import mahavishnu.core.health as health_module
-
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
         InMemorySpanExporter,
     )
+
+    import mahavishnu.core.health as health_module
 
     provider = TracerProvider()
     exporter = InMemorySpanExporter()

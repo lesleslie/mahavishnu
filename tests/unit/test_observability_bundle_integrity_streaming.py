@@ -51,7 +51,6 @@ from mahavishnu.observability.metrics import (
     record_streaming_op,
 )
 
-
 # ---------------------------------------------------------------------------
 # Task C.2 — 9 new error codes
 # ---------------------------------------------------------------------------
@@ -220,9 +219,9 @@ def test_record_bundle_integrity_failure_short_rejects_unknown_label() -> None:
 
 def test_allowed_backend_kinds_includes_canonical_set() -> None:
     """Sanity guard — local/s3/gcs/azure/bundle are all allowed."""
-    assert ALLOWED_BACKEND_KINDS == frozenset(
+    assert frozenset(
         {"local", "s3", "gcs", "azure", "bundle"}
-    )
+    ) == ALLOWED_BACKEND_KINDS
 
 
 def test_write_dhara_audit_row_emits_info_log(
@@ -346,7 +345,6 @@ def test_record_streaming_op_large_bytes_is_allowed() -> None:
 
 def test_record_streaming_op_rejects_unknown_backend_label() -> None:
     """Error case — unknown backend label raises ValueError."""
-    import dataclasses
 
     record_streaming_op(
         op=StreamingOp.SERIALIZE,

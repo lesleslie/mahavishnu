@@ -8,8 +8,8 @@ jots to process.
 from __future__ import annotations
 
 import asyncio
-import time
 from pathlib import Path
+import time
 
 import pytest
 

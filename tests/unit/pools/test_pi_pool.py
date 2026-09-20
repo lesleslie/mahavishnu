@@ -5,7 +5,6 @@ Req: REQ-PI-008
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -109,8 +108,8 @@ async def test_scale_n_less_than_one_raises_value_error(n: int) -> None:
 
 def test_init_rejects_max_workers_greater_than_one() -> None:
     """PiPool has fixed worker count (1). max_workers > 1 must raise at __init__."""
-    from mahavishnu.pools.pi_pool import PiPool
     from mahavishnu.pools.base import PoolConfig
+    from mahavishnu.pools.pi_pool import PiPool
 
     config = PoolConfig(
         name="bad-pool",
@@ -184,7 +183,7 @@ async def test_start_populates_version_in_health_check() -> None:
 
 
 def test_error_repr_redacts_secret_fields() -> None:
-    from mahavishnu.core.errors import PiUnavailable, PiProtocolError, PiRPCTimeout
+    from mahavishnu.core.errors import PiProtocolError, PiRPCTimeout, PiUnavailable
 
     e1 = PiUnavailable(
         "subprocess failed",

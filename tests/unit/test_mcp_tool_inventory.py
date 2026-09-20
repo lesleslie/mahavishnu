@@ -20,8 +20,8 @@ claim is within ±5 of the counted value (narrative phrasing like
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
+import re
 
 import pytest
 

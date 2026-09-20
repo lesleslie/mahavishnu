@@ -5,19 +5,18 @@ field constraints.
 """
 from __future__ import annotations
 
-from typing import Annotated
-
+from pydantic import TypeAdapter, ValidationError
 import pytest
-from pydantic import StringConstraints, TypeAdapter, ValidationError
 
 from mahavishnu.core.capabilities import (
-    Capability, CapabilityEnvelope, CapabilityId, CapabilityKind,
-    CapabilitySpec, CapabilityState, Candidate, CostHint, DAGEdge,
-    DAGNode, EngineId, EngineRegistration, EnvelopeAddress, EnvelopeId,
-    ExecutionDAG, HealthRef, HealthStatus, SelectorStrategy, TraceId,
+    Capability,
+    CapabilityId,
+    CapabilityKind,
+    CapabilitySpec,
+    EngineId,
+    TraceId,
     TypeSchema,
 )
-
 
 # `CapabilityId`, `EngineId`, `TraceId` are `Annotated[str, StringConstraints]`
 # aliases. Calling the alias directly delegates to str() and never validates;

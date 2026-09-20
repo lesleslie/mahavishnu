@@ -13,7 +13,7 @@ from mahavishnu.distill.health import _as_aware, distilled_workflow_health
 class _RaisingCursor:
     """Cursor whose execute() raises — exercises the except branch."""
 
-    def execute(self, sql: str, params: list | None = None):  # noqa: ARG002
+    def execute(self, sql: str, params: list | None = None):
         raise RuntimeError("synthetic information_schema failure")
 
 
@@ -24,7 +24,7 @@ class _MissingTableCursor:
         def fetchone(self) -> None:
             return None
 
-    def execute(self, sql: str, params: list | None = None):  # noqa: ARG002
+    def execute(self, sql: str, params: list | None = None):
         return self._Result()
 
 

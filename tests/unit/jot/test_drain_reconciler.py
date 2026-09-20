@@ -15,10 +15,8 @@ import pytest
 
 from mahavishnu.jot import drain as drain_module
 from mahavishnu.jot.drain import (
-    DispatchState,
     RECONCILER_TIMEOUT_MS,
-    STATUS_CALL_TIMEOUT_SECONDS,
-    TERMINAL_STATUSES,
+    DispatchState,
     _auto_retry_after,
     _reconcile_if_in_flight,
 )
@@ -39,7 +37,6 @@ def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | 
                   dispatch_started_at_ms: int | None = None,
                   jot_id: str = "",
                   retry_budget_exhausted: bool | None = None) -> dict[str, object]:
-    from mahavishnu.jot.events import HLC, JotEvent
     ctx: dict[str, object] = {}
     if workflow_id is not None:
         ctx["workflow_id"] = workflow_id
@@ -187,7 +184,7 @@ async def test_reconcile_substrate_timeout_returns_silently(isolated_log: Path) 
     s = _make_summary()
 
     async def fake_status(workflow_id: str) -> dict[str, object]:
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status):
         await _reconcile_if_in_flight(s)
@@ -281,7 +278,6 @@ async def test_reconcile_catches_validation_error_propagation(
         return {"status": "FAILED"}
 
     # Force the append to raise JotValidationError (e.g., bad type for retry_budget_exhausted)
-    from mahavishnu.jot.drain import _append_event as real_append
     from mahavishnu.jot.errors import JotValidationError
 
     async def broken_append(op, ctx, *, jot_id):

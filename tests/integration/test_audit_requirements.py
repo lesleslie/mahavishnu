@@ -12,9 +12,9 @@ NOT a PR-blocking gate for the first 30 days (per the D2 promotion criteria).
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 

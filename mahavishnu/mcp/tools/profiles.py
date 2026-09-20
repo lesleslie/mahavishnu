@@ -216,7 +216,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_git_analytics_tools": lambda s: _register_git_analytics_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Ecosystem publish-URL tool — see STANDARD_REGISTRATIONS rationale.
-    "_register_ecosystem_publish_url_tool": lambda s: _register_ecosystem_publish_url_tool(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_ecosystem_publish_url_tool": lambda s: _register_ecosystem_publish_url_tool(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),  # type: ignore[attr-defined]

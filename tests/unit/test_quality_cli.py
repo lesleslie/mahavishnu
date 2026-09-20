@@ -18,13 +18,13 @@ def _mock_crackerjack_result(
     errors: list[str] | None = None,
     warnings: list[str] | None = None,
     duration: float = 0.5,
-) -> "object":  # noqa: F821 - crackerjack.QualityCheckResult at runtime
+) -> object:
     """Build a crackerjack.QualityCheckResult without importing crackerjack.
 
     Tests should not require crackerjack at import time; we patch the
     crackerjack module attribute the CLI calls into.
     """
-    import crackerjack  # type: ignore[import-not-found]  # noqa: PLC0415
+    import crackerjack  # type: ignore[import-not-found]
 
     return crackerjack.QualityCheckResult(
         success=success,

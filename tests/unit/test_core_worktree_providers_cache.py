@@ -9,7 +9,6 @@ from mahavishnu.core.worktree_providers.cache import (
     WorktreeCache,
 )
 
-
 # ---------------------------------------------------------------------------
 # Pre-test: install a ``delete_prefix`` shim on MemoryCacheAdapter when the
 # installed Oneiric predates Oneiric PR-A (which adds ``delete_prefix`` to
@@ -114,7 +113,7 @@ async def test_invalidate_handle_uses_canonical_prefix() -> None:
     await cache.init()
     assert cache.key_prefix == DEFAULT_KEY_PREFIX
     # Insert a key with the canonical prefix manually
-    await cache.set(f"h-abc:foo", "x")
+    await cache.set("h-abc:foo", "x")
     # invalidate_handle with the same handle id clears it.
     removed = await cache.invalidate_handle("h-abc")
     assert removed == 1

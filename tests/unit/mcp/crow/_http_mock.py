@@ -13,9 +13,9 @@ Replaces the original ``mock_http_client`` pytest fixture that used respx.
 from __future__ import annotations
 
 import asyncio
-import socket as _socket
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+import socket as _socket
 from typing import Any
 from unittest.mock import patch
 

@@ -9,7 +9,7 @@ These tests cover the Phase 2 features:
 Tests use mocked Prefect clients to avoid requiring a real Prefect server.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -265,7 +265,7 @@ class TestDeploymentResponse:
             schedule={"cron": "0 9 * * *"},
             parameters={"env": "test"},
             paused=False,
-            created_at=datetime.now((UTC)),
+            created_at=datetime.now(UTC),
         )
         assert response.id == "dep-123"
         assert response.name == "test-deployment"
@@ -278,7 +278,7 @@ class TestDeploymentResponse:
             name="test",
             flow_name="flow",
             flow_id="flow-456",
-            created_at=datetime.now((UTC)),
+            created_at=datetime.now(UTC),
         )
         assert response.parameters == {}
         assert response.tags == []
@@ -297,7 +297,7 @@ class TestFlowRunResponse:
             flow_id="flow-456",
             state_type="COMPLETED",
             state_name="Completed",
-            created_at=datetime.now((UTC)),
+            created_at=datetime.now(UTC),
         )
         assert response.id == "run-123"
         assert response.deployment_id is None
@@ -311,7 +311,7 @@ class TestFlowRunResponse:
             deployment_id="dep-789",
             state_type="RUNNING",
             state_name="Running",
-            created_at=datetime.now((UTC)),
+            created_at=datetime.now(UTC),
         )
         assert response.deployment_id == "dep-789"
 

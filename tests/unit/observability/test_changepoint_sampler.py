@@ -1,19 +1,17 @@
 """Tests for Phase 6: MetricSampler + ObservabilityManager change-point wiring (REQ-005, REQ-006, REQ-009)."""
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime
+import math
 
 import pytest
 
-from mahavishnu.observability.changepoint import AnomalyResult
 from mahavishnu.observability.sampler import (
     DEFAULT_CADENCE_SECONDS,
     DEFAULT_MAX_SAMPLES,
     MetricSample,
     MetricSampler,
 )
-
 
 # ---------------------------------------------------------------------------
 # MetricSample
@@ -306,11 +304,10 @@ class TestChangepointConfig:
 class TestObservabilityManagerDriftDetection:
     def _build_manager(self, **kwargs):  # type: ignore[no-untyped-def]
         """Build an ObservabilityManager with a minimal MahavishnuSettings stub."""
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import (
             ChangepointConfig,
-            MahavishnuSettings,
         )
+        from mahavishnu.core.observability import ObservabilityManager
 
         changepoint_cfg = ChangepointConfig(**kwargs)
         # Build a settings-like object that exposes the top-level
@@ -543,8 +540,8 @@ class TestDriftCounterEmission:
     """
 
     def _build_manager(self):  # type: ignore[no-untyped-def]
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
 
@@ -572,8 +569,8 @@ class TestDriftCounterEmission:
 
     def test_drift_counter_called_on_persistent_shift(self) -> None:
         """A persistent shift must invoke drift_detected_counter.add(1)."""
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
 
@@ -614,8 +611,8 @@ class TestDriftCounterEmission:
         """C4: OTel span carries all 16 spec attributes."""
         from unittest.mock import patch
 
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
 
@@ -723,8 +720,8 @@ class TestDetectorResetAfterFire:
     """
 
     def _build_manager(self):  # type: ignore[no-untyped-def]
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
 
@@ -818,8 +815,8 @@ class TestTargetMeanAutoColdPath:
     """
 
     def _build_manager(self):  # type: ignore[no-untyped-def]
-        from mahavishnu.core.observability import ObservabilityManager
         from mahavishnu.core.config import ChangepointConfig
+        from mahavishnu.core.observability import ObservabilityManager
 
         mgr = ObservabilityManager.__new__(ObservabilityManager)
 

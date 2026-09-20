@@ -14,8 +14,8 @@ from __future__ import annotations
 import builtins
 import importlib
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core import metrics_schema as ms_mod
 from mahavishnu.core.metrics_schema import (
@@ -36,7 +36,6 @@ from mahavishnu.core.metrics_schema import (
     generate_task_stats_key,
 )
 from mahavishnu.core.status import ExecutionStatus as CoreExecutionStatus
-
 
 # ---------------------------------------------------------------------------
 # StrEnum exhaustiveness

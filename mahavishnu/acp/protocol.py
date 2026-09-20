@@ -54,6 +54,7 @@ PROMPT_MAX: int = 100_000  # 100 KB; the dispatcher's stdin cap is 1 MB
 
 # === Initialize handshake ===
 
+
 class McpCapabilities(BaseModel):
     """ACP ``agentCapabilities.mcpCapabilities`` sub-shape.
 
@@ -112,6 +113,7 @@ class InitializeResponse(BaseModel):
 
 # === Authentication ===
 
+
 class AuthenticateRequest(BaseModel):
     """ACP ``authenticate`` request (client → agent).
 
@@ -128,6 +130,7 @@ class AuthenticateRequest(BaseModel):
 
 
 # === Session lifecycle ===
+
 
 class SessionNewRequest(BaseModel):
     """ACP ``session/new`` request (client → agent).
@@ -157,6 +160,7 @@ class SessionNewResponse(BaseModel):
 
 # === Session content (discriminated union by ``type``) ===
 
+
 class TextContent(BaseModel):
     """ACP text content payload."""
 
@@ -177,6 +181,7 @@ Only ``text`` is supported in v1; image/audio/etc. are deferred to v1.5+.
 
 
 # === Session prompts and cancel ===
+
 
 class SessionPromptRequest(BaseModel):
     """ACP ``session/prompt`` request (client → agent)."""
@@ -264,6 +269,7 @@ to the right session without parsing the full envelope.
 
 
 # === JSON-RPC 2.0 envelopes ===
+
 
 class JsonRpcRequest(BaseModel):
     """JSON-RPC 2.0 request envelope (``id`` is required for ACP requests).

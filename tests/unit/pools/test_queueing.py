@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import math
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
 import pytest
-from hypothesis import given, settings, strategies as st
 
 from mahavishnu.core.errors import QueueingModelError
 from mahavishnu.pools.queueing import MmcQueue
-
 
 # Reference values from Gross & Harris, "Fundamentals of Queueing
 # Theory" (4th ed.), Tables 5.1, 5.3, 5.5. The Erlang-C M/M/c table

@@ -25,7 +25,6 @@ from mahavishnu.observability.changepoint import (
 )
 from mahavishnu.observability.changepoint.two_stage import (
     TwoStageDetector,
-    TwoStageResult,
 )
 
 

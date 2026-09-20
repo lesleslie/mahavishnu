@@ -43,7 +43,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 try:
-    import zstandard  # noqa: F401
+    import zstandard
 except ImportError:
     pytest.skip(
         "zstandard required; uv sync --group compression-zstd",
@@ -76,15 +76,16 @@ if not (
         allow_module_level=True,
     )
 
-from mahavishnu.core.worktree_providers.storage_io import (  # noqa: E402
+from typing import TYPE_CHECKING
+
+from mahavishnu.core.worktree_providers.storage_io import (
     deserialize_worktree_tar,
     serialize_worktree_tar,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from collections.abc import Callable, Iterator
+    from pathlib import Path
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
@@ -396,8 +397,7 @@ def test_round_trip_size_boundary(
     big = payload_dir / "blob.bin"
     chunk = b"a"
     with open(big, "wb") as f:
-        for _ in range(size_bytes):
-            f.write(chunk)
+        f.writelines(chunk for _ in range(size_bytes))
 
     target = tmp_path / f"target_{size_label}"
 

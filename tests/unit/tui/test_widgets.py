@@ -20,7 +20,6 @@ import pytest
 from mahavishnu.tui import TUI_AVAILABLE
 from mahavishnu.tui import widgets as widgets_module
 
-
 # ============================================================
 # Fixtures
 # ============================================================

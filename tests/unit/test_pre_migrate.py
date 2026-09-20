@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
-
-import pytest
+import subprocess
 
 from mahavishnu.auth import Principal
 from mahavishnu.core.worktree_providers.pre_migrate import (
@@ -16,8 +13,7 @@ from mahavishnu.core.worktree_providers.pre_migrate import (
     pre_migration_discover,
     synthesize_handle,
 )
-from mahavishnu.core.worktree_providers.types import LocalWorktreeRef, WorktreeHandle
-
+from mahavishnu.core.worktree_providers.types import LocalWorktreeRef
 
 # ----- parse_porcelain -------------------------------------------------------
 

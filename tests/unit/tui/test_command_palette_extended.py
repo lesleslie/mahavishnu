@@ -38,7 +38,6 @@ from mahavishnu.tui.command_palette import (
     get_command_palette,
 )
 
-
 # ============================================================
 # Helpers
 # ============================================================
@@ -241,7 +240,7 @@ def test_command_not_equal_to_non_command_object() -> None:
     cmd = _cmd("task.create")
     assert (cmd == "task.create") is False
     assert (cmd == 42) is False
-    assert (cmd == None) is False  # noqa: E711
+    assert (cmd == None) is False
 
 
 @pytest.mark.unit

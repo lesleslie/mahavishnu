@@ -27,7 +27,6 @@ from mahavishnu.observability.metrics import (
     record_worktree_op,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers — pure-function tests
 # ---------------------------------------------------------------------------
@@ -180,7 +179,7 @@ def test_verify_sha256_mismatch_raises_and_emits_counter() -> None:
 
 def test_allowed_backend_kinds_includes_canonical_set() -> None:
     """The allowlist for backend kinds matches BackendKind literal."""
-    assert ALLOWED_BACKEND_KINDS == frozenset({"local", "s3", "gcs", "azure", "bundle"})
+    assert frozenset({"local", "s3", "gcs", "azure", "bundle"}) == ALLOWED_BACKEND_KINDS
 
 
 # ---------------------------------------------------------------------------

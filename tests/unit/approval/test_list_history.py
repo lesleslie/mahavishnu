@@ -7,7 +7,6 @@ import logging
 from typing import Any
 from unittest.mock import MagicMock
 
-import msgspec
 import pytest
 
 from mahavishnu.cli.approval_cli import list_approval_history

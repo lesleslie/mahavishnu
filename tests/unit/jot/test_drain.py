@@ -8,16 +8,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
-from unittest import mock
 
 import pytest
 
 from mahavishnu.jot.drain import (
-    DrainPlan,
     DispatchResult,
+    DrainPlan,
     _append_event,
-    _mcp_trigger_workflow,
     defer_jot,
     delete_jot,
     dispatch_jot,
@@ -26,13 +23,12 @@ from mahavishnu.jot.drain import (
 )
 from mahavishnu.jot.errors import (
     JotDeferError,
-    JotDispatchError,
     JotLogUnwritableError,
     JotRetryError,
     JotValidationError,
 )
 from mahavishnu.jot.events import HLC, JotEvent, serialize
-from mahavishnu.jot.fold import DispatchState, JotSummary
+from mahavishnu.jot.fold import JotSummary
 
 
 @pytest.fixture

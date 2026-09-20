@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -322,7 +322,7 @@ class TestInsertBatchToSessionBuddy:
             nonlocal call_count
             call_count += 1
             if call_count <= 1:
-                return None  # success
+                return  # success
             raise MCPServerError("upstream 500")
 
         aggregator._mcp_client = MagicMock()
@@ -686,7 +686,7 @@ class TestCrossPoolSearch:
         # Cache key format is "query:limit" — default limit is 100
         aggregator._search_cache["query:100"] = {
             "results": results,
-            "cached_at": datetime.now((UTC)),
+            "cached_at": datetime.now(UTC),
         }
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("query", mock_pm)
@@ -696,7 +696,7 @@ class TestCrossPoolSearch:
     async def test_cache_expired(self, aggregator: MemoryAggregator):
         aggregator._search_cache["old_query:10"] = {
             "results": [{"text": "old"}],
-            "cached_at": datetime.now((UTC)) - timedelta(minutes=10),
+            "cached_at": datetime.now(UTC) - timedelta(minutes=10),
         }
         aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": [{"text": "fresh"}]})
 
@@ -752,7 +752,7 @@ class TestCrossPoolSearch:
         results = [{"text": f"r{i}"} for i in range(20)]
         aggregator._search_cache["query:5"] = {
             "results": results,
-            "cached_at": datetime.now((UTC)),
+            "cached_at": datetime.now(UTC),
         }
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("query", mock_pm, limit=5)
@@ -766,8 +766,8 @@ class TestCrossPoolSearch:
 
 class TestClearCache:
     def test_clears_all_entries(self, aggregator: MemoryAggregator):
-        aggregator._search_cache["a"] = {"results": [], "cached_at": datetime.now((UTC))}
-        aggregator._search_cache["b"] = {"results": [], "cached_at": datetime.now((UTC))}
+        aggregator._search_cache["a"] = {"results": [], "cached_at": datetime.now(UTC)}
+        aggregator._search_cache["b"] = {"results": [], "cached_at": datetime.now(UTC)}
         aggregator.clear_cache()
         assert aggregator._search_cache == {}
 
@@ -787,11 +787,11 @@ class TestGetCacheStats:
     def test_active_and_expired(self, aggregator: MemoryAggregator):
         aggregator._search_cache["active"] = {
             "results": [],
-            "cached_at": datetime.now((UTC)),
+            "cached_at": datetime.now(UTC),
         }
         aggregator._search_cache["expired"] = {
             "results": [],
-            "cached_at": datetime.now((UTC)) - timedelta(minutes=10),
+            "cached_at": datetime.now(UTC) - timedelta(minutes=10),
         }
         stats = aggregator.get_cache_stats()
         assert stats["total_entries"] == 2

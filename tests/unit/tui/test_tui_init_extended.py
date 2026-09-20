@@ -20,8 +20,8 @@ Also covers the ``get_console()`` singleton cache contract and the
 from __future__ import annotations
 
 import importlib
-import sys
 from io import StringIO
+import sys
 from typing import Any
 
 import pytest
@@ -32,9 +32,8 @@ import pytest
 from rich.console import Console
 from rich.table import Table
 
-import mahavishnu.tui as tui
+from mahavishnu import tui
 from mahavishnu.tui import FallbackRichFormatter, get_console
-
 
 pytestmark = pytest.mark.unit
 
@@ -476,7 +475,7 @@ def test_module_level_imports_are_accessible() -> None:
     # (which produces a fresh class object) does not break identity
     # comparisons against the module-level ``FallbackRichFormatter`` and
     # ``get_console`` references imported at the top of this test file.
-    import mahavishnu.tui as tui_mod  # noqa: F401
+    import mahavishnu.tui as tui_mod
 
     # Verify each advertised public symbol is exposed as a module attribute.
     assert hasattr(tui_mod, "Command")
@@ -486,7 +485,7 @@ def test_module_level_imports_are_accessible() -> None:
     assert hasattr(tui_mod, "TUI_AVAILABLE")
     assert hasattr(tui_mod, "get_console")
     # And they are the same objects reachable via ``from mahavishnu.tui import X``.
-    from mahavishnu.tui import FallbackRichFormatter, get_console  # noqa: F401
+    from mahavishnu.tui import FallbackRichFormatter, get_console
 
     # Use ``==`` rather than ``is`` so a reloaded module (which yields a
     # distinct class object) still matches by name lookup.

@@ -10,10 +10,9 @@ dispatches based on URL.
 
 from __future__ import annotations
 
-import socket as _socket
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any
+import socket as _socket
 from unittest.mock import patch
 
 import httpx2 as httpx

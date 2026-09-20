@@ -26,7 +26,7 @@ class SearchIndex:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "SearchIndex":
+    def from_dict(cls, data: dict) -> SearchIndex:
         """Deserialize from dictionary."""
         # Recreate SkillMetadata objects
         from skill_parser import RelatedSkill, SkillMetadata

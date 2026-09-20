@@ -6,7 +6,7 @@ Uses only the fallback generate_config_id and is_config_ulid from the module its
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from pydantic import ValidationError
 import pytest

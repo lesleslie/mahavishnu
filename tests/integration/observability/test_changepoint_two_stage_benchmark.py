@@ -17,7 +17,6 @@ import pytest
 
 from mahavishnu.observability.changepoint import (
     CUSUMDetector,
-    PageHinkleyDetector,
 )
 from mahavishnu.observability.changepoint.two_stage import (
     TwoStageDetector,

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from mahavishnu.jot.fold import DispatchState, JotSummary
 from mahavishnu.jot.render import (
-    JotSummaryDict,
     JotVitalsDict,
     _summary_dict,
     _vitals_dict,

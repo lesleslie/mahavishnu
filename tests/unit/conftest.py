@@ -52,7 +52,7 @@ def _ensure_mcp_error_compat() -> None:
     under the legacy name so agno's import chain resolves.
     """
     # Make sure mcp.shared.exceptions has been loaded by importing it
-    import mcp.shared.exceptions as exc  # noqa: F401
+    import mcp.shared.exceptions as exc
 
     if hasattr(sys.modules.get("mcp.shared.exceptions", exc), "MCPError"):
         return

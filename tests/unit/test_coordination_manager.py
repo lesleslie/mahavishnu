@@ -9,7 +9,7 @@ file isolates manager behavior with finer-grained edge cases.
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 import os
 from pathlib import Path
 import subprocess

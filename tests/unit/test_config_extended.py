@@ -14,8 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from mahavishnu.core import config as config_mod
 from mahavishnu.core.config import (
@@ -24,8 +24,8 @@ from mahavishnu.core.config import (
     AgnoMemoryConfig,
     MahavishnuSettings,
     MemoryBackend,
-    OTelIngesterConfig,
     OpenHandsSettings,
+    OTelIngesterConfig,
     WorkerEntry,
     WorkerRegistryConfig,
     get_settings,
@@ -34,7 +34,6 @@ from mahavishnu.core.config import (
 )
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Iterator
 
 

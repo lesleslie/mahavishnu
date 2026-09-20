@@ -1,8 +1,6 @@
 """Task 5: _is_surface_eligible + _is_drain_eligible filters."""
 from __future__ import annotations
 
-import pytest
-
 from mahavishnu.jot.drain import DispatchState, _is_drain_eligible, _is_surface_eligible
 from mahavishnu.jot.fold import JotSummary
 

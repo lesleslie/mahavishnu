@@ -5,7 +5,6 @@ import pytest
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.a2a import A2AAgentConfig, A2AWorker
-
 from tests.unit._httpx_test_helpers import patch_async_client
 
 _TARGET = "mahavishnu.workers.a2a"

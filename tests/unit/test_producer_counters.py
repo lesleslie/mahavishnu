@@ -8,9 +8,8 @@ accepts the three expected producer names.
 """
 from __future__ import annotations
 
-import pytest
-
 from prometheus_client import REGISTRY
+import pytest
 
 from mahavishnu.core import _producer_metrics as _producer_metrics_module
 from mahavishnu.core._producer_metrics import COUNTERS

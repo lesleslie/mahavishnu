@@ -81,8 +81,7 @@ def _read_token_from_env() -> str | None:
         if mode & 0o077:
             raise ACPError(
                 AUTH_INVALID,
-                f"bearer token file {env_file} has permissive mode {oct(mode)}; "
-                "expected mode 0600",
+                f"bearer token file {env_file} has permissive mode {oct(mode)}; expected mode 0600",
             )
         try:
             return path.read_text(encoding="utf-8").strip()

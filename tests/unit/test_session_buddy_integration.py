@@ -22,9 +22,9 @@ from types import ModuleType
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from mahavishnu.messaging.messaging.types import Priority
 import pytest
 
+from mahavishnu.messaging.messaging.types import Priority
 from mahavishnu.session_buddy.integration import (
     SessionBuddyIntegration,
     SessionBuddyManager,

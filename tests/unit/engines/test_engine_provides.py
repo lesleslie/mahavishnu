@@ -17,7 +17,6 @@ from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
 from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter
 
-
 # -----------------------------------------------------------------------------
 # Stub WorkerManager so WorkerOrchestratorAdapter can be constructed in tests
 # without spinning up a real terminal manager.

@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from mahavishnu.workers.contract.manager import DurableWorkerManager
 from mahavishnu.workers.contract.record import DurableWorkerRecord, TmuxTarget
 from mahavishnu.workers.contract.state import WorkerLifecycleState
 from mahavishnu.workers.contract.store import WorkerRecordStore
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pathlib

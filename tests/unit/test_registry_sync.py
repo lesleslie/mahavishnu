@@ -192,7 +192,7 @@ class TestRepoCLICatalogSource:
     def test_catalog_path_is_canonical(self) -> None:
         from mahavishnu.repo_cli import REPOS_CATALOG_PATH
 
-        assert REPOS_CATALOG_PATH == Path("settings/ecosystem.yaml")
+        assert Path("settings/ecosystem.yaml") == REPOS_CATALOG_PATH
 
     def test_catalog_resolves_a_migrated_repo(self) -> None:
         """raindropio-mcp was stranded in the legacy file; repo_cli must now see it."""

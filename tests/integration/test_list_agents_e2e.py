@@ -11,8 +11,8 @@ without launching the daemon.
 from __future__ import annotations
 
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 
 import pytest
 
@@ -91,9 +91,9 @@ async def test_list_agents_advertises_three_named_specialists(_server) -> None:
 @pytest.mark.asyncio
 async def test_list_agents_metadata_shape_matches_schema(_server) -> None:
     """Every entry validates against the AgentMetadata schema (server_key, id, model, tools)."""
-    from mahavishnu.mcp.agent_schema import AgentMetadata
-
     import json
+
+    from mahavishnu.mcp.agent_schema import AgentMetadata
 
     result = await _server.server.call_tool("mahavishnu_list_agents", {})
     payload = result.content[0].text

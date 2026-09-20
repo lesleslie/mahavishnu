@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import importlib.util
 from contextlib import suppress
+import importlib.util
 from pathlib import Path
 import sys
 from unittest.mock import MagicMock, patch

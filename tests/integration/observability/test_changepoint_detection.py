@@ -10,9 +10,9 @@ from __future__ import annotations
 import pytest
 
 from mahavishnu.observability.changepoint import (
+    AnomalyResult,
     CUSUMDetector,
     PageHinkleyDetector,
-    AnomalyResult,
 )
 
 

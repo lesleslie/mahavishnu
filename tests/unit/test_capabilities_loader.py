@@ -1,8 +1,8 @@
 """Tests for Oneiric-driven capability loader."""
 from __future__ import annotations
 
-from mahavishnu.core.capabilities_loader import load_capabilities_from_settings
 from mahavishnu.core.capabilities import CapabilityKind, CapabilityState
+from mahavishnu.core.capabilities_loader import load_capabilities_from_settings
 from mahavishnu.core.config import MahavishnuSettings
 
 

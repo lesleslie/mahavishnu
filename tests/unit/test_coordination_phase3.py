@@ -15,14 +15,11 @@ import tempfile
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import httpx2 as httpx
 import pytest
 import yaml
 
 from mahavishnu.core.coordination.manager import CoordinationManager, _run_command_safe
 from mahavishnu.core.coordination.memory import CoordinationMemory
-
-from tests.unit._httpx_test_helpers import make_recording_handler
 
 _AKOSHA_TARGET = "mahavishnu.core.coordination.memory"
 

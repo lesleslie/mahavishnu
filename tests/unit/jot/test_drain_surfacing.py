@@ -1,8 +1,6 @@
 """Task 8: surfacing scorers + _Throttle + surface_relevant."""
 from __future__ import annotations
 
-import asyncio
-import json
 from pathlib import Path
 from typing import Any
 
@@ -10,16 +8,15 @@ import pytest
 
 from mahavishnu.jot.drain import (
     SurfacingResult,
-    _Throttle,
     _cosine_similarity,
     _lexical_score,
     _semantic_score,
+    _Throttle,
     _tokenize,
     surface_relevant,
 )
 from mahavishnu.jot.events import JotEvent, serialize
 from mahavishnu.jot.hlc import HLC
-
 
 # =============================================================================
 # _tokenize
@@ -227,7 +224,7 @@ class _TimeoutEmbeddings:
     """Embeddings stub that raises asyncio.TimeoutError."""
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
 
 class _EmptyVectorEmbeddings:

@@ -7,7 +7,6 @@ import pytest
 from mahavishnu.core.worktree_providers.errors import ProviderUnavailableError
 from mahavishnu.core.worktree_providers.registry import WorktreeProviderRegistry
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

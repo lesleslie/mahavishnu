@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+from oneiric.runtime.events import EventEnvelope as OneiricEventEnvelope
 import pytest
 
 from mahavishnu.core.errors import EventEnvelopeConversionError
@@ -13,7 +14,6 @@ from mahavishnu.core.events.canonical import (
     create_oneiric_envelope,
     to_mahavishnu_envelope,
 )
-from oneiric.runtime.events import EventEnvelope as OneiricEventEnvelope
 
 
 def test_utc_timestamp_replaces_naive_tzinfo() -> None:

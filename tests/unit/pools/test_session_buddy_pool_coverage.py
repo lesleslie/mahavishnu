@@ -93,8 +93,8 @@ async def test_call_mcp_tool_returns_payload() -> None:
     """call_tool returns the raw payload; _call_mcp_tool wraps it as-is."""
     payload = {"result": [{"status": "completed", "output": "ok", "error": None}]}
 
-    from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
     from mahavishnu.pools.base import PoolConfig as _Cfg
+    from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
 
     pool = SessionBuddyPool(
         config=_Cfg(name="x", pool_type="session-buddy", min_workers=1, max_workers=1)
@@ -113,8 +113,8 @@ async def test_call_mcp_tool_returns_payload() -> None:
 async def test_call_mcp_tool_propagates_server_error(
     exc_cls: type[BaseException],
 ) -> None:
-    from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
     from mahavishnu.pools.base import PoolConfig as _Cfg
+    from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
 
     pool = SessionBuddyPool(
         config=_Cfg(name="x", pool_type="session-buddy", min_workers=1, max_workers=1)

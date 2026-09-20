@@ -133,9 +133,7 @@ class TestTwoStageDispatch:
             def add(self, amount: int, attributes: dict | None = None) -> None:
                 attrs = attributes or {}
                 _validate_labels(attrs)
-                if amount == 1 and "severity" in attrs and self._allow_severity:
-                    self._sink.append(attrs)
-                elif amount == 1 and "severity" not in attrs and not self._allow_severity:
+                if amount == 1 and "severity" in attrs and self._allow_severity or amount == 1 and "severity" not in attrs and not self._allow_severity:
                     self._sink.append(attrs)
 
         mgr.drift_warning_counter = _StubCounter(warning_adds, allow_severity=False)  # type: ignore[attr-defined]

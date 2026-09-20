@@ -19,12 +19,11 @@ trick is used for ``serialize_worktree_tar`` in the size-cap test.
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -714,9 +713,9 @@ class TestFetchStreaming:
         self, tmp_materialized_base, monkeypatch
     ):
         """Forced zstandard ImportError → MHV-223 WorktreeError."""
-        from mahavishnu.core.errors import ErrorCode, WorktreeError
-
         import builtins
+
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         real_import = builtins.__import__
 

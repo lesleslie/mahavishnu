@@ -1,9 +1,9 @@
 """Graph building for skill relationship visualization."""
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import networkx as nx
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from skill_parser import SkillMetadata

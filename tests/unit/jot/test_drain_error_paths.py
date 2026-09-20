@@ -34,9 +34,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.jot.drain import (
-    DispatchState,
     MAX_AUTO_ATTEMPTS,
-    _append_event,
+    DispatchState,
     _auto_retry_after,
     _background_reconciler_loop,
     _mcp_get_workflow_status,
@@ -52,13 +51,11 @@ from mahavishnu.jot.drain import (
     surface_relevant,
 )
 from mahavishnu.jot.errors import (
-    JotDeferError,
     JotDispatchError,
     JotLogUnwritableError,
     JotRetryError,
     JotValidationError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -604,7 +601,7 @@ def test_semantic_score_degraded_on_timeout() -> None:
     drain_mod._last_surface_degraded = False
 
     class FlakyEmbeddings:
-        def embed(self, texts: list[str]) -> Any:  # noqa: ARG002
+        def embed(self, texts: list[str]) -> Any:
             raise TimeoutError("embeddings down")
 
     score = _semantic_score("hello", "world", FlakyEmbeddings())
@@ -619,7 +616,7 @@ def test_semantic_score_degraded_on_malformed_response() -> None:
     drain_mod._last_surface_degraded = False
 
     class WeirdEmbeddings:
-        def embed(self, texts: list[str]) -> Any:  # noqa: ARG002
+        def embed(self, texts: list[str]) -> Any:
             # Generator is truthy, but `len(generator)` raises TypeError.
             return (v for v in [[1.0, 2.0], [3.0, 4.0]])
 
@@ -635,7 +632,7 @@ def test_semantic_score_zero_when_embeddings_empty_or_short() -> None:
     drain_mod._last_surface_degraded = False
 
     class ShortEmbeddings:
-        def embed(self, texts: list[str]) -> Any:  # noqa: ARG002
+        def embed(self, texts: list[str]) -> Any:
             return [[0.1]]  # only one vector; len(emb) < 2
 
     score = _semantic_score("hello", "world", ShortEmbeddings())

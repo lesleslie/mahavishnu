@@ -24,10 +24,9 @@ def _patched_console_init(self: _RichConsole, *args: object, **kwargs: object) -
 
 _RichConsole.__init__ = _patched_console_init  # type: ignore[method-assign]
 
-import pytest  # noqa: E402
-from typer.testing import CliRunner  # noqa: E402
+from typer.testing import CliRunner
 
-from mahavishnu.routing_cli import add_routing_commands, routing_app  # noqa: E402
+from mahavishnu.routing_cli import add_routing_commands, routing_app
 
 runner = CliRunner()
 

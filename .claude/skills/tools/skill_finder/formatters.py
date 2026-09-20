@@ -1,14 +1,15 @@
 """Output formatting for skill search results."""
 
+from typing import TYPE_CHECKING
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from .search import SearchResult
     from skill_parser import SkillMetadata
+
+    from .search import SearchResult
 
 console = Console()
 

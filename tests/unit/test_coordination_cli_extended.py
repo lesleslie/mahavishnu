@@ -16,7 +16,6 @@ Targets command callbacks that were not exercised by the original
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
@@ -25,11 +24,9 @@ import typer
 from typer.testing import CliRunner
 
 from mahavishnu.core.coordination.models import (
-    DependencyType,
     IssueStatus,
     PlanStatus,
     Priority,
-    TodoStatus,
 )
 from mahavishnu.core.status import TaskStatus
 

@@ -24,7 +24,6 @@ from mahavishnu.core.events.transport import (
 )
 from mahavishnu.websocket import integration
 
-
 # ---------------------------------------------------------------------------
 # Fakes / fixtures
 # ---------------------------------------------------------------------------

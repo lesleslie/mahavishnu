@@ -14,11 +14,10 @@ Req: REQ-GOO-005.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 
 import httpx2 as httpx
-import pytest
 from pydantic import SecretStr
+import pytest
 
 from mahavishnu.terminal.adapters.goose import GooseTerminalAdapter
 from mahavishnu.terminal.goose_client import GooseHTTPClient

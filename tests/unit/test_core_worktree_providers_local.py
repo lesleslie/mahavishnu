@@ -13,26 +13,26 @@ provider identity, health checks, and edge cases in the porcelain parser.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterator
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from mahavishnu.auth import Principal
 from mahavishnu.core.worktree_providers.base import WorktreeProvider
-from mahavishnu.core.worktree_providers.local import (
-    DirectGitWorktreeProvider,
-    HealthReport,
-    LocalWorktreeProvider,
-    MAX_CONCURRENT_WORKTREE_STREAMS,
-    supports_streaming,
-)
 from mahavishnu.core.worktree_providers.errors import (
     WorktreeCreationError,
     WorktreeOperationError,
+)
+from mahavishnu.core.worktree_providers.local import (
+    MAX_CONCURRENT_WORKTREE_STREAMS,
+    DirectGitWorktreeProvider,
+    HealthReport,
+    LocalWorktreeProvider,
+    supports_streaming,
 )
 
 pytestmark = pytest.mark.unit
@@ -912,11 +912,11 @@ class TestFetchStreaming:
     async def test_fetch_raises_on_codec_unavailable_mhv223(
         self, tmp_path, monkeypatch
     ):
-        from mahavishnu.core.errors import ErrorCode, WorktreeError
-        from mahavishnu.core.worktree_providers import local as local_mod
-
         # Force the zstandard import in fetch() to fail
         import builtins
+
+        from mahavishnu.core.errors import ErrorCode, WorktreeError
+        from mahavishnu.core.worktree_providers import local as local_mod
 
         real_import = builtins.__import__
 

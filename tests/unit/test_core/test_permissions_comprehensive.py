@@ -11,7 +11,7 @@ This module provides extensive test coverage for:
 
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import pytest
 
@@ -121,9 +121,9 @@ class TestUser:
 
     def test_user_created_at_timestamp(self):
         """Test that user creation timestamp is recent."""
-        before = datetime.now((UTC))
+        before = datetime.now(UTC)
         user = User(user_id="user123", roles=[])
-        after = datetime.now((UTC))
+        after = datetime.now(UTC)
 
         assert before <= user.created_at <= after
 

@@ -18,13 +18,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from mahavishnu.core.adapters.base import (
-    AdapterCapabilities,
-    AdapterType,
-    OrchestratorAdapter,
-)
-from mahavishnu.core.routing_metrics import RoutingMetrics
-from mahavishnu.core.status import WorkflowStatus
 # Import the task_router module rather than its symbols so that
 # ``importlib.reload(mahavishnu.core.task_router)`` (used by sibling tests
 # such as ``tests/unit/test_task_router_core.py``) does not leave us holding
@@ -32,8 +25,15 @@ from mahavishnu.core.status import WorkflowStatus
 # ``task_router.TaskType`` attribute is the *new* class, and
 # ``TaskRouter._normalize_task_type`` returns a member of that new class —
 # so the ``is`` identity assertions below keep matching.
-import mahavishnu.core.task_router as task_router
-from mahavishnu.core.task_router import (  # noqa: E402  -- symbol re-export
+from mahavishnu.core import task_router
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
+from mahavishnu.core.routing_metrics import RoutingMetrics
+from mahavishnu.core.status import WorkflowStatus
+from mahavishnu.core.task_router import (
     AdapterExecutionStats,
     AdapterManager,
     CapabilityRouter,
@@ -57,7 +57,7 @@ def _current_task_type():
 # Bind a single name for module-internal use. Callers that need to assert
 # ``is`` identity should use ``_current_task_type()`` so the comparison
 # targets the *current* class member after any reloads.
-TaskType = _current_task_type()  # noqa: F841  -- kept for legacy assertions
+TaskType = _current_task_type()
 
 # ---------------------------------------------------------------------------
 # Test helpers

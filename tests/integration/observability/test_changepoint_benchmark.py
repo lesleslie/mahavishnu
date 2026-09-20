@@ -14,8 +14,7 @@ from pathlib import Path
 import pytest
 
 from mahavishnu.core.config import ChangepointConfig
-from mahavishnu.observability.changepoint import CUSUMDetector, PageHinkleyDetector
-
+from mahavishnu.observability.changepoint import CUSUMDetector
 from tests.integration.observability.test_changepoint_two_stage_benchmark import (
     _benchmark_two_stage_fp_per_quiet,
     _benchmark_two_stage_warning_latency,

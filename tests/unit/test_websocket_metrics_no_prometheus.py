@@ -24,14 +24,13 @@ These tests exercise that fallback path by:
 
 from __future__ import annotations
 
-import importlib.util
 from contextlib import suppress
+import importlib.util
 from pathlib import Path
 import sys
 from unittest.mock import patch
 
 import pytest
-
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _METRICS_PATH = _REPO_ROOT / "mahavishnu" / "websocket" / "metrics.py"

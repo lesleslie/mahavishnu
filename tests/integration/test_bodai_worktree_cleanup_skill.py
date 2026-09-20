@@ -13,13 +13,12 @@ so the skill can actually run via `python .claude/skills/.../cli_scan.py`.
 """
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "bodai-worktree-cleanup"

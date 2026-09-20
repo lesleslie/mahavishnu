@@ -1,10 +1,9 @@
 """Learning path discovery for skill relationships."""
 
 from collections import deque
+from typing import TYPE_CHECKING
 
 import networkx as nx
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .graph import SkillGraph

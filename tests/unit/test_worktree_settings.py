@@ -58,7 +58,6 @@ def test_worktree_cache_settings_env_override(monkeypatch: object) -> None:
     style overrides (double underscore separator). Smoke test that
     the field name maps correctly.
     """
-    import os
 
     monkeypatch.setenv("MAHAVISHNU_WORKTREE_CACHE__L2_HOST", "redis-test.example.com")  # type: ignore[attr-defined]
     settings = MahavishnuSettings()

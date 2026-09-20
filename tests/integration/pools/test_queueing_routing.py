@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import json
 import math
-import random
 from pathlib import Path
+import random
 
 import pytest
 
 from mahavishnu.pools.queueing import MmcQueue
-
 
 # ---------------------------------------------------------------------------
 # Helpers

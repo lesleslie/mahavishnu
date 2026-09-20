@@ -900,9 +900,9 @@ def test_env_var_driven_config_truthy_values() -> None:
     future maintainer tightening to ``==\"true\"`` and breaking
     operators on the other common shapes.
     """
-    from mahavishnu.settle.merge import _read_runtime_config_from_env
-
     import os
+
+    from mahavishnu.settle.merge import _read_runtime_config_from_env
 
     for truthy in ("1", "true", "yes", "on", "TRUE", "Yes"):
         os.environ["MAHAVISHNU_MERGE_DRIVER_REQUIRED"] = truthy
@@ -928,9 +928,9 @@ def test_env_var_driven_config_unknown_default_falls_back_to_line() -> None:
     ``LINE`` rather than crashing the module import — operators
     who typo the env var still get a working merge driver.
     """
-    from mahavishnu.settle.merge import _read_runtime_config_from_env
-
     import os
+
+    from mahavishnu.settle.merge import _read_runtime_config_from_env
 
     os.environ["MAHAVISHNU_MERGE_DRIVER_DEFAULT"] = "mergiraf"
     cfg = _read_runtime_config_from_env()

@@ -5,7 +5,6 @@ from __future__ import annotations
 import builtins
 from datetime import UTC, datetime, timedelta
 import importlib
-import runpy
 import sys
 import types
 from types import SimpleNamespace

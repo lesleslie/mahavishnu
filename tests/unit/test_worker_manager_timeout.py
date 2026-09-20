@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
-from mahavishnu.workers.manager import WorkerManager
-from mahavishnu.workers.base import WorkerResult
 from mahavishnu.core.status import WorkerStatus
+from mahavishnu.workers.base import WorkerResult
+from mahavishnu.workers.manager import WorkerManager
 
 
 class _HangingWorker:

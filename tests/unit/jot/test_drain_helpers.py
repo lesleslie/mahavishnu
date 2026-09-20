@@ -1,8 +1,6 @@
 """Task 5: _should_exhaust_retry_budget + MAX_AUTO_ATTEMPTS."""
 from __future__ import annotations
 
-import pytest
-
 from mahavishnu.jot.drain import MAX_AUTO_ATTEMPTS, _should_exhaust_retry_budget
 from mahavishnu.jot.fold import JotSummary
 

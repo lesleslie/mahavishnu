@@ -49,6 +49,7 @@ TOO_MANY_CONCURRENT_SESSIONS: int = -32004
 
 # === Exception type ===
 
+
 class ACPError(Exception):
     """Protocol-level ACP error. Serializes to a JSON-RPC ``error`` object.
 

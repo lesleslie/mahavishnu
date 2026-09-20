@@ -160,8 +160,7 @@ features to follow-on versions:
 | Phase 1.5 `execute_fn_factory` not wired | Phase 1.5 follow-on | CLI uses a stub `execute_fn` that echoes the prompt |
 
 The CLI prints a stub note in the response payload when the stub is in
-use: `{"echo": "<prompt>", "stub": true, "note": "Phase 1.5 execute_fn
-not yet wired; this is a stub."}`.
+use: `{"echo": "<prompt>", "stub": true, "note": "Phase 1.5 execute_fn not yet wired; this is a stub."}`.
 
 ## Security
 
@@ -184,7 +183,7 @@ Per plan §Phase 2 Decision 5 (threat model):
   when launching the subprocess. Check your client's documentation
   for where it stores the token (typically `~/.config/<client>/config.toml`).
 - **Use a 32-byte (or longer) bearer.** `secrets.token_urlsafe(32)` is
-  the recommended idiom. Tokens <16 bytes are rejected at startup.
+  the recommended idiom. Tokens \<16 bytes are rejected at startup.
 
 ## License
 
@@ -210,9 +209,9 @@ If `mahavishnu acp serve` hangs without producing output:
 
 1. Check that `MAHAVISHNU_ACP_BEARER_TOKEN` is set (or
    `MAHAVISHNU_ACP_BEARER_TOKEN_FILE`).
-2. Check the file mode on `MAHAVISHNU_ACP_BEARER_TOKEN_FILE` — must be
+1. Check the file mode on `MAHAVISHNU_ACP_BEARER_TOKEN_FILE` — must be
    `0600` (group/world readable fails).
-3. Try `MAHAVISHNU_ACP_BEARER_TOKEN=$(python -c 'import secrets;print(secrets.token_urlsafe(32))')`
+1. Try `MAHAVISHNU_ACP_BEARER_TOKEN=$(python -c 'import secrets;print(secrets.token_urlsafe(32))')`
    inline to rule out a stale env.
 
 ### Client reports "Parse error" / `-32700`
@@ -231,9 +230,9 @@ The client forgot to call `authenticate` before a non-`initialize`
 method. Check the client's startup sequence:
 
 1. `initialize`
-2. `authenticate` (with bearer)
-3. `session/new`
-4. `session/prompt` / `session/cancel` / etc.
+1. `authenticate` (with bearer)
+1. `session/new`
+1. `session/prompt` / `session/cancel` / etc.
 
 ### Bearer visible in process environment
 

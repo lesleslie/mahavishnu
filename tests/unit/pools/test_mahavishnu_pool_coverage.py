@@ -11,7 +11,6 @@ from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
 from mahavishnu.workers.base import WorkerResult
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

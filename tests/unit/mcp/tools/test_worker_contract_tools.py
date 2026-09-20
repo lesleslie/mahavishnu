@@ -589,7 +589,7 @@ def test_workflow_status_handles_malformed_non_datetime(
     A corrupted record (e.g. last_seen_at deserialised as a string) must
     fall through the same except clause that guards subtraction.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
@@ -600,7 +600,7 @@ def test_workflow_status_handles_malformed_non_datetime(
     # AttributeError. Both paths must be guarded.
     corrupt = real_record.model_copy(
         update={
-            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "created_at": datetime(2026, 1, 1, tzinfo=dt.UTC),
             "last_seen_at": "not-a-datetime",
         }
     )

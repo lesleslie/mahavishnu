@@ -35,7 +35,6 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock
 
-from fastmcp import FastMCP
 from mcp_common.auth.permissions import Permission as MCPPermissionCommon
 import pytest
 
@@ -48,7 +47,6 @@ from mahavishnu.mcp.tools import (
     webhook_tools,
     workflow_tools,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test doubles

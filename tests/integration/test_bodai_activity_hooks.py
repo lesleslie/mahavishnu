@@ -16,10 +16,8 @@ Marker: ``integration`` per ``CLAUDE.md`` Test conventions.
 """
 from __future__ import annotations
 
-import asyncio
 import importlib.util
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys

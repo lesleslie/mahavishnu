@@ -9,12 +9,10 @@ Tests cover:
 
 from __future__ import annotations
 
-from mcp_common.exceptions import MCPServerError
-
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx2 as httpx
+from mcp_common.exceptions import MCPServerError
 import pytest
 
 from mahavishnu.core.evidence_collector import (
@@ -142,7 +140,6 @@ class TestEvidenceStoreStoreBatch:
             call_count += 1
             if call_count == 2:
                 raise MCPServerError("upstream 500")
-            return None
 
         with patch("mahavishnu.core.evidence_store.CommonMCPClient") as mock_client:
             instance = MagicMock()

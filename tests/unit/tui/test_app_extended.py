@@ -20,9 +20,9 @@ HTTP server, or subprocess.
 from __future__ import annotations
 
 import asyncio
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
+import subprocess
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -37,7 +37,6 @@ from mahavishnu.core.ecosystem_status import (
     RecoverySummary,
     WorkflowSummary,
 )
-
 
 # ---------------------------------------------------------------------------
 # Snapshot of every screen's original ``on_mount`` so the harness can
@@ -1551,7 +1550,6 @@ def test_screen_classes_have_required_methods() -> None:
         AgnoScreen,
         AlertsScreen,
         ApprovalsScreen,
-        BodaiComponentScreen,
         EventStreamScreen,
         FilesScreen,
         OverviewScreen,
@@ -1665,7 +1663,7 @@ def test_approvals_screen_render_selected_approval_with_selection() -> None:
 
     screen._render_selected_approval()
     call_arg = details.update.call_args[0][0]
-    assert "[bold]Selected approval:[/] abc" == call_arg
+    assert call_arg == "[bold]Selected approval:[/] abc"
 
 
 @pytest.mark.unit
@@ -1879,10 +1877,10 @@ async def test_probe_service_returns_false_on_network_error(
         def __init__(self, **_kw: Any) -> None:
             pass
 
-        async def __aenter__(self) -> "_Client":
+        async def __aenter__(self) -> _Client:
             return self
 
-        async def __aexit__(self, *_a: Any) -> None:
+        async def __aexit__(self, *_a: object) -> None:
             return None
 
         async def get(self, _url: str) -> Any:
@@ -1906,10 +1904,10 @@ async def test_probe_service_returns_false_on_unexpected_error(
         def __init__(self, **_kw: Any) -> None:
             pass
 
-        async def __aenter__(self) -> "_Client":
+        async def __aenter__(self) -> _Client:
             return self
 
-        async def __aexit__(self, *_a: Any) -> None:
+        async def __aexit__(self, *_a: object) -> None:
             return None
 
         async def get(self, _url: str) -> Any:
@@ -2101,10 +2099,10 @@ async def test_fetch_health_unavailable_on_network_error(
         def __init__(self, **_kw: Any) -> None:
             pass
 
-        async def __aenter__(self) -> "_Client":
+        async def __aenter__(self) -> _Client:
             return self
 
-        async def __aexit__(self, *_a: Any) -> None:
+        async def __aexit__(self, *_a: object) -> None:
             return None
 
         async def get(self, _url: str) -> Any:
@@ -2129,10 +2127,10 @@ async def test_fetch_health_unavailable_on_unexpected_error(
         def __init__(self, **_kw: Any) -> None:
             pass
 
-        async def __aenter__(self) -> "_Client":
+        async def __aenter__(self) -> _Client:
             return self
 
-        async def __aexit__(self, *_a: Any) -> None:
+        async def __aexit__(self, *_a: object) -> None:
             return None
 
         async def get(self, _url: str) -> Any:
@@ -2620,7 +2618,6 @@ async def test_files_screen_fetch_handles_mixed_data(
 
     monkeypatch.setattr(subprocess, "run", lambda *_a, **_kw: _Completed())
 
-    from mahavishnu.tui import app as app_module
     from mahavishnu.tui.app import FilesScreen
 
     Harness = _make_harness_app()
@@ -2647,7 +2644,6 @@ async def test_files_screen_fetch_with_diff_errors(
         ),
     )
 
-    from mahavishnu.tui import app as app_module
     from mahavishnu.tui.app import FilesScreen
 
     Harness = _make_harness_app()
@@ -2896,7 +2892,6 @@ async def test_dashboard_app_compose_yields_all_panes(
     """Driving ``DashboardApp`` through ``run_test`` mounts every tab."""
     from textual.widgets import TabbedContent, TabPane
 
-    from mahavishnu.tui import app as app_module
     from mahavishnu.tui.app import DashboardApp
 
     # Disable optional-tab probing so the assertion stays deterministic.

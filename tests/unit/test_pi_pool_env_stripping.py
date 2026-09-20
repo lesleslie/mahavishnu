@@ -5,14 +5,13 @@ Req: REQ-PI-003
 
 from __future__ import annotations
 
-import asyncio
 import os
 from unittest.mock import AsyncMock
 
 import pytest
 
-from mahavishnu.core.json_rpc_stdio import JSONRPCStdioClient
 from mahavishnu.core.errors import PiProtocolError
+from mahavishnu.core.json_rpc_stdio import JSONRPCStdioClient
 
 
 class _FakeProcess:

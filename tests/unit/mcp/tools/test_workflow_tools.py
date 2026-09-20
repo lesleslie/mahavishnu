@@ -18,8 +18,6 @@ from fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.models.persistence import WorkflowOutcome
-
-from mahavishnu.mcp.tools import workflow_tools
 from mahavishnu.mcp.tools.workflow_tools import (
     register_workflow_tools,
     workflow_get_outcome,
@@ -197,7 +195,6 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     """
     from mcp_common.fastmcp import FastMCP
 
-    from mahavishnu.mcp.tools import workflow_tools
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock()
@@ -224,7 +221,6 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     """
     from mcp_common.fastmcp import FastMCP
 
-    from mahavishnu.mcp.tools import workflow_tools
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock(return_value=None)

@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
 from mahavishnu.terminal.adapters.base import TerminalError
+from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
 
 
 @pytest.fixture()

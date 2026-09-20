@@ -28,8 +28,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
 from oneiric.core.logging import get_logger
+import yaml
 
 if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
@@ -104,7 +104,7 @@ def _load_publish_url(repo_path: str) -> str | None:
 
     try:
         target_resolved = Path(repo_path).expanduser().resolve()
-    except (OSError, RuntimeError):
+    except OSError, RuntimeError:
         return None
 
     for entry in repos:
@@ -115,7 +115,7 @@ def _load_publish_url(repo_path: str) -> str | None:
             continue
         try:
             entry_resolved = Path(entry_path_str).expanduser().resolve()
-        except (OSError, RuntimeError):
+        except OSError, RuntimeError:
             continue
         if entry_resolved != target_resolved:
             continue
@@ -131,7 +131,7 @@ def _load_publish_url(repo_path: str) -> str | None:
     return None
 
 
-def register(mcp: "FastMCP") -> None:
+def register(mcp: FastMCP) -> None:
     """Register the ``mahavishnu_get_publish_url`` MCP tool with the FastMCP server.
 
     Tool name follows the existing ``mahavishnu_<verb>_<noun>`` convention

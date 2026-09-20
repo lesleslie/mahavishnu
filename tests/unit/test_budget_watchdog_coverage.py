@@ -21,7 +21,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mahavishnu.cli.sop_cli import sop_app
-from mahavishnu.core.budget import BudgetRecord, BudgetState, BudgetUsage
+from mahavishnu.core.budget import BudgetRecord, BudgetState
 from mahavishnu.core.budget_watchdog import (
     InMemoryBudgetStore,
     WatchdogCycleResult,
@@ -40,7 +40,6 @@ from mahavishnu.settle.persistence import (
 )
 from mahavishnu.settle.state_machine import (
     Binding,
-    SettleAction,
     SettleRunRecord,
     SettleState,
 )

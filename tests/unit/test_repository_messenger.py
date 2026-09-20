@@ -1,7 +1,9 @@
 """Unit tests for repository messaging functionality."""
 
 from __future__ import annotations
-from datetime import datetime, UTC
+
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import pytest
@@ -14,7 +16,6 @@ from mahavishnu.messaging.repository_messenger import (
     RepositoryMessenger,
     RepositoryMessengerManager,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mahavishnu.core.events.envelope import EventEnvelope
@@ -57,7 +58,7 @@ async def test_repository_message_structure():
         message_type=MessageType.CODE_CHANGE_NOTIFICATION,
         content={"change": "test change"},
         priority=MessagePriority.HIGH,
-        timestamp=datetime.now((UTC)),
+        timestamp=datetime.now(UTC),
         correlation_id=str(uuid.uuid4()),
     )
 

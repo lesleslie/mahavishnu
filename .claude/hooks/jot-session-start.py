@@ -24,8 +24,8 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
+import sys
 
 CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
 if CLAUDE_PROJECT_DIR:

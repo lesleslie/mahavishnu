@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 COMMANDS_FILE = Path(__file__).resolve().parents[3] / "mahavishnu" / "commands" / "jot.md"
 
 

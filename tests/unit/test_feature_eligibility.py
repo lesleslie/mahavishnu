@@ -1,14 +1,13 @@
 """Tests for scripts/feature_eligibility.py (REQ-007)."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import importlib.util
 import json
-import sys
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
+import sys
 
 import pytest
-
 
 # Load scripts/feature_eligibility.py as a module so the tests don't
 # require `mahavishnu` on sys.path. Mirrors the pattern used by
@@ -265,8 +264,8 @@ def test_main_exits_2_on_missing_mcp_config(tmp_path: Path) -> None:
 
 def test_main_json_output(tmp_path: Path) -> None:
     """--json emits parseable JSON to stdout."""
-    import io
     from contextlib import redirect_stdout
+    import io
     buf = io.StringIO()
     rc = feature_eligibility.main([
         "--json",

@@ -22,8 +22,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from mahavishnu.core.models.persistence import WebhookIngress
-
-from mahavishnu.webhooks import replay as replay_module
 from mahavishnu.webhooks.replay import webhook_replay
 
 

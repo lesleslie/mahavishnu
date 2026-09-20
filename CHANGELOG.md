@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-09-20
+
+### Added
+
+- acp: Add error types + bearer auth gate (sub-commit 2.A)
+- acp: Add EventBridge-to-SessionUpdate synthesizer (sub-commit 1.2)
+- acp: Add execute_fn factory + fix A2A Bearer comparison (Phase 1.5)
+- acp: Add OTel session span + observability validation test (sub-commit 2.C)
+- acp: Add Pydantic wire-format protocol models + spec-name drift gate
+- acp: Add stdio JSON-RPC 2.0 dispatcher core (sub-commit 2.B)
+- acp: Emit tool_call lifecycle envelopes from worker boundaries (sub-commit 1.3)
+- acp: Wire MahavishnuApp into dispatcher execute_fn (Phase 1.5 close)
+- Add /jot drain slash command (polish item 1)
+- Add `mahavishnu acp serve` CLI surface (sub-commit 2.D)
+- ecosystem: Add publish: block to mdinject, flowscape, splashstand
+- jot: Reject unknown ctx keys in _validate_ctx (polish item 3)
+- mcp: Add mahavishnu_get_publish_url sibling-tool for crackerjack probe
+
+### Changed
+
+- acp-cli: Use build_execute_fn from Phase 1.5 factory
+- factory: Promote execute_fn settings to real Pydantic fields (Option C)
+- jot: Lock _propose_action policy at §3.3.4 (polish item 5)
+
+### Fixed
+
+- acp: Bypass connect_write_pipe via os.write + e2e scaffolding
+- acp: Propagate async through dispatch chain (session/prompt works)
+- acp: Thread-based stdin feeder + pre-flight validation (Path A+B)
+- Defer help_cli import to avoid known-broken module-load hang
+- e2e: Unblock ACP integration timeouts + fix pre-existing test bugs
+- jot: Reconciler auto-retry is fire-and-forget (polish item 2 code)
+- lint+types: Clear crackerjack comprehensive hook findings
+- lint: Silence legitimate best-effort exceptions + min() cleanup
+- Warm-up vs failed state for /health aggregator (launchd race)
+
+### Documentation
+
+- acp: Add operator usage guide + doc-staleness detector (Phase 3a)
+- acp: Flip v1.0 plan to active + followup trigger audit (operator signoff 2026-09-19)
+- Add Toad row to THIRD_PARTY_NOTICES.md (Phase 3b)
+- decisions: Record SDD bundling defensive pattern (polish item 4)
+- followups: Close audit-orphans-residual-caller-detection
+- jot: Action_proposals docstring + MCP spec sync (polish item 6)
+- jot: Flip polish plan + design spec status to complete
+
+### Testing
+
+- acp: Add Hypothesis property tests for protocol + synthesizer (sub-commit 1.4)
+- jot: Adversarial tests for reconciler auto-retry (polish item 2 tests)
+
+### Internal
+
+- deps: Catch up uv.lock to in-tree version bump (0.26 → 0.27)
+- followups: Drop stale HEAD tracking of audit-orphans followup
+
 ## [0.27.0] - 2026-09-19
 
 ### Added

@@ -9,13 +9,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from mahavishnu.core.worktree_scan import (
     PLAN_ORPHAN_PATTERNS,
     Tier,
 )
-
 
 DECISION_DOC = (
     Path(__file__).resolve().parents[2]

@@ -76,7 +76,7 @@ class TestStaleTakeoverWorks:
         payload = json.loads(history_value)
         assert payload["previous_holder"] == stale_holder
         assert payload["took_over_at_ms"] == five_min_ago_ms + (
-            (result.last_rebuild_ms - five_min_ago_ms)
+            result.last_rebuild_ms - five_min_ago_ms
         ) or payload["took_over_at_ms"] >= five_min_ago_ms
         # The new holder must match the redaction regex.
         new_holder = payload["took_over_by"]

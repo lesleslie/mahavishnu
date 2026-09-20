@@ -57,13 +57,16 @@ from mahavishnu.acp.topics import TOOL_CALL_COMPLETED, TOOL_CALL_STARTED
 # Each entry: (EventBridge topic, ACP subtype name, default status if applicable).
 # The synthesizer dispatches on the topic field; the subtype drives which Pydantic
 # model class is instantiated.
-_WORKFLOW_TOPICS: frozenset[str] = frozenset({"workflow.started", "workflow.completed", "workflow.failed"})
+_WORKFLOW_TOPICS: frozenset[str] = frozenset(
+    {"workflow.started", "workflow.completed", "workflow.failed"}
+)
 _STAGE_TOPICS: frozenset[str] = frozenset({"stage.completed"})
 _GATE_TOPICS: frozenset[str] = frozenset({"crackerjack.gate_raised"})
 _TOOL_TOPICS: frozenset[str] = frozenset({TOOL_CALL_STARTED, TOOL_CALL_COMPLETED})
 
 
 # === Session-id extraction ===
+
 
 # Try the envelope's outer ``session_id`` first, then ``headers.session_id``,
 # then ``payload.session_id``. This ordering matches how Oneiric envelopes
@@ -146,6 +149,7 @@ def _extract_outcome(envelope: dict[str, Any]) -> Literal["completed", "failed"]
 
 
 # === Synthesizer ===
+
 
 class EventSynthesizer:
     """Map EventBridge envelopes to ACP ``SessionUpdate`` notifications.

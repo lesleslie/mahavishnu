@@ -98,7 +98,7 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
     )
     # PoolManager doesn't expose `terminal_capture` directly; shim it here so
     # the loop body can read pane output through the pool's adapter.
-    async def _terminal_capture(*, pool_id: str, lines: int) -> str:  # noqa: ARG001
+    async def _terminal_capture(*, pool_id: str, lines: int) -> str:
         if not terminal._sessions:
             return ""
         session_id = next(iter(terminal._sessions))

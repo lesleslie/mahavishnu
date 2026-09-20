@@ -2,6 +2,9 @@
 
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 import yaml
 
@@ -12,7 +15,6 @@ from mahavishnu.core.repo_models import (
     RepositoryManifest,
     RepositoryMetadata,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

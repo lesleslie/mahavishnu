@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-from mahavishnu.messaging.messaging.types import (
-    MessageStatus,
-    MessageType,
-    Priority,
-    ProjectMessage,
-)
-
 from mahavishnu.mcp.tools.repository_messaging_tools import (
     _coerce_message_type as coerce_repository_message_type,
 )
@@ -16,6 +9,12 @@ from mahavishnu.mcp.tools.repository_messaging_tools import (
     _coerce_priority as coerce_repository_priority,
 )
 from mahavishnu.mcp.tools.session_buddy_tools import _coerce_priority as coerce_session_priority
+from mahavishnu.messaging.messaging.types import (
+    MessageStatus,
+    MessageType,
+    Priority,
+    ProjectMessage,
+)
 from mahavishnu.messaging.repository_messenger import (
     MessagePriority as RepositoryMessagePriority,
 )
