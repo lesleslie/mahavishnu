@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.1] - 2026-09-21
+
+### Fixed
+
+- mcp: Register ecosystem_publish_url on LEGACY CLI path
+
+### Internal
+
+- registry: Onboard cmux-mcp; regen surfaces pre-existing flowscape entry
+
 ## [0.28.0] - 2026-09-20
 
 ### Added
@@ -20,14 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add /jot drain slash command (polish item 1)
 - Add `mahavishnu acp serve` CLI surface (sub-commit 2.D)
 - ecosystem: Add publish: block to mdinject, flowscape, splashstand
-- jot: Reject unknown ctx keys in _validate_ctx (polish item 3)
+- jot: Reject unknown ctx keys in \_validate_ctx (polish item 3)
 - mcp: Add mahavishnu_get_publish_url sibling-tool for crackerjack probe
 
 ### Changed
 
 - acp-cli: Use build_execute_fn from Phase 1.5 factory
 - factory: Promote execute_fn settings to real Pydantic fields (Option C)
-- jot: Lock _propose_action policy at §3.3.4 (polish item 5)
+- jot: Lock \_propose_action policy at §3.3.4 (polish item 5)
 
 ### Fixed
 
