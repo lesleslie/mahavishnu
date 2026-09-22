@@ -246,6 +246,14 @@ cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew clean build
 
 Expected: build succeeds (Java 21 toolchain still pinned at this point; will be bumped in Task 4). If build fails, do NOT proceed — diagnose and fix.
 
+- [ ] **Step 1.9: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0; 3 hooks running; no `task absent` warnings.
+
 ---
 
 ## Task 2: Repo hygiene (Phase 2 — moved up from spec Phase 4g)
@@ -558,6 +566,14 @@ PyCharm 2026.2 platform requires Java 25. foojay-resolver-convention
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
+- [ ] **Step 4.5: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0. If ktlint/detekt flags the new toolchain config, fix and re-run.
+
 ---
 
 ## Task 5: Plugin manifest updates (Phase 4b)
@@ -631,6 +647,14 @@ git commit -m "docs(manifest): bump release-version to 11; add 1.0.4 change-note
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
+
+- [ ] **Step 5.6: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0. Plugin manifest changes are XML; lint should be unaffected.
 
 ---
 
@@ -793,12 +817,21 @@ git commit -m "fix(settings): HIGH #6 null-handling in Jinja2DelimitersSettings
 
 - Remove redundant synchronized on getState (IDE calls on EDT)
 - Replace reflective XmlSerializerUtil.copyBean in loadState with
-  explicit setters that enforce the 'fields are never null' invariant
+  null-tolerant setter guards (XML tolerance preserved; single bad
+  field no longer loses all settings)
 - Remove null-fallback ternaries in getters; defaults initialized at
   field declaration cover the case
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
+
+- [ ] **Step 6.10: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0. ktlint/detekt may flag the new helper method `applyIfNonNull`; fix and re-run if so.
 
 ---
 
@@ -1217,6 +1250,14 @@ swallowing the new LicenseUnavailableException throw.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
+
+- [ ] **Step 7.13: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0. ktlint/detekt may flag the new `LicenseChecker` interface, `MarketplaceLicenseCheckerAdapter`, or `LicenseUnavailableException`; fix and re-run if so.
 
 ---
 
