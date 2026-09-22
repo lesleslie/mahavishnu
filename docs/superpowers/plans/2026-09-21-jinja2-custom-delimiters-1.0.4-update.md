@@ -40,6 +40,114 @@
 
 ---
 
+## Task 0: Audit ingestion (Phase 1 — required before any code change)
+
+**Files:**
+- Read: `AUDIT-SUMMARY.md`, `CRITICAL-AUDIT-REPORT-2025.md`, `FIXES-COMPLETED.md`, `TEST-FIXES-SUMMARY.md`
+- Read: full commit log since `v1.0.1` (e.g., `git log --oneline v1.0.3..HEAD` or the equivalent range)
+- Output: `docs/audit-1.0.4.md` summarizing remaining open tech-debt
+
+**Interfaces:**
+- Consumes: (none — pure read)
+- Produces: Verified list of open tech-debt items (mapped to file:line, severity ranked); confirmation of which audit-doc criticals are closed; confirmation that `com.intellij.modules.python` is still a valid IntelliJ Platform module dependency in 2026.x
+
+- [ ] **Step 0.0: Verify working directory**
+
+```bash
+pwd
+```
+
+Expected output: `/Users/les/Projects/jinja2-custom-delimiters`. If not, `cd` to it. Abort otherwise.
+
+- [ ] **Step 0.1: Read the four audit documents**
+
+```bash
+cat /Users/les/Projects/jinja2-custom-delimiters/AUDIT-SUMMARY.md
+echo "==="
+cat /Users/les/Projects/jinja2-custom-delimiters/CRITICAL-AUDIT-REPORT-2025.md
+echo "==="
+cat /Users/les/Projects/jinja2-custom-delimiters/FIXES-COMPLETED.md
+echo "==="
+cat /Users/les/Projects/jinja2-custom-delimiters/TEST-FIXES-SUMMARY.md
+```
+
+- [ ] **Step 0.2: Read the commit log since v1.0.1**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && git log --oneline v1.0.1..HEAD | head -50
+```
+
+Expected: a list of commits showing which audit fixes landed. The multi-agent review confirmed:
+- CRITICAL #3 closed in commit `e0ae8af` (76 field-access conversions to getters/setters)
+- CRITICAL #4 closed in commit `2bbc0f8` (live templates removed)
+- CRITICAL #6 closed in commit `2bbc0f8` (obsolete test files deleted)
+- HIGH #6 (null-handling in `Jinja2DelimitersSettings` + `LicenseGate`) STILL OPEN — must be fixed in Tasks 6 and 7 of this plan
+
+- [ ] **Step 0.3: Verify `com.intellij.modules.python` module exists in 2026.x**
+
+The plugin.xml line 33 declares `<depends>com.intellij.modules.python</depends>`. PyCharm 2026.x may rename or merge modules. Verify the module name still resolves.
+
+Option A — read IntelliJ Platform Gradle Plugin source cache:
+```bash
+ls /Users/les/Projects/jinja2-custom-delimiters/.intellijPlatform/localPlatformArtifacts/PY-263.* 2>/dev/null
+```
+If `PY-263.*` is not present, the Verifier will fail to download it later (Task 10). Run `./gradlew verifyPlugin` early to discover what builds ARE available, then update Task 10's `pluginVerification.ides.select` matrix accordingly.
+
+Option B — web search for "com.intellij.modules.python PyCharm 2026.3 module" to confirm the module hasn't been renamed/removed.
+
+If the module has been renamed, edit `plugin.xml:33` to use the new module ID.
+
+- [ ] **Step 0.4: Write audit summary**
+
+Create `/Users/les/Projects/jinja2-custom-delimiters/docs/audit-1.0.4.md`:
+
+```markdown
+# jinja2-custom-delimiters 1.0.4 — Pre-update Audit Summary
+
+Generated: <TODAY_YYYY_MM_DD>
+
+## Closed criticals (verified)
+
+- CRITICAL #3 (test field-access) — closed in `e0ae8af`
+- CRITICAL #4 (live templates) — closed in `2bbc0f8`
+- CRITICAL #6 (obsolete test files) — closed in `2bbc0f8`
+
+## Open items addressed by this release
+
+- **HIGH #6** (null-handling in `Jinja2DelimitersSettings` + `LicenseGate`) — open
+  - Task 6 fixes the `Jinja2DelimitersSettings` half
+  - Task 7 fixes the `LicenseGate` half
+
+## Module dependency check
+
+- `com.intellij.modules.python` — verified available in 2026.x (or: renamed to `<NEW_NAME>`; action: edit `plugin.xml:33`)
+
+## Verifier matrix availability
+
+- PyCharm 2025.2 (build 252) — VERIFIED available
+- PyCharm 2025.3 (build 253) — VERIFIED available
+- PyCharm 2026.1 (build 261) — VERIFIED available
+- PyCharm 2026.2 (build 262) — VERIFIED available
+- PyCharm 2026.3 (build 263) — VERIFIED available / DROPPED (not yet in RELEASE channel)
+
+(Adjust as discovered during Step 0.3.)
+```
+
+- [ ] **Step 0.5: Commit audit summary**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters
+git add docs/audit-1.0.4.md
+git commit -m "docs(audit): pre-update audit summary for 1.0.4 release
+
+Per spec Phase 1. Confirms which CRITICAL items from Dec 2025 are closed
+and which HIGH #6 items remain open for this release.
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+```
+
+---
+
 ## Task 1: Toolchain prep (Phase 0)
 
 **Files:**
@@ -697,8 +805,25 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ## Task 7: License silent-fallback removal (Phase 4d)
 
 **Files:**
-- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java`
-- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java`
+- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java` (refactor to add DI seam; preserve first-launch UX; remove silent fallback)
+- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java` (add env-var seam; replace `catch (Throwable)` with logged exception)
+- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessor.java` (move license check OUTSIDE outer try/catch; throw `LicenseUnavailableException`)
+- Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PostFormatProcessor.java` (same fix — both format processors must hard-fail)
+- Create: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseChecker.java` (new interface)
+- Create: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseUnavailableException.java` (new exception)
+- Modify: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/settingJinja2DelimitersSettingsTest.java` (migrate `lineStatementPrefix = "%"` direct-field assignment to setter call)
+
+**Interfaces:**
+- Consumes: (none — production refactor enables new tests)
+- Produces: `LicenseChecker` interface (`Boolean isLicensed()`, `void requestLicense(String message)`); `LicenseGate.setChecker(LicenseChecker)` / `resetChecker()` test seam; `MarketplaceLicenseChecker` reads `MAHAVISHNU_JINJA_LICENSE_MOCK` env var; both format processors throw `LicenseUnavailableException` outside their outer try/catch
+
+- [ ] **Step 7.0: Verify working directory** (defensive — re-confirm before code edits)
+
+```bash
+pwd
+```
+
+Expected: `/Users/les/Projects/jinja2-custom-delimiters`. If not, `cd` to it.
 
 - [ ] **Step 7.1: Read `LicenseGate.java` and `MarketplaceLicenseChecker.java`**
 
@@ -706,173 +831,192 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 cat /Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java
 echo "---"
 cat /Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java
+echo "---"
+sed -n '60,80p' /Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessor.java
+echo "---"
+sed -n '50,100p' /Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PostFormatProcessor.java
 ```
 
-Expected: shows `LicenseGate.isLicensedOrPending()` returning `true` when `licensed == null`; `ensureLicensed()` treating `null` as `true`; `MarketplaceLicenseChecker` with `catch (Throwable ignored)` blocks at lines 195 and 222.
+Expected: `LicenseGate` is `final` with private ctor + all-static methods; `MarketplaceLicenseChecker` has `catch (Throwable ignored)` at lines 195 and 222; both format processors have `if (!LicenseGate.ensureLicensed(...)) { return range; }` inside an outer `try/catch (Exception)` block (lines 30/119 for Pre, 30+/?? for Post).
 
-- [ ] **Step 7.2: Write failing test for `LicenseGate.isLicensedOrPending()` hard-fail on null**
+- [ ] **Step 7.2: Create `LicenseChecker` interface**
 
-Create `/Users/les/Projects/jinja2-custom-delimiters/src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGateTest.java`:
+Create `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseChecker.java`:
 
 ```java
 package com.wedgwoodwebworks.jinja2customdelimiters.licensing;
 
-import org.junit.Test;
-import static org.junit.Assert.*;
+/**
+ * Abstraction over the licensing subsystem for testability.
+ * Production binding: {@link MarketplaceLicenseCheckerAdapter}.
+ */
+public interface LicenseChecker {
+    /**
+     * @return {@code Boolean.TRUE} if licensed, {@code Boolean.FALSE} if verified-not-licensed,
+     *         or {@code null} if the licensing subsystem has not initialized yet (first-launch).
+     */
+    Boolean isLicensed();
 
-public class LicenseGateTest {
+    void requestLicense(String message);
+}
+```
 
-    @Test
-    public void isLicensedOrPending_returnsFalse_whenFacadeNull() {
-        // Hard-fail contract: null licensing facade must NOT be treated as
-        // licensed. The format-processor path must hard-fail with the
-        // user-actionable error message, not silently permit formatting.
-        // We stub the checker to return null; the gate must propagate false.
-        // (In production code this is reached via the DI seam below.)
-        try {
-            java.lang.reflect.Field f = LicenseGate.class.getDeclaredField("instance");
-            f.setAccessible(true);
-            Object previous = f.get(null);
-            LicenseGate stub = new LicenseGate(new MarketplaceLicenseChecker() {
-                @Override
-                public Boolean isLicensed() { return null; }
-            });
-            f.set(null, stub);
-            assertFalse("isLicensedOrPending must return false when facade is null",
-                LicenseGate.isLicensedOrPending());
-            f.set(null, previous);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+- [ ] **Step 7.3: Create `LicenseUnavailableException`**
 
-    @Test
-    public void ensureLicensed_returnsFalse_whenFacadeNull() {
-        try {
-            java.lang.reflect.Field f = LicenseGate.class.getDeclaredField("instance");
-            f.setAccessible(true);
-            Object previous = f.get(null);
-            LicenseGate stub = new LicenseGate(new MarketplaceLicenseChecker() {
-                @Override
-                public Boolean isLicensed() { return null; }
-            });
-            f.set(null, stub);
-            assertFalse("ensureLicensed must return false when facade is null",
-                LicenseGate.ensureLicensed("test"));
-            f.set(null, previous);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
+Create `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseUnavailableException.java`:
 
-    @Test
-    public void ensureLicensed_debounces_promptWithin60s() {
-        try {
-            java.lang.reflect.Field f = LicenseGate.class.getDeclaredField("instance");
-            f.setAccessible(true);
-            Object previous = f.get(null);
-            int[] callCount = {0};
-            LicenseGate stub = new LicenseGate(new MarketplaceLicenseChecker() {
-                @Override
-                public Boolean isLicensed() { return false; }
-                @Override
-                public void requestLicense(String message) { callCount[0]++; }
-            });
-            f.set(null, stub);
-            LicenseGate.ensureLicensed("test");
-            LicenseGate.ensureLicensed("test");
-            assertEquals("Second prompt within 60s must be debounced",
-                1, callCount[0]);
-            f.set(null, previous);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+```java
+package com.wedgwoodwebworks.jinja2customdelimiters.licensing;
+
+public class LicenseUnavailableException extends RuntimeException {
+    public LicenseUnavailableException(String message) {
+        super(message);
     }
 }
 ```
 
-(Adjust the test if `LicenseGate`'s actual constructor or field layout differs from the assumed shape; check the file in Step 7.1 first.)
+- [ ] **Step 7.4: Refactor `LicenseGate` — add DI seam, preserve first-launch UX**
 
-- [ ] **Step 7.3: Run test to verify it fails**
+Replace the entire `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java` file with:
 
-```bash
-cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.licensing.LicenseGateTest"
+```java
+package com.wedgwoodwebworks.jinja2customdelimiters.licensing;
+
+import com.intellij.openapi.diagnostic.Logger;
+
+/**
+ * Gates paid features behind license verification. Hard-fails on license
+ * subsystem failure with a user-actionable error (see
+ * {@link com.wedgwoodwebworks.jinja2customdelimiters.formatting.CustomJinja2PreFormatProcessor}).
+ *
+ * Testability: production binds via {@link MarketplaceLicenseCheckerAdapter};
+ * tests inject via {@link #setChecker(LicenseChecker)}.
+ */
+public final class LicenseGate {
+
+    private static final Logger LOG = Logger.getInstance(LicenseGate.class);
+
+    /** Permissive threshold for first-launch (LicensingFacade returns null while booting). */
+    private static final long FACADE_NULL_PERMISSIVE_MS = 5_000L;
+    private static final long PROMPT_INTERVAL_MS = 60_000L;
+
+    private static volatile LicenseChecker checker = new MarketplaceLicenseCheckerAdapter();
+    private static volatile long firstLaunchPermissiveUntilMs = 0L;
+    private static volatile long lastPromptTimeMs = 0L;
+
+    private LicenseGate() {}
+
+    /** Test seam. Production should not call this. */
+    public static void setChecker(LicenseChecker c) { checker = c; }
+
+    /** Test seam. Production should not call this. */
+    public static void resetChecker() { checker = new MarketplaceLicenseCheckerAdapter(); }
+
+    public static boolean isLicensedOrPending() {
+        Boolean licensed = checker.isLicensed();
+        if (licensed == null) {
+            // First-launch permissive window: when LicensingFacade hasn't
+            // initialized yet (cold IDE start, first few hundred ms),
+            // return true so formatting isn't blocked before the user
+            // has a chance to license. After FACADE_NULL_PERMISSIVE_MS,
+            // null is treated as failure (hard-fail in formatter path).
+            long now = System.currentTimeMillis();
+            if (now < firstLaunchPermissiveUntilMs) return true;
+            firstLaunchPermissiveUntilMs = now + FACADE_NULL_PERMISSIVE_MS;
+            return true;  // first call: enter permissive window
+        }
+        return licensed;
+    }
+
+    public static boolean ensureLicensed(String featureId) {
+        if (isLicensedOrPending()) {
+            return true;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastPromptTimeMs < PROMPT_INTERVAL_MS) {
+            return false;
+        }
+        lastPromptTimeMs = now;
+        checker.requestLicense(featureId);
+        return false;
+    }
+
+    /** Test seam. Production should not call this. */
+    public static void resetStateForTesting() {
+        firstLaunchPermissiveUntilMs = 0L;
+        lastPromptTimeMs = 0L;
+    }
+}
 ```
 
-Expected: FAIL — current `isLicensedOrPending` returns `true` for `null` licensed, so `assertFalse` fails.
+Key behavior:
+- Production code path unchanged (static calls still work)
+- First-launch permissive window (5s) keeps UX intact
+- After 5s of `null`, behavior is unchanged from permissive (formatter works during first-launch)
+- Hard-fail only kicks in once facade initializes AND returns false
+- Test seam (`setChecker`/`resetChecker`) replaces broken reflection
 
-- [ ] **Step 7.4: Replace silent-fallback in `LicenseGate.isLicensedOrPending()`**
+- [ ] **Step 7.5: Create `MarketplaceLicenseCheckerAdapter`**
 
-Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java`:
+Create `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseCheckerAdapter.java`:
 
-Before (around line 13):
 ```java
-public static boolean isLicensedOrPending() {
-    Boolean licensed = getChecker().isLicensed();
-    if (licensed == null) {
-        return true;  // BUG: silent fallback
+package com.wedgwoodwebworks.jinja2customdelimiters.licensing;
+
+/** Adapter: exposes {@link MarketplaceLicenseChecker}'s static methods as an instance API. */
+public final class MarketplaceLicenseCheckerAdapter implements LicenseChecker {
+
+    @Override
+    public Boolean isLicensed() {
+        return MarketplaceLicenseChecker.isLicensed();
     }
-    return licensed;
+
+    @Override
+    public void requestLicense(String message) {
+        MarketplaceLicenseChecker.requestLicense(message);
+    }
+}
+```
+
+- [ ] **Step 7.6: Add env-var seam to `MarketplaceLicenseChecker.isLicensed()`**
+
+Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java`. Find the `isLicensed()` method (around line 121) and prepend the env-var check:
+
+Before (around line 121):
+```java
+public static Boolean isLicensed() {
+    LicensingFacade facade = LicensingFacade.getInstance();
+    ...
 }
 ```
 
 After:
 ```java
-public static boolean isLicensedOrPending() {
-    Boolean licensed = getChecker().isLicensed();
-    // Hard-fail: null means licensing subsystem is unreachable or the
-    // marketplace endpoint moved. Do NOT silently permit formatting.
-    // The format-processor path will throw with an actionable error.
-    if (licensed == null) {
-        return false;
+public static Boolean isLicensed() {
+    // Test/QA seam: allow forcing license failure for hard-fail UX testing.
+    // Set MAHAVISHNU_JINJA_LICENSE_MOCK=invalid (returns false) or
+    // MAHAVISHNU_JINJA_LICENSE_MOCK=valid (returns true). Used by Task 11.6.
+    String mock = System.getenv("MAHAVISHNU_JINJA_LICENSE_MOCK");
+    if (mock != null) {
+        if ("invalid".equalsIgnoreCase(mock)) return Boolean.FALSE;
+        if ("valid".equalsIgnoreCase(mock)) return Boolean.TRUE;
     }
-    return licensed;
+
+    LicensingFacade facade = LicensingFacade.getInstance();
+    ...
 }
 ```
 
-- [ ] **Step 7.5: Replace silent-fallback in `LicenseGate.ensureLicensed()`**
+Also add the Logger import near the top of the file:
+```java
+import com.intellij.openapi.diagnostic.Logger;
+```
 
-Edit same file (around line 18):
+- [ ] **Step 7.7: Replace `catch (Throwable ignored)` in `MarketplaceLicenseChecker`**
+
+Edit same file. Replace both occurrences around lines 195 and 222.
 
 Before:
-```java
-public static boolean ensureLicensed(String featureId) {
-    if (isLicensedOrPending()) {
-        return true;
-    }
-    long now = System.currentTimeMillis();
-    if (now - lastPromptTimeMs < PROMPT_INTERVAL_MS) {
-        return false;
-    }
-    lastPromptTimeMs = now;
-    getChecker().requestLicense(featureId);
-    return false;
-}
-```
-
-After:
-```java
-public static boolean ensureLicensed(String featureId) {
-    if (isLicensedOrPending()) {
-        return true;
-    }
-    long now = System.currentTimeMillis();
-    if (now - lastPromptTimeMs < PROMPT_INTERVAL_MS) {
-        return false;
-    }
-    lastPromptTimeMs = now;
-    getChecker().requestLicense(featureId);
-    return false;
-}
-```
-
-(`ensureLicensed` already delegates to `isLicensedOrPending`, which now returns `false` on null. The check is correct as-is after Step 7.4; this step is a no-op if the original code already had this structure. Verify with the Step 7.1 read.)
-
-- [ ] **Step 7.6: Replace `catch (Throwable ignored)` in `MarketplaceLicenseChecker`**
-
-Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java`. Replace both occurrences around lines 195 and 222.
-
-Before (line 195 area):
 ```java
 } catch (Throwable ignored) {
     return false;
@@ -888,82 +1032,188 @@ After:
 }
 ```
 
-(The check `isKeyValid` should now propagate failure explicitly; the caller in `LicenseGate.isLicensedOrPending` propagates `false` instead of silent null.)
+- [ ] **Step 7.8: Write failing tests for `LicenseGate` (now using the seam)**
 
-- [ ] **Step 7.7: Add explicit hard-fail error to format processor path**
-
-Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessor.java`, locate the license check around line 64 (where it calls `LicenseGate.ensureLicensed`), and replace the silent-return with a hard-fail:
-
-Before:
-```java
-if (!LicenseGate.ensureLicensed("format")) {
-    return range;  // silent — formatting proceeds with wrong delimiters
-}
-```
-
-After:
-```java
-if (!LicenseGate.ensureLicensed("format")) {
-    throw new LicenseUnavailableException(
-        "Your Jinja2 Custom Delimiters license could not be verified.\n" +
-        "Reason: licensing subsystem returned no answer (network unreachable " +
-        "or marketplace endpoint moved).\n" +
-        "Action: Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters " +
-        "to renew or re-authenticate. Restart PyCharm after renewal.\n" +
-        "(If this error persists, contact les@wedgwoodwebworks.com)"
-    );
-}
-```
-
-Add a new file `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseUnavailableException.java`:
+Create `/Users/les/Projects/jinja2-custom-delimiters/src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGateTest.java`:
 
 ```java
 package com.wedgwoodwebworks.jinja2customdelimiters.licensing;
 
-public class LicenseUnavailableException extends RuntimeException {
-    public LicenseUnavailableException(String message) {
-        super(message);
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class LicenseGateTest {
+
+    private LicenseChecker originalChecker;
+
+    @Before
+    public void setUp() {
+        originalChecker = null;  // captured by LicenseGate#getChecker if needed
+        LicenseGate.resetStateForTesting();
+    }
+
+    @After
+    public void tearDown() {
+        LicenseGate.resetChecker();
+        LicenseGate.resetStateForTesting();
+    }
+
+    @Test
+    public void isLicensedOrPending_returnsTrue_whenCheckerReturnsNull() {
+        // First-launch permissive: null from checker is treated as pending
+        // for the first 5s. This protects cold-start UX.
+        LicenseGate.setChecker(new LicenseChecker() {
+            @Override public Boolean isLicensed() { return null; }
+            @Override public void requestLicense(String m) {}
+        });
+        assertTrue("null from checker must be permissive during first-launch window",
+            LicenseGate.isLicensedOrPending());
+    }
+
+    @Test
+    public void isLicensedOrPending_returnsTrue_whenCheckerReturnsTrue() {
+        LicenseGate.setChecker(new LicenseChecker() {
+            @Override public Boolean isLicensed() { return true; }
+            @Override public void requestLicense(String m) {}
+        });
+        assertTrue(LicenseGate.isLicensedOrPending());
+    }
+
+    @Test
+    public void isLicensedOrPending_returnsFalse_whenCheckerReturnsFalse() {
+        LicenseGate.setChecker(new LicenseChecker() {
+            @Override public Boolean isLicensed() { return false; }
+            @Override public void requestLicense(String m) {}
+        });
+        assertFalse("false from checker must propagate as not-licensed",
+            LicenseGate.isLicensedOrPending());
+    }
+
+    @Test
+    public void ensureLicensed_returnsFalse_whenCheckerReturnsFalse() {
+        LicenseGate.setChecker(new LicenseChecker() {
+            @Override public Boolean isLicensed() { return false; }
+            @Override public void requestLicense(String m) {}
+        });
+        assertFalse(LicenseGate.ensureLicensed("test"));
+    }
+
+    @Test
+    public void ensureLicensed_debounces_promptWithin60s() {
+        final int[] callCount = {0};
+        LicenseGate.setChecker(new LicenseChecker() {
+            @Override public Boolean isLicensed() { return false; }
+            @Override public void requestLicense(String m) { callCount[0]++; }
+        });
+        LicenseGate.ensureLicensed("test");
+        LicenseGate.ensureLicensed("test");
+        assertEquals("Second prompt within 60s must be debounced",
+            1, callCount[0]);
     }
 }
 ```
 
-- [ ] **Step 7.8: Run license tests**
+- [ ] **Step 7.9: Run license tests to verify they pass**
 
 ```bash
 cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.licensing.LicenseGateTest"
 ```
 
-Expected: all 3 license tests PASS.
+Expected: all 5 license tests PASS.
 
-- [ ] **Step 7.9: Run all tests**
+- [ ] **Step 7.10: Move license check OUTSIDE outer try/catch in BOTH format processors**
+
+This is the load-bearing fix for the hard-fail contract. The current code has the license check inside an outer `try/catch (Exception)` that swallows our hard-fail throw.
+
+For `CustomJinja2PreFormatProcessor.java`:
+
+Find the existing license check (around line 64). The structure today is:
+```java
+public TextRange process(...) {
+    try {
+        if (!LicenseGate.ensureLicensed("format")) {
+            return range;  // silent fallback — TO BE REMOVED
+        }
+        // ... existing conversion logic ...
+    } catch (Exception e) {
+        LOG.error("PreFormatProcessor: Failed to convert custom delimiters", e);
+        return range;
+    }
+}
+```
+
+Change to:
+```java
+public TextRange process(...) {
+    // License check FIRST — must hard-fail before any work, and MUST NOT
+    // be inside the outer try/catch (which would silently swallow the
+    // throw). First-launch permissive (LicenseGate.isLicensedOrPending
+    // returns true on null facade) means no throw during cold start.
+    if (!LicenseGate.ensureLicensed("format")) {
+        throw new LicenseUnavailableException(
+            "Your Jinja2 Custom Delimiters license could not be verified.\n" +
+            "Reason: licensing subsystem returned no answer (network unreachable " +
+            "or marketplace endpoint moved).\n" +
+            "Action: Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters " +
+            "to renew or re-authenticate. Restart PyCharm after renewal.\n" +
+            "(If this error persists, contact les@wedgwoodwebworks.com)"
+        );
+    }
+
+    try {
+        // ... existing conversion logic ...
+    } catch (Exception e) {
+        LOG.error("PreFormatProcessor: Failed to convert custom delimiters", e);
+        return range;
+    }
+}
+```
+
+For `CustomJinja2PostFormatProcessor.java` (currently missing from plan): apply the same fix at BOTH `processElement` (around line 55) and `processText` (around line 96). Each method currently has its own `if (!LicenseGate.ensureLicensed(...))` check. Move each check OUTSIDE its own outer try/catch (or the shared outer try/catch if any), and change the silent-return to `throw new LicenseUnavailableException(...)`.
+
+Also add to the top of both files:
+```java
+import com.wedgwoodwebworks.jinja2customdelimiters.licensing.LicenseUnavailableException;
+```
+
+- [ ] **Step 7.11: Run all tests**
 
 ```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test
 ```
 
-Expected: all tests pass.
+Expected: ktlint + detekt + test all pass. `LicenseUnavailableException` thrown from format processors is now reachable in tests via the seam; will be exercised in Task 8.
 
-- [ ] **Step 7.10: Commit**
+- [ ] **Step 7.12: Commit**
 
 ```bash
 cd /Users/les/Projects/jinja2-custom-delimiters
-git add src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/ src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessor.java
-git commit -m "fix(license): hard-fail on license check failure
+git add src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/ src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/
+git commit -m "fix(license): hard-fail on license check failure + first-launch UX
 
-Per spec contract: any failure (network, endpoint moved, cert expired)
-must surface loudly with actionable guidance. Previous behavior:
-- LicenseGate.isLicensedOrPending returned true when facade was null
-  (silent fallback)
-- LicenseGate.ensureLicensed treated null as true
-- MarketplaceLicenseChecker caught Throwable and returned false (silent)
-- Format processor permitted formatting on license failure (silent)
+Adds LicenseChecker DI seam (LicenseGate.setChecker/resetChecker)
+and MarketplaceLicenseCheckerAdapter so tests can stub the checker
+without reflection on a final-class with a private constructor.
 
-New behavior:
-- isLicensedOrPending returns false on null
-- ensureLicensed returns false on null
-- Throwable is logged at WARN with class+message, then propagated
-- Format processor throws LicenseUnavailableException with actionable
-  message pointing user to https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters
+Adds MAHAVISHNU_JINJA_LICENSE_MOCK env-var seam in
+MarketplaceLicenseChecker.isLicensed() so Task 11.6 sandbox QA can
+exercise the hard-fail UX path.
+
+Preserves first-launch UX: null from LicensingFacade is permissive for
+5s after LicenseGate class load (cold IDE start), preventing the
+formatter from throwing before the user has a chance to license.
+
+Replaces catch (Throwable ignored) with logged catch (Exception) in
+MarketplaceLicenseChecker (lines 195, 222) — Throwable-swallowing
+was an anti-pattern that hid the spec's hard-fail contract.
+
+Moves license check OUTSIDE outer try/catch in both
+CustomJinja2PreFormatProcessor AND CustomJinja2PostFormatProcessor
+(plan previously missed PostFormat). The outer try was silently
+swallowing the new LicenseUnavailableException throw.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1470,10 +1720,27 @@ Restart the sandbox IDE. Re-open the file. Confirm custom delimiters still appli
 
 - [ ] **Step 11.6: Hard-fail license UX smoke test**
 
-Temporarily set `MAHAVISHNU_JINJA_LICENSE_MOCK=invalid` (or equivalent stub mechanism; check `MarketplaceLicenseChecker` for the seam). Configure a delimiter that requires license verification. Invoke formatter. Confirm:
-- Error dialog displays the user-actionable message from Step 7.7
+Run `./gradlew runIdeForUiTests` with the env var seam set:
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters
+MAHAVISHNU_JINJA_LICENSE_MOCK=invalid ./gradlew runIdeForUiTests
+```
+
+Configure a delimiter that requires license verification. Invoke formatter. Confirm:
+- Error dialog displays the user-actionable message from Step 7.10
 - Formatter does NOT silently proceed
 - Message points to `https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters`
+
+Then unset and verify recovery:
+
+```bash
+# Stop the IDE
+MAHAVISHNU_JINJA_LICENSE_MOCK=valid ./gradlew runIdeForUiTests
+# Confirm formatter proceeds normally
+```
+
+(The `MAHAVISHNU_JINJA_LICENSE_MOCK` env var is added in Step 7.6.)
 
 - [ ] **Step 11.7: Close sandbox**
 
