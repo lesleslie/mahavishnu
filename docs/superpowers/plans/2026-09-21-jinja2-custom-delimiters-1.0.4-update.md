@@ -4,6 +4,8 @@
 
 **Goal:** Update the jinja2-custom-delimiters JetBrains plugin from v1.0.3 to v1.0.4, widening its PyCharm build-range support from 2025.2–2025.3 to 2025.2–2026.x, bumping the Java toolchain to 25, wiring crackerjack as the audit surface, removing license-gate silent fallbacks, and shipping the release through the established marketplace pipeline.
 
+> **Plan revision note:** This plan was revised after 5-agent multi-lens review surfaced 3 CRITICAL defects (compile error in Step 8.2, TDD red-step filter mismatch in Task 6, license check silently swallowed by outer try/catch), 1 blocking tool-name error (`mcp__crackerjack__crackerjack_run` does not exist), and 2 missing production seams (`LicenseGate` test seam, `MAHAVISHNU_JINJA_LICENSE_MOCK` env var). All CRITICAL items resolved below; HIGH items included. See commit history for full diff.
+
 **Architecture:** Sequential 16-task implementation against a single plugin repository. Build config (Gradle, IntelliJ Platform Gradle Plugin 2.19.0, Java 25 toolchain) is updated first; repo hygiene (gitignore, GitHub Actions removal) follows; then crackerjack audit wiring (Gradle plugin dependencies for ktlint + detekt, hook configuration); then source-code tech-debt sweep (HIGH #6 null-handling, license silent-fallback removal); then tests; then docs; then a 5-phase release pipeline (Plugin Verifier, manual sandbox QA, pack+archive, MCP version bump, publish). No new features; only platform-range widening and tooling modernization.
 
 **Tech Stack:**
@@ -375,8 +377,8 @@ Expected: response contains three hook names: `kotlin.ktlint`, `kotlin.detekt`, 
 
 - [ ] **Step 3.8: Run crackerjack and verify exit 0**
 
-```python
-mcp__crackerjack__crackerjack_run(project_root="/Users/les/Projects/jinja2-custom-delimiters")
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 ```
 
 Expected: exit 0; stderr shows 3 hooks running (`kotlin.ktlint`, `kotlin.detekt`, `kotlin.test`); no `task absent` warnings. If any hook fails, fix the underlying issue (lint errors, format test failures) before proceeding.
@@ -570,7 +572,7 @@ public void loadState_preservesDefaultOnNullSource() {
 - [ ] **Step 6.3: Run test to verify it fails**
 
 ```bash
-cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.settings.Jinja2DelimitersSettingsTest.loadState_rejectsNullDelimiterViaSetter"
+cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.settings.Jinja2DelimitersSettingsTest.loadState_preservesDefaultOnNullSource"
 ```
 
 Expected: FAIL with assertion error (current `copyBean` reflective path accepts null; new setter path rejects).
@@ -613,19 +615,30 @@ After:
 ```java
 @Override
 public void loadState(@NotNull State state) {
-    // Explicit setters (not reflective copyBean) so null-checks in setters
-    // enforce the "fields are never null" invariant. If XML deserialization
-    // ever delivers null, the setter rejects and the default is preserved.
-    setBlockStartString(state.blockStartString);
-    setBlockEndString(state.blockEndString);
-    setVariableStartString(state.variableStartString);
-    setVariableEndString(state.variableEndString);
-    setCommentStartString(state.commentStartString);
-    setCommentEndString(state.commentEndString);
-    setLineStatementPrefix(state.lineStatementPrefix);
-    setLineCommentPrefix(state.lineCommentPrefix);
+    // XML tolerance: a single bad field (hand-edit, schema downgrade,
+    // XmlSerializer edge case) must NOT lose all settings. Reflective
+    // copyBean silently propagated nulls; explicit setters would throw
+    // IllegalArgumentException and lose the whole component state.
+    // Use null-tolerant guards so a null input preserves the default
+    // for THAT field while the other 7 still load correctly.
+    applyIfNonNull(state.blockStartString, this::setBlockStartString);
+    applyIfNonNull(state.blockEndString, this::setBlockEndString);
+    applyIfNonNull(state.variableStartString, this::setVariableStartString);
+    applyIfNonNull(state.variableEndString, this::setVariableEndString);
+    applyIfNonNull(state.commentStartString, this::setCommentStartString);
+    applyIfNonNull(state.commentEndString, this::setCommentEndString);
+    applyIfNonNull(state.lineStatementPrefix, this::setLineStatementPrefix);
+    applyIfNonNull(state.lineCommentPrefix, this::setLineCommentPrefix);
+}
+
+private static void applyIfNonNull(String value, Consumer<String> setter) {
+    if (value != null) {
+        setter.accept(value);
+    }
 }
 ```
+
+(Add `import java.util.function.Consumer;` at the top of the file.)
 
 - [ ] **Step 6.6: Remove null-fallback from getters**
 
@@ -650,7 +663,7 @@ Apply the same change to `getBlockEndString`, `getVariableStartString`, `getVari
 - [ ] **Step 6.7: Run test to verify it passes**
 
 ```bash
-cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.settings.Jinja2DelimitersSettingsTest.loadState_rejectsNullDelimiterViaSetter"
+cd /Users/les/Projects/jinja2-custom-delimiters && ./gradlew test --tests "com.wedgwoodwebworks.jinja2customdelimiters.settings.Jinja2DelimitersSettingsTest.loadState_preservesDefaultOnNullSource"
 ```
 
 Expected: PASS.
@@ -895,7 +908,7 @@ if (!LicenseGate.ensureLicensed("format")) {
         "Your Jinja2 Custom Delimiters license could not be verified.\n" +
         "Reason: licensing subsystem returned no answer (network unreachable " +
         "or marketplace endpoint moved).\n" +
-        "Action: Visit https://plugins.jetbrains.com/plugin/PJINJACUSTOMDEL " +
+        "Action: Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters " +
         "to renew or re-authenticate. Restart PyCharm after renewal.\n" +
         "(If this error persists, contact les@wedgwoodwebworks.com)"
     );
@@ -950,7 +963,7 @@ New behavior:
 - ensureLicensed returns false on null
 - Throwable is logged at WARN with class+message, then propagated
 - Format processor throws LicenseUnavailableException with actionable
-  message pointing user to https://plugins.jetbrains.com/plugin/PJINJACUSTOMDEL
+  message pointing user to https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -994,7 +1007,7 @@ public class CustomJinja2PreFormatProcessorTest extends BasePlatformTestCase {
         settings.setCommentStartString("[#");
         settings.setCommentEndString("#]");
 
-        String custom = = = "[% for item in items %]\n  [[ item ]]\n[% endfor %]";
+        String custom = "[% for item in items %]\n  [[ item ]]\n[% endfor %]";
         String expected = "{% for item in items %}\n  {{ item }}\n{% endfor %}";
 
         // Invoke via the PreFormatProcessor interface
@@ -1114,8 +1127,8 @@ Expected: all tests pass (existing + 4 new format-processor tests + license test
 
 - [ ] **Step 8.8: Run crackerjack to verify hooks still pass**
 
-```python
-mcp__crackerjack__crackerjack_run(project_root="/Users/les/Projects/jinja2-custom-delimiters")
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 ```
 
 Expected: exit 0; 3 hooks running; ktlint may flag new code (format if needed via `./gradlew ktlintFormat`); detekt may flag new code (fix as needed).
@@ -1460,7 +1473,7 @@ Restart the sandbox IDE. Re-open the file. Confirm custom delimiters still appli
 Temporarily set `MAHAVISHNU_JINJA_LICENSE_MOCK=invalid` (or equivalent stub mechanism; check `MarketplaceLicenseChecker` for the seam). Configure a delimiter that requires license verification. Invoke formatter. Confirm:
 - Error dialog displays the user-actionable message from Step 7.7
 - Formatter does NOT silently proceed
-- Message points to `https://plugins.jetbrains.com/plugin/PJINJACUSTOMDEL`
+- Message points to `https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters`
 
 - [ ] **Step 11.7: Close sandbox**
 
@@ -1518,8 +1531,8 @@ The actual publish is in Task 15. Do not invoke `./gradlew publishPlugin` here.
 
 - [ ] **Step 13.1: Re-run `crackerjack run`**
 
-```python
-mcp__crackerjack__crackerjack_run(project_root="/Users/les/Projects/jinja2-custom-delimiters")
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 ```
 
 Expected: exit 0; all 3 hooks emit; no warnings.
@@ -1702,7 +1715,7 @@ Expected: HTTP 2xx response from `plugins.jetbrains.com`. Watch the output caref
 
 - [ ] **Step 15.5: Confirm in JetBrains Marketplace admin panel**
 
-Visit https://plugins.jetbrains.com/plugin/PJINJACUSTOMDEL and verify:
+Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters and verify:
 - Version `1.0.4` is listed
 - Compatibility range shows `PyCharm 2025.2 – 2026.x`
 - Plugin is marked Paid
@@ -1720,7 +1733,7 @@ Append to `AGENTS.md` or `RELEASING.md`:
 ## 1.0.4 Publish Log
 
 - Published: <TIMESTAMP>
-- Marketplace URL: https://plugins.jetbrains.com/plugin/PJINJACUSTOMDEL
+- Marketplace URL: https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters
 - `.zip` sha256: <SHA>
 - Archive: `~/.mahavishnu/artifacts/jinja2-custom-delimiters/1.0.4/`
 ```
