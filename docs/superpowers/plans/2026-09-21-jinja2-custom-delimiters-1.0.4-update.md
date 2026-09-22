@@ -1668,6 +1668,14 @@ git commit -m "docs: bump for 1.0.4 release
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
+- [ ] **Step 9.10: Audit gate**
+
+```bash
+cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
+```
+
+Expected: exit 0. Docs-only commit should not affect ktlint/detekt; if either fires, the docs may have triggered an existing code-style flag (rare but possible).
+
 ---
 
 ## Task 10: Plugin Verifier run (Phase 5)
