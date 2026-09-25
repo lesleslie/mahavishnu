@@ -1,8 +1,9 @@
 ---
 status: deferred
 date: 2026-09-25
+updated: 2026-09-25
 supersedes: (none)
-related: docs/decisions/2026-08-29-settle-vs-langgraph.md (predecessor); .claude/plans/nifty-gliding-stallman.md v3 (planning context)
+related: docs/decisions/2026-08-29-settle-vs-langgraph.md (predecessor); .claude/plans/nifty-gliding-stallman.md v3 (planning context); docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md (same-day audit refresh)
 ---
 
 # 2026-09-25 — Re-evaluation of LangGraph as a Bodai engine adapter
@@ -58,6 +59,16 @@ ecosystem.** That changes the architectural context materially — the
   ``mahavishnu/settle/`` is a hand-rolled 5-state / 4-transition machine
   in ~300 lines. LangGraph's graph primitives don't add value at
   that scale — the predecessor ADR's "overkill" objection survives.
+- **Persistence substrate is still an open question** _(strengthened
+  2026-09-25)_. The same-day pool/worker MCP audit
+  (`docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`,
+  commit `ca1cad18`) confirmed that `dispatch_to_pool(async_callback=True)`
+  returns a `workflow_id` immediately but the corresponding
+  `workflow_result` lookup returns `not_found` — root cause most likely
+  is the absence of a working Dhara (or alternative) persistence layer
+  for `workflow-results/{workflow_id}/`. Any LangGraph adapter would
+  face the same substrate gap. Prerequisite #2 below is therefore more
+  load-bearing than it appeared at Phase 6 ship time.
 
 **No longer applicable:**
 
@@ -152,6 +163,59 @@ hold (none currently do):
 - **Cross-link from the predecessor ADR is on the file system
   (see References).** Future reviewers reading either ADR see both.
 
+## New evidence since Phase 6 ship (same-day refresh, 2026-09-25)
+
+This section captures the §10 follow-up batch from Plan v3 that landed
+in the same conversation turn as the Phase 6 ADR. None of these
+findings flip the decision (status remains **deferred**); they
+strengthen the prerequisites and reduce the future work scope.
+
+- **Doc-drift cleanup** (commit `dddceca9`): 10 doc references to
+  `mahavishnu/workers/task_router.py` migrated to
+  `mahavishnu/core/model_routing.py`. Plus 4 bonus cleanup sites
+  (`SHEPHERD_BACKEND.md`, two `feature-tracking/*.md` files now
+  RETIRED, `mahavishnu/pools/mahavishnu_pool.py` ASCII diagram). The
+  canonical model-routing path is now consistent across docs, code,
+  and CLI references — **a LangGraph adapter has a clean
+  integration target, not a documentation migration to also
+  perform.**
+
+- **Worker_* MCP tools audit** (commit `ca1cad18`,
+  `docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`): all
+  18 `worker_*` tools are LIVE with real dual-path implementations
+  (durable-manager + legacy fallback) and dedicated test coverage.
+  Plan §10 #2 estimated "9 registered"; actual count is **18** (9 in
+  `worker_tools.py` + 9 in `worker_contract_tools.py`). There is no
+  aspirational surface to worry about — **a LangGraph adapter would
+  not need to "work around" half-built MCP tooling.**
+
+- **`dispatch_to_pool` env-failure** (per memory
+  `pool-dispatch-async-default.md`, confirmed by audit commit
+  `ca1cad18`): async-callback path returns `workflow_id` immediately
+  but the corresponding `workflow_result` returns `not_found`. Root
+  cause is most likely Dhara (or alternative) persistence substrate
+  not configured for `workflow-results/{workflow_id}/`. **This is the
+  same substrate gap any LangGraph `PostgresSaver` (or equivalent)
+  would face — prerequisite #2 below is more load-bearing than at
+  Phase 6 ship time.**
+
+- **Phase 4.5b legacy worker deletions complete** (commit `7d68bff2`,
+  `docs/decisions/2026-09-24-legacy-worker-deprecation.md`): only
+  `shepherd_backend.py` remains as an isolated-worker backend. **A
+  LangGraph adapter has less breakable surface area to integrate
+  with**, but it does not change the cost calculus on its own.
+
+- **Open work parked** (from audit commit `ca1cad18`):
+  - `mahavishnu_pool.py` §10 #5 rewrite (WorkerManager → route_task
+    shape) — substantial refactor; needs its own plan.
+  - `workers/cloud_worker.py` retirement — now a thin wrapper post
+    Phase 3b; decision needed (keep as OpenAI-compatible HTTP client
+    or retire).
+  - `workers/__init__.py` factory-function collapse — cosmetic.
+
+  None of these affect the LangGraph calculus. They are flagged here
+  so a future LangGraph plan can sequence around them.
+
 ## References
 
 - `docs/decisions/2026-08-29-settle-vs-langgraph.md` — predecessor ADR,
@@ -168,3 +232,20 @@ hold (none currently do):
 - `feedback-bodai-push-is-user-controlled.md`, `feedback-mcp-common-
   version-bump-is-user.md` — guardrails on adding dependencies and
   publishing without user consent.
+- **Same-day refinement (2026-09-25):**
+  - `commit dddceca9` — doc-drift cleanup (10 task_router refs +
+    bonus Phase 4.5b cleanup + `mahavishnu_pool.py` ASCII fix)
+  - `commit ca1cad18` — pool/worker MCP audit
+    (`docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`):
+    18 worker_* tools LIVE; dispatch_to_pool env-failure
+    documented; §10 #5 rewrite deferred to separate plan
+  - `commit 7d68bff2` — Phase 4.5b legacy worker deletions
+    (`docs/decisions/2026-09-24-legacy-worker-deprecation.md`):
+    reduces breakable surface area for any future LangGraph
+    integration
+  - `memory/pool-dispatch-async-default.md` — env-failure root
+    cause (Dhara substrate missing for async workflow_results); the
+    same gap LangGraph adapters would face
+  - `memory/mahavishnu-dispatch-prompt-mangling.md` — `sh -lc`
+    wrapper bug, motivates direct `route_task` calls (relevant
+    if LangGraph adapter design mirrors `dispatch_to_pool`'s path)
