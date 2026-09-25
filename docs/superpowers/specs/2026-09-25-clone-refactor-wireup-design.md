@@ -1,9 +1,10 @@
 ---
-status: draft
+status: partial
 role: canonical
 kind: spec
 date: 2026-09-25
 last_reviewed: 2026-09-25
+revision: v2
 owner: platform-team
 scope: clone-refactor-group wire-up + dispatch-to-pool env-failure
 related: docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md; docs/decisions/2026-09-25-langgraph-as-engine-adapter.md; .claude/decisions/wire-up-contract.md; docs/plans/TEMPLATE.md
@@ -70,6 +71,32 @@ References `flow_path="mahavishnu.workflows.clone_refactor_workflow:run"` only a
 
 Per memory `pool-dispatch-async-default.md`: `dispatch_to_pool(async_callback=True)` returns `workflow_id` immediately, but `workflow_result(workflow_id=...)` returns `not_found`. Root cause: **the MCP substrate for `workflow/v1/{workflow_id}` writes is unconfigured** (not Dhara). The `Phase 2m` `pool_route_execute` (sync alternative) was shipped as a workaround in commit `4090965b`.
 
+### 4.5 Requirements (REQ-XXX traceability)
+
+Per `docs/plans/TEMPLATE.md` §4.5, every requirement introduced by this design is traceable from spec → code → test:
+
+```yaml
+requirements:
+  - id: REQ-CLONE-001
+    title: "Pre-DAG verify_proposal blocks DAG start on consensus==REJECT"
+  - id: REQ-CLONE-002
+    title: "Git-tree DAG replaces PR-shape (no gh_client, no ExtractionPR/ConsumingPR)"
+  - id: REQ-CLONE-003
+    title: "MCPStateBackend persistence is best-effort (try/except per write)"
+  - id: REQ-CLONE-004
+    title: "refactor_job_id uses uuid.uuid7() (Python 3.14 stdlib, RFC 9562)"
+  - id: REQ-CLONE-005
+    title: "No automatic revert on partial consumer-write failure (operator-driven cleanup)"
+  - id: REQ-CLONE-006
+    title: "Workflow-ID/Approved-by header preservation on rewritten module"
+  - id: REQ-CLONE-007
+    title: "Pre-DAG MCPStateBackend.dag_key() initial state write before asyncio.create_task"
+  - id: REQ-CLONE-008
+    title: "audit_orphans.py recognizes @flow/@task decorators (P0 verification, see §6.10)"
+```
+
+Each REQ ID gets `# Implements: REQ-CLONE-NNN` markers in code/docstrings and `@pytest.mark.req(["REQ-CLONE-NNN"])` markers in tests. `audit_requirements.py` enforces traceability.
+
 ### 4.6 Project-state corrections (user direction 2026-09-25)
 
 Three corrections shape this design:
@@ -88,7 +115,7 @@ All three are now stored in Session-Buddy `project` memory to prevent reintroduc
 clone_refactor_group MCP tool (mahavishnu/mcp/tools/clone_tools.py)
    │
    │  1. generate refactor_job_id = str(uuid.uuid7())   ← UUID7 (Section 5.2)
-   │  2. await verify_proposal(proposal)                ← existing, sync
+   │  2. await verify_proposal(proposal)                ← existing async; signature at core/verification.py:473
    │  3. persist VerificationResult via VerificationStore ← existing
    │  4. if consensus==REJECT and verification_enabled → return blocked_by_verification
    │  5. write initial DAG state (workflow/v1/{id}, status: queued) ← new
@@ -112,13 +139,15 @@ run_clone_refactor_dag (Prefect @flow, fires in background)
 
 ### 5.2 UUID7 for `refactor_job_id`
 
-Use `uuid.uuid7()` (Python 3.14 stdlib, RFC 9562 / PEP 9562) instead of `uuid.uuid4()`. Same wire format (8-4-4-4-12 hex string), zero breaking change to callers, but provides:
+Use `uuid.uuid7()` (Python 3.14 stdlib; **RFC 9562** finalized 2024) instead of `uuid.uuid4()`. The project's `pyproject.toml` already pins `requires-python = ">=3.14"`, so the availability is verified. Same wire format (8-4-4-4-12 hex string), zero breaking change to callers, but provides:
 
 - Time-sortable in B-tree indexes (string sort = chronological sort)
 - Creation timestamp encoded in the 48-bit ms-precision prefix
 - Natural ordering for `clone_refactor_status(limit=N)` queries
 
-**Trade-off**: this is the first UUID7 use in the codebase. The rest of Mahavishnu uses UUID4 (websocket, pools, evidence, locks). If a project-wide "prefer UUID7 for new public IDs" convention is wanted, that's a separate decision and out of scope for this design. For this design, only `refactor_job_id` uses UUID7.
+**Trade-off**: this is the first UUID7 use in the codebase. The rest of Mahavishnu uses UUID4 (websocket, pools, evidence, locks). If a project-wide "prefer UUID7 for new public IDs" convention is wanted, that's a separate decision and out of scope for this design. For this design, only `refactor_job_id` uses UUID7. **§6.3 retains a `sys.version_info >= (3, 14)` guard** for defensive correctness in case the pin is ever relaxed.
+
+**Sort direction** (binding): UUID7 timestamp prefix is encoded as 48-bit big-endian Unix-ms in the most-significant bits. Lexicographic string sort = ascending chronological sort. `clone_refactor_status(limit=N)` returns records **descending** (newest-first) per the Layer 3 test name `test_clone_refactor_status_returns_recent_jobs_first`. The test asserts `records[0].started_at > records[1].started_at` explicitly — not just "sorted".
 
 ### 5.3 Failure semantics
 
@@ -147,7 +176,7 @@ Use `uuid.uuid7()` (Python 3.14 stdlib, RFC 9562 / PEP 9562) instead of `uuid.uu
 
 `dispatch_to_pool` async-callback env-failure root cause: the MCP substrate for `workflow/v1/{workflow_id}` writes is not configured in the local dev environment.
 
-**Path A (preferred — selected 2026-09-25)**: Configure MCP substrate. Add to `settings/mahavishnu.yaml`:
+**Path A (selected 2026-09-25 — committed)**: Configure MCP substrate. Add to `settings/mahavishnu.yaml`:
 ```yaml
 mcp_state:
   enabled: true
@@ -157,15 +186,24 @@ mcp_state:
 
 This makes `MCPStateBackend` writes succeed for both `dispatch_to_pool` and the new clone-refactor DAG.
 
-**Path B (fallback if MCP substrate is intentionally absent)**: Formally defer `dispatch_to_pool` async-callback as "broken in env, working in prod." Add a `decision: deferred` section to `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` explaining the env requirement.
+**§5.5a Path probe (run before kickoff)**: this design implements Path A only. If the env probe fails, do NOT silently switch to Path B; record a `decision: deferred` doc and stop.
 
-**Selection**: Path A is the chosen path. If the user signals that MCP substrate configuration is out of scope for this design, switch to Path B (one-line edit to remove the `settings/mahavishnu.yaml` block from Section 6.8 and the validation row from Section 9).
+```
+# env probe — must succeed before §6.1 begins
+mahavishnu mcp health
+mcp__mahavishnu__dispatch_to_pool(async_callback=True, prompt="env probe")
+# expect: workflow_id returned; workflow_result(workflow_id) returns non-empty within 30s
+```
+
+If the probe fails: write `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` update with `decision: deferred`, halt implementation, surface to user.
 
 ## 6. Components (files + boundaries)
 
 ### 6.1 `mahavishnu/workflows/clone_refactor_workflow.py` (rewrite, ~280 lines)
 
-Replaces the PR-shaped module. Public API:
+Replaces the PR-shaped module. **Preserve `# Workflow-ID: 01JCLONEREF2026` and `# Approved by: les` headers at the top of the rewritten module** (required by `tests/unit/test_check_workflow_quarantine.py`).
+
+Public API:
 
 ```python
 @flow(name="clone-refactor-dag")
@@ -180,46 +218,122 @@ async def run_clone_refactor_dag(
 ) -> DAGResult: ...
 ```
 
-Step functions (all `@task`):
+Step functions (all `@task`, with explicit `retry_condition`):
 ```python
+# Prefect @task — retry only commit-infrastructure failures, NOT GitApplyConflict
+# (deterministic content conflicts aren't transient and re-running wastes time).
+from prefect import task
+from tenacity import retry_if_exception_type
+
+@task(retries=2, retry_delay_seconds=5, retry_condition=retry_if_exception_type((GitCommitFailed,)))
+async def write_canonical_symbol(...) -> RepoCommit: ...
+
+@task(retries=2, retry_delay_seconds=5, retry_condition=retry_if_exception_type((GitCommitFailed,)))
+async def write_replacement_diff(...) -> RepoCommit: ...
+
+@task(retries=0)
 async def detect_cluster_members(cluster_id: str, repos: list[str]) -> list[RepoHit]: ...
-async def write_canonical_symbol(target_repo: str, symbol: str, diff: str) -> RepoCommit: ...
-async def write_replacement_diff(consumer_repo: str, symbol: str, source_repo: str, diff: str) -> RepoCommit: ...
+
+@task(retries=0)
 async def persist_dag_state(state: DAGState) -> None: ...
 ```
 
+`detect_cluster_members` delegates to `mahavishnu.core.loop_helpers.detect_until_dry` (the symbol lives in `core/loop_helpers.py`, NOT `workflows/`; the spec's earlier `workflows._detect_until_dry` reference was wrong).
+
 Dataclasses: `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState`. **No** `ExtractionPR` / `ConsumingPR` / `gh_client` references.
 
-Imports `_git_ops.py`, `state_backends/mcp.py`, `prefect`. Does **not** import from `mcp/tools/clone_tools.py` (one-way dependency: tools call workflow).
+Imports `_git_ops.py` (`mahavishnu/workflows/_git_ops.py`), `mahavishnu/core/state_backends/mcp.py`, `mahavishnu/core/loop_helpers.py` (`detect_until_dry`), `prefect`. Does **not** import from `mahavishnu/mcp/tools/clone_tools.py` (one-way dependency: tools call workflow).
+
+**Integration Contract:**
+- **Triggered from**: `mcp__mahavishnu__clone_refactor_group` (in `mahavishnu/mcp/tools/clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds
+- **Returns to / updates**: `workflow/v1/{refactor_job_id}` MCP key (via `MCPStateBackend.dag_key()`), and `cluster/v1/{cluster_id}` MCP key (via `MCPStateBackend.cluster_key()`) — both best-effort writes wrapped in try/except
+- **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py::test_clone_refactor_group_returns_job_id_and_starts_dag` passes and asserts `workflow/v1/{id}` exists post-DAG-start
+- **Rollback signal**: OTel/log line `clone_refactor.dag.failed` with `refactor_job_id` attribute; consumer-recovery via `clone_refactor_status(limit=N)` listing `status: failed` records (no-auto-revert policy: operator does manual cleanup per Section 5.4)
+- **Observability added**: OTel span `clone_refactor.dag` with attrs `refactor_job_id`, `cluster_id`, `target_repo`, `consumer_count`; counter `clone_refactor.dag.steps.failed_total{step=...}`; histogram `clone_refactor.dag.duration_seconds{status=...}`; log line `clone_refactor.step.completed` per step
 
 ### 6.2 `mahavishnu/workflows/_git_ops.py` (new, ~80 lines)
 
-Thin async wrapper around `git apply` / `git commit` for DAG tasks. Imports `asyncio.create_subprocess_exec`. Raises typed exceptions:
+Thin async wrapper around `git apply` / `git commit` for DAG tasks. Uses `asyncio.create_subprocess_exec` (no `shell=True`). **Passes diffs via stdin, never argv** (avoids injection through malformed diff headers).
 
+Raises typed exceptions:
 ```python
-class GitApplyConflict(Exception): ...  # diff_offset, conflict_marker
-class GitCommitFailed(Exception): ...   # stderr, exit_code
+class GitApplyConflict(Exception):
+    """Structured conflict from `git apply --check`."""
+    def __init__(self, diff_offset: int, conflict_marker: str, stderr: str) -> None: ...
+
+class GitCommitFailed(Exception):
+    def __init__(self, stderr: str, exit_code: int) -> None: ...
 ```
 
 Public API:
 ```python
-async def git_apply(repo_path: Path, diff: str) -> None: ...
-async def git_commit(repo_path: Path, message: str) -> str: ...  # returns commit SHA
+async def git_apply(repo_path: Path, diff: str) -> None:
+    # 1. validate path is inside repo_path (reject paths with '..' or absolute escapes)
+    # 2. reject diffs containing "Binary files", "rename to /dev/", "rename from /dev/"
+    # 3. pipe diff via stdin to `git apply --check`; raise GitApplyConflict on non-zero
+    # 4. on success, pipe diff via stdin to `git apply`
+    ...
+
+async def git_commit(repo_path: Path, message: str) -> str:
+    # `git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -F -`
+    # pass message via stdin
+    ...
+
 async def current_head_sha(repo_path: Path) -> str: ...
 ```
 
+**Integration Contract:**
+- **Triggered from**: DAG step functions in `clone_refactor_workflow.py` (calls inside `@task` bodies)
+- **Returns to / updates**: nothing (pure side-effect wrapper; `git_commit` returns the SHA via stdout)
+- **Demonstrable by**: `pytest tests/unit/workflows/test_git_ops.py` (5 tests, see §8 Layer 1)
+- **Rollback signal**: `git_commit` raises `GitCommitFailed` → caller (DAG step) records failure; no automatic rollback
+- **Observability added**: structured log line per call with `repo_path`, `exit_code`, `commit_sha` fields
+
 ### 6.3 `mahavishnu/mcp/tools/clone_tools.py` (modify, ~30 line delta)
 
-Three changes:
-1. `from uuid import uuid7 as _uuid7` (or equivalent); use in `clone_refactor_group`.
-2. Add `_record_dag_state` helper that writes initial `workflow/v1/{refactor_job_id}` record before `asyncio.create_task`.
-3. Add `asyncio.create_task(run_clone_refactor_dag(...))` call after `verify_proposal` succeeds.
+Five changes:
+1. UUID7 import with **Python 3.14 guard** (per `bodai-pytest-binary-cwd.md` style):
+   ```python
+   import sys
+   if sys.version_info >= (3, 14):
+       from uuid import uuid7 as _new_uuid7
+   else:
+       def _new_uuid7() -> UUID:
+           raise RuntimeError(
+               "clone_refactor_group requires Python 3.14+ for uuid7(). "
+               "Upgrade the interpreter or pin pyproject.toml [requires-python]."
+           )
+   ```
+2. Replace `job_id = str(uuid4())` with `job_id = str(_new_uuid7())`
+3. Add `_record_dag_state` helper that writes initial `workflow/v1/{refactor_job_id}` record before `asyncio.create_task`
+4. Add `asyncio.create_task(run_clone_refactor_dag(...))` call after `verify_proposal` succeeds
+5. Update `clone_refactor_status` to read `workflow/v1/*` (was `clone-handled/*`)
 
-Update `clone_refactor_status` to read `workflow/v1/*` instead of `clone-handled/*`.
+**Import direction invariant** (one-way dependency): `clone_tools.py` may import from `workflows/`, but `workflows/clone_refactor_workflow.py` must NOT import from `mcp/tools/clone_tools.py`. Verified by the §9 grep `git grep -nE "from mahavishnu\.workflows" mahavishnu/mcp/tools/clone_tools.py` (the spec previously had the grep backwards; this is the correct direction).
+
+**Integration Contract:**
+- **Triggered from**: MCP client invokes `mcp__mahavishnu__clone_refactor_group`; existing `clone_refactor_status` MCP tool continues to be invoked by operators
+- **Returns to / updates**: returns `{refactor_job_id, status: queued, decision, verification}` to MCP client; `MCPStateBackend.put("workflow/v1/{id}", {...})` records initial state
+- **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py` — all 4 Layer 3 tests pass
+- **Rollback signal**: OTel span `mcp.clone_refactor_group` with `error` attribute on exception; log line `clone_refactor_group.failed` with exception class + message
+- **Observability added**: OTel span `mcp.clone_refactor_group` (added by FastMCP decorator); counter `mcp.clone_refactor_group.calls_total{decision=...}`
 
 ### 6.4 `mahavishnu/core/state_backends/mcp.py` (add static methods)
 
-Add `workflow_key(refactor_job_id)` and `cluster_key(cluster_id)` static methods to `MCPStateBackend` mirroring existing `workflow_key(execution_id)`.
+**Do NOT redeclare `workflow_key(execution_id)` — it already exists at `state_backends/mcp.py:55-58` and is called by `dispatch_to_pool`, `clone_refactor_status` (line 282), and other consumers.** Adding `workflow_key(refactor_job_id)` as a second definition would silently shadow the first (Python keeps the later definition), breaking every existing caller.
+
+Add instead:
+- `dag_key(refactor_job_id: str) -> str` returning `f"workflow/v1/{refactor_job_id}"` — new key constructor for clone-refactor DAG records. Distinct name from `workflow_key` because it carries semantic intent ("DAG lifecycle" vs. "workflow execution"); avoids future collision when `execution_id` and `refactor_job_id` formats diverge.
+- `cluster_key(cluster_id: str) -> str` returning `f"cluster/v1/{cluster_id}"` — new key for per-cluster consumer-progress records.
+
+Existing `workflow_key(execution_id)` is **kept unchanged**.
+
+**Integration Contract:**
+- **Triggered from**: `clone_refactor_workflow.py` (writes via `dag_key()`, `cluster_key()`); `clone_refactor_status` reads via the same keys
+- **Returns to / updates**: MCP key strings (no state mutation by the constructors themselves)
+- **Demonstrable by**: `pytest tests/unit/test_mcp_state_backend.py` (the actual path; **not** `tests/unit/state_backends/...` which doesn't exist) — every existing test continues to pass; new tests assert `dag_key("abc") == "workflow/v1/abc"` and `cluster_key("cluster-1") == "cluster/v1/cluster-1"`
+- **Rollback signal**: N/A (pure functions; no side effects)
+- **Observability added**: N/A (pure functions)
 
 ### 6.5 `tests/unit/clone/test_clone_refactor_workflow.py` (rewrite, ~300 lines)
 
@@ -233,9 +347,9 @@ Unit tests for `_git_ops.py` against `tmp_path` + `git init`. Covers 5 scenarios
 
 End-to-end MCP tool tests against in-process FastMCP test client. Covers 4 scenarios from Section 8 Layer 3.
 
-### 6.8 `settings/mahavishnu.yaml` (add MCP state config, if Path A)
+### 6.8 `settings/mahavishnu.yaml` (add MCP state config, Path A)
 
-If taking Path A for the env-failure, add the `mcp_state` block.
+If taking Path A for the env-failure, add the `mcp_state` block. **Pre-flight probe (§5.5a) must succeed before this section executes.**
 
 ### 6.9 Dependency graph (post-change)
 
@@ -246,11 +360,39 @@ clone_tools.py (MCP tool)
 clone_refactor_workflow.py (DAG, @flow)
    │
    ├─→ _git_ops.py (subprocess wrapper)
-   ├─→ state_backends/mcp.py (MCPStateBackend, writes)
-   └─→ workflows._detect_until_dry (existing, for cluster detection)
+   ├─→ mahavishnu/core/state_backends/mcp.py (MCPStateBackend, writes)
+   └─→ mahavishnu/core/loop_helpers.py (detect_until_dry)
 ```
 
 No circular imports. No new external deps. Prefect `@flow`/`@task` already in `prefect` (existing dep).
+
+### 6.10 `audit_orphans.py` scope verification (P0)
+
+`scripts/audit_orphans.py:51-53` `DECORATOR_REGISTRATION_PATTERN` includes `tool` and `app.command`, but **NOT** Prefect `@flow`/`@task`. The new symbols (`run_clone_refactor_dag`, `detect_cluster_members`, `write_canonical_symbol`, `write_replacement_diff`, `persist_dag_state`, `git_apply`, `git_commit`, `current_head_sha`, `GitApplyConflict`, `GitCommitFailed`, `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState`, `dag_key`, `cluster_key`, `_record_dag_state`) may be flagged as orphans unless `audit_orphans.py` recognizes them as having direct callers.
+
+**Pre-flight verification (P0 before §8 begins)**:
+
+```bash
+python scripts/audit_orphans.py --dry-run 2>&1 | grep -E "clone_refactor|_git_ops|dag_key|cluster_key"
+```
+
+If any new symbol is flagged as orphan under `--dry-run`, run the audit with `--include-tests` flag (verify flag exists) or extend `DECORATOR_REGISTRATION_PATTERN` to include `@flow`/`@task`. **The §11 decision rule item 3 (`audit_orphans.py` exit 0) is gated on this verification passing.**
+
+### 6.11 `fastmcp.test_client.TestClient` availability (P0)
+
+Pyproject pins `fastmcp>=3.4.7,<5`, which does **not** guarantee the `fastmcp.test_client` submodule exists. The existing test pattern uses `_server.server.call_tool(...)` directly (verified at `tests/integration/test_get_agent_e2e.py:38-46`).
+
+**Pre-flight verification (P0 before §8 Layer 3 begins)**:
+
+```python
+# Verify in the active venv
+python -c "from fastmcp.test_client import TestClient; print('ok')"
+```
+
+- If import succeeds: use `TestClient` for Layer 3.
+- If import fails: fall back to `_server.server.call_tool(...)` pattern, mirroring `tests/integration/test_get_agent_e2e.py`. Update §8 Layer 3 test snippets accordingly.
+
+**The §11 decision rule (all 4 Layer 3 tests pass) is gated on this verification resolving one way or the other.**
 
 ## 7. Data flow
 
@@ -296,7 +438,7 @@ No circular imports. No new external deps. Prefect `@flow`/`@task` already in `p
 ```json
 {
   "schema_version": 1,
-  "refactor_job_id": "uuid7-string",
+  "refactor_job_id": "0193f5e2-7c8d-7abc-9def-1234567890ab",
   "cluster_id": "cluster-abc123",
   "target_repo": "oneiric",
   "consumer_repos": ["mahavishnu", "session-buddy"],
@@ -306,10 +448,10 @@ No circular imports. No new external deps. Prefect `@flow`/`@task` already in `p
   "started_at": "2026-09-25T...",
   "dag_started_at": "2026-09-25T...",
   "dag_completed_at": "2026-09-25T...",
-  "target_commit": "abc123...",
+  "target_commit": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
   "consumer_commits": [
-    {"repo": "mahavishnu", "sha": "def456...", "status": "completed"},
-    {"repo": "session-buddy", "sha": "789xyz...", "status": "completed"}
+    {"repo": "mahavishnu", "sha": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1", "status": "completed"},
+    {"repo": "session-buddy", "sha": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2", "status": "completed"}
   ],
   "failed_consumers": []
 }
@@ -391,14 +533,16 @@ This plan produces all three layers; `audit_orphans.py` should show zero new sym
 | DAG unit tests pass | `pytest tests/unit/clone/test_clone_refactor_workflow.py` | All green |
 | Git-ops unit tests pass | `pytest tests/unit/workflows/test_git_ops.py` | All green |
 | MCP e2e tests pass | `pytest tests/integration/test_clone_refactor_group_e2e.py` | All green |
-| No circular imports | `git grep -nE "from.*mcp\.tools\.clone_tools" mahavishnu/workflows/` | 0 hits (one-way dep) |
-| No new orphans | `python scripts/audit_orphans.py` | Exit 0 |
-| State substrate wired | `pytest tests/unit/state_backends/test_mcp_state_backend.py` (or equivalent) | All green |
+| One-way dep (tools → workflows) | `git grep -nE "from mahavishnu\.workflows" mahavishnu/mcp/tools/clone_tools.py` | ≥1 hit (intentional); `git grep -nE "from.*mcp\.tools\.clone_tools" mahavishnu/workflows/` | 0 hits |
+| No new orphans | `python scripts/audit_orphans.py --include-tests` | Exit 0 (gated on §6.10 P0 verification) |
+| State substrate wired | `pytest tests/unit/test_mcp_state_backend.py` (the actual path; **not** `tests/unit/state_backends/...`) | All green |
+| Workflow-ID preserved | `head -2 mahavishnu/workflows/clone_refactor_workflow.py \| grep -E "Workflow-ID: 01JCLONEREF2026\|Approved by: les"` | 2 hits |
+| Stale docstring fixed | `git grep -nE "clone_refactor_workflow:run" mahavishnu/engines/prefect_adapter_impl.py` | 0 hits after `run` → `run_clone_refactor_dag` rewrite (see M2 in §10) |
 | Lint clean | `crackerjack run` | All hooks pass |
-| Crackerjack version unchanged | `git diff pyproject.toml | grep version` | No version bump (memory `feedback-mcp-common-version-bump-is-user.md`) |
-| Pre-commit bypass used | `git -c core.hooksPath=/dev/null commit` | Per memory `mahavishnu-worktree-precommit-blocks-workers.md` |
-| Git author email | `git log -1 --format="%ae"` | `les@wedgwoodwebworks.com` |
-| `dispatch_to_pool` async-callback working | `mcp__mahavishnu__dispatch_to_pool(async_callback=True)` then `mcp__mahavishnu__workflow_result(workflow_id=...)` | Returns non-empty result, not `not_found` (if Path A); or feature-tracking doc updated with `decision: deferred` (if Path B) |
+| Coverage gate | `pytest --cov=mahavishnu --cov-fail-under=89.01682905225863` | Passes; every §5.3 failure mode has a test |
+| Crackerjack version unchanged | `git diff pyproject.toml \| grep version` | No version bump (memory `feedback-mcp-common-version-bump-is-user.md`) |
+| No `git push` | (manual check; no CI gate) | Per memory `feedback-bodai-push-is-user-controlled.md` |
+| `dispatch_to_pool` async-callback working | `mcp__mahavishnu__dispatch_to_pool(async_callback=True)` then `mcp__mahavishnu__workflow_result(workflow_id=...)` | Returns non-empty result, not `not_found` (Path A committed; if probe fails, halt per §5.5a) |
 
 ## 10. Risks
 
@@ -470,4 +614,24 @@ This design is "done enough" when:
 
 ## 15. Revision history
 
-- **v1** (2026-09-25, current) — Initial design. Replaces aspirational PR-shape DAG with git-tree DAG. UUID7 for `refactor_job_id`. MCPStateBackend as state substrate (no Dhara). Pre-DAG verify. No-auto-revert policy.
+- **v1** (2026-09-25) — Initial design. Replaces aspirational PR-shape DAG with git-tree DAG. UUID7 for `refactor_job_id`. MCPStateBackend as state substrate (no Dhara). Pre-DAG verify. No-auto-revert policy.
+- **v2** (2026-09-25, current) — Multi-reviewer feedback applied:
+  - Added Integration Contract blocks per `wire-up-contract.md` (mcp-integration-expert B1 + doc-review B1)
+  - Renamed `workflow_key(refactor_job_id)` → `dag_key(refactor_job_id)` to avoid shadowing existing `workflow_key(execution_id)` (test-parity B1 + doc-review M6)
+  - Fixed `workflows._detect_until_dry` → `core.loop_helpers.detect_until_dry` import path (mcp-integration-expert B3.1 + test-parity M9)
+  - Fixed `tests/unit/state_backends/test_mcp_state_backend.py` → `tests/unit/test_mcp_state_backend.py` (mcp-integration-expert B3.2 + doc-review M9)
+  - Added `sys.version_info >= (3, 14)` UUID7 guard + `requires-python = ">=3.14"` already pinned (test-parity B2 + doc-review m1)
+  - Resolved sync/await contradiction on `verify_proposal`; signature confirmed at `core/verification.py:473` (doc-review B3)
+  - Added §6.10 P0 `audit_orphans.py` scope verification
+  - Added §6.11 P0 `fastmcp.test_client` availability verification
+  - Added §5.5a Path probe (mandatory before §6.1)
+  - Added §4.5 REQ-XXX traceability block (doc-review m6)
+  - Fixed validation grep direction (tools → workflows, not workflows → tools; doc-review M18)
+  - Added `@task(retries=2, retry_condition=retry_if_exception_type((GitCommitFailed,)))` so deterministic `GitApplyConflict` is not retried (doc-review m3)
+  - Pinned UUID7 sort direction as descending (newest-first) per Layer 3 test name (doc-review M7)
+  - Preserved `# Workflow-ID: 01JCLONEREF2026` and `# Approved by: les` headers required by `tests/unit/test_check_workflow_quarantine.py` (mcp-integration-expert M4)
+  - Added stale docstring fix (`prefect_adapter_impl.py:1061` → `run_clone_refactor_dag`) (mcp-integration-expert M2)
+  - Frontmatter `status: draft` → `partial` (per `doc-frontmatter-cleanup-2026-09-07.md`); added `revision: v2`
+  - SHA examples un-abbreviated to 40-char hex
+
+Next revision (v3) triggers: any post-implementation correction, any new project-state correction, or any spec section that diverges from the actual implementation by >20 LOC.
