@@ -3,7 +3,7 @@ status: draft
 role: implementation
 kind: plan
 date: 2026-08-03
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-25
 superseded_by: null
 blocks_on: []
 topic: bodai-openclaw-hermes-inspired-portfolio
@@ -51,7 +51,6 @@ Three layers. Higher layers depend on lower layers; lower layers can ship and be
 ```
 Layer 0 — Dhara substrate (D-WIRE, internal Dhara repo)
   D-LOCK      substrate-backed LockStore
-  D-AUDIT     durable AuditLog subscriber
   D-OBJ-SCHEMA typed object schemas for cross-system durable entities
   D-REPLAY-VEC vector clock / Lamport sequencing for durable objects
       │
@@ -67,6 +66,11 @@ Layer 2 — Cross-cutting integration specs
   X-REPLAY         end-to-end replay path (M + S-B + D)
   X-RUBRIC-FEEDBACK Crackerjack rubric evaluator → Akosha (A + C + M)
   X-CHANNEL-DURABLE end-to-end channel session durability (S-B + D + A event log)
+
+Note: D-AUDIT (durable AuditLog subscriber) was retired from this portfolio
+on 2026-09-24 as part of Wave 2 of the Dhara-Bodai split — see the
+status table at the bottom of this document and the Wave 2 CHANGELOG
+entry in the Dhara repo.
 ```
 
 The portfolio spec is the source of truth for layer membership and the integration contract template. Per-repo specs own their internal sequencing.
@@ -80,19 +84,18 @@ Layer 0 items live in Dhara. The Mahavishnu repo does not own any Layer 0 work; 
 | ID | Item | Why this layer |
 |---|---|---|
 | D-LOCK | Substrate-backed LockStore | Replaces JSON file store. Every durable primitive below needs locks. |
-| D-AUDIT | Durable AuditLog subscriber | One-line wiring; every durable write produces a structured audit record. |
-| D-OBJ-SCHEMA | Typed object schemas for cross-system durable entities | Single source of truth for `workflow_outcome`, `approval_log`, `channel_session_state`, `webhook_ingress`, `audit_record`. |
+| D-OBJ-SCHEMA | Typed object schemas for cross-system durable entities | Single source of truth for cross-system entity schemas; consumer repos now host their own local `msgspec.Struct`/Pydantic models where they need persistence (post-Wave-1 pattern). |
 | D-REPLAY-VEC | Vector clock / Lamport sequencing for durable objects | Required for X-REPLAY ordering invariants. |
 
 ### Layer 1 — Mahavishnu (`M-INFRA`)
 
 | ID | Item | Notes |
 |---|---|---|
-| M-WEBHOOK-DURABLE | Durable webhook ingress via MemoryOutbox | Closes P0-3/P0-4/P0-5 in `docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md`. Depends on D-LOCK + D-AUDIT. |
+| M-WEBHOOK-DURABLE | Durable webhook ingress via MemoryOutbox | Closes P0-3/P0-4/P0-5 in `docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md`. Depends on D-LOCK. |
 | M-APPROVAL-LOG | Approval history persistence + read | Stop deleting on resolve; expose `list_approval_history(approval_id, since, status)`. Depends on D-OBJ-SCHEMA. |
 | M-WORKER-LEASE | Lease + heartbeat for durable worker records | Add `lease_expires_at` and `last_heartbeat_at` to `DurableWorkerRecord`; `reap_zombies` task. Depends on D-LOCK. |
-| M-WORKFLOW-OUTCOME | Structured `WorkflowOutcome` model + Dhara persistence | Persist to `workflow-results/{workflow_id}/`. Depends on D-OBJ-SCHEMA + D-AUDIT. |
-| M-TOOL-AUDIT | Per-caller tool invocation log + profile overrides | Depends on D-AUDIT. |
+| M-WORKFLOW-OUTCOME | Structured `WorkflowOutcome` model + Dhara persistence | Persist to `workflow-results/{workflow_id}/`. Depends on D-OBJ-SCHEMA. |
+| M-TOOL-AUDIT | Per-caller tool invocation log + profile overrides | Tool-call log; per-caller scope. No D-AUDIT substrate dependency. |
 | M-TRANSCRIPT-TAIL | `transcript_tail(workflow_id, since_offset)` MCP tool | Additive; capture primitive already exists. |
 
 Deferred to a later spec: adaptive scheduling (A-RUBRIC) and provider routing (X-RUBRIC-FEEDBACK).
@@ -102,7 +105,7 @@ Deferred to a later spec: adaptive scheduling (A-RUBRIC) and provider routing (X
 | ID | Item | Notes |
 |---|---|---|
 | S-MEM-VERSIONS | `version`, `supersedes_id`, `parent_session_id`, `branch_reason` columns + `fork_session` MCP tool | Depends on D-OBJ-SCHEMA. |
-| S-CHANNEL-DURABLE | Dhara-backed read/write for `_ChannelSessionStore` | Depends on D-LOCK + D-AUDIT. |
+| S-CHANNEL-DURABLE | Dhara-backed read/write for `_ChannelSessionStore` | Depends on D-LOCK. |
 | S-SKILL-PROVENANCE | Surface `source_memory_ids` for distilled skills | Additive; no deps. |
 | S-REPLAY | `memory/persistence.py` adapter + replay primitives | Depends on D-REPLAY-VEC. |
 
@@ -110,7 +113,7 @@ Deferred to a later spec: adaptive scheduling (A-RUBRIC) and provider routing (X
 
 | ID | Item | Notes |
 |---|---|---|
-| A-EVENT-LOG | Durable event log for `pattern_detected` / `anomaly_detected` / etc. | Depends on D-OBJ-SCHEMA + D-AUDIT. |
+| A-EVENT-LOG | Durable event log for `pattern_detected` / `anomaly_detected` / etc. | Depends on D-OBJ-SCHEMA. |
 | A-RUBRIC-TABLE | `rubrics` table keyed by `task_class` | New table. No deps. |
 | A-RUBRIC-MCP | `score_rubric` MCP tool + Crackerjack evaluator adapter | Depends on A-RUBRIC-TABLE; pairs with X-RUBRIC-FEEDBACK. |
 
@@ -145,8 +148,12 @@ D-WIRE must ship before any Layer 1 work that depends on it. Internal order:
 
 1. D-OBJ-SCHEMA first (defines the shapes every other durable primitive consumes).
 1. D-LOCK second (locks depend on typed objects).
-1. D-AUDIT third (audit subscriber consumes the same shapes).
 1. D-REPLAY-VEC last (vector clocks only matter once replay is being built).
+
+Historical note: D-AUDIT (audit subscriber) was originally sequenced here
+between D-LOCK and D-REPLAY-VEC, but was retired on 2026-09-24 as part of
+Wave 2 of the Dhara-Bodai split. See the status table at the bottom of
+this document.
 
 ### Phase 1 — Per-repo specs in parallel
 
@@ -199,7 +206,7 @@ State per item. Updated at each layer gate.
 | ID | Repo | State | Plan link | Spec link |
 |---|---|---|---|---|
 | D-LOCK | dhara | wired | [v1 implementation (initial session)](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-04-d-lock.md) + [v1.1 follow-up plan](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/plans/2026-08-10-d-lock-v1.1-postgres-translation.md) | [spec](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/specs/2026-08-04-d-lock-design.md) |
-| D-AUDIT | dhara | adopted | [completion report](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-10-d-audit.md) | — |
+| D-AUDIT | dhara | archived 2026-09-24 | [completion report](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-10-d-audit.md) | — | Retired in Wave 2 of the Dhara-Bodai split (per `dhara/CHANGELOG.md` `[Unreleased]` 2026-09-24 entry). Substrate was Bodai-internal observability; no public Dhara API depended on it. |
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
 | M-WEBHOOK-DURABLE | mahavishnu | building | [completion report](../../feature-tracking/2026-08-10-m-webhook-durable.md) | [spec](2026-08-10-m-webhook-durable-design.md) |
@@ -226,7 +233,7 @@ State per item. Updated at each layer gate.
 | X-RUBRIC-FEEDBACK | portfolio | parked | — | — |
 | X-CHANNEL-DURABLE | portfolio | parked | — | — |
 
-States: `parked` (queued in portfolio), `building` (per-repo spec exists, plan in progress), `wired` (merged, observability confirms trigger fires), `adopted` (at least one real workflow exercises the path).
+States: `parked` (queued in portfolio), `building` (per-repo spec exists, plan in progress), `wired` (merged, observability confirms trigger fires), `adopted` (at least one real workflow exercises the path), `archived` (retired; kept for historical record — typically because the substrate was removed or the design was superseded).
 
 ## Open questions
 
