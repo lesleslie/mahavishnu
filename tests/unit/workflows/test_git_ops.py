@@ -12,9 +12,11 @@ import pytest
 
 from mahavishnu.workflows._git_ops import (
     GitApplyConflict,
+    GitCommandTimeout,
     GitCommitFailed,
     GitCommitPermanent,
     GitCommitTransient,
+    StashPopFailed,
     current_head_sha,
     diff_files,
     git_apply,
@@ -250,3 +252,136 @@ class TestStashWrap:
         assert any("--keep-index" not in a for a in stash_calls), (
             f"stash_push must NOT use --keep-index; got args: {captured_args}"
         )
+
+
+class TestErrorPaths:
+    """Critical exception paths that Task 5 (DAG rewrite) relies on.
+
+    These tests cover the three Important test-coverage gaps flagged by the
+    Task 4 reviewer:
+    - SF-B5: timeout classification (GitCommandTimeout → Transient)
+    - SF-B4: stash pop failure must raise (was previously swallowed)
+    - SF-m5: negative exit code = signal-killed → Permanent with signal_N reason
+    """
+
+    async def test_timeout_raises_git_command_timeout(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
+        """SF-B5: subprocess timeout raises GitCommandTimeout (Transient subclass).
+
+        Verifies (1) GitCommandTimeout is raised, (2) it is a GitCommitTransient
+        so Prefect retries, (3) the timed-out subprocess was killed (proc.kill()
+        was called) so we don't leak half-completed git processes.
+        """
+        import asyncio
+
+        proc_killed = False
+
+        async def fake_subprocess_exec(*args, stdin=None, **kwargs):
+            nonlocal proc_killed
+
+            class FakeProc:
+                returncode = -1
+
+                async def communicate(self, input=None):
+                    # asyncio.wait_for raises TimeoutError when the inner
+                    # coroutine raises it OR when the deadline expires;
+                    # both paths land in the same `except` branch. In
+                    # Python 3.11+ asyncio.TimeoutError is an alias for
+                    # the builtin TimeoutError; use the builtin directly.
+                    raise TimeoutError()
+
+                async def wait(self):
+                    return -9
+
+                def kill(self):
+                    nonlocal proc_killed
+                    proc_killed = True
+
+            return FakeProc()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
+        diff = "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+        with pytest.raises(GitCommandTimeout) as exc_info:
+            await git_apply(git_repo, diff)
+        # SF-B5: GitCommandTimeout is a Transient subclass so Prefect retries.
+        assert isinstance(exc_info.value, GitCommitTransient)
+        assert exc_info.value.reason == "timeout"
+        # SF-B5: proc.kill() must terminate the timed-out subprocess.
+        assert proc_killed, "proc.kill() must be called on timeout (SF-B5)"
+
+    async def test_stash_pop_failure_raises_stash_pop_failed(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
+        """SF-B4: stash pop failure must raise StashPopFailed (not silently swallow).
+
+        The previous implementation used check=False and swallowed non-zero
+        exits, leaving the working tree dirty. This regression test pins the
+        raise behavior so Task 5's DAG can record typed errors on the
+        RepoCommit.
+        """
+        import asyncio
+
+        async def fake_subprocess_exec(*args, stdin=None, **kwargs):
+            # First 3 args are always ("git", "-C", str(repo_path)); args[3:]
+            # is the actual git subcommand. We succeed for everything except
+            # `stash pop`, which we make fail with a realistic untracked-file
+            # conflict.
+            extra = args[3:] if len(args) > 3 else ()
+            is_stash_pop = "stash" in extra and "pop" in extra
+
+            class FakeProc:
+                returncode = 1 if is_stash_pop else 0
+                _stderr = (
+                    b"error: could not restore untracked files from stash\n"
+                    if is_stash_pop
+                    else b""
+                )
+
+                async def communicate(self, input=None):
+                    return b"", self._stderr
+
+                async def wait(self):
+                    return self.returncode
+
+            return FakeProc()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
+        # stash_push is fully mocked to succeed (returncode=0, check=True).
+        await stash_push(git_repo)
+        with pytest.raises(StashPopFailed) as exc_info:
+            await stash_pop(git_repo)
+        assert exc_info.value.exit_code == 1
+        assert "untracked" in exc_info.value.stderr
+
+    async def test_negative_exit_code_raises_git_commit_permanent(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
+        """SF-m5: negative exit code (signal-killed) → GitCommitPermanent signal_N.
+
+        Operators need to distinguish a process that died from SIGKILL/SIGTERM
+        (signal_-9 / signal_-15, transient resource pressure) from a process
+        that exited with a git-level error (config, hook, etc.). The
+        `reason=f"signal_{-exit_code}"` encoding lets the DAG surface this.
+        """
+        import asyncio
+
+        async def fake_subprocess_exec(*args, stdin=None, **kwargs):
+            class FakeProc:
+                returncode = -9  # SIGKILL
+
+                async def communicate(self, input=None):
+                    return b"", b"Killed: 9\n"
+
+                async def wait(self):
+                    return -9
+
+            return FakeProc()
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
+        with pytest.raises(GitCommitPermanent) as exc_info:
+            await git_commit(git_repo, "x")
+        assert exc_info.value.exit_code == -9
+        assert exc_info.value.reason == "signal_9"
+        # signal-killed commits should NOT be classified as Transient
+        assert not isinstance(exc_info.value, GitCommitTransient)
