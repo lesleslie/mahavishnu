@@ -90,7 +90,8 @@ class HatchetAdapterImpl(OrchestratorAdapter):
             from hatchet_sdk.config import ClientConfig
         except ImportError:
             raise RuntimeError(
-                "hatchet-sdk not installed. Install with: uv pip install 'mahavishnu[hatchet]'"
+                "hatchet-sdk not installed. Install with: uv sync --group hatchet "
+                "(or pull it transitively via: uv sync --group dev)"
             ) from None
 
         # hatchet-sdk exposes a Pydantic ClientConfig; the Hatchet() constructor

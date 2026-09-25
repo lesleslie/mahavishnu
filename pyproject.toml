@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.28.2"
+version = "0.28.3"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -104,7 +104,9 @@ worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 # Core development and testing
 # Includes the lazy-imported runtime groups so the test suite can exercise
 # the wrapper modules that lazy-load pydantic_ai, runpod, trafilatura/pypdf,
-# ebooklib, and pgvector.
+# ebooklib, pgvector, hatchet, and shepherd. ty's static import resolver needs
+# the top-level packages physically present in site-packages; try/except
+# ImportError guards the runtime but does not satisfy the type checker.
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
@@ -126,19 +128,37 @@ dev = [
     "zensical>=0.0.57",
     "crackerjack>=0.75.3",
     {include-group = "ai"},
+    {include-group = "cache"},
     {include-group = "gpu"},
     {include-group = "sandbox"},
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
     {include-group = "compression-zstd"},
+    {include-group = "hatchet"},
+    {include-group = "shepherd"},
 ]
 
 # Bus delivery (Oneiric Redis Streams / pubsub). The
-# ``bodai_hook_bridge`` uses ``oneiric.adapters.bootstrap.queued_publisher``
-# which depends on coredis transitively via oneiric's optional
-# ``cache`` group; coredis is NOT installed directly here because
-# nothing in ``ahavishnu/`` references the ``coredis`` module by name
-# (verified 2026-09-16). Fire-and-forget contract per spec §4.13.3.
+# ``bodai_hook_bridge`` (mahavishnu/bodai_hook_bridge.py:182) uses
+# ``oneiric.adapters.bootstrap.queued_publisher``, which constructs
+# ``oneiric.adapters.queue.redis_streams.RedisStreamsQueueAdapter``
+# — that adapter lazy-imports ``coredis`` inside its methods, so
+# the first publish is where the ImportError surfaces (silently
+# swallowed by the bridge; tracked as
+# ``hook_bridge_feed.publish_failures_total``).
+#
+# oneiric 0.23.1 dropped the ``oneiric[cache]`` extras spec and now
+# exposes coredis only via a PEP 735 dependency-group, which is
+# project-local and does NOT propagate to consumers. We declare
+# coredis directly in the ``cache`` group below and include it
+# from ``dev``. Fire-and-forget contract per spec §4.13.3.
+
+# oneiric's ``cache`` PEP 735 group (PEP 735 doesn't propagate to
+# consumers) — declared locally so the hook bridge can actually
+# publish without a silent ImportError on first use.
+cache = [
+    "coredis>=6.7.0",
+]
 
 # Bodai ecosystem integrations
 ecosystem = [
@@ -575,6 +595,15 @@ exclude_deps = [
     # warning without triggering "Redundant exclusion" (because creosote's
     # import detection also can't see the link).
     "shepherd-ai",
+    # coredis: installed for oneiric's redis_streams adapter
+    # (oneiric.adapters.queue.redis_streams lazy-imports ``from coredis
+    # import Redis`` inside its methods — verified: oneiric/adapters/queue/
+    # redis_streams.py:10,18 guard the import under TYPE_CHECKING and the
+    # runtime import lives in a try/except). mahavishnu itself never imports
+    # coredis by name; bodai_hook_bridge.py only imports oneiric.adapters.*.
+    # Creosote's scan paths = ["mahavishnu"] can't see into oneiric, so it
+    # would otherwise flag coredis as unused. Same pattern as shepherd-ai.
+    "coredis",
 ]
 
 [tool.refurb]

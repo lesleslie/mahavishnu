@@ -15,13 +15,103 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import logging
+from pathlib import Path
 import re
+import time
 from typing import TYPE_CHECKING, Any, Protocol
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+# ---------------------------------------------------------------------------
+# Cache dependency probe (SRE observability — oneiric 0.23.1+)
+# ---------------------------------------------------------------------------
+#
+# oneiric dropped its ``oneiric[cache]`` extras spec; coredis is now
+# only available via a PEP 735 group in oneiric's source pyproject,
+# which does NOT propagate to consumers. ``oneiric.adapters.queue.
+# redis_streams`` lazy-imports coredis inside its methods (so
+# module-level imports of the bridge succeed either way); the FIRST
+# publish is where the ImportError surfaces. The bridge's per-publish
+# ``except Exception`` then dumps a full stack trace via
+# ``logger.exception`` on every hook invocation, drowning the
+# operator signal in noise.
+#
+# Probe coredis at module load. If missing:
+#   - log+print a one-shot warning telling the operator which
+#     dependency group to install;
+#   - dedup the warning across processes via a sentinel file in
+#     ``~/.mahavishnu/.cache_warning_emitted`` (1-hour TTL) so a
+#     busy hook session doesn't print it hundreds of times;
+#   - demote identical subsequent publish failures to
+#     ``logger.debug`` inside ``_publish`` so the hook log stays
+#     legible.
+_CACHE_DEPS_AVAILABLE: bool
+_CACHE_DEPS_ERROR: str | None
+try:
+    import coredis  # noqa: F401  - oneiric lazy-imports this transitively
+
+    _CACHE_DEPS_AVAILABLE = True
+    _CACHE_DEPS_ERROR = None
+except ImportError as exc:
+    _CACHE_DEPS_AVAILABLE = False
+    _CACHE_DEPS_ERROR = str(exc)
+
+
+def _emit_cache_availability_warning() -> None:
+    """One-shot-per-process-or-sentinel warning when coredis is missing.
+
+    Writes ``~/.mahavishnu/.cache_warning_emitted`` with a 1-hour TTL
+    so a session with hundreds of hook invocations doesn't print the
+    warning hundreds of times. Re-fires after the TTL or when the
+    sentinel is unreadable.
+    """
+    if _CACHE_DEPS_AVAILABLE:
+        return
+    sentinel = Path.home() / ".mahavishnu" / ".cache_warning_emitted"
+    dedup_seconds = 3600
+    try:
+        if sentinel.exists() and (time.time() - sentinel.stat().st_mtime) < dedup_seconds:
+            return
+    except OSError:
+        pass
+    msg = (
+        "hook_bridge: coredis is NOT installed; every hook publish will "
+        "silently fail (oneiric 0.23.1+ lazy-imports coredis inside its "
+        "redis_streams adapter; the ImportError only surfaces on first "
+        "publish, and the bridge swallows it to keep hooks non-blocking). "
+        "Install via:\n"
+        "    uv sync --group cache     # lean install\n"
+        "    uv sync --group dev       # test/dev (includes cache)\n"
+        f"Underlying ImportError: {_CACHE_DEPS_ERROR}"
+    )
+    logger.warning(msg)
+    # No explicit ``print(..., file=sys.stderr)`` — Python's logging
+    # module ships a ``lastResort`` handler that writes WARNING+ to
+    # stderr when the root logger has no configured handlers (the
+    # common case for fresh ``python -c`` and hook scripts). An
+    # additional ``print`` here would duplicate the message; trust
+    # ``logger.warning`` to route to stderr in fresh contexts and to
+    # the operator's configured handlers in production.
+    try:
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        sentinel.write_text(str(time.time()))
+    except OSError:
+        pass
+
+
+_emit_cache_availability_warning()
+
+
+# Exception types we've already logged this process — demote identical
+# subsequent failures to ``logger.debug`` so the hook log stays legible
+# even when the cache dep is missing across hundreds of hook events.
+# Dedup by type (not message) so a transient Redis-down error doesn't
+# suppress a later genuine ImportError, or vice versa.
+_PUBLISH_LOGGED_EXC_TYPES: set[type] = set()
 
 
 # ---------------------------------------------------------------------------
@@ -198,11 +288,24 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
             else queued_publisher()
         )
         _drive(_init_and_publish())
-    except Exception:
-        logger.exception(
-            "hook_bridge: publish to channel=%r failed; hook caller not blocked",
-            channel,
-        )
+    except Exception as exc:
+        if type(exc) in _PUBLISH_LOGGED_EXC_TYPES:
+            # Identical failure mode already logged this process — keep
+            # the hook log legible by demoting subsequent identical
+            # failures to debug. Dedup is by exception type so a
+            # transient Redis-down error doesn't suppress a later
+            # genuine cache import error (or vice versa).
+            logger.debug(
+                "hook_bridge: publish still failing (deduplicated) "
+                "channel=%r; first failure already logged this process",
+                channel,
+            )
+        else:
+            _PUBLISH_LOGGED_EXC_TYPES.add(type(exc))
+            logger.exception(
+                "hook_bridge: publish to channel=%r failed; hook caller not blocked",
+                channel,
+            )
         # Track the failure on the bridge's own ComponentHealth
         # feed when available; absent the feed (e.g. before the
         # first MCP tool registers the feed), the tracking itself
