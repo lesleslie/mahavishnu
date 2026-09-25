@@ -133,24 +133,36 @@ async def test_call_mcp_tool_propagates_server_error(
 async def test_start_pool_happy_path(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool({"result": ["w1", "w2", "w3"]})
-    result = await pool.start()
-    assert result == pool.pool_id
-    assert pool._status == PoolStatus.RUNNING
+    """start() calls create_pool and synthesizes 3 worker_ids from returned pool_id."""
+    pool = make_pool({
+        "success": True,
+        "pool_id": "sbpool-abc123",
+        "status": "running",
+        "workers_count": 3,
+        "queue_size": 0,
+    })
+    await pool.start()
     assert len(pool._workers) == 3
-    # call_tool invoked with worker_spawn
+    # call_tool invoked with create_pool
     pool._mcp.call_tool.assert_awaited()
-    assert pool._mcp.call_tool.await_args.args[0] == "worker_spawn"
+    assert pool._mcp.call_tool.await_args.args[0] == "create_pool"
+    # Worker IDs are derived as {pool_id}-worker-{i}
+    assert set(pool._workers.keys()) == {
+        "sbpool-abc123-worker-0",
+        "sbpool-abc123-worker-1",
+        "sbpool-abc123-worker-2",
+    }
 
 
 @pytest.mark.asyncio
 async def test_start_pool_non_list_worker_ids(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    """start() tolerates a non-list 'result' by treating it as zero workers."""
-    pool = make_pool({"result": "unexpected"})
-    await pool.start()
-    assert pool._workers == {} and pool._status == PoolStatus.RUNNING
+    """start() tolerates success=False by raising (audit hardening)."""
+    pool = make_pool({"success": False, "error": "pool limit reached"})
+    with pytest.raises(MCPServerError):
+        await pool.start()
+    assert pool._status == PoolStatus.FAILED
 
 
 @pytest.mark.asyncio
@@ -170,12 +182,22 @@ async def test_start_pool_propagates_server_error(
 async def test_execute_task_happy_path(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool({"result": {"status": "completed", "output": "ok", "error": None}})
-    pool._workers = {"w1": "worker_w1"}
+    pool = make_pool({
+        "success": True,
+        "pool_id": "sbpool-abc",
+        "worker_id": "sbpool-abc-worker-1",
+        "result": {"status": "completed", "output": "ok"},
+    })
+    pool._workers = {"sbpool-abc-worker-0": "worker_0"}
     result = await pool.execute_task({"prompt": "do thing", "timeout": 60})
-    assert result["status"] == "completed" and result["output"] == "ok"
+    assert result["status"] == "completed"
+    assert result["output"] == {"status": "completed", "output": "ok"}
     assert result["error"] is None
+    # session-buddy's actual worker_id (more authoritative than our synthetic)
+    assert result["worker_id"] == "sbpool-abc-worker-1"
     assert pool._tasks_completed == 1 and pool._tasks_failed == 0
+    last_call = pool._mcp.call_tool.await_args_list[-1]
+    assert last_call.args[0] == "execute_on_pool"
 
 
 @pytest.mark.asyncio
@@ -192,10 +214,13 @@ async def test_execute_task_server_error_returns_failed_envelope(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
     pool = make_pool(MCPServerError("upstream gone"))
-    pool._workers = {"w1": "worker_w1"}
+    pool._workers = {"sbpool-abc-worker-0": "worker_0"}
     result = await pool.execute_task({"prompt": "do thing"})
-    assert result["status"] == "failed" and result["error"] == "upstream gone"
+    assert result["status"] == "failed"
+    assert result["error"] == "upstream gone"
+    assert result["output"] is None
     assert pool._tasks_failed == 1
+    assert result["worker_id"] == "sbpool-abc-worker-0"
 
 
 # --- execute_batch, scale, health, metrics, memory, stop ---
@@ -205,18 +230,43 @@ async def test_execute_task_server_error_returns_failed_envelope(
 async def test_execute_batch_branches(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool(
-        {
-            "result": {
-                "0": {"status": "completed", "output": "a", "error": None},
-                "1": {"status": "failed", "output": None, "error": "boom"},
-            }
-        }
-    )
-    pool._workers = {"w1": "w1", "w2": "w2"}
-    results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}])
-    assert results["0"]["status"] == "completed" and results["1"]["status"] == "failed"
-    assert pool._tasks_completed == 1 and pool._tasks_failed == 1
+    """execute_batch() returns per-task envelopes aligned to input order."""
+    pool = make_pool({
+        "success": True,
+        "pool_id": "sbpool-abc",
+        "results_count": 2,
+        "results": [
+            {"status": "completed", "output": "r1", "error": None},
+            {"status": "failed", "output": None, "error": "boom"},
+        ],
+    })
+    pool._workers = {"sbpool-abc-worker-0": "worker_0"}
+    result = await pool.execute_batch([
+        {"task_id": "0", "prompt": "first"},
+        {"task_id": "1", "prompt": "second"},
+    ])
+    assert result["0"]["status"] == "completed"
+    assert result["0"]["output"] == "r1"
+    assert result["1"]["status"] == "failed"
+    assert result["1"]["error"] == "boom"
+    assert pool._tasks_completed == 1
+    assert pool._tasks_failed == 1
+    last_call = pool._mcp.call_tool.await_args_list[-1]
+    assert last_call.args[0] == "execute_batch_on_pool"
+
+
+@pytest.mark.asyncio
+async def test_execute_batch_rejects_multiple_working_dirs(
+    make_pool: Callable[..., SessionBuddyPool],
+) -> None:
+    """execute_batch() fails fast on >1 distinct working_dir (audit hardening)."""
+    pool = make_pool({"success": True, "results": []})
+    pool._workers = {"sbpool-abc-worker-0": "worker_0"}
+    with pytest.raises(ValueError, match="at most one distinct working_dir"):
+        await pool.execute_batch([
+            {"prompt": "a", "working_dir": "/path/one"},
+            {"prompt": "b", "working_dir": "/path/two"},
+        ])
 
 
 @pytest.mark.asyncio
@@ -244,14 +294,24 @@ async def test_scale_raises_not_implemented(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("active_workers", "expected_status"),
-    [({"w1": "w1", "w2": "w2", "w3": "w3"}, "healthy"), ({"w1": "w1"}, "degraded")],
+    [
+        (
+            {
+                "sbpool-abc-worker-0": "w0",
+                "sbpool-abc-worker-1": "w1",
+                "sbpool-abc-worker-2": "w2",
+            },
+            "healthy",
+        ),
+        ({"sbpool-abc-worker-0": "w0"}, "degraded"),
+    ],
 )
 async def test_health_check_status_for_worker_count(
     active_workers: dict[str, str],
     expected_status: str,
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool({"result": {"ok": True}})
+    pool = make_pool({"success": True, "health": {"status": "healthy"}})
     pool._workers = active_workers
     assert (await pool.health_check())["status"] == expected_status
 
@@ -261,8 +321,48 @@ async def test_health_check_error_path(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
     pool = make_pool(MCPServerError("down"))
+    pool._workers = {"sbpool-abc-worker-0": "worker_0"}
     health = await pool.health_check()
-    assert health["status"] == "unhealthy" and health["error"] == "down"
+    # Local status wins (1 worker < min_workers=3 → degraded), but error
+    # key is propagated from the upstream MCPServerError.
+    assert health["status"] == "degraded"
+    assert health["error"] == "down"
+
+
+@pytest.mark.asyncio
+async def test_health_check_with_empty_workers_no_upstream_call(
+    make_pool: Callable[..., SessionBuddyPool],
+) -> None:
+    """health_check() skips upstream call when pool_id is empty (audit hardening)."""
+    pool = make_pool({"success": True})
+    pool._workers = {}  # never started
+    result = await pool.health_check()
+    assert result["status"] == "unhealthy"
+    assert result["worker_health"] is None
+    # No upstream call should have been made.
+    pool._mcp.call_tool.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_health_check_with_workers_calls_check_pool_health(
+    make_pool: Callable[..., SessionBuddyPool],
+) -> None:
+    pool = make_pool({
+        "success": True,
+        "status": "healthy",
+        "workers_healthy": 3,
+        "workers_total": 3,
+    })
+    pool._workers = {
+        "sbpool-abc-worker-0": "worker_0",
+        "sbpool-abc-worker-1": "worker_1",
+        "sbpool-abc-worker-2": "worker_2",
+    }
+    result = await pool.health_check()
+    assert result["status"] == "healthy"
+    assert result["worker_health"]["status"] == "healthy"
+    last_call = pool._mcp.call_tool.await_args_list[-1]
+    assert last_call.args[0] == "check_pool_health"
 
 
 @pytest.mark.asyncio

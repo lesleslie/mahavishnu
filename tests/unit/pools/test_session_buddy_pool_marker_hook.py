@@ -49,24 +49,32 @@ def make_pool(config: PoolConfig):
         calls: list[tuple[str, dict[str, Any]]] = []
         responses = responses or {}
         default_worker_result = {
-            "result": {"status": "completed", "output": "ok", "error": None}
+            "success": True,
+            "pool_id": "test-pool",
+            "worker_id": "test-pool-worker-0",
+            "result": {"output": "ok"},
+        }
+
+        default_batch_result = {
+            "success": True,
+            "pool_id": "test-pool",
+            "results_count": 2,
+            "results": [
+                {"status": "completed", "output": "r1", "error": None},
+                {"status": "completed", "output": "r2", "error": None},
+            ],
         }
 
         async def call_tool(name: str, arguments: dict[str, Any]) -> Any:
             calls.append((name, arguments))
-            if name == "worker_execute" and worker_execute_raises is not None:
+            if name == "execute_on_pool" and worker_execute_raises is not None:
                 raise worker_execute_raises
             if name in responses:
                 return responses[name]
-            if name == "worker_execute":
+            if name == "execute_on_pool":
                 return default_worker_result
-            if name == "worker_execute_batch":
-                return {
-                    "result": {
-                        str(i): {"status": "completed", "output": "ok"}
-                        for i in range(len(arguments.get("tasks", [])))
-                    }
-                }
+            if name == "execute_batch_on_pool":
+                return default_batch_result
             if name == "subagent_marker":
                 return {"success": True, "action": arguments.get("action")}
             return {"result": {}}
@@ -103,7 +111,7 @@ async def test_execute_task_with_working_dir_wraps_with_marker(make_pool) -> Non
     )
 
     names = _tool_names(calls)
-    assert names == ["subagent_marker", "worker_execute", "subagent_marker"], names
+    assert names == ["subagent_marker", "execute_on_pool", "subagent_marker"], names
 
     # mark args
     assert calls[0][1] == {"working_dir": "/path/to/project", "action": "mark"}
@@ -119,7 +127,7 @@ async def test_execute_task_without_working_dir_skips_marker(make_pool) -> None:
     await pool.execute_task({"prompt": "do work"})
 
     names = _tool_names(calls)
-    assert names == ["worker_execute"], names
+    assert names == ["execute_on_pool"], names
 
 
 @pytest.mark.asyncio
@@ -139,7 +147,7 @@ async def test_execute_task_clear_runs_when_worker_execute_raises(make_pool) -> 
 
     # But the marker was still cleared — consumer won't see a stale lockfile.
     names = _tool_names(calls)
-    assert names == ["subagent_marker", "worker_execute", "subagent_marker"], names
+    assert names == ["subagent_marker", "execute_on_pool", "subagent_marker"], names
     assert calls[2][1]["action"] == "clear"
 
 
@@ -159,8 +167,13 @@ async def test_execute_task_marker_clear_failure_does_not_propagate(
             if call_count["subagent_marker"] >= 2:
                 raise RuntimeError("clear failed")
             return {"success": True, "action": arguments.get("action")}
-        if name == "worker_execute":
-            return {"result": {"status": "completed", "output": "ok", "error": None}}
+        if name == "execute_on_pool":
+            return {
+                "success": True,
+                "pool_id": "test-pool",
+                "worker_id": "test-pool-worker-0",
+                "result": {"output": "ok"},
+            }
         return {"result": {}}
 
     with patch("mahavishnu.pools.session_buddy_pool.CommonMCPClient") as mock_cls:
@@ -198,31 +211,29 @@ async def test_execute_task_marker_clear_failure_does_not_propagate(
 
 @pytest.mark.asyncio
 async def test_execute_batch_marks_each_working_dir_once(make_pool) -> None:
-    """execute_batch marks each unique working_dir once before the batch and clears once after."""
+    """execute_batch marks the (single) shared working_dir once before the batch and clears once after."""
     pool, calls = make_pool()
 
     tasks = [
         {"prompt": "a", "working_dir": "/path/a"},
-        {"prompt": "b", "working_dir": "/path/b"},
-        {"prompt": "c", "working_dir": "/path/a"},  # dup of first
+        {"prompt": "b", "working_dir": "/path/a"},
+        {"prompt": "c", "working_dir": "/path/a"},
     ]
     await pool.execute_batch(tasks)
 
     names = _tool_names(calls)
-    # Mark a, mark b, worker_execute_batch, clear a, clear b — in that order.
+    # Mark a, execute_batch_on_pool, clear a — in that order.
     assert names == [
         "subagent_marker",
-        "subagent_marker",
-        "worker_execute_batch",
-        "subagent_marker",
+        "execute_batch_on_pool",
         "subagent_marker",
     ], names
 
-    # Mark args for the two unique working_dirs.
+    # Mark args for the single working_dir.
     mark_calls = [c for c in calls if c[1].get("action") == "mark"]
-    assert {c[1]["working_dir"] for c in mark_calls} == {"/path/a", "/path/b"}
+    assert {c[1]["working_dir"] for c in mark_calls} == {"/path/a"}
     clear_calls = [c for c in calls if c[1].get("action") == "clear"]
-    assert {c[1]["working_dir"] for c in clear_calls} == {"/path/a", "/path/b"}
+    assert {c[1]["working_dir"] for c in clear_calls} == {"/path/a"}
 
 
 @pytest.mark.asyncio
@@ -233,7 +244,7 @@ async def test_execute_batch_without_working_dirs_skips_marker(make_pool) -> Non
     await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}])
 
     names = _tool_names(calls)
-    assert names == ["worker_execute_batch"], names
+    assert names == ["execute_batch_on_pool"], names
 
 
 @pytest.mark.asyncio
@@ -247,7 +258,7 @@ async def test_execute_batch_clears_when_batch_raises() -> None:
         calls.append((name, arguments))
         if name == "subagent_marker":
             return {"success": True, "action": arguments.get("action")}
-        if name == "worker_execute_batch":
+        if name == "execute_batch_on_pool":
             raise MCPServerError("batch boom")
         return {"result": {}}
 
@@ -277,7 +288,7 @@ async def test_execute_batch_clears_when_batch_raises() -> None:
     names = [name for name, _ in calls]
     assert names == [
         "subagent_marker",  # mark
-        "worker_execute_batch",  # raises
+        "execute_batch_on_pool",  # raises
         "subagent_marker",  # clear (in finally)
     ], names
     assert calls[2][1] == {"working_dir": "/path/a", "action": "clear"}
