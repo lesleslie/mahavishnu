@@ -1,5 +1,12 @@
 # 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state
 
+> **SUPERSEDED CONTEXT (2026-09-25):** the "second persistence substrate alongside
+> Dhara" objection (see "Considered Alt 1 — LangGraph `interrupt()` + checkpointing")
+> is no longer applicable — Dhara is no longer part of the Bodai core. See the
+> follow-up ADR `docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`
+> for the re-evaluation under post-Dhara architecture. This ADR's Settle-
+> specific conclusions (overkill, dependency cost) remain in force.
+
 ## Status
 
 Accepted, 2026-08-29. Implements Phase 2 of the Mahavishnu v2 plan.
