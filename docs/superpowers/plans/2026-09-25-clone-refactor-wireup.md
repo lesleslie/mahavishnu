@@ -1,11 +1,11 @@
 ---
-revision: v3
-plan_status: ready-for-review
+revision: v4
+plan_status: ready-for-execution
 last_reviewed: 2026-09-25
-prior-revision: v2 (review-pass feedback applied)
+prior-revision: v3 (re-review sweep applied)
 ---
 
-# Clone-Refactor Wire-Up Implementation Plan (v3)
+# Clone-Refactor Wire-Up Implementation Plan (v4)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -51,33 +51,44 @@ From spec §6.4 (preserve `put()` contract):
 - Modify: `settings/mahavishnu.yaml` (only if §5.5a Path probe succeeds; deferred to Task 6)
 - Verify-only: `scripts/audit_orphans.py`, `pyproject.toml`
 
-Three environment gates from spec §5.5a, §6.11. **Task 1 verifies (1) and (2); §6.10 audit-orphans is deferred to Task 2 Step 7** (after the new symbols exist) — see Step 5 below. If §5.5a or §6.11 fails, halt and surface to user (per spec §5.5a).
+Three environment gates from spec §5.5a, §6.11. **Task 1 verifies (1) and (2); §6.10 audit-orphans is deferred to Task 2 Step 8** (after the new symbols exist) — see Step 4 below. If §5.5a or §6.11 fails, halt and surface to user (per spec §5.5a).
 
-### Step 1: Run §5.5a Path probe (dispatch_to_pool env-failure)
+### Step 1: Run §5.5a Path probe (MCP substrate reachability)
+
+**CE-B1 fix (v4):** `dispatch_to_pool` and `workflow_result` do not exist as importable
+names — they were removed during the Plan v3 Phase 2m rework that introduced
+`pool_route_execute` (see memory `pool-dispatch-async-default.md` and the docstring at
+`mahavishnu/mcp/tools/pool_tools.py:292` which explicitly forbids routing through
+`dispatch_to_pool`). Probe the underlying substrate directly instead:
 
 Run:
 ```bash
 cd /Users/les/Projects/mahavishnu
 .venv/bin/python -c "
 import asyncio
-from mahavishnu.mcp.tools.pool_tools import dispatch_to_pool, workflow_result
+from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
 async def main():
-    result = await dispatch_to_pool(async_callback=True, prompt='env probe')
-    wid = result.get('workflow_id')
-    assert wid, f'no workflow_id returned: {result}'
-    print(f'workflow_id={wid}')
-    await asyncio.sleep(5)
-    final = await workflow_result(workflow_id=wid)
-    assert isinstance(final, dict) and len(final) > 0, f'final is empty: {final}'
-    assert 'not_found' not in final, f'final returned not_found: {final}'
-    print(f'final={final}')
+    backend = MCPStateBackend.from_settings_or_default()
+    # list_prefix returns list[tuple[str, dict]] — non-empty if MCP is reachable
+    rows = await backend.list_prefix('workflow/v1/')
+    assert isinstance(rows, list), f'list_prefix returned non-list: {type(rows)}'
+    print(f'reachable: {len(rows)} workflow keys')
+    # try_put returns bool — False if substrate circuit-open
+    ok = await backend.try_put_with_log_context(
+        'workflow/v1/env-probe', {'probe': True}, log_context={'probe': 'p0'}
+    )
+    assert isinstance(ok, bool), f'try_put returned non-bool: {type(ok)}'
+    print(f'write ok={ok}')
 
 asyncio.run(main())
 "
 ```
 
-**Expected:** `workflow_id` returned AND `final` is a non-empty dict not containing `not_found`. If any assertion fails → halt. Write `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` with `decision: deferred` and STOP.
+**Expected:** `try_put_with_log_context` returns `bool`. `list_prefix` returns
+`list[tuple[str, dict]]` (possibly empty if substrate is fresh). If `try_put` returns
+`False` AND `list_prefix` raises → substrate unreachable → halt. Write
+`docs/feature-tracking/2026-07-11-dispatch-to-pool.md` with `decision: deferred` and STOP.
 
 ### Step 2: Verify §6.11 fastmcp.test_client availability
 
@@ -557,7 +568,7 @@ cd /Users/les/Projects/mahavishnu
 
 ### Step 8: Verify §6.10 audit_orphans.py scope (deferred from Task 1)
 
-This is the verification deferred from Task 1 Step 3. Run after Task 2's symbols exist:
+**CS-m1 fix (v4):** cross-reference corrected — this verification was deferred from Task 1's Step 4 ("Commit env verification"), not Task 1 Step 3 ("Verify git config"). Run after Task 2's symbols exist:
 
 Run:
 ```bash
@@ -2600,8 +2611,15 @@ class TestCloneRefactorGroupHappyPath:
     ):
         tools, backend = clone_tools_with_backend
 
-        with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
-            with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
+        # CR-B4 fix (v4): the verification call is module-level `verify_proposal`
+        # (clone_tools.py:208), not a private CloneTools._verify method (which
+        # never existed). Patch the module-level name. The store is an instance
+        # attribute (set in __init__ at clone_tools.py:53), so patch the instance.
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-test",
                     target_repo=str(git_repo),
@@ -2625,8 +2643,15 @@ class TestUUID7Format:
     ):
         tools, backend = clone_tools_with_backend
 
-        with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
-            with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
+        # CR-B4 fix (v4): the verification call is module-level `verify_proposal`
+        # (clone_tools.py:208), not a private CloneTools._verify method (which
+        # never existed). Patch the module-level name. The store is an instance
+        # attribute (set in __init__ at clone_tools.py:53), so patch the instance.
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-uuid7",
                     target_repo=str(git_repo),
@@ -2652,8 +2677,12 @@ class TestRejectBlocksDAG:
         from mahavishnu.core.verification import Consensus
         reject_result = MagicMock()
         reject_result.consensus = Consensus.REJECT
-        with patch.object(CloneTools, "_verify", AsyncMock(return_value=reject_result)):
-            with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
+        # CR-B4 fix (v4): see note in TestCloneRefactorGroupHappyPath.
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=reject_result),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-reject",
                     target_repo=str(git_repo),
@@ -2676,8 +2705,15 @@ class TestConcurrentCalls:
     ):
         tools, backend = clone_tools_with_backend
 
-        with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
-            with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
+        # CR-B4 fix (v4): the verification call is module-level `verify_proposal`
+        # (clone_tools.py:208), not a private CloneTools._verify method (which
+        # never existed). Patch the module-level name. The store is an instance
+        # attribute (set in __init__ at clone_tools.py:53), so patch the instance.
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
                 # Make cluster_state_claim succeed for the first call,
                 # then return a fake "existing" record for the second.
                 call_count = 0
@@ -2751,12 +2787,14 @@ class TestCancellationMarksTerminal:
     ):
         tools, backend = clone_tools_with_backend
 
-        # Make _verify raise CancelledError to simulate client cancellation
-        with patch.object(
-            CloneTools, "_verify",
+        # CR-B4 fix (v4): patch module-level verify_proposal with CancelledError
+        # to simulate client cancellation flowing through the call site
+        # (clone_tools.py:208). The store is an instance attribute.
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ):
-            with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
                 with pytest.raises(asyncio.CancelledError):
                     await tools.clone_refactor_group(
                         cluster_id="cluster-cancel",
@@ -2800,31 +2838,47 @@ else:
 
 **Change B — Module-level singleton `mcp_backend`** (add near the top, after imports):
 
+**CE-B2 fix (v4):** `app.settings.mcp_state.base_url` does not exist.
+`MCPStatePersistenceConfig` (config.py:2279-2312) has only `enabled`,
+`flush_interval_seconds`, `max_routing_buffer_age_seconds` and uses
+`extra="forbid"` — adding `base_url` to YAML would crash Pydantic validation.
+The real MCP URL lives on `MahavishnuApp.mcp_url` (core/app.py:248), resolved
+from `health.dependencies.mcp.{host,port}` via `resolve_mcp_url()`. Thread from
+that property instead.
+
 ```python
 from mahavishnu.core.state_backends.mcp import MCPStateBackend, MCPStateConfig
 
-# C-5 fix (memory feedback-cli-flag-consumer-wiring.md): thread via
-# app.settings.mcp_state.base_url if available, else default to localhost.
-# DO NOT hardcode a single URL — other code paths (dispatch_to_pool, etc.)
-# already consume the same MCPStateBackend instance and would silently
-# diverge if we hardcoded here.
-try:
-    _mcp_state_settings = app.settings.mcp_state  # type: ignore[attr-defined]
-    mcp_backend: MCPStateBackend = MCPStateBackend(
-        base_url=_mcp_state_settings.base_url,
-        config=MCPStateConfig(
-            enabled=_mcp_state_settings.enabled,
-            flush_interval_seconds=_mcp_state_settings.flush_interval_seconds,
-        ),
-    )
-except (AttributeError, TypeError):
-    # No app or no settings; default to localhost:8683 (spec §5.5 Path A).
-    mcp_backend: MCPStateBackend = MCPStateBackend(
-        base_url="http://localhost:8683",
-    )
+# CE-B2 (v4): app.mcp_url is the canonical source (core/app.py:248, resolved
+# from health.dependencies.mcp.{host,port}). MCPStatePersistenceConfig has
+# no `base_url` field (extra="forbid" at config.py:2312). We pass the URL
+# via MCPStateConfig.base_url only when a non-default is configured; the
+# substrate's own default already handles localhost:8683.
+mcp_backend: MCPStateBackend = MCPStateBackend(
+    base_url=getattr(app, "mcp_url", "http://localhost:8683"),
+    config=MCPStateConfig(
+        enabled=getattr(getattr(app, "settings", None), "mcp_state", None)
+        and app.settings.mcp_state.enabled,
+        flush_interval_seconds=getattr(
+            getattr(app, "settings", None), "mcp_state", None
+        ).flush_interval_seconds if getattr(
+            getattr(app, "settings", None), "mcp_state", None
+        ) else 60,
+    ),
+)
 ```
 
 If `app` is a module-level import rather than a closure variable, wrap the singleton construction in a lazy initializer. The key contract: every code path in `clone_tools.py` (and the singleton `clone_claims.py` claim helpers, and `run_clone_refactor_dag`) MUST see the same `MCPStateBackend` instance so circuit-breaker state is consistent (REQ-CLONE-014 reliability, per spec §6.1 v4 MAJOR-fix M2).
+
+**CE-M1 fix (v4):** Spec §6.1 places the singleton in `clone_refactor_workflow.py`
+(after `from __future__ import annotations`). The plan places it here in
+`clone_tools.py`. The plan's placement is correct because: (a) `clone_tools.py`
+owns the `verify_proposal`/VerificationStore wiring that needs the backend first,
+(b) `clone_refactor_workflow.py` imports from `clone_tools.py` (Change E adds
+`from mahavishnu.mcp.tools.clone_tools import run_clone_refactor_dag`'s substrate
+helpers), and (c) only one import chain keeps circuit-breaker state consistent.
+**Action item for spec**: update spec §6.1 to reference `clone_tools.py` as the
+singleton home. Out of scope for this plan.
 
 **Change C — cluster_id normalization** (in `clone_refactor_group`):
 
@@ -2954,6 +3008,36 @@ async def clone_refactor_status(self, limit: int = 10) -> list[tuple[str, dict[s
     return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
 ```
 
+### Step 3.5: Update existing `tests/unit/clone/test_clone_tools.py` for the new signature (CE-M1 fix)
+
+**CE-M1 fix (v4):** Change E rewrites `clone_refactor_group`'s signature from
+`(cluster_id, extraction_target=None)` to
+`(cluster_id, target_repo, consumer_repos, extracted_symbol, extraction_diff,
+consuming_diffs=None)`. The existing test file at `tests/unit/clone/test_clone_tools.py`
+calls the OLD signature (lines 78-83 and 20+ other call sites in this file) and
+will break at the next pytest run. Update it before Task 6's commit.
+
+Run:
+```bash
+cd /Users/les/Projects/mahavishnu
+.venv/bin/pytest tests/unit/clone/test_clone_tools.py -x 2>&1 | tail -30
+```
+
+**Expected:** TypeErrors or "missing required argument" failures on every
+`clone_refactor_group` call. For each failure:
+1. Replace `extraction_target=X` (when present) with the new kwargs:
+   `target_repo="<tmp>", consumer_repos=[], extracted_symbol="X", extraction_diff=_diff_one_line()`.
+2. For tests that intentionally exercise the `extraction_target` path, keep
+   `extraction_target` in the kwargs list (the new sig still accepts it as a
+   passthrough).
+3. Preserve `@pytest.mark.req(["REQ-CLONE-NNN"])` markers on every test that
+   exercises a REQ-driven path.
+4. For tests that mock the substrate via `mcp_backend`, use the new
+   `MCPStateBackendError` / `MCPStateBackendUnavailable` exception classes
+   from Task 2 instead of fabricating ad-hoc exceptions.
+
+Run the test again and confirm all green before proceeding to Step 4.
+
 ### Step 4: Run e2e tests
 
 Run:
@@ -2966,7 +3050,13 @@ cd /Users/les/Projects/mahavishnu
 
 ### Step 4.5: Settings-threading grep (CR-M2 fix, memory `feedback-cli-flag-consumer-wiring.md`)
 
-Required by the memory rule: when adding a CLI flag + settings key (here: `app.settings.mcp_state.base_url`), grep every consumer of the new field and verify it's threaded. The plan threads `app.settings.mcp_state.base_url` into `clone_tools.py`; every OTHER consumer of `MCPStateBackend` must also be checked.
+**CE-B5 fix (v4):** The original Step 4.5 named `app.settings.mcp_state.base_url`,
+which doesn't exist (see CE-B2 above). The fields that DO exist are
+`mcp_state.{enabled, flush_interval_seconds, max_routing_buffer_age_seconds}`
+and the MCP URL comes from `app.mcp_url`. Required by the memory rule: when
+adding settings threading (here: `app.mcp_url` and `app.settings.mcp_state.{...}`
+into `clone_tools.py`), grep every consumer of the new fields and verify it's
+threaded.
 
 Run:
 ```bash
@@ -2974,9 +3064,10 @@ cd /Users/les/Projects/mahavishnu
 # Find every site that constructs MCPStateBackend
 grep -rn "MCPStateBackend(" --include="*.py" mahavishnu/
 
-# For each instantiation site, verify it threads app.settings.mcp_state.base_url
-# OR is in a path that legitimately uses a different backend (e.g., tests).
-# Any site that hardcodes base_url without threading settings is a latent bug.
+# For each instantiation site, verify it threads app.mcp_url
+# (canonical property at core/app.py:248) and uses mcp_state.{enabled,
+# flush_interval_seconds, max_routing_buffer_age_seconds} from settings.
+# Any site that hardcodes a URL or skips settings is a latent bug.
 ```
 
 If a site is missed, fix it before committing Task 6. **This step is a hard gate** — skipping it violates `feedback-cli-flag-consumer-wiring.md`.
@@ -3011,18 +3102,25 @@ echo "=== Tests ==="
 
 **Expected:** all green.
 
-### Step 6: If §5.5a Path A probe succeeded, update `settings/mahavishnu.yaml`
+### Step 6: If §5.5a substrate probe succeeded, update `settings/mahavishnu.yaml`
 
-Add (only if `dispatch_to_pool` async-callback works in local env):
+**CE-B3 fix (v4):** `base_url` is NOT a valid field on `MCPStatePersistenceConfig`
+(config.py:2279-2312, `model_config = ConfigDict(extra="forbid")` at :2312). The
+real MCP URL is resolved at runtime from `health.dependencies.mcp.{host,port}`
+via `resolve_mcp_url()` and exposed as `MahavishnuApp.mcp_url` (core/app.py:248).
+Only the substrate's own timing/buffer fields belong in YAML.
+
+Add (only if the substrate probe in Task 1 Step 1 succeeded):
 
 ```yaml
 mcp_state:
   enabled: true
   flush_interval_seconds: 60
-  base_url: "http://localhost:8683"
+  max_routing_buffer_age_seconds: 3600
 ```
 
-If probe failed, **do not add this**; instead update `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` with `decision: deferred`.
+If probe failed, **do not add this**; instead update
+`docs/feature-tracking/2026-07-11-dispatch-to-pool.md` with `decision: deferred`.
 
 ### Step 7: Commit
 
@@ -3096,7 +3194,25 @@ Plan complete and saved to `docs/superpowers/plans/2026-09-25-clone-refactor-wir
 
 ## Revision history
 
-- **v3** (2026-09-25, current) — Re-review sweep applied. Fixes **3 BLOCKING + 4 MAJOR + 8 MINOR** from `pr-review-toolkit:code-reviewer` and **0 BLOCKING + 0 MAJOR + 10 MINOR** from `pr-review-toolkit:type-design-analyzer` (selected MINORs applied; the rest are polish deferred to future iterations):
+- **v4** (2026-09-25, current) — Final review pass sweep. Fixes **4 BLOCKING + 4 MAJOR + 14 MINOR** from `feature-dev:code-explorer` (grounding) and **1 BLOCKING + 2 MAJOR + 13 MINOR** from `pr-review-toolkit:code-simplifier` (clarity). The code-simplifier's BLOCKING claim was a false positive (duplicate `return` is dead code, not a shadowing bug); demoted to MINOR after direct verification of lines 2536-2541.
+
+  **From `feature-dev:code-explorer` (grounding — Tasks 2-5 clean):**
+  - **CE-B1** — Task 1 Step 1 imported non-existent `dispatch_to_pool` and `workflow_result` (the former was removed in Plan v3 Phase 2m per memory `pool-dispatch-async-default.md`; the latter never existed as `workflow_result` — real name is `workflow_get_outcome` at `mcp/tools/workflow_tools.py:22`). Replaced the path probe with a direct substrate probe using `MCPStateBackend.list_prefix()` + `try_put_with_log_context()`.
+  - **CE-B2** — Task 6 Change B referenced non-existent `app.settings.mcp_state.base_url`. `MCPStatePersistenceConfig` (config.py:2279-2312) has only `enabled`/`flush_interval_seconds`/`max_routing_buffer_age_seconds` and uses `extra="forbid"`. The real MCP URL lives on `MahavishnuApp.mcp_url` (core/app.py:248, resolved via `resolve_mcp_url()` from `health.dependencies.mcp.{host,port}`). Threading changed to `getattr(app, "mcp_url", "http://localhost:8683")`.
+  - **CE-B3** — Task 6 Step 6 YAML added a `base_url` key that `MCPStatePersistenceConfig` would reject under `extra="forbid"`. Replaced with `max_routing_buffer_age_seconds: 3600` (the only valid field missing from the plan's snippet).
+  - **CE-B4** — Task 6 e2e tests patched non-existent `CloneTools._verify` (5 sites: lines 2603, 2628, 2655, 2679, 2756). The real verification call is module-level `verify_proposal(proposal)` at `clone_tools.py:208`. Replaced all 5 patches with `patch("mahavishnu.mcp.tools.clone_tools.verify_proposal", AsyncMock(...))`. The `_store` patch was changed from class-attribute to instance-attribute (since `_store` is set in `__init__` not as a class attr).
+  - **CE-M1** — Task 6 didn't include a Step to update existing `tests/unit/clone/test_clone_tools.py` (lines 78-83 + 20+ other call sites) for the signature change introduced in Change E. Added Step 3.5 with the migration recipe.
+  - **CE-M2** — Spec §6.1 vs. plan placement of the `mcp_backend` singleton: spec said `clone_refactor_workflow.py`, plan puts it in `clone_tools.py` (Change B). Plan placement is correct (single-import chain keeps circuit-breaker state consistent); added note that spec §6.1 needs updating out of scope for this plan.
+  - **CE-m1** — Task 1 line 54 cross-reference said "deferred to Task 2 Step 7" but Task 2's audit-orphans step is Step 8. Fixed.
+  - **CE-m2** — Task 2 Step 8 cross-reference said "deferred from Task 1 Step 3" but Task 1 Step 3 is "Verify git config" (the audit was deferred from Step 4). Fixed.
+
+  **From `pr-review-toolkit:code-simplifier` (clarity):**
+  - **CS-B1** (false positive) — Task 6 `clone_tools_with_backend` fixture at lines 2536-2541 has two `return` statements, allegedly a "shadowing bug". Verified: Python exits at the first `return`; the second is unreachable but not a bug. Demoted to MINOR (dead code to delete).
+  - **CS-M1** — Task 5 Step 1 (preserve headers) and Step 6 (verify preserved) are the same concern. Acceptable to leave as two steps since the engineer benefits from the explicit verify-after-preserve. Demoted from MAJOR; left in place.
+  - **CS-M2** — Task 5 Step 4 is a 481-line code block. Acceptable since the original v2 review combined these into a single "do all the work" step; future readers can use Task 6's Change A/B/C pattern as a template if they want to break it further. Demoted from MAJOR; left as-is for execution speed.
+  - **CS-m1 through CS-m13** — Cosmetic MINORs (redundant Step 4 "no commit" line, over-explained snippets, header repetition in Revision history, etc.). Deferred — none block execution.
+
+- **v3** (2026-09-25, prior-revision) — Re-review sweep applied. Fixes **3 BLOCKING + 4 MAJOR + 8 MINOR** from `pr-review-toolkit:code-reviewer` and **0 BLOCKING + 0 MAJOR + 10 MINOR** from `pr-review-toolkit:type-design-analyzer` (selected MINORs applied; the rest are polish deferred to future iterations):
 
   **From `pr-review-toolkit:code-reviewer` (project-guideline compliance):**
   - **CR-B1** — Task 6 e2e tests had repeated `subprocess.run(...)` lines exceeding 100 chars (would fail `ruff check` and gate crackerjack run); added shared `git_repo` fixture + `_diff_one_line()` helper to keep lines under 100.
