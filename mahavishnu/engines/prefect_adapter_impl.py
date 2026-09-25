@@ -1058,7 +1058,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
             # New path (flow_path) — Plan 5 Phase A.0.3
             deployment = await adapter.create_deployment(
-                flow_path="mahavishnu.workflows.clone_refactor_workflow:run",
+                flow_path="mahavishnu.workflows.clone_refactor_workflow:run_clone_refactor_dag",
                 deployment_name="distilled-01J...",
             )
             ```

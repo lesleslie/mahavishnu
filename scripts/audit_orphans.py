@@ -97,6 +97,13 @@ FRAMEWORK_DECORATORS: frozenset[str] = frozenset(
         # ``@pytest.fixture(scope="module")`` both match via the
         # ``_FRAMEWORK_DECORATOR_TAIL`` regex below.
         "fixture",
+        # Prefect framework decorators (REQ-CLONE-008 strict compliance).
+        # Without these, every @flow-decorated function would be reported as
+        # an orphan because its only caller is the runtime Prefect engine
+        # (which lives outside the scanned tree). Same anti-orphan reasoning
+        # as the pytest ``fixture`` entry above.
+        "flow",
+        "task",
     }
 )
 
