@@ -528,9 +528,27 @@ def initialize_runtime_services(app: Any) -> None:
     app.pool_manager = None
     app.memory_aggregator = None
     if app.config.pools.enabled:
-        app.pool_manager = app._init_pool_manager()
+        try:
+            app.pool_manager = app._init_pool_manager()
+        except ImportError as exc:
+            # Belt-and-suspenders per Plan v3 Phase 1m (Agent 2 finding A): if a future
+            # refactor moves pool imports outside the inner try/except, this outer
+            # guard keeps App.__init__ from crashing on optional-dep absence (e.g.
+            # ``runpod_pool`` with the ``gpu`` extra not installed).
+            logger.warning(
+                "Pool manager required import missing at App init (%s); pool subsystem disabled",
+                getattr(exc, "name", None) or exc,
+            )
+            app.pool_manager = None
         if app.config.pools.memory_aggregation_enabled:
-            app.memory_aggregator = app._init_memory_aggregator()
+            try:
+                app.memory_aggregator = app._init_memory_aggregator()
+            except ImportError as exc:
+                logger.warning(
+                    "Memory aggregator required import missing at App init (%s); memory subsystem disabled",
+                    getattr(exc, "name", None) or exc,
+                )
+                app.memory_aggregator = None
 
     app._learning_pipeline = None
     if app.config.learning.enabled:
@@ -791,9 +809,24 @@ def init_pool_manager(app: Any) -> Any:
             app.config.pools.default_type,
         )
         return pool_manager
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-        logger.warning("Failed to initialize pool manager: %s", exc)
+    except (ImportError, ModuleNotFoundError) as exc:
+        # Recoverable: optional-dep missing (e.g. ``runpod_pool`` with the ``gpu``
+        # extra not installed) or system binary missing on PATH. Pool subsystem
+        # is disabled but the rest of the app boots. Per Plan v3 Phase 1m.
+        logger.warning(
+            "Pool manager required import missing (%s); pool subsystem disabled",
+            getattr(exc, "name", None) or exc,
+        )
         return None
+    except Exception as exc:
+        # Hard error — TypeError, RuntimeError, ValueError, etc. These are real
+        # bugs (bad config, ACL misconfig, message bus init failure). Surface via
+        # full traceback so an operator sees the real failure instead of a silent
+        # None. Per Plan v3 Phase 1m.
+        logger.exception(
+            "Pool manager hard failure — see traceback; this is a real bug"
+        )
+        raise
 
 
 def init_memory_aggregator(app: Any) -> Any:

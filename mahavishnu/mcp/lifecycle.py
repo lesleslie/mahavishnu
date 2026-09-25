@@ -23,6 +23,40 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
         len(methods_to_call),
     )
 
+    # Wire managers that ``initialize_runtime_services`` sets up for the
+    # CLI/start path but NOT for the ``mahavishnu mcp start`` path.
+    # Per Plan v3 Phase 1m (Agent A's diagnostic): this defensive block
+    # MUST run BEFORE ``_register_profile_tools_helper`` so that
+    # ``_register_pool_block`` sees ``pool_manager`` already populated.
+    # Otherwise it short-circuits with "Pool manager not initialized,
+    # skipping pool tools" and 19 pool + worker tools are missing from
+    # the MCP surface. ``logger.exception`` (not ``logger.error``) per
+    # Plan v3 Phase 1m — surfaces hard failures via full traceback for
+    # the operator instead of silently continuing.
+    if getattr(server.app, "pool_manager", None) is None and getattr(
+        server.app.config, "pools_enabled", True
+    ):
+        try:
+            from ..core.bootstrap import init_pool_manager
+
+            server.app.pool_manager = init_pool_manager(server.app)
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must surface hard failures
+            logger.exception(
+                "Failed to initialize pool manager during mcp start — see traceback"
+            )
+
+    if getattr(server.app, "memory_aggregator", None) is None and getattr(
+        server.app.config, "memory_aggregation_enabled", False
+    ):
+        try:
+            from ..core.bootstrap import init_memory_aggregator
+
+            server.app.memory_aggregator = init_memory_aggregator(server.app)
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.exception(
+                "Failed to initialize memory aggregator during mcp start — see traceback"
+            )
+
     await _register_profile_tools_helper(server, methods_set)
     server._update_registered_tool_metrics()
 
@@ -40,33 +74,6 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
         logger.error("Failed to initialize skills_signer feed state: %s", exc)
         # Don't crash the server — the /health route will report
         # skills_signer as degraded with the error message.
-
-    # Wire managers that ``initialize_runtime_services`` sets up for the
-    # CLI/start path but NOT for the ``mahavishnu mcp start`` path.
-    # Without these, ``_register_pool_block`` short-circuits with
-    # "Pool manager not initialized, skipping pool tools" and 19 pool +
-    # worker tools are missing from the MCP surface. Mirrors the
-    # defensive ``init_pool_manager`` try/except shape so an outage
-    # in one subsystem never blocks the server from binding the port.
-    if getattr(server.app, "pool_manager", None) is None and getattr(
-        server.app.config, "pools_enabled", True
-    ):
-        try:
-            from ..core.bootstrap import init_pool_manager
-
-            server.app.pool_manager = init_pool_manager(server.app)
-        except Exception as exc:  # noqa: BLE001 - MCP boundary
-            logger.error("Failed to initialize pool manager: %s", exc)
-
-    if getattr(server.app, "memory_aggregator", None) is None and getattr(
-        server.app.config, "memory_aggregation_enabled", False
-    ):
-        try:
-            from ..core.bootstrap import init_memory_aggregator
-
-            server.app.memory_aggregator = init_memory_aggregator(server.app)
-        except Exception as exc:  # noqa: BLE001 - MCP boundary
-            logger.error("Failed to initialize memory aggregator: %s", exc)
 
     # Phase 3 — start the plan_index periodic rebuild loop BEFORE
     # ``run_http_async`` so the /health route can read populated feed
