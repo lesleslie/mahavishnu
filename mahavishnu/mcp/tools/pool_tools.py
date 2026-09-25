@@ -15,6 +15,21 @@ try:
 except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
     MemoryAggregator = None
 
+try:
+    # Phase 2m (Plan v3): pool_route_execute needs the selector enum, the
+    # caller_kind quota attribution enum, the coerce_caller_kind funnel,
+    # and the quota error type. Each is defensive-imported so test patching
+    # can inject sentinel versions without instantiating the full pools
+    # package on import.
+    from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
+
+    from mahavishnu.core.errors import RateLimitError
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    PoolSelector = None
+    CallerKind = None
+    RateLimitError = None
+    coerce_caller_kind = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +55,7 @@ def register_pool_tools(
             in tests that don't exercise budgets) ``budget_enforce``
             returns ``{"status": "unconfigured"}`` rather than raising.
 
-    This registers 8 pool management tools:
+    This registers 9 pool management tools:
     - pool_list: List all active pools
     - pool_monitor: Monitor pool metrics
     - pool_scale: Scale pool worker count
@@ -49,6 +64,7 @@ def register_pool_tools(
     - pool_health: Get health status
     - pool_search_memory: Search memory across pools
     - budget_enforce: Declare a per-workflow budget (Phase 3 v2 plan)
+    - pool_route_execute: Ad-hoc single-task dispatch across registered pools (Plan v3 Phase 2m)
     """
 
     @mcp.tool()
@@ -254,4 +270,111 @@ def register_pool_tools(
             ),
         }
 
-    logger.info("Registered 8 pool management tools")
+    @mcp.tool()
+    async def pool_route_execute(  # ty: ignore[invalid-argument-type]
+        prompt: str,
+        pool_selector: str = "least_loaded",
+        timeout: float | None = None,
+        pool_affinity: str | None = None,
+        caller_kind: str = "claude_code",
+        parent_session_id: str | None = None,
+        auto_spawn: bool = False,
+    ) -> dict[str, Any]:
+        """Load-balanced single-task dispatch across registered worker pools.
+
+        Plan v3 Phase 2m — Demo Track. Routes one ad-hoc task to the
+        best-fit pool via the configured selector. Mirrors the documented
+        primary entry point in ``.claude/agents/mahavishnu-specialist.md``
+        and ``skills_catalog/pool-route.md``.
+
+        Anti-bug guard (memory rule ``mahavishnu-dispatch-prompt-mangling``):
+        Implementation MUST call ``await pool_manager.route_task(...)``
+        directly. Do NOT route through ``dispatch_to_pool()`` — that path
+        wraps in ``sh -lc`` and re-introduces the prompt-mangling bug.
+
+        ADR 014 (Honcho/ACL composition contract): ``caller_pool_allowlist``
+        is set server-side via ``PoolManager``, not exposed to wire callers.
+        The ``caller_kind`` parameter is for QUOTA ATTRIBUTION only (which
+        ClientKind bucket the dispatch counts against).
+
+        Returns:
+            - On success: the dispatch result dict (carries ``pool_id``,
+              ``status``, ``result``, etc.).
+            - On quota saturation (RateLimitError):
+              ``{"status": "rate_limited", "retry_after_seconds": N, "limit": "caller_kind=..."}``.
+            - On timeout (asyncio.TimeoutError):
+              ``{"status": "timeout"}``.
+            - On invalid selector (ValueError):
+              ``{"status": "invalid_selector", "error": "..."}``.
+            - On pool registry error (RuntimeError):
+              ``{"status": "failed", "error": "..."}``.
+        """
+        # Selector resolution — bad input is a user error, not a system crash.
+        if PoolSelector is not None:
+            try:
+                selector_enum = PoolSelector(pool_selector)
+            except ValueError:
+                valid = [s.value for s in PoolSelector]
+                return {
+                    "status": "invalid_selector",
+                    "error": f"Unknown pool_selector: {pool_selector!r}. Valid: {valid}",
+                }
+        else:
+            return {
+                "status": "failed",
+                "error": "Pool selector subsystem unavailable; pools package not loaded",
+            }
+
+        # Caller-kind funnel — coerce_caller_kind is module-level in
+        # mahavishnu.pools.manager. Unknown wire-strings map to CallerKind.UNKNOWN
+        # (one shared bucket per memory rule indirection).
+        if coerce_caller_kind is not None:
+            try:
+                coerced_kind = coerce_caller_kind(caller_kind)
+            except Exception:  # noqa: BLE001 - boundary: coerce is best-effort
+                coerced_kind = None
+        else:
+            coerced_kind = None
+
+        task: dict[str, Any] = {"prompt": prompt}
+        if timeout is not None:
+            task["timeout"] = timeout
+
+        try:
+            return await pool_manager.route_task(  # type: ignore[no-any-return]
+                task=task,
+                pool_selector=selector_enum,
+                pool_affinity=pool_affinity,
+                caller_kind=coerced_kind if coerced_kind is not None else caller_kind,
+                parent_session_id=parent_session_id,
+                auto_spawn=auto_spawn,
+            )
+        except RateLimitError as exc:
+            details = getattr(exc, "details", {}) or {}
+            return {
+                "status": "rate_limited",
+                "retry_after_seconds": details.get("retry_after_seconds", 0),
+                "limit": details.get("limit", "caller_kind=unknown"),
+            }
+        except TimeoutError:
+            return {"status": "timeout"}
+        except ValueError as exc:
+            return {
+                "status": "invalid_selector",
+                "error": str(exc),
+            }
+        except RuntimeError as exc:
+            return {
+                "status": "failed",
+                "error": str(exc),
+            }
+        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            logger.exception(
+                "Failed to route task via pool_route_execute — see traceback"
+            )
+            return {
+                "status": "failed",
+                "error": str(exc),
+            }
+
+    logger.info("Registered 9 pool management tools")

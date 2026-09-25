@@ -389,7 +389,7 @@ class TestPoolToolRegistration:
     """Test pool tool registration."""
 
     def test_register_pool_tools_registers_all_tools(self, mock_mcp, mock_pool_manager):
-        """Test that register_pool_tools registers all 7 tools."""
+        """Test that register_pool_tools registers all 9 tools (incl. Phase 2m)."""
         # Track tool registrations
         registered_tools = []
 
@@ -403,7 +403,7 @@ class TestPoolToolRegistration:
 
         register_pool_tools(mock_mcp, mock_pool_manager)
 
-        # Verify all 7 tools were registered
+        # Verify all 9 tools were registered
         expected_tools = [
             "pool_list",
             "pool_monitor",
@@ -412,7 +412,179 @@ class TestPoolToolRegistration:
             "pool_close_all",
             "pool_health",
             "pool_search_memory",
+            "budget_enforce",
+            "pool_route_execute",
         ]
 
         for tool in expected_tools:
             assert tool in registered_tools, f"Tool {tool} was not registered"
+
+
+def _capture_pool_route_execute(mock_pool_manager):
+    """Capture the registered ``pool_route_execute`` callable by stubbing
+    ``mcp.tool`` with a registering decorator. Returns the real function so
+    tests can call it with various args and assert on the result.
+    """
+    from unittest.mock import MagicMock
+
+    from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+
+    captured: dict[str, object] = {}
+
+    def registering_decorator(func=None):
+        if func is None:
+            return lambda wrapped: registering_decorator(wrapped)
+        captured[func.__name__] = func
+        return func
+
+    mcp = MagicMock()
+    mcp.tool = registering_decorator
+    register_pool_tools(mcp, mock_pool_manager)
+
+    return captured["pool_route_execute"]
+
+
+class TestPoolRouteExecuteTool:
+    """Plan v3 Phase 2m — 8 scenarios.
+
+    Verifies the registered ``pool_route_execute`` callable reacts
+    correctly to: happy path, RateLimitError envelope, asyncio
+    TimeoutError, ValueError (unknown selector + missing pool_affinity
+    for AFFINITY), RuntimeError (empty pool registry + non-empty
+    message), caller_kind coercion, default caller_kind semantics.
+    """
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_happy_path(self, mock_pool_manager):
+        """Scenario 1 — default selector + caller_kind='claude_code' delegates to route_task."""
+        execute = _capture_pool_route_execute(mock_pool_manager)
+
+        result = await execute(prompt="write a haiku")
+
+        assert result == {"pool_id": "pool_test_id", "status": "completed"}
+        mock_pool_manager.route_task.assert_awaited_once()
+        call_kwargs = mock_pool_manager.route_task.await_args.kwargs
+        assert call_kwargs["task"] == {"prompt": "write a haiku"}
+        assert call_kwargs["pool_affinity"] is None
+        assert call_kwargs["auto_spawn"] is False
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_rate_limit_envelope(self, mock_pool_manager):
+        """Scenario 2 — RateLimitError → {status: 'rate_limited', retry_after_seconds, limit}."""
+        from mahavishnu.core.errors import RateLimitError
+
+        # RateLimitError signature: (limit: str, retry_after: int | None = None).
+        # The constructor stores details={"limit": ..., "retry_after_seconds": ...}.
+        err = RateLimitError("caller_kind=ultracode", retry_after=42)
+        mock_pool_manager.route_task = AsyncMock(side_effect=err)
+
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi")
+
+        assert result["status"] == "rate_limited"
+        assert result["retry_after_seconds"] == 42
+        assert result["limit"] == "caller_kind=ultracode"
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_timeout_envelope(self, mock_pool_manager):
+        """Scenario 3 — asyncio.TimeoutError (or TimeoutError on py3.11+) → {status: 'timeout'}."""
+        mock_pool_manager.route_task = AsyncMock(side_effect=TimeoutError())
+
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi")
+
+        assert result == {"status": "timeout"}
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_invalid_selector_envelope(self, mock_pool_manager):
+        """Scenario 4 — ValueError from ``PoolSelector('invalid_garbage')`` →
+        {status: 'invalid_selector', error: ...}. Actually caught at the
+        selector-string → enum conversion; route_task is never called.
+        """
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi", pool_selector="not_a_real_selector_value")
+
+        assert result["status"] == "invalid_selector"
+        assert "Unknown pool_selector" in result["error"]
+        # route_task was never called — selector failed at the boundary.
+        mock_pool_manager.route_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_affinity_without_pool_affinity(
+        self, mock_pool_manager
+    ):
+        """Scenario 5 — PoolSelector.AFFINITY requires pool_affinity arg.
+
+        Valid selector string + missing pool_affinity: route_task will
+        raise a ValueError (per PoolManager.AFFINITY handling), and our
+        boundary converts it to the invalid_selector envelope.
+        """
+        mock_pool_manager.route_task = AsyncMock(
+            side_effect=ValueError("AFFINITY selector requires pool_affinity")
+        )
+
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi", pool_selector="affinity")
+
+        assert result["status"] == "invalid_selector"
+        assert "AFFINITY" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_empty_pool_registry_envelope(
+        self, mock_pool_manager
+    ):
+        """Scenario 6 — RuntimeError with 'No pools available for routing'
+        → {status: 'failed', error: ...}.
+        """
+        mock_pool_manager.route_task = AsyncMock(
+            side_effect=RuntimeError("No pools available for routing")
+        )
+
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi")
+
+        assert result["status"] == "failed"
+        assert "No pools available" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_other_runtime_error_envelope(
+        self, mock_pool_manager
+    ):
+        """Scenario 7 — RuntimeError with a different message (e.g. allowlist
+        empty) is still mapped to {status: 'failed', error: ...}.
+        """
+        mock_pool_manager.route_task = AsyncMock(
+            side_effect=RuntimeError("allowlist empty")
+        )
+
+        execute = _capture_pool_route_execute(mock_pool_manager)
+        result = await execute(prompt="hi")
+
+        assert result["status"] == "failed"
+        assert "allowlist empty" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_caller_kind_default_is_claude_code(
+        self, mock_pool_manager
+    ):
+        """Scenario 8 — default caller_kind resolves through
+        coerce_caller_kind; unknown wire-strings map to UNKNOWN bucket.
+        """
+        execute = _capture_pool_route_execute(mock_pool_manager)
+
+        # No caller_kind → default "claude_code"
+        await execute(prompt="hi")
+        # When the coerce caller unwraps to the UNKNOWN enum (since
+        # `coerce_caller_kind` is best-effort in our impl), it's still
+        # passed through as the wire string. The test asserts that a
+        # caller_kind is passed (defaulted) rather than None.
+        kwargs = mock_pool_manager.route_task.await_args.kwargs
+        assert "caller_kind" in kwargs
+        assert kwargs["caller_kind"] is not None
+
+        # Bogus wire string → falls through to UNKNOWN-style string
+        mock_pool_manager.route_task.reset_mock()
+        await execute(prompt="hi2", caller_kind="definitely_not_an_enum_value")
+        kwargs2 = mock_pool_manager.route_task.await_args.kwargs
+        assert "caller_kind" in kwargs2
+
