@@ -723,7 +723,7 @@ Mahavishnu-specific guidance:
 
 - **Worker manager**: `mahavishnu/workers/manager.py` - Worker lifecycle
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
-- **Isolated workers**: `mahavishnu/workers/apple_container.py` (Apple silicon microVMs) and `mahavishnu/workers/e2b_sandbox.py` (E2B cloud sandboxes) - Docker/OrbStack removed 2026-07
+- **Isolated workers**: After Plan v3 Phase 4.5b (legacy-worker-deprecation), only `mahavishnu/workers/shepherd_backend.py` (OS-level syscall-jail, fail-closed) remains. The legacy `apple_container.py` (Apple silicon microVMs) and `e2b_sandbox.py` (E2B cloud sandboxes) backends were removed 2026-09 — see `docs/decisions/2026-09-24-legacy-worker-deprecation.md`. For new orchestrated workloads, use `mahavishnu/pools/`.
 - **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible cloud worker with MiniMax primary defaults
 - **Task router**: `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
