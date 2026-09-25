@@ -34,7 +34,7 @@ evidence accumulates (see the plan-flips notes for that trigger).
 | `persist_initial` | `mahavishnu/settle/persistence.py:93` | **Wired** by `mahavishnu/cli/settle_cli.py:settle start <run_ref> --worker <id> --task <sig>` (Typer sub-app calling `persist_initial` with a `SettleRunRecord`). Tests at `tests/unit/test_settle_cli.py`. |
 | `load_record_sync` | `mahavishnu/settle/persistence.py:186` | **Wired** by `mahavishnu/cli/settle_cli.py:settle status <run_ref>` (Typer sub-app wrapping `load_record_sync`). Tests at `tests/unit/test_settle_cli.py`. |
 | ~~`check_prerequisites`~~ | ~~`mahavishnu/terminal/backends.py:40`~~ | **DELETED 2026-09-06** along with `PtyBackend`, `BUILTIN_BACKENDS`, and the two test files. Investigation revealed the whole `terminal/backends.py` module was scaffolding for the removed `McpretentiousAdapter` (see CHANGELOG.md:1030-1033 + memory `mcpretentious-removed-mcp-first.md`). No upstream consumer exists; per wire-up contract, scaffolding for a removed module must be removed. |
-| `CloudWorker` | `mahavishnu/workers/cloud_worker.py:122` | **Wired** by `mahavishnu/workers/__init__.py:26` (`from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig`) plus listing in `__all__` at lines 64-65. Refs also in `mahavishnu/workers/task_router.py:4,247`. |
+| `CloudWorker` | `mahavishnu/workers/cloud_worker.py:122` | **Wired** by `mahavishnu/workers/__init__.py:32` (`from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig`) plus listing in `__all__`. Routing now lives in `mahavishnu/core/model_routing.py` (Phase 3b atomic migration, 2026-09-25). |
 
 ## Wiring targets (one per orphan)
 
@@ -70,11 +70,12 @@ evidence or one release cycle elapses — whichever comes first.
 ### Group B — CloudWorker class
 
 **Resolved (1/1)** — `CloudWorker` is now wired via
-`mahavishnu/workers/__init__.py:26`
+`mahavishnu/workers/__init__.py:32`
 (`from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig`)
-plus a listing in `__all__` at lines 64-65. The class is also referenced
-in `mahavishnu/workers/task_router.py:4,247` for routing decisions.
-`audit_orphans.py`'s transitive-import scanner now considers the symbol
+plus a listing in `__all__`. The class delegates its routing decisions
+to `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from
+the now-deleted `mahavishnu/workers/task_router.py`, 2026-09-25).
+`audit_orphans.py`'s transitive-import scanner considers the symbol
 wired and reports `mahavishnu/workers/cloud_worker.py` as "_No orphans
 (all public symbols are wired)._"
 
@@ -137,5 +138,5 @@ this tracker's named-symbol scope and tracked separately per
   `find_registrations`)
 - Settle module overview: `mahavishnu/settle/__init__.py`,
   `mahavishnu/settle/state_machine.py`
-- Worker router: `mahavishnu/workers/task_router.py`
+- Worker router: `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`, 2026-09-25)
 - Terminal launch: `mahavishnu/terminal/manager.py`

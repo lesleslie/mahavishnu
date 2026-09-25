@@ -1236,7 +1236,7 @@ ______________________________________________________________________
 - `mahavishnu/websocket/server.py` — `MahavishnuWebSocketServer` (port 8690); broadcast channels and history deque.
 - `mahavishnu/ingesters/otel_ingester.py` — `OtelIngester` (DuckDB or pgvector); `StorageType` and `EmbeddingBackend` enums.
 - `mahavishnu/ingesters/content_ingester.py` — `ContentIngester` (webpage/blog/PDF/EPUB); SSRF protection in `BLOCKED_IP_RANGES` / `BLOCKED_HOSTNAMES`.
-- `mahavishnu/workers/task_router.py` — `TaskRouter` + `TaskCategory` enum + `RateLimiter` + `DEFAULT_MINIMAX_ROUTING`.
+- `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) — `TaskRouter` + `TaskCategory` enum + `RateLimiter` + `DEFAULT_MINIMAX_ROUTING`.
 - `mahavishnu/workers/registry.py` — `WorkerRegistry` (worker types, command templates, `RuntimeKind`).
 - `mahavishnu/workers/manager.py` — `WorkerManager` (spawn / execute_task / close_all).
 - `mahavishnu/observability/worker_metrics.py` — `WorkerMetrics` (spec §14 success-criteria counters).

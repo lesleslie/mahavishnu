@@ -121,7 +121,7 @@ Known surfaces:
 |---|---|
 | `settings/models.yaml` | Replace `zai` primary provider with `minimax`, `MINIMAX_API_KEY`, `MINIMAX_BASE_URL`, `MiniMax-M2.7`, and `MiniMax-M2.7-highspeed`. Change `default_provider` and `fallback_chain`. |
 | `mahavishnu/core/config.py` | Add `minimax` to shared Agno provider enums and documentation so settings validation matches runtime provider support. |
-| `mahavishnu/workers/task_router.py` | Replace or deprecate `DEFAULT_ZAI_ROUTING` with `DEFAULT_MINIMAX_ROUTING`. Use M2.7 for code/reasoning/general and M2.7-highspeed for quick/swarm/background. |
+| `mahavishnu/core/model_routing.py` (originally `mahavishnu/workers/task_router.py`; migrated 2026-09-25 per Plan v3 Phase 3b) | Replace or deprecate `DEFAULT_ZAI_ROUTING` with `DEFAULT_MINIMAX_ROUTING`. Use M2.7 for code/reasoning/general and M2.7-highspeed for quick/swarm/background. |
 | `mahavishnu/llm_gateway/client.py` | Add `minimax-openai` provider namespace and update default protocol provider where appropriate. |
 | `mahavishnu/llm_gateway/contract.py` | Preserve `image`/`vision` route class; add `audio` and `video` route classes only if callers can send those task types through the gateway contract. |
 | `mahavishnu/engines/agno_adapter_impl.py` and `mahavishnu/workers/cloud_worker.py` | Replace ZAI env/default assumptions with MiniMax equivalents or provider-neutral configuration. |

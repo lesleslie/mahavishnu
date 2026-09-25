@@ -147,7 +147,7 @@ The audits surfaced 30+ recommended additions across all 6 repos. The highest-im
 1. **mahavishnu**: Terminal adapter selection flowchart (replaces the stale `iTerm2+MCPretentious` diagram)
 1. **mahavishnu**: Worker-isolation topology (`AppleContainer` + `E2BSandbox` — replaced removed Docker/OrbStack)
 1. **mahavishnu**: MCP tool topology (174+ tools × 14 groups)
-1. **mahavishnu**: LLM routing sequence for `mahavishnu/workers/task_router.py`
+1. **mahavishnu**: LLM routing sequence for `mahavishnu/core/model_routing.py` _(originally `mahavishnu/workers/task_router.py`; migrated 2026-09-25 per Plan v3 Phase 3b — atomic, no shim)_
 1. **akosha**: Embedding pipeline flow (mock-only embedding path is currently invisible in any diagram)
 1. **akosha**: Fitness signal flow (the 60s `loop` that writes to `routing_fitness/{tc}/{selector}`)
 1. **akosha**: End-to-end query → embedding → search → result flow

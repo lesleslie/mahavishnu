@@ -82,6 +82,12 @@ $ git grep -nE "StateManager" mahavishnu/workers/task_router.py
 
 **Decision (locked)**: `StateManager` lives at `mahavishnu/core/task_router.py:565` (per the v3 plan's note). Phase 3b's atomic migration is collision-free.
 
+> **Historical note (2026-09-25)**: `mahavishnu/workers/task_router.py` no longer
+> exists — Phase 3b's atomic migration removed it and the file's contents
+> moved verbatim to `mahavishnu/core/model_routing.py`. The pre-flight grep
+> above is preserved as a record of the original Phase-0 verification; the
+> grep would now return "no such file or directory" rather than "(no matches)".
+
 ---
 
 ## Q6 — `cloud_worker.py` task_router import line

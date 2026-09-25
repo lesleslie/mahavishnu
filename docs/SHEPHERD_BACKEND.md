@@ -231,8 +231,11 @@ kernel-side ruleset.
 - Integration contract — `docs/plans/2026-08-29-orchestrator-research-synthesis.md`,
   lines 249–255.
 - Worker base class — `mahavishnu/workers/base.py`.
-- Apple container / E2B siblings — `mahavishnu/workers/apple_container.py`,
-  `mahavishnu/workers/e2b_sandbox.py`.
+- _(Historical siblings — Apple container / E2B sandboxes — were removed
+  2026-09-25 per Plan v3 Phase 4.5b. See
+  `docs/decisions/2026-09-24-legacy-worker-deprecation.md` for the
+  rationale. `shepherd_backend` is now the sole isolated-worker
+  backend.)_
 - Capability-driven registry — `mahavishnu/core/config.py`,
   `mahavishnu/workers/capabilities/`.
 - Phase 2 settle MCP tools — `docs/WEBSOCKET_CONSUMER_GUIDE.md`.

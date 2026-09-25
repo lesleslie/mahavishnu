@@ -46,9 +46,14 @@ class MahavishnuPool(BasePool):
     │  │      Local Workers            │  │
     │  │  • GenericShellWorker (Qwen)   │  │
     │  │  • GenericShellWorker (Claude) │  │
-    │  │  • AppleContainer/E2B microVM │  │
+    │  │  • shepherd (OS syscall-jail) │  │
     │  └───────────────────────────────┘  │
     └─────────────────────────────────────┘
+
+    Note: After Plan v3 Phase 4.5b (legacy-worker-deprecation), only
+    `shepherd_backend` remains as the isolated-worker backend. The
+    prior AppleContainer / E2B microVM tiers were removed 2026-09-25 —
+    see `docs/decisions/2026-09-24-legacy-worker-deprecation.md`.
     """
 
     def __init__(

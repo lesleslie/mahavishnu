@@ -33,11 +33,10 @@
 ## Workers & Terminal
 
 - `mahavishnu/workers/manager.py` — Worker lifecycle
-- `mahavishnu/workers/base.py` — Abstract worker interface
-- `mahavishnu/workers/apple_container.py` — Apple `container` microVM execution (Apple silicon)
-- `mahavishnu/workers/e2b_sandbox.py` — E2B cloud sandbox execution (fallback tier)
-- `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible cloud worker (MiniMax defaults)
-- `mahavishnu/workers/task_router.py` — Task classification + model selection
+- `mahavishnu/workers/base.py` — Abstract worker interface (re-exports `WorkerStatus` from `mahavishnu/core/status.py`)
+- `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible cloud worker (MiniMax defaults; routing now lives in `mahavishnu/core/model_routing.py`)
+- `mahavishnu/workers/shepherd_backend.py` — OS-level syscall-jail isolated worker (post-Phase-4.5b; only remaining isolated-worker backend per `docs/decisions/2026-09-24-legacy-worker-deprecation.md`)
+- `mahavishnu/workers/registry.py` — `WORKER_REGISTRY` + `WorkerCategory` + `WorkerConfig`
 - `mahavishnu/terminal/manager.py` — Terminal session management
 - `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, goose, base)
 

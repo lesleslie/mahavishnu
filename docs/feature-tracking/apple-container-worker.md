@@ -1,4 +1,14 @@
-# Apple Container Worker (microVM per task)
+# Apple Container Worker (microVM per task) — **RETIRED 2026-09-25**
+
+> **This worker has been removed from the codebase.** `mahavishnu/workers/apple_container.py`
+> was deleted 2026-09-25 per Plan v3 Phase 4.5b — see
+> `docs/decisions/2026-09-24-legacy-worker-deprecation.md` for the rationale
+> (legacy isolated-worker surface, no backwards-compat support). The only
+> remaining isolated-worker backend is `mahavishnu/workers/shepherd_backend.py`
+> (OS-level syscall-jail, fail-closed).
+>
+> The history below is preserved as an audit trail. All `built` / `wired`
+> status rows describe the pre-Phase-4.5b state of the repo.
 
 ## State
 
@@ -7,6 +17,7 @@
 | built | ✅ | 2026-07-26 | Authored on Intel hardware; mock-only tests pass (25 tests) |
 | wired | ✅ | 2026-07-27 | Tier fallback live: `WorkerManager._create_isolated_worker` routes CONTAINER category → Apple tier → E2B tier; Docker/OrbStack `ContainerWorker` removed |
 | adopted | ❌ | — | Blocked on Apple silicon hardware for verification |
+| **retired** | ✅ | **2026-09-25** | **File deleted per Plan v3 Phase 4.5b. Replaced by `shepherd_backend` (only live isolated-worker backend).** |
 
 ## What it is
 

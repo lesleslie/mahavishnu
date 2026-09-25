@@ -26,7 +26,7 @@ Mahavishnu uses two independent routers that compose at task dispatch time:
 | Router | File | Concern | Input | Output |
 |--------|------|---------|-------|--------|
 | **Task Router** | `mahavishnu/core/task_router.py` | Engine selection | `TaskType` enum | Adapter preference order (Prefect, Agno, LlamaIndex) |
-| **Model Router** | `mahavishnu/workers/task_router.py` | Model selection | `TaskCategory` enum | Model ID per provider (Ollama, ZAI) |
+| **Model Router** | `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) | Model selection | `TaskCategory` enum | Model ID per provider (Ollama, MiniMax, ZAI compatibility) |
 
 ## How They Compose
 
