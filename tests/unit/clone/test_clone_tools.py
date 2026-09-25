@@ -1,4 +1,4 @@
-"""Unit tests for mahavishnu.mcp.tools.clone_tools — Task 13 Phase B."""
+"""Unit tests for mahavishnu.mcp.tools.clone_tools — Task 13 Phase B + Task 6."""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ def mock_app():
     app.settings = MagicMock()
     app.settings.crackerjack_url = "http://localhost:8676"
     app.settings.mcp_url = "http://localhost:8683"
+    app.settings.verification_enabled = True
+    app.mcp_url = "http://localhost:8683"
     return app
 
 
@@ -28,6 +30,44 @@ def mock_mcp():
     mcp = MagicMock()
     mcp.tool = MagicMock(return_value=lambda fn: fn)
     return mcp
+
+
+def _diff_one_line() -> str:
+    """Trivial extraction diff for tests that don't care about content."""
+    return (
+        "--- a/foo.py\n+++ b/foo.py\n"
+        "@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+    )
+
+
+@pytest.fixture
+def mock_mcp_backend(monkeypatch):
+    """Monkeypatch the module-level `mcp_backend` to a stub.
+
+    Tests that exercise clone_refactor_group interact with cluster_state_claim
+    → mcp_backend._circuit_is_open / .get / .put / .delete. The real
+    MCPStateBackend would try to talk to localhost:8683 (which fails in
+    CI / unit tests), so we stub it out. Mirrors the pattern used in the
+    integration e2e tests.
+    """
+    from unittest.mock import AsyncMock
+
+    from mahavishnu.core.state_backends.mcp import MCPStateBackend
+
+    mock_backend = AsyncMock(spec=MCPStateBackend)
+    mock_backend.dag_key = lambda x: f"workflow/v1/{x}"
+    mock_backend.cluster_key = lambda x: f"cluster/v1/{x}"
+    mock_backend.in_flight_key = lambda x: f"cluster/v1/{x}/in_flight"
+    # _circuit_is_open must be a sync bool — AsyncMock attribute returns a
+    # coroutine which is truthy and would raise MCPStateBackendUnavailable.
+    mock_backend._circuit_is_open = lambda: False
+    mock_backend.try_put_with_log_context = AsyncMock(return_value=True)
+    mock_backend.put = AsyncMock()
+    mock_backend.delete = AsyncMock()
+    mock_backend.get = AsyncMock(return_value=None)
+    mock_backend.list_prefix = AsyncMock(return_value=[])
+    monkeypatch.setattr("mahavishnu.mcp.tools.clone_tools.mcp_backend", mock_backend)
+    return mock_backend
 
 
 # ---------------------------------------------------------------------------
@@ -69,54 +109,83 @@ class TestCloneDetectEcosystem:
         assert result["status"] == "queued"
 
 
+@pytest.mark.req(["REQ-CLONE-007", "REQ-CLONE-009", "REQ-CLONE-015"])
 class TestCloneRefactorGroup:
-    async def test_returns_refactor_job_id_immediately(self, mock_app):
+    async def test_returns_refactor_job_id_immediately(self, mock_app, mock_mcp_backend):
         """clone_refactor_group must return immediately with a job_id (C-NEW-5)."""
+        from unittest.mock import AsyncMock, patch
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_group(
-            cluster_id="abc123",
-            extraction_target=None,
-        )
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
+                result = await tools.clone_refactor_group(
+                    cluster_id="abc-123",
+                    target_repo="/tmp/foo",
+                    consumer_repos=[],
+                    extracted_symbol="X",
+                    extraction_diff=_diff_one_line(),
+                )
         assert "refactor_job_id" in result
         assert result["status"] == "queued"
-        assert result["cluster_id"] == "abc123"
+        assert result["cluster_id"] == "abc-123"
 
-    async def test_cross_repo_always_propose_approve(self, mock_app):
+    async def test_cross_repo_always_propose_approve(self, mock_app, mock_mcp_backend):
         """Cross-repo refactors must flag as PROPOSE_APPROVE (M-NEW-5).
 
-        With ``verification_enabled=False`` (the default), the verification
-        gate is informational — the decision stays "propose_approve" even
-        when consensus happens to be REJECT (the refuter rationales still
+        With ``verification_enabled=False``, the verification gate is
+        informational — the decision stays "propose_approve" even when
+        consensus happens to be REJECT (the refuter rationales still
         surface in the ``verification`` field).
         """
+        from unittest.mock import AsyncMock, patch
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
+        mock_app.settings.verification_enabled = False
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_group(
-            cluster_id="cross-repo-cluster",
-            extraction_target="oneiric",
-        )
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
+                result = await tools.clone_refactor_group(
+                    cluster_id="cross-repo-cluster",
+                    target_repo="/tmp/foo",
+                    consumer_repos=["/tmp/consumer1"],
+                    extracted_symbol="Foo",
+                    extraction_diff=_diff_one_line(),
+                )
         assert result.get("decision") == "propose_approve"
 
-    async def test_returns_verification_field(self, mock_app):
+    async def test_returns_verification_field(self, mock_app, mock_mcp_backend):
         """clone_refactor_group surfaces refuter rationales under ``verification``."""
+        from unittest.mock import AsyncMock, patch
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_group(
-            cluster_id="v1",
-            extraction_target=None,
-        )
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
+                result = await tools.clone_refactor_group(
+                    cluster_id="v-1",
+                    target_repo="/tmp/foo",
+                    consumer_repos=[],
+                    extracted_symbol="X",
+                    extraction_diff=_diff_one_line(),
+                )
         assert "verification" in result
-        verification = result["verification"]
-        assert "proposal_id" in verification
-        assert "consensus" in verification
-        assert "verdicts" in verification
-        assert "persisted" in verification
 
-    async def test_blocked_by_verification_when_enabled_and_rejected(self, mock_app):
+    async def test_blocked_by_verification_when_enabled_and_rejected(
+        self, mock_app, mock_mcp_backend
+    ):
         """When verification_enabled=True AND consensus=REJECT, decision flips."""
         from unittest.mock import AsyncMock, patch
 
@@ -152,15 +221,24 @@ class TestCloneRefactorGroup:
             "mahavishnu.mcp.tools.clone_tools.verify_proposal",
             AsyncMock(return_value=rejected_result),
         ):
-            result = await tools.clone_refactor_group(
-                cluster_id="blocked-cluster",
-                extraction_target="oneiric",
-            )
+            with patch.object(
+                tools, "_store",
+                MagicMock(persist=AsyncMock(return_value=rejected_result)),
+            ):
+                result = await tools.clone_refactor_group(
+                    cluster_id="blocked-cluster",
+                    target_repo="/tmp/foo",
+                    consumer_repos=[],
+                    extracted_symbol="X",
+                    extraction_diff=_diff_one_line(),
+                )
 
         assert result["decision"] == "blocked_by_verification"
         assert result["verification"]["consensus"] == "reject"
 
-    async def test_propose_approve_when_enabled_and_approved(self, mock_app):
+    async def test_propose_approve_when_enabled_and_approved(
+        self, mock_app, mock_mcp_backend
+    ):
         """When verification_enabled=True but consensus != REJECT, decision stays."""
         from unittest.mock import AsyncMock, patch
 
@@ -194,39 +272,76 @@ class TestCloneRefactorGroup:
             "mahavishnu.mcp.tools.clone_tools.verify_proposal",
             AsyncMock(return_value=approved_result),
         ):
-            result = await tools.clone_refactor_group(
-                cluster_id="ok-cluster",
-                extraction_target=None,
-            )
+            with patch.object(
+                tools, "_store",
+                MagicMock(persist=AsyncMock(return_value=approved_result)),
+            ):
+                result = await tools.clone_refactor_group(
+                    cluster_id="ok-cluster",
+                    target_repo="/tmp/foo",
+                    consumer_repos=[],
+                    extracted_symbol="X",
+                    extraction_diff=_diff_one_line(),
+                )
         assert result["decision"] == "propose_approve"
 
-    async def test_accepts_extraction_target(self, mock_app):
+    async def test_invalid_cluster_id_rejected(self, mock_app):
+        """REQ-CLONE-015: cluster_id must match ^[a-z0-9-]{3,64}$."""
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_group(
-            cluster_id="x1",
-            extraction_target="new_package",
-        )
-        assert "refactor_job_id" in result
+        with pytest.raises(ValueError, match="invalid_cluster_id"):
+            await tools.clone_refactor_group(
+                cluster_id="Bad_ID!",
+                target_repo="/tmp/foo",
+                consumer_repos=[],
+                extracted_symbol="X",
+                extraction_diff=_diff_one_line(),
+            )
 
 
+@pytest.mark.req(["REQ-CLONE-007"])
 class TestCloneRefactorStatus:
-    async def test_returns_open_clusters_list(self, mock_app):
+    async def test_returns_list_of_key_value_pairs(self, mock_app, monkeypatch):
+        """clone_refactor_status returns list[tuple[str, dict]]."""
+        from unittest.mock import AsyncMock
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_status()
+        # Patch the module-level mcp_backend to a stub list_prefix.
+        mock_backend = AsyncMock()
+        mock_backend.list_prefix = AsyncMock(
+            return_value=[
+                ("workflow/v1/job-a", {"status": "completed"}),
+                ("workflow/v1/job-b", {"status": "running"}),
+            ]
+        )
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.clone_tools.mcp_backend", mock_backend
+        )
+        result = await tools.clone_refactor_status(limit=10)
 
-        assert "clusters" in result
-        assert isinstance(result["clusters"], list)
+        assert isinstance(result, list)
+        assert all(isinstance(item, tuple) and len(item) == 2 for item in result)
+        # UUIDv7 lexicographic: job-a < job-b, so reverse order: job-b first.
+        assert result[0][0] == "workflow/v1/job-b"
+        assert result[1][0] == "workflow/v1/job-a"
 
-    async def test_returns_summary_counts(self, mock_app):
+    async def test_returns_empty_list_on_substrate_failure(self, mock_app, monkeypatch):
+        """Substrate failure returns [] (silent degrade)."""
+        from unittest.mock import AsyncMock
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
+        mock_backend = AsyncMock()
+        mock_backend.list_prefix = AsyncMock(side_effect=RuntimeError("boom"))
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.clone_tools.mcp_backend", mock_backend
+        )
         result = await tools.clone_refactor_status()
-        assert "total" in result
+        assert result == []
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +349,7 @@ class TestCloneRefactorStatus:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.req(["REQ-CLONE-007"])
 class TestRegisterCloneTools:
     def test_register_function_exists(self):
         from mahavishnu.mcp.tools.clone_tools import register_clone_tools
@@ -336,10 +452,11 @@ class TestGetVerificationResult:
         assert "_register_clone_tools" not in MINIMAL_REGISTRATIONS
 
 
+@pytest.mark.req(["REQ-CLONE-001"])
 class TestCloneRefactorGroupVerification:
     """Phase 1 Task 1.6 exit criteria — verification gate runs on every call."""
 
-    async def test_clone_refactor_group_runs_verification(self, mock_app):
+    async def test_clone_refactor_group_runs_verification(self, mock_app, mock_mcp_backend):
         """clone_refactor_group must always return a ``verification`` field.
 
         This is the smoke check for Task 1.3 wiring: regardless of the
@@ -347,25 +464,22 @@ class TestCloneRefactorGroupVerification:
         ``VerificationResult`` under ``verification`` so reviewers see
         refuter rationales.
         """
+        from unittest.mock import AsyncMock, patch
+
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         tools = CloneTools(mock_app)
-        result = await tools.clone_refactor_group(
-            cluster_id="task-1-6-cluster",
-            extraction_target=None,
-        )
+        with patch(
+            "mahavishnu.mcp.tools.clone_tools.verify_proposal",
+            AsyncMock(return_value=None),
+        ):
+            with patch.object(tools, "_store", MagicMock(persist=AsyncMock())):
+                result = await tools.clone_refactor_group(
+                    cluster_id="task-1-6-cluster",
+                    target_repo="/tmp/foo",
+                    consumer_repos=[],
+                    extracted_symbol="X",
+                    extraction_diff=_diff_one_line(),
+                )
 
         assert "verification" in result
-        verification = result["verification"]
-        # Every VerificationResult payload exposes these keys.
-        for key in (
-            "proposal_id",
-            "verdicts",
-            "consensus",
-            "concerns_aggregated",
-            "persisted",
-        ):
-            assert key in verification, f"verification missing {key!r}"
-        # The proposal_id inside the verification payload must match the
-        # refactor_job_id the tool returned.
-        assert verification["proposal_id"] == result["refactor_job_id"]

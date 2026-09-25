@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import re
+import sys
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from mahavishnu.core.loop_helpers import detect_until_dry as _detect_until_dry
+from mahavishnu.core.state_backends.mcp import MCPStateBackend, MCPStateConfig
 from mahavishnu.core.verification import (
     Consensus,
     Proposal,
@@ -15,11 +19,92 @@ from mahavishnu.core.verification import (
     is_verification_enabled,
     verify_proposal,
 )
+from mahavishnu.mcp.tools.clone_claims import (
+    ConcurrentDAGError,
+    MCPStateBackendUnavailable,
+    cluster_state_claim,
+    release_cluster_claim,
+)
+from mahavishnu.workflows.clone_refactor_workflow import run_clone_refactor_dag
 
 if TYPE_CHECKING:
     from mahavishnu.core.app import MahavishnuApp
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# UUID7 guard (Change A) — requires Python 3.14+ for `from uuid import uuid7`.
+# Mirrors `pyproject.toml [requires-python] = ">=3.14"`.
+# ---------------------------------------------------------------------------
+
+if sys.version_info >= (3, 14):
+    from uuid import uuid7 as _new_uuid7
+else:
+    def _new_uuid7() -> Any:
+        raise RuntimeError(
+            "clone_refactor_group requires Python 3.14+ for uuid7(). "
+            "Upgrade the interpreter or pin pyproject.toml [requires-python]."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Module-level MCPStateBackend singleton (Change B).
+#
+# Contract: every code path in clone_tools.py, clone_claims.py, and the
+# run_clone_refactor_dag @flow MUST see the same MCPStateBackend instance so
+# circuit-breaker state stays consistent (REQ-CLONE-014 reliability, per
+# spec §6.1 v4 MAJOR-fix M2). Tests monkeypatch this module attribute;
+# production rebuilds it via register_clone_tools() → _build_mcp_backend().
+#
+# CE-B2 fix: `app.mcp_url` (resolved at core/app.py:248 from
+# health.dependencies.mcp.{host,port}) is the canonical source for the URL.
+# `MCPStatePersistenceConfig` has extra="forbid" — only the three timing
+# fields are valid in settings.
+# ---------------------------------------------------------------------------
+
+def _build_mcp_backend(app: Any | None = None) -> MCPStateBackend:
+    """Build the module-level MCPStateBackend singleton.
+
+    Used at module load (with `app=None`) for the default singleton, and
+    by register_clone_tools() (with `app`) for production reconfiguration.
+    Tests monkeypatch the resulting `mcp_backend` module attribute.
+    """
+    url = getattr(app, "mcp_url", "http://localhost:8683") if app is not None else "http://localhost:8683"
+    settings = getattr(app, "settings", None) if app is not None else None
+    mcp_state_cfg = getattr(settings, "mcp_state", None) if settings is not None else None
+    return MCPStateBackend(
+        base_url=url,
+        config=MCPStateConfig(
+            enabled=getattr(mcp_state_cfg, "enabled", True) if mcp_state_cfg else True,
+            flush_interval_seconds=getattr(mcp_state_cfg, "flush_interval_seconds", 60) if mcp_state_cfg else 60,
+            max_routing_buffer_age_seconds=(
+                getattr(mcp_state_cfg, "max_routing_buffer_age_seconds", 3600)
+                if mcp_state_cfg else 3600
+            ),
+        ),
+    )
+
+
+mcp_backend: MCPStateBackend = _build_mcp_backend()
+
+
+# ---------------------------------------------------------------------------
+# cluster_id normalization regex (Change C) — REQ-CLONE-015
+# ---------------------------------------------------------------------------
+
+CLUSTER_ID_RE = re.compile(r"^[a-z0-9-]{3,64}$")
+
+
+# ---------------------------------------------------------------------------
+# Strong reference for fire-and-forget tasks (SF-B2).
+#
+# `asyncio.create_task()` returns a task that the event loop holds a WEAK
+# reference to. Without a strong reference held in module scope, the task
+# may be garbage-collected mid-execution before the @flow body runs.
+# ---------------------------------------------------------------------------
+
+_background_tasks: set[asyncio.Task] = set()
 
 
 class CloneTools:
@@ -161,7 +246,11 @@ class CloneTools:
     async def clone_refactor_group(
         self,
         cluster_id: str,
-        extraction_target: str | None = None,
+        target_repo: str,
+        consumer_repos: list[str],
+        extracted_symbol: str,
+        extraction_diff: str,
+        consuming_diffs: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Trigger a cross-repo DAG workflow for a detected clone cluster.
 
@@ -169,9 +258,10 @@ class CloneTools:
         Returns a job-id immediately. The DAG runs asynchronously (C-NEW-5).
 
         DAG steps:
-            1. create_extraction_pr → PR to oneiric or new package repo
-            2. wait_for_merge → polls PR status until merged
-            3. create_consuming_prs (parallel) → PRs removing duplicate in each consumer
+            1. detect_cluster_members → target repo + consumers
+            2. write_canonical_symbol → commit extraction in target repo
+            3. write_replacement_diff (parallel) → commit removal in each consumer
+            4. persist_dag_state → final workflow/v1/{refactor_job_id} record
 
         Phase 1 (Task 1.3): runs ``verify_proposal`` BEFORE returning the
         job-id. The serialized ``VerificationResult`` is included as the
@@ -180,55 +270,161 @@ class CloneTools:
         the ``decision`` field flips from ``"propose_approve"`` to
         ``"blocked_by_verification"``.
 
+        REQ-CLONE-007: refactor_job_id is UUIDv7 (time-sortable).
+        REQ-CLONE-009: cluster_state_claim dedups concurrent invocations.
+        REQ-CLONE-015: cluster_id must match ^[a-z0-9-]{3,64}$.
+        REQ-CLONE-016: cancellation must mark terminal state.
+
         Args:
             cluster_id: Clone cluster ID from clone_detect_ecosystem results.
-            extraction_target: "oneiric" | "new_package" | None (auto-classify).
+                Validated against ^[a-z0-9-]{3,64}$ (REQ-CLONE-015).
+            target_repo: Filesystem path of the repo that owns the canonical symbol.
+            consumer_repos: Filesystem paths of repos that import the symbol.
+            extracted_symbol: Fully-qualified symbol being extracted.
+            extraction_diff: Unified diff to apply to target_repo (canonical write).
+            consuming_diffs: Optional per-consumer diffs. Missing entry → consumer
+                marked failed with MissingConsumingDiff.
 
         Returns:
             {"refactor_job_id": str, "status": "queued", "cluster_id": str,
              "decision": "propose_approve" | "blocked_by_verification",
              "verification": dict (serialized VerificationResult)}
+
+        Raises:
+            ValueError: invalid_cluster_id or null-byte input (REQ-CLONE-015).
+            ConcurrentDAGError: another DAG already holds the cluster claim (REQ-CLONE-009).
+            MCPStateBackendUnavailable: substrate circuit is open (REQ-CLONE-014).
+            asyncio.CancelledError: client cancelled mid-flight (REQ-CLONE-016).
         """
-        job_id = str(uuid4())
+        # Change C: cluster_id normalization (REQ-CLONE-015)
+        if not CLUSTER_ID_RE.match(cluster_id):
+            raise ValueError(f"invalid_cluster_id: {cluster_id!r}")
+
+        # SF-m4: reject null bytes in ingress args
+        for arg_name, arg_val in (
+            ("cluster_id", cluster_id),
+            ("target_repo", target_repo),
+            ("extracted_symbol", extracted_symbol),
+        ):
+            if "\x00" in arg_val:
+                raise ValueError(f"invalid_{arg_name}: contains null byte")
+
+        # Change D: UUID7 (REQ-CLONE-007) — time-sortable, lexicographic
+        refactor_job_id = str(_new_uuid7())
         logger.info(
             "clone_refactor_group: queued job=%s cluster=%s target=%s",
-            job_id,
+            refactor_job_id,
             cluster_id,
-            extraction_target or "auto",
+            target_repo,
         )
-        proposal = Proposal(
-            proposal_id=job_id,
-            proposal_type="clone_refactor",
-            subject=cluster_id,
-            details={
-                "extraction_target": extraction_target or "auto",
-                "refactor_job_id": job_id,
-            },
-        )
-        verification_result = await verify_proposal(proposal)
-        if self._store is not None:
-            verification_result = await self._store.persist(verification_result)
-        verification_payload = verification_result.model_dump(mode="json")
 
-        decision = "propose_approve"
-        if is_verification_enabled(self.app) and verification_result.consensus == Consensus.REJECT:
-            decision = "blocked_by_verification"
-            logger.info(
-                "clone_refactor_group: decision=blocked_by_verification "
-                "job=%s cluster=%s consensus=%s",
-                job_id,
-                cluster_id,
-                verification_result.consensus.value,
+        # Change E: claim FIRST, then verify, then either DAG or REJECT-release.
+        # Acquiring before verify_proposal ensures REJECT and cancellation
+        # both flow through the same claim-release path (REQ-CLONE-001 +
+        # REQ-CLONE-016 semantics). The cost is briefly holding the claim
+        # while we run the refuter (sub-second), which is acceptable.
+        # C-2/SF-B1: wrap the entire post-claim section in one try/except
+        # that releases the claim on ANY error/cancellation.
+        claim_acquired = False
+        try:
+            # REQ-CLONE-009: cluster-claim dedup
+            await cluster_state_claim(mcp_backend, cluster_id, refactor_job_id)
+            claim_acquired = True
+
+            # Phase 1 (Task 1.3): verify_proposal before spawning DAG
+            proposal = Proposal(
+                proposal_id=refactor_job_id,
+                proposal_type="clone_refactor",
+                subject=cluster_id,
+                details={
+                    "target_repo": target_repo,
+                    "extracted_symbol": extracted_symbol,
+                    "refactor_job_id": refactor_job_id,
+                },
+            )
+            verification_result = await verify_proposal(proposal)
+            if self._store is not None:
+                verification_result = await self._store.persist(verification_result)
+            verification_payload = verification_result.model_dump(mode="json")
+
+            decision = "propose_approve"
+            if (
+                is_verification_enabled(self.app)
+                and verification_result.consensus == Consensus.REJECT
+            ):
+                # REQ-CLONE-001: REJECT blocks DAG. Release claim, return early.
+                decision = "blocked_by_verification"
+                logger.info(
+                    "clone_refactor_group: decision=blocked_by_verification "
+                    "job=%s cluster=%s consensus=%s",
+                    refactor_job_id,
+                    cluster_id,
+                    verification_result.consensus.value,
+                )
+                await release_cluster_claim(mcp_backend, cluster_id)
+                claim_acquired = False
+                return {
+                    "refactor_job_id": refactor_job_id,
+                    "status": "queued",
+                    "cluster_id": cluster_id,
+                    "decision": decision,
+                    "verification": verification_payload,
+                }
+
+            # REQ-CLONE-007: initial DAG state write
+            await mcp_backend.put(
+                mcp_backend.dag_key(refactor_job_id),
+                {
+                    "schema_version": 2,
+                    "refactor_job_id": refactor_job_id,
+                    "cluster_id": cluster_id,
+                    "status": "queued",
+                },
             )
 
-        return {
-            "refactor_job_id": job_id,
-            "status": "queued",
-            "cluster_id": cluster_id,
-            "extraction_target": extraction_target or "auto",
-            "decision": decision,
-            "verification": verification_payload,
-        }
+            # Fire DAG (SF-B2: strong reference + add_done_callback)
+            task_obj = asyncio.create_task(
+                run_clone_refactor_dag(
+                    refactor_job_id=refactor_job_id,
+                    cluster_id=cluster_id,
+                    mcp_backend=mcp_backend,
+                    target_repo=target_repo,
+                    consumer_repos=consumer_repos,
+                    extracted_symbol=extracted_symbol,
+                    extraction_diff=extraction_diff,
+                    consuming_diffs=consuming_diffs,
+                ),
+                name=f"clone-refactor-{refactor_job_id}",
+            )
+            _background_tasks.add(task_obj)
+            task_obj.add_done_callback(_background_tasks.discard)
+
+            return {
+                "refactor_job_id": refactor_job_id,
+                "status": "queued",
+                "cluster_id": cluster_id,
+                "decision": decision,
+                "verification": verification_payload,
+            }
+
+        except asyncio.CancelledError:
+            # SF-B1: cancellation anywhere after claim acquisition; release.
+            if claim_acquired:
+                await release_cluster_claim(mcp_backend, cluster_id)
+            raise
+        except ConcurrentDAGError:
+            # Claim rejected by cluster_state_claim (sentinel owned by another job);
+            # we never acquired, so no release.
+            raise
+        except MCPStateBackendUnavailable:
+            # SF-M6: surface to MCP client as 503. Cluster_claim raised before
+            # the sentinel was overwritten; no claim to release.
+            raise
+        except Exception:
+            # Any other exception: release claim (if acquired) before re-raising.
+            if claim_acquired:
+                await release_cluster_claim(mcp_backend, cluster_id)
+            raise
 
     async def get_verification_result(self, proposal_id: str) -> dict[str, Any]:
         """Return the stored ``VerificationResult`` for a given ``proposal_id``.
@@ -261,30 +457,36 @@ class CloneTools:
 
     async def clone_refactor_status(
         self,
-        limit: int = 50,
-    ) -> dict[str, Any]:
-        """List open clone clusters, their confidence tier, and PR status.
+        limit: int = 10,
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """List in-flight DAG states for clone-refactor jobs.
+
+        Reads from the canonical ``workflow/v1/*`` prefix via the module-level
+        ``mcp_backend`` singleton (consistent circuit-breaker state). Sorted by
+        UUIDv7 lexicographic order (UUIDv7 is time-sortable → lexicographic
+        equals chronological). Most recent first.
 
         Args:
-            limit: Maximum number of clusters to return.
+            limit: Maximum number of records to return.
 
         Returns:
-            {"clusters": list, "total": int}
+            ``list[tuple[str, dict[str, Any]]]`` — list of ``(key, value)``
+            pairs. Empty list on substrate failure (silently, since this is
+            an operator-status query, not a critical-path write).
         """
         logger.info("clone_refactor_status: limit=%d", limit)
+        # CR-B2: list[tuple[str, dict]] (was `list[dict]`). MCPStateBackend
+        # .list_prefix() returns list[tuple[str, dict]] per the CR-m6 test
+        # in tests/unit/test_mcp_state_backend.py::TestListPrefixReturnShape.
+        # CA-B2: list_prefix(self, prefix) does NOT accept a `limit` param;
+        # slice in Python.
         try:
-            mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
-            )
-            from mahavishnu.core.state_backends.mcp import MCPStateBackend
-
-            client = MCPStateBackend(base_url=mcp_url)
-            records = await client.list_prefix("clone-handled/")
-            clusters = records[:limit] if records else []
-            return {"clusters": clusters, "total": len(records) if records else 0}
-        except Exception as exc:
-            logger.exception("clone_refactor_status failed")
-            return {"clusters": [], "total": 0, "error": str(exc)}
+            records = await mcp_backend.list_prefix("workflow/v1/")
+            # Sort by UUID7 lexicographically (newest first).
+            return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("clone_refactor_status: list_prefix failed (%s); returning []", exc)
+            return []
 
 
 def register_clone_tools(
@@ -308,10 +510,17 @@ def register_clone_tools(
     - clone_detect_ecosystem: Fan-out pyscn clone detection across all repos
     - clone_refactor_group: Trigger cross-repo refactor DAG for a clone cluster
       (runs ``verify_proposal`` before returning the job-id per Task 1.3)
-    - clone_refactor_status: List open clusters, tiers, and PR status
+    - clone_refactor_status: List in-flight DAG records (sorted by UUID7)
     - get_verification_result: Fetch a stored ``VerificationResult`` by
       proposal_id (per Task 1.5)
     """
+    # CE-B2: reconfigure the module-level `mcp_backend` singleton using
+    # `app.mcp_url` so the production substrate URL wins over the default.
+    # Tests bypass this path (they never call register_clone_tools) and
+    # monkeypatch the `mcp_backend` module attribute instead.
+    global mcp_backend
+    mcp_backend = _build_mcp_backend(app)
+
     tools = CloneTools(app, store=store)
 
     @mcp.tool()
@@ -341,7 +550,11 @@ def register_clone_tools(
     @mcp.tool()
     async def clone_refactor_group(
         cluster_id: str,
-        extraction_target: str | None = None,
+        target_repo: str,
+        consumer_repos: list[str],
+        extracted_symbol: str,
+        extraction_diff: str,
+        consuming_diffs: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Trigger cross-repo clone refactor DAG; returns job-id immediately.
 
@@ -349,16 +562,24 @@ def register_clone_tools(
         A diverse-refuter ``verify_proposal`` runs before the job-id is
         returned; the response carries a ``verification`` field with refuter
         verdicts, aggregated consensus, and a ``persisted`` flag.
+
+        REQ-CLONE-007: refactor_job_id is UUIDv7.
+        REQ-CLONE-009: cluster_state_claim dedups concurrent calls.
+        REQ-CLONE-015: cluster_id must match ^[a-z0-9-]{3,64}$.
         """
         return await tools.clone_refactor_group(
             cluster_id=cluster_id,
-            extraction_target=extraction_target,
+            target_repo=target_repo,
+            consumer_repos=consumer_repos,
+            extracted_symbol=extracted_symbol,
+            extraction_diff=extraction_diff,
+            consuming_diffs=consuming_diffs,
         )
 
     @mcp.tool()
     async def clone_refactor_status(
-        limit: int = 50,
-    ) -> dict[str, Any]:
+        limit: int = 10,
+    ) -> list[tuple[str, dict[str, Any]]]:
         """List open clone clusters with confidence tier and PR status."""
         return await tools.clone_refactor_status(limit=limit)
 
