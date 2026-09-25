@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import warnings
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -102,6 +103,20 @@ def mock_backend() -> AsyncMock:
     backend.delete = AsyncMock()
     backend.get = AsyncMock(return_value=None)
     return backend
+
+
+@pytest.fixture(autouse=True)
+def _suppress_prefect_asyncmock_runtime_warnings() -> None:
+    """Suppress RuntimeWarnings from Prefect serializing AsyncMock parameters.
+
+    Prefect's `Flow.serialize_parameters` calls `fastapi.encoders.jsonable_encoder`
+    on each parameter. AsyncMock attributes return coroutines that are never
+    awaited, producing ~780 RuntimeWarnings per test invocation of the @flow.
+    Per-test scope; no global side effects. Production code path is unchanged.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        yield
 
 
 class TestRunCloneRefactorDAG:
@@ -409,3 +424,48 @@ class TestRunCloneRefactorDAG:
             ["git", "-C", str(consumer), "status", "--porcelain"], capture_output=True, text=True
         )
         assert status.stdout == ""
+
+    @pytest.mark.req(["REQ-CLONE-016"])
+    async def test_dag_cancellation_persists_terminal_state(
+        self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
+    ) -> None:
+        # REQ-CLONE-016: cancellation must persist terminal "cancelled" state
+        # before re-raising CancelledError. Wrap run_clone_refactor_dag with
+        # asyncio.wait_for(timeout=0.5) to trigger CancelledError mid-flow;
+        # the @flow's `except asyncio.CancelledError` arm must call
+        # _write_terminal_cancelled before propagating.
+
+        async def slow_detect(*_args, **_kwargs):
+            # Sleep long enough that asyncio.wait_for's timeout fires first.
+            await asyncio.sleep(5)
+            return [{"repo": str(target_repo), "match_score": 1.0}]
+
+        with patch(
+            "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
+            new=AsyncMock(side_effect=slow_detect),
+        ):
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    run_clone_refactor_dag(
+                        refactor_job_id="job-010",
+                        cluster_id="cluster-1",
+                        mcp_backend=mock_backend,
+                        target_repo=str(target_repo),
+                        consumer_repos=[str(consumer_repo)],
+                        extracted_symbol="Foo",
+                        extraction_diff=EXTRACTION_DIFF_SIMPLE,
+                    ),
+                    timeout=0.5,
+                )
+
+        # REQ-CLONE-016: terminal "cancelled" was written before the
+        # CancelledError was re-raised (and converted by wait_for to TimeoutError).
+        cancelled_calls = [
+            c
+            for c in mock_backend.try_put_with_log_context.call_args_list
+            if c.kwargs.get("log_context", {}).get("step_name") == "cancelled"
+        ]
+        assert len(cancelled_calls) == 1
+        # The cancelled outcome payload includes a timestamp.
+        payload = cancelled_calls[0].args[1]
+        assert "cancelled_at" in payload
