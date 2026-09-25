@@ -1,11 +1,11 @@
 ---
-revision: v2
+revision: v3
 plan_status: ready-for-review
 last_reviewed: 2026-09-25
-prior-revision: v1 (initial draft, applied multi-lens review feedback)
+prior-revision: v2 (review-pass feedback applied)
 ---
 
-# Clone-Refactor Wire-Up Implementation Plan (v2)
+# Clone-Refactor Wire-Up Implementation Plan (v3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -119,6 +119,14 @@ If both gates passed and no config changes were required, no commit needed. (The
 - `MCPStateBackend.in_flight_key(cluster_id: str) -> str` returning `f"cluster/v1/{cluster_id}/in_flight"`
 - `MCPStateBackend.try_put_with_log_context(key, value, *, log_context: dict | None = None) -> bool` returning `True` on success, `False` on failure; never raises
 - `MCPStateBackendError(key: str, reason: str, *, log_context: dict | None = None)` — exported but `try_put_with_log_context` does NOT raise it (it logs and returns False). The class exists for callers that want to raise explicitly.
+- `MCPStateBackendUnavailable(key: str, reason: str)` — defined here per TD-m9 (architectural consistency with `MCPStateBackendError`); re-exported from `clone_claims.py`
+
+**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+- **Triggered from**: `clone_refactor_workflow.py` (writes via `dag_key()`, `cluster_key()`, `in_flight_key()`); `clone_refactor_status` reads via `dag_key()`; per-step writes via `try_put_with_log_context` (REQ-CLONE-014)
+- **Returns to / updates**: MCP key strings (no state mutation by the constructors); substrate writes via `try_put_with_log_context` with structured-log fallback
+- **Demonstrable by**: `pytest tests/unit/test_mcp_state_backend.py` — every existing test continues to pass; new tests assert `dag_key("abc") == "workflow/v1/abc"`, `cluster_key("cluster-1") == "cluster/v1/cluster-1"`, `in_flight_key("cluster-1") == "cluster/v1/cluster-1/in_flight"`, `try_put_with_log_context(...)` returns False + emits the expected log line when the substrate is unavailable, `list_prefix` returns `list[tuple[str, dict]]` (CR-B2 + CR-m6)
+- **Rollback signal**: N/A (pure functions; no side effects for the key constructors; the substrate method's structured log is its own audit trail)
+- **Observability added**: the structured `clone_refactor.substrate_silent_write` log line per substrate-failed write, carrying the caller's `log_context` dict verbatim
 
 ### Step 1: Write failing tests for new key constructors
 
@@ -169,6 +177,7 @@ class TestKeyConstructors:
         assert MCPStateBackend.pool_key("pool-1") == "pool/v1/pool-1"
 
 
+@pytest.mark.req(["REQ-CLONE-014"])  # CR-M1: REQ traceability
 class TestMCPStateBackendError:
     """§6.4: MCPStateBackendError exception class for explicit-failure callers."""
 
@@ -194,6 +203,7 @@ class TestMCPStateBackendError:
         assert "circuit_open" in str(exc)
 
 
+@pytest.mark.req(["REQ-CLONE-014"])  # CR-M1: REQ traceability
 class TestTryPutWithLogContext:
     """REQ-CLONE-014: try_put_with_log_context returns bool, never raises, logs on failure."""
 
@@ -313,6 +323,31 @@ class TestTryPutWithLogContext:
             # 4th call: circuit is open
             result = await backend.try_put_with_log_context("k", {"v": 1})
         assert result is False
+
+
+class TestListPrefixReturnShape:
+    """CR-m6: capture MCPStateBackend.list_prefix return type BEFORE Task 6
+    depends on it. The plan assumes `list[tuple[str, dict]]`; if the actual
+    return type differs, Task 6 Change F's `sorted(..., key=lambda kv: kv[0])`
+    will fail at runtime. Run this test FIRST."""
+
+    async def test_list_prefix_returns_list_of_key_value_tuples(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        backend = MCPStateBackend(base_url="http://x")
+
+        async def fake_list(prefix: str):
+            # Simulate two records
+            return [("workflow/v1/aaa", {"status": "queued"}),
+                    ("workflow/v1/bbb", {"status": "completed"})]
+
+        monkeypatch.setattr(backend._client, "list", fake_list)
+        result = await backend.list_prefix("workflow/v1/")
+        assert isinstance(result, list)
+        assert len(result) == 2
+        key, value = result[0]
+        assert isinstance(key, str)
+        assert isinstance(value, dict)
 ```
 
 ### Step 2: Run tests to verify they fail
@@ -385,9 +420,56 @@ class MCPStateBackendError(Exception):
         self.key = key
         self.reason = reason
         self.log_context = log_context or {}
+
+
+# TD-m9: MCPStateBackendUnavailable is defined here (next to its peer
+# MCPStateBackendError) for architectural consistency. Re-exported from
+# clone_claims.py for the wire-up code path.
+class MCPStateBackendUnavailable(Exception):
+    """Raised when the substrate is unreachable AND the caller has opted into
+    fail-loud semantics.
+
+    SF-B6: cluster_state_claim raises this when the circuit is open, rather
+    than silently returning True (which would allow two cross-process DAGs to
+    race for the same cluster claim).
+
+    Implements: REQ-CLONE-014
+    """
+
+    def __init__(self, key: str, reason: str) -> None:
+        super().__init__(f"MCPStateBackend unavailable: {key} ({reason})")
+        self.key = key
+        self.reason = reason
 ```
 
-### Step 4: Add `try_put_with_log_context` method to `MCPStateBackend`
+### Step 4: Add module-level `_RESERVED_LOGRECORD_ATTRS` and `_safe_extra` to `state_backends/mcp.py`
+
+CR-m2/TD-m7 fix: hoist the reserved-attr frozenset and the safe-extra filter to module level (not inside `try_put_with_log_context`). They're pure (don't capture `self`), recreated on every call is wasted work, and harder to unit-test in isolation.
+
+Edit `mahavishnu/core/state_backends/mcp.py`. Insert AFTER `_MCP_RECOVERY_SECONDS = 30.0` (module-level, OUTSIDE the class):
+
+```python
+# SF-M2: reserved LogRecord attrs that would collide with logger.warning(extra=...)
+_RESERVED_LOGRECORD_ATTRS = frozenset({
+    "name", "msg", "args", "levelname", "levelno", "pathname",
+    "filename", "module", "exc_info", "exc_text", "stack_info",
+    "lineno", "funcName", "created", "msecs", "relativeCreated",
+    "thread", "threadName", "processName", "process", "message",
+    "asctime", "key",  # 'key' is reserved in some impls; keep for safety
+})
+
+
+def _safe_extra(ctx: dict[str, Any] | None) -> dict[str, Any]:
+    """Filter log_context against reserved LogRecord attrs.
+
+    Implements: REQ-CLONE-014 (SF-M2 hardening)
+    """
+    if not ctx:
+        return {}
+    return {k: v for k, v in ctx.items() if k not in _RESERVED_LOGRECORD_ATTRS}
+```
+
+### Step 5: Add `try_put_with_log_context` method to `MCPStateBackend`
 
 Edit `mahavishnu/core/state_backends/mcp.py`. Insert AFTER the existing `put()` method (line 117 ends `put()`):
 
@@ -415,21 +497,9 @@ Edit `mahavishnu/core/state_backends/mcp.py`. Insert AFTER the existing `put()` 
         SF-M2 hardening: log_context is filtered against the LogRecord
         reserved-attribute set so caller-supplied keys like {"message": "x"}
         do not raise KeyError/AttributeError out of logger.warning().
+        CR-m1: _record_failure failures are logged at WARNING (not DEBUG)
+        per CLAUDE.md style — operators running at INFO must see this.
         """
-        # SF-M2: reserved LogRecord attrs that would collide with logger.warning(extra=...)
-        _RESERVED_LOGRECORD_ATTRS = frozenset({
-            "name", "msg", "args", "levelname", "levelno", "pathname",
-            "filename", "module", "exc_info", "exc_text", "stack_info",
-            "lineno", "funcName", "created", "msecs", "relativeCreated",
-            "thread", "threadName", "processName", "process", "message",
-            "asctime", "key",  # 'key' is reserved in some impls; keep for safety
-        })
-
-        def _safe_extra(ctx: dict[str, Any] | None) -> dict[str, Any]:
-            if not ctx:
-                return {}
-            return {k: v for k, v in ctx.items() if k not in _RESERVED_LOGRECORD_ATTRS}
-
         if not self._config.enabled or self._circuit_is_open():
             logger.warning(
                 "clone_refactor.substrate_silent_write",
@@ -441,12 +511,14 @@ Edit `mahavishnu/core/state_backends/mcp.py`. Insert AFTER the existing `put()` 
             self._record_success()
             return True
         except Exception as exc:  # noqa: BLE001 - boundary handler
-            # SF-M1: wrap _record_failure() so a metrics-sink failure cannot
-            # suppress the structured log line (REQ-CLONE-014 contract).
+            # SF-M1 + CR-m1: wrap _record_failure() in try/except so a
+            # metrics-sink failure cannot suppress the structured log
+            # line. Log the _record_failure failure at WARNING (not DEBUG)
+            # per CLAUDE.md style.
             try:
                 self._record_failure()
             except Exception as record_exc:  # noqa: BLE001
-                logger.debug(
+                logger.warning(
                     "MCPStateBackend._record_failure failed; continuing",
                     exc_info=record_exc,
                 )
@@ -461,19 +533,19 @@ Edit `mahavishnu/core/state_backends/mcp.py`. Insert AFTER the existing `put()` 
             return False
 ```
 
-### Step 5: Export new symbols from `state_backends/__init__.py`
+### Step 6: Export new symbols from `state_backends/__init__.py`
 
 Edit `mahavishnu/core/state_backends/__init__.py`. Add to the import list / `__all__`:
 
 ```python
-from .mcp import MCPStateBackend, MCPStateBackendError, MCPStateConfig
+from .mcp import MCPStateBackend, MCPStateBackendError, MCPStateConfig, MCPStateBackendUnavailable
 
 __all__ = ["MCPStateBackend", "MCPStateBackendError", "MCPStateConfig", ...]
 ```
 
 (Adjust to match the existing export pattern in the file. Read the file first if structure differs.)
 
-### Step 6: Run tests to verify they pass
+### Step 7: Run tests to verify they pass
 
 Run:
 ```bash
@@ -483,7 +555,7 @@ cd /Users/les/Projects/mahavishnu
 
 **Expected:** all green, including the 3 new test classes.
 
-### Step 7: Verify §6.10 audit_orphans.py scope (deferred from Task 1)
+### Step 8: Verify §6.10 audit_orphans.py scope (deferred from Task 1)
 
 This is the verification deferred from Task 1 Step 3. Run after Task 2's symbols exist:
 
@@ -493,9 +565,9 @@ cd /Users/les/Projects/mahavishnu
 .venv/bin/python scripts/audit_orphans.py --dry-run 2>&1 | grep -E "dag_key|cluster_key|in_flight_key|MCPStateBackendError|try_put_with_log_context"
 ```
 
-**Expected:** zero hits (new symbols will be referenced by `clone_refactor_workflow.py` + `clone_tools.py` in later tasks). If any are flagged as orphan under `--dry-run`, run the audit with `--include-tests` flag (verify flag exists) or extend `DECORATOR_REGISTRATION_PATTERN` to include `@flow`/`@task` (spec §6.10). Commit the extension with the standard memory conventions if changed.
+**Expected (CR-M3 fix):** the new symbols MAY be flagged as orphans at this commit point because their callers (`clone_refactor_workflow.py` Task 5, `clone_tools.py` Task 6) don't exist yet. This is expected — the audit's purpose is to flag *stuck* orphans (defined but never called across the entire codebase), not orphans awaiting later-task callers. Document this in the commit message and proceed. If after Task 6 the symbols are STILL flagged, that's the actionable signal — extend `DECORATOR_REGISTRATION_PATTERN` or add the symbols to the audit's allowlist at that point.
 
-### Step 8: Commit
+### Step 9: Commit
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -519,8 +591,16 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 **Interfaces (consumed by Task 6):**
 - `ConcurrentDAGError(existing_job_id: str)` — raised by `cluster_state_claim` when claim exists with different `refactor_job_id`
-- `cluster_state_claim(mcp_backend: MCPStateBackend, cluster_id: str, refactor_job_id: str) -> bool` — acquires in-process lock + writes `cluster/v1/{cluster_id}/in_flight` sentinel; returns `True` if claim acquired, raises `ConcurrentDAGError` if existing in-flight job_id differs
+- `cluster_state_claim(mcp_backend: MCPStateBackend, cluster_id: str, refactor_job_id: str) -> None` — TD-m6: returns `None` on success (was `-> bool`). Acquires in-process lock + writes `cluster/v1/{cluster_id}/in_flight` sentinel; raises `ConcurrentDAGError` if existing in-flight job_id differs, `MCPStateBackendUnavailable` if substrate circuit is open (SF-B6)
 - `release_cluster_claim(mcp_backend: MCPStateBackend, cluster_id: str) -> None` — deletes the sentinel
+- `MCPStateBackendUnavailable(key: str, reason: str)` — TD-m9: actually defined in `state_backends/mcp.py` (architectural consistency with peer `MCPStateBackendError`); re-exported here
+
+**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+- **Triggered from**: `clone_tools.py::CloneTools.clone_refactor_group` calls `cluster_state_claim` after `verify_proposal` succeeds; `@flow` body in `clone_refactor_workflow.py` calls `release_cluster_claim` in finally
+- **Returns to / updates**: `cluster/v1/{cluster_id}/in_flight` MCP key (claim sentinel); raises `ConcurrentDAGError` on conflict, `MCPStateBackendUnavailable` on circuit-open
+- **Demonstrable by**: `pytest tests/unit/clone/test_clone_claims.py` — 5 tests covering first-claim, idempotent re-claim, different-job-id rejection, in-process serialization, release semantics
+- **Rollback signal**: `ConcurrentDAGError(existing_job_id=...)` propagates to MCP client as 409; `MCPStateBackendUnavailable` propagates as 503
+- **Observability added**: structured warning `cluster_claim: stale sentinel at <key>, overwriting` (SF-M4) when None refactor_job_id encountered
 
 ### Step 1: Write failing tests
 
@@ -555,6 +635,7 @@ def mock_backend() -> AsyncMock:
     return backend
 
 
+@pytest.mark.req(["REQ-CLONE-009"])  # CR-M1: REQ traceability
 class TestClusterStateClaim:
     """REQ-CLONE-009: cluster_id is locked across concurrent invocations."""
 
@@ -566,21 +647,22 @@ class TestClusterStateClaim:
         mock_backend.get = fake_get
         mock_backend.put = AsyncMock()
         result = await cluster_state_claim(mock_backend, "cluster-1", "job-aaa")
-        assert result is True
+        # TD-m6: cluster_state_claim returns None (was `-> bool`); success = no exception
+        assert result is None
         mock_backend.put.assert_called_once()
         call = mock_backend.put.call_args
         assert call.args[0] == "cluster/v1/cluster-1/in_flight"
         assert call.args[1]["refactor_job_id"] == "job-aaa"
 
     async def test_existing_same_job_id_succeeds(self, mock_backend: AsyncMock) -> None:
-        # Idempotent: same caller re-claiming their own job → returns True.
+        # Idempotent: same caller re-claiming their own job → returns None.
         async def fake_get(key: str):
             return {"refactor_job_id": "job-aaa"}
 
         mock_backend.get = fake_get
         mock_backend.put = AsyncMock()
         result = await cluster_state_claim(mock_backend, "cluster-1", "job-aaa")
-        assert result is True
+        assert result is None
         # No new put — claim already held by same job
         mock_backend.put.assert_not_called()
 
@@ -596,7 +678,7 @@ class TestClusterStateClaim:
 
     async def test_concurrent_claim_serialized_within_process(self) -> None:
         # In-process lock: two concurrent claims for the same cluster_id —
-        # one acquires, the other sees the sentinel and raises.
+        # one acquires (returns None), the other sees the sentinel and raises.
         import asyncio
 
         backend = AsyncMock()
@@ -622,8 +704,8 @@ class TestClusterStateClaim:
             cluster_state_claim(backend, "cluster-1", "job-bbb"),
             return_exceptions=True,
         )
-        # Exactly one succeeded, one raised
-        successes = [r for r in results if r is True]
+        # Exactly one succeeded (returns None), one raised
+        successes = [r for r in results if r is None]
         errors = [r for r in results if isinstance(r, ConcurrentDAGError)]
         assert len(successes) == 1
         assert len(errors) == 1
@@ -694,18 +776,10 @@ class ConcurrentDAGError(Exception):
         self.existing_job_id = existing_job_id
 
 
-class MCPStateBackendUnavailable(Exception):
-    """Raised by cluster_state_claim when the substrate is unreachable AND the
-    claim cannot be safely written.
-
-    SF-B6: rather than silently returning True (which would allow two
-    cross-process DAGs to acquire the same cluster's claim), we fail loud.
-    Cross-process dedup is explicitly out of scope per spec §3 Non-Goals.
-    """
-    def __init__(self, key: str, reason: str) -> None:
-        super().__init__(f"MCPStateBackend unavailable: {key} ({reason})")
-        self.key = key
-        self.reason = reason
+# TD-m9: MCPStateBackendUnavailable is defined in state_backends/mcp.py
+# (alongside its peer MCPStateBackendError). Re-exported here for backward
+# compat with Task 6's import path.
+from mahavishnu.core.state_backends.mcp import MCPStateBackendUnavailable  # noqa: E402, F401
 
 
 # In-process locks keyed by cluster_id. Cross-process dedup is out of scope
@@ -723,8 +797,12 @@ async def cluster_state_claim(
     mcp_backend: MCPStateBackend,
     cluster_id: str,
     refactor_job_id: str,
-) -> bool:
-    """Acquire cluster-claim. Returns True if acquired.
+) -> None:
+    """Acquire cluster-claim. Returns on success.
+
+    TD-m6: return type is `None` (was `-> bool`). Every non-success path
+    raises; the only `return True` paths were dead-code. Callers in
+    `clone_tools.py` already discard the return value.
 
     Raises:
         ConcurrentDAGError: another DAG holds the claim with a different
@@ -756,14 +834,14 @@ async def cluster_state_claim(
                 )
             elif existing_job_id == refactor_job_id:
                 # Idempotent: same caller re-claiming their own job
-                return True
+                return
             else:
                 raise ConcurrentDAGError(existing_job_id=existing_job_id)
         await mcp_backend.put(
             sentinel_key,
             {"refactor_job_id": refactor_job_id, "claimed_at": asyncio.get_event_loop().time()},
         )
-        return True
+        return
 
 
 async def release_cluster_claim(
@@ -822,14 +900,23 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - `GitApplyConflict(diff_offset: int, conflict_marker: str, stderr: str)` — never retried (REQ-CLONE-013)
 - `GitCommitFailed(stderr: str, exit_code: int)` — base class
 - `GitCommitTransient(reason: str, stderr: str)` — retried (REQ-CLONE-013)
-- `GitCommitPermanent(reason: str, stderr: str, exit_code: int)` — propagated (REQ-CLONE-013)
-- `git_apply(repo_path: Path, diff: str) -> None` — passes diff via stdin (NEVER argv); raises `GitApplyConflict` on conflict
-- `git_commit(repo_path: Path, message: str) -> str` — returns 40-char hex SHA; raises `GitCommitTransient` or `GitCommitPermanent` per stderr pattern (REQ-CLONE-013)
+- `GitCommandTimeout(timeout_seconds: float, cmd: list[str])` — NEW (SF-B5); subclass of `GitCommitTransient`, raised by `_run_git` on subprocess timeout
+- `GitCommitPermanent(reason: str, stderr: str, exit_code: int)` — propagated (REQ-CLONE-013); negative exit codes classified as `signal_{-N}` (SF-m5)
+- `StashPopFailed(stderr: str, exit_code: int)` — NEW (SF-B4); raised by `stash_pop` on non-zero exit
+- `git_apply(repo_path: Path, diff: str) -> None` — passes diff via stdin (NEVER argv); raises `GitApplyConflict` on conflict; 30s timeout
+- `git_commit(repo_path: Path, message: str) -> str` — returns 40-char hex SHA; raises `GitCommitTransient`/`GitCommandTimeout`/`GitCommitPermanent` per stderr pattern (REQ-CLONE-013); 120s timeout (SF-B5)
 - `current_head_sha(repo_path: Path) -> str` — returns 40-char hex SHA
-- `stash_push(repo_path: Path) -> str` — returns stash ref (e.g., `stash@{0}`); uses plain `git stash` (NOT `--keep-index`)
-- `stash_pop(repo_path: Path, stash_ref: str) -> None`
-- `diff_files(repo_path: Path) -> list[str]` — files modified by last apply
+- `stash_push(repo_path: Path) -> str` — returns stash ref (e.g., `stash@{0}`); uses plain `git stash` (NOT `--keep-index`); does NOT stash staged-only changes (SF-m8)
+- `stash_pop(repo_path: Path, stash_ref: str) -> None` — raises `StashPopFailed` on non-zero exit (SF-B4)
+- `diff_files(repo_path: Path) -> tuple[str, ...]` — files modified by last apply
 - `is_working_tree_clean(repo_path: Path) -> bool` — `git status --porcelain` empty
+
+**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+- **Triggered from**: DAG step functions in `clone_refactor_workflow.py` (`write_canonical_symbol`, `write_replacement_diff`)
+- **Returns to / updates**: nothing (pure side-effect wrapper; `git_commit` returns the SHA via stdout)
+- **Demonstrable by**: `pytest tests/unit/workflows/test_git_ops.py` — 8 tests covering apply/conflict, commit/returns-sha, transient/permanent/timeout classification, stash push/pop semantics, plain-stash-not-keep-index verification
+- **Rollback signal**: `git_commit` raises typed `GitCommitTransient`/`GitCommitPermanent`/`GitCommandTimeout` → caller records failure; `stash_pop` raises `StashPopFailed` → caller records failure on `RepoCommit` (no propagation; commit may have already landed)
+- **Observability added**: structured log line per call with `repo_path`, `exit_code`, `commit_sha` fields; SIGKILL exit codes (`< 0`) classified as `GitCommitPermanent(reason="signal_{-N}")` (SF-m5)
 
 ### Step 1: Write failing tests
 
@@ -1399,12 +1486,21 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Create: `tests/unit/clone/test_clone_refactor_workflow.py` (rewrite — Layer 2 tests)
 
 **Interfaces (consumed by Task 6):**
-- `run_clone_refactor_dag(refactor_job_id, cluster_id, mcp_backend, target_repo, consumer_repos, extracted_symbol, extraction_diff, consuming_diffs=None) -> DAGResult` — Prefect `@flow`
-- `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState` — dataclasses
-- `_write_step_outcome(refactor_job_id, step_name, outcome)` — internal helper
-- `_write_terminal_failed(refactor_job_id, exc)` — internal helper
-- `_write_terminal_cancelled(refactor_job_id)` — internal helper
+- `run_clone_refactor_dag(refactor_job_id, cluster_id, mcp_backend, target_repo, consumer_repos, extracted_symbol, extraction_diff, consuming_diffs=None) -> DAGResult` — Prefect `@flow`; raises `DAGAlreadyRunning` on re-entry (SF-M5)
+- `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState` — TD-m1/TD-m4: frozen dataclasses with `Literal` status fields (`"completed" | "failed"` for `RepoCommit`/`DAGResult`; `"queued" | "running" | "completed" | "failed" | "cancelled"` for `DAGState`); `tuple[str, ...]` for collection fields
+- `DAGAlreadyRunning(existing_status)` — exception raised by re-entry guard
+- `_write_step_outcome(mcp_backend, refactor_job_id, step_name, outcome)` — internal helper
+- `_write_terminal_failed(mcp_backend, refactor_job_id, exc)` — internal helper
+- `_write_terminal_cancelled(mcp_backend, refactor_job_id)` — internal helper
+- `_dataclass_to_dict(obj)` — TD-m8: uses `dataclasses.asdict()` for frozen dataclass serialization
 - `commit_message(refactor_job_id, target_repo, extracted_symbol)` — string formatter (REQ-CLONE-012)
+
+**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+- **Triggered from**: `mcp__mahavishnu__clone_refactor_group` (in `clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds and `cluster_claim` succeeds (REQ-CLONE-009)
+- **Returns to / updates**: `workflow/v1/{refactor_job_id}` MCP key (via `MCPStateBackend.dag_key()`), `workflow/v1/{refactor_job_id}/steps/{step_name}` per-step outcomes (REQ-CLONE-010), `cluster/v1/{cluster_id}` per-cluster consumer-progress, `cluster/v1/{cluster_id}/in_flight` claim sentinel; all wrapped in try/except with structured-log fallback on substrate failure (REQ-CLONE-014)
+- **Demonstrable by**: `pytest tests/unit/clone/test_clone_refactor_workflow.py` — 9 tests covering happy path, target-write failure, mixed consumer success/failure, no-auto-revert, REJECT-blocked-DAG, best-effort substrate writes, unhandled-exception terminal state, per-step state durability, commit-message convention
+- **Rollback signal**: OTel/log line `clone_refactor.dag.failed` with `refactor_job_id` attribute; consumer-recovery via `clone_refactor_status(limit=N)` listing `status: failed` records (no-auto-revert policy per Section 5.4 + commit-message convention REQ-CLONE-012)
+- **Observability added**: OTel span `clone_refactor.dag` with attrs `refactor_job_id`, `cluster_id`, `target_repo`, `consumer_count`; structured log `clone_refactor.substrate_silent_write` whenever `MCPStateBackend.put()` raises (REQ-CLONE-014)
 
 ### Step 1: Preserve quarantine-test headers
 
@@ -1832,10 +1928,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from prefect import flow, task
 from tenacity import retry_if_exception_type
@@ -1849,14 +1945,25 @@ logger = logging.getLogger(__name__)
 
 # ---- Dataclasses (REQ-CLONE-002) ------------------------------------------
 
-@dataclass
+# TD-m1: status fields are Literal, not str — typos like "Completed" or
+# "queued " (trailing space) compile silently and break equality checks.
+RepoCommitStatus = Literal["completed", "failed"]
+DAGStateStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
+
+
+@dataclass(frozen=True, slots=True)  # TD-m4: immutable; slots for memory
 class RepoCommit:
-    """Per-repo commit result. Fields mirror §7.2 final state record shape."""
+    """Per-repo commit result. Fields mirror §7.2 final state record shape.
+
+    TD-m4: frozen=True. SF-M7 partial-fill semantics preserved via
+    `dataclasses.replace(base, files_touched=..., working_tree_clean_after_commit=...)`
+    in write_canonical_symbol / write_replacement_diff (below).
+    """
 
     repo: str
     sha: str | None
-    status: str  # "completed" | "failed"
-    files_touched: list[str] = field(default_factory=list)
+    status: RepoCommitStatus
+    files_touched: tuple[str, ...] = ()  # frozen: must be immutable; tuple OK
     working_tree_clean_after_commit: bool = True
     error_type: str | None = None
     error_diff_offset: int | None = None
@@ -1865,7 +1972,7 @@ class RepoCommit:
     error_exit_code: int | None = None
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)  # TD-m4
 class RepoHit:
     """One row of detect_cluster_members output."""
 
@@ -1873,7 +1980,7 @@ class RepoHit:
     match_score: float
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)  # TD-m4
 class DAGState:
     """Aggregate DAG lifecycle state — written to workflow/v1/{refactor_job_id}."""
 
@@ -1881,21 +1988,21 @@ class DAGState:
     refactor_job_id: str = ""
     cluster_id: str = ""
     target_repo: str = ""
-    consumer_repos: list[str] = field(default_factory=list)
-    status: str = "queued"
+    consumer_repos: tuple[str, ...] = ()  # frozen: immutable
+    status: DAGStateStatus = "queued"
     started_at: str = ""
     dag_started_at: str = ""
     dag_completed_at: str = ""
     target_commit: str | None = None
-    target_commit_files_touched: list[str] = field(default_factory=list)
-    consumer_commits: list[RepoCommit] = field(default_factory=list)
-    failed_consumers: list[str] = field(default_factory=list)
+    target_commit_files_touched: tuple[str, ...] = ()  # frozen
+    consumer_commits: tuple[RepoCommit, ...] = ()  # frozen
+    failed_consumers: tuple[str, ...] = ()  # frozen
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)  # TD-m4
 class DAGResult:
-    status: str
-    consumer_commits: list[RepoCommit]
+    status: RepoCommitStatus
+    consumer_commits: tuple[RepoCommit, ...]
     target_commit: RepoCommit | None = None
     error: str | None = None
 
@@ -1962,23 +2069,25 @@ async def write_canonical_symbol(
         await _git_ops.git_apply(repo_path, extraction_diff)
         msg = commit_message(refactor_job_id, target_repo, extracted_symbol)
         sha = await _git_ops.git_commit(repo_path, msg)
-        # SF-M7: RepoCommit constructed BEFORE optional metadata gathering
-        result = RepoCommit(
+        # SF-M7 + TD-m4: RepoCommit is frozen; build with empty defaults,
+        # then use dataclasses.replace() to fill in optional metadata.
+        base = RepoCommit(
             repo=target_repo,
             sha=sha,
             status="completed",
-            files_touched=[],
+            files_touched=(),
             working_tree_clean_after_commit=False,
         )
         try:
-            result.files_touched = await _git_ops.diff_files(repo_path)
-            result.working_tree_clean_after_commit = await _git_ops.is_working_tree_clean(repo_path)
+            files = await _git_ops.diff_files(repo_path)
+            clean = await _git_ops.is_working_tree_clean(repo_path)
+            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
         except Exception as meta_exc:
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
                 meta_exc,
             )
-        return result
+            return base
     except _git_ops.StashPopFailed as spf:
         # SF-B4: stash pop failed AFTER commit landed. Record typed error
         # on the result rather than propagating (the commit succeeded).
@@ -2024,22 +2133,24 @@ async def write_replacement_diff(
         await _git_ops.git_apply(repo_path, consuming_diff)
         msg = commit_message(refactor_job_id, consumer_repo, "consuming-diff")
         sha = await _git_ops.git_commit(repo_path, msg)
-        result = RepoCommit(
+        # SF-M7 + TD-m4: frozen dataclass via replace()
+        base = RepoCommit(
             repo=consumer_repo,
             sha=sha,
             status="completed",
-            files_touched=[],
+            files_touched=(),
             working_tree_clean_after_commit=False,
         )
         try:
-            result.files_touched = await _git_ops.diff_files(repo_path)
-            result.working_tree_clean_after_commit = await _git_ops.is_working_tree_clean(repo_path)
+            files = await _git_ops.diff_files(repo_path)
+            clean = await _git_ops.is_working_tree_clean(repo_path)
+            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
         except Exception as meta_exc:
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
                 meta_exc,
             )
-        return result
+            return base
     except _git_ops.StashPopFailed as spf:
         logger.warning(
             "write_replacement_diff: stash pop failed (%s); commit on main, dirty tree",
@@ -2062,10 +2173,15 @@ async def write_replacement_diff(
 
 @task(name="persist_dag_state", retries=0)
 async def persist_dag_state(mcp_backend: MCPStateBackend, state: DAGState) -> None:
-    """Best-effort write of aggregate DAG state (REQ-CLONE-003)."""
+    """Best-effort write of aggregate DAG state (REQ-CLONE-003).
+
+    TD-m8: use `_dataclass_to_dict(state)` (which calls asdict) for nested
+    serialization instead of `state.__dict__` — the conventional idiom and
+    safe with frozen dataclasses.
+    """
     await mcp_backend.try_put_with_log_context(
         mcp_backend.dag_key(state.refactor_job_id),
-        state.__dict__,
+        _dataclass_to_dict(state),
         log_context={"dag_id": state.refactor_job_id, "step_name": "persist_dag_state"},
     )
 
@@ -2120,6 +2236,18 @@ async def _write_terminal_cancelled(
     )
 
 
+def _dataclass_to_dict(obj: Any) -> dict[str, Any]:
+    """Convert a (frozen) dataclass to a dict for substrate writes.
+
+    TD-m8: prefer dataclasses.asdict() over obj.__dict__ for nested types.
+    Falls back to __dict__ for non-dataclass objects (e.g., BaseException).
+    """
+    from dataclasses import asdict, is_dataclass
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return asdict(obj)
+    return obj.__dict__
+
+
 # ---- @flow orchestrator ---------------------------------------------------
 
 # SF-M5: re-entry guard. Raised if the same refactor_job_id is invoked twice
@@ -2166,7 +2294,7 @@ async def run_clone_refactor_dag(
     if existing_state is not None and existing_state.get("status") in ("queued", "running"):
         raise DAGAlreadyRunning(existing_status=existing_state.get("status", "unknown"))
 
-    consumer_commits: list[RepoCommit] = []
+    consumer_commits: tuple[RepoCommit, ...] = ()
     target_commit: RepoCommit | None = None
 
     try:
@@ -2208,19 +2336,20 @@ async def run_clone_refactor_dag(
                     error_exit_code=getattr(exc, "exit_code", None),
                 )
 
-        consumer_commits = list(
+        # TD-m4: consumer_commits is a tuple (RepoCommit is frozen)
+        consumer_commits = tuple(
             await asyncio.gather(*(_run_consumer(r) for r in consumer_repos))
         )
         await _write_step_outcome(
             mcp_backend,
             refactor_job_id,
             "consume",
-            {"consumer_commits": [c.__dict__ for c in consumer_commits]},
+            {"consumer_commits": [_dataclass_to_dict(c) for c in consumer_commits]},
         )
 
         # Phase 4: finalize
         all_completed = all(c.status == "completed" for c in consumer_commits)
-        status = "completed" if all_completed else "failed"
+        status: RepoCommitStatus = "completed" if all_completed else "failed"
         final = DAGResult(
             status=status,
             consumer_commits=consumer_commits,
@@ -2232,13 +2361,13 @@ async def run_clone_refactor_dag(
                 refactor_job_id=refactor_job_id,
                 cluster_id=cluster_id,
                 target_repo=target_repo,
-                consumer_repos=consumer_repos,
+                consumer_repos=tuple(consumer_repos),
                 status=status,
                 dag_completed_at=datetime.now(UTC).isoformat(),
                 target_commit=target_commit.sha if target_commit else None,
-                target_commit_files_touched=target_commit.files_touched if target_commit else [],
+                target_commit_files_touched=target_commit.files_touched if target_commit else (),
                 consumer_commits=consumer_commits,
-                failed_consumers=[c.repo for c in consumer_commits if c.status == "failed"],
+                failed_consumers=tuple(c.repo for c in consumer_commits if c.status == "failed"),
             ),
         )
         return final
@@ -2312,12 +2441,21 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 **Interfaces:**
 - `CloneTools.clone_refactor_group(cluster_id, target_repo, consumer_repos, extracted_symbol, extraction_diff, consuming_diffs=None)` — modified to:
   - Normalize `cluster_id` (REQ-CLONE-015)
+  - Validate inputs against null bytes (SF-m4)
   - Use `uuid7()` (Python 3.14 guard)
-  - Call `cluster_state_claim`
+  - Call `cluster_state_claim` (now returns `None`; raised on failure)
   - Initialize DAG state via `mcp_backend.put(dag_key(...), ...)`
-  - `asyncio.create_task(run_clone_refactor_dag(...))` with cancellation guard (REQ-CLONE-016)
+  - `asyncio.create_task(run_clone_refactor_dag(...))` with cancellation guard + strong reference via `_background_tasks` set (SF-B2)
+  - Wrap post-claim section in try/except (C-2/SF-B1) — releases claim on any path
   - Release claim on terminal state
-- `CloneTools.clone_refactor_status(...)` — reads from `workflow/v1/*` (was `clone-handled/*`)
+- `CloneTools.clone_refactor_status(limit=10) -> list[tuple[str, dict[str, Any]]]` — reads from `workflow/v1/*` via `mcp_backend.list_prefix("workflow/v1/")` (was `clone-handled/*`); sorts by UUID7 lexicographically (newest first)
+
+**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+- **Triggered from**: MCP client invokes `mcp__mahavishnu__clone_refactor_group`; `clone_refactor_status` continues to be invoked by operators
+- **Returns to / updates**: returns `{refactor_job_id, status: queued, decision, verification}` to MCP client; `MCPStateBackend.put("workflow/v1/{id}", ...)` records initial state; raises `ValueError` (invalid_cluster_id, 400), `ConcurrentDAGError` (409), `MCPStateBackendUnavailable` (503), or `asyncio.CancelledError` (499)
+- **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py` — 8 tests covering happy path, UUID7 format, REJECT blocks DAG, concurrent dedup, MCPStateBackendUnavailable, cancellation marks terminal, plus the `git_repo` fixture reuse
+- **Rollback signal**: OTel span `mcp.clone_refactor_group` with `error` attribute on exception; log line `clone_refactor_group.failed` with exception class + message
+- **Observability added**: OTel span `mcp.clone_refactor_group` (added by FastMCP decorator); structured warnings on every cancelled/failed claim release
 
 ### Step 1: Write failing e2e tests
 
@@ -2363,8 +2501,14 @@ def _uuid7_version(uuid_str: str) -> int:
     return int(UUID(uuid_str).version)
 
 
-def _make_clone_tools(monkeypatch) -> CloneTools:
-    """Returns a CloneTools with a mocked app + mocked VerificationStore."""
+def _make_clone_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[CloneTools, AsyncMock]:
+    """Returns (CloneTools, mocked MCPStateBackend) pair.
+
+    CR-B3 fix: return type is `tuple[CloneTools, AsyncMock]`, not `CloneTools`.
+    The fixture returns both; downstream tests unpack.
+    """
     from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
     app = MagicMock()
@@ -2384,13 +2528,16 @@ def _make_clone_tools(monkeypatch) -> CloneTools:
 
 
 @pytest.fixture
-def clone_tools(monkeypatch: pytest.MonkeyPatch):
+def clone_tools(monkeypatch: pytest.MonkeyPatch) -> CloneTools:
     tools, _ = _make_clone_tools(monkeypatch)
     return tools
 
 
 @pytest.fixture
-def clone_tools_with_backend(monkeypatch: pytest.MonkeyPatch):
+def clone_tools_with_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[CloneTools, AsyncMock]:
+    return _make_clone_tools(monkeypatch)
     return _make_clone_tools(monkeypatch)
 
 
@@ -2407,34 +2554,60 @@ class TestClusterIdNormalization:
             assert not CLUSTER_ID_RE.match(bad), f"Should reject {bad!r}"
 
 
+# CR-B1 fix: shared git_repo fixture. Each test method gets a fresh
+# tmp_path-scoped git repo with user.email/name configured. Replaces the
+# 5-line subprocess.run() boilerplate that exceeded 100 chars (would fail
+# `ruff check` and gate crackerjack run).
+@pytest.fixture
+def git_repo(tmp_path):
+    """Initialize a git repo at tmp_path/<random> with user.email/name."""
+    import subprocess
+    import secrets
+    repo = tmp_path / f"target-{secrets.token_hex(4)}"
+    repo.mkdir()
+    subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "x@x"],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "X"],
+        check=True, capture_output=True,
+    )
+    (repo / "foo.py").write_text("x = 1\n")
+    subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "init"],
+        check=True, capture_output=True,
+    )
+    return repo
+
+
+def _diff_one_line() -> str:
+    """Trivial extraction diff for tests that don't care about content."""
+    return (
+        "--- a/foo.py\n+++ b/foo.py\n"
+        "@@ -1 +1 @@\n-x = 1\n+x = 2\n"
+    )
+
+
+@pytest.mark.req(["REQ-CLONE-015"])
 class TestCloneRefactorGroupHappyPath:
     """REQ-CLONE-007: returns refactor_job_id + status: queued."""
 
     async def test_returns_job_id_and_starts_dag(
-        self, clone_tools_with_backend, tmp_path
+        self, clone_tools_with_backend, git_repo,
     ):
         tools, backend = clone_tools_with_backend
 
-        # Setup git repos
-        target = tmp_path / "target"
-        target.mkdir()
-        import subprocess
-        subprocess.run(["git", "init", str(target)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.name", "X"], check=True, capture_output=True)
-        (target / "foo.py").write_text("x = 1\n")
-        subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(target), "commit", "-m", "init"], check=True)
-
-        # Mock verify_proposal to return None (no verification)
         with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
             with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-test",
-                    target_repo=str(target),
+                    target_repo=str(git_repo),
                     consumer_repos=[],
                     extracted_symbol="X",
-                    extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                    extraction_diff=_diff_one_line(),
                 )
 
         assert "refactor_job_id" in result
@@ -2443,53 +2616,37 @@ class TestCloneRefactorGroupHappyPath:
         backend.put.assert_called()
 
 
+@pytest.mark.req(["REQ-CLONE-007"])
 class TestUUID7Format:
     """REQ-CLONE-007: refactor_job_id is UUIDv7."""
 
-    async def test_refactor_job_id_is_uuid7(self, clone_tools_with_backend, tmp_path):
+    async def test_refactor_job_id_is_uuid7(
+        self, clone_tools_with_backend, git_repo,
+    ):
         tools, backend = clone_tools_with_backend
-        import subprocess
-
-        target = tmp_path / "target"
-        target.mkdir()
-        subprocess.run(["git", "init", str(target)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.name", "X"], check=True, capture_output=True)
-        (target / "foo.py").write_text("x = 1\n")
-        subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(target), "commit", "-m", "init"], check=True)
 
         with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
             with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-uuid7",
-                    target_repo=str(target),
+                    target_repo=str(git_repo),
                     consumer_repos=[],
                     extracted_symbol="X",
-                    extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                    extraction_diff=_diff_one_line(),
                 )
         # REQ-CLONE-007: parse the returned ID and assert version=7
         version = _uuid7_version(result["refactor_job_id"])
         assert version == 7, f"Expected UUIDv7, got version={version}"
 
 
+@pytest.mark.req(["REQ-CLONE-001"])
 class TestRejectBlocksDAG:
     """REQ-CLONE-001: consensus=REJECT blocks DAG."""
 
     async def test_clone_refactor_group_reject_blocks_dag(
-        self, clone_tools_with_backend, tmp_path
+        self, clone_tools_with_backend, git_repo,
     ):
         tools, backend = clone_tools_with_backend
-        import subprocess
-
-        target = tmp_path / "target"
-        target.mkdir()
-        subprocess.run(["git", "init", str(target)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.name", "X"], check=True, capture_output=True)
-        (target / "foo.py").write_text("x = 1\n")
-        subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(target), "commit", "-m", "init"], check=True)
 
         # Mock verify_proposal to return REJECT
         from mahavishnu.core.verification import Consensus
@@ -2499,40 +2656,25 @@ class TestRejectBlocksDAG:
             with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
                 result = await tools.clone_refactor_group(
                     cluster_id="cluster-reject",
-                    target_repo=str(target),
+                    target_repo=str(git_repo),
                     consumer_repos=[],
                     extracted_symbol="X",
-                    extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                    extraction_diff=_diff_one_line(),
                 )
         assert result.get("decision") == "blocked_by_verification"
         # Claim was released
         backend.delete.assert_called_with("cluster/v1/cluster-reject/in_flight")
 
 
+@pytest.mark.req(["REQ-CLONE-009"])
 class TestConcurrentCalls:
     """REQ-CLONE-009: two concurrent calls with same cluster_id → second
     raises ConcurrentDAGError."""
 
     async def test_concurrent_calls_deduplicate(
-        self, clone_tools_with_backend, tmp_path
+        self, clone_tools_with_backend, git_repo,
     ):
         tools, backend = clone_tools_with_backend
-        import subprocess
-
-        target = tmp_path / "target"
-        target.mkdir()
-        subprocess.run(["git", "init", str(target)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.name", "X"], check=True, capture_output=True)
-        (target / "foo.py").write_text("x = 1\n")
-        subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(target), "commit", "-m", "init"], check=True)
-
-        # First call's cluster_claim succeeds; second call sees existing sentinel.
-        async def claim_side_effect(*args, **kwargs):
-            # args[2] is refactor_job_id; on second call, mock_backend.get
-            # returns the first job_id.
-            return True
 
         with patch.object(CloneTools, "_verify", AsyncMock(return_value=None)):
             with patch.object(CloneTools, "_store", MagicMock(persist=AsyncMock())):
@@ -2552,10 +2694,10 @@ class TestConcurrentCalls:
                 # First call — succeeds
                 first = await tools.clone_refactor_group(
                     cluster_id="cluster-concurrent",
-                    target_repo=str(target),
+                    target_repo=str(git_repo),
                     consumer_repos=[],
                     extracted_symbol="X",
-                    extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                    extraction_diff=_diff_one_line(),
                 )
                 # Reset call_count for the second call
                 call_count = 0
@@ -2565,19 +2707,20 @@ class TestConcurrentCalls:
                 with pytest.raises(ConcurrentDAGError) as exc_info:
                     await tools.clone_refactor_group(
                         cluster_id="cluster-concurrent",
-                        target_repo=str(target),
+                        target_repo=str(git_repo),
                         consumer_repos=[],
                         extracted_symbol="X",
-                        extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                        extraction_diff=_diff_one_line(),
                     )
                 assert exc_info.value.existing_job_id == "first-job-id"
 
 
+@pytest.mark.req(["REQ-CLONE-014"])
 class TestMCPStateBackendUnavailable:
     """SF-B6: substrate circuit-open raises MCPStateBackendUnavailable."""
 
     async def test_substrate_unavailable_raises_unavailable(
-        self, clone_tools_with_backend
+        self, clone_tools_with_backend,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -2599,23 +2742,14 @@ class TestMCPStateBackendUnavailable:
                 )
 
 
+@pytest.mark.req(["REQ-CLONE-016"])
 class TestCancellationMarksTerminal:
     """REQ-CLONE-016: client cancellation marks terminal "cancelled"."""
 
     async def test_dag_cancellation_marks_terminal(
-        self, clone_tools_with_backend, tmp_path
+        self, clone_tools_with_backend, git_repo,
     ):
         tools, backend = clone_tools_with_backend
-        import subprocess
-
-        target = tmp_path / "target"
-        target.mkdir()
-        subprocess.run(["git", "init", str(target)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(target), "config", "user.name", "X"], check=True, capture_output=True)
-        (target / "foo.py").write_text("x = 1\n")
-        subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(target), "commit", "-m", "init"], check=True)
 
         # Make _verify raise CancelledError to simulate client cancellation
         with patch.object(
@@ -2626,10 +2760,10 @@ class TestCancellationMarksTerminal:
                 with pytest.raises(asyncio.CancelledError):
                     await tools.clone_refactor_group(
                         cluster_id="cluster-cancel",
-                        target_repo=str(target),
+                        target_repo=str(git_repo),
                         consumer_repos=[],
                         extracted_symbol="X",
-                        extraction_diff="--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n",
+                        extraction_diff=_diff_one_line(),
                     )
         # Claim was released on cancellation
         backend.delete.assert_called_with("cluster/v1/cluster-cancel/in_flight")
@@ -2808,13 +2942,15 @@ async def clone_refactor_group(self, cluster_id: str, target_repo: str, ...):
 **Change F — Update `clone_refactor_status` to read `workflow/v1/*`** (replace any `clone-handled/*` references):
 
 ```python
-async def clone_refactor_status(self, limit: int = 10) -> list[dict]:
-    # CA-B2 fix: MCPStateBackend.list_prefix(self, prefix) does NOT accept
-    # a `limit` parameter. Get all records and slice in Python.
+async def clone_refactor_status(self, limit: int = 10) -> list[tuple[str, dict[str, Any]]]:
+    # CR-B2 fix: list[tuple[str, dict]] (was `list[dict]`). MCPStateBackend
+    # .list_prefix() returns list[tuple[str, dict]] per the CR-m6 test in
+    # tests/unit/test_mcp_state_backend.py::TestListPrefixReturnShape.
+    # CA-B2 fix: list_prefix(self, prefix) does NOT accept a `limit` param;
+    # slice in Python.
     records = await mcp_backend.list_prefix("workflow/v1/")
-    # records is a list[tuple[str, dict]]; sort by UUID7 lexicographically
-    # (UUIDv7 time-sortable; lexicographic = chronological for v7).
-    # Most recent first.
+    # Sort by UUID7 lexicographically (UUIDv7 time-sortable; lexicographic
+    # = chronological for v7). Most recent first.
     return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
 ```
 
@@ -2827,6 +2963,23 @@ cd /Users/les/Projects/mahavishnu
 ```
 
 **Expected:** all green (or partial — fix issues iteratively).
+
+### Step 4.5: Settings-threading grep (CR-M2 fix, memory `feedback-cli-flag-consumer-wiring.md`)
+
+Required by the memory rule: when adding a CLI flag + settings key (here: `app.settings.mcp_state.base_url`), grep every consumer of the new field and verify it's threaded. The plan threads `app.settings.mcp_state.base_url` into `clone_tools.py`; every OTHER consumer of `MCPStateBackend` must also be checked.
+
+Run:
+```bash
+cd /Users/les/Projects/mahavishnu
+# Find every site that constructs MCPStateBackend
+grep -rn "MCPStateBackend(" --include="*.py" mahavishnu/
+
+# For each instantiation site, verify it threads app.settings.mcp_state.base_url
+# OR is in a path that legitimately uses a different backend (e.g., tests).
+# Any site that hardcodes base_url without threading settings is a latent bug.
+```
+
+If a site is missed, fix it before committing Task 6. **This step is a hard gate** — skipping it violates `feedback-cli-flag-consumer-wiring.md`.
 
 ### Step 5: Run all validation checks per spec §9
 
@@ -2943,7 +3096,27 @@ Plan complete and saved to `docs/superpowers/plans/2026-09-25-clone-refactor-wir
 
 ## Revision history
 
-- **v2** (2026-09-25, current) — Full-sweep review applied. Fixes **3 BLOCKING + 4 MAJOR + 7 MINOR** from `feature-dev:code-architect` and **6 BLOCKING + 7 MAJOR + 8 MINOR** from `pr-review-toolkit:silent-failure-hunter`:
+- **v3** (2026-09-25, current) — Re-review sweep applied. Fixes **3 BLOCKING + 4 MAJOR + 8 MINOR** from `pr-review-toolkit:code-reviewer` and **0 BLOCKING + 0 MAJOR + 10 MINOR** from `pr-review-toolkit:type-design-analyzer` (selected MINORs applied; the rest are polish deferred to future iterations):
+
+  **From `pr-review-toolkit:code-reviewer` (project-guideline compliance):**
+  - **CR-B1** — Task 6 e2e tests had repeated `subprocess.run(...)` lines exceeding 100 chars (would fail `ruff check` and gate crackerjack run); added shared `git_repo` fixture + `_diff_one_line()` helper to keep lines under 100.
+  - **CR-B2** — `clone_refactor_status` return type was `list[dict]` but actual return is `list[tuple[str, dict]]` (from `list_prefix`); changed to `list[tuple[str, dict[str, Any]]]` per CR-m6 test verification.
+  - **CR-B3** — `_make_clone_tools` return type was `CloneTools` but actually returns `tuple[CloneTools, AsyncMock]`; changed to `tuple[CloneTools, AsyncMock]` with both fixtures typed.
+  - **CR-M1** — Tasks 3-6 tests had no `@pytest.mark.req` markers; added markers on test classes per REQ.
+  - **CR-M2** — Added Step 4.5 to Task 6: settings-threading grep per `feedback-cli-flag-consumer-wiring.md` (hard gate).
+  - **CR-M3** — Task 2 Step 8 audit-orphans expected-output was wrong (Tasks 5/6 callers don't exist yet); updated to acknowledge orphans are expected at Task 2 commit point.
+  - **CR-M4** — Plan lacked its own Integration Contract blocks per `.claude/decisions/wire-up-contract.md`; added 5-line Integration Contract blocks to Tasks 2, 3, 4, 5, 6.
+  - **CR-m1** — `_record_failure` metrics-sink failure was logged at DEBUG; promoted to WARNING per CLAUDE.md style ("operators running at INFO must see this").
+  - **CR-m6** — Added `TestListPrefixReturnShape` test to capture `list_prefix` return type BEFORE Task 6 depends on it.
+
+  **From `pr-review-toolkit:type-design-analyzer` (type design):**
+  - **TD-m1** — `RepoCommit.status`, `DAGState.status`, `DAGResult.status` typed as `Literal` (closed vocab) instead of `str`; typos like `"Completed"` now compile-error.
+  - **TD-m4** — `RepoCommit`, `DAGState`, `DAGResult`, `RepoHit` are `@dataclass(frozen=True, slots=True)`; `RepoCommit` SF-M7 partial-fill uses `dataclasses.replace()` instead of mutation. Collection fields are `tuple[str, ...]` (frozen-compatible).
+  - **TD-m6** — `cluster_state_claim` returns `None` (was `-> bool`); only success paths exist, failure raises. Callers discard return value.
+  - **TD-m7** — `_safe_extra` and `_RESERVED_LOGRECORD_ATTRS` hoisted to module level (was inside `try_put_with_log_context` closure).
+  - **TD-m9** — `MCPStateBackendUnavailable` defined in `state_backends/mcp.py` (architectural consistency with `MCPStateBackendError`); re-exported from `clone_claims.py` for backward compat.
+
+- **v2** (2026-09-25, prior-revision) — Full-sweep review applied. Fixes **3 BLOCKING + 4 MAJOR + 7 MINOR** from `feature-dev:code-architect` and **6 BLOCKING + 7 MAJOR + 8 MINOR** from `pr-review-toolkit:silent-failure-hunter`:
 
   **From `feature-dev:code-architect` (regular lens):**
   - **CA-B1** — Task 3 Step 4 inserted duplicate `get()`/`delete()` stubs for `MCPStateBackend` using wrong `MCPClient` API signatures; verified real methods already exist, removed the broken Step 4 entirely.
