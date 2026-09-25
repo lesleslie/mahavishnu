@@ -91,3 +91,20 @@ observability:
 #   ssl_assert_hostname: false
 #   opensearch_log_index: "mahavishnu-logs"
 #   opensearch_workflow_index: "mahavishnu-workflows"
+
+# --- OpenTelemetry Ingester (Phase 10: pgvector live) ---
+# Production trace storage: PostgreSQL + pgvector. Requires `vector`
+# extension (Postgres 16/17/18). Default storage_type is "duckdb" (in-memory
+# or file-backed); switch to "postgresql" for cross-instance semantic search.
+# Local dev quickstart (Homebrew postgresql@18 + pgvector):
+#   brew install postgresql@18 pgvector
+#   brew services start postgresql@18
+#   createdb mahavishnu_otel
+#   psql -d mahavishnu_otel -c "CREATE EXTENSION vector;"
+# Env-var equivalents: MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE,
+# MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL.
+# See: docs/plans/2026-09-16-pgvector-live.md
+# otel_ingester:
+#   enabled: true
+#   storage_type: "postgresql"  # "duckdb" (default) or "postgresql"
+#   storage_pg_url: "postgresql://CHANGE_ME_USER:CHANGE_ME_PASSWORD@CHANGE_ME_HOST:5432/mahavishnu_otel"
