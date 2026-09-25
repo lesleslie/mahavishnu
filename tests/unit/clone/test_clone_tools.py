@@ -19,7 +19,7 @@ def mock_app():
     app = MagicMock()
     app.settings = MagicMock()
     app.settings.crackerjack_url = "http://localhost:8676"
-    app.settings.dhara_url = "http://localhost:8683"
+    app.settings.mcp_url = "http://localhost:8683"
     return app
 
 
@@ -146,7 +146,7 @@ class TestCloneRefactorGroup:
             consensus=Consensus.REJECT,
             concerns_aggregated=["too risky"],
             persisted=False,
-            persist_error="dhara backend not configured",
+            persist_error="mcp backend not configured",
         )
         with patch(
             "mahavishnu.mcp.tools.clone_tools.verify_proposal",

@@ -66,12 +66,12 @@ class SelfImprovementTools:
             app: MahavishnuApp instance with coordination and approval managers.
             store: Optional ``VerificationStore`` to inject (tests inject a
                 fake; production passes nothing and gets the default
-                Dhara-backed store built from ``app.settings``).
+                MCP-backed store built from ``app.settings``).
         """
         self.app = app
-        # Lazily construct a store wired to the configured Dhara backend if
+        # Lazily construct a store wired to the configured MCP backend if
         # the caller didn't inject one (tests inject a fake; production passes
-        # nothing and gets the default-Dhara-backed store).
+        # nothing and gets the default-MCP-backed store).
         self._store: VerificationStore | None = store
         if self._store is None and getattr(app, "settings", None) is not None:
             self._store = build_default_store(app)
@@ -455,7 +455,7 @@ class SelfImprovementTools:
         hook: str | None = None,
         time_window_days: int = 30,
     ) -> dict[str, Any]:
-        """Query Dhara for accumulated fix-failure records and surface patterns.
+        """Query MCP for accumulated fix-failure records and surface patterns.
 
         Args:
             repo: Filter by specific repo (None = all repos).
@@ -472,12 +472,12 @@ class SelfImprovementTools:
             time_window_days,
         )
         try:
-            dhara_url = getattr(
-                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            mcp_url = getattr(
+                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
             )
-            from mahavishnu.core.dhara_adapter import DharaAdapter
+            from mahavishnu.core.mcp_adapter import MCPAdapter
 
-            client = DharaAdapter(base_url=dhara_url)
+            client = MCPAdapter(base_url=mcp_url)
             patterns = await client.aggregate_patterns(
                 start_date=datetime.now(UTC).date().isoformat(),
                 min_occurrences=3,
@@ -524,12 +524,12 @@ class SelfImprovementTools:
         """
         logger.info("self_improvement_generate: fingerprint=%s", fingerprint[:16])
         try:
-            dhara_url = getattr(
-                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            mcp_url = getattr(
+                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
             )
-            from mahavishnu.core.dhara_adapter import DharaAdapter
+            from mahavishnu.core.mcp_adapter import MCPAdapter
 
-            client = DharaAdapter(base_url=dhara_url)
+            client = MCPAdapter(base_url=mcp_url)
             records = await client.query_time_series(
                 metric_type="fix-failures",
                 entity_id=fingerprint,
@@ -612,12 +612,12 @@ class SelfImprovementTools:
         """
         logger.info("self_improvement_status: limit=%d", limit)
         try:
-            dhara_url = getattr(
-                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            mcp_url = getattr(
+                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
             )
-            from mahavishnu.core.dhara_adapter import DharaAdapter
+            from mahavishnu.core.mcp_adapter import MCPAdapter
 
-            client = DharaAdapter(base_url=dhara_url)
+            client = MCPAdapter(base_url=mcp_url)
             records = await client.query_time_series(
                 metric_type="improvement-records",
                 entity_id="all",
@@ -765,7 +765,7 @@ def register_self_improvement_tools(
         hook: str | None = None,
         time_window_days: int = 30,
     ) -> dict[str, Any]:
-        """Query Dhara for accumulated fix-failure records and surface patterns."""
+        """Query MCP for accumulated fix-failure records and surface patterns."""
         return await tools.self_improvement_analyze_failures(
             repo=repo,
             hook=hook,

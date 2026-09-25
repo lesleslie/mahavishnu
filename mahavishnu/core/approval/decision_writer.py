@@ -1,25 +1,25 @@
 """Approval decision writer — validate-on-write at decision boundary.
 
 Persists :class:`mahavishnu.core.models.persistence.ApprovalLog` records
-to Dhara at ``approval-history/{approval_id}/``. Validation happens at
+to MCP at ``approval-history/{approval_id}/``. Validation happens at
 the decision boundary so bad payloads never reach the durable store.
 
 Feature flag: ``APPROVAL_LOG_V1_ENABLED`` (default True). When False, the
 caller is expected to skip ``record_approval_decision`` entirely and fall
 back to the legacy delete-on-resolve path.
 
-Substrate-compat: the module calls ``dhara_calltime("put")`` (a
-lazy-load helper from ``mahavishnu.core._dhara_substrate_compat``) at
-write time; the helper returns ``None`` when no Dhara substrate is
+Substrate-compat: the module calls ``mcp_calltime("put")`` (a
+lazy-load helper from ``mahavishnu.core._mcp_substrate_compat``) at
+write time; the helper returns ``None`` when no MCP substrate is
 installed, so persistence is silently skipped (logged + Prometheus
 ``skipped`` counter incremented). Tests patch
-``decision_writer.dhara_calltime`` with a routing stub that returns the
+``decision_writer.mcp_calltime`` with a routing stub that returns the
 fake ``put`` callable when asked for ``"put"``.
 
-Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary —
+Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary —
 internal async (MemoryOutbox flush, PostgresBackendLock resolution) is the
 substrate's concern, not the caller's. See
-``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the full architectural decision.
 """
 
@@ -32,7 +32,7 @@ from typing import Any
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.models.persistence import ApprovalLog
 
@@ -49,7 +49,7 @@ def record_approval_decision(
     decided_by: str,
     metadata: dict[str, Any] | None = None,
 ) -> ApprovalLog:
-    """Validate the approval decision payload and persist via ``dhara.put``.
+    """Validate the approval decision payload and persist via ``mcp.put``.
 
     Args:
         approval_id: Stable ID of the approval request being resolved.
@@ -81,8 +81,8 @@ def record_approval_decision(
 
     validated: ApprovalLog = msgspec.convert(payload, ApprovalLog)  # ty: ignore[invalid-assignment]
 
-    # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = dhara_calltime("put")
+    # Substrate-compat gate: only persist when mcp.put is exposed.
+    put = mcp_calltime("put")
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"approval-history/{approval_id}/", validated)
@@ -93,7 +93,7 @@ def record_approval_decision(
             "approval_log_persistence_skipped",
             extra={
                 "approval_id": approval_id,
-                "reason": "dhara.put_unbound",
+                "reason": "mcp.put_unbound",
                 "v1_enabled": os.environ.get("APPROVAL_LOG_V1_ENABLED", "true"),
             },
         )

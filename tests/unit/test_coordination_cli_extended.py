@@ -396,7 +396,7 @@ class TestEcosystemStatus:
             "dependencies": [
                 {
                     "consumer": "mahavishnu",
-                    "provider": "dhara",
+                    "provider": "mcp",
                     "status": "unsatisfied",
                 },
             ],
@@ -408,7 +408,7 @@ class TestEcosystemStatus:
         assert "Critical Blockers: 1" in result.output
         assert "ISSUE-9" in result.output
         assert "Degraded Dependencies: 1" in result.output
-        assert "mahavishnu → dhara" in result.output
+        assert "mahavishnu → mcp" in result.output
         assert "0 pending, 0 in progress" in result.output
 
 

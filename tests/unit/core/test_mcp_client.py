@@ -1,11 +1,11 @@
 """Tests for core/dhara_client.py — thin Dhara SQL proxy client.
 
 These tests cover the thin client surface added on top of the existing
-dhara_adapter.py module. The thin client wraps the Dhara MCP SQL proxy
+mcp_adapter.py module. The thin client wraps the Dhara MCP SQL proxy
 endpoints with ``execute`` (INSERT/UPDATE/DELETE) and ``query`` (SELECT).
 
 TDD discipline: every test was written before the implementation. The
-tests use ``unittest.mock`` to stub the underlying ``DharaClient`` HTTP
+tests use ``unittest.mock`` to stub the underlying ``MCPClient`` HTTP
 transport so we don't need a live Dhara instance.
 """
 
@@ -16,33 +16,33 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx2 as httpx
 import pytest
 
-from mahavishnu.core.dhara_client import DharaSQLProxyError, DharaThinClient
+from mahavishnu.core.mcp_client import MCPProxyError, MCPThinClient
 
 # ---------------------------------------------------------------------------
 # Init
 # ---------------------------------------------------------------------------
 
 
-class TestDharaThinClientInit:
+class TestMCPThinClientInit:
     def test_base_url_trailing_slash_stripped(self):
-        client = DharaThinClient("http://localhost:8683/")
+        client = MCPThinClient("http://localhost:8683/")
         assert client.base_url == "http://localhost:8683"
 
     def test_base_url_no_trailing_slash(self):
-        client = DharaThinClient("http://localhost:8683")
+        client = MCPThinClient("http://localhost:8683")
         assert client.base_url == "http://localhost:8683"
 
     def test_default_timeout(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         assert client.timeout == 30.0
 
     def test_custom_timeout(self):
-        client = DharaThinClient("http://localhost", timeout=5.0)
+        client = MCPThinClient("http://localhost", timeout=5.0)
         assert client.timeout == 5.0
 
     def test_reuses_adapter_when_provided(self):
         adapter = MagicMock()
-        client = DharaThinClient("http://localhost", adapter=adapter)
+        client = MCPThinClient("http://localhost", adapter=adapter)
         assert client._adapter is adapter
 
 
@@ -54,7 +54,7 @@ class TestDharaThinClientInit:
 @pytest.mark.asyncio
 class TestExecute:
     async def test_execute_insert_returns_rowcount_and_status(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rowcount": 1, "status": "INSERT"}
@@ -67,7 +67,7 @@ class TestExecute:
         assert result == {"rowcount": 1, "status": "INSERT"}
 
     async def test_execute_update(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rowcount": 3, "status": "UPDATE"}
@@ -80,7 +80,7 @@ class TestExecute:
         assert result == {"rowcount": 3, "status": "UPDATE"}
 
     async def test_execute_delete(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rowcount": 0, "status": "DELETE"}
@@ -90,7 +90,7 @@ class TestExecute:
         assert result == {"rowcount": 0, "status": "DELETE"}
 
     async def test_execute_without_params(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rowcount": 1, "status": "INSERT"}
@@ -107,7 +107,7 @@ class TestExecute:
         assert arguments["params"] == {}
 
     async def test_execute_forwards_params(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rowcount": 1, "status": "INSERT"}
@@ -123,13 +123,13 @@ class TestExecute:
         assert arguments["params"] == {"id": "wf1", "status": "pending"}
 
     async def test_execute_connection_failure_raises_proxy_error(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             side_effect=httpx.ConnectError("connection refused"),
         )
 
-        with pytest.raises(DharaSQLProxyError) as exc_info:
+        with pytest.raises(MCPProxyError) as exc_info:
             await client.execute("INSERT INTO foo (id) VALUES ($1)", {"id": "x"})
 
         assert (
@@ -137,7 +137,7 @@ class TestExecute:
         )
 
     async def test_execute_aclose_closes_underlying_client(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         await client.aclose()
         client._client.aclose.assert_called_once()
@@ -151,7 +151,7 @@ class TestExecute:
 @pytest.mark.asyncio
 class TestQuery:
     async def test_query_returns_rows_as_dicts(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             return_value={"rows": [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]}
@@ -161,7 +161,7 @@ class TestQuery:
         assert rows == [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]
 
     async def test_query_empty_result(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(return_value={"rows": []})
 
@@ -169,7 +169,7 @@ class TestQuery:
         assert rows == []
 
     async def test_query_forwards_params(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(return_value={"rows": []})
 
@@ -184,13 +184,13 @@ class TestQuery:
         assert arguments["params"] == {"tenant_id": "t1"}
 
     async def test_query_connection_failure_raises_proxy_error(self):
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
             side_effect=httpx.ConnectError("nope"),
         )
 
-        with pytest.raises(DharaSQLProxyError):
+        with pytest.raises(MCPProxyError):
             await client.query("SELECT 1")
 
 
@@ -205,7 +205,7 @@ class TestConnectionPooling:
         adapter = MagicMock()
         adapter.call_tool = AsyncMock(return_value={"rowcount": 1, "status": "INSERT"})
 
-        client = DharaThinClient("http://localhost", adapter=adapter)
+        client = MCPThinClient("http://localhost", adapter=adapter)
         result = await client.execute("INSERT INTO foo (id) VALUES ($1)", {"id": "1"})
 
         assert result == {"rowcount": 1, "status": "INSERT"}
@@ -218,7 +218,7 @@ class TestConnectionPooling:
         adapter = MagicMock()
         adapter.call_tool = AsyncMock(return_value={"rows": [{"id": "1"}]})
 
-        client = DharaThinClient("http://localhost", adapter=adapter)
+        client = MCPThinClient("http://localhost", adapter=adapter)
         rows = await client.query("SELECT id FROM foo")
 
         assert rows == [{"id": "1"}]
@@ -238,11 +238,11 @@ class TestAsyncSemantics:
     async def test_execute_is_coroutine(self):
         import inspect
 
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         assert inspect.iscoroutinefunction(client.execute)
 
     async def test_query_is_coroutine(self):
         import inspect
 
-        client = DharaThinClient("http://localhost")
+        client = MCPThinClient("http://localhost")
         assert inspect.iscoroutinefunction(client.query)

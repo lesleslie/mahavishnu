@@ -35,7 +35,7 @@ class TestPlanShowE2E:
     ) -> None:
         """A record seeded via ``store.upsert`` returns the same shape via ``plan_show``.
 
-        The store is the same ``FakeDhara``-backed instance the tool
+        The store is the same ``FakeMCP``-backed instance the tool
         reads from (see conftest ``store`` fixture wiring), so a write
         through one path is visible through the other.
         """

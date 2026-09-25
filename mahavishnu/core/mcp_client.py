@@ -1,27 +1,27 @@
-"""Thin async client for Dhara's SQL proxy MCP tools.
+"""Thin async client for MCP's SQL proxy MCP tools.
 
 This module is the substrate for ``execute``/``query`` calls that go
-through Dhara's MCP ``sql_proxy_execute`` and ``sql_proxy_query`` tools.
-The proxy is implemented in ``dhara/mcp/tools/sql_proxy.py``; this file
+through MCP's MCP ``sql_proxy_execute`` and ``sql_proxy_query`` tools.
+The proxy is implemented in ``mcp/mcp/tools/sql_proxy.py``; this file
 is the Mahavishnu-side thin wrapper.
 
-Design constraints (from 2026-06-27-dhara-substrate-implementation.md):
+Design constraints (from 2026-06-27-mcp-substrate-implementation.md):
 
-* Keep the existing ``dhara_adapter.py`` surface (``put``/``call_tool``/
+* Keep the existing ``mcp_adapter.py`` surface (``put``/``call_tool``/
   ``query_time_series``/``aggregate_patterns``) untouched. ``execute`` and
   ``query`` are additive.
-* Connection pooling: if a ``DharaClient`` (or ``DharaAdapter``-shaped
+* Connection pooling: if a ``MCPClient`` (or ``MCPAdapter``-shaped
   object exposing ``call_tool``) is supplied, reuse it. Otherwise this
   module opens its own ``CommonMCPClient`` (one per instance).
 * All I/O is async.
-* Connection-level failures raise ``DharaSQLProxyError`` so callers can
+* Connection-level failures raise ``MCPProxyError`` so callers can
   handle transport failures separately from semantic SQL errors.
 
 Phase 3 (REQ-004) of the common-mcp-client transport unification plan:
 the underlying transport was rewired from ``httpx.AsyncClient.post``
 to ``CommonMCPClient.call_tool``. Behaviour is preserved end-to-end:
 ``MCPClientError``/``MCPServerError`` exceptions raised by the new
-transport are mapped to ``DharaSQLProxyError`` so callers don't need to
+transport are mapped to ``MCPProxyError`` so callers don't need to
 catch the new hierarchy.
 
 Mahavishnu conventions honored:
@@ -45,27 +45,27 @@ from mcp_common.exceptions import MCPServerError
 logger = logging.getLogger(__name__)
 
 
-class DharaSQLProxyError(Exception):
-    """Raised when the Dhara SQL proxy transport fails.
+class MCPProxyError(Exception):
+    """Raised when the MCP SQL proxy transport fails.
 
     This wraps connection-level errors (timeouts, refused connections,
     unexpected 5xx). SQL semantic errors from the backend are passed
-    through as-is via ``DharaSQLProxyError.__cause__`` so callers can
+    through as-is via ``MCPProxyError.__cause__`` so callers can
     introspect via ``raise ... from``.
     """
 
 
-class DharaThinClient:
-    """Thin async client for Dhara's ``sql_proxy`` MCP tools.
+class MCPThinClient:
+    """Thin async client for MCP's ``sql_proxy`` MCP tools.
 
     Parameters
     ----------
     base_url:
-        Root URL of the Dhara MCP server (e.g. ``http://localhost:8683``).
+        Root URL of the MCP MCP server (e.g. ``http://localhost:8683``).
     timeout:
         Per-request timeout in seconds. Defaults to 30s.
     adapter:
-        Optional pre-existing ``DharaClient``-shaped object exposing
+        Optional pre-existing ``MCPClient``-shaped object exposing
         ``call_tool(name, arguments)``. When supplied, ``execute`` and
         ``query`` route through it (no extra HTTP client is opened).
     token:
@@ -112,9 +112,7 @@ class DharaThinClient:
         if not isinstance(result, dict):
             # The proxy contract is a dict. Surface unexpected shapes so
             # callers don't silently consume garbage.
-            raise DharaSQLProxyError(
-                f"sql_proxy_execute returned non-dict: {type(result).__name__}"
-            )
+            raise MCPProxyError(f"sql_proxy_execute returned non-dict: {type(result).__name__}")
         return result
 
     async def query(
@@ -135,9 +133,7 @@ class DharaThinClient:
                 value = result.get(key)
                 if isinstance(value, list):
                     return value
-        raise DharaSQLProxyError(
-            f"sql_proxy_query returned unexpected shape: {type(result).__name__}"
-        )
+        raise MCPProxyError(f"sql_proxy_query returned unexpected shape: {type(result).__name__}")
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client if this instance owns it.
@@ -155,7 +151,7 @@ class DharaThinClient:
     async def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Route a tool call through the adapter or own HTTP client.
 
-        Connection-level failures are wrapped in ``DharaSQLProxyError``;
+        Connection-level failures are wrapped in ``MCPProxyError``;
         semantic SQL errors raised by the proxy are re-raised verbatim
         via ``raise ... from`` so callers can inspect the original.
         """
@@ -166,20 +162,20 @@ class DharaThinClient:
     async def _invoke_via_adapter(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call the tool through the registered adapter."""
         if self._adapter is None:
-            raise DharaSQLProxyError(
+            raise MCPProxyError(
                 f"{tool_name} requested via adapter path but no adapter is registered"
             )
         try:
             return await self._adapter.call_tool(tool_name, arguments)
-        except DharaSQLProxyError:
+        except MCPProxyError:
             raise
         except Exception as exc:
             logger.warning(
-                "dhara adapter call_tool failed for %s: %s",
+                "mcp adapter call_tool failed for %s: %s",
                 tool_name,
                 exc,
             )
-            raise DharaSQLProxyError(f"{tool_name} failed via adapter: {exc}") from exc
+            raise MCPProxyError(f"{tool_name} failed via adapter: {exc}") from exc
 
     async def _invoke_via_http(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Call the tool through the direct MCP client."""
@@ -190,11 +186,11 @@ class DharaThinClient:
         try:
             return await self._client.call_tool(tool_name, arguments)
         except MCPServerError as exc:
-            logger.warning("dhara sql_proxy transport failure: %s", exc)
-            raise DharaSQLProxyError(f"{tool_name} transport failure: {exc}") from exc
+            logger.warning("mcp sql_proxy transport failure: %s", exc)
+            raise MCPProxyError(f"{tool_name} transport failure: {exc}") from exc
         except Exception as exc:
-            logger.exception("dhara sql_proxy unexpected failure")
-            raise DharaSQLProxyError(f"{tool_name} unexpected failure: {exc}") from exc
+            logger.exception("mcp sql_proxy unexpected failure")
+            raise MCPProxyError(f"{tool_name} unexpected failure: {exc}") from exc
 
 
-__all__ = ["DharaSQLProxyError", "DharaThinClient"]
+__all__ = ["MCPProxyError", "MCPThinClient"]

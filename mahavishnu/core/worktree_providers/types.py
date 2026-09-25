@@ -90,7 +90,7 @@ class RemoteWorktreeRef(WorktreeRef):
     (``"s3"``, ``"gcs"``, ``"azure"``, ``"bundle"``) and is required
     at construction — there is no default. The previous silent default
     of ``"s3"`` masked bugs where gcs/azure handles would round-trip
-    through the Dhara registry as s3 (security review #3).
+    through the MCP registry as s3 (security review #3).
 
     ``init=False`` disables dataclass-generated ``__init__`` because
     with ``slots=True`` the field name ``backend_kind`` shadows the
@@ -133,7 +133,7 @@ class BundleRef:
     """Bundle metadata for a single git-bundle.
 
     Stored alongside the bundle (S3 object metadata ``x-amz-meta-sha256``)
-    or in Dhara for the worktree-registry record.
+    or in MCP for the worktree-registry record.
     """
 
     bundle_key: str

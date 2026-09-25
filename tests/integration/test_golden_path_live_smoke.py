@@ -9,7 +9,7 @@ import httpx2 as httpx
 import pytest
 
 from mahavishnu.core.coordination.memory import CoordinationMemory
-from mahavishnu.core.state_backends.dhara import DharaStateBackend, DharaStateConfig
+from mahavishnu.core.state_backends.mcp import MCPStateBackend, MCPStateConfig
 from mahavishnu.session.checkpoint import SessionBuddy
 from tests.fixtures.golden_path_fixture import golden_path_incident_fixture
 
@@ -90,9 +90,9 @@ async def test_live_golden_path_smoke_round_trip() -> None:
     akosha_url = os.environ["MAHAVISHNU_AKOSHA_URL"]
 
     session_buddy = SessionBuddy(_mock_config(session_buddy_url))
-    dhara = DharaStateBackend(
+    mcp = MCPStateBackend(
         base_url=dhara_state_url,
-        config=DharaStateConfig(enabled=True),
+        config=MCPStateConfig(enabled=True),
     )
     akosha = LiveMcpToolClient(akosha_url)
     coordination_memory = CoordinationMemory(
@@ -129,7 +129,7 @@ async def test_live_golden_path_smoke_round_trip() -> None:
             },
         )
 
-        await dhara.persist_workflow(
+        await mcp.persist_workflow(
             fixture.workflow_id,
             {
                 "incident_id": fixture.incident_id,
@@ -138,15 +138,15 @@ async def test_live_golden_path_smoke_round_trip() -> None:
                 "status": "running",
             },
         )
-        await dhara.persist_pool(
+        await mcp.persist_pool(
             "pool-golden-path",
             {"workflow_id": fixture.workflow_id, "status": "ready"},
         )
-        await dhara.persist_routing_decision(
+        await mcp.persist_routing_decision(
             "workflow",
             {"workflow_id": fixture.workflow_id, "pool_id": "pool-golden-path"},
         )
-        await dhara.persist_approval(
+        await mcp.persist_approval(
             "approval-001",
             {"workflow_id": fixture.workflow_id, "approved": True},
         )
@@ -156,8 +156,8 @@ async def test_live_golden_path_smoke_round_trip() -> None:
             {"entity_type": "issue"},
             5,
         )
-        recovered_workflows = await dhara.recover_workflows()
-        recovered_approvals = await dhara.recover_approvals()
+        recovered_workflows = await mcp.recover_workflows()
+        recovered_approvals = await mcp.recover_approvals()
 
         assert recovered_workflows
         assert recovered_workflows[0]["correlation_id"] == fixture.correlation_id
@@ -170,4 +170,4 @@ async def test_live_golden_path_smoke_round_trip() -> None:
         )
     finally:
         await akosha.aclose()
-        await dhara.aclose()
+        await mcp.aclose()

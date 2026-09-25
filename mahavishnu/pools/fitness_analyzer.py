@@ -2,11 +2,11 @@
 
 Polls each Bodai component's MCP endpoint (via BodaiComponentMCPClient) for local OTel
 traces, computes rolling failure_rate and p99 latency per (task_class, selector) pair,
-and writes fitness signals to Dhara at ``routing_fitness/{task_class}/{selector}``.
+and writes fitness signals to MCP at ``routing_fitness/{task_class}/{selector}``.
 
-Bounded in-memory buffer (deque maxlen=1000) holds signals pending Dhara write.
+Bounded in-memory buffer (deque maxlen=1000) holds signals pending MCP write.
 DLQ (dead-letter queue) after 3 consecutive write failures per signal.
-Circuit breaker protects Dhara write operations.
+Circuit breaker protects MCP write operations.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ _DEFAULT_POLL_INTERVAL_SECONDS = 60
 _MAX_BUFFER_SIZE = 1000
 _DLQ_FAILURE_THRESHOLD = 3
 _SESSION_LOSS_ALERT_THRESHOLD = 3  # consecutive failures before alert
-# Allowed characters in Dhara key path components (alphanumeric + underscore only)
+# Allowed characters in MCP key path components (alphanumeric + underscore only)
 _KEY_COMPONENT_RE = re.compile(r"^[a-zA-Z0-9_]{1,50}$")
 _INVALID_KEY_PLACEHOLDER = "unknown"
 # Connection-related error patterns indicating session loss
@@ -56,9 +56,9 @@ def _is_session_loss_error(exc: Exception) -> bool:
 
 
 def _sanitize_key_component(value: str) -> str:
-    """Sanitize a key path component to prevent path injection in Dhara keys.
+    """Sanitize a key path component to prevent path injection in MCP keys.
 
-    Dhara key paths use '/' as separator. Allowing arbitrary characters
+    MCP key paths use '/' as separator. Allowing arbitrary characters
     in task_class or selector could enable traversal or key injection.
     Only alphanumeric + underscore (max 50 chars) are allowed.
     """
@@ -82,24 +82,24 @@ class FitnessAnalyzer:
     """Periodic fitness signal analyzer.
 
     Periodically polls known Bodai component endpoints for traces,
-    computes aggregated fitness signals, and writes them to Dhara.
+    computes aggregated fitness signals, and writes them to MCP.
 
     Parameters:
         poll_interval_seconds: Interval between analysis runs (default 60 s)
-        dhara_state: DharaStateBackend for writing signals
+        mcp_state: MCPStateBackend for writing signals
         component_endpoints: List of (component_name, mcp_url) tuples to poll
-        circuit_breaker: CircuitBreaker for Dhara write protection
+        circuit_breaker: CircuitBreaker for MCP write protection
     """
 
     def __init__(
         self,
         poll_interval_seconds: int = _DEFAULT_POLL_INTERVAL_SECONDS,
-        dhara_state: Any | None = None,
+        mcp_state: Any | None = None,
         component_endpoints: list[tuple[str, str]] | None = None,
         circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self._poll_interval = max(poll_interval_seconds, 1)
-        self._dhara_state = dhara_state
+        self._mcp_state = mcp_state
         self._component_endpoints = component_endpoints or []
         self._circuit_breaker = circuit_breaker
 
@@ -221,7 +221,7 @@ class FitnessAnalyzer:
         )
 
     async def _flush_buffer(self) -> None:
-        """Attempt to write all buffered signals to Dhara."""
+        """Attempt to write all buffered signals to MCP."""
         if not self._buffer:
             return
 
@@ -242,9 +242,9 @@ class FitnessAnalyzer:
 
             try:
                 if self._circuit_breaker is not None:
-                    await self._circuit_breaker.call(self._dhara_state.put(key, value, ttl=7200))  # ty: ignore[unresolved-attribute]
-                elif self._dhara_state is not None:
-                    await self._dhara_state.put(key, value, ttl=7200)
+                    await self._circuit_breaker.call(self._mcp_state.put(key, value, ttl=7200))  # ty: ignore[unresolved-attribute]
+                elif self._mcp_state is not None:
+                    await self._mcp_state.put(key, value, ttl=7200)
                 # Success: clear DLQ counter
                 self._dlq_failures.pop(key, None)
             except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
@@ -270,7 +270,7 @@ class FitnessAnalyzer:
                 )
 
     async def _analyze_and_persist(self) -> None:
-        """Run one analysis cycle: collect traces and write signals to Dhara."""
+        """Run one analysis cycle: collect traces and write signals to MCP."""
         if not self._component_endpoints:
             logger.debug("FitnessAnalyzer: no component endpoints registered")
             return
@@ -297,7 +297,7 @@ class FitnessAnalyzer:
             logger.debug("FitnessAnalyzer: no traces collected in this cycle")
             return
 
-        # Buffer signals for Dhara write
+        # Buffer signals for MCP write
         for task_class, selector_map in all_signals.items():
             for selector, signal in selector_map.items():
                 self._buffer.append(_BufferEntry(task_class, selector, signal))

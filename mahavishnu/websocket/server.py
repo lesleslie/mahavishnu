@@ -1018,7 +1018,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             adapter_name: Human-readable adapter name
             capabilities: List of adapter capabilities
             provider: Provider name (e.g., "prefect", "agno")
-            source: Registration source ("entry_point", "dhara", "manual")
+            source: Registration source ("entry_point", "mcp", "manual")
         """
         event_data = {
             "adapter_id": adapter_id,

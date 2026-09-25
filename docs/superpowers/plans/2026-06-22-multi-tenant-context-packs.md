@@ -101,7 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_context_files_version
 Apply via the project's Dhara migration runner, or via `execute()`:
 
 ```python
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 with open("mahavishnu/core/dhara_migrations/tenant_context.sql") as f:
     execute(f.read())
 ```

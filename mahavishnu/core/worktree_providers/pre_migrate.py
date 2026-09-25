@@ -3,7 +3,7 @@
 The 83 misplaced worktrees (audit 2026-08-23) and any other worktrees
 on disk pre-date the WorktreeHandle abstraction. This module discovers
 them via ``git worktree list --porcelain`` and synthesizes a
-``WorktreeHandle`` for each so the v4 Dhara-backed registry has a
+``WorktreeHandle`` for each so the v4 MCP-backed registry has a
 starting point.
 
 The synthesized handles carry ``provenance: "pre-v2-migration"``
@@ -152,7 +152,7 @@ def pre_migration_discover(
 
     Runs ``git -C <main_repo> worktree list --porcelain`` and maps each
     entry through :func:`synthesize_handle`. The synthesized handles
-    are suitable for registering in the Dhara worktree registry via
+    are suitable for registering in the MCP worktree registry via
     the Phase 4 migration script.
 
     Args:

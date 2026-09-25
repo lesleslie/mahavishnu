@@ -817,17 +817,17 @@ def test_capability_block_skips_reader_when_registration_fails(
     but the reader registration itself blows up.
     """
     from mahavishnu.core import bootstrap as core_bootstrap
-    from mahavishnu.core import dhara_adapter
+    from mahavishnu.core import mcp_adapter
     from mahavishnu.mcp.tools import capability_tools, get_capability_result_tool
 
     core_register = MagicMock()
     monkeypatch.setattr(capability_tools, "register_capability_tools", core_register)
-    monkeypatch.setattr(core_bootstrap, "resolve_dhara_url", MagicMock(return_value="http://d"))
-    monkeypatch.setattr(dhara_adapter, "DharaClient", MagicMock())
+    monkeypatch.setattr(core_bootstrap, "resolve_mcp_url", MagicMock(return_value="http://d"))
+    monkeypatch.setattr(mcp_adapter, "MCPClient", MagicMock())
     monkeypatch.setattr(
         get_capability_result_tool,
         "register_get_capability_result",
-        MagicMock(side_effect=RuntimeError("dhara offline")),
+        MagicMock(side_effect=RuntimeError("mcp offline")),
     )
     server = _stub_server()
 
@@ -1213,8 +1213,8 @@ class TestW0Registrars:
         # so this test stays scoped to argument forwarding.
         monkeypatch.setattr(
             core_bootstrap,
-            "resolve_dhara_url",
-            MagicMock(side_effect=RuntimeError("dhara unconfigured")),
+            "resolve_mcp_url",
+            MagicMock(side_effect=RuntimeError("mcp unconfigured")),
         )
         server = _stub_server()
 

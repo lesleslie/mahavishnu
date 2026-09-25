@@ -545,7 +545,7 @@ class TestPersistHealthState:
         state = AdapterHealthState(adapter_name="test")
         state.update({"status": "healthy"}, cfg)
         with patch(
-            "mahavishnu.core.oneiric_client.get_dhara_client",
+            "mahavishnu.core.oneiric_client.get_mcp_client",
             side_effect=ImportError("no client"),
         ):
             await monitor._persist_health_state("test", state)
@@ -567,7 +567,7 @@ class TestPersistHealthState:
         monitor = AdapterHealthMonitor(registry={}, config=cfg)
         state = AdapterHealthState(adapter_name="test")
         with patch(
-            "mahavishnu.core.oneiric_client.get_dhara_client",
+            "mahavishnu.core.oneiric_client.get_mcp_client",
             side_effect=ImportError("no client"),
         ):
             # Method doesn't check config flag itself — caller does

@@ -9,7 +9,7 @@ call is unavailable (current Workstream C state:
 Architectural property (per spec):
 - Client-side polling; no server-side streaming.
 - The substrate persister is observational, not blocking — failure to
-  reach Dhara does not stop the operator's local poll.
+  reach MCP does not stop the operator's local poll.
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ async def _watch(*, workflow_id: str, poll: int, once: bool) -> None:
     """Async body of the watch loop.
 
     Implementation note: this is a *stub* that the Workstream C substrate
-    team will replace with a real subscription once the Dhara HTTP CRUD
+    team will replace with a real subscription once the MCP HTTP CRUD
     endpoint is unblocked. Until then, we poll the in-process recorder
     (which the same Python process owns) and print any new snapshots
     since the last seen timestamp.

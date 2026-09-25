@@ -58,9 +58,9 @@ def mount_durable_webhooks(parent_app: Starlette) -> None:
     ``app.mount("/", a2a_app)``.
 
     The receiver's persistence layer is substrate-compat gated
-    (``dhara.put``); when no binding is injected the receiver returns
+    (``mcp.put``); when no binding is injected the receiver returns
     ``202 accepted_in_memory_only`` so the production mount is safe to
-    enable even before Dhara is wired.
+    enable even before MCP is wired.
     """
     # Lazy import: receiver pulls FastAPI app-level module load (logging,
     # substrate-compat stamping). Avoid paying that cost at package import.

@@ -12,7 +12,7 @@ Services Tested:
 - mahavishnu (8690) - Workflow orchestration and pool management
 - akosha (8692) - Knowledge graph and insights
 - crackerjack (8686) - Quality control and testing
-- dhara (8693) - Dependency management
+- mcp (8693) - Dependency management
 - excalidraw-mcp (3042) - Diagram collaboration
 - fastblocks (8684) - Application building and UI rendering
 """
@@ -60,9 +60,9 @@ WEBSOCKET_SERVERS = {
         "class_name": "CrackerjackWebSocketServer",
         "description": "Quality control and CI/CD",
     },
-    "dhara": {
+    "mcp": {
         "port": 8693,
-        "module_path": "/Users/les/Projects/dhara",
+        "module_path": "/Users/les/Projects/mcp",
         "class_name": "DharaWebSocketServer",
         "description": "Dependency management",
     },
@@ -196,7 +196,7 @@ class TestServiceDiscovery:
             "mahavishnu",
             "akosha",
             "crackerjack",
-            "dhara",
+            "mcp",
             "excalidraw-mcp",
             "fastblocks",
         ]
@@ -271,7 +271,7 @@ class TestCrossServiceCommunication:
     """Test message routing between different WebSocket servers."""
 
     @pytest.mark.asyncio
-    async def test_mahavishnu_broadcasts_to_dhara_channel(
+    async def test_mahavishnu_broadcasts_to_mcp_channel(
         self,
         mahavishnu_server: MahavishnuWebSocketServer,
         event_recorder: dict[str, list[dict[str, Any]]],
@@ -281,12 +281,12 @@ class TestCrossServiceCommunication:
         mock_client = create_mock_websocket(
             event_recorder,
             "conn1",
-            ["dhara:adapter123"],
+            ["mcp:adapter123"],
         )
         conn_id = "conn1"
 
         mahavishnu_server.connections[conn_id] = mock_client
-        mahavishnu_server.connection_rooms["dhara:adapter123"] = {conn_id}
+        mahavishnu_server.connection_rooms["mcp:adapter123"] = {conn_id}
 
         # Act
         from mcp_common.websocket import WebSocketProtocol
@@ -299,12 +299,12 @@ class TestCrossServiceCommunication:
                 "timestamp": "2025-02-10T12:00:00Z",
             },
         )
-        await mahavishnu_server.broadcast_to_room("dhara:adapter123", event)
+        await mahavishnu_server.broadcast_to_room("mcp:adapter123", event)
 
         # Assert
-        assert "dhara:adapter123" in event_recorder
-        assert len(event_recorder["dhara:adapter123"]) == 1
-        assert event_recorder["dhara:adapter123"][0]["event"] == "adapter.stored"
+        assert "mcp:adapter123" in event_recorder
+        assert len(event_recorder["mcp:adapter123"]) == 1
+        assert event_recorder["mcp:adapter123"][0]["event"] == "adapter.stored"
 
     @pytest.mark.asyncio
     async def test_akosha_broadcasts_to_excalidraw_channel(self):
@@ -486,12 +486,12 @@ class TestMessageRouting:
     ):
         """Test broadcasting to service-specific rooms."""
         # Arrange
-        dhara_client = create_mock_websocket(event_recorder, "conn1", ["dhara:events"])
+        dhara_client = create_mock_websocket(event_recorder, "conn1", ["mcp:events"])
         excalidraw_client = create_mock_websocket(event_recorder, "conn2", ["excalidraw:events"])
 
         mahavishnu_server.connections["conn1"] = dhara_client
         mahavishnu_server.connections["conn2"] = excalidraw_client
-        mahavishnu_server.connection_rooms["dhara:events"] = {"conn1"}
+        mahavishnu_server.connection_rooms["mcp:events"] = {"conn1"}
         mahavishnu_server.connection_rooms["excalidraw:events"] = {"conn2"}
 
         # Act - Broadcast to Dhara only
@@ -501,12 +501,12 @@ class TestMessageRouting:
             "adapter.event",
             {"adapter_id": "test_adapter"},
         )
-        await mahavishnu_server.broadcast_to_room("dhara:events", event)
+        await mahavishnu_server.broadcast_to_room("mcp:events", event)
 
         # Assert - only Dhara client should receive
-        assert "dhara:events" in event_recorder
+        assert "mcp:events" in event_recorder
         assert "excalidraw:events" not in event_recorder
-        assert len(event_recorder["dhara:events"]) == 1
+        assert len(event_recorder["mcp:events"]) == 1
 
     @pytest.mark.asyncio
     async def test_global_broadcast_to_all_services(
@@ -631,7 +631,7 @@ class TestEventCorrelation:
         assert completion_event["data"]["workflow_id"] == "workflow_abc123"
 
     @pytest.mark.asyncio
-    async def test_adapter_stored_in_dhara_visible_in_excalidraw(self):
+    async def test_adapter_stored_in_mcp_visible_in_excalidraw(self):
         """Test adapter stored in Dhara is visible in Excalidraw."""
         # Arrange - Dhara server
         mock_pool_mgr = MagicMock()

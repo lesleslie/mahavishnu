@@ -825,17 +825,17 @@ VERIFICATION_KEY_PREFIX = "verification/"
 ROUTING_DECISIONS_KEY_PREFIX = "routing-decisions/"
 
 
-def _resolve_dhara_url(explicit_url: str | None) -> str:
-    """Resolve the Dhara HTTP URL with explicit > env > config precedence.
+def _resolve_mcp_url(explicit_url: str | None) -> str:
+    """Resolve the MCP HTTP URL with explicit > env > config precedence.
 
-    Mirrors :func:`mahavishnu.core.bootstrap.resolve_dhara_url` but uses the
-    *health.dependencies.dhara* host:port pair rather than the legacy MCP URL.
+    Mirrors :func:`mahavishnu.core.bootstrap.resolve_mcp_url` but uses the
+    *health.dependencies.mcp* host:port pair rather than the legacy MCP URL.
     Falls back to ``http://localhost:8683`` when no configuration is present.
     """
     if explicit_url:
         return explicit_url.rstrip("/")
 
-    env_url = os.environ.get("MAHAVISHNU_DHARA_URL")
+    env_url = os.environ.get("MAHAVISHNU_MCP_URL")
     if env_url:
         return env_url.rstrip("/")
 
@@ -848,37 +848,37 @@ def _resolve_dhara_url(explicit_url: str | None) -> str:
                 data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
             health = data.get("health", {}) if isinstance(data, dict) else {}  # type: ignore[var-annotated]
             deps = health.get("dependencies", {}) if isinstance(health, dict) else {}  # type: ignore[var-annotated]
-            dhara = deps.get("dhara") if isinstance(deps, dict) else None  # type: ignore[var-annotated]
-            if isinstance(dhara, dict):
-                host = dhara.get("host", "localhost")
-                port = dhara.get("port", 8683)
-                scheme = "https" if dhara.get("use_tls") else "http"
+            mcp = deps.get("mcp") if isinstance(deps, dict) else None  # type: ignore[var-annotated]
+            if isinstance(mcp, dict):
+                host = mcp.get("host", "localhost")
+                port = mcp.get("port", 8683)
+                scheme = "https" if mcp.get("use_tls") else "http"
                 return f"{scheme}://{host}:{port}".rstrip("/")
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Dhara URL resolution skipped: %s", e)
+            logger.debug("MCP URL resolution skipped: %s", e)
 
     return "http://localhost:8683"
 
 
-async def _fetch_dhara_entries(
-    dhara_url: str,
+async def _fetch_mcp_entries(
+    mcp_url: str,
     prefix: str,
 ) -> list[dict[str, Any]]:
-    """Fetch all key/value entries under *prefix* via Dhara's MCP HTTP API.
+    """Fetch all key/value entries under *prefix* via MCP's MCP HTTP API.
 
-    Returns an empty list when Dhara is unreachable so the CLI degrades
-    gracefully (mirrors :class:`DharaStateBackend` semantics).
+    Returns an empty list when MCP is unreachable so the CLI degrades
+    gracefully (mirrors :class:`MCPStateBackend` semantics).
     """
     try:
-        from mahavishnu.core.dhara_adapter import DharaClient
+        from mahavishnu.core.mcp_adapter import MCPClient
     except ImportError as exc:
-        raise RuntimeError("DharaClient not importable; cannot query Dhara") from exc
+        raise RuntimeError("MCPClient not importable; cannot query MCP") from exc
 
-    client = DharaClient(base_url=dhara_url, timeout=10.0)
+    client = MCPClient(base_url=mcp_url, timeout=10.0)
     try:
         result = await client.call_tool("list_prefix", {"prefix": prefix})
     except Exception as exc:
-        console.print(f"[red]Dhara unreachable at {dhara_url}:[/red] {exc}")
+        console.print(f"[red]MCP unreachable at {mcp_url}:[/red] {exc}")
         raise typer.Exit(1) from exc
     finally:
         await client.aclose()
@@ -922,7 +922,7 @@ def _parse_since(value: str) -> datetime | None:
 
 
 def _entry_timestamp(entry: dict[str, Any]) -> datetime | None:
-    """Return the most useful timestamp for a Dhara entry value."""
+    """Return the most useful timestamp for a MCP entry value."""
     value = entry.get("value", {})
     if not isinstance(value, dict):
         return None
@@ -982,7 +982,7 @@ def _render_verification_output(
     *,
     cutoff: datetime | None,
     output_format: str,
-    dhara_url: str,
+    mcp_url: str,
 ) -> None:
     """Render the `mahavishnu metrics verification` output."""
     filtered = _filter_by_window(entries, cutoff)
@@ -1017,8 +1017,8 @@ def _render_verification_output(
         console.print_json(
             json.dumps(
                 {
-                    "source": "dhara",
-                    "dhara_url": dhara_url,
+                    "source": "mcp",
+                    "mcp_url": mcp_url,
                     "prefix": VERIFICATION_KEY_PREFIX,
                     "since": cutoff.isoformat() if cutoff else None,
                     "total": total,
@@ -1037,7 +1037,7 @@ def _render_verification_output(
         raise typer.Exit(2)
 
     console.print("[cyan]Ultracode Phase 1 — Verification Verdicts[/cyan]\n")
-    console.print(f"[dim]Dhara URL: {dhara_url}[/dim]")
+    console.print(f"[dim]MCP URL: {mcp_url}[/dim]")
     console.print(f"[dim]Key prefix: {VERIFICATION_KEY_PREFIX}[/dim]")
     console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
 
@@ -1086,10 +1086,10 @@ def verification_metrics(
         "--since",
         help="Time window filter: '24h', '7d', '30m', or 'all' (no filter).",
     ),
-    dhara_url: str | None = typer.Option(
+    mcp_url: str | None = typer.Option(
         None,
-        "--dhara-url",
-        help="Override Dhara HTTP URL (also: MAHAVISHNU_DHARA_URL).",
+        "--mcp-url",
+        help="Override MCP HTTP URL (also: MAHAVISHNU_MCP_URL).",
     ),
     output_format: str = typer.Option(
         "table",
@@ -1097,28 +1097,28 @@ def verification_metrics(
         help="Output format: table or json",
     ),
 ) -> None:
-    """Show ultracode Phase 1 verification verdicts from Dhara.
+    """Show ultracode Phase 1 verification verdicts from MCP.
 
-    Reads Dhara under the ``verification/`` key prefix and renders a summary
+    Reads MCP under the ``verification/`` key prefix and renders a summary
     of consensus distribution, reject rate, persist-failure rate, and the
     most recent 20 verdicts.
 
-    Precedence for the Dhara URL: ``--dhara-url`` > ``MAHAVISHNU_DHARA_URL`` >
-    ``settings/mahavishnu.yaml -> health.dependencies.dhara`` > ``localhost:8683``.
+    Precedence for the MCP URL: ``--mcp-url`` > ``MAHAVISHNU_MCP_URL`` >
+    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8683``.
 
     Examples:
         mahavishnu metrics verification
         mahavishnu metrics verification --since 7d --output json
-        mahavishnu metrics verification --dhara-url http://dhara.internal:8683
+        mahavishnu metrics verification --mcp-url http://mcp.internal:8683
     """
-    effective_url = _resolve_dhara_url(dhara_url)
+    effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
-    entries = asyncio.run(_fetch_dhara_entries(effective_url, VERIFICATION_KEY_PREFIX))
+    entries = asyncio.run(_fetch_mcp_entries(effective_url, VERIFICATION_KEY_PREFIX))
     _render_verification_output(
         entries,
         cutoff=cutoff,
         output_format=output_format,
-        dhara_url=effective_url,
+        mcp_url=effective_url,
     )
 
 
@@ -1132,7 +1132,7 @@ def _render_dispatch_output(
     *,
     cutoff: datetime | None,
     output_format: str,
-    dhara_url: str,
+    mcp_url: str,
 ) -> None:
     """Render the `mahavishnu metrics dispatch` output."""
     filtered = _filter_by_window(entries, cutoff)
@@ -1168,8 +1168,8 @@ def _render_dispatch_output(
         console.print_json(
             json.dumps(
                 {
-                    "source": "dhara",
-                    "dhara_url": dhara_url,
+                    "source": "mcp",
+                    "mcp_url": mcp_url,
                     "prefix": ROUTING_DECISIONS_KEY_PREFIX,
                     "since": cutoff.isoformat() if cutoff else None,
                     "total": total,
@@ -1188,7 +1188,7 @@ def _render_dispatch_output(
         raise typer.Exit(2)
 
     console.print("[cyan]Ultracode Phase 3 — Routing Dispatch Metrics[/cyan]\n")
-    console.print(f"[dim]Dhara URL: {dhara_url}[/dim]")
+    console.print(f"[dim]MCP URL: {mcp_url}[/dim]")
     console.print(f"[dim]Key prefix: {ROUTING_DECISIONS_KEY_PREFIX}[/dim]")
     console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
 
@@ -1238,10 +1238,10 @@ def dispatch_metrics(
         "--since",
         help="Time window filter: '24h', '7d', '30m', or 'all' (no filter).",
     ),
-    dhara_url: str | None = typer.Option(
+    mcp_url: str | None = typer.Option(
         None,
-        "--dhara-url",
-        help="Override Dhara HTTP URL (also: MAHAVISHNU_DHARA_URL).",
+        "--mcp-url",
+        help="Override MCP HTTP URL (also: MAHAVISHNU_MCP_URL).",
     ),
     output_format: str = typer.Option(
         "table",
@@ -1249,28 +1249,28 @@ def dispatch_metrics(
         help="Output format: table or json",
     ),
 ) -> None:
-    """Show ultracode Phase 3 routing-dispatch metrics from Dhara.
+    """Show ultracode Phase 3 routing-dispatch metrics from MCP.
 
-    Reads Dhara under the ``routing-decisions/`` key prefix and renders
+    Reads MCP under the ``routing-decisions/`` key prefix and renders
     per-caller-kind quota usage, async-callback stats, and the most recent
     20 dispatches.
 
-    Precedence for the Dhara URL: ``--dhara-url`` > ``MAHAVISHNU_DHARA_URL`` >
-    ``settings/mahavishnu.yaml -> health.dependencies.dhara`` > ``localhost:8683``.
+    Precedence for the MCP URL: ``--mcp-url`` > ``MAHAVISHNU_MCP_URL`` >
+    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8683``.
 
     Examples:
         mahavishnu metrics dispatch
         mahavishnu metrics dispatch --since 7d --output json
-        mahavishnu metrics dispatch --dhara-url http://dhara.internal:8683
+        mahavishnu metrics dispatch --mcp-url http://mcp.internal:8683
     """
-    effective_url = _resolve_dhara_url(dhara_url)
+    effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
-    entries = asyncio.run(_fetch_dhara_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX))
+    entries = asyncio.run(_fetch_mcp_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX))
     _render_dispatch_output(
         entries,
         cutoff=cutoff,
         output_format=output_format,
-        dhara_url=effective_url,
+        mcp_url=effective_url,
     )
 
 

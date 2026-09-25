@@ -1,10 +1,10 @@
-"""Durable ecosystem state MCP tools — Phase 3 of the Dhara retirement.
+"""Durable ecosystem state MCP tools — Phase 3 of the MCP retirement.
 
-These five tools port ``dhara_upsert_service`` / ``dhara_get_service`` /
-``dhara_list_services`` / ``dhara_record_event`` / ``dhara_list_events``
-from Dhara's MCP surface onto Mahavishnu's MCP server so sibling Bodai
+These five tools port ``mcp_upsert_service`` / ``mcp_get_service`` /
+``mcp_list_services`` / ``mcp_record_event`` / ``mcp_list_events``
+from MCP's MCP surface onto Mahavishnu's MCP server so sibling Bodai
 components can resolve services and read events without depending on
-Dhara's MCP. See ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md``.
+MCP's MCP. See ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md``.
 
 Mirrors the sibling :mod:`mahavishnu.mcp.tools.webhook_tools` shape:
 each tool is an inline ``async`` function so FastMCP's ``@mcp.tool()``
@@ -22,8 +22,8 @@ the WRITE tools (``mahavishnu_upsert_service`` /
 permissions via ``list(Permission)`` in ``RBACManager._init_default_roles``.
 
 Substrate contract: the leaf store uses
-:func:`mahavishnu.core._dhara_substrate_compat.dhara_calltime` so the
-host's dhara binding is resolved lazily. When unbound, the writer logs
+:func:`mahavishnu.core._mcp_substrate_compat.mcp_calltime` so the
+host's mcp binding is resolved lazily. When unbound, the writer logs
 a structured ``ecosystem_state_*_skipped`` warning and returns the
 validated record anyway; the readers return ``None`` / ``[]``.
 """
@@ -93,8 +93,8 @@ def register_ecosystem_state_tools(
             heartbeat_at: Optional ISO-8601 last-heartbeat timestamp.
 
         Returns:
-            The serialized service record as a dict. Mirrors the Dhara
-            ``dhara_upsert_service`` response envelope (no extra
+            The serialized service record as a dict. Mirrors the MCP
+            ``mcp_upsert_service`` response envelope (no extra
             wrapper) so call-site code can be ported verbatim.
 
         Auth: requires ``user_id`` with ``WRITE_ECOSYSTEM_STATE`` permission.
@@ -142,7 +142,7 @@ def register_ecosystem_state_tools(
     ) -> dict[str, Any]:
         """List durable ecosystem service records with optional filters.
 
-        Filters match the Dhara contract: exact ``service_type`` /
+        Filters match the MCP contract: exact ``service_type`` /
         ``status`` and single-tag ``capability`` membership check.
 
         Returns ``{"ok": True, "count": <n>, "services": [...]}``. An
@@ -208,7 +208,7 @@ def register_ecosystem_state_tools(
         """List durable ecosystem events with optional filters.
 
         Returns up to ``limit`` most-recent matching events (default
-        100). Filters match the Dhara contract exactly.
+        100). Filters match the MCP contract exactly.
 
         Auth: requires ``user_id`` with ``READ_ECOSYSTEM_STATE`` permission.
         """

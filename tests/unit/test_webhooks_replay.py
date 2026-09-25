@@ -3,13 +3,13 @@
 Mirrors the canonical substrate-compat test pattern used by
 ``tests/unit/test_webhooks_receiver.py`` and ``tests/unit/approval/test_list_history.py``
 - a single fixture substitutes the substrate-compat shim's
-``dhara_calltime`` with a capture mock so the consumer's happy / unbound
+``mcp_calltime`` with a capture mock so the consumer's happy / unbound
 / missing-key paths can be exercised without a real substrate.
 
 Phase 8 Task 5 update: the previous patches targeted
-``replay.dhara.get`` directly (the live dhara module). After Wave A
-the producer module no longer imports ``dhara``; the patch target is
-now the local ``dhara_calltime`` import in ``mahavishnu.webhooks.replay``.
+``replay.mcp.get`` directly (the live mcp module). After Wave A
+the producer module no longer imports ``mcp``; the patch target is
+now the local ``mcp_calltime`` import in ``mahavishnu.webhooks.replay``.
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.webhooks.replay import webhook_replay
 
 
-def _make_dhara_calltime_patcher(monkeypatch: pytest.MonkeyPatch, mock_get: MagicMock) -> None:
-    """Replace ``replay_module.dhara_calltime`` with a routing stub.
+def _make_mcp_calltime_patcher(monkeypatch: pytest.MonkeyPatch, mock_get: MagicMock) -> None:
+    """Replace ``replay_module.mcp_calltime`` with a routing stub.
 
     Returns ``mock_get`` when ``name == "get"`` (the only attribute
     ``webhook_replay`` queries via the shim) and ``None`` for everything
@@ -36,14 +36,14 @@ def _make_dhara_calltime_patcher(monkeypatch: pytest.MonkeyPatch, mock_get: Magi
     def fake_calltime(name: str) -> Any:
         return mock_get if name == "get" else None
 
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara_calltime", fake_calltime)
+    monkeypatch.setattr("mahavishnu.webhooks.replay.mcp_calltime", fake_calltime)
 
 
 @pytest.fixture
 def substrate_get(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Stub the substrate-compat shim's get-resolution with a capture mock."""
     mock_get = MagicMock(return_value=None)
-    _make_dhara_calltime_patcher(monkeypatch, mock_get)
+    _make_mcp_calltime_patcher(monkeypatch, mock_get)
     return mock_get
 
 
@@ -93,7 +93,7 @@ def test_webhook_replay_returns_none_when_record_missing(
     assert result is None
 
 
-def test_webhook_replay_returns_none_when_dhara_unbound(
+def test_webhook_replay_returns_none_when_mcp_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -107,7 +107,7 @@ def test_webhook_replay_returns_none_when_dhara_unbound(
     def fake_calltime(name: str) -> Any:
         return None  # everything unbound
 
-    monkeypatch.setattr("mahavishnu.webhooks.replay.dhara_calltime", fake_calltime)
+    monkeypatch.setattr("mahavishnu.webhooks.replay.mcp_calltime", fake_calltime)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.webhooks.replay"):
         result = webhook_replay("evt-unbound", token="header.payload.signature")
@@ -120,7 +120,7 @@ def test_webhook_replay_returns_none_when_dhara_unbound(
     # Oneiric's formatter bundles extras into the formatted message string
     # rather than assigning them as LogRecord attributes, so the structured
     # fields are asserted by substring presence in the message body.
-    assert "'reason': 'dhara.get_unbound'" in record.message
+    assert "'reason': 'mcp.get_unbound'" in record.message
     assert "'webhook_id': 'evt-unbound'" in record.message
     # Observability rule: warning log must not carry str(exception).
     assert not hasattr(record, "exc_info") or record.exc_info is None
@@ -135,7 +135,7 @@ def test_webhook_replay_rejects_missing_token(monkeypatch, caplog):
     from mahavishnu.webhooks import replay
 
     dhara_get = MagicMock(return_value={"webhook_id": "evt-1"})
-    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
+    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-1", token=None)
@@ -153,7 +153,7 @@ def test_webhook_replay_rejects_non_jwt_token(monkeypatch, caplog):
     from mahavishnu.webhooks import replay
 
     dhara_get = MagicMock(return_value={"webhook_id": "evt-2"})
-    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
+    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-2", token="opaque")
@@ -168,7 +168,7 @@ def test_webhook_replay_passes_with_jwt_shaped_token(monkeypatch):
 
     payload = _payload("evt-3")
     dhara_get = MagicMock(return_value=payload)
-    _make_dhara_calltime_patcher(monkeypatch, dhara_get)
+    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
 
     token = "header.payload.signature"
     result = replay.webhook_replay(webhook_id="evt-3", token=token)

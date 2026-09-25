@@ -48,7 +48,7 @@ class FakeCircuitBreaker:
 
 
 @dataclass
-class FakeDharaState:
+class FakeMCPState:
     """Simple async key-value store for analyzer tests."""
 
     should_fail: bool = False
@@ -192,9 +192,9 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_analyze_and_persist_collects_and_flushes_signals(self, monkeypatch):
-        dhara_state = FakeDharaState()
+        mcp_state = FakeDharaState()
         analyzer = FitnessAnalyzer(
-            dhara_state=dhara_state,
+            mcp_state=mcp_state,
             component_endpoints=[("component-a", "http://one")],
         )
 
@@ -214,8 +214,8 @@ class TestFitnessAnalyzer:
 
         await analyzer._analyze_and_persist()
 
-        assert dhara_state.writes
-        assert dhara_state.writes[0][0] == "routing_fitness/code_generation/least_loaded"
+        assert mcp_state.writes
+        assert mcp_state.writes[0][0] == "routing_fitness/code_generation/least_loaded"
         assert not analyzer._buffer
 
     @pytest.mark.asyncio
@@ -298,9 +298,9 @@ class TestFitnessAnalyzer:
         assert analyzer._task is None
 
     @pytest.mark.asyncio
-    async def test_flush_buffer_writes_to_dhara_and_clears_buffer(self):
-        dhara_state = FakeDharaState()
-        analyzer = FitnessAnalyzer(dhara_state=dhara_state)
+    async def test_flush_buffer_writes_to_mcp_and_clears_buffer(self):
+        mcp_state = FakeDharaState()
+        analyzer = FitnessAnalyzer(mcp_state=mcp_state)
         analyzer._buffer.append(
             _BufferEntry(
                 task_class="code_generation",
@@ -312,7 +312,7 @@ class TestFitnessAnalyzer:
         await analyzer._flush_buffer()
 
         assert not analyzer._buffer
-        assert dhara_state.writes == [
+        assert mcp_state.writes == [
             (
                 "routing_fitness/code_generation/least_loaded",
                 {
@@ -330,7 +330,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_returns_immediately_when_empty(self):
-        analyzer = FitnessAnalyzer(dhara_state=FakeDharaState())
+        analyzer = FitnessAnalyzer(mcp_state=FakeDharaState())
 
         await analyzer._flush_buffer()
 
@@ -339,9 +339,9 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_uses_circuit_breaker(self):
-        dhara_state = FakeDharaState()
+        mcp_state = FakeDharaState()
         breaker = FakeCircuitBreaker()
-        analyzer = FitnessAnalyzer(dhara_state=dhara_state, circuit_breaker=breaker)
+        analyzer = FitnessAnalyzer(mcp_state=mcp_state, circuit_breaker=breaker)
         analyzer._buffer.append(
             _BufferEntry(
                 task_class="reasoning",
@@ -353,12 +353,12 @@ class TestFitnessAnalyzer:
         await analyzer._flush_buffer()
 
         assert breaker.calls == 1
-        assert dhara_state.writes[0][0] == "routing_fitness/reasoning/random"
+        assert mcp_state.writes[0][0] == "routing_fitness/reasoning/random"
 
     @pytest.mark.asyncio
     async def test_flush_buffer_drops_after_dlq_threshold(self):
-        dhara_state = FakeDharaState(should_fail=True)
-        analyzer = FitnessAnalyzer(dhara_state=dhara_state)
+        mcp_state = FakeDharaState(should_fail=True)
+        analyzer = FitnessAnalyzer(mcp_state=mcp_state)
         analyzer._buffer.append(
             _BufferEntry(
                 task_class="swarm",
@@ -371,7 +371,7 @@ class TestFitnessAnalyzer:
 
         assert not analyzer._buffer
         assert analyzer._dlq_failures == {}
-        assert len(dhara_state.writes) == 0
+        assert len(mcp_state.writes) == 0
 
     @pytest.mark.asyncio
     async def test_analyze_and_persist_noop_without_components(self):
@@ -384,7 +384,7 @@ class TestFitnessAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_and_persist_returns_when_no_traces_collected(self, monkeypatch):
         analyzer = FitnessAnalyzer(
-            dhara_state=FakeDharaState(),
+            mcp_state=FakeDharaState(),
             component_endpoints=[("component-a", "http://one")],
         )
 

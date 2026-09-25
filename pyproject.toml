@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.28.1"
+version = "0.28.2"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -646,12 +646,6 @@ nav = [
     "api-reference.md",
     "troubleshooting.md",
 ]
-
-[tool.uv.sources]
-# Local-path override for the in-flight oneiric bus-publisher fix
-# (commit adds async def publish on RedisStreamsQueueAdapter). Remove
-# once oneiric 0.21.7 publishes with the fix; the floor is unchanged.
-oneiric = { path = "../oneiric", editable = true }
 
 [tool.ty]
 src = { include = ["mahavishnu/**/*.py"] }

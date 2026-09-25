@@ -1,10 +1,10 @@
-"""Mahavishnu-owned persistence types — locally vendored from Dhara.
+"""Mahavishnu-owned persistence types — locally vendored from MCP.
 
 These are the durable entity shapes produced by Mahavishnu's workflow /
 approval / webhook writers and consumed by the corresponding readers.
-They were previously imported from ``dhara.schema.{WorkflowOutcome,
-ApprovalLog, WebhookIngress}``; after the Phase 8 Dhara MCP retirement
-(see ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md``) they live
+They were previously imported from ``mcp.schema.{WorkflowOutcome,
+ApprovalLog, WebhookIngress}``; after the Phase 8 MCP MCP retirement
+(see ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md``) they live
 in this consumer repo instead.
 
 Per user direction 2026-09-16 ("use oneiric models not equivalents"),
@@ -16,18 +16,18 @@ is tempted to "promote" these into oneiric for tidiness, cite this
 header and the plan's Task 2 before doing so.
 
 The ``msgspec.Struct(frozen=True)`` form is preserved verbatim from
-the Dhara originals (``dhara/schema/workflow_outcome.py``,
-``dhara/schema/approval_log.py``, ``dhara/schema/webhook_ingress.py``).
+the MCP originals (``mcp/schema/workflow_outcome.py``,
+``mcp/schema/approval_log.py``, ``mcp/schema/webhook_ingress.py``).
 Wire-format compatibility is pinned by
 ``tests/unit/test_models_persistence.py``.
 
 Scope notes for downstream Tasks 4 + 7 of the plan:
 
-- ``validate`` / ``from_dict`` / ``to_dict`` helpers from ``dhara.schema``
-  are **not** re-exported here — they wrap the Dhara schema registry,
-  which is itself staying in Dhara. Call-sites that currently do
-  ``dhara.schema.validate(x)`` / ``dhara.schema.from_dict(Struct, x)`` /
-  ``dhara.schema.to_dict(x)`` will be migrated in Tasks 4 + 7 to
+- ``validate`` / ``from_dict`` / ``to_dict`` helpers from ``mcp.schema``
+  are **not** re-exported here — they wrap the MCP schema registry,
+  which is itself staying in MCP. Call-sites that currently do
+  ``mcp.schema.validate(x)`` / ``mcp.schema.from_dict(Struct, x)`` /
+  ``mcp.schema.to_dict(x)`` will be migrated in Tasks 4 + 7 to
   either msgspec primitives (``msgspec.convert`` / ``msgspec.to_builtins``)
   or to small wrappers added at that point.
 - ``SchemaValidationError`` becomes ``msgspec.ValidationError`` at the
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 class WorkflowOutcome(msgspec.Struct, frozen=True):
     """Structured result of a workflow execution.
 
-    Mirrors ``dhara.schema.WorkflowOutcome`` field-for-field. Persisted
+    Mirrors ``mcp.schema.WorkflowOutcome`` field-for-field. Persisted
     by Mahavishnu's workflow outcome writer.
     """
 
@@ -63,7 +63,7 @@ class WorkflowOutcome(msgspec.Struct, frozen=True):
 class ApprovalLog(msgspec.Struct, frozen=True):
     """Approval history entry — append-only.
 
-    Mirrors ``dhara.schema.ApprovalLog`` field-for-field. Records are
+    Mirrors ``mcp.schema.ApprovalLog`` field-for-field. Records are
     written by Mahavishnu's approval decision writer and read via
     ``list_approval_history``.
     """
@@ -78,7 +78,7 @@ class ApprovalLog(msgspec.Struct, frozen=True):
 class WebhookIngress(msgspec.Struct, frozen=True):
     """Durable webhook receipt record — idempotent replay support.
 
-    Mirrors ``dhara.schema.WebhookIngress`` field-for-field. ``payload_hash``
+    Mirrors ``mcp.schema.WebhookIngress`` field-for-field. ``payload_hash``
     enables idempotent replay without re-processing.
     """
 
@@ -92,10 +92,10 @@ class WebhookIngress(msgspec.Struct, frozen=True):
 class EcosystemService(msgspec.Struct, frozen=True):
     """Durable ecosystem service registration record.
 
-    Mirrors Dhara's ``dhara_upsert_service`` payload (see
-    ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md`` Phase 3).
+    Mirrors MCP's ``mcp_upsert_service`` payload (see
+    ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md`` Phase 3).
     Persisted by Mahavishnu's ecosystem-state writer so sibling Bodai
-    components can resolve services without depending on Dhara's MCP.
+    components can resolve services without depending on MCP's MCP.
     """
 
     service_id: str
@@ -113,10 +113,10 @@ class EcosystemService(msgspec.Struct, frozen=True):
 class EcosystemEvent(msgspec.Struct, frozen=True):
     """Durable ecosystem event record — append-only.
 
-    Mirrors Dhara's ``dhara_record_event`` payload (see
-    ``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md`` Phase 3).
+    Mirrors MCP's ``mcp_record_event`` payload (see
+    ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md`` Phase 3).
     Retained with a configurable retention window; old events are pruned
-    by the writer (default 30 days, matching Dhara's
+    by the writer (default 30 days, matching MCP's
     :class:`EventRetention`).
     """
 

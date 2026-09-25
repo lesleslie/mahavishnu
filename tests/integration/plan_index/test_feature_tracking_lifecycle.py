@@ -1,4 +1,4 @@
-"""Round-2 e2e: docs/feature-tracking/plan-index-dhara.md frontmatter lifecycle.
+"""Round-2 e2e: docs/feature-tracking/plan-index-mcp.md frontmatter lifecycle.
 
 Verifies the file exists with required fields (status, role, date,
 last_reviewed, topic) and that the status field flips correctly as
@@ -16,7 +16,7 @@ import pytest
 
 class TestFeatureTrackingLifecycle:
     def test_feature_tracking_file_exists_with_required_fields(self) -> None:
-        path = Path("docs/feature-tracking/plan-index-dhara.md")
+        path = Path("docs/feature-tracking/plan-index-mcp.md")
         if not path.exists():
             pytest.skip("Feature tracking file not yet created (Task 16)")
         text = path.read_text()
@@ -32,7 +32,7 @@ class TestFeatureTrackingLifecycle:
         ``status: adopted``. Re-enable when Task 20 lands.
         """
         pytest.skip("Adoption step lands in Task 20")
-        path = Path("docs/feature-tracking/plan-index-dhara.md")
+        path = Path("docs/feature-tracking/plan-index-mcp.md")
         if not path.exists():
             pytest.skip("Feature tracking file not yet created")
         text = path.read_text()

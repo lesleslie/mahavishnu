@@ -15,7 +15,7 @@ from mahavishnu.core.adapter_persistence import (
 from mahavishnu.core.adapter_registry import (
     HybridAdapterRegistry,
     RegistrationReport,
-    _build_dhara_registry_config,
+    _build_mcp_registry_config,
     get_registry,
     initialize_registry,
 )
@@ -407,7 +407,7 @@ class TestRegistrationReport:
             discovered=10,
             registered=8,
             failed=[("bad_adapter", "Import error")],
-            sources={"entry_points": 5, "dhara": 5},
+            sources={"entry_points": 5, "mcp": 5},
         )
 
         assert report.discovered == 10
@@ -617,15 +617,15 @@ class TestModuleFunctions:
         reg_module._registry = None
 
 
-def test_build_dhara_registry_config_with_dependency():
-    """Lines 73-74: dhara dependency is found and a URL is constructed."""
+def test_build_mcp_registry_config_with_dependency():
+    """Lines 73-74: mcp dependency is found and a URL is constructed."""
     dependency = MagicMock()
     dependency.use_tls = False
-    dependency.host = "dhara-host"
+    dependency.host = "mcp-host"
     dependency.port = 8683
 
     health = MagicMock()
-    health.dependencies = {"dhara": dependency}
+    health.dependencies = {"mcp": dependency}
 
     config = MagicMock()
     config.health = health
@@ -634,19 +634,19 @@ def test_build_dhara_registry_config_with_dependency():
     registry_config.base_url = None
     registry_config.enabled = True
 
-    result = _build_dhara_registry_config(config, registry_config)
-    assert result["base_url"] == "http://dhara-host:8683/mcp"
+    result = _build_mcp_registry_config(config, registry_config)
+    assert result["base_url"] == "http://mcp-host:8683/mcp"
 
 
-def test_build_dhara_registry_config_with_tls_dependency():
-    """Lines 73-74: dhara dependency with TLS yields https URL."""
+def test_build_mcp_registry_config_with_tls_dependency():
+    """Lines 73-74: mcp dependency with TLS yields https URL."""
     dependency = MagicMock()
     dependency.use_tls = True
-    dependency.host = "secure-dhara"
+    dependency.host = "secure-mcp"
     dependency.port = 443
 
     health = MagicMock()
-    health.dependencies = {"dhara": dependency}
+    health.dependencies = {"mcp": dependency}
 
     config = MagicMock()
     config.health = health
@@ -655,5 +655,5 @@ def test_build_dhara_registry_config_with_tls_dependency():
     registry_config.base_url = None
     registry_config.enabled = True
 
-    result = _build_dhara_registry_config(config, registry_config)
-    assert result["base_url"] == "https://secure-dhara:443/mcp"
+    result = _build_mcp_registry_config(config, registry_config)
+    assert result["base_url"] == "https://secure-mcp:443/mcp"

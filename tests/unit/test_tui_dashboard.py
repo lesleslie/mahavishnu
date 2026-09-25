@@ -538,7 +538,7 @@ class TestBodaiComponentScreen:
         slugs = [
             ("Crackerjack — Quality Inspector", "crackerjack", "http://localhost:8676"),
             ("Akosha — Intelligence Seer", "akosha", "http://localhost:8682"),
-            ("Dhara — State Curator", "dhara", "http://localhost:8683"),
+            ("Dhara — State Curator", "mcp", "http://localhost:8683"),
             ("Session-Buddy — Memory Builder", "sb-metrics", "http://localhost:8678"),
         ]
         for label, slug, url in slugs:
@@ -799,7 +799,7 @@ class TestComponentUrls:
         from mahavishnu.tui.app import _component_urls
 
         urls = _component_urls()
-        assert set(urls.keys()) == {"crackerjack", "akosha", "dhara", "sb-metrics"}
+        assert set(urls.keys()) == {"crackerjack", "akosha", "mcp", "sb-metrics"}
 
     def test_all_none_when_settings_unavailable(self, monkeypatch) -> None:
         from mahavishnu.tui.app import _component_urls

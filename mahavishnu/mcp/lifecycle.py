@@ -78,29 +78,29 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
     # that may not get scheduled before FastMCP's lifespan scope
     # reshuffles the event loop.
     #
-    # The cron calls ``dhara.get/.put/.list_prefix`` via
+    # The cron calls ``mcp.get/.put/.list_prefix`` via
     # ``PlanIndexStore`` — that interface (string KV) is implemented
-    # by ``DharaKvClient``, which unwraps Dhara's
+    # by ``MCPKvClient``, which unwraps MCP's
     # ``{ok,key,value}`` wire envelope so ``cron_core`` can do
-    # ``int(await store._dhara.get(KEY))`` and ``json.loads(...)``
-    # against the raw stored string. ``DharaStateBackend`` (the
+    # ``int(await store._mcp.get(KEY))`` and ``json.loads(...)``
+    # against the raw stored string. ``MCPStateBackend`` (the
     # workflow/pool/approval substrate) returns the envelope dict
     # on purpose and would crash every cycle with
     # ``int() argument must be ... not 'dict'``.
     try:
         from pathlib import Path
 
-        from ..core.bootstrap import resolve_dhara_url
-        from ..core.state_backends.dhara_kv import DharaKvClient, DharaKvConfig
+        from ..core.bootstrap import resolve_mcp_url
+        from ..core.state_backends.mcp_kv import MCPKvClient, MCPKvConfig
         from ..plan_index.cron import PeriodicTaskRunner
         from ..plan_index.store import PlanIndexStore
 
-        dhara_url = resolve_dhara_url(server.app.config)
-        kv_backend = DharaKvClient(
-            base_url=dhara_url,
-            config=DharaKvConfig(enabled=True),
+        mcp_url = resolve_mcp_url(server.app.config)
+        kv_backend = MCPKvClient(
+            base_url=mcp_url,
+            config=MCPKvConfig(enabled=True),
         )
-        server._plan_index_dhara_kv = kv_backend
+        server._plan_index_mcp_kv = kv_backend
         store = PlanIndexStore(kv_backend)
         # ``Path.cwd()`` is the mahavishnu repo root when launched via
         # the launchd plist (``WorkingDirectory`` is set), so
@@ -126,7 +126,7 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
         # Note: a previous version of this code synthesized a fake
         # feed-state here so /health flipped even when the live cycle
         # crashed. That hid the int(dict) wire-envelope bug; now that
-        # ``DharaKvClient`` solves the seam, the live cycle should
+        # ``MCPKvClient`` solves the seam, the live cycle should
         # succeed and a real failure is worth surfacing.
 
     # Override FastMCP's hardcoded 2s graceful-shutdown timeout so

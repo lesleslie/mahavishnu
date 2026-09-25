@@ -949,14 +949,14 @@ def test_register_worker_contract_tools_attaches_all_nine(
 
     app = MagicMock()
     manager = _make_manager_mock()
-    tools.register_worker_contract_tools(app, manager, settle_dhara=None)
+    tools.register_worker_contract_tools(app, manager, settle_mcp=None)
     # 9 tools registered: launch_worker, send_input, capture_output,
     # worker_status, wait_for_state, cancel_worker, worker_revoke,
     # worker_run_with_settle, worker_settle
     assert app.tool.call_count == 9
     # Module globals set
     assert tools._durable_manager is manager
-    assert tools._settle_dhara is None
+    assert tools._settle_mcp is None
 
 
 def test_register_worker_contract_tools_with_settle_dhara(
@@ -966,9 +966,9 @@ def test_register_worker_contract_tools_with_settle_dhara(
 
     app = MagicMock()
     manager = _make_manager_mock()
-    settle_dhara = MagicMock()
-    tools.register_worker_contract_tools(app, manager, settle_dhara=settle_dhara)
-    assert tools._settle_dhara is settle_dhara
+    settle_mcp = MagicMock()
+    tools.register_worker_contract_tools(app, manager, settle_mcp=settle_mcp)
+    assert tools._settle_mcp is settle_mcp
 
 
 # ---------------------------------------------------------------------------
@@ -1088,7 +1088,7 @@ def test_worker_run_with_settle_success(monkeypatch: pytest.MonkeyPatch) -> None
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_run_with_settle(
             "task",
@@ -1113,7 +1113,7 @@ def test_worker_run_with_settle_generates_run_ref_when_omitted(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_run_with_settle(
             "task", bindings=[{"path": "a.py", "base": "old"}]
@@ -1134,7 +1134,7 @@ def test_worker_run_with_settle_worker_id_change_triggers_restamp(
         return_value=_make_spawn_result(worker_id="w-new-id")
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_run_with_settle(
             "task",
@@ -1153,7 +1153,7 @@ def test_worker_run_with_settle_no_restamp_when_worker_id_unchanged(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_run_with_settle(
             "task",
@@ -1172,7 +1172,7 @@ def test_worker_run_with_settle_passes_command_and_metadata(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     asyncio.run(
         tools.worker_run_with_settle(
             "task",
@@ -1220,7 +1220,7 @@ def test_worker_settle_invalid_action(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_worker_settle_record_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     # No dead-letter file → load_record returns None
     out = asyncio.run(tools.worker_settle("r-missing", "select"))
     assert out["state"] == "not_found"
@@ -1232,7 +1232,7 @@ def test_worker_settle_select_transition(monkeypatch: pytest.MonkeyPatch) -> Non
     record = _make_settle_record(state=SettleState.PROPOSED)
     # Patch load_record to return our pre-canned record
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
 
     out = asyncio.run(tools.worker_settle("r1", "select", actor="alice"))
@@ -1247,7 +1247,7 @@ def test_worker_settle_illegal_transition(monkeypatch: pytest.MonkeyPatch) -> No
 
     record = _make_settle_record(state=SettleState.PROPOSED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_settle(
             "r1",
@@ -1267,7 +1267,7 @@ def test_worker_settle_apply_missing_bindings(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(tools.worker_settle("r1", "apply"))
     assert out["state"] == "missing_bindings_content"
 
@@ -1279,7 +1279,7 @@ def test_worker_settle_apply_empty_bindings_content(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(tools.worker_settle("r1", "apply", bindings_content={}))
     assert out["state"] == "missing_bindings_content"
 
@@ -1291,7 +1291,7 @@ def test_worker_settle_apply_non_dict_bindings(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
         tools.worker_settle("r1", "apply", bindings_content="not-a-dict")  # type: ignore[arg-type]
     )
@@ -1466,7 +1466,7 @@ def test_worker_settle_apply_merge_conflict_path(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(
         tools,
         "merge_three_way",
@@ -1495,7 +1495,7 @@ def test_worker_settle_apply_merge_failure_path(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(
         tools,
         "merge_three_way",
@@ -1514,7 +1514,7 @@ def test_worker_settle_apply_merge_missing_ours_path(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     # bindings_content does NOT contain a.py
     out = asyncio.run(
         tools.worker_settle("r1", "apply", bindings_content={"other.py": "x"})
@@ -1528,7 +1528,7 @@ def test_worker_settle_apply_success_path(monkeypatch: pytest.MonkeyPatch) -> No
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(
         tools,
         "merge_three_way",
@@ -1553,7 +1553,7 @@ def test_worker_settle_release_path(monkeypatch: pytest.MonkeyPatch) -> None:
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
     out = asyncio.run(tools.worker_settle("r1", "release"))
     assert out["state"] == "released"
@@ -1564,7 +1564,7 @@ def test_worker_settle_discard_path(monkeypatch: pytest.MonkeyPatch) -> None:
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
     out = asyncio.run(tools.worker_settle("r1", "discard"))
     assert out["state"] == "discarded"
@@ -1578,7 +1578,7 @@ def test_worker_settle_action_enum_string_coercion(
 
     record = _make_settle_record(state=SettleState.PROPOSED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
     out = asyncio.run(tools.worker_settle("r1", SettleAction.SELECT.value))
     assert out["state"] == "selected"
@@ -1592,7 +1592,7 @@ def test_worker_settle_response_legal_next_for_terminal(
 
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
     out = asyncio.run(tools.worker_settle("r1", "release"))
     assert out["legal_next"] == []
@@ -1605,7 +1605,7 @@ def test_worker_settle_response_includes_transitions(
 
     record = _make_settle_record(state=SettleState.PROPOSED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
     out = asyncio.run(tools.worker_settle("r1", "select"))
     assert "transitions" in out

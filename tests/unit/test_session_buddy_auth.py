@@ -914,8 +914,8 @@ class TestValidateProjectAccess:
         self, authenticated_client: AuthenticatedSessionBuddyClient
     ) -> None:
         result = await authenticated_client.validate_project_access(
-            requesting_project="dhara",
-            target_project="dhara",
+            requesting_project="mcp",
+            target_project="mcp",
             action="write_data",
         )
         assert result is True
@@ -926,7 +926,7 @@ class TestValidateProjectAccess:
     ) -> None:
         result = await authenticated_client.validate_project_access(
             requesting_project="mahavishnu",
-            target_project="dhara",
+            target_project="mcp",
             action="write_data",
         )
         assert result is False

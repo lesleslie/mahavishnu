@@ -1,9 +1,9 @@
-"""Unit tests for DharaKvClient — string-shape adapter for PlanIndexStore.
+"""Unit tests for MCPKvClient — string-shape adapter for PlanIndexStore.
 
 PlanIndexStore's _DharaClient Protocol declares string KV (str | None),
 but Dhara's MCP wire shape returns dict envelopes (``{"ok":..., "key":...,
 "value":...}``). This adapter unwraps the envelope so callers see the
-raw string value Dhara actually stored. See state_backends/dhara_kv.py.
+raw string value Dhara actually stored. See state_backends/mcp_kv.py.
 
 Tests cover: get/put round-trip, list_prefix tuple shape, delete no-op,
 disabled-mode short-circuit, and the contract that wires Dhara's wire
@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.state_backends.dhara_kv import DharaKvClient, DharaKvConfig
+from mahavishnu.core.state_backends.mcp_kv import MCPKvClient, MCPKvConfig
 
 
 def _make_client(
@@ -24,26 +24,26 @@ def _make_client(
     *,
     call_tool: AsyncMock | None = None,
     put: AsyncMock | None = None,
-) -> DharaKvClient:
-    """Build a DharaKvClient with a mocked DharaClient."""
+) -> MCPKvClient:
+    """Build a MCPKvClient with a mocked MCPClient."""
     mock_client = MagicMock()
     mock_client.put = put or AsyncMock()
     mock_client.call_tool = call_tool or AsyncMock()
     mock_client.aclose = AsyncMock()
 
-    cfg = DharaKvConfig(enabled=enabled)
-    with patch("mahavishnu.core.dhara_adapter.DharaClient", return_value=mock_client):
-        client = DharaKvClient(base_url="http://localhost:8683/mcp", config=cfg)
+    cfg = MCPKvConfig(enabled=enabled)
+    with patch("mahavishnu.core.mcp_adapter.MCPClient", return_value=mock_client):
+        client = MCPKvClient(base_url="http://localhost:8683/mcp", config=cfg)
     client._client = mock_client  # belt-and-braces
     return client
 
 
-class TestDharaKvClientGet:
+class TestMCPKvClientGet:
     @pytest.mark.asyncio
     async def test_get_unwraps_wire_envelope_to_string(self):
         """Dhara MCP returns {'ok':..., 'key':K, 'value':V}; adapter
         surfaces the raw stored string. Critical for cron_core where
-        int(await dhara.get(...)) raises if a dict envelope leaks."""
+        int(await mcp.get(...)) raises if a dict envelope leaks."""
         envelope = {"ok": True, "key": "plan_index/meta/cycles_total", "value": "42"}
         client = _make_client(call_tool=AsyncMock(return_value=envelope))
 
@@ -78,9 +78,9 @@ class TestDharaKvClientGet:
         client._client.call_tool.assert_not_called()
 
 
-class TestDharaKvClientPut:
+class TestMCPKvClientPut:
     @pytest.mark.asyncio
-    async def test_put_passes_through_to_dhara_client(self):
+    async def test_put_passes_through_to_mcp_client(self):
         mock_put = AsyncMock()
         client = _make_client(put=mock_put)
 
@@ -108,7 +108,7 @@ class TestDharaKvClientPut:
         mock_put.assert_not_called()
 
 
-class TestDharaKvClientListPrefix:
+class TestMCPKvClientListPrefix:
     @pytest.mark.asyncio
     async def test_list_prefix_flattens_wire_envelope(self):
         """MCP tool wraps list_prefix_async result as
@@ -139,7 +139,7 @@ class TestDharaKvClientListPrefix:
         assert result == []
 
 
-class TestDharaKvClientDelete:
+class TestMCPKvClientDelete:
     @pytest.mark.asyncio
     async def test_delete_calls_dhara(self):
         mock_call_tool = AsyncMock()
@@ -159,12 +159,12 @@ class TestDharaKvClientDelete:
         mock_call_tool.assert_not_called()
 
 
-class TestDharaKvClientContract:
-    """Sanity: DharaKvClient satisfies PlanIndexStore's _DharaClient Protocol.
+class TestMCPKvClientContract:
+    """Sanity: MCPKvClient satisfies PlanIndexStore's _DharaClient Protocol.
 
     The Protocol declared in plan_index/store.py:109-115 is::
 
-        class _DharaClient(Protocol):
+        class _MCPClient(Protocol):
             async def put(self, key: str, value: str, *, ttl: int | None = ...) -> None: ...
             async def get(self, key: str) -> str | None: ...
             async def list_prefix(self, prefix: str) -> list[tuple[str, str]]: ...
@@ -177,15 +177,15 @@ class TestDharaKvClientContract:
         client = _make_client()
         store = PlanIndexStore(client)  # type: ignore[arg-type]
         # No exception here means the protocol is satisfied at runtime.
-        assert store._dhara is client
+        assert store._mcp is client
 
 
-class TestDharaKvClientCronCoreIntBug:
+class TestMCPKvClientCronCoreIntBug:
     """Reproduces the original int(dict) bug end-to-end through the adapter.
 
-    When DharaStateBackend was wired into PlanIndexStore, cron_core's
-    ``int(await store._dhara.get(KEY))`` raised ``TypeError``. With
-    DharaKvClient unwrapping the envelope, the same code returns an
+    When MCPStateBackend was wired into PlanIndexStore, cron_core's
+    ``int(await store._mcp.get(KEY))`` raised ``TypeError``. With
+    MCPKvClient unwrapping the envelope, the same code returns an
     int-compatible string and the conversion succeeds.
     """
 

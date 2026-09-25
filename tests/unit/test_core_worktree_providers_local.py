@@ -437,7 +437,7 @@ class _FakeCache:
         return True
 
 
-class _FakeDharaClient:
+class _FakeMCPClient:
     """Stand-in for the Dhara thin client. Just records execute() calls."""
 
     def __init__(self) -> None:
@@ -445,7 +445,7 @@ class _FakeDharaClient:
 
     async def execute(self, sql: str, params: dict | None = None) -> None:
         # ``params`` is optional because schema-setup calls pass only
-        # the SQL string (no bound parameters) per dhara_registry.
+        # the SQL string (no bound parameters) per mcp_registry.
         self.executes.append((sql, params))
 
     async def query(self, sql: str, params: dict | None = None) -> list[dict]:
@@ -594,9 +594,9 @@ class TestCreateWorktreeHandleStreaming:
         )
 
         storage = _FakeStorage(capabilities=["stream"])
-        dhara = _FakeDharaClient()
+        mcp = _FakeDharaClient()
         provider = LocalWorktreeProvider(
-            storage=storage, dhara_client=dhara, cache=_FakeCache()
+            storage=storage, dhara_client=mcp, cache=_FakeCache()
         )
         principal = _make_principal()
 
@@ -622,7 +622,7 @@ class TestCreateWorktreeHandleStreaming:
         # Dhara registration was attempted (3 INSERTs per handle
         # plus the 3 schema-setup statements from _ensure_schema_async).
         # Filter to only INSERT statements to be robust to ordering.
-        inserts = [e for e in dhara.executes if "INSERT" in e[0]]
+        inserts = [e for e in mcp.executes if "INSERT" in e[0]]
         assert len(inserts) == 3
 
     async def test_create_worktree_handle_emits_streaming_op_metric(

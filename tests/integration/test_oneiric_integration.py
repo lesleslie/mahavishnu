@@ -18,8 +18,8 @@ import pytest
 
 from mahavishnu.core.oneiric_client import (
     AdapterEntry,
-    DharaAdapterRegistryClient,
-    DharaAdapterRegistryConfig,
+    MCPAdapterRegistryClient,
+    MCPAdapterRegistryConfig,
 )
 
 pytestmark = [
@@ -32,8 +32,8 @@ pytestmark = [
 ]
 
 
-def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> DharaAdapterRegistryConfig:
-    return DharaAdapterRegistryConfig(
+def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> MCPAdapterRegistryConfig:
+    return MCPAdapterRegistryConfig(
         enabled=True,
         base_url=os.getenv("MAHAVISHNU_DHARA_REGISTRY_URL", "http://localhost:8683/mcp"),
         timeout_sec=timeout_sec,
@@ -42,11 +42,11 @@ def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> DharaAdapterRegis
     )
 
 
-class TestDharaAdapterRegistryIntegration:
+class TestMCPAdapterRegistryIntegration:
     """Integration tests with a real Dhara MCP adapter registry."""
 
     async def test_health_check(self) -> None:
-        client = DharaAdapterRegistryClient(_config())
+        client = MCPAdapterRegistryClient(_config())
 
         try:
             health = await client.health_check()
@@ -58,7 +58,7 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_list_all_adapters(self) -> None:
-        client = DharaAdapterRegistryClient(_config())
+        client = MCPAdapterRegistryClient(_config())
 
         try:
             adapters = await client.list_adapters()
@@ -74,7 +74,7 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_list_adapters_with_filters(self) -> None:
-        client = DharaAdapterRegistryClient(_config())
+        client = MCPAdapterRegistryClient(_config())
 
         try:
             storage_adapters = await client.list_adapters(category="storage")
@@ -85,7 +85,7 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_list_adapters_caching(self) -> None:
-        client = DharaAdapterRegistryClient(_config(cache_ttl_sec=60))
+        client = MCPAdapterRegistryClient(_config(cache_ttl_sec=60))
 
         try:
             adapters1 = await client.list_adapters(use_cache=True)
@@ -103,7 +103,7 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_resolve_adapter(self) -> None:
-        client = DharaAdapterRegistryClient(_config())
+        client = MCPAdapterRegistryClient(_config())
 
         try:
             adapter = await client.resolve_adapter(
@@ -122,7 +122,7 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_adapter_entry_serialization(self) -> None:
-        client = DharaAdapterRegistryClient(_config())
+        client = MCPAdapterRegistryClient(_config())
 
         try:
             adapters = await client.list_adapters()
@@ -142,8 +142,8 @@ class TestDharaAdapterRegistryIntegration:
             await client.close()
 
     async def test_connection_failure(self) -> None:
-        client = DharaAdapterRegistryClient(
-            DharaAdapterRegistryConfig(
+        client = MCPAdapterRegistryClient(
+            MCPAdapterRegistryConfig(
                 enabled=True,
                 base_url="http://localhost:9/mcp",
                 timeout_sec=1,

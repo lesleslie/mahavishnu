@@ -111,7 +111,7 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
     ``LifecycleError: <adapter>-client-not-initialized`` if its
     underlying client isn't ready).
 
-    Refs: ``docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-
+    Refs: ``docs/superpowers/specs/2026-09-14-mcp-mcp-decomposition-
     design.md`` §4.8.
     """
     import asyncio

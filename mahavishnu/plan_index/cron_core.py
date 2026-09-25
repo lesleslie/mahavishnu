@@ -4,13 +4,13 @@ Separated from cron.py so it can be unit-tested without asyncio.
 Exposes `discover_records()` so the CLI orchestrator (Task 15) can
 reuse the same scan logic.
 
-Round-3 BLOCKER fix: this cycle acquires a Dhara-backed mutex before
+Round-3 BLOCKER fix: this cycle acquires a MCP-backed mutex before
 touching any records and releases it after the cycle completes
 (success or failure). Holder format is `<hostname_hash[:8]>/<pid>`;
 lock TTL is REBUILD_LOCK_TTL_SECONDS = 60s; if the existing holder
 is older than the TTL, this cycle takes over (stale-PID takeover).
 
-DLQ semantics: transient Dhara write failures append to
+DLQ semantics: transient MCP write failures append to
 `plan_index/meta/recent_errors` (a bounded JSON list, max 20 entries,
 30-day TTL). Failures are non-fatal — the rebuilder continues with the
 remaining records.
@@ -56,7 +56,7 @@ LAST_REBUILD_MS_KEY = "plan_index/meta/last_rebuild_ms"
 LAST_SUCCESS_MS_KEY = "plan_index/meta/last_success_ms"
 RECENT_ERRORS_KEY = "plan_index/meta/recent_errors"
 
-# Round-3 addition: Dhara-backed rebuild mutex.
+# Round-3 addition: MCP-backed rebuild mutex.
 # Holder format is `<hostname_hash[:8]>/<pid>`; tests assert this exact regex.
 REBUILD_LOCK_HOLDER_KEY = "plan_index/meta/rebuild_lock/holder"
 REBUILD_LOCK_ACQUIRED_KEY = "plan_index/meta/rebuild_lock/acquired_at_ms"
@@ -107,7 +107,7 @@ def _lock_holder() -> str:
 
 
 class _LockStore(Protocol):
-    """The Dhara KV surface the rebuild lock needs. No compare-and-swap."""
+    """The MCP KV surface the rebuild lock needs. No compare-and-swap."""
 
     async def put(self, key: str, value: str, *, ttl: int | None = ...) -> None: ...
     async def get(self, key: str) -> str | None: ...
@@ -134,10 +134,10 @@ def _claim_is_active(value: str, now_ms: int) -> bool:
     return now_ms - claimed_ms < REBUILD_LOCK_TTL_SECONDS * 1000
 
 
-async def _live_lock_holder(dhara: _LockStore, now_ms: int) -> tuple[str, int] | None:
+async def _live_lock_holder(mcp: _LockStore, now_ms: int) -> tuple[str, int] | None:
     """Return `(holder, age_ms)` when a non-stale holder is published."""
-    holder_raw = await dhara.get(REBUILD_LOCK_HOLDER_KEY)
-    acquired_raw = await dhara.get(REBUILD_LOCK_ACQUIRED_KEY)
+    holder_raw = await mcp.get(REBUILD_LOCK_HOLDER_KEY)
+    acquired_raw = await mcp.get(REBUILD_LOCK_ACQUIRED_KEY)
     if holder_raw is None or acquired_raw is None:
         return None
     try:
@@ -150,12 +150,12 @@ async def _live_lock_holder(dhara: _LockStore, now_ms: int) -> tuple[str, int] |
     return holder_raw, age_ms
 
 
-async def _acquire_rebuild_lock(dhara: _LockStore, new_holder: str, now_ms: int) -> None:
+async def _acquire_rebuild_lock(mcp: _LockStore, new_holder: str, now_ms: int) -> None:
     """Claim the rebuild lock, or raise `PlanRebuildLockedError`.
 
     A plain `get`-then-`put` on the holder key is a TOCTOU race: two
     concurrent cycles both read `holder is None`, both write their own
-    holder, and neither sees the other. The Dhara KV surface exposed to
+    holder, and neither sees the other. The MCP KV surface exposed to
     plan_index has no compare-and-swap, so acquisition is arbitrated with
     unique claim keys instead:
 
@@ -170,19 +170,19 @@ async def _acquire_rebuild_lock(dhara: _LockStore, new_holder: str, now_ms: int)
          claims never linger between cycles.
     """
     claim_key = _new_claim_key()
-    await dhara.put(claim_key, str(now_ms), ttl=REBUILD_LOCK_TTL_SECONDS)
+    await mcp.put(claim_key, str(now_ms), ttl=REBUILD_LOCK_TTL_SECONDS)
     try:
-        pairs = await dhara.list_prefix(REBUILD_LOCK_CLAIM_KEY_PREFIX)
+        pairs = await mcp.list_prefix(REBUILD_LOCK_CLAIM_KEY_PREFIX)
         active = sorted(k for k, v in pairs if _claim_is_active(v, now_ms))
         if active and active[0] != claim_key:
             raise PlanRebuildLockedError(active[0], 0)
-        live = await _live_lock_holder(dhara, now_ms)
+        live = await _live_lock_holder(mcp, now_ms)
         if live is not None:
             raise PlanRebuildLockedError(*live)
-        await dhara.put(REBUILD_LOCK_HOLDER_KEY, new_holder)
-        await dhara.put(REBUILD_LOCK_ACQUIRED_KEY, str(now_ms))
+        await mcp.put(REBUILD_LOCK_HOLDER_KEY, new_holder)
+        await mcp.put(REBUILD_LOCK_ACQUIRED_KEY, str(now_ms))
     finally:
-        await dhara.delete(claim_key)
+        await mcp.delete(claim_key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -499,18 +499,18 @@ async def run_rebuild_cycle(
          Raise PlanRebuildLockedError if a non-stale holder is held.
       1. Call `discover_records(repo_root)` to get the list of records.
       2. For each record: normalize the repo URL, derive the plan_id,
-         upsert to Dhara via `rebuilder.upsert_all`.
+         upsert to MCP via `rebuilder.upsert_all`.
       3. On failure, append to `recent_errors` (bounded at 20) and write
          a structured line to `errors.log`.
       4. Update all six meta keys including the explicit `entities_count`.
       5. Truncate `recent_errors` to 20 entries.
       6. Release lock by deleting the holder key (always, in `finally`).
     """
-    dhara = store._dhara  # type: ignore[attr-defined]
+    mcp = store._mcp  # type: ignore[attr-defined]
 
     # --- Lock acquisition (round-3 addition) ------------------------------
-    holder_raw = await dhara.get(REBUILD_LOCK_HOLDER_KEY)
-    acquired_raw = await dhara.get(REBUILD_LOCK_ACQUIRED_KEY)
+    holder_raw = await mcp.get(REBUILD_LOCK_HOLDER_KEY)
+    acquired_raw = await mcp.get(REBUILD_LOCK_ACQUIRED_KEY)
     now_ms_for_lock = int(datetime.now(tz=UTC).timestamp() * 1000)
     new_holder = _lock_holder()
 
@@ -532,7 +532,7 @@ async def run_rebuild_cycle(
         # active holder), so observability can later surface who took over
         # from whom at what timestamp.
         history_key = f"{REBUILD_LOCK_HISTORY_KEY_PREFIX}{uuid.uuid4().hex}"
-        await dhara.put(
+        await mcp.put(
             history_key,
             json.dumps(
                 {
@@ -546,7 +546,7 @@ async def run_rebuild_cycle(
 
     # Atomically claim the lock (Task 14.6). Replaces the previous
     # unconditional `put`, which let concurrent cycles clobber each other.
-    await _acquire_rebuild_lock(dhara, new_holder, now_ms_for_lock)
+    await _acquire_rebuild_lock(mcp, new_holder, now_ms_for_lock)
 
     try:
         records: list[PlanRecord] = discover_records(repo_root) if repo_root is not None else []
@@ -555,33 +555,33 @@ async def run_rebuild_cycle(
 
         now_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
 
-        cycles_raw = await dhara.get(CYCLES_TOTAL_KEY)
+        cycles_raw = await mcp.get(CYCLES_TOTAL_KEY)
         cycles_total = int(cycles_raw) + 1 if cycles_raw else 1
-        await dhara.put(CYCLES_TOTAL_KEY, str(cycles_total))
+        await mcp.put(CYCLES_TOTAL_KEY, str(cycles_total))
 
-        await dhara.put(ENTITIES_COUNT_KEY, str(success))
+        await mcp.put(ENTITIES_COUNT_KEY, str(success))
 
         if error_count == 0:
-            success_raw = await dhara.get(SUCCESS_CYCLES_KEY)
+            success_raw = await mcp.get(SUCCESS_CYCLES_KEY)
             successful = int(success_raw) + 1 if success_raw else 1
-            await dhara.put(SUCCESS_CYCLES_KEY, str(successful))
-            await dhara.put(LAST_SUCCESS_MS_KEY, str(now_ms))
+            await mcp.put(SUCCESS_CYCLES_KEY, str(successful))
+            await mcp.put(LAST_SUCCESS_MS_KEY, str(now_ms))
             last_success_ms: int | None = now_ms
         else:
             last_success_ms = None
 
         errors_total = error_count
         if error_count > 0:
-            errors_raw = await dhara.get(ERRORS_TOTAL_KEY)
+            errors_raw = await mcp.get(ERRORS_TOTAL_KEY)
             errors_total = (int(errors_raw) if errors_raw else 0) + error_count
-            await dhara.put(ERRORS_TOTAL_KEY, str(errors_total))
+            await mcp.put(ERRORS_TOTAL_KEY, str(errors_total))
 
-            recent_raw = await dhara.get(RECENT_ERRORS_KEY)
+            recent_raw = await mcp.get(RECENT_ERRORS_KEY)
             recent: list[dict[str, Any]] = json.loads(recent_raw) if recent_raw else []
             for err in errors:
                 recent.append({"ts_ms": now_ms, "op": "upsert", "err": "see ctx", "ctx": err})
             recent = recent[-RECENT_ERRORS_MAX:]
-            await dhara.put(
+            await mcp.put(
                 RECENT_ERRORS_KEY,
                 json.dumps(recent),
                 ttl=RECENT_ERRORS_TTL_DAYS * 86400,
@@ -589,7 +589,7 @@ async def run_rebuild_cycle(
 
             _write_error_log(errors)
 
-        await dhara.put(LAST_REBUILD_MS_KEY, str(now_ms))
+        await mcp.put(LAST_REBUILD_MS_KEY, str(now_ms))
 
         from mahavishnu.plan_index.health import (
             PlanIndexFeedState,
@@ -609,7 +609,7 @@ async def run_rebuild_cycle(
             errors=error_count,
             entities_count=success,
             cycles_total=cycles_total,
-            successful_cycles_total=int(await dhara.get(SUCCESS_CYCLES_KEY) or "0"),
+            successful_cycles_total=int(await mcp.get(SUCCESS_CYCLES_KEY) or "0"),
             errors_total=errors_total,
             last_rebuild_ms=now_ms,
             last_success_ms=last_success_ms,
@@ -617,6 +617,6 @@ async def run_rebuild_cycle(
     finally:
         # Always release the lock, even on partial failure.
         try:
-            await dhara.delete(REBUILD_LOCK_HOLDER_KEY)
+            await mcp.delete(REBUILD_LOCK_HOLDER_KEY)
         except Exception as release_exc:  # noqa: BLE001
             _logger.warning("could not release rebuild lock: %s", release_exc)

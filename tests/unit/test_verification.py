@@ -273,7 +273,7 @@ def test_model_validator_enforces_error_abstain_biconditional() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_persisted_false_on_dhara_write_failure(
+async def test_persisted_false_on_mcp_write_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Dhara raises on put() → result.persisted=False and a dead-letter file is written.
@@ -285,9 +285,9 @@ async def test_persisted_false_on_dhara_write_failure(
 
     class _BrokenDhara:
         async def put(self, key: str, payload: dict) -> None:
-            raise ConnectionError("dhara unreachable")
+            raise ConnectionError("mcp unreachable")
 
-    store = VerificationStore(dhara=_BrokenDhara())  # type: ignore[arg-type]
+    store = VerificationStore(mcp=_BrokenDhara())  # type: ignore[arg-type]
 
     result = VerificationResult(
         proposal_id="pid-deadletter",

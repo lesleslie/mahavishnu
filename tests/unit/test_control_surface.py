@@ -45,12 +45,12 @@ class _ApprovalResult:
         self.rejection_reason = None
 
 
-def test_recovery_summary_without_dhara_state() -> None:
+def test_recovery_summary_without_mcp_state() -> None:
     app = SimpleNamespace(
         active_workflows=[1, 2],
         approval_manager=SimpleNamespace(pending_requests=[1]),
         pool_manager=SimpleNamespace(_pools={"pool": object()}),
-        _dhara_state=None,
+        _mcp_state=None,
     )
 
     import asyncio
@@ -64,7 +64,7 @@ def test_recovery_summary_without_dhara_state() -> None:
     assert summary["last_recovered_at"] is None
 
 
-def test_recovery_summary_with_dhara_state() -> None:
+def test_recovery_summary_with_mcp_state() -> None:
     async def recover_workflows() -> list[dict[str, str]]:
         return [{"status": "running"}, {"status": "done"}]
 
@@ -77,7 +77,7 @@ def test_recovery_summary_with_dhara_state() -> None:
     async def recover_routing_decisions() -> list[dict[str, int]]:
         return [{"decision": 1}, {"decision": 2}]
 
-    dhara_state = SimpleNamespace(
+    mcp_state = SimpleNamespace(
         available=True,
         recover_workflows=recover_workflows,
         recover_approvals=recover_approvals,
@@ -88,7 +88,7 @@ def test_recovery_summary_with_dhara_state() -> None:
         active_workflows=[],
         approval_manager=SimpleNamespace(pending_requests=[]),
         pool_manager=None,
-        _dhara_state=dhara_state,
+        _mcp_state=mcp_state,
     )
 
     import asyncio
@@ -103,11 +103,11 @@ def test_recovery_summary_with_dhara_state() -> None:
     assert summary["last_recovered_at"] is not None
 
 
-def test_recovery_summary_swallows_dhara_errors() -> None:
+def test_recovery_summary_swallows_mcp_errors() -> None:
     async def recover_workflows() -> list[dict[str, str]]:
-        raise RuntimeError("dhara unavailable")
+        raise RuntimeError("mcp unavailable")
 
-    dhara_state = SimpleNamespace(
+    mcp_state = SimpleNamespace(
         available=False,
         recover_workflows=recover_workflows,
         recover_approvals=list,
@@ -118,7 +118,7 @@ def test_recovery_summary_swallows_dhara_errors() -> None:
         active_workflows=["existing"],
         approval_manager=SimpleNamespace(pending_requests=["pending"]),
         pool_manager=None,
-        _dhara_state=dhara_state,
+        _mcp_state=mcp_state,
     )
 
     import asyncio
@@ -136,7 +136,7 @@ def test_recovery_summary_swallows_dhara_errors() -> None:
 def test_get_recovered_routing_decisions_filters_and_handles_missing_state() -> None:
     import asyncio
 
-    app = SimpleNamespace(_dhara_state=None)
+    app = SimpleNamespace(_mcp_state=None)
     assert asyncio.run(get_recovered_routing_decisions(app)) == []
 
     async def recover_routing_decisions() -> list[dict[str, str]]:
@@ -146,8 +146,8 @@ def test_get_recovered_routing_decisions_filters_and_handles_missing_state() -> 
             {"decision": "ignore"},
         ]
 
-    dhara_state = SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
-    app = SimpleNamespace(_dhara_state=dhara_state)
+    mcp_state = SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
+    app = SimpleNamespace(_mcp_state=mcp_state)
     assert asyncio.run(get_recovered_routing_decisions(app)) == [
         {"task_class": "build", "decision": "keep"},
         {"task_class": "deploy", "decision": "drop"},
@@ -158,12 +158,12 @@ def test_get_recovered_routing_decisions_filters_and_handles_missing_state() -> 
     ]
 
 
-def test_get_recovered_routing_decisions_swallows_dhara_errors() -> None:
+def test_get_recovered_routing_decisions_swallows_mcp_errors() -> None:
     async def recover_routing_decisions() -> list[dict[str, str]]:
-        raise RuntimeError("dhara unavailable")
+        raise RuntimeError("mcp unavailable")
 
     app = SimpleNamespace(
-        _dhara_state=SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
+        _mcp_state=SimpleNamespace(recover_routing_decisions=recover_routing_decisions)
     )
 
     import asyncio
@@ -185,7 +185,7 @@ def test_event_activity_and_fix_traces() -> None:
     assert get_fix_trace(app, limit=0) == []
 
     status = get_correlation_status(
-        SimpleNamespace(_dhara_state=None, fix_activity=app.fix_activity)
+        SimpleNamespace(_mcp_state=None, fix_activity=app.fix_activity)
     )
     assert status["trace_count"] == 2
     assert status["latest_stage"] == "finish"

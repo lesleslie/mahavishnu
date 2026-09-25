@@ -86,9 +86,9 @@ async def route_task(
 
 ______________________________________________________________________
 
-## 5. DharaStateBackend — Key Schema Fits, Read Verified ✅
+## 5. MCPStateBackend — Key Schema Fits, Read Verified ✅
 
-**File**: `mahavishnu/core/state_backends/dhara.py`
+**File**: `mahavishnu/core/state_backends/mcp.py`
 
 **Existing key patterns**:
 
@@ -162,7 +162,7 @@ Plan requires a tool querying traces by `task_class` attribute and time window. 
 
 ### ✅ BLOCKER 3: Dhara MCP server `get` tool — verified
 
-`dhara/mcp/server_core.py` line 423: `kv_store.get(key=key)` — `get` tool IS registered. `DharaStateBackend.get()` works.
+`dhara/mcp/server_core.py` line 423: `kv_store.get(key=key)` — `get` tool IS registered. `MCPStateBackend.get()` works.
 
 ______________________________________________________________________
 
@@ -191,8 +191,8 @@ ______________________________________________________________________
 | `query_component_traces` MCP tool | ❌ Missing — BLOCKER 2 |
 | PoolManager `route_task()` modification | ⚠️ Feasible — signature change needed |
 | `RoutingFitnessReader` class | ⚠️ New class needed |
-| DharaStateBackend fitness write | ✅ `put()` supports any key |
-| DharaStateBackend fitness read | ✅ `get()` and `list_prefix()` verified |
+| MCPStateBackend fitness write | ✅ `put()` supports any key |
+| MCPStateBackend fitness read | ✅ `get()` and `list_prefix()` verified |
 | Akosha MCP client | ❌ Does not exist — BLOCKER 1 |
 | Akosha `fitness_analyzer.py` | ❌ Does not exist — needs creation |
 | Akosha `run_fitness_analysis` tool | ❌ Does not exist — needs creation |

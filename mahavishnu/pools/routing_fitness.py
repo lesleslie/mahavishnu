@@ -1,7 +1,7 @@
-"""Routing fitness signals read from Dhara.
+"""Routing fitness signals read from MCP.
 
 Provides `FitnessSignal` (data) and `RoutingFitnessReader` which reads signals
-from Dhara's `routing_fitness/{task_class}/{selector}` keyspace and selects the
+from MCP's `routing_fitness/{task_class}/{selector}` keyspace and selects the
 best-performing selector for a given task class.
 """
 
@@ -21,7 +21,7 @@ _INVALID_KEY_PLACEHOLDER = "unknown"
 def _sanitize_key_component(value: str) -> str:
     """Sanitize a key path component to prevent path injection.
 
-    Dhara key paths use '/' as separator. Only alphanumeric + underscore
+    MCP key paths use '/' as separator. Only alphanumeric + underscore
     (max 50 chars) are allowed in path components.
     """
     if _KEY_COMPONENT_RE.match(value):
@@ -54,7 +54,7 @@ class FitnessSignal:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FitnessSignal:
-        """Reconstruct from a Dhara value dict."""
+        """Reconstruct from a MCP value dict."""
         return cls(
             score=float(data.get("score", 0.0)),
             samples=int(data.get("samples", 0)),
@@ -67,23 +67,23 @@ class FitnessSignal:
 
 
 class RoutingFitnessReader:
-    """Reads routing fitness signals from Dhara.
+    """Reads routing fitness signals from MCP.
 
-    Uses DharaStateBackend.list_prefix() to fetch all signals for a given
+    Uses MCPStateBackend.list_prefix() to fetch all signals for a given
     task_class and returns them keyed by selector name.
 
     The caller is responsible for providing a properly-configured
-    DharaStateBackend instance (or None for graceful degradation).
+    MCPStateBackend instance (or None for graceful degradation).
     """
 
-    def __init__(self, dhara_state: Any | None = None) -> None:
+    def __init__(self, mcp_state: Any | None = None) -> None:
         """Initialize reader.
 
         Args:
-            dhara_state: DharaStateBackend instance; may be None for fallback-only
+            mcp_state: MCPStateBackend instance; may be None for fallback-only
                          operation (always returns empty results).
         """
-        self._dhara_state = dhara_state
+        self._mcp_state = mcp_state
 
     async def get_fitness_signals(self, task_class: str) -> dict[str, FitnessSignal]:
         """Return fitness signals for all selectors for a task class.
@@ -93,17 +93,17 @@ class RoutingFitnessReader:
 
         Returns:
             Dict mapping selector name (e.g. "least_loaded") → FitnessSignal.
-            Returns empty dict if Dhara is unavailable or no signals exist.
+            Returns empty dict if MCP is unavailable or no signals exist.
         """
-        if self._dhara_state is None:
+        if self._mcp_state is None:
             return {}
 
         safe_task_class = _sanitize_key_component(task_class)
         prefix = f"routing_fitness/{safe_task_class}/"
         try:
-            entries = await self._dhara_state.list_prefix(prefix)
+            entries = await self._mcp_state.list_prefix(prefix)
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Failed to list_prefix(%r) from Dhara: %s", prefix, exc)
+            logger.debug("Failed to list_prefix(%r) from MCP: %s", prefix, exc)
             return {}
 
         signals: dict[str, FitnessSignal] = {}

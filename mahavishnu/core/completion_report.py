@@ -2,7 +2,7 @@
 
 This is the foundational Phase 1 contract for workflow completion outcomes.
 Workers publish a ``CompletionReport`` at the end of a workflow; consumers
-(Dhara persistence, Akosha analysis, Crackerjack quality gates, Session-Buddy
+(MCP persistence, Akosha analysis, Crackerjack quality gates, Session-Buddy
 memory) read from this typed shape instead of parsing ad-hoc dicts.
 
 Scope (per Spec #1 brief, sql_blocked substrate):
@@ -22,7 +22,7 @@ Notes:
 - ``metadata`` is intentionally free-form ``dict[str, Any]`` so workers
   can attach context (workflow_id, worker_id, pool_id, etc.) without a
   schema bump. Downstream consumers should treat unknown keys defensively.
-- This module deliberately avoids Dhara or EventBus imports so it stays
+- This module deliberately avoids MCP or EventBus imports so it stays
   importable in tests and pure worker contexts.
 """
 

@@ -1,7 +1,7 @@
 """Shared fixtures for plan_index e2e tests.
 
 Exercises the five ``plan_*`` MCP tools through a real FastMCP server
-constructed in-process, with a ``FakeDhara``-backed :class:`PlanIndexStore`
+constructed in-process, with a ``FakeMCP``-backed :class:`PlanIndexStore`
 injected via the ``store_provider`` DI parameter on
 ``register_plan_tools``. The conftest mirrors the integration-test pattern
 already used in ``tests/unit/test_goal_team_tools.py``: build a real
@@ -43,7 +43,7 @@ import pytest
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.plan_tools import register_plan_tools
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 class _FakeRBAC:
@@ -72,14 +72,14 @@ class _FakeRBAC:
 
 @pytest.fixture
 def store() -> PlanIndexStore:
-    """A fresh ``FakeDhara``-backed :class:`PlanIndexStore` for each test.
+    """A fresh ``FakeMCP``-backed :class:`PlanIndexStore` for each test.
 
-    Using ``FakeDhara`` (not a real Dhara subprocess) means each test
+    Using ``FakeMCP`` (not a real Dhara subprocess) means each test
     starts with a clean substrate — no rebuilder cycles, no last_rebuild,
     no records. The Round-2 tests at the bottom of the suite depend on
     that contract.
     """
-    return PlanIndexStore(FakeDhara())
+    return PlanIndexStore(FakeMCP())
 
 
 @pytest.fixture

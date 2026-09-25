@@ -79,9 +79,9 @@ ______________________________________________________________________
 
 The plan says Akosha has an `akosha/mcp/client.py` that can call Mahavishnu's MCP tools. This module is not present in the codebase (confirmed by glob search — no `akosha/mcp/` directory exists). The plan references a module that doesn't exist, and the fallback ("gracefully if Mahavishnu is unreachable") is already described for the fitness analyzer but not for the MCP client itself.
 
-\*\*Missing #2: No `routing_fitness/` read method in `DharaStateBackend`
+\*\*Missing #2: No `routing_fitness/` read method in `MCPStateBackend`
 
-**Location**: Plan line 184 (`mahavishnu/core/state_backends/dhara.py` — Add fitness signal read helper)
+**Location**: Plan line 184 (`mahavishnu/core/state_backends/mcp.py` — Add fitness signal read helper)
 
 The `dhara.py` (lines 46–239) has helpers for `workflow_key`, `pool_key`, `routing_key`, and `approval_key`. There is no `routing_fitness_key()` helper, and there is no `get_fitness_signal()` method. The plan says this is a change to make, but the current file doesn't have it.
 
@@ -189,7 +189,7 @@ ______________________________________________________________________
 | Correctness | `query_component_traces` tool doesn't exist and needs new storage query path | High |
 | Correctness | No synchronization for rolling window — multi-instance Akosha races | Medium |
 | Completeness | `RoutingFitnessReader` API is underspecified (sync vs async, latency) | Medium |
-| Completeness | `routing_fitness/` read helper missing from `DharaStateBackend` | Medium |
+| Completeness | `routing_fitness/` read helper missing from `MCPStateBackend` | Medium |
 | Scalability | Central polling by single Akosha instance doesn't scale to 100+ repos | High |
 | Failure modes | No DLQ for failed fitness signal writes | Low |
 | Failure modes | No retry queue for component→Mahavishnu trace push failures | Medium |

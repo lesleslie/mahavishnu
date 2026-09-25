@@ -3,9 +3,9 @@
 The state machine is the single source of truth for settle-run transitions.
 It is intentionally tiny: a transition table, a small ``SettleRunRecord``
 dataclass, and a few pure-function helpers. There is NO automatic
-side-effect (no file IO, no Dhara IO). The persistence layer (see
+side-effect (no file IO, no MCP IO). The persistence layer (see
 :mod:`mahavishnu.settle.persistence`) wraps these primitives and is
-responsible for writing to Dhara BEFORE any filesystem side-effect.
+responsible for writing to MCP BEFORE any filesystem side-effect.
 
 This split lets the state machine be unit-tested with no IO and no
 mocking, which is the property-based test surface (see
@@ -93,7 +93,7 @@ class Binding:
 
     The ``merge_strategy`` field (REQ-SM-004, Phase 3) overrides the global
     default for this binding only. Stored as the raw wire string
-    (``"line"``, ``"semantic"``, or ``None``) so Dhara payload round-trips
+    (``"line"``, ``"semantic"``, or ``None``) so MCP payload round-trips
     are version-stable. The dataclass accepts a :class:`MergeStrategy`
     enum directly because ``StrEnum`` values are plain strings — passing
     ``MergeStrategy.SEMANTIC`` is equivalent to passing ``"semantic"``.
@@ -108,7 +108,7 @@ class Binding:
 class SettleRunRecord:
     """Durable record for a single settle run.
 
-    Persisted under the Dhara key ``settle/v1/{run_ref}`` so that
+    Persisted under the MCP key ``settle/v1/{run_ref}`` so that
     :func:`mahavishnu.settle.persistence.load_record` can recover it across
     process restarts. The ``transitions`` list is the audit trail — every
     action is appended on success.
@@ -125,7 +125,7 @@ class SettleRunRecord:
 
     # req: REQ-SM-007
     def to_dict(self) -> dict[str, object]:
-        """Return a JSON-serializable dict suitable for Dhara persistence."""
+        """Return a JSON-serializable dict suitable for MCP persistence."""
         return {
             "run_ref": self.run_ref,
             "worker_id": self.worker_id,
@@ -148,7 +148,7 @@ class SettleRunRecord:
 
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> SettleRunRecord:
-        """Hydrate a record from its Dhara representation.
+        """Hydrate a record from its MCP representation.
 
         Tolerates missing optional fields by defaulting to ``PROPOSED`` and
         an empty transition log — this keeps forward-compat with records

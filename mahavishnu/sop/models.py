@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 class ProjectSOP:
     """A single SOP file scoped to a project.
 
-    Mirrors the Dhara ``project_sops`` table schema (Workstream C).
+    Mirrors the MCP ``project_sops`` table schema (Workstream C).
     """
 
     project_id: str
@@ -46,7 +46,7 @@ class ProjectSOP:
 class FailureModeCatalogEntry:
     """A counter for one (project, fingerprint) failure-mode tuple.
 
-    Mirrors the Dhara ``failure_mode_catalog`` table schema (Workstream C).
+    Mirrors the MCP ``failure_mode_catalog`` table schema (Workstream C).
     """
 
     failure_mode_id: str

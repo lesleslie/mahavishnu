@@ -1,4 +1,4 @@
-"""Unit tests for DharaStateBackend — durable state persistence layer.
+"""Unit tests for MCPStateBackend — durable state persistence layer.
 
 Tests cover: put/get no-ops in degraded mode, circuit-breaker trip/recovery,
 schedule_put fire-and-forget, probe behavior, and config-disabled no-op.
@@ -8,17 +8,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.state_backends.dhara import (
-    _DHARA_FAILURE_THRESHOLD,
-    DharaStateBackend,
-    DharaStateConfig,
+from mahavishnu.core.state_backends.mcp import (
+    _MCP_FAILURE_THRESHOLD,
+    MCPStateBackend,
+    MCPStateConfig,
 )
 
 
-def _make_backend(enabled: bool = True, dhara_put: AsyncMock | None = None) -> DharaStateBackend:
-    """Build a DharaStateBackend with a mocked DharaClient.
+def _make_backend(enabled: bool = True, dhara_put: AsyncMock | None = None) -> MCPStateBackend:
+    """Build a MCPStateBackend with a mocked MCPClient.
 
-    DharaClient is imported inside __init__, so patch the source module.
+    MCPClient is imported inside __init__, so patch the source module.
     After construction, replace _client directly with our mock.
     """
     mock_client = MagicMock()
@@ -26,22 +26,22 @@ def _make_backend(enabled: bool = True, dhara_put: AsyncMock | None = None) -> D
     mock_client.call_tool = AsyncMock(return_value={"value": "test"})
     mock_client.aclose = AsyncMock()
 
-    config = DharaStateConfig(enabled=enabled)
+    config = MCPStateConfig(enabled=enabled)
     # Patch at the source so the local import inside __init__ picks up the mock
-    with patch("mahavishnu.core.dhara_adapter.DharaClient", return_value=mock_client):
-        backend = DharaStateBackend(base_url="http://localhost:8683/mcp", config=config)
+    with patch("mahavishnu.core.mcp_adapter.MCPClient", return_value=mock_client):
+        backend = MCPStateBackend(base_url="http://localhost:8683/mcp", config=config)
 
     # Also replace after construction in case the local import resolved earlier
     backend._client = mock_client
     return backend
 
 
-class TestDharaStateBackendPut:
+class TestMCPStateBackendPut:
     def test_key_helpers(self):
-        assert DharaStateBackend.workflow_key("wf-1") == "workflow/v1/wf-1"
-        assert DharaStateBackend.pool_key("pool-1") == "pool/v1/pool-1"
-        assert DharaStateBackend.approval_key("app-1") == "approval/v1/app-1"
-        assert DharaStateBackend.routing_key("task", None).startswith("routing/v1/task/")
+        assert MCPStateBackend.workflow_key("wf-1") == "workflow/v1/wf-1"
+        assert MCPStateBackend.pool_key("pool-1") == "pool/v1/pool-1"
+        assert MCPStateBackend.approval_key("app-1") == "approval/v1/app-1"
+        assert MCPStateBackend.routing_key("task", None).startswith("routing/v1/task/")
 
     @pytest.mark.asyncio
     async def test_put_calls_client_when_available(self):
@@ -67,7 +67,7 @@ class TestDharaStateBackendPut:
         backend = _make_backend(dhara_put=mock_put)
 
         # Trip the circuit
-        for _ in range(_DHARA_FAILURE_THRESHOLD):
+        for _ in range(_MCP_FAILURE_THRESHOLD):
             await backend.put("key", {})
 
         # Reset mock to ensure no more calls
@@ -83,7 +83,7 @@ class TestDharaStateBackendPut:
         mock_put = AsyncMock(side_effect=RuntimeError("down"))
         backend = _make_backend(dhara_put=mock_put)
 
-        for _ in range(_DHARA_FAILURE_THRESHOLD):
+        for _ in range(_MCP_FAILURE_THRESHOLD):
             await backend.put("key", {})
 
         # Manually expire the circuit
@@ -97,7 +97,7 @@ class TestDharaStateBackendPut:
         mock_put.assert_awaited_once_with("key", {"status": "ok"}, ttl=None)
 
 
-class TestDharaStateBackendGet:
+class TestMCPStateBackendGet:
     @pytest.mark.asyncio
     async def test_get_returns_dict_on_success(self):
         backend = _make_backend()
@@ -125,7 +125,7 @@ class TestDharaStateBackendGet:
         assert result is None
 
 
-class TestDharaStateBackendProbe:
+class TestMCPStateBackendProbe:
     @pytest.mark.asyncio
     async def test_probe_sets_available_true_on_success(self):
         backend = _make_backend()
@@ -164,7 +164,7 @@ class TestSchedulePut:
         mock_put.assert_awaited_once()
 
 
-class TestDharaStateBackendConvenienceMethods:
+class TestMCPStateBackendConvenienceMethods:
     @pytest.mark.asyncio
     async def test_persist_pool_uses_canonical_key(self):
         backend = _make_backend()

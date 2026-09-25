@@ -67,8 +67,8 @@ class TestRoutingFitnessReader:
 
     @pytest.mark.asyncio
     async def test_get_fitness_signals_reads_and_parses_entries(self):
-        dhara_state = MagicMock()
-        dhara_state.list_prefix = AsyncMock(
+        mcp_state = MagicMock()
+        mcp_state.list_prefix = AsyncMock(
             return_value=[
                 (
                     "routing_fitness/code_generation/least_loaded",
@@ -80,19 +80,19 @@ class TestRoutingFitnessReader:
                 ),
             ]
         )
-        reader = RoutingFitnessReader(dhara_state=dhara_state)
+        reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         signals = await reader.get_fitness_signals("code_generation")
 
         assert set(signals) == {"least_loaded", "random"}
         assert signals["least_loaded"].score == 0.9
         assert signals["random"].samples == 8
-        dhara_state.list_prefix.assert_awaited_once_with("routing_fitness/code_generation/")
+        mcp_state.list_prefix.assert_awaited_once_with("routing_fitness/code_generation/")
 
     @pytest.mark.asyncio
     async def test_get_fitness_signals_ignores_bad_entries_and_backend_errors(self):
-        dhara_state = MagicMock()
-        dhara_state.list_prefix = AsyncMock(
+        mcp_state = MagicMock()
+        mcp_state.list_prefix = AsyncMock(
             return_value=[
                 ("routing_fitness/code_generation/", {"score": 1.0}),
                 ("bad-key", {"score": 0.1}),
@@ -102,7 +102,7 @@ class TestRoutingFitnessReader:
                 ),
             ]
         )
-        reader = RoutingFitnessReader(dhara_state=dhara_state)
+        reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         signals = await reader.get_fitness_signals("code_generation")
 
@@ -110,16 +110,16 @@ class TestRoutingFitnessReader:
 
     @pytest.mark.asyncio
     async def test_get_fitness_signals_returns_empty_on_backend_failure(self):
-        dhara_state = MagicMock()
-        dhara_state.list_prefix = AsyncMock(side_effect=RuntimeError("dhara down"))
-        reader = RoutingFitnessReader(dhara_state=dhara_state)
+        mcp_state = MagicMock()
+        mcp_state.list_prefix = AsyncMock(side_effect=RuntimeError("mcp down"))
+        reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         assert await reader.get_fitness_signals("code_generation") == {}
 
     @pytest.mark.asyncio
     async def test_get_best_selector_chooses_highest_score(self):
-        dhara_state = MagicMock()
-        dhara_state.list_prefix = AsyncMock(
+        mcp_state = MagicMock()
+        mcp_state.list_prefix = AsyncMock(
             return_value=[
                 (
                     "routing_fitness/code_generation/least_loaded",
@@ -131,14 +131,14 @@ class TestRoutingFitnessReader:
                 ),
             ]
         )
-        reader = RoutingFitnessReader(dhara_state=dhara_state)
+        reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         assert await reader.get_best_selector("code_generation") == "least_loaded"
 
     @pytest.mark.asyncio
     async def test_get_best_selector_returns_none_without_signals(self):
-        dhara_state = MagicMock()
-        dhara_state.list_prefix = AsyncMock(return_value=[])
-        reader = RoutingFitnessReader(dhara_state=dhara_state)
+        mcp_state = MagicMock()
+        mcp_state.list_prefix = AsyncMock(return_value=[])
+        reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         assert await reader.get_best_selector("code_generation") is None

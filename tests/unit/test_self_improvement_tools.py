@@ -512,11 +512,11 @@ class TestSelfImprovementGenerateVerification:
         # verification_enabled stays False (default); consensus != REJECT
         # means status="generating" with a job-id and verification payload.
         mock_app.settings = MagicMock()
-        mock_app.settings.dhara_url = "http://localhost:8683"
+        mock_app.settings.mcp_url = "http://localhost:8683"
         mock_app.settings.verification_enabled = False
 
         with patch(
-            "mahavishnu.core.dhara_adapter.DharaAdapter",
+            "mahavishnu.core.mcp_adapter.MCPAdapter",
             return_value=dhara_client,
         ):
             result = await tools.self_improvement_generate(

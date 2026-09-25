@@ -20,7 +20,7 @@ pytestmark = pytest.mark.unit
 
 CLUSTER_ID = "abc1234567890def"
 TARGET_REPO = "oneiric"
-CONSUMER_REPOS = ["crackerjack", "dhara"]
+CONSUMER_REPOS = ["crackerjack", "mcp"]
 SYMBOL = "parse_clone_groups"
 DIFF = "--- a/old.py\n+++ b/new.py\n@@ -1 +1 @@\n-dup\n+extracted"
 
@@ -227,7 +227,7 @@ class TestRunCloneRefactorDag:
         result = await run_clone_refactor_dag(
             cluster_id=CLUSTER_ID,
             target_repo=TARGET_REPO,
-            consumer_repos=["crackerjack", "dhara", "akosha"],
+            consumer_repos=["crackerjack", "mcp", "akosha"],
             extracted_symbol=SYMBOL,
             extraction_diff=DIFF,
             gh_client=gh,

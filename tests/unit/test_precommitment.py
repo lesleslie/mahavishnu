@@ -1,6 +1,6 @@
 """Precommitment tests — local Lock backed, async.
 
-Migrated from dhara.lock.sql.SQLBackendLock to
+Migrated from mcp.lock.sql.SQLBackendLock to
 ``mahavishnu.core._lock_sentinel.Lock`` per Phase 8 Task 5 of the
 Dhara MCP retirement plan. The cross-instance persistence test
 (``test_cross_instance_persistence``) is intentionally dropped:

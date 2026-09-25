@@ -206,7 +206,7 @@ async def test_record_progress_snapshot_attaches_to_module_recorders(
 
 
 @pytest.mark.asyncio
-async def test_record_progress_snapshot_persists_to_dhara_when_available(
+async def test_record_progress_snapshot_persists_to_mcp_when_available(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When the substrate HTTP client returns a 2xx, we call it; this is

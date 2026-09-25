@@ -1,6 +1,6 @@
 """State backend abstractions for Mahavishnu durable persistence."""
 
-from .dhara import DharaStateBackend, DharaStateConfig
-from .dhara_kv import DharaKvClient, DharaKvConfig
+from .mcp import MCPStateBackend, MCPStateConfig
+from .mcp_kv import MCPKvClient, MCPKvConfig
 
-__all__ = ["DharaKvClient", "DharaKvConfig", "DharaStateBackend", "DharaStateConfig"]
+__all__ = ["MCPKvClient", "MCPKvConfig", "MCPStateBackend", "MCPStateConfig"]

@@ -197,7 +197,7 @@ def register_pool_tools(
         ``workflow_id`` must be unique per call. Re-calling with the
         same ``workflow_id`` re-bases the cap (intentional "pause at
         N" semantics on a running run). The MCP boundary swallows
-        Dhara failures as ``status: "failed"`` rather than raising —
+        MCP failures as ``status: "failed"`` rather than raising —
         the watchdog polls against whatever state was last persisted,
         so a partial write here is acceptable.
         """

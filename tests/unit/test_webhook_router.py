@@ -663,7 +663,7 @@ class TestRequestModelValidation:
             OpenClawWorkflowRequest(repos=[])
 
     def test_workflow_request_with_valid_repos_accepted(self):
-        req = OpenClawWorkflowRequest(repos=["mahavishnu", "akosha/dhara"])
+        req = OpenClawWorkflowRequest(repos=["mahavishnu", "akosha/mcp"])
         assert len(req.repos) == 2
 
     def test_workflow_request_timeout_bounds(self):

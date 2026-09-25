@@ -106,7 +106,7 @@ def _decode_lock_result(payload: Mapping[str, Any]) -> LockResult:
 class HypothesisLock:
     """Async, local-Lock-backed hypothesis registry.
 
-    Replaces the previous D-LOCK (dhara.lock) backing per Phase 8
+    Replaces the previous D-LOCK (mcp.lock) backing per Phase 8
     Task 5 — see ``mahavishnu/core/_lock_sentinel.py`` for the
     in-process lock service this delegates to.
     """

@@ -33,8 +33,8 @@ class TestPlanCLI:
         tmp_path: Path,
         runner: CliRunner,
     ) -> None:
-        # Ensure dev path is exercised (no MAHAVISHNU_DHARA_URL set).
-        monkeypatch.delenv("MAHAVISHNU_DHARA_URL", raising=False)
+        # Ensure dev path is exercised (no MAHAVISHNU_MCP_URL set).
+        monkeypatch.delenv("MAHAVISHNU_MCP_URL", raising=False)
         monkeypatch.setenv("HOME", str(tmp_path))
         result = runner.invoke(plan_app, ["list"])
         assert result.exit_code == 0

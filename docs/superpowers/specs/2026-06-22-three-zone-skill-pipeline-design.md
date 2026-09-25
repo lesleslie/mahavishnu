@@ -123,7 +123,7 @@ from pathlib import Path
 
 import typer
 
-from mahavishnu.core.dhara_client import execute, query
+from mahavishnu.core.mcp_client import execute, query
 from mahavishnu.mcp.tools.approval_tools import request_approval
 
 

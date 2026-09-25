@@ -8,8 +8,8 @@ import asyncio
 import logging
 
 from mahavishnu.core.oneiric_client import (
-    DharaAdapterRegistryClient,
-    DharaAdapterRegistryConfig,
+    MCPAdapterRegistryClient,
+    MCPAdapterRegistryConfig,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -24,12 +24,12 @@ async def example_1_list_storage_adapters():
     logger.info("Example 1: Listing storage adapters")
 
     # Configure client (insecure dev mode)
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # List all storage adapters
@@ -59,12 +59,12 @@ async def example_2_resolve_with_fallback():
     """
     logger.info("Example 2: Resolving adapter with fallback")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # Try S3 first (preferred)
@@ -112,12 +112,12 @@ async def example_3_health_monitoring():
     """
     logger.info("Example 3: Adapter health monitoring")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # List all adapters
@@ -157,13 +157,13 @@ async def example_4_cache_management():
     """
     logger.info("Example 4: Cache management")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
         cache_ttl_sec=300,  # 5 minute cache
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # First query (cache miss)
@@ -198,12 +198,12 @@ async def example_5_workflow_integration():
     """
     logger.info("Example 5: Workflow integration")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # Step 1: Discover available storage adapters
@@ -266,12 +266,12 @@ async def example_6_parallel_discovery():
     """
     logger.info("Example 6: Parallel adapter discovery")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # Query multiple categories in parallel
@@ -302,12 +302,12 @@ async def example_7_circuit_breaker():
     """
     logger.info("Example 7: Circuit breaker pattern")
 
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
     )
 
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
 
     try:
         # Try to check health of non-existent adapter

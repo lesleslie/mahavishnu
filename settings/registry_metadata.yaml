@@ -174,22 +174,14 @@ repos:
     requires_python_pin: ">=3.13, <3.15"
     registry_notes: "needed for Phase D; last in rollout"
 
-# Repos NOT in ecosystem.yaml but tracked in the registry as excluded/archived.
-# These have no `path:` in ecosystem.yaml — the registry renders them in the
-# Excluded or Deprecated/Archived section using only this overlay data.
+# Excluded and archived repos are PER-MACHINE state (each maintainer's local
+# filesystem has different archive paths and personal projects). They live in
+# settings/registry_metadata.local.yaml (gitignored). See
+# settings/registry_metadata.local.yaml.example for the schema.
+#
+# When the registry renders the "Excluded" or "Deprecated/Archived" sections,
+# it merges both files: shared entries from this file + personal entries from
+# the local overlay.
 
-excluded_repos:
-  www-mcp-servers:
-    exclusion_reason: "no pyproject.toml; docs-only"
-    removed_from_ecosystem_yaml: "2026-09-09"
-    archive_path: null  # still at /Users/les/Projects/www-mcp-servers/ (not yet archived)
-
-archived_repos:
-  fastblocks-htmy:
-    archive_path: "/Users/les/Projects/ARCHIVED/fastblocks-htmy/"
-    archived_on: "pre-2026-09-09"
-    exclusion_reason: "Self-declared Development Status :: 7 - Inactive; absorbed into fastblocks>=0.31.0"
-  peanutbutterpub:
-    archive_path: "/Users/les/Projects/ARCHIVED/peanutbutterpub/"
-    archived_on: "2026-09-09"
-    exclusion_reason: "Les-authored; not part of orchestrated ecosystem"
+excluded_repos: {}
+archived_repos: {}

@@ -60,7 +60,7 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_config_with_dhara_enabled():
+def mock_config_with_mcp_enabled():
     """Create mock configuration with Dhara registry enabled."""
     config = MagicMock()
     config.adapter_allowlist_patterns = [
@@ -165,7 +165,7 @@ class TestFeatureFlagDisabledUsesLegacy:
         assert registry.config == config
 
         # The discovery engine should be configured with Dhara registry disabled
-        assert registry.discovery._enable_dhara_registry is False
+        assert registry.discovery._enable_mcp_registry is False
 
     async def test_feature_flag_disabled_uses_entry_points_only(
         self,
@@ -198,7 +198,7 @@ class TestFeatureFlagDisabledUsesLegacy:
 
             with patch.object(
                 registry.discovery,
-                "discover_from_dhara",
+                "discover_from_mcp",
                 new_callable=AsyncMock,
             ) as mock_dhara:
                 mock_dhara.return_value = []
@@ -337,33 +337,33 @@ class TestRegistryInitFailureFallsBack:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-class TestDharaRegistryFailureLocalOnly:
+class TestMCPRegistryFailureLocalOnly:
     """Tests for local-only fallback when Dhara registry is unavailable."""
 
-    async def test_dhara_unavailable_returns_empty_list(
+    async def test_mcp_unavailable_returns_empty_list(
         self,
         mock_config,
     ):
-        """When Dhara registry is unavailable, discover_from_dhara should return empty."""
+        """When Dhara registry is unavailable, discover_from_mcp should return empty."""
         registry = HybridAdapterRegistry(mock_config)
 
         # Configure discovery with Dhara enabled but unavailable
-        registry.discovery._enable_dhara_registry = True
+        registry.discovery._enable_mcp_registry = True
 
-        # Mock _get_dhara_client to return None (unavailable)
+        # Mock _get_mcp_client to return None (unavailable)
         with patch.object(
             registry.discovery,
-            "_get_dhara_client",
+            "_get_mcp_client",
             return_value=None,
         ):
-            adapters = await registry.discovery.discover_from_dhara()
+            adapters = await registry.discovery.discover_from_mcp()
 
             # Should return empty list gracefully
             assert adapters == []
 
         await registry.close()
 
-    async def test_dhara_connection_error_falls_back_gracefully(
+    async def test_mcp_connection_error_falls_back_gracefully(
         self,
         mock_config,
         caplog,
@@ -373,7 +373,7 @@ class TestDharaRegistryFailureLocalOnly:
         await registry.initialize()
 
         # Configure discovery with Dhara enabled
-        registry.discovery._enable_dhara_registry = True
+        registry.discovery._enable_mcp_registry = True
 
         # Create a mock client that raises ConnectionError
         mock_client = MagicMock()
@@ -383,18 +383,18 @@ class TestDharaRegistryFailureLocalOnly:
 
         with patch.object(
             registry.discovery,
-            "_get_dhara_client",
+            "_get_mcp_client",
             return_value=mock_client,
         ):
             # Should not raise, just return empty list
-            adapters = await registry.discovery.discover_from_dhara()
+            adapters = await registry.discovery.discover_from_mcp()
 
             assert adapters == []
             assert "Dhara" in caplog.text or "unavailable" in caplog.text.lower()
 
         await registry.close()
 
-    async def test_dhara_failure_entry_points_still_work(
+    async def test_mcp_failure_entry_points_still_work(
         self,
         mock_config,
     ):
@@ -425,7 +425,7 @@ class TestDharaRegistryFailureLocalOnly:
             ),
             patch.object(
                 registry.discovery,
-                "discover_from_dhara",
+                "discover_from_mcp",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("Dhara unavailable"),
             ),
@@ -439,7 +439,7 @@ class TestDharaRegistryFailureLocalOnly:
 
         await registry.close()
 
-    async def test_dhara_timeout_falls_back(
+    async def test_mcp_timeout_falls_back(
         self,
         mock_config,
     ):
@@ -447,7 +447,7 @@ class TestDharaRegistryFailureLocalOnly:
         registry = HybridAdapterRegistry(mock_config)
         await registry.initialize()
 
-        registry.discovery._enable_dhara_registry = True
+        registry.discovery._enable_mcp_registry = True
 
         # Mock client that times out
         mock_client = MagicMock()
@@ -455,11 +455,11 @@ class TestDharaRegistryFailureLocalOnly:
 
         with patch.object(
             registry.discovery,
-            "_get_dhara_client",
+            "_get_mcp_client",
             return_value=mock_client,
         ):
             # Should not raise
-            adapters = await registry.discovery.discover_from_dhara()
+            adapters = await registry.discovery.discover_from_mcp()
             assert adapters == []
 
         await registry.close()
@@ -467,7 +467,7 @@ class TestDharaRegistryFailureLocalOnly:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-class TestDharaUnavailableUsesMemory:
+class TestMCPUnavailableUsesMemory:
     """Tests for in-memory fallback when Dhara persistence fails."""
 
     async def test_persistence_save_failure_uses_in_memory(
@@ -650,7 +650,7 @@ class TestPartialDiscoveryContinues:
             ),
             patch.object(
                 registry.discovery,
-                "discover_from_dhara",
+                "discover_from_mcp",
                 new_callable=AsyncMock,
                 side_effect=Exception("Dhara discovery failed"),
             ),
@@ -738,14 +738,14 @@ class TestPartialDiscoveryContinues:
 
     async def test_discovery_source_tracking(
         self,
-        mock_config_with_dhara_enabled,
+        mock_config_with_mcp_enabled,
     ):
         """Discovery report should track adapter sources."""
-        registry = HybridAdapterRegistry(mock_config_with_dhara_enabled)
+        registry = HybridAdapterRegistry(mock_config_with_mcp_enabled)
         await registry.initialize()
 
         # Verify Dhara registry is enabled in discovery engine
-        assert registry.discovery._enable_dhara_registry is True
+        assert registry.discovery._enable_mcp_registry is True
 
         # Create adapters with valid factory paths so they register successfully
         entry_adapters = [
@@ -763,14 +763,14 @@ class TestPartialDiscoveryContinues:
 
         dhara_adapters = [
             AdapterMetadata(
-                adapter_id="dhara.adapter.1",
+                adapter_id="mcp.adapter.1",
                 domain="test",
                 category="test",
                 provider="dhara1",
                 capabilities=["test"],
                 factory_path="os:path",  # Valid import path
                 priority=80,
-                source="dhara",
+                source="mcp",
             )
         ]
 
@@ -783,7 +783,7 @@ class TestPartialDiscoveryContinues:
             ),
             patch.object(
                 registry.discovery,
-                "discover_from_dhara",
+                "discover_from_mcp",
                 new_callable=AsyncMock,
                 return_value=dhara_adapters,
             ),
@@ -792,11 +792,11 @@ class TestPartialDiscoveryContinues:
 
             # Sources should be tracked
             assert "entry_point" in report.sources
-            assert "dhara" in report.sources
+            assert "mcp" in report.sources
 
             # Counts should match
             assert report.sources["entry_point"] == 1
-            assert report.sources["dhara"] == 1
+            assert report.sources["mcp"] == 1
 
         await registry.close()
 
@@ -940,7 +940,7 @@ class TestFallbackChainIntegration:
             ),
             patch.object(
                 registry.discovery,
-                "discover_from_dhara",
+                "discover_from_mcp",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("Dhara registry unavailable"),
             ),

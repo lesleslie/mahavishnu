@@ -1,13 +1,13 @@
 """Approval CLI helpers — consumer read-back of ApprovalLog records.
 
 Provides :func:`list_approval_history`, which reads persisted payloads from the
-Dhara substrate and returns validated :class:`ApprovalLog` structs. The
+MCP substrate and returns validated :class:`ApprovalLog` structs. The
 producer counterpart is :func:`mahavishnu.core.approval.decision_writer.record_approval_decision`.
 
-Substrate-compat: ``dhara.list`` is not part of the static substrate API on
+Substrate-compat: ``mcp.list`` is not part of the static substrate API on
 the local install. The call-time resolution routes through the substrate
-compat shim; tests (and any future Dhara substrate builds that expose
-``list``) can monkeypatch ``dhara.list`` on the live ``dhara`` module to
+compat shim; tests (and any future MCP substrate builds that expose
+``list``) can monkeypatch ``mcp.list`` on the live ``mcp`` module to
 inject a callable.
 """
 
@@ -18,7 +18,7 @@ from typing import Any
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core.models.persistence import ApprovalLog
 from mahavishnu.mcp.tools._workflow_id_guard import validate_approval_id
 
@@ -31,18 +31,18 @@ def list_approval_history(
     status: str | None,
     token: str | None = None,
 ) -> list[ApprovalLog]:
-    """Read persisted ApprovalLog payloads for ``approval_id`` from Dhara.
+    """Read persisted ApprovalLog payloads for ``approval_id`` from MCP.
 
     Args:
         approval_id: Stable ID of the approval request whose history to read.
-        since: Optional ISO-8601 timestamp lower bound, forwarded to Dhara.
-        status: Optional status filter, forwarded to Dhara.
+        since: Optional ISO-8601 timestamp lower bound, forwarded to MCP.
+        status: Optional status filter, forwarded to MCP.
         token: Optional bearer token. The CLI surface is sync, so the
             check is a JWT-shape presence gate (mirrors the
             ``@require_auth`` contract on the MCP surface): missing or
             non-JWT-shaped tokens are rejected. Full user→role→permission
             mapping is enforced at the async dispatch boundary in
-            production; here we block the read before any Dhara call so
+            production; here we block the read before any MCP call so
             the leaf function can never be exercised without auth.
 
     Returns:
@@ -50,7 +50,7 @@ def list_approval_history(
         are skipped (partial-failure resilience) rather than raising, so a
         single corrupted record does not mask the rest of the history.
         Returns an empty list and emits a WARNING when the substrate does
-        not expose ``dhara.list``, when ``approval_id`` fails the
+        not expose ``mcp.list``, when ``approval_id`` fails the
         path-traversal allowlist check, or when ``token`` is missing or
         not a JWT-shaped triple.
     """
@@ -67,7 +67,7 @@ def list_approval_history(
         )
         return []
 
-    # Path-traversal guard: ``approval_id`` is spliced into the Dhara key
+    # Path-traversal guard: ``approval_id`` is spliced into the MCP key
     # ``f"approval-history/{approval_id}/"`` below. Reject caller-supplied
     # values that contain traversal characters BEFORE the substrate sees
     # them. Matches the existing convention for the substrate-unbound
@@ -82,13 +82,13 @@ def list_approval_history(
         )
         return []
 
-    list_fn = dhara_calltime("list")
+    list_fn = mcp_calltime("list")
     if list_fn is None:
         logger.warning(
             "approval_list_skipped",
             extra={
                 "approval_id": approval_id,
-                "reason": "dhara.list_unbound",
+                "reason": "mcp.list_unbound",
             },
         )
         return []

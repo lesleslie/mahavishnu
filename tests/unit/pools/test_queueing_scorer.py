@@ -505,7 +505,7 @@ class TestRouteTaskExecutionInvariants:
         mgr._worker_count_heap = []
         mgr._caller_quota = {}
         mgr._resilience_monitoring_task = None
-        mgr._dhara_state = None
+        mgr._mcp_state = None
         # Async lock for heap operations (used in _update_pool_worker_count)
         mgr._heap_lock = __import__("asyncio").Lock()
         return mgr

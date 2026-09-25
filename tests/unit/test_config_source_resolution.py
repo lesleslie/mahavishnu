@@ -58,10 +58,10 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     ("workers", "max_concurrent", "WORKERS__MAX_CONCURRENT", "3"),
     ("llm", "model", "LLM__MODEL", "test-model"),
     ("hatchet", "namespace", "HATCHET__NAMESPACE", "probe-ns"),
-    ("oneiric_mcp", "base_url", "ONEIRIC_MCP__BASE_URL", "http://probe-dhara:8683/mcp"),
+    ("oneiric_mcp", "base_url", "ONEIRIC_MCP__BASE_URL", "http://probe-mcp:8683/mcp"),
     ("adapter_registry", "cache_ttl_seconds", "ADAPTER_REGISTRY__CACHE_TTL_SECONDS", "99"),
     (
-        "dhara_state",
+        "mcp_state",
         "max_routing_buffer_age_seconds",
         "DHARA_STATE__MAX_ROUTING_BUFFER_AGE_SECONDS",
         "120",

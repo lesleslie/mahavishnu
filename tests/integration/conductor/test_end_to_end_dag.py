@@ -8,7 +8,7 @@ loaded from ``settings/mahavishnu.yaml``. No live services required:
   with today.
 - The Dhara adapter is not used by the shim path. The shim never invokes
   ``execute_capability_for_test``'s Dhara-side persistence, so no
-  ``AsyncMock(dhara.call_tool)`` is needed for these two tests; future
+  ``AsyncMock(mcp.call_tool)`` is needed for these two tests; future
   Phase-4 dispatch tests will mock at the Dhara boundary.
 
 The shim ``execute_capability_for_test`` lives in ``tests/integration/conductor/_helpers.py``

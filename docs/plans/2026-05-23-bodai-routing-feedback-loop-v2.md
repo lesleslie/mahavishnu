@@ -75,7 +75,7 @@ ______________________________________________________________________
 │  — reads routing_fitness/{task_class}/* from Dhara                        │
 │  — selects highest-score selector for the task_class                       │
 │  — falls back to least_loaded if no signal or Dhara unavailable           │
-│  — uses DharaStateBackend (inherits circuit breaker protection)           │
+│  — uses MCPStateBackend (inherits circuit breaker protection)           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -173,7 +173,7 @@ This is the most important new tool — it lets Akosha pull traces from each com
 - `RoutingFitnessReader` class
 - Reads signals from Dhara via `list_prefix("routing_fitness/{task_class}/")`
 - Returns `dict[selector, float]` sorted by score, or empty dict if none
-- Uses `DharaStateBackend` (inherits circuit breaker protection)
+- Uses `MCPStateBackend` (inherits circuit breaker protection)
 - `get_fitness_signals(task_class: str) -> dict[str, FitnessSignal]`
 
 **Pool manager change** (`pools/manager.py`):
@@ -181,7 +181,7 @@ This is the most important new tool — it lets Akosha pull traces from each com
 - Inject `RoutingFitnessReader` into `PoolManager`
 - In `route_task()`: before picking a pool, call `fitness_reader.get_fitness_signals(task_class)`
 - If any signals exist, select the highest-score selector for that task_class
-- Fall back to `least_loaded` if no signals or Dhara unavailable (no latency added — DharaStateBackend read is fast)
+- Fall back to `least_loaded` if no signals or Dhara unavailable (no latency added — MCPStateBackend read is fast)
 
 **File**: `mahavishnu/mcp/tools/otel_tools.py` — add `query_local_traces`
 

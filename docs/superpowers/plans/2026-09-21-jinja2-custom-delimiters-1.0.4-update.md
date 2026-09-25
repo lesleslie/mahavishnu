@@ -9,6 +9,7 @@
 **Architecture:** Sequential 16-task implementation against a single plugin repository. Build config (Gradle, IntelliJ Platform Gradle Plugin 2.19.0, Java 25 toolchain) is updated first; repo hygiene (gitignore, GitHub Actions removal) follows; then crackerjack audit wiring (Gradle plugin dependencies for ktlint + detekt, hook configuration); then source-code tech-debt sweep (HIGH #6 null-handling, license silent-fallback removal); then tests; then docs; then a 5-phase release pipeline (Plugin Verifier, manual sandbox QA, pack+archive, MCP version bump, publish). No new features; only platform-range widening and tooling modernization.
 
 **Tech Stack:**
+
 - IntelliJ Platform Gradle Plugin 2.19.0 (was 2.13.1)
 - Gradle 9.4.1 (was 9.1.0)
 - Java 25 toolchain, Azul Zulu via foojay-resolver-convention ≥1.1.0
@@ -19,7 +20,7 @@
 
 **Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-21-jinja2-custom-delimiters-1.0.4-update-design.md` (commit c93aeb67)
 
----
+______________________________________________________________________
 
 ## Global Constraints
 
@@ -38,17 +39,20 @@
 - **Plan lives in main checkout:** Work happens directly in `/Users/les/Projects/jinja2-custom-delimiters`. No worktree creation.
 - **Manual publish:** `./gradlew publishPlugin` is operator-driven; not auto-invoked by crackerjack.
 
----
+______________________________________________________________________
 
 ## Task 0: Audit ingestion (Phase 1 — required before any code change)
 
 **Files:**
+
 - Read: `AUDIT-SUMMARY.md`, `CRITICAL-AUDIT-REPORT-2025.md`, `FIXES-COMPLETED.md`, `TEST-FIXES-SUMMARY.md`
 - Read: full commit log since `v1.0.1` (e.g., `git log --oneline v1.0.3..HEAD` or the equivalent range)
 - Output: `docs/audit-1.0.4.md` summarizing remaining open tech-debt
 
 **Interfaces:**
+
 - Consumes: (none — pure read)
+
 - Produces: Verified list of open tech-debt items (mapped to file:line, severity ranked); confirmation of which audit-doc criticals are closed; confirmation that `com.intellij.modules.python` is still a valid IntelliJ Platform module dependency in 2026.x
 
 - [ ] **Step 0.0: Verify working directory**
@@ -78,9 +82,13 @@ cd /Users/les/Projects/jinja2-custom-delimiters && git log --oneline v1.0.1..HEA
 ```
 
 Expected: a list of commits showing which audit fixes landed. The multi-agent review confirmed:
+
 - CRITICAL #3 closed in commit `e0ae8af` (76 field-access conversions to getters/setters)
+
 - CRITICAL #4 closed in commit `2bbc0f8` (live templates removed)
+
 - CRITICAL #6 closed in commit `2bbc0f8` (obsolete test files deleted)
+
 - HIGH #6 (null-handling in `Jinja2DelimitersSettings` + `LicenseGate`) STILL OPEN — must be fixed in Tasks 6 and 7 of this plan
 
 - [ ] **Step 0.3: Verify `com.intellij.modules.python` module exists in 2026.x**
@@ -88,9 +96,11 @@ Expected: a list of commits showing which audit fixes landed. The multi-agent re
 The plugin.xml line 33 declares `<depends>com.intellij.modules.python</depends>`. PyCharm 2026.x may rename or merge modules. Verify the module name still resolves.
 
 Option A — read IntelliJ Platform Gradle Plugin source cache:
+
 ```bash
 ls /Users/les/Projects/jinja2-custom-delimiters/.intellijPlatform/localPlatformArtifacts/PY-263.* 2>/dev/null
 ```
+
 If `PY-263.*` is not present, the Verifier will fail to download it later (Task 10). Run `./gradlew verifyPlugin` early to discover what builds ARE available, then update Task 10's `pluginVerification.ides.select` matrix accordingly.
 
 Option B — web search for "com.intellij.modules.python PyCharm 2026.3 module" to confirm the module hasn't been renamed/removed.
@@ -146,17 +156,20 @@ and which HIGH #6 items remain open for this release.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 1: Toolchain prep (Phase 0)
 
 **Files:**
+
 - Modify: `gradle.properties:26` (`gradleVersion`)
 - Modify: `gradle/libs.versions.toml:12` (`intelliJPlatform`)
 - Modify: `settings.gradle.kts:2` (`foojay-resolver-convention`)
 
 **Interfaces:**
+
 - Consumes: (none)
+
 - Produces: Updated build toolchain ready for Java 25 compilation; `intelliJPlatform=2.19.0` capable of resolving PyCharm 2026.x builds; `gradleVersion=9.4.1` aligned with on-disk wrapper; `foojay-resolver-convention ≥1.1.0` capable of downloading Azul Zulu 25
 
 - [ ] **Step 1.1: Read current `gradle.properties`**
@@ -254,17 +267,20 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0; 3 hooks running; no `task absent` warnings.
 
----
+______________________________________________________________________
 
 ## Task 2: Repo hygiene (Phase 2 — moved up from spec Phase 4g)
 
 **Files:**
+
 - Modify: `.gitignore`
 - Delete: `.github/workflows/build.yml`, `.github/workflows/release.yml`, `.github/workflows/run-ui-tests.yml`, `.github/dependabot.yml`, `codecov.yml` (repo root)
 - Keep: `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/` (if present), `.github/PULL_REQUEST_TEMPLATE.md` (if present)
 
 **Interfaces:**
+
 - Consumes: (none)
+
 - Produces: Clean working tree with no provider-specific CI files; `.gitignore` covering all runtime artifacts so first `crackerjack run` does not pollute `git status`
 
 - [ ] **Step 2.1: Read current `.gitignore`**
@@ -380,17 +396,20 @@ cd /Users/les/Projects/jinja2-custom-delimiters && git status
 
 Expected: clean working tree.
 
----
+______________________________________________________________________
 
 ## Task 3: Crackerjack wire-up — apply ktlint + detekt Gradle plugins (Phase 3 prerequisite)
 
 **Files:**
+
 - Modify: `gradle/libs.versions.toml` (add ktlint + detekt versions + plugin entries)
 - Modify: `build.gradle.kts` (add `alias(libs.plugins.ktlint)` and `alias(libs.plugins.detekt)`)
 - Create: `.crackerjack.toml` (crackerjack config at plugin root)
 
 **Interfaces:**
+
 - Consumes: Updated `gradle/libs.versions.toml` and `build.gradle.kts` from Task 1
+
 - Produces: Gradle `ktlintCheck` + `detekt` + `test` tasks all present and runnable; crackerjack emitting all 3 hooks (`kotlin.ktlint`, `kotlin.detekt`, `kotlin.test`)
 
 - [ ] **Step 3.1: Look up latest ktlint Gradle plugin version**
@@ -517,11 +536,12 @@ audit surface per feedback-bodai-no-provider-specific-ci.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: Java toolchain bump 21 → 25 (Phase 4a)
 
 **Files:**
+
 - Modify: `build.gradle.kts:19` (`languageVersion`)
 
 - [ ] **Step 4.1: Read `build.gradle.kts` lines 15-22**
@@ -574,11 +594,12 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0. If ktlint/detekt flags the new toolchain config, fix and re-run.
 
----
+______________________________________________________________________
 
 ## Task 5: Plugin manifest updates (Phase 4b)
 
 **Files:**
+
 - Modify: `src/main/resources/META-INF/plugin.xml:5` (product-descriptor) and `<change-notes>` block
 
 - [ ] **Step 5.1: Read current `plugin.xml`**
@@ -656,11 +677,12 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0. Plugin manifest changes are XML; lint should be unaffected.
 
----
+______________________________________________________________________
 
 ## Task 6: HIGH #6 null-handling fix in Jinja2DelimitersSettings (Phase 4c)
 
 **Files:**
+
 - Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/settings/Jinja2DelimitersSettings.java`
 
 - [ ] **Step 6.1: Read current `Jinja2DelimitersSettings.java`**
@@ -714,6 +736,7 @@ Expected: FAIL with assertion error (current `copyBean` reflective path accepts 
 Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/settings/Jinja2DelimitersSettings.java`, method `getState()`:
 
 Before (around line 36):
+
 ```java
 @Override
 public synchronized State getState() {
@@ -722,6 +745,7 @@ public synchronized State getState() {
 ```
 
 After:
+
 ```java
 @Override
 public State getState() {
@@ -736,6 +760,7 @@ public State getState() {
 Edit the same file, method `loadState` (around line 41):
 
 Before:
+
 ```java
 @Override
 public synchronized void loadState(@NotNull State state) {
@@ -744,6 +769,7 @@ public synchronized void loadState(@NotNull State state) {
 ```
 
 After:
+
 ```java
 @Override
 public void loadState(@NotNull State state) {
@@ -777,6 +803,7 @@ private static void applyIfNonNull(String value, Consumer<String> setter) {
 In each getter (around lines 48-83), replace the null-fallback ternary with a direct return. Example:
 
 Before (around line 48):
+
 ```java
 public @NotNull String getBlockStartString() {
     return blockStartString != null ? blockStartString : "{%";
@@ -784,6 +811,7 @@ public @NotNull String getBlockStartString() {
 ```
 
 After:
+
 ```java
 public @NotNull String getBlockStartString() {
     return blockStartString;
@@ -833,11 +861,12 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0. ktlint/detekt may flag the new helper method `applyIfNonNull`; fix and re-run if so.
 
----
+______________________________________________________________________
 
 ## Task 7: License silent-fallback removal (Phase 4d)
 
 **Files:**
+
 - Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/LicenseGate.java` (refactor to add DI seam; preserve first-launch UX; remove silent fallback)
 - Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java` (add env-var seam; replace `catch (Throwable)` with logged exception)
 - Modify: `src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessor.java` (move license check OUTSIDE outer try/catch; throw `LicenseUnavailableException`)
@@ -847,7 +876,9 @@ Expected: exit 0. ktlint/detekt may flag the new helper method `applyIfNonNull`;
 - Modify: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/settingJinja2DelimitersSettingsTest.java` (migrate `lineStatementPrefix = "%"` direct-field assignment to setter call)
 
 **Interfaces:**
+
 - Consumes: (none — production refactor enables new tests)
+
 - Produces: `LicenseChecker` interface (`Boolean isLicensed()`, `void requestLicense(String message)`); `LicenseGate.setChecker(LicenseChecker)` / `resetChecker()` test seam; `MarketplaceLicenseChecker` reads `MAHAVISHNU_JINJA_LICENSE_MOCK` env var; both format processors throw `LicenseUnavailableException` outside their outer try/catch
 
 - [ ] **Step 7.0: Verify working directory** (defensive — re-confirm before code edits)
@@ -983,10 +1014,15 @@ public final class LicenseGate {
 ```
 
 Key behavior:
+
 - Production code path unchanged (static calls still work)
+
 - First-launch permissive window (5s) keeps UX intact
+
 - After 5s of `null`, behavior is unchanged from permissive (formatter works during first-launch)
+
 - Hard-fail only kicks in once facade initializes AND returns false
+
 - Test seam (`setChecker`/`resetChecker`) replaces broken reflection
 
 - [ ] **Step 7.5: Create `MarketplaceLicenseCheckerAdapter`**
@@ -1016,6 +1052,7 @@ public final class MarketplaceLicenseCheckerAdapter implements LicenseChecker {
 Edit `/Users/les/Projects/jinja2-custom-delimiters/src/main/java/com/wedgwoodwebworks/jinja2customdelimiters/licensing/MarketplaceLicenseChecker.java`. Find the `isLicensed()` method (around line 121) and prepend the env-var check:
 
 Before (around line 121):
+
 ```java
 public static Boolean isLicensed() {
     LicensingFacade facade = LicensingFacade.getInstance();
@@ -1024,6 +1061,7 @@ public static Boolean isLicensed() {
 ```
 
 After:
+
 ```java
 public static Boolean isLicensed() {
     // Test/QA seam: allow forcing license failure for hard-fail UX testing.
@@ -1041,6 +1079,7 @@ public static Boolean isLicensed() {
 ```
 
 Also add the Logger import near the top of the file:
+
 ```java
 import com.intellij.openapi.diagnostic.Logger;
 ```
@@ -1050,6 +1089,7 @@ import com.intellij.openapi.diagnostic.Logger;
 Edit same file. Replace both occurrences around lines 195 and 222.
 
 Before:
+
 ```java
 } catch (Throwable ignored) {
     return false;
@@ -1057,6 +1097,7 @@ Before:
 ```
 
 After:
+
 ```java
 } catch (Exception e) {
     Logger.getInstance(MarketplaceLicenseChecker.class).warn(
@@ -1163,6 +1204,7 @@ This is the load-bearing fix for the hard-fail contract. The current code has th
 For `CustomJinja2PreFormatProcessor.java`:
 
 Find the existing license check (around line 64). The structure today is:
+
 ```java
 public TextRange process(...) {
     try {
@@ -1178,6 +1220,7 @@ public TextRange process(...) {
 ```
 
 Change to:
+
 ```java
 public TextRange process(...) {
     // License check FIRST — must hard-fail before any work, and MUST NOT
@@ -1189,8 +1232,9 @@ public TextRange process(...) {
             "Your Jinja2 Custom Delimiters license could not be verified.\n" +
             "Reason: licensing subsystem returned no answer (network unreachable " +
             "or marketplace endpoint moved).\n" +
-            "Action: Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters " +
-            "to renew or re-authenticate. Restart PyCharm after renewal.\n" +
+            "Action: Search the JetBrains Marketplace (https://plugins.jetbrains.com/) " +
+            "for 'jinja2-custom-delimiters' to renew or re-authenticate. " +
+            "Restart PyCharm after renewal.\n" +
             "(If this error persists, contact les@wedgwoodwebworks.com)"
         );
     }
@@ -1207,6 +1251,7 @@ public TextRange process(...) {
 For `CustomJinja2PostFormatProcessor.java` (currently missing from plan): apply the same fix at BOTH `processElement` (around line 55) and `processText` (around line 96). Each method currently has its own `if (!LicenseGate.ensureLicensed(...))` check. Move each check OUTSIDE its own outer try/catch (or the shared outer try/catch if any), and change the silent-return to `throw new LicenseUnavailableException(...)`.
 
 Also add to the top of both files:
+
 ```java
 import com.wedgwoodwebworks.jinja2customdelimiters.licensing.LicenseUnavailableException;
 ```
@@ -1259,14 +1304,18 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0. ktlint/detekt may flag the new `LicenseChecker` interface, `MarketplaceLicenseCheckerAdapter`, or `LicenseUnavailableException`; fix and re-run if so.
 
----
+______________________________________________________________________
 
 ## Task 8: Add new tests for format processors + configurable apply + license (Phase 4e)
 
 **Files:**
+
 - Create: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PreFormatProcessorTest.java`
+
 - Create: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/CustomJinja2PostFormatProcessorTest.java`
+
 - Modify: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/formatting/DelimiterConversionUtilTest.java` (add empty-delimiter safety test)
+
 - Modify: `src/test/java/com/wedgwoodwebworks/jinja2customdelimiters/settings/Jinja2DelimitersConfigurableTest.java` (create new — applies throws ConfigurationException; createComponent swaps panel)
 
 - [ ] **Step 8.1: Read existing `DelimiterConversionUtilTest`**
@@ -1443,14 +1492,18 @@ Per spec Section 9, adds:
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Update docs (Phase 4f)
 
 **Files:**
+
 - Modify: `CHANGELOG.md`
+
 - Modify: `README.md` (Java badge, requirements line)
+
 - Modify: `AGENTS.md` (Java 25 prerequisite, cert renewal, MCP allowlist)
+
 - Create: `RELEASING.md`
 
 - [ ] **Step 9.1: Read `CHANGELOG.md`**
@@ -1497,11 +1550,13 @@ Replace `<TODAY_YYYY_MM_DD>` with today's date in `YYYY-MM-DD` format.
 Edit `/Users/les/Projects/jinja2-custom-delimiters/README.md`, line 4:
 
 Before:
+
 ```markdown
 [![Java: 21+](https://img.shields.io/badge/java-21%2B-orange)](https://openjdk.org/projects/jdk/21/)
 ```
 
 After:
+
 ```markdown
 [![Java: 25+](https://img.shields.io/badge/java-25%2B-orange)](https://openjdk.org/projects/jdk/25/)
 ```
@@ -1524,11 +1579,13 @@ Edit `/Users/les/Projects/jinja2-custom-delimiters/README.md`, line 41 (the "Req
 Edit `/Users/les/Projects/jinja2-custom-delimiters/AGENTS.md`, line 18. Change "Java 21 toolchain (Azul)" to reflect Java 25:
 
 Before (line 18):
+
 ```markdown
 - Java 21 toolchain (Azul) is configured; keep code compatible with Java 21.
 ```
 
 After:
+
 ```markdown
 - **Java 25 toolchain (Azul) is REQUIRED** (was Java 21; bumped in 1.0.4 for 2026.2 platform). `foojay-resolver-convention` (>= 1.1.0) auto-provisions Azul Zulu 25.
 ```
@@ -1676,7 +1733,7 @@ cd /Users/les/Projects/jinja2-custom-delimiters && crackerjack run
 
 Expected: exit 0. Docs-only commit should not affect ktlint/detekt; if either fires, the docs may have triggered an existing code-style flag (rare but possible).
 
----
+______________________________________________________________________
 
 ## Task 10: Plugin Verifier run (Phase 5)
 
@@ -1730,7 +1787,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 (If no Verifier findings, no commit is needed for this task.)
 
----
+______________________________________________________________________
 
 ## Task 11: Manual sandbox QA (Phase 6)
 
@@ -1746,7 +1803,7 @@ Expected: PyCharm sandbox launches with the test plugin installed.
 
 - [ ] **Step 11.2: Open a `.j2` file with custom delimiters**
 
-In the sandbox IDE, create a new file `test.html with content:
+In the sandbox IDE, create a new file \`test.html with content:
 
 ```jinja
 [[ item.title ]]
@@ -1777,9 +1834,10 @@ MAHAVISHNU_JINJA_LICENSE_MOCK=invalid ./gradlew runIdeForUiTests
 ```
 
 Configure a delimiter that requires license verification. Invoke formatter. Confirm:
+
 - Error dialog displays the user-actionable message from Step 7.10
 - Formatter does NOT silently proceed
-- Message points to `https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters`
+- Message points to the JetBrains Marketplace listing for `jinja2-custom-delimiters` (URL recorded in `AGENTS.md` under "1.0.4 Publish Log")
 
 Then unset and verify recovery:
 
@@ -1795,7 +1853,7 @@ MAHAVISHNU_JINJA_LICENSE_MOCK=valid ./gradlew runIdeForUiTests
 
 Close the sandbox IDE. Document any anomalies in the commit message of Task 10.5 (or new commit if needed).
 
----
+______________________________________________________________________
 
 ## Task 12: Pack + archive (Phase 7)
 
@@ -1839,7 +1897,7 @@ Expected: archive directory now contains the `.zip` and its sha256. Record the s
 
 The actual publish is in Task 15. Do not invoke `./gradlew publishPlugin` here.
 
----
+______________________________________________________________________
 
 ## Task 13: Pre-publish verification (Phase 8)
 
@@ -1885,7 +1943,7 @@ cd /Users/les/Projects/jinja2-custom-delimiters && git tag --list | grep -E "^v1
 
 Expected: empty output (tag creation is Task 14).
 
----
+______________________________________________________________________
 
 ## Task 14: MCP auth preflight + version bump (Phase 9)
 
@@ -1957,10 +2015,14 @@ mcp__crackerjack__kotlin_bump_version(
 )
 ```
 
-Expected: 
+Expected:
+
 - `gradle.properties` now reads `pluginVersion = 1.0.4`
+
 - Empty commit (or commit with file changes) created
+
 - Tag `v1.0.4` created locally
+
 - `v1.0.4` pushed to origin (because operator consented in Step 14.3)
 
 - [ ] **Step 14.8: Verify tag pushed**
@@ -1987,7 +2049,7 @@ cd /Users/les/Projects/jinja2-custom-delimiters && git log --oneline -5
 
 (Visual check; no commit needed here. If the operator wants an annotated `v1.0.4-final` tag in addition, do so manually.)
 
----
+______________________________________________________________________
 
 ## Task 15: Final publish (Phase 10)
 
@@ -2031,10 +2093,19 @@ Expected: HTTP 2xx response from `plugins.jetbrains.com`. Watch the output caref
 
 - [ ] **Step 15.5: Confirm in JetBrains Marketplace admin panel**
 
-Visit https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters and verify:
+Open the JetBrains Marketplace at <https://plugins.jetbrains.com/> and
+sign in to the publisher admin panel. Find `jinja2-custom-delimiters`
+under your plugins. The plugin's public URL is assigned by the JetBrains
+Marketplace at publish time and is NOT derivable from the Maven coordinate
+in `build.gradle.kts` — record it in `AGENTS.md` under "1.0.4 Publish
+Log" so future audits have a stable link. Verify:
+
 - Version `1.0.4` is listed
+
 - Compatibility range shows `PyCharm 2025.2 – 2026.x`
+
 - Plugin is marked Paid
+
 - Download/install count is enabled
 
 - [ ] **Step 15.6: Verify Marketplace-side compatibility matches spec**
@@ -2049,7 +2120,7 @@ Append to `AGENTS.md` or `RELEASING.md`:
 ## 1.0.4 Publish Log
 
 - Published: <TIMESTAMP>
-- Marketplace URL: https://plugins.jetbrains.com/plugin/com.wedgwoodwebworks.jinja2customdelimiters
+- Marketplace URL: <record the URL JetBrains assigns after Step 15.4 publishes — the ID is assigned by the JetBrains Marketplace, not derived from the Maven coordinate>
 - `.zip` sha256: <SHA>
 - Archive: `~/.mahavishnu/artifacts/jinja2-custom-delimiters/1.0.4/`
 ```
@@ -2064,7 +2135,7 @@ git commit -m "docs: record 1.0.4 publish log
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task 16: Post-publish first-week monitor (Phase 11)
 
@@ -2108,7 +2179,7 @@ git commit -m "docs: mark 1.0.4 release as adopted
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Plan complete
 

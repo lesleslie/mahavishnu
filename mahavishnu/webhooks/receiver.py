@@ -2,7 +2,7 @@
 
 Validates inbound webhook payloads against the locally-owned
 :class:`mahavishnu.core.models.persistence.WebhookIngress` schema and
-persists the typed record via :func:`dhara.put` so downstream consumers
+persists the typed record via :func:`mcp.put` so downstream consumers
 (M-WEBHOOK-DURABLE) can pick it up durably.
 
 This module is intentionally separate from :mod:`mahavishnu.webhooks.router`
@@ -11,10 +11,10 @@ untyped JSON body, validates it against the cross-system durable schema,
 and returns a 202 once the record is enqueued. The router keeps its
 typed-Pydantic contract for OpenClaw's per-endpoint payload shapes.
 
-Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary;
+Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary;
 internal async behavior (MemoryOutbox flush, PostgresBackendLock
 resolution) is the substrate's concern and is invisible to callers. See
-``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the cross-portfolio rationale.
 """
 
@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.models.persistence import WebhookIngress
 
@@ -64,12 +64,12 @@ app = FastAPI(
 # `app.post`, so it cannot see this wiring.
 @app.post("/webhook", status_code=status.HTTP_202_ACCEPTED, response_model=None)
 def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]:
-    """Validate ``payload`` as a ``WebhookIngress`` and persist via ``dhara.put``.
+    """Validate ``payload`` as a ``WebhookIngress`` and persist via ``mcp.put``.
 
     Returns:
         On the durable path: ``{"status": "accepted", "webhook_id": <id>}``.
         On the in-memory fallback path (``WEBHOOK_DURABLE_V1_ENABLED=false`` or
-        ``dhara.put`` unbound): a 202 ``JSONResponse`` with
+        ``mcp.put`` unbound): a 202 ``JSONResponse`` with
         ``{"status": "accepted_in_memory_only"}`` and a structured
         ``webhook_persistence_skipped`` warning log entry.
 
@@ -111,8 +111,8 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
             status_code=status.HTTP_202_ACCEPTED,
         )
 
-    # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = dhara_calltime("put")
+    # Substrate-compat gate: only persist when mcp.put is exposed.
+    put = mcp_calltime("put")
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"webhook-ingress/{webhook_id}/", validated)
@@ -122,7 +122,7 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
         logger.warning(
             "webhook_persistence_skipped",
             extra={
-                "reason": "dhara.put_unbound",
+                "reason": "mcp.put_unbound",
                 "webhook_id": webhook_id,
                 "v1_enabled": _webhook_durable_v1_enabled(),
             },

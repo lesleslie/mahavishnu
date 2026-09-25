@@ -21,7 +21,7 @@ from mahavishnu.plan_index.store import PlanIndexStore
 
 
 class _RaisingDhara:
-    """``FakeDhara`` variant that raises ``ConnectionError`` on every call.
+    """``FakeMCP`` variant that raises ``ConnectionError`` on every call.
 
     Used by tests to verify the store's degraded-read surface. The
     store currently does NOT wrap Dhara read-side errors in
@@ -31,20 +31,20 @@ class _RaisingDhara:
     """
 
     async def put(self, key: str, value: str, *, ttl: int | None = None) -> None:
-        raise ConnectionError("dhara unreachable")
+        raise ConnectionError("mcp unreachable")
 
     async def get(self, key: str) -> str | None:
-        raise ConnectionError("dhara unreachable")
+        raise ConnectionError("mcp unreachable")
 
     async def list_prefix(self, prefix: str) -> list[tuple[str, str]]:
-        raise ConnectionError("dhara unreachable")
+        raise ConnectionError("mcp unreachable")
 
     async def delete(self, key: str) -> None:
-        raise ConnectionError("dhara unreachable")
+        raise ConnectionError("mcp unreachable")
 
 
-class TestDharaUnreachableDegrades:
-    async def test_store_list_propagates_dhara_failure(self) -> None:
+class TestMCPUnreachableDegrades:
+    async def test_store_list_propagates_mcp_failure(self) -> None:
         """The store does NOT currently translate Dhara errors to ``PlanIndexUnavailableError``.
 
         Documented gap: spec REQ-PLAN-008 assumes the read path raises
@@ -62,7 +62,7 @@ class TestDharaUnreachableDegrades:
         # way the call does not succeed silently.
         assert excinfo.value is not None
 
-    async def test_store_get_propagates_dhara_failure(self) -> None:
+    async def test_store_get_propagates_mcp_failure(self) -> None:
         """``store.get`` propagates the raw Dhara failure too.
 
         The store's read path doesn't translate ``ConnectionError``
@@ -77,7 +77,7 @@ class TestDharaUnreachableDegrades:
 
     async def test_plan_index_unavailable_error_carries_reason(self) -> None:
         """``PlanIndexUnavailableError.reason`` exposes the cause (spec §Read paths)."""
-        exc = PlanIndexUnavailableError("dhara-down")
+        exc = PlanIndexUnavailableError("mcp-down")
 
-        assert exc.reason == "dhara-down"
+        assert exc.reason == "mcp-down"
         assert "unavailable" in str(exc).lower()

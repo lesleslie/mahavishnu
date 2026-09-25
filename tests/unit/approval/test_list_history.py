@@ -18,9 +18,9 @@ def substrate_list(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Stub the substrate-compat shim's list-resolution with a capture mock.
 
     Phase 8 Task 5 update: the previous fixture patched
-    ``mahavishnu.cli.approval_cli.dhara.list``. After Wave A the
-    approval_cli module no longer imports ``dhara`` directly; the patch
-    target is now the local ``dhara_calltime`` import.
+    ``mahavishnu.cli.approval_cli.mcp.list``. After Wave A the
+    approval_cli module no longer imports ``mcp`` directly; the patch
+    target is now the local ``mcp_calltime`` import.
     """
     mock_list = MagicMock(return_value=[])
 
@@ -28,7 +28,7 @@ def substrate_list(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
         return mock_list if name == "list" else None
 
     monkeypatch.setattr(
-        "mahavishnu.cli.approval_cli.dhara_calltime", fake_calltime,
+        "mahavishnu.cli.approval_cli.mcp_calltime", fake_calltime,
     )
     return mock_list
 
@@ -100,7 +100,7 @@ def test_list_approval_history_passes_since_and_status(
     )
 
 
-def test_list_approval_history_returns_empty_when_dhara_unbound(
+def test_list_approval_history_returns_empty_when_mcp_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -108,7 +108,7 @@ def test_list_approval_history_returns_empty_when_dhara_unbound(
     import mahavishnu.cli.approval_cli as cli
 
     # Force the substrate-unbound path even if a prior test monkeypatched it.
-    monkeypatch.setattr(cli, "dhara_calltime", lambda _name: None)
+    monkeypatch.setattr(cli, "mcp_calltime", lambda _name: None)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.cli.approval_cli"):
         results = list_approval_history(
@@ -129,7 +129,7 @@ def test_list_approval_history_returns_empty_when_dhara_unbound(
     # exception text leaked into the WARNING per observability rule).
     msg = rec.message
     assert "'approval_id': 'apr-stream'" in msg, msg
-    assert "'reason': 'dhara.list_unbound'" in msg, msg
+    assert "'reason': 'mcp.list_unbound'" in msg, msg
     # Sanity: the WARNING must NOT carry exception text in the extras payload.
     assert "Traceback" not in msg
     assert "ValidationError" not in msg.split("extra=", 1)[-1]
@@ -229,7 +229,7 @@ def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
 
     list_fn = MagicMock(return_value=[{"approval_id": "apr-1"}])
     monkeypatch.setattr(
-        approval_cli, "dhara_calltime",
+        approval_cli, "mcp_calltime",
         lambda _name, _fn=list_fn: _fn,
     )
 
@@ -259,7 +259,7 @@ def test_list_approval_history_rejects_non_jwt_token(monkeypatch, caplog):
 
     list_fn = MagicMock(return_value=[])
     monkeypatch.setattr(
-        approval_cli, "dhara_calltime",
+        approval_cli, "mcp_calltime",
         lambda _name, _fn=list_fn: _fn,
     )
 
@@ -287,7 +287,7 @@ def test_list_approval_history_passes_with_jwt_shaped_token(monkeypatch):
     payload = _make_payload("apr-3", action="approved", actor="reviewer-1")
     list_fn = MagicMock(return_value=[payload])
     monkeypatch.setattr(
-        approval_cli, "dhara_calltime",
+        approval_cli, "mcp_calltime",
         lambda _name, _fn=list_fn: _fn,
     )
 

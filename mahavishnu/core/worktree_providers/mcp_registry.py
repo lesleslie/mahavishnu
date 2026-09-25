@@ -1,8 +1,8 @@
-"""Dhara-backed worktree registry (ADR 015 v4 §11).
+"""MCP-backed worktree registry (ADR 015 v4 §11).
 
 Maps the v4 logical keyspace (``mahavishnu:worktree-registry:*``) onto
-Dhara's SQL substrate via the ``sql_proxy_execute`` /
-``sql_proxy_query`` MCP tools (see ``mahavishnu/core/dhara_client.py``).
+MCP's SQL substrate via the ``sql_proxy_execute`` /
+``sql_proxy_query`` MCP tools (see ``mahavishnu/core/mcp_client.py``).
 
 Keyspace layout (v4 §11):
 
@@ -224,8 +224,8 @@ def _validate_storage_path(path_str: str, backend_kind: str) -> str:
 
 def _worktree_base_resolved() -> Path:
     """Resolve the worktree base directory. Lazy import to avoid a hard
-    import cycle (``paths.py`` does not depend on dhara_registry, but
-    ``dhara_registry`` is consumed by adapters that load oneiric config
+    import cycle (``paths.py`` does not depend on mcp_registry, but
+    ``mcp_registry`` is consumed by adapters that load oneiric config
     which in turn pulls ``paths.py``).
     """
     from mahavishnu.core.paths import get_worktree_base_path
@@ -304,12 +304,12 @@ async def register_handles(
     caller: Principal,
     ensure_schema: bool = True,
 ) -> int:
-    """Register a batch of WorktreeHandles into the Dhara registry.
+    """Register a batch of WorktreeHandles into the MCP registry.
 
     Args:
         client: Object exposing ``async execute(sql, params)`` and
             ``async query(sql, params)``. In production this is a
-            ``DharaThinClient``; in tests a fake.
+            ``MCPThinClient``; in tests a fake.
         handles: Iterable of ``WorktreeHandle`` to register.
         caller: Principal performing the registration. Must have
             scope ``worktree:register`` and own each handle's principal
@@ -324,7 +324,7 @@ async def register_handles(
     Note on atomicity: each handle does 3 separate INSERTs (primary +
     two indexes). Without an enclosing transaction, a failure between
     the primary and an index write leaves the registry inconsistent.
-    Dhara's sql_proxy MCP doesn't currently expose a ``BEGIN``/``COMMIT``
+    MCP's sql_proxy MCP doesn't currently expose a ``BEGIN``/``COMMIT``
     tool, so for Phase 4 the migration script should re-run
     ``list_handles`` after the write to verify index consistency. A
     ``tx`` tool addition is tracked separately as follow-up.
@@ -458,7 +458,7 @@ async def _surface_index_drift(index_drift: int) -> None:
     try:
         from mahavishnu.observability.metrics import record_registry_drift
 
-        record_registry_drift(missing_in_dhara=index_drift)
+        record_registry_drift(missing_in_mcp=index_drift)
     except ImportError, AttributeError:  # pragma: no cover - observability optional
         pass
 
@@ -469,7 +469,7 @@ async def remove_handle(
     *,
     caller: Principal,
 ) -> bool:
-    """Remove a single ``WorktreeHandle`` from the Dhara registry.
+    """Remove a single ``WorktreeHandle`` from the MCP registry.
 
     Authorizes via:
       - Scope: caller must have ``worktree:remove`` OR admin override
@@ -478,15 +478,15 @@ async def remove_handle(
         (caller.uid == handle's principal_uid). Mirrors the per-handle
         ownership check in ``register_handles``.
 
-    **Atomicity caveat (CONFIRMED):** Dhara's
-    ``dhara/mcp/worktree_registry.py`` does NOT expose a
+    **Atomicity caveat (CONFIRMED):** MCP's
+    ``mcp/mcp/worktree_registry.py`` does NOT expose a
     ``multi_set`` / ``BEGIN`` / ``COMMIT`` transaction primitive.
     ``remove_handle`` is best-effort: delete primary first, then
     indexes. If a step fails mid-sequence, log a warning identifying
     the orphan state and continue (the next call will detect + report
     drift via ``worktree_registry_drift_total``).
 
-    Atomic-remove is deferred to a separate Dhara-side PR.
+    Atomic-remove is deferred to a separate MCP-side PR.
 
     Returns ``True`` if the primary row was deleted, ``False`` if it
     was not found.

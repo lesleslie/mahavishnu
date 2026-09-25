@@ -27,7 +27,7 @@ class PlanNotFoundError(PlanIndexError):
 
 
 class PlanIndexUnavailableError(PlanIndexError):
-    """Dhara unreachable; caller should fall back to filesystem read."""
+    """MCP unreachable; caller should fall back to filesystem read."""
 
     def __init__(self, reason: str) -> None:
         super().__init__(f"plan_index unavailable: {reason}")

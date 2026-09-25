@@ -125,7 +125,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
 
     session_buddy = RecordingSessionBuddy()
     coordination_memory = CoordinationMemory(session_buddy_client=session_buddy)
-    dhara = RecordingDhara()
+    mcp = RecordingDhara()
     session_checkpoint = RecordingSessionCheckpoint()
     approval_manager = RecordingApprovalManager()
 
@@ -189,7 +189,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
         },
     )
 
-    await dhara.persist_workflow(
+    await mcp.persist_workflow(
         fixture.workflow_id,
         {
             "correlation_id": fixture.correlation_id,
@@ -197,11 +197,11 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
             "checkpoint_id": checkpoint_id,
         },
     )
-    await dhara.persist_pool(
+    await mcp.persist_pool(
         "pool-golden-path",
         {"workflow_id": fixture.workflow_id, "correlation_id": fixture.correlation_id},
     )
-    await dhara.persist_routing_decision(
+    await mcp.persist_routing_decision(
         fixture.issue_id,
         {"workflow_id": fixture.workflow_id, "decision": "pool-golden-path"},
     )
@@ -210,7 +210,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
         correlation_id=fixture.correlation_id,
         prompt="Approve fix execution after quality validation",
     )
-    await dhara.persist_approval(
+    await mcp.persist_approval(
         approval.id,
         {"workflow_id": fixture.workflow_id, "correlation_id": fixture.correlation_id},
     )
@@ -249,10 +249,10 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
     transcript.append("Operator cockpit reports the incident resolved and searchable.")
 
     recovered = {
-        "workflows": await dhara.recover_workflows(),
-        "pools": await dhara.recover_pools(),
-        "routing": await dhara.recover_routing_decisions(),
-        "approvals": await dhara.recover_approvals(),
+        "workflows": await mcp.recover_workflows(),
+        "pools": await mcp.recover_pools(),
+        "routing": await mcp.recover_routing_decisions(),
+        "approvals": await mcp.recover_approvals(),
     }
     search_results = await coordination_memory.search_coordination_history(
         fixture.correlation_id,

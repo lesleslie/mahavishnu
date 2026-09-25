@@ -6,7 +6,7 @@
 **Working location:** main checkout of target repo (per user selection)
 **Source:** brainstorming session 2026-09-21
 
----
+______________________________________________________________________
 
 ## Context
 
@@ -40,8 +40,7 @@ draft. Captured up front so the rest of the spec doesn't inherit the drift.
   the latest. 2.13.1 cannot resolve build 263. **Resolution: bump to
   `2.19.0`** (or whatever 2.x is current at Phase 1 start). This is the
   single most load-bearing correction.
-- `settings.gradle.kts:2` pins `foojay-resolver-convention version
-  "1.0.0"`. Java 25 metadata may not be in 1.0.0. **Resolution: bump
+- `settings.gradle.kts:2` pins `foojay-resolver-convention version "1.0.0"`. Java 25 metadata may not be in 1.0.0. **Resolution: bump
   to `>= 1.1.0`** (latest at Phase 1 start).
 - `foojay-resolver-convention` is referenced in `settings.gradle.kts`
   but **not currently applied** to `build.gradle.kts` as a plugin block —
@@ -55,8 +54,7 @@ draft. Captured up front so the rest of the spec doesn't inherit the drift.
 - `AUDIT-SUMMARY.md` (Dec 2025) listed 2 open critical issues. Verification
   against commit history: **CRITICAL #3, #4, #6 are closed** (commits
   `e0ae8af`, `2bbc0f8`). **Only HIGH #6 (null-handling) remains open.**
-- `LicenseGate.isLicensedOrPending()` returns `true` when `licensed ==
-  null` (silent-fallback path). `MarketplaceLicenseChecker.isLicensed()`
+- `LicenseGate.isLicensedOrPending()` returns `true` when `licensed == null` (silent-fallback path). `MarketplaceLicenseChecker.isLicensed()`
   returns `null` when `LicensingFacade.getInstance() == null`. This
   violates the spec's hard-fail contract — must be removed.
 - The crackerjack Kotlin adapter hook names are `kotlin.ktlint`,
@@ -84,23 +82,23 @@ draft. Captured up front so the rest of the spec doesn't inherit the drift.
    opens to `263.*`. **2026.3 may not be in RELEASE channel yet** — if not
    GA, drop it from the matrix and ship 2025.2 → 2026.2; add 2026.3 in
    a follow-up 1.0.5.
-2. **Bump Java toolchain to 25** (required by 2026.2 platform) +
+1. **Bump Java toolchain to 25** (required by 2026.2 platform) +
    reconcile `gradleVersion` drift to 9.4.1.
-3. **Bump `intelliJPlatform` Gradle plugin to 2.19.0** (or latest 2.x at
+1. **Bump `intelliJPlatform` Gradle plugin to 2.19.0** (or latest 2.x at
    Phase 1 start) — without this, 2026.x Verifier matrix can't run.
-4. **Wire crackerjack as the audit surface.** Add `.crackerjack.toml`,
+1. **Wire crackerjack as the audit surface.** Add `.crackerjack.toml`,
    apply `ktlint` + `detekt` Gradle plugins, run hooks with correct names
    (`kotlin.ktlint`, `kotlin.detekt`, `kotlin.test`).
-5. **Verify the plugin actually works on real PyCharm builds** by running
+1. **Verify the plugin actually works on real PyCharm builds** by running
    `pluginVerification.ides.select` against the available PyCharm
    Professional release builds (252, 253, 261, 262, [263 if GA]).
-6. **Replace GitHub Actions with crackerjack.** Delete
+1. **Replace GitHub Actions with crackerjack.** Delete
    `.github/workflows/`, `.github/dependabot.yml`, `codecov.yml`. Keep
    `.github/FUNDING.yml` (GitHub platform parses this for sponsorship
    display — not a CI surface).
-7. **Sweep the remaining pre-existing tech-debt** — HIGH #6 (null-
+1. **Sweep the remaining pre-existing tech-debt** — HIGH #6 (null-
    handling in `Jinja2DelimitersSettings`/`LicenseGate`).
-8. **Hard-fail license contract.** Remove silent-fallback paths so any
+1. **Hard-fail license contract.** Remove silent-fallback paths so any
    license check failure (network, endpoint moved, cert expired) surfaces
    loudly to the user with actionable guidance.
 
@@ -148,7 +146,7 @@ them.**
 
 | File | Change |
 |------|--------|
-| `gradle.properties` | `pluginVersion` 1.0.3 → 1.0.4; `pluginSinceBuild` 252 (unchanged); `pluginUntilBuild` 253.* → 263.*; `platformVersion` 2025.2 → 2025.3; **`gradleVersion` 9.1.0 → 9.4.1** (reconcile with wrapper) |
+| `gradle.properties` | `pluginVersion` 1.0.3 → 1.0.4; `pluginSinceBuild` 252 (unchanged); `pluginUntilBuild` 253.\* → 263.*; `platformVersion` 2025.2 → 2025.3; **`gradleVersion` 9.1.0 → 9.4.1** (reconcile with wrapper) |
 | `build.gradle.kts` | `java.toolchain.languageVersion` 21 → 25; **`alias(libs.plugins.ktlint)` added**; **`alias(libs.plugins.detekt)` added**; `pluginVerification.ides.select.types` `PyCharmProfessional`, channels `RELEASE`, sinceBuild 252, untilBuild 263.* |
 | `gradle/libs.versions.toml` | `intelliJPlatform` 2.13.1 → 2.19.0 (or latest 2.x); add `[plugins]` entries for `ktlint` (use the official `org.jlleitschuh.gradle.ktlint` plugin, latest at Phase 1 start) and `detekt` (use the official `io.gitlab.arturbosch.detekt` plugin, latest at Phase 1 start) |
 | `settings.gradle.kts` | `foojay-resolver-convention` version 1.0.0 → `>= 1.1.0` (for Java 25 metadata) |
@@ -369,47 +367,49 @@ export MAHAVISHNU_JWT_SECRET=<secret>
 1. **`intelliJPlatform=2.13.1` is stale.** Will not resolve build 263.
    Mitigation: bump to 2.19.0 (or latest 2.x).
 
-2. **Java 21 → 25 toolchain migration.** Build environments without
+1. **Java 21 → 25 toolchain migration.** Build environments without
    Azul 25 fail. Mitigation: `foojay-resolver-convention >= 1.1.0`
    auto-downloads. Document Java 25 as hard prerequisite in AGENTS.md.
 
-3. **Gradle wrapper version drift** (9.1.0 vs 9.4.1). The
+1. **Gradle wrapper version drift** (9.1.0 vs 9.4.1). The
    `tasks.wrapper` block will silently downgrade the wrapper if invoked.
    Mitigation: bump `gradleVersion` to 9.4.1 to match.
 
-4. **Existing 2025.2 user breakage.** `sinceBuild=252` is preserved, so
+1. **Existing 2025.2 user breakage.** `sinceBuild=252` is preserved, so
    the plugin remains installable. But `untilBuild=263.*` means newer
    IDEs refuse it. Mitigation: Plugin Verifier matrix covers the full
    range.
 
-5. **License API drift.** If 2026.x deprecates the v1 auth flow, paid
+1. **License API drift.** If 2026.x deprecates the v1 auth flow, paid
    users hit a loud error (per hard-fail contract). Mitigation:
    hard-fail with actionable message. User-driven audit via paid users
    effectively becomes the smoke test for the new endpoint.
 
-6. **2026.3 not in RELEASE channel yet.** Mitigation: drop 2026.3 from
+1. **2026.3 not in RELEASE channel yet.** Mitigation: drop 2026.3 from
    matrix; ship narrower release; add in 1.0.5.
 
-7. **Marketplace signing cert expiry.** Operational, not technical.
+1. **Marketplace signing cert expiry.** Operational, not technical.
    Document renewal cadence in AGENTS.md.
 
-8. **Pre-existing tech-debt (`HIGH #6`).** Null-handling in
+1. **Pre-existing tech-debt (`HIGH #6`).** Null-handling in
    `Jinja2DelimitersSettings`/`LicenseGate` may have masked bugs.
    Mitigation: full HIGH #6 fix as part of this update.
 
-9. **`MarketplaceLicenseChecker` `catch (Throwable ignored)` lines 195,
+1. **`MarketplaceLicenseChecker` `catch (Throwable ignored)` lines 195,
    222.** Silent-swallowing is the exact anti-pattern the hard-fail
    contract forbids. Mitigation: replace with logger + rethrow.
 
-10. **Configuration cache interaction.** `org.gradle.configuration-cache=true`
-    + `org.gradle.caching=true` may interact poorly with
-    `intelliJPlatform` 2.19.0. Mitigation: after the bump, run
-    `./gradlew help --configuration-cache`; if it fails, disable and
-    document.
+1. **Configuration cache interaction.** `org.gradle.configuration-cache=true`
+
+   - `org.gradle.caching=true` may interact poorly with
+     `intelliJPlatform` 2.19.0. Mitigation: after the bump, run
+     `./gradlew help --configuration-cache`; if it fails, disable and
+     document.
 
 ### Release rollback strategy
 
 If `1.0.4` ships and breaks:
+
 - Hotfix branch → `1.0.5` → same pipeline
 - Or revert to `1.0.3` via Marketplace admin panel
 
@@ -514,8 +514,7 @@ rollback is a single-line edit + standard bump/push/publish.
 
 - `./gradlew buildPlugin` — produces `build/distributions/*.zip`
 - Inspect `.zip` contents; confirm `META-INF/plugin.xml` has new
-  `<change-notes>` and that `<idea-version>` reflects `sinceBuild=252,
-  untilBuild=263.*`
+  `<change-notes>` and that `<idea-version>` reflects `sinceBuild=252, untilBuild=263.*`
 - Archive `.zip` out-of-repo:
   ```bash
   mkdir -p ~/.mahavishnu/artifacts/jinja2-custom-delimiters/1.0.4
@@ -544,8 +543,7 @@ rollback is a single-line edit + standard bump/push/publish.
   in `MAHAVISHNU_PROJECT_ROOTS`
 - **Operator gives explicit push consent** per
   `feedback-bodai-push-is-user-controlled.md` (do NOT auto-push)
-- `mcp__crackerjack__kotlin_bump_version(level="patch",
-  project_root=..., dry_run=true)` first
+- `mcp__crackerjack__kotlin_bump_version(level="patch", project_root=..., dry_run=true)` first
 - Verify proposed: `1.0.3 → 1.0.4`; tag will be `v1.0.4`
 - Re-run with `dry_run=false, release=false`
 - Verify tag pushed; verify `gradle.properties` reads `pluginVersion=1.0.4`
@@ -596,24 +594,24 @@ None at design time. All decisions captured.
 
 1. `crackerjack run` exits 0 with 3 hooks emitting (no `task absent`
    warnings)
-2. `./gradlew test` exits 0 (including the 8+ new tests)
-3. `./gradlew verifyPlugin` exits 0 against all available PyCharm
+1. `./gradlew test` exits 0 (including the 8+ new tests)
+1. `./gradlew verifyPlugin` exits 0 against all available PyCharm
    builds (252, 253, 261, 262, [263 if GA])
-4. No deprecation warnings in any Verifier HTML report
-5. `./gradlew buildPlugin` produces a `.zip` with manifest reflecting
+1. No deprecation warnings in any Verifier HTML report
+1. `./gradlew buildPlugin` produces a `.zip` with manifest reflecting
    new version, new `release-date`, and platform range
-6. `.zip` archived to `~/.mahavishnu/artifacts/jinja2-custom-delimiters/1.0.4/`
-7. Manual sandbox QA passes all 6 checklist items, including hard-fail
+1. `.zip` archived to `~/.mahavishnu/artifacts/jinja2-custom-delimiters/1.0.4/`
+1. Manual sandbox QA passes all 6 checklist items, including hard-fail
    license UX
-8. HIGH #6 fixes landed (no synchronized on `getState()`, setters used
+1. HIGH #6 fixes landed (no synchronized on `getState()`, setters used
    in `loadState`, no null-fallbacks in getters)
-9. License silent-fallback paths removed; hard-fail UX verified
-10. `git tag v1.0.4` is pushed (with operator consent);
-    `gradle.properties` reads `pluginVersion=1.0.4`
-11. `./gradlew publishPlugin` returns 2xx; plugin appears in
-    Marketplace with PyCharm 2025.2 → 2026.x supported
-12. Phase 11 first-week check finds no critical issues filed against
-    `1.0.4`
+1. License silent-fallback paths removed; hard-fail UX verified
+1. `git tag v1.0.4` is pushed (with operator consent);
+   `gradle.properties` reads `pluginVersion=1.0.4`
+1. `./gradlew publishPlugin` returns 2xx; plugin appears in
+   Marketplace with PyCharm 2025.2 → 2026.x supported
+1. Phase 11 first-week check finds no critical issues filed against
+   `1.0.4`
 
 ## Reference
 

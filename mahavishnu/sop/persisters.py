@@ -5,13 +5,13 @@ Two implementations:
 - ``InMemorySOPPersister`` — used for tests, dev, and the Phase 3
   in-memory v0 documented in the implementation plan.
 - ``HttpSOPPersister`` — typed stub that raises ``NotImplementedError``
-  on every call. The Dhara-backed implementation lands with Workstream C
+  on every call. The MCP-backed implementation lands with Workstream C
   (sql_blocked + http_blocked in the substrate status). Keeping the stub
   around exercises the import site and pins the contract callers depend
   on.
 
 Both implement the ``SOPPersister`` Protocol so callers (CLI, evolution
-trigger) stay substrate-agnostic. The Dhara implementation will be a
+trigger) stay substrate-agnostic. The MCP implementation will be a
 third conformant implementation and require no caller changes.
 """
 
@@ -27,7 +27,7 @@ from .models import FailureModeCatalogEntry, ProjectSOP, SOPSuggestion
 class SOPPersister(Protocol):
     """Persistence boundary for SOP evolution state.
 
-    The Dhara-backed implementation will conform to this Protocol and
+    The MCP-backed implementation will conform to this Protocol and
     back it with the ``project_sops``, ``sop_suggestions``, and
     ``failure_mode_catalog`` tables (Workstream C).
     """
@@ -135,7 +135,7 @@ class HttpSOPPersister:
     the import site instead of silently returning empty data.
 
     The Workstream C implementation will fill these out against the
-    Dhara HTTP surface; the contract here pins the method signatures and
+    MCP HTTP surface; the contract here pins the method signatures and
     return types callers depend on.
     """
 
@@ -151,21 +151,21 @@ class HttpSOPPersister:
     def save(self, sop: ProjectSOP) -> None:
         raise NotImplementedError(
             "HttpSOPPersister.save is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
     def get(self, project_id: str, name: str) -> ProjectSOP | None:
         raise NotImplementedError(
             "HttpSOPPersister.get is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
     def list_for_project(self, project_id: str) -> list[ProjectSOP]:
         raise NotImplementedError(
             "HttpSOPPersister.list_for_project is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
@@ -173,21 +173,21 @@ class HttpSOPPersister:
     def save_suggestion(self, suggestion: SOPSuggestion) -> None:
         raise NotImplementedError(
             "HttpSOPPersister.save_suggestion is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
     def get_suggestion(self, suggestion_id: str) -> SOPSuggestion | None:
         raise NotImplementedError(
             "HttpSOPPersister.get_suggestion is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
     def list_suggestions(self, project_id: str) -> list[SOPSuggestion]:
         raise NotImplementedError(
             "HttpSOPPersister.list_suggestions is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
@@ -201,14 +201,14 @@ class HttpSOPPersister:
     ) -> None:
         raise NotImplementedError(
             "HttpSOPPersister.record_failure_mode is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 
     def list_failure_modes(self, project_id: str) -> list[FailureModeCatalogEntry]:
         raise NotImplementedError(
             "HttpSOPPersister.list_failure_modes is a Phase 3 stub. "
-            "See Spec #7 Workstream C (substrate) for the Dhara HTTP "
+            "See Spec #7 Workstream C (substrate) for the MCP HTTP "
             "implementation."
         )
 

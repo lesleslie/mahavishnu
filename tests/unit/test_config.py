@@ -469,8 +469,8 @@ class TestOneiricMCPConfigValidation:
         assert cfg.token is None
 
     def test_custom_base_url_and_token(self):
-        cfg = OneiricMCPConfig(base_url="http://dhara.example/mcp", token="secret")
-        assert cfg.base_url == "http://dhara.example/mcp"
+        cfg = OneiricMCPConfig(base_url="http://mcp.example/mcp", token="secret")
+        assert cfg.base_url == "http://mcp.example/mcp"
         assert cfg.token == "secret"
 
     def test_cache_ttl_range(self):

@@ -7,7 +7,7 @@ or PiPool code path that should emit, then asserts the **delta** over
 the snapshot carries the expected counter/histogram increment.
 
 Req: REQ-PI-009
-"""  # req: REQ-PI-009
+"""
 
 from __future__ import annotations
 

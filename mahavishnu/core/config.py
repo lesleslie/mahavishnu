@@ -1781,26 +1781,26 @@ class AdapterRegistryConfig(BaseModel):
 
 
 class OneiricMCPConfig(BaseModel):
-    """Dhara adapter registry integration configuration.
+    """MCP adapter registry integration configuration.
 
-    The old Oneiric MCP gRPC registry was absorbed into Dhara's canonical
+    The old Oneiric MCP gRPC registry was absorbed into MCP's canonical
     FastMCP adapter-registry tools. The class name is retained for settings
     compatibility with existing ``oneiric_mcp`` config blocks.
     """
 
     enabled: bool = Field(
         default=False,
-        description="Enable Dhara adapter registry discovery",
+        description="Enable MCP adapter registry discovery",
     )
     base_url: str = Field(
         default="http://localhost:8683/mcp",
-        description="Dhara MCP base URL for adapter registry tools",
+        description="MCP MCP base URL for adapter registry tools",
     )
     timeout_sec: int = Field(
         default=30,
         ge=5,
         le=120,
-        description="Dhara MCP request timeout in seconds (5-120)",
+        description="MCP MCP request timeout in seconds (5-120)",
     )
     cache_ttl_sec: int = Field(
         default=300,
@@ -1810,7 +1810,7 @@ class OneiricMCPConfig(BaseModel):
     )
     token: str | None = Field(
         default=None,
-        description="Optional bearer token for Dhara MCP when authentication is enabled",
+        description="Optional bearer token for MCP MCP when authentication is enabled",
     )
     circuit_breaker_threshold: int = Field(
         default=3,
@@ -2177,7 +2177,7 @@ class DependencyConfig(BaseModel):
             port: 8678
             required: true
             timeout_seconds: 30
-          dhara:
+          mcp:
             host: "localhost"
             port: 8683
             required: false
@@ -2236,7 +2236,7 @@ class HealthConfig(BaseModel):
               host: "localhost"
               port: 8682
               required: false
-            dhara:
+            mcp:
               host: "localhost"
               port: 8683
               required: false
@@ -2276,14 +2276,14 @@ class HealthConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class DharaStatePersistenceConfig(BaseModel):
-    """Configuration for Dhara-backed durable state persistence.
+class MCPStatePersistenceConfig(BaseModel):
+    """Configuration for MCP-backed durable state persistence.
 
     Controls whether workflow lifecycle events, pool state, and routing
-    decisions are persisted to Dhara for recovery after restart.
+    decisions are persisted to MCP for recovery after restart.
 
     Example YAML:
-        dhara_state:
+        mcp_state:
           enabled: true
           flush_interval_seconds: 60
           max_routing_buffer_age_seconds: 3600
@@ -2295,18 +2295,18 @@ class DharaStatePersistenceConfig(BaseModel):
 
     enabled: bool = Field(
         default=True,
-        description="Enable Dhara state persistence (no-op if Dhara is unreachable)",
+        description="Enable MCP state persistence (no-op if MCP is unreachable)",
     )
     flush_interval_seconds: int = Field(
         default=60,
         ge=10,
         le=3600,
-        description="Interval between periodic routing buffer flushes to Dhara",
+        description="Interval between periodic routing buffer flushes to MCP",
     )
     max_routing_buffer_age_seconds: int = Field(
         default=3600,
         ge=60,
-        description="Maximum age of routing decisions retained in Dhara",
+        description="Maximum age of routing decisions retained in MCP",
     )
 
     model_config = ConfigDict(extra="forbid")
@@ -2873,10 +2873,10 @@ class MahavishnuSettings(BaseSettings):
         description="Hatchet workflow engine configuration",
     )
 
-    # Dhara adapter registry integration (legacy oneiric_mcp settings key)
+    # MCP adapter registry integration (legacy oneiric_mcp settings key)
     oneiric_mcp: OneiricMCPConfig = Field(
         default_factory=OneiricMCPConfig,
-        description="Dhara adapter registry integration for dynamic adapter discovery",
+        description="MCP adapter registry integration for dynamic adapter discovery",
     )
 
     # Adapter registry configuration
@@ -2910,10 +2910,10 @@ class MahavishnuSettings(BaseSettings):
         description="Feature flags for external platform integrations",
     )
 
-    # Dhara state persistence
-    dhara_state: DharaStatePersistenceConfig = Field(
-        default_factory=DharaStatePersistenceConfig,
-        description="Dhara-backed durable state persistence configuration",
+    # MCP state persistence
+    mcp_state: MCPStatePersistenceConfig = Field(
+        default_factory=MCPStatePersistenceConfig,
+        description="MCP-backed durable state persistence configuration",
     )
 
     # Unified config validation (soft-launch — off by default)
@@ -3145,8 +3145,6 @@ __all__ = [
     "DLQConfig",
     # Health check configuration
     "DependencyConfig",
-    # Dhara state persistence
-    "DharaStatePersistenceConfig",
     "FallbackStrategy",
     # Goal-Driven Teams configuration
     "GoalParsingConfig",
@@ -3161,6 +3159,8 @@ __all__ = [
     "LLMProvider",
     # Learning pipeline configuration
     "LearningConfig",
+    # MCP state persistence
+    "MCPStatePersistenceConfig",
     "MahavishnuSettings",
     "MemoryBackend",
     "OTelIngesterConfig",

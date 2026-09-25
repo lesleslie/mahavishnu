@@ -17,7 +17,7 @@ import pytest
 from mahavishnu.plan_index.cron_core import run_rebuild_cycle
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 _OTEL_PATTERN = re.compile(
     r"opentelemetry|start_as_current_span|get_tracer",
@@ -77,7 +77,7 @@ class TestMigrationFlagOtel:
             raising=False,
         )
 
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         await run_rebuild_cycle(store, rebuilder)
         # captured should contain migration_flag=True on the first span
@@ -91,9 +91,9 @@ class TestMigrationFlagOtel:
         from mahavishnu.plan_index.cron_core import run_rebuild_cycle
         from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
         from mahavishnu.plan_index.store import PlanIndexStore
-        from mahavishnu.plan_index.testing import FakeDhara
+        from mahavishnu.plan_index.testing import FakeMCP
 
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         await run_rebuild_cycle(store, rebuilder)
         # Cycle 2 — migration flag should be absent

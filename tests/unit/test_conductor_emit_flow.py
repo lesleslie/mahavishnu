@@ -142,12 +142,12 @@ def test_emit_node_raises_not_implemented() -> None:
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
-    dhara = AsyncMock()
+    mcp = AsyncMock()
     with pytest.raises(NotImplementedError):
         # emit_node is async — drive it through asyncio.run for the sync test.
         import asyncio
         asyncio.run(emit_node(
-            node, trace_id=TraceId("0" * 32), dhara=dhara,
+            node, trace_id=TraceId("0" * 32), mcp=mcp,
         ))
 
 

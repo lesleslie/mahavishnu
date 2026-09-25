@@ -7,7 +7,7 @@ when they need to invoke a specialist agent by category rather than by
 exact name.
 
 Why this exists (H-3): without a dispatcher, the new Phase 3 specialists
-(dhara-specialist, crackerjack-specialist, session-buddy-specialist) are
+(mcp-specialist, crackerjack-specialist, session-buddy-specialist) are
 discoverable via ``list_agents`` but no automated workflow can select
 them. The dispatcher bridges the gap by exposing a small, fast lookup
 that reads ``list_agents`` from a given server, filters by
@@ -30,7 +30,7 @@ Implementation choices:
   filesystem cache (Phase 5 is responsible for that surface).
 - **HTTP cross-MCP client**: each Bodai server has its own MCP
   endpoint. URLs are looked up from settings via the canonical
-  ``akosha_url``, ``session_buddy_url``, ``dhara_url``,
+  ``akosha_url``, ``session_buddy_url``, ``mcp_url``,
   ``crackerjack_url`` keys (defaulting to the CLAUDE.md port table).
   The HTTP call uses ``httpx.AsyncClient`` with a 1s server timeout
   (matches Phase 4's per-server timeout for federation).
@@ -58,7 +58,7 @@ _DEFAULT_SERVER_URLS: dict[str, str] = {
     "mahavishnu": "http://localhost:8680/mcp",
     "session-buddy": "http://localhost:8678/mcp",
     "session_buddy": "http://localhost:8678/mcp",  # R-5 underscore alias
-    "dhara": "http://localhost:8683/mcp",
+    "mcp": "http://localhost:8683/mcp",
     "crackerjack": "http://localhost:8676/mcp",
 }
 
@@ -95,7 +95,7 @@ def _match_agent(agent: dict[str, Any], task_type: str) -> bool:
        this.
     2. ``agent.name`` substring (case-insensitive) -- useful when the
        caller knows the canonical name (e.g.
-       ``dhara-specialist``).
+       ``mcp-specialist``).
     3. ``agent.description`` substring (case-insensitive) -- the
        loose fallback; matches ``"search"`` -> ``"search-insights"``
        and similar natural-language queries.
@@ -254,11 +254,11 @@ def register_dispatch_specialist(mcp: FastMCP) -> None:
         - ``agent.description`` substring match (case-insensitive)
 
         Args:
-            server: server_key (e.g. ``dhara``, ``session_buddy``,
+            server: server_key (e.g. ``mcp``, ``session_buddy``,
                 ``crackerjack``, ``akosha``, ``mahavishnu``).
             task_type: free-form category or hint that selects the
                 specialist. Examples: ``"storage"`` ->
-                ``dhara-specialist``, ``"quality gates"`` ->
+                ``mcp-specialist``, ``"quality gates"`` ->
                 ``crackerjack-specialist``, ``"session restoration"`` ->
                 ``session-buddy-specialist``.
             include_definition: when True, fetch the full

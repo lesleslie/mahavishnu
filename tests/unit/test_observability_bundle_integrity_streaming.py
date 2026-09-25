@@ -43,7 +43,7 @@ from mahavishnu.observability.bundle_integrity import (
     ALLOWED_BACKEND_KINDS,
     record_bundle_integrity_failure_short,
     verify_sha256_streaming,
-    write_dhara_audit_row,
+    write_mcp_audit_row,
 )
 from mahavishnu.observability.metrics import (
     StreamingOp,
@@ -158,13 +158,13 @@ def test_verify_sha256_streaming_does_not_rehash_principal_short(
     assert seen == [("local", "abc12345")]
 
 
-def test_verify_sha256_streaming_writes_dhara_audit_row(
+def test_verify_sha256_streaming_writes_mcp_audit_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """B-DI-11 — Dhara audit row must be written on mismatch."""
     rows: list[dict[str, object]] = []
     monkeypatch.setattr(
-        "mahavishnu.observability.bundle_integrity.write_dhara_audit_row",
+        "mahavishnu.observability.bundle_integrity.write_mcp_audit_row",
         lambda **kw: rows.append(kw),
     )
     with pytest.raises(WorktreeIntegrityError):
@@ -224,10 +224,10 @@ def test_allowed_backend_kinds_includes_canonical_set() -> None:
     ) == ALLOWED_BACKEND_KINDS
 
 
-def test_write_dhara_audit_row_emits_info_log(
+def test_write_mcp_audit_row_emits_info_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """write_dhara_audit_row must not raise and must accept keyword-only args."""
+    """write_mcp_audit_row must not raise and must accept keyword-only args."""
     called: list[dict[str, object]] = []
 
     def fake_logger_info(msg: str, *args: object, **kwargs: object) -> None:
@@ -246,7 +246,7 @@ def test_write_dhara_audit_row_emits_info_log(
         "mahavishnu.observability.bundle_integrity._logger.info",
         fake_logger_info,
     )
-    write_dhara_audit_row(
+    write_mcp_audit_row(
         kind="bundle_integrity_failure",
         backend="s3",
         principal_short="abc12345",
@@ -254,7 +254,7 @@ def test_write_dhara_audit_row_emits_info_log(
         actual_sha_prefix8="a" * 8,
     )
     assert len(called) == 1
-    assert called[0]["msg"] == "dhara-audit-row-pending"
+    assert called[0]["msg"] == "mcp-audit-row-pending"
     assert called[0]["extra"]["backend"] == "s3"
     assert called[0]["extra"]["principal_short"] == "abc12345"
 

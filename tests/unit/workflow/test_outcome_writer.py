@@ -16,18 +16,18 @@ from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 
 @pytest.fixture
 def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Patch the dhara.put call to capture writes without hitting the real DB.
+    """Patch the mcp.put call to capture writes without hitting the real DB.
 
-    The writer resolves ``dhara.put`` at call time via
-    :func:`mahavishnu.core._dhara_substrate_compat.dhara_calltime`, so the
-    patch must target the live ``dhara`` module (the writer module no
-    longer imports ``dhara`` as a name).
+    The writer resolves ``mcp.put`` at call time via
+    :func:`mahavishnu.core._mcp_substrate_compat.mcp_calltime`, so the
+    patch must target the live ``mcp`` module (the writer module no
+    longer imports ``mcp`` as a name).
     """
-    import dhara
+    import mcp
 
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
+    monkeypatch.setattr(mcp, "put", mock_put, raising=False)
     return mock_put
 
 
@@ -83,16 +83,16 @@ def test_flag_helper_explicit_false(monkeypatch: pytest.MonkeyPatch) -> None:
     assert outcome_writer._workflow_outcome_v1_enabled() is False
 
 
-def test_producer_skips_when_dhara_put_unbound(
+def test_producer_skips_when_mcp_put_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Substrate-compat: missing dhara.put → no persistence, returns validated struct,
+    """Substrate-compat: missing mcp.put → no persistence, returns validated struct,
     logs WARNING with omission fingerprint for diagnosis."""
-    # Simulate the substrate not exposing dhara.put.
-    import dhara
+    # Simulate the substrate not exposing mcp.put.
+    import mcp
 
-    monkeypatch.setattr(dhara, "put", None, raising=False)
+    monkeypatch.setattr(mcp, "put", None, raising=False)
     with caplog.at_level("WARNING"):
         record = record_workflow_outcome(
             workflow_id="wf-unbound",
@@ -109,15 +109,15 @@ def test_producer_skips_when_dhara_put_unbound(
     )
 
 
-def test_consumer_returns_none_when_dhara_get_unbound(
+def test_consumer_returns_none_when_mcp_get_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Substrate-compat: missing dhara.get → return None + warn (do not raise)."""
-    # Simulate the substrate not exposing dhara.get.
-    import dhara
+    """Substrate-compat: missing mcp.get → return None + warn (do not raise)."""
+    # Simulate the substrate not exposing mcp.get.
+    import mcp
 
-    monkeypatch.setattr(dhara, "get", None, raising=False)
+    monkeypatch.setattr(mcp, "get", None, raising=False)
     # Import inside the test so the monkeypatched module is the one we hit.
     from mahavishnu.mcp.tools import workflow_tools
 

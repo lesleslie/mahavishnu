@@ -827,7 +827,7 @@ class TestCheckDeps:
                 },
                 {
                     "consumer": "mahavishnu",
-                    "provider": "dhara",
+                    "provider": "mcp",
                     "type": "mcp",
                     "version_constraint": ">=1.0.0",
                     "status": "unsatisfied",
@@ -843,7 +843,7 @@ class TestCheckDeps:
         assert "Satisfied: 2" in result.output
         assert "Unsatisfied: 1" in result.output
         assert "fastblocks" in result.output
-        assert "dhara" in result.output
+        assert "mcp" in result.output
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_check_deps_with_consumer_filter(self, MockMgr):

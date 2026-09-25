@@ -111,7 +111,7 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_pycharm_tools",
     "_register_search_tools",
     # Plan index tools (5 tools; Task 12). Delegates to the W0 helper via
-    # ``_register_plan_tools`` which constructs a Dhara-backed store from
+    # ``_register_plan_tools`` which constructs a MCP-backed store from
     # ``MahavishnuApp`` and binds all five ``plan_*`` tools in one call.
     "_register_plan_tools",
     # Jot inbox tools (14 tools; Task 13 + drain). Each key in
@@ -184,7 +184,7 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
-    # Phase 3 of Dhara MCP retirement (2026-09-16 plan). Durable ecosystem
+    # Phase 3 of MCP MCP retirement (2026-09-16 plan). Durable ecosystem
     # service / event records — see ``_register_ecosystem_state_tools`` in
     # ``bootstrap.py``. Always-on alongside workflow + webhook because
     # sibling Bodai components resolve services and read events via this
@@ -199,7 +199,7 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_agents_tools": lambda s: _register_agents_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Phase 3 task #5 (H-3) — specialist dispatcher. The dispatcher
     # is the entry point by which workflows resolve category-named
-    # specialists (dhara-specialist, crackerjack-specialist, etc.);
+    # specialists (mcp-specialist, crackerjack-specialist, etc.);
     # without it the specialists are unreachable from a workflow.
     # Always-on for parity with the discovery surface.
     "_register_dispatch_specialist_tools": lambda s: _register_dispatch_specialist_tools(
@@ -232,7 +232,7 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Plan index tools (Task 12). ``_register_plan_tools`` resolves the
-    # Dhara client from ``MahavishnuApp`` and registers the five
+    # MCP client from ``MahavishnuApp`` and registers the five
     # ``plan_*`` tools in one call. The store is constructed fresh per
     # registration, matching the per-tool closure pattern.
     "_register_plan_tools": lambda s: _register_plan_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -275,7 +275,7 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_ecosystem_tools",
     "_register_workflow_tools",
     "_register_webhook_tools",
-    # Phase 3 of Dhara MCP retirement (2026-09-16 plan). Service / event
+    # Phase 3 of MCP MCP retirement (2026-09-16 plan). Service / event
     # records are the substrate for sibling Bodai component discovery —
     # must be reachable at MINIMAL alongside the other always-on groups.
     "_register_ecosystem_state_tools",
@@ -287,8 +287,8 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_agents_tools",
     # Phase 3 task #5 — dispatcher is the entry point that workflows
     # invoke to resolve a category-named specialist (e.g.
-    # ``mahavishnu_dispatch_specialist("dhara", "storage")``). Without
-    # this dispatcher the 3 new specialists (dhara-specialist,
+    # ``mahavishnu_dispatch_specialist("mcp", "storage")``). Without
+    # this dispatcher the 3 new specialists (mcp-specialist,
     # crackerjack-specialist, session-buddy-specialist) become
     # orphans: discoverable but never invoked from a workflow.
     "_register_dispatch_specialist_tools",

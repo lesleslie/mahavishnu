@@ -167,7 +167,7 @@ def inventory_one_repo(repo: str, repo_path: str, out_path: Path) -> dict[str, A
             return data
         entry_points = {
             "oneiric": ("oneiric.cli", "app"),
-            "dhara": ("dhara.cli", "app"),
+            "mcp": ("mcp.cli", "app"),
             "session-buddy": ("session_buddy.cli", "app"),
             "akosha": ("akosha.cli", "app"),
             "crackerjack": ("crackerjack.__main__", "app"),
@@ -275,7 +275,7 @@ def all_repos(
     repos = [
         "mcp-common",
         "oneiric",
-        "dhara",
+        "mcp",
         "session-buddy",
         "akosha",
         "crackerjack",

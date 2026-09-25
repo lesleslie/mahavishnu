@@ -6,8 +6,8 @@ integration in Mahavishnu.
 
 Prerequisites:
 1. Dhara adapter registry server running on port 8683
-   cd /Users/les/Projects/dhara
-   uv run dhara mcp start
+   cd /Users/les/Projects/mcp
+   uv run mcp mcp start
 
 2. Mahavishnu configured with oneiric_mcp.enabled=true (legacy settings key for Dhara)
 
@@ -23,8 +23,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mahavishnu.core.oneiric_client import (
-    DharaAdapterRegistryClient,
-    DharaAdapterRegistryConfig,
+    MCPAdapterRegistryClient,
+    MCPAdapterRegistryConfig,
 )
 
 
@@ -37,7 +37,7 @@ async def main():
 
     # Step 1: Configure client
     print("Step 1: Configuring Dhara adapter registry client...")
-    config = DharaAdapterRegistryConfig(
+    config = MCPAdapterRegistryConfig(
         enabled=True,
         base_url="http://localhost:8683/mcp",
         timeout_sec=10,
@@ -48,7 +48,7 @@ async def main():
 
     # Step 2: Create client
     print("Step 2: Creating client...")
-    client = DharaAdapterRegistryClient(config)
+    client = MCPAdapterRegistryClient(config)
     print("  ✓ Client created")
     print()
 
@@ -62,8 +62,8 @@ async def main():
             print()
             print("Troubleshooting:")
             print("  1. Ensure Dhara adapter registry server is running:")
-            print("     cd /Users/les/Projects/dhara")
-            print("     uv run dhara mcp start")
+            print("     cd /Users/les/Projects/mcp")
+            print("     uv run mcp mcp start")
             print()
             print("  2. Check port is correct:")
             print("     - Development: 8683")

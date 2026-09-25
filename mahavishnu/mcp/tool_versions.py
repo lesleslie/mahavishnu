@@ -278,7 +278,7 @@ TOOL_VERSIONS: dict[str, str] = {
     "execute_capability": "1.0.0",
     "list_capabilities": "1.0.0",
     "explain_routing": "1.0.0",
-    # Dhara envelope reader (get_capability_result_tool.py)
+    # MCP envelope reader (get_capability_result_tool.py)
     "get_capability_result": "1.0.0",
 }
 

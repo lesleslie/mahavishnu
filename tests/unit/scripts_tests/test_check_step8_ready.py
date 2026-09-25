@@ -16,10 +16,10 @@ pytestmark = pytest.mark.unit
 
 
 def _tracking(tmp_path: Path, status: str) -> Path:
-    path = tmp_path / "plan-index-dhara.md"
+    path = tmp_path / "plan-index-mcp.md"
     path.write_text(
         "---\n"
-        "name: plan-index-dhara\n"
+        "name: plan-index-mcp\n"
         f"status: {status}\n"
         "date: 2026-09-10\n"
         "role: canonical\n"

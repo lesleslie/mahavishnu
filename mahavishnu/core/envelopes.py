@@ -1,12 +1,12 @@
-"""Dhara-backed envelope transport for inter-engine state handoff.
+"""MCP-backed envelope transport for inter-engine state handoff.
 
 Each envelope is a CapabilityEnvelope JSON blob keyed by
 ``envelopes/<trace_id>/<envelope_id>``. Secrets are redacted from io_out
 before persistence — see MAHAVISHNU_REDACT_FIELDS env var (comma-separated
-field names whose values are scrubbed before dhara.put).
+field names whose values are scrubbed before mcp.put).
 
 All envelope operations are async (CLAUDE.md "all orchestration-layer I/O
-is async"). DharaClient is at mahavishnu/core/dhara_adapter.py:18; its
+is async"). MCPClient is at mahavishnu/core/mcp_adapter.py:18; its
 public API is ``async def put(self, key, value, ttl=None)`` plus the
 ``async def call_tool(self, name, arguments: dict[str, Any])`` shim used
 for get/list_keys.
@@ -25,7 +25,7 @@ from mahavishnu.core.capabilities import (
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from mahavishnu.core.dhara_adapter import DharaClient
+    from mahavishnu.core.mcp_adapter import MCPClient
 
 
 _REDACTED = "<redacted>"
@@ -41,16 +41,16 @@ def _redact(env: CapabilityEnvelope) -> CapabilityEnvelope:
     return env.model_copy(update={"io_out": scrubbed_io})
 
 
-async def write_envelope(env: CapabilityEnvelope, *, dhara: DharaClient) -> None:
-    """Persist a (redacted) envelope to Dhara. Awaits dhara.put()."""
+async def write_envelope(env: CapabilityEnvelope, *, mcp: MCPClient) -> None:
+    """Persist a (redacted) envelope to MCP. Awaits mcp.put()."""
     addr = EnvelopeAddress(trace_id=env.trace_id, envelope_id=env.envelope_id)
     scrubbed = _redact(env)
-    await dhara.put(addr.to_key(), scrubbed.model_dump_json().encode())
+    await mcp.put(addr.to_key(), scrubbed.model_dump_json().encode())
 
 
-async def read_envelope(addr: EnvelopeAddress, *, dhara: DharaClient) -> CapabilityEnvelope:
-    """Load an envelope from Dhara via call_tool('get', ...). Raises if missing."""
-    raw = await dhara.call_tool("get", {"key": addr.to_key()})
+async def read_envelope(addr: EnvelopeAddress, *, mcp: MCPClient) -> CapabilityEnvelope:
+    """Load an envelope from MCP via call_tool('get', ...). Raises if missing."""
+    raw = await mcp.call_tool("get", {"key": addr.to_key()})
     if raw is None:
         raise MahavishnuError(
             f"envelope not found at {addr.to_key()}",
@@ -59,7 +59,7 @@ async def read_envelope(addr: EnvelopeAddress, *, dhara: DharaClient) -> Capabil
     return CapabilityEnvelope.model_validate_json(raw)
 
 
-async def list_envelopes(trace_id: TraceId, *, dhara: DharaClient) -> list[EnvelopeAddress]:
+async def list_envelopes(trace_id: TraceId, *, mcp: MCPClient) -> list[EnvelopeAddress]:
     """Return every envelope address under ``envelopes/<trace_id>/``.
 
     The prefix filter is applied both at the storage call AND defensively in
@@ -67,7 +67,7 @@ async def list_envelopes(trace_id: TraceId, *, dhara: DharaClient) -> list[Envel
     extras (e.g. a stub that ignores the prefix arg).
     """
     prefix = f"envelopes/{trace_id}/"
-    keys = await dhara.call_tool("list_keys", {"prefix": prefix})
+    keys = await mcp.call_tool("list_keys", {"prefix": prefix})
     return [EnvelopeAddress.from_key(k) for k in keys if k.startswith(prefix)]
 
 

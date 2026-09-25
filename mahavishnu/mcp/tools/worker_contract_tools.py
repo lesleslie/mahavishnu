@@ -11,7 +11,7 @@ Exposes nine FastMCP tools that proxy to a :class:`DurableWorkerManager`:
 * ``worker_revoke`` — mark the worker reaped (optionally with force kill).
 * ``worker_run_with_settle`` — spawn a worker AND register a settle record
   in state=``proposed`` BEFORE any file is written. The settle record is
-  persisted to Dhara (with dead-letter fallback) prior to launch so a
+  persisted to MCP (with dead-letter fallback) prior to launch so a
   process crash cannot leave a worker writing files without an audit trail.
 * ``worker_settle`` — drive a settle run through its lifecycle:
   ``select | apply | release | discard``. ``apply`` shells out to
@@ -66,11 +66,11 @@ logger = logging.getLogger(__name__)
 # functions free of bound state, which simplifies test isolation.
 _durable_manager: DurableWorkerManager | None = None
 
-# Optional Dhara backend for settle persistence. May be ``None`` in tests or
-# in deployments without Dhara configured — in which case the persistence
+# Optional MCP backend for settle persistence. May be ``None`` in tests or
+# in deployments without MCP configured — in which case the persistence
 # helpers fall back to the local dead-letter file (see
 # ``mahavishnu.settle.persistence``).
-_settle_dhara: Any = None
+_settle_mcp: Any = None
 
 # Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
 _metrics = WorkerMetrics()
@@ -356,7 +356,7 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
 def register_worker_contract_tools(
     app: Any,
     durable_manager: DurableWorkerManager | None,
-    settle_dhara: Any = None,
+    settle_mcp: Any = None,
 ) -> None:
     """Register the worker-contract tool group on a FastMCP ``app``.
 
@@ -366,15 +366,15 @@ def register_worker_contract_tools(
     introspection signature intact and lets tests patch ``_durable_manager``
     and call the function directly without going through the FastMCP app.
 
-    ``settle_dhara`` is an optional :class:`DharaStateBackend` used for
+    ``settle_mcp`` is an optional :class:`MCPStateBackend` used for
     settle-record persistence. When ``None``, settle writes fall through
     to the local dead-letter file at
     ``~/.mahavishnu/settle-dead-letter/{run_ref}.json``.
     """
     global _durable_manager
-    global _settle_dhara
+    global _settle_mcp
     _durable_manager = durable_manager
-    _settle_dhara = settle_dhara
+    _settle_mcp = settle_mcp
 
     app.tool()(launch_worker)
     app.tool()(send_input)
@@ -424,7 +424,7 @@ async def worker_run_with_settle(
 ) -> dict:
     """Spawn a durable worker AND register a settle record BEFORE any file write.
 
-    The settle record (state=``proposed``) is persisted to Dhara (with
+    The settle record (state=``proposed``) is persisted to MCP (with
     local dead-letter fallback) before ``launch_worker`` is invoked, so
     a process crash cannot leave a worker writing files without an
     audit trail. The returned ``run_ref`` is the durable handle for
@@ -479,7 +479,7 @@ async def worker_run_with_settle(
     # Persistence BEFORE any worker file write. Mirrors the
     # ``dispatch_to_pool`` "persist before file write" contract from
     # ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``.
-    await persist_initial_async(record, dhara=_settle_dhara)
+    await persist_initial_async(record, mcp=_settle_mcp)
 
     launch_result = await launch_worker(
         prompt=task_signature,
@@ -504,7 +504,7 @@ async def worker_run_with_settle(
             updated_at=record.updated_at,
             transitions=record.transitions,
         )
-        await persist_transition(restamped, dhara=_settle_dhara)
+        await persist_transition(restamped, mcp=_settle_mcp)
         record = restamped
 
     return {
@@ -563,7 +563,7 @@ async def worker_settle(
             "error": f"action must be one of {[a.value for a in SettleAction]}",
         }
 
-    record = await load_record(run_ref, dhara=_settle_dhara)
+    record = await load_record(run_ref, mcp=_settle_mcp)
     if record is None:
         return {
             "run_ref": run_ref,
@@ -604,7 +604,7 @@ async def worker_settle(
             "current_state": exc.details.get("current_state"),
         }
 
-    await persist_transition(new_record, dhara=_settle_dhara)
+    await persist_transition(new_record, mcp=_settle_mcp)
 
     response: dict[str, Any] = {
         "run_ref": new_record.run_ref,

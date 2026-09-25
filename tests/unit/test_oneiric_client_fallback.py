@@ -10,8 +10,8 @@ import pytest
 import mahavishnu.core.oneiric_client as oc
 
 
-class _FakeDharaClient:
-    def __init__(self, base_url: str = "http://dhara:8683/mcp") -> None:
+class _FakeMCPClient:
+    def __init__(self, base_url: str = "http://mcp:8683/mcp") -> None:
         self.base_url = base_url
         self.calls: list[tuple[str, dict]] = []
         self.fail_next = False
@@ -47,29 +47,29 @@ class _FakeDharaClient:
         raise AssertionError(name)
 
 
-def test_get_and_set_dhara_client_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_and_set_mcp_client_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     created: list[str] = []
 
-    class _DharaClient:
+    class _MCPClient:
         def __init__(self, base_url: str, token: str | None = None) -> None:
             created.append(base_url)
             self.base_url = base_url
 
-    monkeypatch.setattr("mahavishnu.core.dhara_adapter.DharaClient", _DharaClient, raising=False)
-    oc._dhara_clients.clear()
+    monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", _DharaClient, raising=False)
+    oc._mcp_clients.clear()
 
-    oc.set_dhara_client_base_url("http://example:9999/mcp/")
-    c1 = oc.get_dhara_client()
-    c2 = oc.get_dhara_client("http://example:9999/mcp")
-    c3 = oc.get_dhara_client("http://other:8683/mcp")
+    oc.set_mcp_client_base_url("http://example:9999/mcp/")
+    c1 = oc.get_mcp_client()
+    c2 = oc.get_mcp_client("http://example:9999/mcp")
+    c3 = oc.get_mcp_client("http://other:8683/mcp")
 
     assert c1 is c2
     assert c1 is not c3
     assert created == ["http://example:9999/mcp", "http://other:8683/mcp"]
 
 
-def test_adapter_entry_from_dhara_and_pb2_compat() -> None:
-    entry = oc.AdapterEntry.from_dhara(
+def test_adapter_entry_from_mcp_and_pb2_compat() -> None:
+    entry = oc.AdapterEntry.from_mcp(
         {
             "domain": "adapter",
             "key": "storage",
@@ -120,11 +120,11 @@ async def test_circuit_breaker_block_and_reset() -> None:
 
 
 @pytest.mark.asyncio
-async def test_dhara_registry_client_happy_path_and_disabled(
+async def test_mcp_registry_client_happy_path_and_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake = _FakeDharaClient()
-    monkeypatch.setattr(oc, "get_dhara_client", lambda _base_url=None, _token=None: fake)
+    monkeypatch.setattr(oc, "get_mcp_client", lambda _base_url=None, _token=None: fake)
 
     client = oc.OneiricMCPClient(oc.OneiricMCPConfig(enabled=True, cache_ttl_sec=120))
     assert client._make_cache_key("p", "d", "c", True) == "p:d:c:healthy"
@@ -164,16 +164,16 @@ async def test_dhara_registry_client_happy_path_and_disabled(
 
 
 @pytest.mark.asyncio
-async def test_dhara_registry_client_error_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_mcp_registry_client_error_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeDharaClient()
-    monkeypatch.setattr(oc, "get_dhara_client", lambda _base_url=None, _token=None: fake)
+    monkeypatch.setattr(oc, "get_mcp_client", lambda _base_url=None, _token=None: fake)
     client = oc.OneiricMCPClient(oc.OneiricMCPConfig(enabled=True, cache_ttl_sec=0))
 
     fake.fail_next = True
     with pytest.raises(ConnectionError):
         await client.list_adapters(use_cache=False)
 
-    assert await client.get_adapter("not-a-dhara-id") is None
+    assert await client.get_adapter("not-a-mcp-id") is None
 
     fake.adapters[0]["health_status"] = "unhealthy"
     assert await client.list_adapters(healthy_only=True, use_cache=False) == []

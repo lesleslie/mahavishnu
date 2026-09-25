@@ -11,8 +11,12 @@ Run `mahavishnu config validate --strict` to verify all files against the Pydant
 | `local.yaml` | Local overrides (gitignored) — same structure as `mahavishnu.yaml` | No |
 | `models.yaml` | LLM provider and model configuration | Yes |
 | `embeddings.yaml` | Embedding model configuration for content ingestion | Yes |
-| `repos.yaml` | Repository manifest (legacy; prefer `ecosystem.yaml`) | Yes |
-| `ecosystem.yaml` | Canonical repository manifest with roles, tags, and descriptions | Yes |
+| `repos.yaml` | Repository manifest (legacy; prefer `ecosystem.yaml`) | No (see `repos.yaml.example`) |
+| `ecosystem.yaml` | Canonical repository manifest with roles, tags, and descriptions | No (see `ecosystem.yaml.example`; required on first install) |
+| `ecosystem.yaml.example` | Template for `ecosystem.yaml` — placeholders only, safe to commit | Yes |
+| `registry_metadata.yaml` | Shareable per-repo overlay (phase, provenance, fastmcp_pin, registry notes) | Yes |
+| `registry_metadata.local.yaml` | Per-machine overlay (excluded + archived repos with on-disk paths) | No (see `registry_metadata.local.yaml.example`) |
+| `registry_metadata.local.yaml.example` | Template for the local overlay | Yes |
 
 ## Validation
 

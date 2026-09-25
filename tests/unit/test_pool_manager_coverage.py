@@ -224,27 +224,27 @@ def test_init_with_explicit_peer_resolver_does_not_warn() -> None:
 
 @pytest.mark.unit
 async def test_persist_pool_state_noop_without_dhara(pool_mgr: PoolManager) -> None:
-    """Without dhara_state, persistence is a no-op (returns None)."""
+    """Without mcp_state, persistence is a no-op (returns None)."""
     result = await pool_mgr._persist_pool_state("pool_x", MagicMock(), "running")
     assert result is None
 
 
 @pytest.mark.unit
-async def test_persist_pool_state_writes_to_dhara() -> None:
-    """When dhara_state is provided, persist_pool is called with metadata."""
-    dhara = MagicMock()
-    dhara.persist_pool = AsyncMock()
+async def test_persist_pool_state_writes_to_mcp() -> None:
+    """When mcp_state is provided, persist_pool is called with metadata."""
+    mcp = MagicMock()
+    mcp.persist_pool = AsyncMock()
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=None,
             message_bus=MessageBus(),
-            dhara_state=dhara,
+            mcp_state=mcp,
         )
     pool = _make_pool("pool_save", n_workers=4)
     await mgr._persist_pool_state("pool_save", pool, "running")
-    assert dhara.persist_pool.await_count == 1
-    args = dhara.persist_pool.await_args
+    assert mcp.persist_pool.await_count == 1
+    args = mcp.persist_pool.await_args
     assert args.args[0] == "pool_save"
     payload = args.args[1]
     assert payload["status"] == "running"
@@ -255,14 +255,14 @@ async def test_persist_pool_state_writes_to_dhara() -> None:
 @pytest.mark.unit
 async def test_persist_pool_state_swallows_exception() -> None:
     """Persistence exceptions are swallowed (debug-logged)."""
-    dhara = MagicMock()
-    dhara.persist_pool = AsyncMock(side_effect=RuntimeError("disk full"))
+    mcp = MagicMock()
+    mcp.persist_pool = AsyncMock(side_effect=RuntimeError("disk full"))
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=None,
             message_bus=MessageBus(),
-            dhara_state=dhara,
+            mcp_state=mcp,
         )
     pool = _make_pool("pool_save2")
     # Should NOT raise
@@ -271,7 +271,7 @@ async def test_persist_pool_state_swallows_exception() -> None:
 
 @pytest.mark.unit
 async def test_persist_routing_decision_noop_without_dhara(pool_mgr: PoolManager) -> None:
-    """Without dhara_state, routing-decision persistence is a no-op."""
+    """Without mcp_state, routing-decision persistence is a no-op."""
     result = await pool_mgr._persist_routing_decision(
         task={"prompt": "x"},
         pool_id="pool_x",
@@ -283,16 +283,16 @@ async def test_persist_routing_decision_noop_without_dhara(pool_mgr: PoolManager
 
 
 @pytest.mark.unit
-async def test_persist_routing_decision_writes_to_dhara() -> None:
-    """When dhara_state is provided, persist_routing_decision is called."""
-    dhara = MagicMock()
-    dhara.persist_routing_decision = AsyncMock()
+async def test_persist_routing_decision_writes_to_mcp() -> None:
+    """When mcp_state is provided, persist_routing_decision is called."""
+    mcp = MagicMock()
+    mcp.persist_routing_decision = AsyncMock()
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=None,
             message_bus=MessageBus(),
-            dhara_state=dhara,
+            mcp_state=mcp,
         )
     await mgr._persist_routing_decision(
         task={"category": "code_generation", "type": "code"},
@@ -301,8 +301,8 @@ async def test_persist_routing_decision_writes_to_dhara() -> None:
         pool_affinity=None,
         reason="round_robin",
     )
-    assert dhara.persist_routing_decision.await_count == 1
-    args = dhara.persist_routing_decision.await_args
+    assert mcp.persist_routing_decision.await_count == 1
+    args = mcp.persist_routing_decision.await_args
     assert args.args[0] == "code_generation"
     payload = args.args[1]
     assert payload["pool_id"] == "pool_p"
@@ -314,14 +314,14 @@ async def test_persist_routing_decision_writes_to_dhara() -> None:
 @pytest.mark.unit
 async def test_persist_routing_decision_swallows_exception() -> None:
     """Routing-decision persistence exceptions are swallowed."""
-    dhara = MagicMock()
-    dhara.persist_routing_decision = AsyncMock(side_effect=RuntimeError("boom"))
+    mcp = MagicMock()
+    mcp.persist_routing_decision = AsyncMock(side_effect=RuntimeError("boom"))
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=MagicMock(),
             session_buddy_client=None,
             message_bus=MessageBus(),
-            dhara_state=dhara,
+            mcp_state=mcp,
         )
     await mgr._persist_routing_decision(
         task={"category": "x"},
@@ -1123,7 +1123,7 @@ async def test_route_task_fitness_reader_raises_falls_back() -> None:
     mgr._worker_count_heap = [(1, "pool_a")]
 
     mgr._routing_fitness_reader.get_fitness_signals = AsyncMock(
-        side_effect=RuntimeError("dhara down")
+        side_effect=RuntimeError("mcp down")
     )
 
     r = await mgr.route_task(

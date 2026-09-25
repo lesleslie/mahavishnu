@@ -12,7 +12,7 @@ from mahavishnu.core.approval_manager import (
 )
 
 
-class _FakeDharaRecoveryBackend:
+class _FakeMCPRecoveryBackend:
     def __init__(self) -> None:
         self._workflow_entries = [
             {
@@ -75,12 +75,12 @@ class _FakeDharaRecoveryBackend:
 @pytest.mark.asyncio
 async def test_app_recovers_running_workflows_and_pending_approvals() -> None:
     app = MahavishnuApp.__new__(MahavishnuApp)
-    app._dhara_state = _FakeDharaRecoveryBackend()
+    app._mcp_state = _FakeDharaRecoveryBackend()
     app.active_workflows = set()
     app.approval_manager = ApprovalManager()
 
-    await app._recover_workflow_state_from_dhara()
-    await app._recover_approvals_from_dhara()
+    await app._recover_workflow_state_from_mcp()
+    await app._recover_approvals_from_mcp()
 
     assert app.active_workflows == {"wf-running"}
     recovered = app.approval_manager.get_request("approval-001")

@@ -10,7 +10,7 @@ import pytest
 from scripts.audit_plan_index import (
     AuditReport,
     audit,
-    collect_dhara_paths,
+    collect_mcp_paths,
     dhara_paths_from_records,
     extract_index_paths,
     format_report,
@@ -116,24 +116,24 @@ def test_audit_flags_disk_file_missing_from_index() -> None:
     assert report.in_disk_only == frozenset({"new.md"})
 
 
-def test_audit_flags_dhara_record_missing_from_index() -> None:
+def test_audit_flags_mcp_record_missing_from_index() -> None:
     report = audit({"a.md"}, {"a.md"}, {"a.md", "orphan.md"})
     assert not report.ok
-    assert report.in_dhara_only == frozenset({"orphan.md"})
+    assert report.in_mcp_only == frozenset({"orphan.md"})
     assert report.dhara_checked is True
 
 
-def test_audit_treats_index_without_dhara_record_as_warning_only() -> None:
+def test_audit_treats_index_without_mcp_record_as_warning_only() -> None:
     report = audit({"a.md", "b.md"}, {"a.md", "b.md"}, {"a.md"})
     assert report.ok
-    assert report.missing_from_dhara == frozenset({"b.md"})
+    assert report.missing_from_mcp == frozenset({"b.md"})
 
 
-def test_audit_three_way_clean_marks_dhara_checked() -> None:
+def test_audit_three_way_clean_marks_mcp_checked() -> None:
     report = audit({"a.md"}, {"a.md"}, {"a.md"})
     assert report.ok
     assert report.dhara_checked is True
-    assert report.missing_from_dhara == frozenset()
+    assert report.missing_from_mcp == frozenset()
 
 
 # --------------------------------------------------------------------------
@@ -141,13 +141,13 @@ def test_audit_three_way_clean_marks_dhara_checked() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_format_report_notes_unchecked_dhara_leg() -> None:
+def test_format_report_notes_unchecked_mcp_leg() -> None:
     lines = format_report(audit({"a.md"}, {"a.md"}))
     assert any("Dhara leg not checked" in line for line in lines.out)
     assert lines.err == []
 
 
-def test_format_report_omits_caveat_when_dhara_checked() -> None:
+def test_format_report_omits_caveat_when_mcp_checked() -> None:
     lines = format_report(audit({"a.md"}, {"a.md"}, {"a.md"}))
     assert any(line.startswith("OK:") for line in lines.out)
     assert not any("not checked" in line for line in lines.out)
@@ -159,7 +159,7 @@ def test_format_report_truncates_long_failure_lists() -> None:
     assert any("and 15 more" in line for line in lines.err)
 
 
-def test_format_report_emits_warning_for_missing_dhara_records() -> None:
+def test_format_report_emits_warning_for_missing_mcp_records() -> None:
     lines = format_report(audit({"a.md"}, {"a.md"}, set()))
     assert any(line.startswith("WARN:") for line in lines.out)
 
@@ -169,7 +169,7 @@ def test_format_report_emits_warning_for_missing_dhara_records() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_dhara_paths_from_records_skips_malformed_entries() -> None:
+def test_mcp_paths_from_records_skips_malformed_entries() -> None:
     records: list[dict[str, Any]] = [
         {"path": "docs/plans/a.md"},
         {"path": ""},
@@ -179,7 +179,7 @@ def test_dhara_paths_from_records_skips_malformed_entries() -> None:
     assert dhara_paths_from_records(records) == {"docs/plans/a.md"}
 
 
-async def test_collect_dhara_paths_uses_public_store_api() -> None:
+async def test_collect_mcp_paths_uses_public_store_api() -> None:
     class _Store:
         def __init__(self) -> None:
             self.limit: int | None = None
@@ -189,7 +189,7 @@ async def test_collect_dhara_paths_uses_public_store_api() -> None:
             return [{"path": "docs/plans/a.md"}, {"path": "docs/plans/b.md"}]
 
     store = _Store()
-    assert await collect_dhara_paths(store, limit=7) == {
+    assert await collect_mcp_paths(store, limit=7) == {
         "docs/plans/a.md",
         "docs/plans/b.md",
     }
@@ -261,7 +261,7 @@ def test_main_returns_one_when_index_missing(tmp_path: Path) -> None:
     assert main(["--repo-root", str(tmp_path)]) == 1
 
 
-def test_main_reads_dhara_records_from_json(tmp_path: Path) -> None:
+def test_main_reads_mcp_records_from_json(tmp_path: Path) -> None:
     repo = _make_repo(
         tmp_path,
         plans={"alpha.md": "Alpha", "beta.md": "Beta", "gamma.md": "Gamma"},
@@ -269,7 +269,7 @@ def test_main_reads_dhara_records_from_json(tmp_path: Path) -> None:
     )
     records = repo / "records.json"
     records.write_text(json.dumps({"records": [{"path": "docs/plans/orphan.md"}]}))
-    assert main(["--repo-root", str(repo), "--dhara-records", str(records)]) == 1
+    assert main(["--repo-root", str(repo), "--mcp-records", str(records)]) == 1
 
 
 def test_audit_report_defaults_are_empty() -> None:

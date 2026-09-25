@@ -702,7 +702,7 @@ mahavishnu:
   - path: mahavishnu/mahavishnu/core/dhara_adapter.py
     change: REWRITE — delegate get/put/list_prefix/delete to
       CommonMCPClient; remove DharaClient direct call_tool
-  - path: mahavishnu/mahavishnu/core/state_backends/dhara.py
+  - path: mahavishnu/mahavishnu/core/state_backends/mcp.py
     change: REWRITE get/put/list_prefix/delete to delegate via
       CommonMCPClient
   - path: mahavishnu/mahavishnu/core/evidence_store.py
@@ -718,7 +718,7 @@ mahavishnu:
       aggregate_feed_states (Phase 4)
   - path: mahavishnu/mahavishnu/mcp/lifecycle.py
     change: replace ad-hoc DharaClient construction with
-      CommonMCPClient; remove DharaKvClient (DONE in
+      CommonMCPClient; remove MCPKvClient (DONE in
       commit 6da50168 of this session)
   - path: mahavishnu/mahavishnu/pools/session_buddy_pool.py
     change: replace 1 call site at line 97

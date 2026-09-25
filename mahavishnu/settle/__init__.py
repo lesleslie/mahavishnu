@@ -9,9 +9,9 @@ machine in this package enforces the transitions:
                           \\-> discarded
 
 Terminal states (``applied``, ``released``, ``discarded``) are absorbing.
-Persistence to Dhara happens BEFORE any filesystem side-effect (see the
+Persistence to MCP happens BEFORE any filesystem side-effect (see the
 ``persist_before_*`` helpers), so a process crash cannot leave a binding
-uncommitted but Dhara state updated.
+uncommitted but MCP state updated.
 
 Public surface:
 
@@ -21,5 +21,5 @@ Public surface:
 * :func:`transition` — validate and apply a state change, returning the new record.
 * :func:`legal_next` — list legal actions from a given state (for UI / tooltips).
 * :class:`SettleTransitionError` — raised for illegal transitions or missing runs.
-* :class:`SettlePersistenceError` — raised when Dhara write fails pre-write.
+* :class:`SettlePersistenceError` — raised when MCP write fails pre-write.
 """

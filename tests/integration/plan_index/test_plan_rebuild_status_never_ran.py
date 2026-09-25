@@ -16,7 +16,7 @@ from typing import Any
 
 
 class TestPlanRebuildStatusNeverRan:
-    async def test_fresh_dhara_reports_stale(self, call_tool: Any) -> None:
+    async def test_fresh_mcp_reports_stale(self, call_tool: Any) -> None:
         """No rebuilder has fired; the tool surfaces the "never ran" envelope."""
         result = await call_tool("plan_rebuild_status", {})
 
@@ -43,7 +43,7 @@ class TestPlanRebuildStatusNeverRan:
         import time
 
         recent_ms = int(time.time() * 1000) - 60 * 1000  # 60s ago
-        await store._dhara.put(
+        await store._mcp.put(
             "plan_index/meta/last_rebuild_ms", str(recent_ms)
         )
 

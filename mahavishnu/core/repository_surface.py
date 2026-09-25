@@ -66,10 +66,10 @@ def validate_path(path_str: str, allowed_base_paths: list[str] | None = None) ->
 
 
 def persist_workflow_start(app: Any, execution_id: str, workflow_name: str, metadata: dict) -> None:
-    """Fire-and-forget: record workflow start in Dhara."""
-    if app._dhara_state is None:
+    """Fire-and-forget: record workflow start in MCP."""
+    if app._mcp_state is None:
         return
-    app._dhara_state.schedule_put(
+    app._mcp_state.schedule_put(
         f"workflow/v1/{execution_id}",
         {
             "execution_id": execution_id,
@@ -83,10 +83,10 @@ def persist_workflow_start(app: Any, execution_id: str, workflow_name: str, meta
 def persist_workflow_end(
     app: Any, execution_id: str, workflow_name: str, status: str, error: str | None = None
 ) -> None:
-    """Fire-and-forget: record workflow completion/failure in Dhara."""
-    if app._dhara_state is None:
+    """Fire-and-forget: record workflow completion/failure in MCP."""
+    if app._mcp_state is None:
         return
-    app._dhara_state.schedule_put(
+    app._mcp_state.schedule_put(
         f"workflow/v1/{execution_id}",
         {
             "execution_id": execution_id,

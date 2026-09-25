@@ -3,7 +3,7 @@
 End-to-end contract test for M-WEBHOOK-DURABLE Task 3. The producer-side
 TestClient posts a valid payload; a capture mock stores the persisted
 ``WebhookIngress``; a second capture mock returns the same record from
-``dhara.get`` so the consumer reads it back via ``webhook_replay``.
+``mcp.get`` so the consumer reads it back via ``webhook_replay``.
 Struct equality holds across ``msgspec.Struct``'s duck-typed field access.
 
 Mirrors ``tests/integration/approval/test_round_trip.py`` and
@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-import dhara
+import mcp
 from fastapi.testclient import TestClient
 import pytest
 
@@ -29,23 +29,23 @@ from mahavishnu.webhooks.receiver import app
 def client_and_storage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[TestClient, MagicMock, MagicMock]:
-    """Return ``(TestClient, captured_dhara_put_mock, captured_dhara_get_mock)``.
+    """Return ``(TestClient, captured_mcp_put_mock, captured_mcp_get_mock)``.
 
-    The producer-side mock records every ``dhara.put(key, value)`` call;
-    the consumer-side mock is wired so that ``dhara.get(key)`` returns the
+    The producer-side mock records every ``mcp.put(key, value)`` call;
+    the consumer-side mock is wired so that ``mcp.get(key)`` returns the
     value the producer just wrote. This stands in for a real substrate
     while still letting the test exercise both modules' validation paths.
 
     Both modules resolve their substrate bindings at call time via
-    ``getattr(dhara, "put"/"get", None)``, so we patch the live ``dhara``
+    ``getattr(mcp, "put"/"get", None)``, so we patch the live ``mcp``
     module (not the receiver module — the receiver no longer imports
-    ``dhara`` as a name).
+    ``mcp`` as a name).
     """
     storage: dict[str, object] = {}
     mock_put = MagicMock(side_effect=lambda key, value: storage.__setitem__(key, value))
     mock_get = MagicMock(side_effect=lambda key: storage.get(key))
-    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
-    monkeypatch.setattr(dhara, "get", mock_get, raising=False)
+    monkeypatch.setattr(mcp, "put", mock_put, raising=False)
+    monkeypatch.setattr(mcp, "get", mock_get, raising=False)
     return TestClient(app), mock_put, mock_get
 
 

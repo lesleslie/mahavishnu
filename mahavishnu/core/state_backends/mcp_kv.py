@@ -1,11 +1,11 @@
-"""String-shape Dhara KV adapter — fits PlanIndexStore's _DharaClient Protocol.
+"""String-shape MCP KV adapter — fits PlanIndexStore's _MCPClient Protocol.
 
-Why this exists: ``DharaStateBackend.get()`` returns the wire envelope dict
+Why this exists: ``MCPStateBackend.get()`` returns the wire envelope dict
 (``{"ok": True, "key": ..., "value": ...}``) on purpose — the workflow /
 pool / approval ``recover_*`` helpers consume the dict shape directly.
 
 ``PlanIndexStore`` (plan_index/store.py:109-115) declares a different
-contract on its ``_DharaClient`` Protocol::
+contract on its ``_MCPClient`` Protocol::
 
     async def put(self, key: str, value: str, *, ttl: int | None = ...) -> None: ...
     async def get(self, key: str) -> str | None: ...
@@ -14,14 +14,14 @@ contract on its ``_DharaClient`` Protocol::
 
 That is the canonical Mahavishnu KV surface — JSON-encoded strings on the
 wire — and is what ``cron_core.run_rebuild_cycle`` consumes directly (it
-does ``int(await dhara.get(KEY))``, ``json.loads(recent_raw)``, etc.).
+does ``int(await mcp.get(KEY))``, ``json.loads(recent_raw)``, etc.).
 
-Routing ``PlanIndexStore`` through ``DharaStateBackend`` crashes every cycle
+Routing ``PlanIndexStore`` through ``MCPStateBackend`` crashes every cycle
 with ``int() argument must be ... not 'dict'`` because the wire envelope is
 a dict, not the raw string the cycle expects.
 
-This adapter sits at the seam and unwraps Dhara's wire envelope so both
-contracts can coexist on the same Dhara instance.
+This adapter sits at the seam and unwraps MCP's wire envelope so both
+contracts can coexist on the same MCP instance.
 """
 
 from __future__ import annotations
@@ -29,39 +29,39 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from mahavishnu.core.dhara_adapter import DharaClient
+from mahavishnu.core.mcp_adapter import MCPClient
 
 
 @dataclass
-class DharaKvConfig:
+class MCPKvConfig:
     """Configuration for the string-shape KV adapter."""
 
     enabled: bool = True
 
 
-class DharaKvClient:
-    """Thin adapter exposing Dhara's KV store under the string-shape Protocol.
+class MCPKvClient:
+    """Thin adapter exposing MCP's KV store under the string-shape Protocol.
 
-    Wraps ``DharaClient`` (the raw MCP HTTP tool-call client). Each method
-    unwraps Dhara's wire envelope:
-      - ``dhara_get`` returns ``{"ok": True, "key": K, "value": V}`` →
+    Wraps ``MCPClient`` (the raw MCP HTTP tool-call client). Each method
+    unwraps MCP's wire envelope:
+      - ``mcp_get`` returns ``{"ok": True, "key": K, "value": V}`` →
         ``self.get`` returns ``V`` (as ``str``) or ``None``.
-      - ``dhara_put`` returns ``{"ok": True, "key": K}`` → ``self.put``
+      - ``mcp_put`` returns ``{"ok": True, "key": K}`` → ``self.put``
         surfaces the ack by returning ``None`` (protocol: ``put → None``).
-      - ``dhara_list_prefix`` returns
+      - ``mcp_list_prefix`` returns
         ``{"ok": True, "count": N, "items": [{"key", "value"}, ...]}`` →
         ``self.list_prefix`` flattens to ``[(key, str_value), ...]``.
-      - ``dhara_delete`` returns ``{"ok": True}`` → ``self.delete`` returns
+      - ``mcp_delete`` returns ``{"ok": True}`` → ``self.delete`` returns
         ``None``.
 
-    Failures are swallowed with a no-op (mirrors ``DharaStateBackend``).
+    Failures are swallowed with a no-op (mirrors ``MCPStateBackend``).
     The KV layer is non-authoritative; ``/health`` reports degradation
-    rather than crashing the server on a Dhara outage.
+    rather than crashing the server on a MCP outage.
     """
 
-    def __init__(self, base_url: str, config: DharaKvConfig | None = None) -> None:
-        self._client = DharaClient(base_url=base_url)
-        self._config = config or DharaKvConfig()
+    def __init__(self, base_url: str, config: MCPKvConfig | None = None) -> None:
+        self._client = MCPClient(base_url=base_url)
+        self._config = config or MCPKvConfig()
 
     async def get(self, key: str) -> str | None:
         if not self._config.enabled:

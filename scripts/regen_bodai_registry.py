@@ -4,6 +4,9 @@
 Authoritative source of repo catalog: settings/ecosystem.yaml
 Authoritative source of registry annotations (phase, provenance, fastmcp_pin,
 notes, exclusions): settings/registry_metadata.yaml
+Authoritative source of per-machine registry entries (excluded_repos +
+archived_repos): settings/registry_metadata.local.yaml (gitignored; merged
+into the overlay at render time when present).
 Generated doc: BODAI_REPO_REGISTRY.md
 
 Run:
@@ -59,7 +62,7 @@ NAME_SECTION: dict[str, str] = {
     # Core 7 (streaming-tar rollout)
     "mcp-common": "core",
     "oneiric": "core",
-    "dhara": "core",
+    "mcp": "core",
     "session-buddy": "core",
     "akosha": "core",
     "crackerjack": "core",
@@ -115,7 +118,7 @@ SECTION_ORDER: list[tuple[str, str]] = [
 CORE_ORDER = [
     "mcp-common",
     "oneiric",
-    "dhara",
+    "mcp",
     "session-buddy",
     "akosha",
     "crackerjack",
@@ -125,6 +128,28 @@ CORE_ORDER = [
 
 def load_yaml(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text())
+
+
+def merge_overlay_with_local(
+    overlay: dict[str, Any],
+    local_overlay_path: Path | None,
+) -> dict[str, Any]:
+    """Merge per-machine registry overlay (gitignored) into the tracked overlay.
+
+    Local entries win on conflict for the two per-machine keys
+    (``excluded_repos``, ``archived_repos``). All other overlay keys
+    (``repos``, ``phase_order``, etc.) come from the tracked file unchanged.
+
+    If ``local_overlay_path`` is None or the file doesn't exist, the overlay
+    is returned unchanged (fresh-clone behavior).
+    """
+    if local_overlay_path is None or not local_overlay_path.is_file():
+        return overlay
+    local = load_yaml(local_overlay_path) or {}
+    merged = dict(overlay)
+    for key in ("excluded_repos", "archived_repos"):
+        merged[key] = {**(overlay.get(key) or {}), **(local.get(key) or {})}
+    return merged
 
 
 def parse_requires_python(repo_path: str) -> str:
@@ -310,9 +335,14 @@ _(Hand-maintained footer. Not generated.)_
 """
 
 
-def generate(ecosystem_path: Path, overlay_path: Path) -> str:
+def generate(
+    ecosystem_path: Path,
+    overlay_path: Path,
+    local_overlay_path: Path | None = None,
+) -> str:
     eco = load_yaml(ecosystem_path)
     overlay = load_yaml(overlay_path)
+    overlay = merge_overlay_with_local(overlay, local_overlay_path)
     repos = filter_active(eco.get("repos", []))
 
     sections: list[str] = []
@@ -377,12 +407,18 @@ def main() -> int:
         help="Path to registry_metadata.yaml",
     )
     parser.add_argument(
+        "--local-overlay",
+        default="settings/registry_metadata.local.yaml",
+        help="Path to per-machine registry overlay (gitignored). Skipped if absent.",
+    )
+    parser.add_argument(
         "--output", default="BODAI_REPO_REGISTRY.md", help="Path to write generated registry doc"
     )
     args = parser.parse_args()
 
     eco = Path(args.ecosystem)
     overlay = Path(args.overlay)
+    local_overlay = Path(args.local_overlay)
     out = Path(args.output)
     if not eco.is_file():
         print(f"ERROR: {eco} not found", file=sys.stderr)
@@ -391,7 +427,7 @@ def main() -> int:
         print(f"ERROR: {overlay} not found", file=sys.stderr)
         return 2
 
-    content = generate(eco, overlay)
+    content = generate(eco, overlay, local_overlay)
 
     if args.check:
         if out.is_file() and out.read_text() == content:

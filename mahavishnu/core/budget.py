@@ -15,7 +15,7 @@ in-kernel per-turn reads):
   per-run budget shape — wallclock plus final token/turn totals.
 
 * Budget states are tiny and pure. There are no I/O dependencies here —
-  no Dhara, no asyncio, no clock. Tests run in microseconds.
+  no MCP, no asyncio, no clock. Tests run in microseconds.
 
 * State transitions are **explicit**. ``active`` only enters via
   :meth:`BudgetStateMachine.start`; ``exceeded`` only enters via
@@ -28,7 +28,7 @@ in-kernel per-turn reads):
 The shape is dataclass-driven because tests in
 ``tests/unit/test_budget_state_machine.py`` rely on simple attribute
 equality and ``hypothesis``-driven construction. JSON serialization is
-explicit (``to_dict``/``from_dict``) so Dhara persistence does not
+explicit (``to_dict``/``from_dict``) so MCP persistence does not
 couple the state machine to Pydantic.
 """
 
@@ -113,7 +113,7 @@ class BudgetSpec:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-safe dict for Dhara persistence."""
+        """Serialize to JSON-safe dict for MCP persistence."""
         return {
             "budget_tokens": self.budget_tokens,
             "budget_turns": self.budget_turns,
@@ -190,12 +190,12 @@ class BudgetUsage:
 class BudgetRecord:
     """The combined spec + state + latest usage for a workflow run.
 
-    The watchdog persists this entire record to Dhara at
+    The watchdog persists this entire record to MCP at
     ``mahavishni://budgets/{workflow_id}.json``. ``workflow_id`` is the
     canonical key; one record per workflow.
 
     Attributes:
-        workflow_id: Stable identifier; used as Dhara key.
+        workflow_id: Stable identifier; used as MCP key.
         spec: Declared budget shape.
         state: Current ``BudgetState``.
         usage: Latest observed usage. ``None`` until the first poll.
@@ -302,7 +302,7 @@ class BudgetStateMachine:
     # ------------------------------------------------------------------
 
     def set_record(self, record: BudgetRecord) -> None:
-        """Replace the underlying record (e.g., after loading from Dhara)."""
+        """Replace the underlying record (e.g., after loading from MCP)."""
         self._record = record
 
     def declare(self, spec: BudgetSpec) -> BudgetRecord:
@@ -349,7 +349,7 @@ class BudgetStateMachine:
         """Compare usage against the spec; return the violated dimension.
 
         Side-effect: updates ``record.usage`` to the latest observation
-        so Dhara reflects what we just saw. Does **not** transition
+        so MCP reflects what we just saw. Does **not** transition
         state — the caller decides whether to call :meth:`mark_exceeded`
         or :meth:`mark_completed` based on this signal. The split is
         deliberate so that the watchdog's caller code reads as a clear

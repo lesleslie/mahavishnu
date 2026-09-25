@@ -47,7 +47,7 @@ DEFAULT_REPOS: list[tuple[str, str]] = [
     ("crackerjack", "~/Projects/crackerjack"),
     ("mcp-common", "~/Projects/mcp-common"),
     ("akosha", "~/Projects/akosha"),
-    ("dhara", "~/Projects/dhara"),
+    ("mcp", "~/Projects/mcp"),
     ("oneiric", "~/Projects/oneiric"),
 ]
 

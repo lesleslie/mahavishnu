@@ -104,7 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_events_workflow_time
 Apply via the project's Dhara migration runner, or via `execute()`:
 
 ```python
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 with open("mahavishnu/core/dhara_migrations/workflow_progress.sql") as f:
     execute(f.read())
 ```

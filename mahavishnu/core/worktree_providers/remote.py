@@ -48,16 +48,16 @@ from mahavishnu.core.paths import (
     get_worktree_base_path,
     get_worktree_path,
 )
-from mahavishnu.core.worktree_providers.dhara_registry import (
-    register_handles,
-)
-from mahavishnu.core.worktree_providers.dhara_registry import (
-    remove_handle as dhara_remove_handle,
-)
 from mahavishnu.core.worktree_providers.local import (
     _create_worktree_via_git,
     _remove_worktree_via_git,
     _validate_path_component,
+)
+from mahavishnu.core.worktree_providers.mcp_registry import (
+    register_handles,
+)
+from mahavishnu.core.worktree_providers.mcp_registry import (
+    remove_handle as mcp_remove_handle,
 )
 from mahavishnu.core.worktree_providers.storage_io import (
     MAX_BUNDLE_BYTES_STOPGAP,
@@ -216,7 +216,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
     """v4-era cloud-backed worktree provider.
 
     Wraps a Oneiric storage adapter (S3, GCS, Azure Blob) and the
-    Dhara-backed worktree registry. The ``backend`` label passed at
+    MCP-backed worktree registry. The ``backend`` label passed at
     construction is the canonical OTel/audit label (also baked into
     ``RemoteWorktreeRef.backend_kind`` for downstream code).
 
@@ -232,7 +232,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         storage: S3StorageAdapter | GCSStorageAdapter | AzureBlobStorageAdapter,
         cache: WorktreeCache,
         backend: Literal["local", "s3", "gcs", "azure", "bundle"] = "s3",
-        dhara_client: Any | None = None,
+        mcp_client: Any | None = None,
         settings: MahavishnuSettings | None = None,
         local_provider: Any | None = None,
     ) -> None:
@@ -243,7 +243,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         self._storage = storage
         self._cache = cache
         self._backend = backend
-        self._dhara_client = dhara_client
+        self._mcp_client = mcp_client
         self._settings = settings
         self._local_provider = local_provider
 
@@ -322,8 +322,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
         6. ``storage.save_stream`` streams the compressed bytes to the
            cloud backend with ``sha256``, ``size``, ``principal``
            metadata.
-        7. Register the WorktreeHandle in Dhara via
-           ``dhara_registry.register_handles``.
+        7. Register the WorktreeHandle in MCP via
+           ``mcp_registry.register_handles``.
         8. Emit ``streaming_op`` (SERIALIZE) + ``worktree_op`` (create)
            metrics with ``success=True`` on success, ``success=False``
            on any exception.
@@ -447,8 +447,8 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 provenance="v4",
             )
 
-            if self._dhara_client is not None:
-                await register_handles(self._dhara_client, [handle], caller=principal)
+            if self._mcp_client is not None:
+                await register_handles(self._mcp_client, [handle], caller=principal)
 
             record_worktree_op(
                 backend=backend_kind,
@@ -822,10 +822,10 @@ class RemoteWorktreeProvider(WorktreeProvider):
         *,
         caller: Principal,
     ) -> bool:
-        """Remove a handle from storage + cache + Dhara registry.
+        """Remove a handle from storage + cache + MCP registry.
 
         ``caller`` is the authenticated session principal — NOT
-        ``handle.principal``. Threading it through Dhara's ownership
+        ``handle.principal``. Threading it through MCP's ownership
         + scope check prevents a session from impersonating the
         handle owner (the auth-fabrication risk documented in the
         PR-D security review). WorktreeCoordinator forwards caller.
@@ -839,7 +839,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
           for this handle; ``record_cache_invalidation`` is emitted
           with ``reason="remove_handle"`` per the cache-metric shape
           shared with LocalWorktreeProvider.
-        - Dhara registry remove is the source of truth for
+        - MCP registry remove is the source of truth for
           "does this handle still exist"; returns ``True`` when the
           primary row was deleted, ``False`` when it was not found.
         """
@@ -912,11 +912,11 @@ class RemoteWorktreeProvider(WorktreeProvider):
             count = 0
         record_cache_invalidation(backend_kind, "remove_handle", count)
 
-        # 3. Remove from the Dhara registry (caller = authenticated session).
-        if self._dhara_client is None:
+        # 3. Remove from the MCP registry (caller = authenticated session).
+        if self._mcp_client is None:
             return False
-        return await dhara_remove_handle(
-            self._dhara_client,
+        return await mcp_remove_handle(
+            self._mcp_client,
             handle.handle_id,
             caller=caller,
         )
@@ -928,23 +928,23 @@ class RemoteWorktreeProvider(WorktreeProvider):
         caller: Principal | None = None,
         all_tenants: bool = False,
     ) -> list:
-        """List handles via the Dhara registry.
+        """List handles via the MCP registry.
 
-        Permission model is delegated to ``dhara_registry.list_handles``:
+        Permission model is delegated to ``mcp_registry.list_handles``:
         ``all_tenants=True`` requires ``worktree:list-all``; ``repo``
         scoping requires ``worktree:read``; otherwise results are
         filtered to the caller's own handles.
         """
-        from mahavishnu.core.worktree_providers.dhara_registry import (
-            list_handles as dhara_list_handles,
+        from mahavishnu.core.worktree_providers.mcp_registry import (
+            list_handles as mcp_list_handles,
         )
 
         if caller is None:
             raise PermissionError("RemoteWorktreeProvider.list_handles requires a caller")
-        if self._dhara_client is None:
+        if self._mcp_client is None:
             return []
-        return await dhara_list_handles(
-            self._dhara_client,
+        return await mcp_list_handles(
+            self._mcp_client,
             principal=principal,
             repo=repo,
             caller=caller,

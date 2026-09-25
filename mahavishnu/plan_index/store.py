@@ -1,10 +1,10 @@
-"""Dhara-backed CRUD for plan metadata.
+"""MCP-backed CRUD for plan metadata.
 
-This is the only file that imports the Dhara client. PlanIndexRebuilder,
+This is the only file that imports the MCP client. PlanIndexRebuilder,
 PlanIndexRenderer, PeriodicTaskRunner, and the MCP tools all consume
-this module's interface — never Dhara directly.
+this module's interface — never MCP directly.
 
-Key conventions (mirror dhara-key-prefixes-2026-07-15.md):
+Key conventions (mirror mcp-key-prefixes-2026-07-15.md):
   - plan_index/{plan_id}                  — primary, TTL 24h
   - plan_index/status/{status}/{date}/{plan_id}  — secondary index
   - plan_index/topic/{topic}/{date}/{plan_id}    — secondary index
@@ -84,7 +84,7 @@ def _safe_json(raw: str, *, key: str) -> Any | None:
 
 
 def _safe_int(raw: str | None, *, key: str, default: int | None) -> int | None:
-    """Cast a Dhara string to int, logging the KEY (never the value) on failure."""
+    """Cast a MCP string to int, logging the KEY (never the value) on failure."""
     if not raw:
         return default
     try:
@@ -107,7 +107,7 @@ def _safe_json_list(raw: str | None, *, key: str) -> list[dict[str, Any]]:
     return parsed
 
 
-class _DharaClient(Protocol):
+class _MCPClient(Protocol):
     """Subset of AsyncClient that PlanIndexStore uses. Exists for typing."""
 
     async def put(self, key: str, value: str, *, ttl: int | None = ...) -> None: ...
@@ -117,10 +117,10 @@ class _DharaClient(Protocol):
 
 
 class PlanIndexStore:
-    """Dhara-backed CRUD. Constructor takes an optional Dhara client (DI)."""
+    """MCP-backed CRUD. Constructor takes an optional MCP client (DI)."""
 
-    def __init__(self, dhara: _DharaClient) -> None:
-        self._dhara = dhara
+    def __init__(self, mcp: _MCPClient) -> None:
+        self._mcp = mcp
 
     @staticmethod
     def _primary_key(plan_id: str) -> str:
@@ -170,19 +170,19 @@ class PlanIndexStore:
         d = self._to_dict(record)
         payload = json.dumps(d)
         ttl = _RECORD_TTL_SECONDS
-        await self._dhara.put(self._status_key(d), payload, ttl=ttl)
-        await self._dhara.put(self._topic_key(d), payload, ttl=ttl)
+        await self._mcp.put(self._status_key(d), payload, ttl=ttl)
+        await self._mcp.put(self._topic_key(d), payload, ttl=ttl)
         try:
-            await self._dhara.put(self._primary_key(d["plan_id"]), payload, ttl=ttl)
+            await self._mcp.put(self._primary_key(d["plan_id"]), payload, ttl=ttl)
         except Exception:
-            await self._dhara.delete(self._status_key(d))
-            await self._dhara.delete(self._topic_key(d))
+            await self._mcp.delete(self._status_key(d))
+            await self._mcp.delete(self._topic_key(d))
             raise
 
     async def get(self, plan_id: PlanId) -> PlanRecordDict | None:
         _validate_plan_id(plan_id)
         key = self._primary_key(plan_id)
-        raw = await self._dhara.get(key)
+        raw = await self._mcp.get(key)
         if raw is None:
             return None
         parsed = _safe_json(raw, key=key)
@@ -192,7 +192,7 @@ class PlanIndexStore:
         return result
 
     async def _list_by_prefix(self, prefix: str, *, limit: int) -> list[PlanRecordDict]:
-        pairs = await self._dhara.list_prefix(prefix)
+        pairs = await self._mcp.list_prefix(prefix)
         records: list[PlanRecordDict] = []
         for key, value in pairs[:limit]:
             parsed = _safe_json(value, key=key)
@@ -223,7 +223,7 @@ class PlanIndexStore:
         # status/ + topic/ + meta/), we have to dedupe.
         seen: set[str] = set()
         out: list[PlanRecordDict] = []
-        pairs = await self._dhara.list_prefix("plan_index/")
+        pairs = await self._mcp.list_prefix("plan_index/")
         for key, value in pairs:
             # Primary keys are exactly "plan_index/{32-hex}"
             suffix = key[len("plan_index/") :]
@@ -258,26 +258,26 @@ class PlanIndexStore:
         status_counts: Counter[str] = Counter(r["status"] for r in all_records)
         role_counts: Counter[str] = Counter(r["role"] for r in all_records)
         topic_counter: Counter[str] = Counter(r["topic"] for r in all_records)
-        rebuild_raw = await self._dhara.get("plan_index/meta/last_rebuild_ms")
+        rebuild_raw = await self._mcp.get("plan_index/meta/last_rebuild_ms")
         last_rebuild_ms = _safe_int(
             rebuild_raw, key="plan_index/meta/last_rebuild_ms", default=None
         )
-        success_raw = await self._dhara.get("plan_index/meta/last_success_ms")
+        success_raw = await self._mcp.get("plan_index/meta/last_success_ms")
         last_success_ms = _safe_int(
             success_raw, key="plan_index/meta/last_success_ms", default=None
         )
-        cycles_raw = await self._dhara.get("plan_index/meta/cycles_total")
+        cycles_raw = await self._mcp.get("plan_index/meta/cycles_total")
         cycles_total = _safe_int(cycles_raw, key="plan_index/meta/cycles_total", default=0)
-        success_cycles_raw = await self._dhara.get("plan_index/meta/successful_cycles_total")
+        success_cycles_raw = await self._mcp.get("plan_index/meta/successful_cycles_total")
         successful_cycles_total = _safe_int(
             success_cycles_raw,
             key="plan_index/meta/successful_cycles_total",
             default=0,
         )
-        errors_raw = await self._dhara.get("plan_index/meta/errors_total")
+        errors_raw = await self._mcp.get("plan_index/meta/errors_total")
         errors_total = _safe_int(errors_raw, key="plan_index/meta/errors_total", default=0)
         # recent_errors — read from a JSON list (last 20)
-        recent_errors_raw = await self._dhara.get("plan_index/meta/recent_errors")
+        recent_errors_raw = await self._mcp.get("plan_index/meta/recent_errors")
         recent_errors = _safe_json_list(recent_errors_raw, key="plan_index/meta/recent_errors")
         tripwire = self._compute_tripwire(all_records, last_rebuild_ms)
         oldest_active_ms = self._oldest_active_ms(all_records)
@@ -331,27 +331,27 @@ class PlanIndexStore:
         return min(stamps)
 
     async def rebuild_status(self) -> PlanRebuildStatusDict:
-        cycles_raw = await self._dhara.get("plan_index/meta/cycles_total")
+        cycles_raw = await self._mcp.get("plan_index/meta/cycles_total")
         cycles_total = _safe_int(cycles_raw, key="plan_index/meta/cycles_total", default=0)
-        success_cycles_raw = await self._dhara.get("plan_index/meta/successful_cycles_total")
+        success_cycles_raw = await self._mcp.get("plan_index/meta/successful_cycles_total")
         successful_cycles_total = _safe_int(
             success_cycles_raw,
             key="plan_index/meta/successful_cycles_total",
             default=0,
         )
-        errors_raw = await self._dhara.get("plan_index/meta/errors_total")
+        errors_raw = await self._mcp.get("plan_index/meta/errors_total")
         errors_total = _safe_int(errors_raw, key="plan_index/meta/errors_total", default=0)
-        rebuild_raw = await self._dhara.get("plan_index/meta/last_rebuild_ms")
+        rebuild_raw = await self._mcp.get("plan_index/meta/last_rebuild_ms")
         last_rebuild_ms = _safe_int(
             rebuild_raw, key="plan_index/meta/last_rebuild_ms", default=None
         )
-        success_raw = await self._dhara.get("plan_index/meta/last_success_ms")
+        success_raw = await self._mcp.get("plan_index/meta/last_success_ms")
         last_success_ms = _safe_int(
             success_raw, key="plan_index/meta/last_success_ms", default=None
         )
-        recent_errors_raw = await self._dhara.get("plan_index/meta/recent_errors")
+        recent_errors_raw = await self._mcp.get("plan_index/meta/recent_errors")
         recent_errors = _safe_json_list(recent_errors_raw, key="plan_index/meta/recent_errors")
-        lock_raw = await self._dhara.get("plan_index/meta/rebuild_lock/holder")
+        lock_raw = await self._mcp.get("plan_index/meta/rebuild_lock/holder")
         lock_held_by = lock_raw if lock_raw else None
         lock_age_ms = None
         if lock_held_by is not None:

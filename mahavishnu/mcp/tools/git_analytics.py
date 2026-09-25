@@ -46,14 +46,14 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
     ) -> dict[str, Any]:
         """Get git velocity dashboard across multiple repositories."""
         try:
-            # Query Dhara for git metrics (time-series data)
-            from ...core.dhara_adapter import DharaAdapter
+            # Query MCP for git metrics (time-series data)
+            from ...core.mcp_adapter import MCPAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhara = DharaAdapter(app.dhara_url)
+            mcp = MCPAdapter(app.mcp_url)
 
             # Calculate date threshold
             threshold_date = datetime.now(UTC) - timedelta(days=days_back)
@@ -65,7 +65,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             for repo_path in repo_paths:
                 # Query time-series metrics for this repository
-                metrics = await dhara.query_time_series(
+                metrics = await mcp.query_time_series(
                     metric_type="git_velocity",
                     entity_id=repo_path,
                     start_date=threshold_date.isoformat(),
@@ -122,17 +122,17 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
     ) -> dict[str, Any]:
         """Get repository health metrics including PRs and branches."""
         try:
-            from ...core.dhara_adapter import DharaAdapter
+            from ...core.mcp_adapter import MCPAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhara = DharaAdapter(app.dhara_url)
+            mcp = MCPAdapter(app.mcp_url)
             repo_name = repo_path.split("/")[-1]
 
-            # Query git metrics from Dhara
-            git_metrics = await dhara.query_time_series(
+            # Query git metrics from MCP
+            git_metrics = await mcp.query_time_series(
                 metric_type="repository_health",
                 entity_id=repo_path,
                 limit=100,
@@ -202,13 +202,13 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         correlated result set, with no ``run_metadata`` field.
         """
         try:
-            from ...core.dhara_adapter import DharaAdapter
+            from ...core.mcp_adapter import MCPAdapter
 
             app = getattr(server, "app", None)
             if not app:
                 return {"status": "error", "error": "App instance not available in server context"}
 
-            dhara = DharaAdapter(app.dhara_url)
+            mcp = MCPAdapter(app.mcp_url)
 
             # Query all metrics for the analysis period
             threshold_date = (datetime.now(UTC) - timedelta(days=days_back)).isoformat()
@@ -222,7 +222,7 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
                 fixed-shape tuple so both the single-pass and loop-until-dry
                 paths can analyze the same data after dedup/merge.
                 """
-                git_patterns = await dhara.aggregate_patterns(
+                git_patterns = await mcp.aggregate_patterns(
                     start_date=threshold_date,
                     min_occurrences=min_occurrences,
                 )

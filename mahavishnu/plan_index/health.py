@@ -6,7 +6,7 @@ as_dict() returns EXACTLY the four mandatory signals plus the `ok` key:
     {ok, entities_count, last_updated_timestamp, errors_total, cycles_total}
 
 The 4-signal contract from mcp-backend-wiring-discipline.md is strict —
-do not extend. successful_cycles_total is tracked as a Dhara meta key
+do not extend. successful_cycles_total is tracked as a MCP meta key
 but NOT in as_dict(); compute success ratio in dashboards as
 1 - errors_total/cycles_total.
 """

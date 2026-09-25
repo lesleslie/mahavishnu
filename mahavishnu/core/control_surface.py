@@ -18,17 +18,17 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
         "recovered_approvals": len(app.approval_manager.pending_requests),
         "recovered_pools": len(app.pool_manager._pools) if app.pool_manager else 0,
         "recovered_routing_decisions": 0,
-        "dhara_available": False,
+        "mcp_available": False,
         "last_recovered_at": None,
     }
-    if app._dhara_state is None:
+    if app._mcp_state is None:
         return summary
 
     try:
-        workflows = await app._dhara_state.recover_workflows()
-        approvals = await app._dhara_state.recover_approvals()
-        pools = await app._dhara_state.recover_pools()
-        routing = await app._dhara_state.recover_routing_decisions()
+        workflows = await app._mcp_state.recover_workflows()
+        approvals = await app._mcp_state.recover_approvals()
+        pools = await app._mcp_state.recover_pools()
+        routing = await app._mcp_state.recover_routing_decisions()
         summary.update(
             {
                 "recovered_workflows": sum(
@@ -37,14 +37,14 @@ async def get_recovery_summary(app: Any) -> dict[str, Any]:
                 "recovered_approvals": len(approvals),
                 "recovered_pools": len(pools),
                 "recovered_routing_decisions": len(routing),
-                "dhara_available": bool(app._dhara_state.available),
+                "mcp_available": bool(app._mcp_state.available),
                 "last_recovered_at": datetime.now(UTC).isoformat(),
             }
         )
     except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
         from logging import getLogger
 
-        getLogger(__name__).debug("Dhara recovery summary skipped: %s", exc)
+        getLogger(__name__).debug("MCP recovery summary skipped: %s", exc)
     return summary
 
 
@@ -52,12 +52,12 @@ async def get_recovered_routing_decisions(
     app: Any,
     task_class: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Return recovered routing decisions from Dhara."""
-    if app._dhara_state is None:
+    """Return recovered routing decisions from MCP."""
+    if app._mcp_state is None:
         return []
 
     try:
-        decisions = await app._dhara_state.recover_routing_decisions()
+        decisions = await app._mcp_state.recover_routing_decisions()
         if task_class is None:
             return decisions  # type: ignore[no-any-return]
         return [
@@ -68,7 +68,7 @@ async def get_recovered_routing_decisions(
     except (AttributeError, OSError, RuntimeError, TypeError, ValueError) as exc:
         from logging import getLogger
 
-        getLogger(__name__).debug("Dhara routing recovery skipped: %s", exc)
+        getLogger(__name__).debug("MCP routing recovery skipped: %s", exc)
         return []
 
 
@@ -140,7 +140,7 @@ def get_correlation_status(app: Any, correlation_id: str | None = None) -> dict[
         "latest_stage": trace[-1]["stage"] if trace else None,
         "latest_message": trace[-1]["message"] if trace else None,
         "session_checkpoints": len(trace),
-        "dhara_available": bool(app._dhara_state.available) if app._dhara_state else False,
+        "mcp_available": bool(app._mcp_state.available) if app._mcp_state else False,
     }
 
 

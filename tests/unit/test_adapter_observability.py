@@ -251,7 +251,7 @@ class TestInMemorySettingsActivationPersister:
 # ---------------------------------------------------------------------------
 
 
-class TestDharaSettingsActivationPersisterStub:
+class TestMCPSettingsActivationPersisterStub:
     def test_save_raises_not_implemented_with_substrate_marker(self) -> None:
         stub = DharaSettingsActivationPersister()
         rec = SettingsActivationRecord(
@@ -285,7 +285,7 @@ class TestRecordActivation:
         record_activation(rec, persister=persister)
         assert persister.history() == [rec]
 
-    def test_routes_to_dhara_stub_when_requested(self) -> None:
+    def test_routes_to_mcp_stub_when_requested(self) -> None:
         stub = DharaSettingsActivationPersister()
         rec = SettingsActivationRecord(
             adapter_id="prefect",

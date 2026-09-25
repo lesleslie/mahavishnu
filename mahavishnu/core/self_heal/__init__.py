@@ -8,7 +8,7 @@ Public surface:
 - L2 (no-op): ``L2Noop`` is a deterministic pass-through. The marker
   string is the regression pin that downstream callers depend on.
 - L3 (rule extraction): ``extract_rule`` summarises a failure; the
-  ``RuleStore`` is the in-memory v0 audit log. Dhara wiring follows
+  ``RuleStore`` is the in-memory v0 audit log. MCP wiring follows
   when the ``self_heal_audit_log`` table is unblocked.
 
 Substrate status: ``sql_blocked``. v0 is in-memory only.

@@ -121,6 +121,7 @@ Thumbs.db
 settings/local.yaml
 settings/repos.yaml
 settings/ecosystem.yaml
+settings/registry_metadata.local.yaml
 .envrc.local
 
 # ============================================================================

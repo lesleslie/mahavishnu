@@ -846,7 +846,7 @@ class WorktreeCoordinator:
         """v4 dispatch: resolve provider + call ``remove_handle(handle, caller=caller)``.
 
         ``caller`` is the authenticated session principal (NOT the
-        handle's owner). Providers thread it to Dhara's ownership
+        handle's owner). Providers thread it to MCP's ownership
         check. Sessions that don't have an authenticated principal
         can't remove handles — refuse rather than fabricate.
         """

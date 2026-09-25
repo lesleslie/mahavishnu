@@ -4,7 +4,7 @@ Wave 3 (W3): Mahavishnu adapters historically decorate transient-call sites
 with ``@tenacity.retry(...)`` using per-site ``wait_exponential`` parameters.
 ``WorkflowRetryAction`` centralises the backoff calculation so the same
 delay curve is used across every Bodai component and is observable via
-Dhara's audit log.
+MCP's audit log.
 
 This module factors the canonical delay calculation into two helpers:
 

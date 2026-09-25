@@ -90,18 +90,18 @@ def test_capability_block_registers_four_core_tools() -> None:
         )
         mp.setattr(
             "mahavishnu.mcp.tools.get_capability_result_tool.register_get_capability_result",
-            MagicMock(side_effect=Exception("dhara unreachable")),
+            MagicMock(side_effect=Exception("mcp unreachable")),
             raising=False,
         )
         mp.setattr(
-            "mahavishnu.core.dhara_adapter.DharaClient",
-            MagicMock(side_effect=Exception("dhara unreachable")),
+            "mahavishnu.core.mcp_adapter.MCPClient",
+            MagicMock(side_effect=Exception("mcp unreachable")),
             raising=False,
         )
         bootstrap._register_capability_block(server)
 
 
-def test_capability_block_skips_get_capability_result_when_dhara_init_fails() -> None:
+def test_capability_block_skips_get_capability_result_when_mcp_init_fails() -> None:
     """Dhara init failure must NOT crash registration of the 4 core tools.
 
     The contract from the v2 plan Phase 0: capability-tools must surface
@@ -126,7 +126,7 @@ def test_capability_block_skips_get_capability_result_when_dhara_init_fails() ->
             raising=False,
         )
         mp.setattr(
-            "mahavishnu.core.dhara_adapter.DharaClient",
+            "mahavishnu.core.mcp_adapter.MCPClient",
             MagicMock(side_effect=RuntimeError("simulated Dhara outage")),
             raising=False,
         )
@@ -146,8 +146,8 @@ def test_capability_block_skips_get_capability_result_when_dhara_init_fails() ->
     gcr_mock.assert_not_called()
 
 
-def test_capability_block_registers_get_capability_result_when_dhara_ok() -> None:
-    """When DharaClient initializes, ``register_get_capability_result`` IS called."""
+def test_capability_block_registers_get_capability_result_when_mcp_ok() -> None:
+    """When MCPClient initializes, ``register_get_capability_result`` IS called."""
     server = _StubServer()
     gcr_mock = MagicMock()
     dhara_mock = MagicMock()
@@ -159,7 +159,7 @@ def test_capability_block_registers_get_capability_result_when_dhara_ok() -> Non
             raising=False,
         )
         mp.setattr(
-            "mahavishnu.core.dhara_adapter.DharaClient",
+            "mahavishnu.core.mcp_adapter.MCPClient",
             dhara_mock,
             raising=False,
         )
@@ -172,7 +172,7 @@ def test_capability_block_registers_get_capability_result_when_dhara_ok() -> Non
 
     gcr_mock.assert_called_once()
     kwargs = gcr_mock.call_args.kwargs
-    assert "dhara" in kwargs, (
-        "register_get_capability_result must be called with dhara=... "
+    assert "mcp" in kwargs, (
+        "register_get_capability_result must be called with mcp=... "
         "(keyword arg is required by the tool's signature)."
     )

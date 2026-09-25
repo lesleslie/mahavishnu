@@ -20,8 +20,8 @@ this file targets the remaining uncovered branches:
 * ``LocalWorktreeProvider._ensure_storage_supports_load_stream``
 * ``LocalWorktreeProvider._open_storage_stream`` defensive None check
 * ``LocalWorktreeProvider.remove_handle`` (non-Local ref / git failure
-  is best-effort / cache invalidate / dhara remove / no-dhara path)
-* ``LocalWorktreeProvider.list_handles`` (no caller / no dhara / happy)
+  is best-effort / cache invalidate / mcp remove / no-mcp path)
+* ``LocalWorktreeProvider.list_handles`` (no caller / no mcp / happy)
 * ``LocalWorktreeProvider.exists`` (Local exists / Local missing /
   non-Local returns False)
 * ``LocalWorktreeProvider.lock`` (success / timeout)
@@ -224,7 +224,7 @@ class _BrokenCache:
         raise RuntimeError("cache health exploded")
 
 
-class _FakeDharaClient:
+class _FakeMCPClient:
     def __init__(self) -> None:
         self.executes: list[tuple[str, dict | None]] = []
         self.queries: list[tuple[str, dict | None]] = []
@@ -461,7 +461,7 @@ class TestLocalWorktreeProviderIdentity:
         assert provider._settings is None
         assert provider._storage is None
         assert provider._cache is None
-        assert provider._dhara_client is None
+        assert provider._mcp_client is None
 
 
 # ===========================================================================
@@ -717,7 +717,7 @@ class TestFetchStorageChecks:
 
 
 class TestRemoveHandle:
-    """``remove_handle`` exercises cache + dhara + git cleanup branches."""
+    """``remove_handle`` exercises cache + mcp + git cleanup branches."""
 
     async def test_raises_for_non_local_storage_ref(self):
         handle = _handle(storage_ref=_RemoteWorktreeRef())
@@ -726,19 +726,19 @@ class TestRemoveHandle:
             await provider.remove_handle(handle, caller=_principal())
 
     async def test_skips_git_cleanup_on_error(self, monkeypatch):
-        from mahavishnu.core.worktree_providers import dhara_registry
+        from mahavishnu.core.worktree_providers import mcp_registry
         from mahavishnu.core.worktree_providers import local as local_mod_inner
 
         async def _exploding_remove(*_a, **_kw):
             raise RuntimeError("disk gone")
 
-        async def _fake_dhara_remove(*_a, **_kw):
+        async def _fake_mcp_remove(*_a, **_kw):
             return None
 
         # Patch git subprocess helper to raise — must be swallowed.
         monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _exploding_remove)
         # Patch Dhara remove directly so we don't trip the ownership check.
-        monkeypatch.setattr(dhara_registry, "remove_handle", _fake_dhara_remove)
+        monkeypatch.setattr(mcp_registry, "remove_handle", _fake_mcp_remove)
 
         cache = _FakeCache()
         provider = LocalWorktreeProvider(cache=cache, dhara_client=_FakeDharaClient())
@@ -761,8 +761,8 @@ class TestRemoveHandle:
         handle = _handle(handle_id="x")
         assert await provider.remove_handle(handle, caller=_principal()) is True
 
-    async def test_runs_dhara_remove_when_client_present(self, monkeypatch):
-        from mahavishnu.core.worktree_providers import dhara_registry
+    async def test_runs_mcp_remove_when_client_present(self, monkeypatch):
+        from mahavishnu.core.worktree_providers import mcp_registry
         from mahavishnu.core.worktree_providers import local as local_mod_inner
 
         async def _fake_remove(*_a, **_kw):
@@ -770,13 +770,13 @@ class TestRemoveHandle:
 
         captured: dict[str, Any] = {}
 
-        async def _capture_dhara_remove(client, handle_id, *, caller):
+        async def _capture_mcp_remove(client, handle_id, *, caller):
             captured["client"] = client
             captured["handle_id"] = handle_id
             captured["caller"] = caller
 
         monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _fake_remove)
-        monkeypatch.setattr(dhara_registry, "remove_handle", _capture_dhara_remove)
+        monkeypatch.setattr(mcp_registry, "remove_handle", _capture_mcp_remove)
 
         cache = _FakeCache()
         client = _FakeDharaClient()
@@ -801,13 +801,13 @@ class TestListHandles:
         with pytest.raises(PermissionError, match="requires a caller"):
             await provider.list_handles()
 
-    async def test_returns_empty_when_no_dhara_client(self):
+    async def test_returns_empty_when_no_mcp_client(self):
         provider = LocalWorktreeProvider(dhara_client=None)
         result = await provider.list_handles(caller=_principal())
         assert result == []
 
-    async def test_delegates_to_dhara(self, monkeypatch):
-        from mahavishnu.core.worktree_providers import dhara_registry
+    async def test_delegates_to_mcp(self, monkeypatch):
+        from mahavishnu.core.worktree_providers import mcp_registry
 
         captured: dict[str, Any] = {}
 
@@ -818,7 +818,7 @@ class TestListHandles:
             captured["caller"] = caller
             return [{"handle_id": "h1", "principal": "alice"}]
 
-        monkeypatch.setattr(dhara_registry, "list_handles", _fake_list)
+        monkeypatch.setattr(mcp_registry, "list_handles", _fake_list)
         client = _FakeDharaClient()
         provider = LocalWorktreeProvider(dhara_client=client)
         result = await provider.list_handles(

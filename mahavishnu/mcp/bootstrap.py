@@ -245,7 +245,7 @@ def _register_dispatch_specialist_tools(server: FastMCPServer) -> None:
     ``mahavishnu_list_specialists(server)`` so workflows can resolve
     a specialist agent by category without hard-coding the canonical
     name. Without this dispatcher the new Phase 3 specialists
-    (dhara-specialist, crackerjack-specialist, session-buddy-specialist)
+    (mcp-specialist, crackerjack-specialist, session-buddy-specialist)
     are discoverable but never invoked from a workflow.
 
     Args:
@@ -663,15 +663,15 @@ def _register_openhands_block(server: FastMCPServer) -> None:
 
 
 def _register_capability_block(server: FastMCPServer) -> None:
-    """Register capability tools + Dhara-backed get_capability_result reader.
+    """Register capability tools + MCP-backed get_capability_result reader.
 
-    Also wires ``get_capability_result(trace_id)`` when Dhara is reachable.
-    The Dhara-wired tool is skipped (with a WARN log) if the substrate is
+    Also wires ``get_capability_result(trace_id)`` when MCP is reachable.
+    The MCP-wired tool is skipped (with a WARN log) if the substrate is
     not configured or the HTTP probe fails; the four core tools above
     still register successfully in that mode.
     """
-    from ..core.bootstrap import resolve_dhara_url
-    from ..core.dhara_adapter import DharaClient
+    from ..core.bootstrap import resolve_mcp_url
+    from ..core.mcp_adapter import MCPClient
     from ..mcp.tools.capability_tools import register_capability_tools
     from ..mcp.tools.get_capability_result_tool import register_get_capability_result
 
@@ -680,22 +680,22 @@ def _register_capability_block(server: FastMCPServer) -> None:
     )
     logger.info("Registered 4 capability tools with MCP server")
 
-    # Wire get_capability_result against the Dhara substrate when reachable.
-    # Skipped silently (with WARN) when Dhara is offline so the other 4 tools
+    # Wire get_capability_result against the MCP substrate when reachable.
+    # Skipped silently (with WARN) when MCP is offline so the other 4 tools
     # still register; the call site at ``register_get_capability_result``
-    # raises TypeError on dhara=None, which is why we cannot default here.
+    # raises TypeError on mcp=None, which is why we cannot default here.
     try:
-        dhara_url = resolve_dhara_url(server.app.config)
-        dhara = DharaClient(base_url=dhara_url, timeout=10.0)
+        mcp_url = resolve_mcp_url(server.app.config)
+        mcp = MCPClient(base_url=mcp_url, timeout=10.0)
     except Exception as exc:  # noqa: BLE001 - boundary: substrate may be unconfigured
         logger.warning("Skipping get_capability_result registration: %s", exc)
         return
 
     try:
-        register_get_capability_result(server.server, dhara=dhara)
+        register_get_capability_result(server.server, mcp=mcp)
         logger.info("Registered get_capability_result tool with MCP server")
-    except Exception as exc:  # noqa: BLE001 - boundary: Dhara may be offline
-        logger.warning("Skipping get_capability_result registration after Dhara init: %s", exc)
+    except Exception as exc:  # noqa: BLE001 - boundary: MCP may be offline
+        logger.warning("Skipping get_capability_result registration after MCP init: %s", exc)
 
 
 def _register_search_block(server: FastMCPServer) -> None:
@@ -868,7 +868,7 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     14 ``jot_*`` trampoline keys — is also registered here. If any runtime
     path falls back to this legacy path, those groups MUST still be wired;
     silently dropping them leaves skills_signer signing, the jot inbox,
-    and the new Phase 3 specialists (dhara/crackerjack/session-buddy)
+    and the new Phase 3 specialists (mcp/crackerjack/session-buddy)
     unreachable.
     """
     await _register_core_integration_tools(server, methods_set)
@@ -959,11 +959,11 @@ def _register_webhook_tools(server: FastMCPServer) -> None:
 def _register_ecosystem_state_tools(server: FastMCPServer) -> None:
     """Register 5 durable ecosystem-state tools (always-on).
 
-    Phase 3 of the Dhara MCP retirement
-    (``docs/plans/2026-09-16-dhara-mcp-retirement-plan.md``). Mirrors
+    Phase 3 of the MCP MCP retirement
+    (``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md``). Mirrors
     the always-on treatment of workflow + webhook tools so sibling
     Bodai components can resolve services / events without depending
-    on Dhara's MCP at any tool profile.
+    on MCP's MCP at any tool profile.
     """
     from ..mcp.tools.ecosystem_state_tools import register_ecosystem_state_tools
 
@@ -1219,7 +1219,7 @@ def _register_plan_tools(server: FastMCPServer) -> None:
     """Register plan_* tools with the FastMCP server.
 
     The store_provider is constructed at registration time from the
-    real Dhara client on MahavishnuApp. Tests inject a FakeDhara-
+    real MCP client on MahavishnuApp. Tests inject a FakeMCP-
     backed provider at this same call site (see tests/integration/
     mcp/test_plan_tools_e2e.py).
 
@@ -1237,18 +1237,18 @@ def _register_plan_tools(server: FastMCPServer) -> None:
     from ..plan_index.store import PlanIndexStore
 
     def _store_provider() -> PlanIndexStore:
-        # Production wiring: real Dhara-backed store.
-        return PlanIndexStore(_resolve_dhara_client(server))  # ty: ignore[invalid-argument-type]
+        # Production wiring: real MCP-backed store.
+        return PlanIndexStore(_resolve_mcp_client(server))  # ty: ignore[invalid-argument-type]
 
     rbac_manager = getattr(server.app, "rbac_manager", None)
     register_plan_tools(server.server, store_provider=_store_provider, rbac_manager=rbac_manager)
 
 
-def _resolve_dhara_client(server: FastMCPServer) -> object:
-    """Return the configured Dhara client from MahavishnuApp.
+def _resolve_mcp_client(server: FastMCPServer) -> object:
+    """Return the configured MCP client from MahavishnuApp.
 
-    Production: reads from ``server.app.state.dhara`` or equivalent.
-    Tests: a FakeDhara stand-in is acceptable for the smoke test;
+    Production: reads from ``server.app.state.mcp`` or equivalent.
+    Tests: a FakeMCP stand-in is acceptable for the smoke test;
     the integration test for this lives in tests/integration/mcp/.
     """
-    return server.app.state.dhara  # ty: ignore[unresolved-attribute]
+    return server.app.state.mcp  # ty: ignore[unresolved-attribute]

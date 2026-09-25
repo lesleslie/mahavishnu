@@ -130,7 +130,7 @@ class TestGetPoolManager:
             session_buddy_client=sb,
             message_bus=mb,
             event_publisher=ep,
-            dhara_state=ds,
+            mcp_state=ds,
         )
 
         mock_pool_manager_cls.assert_called_once_with(
@@ -138,7 +138,7 @@ class TestGetPoolManager:
             session_buddy_client=sb,
             message_bus=mb,
             event_publisher=ep,
-            dhara_state=ds,
+            mcp_state=ds,
         )
 
     def test_uses_terminal_manager_singleton_when_omitted(

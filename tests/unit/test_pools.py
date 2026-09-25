@@ -365,7 +365,7 @@ class MockPool(BasePool):
 class TestPoolManager:
     """Test PoolManager orchestration."""
 
-    class _FakeDharaState:
+    class _FakeMCPState:
         def __init__(self) -> None:
             self.pools: list[tuple[str, dict]] = []
             self.routings: list[tuple[str, dict]] = []
@@ -382,9 +382,9 @@ class TestPoolManager:
         ) -> None:
             self.routings.append((task_class, value))
 
-    class _FailingDharaState:
+    class _FailingMCPState:
         async def persist_pool(self, pool_id: str, value: dict, ttl: int | None = None) -> None:
-            raise RuntimeError("dhara unavailable")
+            raise RuntimeError("mcp unavailable")
 
         async def persist_routing_decision(
             self,
@@ -393,7 +393,7 @@ class TestPoolManager:
             timestamp=None,
             ttl: int | None = None,
         ) -> None:
-            raise RuntimeError("dhara unavailable")
+            raise RuntimeError("mcp unavailable")
 
     @pytest.fixture
     def pool_manager(self):
@@ -413,16 +413,16 @@ class TestPoolManager:
         terminal_mgr = MagicMock()
         session_buddy = MagicMock()
         message_bus = MessageBus()
-        dhara_state = self._FakeDharaState()
+        mcp_state = self._FakeDharaState()
 
         return (
             PoolManager(
                 terminal_manager=terminal_mgr,
                 session_buddy_client=session_buddy,
                 message_bus=message_bus,
-                dhara_state=dhara_state,
+                mcp_state=mcp_state,
             ),
-            dhara_state,
+            mcp_state,
         )
 
     @pytest.fixture
@@ -430,16 +430,16 @@ class TestPoolManager:
         terminal_mgr = MagicMock()
         session_buddy = MagicMock()
         message_bus = MessageBus()
-        dhara_state = self._FailingDharaState()
+        mcp_state = self._FailingDharaState()
 
         return (
             PoolManager(
                 terminal_manager=terminal_mgr,
                 session_buddy_client=session_buddy,
                 message_bus=message_bus,
-                dhara_state=dhara_state,
+                mcp_state=mcp_state,
             ),
-            dhara_state,
+            mcp_state,
         )
 
     @pytest.mark.asyncio
@@ -459,11 +459,11 @@ class TestPoolManager:
             assert pools[0]["pool_type"] == "mahavishnu"
 
     @pytest.mark.asyncio
-    async def test_spawn_pool_continues_when_dhara_persistence_fails(
+    async def test_spawn_pool_continues_when_mcp_persistence_fails(
         self,
         pool_manager_with_failing_dhara,
     ):
-        pool_manager, _ = pool_manager_with_failing_dhara
+        pool_manager, _ = pool_manager_with_failing_mcp
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
 
@@ -502,11 +502,11 @@ class TestPoolManager:
         assert "Hello" in result["output"]
 
     @pytest.mark.asyncio
-    async def test_execute_on_pool_continues_when_dhara_persistence_fails(
+    async def test_execute_on_pool_continues_when_mcp_persistence_fails(
         self,
         pool_manager_with_failing_dhara,
     ):
-        pool_manager, _ = pool_manager_with_failing_dhara
+        pool_manager, _ = pool_manager_with_failing_mcp
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
         await mock_pool.start()
@@ -524,7 +524,7 @@ class TestPoolManager:
 
     @pytest.mark.asyncio
     async def test_execute_on_pool_persists_pool_state(self, pool_manager_with_dhara):
-        pool_manager, dhara_state = pool_manager_with_dhara
+        pool_manager, mcp_state = pool_manager_with_mcp
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
         await mock_pool.start()
@@ -532,9 +532,9 @@ class TestPoolManager:
 
         await pool_manager.execute_on_pool("test_pool", {"prompt": "Hello"})
 
-        assert dhara_state.pools
-        assert dhara_state.pools[0][0] == "test_pool"
-        assert dhara_state.pools[0][1]["status"] == "running"
+        assert mcp_state.pools
+        assert mcp_state.pools[0][0] == "test_pool"
+        assert mcp_state.pools[0][1]["status"] == "running"
 
     @pytest.mark.asyncio
     async def test_pool_worker_metrics_reflect_live_counts(self, pool_manager):
@@ -580,7 +580,7 @@ class TestPoolManager:
 
     @pytest.mark.asyncio
     async def test_route_task_persists_routing_decision(self, pool_manager_with_dhara):
-        pool_manager, dhara_state = pool_manager_with_dhara
+        pool_manager, mcp_state = pool_manager_with_mcp
         config = PoolConfig(name="pool1", pool_type="mahavishnu")
         mock_pool = MockPool(config, "pool1")
         await mock_pool.start()
@@ -593,16 +593,16 @@ class TestPoolManager:
             caller_pool_allowlist={"pool1"},
         )
 
-        assert dhara_state.routings
-        assert dhara_state.routings[0][0] == "workflow"
-        assert dhara_state.routings[0][1]["pool_id"] == "pool1"
+        assert mcp_state.routings
+        assert mcp_state.routings[0][0] == "workflow"
+        assert mcp_state.routings[0][1]["pool_id"] == "pool1"
 
     @pytest.mark.asyncio
-    async def test_route_task_continues_when_dhara_persistence_fails(
+    async def test_route_task_continues_when_mcp_persistence_fails(
         self,
         pool_manager_with_failing_dhara,
     ):
-        pool_manager, _ = pool_manager_with_failing_dhara
+        pool_manager, _ = pool_manager_with_failing_mcp
         config = PoolConfig(name="pool1", pool_type="mahavishnu")
         mock_pool = MockPool(config, "pool1")
         await mock_pool.start()
@@ -633,11 +633,11 @@ class TestPoolManager:
         assert mock_pool._stop_called is True
 
     @pytest.mark.asyncio
-    async def test_close_pool_continues_when_dhara_persistence_fails(
+    async def test_close_pool_continues_when_mcp_persistence_fails(
         self,
         pool_manager_with_failing_dhara,
     ):
-        pool_manager, _ = pool_manager_with_failing_dhara
+        pool_manager, _ = pool_manager_with_failing_mcp
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
         await mock_pool.start()
@@ -650,7 +650,7 @@ class TestPoolManager:
 
     @pytest.mark.asyncio
     async def test_close_pool_persists_closed_state(self, pool_manager_with_dhara):
-        pool_manager, dhara_state = pool_manager_with_dhara
+        pool_manager, mcp_state = pool_manager_with_mcp
         config = PoolConfig(name="test", pool_type="mahavishnu")
         mock_pool = MockPool(config, "test_pool")
         await mock_pool.start()
@@ -658,9 +658,9 @@ class TestPoolManager:
 
         await pool_manager.close_pool("test_pool")
 
-        assert dhara_state.pools
-        assert dhara_state.pools[-1][0] == "test_pool"
-        assert dhara_state.pools[-1][1]["status"] == "closed"
+        assert mcp_state.pools
+        assert mcp_state.pools[-1][0] == "test_pool"
+        assert mcp_state.pools[-1][1]["status"] == "closed"
 
     @pytest.mark.asyncio
     async def test_close_all_pools(self, pool_manager):

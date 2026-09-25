@@ -29,7 +29,7 @@ def _persister():
     """Return the configured ``SOPPersister`` for this CLI session.
 
     Phase 3: returns ``InMemorySOPPersister``. Workstream C will swap in
-    the Dhara-backed implementation behind a config flag.
+    the MCP-backed implementation behind a config flag.
     """
     # Local import keeps the CLI cheap when sop subcommands are not used.
     from mahavishnu.sop.persisters import InMemorySOPPersister

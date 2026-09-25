@@ -3,7 +3,7 @@
 
 Usage:
     python scripts/audit_plan_index.py [--repo-root PATH]
-    python scripts/audit_plan_index.py --dhara-records records.json
+    python scripts/audit_plan_index.py --mcp-records records.json
 
 Exits 0 if consistent; exits 1 if any of these fail:
   - Every entry in PLAN_INDEX.md corresponds to a .md file on disk.
@@ -11,9 +11,9 @@ Exits 0 if consistent; exits 1 if any of these fail:
   - Every Dhara-stored record is also in PLAN_INDEX.md.
 
 The Dhara leg is opt-in. The CLI reads records from a JSON file
-(``--dhara-records``) so the audit stays runnable in CI without a live
+(``--mcp-records``) so the audit stays runnable in CI without a live
 Dhara instance; callers that already hold a ``PlanIndexStore`` can use
-:func:`collect_dhara_paths` instead. Records not present in Dhara but
+:func:`collect_mcp_paths` instead. Records not present in Dhara but
 present in the rendered index are reported as warnings, not failures --
 the rendered artifact is allowed to lag a TTL-expired record.
 
@@ -103,11 +103,11 @@ def dhara_paths_from_records(records: Iterable[dict[str, Any]]) -> set[str]:
     return paths
 
 
-async def collect_dhara_paths(store: Any, *, limit: int = 1000) -> set[str]:
+async def collect_mcp_paths(store: Any, *, limit: int = 1000) -> set[str]:
     """Repo-relative paths for every record a ``PlanIndexStore`` holds.
 
     ``store`` is typed loosely on purpose: the audit consumes the public
-    ``list_all`` contract only, so a real store and ``FakeDhara``-backed
+    ``list_all`` contract only, so a real store and ``FakeMCP``-backed
     store are interchangeable here.
     """
     records = await store.list_all(limit=limit)
@@ -124,15 +124,15 @@ class AuditReport:
 
     in_index_only: frozenset[str] = frozenset()
     in_disk_only: frozenset[str] = frozenset()
-    in_dhara_only: frozenset[str] = frozenset()
-    missing_from_dhara: frozenset[str] = frozenset()
+    in_mcp_only: frozenset[str] = frozenset()
+    missing_from_mcp: frozenset[str] = frozenset()
     dhara_checked: bool = False
     index_count: int = 0
 
     @property
     def failures(self) -> int:
         return sum(
-            1 for group in (self.in_index_only, self.in_disk_only, self.in_dhara_only) if group
+            1 for group in (self.in_index_only, self.in_disk_only, self.in_mcp_only) if group
         )
 
     @property
@@ -149,10 +149,10 @@ def audit(
     return AuditReport(
         in_index_only=frozenset(index_paths - disk_paths),
         in_disk_only=frozenset(disk_paths - index_paths),
-        in_dhara_only=frozenset(dhara_paths - index_paths)
+        in_mcp_only=frozenset(dhara_paths - index_paths)
         if dhara_paths is not None
         else frozenset(),
-        missing_from_dhara=frozenset(index_paths - dhara_paths)
+        missing_from_mcp=frozenset(index_paths - dhara_paths)
         if dhara_paths is not None
         else frozenset(),
         dhara_checked=dhara_paths is not None,
@@ -183,10 +183,10 @@ def format_report(report: AuditReport) -> _Lines:
     _report_group(
         lines, report.in_disk_only, "frontmatter'd files missing from PLAN_INDEX.md:", "+"
     )
-    _report_group(lines, report.in_dhara_only, "Dhara records missing from PLAN_INDEX.md:", "~")
-    if report.missing_from_dhara:
+    _report_group(lines, report.in_mcp_only, "Dhara records missing from PLAN_INDEX.md:", "~")
+    if report.missing_from_mcp:
         lines.out.append(
-            f"WARN: {len(report.missing_from_dhara)} indexed paths have no Dhara record "
+            f"WARN: {len(report.missing_from_mcp)} indexed paths have no Dhara record "
             "(expected while records are TTL-expiring)"
         )
     if report.ok:
@@ -197,7 +197,7 @@ def format_report(report: AuditReport) -> _Lines:
     return lines
 
 
-def _load_dhara_records(path: Path) -> list[dict[str, Any]]:
+def _load_mcp_records(path: Path) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text())
     if isinstance(payload, dict):
         payload = payload.get("records", [])
@@ -210,7 +210,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument(
-        "--dhara-records",
+        "--mcp-records",
         type=Path,
         default=None,
         help="JSON file holding plan records (list, or {'records': [...]})",
@@ -232,7 +232,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     dhara_paths: set[str] | None = None
     if args.dhara_records is not None:
-        dhara_paths = dhara_paths_from_records(_load_dhara_records(args.dhara_records))
+        dhara_paths = dhara_paths_from_records(_load_mcp_records(args.dhara_records))
 
     report = audit(index_paths, disk_paths, dhara_paths)
     lines = format_report(report)

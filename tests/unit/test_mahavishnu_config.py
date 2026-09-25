@@ -987,7 +987,7 @@ class TestIntegrationConfig:
 # ============================================================================
 
 
-class TestDharaStatePersistenceConfig:
+class TestMCPStatePersistenceConfig:
     """Tests for DharaStatePersistenceConfig."""
 
     def test_default_values(self):
@@ -1064,7 +1064,7 @@ class TestMahavishnuSettingsNestedConfigs:
         assert hasattr(settings, "goal_teams")
         assert hasattr(settings, "health")
         assert hasattr(settings, "integrations")
-        assert hasattr(settings, "dhara_state")
+        assert hasattr(settings, "mcp_state")
         assert hasattr(settings, "learning")
 
     def test_nested_config_env_override(self, clean_env):

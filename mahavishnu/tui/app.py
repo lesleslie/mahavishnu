@@ -81,9 +81,9 @@ async def _get_report() -> EcosystemStatusReport | None:
         try:
             oneiric = getattr(settings, "oneiric_mcp", None)
             if oneiric:
-                dhara_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
-                if dhara_url:
-                    service_configs["dhara"] = {"url": dhara_url, "required": False, "timeout_s": 3}
+                mcp_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
+                if mcp_url:
+                    service_configs["mcp"] = {"url": mcp_url, "required": False, "timeout_s": 3}
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             _tui_log.debug("Service config skipped: %s", e)
 
@@ -185,7 +185,7 @@ async def fetch_recovery_summary() -> dict[str, Any]:
             "recovered_approvals": 0,
             "recovered_pools": 0,
             "recovered_routing_decisions": 0,
-            "dhara_available": False,
+            "mcp_available": False,
             "last_recovered_at": None,
         }
 
@@ -195,7 +195,7 @@ async def fetch_recovery_summary() -> dict[str, Any]:
         "recovered_approvals": recovery.recovered_approvals,
         "recovered_pools": recovery.recovered_pools,
         "recovered_routing_decisions": recovery.recovered_routing_decisions,
-        "dhara_available": recovery.dhara_available,
+        "mcp_available": recovery.mcp_available,
         "last_recovered_at": (
             recovery.last_recovered_at.isoformat() if recovery.last_recovered_at else None
         ),
@@ -543,7 +543,7 @@ def _component_urls() -> dict[str, str | None]:
     urls: dict[str, str | None] = {
         "crackerjack": None,
         "akosha": None,
-        "dhara": None,
+        "mcp": None,
         "sb-metrics": None,
     }
     try:
@@ -569,9 +569,9 @@ def _component_urls() -> dict[str, str | None]:
     with contextlib.suppress(Exception):
         oneiric = getattr(s, "oneiric_mcp", None)
         if oneiric:
-            dhara = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
-            if dhara:
-                urls["dhara"] = dhara.removesuffix("/mcp")
+            mcp = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
+            if mcp:
+                urls["mcp"] = mcp.removesuffix("/mcp")
 
     with contextlib.suppress(Exception):
         pools = getattr(s, "pools", None)
@@ -886,11 +886,11 @@ class RecoveryScreen(VerticalScroll):
 
     async def _fetch(self) -> None:
         data = await fetch_recovery_summary()
-        dhara_state = "available" if data.get("dhara_available") else "unavailable"
+        mcp_state = "available" if data.get("mcp_available") else "unavailable"
         last_recovered_at = data.get("last_recovered_at") or "-"
-        color = "green" if data.get("dhara_available") else "yellow"
+        color = "green" if data.get("mcp_available") else "yellow"
         self.query_one("#recovery-summary", Static).update(
-            f"[bold {color}]Dhara {dhara_state}[/]   [bold]Last recovery:[/] {last_recovered_at}"
+            f"[bold {color}]MCP {mcp_state}[/]   [bold]Last recovery:[/] {last_recovered_at}"
         )
         table = self.query_one("#recovery-table", DataTable)
         table.clear()
@@ -1331,7 +1331,7 @@ class DashboardApp(App):
         tab_configs = [
             ("crackerjack", "13 Crackerjack", "Crackerjack — Quality Inspector"),
             ("akosha", "14 Akosha", "Akosha — Intelligence Seer"),
-            ("dhara", "15 Dhara", "Dhara — State Curator"),
+            ("mcp", "15 MCP", "MCP — State Curator"),
             ("sb-metrics", "16 Metrics", "Session-Buddy — Memory Builder"),
         ]
         for tab_id, tab_label, screen_label in tab_configs:

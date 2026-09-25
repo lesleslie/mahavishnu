@@ -208,7 +208,7 @@ class ReviewerIdentity:
         """Emit an audit log entry tagged with ``extra={"audit": True}``.
 
         Audit logs are distinguishable from operational logs so the
-        Dhara event bus can ingest them via the audit_log subscriber
+        MCP event bus can ingest them via the audit_log subscriber
         without confusing them with informational messages.
         """
         level = logging.INFO if decision.allowed else logging.WARNING

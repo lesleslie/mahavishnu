@@ -13,7 +13,7 @@ from oneiric.core.logging import get_logger
 from mahavishnu.core.approval.decision_writer import record_approval_decision
 
 if TYPE_CHECKING:
-    from mahavishnu.core.state_backends.dhara import DharaStateBackend
+    from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
 
 logger = get_logger(__name__)
@@ -87,27 +87,27 @@ class ApprovalResult:
 class ApprovalManager:
     """Manages manual approval workflows for version bumps and publishing.
 
-    Approvals are persisted to Dhara when a DharaStateBackend is provided,
+    Approvals are persisted to MCP when a MCPStateBackend is provided,
     enabling survival across orchestrator restarts (lookback window).
     """
 
     def __init__(
         self,
         default_timeout_minutes: int = 1440,  # 24 hours
-        dhara_state: DharaStateBackend | None = None,
+        mcp_state: MCPStateBackend | None = None,
     ) -> None:
         """Initialize the approval manager.
 
         Args:
             default_timeout_minutes: Default time before requests expire.
                 Defaults to 1440 (24 hours) so approvals survive restarts.
-            dhara_state: Optional Dhara backend for durable persistence.
-                When provided, each pending approval is written to Dhara
+            mcp_state: Optional MCP backend for durable persistence.
+                When provided, each pending approval is written to MCP
                 and deleted on resolution or expiry.
         """
         self._pending_requests: dict[str, ApprovalRequest] = {}
         self._default_timeout = timedelta(minutes=default_timeout_minutes)
-        self._dhara_state = dhara_state
+        self._mcp_state = mcp_state
 
     @property
     def pending_requests(self) -> list[ApprovalRequest]:
@@ -148,22 +148,22 @@ class ApprovalManager:
         )
 
         self._pending_requests[request.id] = request
-        self._schedule_dhara_persist(request)
+        self._schedule_mcp_persist(request)
         return request
 
-    def _schedule_dhara_persist(self, request: ApprovalRequest) -> None:
-        """Fire-and-forget: persist approval to Dhara with a TTL matching expires_at."""
-        if self._dhara_state is None:
+    def _schedule_mcp_persist(self, request: ApprovalRequest) -> None:
+        """Fire-and-forget: persist approval to MCP with a TTL matching expires_at."""
+        if self._mcp_state is None:
             return
         ttl = max(int((request.expires_at - datetime.now(UTC)).total_seconds()), 0)
-        self._dhara_state.schedule_put(
+        self._mcp_state.schedule_put(
             f"approval/v1/{request.id}",
             request.to_dict(),
             ttl=ttl if ttl > 0 else None,
         )
 
-    def _schedule_dhara_delete(self, request_id: str) -> None:
-        """Fire-and-forget: remove resolved/expired approval from Dhara.
+    def _schedule_mcp_delete(self, request_id: str) -> None:
+        """Fire-and-forget: remove resolved/expired approval from MCP.
 
         This helper always deletes when called — it is the legacy delete
         primitive. The ``APPROVAL_LOG_V1_ENABLED`` feature flag is gated at
@@ -172,9 +172,9 @@ class ApprovalManager:
         records instead. ``cleanup_expired`` is an admin op that always
         deletes, so it continues to invoke this helper unconditionally.
         """
-        if self._dhara_state is None:
+        if self._mcp_state is None:
             return
-        self._dhara_state.schedule_delete(f"approval/v1/{request_id}")
+        self._mcp_state.schedule_delete(f"approval/v1/{request_id}")
 
     def _persist_approval_decision(
         self,
@@ -289,7 +289,7 @@ class ApprovalManager:
             if not _approval_log_v1_enabled():
                 # Legacy delete-on-expire path; v1 keeps the dangling record
                 # because no decision was actually recorded.
-                self._schedule_dhara_delete(request_id)
+                self._schedule_mcp_delete(request_id)
             raise ValueError(f"Request {request_id} has expired")
 
         del self._pending_requests[request_id]
@@ -305,7 +305,7 @@ class ApprovalManager:
             )
         else:
             # Rollback path: legacy delete-on-resolve behavior.
-            self._schedule_dhara_delete(request_id)
+            self._schedule_mcp_delete(request_id)
 
         return ApprovalResult(
             approved=approved,
@@ -314,7 +314,7 @@ class ApprovalManager:
         )
 
     def cleanup_expired(self) -> int:
-        """Remove all expired requests and schedule Dhara cleanup.
+        """Remove all expired requests and schedule MCP cleanup.
 
         Returns:
             Number of requests removed.
@@ -322,14 +322,14 @@ class ApprovalManager:
         expired_ids = [req.id for req in self._pending_requests.values() if req.is_expired]
         for req_id in expired_ids:
             del self._pending_requests[req_id]
-            self._schedule_dhara_delete(req_id)
+            self._schedule_mcp_delete(req_id)
         return len(expired_ids)
 
-    def restore_from_dhara_entries(self, entries: list[tuple[str, dict[str, Any]]]) -> int:
-        """Re-register non-expired approvals recovered from Dhara on restart.
+    def restore_from_mcp_entries(self, entries: list[tuple[str, dict[str, Any]]]) -> int:
+        """Re-register non-expired approvals recovered from MCP on restart.
 
         Args:
-            entries: List of (key, value) pairs from DharaStateBackend.list_prefix.
+            entries: List of (key, value) pairs from MCPStateBackend.list_prefix.
 
         Returns:
             Number of approvals successfully restored.
@@ -347,7 +347,7 @@ class ApprovalManager:
 
     @staticmethod
     def _dict_to_request(data: dict[str, Any]) -> ApprovalRequest:
-        """Deserialize an ApprovalRequest from a Dhara-stored dict."""
+        """Deserialize an ApprovalRequest from a MCP-stored dict."""
         options = [
             ApprovalOption(
                 label=opt["label"],

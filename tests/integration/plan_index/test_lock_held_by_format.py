@@ -14,12 +14,12 @@ import re
 from mahavishnu.plan_index.cron_core import run_rebuild_cycle
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 class TestLockHeldByFormat:
     async def test_lock_held_by_after_cycle_matches_redaction_regex(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         # Force the cycle to acquire a lock
         await run_rebuild_cycle(store, rebuilder)

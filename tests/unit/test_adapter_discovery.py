@@ -97,9 +97,9 @@ async def test_discover_from_entry_points_skips_generic_exception_from_entry() -
 
 
 @pytest.mark.asyncio
-async def test_discover_from_dhara_paths() -> None:
+async def test_discover_from_mcp_paths() -> None:
     engine = AdapterDiscoveryEngine(
-        {"allowlist_patterns": ["mahavishnu.adapters.*"], "enable_dhara_registry": True}
+        {"allowlist_patterns": ["mahavishnu.adapters.*"], "enable_mcp_registry": True}
     )
     fake_entry = SimpleNamespace(
         adapter_id="mahavishnu.adapters.remote",
@@ -113,15 +113,15 @@ async def test_discover_from_dhara_paths() -> None:
     )
     client = MagicMock()
     client.list_adapters = AsyncMock(return_value=[fake_entry])
-    with patch.object(engine, "_get_dhara_client", return_value=client):
-        result = await engine.discover_from_dhara()
+    with patch.object(engine, "_get_mcp_client", return_value=client):
+        result = await engine.discover_from_mcp()
     assert len(result) == 1
-    assert result[0].source == "dhara"
+    assert result[0].source == "mcp"
 
-    engine.invalidate_cache_for_source("dhara")
+    engine.invalidate_cache_for_source("mcp")
     client.list_adapters = AsyncMock(side_effect=ConnectionError("down"))
-    with patch.object(engine, "_get_dhara_client", return_value=client):
-        result = await engine.discover_from_dhara()
+    with patch.object(engine, "_get_mcp_client", return_value=client):
+        result = await engine.discover_from_mcp()
     assert result == []
 
 
@@ -144,7 +144,7 @@ async def test_discover_all_merges_sources_and_handles_failures() -> None:
         provider="p2",
         capabilities=["x"],
         factory_path="a:b",
-        source="dhara",
+        source="mcp",
     )
     remote_other = AdapterMetadata(
         adapter_id="mahavishnu.adapters.other",
@@ -153,19 +153,19 @@ async def test_discover_all_merges_sources_and_handles_failures() -> None:
         provider="p3",
         capabilities=["z"],
         factory_path="a:b",
-        source="dhara",
+        source="mcp",
     )
     with (
         patch.object(engine, "discover_from_entry_points", AsyncMock(return_value=[ep_meta])),
         patch.object(
-            engine, "discover_from_dhara", AsyncMock(return_value=[remote_meta, remote_other])
+            engine, "discover_from_mcp", AsyncMock(return_value=[remote_meta, remote_other])
         ),
     ):
         result = await engine.discover_all()
     assert len(result) == 2
     by_id = {x.adapter_id: x for x in result}
     assert by_id["mahavishnu.adapters.same"].source == "entry_point"
-    assert by_id["mahavishnu.adapters.other"].source == "dhara"
+    assert by_id["mahavishnu.adapters.other"].source == "mcp"
 
     cached = await engine.discover_all()
     assert len(cached) == 2
@@ -175,41 +175,41 @@ async def test_discover_all_merges_sources_and_handles_failures() -> None:
         patch.object(
             engine, "discover_from_entry_points", AsyncMock(side_effect=RuntimeError("x"))
         ),
-        patch.object(engine, "discover_from_dhara", AsyncMock(side_effect=RuntimeError("y"))),
+        patch.object(engine, "discover_from_mcp", AsyncMock(side_effect=RuntimeError("y"))),
     ):
         result = await engine.discover_all()
     assert result == []
 
 
 @pytest.mark.asyncio
-async def test_get_dhara_client_disabled_and_failure() -> None:
-    engine = AdapterDiscoveryEngine({"enable_dhara_registry": False})
-    assert engine._get_dhara_client() is None
+async def test_get_mcp_client_disabled_and_failure() -> None:
+    engine = AdapterDiscoveryEngine({"enable_mcp_registry": False})
+    assert engine._get_mcp_client() is None
 
-    engine = AdapterDiscoveryEngine({"enable_dhara_registry": True})
+    engine = AdapterDiscoveryEngine({"enable_mcp_registry": True})
     with patch(
-        "mahavishnu.core.adapter_discovery.DharaAdapterRegistryClient",
+        "mahavishnu.core.adapter_discovery.MCPAdapterRegistryClient",
         side_effect=RuntimeError("nope"),
     ):
-        assert engine._get_dhara_client() is None
+        assert engine._get_mcp_client() is None
 
     fake_client = object()
     with patch(
-        "mahavishnu.core.adapter_discovery.DharaAdapterRegistryClient", return_value=fake_client
+        "mahavishnu.core.adapter_discovery.MCPAdapterRegistryClient", return_value=fake_client
     ):
-        assert engine._get_dhara_client() is fake_client
-        assert engine._get_dhara_client() is fake_client
+        assert engine._get_mcp_client() is fake_client
+        assert engine._get_mcp_client() is fake_client
 
 
 def test_init_accepts_oneiric_config_variants() -> None:
     import mahavishnu.core.adapter_discovery as module
 
-    cfg_obj = module.DharaAdapterRegistryConfig()
-    engine_obj = AdapterDiscoveryEngine({"dhara_registry_config": cfg_obj})
-    assert engine_obj._dhara_registry_config is cfg_obj
+    cfg_obj = module.MCPAdapterRegistryConfig()
+    engine_obj = AdapterDiscoveryEngine({"mcp_registry_config": cfg_obj})
+    assert engine_obj._mcp_registry_config is cfg_obj
 
-    engine_dict = AdapterDiscoveryEngine({"dhara_registry_config": {"enabled": False}})
-    assert isinstance(engine_dict._dhara_registry_config, module.DharaAdapterRegistryConfig)
+    engine_dict = AdapterDiscoveryEngine({"mcp_registry_config": {"enabled": False}})
+    assert isinstance(engine_dict._mcp_registry_config, module.MCPAdapterRegistryConfig)
 
 
 @pytest.mark.asyncio
@@ -231,20 +231,20 @@ async def test_cache_invalidation_close_and_stats() -> None:
 
     client = MagicMock()
     client.close = AsyncMock()
-    engine._dhara_client = client
+    engine._mcp_client = client
     await engine.close()
     client.close.assert_awaited_once()
-    assert engine._dhara_client is None
+    assert engine._mcp_client is None
 
 
 @pytest.mark.asyncio
-async def test_discover_from_dhara_none_blocked_and_exception_paths() -> None:
+async def test_discover_from_mcp_none_blocked_and_exception_paths() -> None:
     engine = AdapterDiscoveryEngine({"allowlist_patterns": ["mahavishnu.adapters.allowed"]})
 
-    with patch.object(engine, "_get_dhara_client", return_value=None):
-        assert await engine.discover_from_dhara() == []
+    with patch.object(engine, "_get_mcp_client", return_value=None):
+        assert await engine.discover_from_mcp() == []
 
-    engine.invalidate_cache_for_source("dhara")
+    engine.invalidate_cache_for_source("mcp")
     blocked_entry = SimpleNamespace(
         adapter_id="evil.adapters.blocked",
         domain="orchestration",
@@ -257,17 +257,17 @@ async def test_discover_from_dhara_none_blocked_and_exception_paths() -> None:
     )
     client = MagicMock()
     client.list_adapters = AsyncMock(return_value=[blocked_entry])
-    with patch.object(engine, "_get_dhara_client", return_value=client):
-        assert await engine.discover_from_dhara() == []
+    with patch.object(engine, "_get_mcp_client", return_value=client):
+        assert await engine.discover_from_mcp() == []
 
-    with patch.object(engine, "_get_dhara_client", return_value=client):
-        cached = await engine.discover_from_dhara()
+    with patch.object(engine, "_get_mcp_client", return_value=client):
+        cached = await engine.discover_from_mcp()
     assert cached == []
 
-    engine.invalidate_cache_for_source("dhara")
+    engine.invalidate_cache_for_source("mcp")
     client.list_adapters = AsyncMock(side_effect=RuntimeError("generic"))
-    with patch.object(engine, "_get_dhara_client", return_value=client):
-        assert await engine.discover_from_dhara() == []
+    with patch.object(engine, "_get_mcp_client", return_value=client):
+        assert await engine.discover_from_mcp() == []
 
 
 @pytest.mark.asyncio
@@ -275,9 +275,9 @@ async def test_close_handles_client_close_error() -> None:
     engine = AdapterDiscoveryEngine()
     client = MagicMock()
     client.close = AsyncMock(side_effect=RuntimeError("close failed"))
-    engine._dhara_client = client
+    engine._mcp_client = client
     await engine.close()
-    assert engine._dhara_client is None
+    assert engine._mcp_client is None
 
 
 @pytest.mark.asyncio

@@ -365,7 +365,7 @@ class RecoverySummary(BaseModel):
     recovered_approvals: int = 0
     recovered_pools: int = 0
     recovered_routing_decisions: int = 0
-    dhara_available: bool = False
+    mcp_available: bool = False
     last_recovered_at: datetime | None = None
 
 

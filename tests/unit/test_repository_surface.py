@@ -31,7 +31,7 @@ def _make_app(**kwargs):
             allowed_repo_paths=kwargs.get("allowed_repo_paths", []), max_concurrent_workflows=4
         ),
         repos_config=kwargs.get("repos_config", {"repos": [], "roles": []}),
-        _dhara_state=kwargs.get("_dhara_state"),
+        _mcp_state=kwargs.get("_mcp_state"),
         rbac_manager=kwargs.get(
             "rbac_manager", SimpleNamespace(check_permission=AsyncMock(return_value=True))
         ),
@@ -63,21 +63,21 @@ class TestValidatePath:
 
 
 class TestWorkflowPersistence:
-    def test_noop_when_no_dhara_state(self):
+    def test_noop_when_no_mcp_state(self):
         app = _make_app()
         rs.persist_workflow_start(app, "exec-1", "demo", {"a": 1})
         rs.persist_workflow_end(app, "exec-1", "demo", "completed")
 
     def test_schedule_put_called(self):
-        dhara_state = SimpleNamespace(schedule_put=MagicMock())
-        app = _make_app(_dhara_state=dhara_state)
+        mcp_state = SimpleNamespace(schedule_put=MagicMock())
+        app = _make_app(_mcp_state=mcp_state)
 
         rs.persist_workflow_start(app, "exec-1", "demo", {"a": 1})
         rs.persist_workflow_end(app, "exec-1", "demo", "failed", error="boom")
 
-        assert dhara_state.schedule_put.call_count == 2
-        first_call = dhara_state.schedule_put.call_args_list[0]
-        second_call = dhara_state.schedule_put.call_args_list[1]
+        assert mcp_state.schedule_put.call_count == 2
+        first_call = mcp_state.schedule_put.call_args_list[0]
+        second_call = mcp_state.schedule_put.call_args_list[1]
         assert first_call.args[0] == "workflow/v1/exec-1"
         assert first_call.args[1]["status"] == "running"
         assert second_call.args[1]["status"] == "failed"

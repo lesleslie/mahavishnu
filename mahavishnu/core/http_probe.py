@@ -7,7 +7,7 @@ HTTP probe inherits the canonical envelope:
 
 * automatic OpenTelemetry trace-context propagation
 * centralized timeout / SSL / retry configuration
-* uniform response shape consumable by Akosha + Dhara
+* uniform response shape consumable by Akosha + MCP
 """
 
 from __future__ import annotations

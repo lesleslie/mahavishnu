@@ -5,7 +5,7 @@ Verifies that when two coroutines race to call run_rebuild_cycle from an
 while the other raises PlanRebuildLockedError. Mirrors the jot sub-plan 3
 lock pattern.
 
-`FakeDhara`'s coroutines never suspend, so `asyncio.gather` runs the
+`FakeMCP`'s coroutines never suspend, so `asyncio.gather` runs the
 first cycle to completion before the second starts and no interleaving is
 possible. `YieldingFakeDhara` inserts a real suspension point before
 every operation, which step-locks the two cycles and exercises the
@@ -27,11 +27,11 @@ from mahavishnu.plan_index.cron_core import (
 from mahavishnu.plan_index.errors import PlanRebuildLockedError
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
-class YieldingFakeDhara(FakeDhara):
-    """FakeDhara that yields to the event loop before every operation."""
+class YieldingFakeDhara(FakeMCP):
+    """FakeMCP that yields to the event loop before every operation."""
 
     async def put(self, key: str, value: str, *, ttl: int | None = None) -> None:
         await asyncio.sleep(0)
@@ -52,8 +52,8 @@ class YieldingFakeDhara(FakeDhara):
 
 class TestConcurrentRebuildsSerialize:
     async def test_two_concurrent_invocations_one_proceeds_one_aborts(self) -> None:
-        dhara = YieldingFakeDhara()
-        store = PlanIndexStore(dhara)  # type: ignore[arg-type]
+        mcp = YieldingFakeDhara()
+        store = PlanIndexStore(mcp)  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 
         # No pre-existing lock: both coroutines start from an unheld lock
@@ -69,21 +69,21 @@ class TestConcurrentRebuildsSerialize:
         assert len(aborted) == 1, f"expected 1 PlanRebuildLockedError, got {len(aborted)}"
 
         # The cycle that succeeded released its lock afterwards.
-        assert await dhara.get("plan_index/meta/rebuild_lock/holder") is None
+        assert await mcp.get("plan_index/meta/rebuild_lock/holder") is None
 
         # Arbitration claims are transient: neither the winner nor the
         # loser may leave one behind to block the next cycle.
-        assert await dhara.list_prefix(REBUILD_LOCK_CLAIM_KEY_PREFIX) == []
+        assert await mcp.list_prefix(REBUILD_LOCK_CLAIM_KEY_PREFIX) == []
 
     async def test_a_live_lock_blocks_every_concurrent_invocation(self) -> None:
         """A fresh, non-stale holder aborts *both* racing cycles."""
-        dhara = YieldingFakeDhara()
-        store = PlanIndexStore(dhara)  # type: ignore[arg-type]
+        mcp = YieldingFakeDhara()
+        store = PlanIndexStore(mcp)  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 
         fresh_ms = int(time.time() * 1000)
-        await dhara.put("plan_index/meta/rebuild_lock/holder", "otherhost/9999")
-        await dhara.put("plan_index/meta/rebuild_lock/acquired_at_ms", str(fresh_ms))
+        await mcp.put("plan_index/meta/rebuild_lock/holder", "otherhost/9999")
+        await mcp.put("plan_index/meta/rebuild_lock/acquired_at_ms", str(fresh_ms))
 
         results = await asyncio.gather(
             run_rebuild_cycle(store, rebuilder),
@@ -92,4 +92,4 @@ class TestConcurrentRebuildsSerialize:
         )
         assert all(isinstance(r, PlanRebuildLockedError) for r in results)
         # The live holder survives — nobody stole or released it.
-        assert await dhara.get("plan_index/meta/rebuild_lock/holder") == "otherhost/9999"
+        assert await mcp.get("plan_index/meta/rebuild_lock/holder") == "otherhost/9999"

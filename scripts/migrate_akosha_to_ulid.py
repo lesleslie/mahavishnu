@@ -60,12 +60,12 @@ def analyze_entity_id_usage(akosha_path: str) -> dict:
             results["recommendations"].append(
                 {
                     "file": file_path,
-                    "change": "Replace custom ID generation with: from dhara import generate; entity_id = generate()",
+                    "change": "Replace custom ID generation with: from mcp import generate; entity_id = generate()",
                 }
             )
 
         # Check if already using Dhara
-        if "from dhara import" in content or "import dhara" in content:
+        if "from mcp import" in content or "import mcp" in content:
             results["uses_dhara"] = True
 
     return results
@@ -130,13 +130,13 @@ def main():
         print()
         print("1. Update akosha/processing/knowledge_graph.py:")
         print('   - Replace: entity_id = f"system:{system_id}"')
-        print("   - With: from dhara import generate; entity_id = generate()")
+        print("   - With: from mcp import generate; entity_id = generate()")
         print()
         print("2. Update akosha/mcp/tools/akosha_tools.py:")
-        print("   - Replace any entity ID generation with: from dhara import generate")
+        print("   - Replace any entity ID generation with: from mcp import generate")
         print()
         print("3. Update imports in affected files:")
-        print("   - Add: from dhara import generate, ULID")
+        print("   - Add: from mcp import generate, ULID")
         print()
         print("4. Run tests: pytest tests/")
         print()

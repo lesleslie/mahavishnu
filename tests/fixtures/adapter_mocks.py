@@ -495,7 +495,7 @@ class MockOneiricResolver:
 # =============================================================================
 
 
-class MockDharaRegistry:
+class MockMCPRegistry:
     """Mock for Dhara persistence layer.
 
     Simulates the Dhara MCP persistence layer for testing adapter
@@ -699,7 +699,7 @@ class MockAdapterDiscovery:
         self.discover_from_entry_points = AsyncMock(
             side_effect=self._discover_from_entry_points_impl
         )
-        self.discover_from_dhara = AsyncMock(side_effect=self._discover_from_dhara_impl)
+        self.discover_from_mcp = AsyncMock(side_effect=self._discover_from_mcp_impl)
 
         # Sync method mocks
         self.invalidate_cache = MagicMock(side_effect=self._invalidate_cache_impl)
@@ -757,10 +757,10 @@ class MockAdapterDiscovery:
         ]
         return [self._create_metadata_from_dict(a) for a in entry_point_adapters]
 
-    async def _discover_from_dhara_impl(self) -> list[MagicMock]:
-        """Implementation of discover_from_dhara."""
-        self._record_call("discover_from_dhara")
-        dhara_adapters = [a for a in self._adapters if a.get("source") == "dhara"]
+    async def _discover_from_mcp_impl(self) -> list[MagicMock]:
+        """Implementation of discover_from_mcp."""
+        self._record_call("discover_from_mcp")
+        dhara_adapters = [a for a in self._adapters if a.get("source") == "mcp"]
         return [self._create_metadata_from_dict(a) for a in dhara_adapters]
 
     def _invalidate_cache_impl(self) -> None:

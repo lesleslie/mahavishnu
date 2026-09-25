@@ -6,10 +6,10 @@ the registered tools via ``mcp.list_tools()``, and exercise both the
 happy path (read returns a dict) and the AUTH_REQUIRED gate
 (@require_mcp_auth rejects missing ``user_id``).
 
-The tests patch ``mahavishnu.webhooks.replay.dhara_calltime`` so the
+The tests patch ``mahavishnu.webhooks.replay.mcp_calltime`` so the
 leaf :func:`webhook_replay` reads from a controlled fake without
 touching the real Dhara substrate. webhook_replay reads
-``dhara_calltime("get")`` at call time, so the patch is picked up on
+``mcp_calltime("get")`` at call time, so the patch is picked up on
 every invocation.
 """
 
@@ -44,8 +44,8 @@ def _fake_rbac_manager() -> Any:
     return rbac
 
 
-def _patch_dhara_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None) -> None:
-    """Replace ``replay.dhara_calltime`` with a routing stub.
+def _patch_mcp_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None) -> None:
+    """Replace ``replay.mcp_calltime`` with a routing stub.
 
     Returns ``get`` when the leaf asks for ``"get"``; returns ``None``
     for everything else. Mirrors the pattern in
@@ -54,7 +54,7 @@ def _patch_dhara_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None
     def fake(name: str) -> object | None:
         return get if name == "get" else None
 
-    monkeypatch.setattr(replay_module, "dhara_calltime", fake)
+    monkeypatch.setattr(replay_module, "mcp_calltime", fake)
 
 
 @pytest.mark.asyncio
@@ -78,7 +78,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
 ) -> None:
     """End-to-end: calling the registered MCP tool returns the persisted dict.
 
-    The leaf ``webhook_replay`` calls ``dhara_calltime("get")`` at
+    The leaf ``webhook_replay`` calls ``mcp_calltime("get")`` at
     function-call time; we patch the source-module binding so the leaf
     sees the fake without needing a real Dhara substrate. The
     msgspec.Struct round-trip then rebuilds ``WebhookIngress`` from the
@@ -93,7 +93,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
     }
 
     fake_get = MagicMock(return_value=payload)
-    _patch_dhara_calltime(monkeypatch, get=fake_get)
+    _patch_mcp_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-roundtrip")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -117,7 +117,7 @@ async def test_registered_tool_returns_none_when_record_missing(
 ) -> None:
     """End-to-end: when the substrate returns ``None``, the tool returns ``None``."""
     fake_get = MagicMock(return_value=None)
-    _patch_dhara_calltime(monkeypatch, get=fake_get)
+    _patch_mcp_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-missing")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -144,7 +144,7 @@ async def test_registered_tool_rejects_without_user_id(
     "rejection without permission" contract.
     """
     fake_get = MagicMock()
-    _patch_dhara_calltime(monkeypatch, get=fake_get)
+    _patch_mcp_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-auth")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -164,7 +164,7 @@ async def test_registered_tool_rejects_path_traversal(
 ) -> None:
     """Path-traversal webhook_id is refused by the leaf guard before Dhara is touched."""
     fake_get = MagicMock()
-    _patch_dhara_calltime(monkeypatch, get=fake_get)
+    _patch_mcp_calltime(monkeypatch, get=fake_get)
 
     mcp = FastMCP(name="test-webhook-tools-traversal")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -184,5 +184,5 @@ async def test_registered_tool_rejects_path_traversal(
 # NOTE: A FastAPI mount integration test (``mount_durable_webhooks`` + TestClient +
 # POST /durable-webhooks/webhook) is exercised by
 # ``tests/unit/test_webhooks_mount.py`` (separate fixture using the same
-# receiver.dhara_calltime patching pattern). The 5 tests above cover the
+# receiver.mcp_calltime patching pattern). The 5 tests above cover the
 # MCP tool surface; the mount coverage lives in the sibling file.

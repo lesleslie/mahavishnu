@@ -1,9 +1,9 @@
 """Verify workflow_get_outcome returns a validated WorkflowOutcome struct.
 
 Phase 8 Task 5 update: the previous tests patched
-``mahavishnu.mcp.tools.workflow_tools.dhara.get`` directly. After Wave A
-the workflow_tools module no longer imports ``dhara``; the patch target
-is now the local ``dhara_calltime`` import. The AsyncMock stub returns
+``mahavishnu.mcp.tools.workflow_tools.mcp.get`` directly. After Wave A
+the workflow_tools module no longer imports ``mcp``; the patch target
+is now the local ``mcp_calltime`` import. The AsyncMock stub returns
 an awaitable that resolves to the fixture payload.
 """
 
@@ -26,8 +26,8 @@ from mahavishnu.mcp.tools.workflow_tools import (
 pytestmark = pytest.mark.unit
 
 
-def _patch_dhara_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
-    """Replace ``workflow_tools.dhara_calltime`` so calls to ``dhara_calltime("get")`` route to ``fake_get``.
+def _patch_mcp_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
+    """Replace ``workflow_tools.mcp_calltime`` so calls to ``mcp_calltime("get")`` route to ``fake_get``.
 
     The shim's call-time resolution means ``fake_get`` must be awaitable
     when the production code does ``await get_fn(...)``. We accept any
@@ -38,7 +38,7 @@ def _patch_dhara_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
         return fake_get if name == "get" else None
 
     monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.dhara_calltime", fake_calltime,
+        "mahavishnu.mcp.tools.workflow_tools.mcp_calltime", fake_calltime,
     )
 
 
@@ -71,7 +71,7 @@ async def test_workflow_get_outcome_returns_validated_struct(
     async def fake_get(key: str):
         return payload
 
-    _patch_dhara_get(monkeypatch, fake_get)
+    _patch_mcp_get(monkeypatch, fake_get)
     result = await workflow_get_outcome("wf-abc")
     assert isinstance(result, WorkflowOutcome)
     assert result.workflow_id == "wf-abc"
@@ -87,7 +87,7 @@ async def test_workflow_get_outcome_returns_none_when_missing(
     async def fake_get(key: str):
         return None
 
-    _patch_dhara_get(monkeypatch, fake_get)
+    _patch_mcp_get(monkeypatch, fake_get)
     result = await workflow_get_outcome("wf-missing")
     assert result is None
 
@@ -123,7 +123,7 @@ async def test_registered_tool_delegates_to_module_function(
     async def fake_get(key: str):
         return payload
 
-    _patch_dhara_get(monkeypatch, fake_get)
+    _patch_mcp_get(monkeypatch, fake_get)
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
@@ -150,7 +150,7 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
     arbitrary keys via ``workflow_id="../../etc/passwd"``.
     """
     dhara_get = AsyncMock()
-    _patch_dhara_get(monkeypatch, dhara_get)
+    _patch_mcp_get(monkeypatch, dhara_get)
 
     result = await workflow_get_outcome("../../etc/passwd")
 
@@ -172,7 +172,7 @@ async def test_registered_tool_rejects_path_traversal(
     module-level coroutine.
     """
     dhara_get = AsyncMock()
-    _patch_dhara_get(monkeypatch, dhara_get)
+    _patch_mcp_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -198,7 +198,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock()
-    _patch_dhara_get(monkeypatch, dhara_get)
+    _patch_mcp_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -224,7 +224,7 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
     dhara_get = AsyncMock(return_value=None)
-    _patch_dhara_get(monkeypatch, dhara_get)
+    _patch_mcp_get(monkeypatch, dhara_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())

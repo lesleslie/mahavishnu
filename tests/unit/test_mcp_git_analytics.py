@@ -2,7 +2,7 @@
 
 The module exposes ``register_git_analytics_tools(server, mcp_client,
 rbac_manager)`` which decorates 3 FastMCP tools. All tools delegate to
-``DharaAdapter`` and (optionally) ``SessionBuddyIntegration``; we mock
+``MCPAdapter`` and (optionally) ``SessionBuddyIntegration``; we mock
 both via ``patch``.
 """
 
@@ -41,7 +41,7 @@ class _StubMCP:
 
     def __init__(self) -> None:
         self.tools: dict[str, object] = {}
-        self.app = MagicMock(dhara_url="http://dhara:8683")
+        self.app = MagicMock(mcp_url="http://mcp:8683")
 
     def tool(self):
         def decorator(fn):
@@ -68,7 +68,7 @@ def registered(server):
 
 @pytest.fixture
 def fake_dhara():
-    """Return a MagicMock for the DharaAdapter constructor."""
+    """Return a MagicMock for the MCPAdapter constructor."""
     instance = MagicMock()
     instance.query_time_series = AsyncMock(return_value=[])
     instance.aggregate_patterns = AsyncMock(return_value=[])
@@ -114,7 +114,7 @@ class TestGitVelocityDashboard:
             ]
         )
 
-        with patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
             result = await registered.tools["get_git_velocity_dashboard"](
                 repo_paths=["/work/repo-a", "/work/repo-b"],
                 days_back=10,
@@ -135,7 +135,7 @@ class TestGitVelocityDashboard:
     async def test_missing_app_returns_error(self, registered, fake_dhara):
         """Without a server.app attribute, return error dict."""
         registered.app = None
-        with patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
             result = await registered.tools["get_git_velocity_dashboard"](
                 repo_paths=["/x/repo-a"], user_id="u1"
             )
@@ -144,9 +144,9 @@ class TestGitVelocityDashboard:
 
     @pytest.mark.asyncio
     async def test_exception_returns_error(self, registered, fake_dhara):
-        """An exception in DharaAdapter should be caught and returned as error."""
+        """An exception in MCPAdapter should be caught and returned as error."""
         with patch(
-            "mahavishnu.core.dhara_adapter.DharaAdapter",
+            "mahavishnu.core.mcp_adapter.MCPAdapter",
             side_effect=RuntimeError("boom"),
         ):
             result = await registered.tools["get_git_velocity_dashboard"](
@@ -181,7 +181,7 @@ class TestRepositoryHealth:
             return instance
 
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=_make_sb_integration(),
@@ -209,7 +209,7 @@ class TestRepositoryHealth:
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 100})
 
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -230,7 +230,7 @@ class TestRepositoryHealth:
             return_value=[{"stale_prs": 0, "stale_branches": 0, "open_prs": 0}]
         )
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 side_effect=RuntimeError("down"),
@@ -246,7 +246,7 @@ class TestRepositoryHealth:
     async def test_missing_app(self, registered, fake_dhara):
         """Missing server.app should yield error dict."""
         registered.app = None
-        with patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
             result = await registered.tools["get_repository_health"](
                 repo_path="/x/repo-a", user_id="u1"
             )
@@ -275,7 +275,7 @@ class TestCrossProjectPatterns:
         sb.get_quality_patterns = AsyncMock(return_value=[])
 
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -309,7 +309,7 @@ class TestCrossProjectPatterns:
             return_value=[{"severity": "high", "repository": "repo-a"}]
         )
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -331,7 +331,7 @@ class TestCrossProjectPatterns:
         sb.detect_patterns = AsyncMock(return_value=[{"name": "wf1", "success_rate": 50}])
         sb.get_quality_patterns = AsyncMock(return_value=[])
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -346,7 +346,7 @@ class TestCrossProjectPatterns:
     async def test_exception_caught(self, registered, fake_dhara):
         """An exception should be reported as an error result, not raise."""
         with patch(
-            "mahavishnu.core.dhara_adapter.DharaAdapter",
+            "mahavishnu.core.mcp_adapter.MCPAdapter",
             side_effect=RuntimeError("nope"),
         ):
             result = await registered.tools["get_cross_project_patterns"](user_id="u1")
@@ -371,7 +371,7 @@ class TestHealthScoreEdgeCases:
         sb = MagicMock()
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 0})
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -391,7 +391,7 @@ class TestHealthScoreEdgeCases:
         sb = MagicMock()
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 100})
         with (
-            patch("mahavishnu.core.dhara_adapter.DharaAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,

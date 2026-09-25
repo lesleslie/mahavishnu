@@ -399,7 +399,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         settings: MahavishnuSettings | None = None,
         storage: LocalStorageAdapter | None = None,
         cache: WorktreeCache | None = None,
-        dhara_client: Any | None = None,
+        mcp_client: Any | None = None,
     ) -> None:
         """v4 constructor (ADR 015 v4 §18 Phase 2).
 
@@ -412,7 +412,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         self._settings = settings
         self._storage = storage
         self._cache = cache
-        self._dhara_client = dhara_client
+        self._mcp_client = mcp_client
 
     def provider_name(self) -> str:
         return "LocalWorktreeProvider"
@@ -464,7 +464,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         base_ref: str,
         principal,
     ) -> WorktreeHandle:
-        """Create worktree, persist tar.zst bundle via streaming, register in Dhara.
+        """Create worktree, persist tar.zst bundle via streaming, register in MCP.
 
         Phase 3 (Task C.6) implementation:
 
@@ -475,8 +475,8 @@ class LocalWorktreeProvider(WorktreeProvider):
            storage backend with sha256 + size metadata.
         4. Validate storage-key length (MHV-220) and stopgap size
            (MHV-221) BEFORE any upload.
-        5. Register the WorktreeHandle in Dhara via
-           ``dhara_registry.register_handles``.
+        5. Register the WorktreeHandle in MCP via
+           ``mcp_registry.register_handles``.
         6. Emit ``streaming_op`` (SERIALIZE) + ``worktree_op`` (create)
            metrics with success=True on success, success=False on any
            exception.
@@ -538,7 +538,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 sha256=sha256,
                 size=size,
             )
-            await self._register_handle_with_dhara(handle, principal)
+            await self._register_handle_with_mcp(handle, principal)
             self._record_create_metric(start, principal, success=True)
             return handle
         except Exception:
@@ -657,13 +657,13 @@ class LocalWorktreeProvider(WorktreeProvider):
             provenance="v4",
         )
 
-    async def _register_handle_with_dhara(self, handle: Any, principal: Any) -> None:
-        """Forward ``handle`` to Dhara's registry when a client is configured."""
-        from .dhara_registry import register_handles
+    async def _register_handle_with_mcp(self, handle: Any, principal: Any) -> None:
+        """Forward ``handle`` to MCP's registry when a client is configured."""
+        from .mcp_registry import register_handles
 
-        if self._dhara_client is None:
+        if self._mcp_client is None:
             return
-        await register_handles(self._dhara_client, [handle], caller=principal)
+        await register_handles(self._mcp_client, [handle], caller=principal)
 
     @staticmethod
     def _record_create_metric(start: float, principal: Any, *, success: bool) -> None:
@@ -962,10 +962,10 @@ class LocalWorktreeProvider(WorktreeProvider):
         *,
         caller: Principal,
     ) -> bool:
-        """Remove worktree: git rm + cache invalidate + Dhara remove (§18 Phase 2).
+        """Remove worktree: git rm + cache invalidate + MCP remove (§18 Phase 2).
 
         ``caller`` is the authenticated session principal — NOT
-        ``handle.principal``. Dhara's ``remove_handle`` uses ``caller``
+        ``handle.principal``. MCP's ``remove_handle`` uses ``caller``
         for the ownership + scope check; passing the handle's
         principal would defeat that check (the owner could remove
         their own handle, but a session principal could impersonate
@@ -974,7 +974,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         """
         from mahavishnu.observability.metrics import record_cache_invalidation
 
-        from .dhara_registry import remove_handle as dhara_remove
+        from .mcp_registry import remove_handle as mcp_remove
         from .types import LocalWorktreeRef
 
         if not isinstance(handle.storage_ref, LocalWorktreeRef):
@@ -985,7 +985,7 @@ class LocalWorktreeProvider(WorktreeProvider):
 
         # 1. git worktree remove (idempotent: missing path is fine)
         # BLE001: best-effort cleanup — a stale on-disk worktree is
-        # not a hard error; the cache + Dhara removals below still run.
+        # not a hard error; the cache + MCP removals below still run.
         try:
             await _remove_worktree_via_git(
                 self._git_executable,
@@ -1004,10 +1004,10 @@ class LocalWorktreeProvider(WorktreeProvider):
             count = await self._cache.invalidate_handle(handle.handle_id)
             record_cache_invalidation(backend="local", reason="remove_handle", count=count)
 
-        # 3. Dhara registry remove (best-effort; auth errors propagate)
-        if self._dhara_client is not None:
-            await dhara_remove(
-                self._dhara_client,
+        # 3. MCP registry remove (best-effort; auth errors propagate)
+        if self._mcp_client is not None:
+            await mcp_remove(
+                self._mcp_client,
                 handle.handle_id,
                 caller=caller,
             )
@@ -1020,27 +1020,27 @@ class LocalWorktreeProvider(WorktreeProvider):
         repo: str | None = None,
         caller=None,
     ) -> list:
-        """Delegate to Dhara registry (filter by principal/repo).
+        """Delegate to MCP registry (filter by principal/repo).
 
         ``caller`` is REQUIRED — we never synthesize an authenticated
         principal. If you want to list your own handles, pass
         ``caller=Principal(uid=..., name=..., scopes=...)`` from a
-        verified session. The Dhara ``list_handles`` defaults
+        verified session. The MCP ``list_handles`` defaults
         ``principal=caller.name`` when no explicit principal is passed,
         so dropping ``principal=`` here is correct.
         """
-        from .dhara_registry import list_handles as dhara_list
+        from .mcp_registry import list_handles as mcp_list
 
         if caller is None:
             raise PermissionError(
                 "LocalWorktreeProvider.list_handles requires a caller "
                 "(no anonymous name-based listing)"
             )
-        if self._dhara_client is None:
+        if self._mcp_client is None:
             return []
 
-        return await dhara_list(
-            self._dhara_client,
+        return await mcp_list(
+            self._mcp_client,
             principal=None,
             repo=repo,
             caller=caller,

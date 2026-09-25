@@ -9,12 +9,12 @@ This module ships:
 - ``TenantContextPack`` frozen dataclass (versioned, append-only by design)
 - ``TenantContextPublisher`` protocol (interface)
 - ``InMemoryTenantContextPublisher`` implementation for tests + dev
-- ``DharaTenantContextPublisher`` stub that raises ``NotImplementedError``
+- ``MCPTenantContextPublisher`` stub that raises ``NotImplementedError``
 - ``get_default_tenant_id`` resolver (env: ``MAHAVISHNU_DEFAULT_TENANT``)
 
-The Dhara-backed implementation is a follow-up that lands with Workstream C
+The MCP-backed implementation is a follow-up that lands with Workstream C
 (substrate: HTTP CRUD endpoint ``/tenants/<id>/context-versions`` is blocked).
-The stub keeps the Dhara dependency documented and exercises the call site
+The stub keeps the MCP dependency documented and exercises the call site
 at import time.
 """
 
@@ -38,7 +38,7 @@ class TenantContextPack:
     no edits, no deletes). ``content_hash`` is the SHA-256 of the body
     at the moment of publication.
 
-    Mirrors the Dhara ``tenant_context_versions`` table schema (Spec #9).
+    Mirrors the MCP ``tenant_context_versions`` table schema (Spec #9).
     """
 
     tenant_id: str
@@ -62,7 +62,7 @@ def compute_content_hash(body: str) -> str:
 class TenantContextPublisher(Protocol):
     """Interface for publishing tenant context packs.
 
-    The Dhara implementation will satisfy this protocol by inserting rows
+    The MCP implementation will satisfy this protocol by inserting rows
     into ``tenant_context_versions`` via the HTTP CRUD endpoint
     ``/tenants/<tenant_id>/context-versions``. Until then,
     ``InMemoryTenantContextPublisher`` is the production reference
@@ -87,7 +87,7 @@ class TenantContextPublisher(Protocol):
 class InMemoryTenantContextPublisher:
     """In-memory implementation of :class:`TenantContextPublisher`.
 
-    Suitable for unit tests, local development, and the dhara-still-pending
+    Suitable for unit tests, local development, and the mcp-still-pending
     Workstream C. Per-tenant version counters are tracked in a dict so
     version sequencing is preserved within a single process instance.
     """
@@ -113,16 +113,16 @@ class InMemoryTenantContextPublisher:
         )
 
 
-class DharaTenantContextPublisher:
-    """Stub for the Dhara-backed implementation.
+class MCPTenantContextPublisher:
+    """Stub for the MCP-backed implementation.
 
-    The Dhara HTTP CRUD endpoint ``/tenants/<tenant_id>/context-versions``
+    The MCP HTTP CRUD endpoint ``/tenants/<tenant_id>/context-versions``
     is the durable backing store for tenant context packs. Until the
-    Dhara substrate lands (Workstream C), this stub raises
+    MCP substrate lands (Workstream C), this stub raises
     ``NotImplementedError`` so the call site is documented and import-time
-    visible, but no Dhara write occurs.
+    visible, but no MCP write occurs.
 
-    TODO(Workstream C - substrate): replace ``publish`` with a Dhara HTTP
+    TODO(Workstream C - substrate): replace ``publish`` with a MCP HTTP
     POST to ``/tenants/<tenant_id>/context-versions`` using the payload:
 
         {
@@ -144,7 +144,7 @@ class DharaTenantContextPublisher:
         published_by: str,
     ) -> TenantContextPack:
         raise NotImplementedError(
-            "DharaTenantContextPublisher is a stub. The Dhara-backed "
+            "MCPTenantContextPublisher is a stub. The MCP-backed "
             "/tenants/<id>/context-versions endpoint is blocked on "
             "Workstream C (substrate). Use InMemoryTenantContextPublisher "
             "until then. "
@@ -178,7 +178,7 @@ def get_default_tenant_id() -> str:
 #
 #     import httpx
 #     async with httpx.AsyncClient(
-#         base_url=os.environ.get("MAHAVISHNU_DHARA_URL", "http://localhost:8683"),
+#         base_url=os.environ.get("MAHAVISHNU_MCP_URL", "http://localhost:8683"),
 #         timeout=httpx.Timeout(5.0),
 #     ) as client:
 #         resp = await client.post(
@@ -204,7 +204,7 @@ def publish_via_http(
     """HTTP CRUD stub for ``/tenants/<tenant_id>/context-versions``.
 
     TODO(Workstream C - substrate): replace with a real httpx POST to
-    ``/tenants/<tenant_id>/context-versions`` once the Dhara HTTP CRUD
+    ``/tenants/<tenant_id>/context-versions`` once the MCP HTTP CRUD
     endpoint ships. For now, raise so accidental wiring is caught at
     runtime.
     """
@@ -218,8 +218,8 @@ def publish_via_http(
 __all__ = [
     "DEFAULT_TENANT_ENV_VAR",
     "DEFAULT_TENANT_ID",
-    "DharaTenantContextPublisher",
     "InMemoryTenantContextPublisher",
+    "MCPTenantContextPublisher",
     "TenantContextPack",
     "TenantContextPublisher",
     "compute_content_hash",

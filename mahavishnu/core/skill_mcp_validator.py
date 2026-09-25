@@ -56,7 +56,7 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__mahavishnu__get_workflow_status",
         "mcp__mahavishnu__index_code_graph",
         "mcp__mahavishnu__search_documentation",
-        # dhara (port 8683)
+        # mcp (port 8683)
         "mcp__dhara__put",
         "mcp__dhara__get",
         "mcp__dhara__list_adapters",
@@ -94,7 +94,7 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__session-buddy__start",
         "mcp__session-buddy__end",
         "mcp__session-buddy__status",
-        # dhara (port 8683) — additional live tools
+        # mcp (port 8683) — additional live tools
         "mcp__dhara__get_adapter_health",
         "mcp__dhara__record_time_series",
         "mcp__dhara__query_time_series",
@@ -140,12 +140,12 @@ KNOWN_PORTS: dict[str, int] = {
     "session_buddy": 8678,
     "mahavishnu": 8680,
     "akosha": 8682,
-    "dhara": 8683,
+    "mcp": 8683,
 }
 
 _MCP_REF_RE = re.compile(r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*")
 _PORT_RE = re.compile(
-    r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|dhara)\b[^.\n]*?\bport\s+(\d{4,5})",
+    r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|mcp)\b[^.\n]*?\bport\s+(\d{4,5})",
     re.IGNORECASE,
 )
 

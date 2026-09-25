@@ -335,7 +335,7 @@ query_local_traces(task_class: str, time_range_minutes: int = 60) -> list[TraceS
 **New: `mahavishnu/pools/routing_fitness.py`**
 
 - `RoutingFitnessReader` — reads signals from Dhara via `list_prefix()`
-- Uses `DharaStateBackend` (inherits circuit breaker protection)
+- Uses `MCPStateBackend` (inherits circuit breaker protection)
 - `get_fitness_signals(task_class: str) -> dict[str, FitnessSignal]`
 
 **Modified: `mahavishnu/pools/manager.py`**

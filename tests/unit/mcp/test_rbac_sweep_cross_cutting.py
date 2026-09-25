@@ -72,7 +72,7 @@ class _StubMCP:
 
     The session_buddy and git_analytics tool bodies do
     ``getattr(server, "app", None)`` and (git_analytics) read
-    ``app.dhara_url``, so we expose an ``app`` MagicMock with that
+    ``app.mcp_url``, so we expose an ``app`` MagicMock with that
     attribute so the tools reach the auth-gate short-circuit instead
     of blowing up on a missing attribute.
     """
@@ -80,7 +80,7 @@ class _StubMCP:
     def __init__(self) -> None:
         self.tools: dict[str, object] = {}
         self.app = MagicMock(name="app")
-        self.app.dhara_url = "http://dhara:8683"
+        self.app.mcp_url = "http://mcp:8683"
 
     def tool(self, *args: Any, **kwargs: Any):
         def decorator(fn):

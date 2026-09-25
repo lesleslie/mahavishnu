@@ -43,7 +43,7 @@ DOCSTRING_REFERENCE_RE = re.compile(
 )
 
 PYTEST_MARKER_REFERENCE_RE = re.compile(
-    r"@pytest\.marker\.req\(\s*\[(?P<ids>[^\]]*)\]\s*\)",
+    r"@pytest\.mark\.req\(\s*\[(?P<ids>[^\]]*)\]\s\)",
     re.IGNORECASE,
 )
 
@@ -179,9 +179,11 @@ def compute_diff(
 
 
 def _matches_excluded(path: Path, exclude_globs: list[str]) -> bool:
-    """Return True if any exclude pattern matches the path (suffix glob)."""
-    p_str = str(path)
-    return any(Path(p_str).match(pattern) or p_str.endswith(pattern) for pattern in exclude_globs)
+    """Return True if any exclude pattern matches the path.
+
+    Uses ``Path.full_match`` (Python 3.13+) for proper ``**`` glob semantics.
+    """
+    return any(path.full_match(pattern) for pattern in exclude_globs)
 
 
 def _collect_source_paths(root: Path, exclude_globs: list[str]) -> list[Path]:
@@ -191,8 +193,7 @@ def _collect_source_paths(root: Path, exclude_globs: list[str]) -> list[Path]:
     paths: list[Path] = []
     for p in root.rglob("*.py"):
         rel = p.relative_to(root) if p.is_relative_to(root) else p
-        rel_str = str(rel)
-        if any(rel_str.endswith(pattern.lstrip("*")) for pattern in exclude_globs):
+        if _matches_excluded(rel, exclude_globs):
             continue
         paths.append(p)
     return paths
@@ -234,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
             "**/snapshots/**",
             "**/__pycache__/**",
             "**/.venv/**",
+            "**/.claude/worktrees/**",
             # Self-exclude: the regex patterns themselves contain "REQ-001"
             # as examples, which would otherwise produce a phantom.
             "**/audit_requirements.py",

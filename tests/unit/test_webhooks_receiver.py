@@ -1,9 +1,9 @@
-"""Verify webhook receiver persists validated WebhookIngress via dhara.put.
+"""Verify webhook receiver persists validated WebhookIngress via mcp.put.
 
 Mirrors the canonical substrate-compat test pattern used by
 ``tests/unit/workflow/test_outcome_writer.py`` and
 ``tests/unit/approval/test_decision_writer.py`` — a single fixture
-substitutes ``dhara.put`` with a capture mock so the receiver's
+substitutes ``mcp.put`` with a capture mock so the receiver's
 happy/invalid paths can be exercised without a real substrate.
 """
 
@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 import logging
 from unittest.mock import MagicMock
 
-import dhara
+import mcp
 from fastapi.testclient import TestClient
 import pytest
 
@@ -23,17 +23,17 @@ from mahavishnu.webhooks.receiver import app
 
 @pytest.fixture
 def client_and_storage(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, MagicMock]:
-    """Return ``(TestClient, captured_dhara_put_mock)``.
+    """Return ``(TestClient, captured_mcp_put_mock)``.
 
-    The receiver resolves ``dhara.put`` via
-    :func:`mahavishnu.core._dhara_substrate_compat.dhara_calltime` at request
-    time, so we patch the attribute on the live ``dhara`` module (not on
-    the receiver module — the receiver no longer imports ``dhara`` as a
+    The receiver resolves ``mcp.put`` via
+    :func:`mahavishnu.core._mcp_substrate_compat.mcp_calltime` at request
+    time, so we patch the attribute on the live ``mcp`` module (not on
+    the receiver module — the receiver no longer imports ``mcp`` as a
     name).
     """
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    monkeypatch.setattr(dhara, "put", mock_put, raising=False)
+    monkeypatch.setattr(mcp, "put", mock_put, raising=False)
     return TestClient(app), mock_put
 
 
@@ -50,7 +50,7 @@ def _valid_payload(webhook_id: str = "evt-123") -> dict[str, object]:
 def test_post_webhook_emits_validated_struct(
     client_and_storage: tuple[TestClient, MagicMock],
 ) -> None:
-    """Valid payload → 202 + single dhara.put carrying a WebhookIngress."""
+    """Valid payload → 202 + single mcp.put carrying a WebhookIngress."""
     client, mock_put = client_and_storage
     payload = {
         "webhook_id": "evt-123",
@@ -77,7 +77,7 @@ def test_post_webhook_emits_validated_struct(
 def test_post_webhook_rejects_invalid_payload(
     client_and_storage: tuple[TestClient, MagicMock],
 ) -> None:
-    """Missing required ``webhook_id`` → 422 + zero dhara.put calls."""
+    """Missing required ``webhook_id`` → 422 + zero mcp.put calls."""
     client, mock_put = client_and_storage
     # `source` is present (so the JSON parses) but `webhook_id` is missing,
     # which the substrate treats as a required-field violation.
@@ -86,17 +86,17 @@ def test_post_webhook_rejects_invalid_payload(
     assert mock_put.call_count == 0
 
 
-def test_post_webhook_emits_warning_when_dhara_put_unbound(
+def test_post_webhook_emits_warning_when_mcp_put_unbound(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """dhara.put=None → 202 + structured warning with reason='dhara.put_unbound'.
+    """mcp.put=None → 202 + structured warning with reason='mcp.put_unbound'.
 
     Mirrors the approval_log_persistence_skipped pattern from
     ``decision_writer.py``: when the substrate attribute is missing the
     receiver must skip persistence gracefully instead of raising TypeError.
     """
-    monkeypatch.setattr(dhara, "put", None, raising=False)
+    monkeypatch.setattr(mcp, "put", None, raising=False)
     client = TestClient(app)
 
     with caplog.at_level(logging.WARNING, logger="mahavishnu.webhooks.receiver"):
@@ -112,7 +112,7 @@ def test_post_webhook_emits_warning_when_dhara_put_unbound(
     # rather than assigning them as LogRecord attributes, so the structured
     # fields are asserted by substring presence in the message body. This
     # mirrors the approach in tests/unit/approval/test_decision_writer.py.
-    assert "'reason': 'dhara.put_unbound'" in record.message
+    assert "'reason': 'mcp.put_unbound'" in record.message
     assert "'webhook_id': 'evt-unbound'" in record.message
     # Observability rule: warning log must not carry str(exception).
     assert not hasattr(record, "exc_info") or record.exc_info is None
@@ -127,7 +127,7 @@ def test_post_webhook_falls_back_to_in_memory_when_v1_disabled(
     Ensures the rollback lever named in the plan's rollback-signal matrix
     short-circuits persistence before the substrate-compat gate runs.
     """
-    monkeypatch.setattr(dhara, "put", MagicMock(), raising=False)
+    monkeypatch.setattr(mcp, "put", MagicMock(), raising=False)
     monkeypatch.setenv("WEBHOOK_DURABLE_V1_ENABLED", "false")
     client = TestClient(app)
 

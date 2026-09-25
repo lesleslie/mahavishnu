@@ -43,11 +43,11 @@ async def wait_for_dependencies(app: Any) -> bool:
             },
         )
 
-    if getattr(app, "_dhara_state", None) is not None:
-        available = await app._dhara_state.probe()
+    if getattr(app, "_mcp_state", None) is not None:
+        available = await app._mcp_state.probe()
         if available:
-            await app._recover_workflow_state_from_dhara()
-            await app._recover_approvals_from_dhara()
+            await app._recover_workflow_state_from_mcp()
+            await app._recover_approvals_from_mcp()
 
     if getattr(app.config, "unified_validation_enabled", False):
         try:

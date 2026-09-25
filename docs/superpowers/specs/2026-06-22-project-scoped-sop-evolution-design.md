@@ -10,7 +10,7 @@ blocks_on: []
 
 # Project-Scoped SOP Evolution v1.0 — Design
 
-**Status:** **DEFERRED** — blocked on Dhara SQL `execute()` / `query()` surface (this spec imports `from mahavishnu.core.dhara_client import execute, query` for `skill_transitions` table inserts and reads; see `mahavishnu/core/dhara_adapter.py` for the current key-value-only surface). Spec 1-3 gate persistence (C3 outstanding) is the additional dependency: failure-mode catalog can't fire without `exit_reason`, `precommitment_slate`, `confidence_was_capped`, `unchecked_sources[].access_status`, `adjacent_problems[].status` being persisted by Specs #1-3. <!-- legacy status: DEFERRED — see YAML frontmatter -->
+**Status:** **DEFERRED** — blocked on Dhara SQL `execute()` / `query()` surface (this spec imports `from mahavishnu.core.mcp_client import execute, query` for `skill_transitions` table inserts and reads; see `mahavishnu/core/dhara_adapter.py` for the current key-value-only surface). Spec 1-3 gate persistence (C3 outstanding) is the additional dependency: failure-mode catalog can't fire without `exit_reason`, `precommitment_slate`, `confidence_was_capped`, `unchecked_sources[].access_status`, `adjacent_problems[].status` being persisted by Specs #1-3. <!-- legacy status: DEFERRED — see YAML frontmatter -->
 **Phase:** 3 (Adjacent)
 **Source:** `Building a Production Agent Harness` — "Loop 2 — Cross-case behavioral reinforcement." Per-project SOP that evolves based on the team's specific failure-mode frequencies. Each project's SOP teaches the next case what the previous cases failed at.
 
@@ -126,7 +126,7 @@ ______________________________________________________________________
 
 import uuid
 
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 from mahavishnu.core.events.subscribers.report_persister import (
     get_iteration_history,
     get_workflow_report,
@@ -184,7 +184,7 @@ ______________________________________________________________________
 from collections import Counter
 from pathlib import Path
 
-from mahavishnu.core.dhara_client import query
+from mahavishnu.core.mcp_client import query
 
 SOP_PATH = Path.home() / ".mahavishnu" / "sop.md"
 SOP_STAGING_PATH = Path.home() / ".mahavishnu" / "sop.staging.md"

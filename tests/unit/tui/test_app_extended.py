@@ -224,7 +224,7 @@ async def test_get_report_builds_service_configs_from_settings(
 async def test_get_report_picks_up_oneiric_mcp_for_dhara(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``oneiric_mcp.url`` populates the dhara service config."""
+    """``oneiric_mcp.url`` populates the mcp service config."""
     from mahavishnu.core import config as core_config
     from mahavishnu.core import context as core_context
     from mahavishnu.core import ecosystem_status as core_ecosystem
@@ -232,7 +232,7 @@ async def test_get_report_picks_up_oneiric_mcp_for_dhara(
     settings = MagicMock()
     settings.session_buddy_url = None
     settings.akosha_url = None
-    settings.oneiric_mcp = MagicMock(url="http://dhara.example/mcp", base_url=None)
+    settings.oneiric_mcp = MagicMock(url="http://mcp.example/mcp", base_url=None)
     monkeypatch.setattr(core_config, "MahavishnuSettings", lambda: settings)
     monkeypatch.setattr(core_context, "get_app_from_context", lambda: None)
 
@@ -249,7 +249,7 @@ async def test_get_report_picks_up_oneiric_mcp_for_dhara(
     from mahavishnu.tui.app import _get_report
 
     await _get_report()
-    assert "dhara" in (captured["service_configs"] or {})
+    assert "mcp" in (captured["service_configs"] or {})
 
 
 @pytest.mark.unit
@@ -264,7 +264,7 @@ async def test_get_report_falls_back_to_oneiric_mcp_base_url(
     settings = MagicMock()
     settings.session_buddy_url = None
     settings.akosha_url = None
-    settings.oneiric_mcp = MagicMock(url=None, base_url="http://dhara.example/mcp")
+    settings.oneiric_mcp = MagicMock(url=None, base_url="http://mcp.example/mcp")
     monkeypatch.setattr(core_config, "MahavishnuSettings", lambda: settings)
     monkeypatch.setattr(core_context, "get_app_from_context", lambda: None)
 
@@ -281,7 +281,7 @@ async def test_get_report_falls_back_to_oneiric_mcp_base_url(
     from mahavishnu.tui.app import _get_report
 
     await _get_report()
-    assert "dhara" in (captured["service_configs"] or {})
+    assert "mcp" in (captured["service_configs"] or {})
 
 
 @pytest.mark.unit
@@ -1936,7 +1936,7 @@ def test_component_urls_returns_default_dict_when_settings_fail(
     from mahavishnu.tui.app import _component_urls
 
     result = _component_urls()
-    assert result == {"crackerjack": None, "akosha": None, "dhara": None, "sb-metrics": None}
+    assert result == {"crackerjack": None, "akosha": None, "mcp": None, "sb-metrics": None}
 
 
 @pytest.mark.unit
@@ -1950,7 +1950,7 @@ def test_component_urls_resolves_each_field() -> None:
         akosha_url="http://ak.local/mcp",
         session_buddy_url="http://sb.local/mcp",
     )
-    settings.oneiric_mcp = MagicMock(url="http://dhara.local/mcp", base_url=None)
+    settings.oneiric_mcp = MagicMock(url="http://mcp.local/mcp", base_url=None)
     settings.session_buddy_url = None  # legacy path ignored
     settings.akosha_url = None  # legacy path ignored
 
@@ -1970,7 +1970,7 @@ def test_component_urls_resolves_each_field() -> None:
         assert result == {
             "crackerjack": "http://cj.local",
             "akosha": "http://ak.local",
-            "dhara": "http://dhara.local",
+            "mcp": "http://mcp.local",
             "sb-metrics": "http://sb.local",
         }
     finally:
@@ -1995,7 +1995,7 @@ def test_component_urls_handles_missing_sub_configs() -> None:
         assert result == {
             "crackerjack": None,
             "akosha": None,
-            "dhara": None,
+            "mcp": None,
             "sb-metrics": None,
         }
     finally:
@@ -2972,7 +2972,7 @@ async def test_dashboard_app_probe_and_mount_optional_tabs_no_urls(
     from mahavishnu.tui.app import DashboardApp
 
     def _empty_urls() -> dict[str, Any]:
-        return {"crackerjack": None, "akosha": None, "dhara": None, "sb-metrics": None}
+        return {"crackerjack": None, "akosha": None, "mcp": None, "sb-metrics": None}
 
     monkeypatch.setattr(app_module, "_component_urls", _empty_urls)
 
@@ -2997,7 +2997,7 @@ async def test_dashboard_app_probe_and_mount_optional_tabs_with_url(
         return {
             "crackerjack": "http://cj.local",
             "akosha": None,
-            "dhara": None,
+            "mcp": None,
             "sb-metrics": None,
         }
 
@@ -3076,7 +3076,7 @@ async def test_dashboard_app_on_mount_starts_probe_worker(
     monkeypatch.setattr(DashboardApp, "_probe_and_mount_optional_tabs", _mark_probe)
 
     def _empty_urls() -> dict[str, Any]:
-        return {"crackerjack": None, "akosha": None, "dhara": None, "sb-metrics": None}
+        return {"crackerjack": None, "akosha": None, "mcp": None, "sb-metrics": None}
 
     monkeypatch.setattr(app_module, "_component_urls", _empty_urls)
 

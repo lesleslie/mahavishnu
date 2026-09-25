@@ -1,10 +1,10 @@
-"""Settle persistence layer — Dhara-first, dead-letter fallback.
+"""Settle persistence layer — MCP-first, dead-letter fallback.
 
 This module is the ONLY place that writes settle records to durable
 storage. The contract is:
 
 1. ``persist_initial`` writes the new record BEFORE the caller touches
-   any filesystem. If Dhara is unavailable, the record goes to a
+   any filesystem. If MCP is unavailable, the record goes to a
    local dead-letter file and the call still returns the record — same
    pattern as :func:`mahavishnu.mcp.tools.pool_tools._dead_letter_append`
    but keyed by ``run_ref`` instead of ``workflow_id``.
@@ -12,8 +12,8 @@ storage. The contract is:
    key, OVERWRITING the prior record. This is intentional — the
    transition log lives inside the record, so write-once-per-action
    captures the full audit trail.
-3. ``load_record`` reads from Dhara first and falls back to the
-   dead-letter file when Dhara is unavailable or returns nothing.
+3. ``load_record`` reads from MCP first and falls back to the
+   dead-letter file when MCP is unavailable or returns nothing.
 """
 
 from __future__ import annotations
@@ -26,13 +26,13 @@ from typing import TYPE_CHECKING
 from mahavishnu.settle.state_machine import SettleRunRecord
 
 if TYPE_CHECKING:
-    from mahavishnu.core.state_backends.dhara import DharaStateBackend
+    from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
 logger = logging.getLogger(__name__)
 
 
-# Canonical Dhara key schema for settle records. Follows the project's
-# existing {namespace}/v1/{id} convention (see :mod:`mahavishnu.core.state_backends.dhara`).
+# Canonical MCP key schema for settle records. Follows the project's
+# existing {namespace}/v1/{id} convention (see :mod:`mahavishnu.core.state_backends.mcp`).
 SETTLE_KEY_PREFIX = "settle/v1/"
 
 # Local dead-letter directory, mirror of ``~/.mahavishnu/async-dead-letter/``
@@ -41,7 +41,7 @@ SETTLE_DEAD_LETTER_DIR = Path.home() / ".mahavishnu" / "settle-dead-letter"
 
 
 def settle_key(run_ref: str) -> str:
-    """Return the canonical Dhara key for a settle run."""
+    """Return the canonical MCP key for a settle run."""
     return f"{SETTLE_KEY_PREFIX}{run_ref}"
 
 
@@ -93,26 +93,26 @@ def _dead_letter_load(run_ref: str) -> SettleRunRecord | None:
 def persist_initial(
     record: SettleRunRecord,
     *,
-    dhara: DharaStateBackend | None = None,
+    mcp: MCPStateBackend | None = None,
 ) -> SettleRunRecord:
     """Persist a newly-created (state=PROPOSED) record.
 
     MUST be called BEFORE any filesystem side-effect (worker file write,
-    merge, etc.). If Dhara is unavailable or fails, the record is
+    merge, etc.). If MCP is unavailable or fails, the record is
     mirrored to the dead-letter file so the run can still be recovered.
     """
-    if dhara is not None:
+    if mcp is not None:
         try:
-            # DharaStateBackend.put is async; we await via asyncio.run in
+            # MCPStateBackend.put is async; we await via asyncio.run in
             # the caller (the worker_contract_tools layer). Here we just
             # check availability and fall back gracefully if None.
             logger.debug(
-                "settle_persistence: persisting initial run_ref=%s to Dhara",
+                "settle_persistence: persisting initial run_ref=%s to MCP",
                 record.run_ref,
             )
         except Exception:
             logger.exception(
-                "settle_persistence: dhara.put failed initial run_ref=%s",
+                "settle_persistence: mcp.put failed initial run_ref=%s",
                 record.run_ref,
             )
     _dead_letter_append(record)
@@ -122,20 +122,20 @@ def persist_initial(
 async def persist_initial_async(
     record: SettleRunRecord,
     *,
-    dhara: DharaStateBackend | None = None,
+    mcp: MCPStateBackend | None = None,
 ) -> SettleRunRecord:
-    """Async variant of :func:`persist_initial` — actually writes to Dhara.
+    """Async variant of :func:`persist_initial` — actually writes to MCP.
 
-    Falls back to dead-letter if Dhara raises.
+    Falls back to dead-letter if MCP raises.
     """
     payload = record.to_dict()
-    if dhara is not None:
+    if mcp is not None:
         try:
-            await dhara.put(settle_key(record.run_ref), payload)
+            await mcp.put(settle_key(record.run_ref), payload)
             return record
         except Exception:
             logger.exception(
-                "settle_persistence: dhara.put failed initial run_ref=%s",
+                "settle_persistence: mcp.put failed initial run_ref=%s",
                 record.run_ref,
             )
     _dead_letter_append(record)
@@ -145,21 +145,21 @@ async def persist_initial_async(
 async def persist_transition(
     record: SettleRunRecord,
     *,
-    dhara: DharaStateBackend | None = None,
+    mcp: MCPStateBackend | None = None,
 ) -> SettleRunRecord:
     """Persist a post-transition record (overwrites prior state at the key).
 
     The transition log lives inside the record, so overwriting is correct.
-    Falls back to dead-letter on Dhara failure.
+    Falls back to dead-letter on MCP failure.
     """
     payload = record.to_dict()
-    if dhara is not None:
+    if mcp is not None:
         try:
-            await dhara.put(settle_key(record.run_ref), payload)
+            await mcp.put(settle_key(record.run_ref), payload)
             return record
         except Exception:
             logger.exception(
-                "settle_persistence: dhara.put failed transition run_ref=%s state=%s",
+                "settle_persistence: mcp.put failed transition run_ref=%s state=%s",
                 record.run_ref,
                 record.state.value,
             )
@@ -170,27 +170,27 @@ async def persist_transition(
 async def load_record(
     run_ref: str,
     *,
-    dhara: DharaStateBackend | None = None,
+    mcp: MCPStateBackend | None = None,
 ) -> SettleRunRecord | None:
-    """Read a record from Dhara, falling back to the dead-letter file."""
-    if dhara is not None:
+    """Read a record from MCP, falling back to the dead-letter file."""
+    if mcp is not None:
         try:
-            payload = await dhara.get(settle_key(run_ref))
+            payload = await mcp.get(settle_key(run_ref))
             if isinstance(payload, dict):
                 return SettleRunRecord.from_dict(payload)
         except Exception:
-            logger.exception("settle_persistence: dhara.get failed run_ref=%s", run_ref)
+            logger.exception("settle_persistence: mcp.get failed run_ref=%s", run_ref)
     return _dead_letter_load(run_ref)
 
 
 def load_record_sync(
     run_ref: str,
     *,
-    dhara: DharaStateBackend | None = None,
+    mcp: MCPStateBackend | None = None,
 ) -> SettleRunRecord | None:
     """Sync variant of :func:`load_record` for non-async contexts (CLI)."""
-    if dhara is not None:
-        # DharaStateBackend.get is async — for sync callers, fall straight
+    if mcp is not None:
+        # MCPStateBackend.get is async — for sync callers, fall straight
         # to the dead-letter. This is OK because CLI is operator-only.
-        logger.debug("settle_persistence: sync load skipping Dhara for run_ref=%s", run_ref)
+        logger.debug("settle_persistence: sync load skipping MCP for run_ref=%s", run_ref)
     return _dead_letter_load(run_ref)

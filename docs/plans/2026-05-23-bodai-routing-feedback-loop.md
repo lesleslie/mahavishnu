@@ -196,7 +196,7 @@ ______________________________________________________________________
 | `oneiric/adapters/observability/otel.py` | No change (already complete) |
 | `mahavishnu/mcp/tools/otel_tools.py` | Add `query_component_traces` MCP tool |
 | `mahavishnu/pools/manager.py` | Add `RoutingFitnessReader`, consult it in `route_task()` |
-| `mahavishnu/core/state_backends/dhara.py` | Add fitness signal read helper |
+| `mahavishnu/core/state_backends/mcp.py` | Add fitness signal read helper |
 | `akosha/processing/fitness_analyzer.py` | **New file** — fitness analysis job |
 | `akosha/mcp/tools/` | Add `run_fitness_analysis` MCP tool |
 | Each Bodai component's startup | Wire existing OTel spans to `OTelStorageAdapter` (minimal change per component) |

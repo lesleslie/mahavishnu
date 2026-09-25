@@ -30,7 +30,7 @@ expected summary in the hook's stdout.
 
 Tests in this file are NOT auto-discovered by pytest's
 ``testpaths = ["tests"]`` — run them via the explicit path that
-``docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md``
+``docs/superpowers/plans/2026-09-14-mcp-mcp-decomposition-implementation.md``
 Task 6 specifies.
 
 Marker: ``integration``.

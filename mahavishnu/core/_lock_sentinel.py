@@ -1,6 +1,6 @@
-"""Local lock sentinel — replaces ``dhara.lock.in_memory.InMemoryDharaLock``.
+"""Local lock sentinel — replaces ``mcp.lock.in_memory.InMemoryDharaLock``.
 
-Per Phase 8 Task 5 of the Dhara MCP retirement plan: the consumer's
+Per Phase 8 Task 5 of the MCP MCP retirement plan: the consumer's
 actual lock-service usage is limited to ``try_acquire(key, owner_token=...,
 permanent=True, metadata=...)`` and ``get(key)`` — the cross-process
 distributed-locking surface (heartbeat, TTL expiry, owner-token
@@ -20,7 +20,7 @@ in mahavishnu calls them. If a future caller needs them, extend
 the surface here (and document the cross-process-or-not tradeoff in
 the commit message).
 
-Test fixtures that previously mocked ``dhara.lock.in_memory.InMemoryDharaLock``
+Test fixtures that previously mocked ``mcp.lock.in_memory.InMemoryDharaLock``
 must now mock ``mahavishnu.core._lock_sentinel.Lock`` (this path).
 The lock module's TYPE_CHECKING import in
 ``mahavishnu/core/precommitment.py`` updates accordingly.
@@ -40,7 +40,7 @@ from typing import Any
 import uuid
 
 
-# Exception classes — shape-compatible with dhara.lock.protocol so
+# Exception classes — shape-compatible with mcp.lock.protocol so
 # any future caller that catches them keeps working.
 class LockTimeoutError(Exception):
     """Acquire timed out before the lock became available."""
@@ -56,7 +56,7 @@ class LockPermanentError(Exception):
 
 @dataclass(frozen=True)
 class LockHandle:
-    """In-process lock handle — mirrors dhara.lock.protocol.LockHandle shape.
+    """In-process lock handle — mirrors mcp.lock.protocol.LockHandle shape.
 
     Carries the metadata payload (a JSON-encoded ``LockResult`` in the
     HypothesisLock use case) so callers can recover the original record
@@ -75,7 +75,7 @@ class LockHandle:
 class Lock:
     """In-process lock service — ``try_acquire`` + ``get`` only.
 
-    Drop-in for ``dhara.lock.in_memory.InMemoryDharaLock`` on the subset
+    Drop-in for ``mcp.lock.in_memory.InMemoryDharaLock`` on the subset
     of API actually used by ``mahavishnu.core.precommitment.HypothesisLock``.
     See module docstring for the scope decision.
     """
@@ -95,7 +95,7 @@ class Lock:
         """Acquire a lock entry or return None if the key is held.
 
         Raises ``ValueError`` if a permanent-held entry already exists
-        at ``lock_key`` (matches dhara's contract for permanent-locked
+        at ``lock_key`` (matches mcp's contract for permanent-locked
         keys).
         """
         if permanent and ttl_seconds is not None:

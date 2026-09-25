@@ -16,7 +16,7 @@ from .config import MahavishnuSettings
 from .errors import ConfigurationError
 
 if TYPE_CHECKING:
-    from .state_backends.dhara import DharaStateBackend
+    from .state_backends.mcp import MCPStateBackend
 
 logger = logging.getLogger(__name__)
 
@@ -197,18 +197,18 @@ def load_repos(app: Any) -> None:
 
 
 def _register_component_endpoint(
-    dhara_state: DharaStateBackend | None, component_name: str, mcp_url: str
+    mcp_state: MCPStateBackend | None, component_name: str, mcp_url: str
 ) -> None:
-    """Write this component's MCP endpoint URL to Dhara for Akosha to discover.
+    """Write this component's MCP endpoint URL to MCP for Akosha to discover.
 
     Key: component_endpoint/{component_name}
     Value: MCP server URL string
     """
     import asyncio
 
-    if dhara_state is None:
+    if mcp_state is None:
         logger.warning(
-            "Phase 0: cannot register %s endpoint — Dhara state not available",
+            "Phase 0: cannot register %s endpoint — MCP state not available",
             component_name,
         )
         return
@@ -216,29 +216,29 @@ def _register_component_endpoint(
     key = f"component_endpoint/{component_name}"
     try:
         asyncio.get_running_loop()
-        asyncio.create_task(dhara_state.put(key, {"url": mcp_url, "registered_by": component_name}))
+        asyncio.create_task(mcp_state.put(key, {"url": mcp_url, "registered_by": component_name}))
         logger.info(
-            "Phase 0: registered %s endpoint to Dhara: %s -> %s",
+            "Phase 0: registered %s endpoint to MCP: %s -> %s",
             component_name,
             key,
             mcp_url,
         )
     except RuntimeError:
         # No running event loop — sync fallback using client directly
-        from .dhara_adapter import DharaClient
+        from .mcp_adapter import MCPClient
 
-        client = DharaClient(base_url=dhara_state._client._base_url)  # ty: ignore[unresolved-attribute]
+        client = MCPClient(base_url=mcp_state._client._base_url)  # ty: ignore[unresolved-attribute]
         try:
             asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
             logger.info(
-                "Phase 0: registered %s endpoint to Dhara (sync): %s -> %s",
+                "Phase 0: registered %s endpoint to MCP (sync): %s -> %s",
                 component_name,
                 key,
                 mcp_url,
             )
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             logger.warning(
-                "Phase 0: failed to register %s endpoint to Dhara: %s",
+                "Phase 0: failed to register %s endpoint to MCP: %s",
                 component_name,
                 exc,
             )
@@ -494,7 +494,7 @@ def initialize_runtime_services(app: Any) -> None:
     Composition: this dispatcher stays flat (C901) because each
     failure-isolated or config-gated subsystem has its own helper below.
     Order of calls matches the original initialization sequence so any
-    cross-dependencies (e.g. ``ApprovalManager`` reading ``app._dhara_state``)
+    cross-dependencies (e.g. ``ApprovalManager`` reading ``app._mcp_state``)
     remain satisfied.
     """
     from collections import deque
@@ -539,8 +539,8 @@ def initialize_runtime_services(app: Any) -> None:
     app.rbac_manager = RBACManager(app.config)
     app.opensearch_integration = OpenSearchIntegration(app.config)
 
-    app._dhara_state = _init_dhara_state(app)
-    app.approval_manager = ApprovalManager(dhara_state=app._dhara_state)
+    app._mcp_state = _init_mcp_state(app)
+    app.approval_manager = ApprovalManager(mcp_state=app._mcp_state)
     app.resilience_manager = ResiliencePatterns(app)
     app.error_recovery_manager = ErrorRecoveryManager(app)
     app._resilience_monitoring_task = None
@@ -579,24 +579,24 @@ def _init_repository_messenger(app: Any) -> Any:
         return None
 
 
-def _init_dhara_state(app: Any) -> Any:
-    """Build the Dhara state backend if both ``enabled`` and ``dhara_url`` are set."""
+def _init_mcp_state(app: Any) -> Any:
+    """Build the MCP state backend if both ``enabled`` and ``mcp_url`` are set."""
     from contextlib import suppress
 
-    from .state_backends.dhara import DharaStateBackend, DharaStateConfig
+    from .state_backends.mcp import MCPStateBackend, MCPStateConfig
 
-    if not (app.config.dhara_state.enabled and app.dhara_url):
+    if not (app.config.mcp_state.enabled and app.mcp_url):
         return None
     with suppress(Exception):
-        backend = DharaStateBackend(
-            base_url=app.dhara_url,
-            config=DharaStateConfig(
-                enabled=app.config.dhara_state.enabled,
-                flush_interval_seconds=app.config.dhara_state.flush_interval_seconds,
-                max_routing_buffer_age_seconds=app.config.dhara_state.max_routing_buffer_age_seconds,
+        backend = MCPStateBackend(
+            base_url=app.mcp_url,
+            config=MCPStateConfig(
+                enabled=app.config.mcp_state.enabled,
+                flush_interval_seconds=app.config.mcp_state.flush_interval_seconds,
+                max_routing_buffer_age_seconds=app.config.mcp_state.max_routing_buffer_age_seconds,
             ),
         )
-        # Phase 0: register this component's MCP endpoint to Dhara
+        # Phase 0: register this component's MCP endpoint to MCP
         _register_component_endpoint(backend, "mahavishnu", app.config.tools.mcp_server_url)
         return backend
     return None
@@ -667,9 +667,9 @@ def _init_session_buddy_poller(app: Any) -> Any:
 def set_app_context(app: Any) -> None:
     """Set application context for dependency injection."""
     from .context import set_app_context as set_context
-    from .oneiric_client import set_dhara_client_base_url
+    from .oneiric_client import set_mcp_client_base_url
 
-    set_dhara_client_base_url(app.dhara_url)
+    set_mcp_client_base_url(app.mcp_url)
 
     agno_adapter = app.adapters.get("agno")
     llm_factory = None
@@ -758,9 +758,9 @@ def init_terminal_manager(app: Any) -> Any:
         return None
 
 
-def resolve_dhara_url(config: Any) -> str:
-    """Build the Dhara MCP URL from health dependency config."""
-    dependency = config.health.dependencies.get("dhara")
+def resolve_mcp_url(config: Any) -> str:
+    """Build the MCP MCP URL from health dependency config."""
+    dependency = config.health.dependencies.get("mcp")
     if dependency is None:
         return "http://localhost:8683/mcp"
 
@@ -781,7 +781,7 @@ def init_pool_manager(app: Any) -> Any:
             terminal_manager=app.terminal_manager,
             session_buddy_client=app.session_buddy,
             message_bus=message_bus,
-            dhara_state=getattr(app, "_dhara_state", None),
+            mcp_state=getattr(app, "_mcp_state", None),
         )
         selector = PoolSelector(app.config.pools.routing_strategy)
         pool_manager.set_pool_selector(selector)
@@ -841,14 +841,14 @@ def init_learning_pipeline(app: Any) -> Any:
         return None
 
 
-async def recover_workflow_state_from_dhara(app: Any) -> None:
-    """Restore in-flight workflow state from Dhara on startup."""
-    if app._dhara_state is None:
+async def recover_workflow_state_from_mcp(app: Any) -> None:
+    """Restore in-flight workflow state from MCP on startup."""
+    if app._mcp_state is None:
         return
 
     logger = logging.getLogger(__name__)
     try:
-        entries = await app._dhara_state.recover_workflows()
+        entries = await app._mcp_state.recover_workflows()
         recovered = 0
         for value in entries:
             if isinstance(value, dict) and value.get("status") == "running":
@@ -856,21 +856,21 @@ async def recover_workflow_state_from_dhara(app: Any) -> None:
                 app.active_workflows.add(workflow_id)
                 recovered += 1
         if recovered:
-            logger.info("Recovered %d in-flight workflows from Dhara", recovered)
+            logger.info("Recovered %d in-flight workflows from MCP", recovered)
     except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-        logger.debug("Dhara workflow recovery skipped: %s", exc)
+        logger.debug("MCP workflow recovery skipped: %s", exc)
 
 
-async def recover_approvals_from_dhara(app: Any) -> None:
-    """Restore pending approvals from Dhara on startup."""
-    if app._dhara_state is None:
+async def recover_approvals_from_mcp(app: Any) -> None:
+    """Restore pending approvals from MCP on startup."""
+    if app._mcp_state is None:
         return
 
     logger = logging.getLogger(__name__)
     try:
-        entries = await app._dhara_state.list_prefix("approval/v1/")
-        restored = app.approval_manager.restore_from_dhara_entries(entries)
+        entries = await app._mcp_state.list_prefix("approval/v1/")
+        restored = app.approval_manager.restore_from_mcp_entries(entries)
         if restored:
-            logger.info("Recovered %d pending approvals from Dhara", restored)
+            logger.info("Recovered %d pending approvals from MCP", restored)
     except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-        logger.debug("Dhara approval recovery skipped: %s", exc)
+        logger.debug("MCP approval recovery skipped: %s", exc)

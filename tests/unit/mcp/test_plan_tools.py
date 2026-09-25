@@ -28,7 +28,7 @@ from mahavishnu.mcp.tools.plan_tools import (
 from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 TOOL_NAMES = (
     "plan_list",
@@ -92,8 +92,8 @@ def _sample_record(plan_id: str = "1" * 32) -> PlanRecord:
 
 @pytest.fixture
 def store() -> PlanIndexStore:
-    """A single FakeDhara-backed store shared across one test."""
-    return PlanIndexStore(FakeDhara())
+    """A single FakeMCP-backed store shared across one test."""
+    return PlanIndexStore(FakeMCP())
 
 
 @pytest.fixture

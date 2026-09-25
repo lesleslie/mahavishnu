@@ -1,7 +1,7 @@
 """Git remote URL normalization (security: REQ-PLAN-011).
 
 normalize_repo_url runs BEFORE plan_id derivation (D4). The normalized
-form is what gets persisted to Dhara AND fed into the SHA. Three URL
+form is what gets persisted to MCP AND fed into the SHA. Three URL
 forms of the same repo produce the same normalized output:
 
     git@github.com:foo/bar.git
@@ -15,7 +15,7 @@ The hash is sha256("/".join(path_segments)).hexdigest()[:12].
 
 Security notes:
     * Userinfo (user:pass@ or user@) is stripped so credentials never
-      land in Dhara's log or the SHA.
+      land in MCP's log or the SHA.
     * Path segments are hashed so the repo structure (e.g. internal
       org/repo names) is not exposed in persisted records.
     * Control characters (NUL, CR, LF, DEL, etc.) are rejected so the
@@ -73,7 +73,7 @@ def _strip_userinfo(url: str) -> str:
 
 
 def _hash_path_segments(path: str) -> str:
-    """Hash path segments so repo structure is not exposed in Dhara."""
+    """Hash path segments so repo structure is not exposed in MCP."""
     cleaned = path.strip("/").removesuffix(".git")
     segments = cleaned.split(_PATH_SEGMENT_DELIM)
     joined = _PATH_SEGMENT_DELIM.join(segments)

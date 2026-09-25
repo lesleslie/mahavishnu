@@ -51,7 +51,7 @@ class TestValidateWebhookId:
         assert validate_webhook_id("webhook-3f4a-1c9b") is True
 
     def test_traversal_double_dot_rejected(self) -> None:
-        assert validate_webhook_id("../../dhara") is False
+        assert validate_webhook_id("../../mcp") is False
 
     def test_forward_slash_rejected(self) -> None:
         assert validate_webhook_id("webhook/../other") is False

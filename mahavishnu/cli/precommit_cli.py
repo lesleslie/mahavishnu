@@ -20,8 +20,8 @@ precommit_app = typer.Typer(help="Precommitment hypothesis lock CLI.")
 def _make_lock() -> HypothesisLock:
     """Construct a HypothesisLock backed by the local in-process lock sentinel.
 
-    Replaces the previous D-LOCK (dhara.lock) backing per Phase 8 Task 5
-    of the Dhara MCP retirement plan. The local sentinel is in-process
+    Replaces the previous D-LOCK (mcp.lock) backing per Phase 8 Task 5
+    of the MCP MCP retirement plan. The local sentinel is in-process
     only; for cross-instance persistence a future SQL/DuckDB backend
     could be plugged in here.
     """

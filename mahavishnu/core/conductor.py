@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from types import ModuleType
 
     from mahavishnu.core.capabilities import EnvelopeId
-    from mahavishnu.core.dhara_adapter import DharaAdapter
+    from mahavishnu.core.mcp_adapter import MCPAdapter
 
 
 def resolve(
@@ -153,7 +153,7 @@ async def emit_node(
     node: DAGNode,
     *,
     trace_id: TraceId,
-    dhara: DharaAdapter,
+    mcp: MCPAdapter,
 ) -> EnvelopeId:
     """Dispatch one node to its engine. Returns the produced envelope id.
 
@@ -193,7 +193,7 @@ def emit_flow(
     @task_decorator
     def _node(node_id: str, capability_id: str) -> str:
         # Each node task returns an opaque envelope id (the dispatcher
-        # writes the envelope to Dhara and returns its id).
+        # writes the envelope to MCP and returns its id).
         return f"envelope-of-{node_id}"
 
     @flow_decorator(name=f"mahavishnu-dag-{dag.trace_id}")

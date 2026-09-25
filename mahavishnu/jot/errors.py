@@ -5,7 +5,7 @@ on type (not message parsing). Base class `JotError` enables a single
 `except JotError` to catch every jot failure.
 
 The base carries a stable ``error_id`` correlation tag so downstream
-consumers (tier-2 reconciler, Sentry, Dhara) can key off a stable string
+consumers (tier-2 reconciler, Sentry, MCP) can key off a stable string
 without message parsing. The base default is ``"ERROR_JOT"``; drain-specific
 subclasses (sub-plan 3) accept their own keyword-only ``error_id`` with a
 sensible default.
@@ -56,7 +56,7 @@ class JotParseError(JotError):
 
 class JotDispatchError(JotError):
     """Raised when dispatch_jot fails to trigger a workflow (network, auth,
-    upstream). Carries .error_id for Sentry/Dhara correlation.
+    upstream). Carries .error_id for Sentry/MCP correlation.
     """
 
     def __init__(self, message: str, *, error_id: str = "ERROR_JOT_DISPATCH") -> None:

@@ -22,11 +22,11 @@ def _envelope_key(envelope_id: str) -> str:
     return f"envelopes/{'a' * 32}/{envelope_id}"
 
 
-def test_get_capability_result_reads_envelopes_from_dhara() -> None:
+def test_get_capability_result_reads_envelopes_from_mcp() -> None:
     """Registration smoke check: tool appears in ``list_tools()``."""
-    dhara = MagicMock()
+    mcp = MagicMock()
     server = FastMCP("test")
-    register_get_capability_result(server, dhara=dhara)
+    register_get_capability_result(server, mcp=mcp)
 
     tools = asyncio.run(server.list_tools())
     assert any(t.name == "get_capability_result" for t in tools)
@@ -40,11 +40,11 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     ``{"trace_id": ..., "status": ..., "envelopes": ..., "error": ...}`` dict.
     """
     envelope_id = EnvelopeId("12345678-1234-4234-8234-123456789012")
-    dhara = MagicMock()
-    dhara.call_tool = AsyncMock(return_value=[_envelope_key(envelope_id)])
+    mcp = MagicMock()
+    mcp.call_tool = AsyncMock(return_value=[_envelope_key(envelope_id)])
 
     server = FastMCP("test-invoke")
-    register_get_capability_result(server, dhara=dhara)
+    register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
     tool = next(t for t in tools if t.name == "get_capability_result")
@@ -60,16 +60,16 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     assert result["status"] == "completed"
     assert result["error"] is None
     assert result["envelopes"] == [_envelope_key(envelope_id)]
-    dhara.call_tool.assert_awaited_once_with("list_keys", {"prefix": f"envelopes/{trace_id}/"})
+    mcp.call_tool.assert_awaited_once_with("list_keys", {"prefix": f"envelopes/{trace_id}/"})
 
 
 async def test_get_capability_result_returns_pending_when_no_envelopes() -> None:
     """Empty Dhara result surfaces ``status='pending'`` and empty envelope list."""
-    dhara = MagicMock()
-    dhara.call_tool = AsyncMock(return_value=[])
+    mcp = MagicMock()
+    mcp.call_tool = AsyncMock(return_value=[])
 
     server = FastMCP("test-empty")
-    register_get_capability_result(server, dhara=dhara)
+    register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
     tool = next(t for t in tools if t.name == "get_capability_result")
@@ -83,7 +83,7 @@ async def test_get_capability_result_returns_pending_when_no_envelopes() -> None
     assert result["error"] is None
 
 
-async def test_get_capability_result_fails_loudly_when_dhara_call_raises() -> None:
+async def test_get_capability_result_fails_loudly_when_mcp_call_raises() -> None:
     """Dhara-unavailable must surface as an exception, NOT silently return pending.
 
     Regression guard for the v0.19.0 contract: the deprecated
@@ -96,37 +96,37 @@ async def test_get_capability_result_fails_loudly_when_dhara_call_raises() -> No
     """
     from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
-    dhara = MagicMock()
-    dhara.call_tool = AsyncMock(
+    mcp = MagicMock()
+    mcp.call_tool = AsyncMock(
         side_effect=MahavishnuError(
-            "dhara unavailable", error_code=ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
+            "mcp unavailable", error_code=ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
         )
     )
 
-    server = FastMCP("test-dhara-down")
-    register_get_capability_result(server, dhara=dhara)
+    server = FastMCP("test-mcp-down")
+    register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
     tool = next(t for t in tools if t.name == "get_capability_result")
 
     trace_id = TraceId("a" * 32)
-    with pytest.raises(MahavishnuError, match="dhara unavailable"):
+    with pytest.raises(MahavishnuError, match="mcp unavailable"):
         await tool.fn(trace_id=trace_id)
 
 
-async def test_get_capability_result_fails_loudly_when_dhara_is_none() -> None:
-    """Invoking the tool with ``dhara=None`` must raise, NOT silently return pending.
+async def test_get_capability_result_fails_loudly_when_mcp_is_none() -> None:
+    """Invoking the tool with ``mcp=None`` must raise, NOT silently return pending.
 
     The bug-path of v0.18.x's ``workflow_result`` was: registration accepted
-    ``dhara=None`` and silently returned ``not_found`` for every lookup. The
-    new tool requires ``dhara`` as a keyword argument; passing ``None`` is
+    ``mcp=None`` and silently returned ``not_found`` for every lookup. The
+    new tool requires ``mcp`` as a keyword argument; passing ``None`` is
     type-unsafe but Python does not enforce the annotation at runtime, so
     registration succeeds. The crucial regression check is that invocation
     raises clearly — operators must see the misconfiguration, not a silent
     ``status='pending'`` that hides a broken backend.
     """
-    server = FastMCP("test-none-dhara")
-    register_get_capability_result(server, dhara=None)  # type: ignore[arg-type]
+    server = FastMCP("test-none-mcp")
+    register_get_capability_result(server, mcp=None)  # type: ignore[arg-type]
 
     tools = await server.list_tools()
     tool = next(t for t in tools if t.name == "get_capability_result")

@@ -46,7 +46,7 @@ from mahavishnu.settle.state_machine import (
 
 
 @pytest.fixture
-def isolated_dhara_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def isolated_mcp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect dead-letter writes to tmp_path."""
     dl_dir = tmp_path / "settle-dead-letter"
     dl_dir.mkdir(parents=True, exist_ok=True)
@@ -75,7 +75,7 @@ def fake_manager() -> MagicMock:
     return manager
 
 
-async def test_full_settle_lifecycle_apply(isolated_dhara_dir, fake_manager, monkeypatch):
+async def test_full_settle_lifecycle_apply(isolated_mcp_dir, fake_manager, monkeypatch):
     """End-to-end: PROPOSED -> SELECTED -> APPLIED via git merge-file.
 
     The binding base is "hello\n". The worker produces "hello world\n"
@@ -85,7 +85,7 @@ async def test_full_settle_lifecycle_apply(isolated_dhara_dir, fake_manager, mon
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)  # force dead-letter path
+    monkeypatch.setattr(tools, "_settle_mcp", None)  # force dead-letter path
 
     # 1. Spawn worker + register settle record BEFORE file write.
     launch = await tools.worker_run_with_settle(
@@ -99,9 +99,9 @@ async def test_full_settle_lifecycle_apply(isolated_dhara_dir, fake_manager, mon
     # 2. Settle record is persisted to the dead-letter BEFORE spawn
     # (the test confirms the contract: file exists immediately).
     safe = launch["run_ref"].replace("/", "_").replace("..", "_")[:200]
-    dead_letter_file = isolated_dhara_dir / f"{safe}.json"
+    dead_letter_file = isolated_mcp_dir / f"{safe}.json"
     assert dead_letter_file.exists(), "dead-letter must exist before launch"
-    record = load_record_sync(launch["run_ref"], dhara=None)
+    record = load_record_sync(launch["run_ref"], mcp=None)
     assert record is not None
     assert record.state == SettleState.PROPOSED
 
@@ -123,12 +123,12 @@ async def test_full_settle_lifecycle_apply(isolated_dhara_dir, fake_manager, mon
     assert "hello.txt" in applied["merge"]["merged"]
 
 
-async def test_full_settle_lifecycle_release(isolated_dhara_dir, fake_manager, monkeypatch):
+async def test_full_settle_lifecycle_release(isolated_mcp_dir, fake_manager, monkeypatch):
     """End-to-end: PROPOSED -> SELECTED -> RELEASED (no merge)."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
 
     launch = await tools.worker_run_with_settle(
         task_signature="discard-me",
@@ -145,13 +145,13 @@ async def test_full_settle_lifecycle_release(isolated_dhara_dir, fake_manager, m
 
 
 async def test_apply_conflict_returns_structured_error(
-    isolated_dhara_dir, fake_manager, monkeypatch
+    isolated_mcp_dir, fake_manager, monkeypatch
 ):
     """Apply with conflicting content must NOT advance state and must return the merged-with-markers text."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
 
     launch = await tools.worker_run_with_settle(
         task_signature="conflict-test",
@@ -172,19 +172,19 @@ async def test_apply_conflict_returns_structured_error(
     assert result["state"] == "merge_conflict"
     assert "conflicts" in result
     # State must NOT have advanced — re-read the record.
-    record = load_record_sync(launch["run_ref"], dhara=None)
+    record = load_record_sync(launch["run_ref"], mcp=None)
     assert record is not None
     assert record.state == SettleState.SELECTED
 
 
 async def test_illegal_transition_returns_error(
-    isolated_dhara_dir, fake_manager, monkeypatch
+    isolated_mcp_dir, fake_manager, monkeypatch
 ):
     """Trying to ``apply`` from PROPOSED is illegal."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
 
     launch = await tools.worker_run_with_settle(
         task_signature="illegal",
@@ -197,7 +197,7 @@ async def test_illegal_transition_returns_error(
     assert result["current_state"] == SettleState.PROPOSED.value
 
 
-async def test_persists_before_launch(isolated_dhara_dir, fake_manager, monkeypatch):
+async def test_persists_before_launch(isolated_mcp_dir, fake_manager, monkeypatch):
     """The settle record must exist on disk BEFORE spawn is invoked.
 
     This is the load-bearing property: a process crash between record
@@ -213,7 +213,7 @@ async def test_persists_before_launch(isolated_dhara_dir, fake_manager, monkeypa
         # At the moment spawn is called, the dead-letter file MUST exist.
         # The run_ref is not yet known to the spy, so we look for ANY
         # *.json file in the dead-letter dir.
-        files = list(isolated_dhara_dir.glob("*.json"))
+        files = list(isolated_mcp_dir.glob("*.json"))
         assert len(files) >= 1, (
             "spawn was called before the settle record was persisted"
         )
@@ -229,7 +229,7 @@ async def test_persists_before_launch(isolated_dhara_dir, fake_manager, monkeypa
 
     fake_manager.spawn = MagicMock(side_effect=spy_spawn)
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
 
     launch = await tools.worker_run_with_settle(
         task_signature="order-check",
@@ -240,13 +240,13 @@ async def test_persists_before_launch(isolated_dhara_dir, fake_manager, monkeypa
 
 
 async def test_invalid_action_returns_error(
-    isolated_dhara_dir, fake_manager, monkeypatch
+    isolated_mcp_dir, fake_manager, monkeypatch
 ):
     """An unknown action string returns ``state=invalid_action`` without crashing."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
 
     launch = await tools.worker_run_with_settle(
         task_signature="bogus-action",
@@ -260,7 +260,7 @@ async def test_missing_run_ref_returns_error(monkeypatch):
     """worker_settle with an unknown run_ref returns state=not_found."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    monkeypatch.setattr(tools, "_settle_dhara", None)
+    monkeypatch.setattr(tools, "_settle_mcp", None)
     result = await tools.worker_settle("settle-does-not-exist", "select")
     assert result["state"] == "not_found"
 

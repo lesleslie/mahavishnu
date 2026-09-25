@@ -5,7 +5,7 @@ Step 8 fires at the later of:
   (a) this spec's cut-over + 14 days
   (b) jot sub-plan 3 ship date + 14 days
 
-Plus: docs/feature-tracking/plan-index-dhara.md must record `adopted`.
+Plus: docs/feature-tracking/plan-index-mcp.md must record `adopted`.
 
 Usage:
     python scripts/check_step8_ready.py \\
@@ -102,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--feature-tracking",
         type=Path,
-        default=Path("docs/feature-tracking/plan-index-dhara.md"),
+        default=Path("docs/feature-tracking/plan-index-mcp.md"),
     )
     return parser
 

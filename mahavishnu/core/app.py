@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class _NoOpBudgetStore:
-    """No-op :class:`BudgetStore` used when Dhara is not configured.
+    """No-op :class:`BudgetStore` used when MCP is not configured.
 
     Listed here (rather than imported) so the watchdog module does
     not have to know about app-private types.
@@ -74,11 +74,11 @@ from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
 from .bootstrap import initialize_runtime_services as _initialize_runtime_services_helper
 from .bootstrap import load_config as _load_config_helper
 from .bootstrap import load_repos as _load_repos_helper
-from .bootstrap import recover_approvals_from_dhara as _recover_approvals_from_dhara_helper
+from .bootstrap import recover_approvals_from_mcp as _recover_approvals_from_mcp_helper
 from .bootstrap import (
-    recover_workflow_state_from_dhara as _recover_workflow_state_from_dhara_helper,
+    recover_workflow_state_from_mcp as _recover_workflow_state_from_mcp_helper,
 )
-from .bootstrap import resolve_dhara_url as _resolve_dhara_url_helper
+from .bootstrap import resolve_mcp_url as _resolve_mcp_url_helper
 from .circuit_breaker import CircuitBreaker
 from .control_surface import (
     get_correlation_status as _get_correlation_status,
@@ -245,7 +245,7 @@ class MahavishnuApp:
         """
         self.config = config or self._load_config()
         self.adapters: dict[str, OrchestratorAdapter] = {}
-        self.dhara_url = self._resolve_dhara_url()
+        self.mcp_url = self._resolve_mcp_url()
         self._load_repos()
         self._initialize_adapters()
 
@@ -342,7 +342,7 @@ class MahavishnuApp:
 
         Idempotent — calling twice is a no-op so the lifespan context
         can call this on every cold-start. The watchdog polls once a
-        minute (60s) against Dhara and enforces per-run budget shapes
+        minute (60s) against MCP and enforces per-run budget shapes
         declared via the ``budget_enforce`` MCP tool.
 
         Failures during startup are logged and swallowed — the
@@ -355,20 +355,20 @@ class MahavishnuApp:
         # Lazy imports keep the ``mahavishnu.core`` module thin and let
         # test code substitute the watchdog + store symbols.
         from .budget_watchdog import (
-            DharaBudgetStore,
+            MCPBudgetStore,
             WatchdogConfig,
             WatchdogMetrics,
             run_watchdog,
         )
 
         store: Any = None
-        dhara_client = getattr(self, "_dhara_client", None) or getattr(self, "dhara_client", None)
-        if dhara_client is not None and hasattr(dhara_client, "call_tool"):
+        mcp_client = getattr(self, "_mcp_client", None) or getattr(self, "mcp_client", None)
+        if mcp_client is not None and hasattr(mcp_client, "call_tool"):
             try:
-                store = DharaBudgetStore(dhara_client)
+                store = MCPBudgetStore(mcp_client)
             except Exception as exc:  # noqa: BLE001 - startup must not block
                 logger.warning(
-                    "budget.watchdog: failed to build DharaBudgetStore: %s",
+                    "budget.watchdog: failed to build MCPBudgetStore: %s",
                     exc,
                 )
                 store = None
@@ -549,14 +549,14 @@ class MahavishnuApp:
 
         _set_app_context_helper(self)
 
-    def _resolve_dhara_url(self) -> str:
-        return _resolve_dhara_url_helper(self.config)
+    def _resolve_mcp_url(self) -> str:
+        return _resolve_mcp_url_helper(self.config)
 
-    async def _recover_workflow_state_from_dhara(self) -> None:
-        await _recover_workflow_state_from_dhara_helper(self)
+    async def _recover_workflow_state_from_mcp(self) -> None:
+        await _recover_workflow_state_from_mcp_helper(self)
 
-    async def _recover_approvals_from_dhara(self) -> None:
-        await _recover_approvals_from_dhara_helper(self)
+    async def _recover_approvals_from_mcp(self) -> None:
+        await _recover_approvals_from_mcp_helper(self)
 
     async def get_recovery_summary(self) -> dict[str, Any]:
         return await _get_recovery_summary(self)
@@ -628,13 +628,13 @@ class MahavishnuApp:
     def _persist_workflow_start(
         self, execution_id: str, workflow_name: str, metadata: dict
     ) -> None:
-        """Fire-and-forget: record workflow start in Dhara."""
+        """Fire-and-forget: record workflow start in MCP."""
         _persist_workflow_start_helper(self, execution_id, workflow_name, metadata)
 
     def _persist_workflow_end(
         self, execution_id: str, workflow_name: str, status: str, error: str | None = None
     ) -> None:
-        """Fire-and-forget: record workflow completion/failure in Dhara."""
+        """Fire-and-forget: record workflow completion/failure in MCP."""
         _persist_workflow_end_helper(self, execution_id, workflow_name, status, error)
 
     def get_repos(

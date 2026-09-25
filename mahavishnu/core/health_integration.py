@@ -5,7 +5,7 @@ Wires adapter health to StatisticalRouter, alerts, and Grafana (Phase 3).
 Components:
 - AdapterHealthMonitor: Collects health from all adapters periodically
 - Updates Prometheus metrics for observability
-- Persists health state to Dhara/SQLite
+- Persists health state to MCP/SQLite
 - Broadcasts health changes via WebSocket
 - Triggers alerts on adapter degradation
 
@@ -48,7 +48,7 @@ class HealthIntegrationConfig:
         unhealthy_threshold: Consecutive failures before marking unhealthy (default: 3)
         recovery_threshold: Consecutive successes before marking healthy (default: 1)
         broadcast_changes: Whether to broadcast health changes via WebSocket (default: True)
-        persist_to_storage: Whether to persist health to Dhara/SQLite (default: True)
+        persist_to_storage: Whether to persist health to MCP/SQLite (default: True)
         update_router_preferences: Whether to update StatisticalRouter on health changes (default: True)
     """
 
@@ -158,7 +158,7 @@ class AdapterHealthMonitor:
 
     Collects health from all adapters periodically and:
     - Updates Prometheus metrics for observability
-    - Persists health to Dhara/SQLite for historical analysis
+    - Persists health to MCP/SQLite for historical analysis
     - Broadcasts health changes via WebSocket for real-time updates
     - Triggers alerts on adapter degradation
     - Updates StatisticalRouter preference order
@@ -566,21 +566,21 @@ class AdapterHealthMonitor:
         adapter_name: str,
         state: AdapterHealthState,
     ) -> None:
-        """Persist health state to storage (Dhara/SQLite).
+        """Persist health state to storage (MCP/SQLite).
 
         Args:
             adapter_name: Name of the adapter
             state: Current health state
         """
         try:
-            # Try to use Dhara client if available
-            from mahavishnu.core.oneiric_client import get_dhara_client
+            # Try to use MCP client if available
+            from mahavishnu.core.oneiric_client import get_mcp_client
 
-            client = get_dhara_client()
+            client = get_mcp_client()
             if client:
                 key = f"health:adapter:{adapter_name}"
                 await client.put(key, state.to_dict(), ttl=86400 * 7)  # 7 days TTL
-                logger.debug(f"Persisted health state for {adapter_name} to Dhara")
+                logger.debug(f"Persisted health state for {adapter_name} to MCP")
         except ImportError:
             # Fallback to local SQLite if available
             try:

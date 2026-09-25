@@ -17,7 +17,7 @@ from mahavishnu.plan_index.cron_core import RebuildOutcome, run_rebuild_cycle
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 def _fake_records() -> list[PlanRecord]:
@@ -58,7 +58,7 @@ def _fake_records() -> list[PlanRecord]:
 class TestRunRebuildCycleRealScan:
     @pytest.mark.asyncio
     async def test_cycles_total_increments_even_on_partial_failure(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
@@ -77,7 +77,7 @@ class TestRunRebuildCycleRealScan:
 
     @pytest.mark.asyncio
     async def test_successful_cycles_only_increments_on_full_success(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
@@ -88,16 +88,16 @@ class TestRunRebuildCycleRealScan:
             )
         assert outcome.errors == 0
         assert outcome.successful_cycles_total == 1
-        entities_raw = await store._dhara.get("plan_index/meta/entities_count")  # type: ignore[attr-defined]
+        entities_raw = await store._mcp.get("plan_index/meta/entities_count")  # type: ignore[attr-defined]
         assert int(entities_raw) == outcome.entities_count
 
     @pytest.mark.asyncio
     async def test_recent_errors_bounded_at_20(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
-        dhara = store._dhara  # type: ignore[attr-defined]
+        mcp = store._mcp  # type: ignore[attr-defined]
         seed = [{"ts_ms": i, "op": "upsert", "err": "old", "ctx": {}} for i in range(25)]
-        await dhara.put("plan_index/meta/recent_errors", json.dumps(seed))
+        await mcp.put("plan_index/meta/recent_errors", json.dumps(seed))
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
             return_value=_fake_records(),
@@ -107,6 +107,6 @@ class TestRunRebuildCycleRealScan:
                 return_value=(0, 1, [{"path_hash": "h", "err": "boom"}]),
             ):
                 await run_rebuild_cycle(store, rebuilder, repo_root=Path("/tmp/fake"))
-        recent_raw = await dhara.get("plan_index/meta/recent_errors")
+        recent_raw = await mcp.get("plan_index/meta/recent_errors")
         recent: list[dict[str, object]] = json.loads(recent_raw) if recent_raw else []
         assert len(recent) <= 20

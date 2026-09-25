@@ -2,7 +2,7 @@
 
 Defines :class:`SkillMetadata`, the canonical Pydantic v2 model for skill
 metadata advertised by every Bodai MCP server. The model is identical
-across all 5 replicas (akosha, mahavishnu, session-buddy, dhara,
+across all 5 replicas (akosha, mahavishnu, session-buddy, mcp,
 crackerjack) and is the wire shape returned by ``mcp__<server>__list_skills``
 and embedded in ``mcp__<server>__get_skill`` responses.
 
@@ -53,7 +53,7 @@ class SkillMetadata(BaseModel):
     """Canonical skill metadata advertised by every Bodai MCP server.
 
     The schema is identical across all 5 Bodai servers (akosha,
-    mahavishnu, session-buddy, dhara, crackerjack). It carries:
+    mahavishnu, session-buddy, mcp, crackerjack). It carries:
 
     - identity (``id``, ``server``, ``name``, ``version``)
     - routing hints (``tool_refs``, ``dependencies``, ``allowed_tools``)

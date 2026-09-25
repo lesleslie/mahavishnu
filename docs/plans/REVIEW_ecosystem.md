@@ -18,7 +18,7 @@ blocks_on: []
 
 | Component | Runs standalone? | Evidence |
 |---|---|---|
-| **Mahavishnu** | ✅ Yes | `DharaStateBackend` in `mahavishnu/core/state_backends/dhara.py:110` — `put()` is a no-op when circuit is open. Pool manager falls back to `least_loaded` when no signals. |
+| **Mahavishnu** | ✅ Yes | `MCPStateBackend` in `mahavishnu/core/state_backends/mcp.py:110` — `put()` is a no-op when circuit is open. Pool manager falls back to `least_loaded` when no signals. |
 | **Akosha** | ⚠️ Conditional | Fitness analyzer uses in-memory buffer when Dhara is down (plan line 148). However: if Mahavishnu is down, Akosha **logs warning and skips** (plan line 146) — this means Akosha's feedback loop stalls but the component itself continues. Acceptable. |
 | **Dhara** | ✅ Yes | Pure KV store. No active role in the feedback loop — only stores signals written to it. |
 | **Session-Buddy** | ✅ Yes | Emits OTel locally via `OTelStorageAdapter`. No routing decisions. OTel → local pgvector → optional push to Mahavishnu. |
@@ -61,7 +61,7 @@ ______________________________________________________________________
 
 ### 3.1 Dhara Circuit Breaker (Mahavishnu side)
 
-**Location**: `mahavishnu/core/state_backends/dhara.py:24-25, 81-106`
+**Location**: `mahavishnu/core/state_backends/mcp.py:24-25, 81-106`
 
 The circuit breaker is **write-side only**:
 
@@ -236,7 +236,7 @@ The plan defines fitness signal keys as:
 routing_fitness/{task_class}/{selector}
 ```
 
-**Finding**: `DharaStateBackend` in Mahavishnu (`mahavishnu/core/state_backends/dhara.py:66-70`) uses a different key format for routing decisions:
+**Finding**: `MCPStateBackend` in Mahavishnu (`mahavishnu/core/state_backends/mcp.py:66-70`) uses a different key format for routing decisions:
 
 ```
 routing/v1/{task_class}/{timestamp_ms}
@@ -256,14 +256,14 @@ These are **different key namespaces** (note: `routing_fitness/` vs `routing/v1/
 
 > "Circuit breaker: uses Oneiric's `CircuitBreaker` to handle Dhara unavailability"
 
-**Finding**: The plan says `RoutingFitnessReader` uses a circuit breaker. Looking at `DharaStateBackend`, the circuit breaker is embedded in that class — reads via `get()` and `list_prefix()` are both circuit-protected. However:
+**Finding**: The plan says `RoutingFitnessReader` uses a circuit breaker. Looking at `MCPStateBackend`, the circuit breaker is embedded in that class — reads via `get()` and `list_prefix()` are both circuit-protected. However:
 
 - `RoutingFitnessReader` is described as a **new class** that reads from Dhara
-- It is not clear whether `RoutingFitnessReader` uses `DharaStateBackend.get()` directly (which would inherit circuit breaker protection) or implements its own DharaClient calls (which would NOT have circuit breaker protection)
+- It is not clear whether `RoutingFitnessReader` uses `MCPStateBackend.get()` directly (which would inherit circuit breaker protection) or implements its own DharaClient calls (which would NOT have circuit breaker protection)
 
-If `RoutingFitnessReader` calls `DharaClient` directly (via `mahavishnu/core/dhara_adapter.py`), it would bypass the circuit breaker in `DharaStateBackend`.
+If `RoutingFitnessReader` calls `DharaClient` directly (via `mahavishnu/core/dhara_adapter.py`), it would bypass the circuit breaker in `MCPStateBackend`.
 
-**Risk**: Informational. The plan should specify that `RoutingFitnessReader` must use `DharaStateBackend` (which has circuit breaker) rather than `DharaClient` directly.
+**Risk**: Informational. The plan should specify that `RoutingFitnessReader` must use `MCPStateBackend` (which has circuit breaker) rather than `DharaClient` directly.
 
 ______________________________________________________________________
 

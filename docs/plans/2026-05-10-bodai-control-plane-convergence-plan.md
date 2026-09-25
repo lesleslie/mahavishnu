@@ -57,7 +57,7 @@ This plan is the umbrella tracker for that convergence work. Existing shipped pl
 | C0 | Plan reconciliation and acceptance gates | `completed` | none | reviewed plan, index entry, tracking rules |
 | C1a | Mahavishnu event contract and local test adapter | `completed` | C0 complete, plan active | envelope helper, producer contract, in-process test transport |
 | C1b | Oneiric Redis event spine integration | `complete` | C1a, Oneiric Redis adapter support | Redis-backed event transport, WebSocket handler, NotificationRouter wiring |
-| C2 | Durable operational state | `complete` | C0 complete, plan active, DharaStateBackend | pool/routing/approval/workflow recovery surfaces |
+| C2 | Durable operational state | `complete` | C0 complete, plan active, MCPStateBackend | pool/routing/approval/workflow recovery surfaces |
 | C3a | Operator cockpit reconciliation and live read-only panes | `completed` | C0 complete, plan active | verified residual gaps and MCP-backed read-only panes |
 | C3b | Cockpit approvals, diffs, event stream, and Agno streaming | `complete` | C3a complete, C2 for approvals, C1b for event stream | approvals, file/diff panes, event activity, Agno stream view |
 | C4 | Catalog truth and drift prevention | `complete` | current ecosystem.yaml loader | reconciled catalog and automated drift checks |
@@ -221,7 +221,7 @@ Source plans: storage consolidation plan, Dhara state backend addendum, and back
 
 Storage authority decision:
 
-- `DharaStateBackend` owns restart/recovery checkpoints for workflows, pools, routing decisions, and approvals.
+- `MCPStateBackend` owns restart/recovery checkpoints for workflows, pools, routing decisions, and approvals.
 - Mahavishnu-owned PostgreSQL/pgvector sections in the older storage consolidation plan are superseded for operational restart/recovery checkpoints unless a later accepted plan reintroduces them.
 - PostgreSQL/pgvector can remain analytical/search persistence only if a future plan defines that scope separately.
 - Session-Buddy owns session context. Akosha owns derived intelligence, semantic retrieval, and cross-system aggregation.
@@ -229,11 +229,11 @@ Storage authority decision:
 Entry criteria:
 
 - C0 complete and plan status is `active, umbrella`.
-- Current `DharaStateBackend` implementation and addendum are verified against code.
+- Current `MCPStateBackend` implementation and addendum are verified against code.
 
 Tasks:
 
-- [x] Confirm current `DharaStateBackend` API and key schema.
+- [x] Confirm current `MCPStateBackend` API and key schema.
 - [x] Pool state: define key contract, write hook, recovery read path, degraded-mode behavior, and tests.
 - [x] Routing decisions: define key contract, batched write hook, recovery/read API, backpressure behavior, and tests.
 - [x] Persist approval requests/responses through the existing durable approval path and validate recovery after restart.
@@ -595,8 +595,8 @@ Use this log for implementation updates that change phase status.
 | 2026-05-11 | C6b | Removed the redundant `FastMCPServer` health-route wrapper so the constructor calls the shared bootstrap helper directly, completing the current MCP bootstrap trim | `uv run pytest --no-cov tests/unit/test_mcp_server.py tests/unit/test_mcp_server_simple.py tests/unit/test_mcp_otel_middleware.py`, `uv run ruff check mahavishnu/mcp/server_core.py mahavishnu/mcp/bootstrap.py`, `git diff --check` |
 | 2026-05-11 | C6b | Extracted the profile-gated tool-registration orchestration out of `mcp/server_core.py` into `mcp/bootstrap.py`, so `start()` now just sequences startup and the bootstrap helper owns registration policy | `uv run pytest --no-cov tests/unit/test_mcp_server.py tests/unit/test_mcp_server_simple.py tests/unit/test_mcp_otel_middleware.py`, `uv run ruff check mahavishnu/mcp/server_core.py mahavishnu/mcp/bootstrap.py`, `git diff --check` |
 | 2026-05-11 | C6b | Removed the remaining `FastMCPServer` tool-group wrapper methods after moving registration policy into `mcp/bootstrap.py`, leaving the server class to focus on tool definitions and startup sequencing | `uv run pytest --no-cov tests/unit/test_mcp_server.py tests/unit/test_mcp_server_simple.py tests/unit/test_mcp_otel_middleware.py`, `uv run ruff check mahavishnu/mcp/server_core.py mahavishnu/mcp/bootstrap.py`, `git diff --check` |
-| 2026-05-11 | C2 | Confirmed Dhara key schema helpers and threaded Dhara-backed pool/routing persistence plus recovery summary surfaces into the app and ecosystem status models | `uv run pytest --no-cov tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py`, `uv run ruff check mahavishnu/core/state_backends/dhara.py mahavishnu/pools/manager.py mahavishnu/factories.py mahavishnu/core/app.py mahavishnu/core/ecosystem_status.py tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py` |
-| 2026-05-11 | C2 | Live app context now exposes recovery summary to the ecosystem tools and TUI when the app instance is present | `uv run pytest --no-cov tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py tests/unit/test_ecosystem_tools.py`, `uv run ruff check mahavishnu/core/state_backends/dhara.py mahavishnu/pools/manager.py mahavishnu/factories.py mahavishnu/core/app.py mahavishnu/core/ecosystem_status.py mahavishnu/core/context.py mahavishnu/mcp/tools/ecosystem_tools.py mahavishnu/tui/app.py tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py tests/unit/test_ecosystem_tools.py` |
+| 2026-05-11 | C2 | Confirmed Dhara key schema helpers and threaded Dhara-backed pool/routing persistence plus recovery summary surfaces into the app and ecosystem status models | `uv run pytest --no-cov tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py`, `uv run ruff check mahavishnu/core/state_backends/mcp.py mahavishnu/pools/manager.py mahavishnu/factories.py mahavishnu/core/app.py mahavishnu/core/ecosystem_status.py tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py` |
+| 2026-05-11 | C2 | Live app context now exposes recovery summary to the ecosystem tools and TUI when the app instance is present | `uv run pytest --no-cov tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py tests/unit/test_ecosystem_tools.py`, `uv run ruff check mahavishnu/core/state_backends/mcp.py mahavishnu/pools/manager.py mahavishnu/factories.py mahavishnu/core/app.py mahavishnu/core/ecosystem_status.py mahavishnu/core/context.py mahavishnu/mcp/tools/ecosystem_tools.py mahavishnu/tui/app.py tests/unit/test_dhara_state_backend.py tests/unit/test_pools.py tests/unit/test_ecosystem_status.py tests/unit/test_ecosystem_tools.py` |
 | 2026-05-11 | C2 | Verified pool lifecycle operations continue to succeed when Dhara persistence throws, covering spawn, execute, route, and close degraded-mode behavior | `uv run pytest --no-cov tests/unit/test_pools.py`, `uv run ruff check tests/unit/test_pools.py` |
 | 2026-05-11 | C2 | Workflow restart recovery now uses the Dhara workflow recovery helper and app startup tests prove running workflows and pending approvals survive restart replay | `uv run pytest --no-cov tests/unit/test_app_recovery.py tests/unit/test_approval_manager.py tests/unit/test_dhara_state_backend.py`, `uv run ruff check mahavishnu/core/app.py tests/unit/test_app_recovery.py` |
 | 2026-05-11 | C2 | Routing recovery now has a public app read API plus Dhara filtering coverage, with routing-decision recovery listed in the operator summary | `uv run pytest --no-cov tests/unit/test_app_recovery.py tests/unit/test_dhara_state_backend.py`, `uv run ruff check mahavishnu/core/app.py tests/unit/test_app_recovery.py tests/unit/test_dhara_state_backend.py` |

@@ -121,7 +121,7 @@ class TestSkillPipelineInterface:
         pipeline: SkillPipeline = InMemorySkillPipeline()
         assert isinstance(pipeline, SkillPipeline)
 
-    def test_dhara_stub_raises_not_implemented(self) -> None:
+    def test_mcp_stub_raises_not_implemented(self) -> None:
         pipeline = DharaSkillPipeline()
         with pytest.raises(NotImplementedError):
             pipeline.record_transition(

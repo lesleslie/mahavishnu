@@ -162,7 +162,7 @@ def main():
         print("To complete Crackerjack ULID migration:")
         print()
         print("1. Update crackerjack/services/metrics.py:")
-        print("   - Replace uuid.uuid4() with: from dhara import generate")
+        print("   - Replace uuid.uuid4() with: from mcp import generate")
         print("   - job_id = generate()")
         print()
         print("2. Update crackerjack/tests/ to use Dhara ULID in test fixtures")

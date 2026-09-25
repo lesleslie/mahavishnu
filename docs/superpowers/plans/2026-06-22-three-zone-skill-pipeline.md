@@ -124,7 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_skill_transitions_actor_time
 Run the existing Dhara migration runner (the project's convention; locate via `grep -rn "dhara_migrations" mahavishnu/`). If no runner exists, run the SQL directly via `execute()`:
 
 ```python
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 with open("mahavishnu/core/dhara_migrations/skill_transitions.sql") as f:
     execute(f.read())
 ```
@@ -255,7 +255,7 @@ from pathlib import Path
 
 import typer
 
-from mahavishnu.core.dhara_client import execute, query
+from mahavishnu.core.mcp_client import execute, query
 from mahavishnu.mcp.tools.approval_tools import request_approval
 
 

@@ -1,13 +1,13 @@
 """Workflow outcome writer — validate-on-write at completion boundary.
 
-Persists ``workflow_outcome`` records to the Bodai Dhara substrate at
+Persists ``workflow_outcome`` records to the Bodai MCP substrate at
 ``workflow-results/{workflow_id}/``. Validation happens at the completion
 boundary so bad payloads never reach the durable store.
 
-Substrate contract: ``dhara.put(...)`` is synchronous at the call boundary.
+Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary.
 The substrate's internal handling (MemoryOutbox queue, async flush) is
 opaque to callers. This producer is sync by design — see
-``dhara/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the cross-portfolio rationale.
 
 Feature flag: ``WORKFLOW_OUTCOME_V1_ENABLED`` (default True). When False, the
@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.models.persistence import WorkflowOutcome
 
@@ -54,7 +54,7 @@ def record_workflow_outcome(
     finished_at: datetime,
     metadata: dict[str, object] | None = None,
 ) -> WorkflowOutcome:
-    """Validate the outcome payload, persist via dhara.put, return the typed struct."""
+    """Validate the outcome payload, persist via mcp.put, return the typed struct."""
     payload = {
         "workflow_id": workflow_id,
         "status": status,
@@ -64,8 +64,8 @@ def record_workflow_outcome(
     }
     validated: WorkflowOutcome = msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-assignment]
 
-    # Substrate-compat gate: only persist when dhara.put is exposed.
-    put = dhara_calltime("put")
+    # Substrate-compat gate: only persist when mcp.put is exposed.
+    put = mcp_calltime("put")
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
     if put is not None:
         put(f"workflow-results/{workflow_id}/", validated)
@@ -84,7 +84,7 @@ def record_workflow_outcome(
             "workflow_outcome_persistence_skipped",
             extra={
                 "workflow_id": workflow_id,
-                "reason": "dhara.put_unbound",
+                "reason": "mcp.put_unbound",
                 "v1_enabled": os.environ.get("WORKFLOW_OUTCOME_V1_ENABLED", "true"),
             },
         )

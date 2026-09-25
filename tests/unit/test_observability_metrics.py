@@ -88,8 +88,8 @@ def test_record_lock_helpers_emit_without_raise() -> None:
 
 
 def test_record_registry_drift_emits_both_directions() -> None:
-    """Both missing_in_s3 and missing_in_dhara are counted separately."""
-    record_registry_drift(missing_in_s3=3, missing_in_dhara=2)
+    """Both missing_in_s3 and missing_in_mcp are counted separately."""
+    record_registry_drift(missing_in_s3=3, missing_in_mcp=2)
 
 
 def test_record_cache_fallback_emit() -> None:

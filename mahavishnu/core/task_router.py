@@ -182,7 +182,7 @@ class StateManager:
     so that in-flight workflow state survives Mahavishnu restarts.
 
     Migration note (Bodai I0.5): File-based persistence is the Phase 0
-    baseline. Migration to Dhara via MCP is deferred to Phase 2 pending
+    baseline. Migration to MCP via MCP is deferred to Phase 2 pending
     inter-service auth.
     """
 

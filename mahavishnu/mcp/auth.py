@@ -147,7 +147,7 @@ def require_mcp_auth(
 
             repo = kwargs.get("repo", "*") or "*"
 
-            # Task 11.10: defense-in-depth. A buggy RBAC (Dhara network down,
+            # Task 11.10: defense-in-depth. A buggy RBAC (MCP network down,
             # JSONDecodeError on stored user data, etc.) must NEVER propagate
             # out of the gate — that would bypass the audit trail and either
             # 500 to the caller or accidentally allow through whatever

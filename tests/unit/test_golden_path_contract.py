@@ -26,7 +26,7 @@ def test_golden_path_contract_packet_includes_expected_services() -> None:
     assert packet["fixture"]["correlation_id"] == "corr-20260511-golden-path-001"
     assert len(packet["service_contracts"]) == 4
     repos = {contract["repo"] for contract in packet["service_contracts"]}
-    assert repos == {"crackerjack", "session-buddy", "akosha", "dhara"}
+    assert repos == {"crackerjack", "session-buddy", "akosha", "mcp"}
 
 
 def test_golden_path_trace_assertions_reference_one_correlation_id() -> None:

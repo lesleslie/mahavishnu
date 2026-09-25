@@ -2,7 +2,7 @@
 
 Defines :class:`AgentMetadata`, the canonical Pydantic v2 model for agent
 metadata advertised by every Bodai MCP server. The model is identical
-across all 5 replicas (akosha, mahavishnu, session-buddy, dhara,
+across all 5 replicas (akosha, mahavishnu, session-buddy, mcp,
 crackerjack) and is the wire shape returned by ``mcp__<server>__list_agents``
 and embedded in ``mcp__<server>__get_agent`` responses.
 
@@ -53,7 +53,7 @@ class AgentMetadata(BaseModel):
     """Canonical agent metadata advertised by every Bodai MCP server.
 
     The schema is identical across all 5 Bodai servers (akosha,
-    mahavishnu, session-buddy, dhara, crackerjack). It carries:
+    mahavishnu, session-buddy, mcp, crackerjack). It carries:
 
     - identity (``id``, ``server_key``, ``name``, ``version``)
     - prompt routing (``model``, ``tools``, ``dependencies``, ``tool_refs``)

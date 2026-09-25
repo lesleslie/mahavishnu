@@ -7,7 +7,7 @@ import pytest
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 def _sample_record(
@@ -59,7 +59,7 @@ class TestDerivePlanId:
 class TestUpsertAll:
     @pytest.mark.asyncio
     async def test_empty_records_noop(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rb = PlanIndexRebuilder()
         success, errors_count, errors = await rb.upsert_all([], store)
         assert success == 0
@@ -68,7 +68,7 @@ class TestUpsertAll:
 
     @pytest.mark.asyncio
     async def test_successful_upserts(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rb = PlanIndexRebuilder()
         records = [_sample_record(str(i + 1) * 16) for i in range(3)]
         success, errors_count, errors = await rb.upsert_all(records, store)
@@ -79,7 +79,7 @@ class TestUpsertAll:
     @pytest.mark.asyncio
     async def test_partial_failure_continues(self) -> None:
         """If one record raises during upsert, the rest still succeed."""
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rb = PlanIndexRebuilder()
         # Inject a path that the store will reject — needs custom fake.
         # For now, test the path that DOES work and verify error logging.

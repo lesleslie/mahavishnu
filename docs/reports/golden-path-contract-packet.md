@@ -45,7 +45,7 @@ Generated for the C5-prep harness.
 ### Dhara
 
 - Owner role: `curator`
-- Entry points: `DharaStateBackend.persist_workflow`, `DharaStateBackend.persist_pool`, `DharaStateBackend.persist_routing_decision`, `DharaStateBackend.persist_approval`
+- Entry points: `MCPStateBackend.persist_workflow`, `MCPStateBackend.persist_pool`, `MCPStateBackend.persist_routing_decision`, `MCPStateBackend.persist_approval`
 - Preserved surfaces: `recover_workflows`, `recover_pools`, `recover_routing_decisions`, `recover_approvals`
 - Mock strategy: persist durable checkpoints and replay them after restart.
 

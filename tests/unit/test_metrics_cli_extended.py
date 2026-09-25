@@ -119,27 +119,27 @@ def test_bodai_helpers_and_loaders() -> None:
     pytest.skip("bodai event-bridge helpers removed; see commit message")
 
 
-def test_dhara_helpers_and_renderers() -> None:
-    assert m._resolve_dhara_url("http://x/") == "http://x"
-    with patch.dict("os.environ", {"MAHAVISHNU_DHARA_URL":"http://env/"}): assert m._resolve_dhara_url(None) == "http://env"
+def test_mcp_helpers_and_renderers() -> None:
+    assert m._resolve_mcp_url("http://x/") == "http://x"
+    with patch.dict("os.environ", {"MAHAVISHNU_MCP_URL":"http://env/"}): assert m._resolve_mcp_url(None) == "http://env"
     assert m._parse_since("all") is None and m._parse_since("30m") is not None
     with pytest.raises(typer.Exit): m._parse_since("bad")
     entries = [{"key":"verification/a","value":{"consensus":"reject","persisted":False,"timestamp":datetime.now(UTC).isoformat()}}, {"key":"verification/b","value":{}}]
     with patch.object(m.console, "print_json") as out:
-        m._render_verification_output(entries, cutoff=None, output_format="json", dhara_url="u"); out.assert_called_once()
-    m._render_verification_output(entries, cutoff=None, output_format="table", dhara_url="u")
-    with pytest.raises(typer.Exit): m._render_verification_output([], cutoff=None, output_format="x", dhara_url="u")
+        m._render_verification_output(entries, cutoff=None, output_format="json", mcp_url="u"); out.assert_called_once()
+    m._render_verification_output(entries, cutoff=None, output_format="table", mcp_url="u")
+    with pytest.raises(typer.Exit): m._render_verification_output([], cutoff=None, output_format="x", mcp_url="u")
     with patch.object(m.console, "print_json") as out:
-        m._render_dispatch_output([{"key":"routing/a","value":{"caller_kind":"cli","async_callback":True}}], cutoff=None, output_format="json", dhara_url="u"); out.assert_called_once()
-    m._render_dispatch_output([], cutoff=None, output_format="table", dhara_url="u")
-    with pytest.raises(typer.Exit): m._render_dispatch_output([], cutoff=None, output_format="x", dhara_url="u")
+        m._render_dispatch_output([{"key":"routing/a","value":{"caller_kind":"cli","async_callback":True}}], cutoff=None, output_format="json", mcp_url="u"); out.assert_called_once()
+    m._render_dispatch_output([], cutoff=None, output_format="table", mcp_url="u")
+    with pytest.raises(typer.Exit): m._render_dispatch_output([], cutoff=None, output_format="x", mcp_url="u")
 
 
-def test_fetch_dhara_entries_and_commands() -> None:
+def test_fetch_mcp_entries_and_commands() -> None:
     client = AsyncMock()
     client.call_tool.return_value = [{"key":"a","value":{"x":1}}, {"bad":1}, "x"]
-    fake = SimpleNamespace(DharaClient=MagicMock(return_value=client))
-    with patch.dict("sys.modules", {"mahavishnu.core.dhara_adapter": fake}):
-        assert asyncio.run(m._fetch_dhara_entries("u", "p")) == [{"key":"a","value":{"x":1}}]
-    with patch.object(m, "_fetch_dhara_entries", new=AsyncMock(return_value=[])), patch.object(m, "_resolve_dhara_url", return_value="u"):
+    fake = SimpleNamespace(MCPClient=MagicMock(return_value=client))
+    with patch.dict("sys.modules", {"mahavishnu.core.mcp_adapter": fake}):
+        assert asyncio.run(m._fetch_mcp_entries("u", "p")) == [{"key":"a","value":{"x":1}}]
+    with patch.object(m, "_fetch_mcp_entries", new=AsyncMock(return_value=[])), patch.object(m, "_resolve_mcp_url", return_value="u"):
         m.verification_metrics("all", None, "table"); m.dispatch_metrics("all", None, "table")

@@ -44,7 +44,7 @@ class TestPlanRebuildStatusE2E:
         rebuilder lease holder that violates the regex is a PII leak.
         """
         # Seed a lock-holder string that matches the documented format.
-        await store._dhara.put(
+        await store._mcp.put(
             "plan_index/meta/rebuild_lock/holder", "deadbeef/12345"
         )
 

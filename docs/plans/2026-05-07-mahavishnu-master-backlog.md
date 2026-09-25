@@ -66,7 +66,7 @@ ______________________________________________________________________
 **Plan**: `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`
 **Status**: delivered 2026-05-07 (core), 2026-05-14 (PoolManager/RoutingDecisionBuffer wiring verified) — all tasks complete
 **Scope**: Medium; connect workflow state, adapter state, and routing decisions to Dhara as the durable persistence layer
-**Plan gap (2026-05-07)**: The existing plan predates the `DharaStateBackend` abstraction — it assumes direct PostgreSQL writes. The `DharaStateBackend` class, `WorkflowEngine` wiring, and recovery-on-startup path have no spec coverage in that document. Before implementing those tasks, write a short addendum covering: DharaStateBackend interface, WorkflowEngine hook points, batched-write strategy for `RoutingDecisionBuffer`, schema versioning (`workflow/v1/{id}`), degraded-boot mode, and Dhara circuit-breaker policy.
+**Plan gap (2026-05-07)**: The existing plan predates the `MCPStateBackend` abstraction — it assumes direct PostgreSQL writes. The `MCPStateBackend` class, `WorkflowEngine` wiring, and recovery-on-startup path have no spec coverage in that document. Before implementing those tasks, write a short addendum covering: MCPStateBackend interface, WorkflowEngine hook points, batched-write strategy for `RoutingDecisionBuffer`, schema versioning (`workflow/v1/{id}`), degraded-boot mode, and Dhara circuit-breaker policy.
 **Architecture note**: `PoolManager.__init__` will need a new `dhara_client` parameter — this is a breaking constructor change; update the call site in `app.py:566`.
 
 ### Why this priority
@@ -76,14 +76,14 @@ Dhara provides ACID-guaranteed persistent object storage and is already in the B
 ### Remaining tasks
 
 - [x] Define Dhara key schema for Mahavishnu objects: `workflow/v1/{id}`, `pool/v1/{id}`, `routing/v1/{task_class}/{ts}`, `approval/v1/{id}` — documented in addendum
-- [x] Add `DharaStateBackend` class in `mahavishnu/core/state_backends/dhara.py` — degraded-boot + inline circuit breaker
-- [x] Wire `WorkflowEngine` to persist workflow lifecycle events via `DharaStateBackend` — `execute_workflow_with_fallback()` hooks added
+- [x] Add `MCPStateBackend` class in `mahavishnu/core/state_backends/mcp.py` — degraded-boot + inline circuit breaker
+- [x] Wire `WorkflowEngine` to persist workflow lifecycle events via `MCPStateBackend` — `execute_workflow_with_fallback()` hooks added
 - [x] Wire `PoolManager` to checkpoint pool health + active worker list to Dhara on change — `_persist_pool_state` called in `spawn_pool`, `route_task`, and `close_pool`; `_persist_routing_decision` called in `route_task` (verified 2026-05-14)
 - [x] Wire `RoutingDecisionBuffer` to persist routing decisions to Dhara — `PoolManager._persist_routing_decision` covers this at the routing site; `RoutingDecisionBuffer` itself remains in-memory (ring buffer for live queries only, not the persistence layer) (verified 2026-05-14)
 - [x] Add Dhara connection config stanza to `settings/mahavishnu.yaml` — `dhara_state:` stanza added
 - [x] Update `MahavishnuSettings` with `DharaStatePersistenceConfig` field
 - [x] Add recovery path: on startup, restore last-known workflow state from Dhara — `_recover_workflow_state_from_dhara()` in `wait_for_dependencies()`
-- [x] Add unit tests for DharaStateBackend — 10 tests in `test_dhara_state_backend.py`, all passing
+- [x] Add unit tests for MCPStateBackend — 10 tests in `test_dhara_state_backend.py`, all passing
 - [x] Update `docs/architecture/ARCHITECTURE.md` with Dhara persistence layer — done in 2026-05-14 doc sync plan (Task 5)
 
 **Delivered**: 2026-05-07 (core), 2026-05-14 (PoolManager wiring verified, arch doc update tracked) — all P2 tasks complete.
@@ -217,7 +217,7 @@ Mahavishnu's approval flow (`request_approval` → `respond_to_approval`) sends 
 - [x] Add lookback window: `MahavishnuApp._recover_approvals_from_dhara()` in `wait_for_dependencies()`
 - [x] Add expiry TTL to approval records (default 24 h — changed from 30 min to match Dhara TTL)
 - [x] Also fixed: `MahavishnuApp.approval_manager` was never initialized — always returned "not available"
-- [x] Add `DharaStateBackend.schedule_delete` fire-and-forget helper
+- [x] Add `MCPStateBackend.schedule_delete` fire-and-forget helper
 - [x] Add 9 unit tests in `TestApprovalManagerDharaPersistence` — all passing
 
 **Delivered**: 2026-05-07 — durable approval persistence + restart recovery + 9 tests. Also fixed the missing `approval_manager` initialization on `MahavishnuApp`.

@@ -57,7 +57,7 @@ def get_pool_manager(
     session_buddy_client: Any = None,
     message_bus: Any = None,
     event_publisher: Any = None,
-    dhara_state: Any = None,
+    mcp_state: Any = None,
 ) -> PoolManager:
     """Get or create singleton PoolManager instance.
 
@@ -83,7 +83,7 @@ def get_pool_manager(
                 session_buddy_client=session_buddy_client,
                 message_bus=message_bus,
                 event_publisher=event_publisher,
-                dhara_state=dhara_state,
+                mcp_state=mcp_state,
             )
 
     return _pool_manager

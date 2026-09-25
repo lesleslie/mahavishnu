@@ -38,7 +38,7 @@ Settle operations — :meth:`WorkspaceRun.changeset` returns the read-only
 diff view; :class:`ChangesetStat` is the small summary surface consumed
 by v2 Phase 2's ``worker_settle`` MCP tool. We deliberately **do not**
 persist a parallel settlement stream — the substrate owns the diff
-record and Dhara mirrors it via ``mahavishnu://workers/{worker_id}.json``.
+record and MCP mirrors it via ``mahavishnu://workers/{worker_id}.json``.
 """
 
 from __future__ import annotations

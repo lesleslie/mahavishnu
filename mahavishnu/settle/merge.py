@@ -226,7 +226,7 @@ class MergeStrategy(StrEnum):
     * ``SEMANTIC`` — entity-aware ``mergiraf merge`` (Phase 2 driver;
       requires the ``mergiraf`` binary on ``$PATH``).
 
-    REQ-SM-007 serialization contract: Dhara payloads persist
+    REQ-SM-007 serialization contract: MCP payloads persist
     ``str(self.value)`` (i.e. ``"line"`` or ``"semantic"``), NOT
     ``str(self)`` (which yields ``"MergeStrategy.SEMANTIC"`` and breaks
     cross-version payloads). The regression test in
@@ -639,7 +639,7 @@ async def _merge_via_mergiraf(
                 merged_text = stdout.decode("utf-8", errors="replace")
                 stderr_text = stderr.decode("utf-8", errors="replace")
                 # Truncate stderr to 4KB — large parse-error dumps can blow
-                # up Dhara payloads. The first 4KB is where actionable hints
+                # up MCP payloads. The first 4KB is where actionable hints
                 # (grammar name, line number) live.
                 driver_warnings: str | None = stderr_text[:4096] or None
                 exit_code = proc.returncode

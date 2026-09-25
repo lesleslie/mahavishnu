@@ -9,30 +9,30 @@ from mahavishnu.core.envelopes import list_envelopes
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-# ``TraceId`` and ``DharaClient`` must be importable at runtime: Pydantic v2
+# ``TraceId`` and ``MCPClient`` must be importable at runtime: Pydantic v2
 # evaluates forward refs (with ``from __future__ import annotations``) when
 # generating schemas, so types referenced from the tool signature need to
 # resolve outside ``TYPE_CHECKING``.
 from mahavishnu.core.capabilities import TraceId
-from mahavishnu.core.dhara_adapter import DharaClient
+from mahavishnu.core.mcp_adapter import MCPClient
 
 
 def register_get_capability_result(
     server: FastMCP,
     *,
-    dhara: DharaClient,
+    mcp: MCPClient,
 ) -> None:
     """Register ``get_capability_result(trace_id: TraceId)`` on ``server``."""
 
     @server.tool(name="get_capability_result", description="List envelopes for a trace.")
     async def get_capability_result(trace_id: TraceId) -> dict[str, object]:
-        """Read back persisted envelopes for a trace_id from Dhara.
+        """Read back persisted envelopes for a trace_id from MCP.
 
         Returns a structured payload with status="completed" when envelopes are
         present and "pending" otherwise. The ``envelopes`` field carries
-        Dhara key references; ``error`` is always ``None`` on success.
+        MCP key references; ``error`` is always ``None`` on success.
         """
-        addrs = await list_envelopes(trace_id, dhara=dhara)
+        addrs = await list_envelopes(trace_id, mcp=mcp)
         return {
             "trace_id": trace_id,
             "status": "completed" if addrs else "pending",

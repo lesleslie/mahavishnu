@@ -31,7 +31,7 @@ ______________________________________________________________________
 > **State correction (2026-09-06):** flipped from `built` back to `wired`. All three Critical gaps that prompted the original `built` re-flip have since closed in production code:
 >
 > 1. **`WORKFLOW_OUTCOME_V1_ENABLED` feature flag** — present at `mahavishnu/core/workflow/outcome_writer.py:57` (`_workflow_outcome_v1_enabled()` reads the env var with default 'true'; mirrors `_approval_log_v1_enabled`).
-> 1. **`getattr(dhara, "put", None)` runtime gate in producer body** — present at `mahavishnu/core/workflow/outcome_writer.py:78` (`put = dhara_calltime("put")` from the `_dhara_substrate_compat` helper; `if put is not None:` gates the actual call at line 80; logs `workflow_outcome_persistence_skipped` with `reason='dhara.put_unbound'` on the failure path).
+> 1. **`getattr(dhara, "put", None)` runtime gate in producer body** — present at `mahavishnu/core/workflow/outcome_writer.py:78` (`put = mcp_calltime("put")` from the `_dhara_substrate_compat` helper; `if put is not None:` gates the actual call at line 80; logs `workflow_outcome_persistence_skipped` with `reason='dhara.put_unbound'` on the failure path).
 > 1. **`getattr(dhara, "get", None)` runtime gate in consumer body** — present at `mahavishnu/mcp/tools/workflow_tools.py:52` (`get_fn = getattr(dhara, "get", None)`; `if get_fn is None:` returns `None` and logs `workflow_outcome_read_skipped` with `reason='dhara.get_unbound'`).
 >
 > The 2026-08-10 multi-agent-review gaps closed in subsequent commits (between 2026-08-10 and 2026-09-06) without a corresponding tracker update; the tracker was stale. Verified 2026-09-06 by re-reading the current source files.

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.2] - 2026-09-24
+
+### Documentation
+
+- plans: Add audit gate after Task 9 (docs commit)
+- plans: Add audit gates after source-code tasks (1, 4, 5, 6, 7)
+- plans: Add jinja2-custom-delimiters 1.0.4 implementation plan
+- plans: Apply CRITICAL fixes from 5-agent plan review
+- plans: Apply remaining HIGH/CRITICAL fixes from 5-agent review
+- specs: Add jinja2-custom-delimiters 1.0.4 update design
+- specs: Revise jinja2-custom-delimiters 1.0.4 design after 5-agent review
+
 ## [0.28.1] - 2026-09-21
 
 ### Fixed
@@ -117,7 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - tests: Align AgnoToolsConfig default URL with mahavishnu port
 - tests: Align otel_ingester mocks with post-Phase 3 CommonMCPClient API
 - tests: Assert MINIMAL profile registers health + skills_signer
-- tests: Migrate DharaThinClient mocks from post() to call_tool()
+- tests: Migrate MCPThinClient mocks from post() to call_tool()
 - tests: Migrate test_qc_checker to call_tool AsyncMock
 - tests: Mock MCP call_tool instead of HTTP post in chaos buffer test
 - tests: Mock RBAC manager in session_buddy_tools test fixture
@@ -340,7 +352,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot: Thread event_id through CLI edit/done/reopen (latent no-op bug)
 - jot: UD5 short_id is last 6 hex chars (was first 6)
 - jot: Widen enrich_ctx catch + hoist git spawn (Task 5 fix round 1)
-- mcp/lifecycle: Wire DharaKvClient into plan_index, drop synthetic fallback
+- mcp/lifecycle: Wire MCPKvClient into plan_index, drop synthetic fallback
 - observability: Add severity= and samples= to drift_warning log for parity with drift_detected
 - otel_ingester: Normalise \_extract_timestamp to naive UTC
 - plan_index,auth: Enforce READ_PLAN_INDEX via RBACManager (BLOCKER Task 11.7)
@@ -484,7 +496,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cleanup: Remove contradictory stale_pid test + fix auth test for new fail-fast contract
 - Cover CrossRepoAggregator.get_repos_needing_attention
 - Cover MahavishnuApp budget_watchdog lifecycle methods
-- dhara_kv: Cover DharaKvClient contract + cron int(dict) reproducer
+- dhara_kv: Cover MCPKvClient contract + cron int(dict) reproducer
 - distill,precommitment: Skip cleanly at collection when duckdb is missing
 - E2e scaffolds for agents + settle-merge + agent metadata schema
 - Fix mypy strict on test_audit_plan_index.py:179 (REQ-PLAN-009)
@@ -1579,7 +1591,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bodai: Close Phase 6 — Mahavishnu publisher, hook replacement, CLI+docs
 - bridge: Wire CallerKind quotas and dispatch_to_pool for ultracode subagents
 - cli: Wire 11 orphan methods across 2 subsystems
-- core: Add DharaThinClient SQL proxy execute/query
+- core: Add MCPThinClient SQL proxy execute/query
 - crow: Plan 1 Tasks 7-11 - web extract escalation + server wiring + integration tests
 - crow: Wire terminal tool (single PTY, no concurrency)
 - CrowTerminalAdapter uses session-aware tools

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One-shot bootstrap for the Dhara-canonical plan index.
 
-Migration step 1 (per docs/superpowers/plans/2026-09-10-plan-index-dhara.md
+Migration step 1 (per docs/superpowers/plans/2026-09-10-plan-index-mcp.md
 §Migration): walk the filesystem, parse frontmatter, and upsert every
 plan record into Dhara. After this single run, the periodic
 ``mahavishnu.plan_index.cron`` cycle (Task 14) takes over for ongoing
@@ -22,7 +22,7 @@ Behavior:
       rebuilder continues with remaining records; the script exits 0
       when at least one record succeeded, 1 only when zero records
       were upserted (e.g. nothing in the filesystem to bootstrap).
-    * Dhara is OPT-IN via ``--dhara-url``; without it the script runs
+    * Dhara is OPT-IN via ``--mcp-url``; without it the script runs
       in audit-only mode (scan + counts, no writes). This mirrors the
       three-way audit script's opt-in Dhara leg so the bootstrap can be
       exercised in CI without a live Dhara subprocess.
@@ -31,7 +31,7 @@ Backups are handled by a separate operator runbook step; this script
 invokes ``scripts/backup_plan_index.py`` when ``--backup-index`` is set.
 
 Exit codes:
-    0 = success (>=1 record processed; Dhara write OK when --dhara-url set)
+    0 = success (>=1 record processed; Dhara write OK when --mcp-url set)
     1 = no records found OR total failure (every record errored)
     2 = bad CLI args
 
@@ -256,15 +256,15 @@ def _record_from_file(
 
 async def _connect_dhara(url: str) -> Any:
     """Construct a live Dhara client. Lazy import so the script runs in
-    environments without the dhara package (CI, --dry-run). Raises
+    environments without the mcp package (CI, --dry-run). Raises
     ``ImportError`` when the package is missing — caught by ``main``.
     """
     try:
-        from dhara.client import AsyncClient  # type: ignore[import-not-found]
+        from mcp.client import AsyncClient  # type: ignore[import-not-found]
     except ImportError as exc:
         raise SystemExit(
-            "Dhara client requested but the `dhara` package is not installed. "
-            "Install with: uv pip install dhara\n"
+            "Dhara client requested but the `mcp` package is not installed. "
+            "Install with: uv pip install mcp\n"
             f"Original error: {exc}"
         ) from exc
     return AsyncClient(url)
@@ -359,7 +359,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Repository root for filesystem scan (default: cwd).",
     )
     parser.add_argument(
-        "--dhara-url",
+        "--mcp-url",
         metavar="URL",
         help=(
             "Dhara MCP URL (e.g. http://localhost:8683/mcp). When omitted, "
@@ -369,7 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=("Scan + count + report; do not write to Dhara even when --dhara-url is set."),
+        help=("Scan + count + report; do not write to Dhara even when --mcp-url is set."),
     )
     parser.add_argument(
         "--backup-index",
@@ -394,8 +394,8 @@ async def _run_async(args: argparse.Namespace) -> int:
             sys.stderr.write(f"backed up PLAN_INDEX.md -> {backup_path}\n")
 
     dhara_client: Any | None = None
-    if args.dhara_url and not args.dry_run:
-        dhara_client = await _connect_dhara(args.dhara_url)
+    if args.mcp_url and not args.dry_run:
+        dhara_client = await _connect_dhara(args.mcp_url)
 
     success, errors_count, errors = await bootstrap(
         repo_root,

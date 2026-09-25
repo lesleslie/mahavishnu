@@ -7,8 +7,8 @@ to skip operations known to fail (e.g. a documented ``git push`` rebase
 conflict on a protected branch).
 
 Substrate status: ``sql_blocked``. v0 is an in-memory store. When the
-``self_heal_audit_log`` Dhara table is unblocked, swap ``RuleStore``
-for a Dhara-backed implementation that satisfies the same interface
+``self_heal_audit_log`` MCP table is unblocked, swap ``RuleStore``
+for a MCP-backed implementation that satisfies the same interface
 (``records``, ``record_rule``, ``apply_rule``).
 
 Rule ID contract: ``extract_rule`` returns deterministic IDs derived
@@ -99,7 +99,7 @@ class RuleRecord:
 
 @dataclass
 class RuleStore:
-    """In-memory v0 audit log. Dhara wiring follows.
+    """In-memory v0 audit log. MCP wiring follows.
 
     ``records`` is the underlying list, ordered by insertion. ``RuleStore``
     is not thread-safe; concurrent access is the orchestrator's problem

@@ -47,9 +47,9 @@ class CloneTools:
         store: VerificationStore | None = None,
     ) -> None:
         self.app = app
-        # Lazily construct a store wired to the configured Dhara backend if
+        # Lazily construct a store wired to the configured MCP backend if
         # the caller didn't inject one (tests inject a fake; production passes
-        # nothing and gets the default-Dhara-backed store).
+        # nothing and gets the default-MCP-backed store).
         self._store: VerificationStore | None = store
         if self._store is None and getattr(app, "settings", None) is not None:
             self._store = build_default_store(app)
@@ -273,12 +273,12 @@ class CloneTools:
         """
         logger.info("clone_refactor_status: limit=%d", limit)
         try:
-            dhara_url = getattr(
-                getattr(self.app, "settings", None), "dhara_url", "http://localhost:8683"
+            mcp_url = getattr(
+                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
             )
-            from mahavishnu.core.state_backends.dhara import DharaStateBackend
+            from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
-            client = DharaStateBackend(base_url=dhara_url)
+            client = MCPStateBackend(base_url=mcp_url)
             records = await client.list_prefix("clone-handled/")
             clusters = records[:limit] if records else []
             return {"clusters": clusters, "total": len(records) if records else 0}
@@ -301,7 +301,7 @@ def register_clone_tools(
         mcp: FastMCP instance.
         app: MahavishnuApp instance.
         store: Optional ``VerificationStore`` to inject into ``CloneTools``.
-            When omitted, ``CloneTools`` builds a Dhara-backed store from
+            When omitted, ``CloneTools`` builds a MCP-backed store from
             ``app.settings``. Tests inject a fake store here.
 
     Registers 4 tools:

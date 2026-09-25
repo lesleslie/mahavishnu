@@ -28,7 +28,7 @@ from mahavishnu.plan_index.cron_core import run_rebuild_cycle
 from mahavishnu.plan_index.paths import errors_log_path
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 class TestErrorsLogRedaction:
@@ -42,7 +42,7 @@ class TestErrorsLogRedaction:
         """
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 
         async def _fake_discover(repo_root: Path | None) -> list[Any]:
@@ -78,7 +78,7 @@ class TestErrorsLogRedaction:
         """
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 
         async def _fake_discover(repo_root: Path | None) -> list[Any]:
@@ -100,7 +100,7 @@ class TestErrorsLogRedaction:
                     {
                         "path_hash": "deadbeef0002",
                         "op": "upsert",
-                        "err": "dhara conflict",
+                        "err": "mcp conflict",
                         "plan_id": "b" * 32,
                     },
                 ],

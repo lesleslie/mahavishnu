@@ -1,6 +1,6 @@
 """Unit tests for workflow models (WorkflowExecution, PoolExecution, WorkflowCheckpoint).
 
-These tests are self-contained and do not rely on external projects like oneiric or dhara.
+These tests are self-contained and do not rely on external projects like oneiric or mcp.
 Uses only the fallback generate_config_id and is_config_ulid from the module itself.
 """
 

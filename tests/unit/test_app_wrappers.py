@@ -21,7 +21,7 @@ def _fake_config() -> SimpleNamespace:
         repos_config={"repos": [], "roles": []},
         auth=SimpleNamespace(enabled=False),
         health=SimpleNamespace(
-            dependencies={"dhara": SimpleNamespace(use_tls=False, host="localhost", port=8683)}
+            dependencies={"mcp": SimpleNamespace(use_tls=False, host="localhost", port=8683)}
         ),
     )
 
@@ -81,7 +81,7 @@ class TestMahavishnuAppInit:
 
         app = MahavishnuApp(config=_fake_config())
 
-        assert app.dhara_url is not None
+        assert app.mcp_url is not None
         assert app.circuit_breaker.threshold == 7
         assert app.circuit_breaker.timeout == 20
         assert app.observability == "obs"
@@ -123,7 +123,7 @@ class TestWrapperMethods:
             bootstrap_module, "set_app_context", lambda self: "context", raising=True
         )
         monkeypatch.setattr(
-            app_module, "_resolve_dhara_url_helper", lambda config: "http://dhara", raising=True
+            app_module, "_resolve_mcp_url_helper", lambda config: "http://mcp", raising=True
         )
         monkeypatch.setattr(
             app_module, "_get_recovery_summary", AsyncMock(return_value={"ok": True}), raising=True
@@ -227,7 +227,7 @@ class TestWrapperMethods:
         app._load_repos()
         app._initialize_adapters()
         app._set_app_context()
-        assert app._resolve_dhara_url() == "http://dhara"
+        assert app._resolve_mcp_url() == "http://mcp"
 
         assert app.health_endpoint == "health"
         assert asyncio.run(app.get_recovery_summary()) == {"ok": True}
@@ -297,13 +297,13 @@ class TestWrapperMethods:
         )
         monkeypatch.setattr(
             app_module,
-            "_recover_workflow_state_from_dhara_helper",
+            "_recover_workflow_state_from_mcp_helper",
             AsyncMock(return_value=None),
             raising=True,
         )
         monkeypatch.setattr(
             app_module,
-            "_recover_approvals_from_dhara_helper",
+            "_recover_approvals_from_mcp_helper",
             AsyncMock(return_value=None),
             raising=True,
         )
@@ -389,8 +389,8 @@ class TestWrapperMethods:
         await app.start_learning_pipeline()
         await app.stop_learning_pipeline()
         await app.initialize_worktree_coordinator()
-        await app._recover_workflow_state_from_dhara()
-        await app._recover_approvals_from_dhara()
+        await app._recover_workflow_state_from_mcp()
+        await app._recover_approvals_from_mcp()
         assert await app._prepare_execution("prefect", {"type": "check"}, ["/repo"], None) == (
             "adapter",
             ["/repo"],

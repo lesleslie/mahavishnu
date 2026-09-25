@@ -1,7 +1,7 @@
 """Adapter persistence layer for HybridAdapterRegistry.
 
 This module implements the persistence layer for adapter state and health history,
-using SQLite for local storage with a stub for future Dhara MCP integration.
+using SQLite for local storage with a stub for future MCP MCP integration.
 
 Key responsibilities:
 - Persist adapter state (enabled/disabled, preferences)
@@ -10,7 +10,7 @@ Key responsibilities:
 
 Storage Architecture:
 - Local SQLite (current): aiosqlite for async operations
-- Dhara MCP (future): Distributed state via MCP protocol at localhost:8683
+- MCP MCP (future): Distributed state via MCP protocol at localhost:8683
 
 Created: 2026-02-22
 Version: 1.0
@@ -256,7 +256,7 @@ class AdapterPersistenceLayer:
     """Persistence layer for adapter state and health history.
 
     This class provides async SQLite storage for adapter state with a
-    placeholder for future Dhara MCP integration.
+    placeholder for future MCP MCP integration.
 
     Features:
     - ACID transactions via SQLite
@@ -294,9 +294,9 @@ class AdapterPersistenceLayer:
         self._db: aiosqlite.Connection | None = None
         self._initialized = False
 
-        # Future: Dhara MCP client stub
-        # self._dhara_client: DharaClient | None = None
-        # self._dhara_url = "http://localhost:8683/mcp"
+        # Future: MCP MCP client stub
+        # self._mcp_client: MCPClient | None = None
+        # self._mcp_url = "http://localhost:8683/mcp"
 
         logger.debug(f"AdapterPersistenceLayer initialized with path: {self.storage_path}")
 
@@ -456,8 +456,8 @@ class AdapterPersistenceLayer:
 
             logger.debug(f"Saved state for adapter '{state.adapter_id}': enabled={state.enabled}")
 
-            # Future: Sync to Dhara MCP
-            # await self._sync_to_dhara("adapter_state", data)
+            # Future: Sync to MCP MCP
+            # await self._sync_to_mcp("adapter_state", data)
 
         except Exception as e:
             logger.error(f"Failed to save state for adapter '{state.adapter_id}': {e}")
@@ -603,8 +603,8 @@ class AdapterPersistenceLayer:
                 f"healthy={record.healthy}, latency={record.latency_ms}ms"
             )
 
-            # Future: Sync to Dhara MCP
-            # await self._sync_to_dhara("health_history", data)
+            # Future: Sync to MCP MCP
+            # await self._sync_to_mcp("health_history", data)
 
         except Exception as e:
             logger.error(f"Failed to record health for adapter '{record.adapter_id}': {e}")
@@ -794,23 +794,23 @@ class AdapterPersistenceLayer:
         await self.close()
 
     # =========================================================================
-    # Future: Dhara MCP Integration
+    # Future: MCP MCP Integration
     # =========================================================================
 
-    # async def _sync_to_dhara(self, table: str, data: dict[str, Any]) -> None:
-    #     """Sync data to Dhara MCP server.
+    # async def _sync_to_mcp(self, table: str, data: dict[str, Any]) -> None:
+    #     """Sync data to MCP MCP server.
     #
-    #     Placeholder for future integration with Dhara MCP at localhost:8683.
+    #     Placeholder for future integration with MCP MCP at localhost:8683.
     #
     #     Args:
     #         table: Table name (adapter_state or health_history)
     #         data: Record data to sync
     #     """
-    #     if self._dhara_client is None:
+    #     if self._mcp_client is None:
     #         return
     #
     #     try:
-    #         await self._dhara_client.call_tool(
+    #         await self._mcp_client.call_tool(
     #             "put_persistent_object",
     #             {
     #                 "key": f"mahavishnu/{table}/{data.get('adapter_id', 'unknown')}",
@@ -818,9 +818,9 @@ class AdapterPersistenceLayer:
     #                 "ttl": 86400 * 30,  # 30 days TTL
     #             }
     #         )
-    #         logger.debug(f"Synced {table} to Dhara for adapter '{data.get('adapter_id')}'")
+    #         logger.debug(f"Synced {table} to MCP for adapter '{data.get('adapter_id')}'")
     #     except Exception as e:
-    #         logger.warning(f"Failed to sync to Dhara: {e}")
+    #         logger.warning(f"Failed to sync to MCP: {e}")
     #         # Don't raise - local persistence is the source of truth
 
 

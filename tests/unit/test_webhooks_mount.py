@@ -1,7 +1,7 @@
 """Verify the durable webhook receiver is mounted under /durable-webhooks.
 
 Mirrors the existing ``tests/unit/test_webhooks_receiver.py`` pattern:
-patch ``mahavishnu.webhooks.receiver.dhara_calltime`` to a fake that
+patch ``mahavishnu.webhooks.receiver.mcp_calltime`` to a fake that
 returns our mock put, then POST through the parent app's TestClient
 and assert the receiver's ``receive_webhook`` handler fires (status
 202, ``webhook_id`` echoed back).
@@ -28,16 +28,16 @@ def parent_app_with_mount(monkeypatch: pytest.MonkeyPatch) -> tuple[FastAPI, Mag
     Returns:
         (parent_app, captured_put) — the test client is created against
         ``parent_app`` and ``captured_put`` records every
-        ``dhara.put(key, value)`` invocation.
+        ``mcp.put(key, value)`` invocation.
     """
     captured: list[tuple[str, object]] = []
     mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    # Patch the receiver's local ``dhara_calltime`` binding — the receiver
-    # calls ``put = dhara_calltime("put")`` at request time, so replacing
+    # Patch the receiver's local ``mcp_calltime`` binding — the receiver
+    # calls ``put = mcp_calltime("put")`` at request time, so replacing
     # the binding on the receiver module makes the leaf see the fake.
     monkeypatch.setattr(
         receiver_module,
-        "dhara_calltime",
+        "mcp_calltime",
         lambda name: mock_put if name == "put" else None,
     )
 

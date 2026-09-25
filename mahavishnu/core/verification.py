@@ -20,8 +20,8 @@ Failure-mode contract (mandatory; verified by tests in T1.6):
 
 Persistence contract (``VerificationStore``):
 
-- Successful Dhara write → ``persisted=True``, ``persist_error=None``.
-- Dhara write failure → ``persisted=False``, ``persist_error=<summary>``,
+- Successful MCP write → ``persisted=True``, ``persist_error=None``.
+- MCP write failure → ``persisted=False``, ``persist_error=<summary>``,
   WARNING log, dead-letter file written under
   ``~/.mahavishnu/verification-dead-letter/{proposal_id}.json``.
 
@@ -48,7 +48,7 @@ from oneiric.core.logging import get_logger
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 if TYPE_CHECKING:
-    from mahavishnu.core.state_backends.dhara import DharaStateBackend
+    from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
 logger = get_logger("mahavishnu.verification")
 
@@ -85,20 +85,20 @@ def is_verification_enabled(app: Any | None) -> bool:
 
 
 def build_default_store(app: Any) -> VerificationStore | None:
-    """Build a Dhara-backed ``VerificationStore`` from the app's settings.
+    """Build a MCP-backed ``VerificationStore`` from the app's settings.
 
-    Returns None when Dhara cannot be configured (e.g. ``dhara_url`` is
+    Returns None when MCP cannot be configured (e.g. ``mcp_url`` is
     absent). Callers handle the None case by skipping persistence — the
     ``verification`` field is still populated from the in-memory result.
     """
     try:
-        dhara_url = getattr(getattr(app, "settings", None), "dhara_url", "http://localhost:8683")
-        from mahavishnu.core.state_backends.dhara import DharaStateBackend
+        mcp_url = getattr(getattr(app, "settings", None), "mcp_url", "http://localhost:8683")
+        from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
-        backend = DharaStateBackend(base_url=dhara_url)
-        return VerificationStore(dhara=backend)
+        backend = MCPStateBackend(base_url=mcp_url)
+        return VerificationStore(mcp=backend)
     except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-        logger.warning("build_default_store: Dhara unavailable, persistence disabled")
+        logger.warning("build_default_store: MCP unavailable, persistence disabled")
         return None
 
 
@@ -202,7 +202,7 @@ class VerificationResult(BaseModel):
 
     ``persisted`` and ``persist_error`` make the audit trail's durability
     observable to callers — a ``persisted=False`` result tells the caller
-    the verification rationale did not reach Dhara and a dead-letter file
+    the verification rationale did not reach MCP and a dead-letter file
     is the recovery path.
     """
 
@@ -546,19 +546,19 @@ async def verify_proposal(
 
 
 class VerificationStore:
-    """Persists ``VerificationResult`` records to Dhara.
+    """Persists ``VerificationResult`` records to MCP.
 
     Writes to ``verification/{proposal_id}/result`` under the canonical
-    Dhara key schema. On failure, dead-letters the result to a local
+    MCP key schema. On failure, dead-letters the result to a local
     fallback file at ``~/.mahavishnu/verification-dead-letter/{proposal_id}.json``
-    so reconciliation can replay the audit trail once Dhara recovers.
+    so reconciliation can replay the audit trail once MCP recovers.
     """
 
     DEAD_LETTER_DIR: Path = Path.home() / ".mahavishnu" / "verification-dead-letter"
     KEY_PREFIX: str = "verification/"
 
-    def __init__(self, dhara: DharaStateBackend | None = None) -> None:
-        self.dhara = dhara
+    def __init__(self, mcp: MCPStateBackend | None = None) -> None:
+        self.mcp = mcp
 
     @staticmethod
     def _result_key(proposal_id: str) -> str:
@@ -582,20 +582,20 @@ class VerificationStore:
         return VerificationStore.DEAD_LETTER_DIR / f"{safe}.json"
 
     async def persist(self, result: VerificationResult) -> VerificationResult:
-        """Persist a ``VerificationResult`` to Dhara.
+        """Persist a ``VerificationResult`` to MCP.
 
         On success returns the result with ``persisted=True`` and
         ``persist_error=None``. On failure logs a WARNING, dead-letters
         the payload locally, and returns the result with ``persisted=False``
         and ``persist_error`` set to a one-line exception summary.
         """
-        if self.dhara is None:
+        if self.mcp is None:
             # No backend wired — treat as persistence failure so the
             # caller knows the audit trail isn't durable.
             return result.model_copy(
                 update={
                     "persisted": False,
-                    "persist_error": "dhara backend not configured",
+                    "persist_error": "mcp backend not configured",
                 }
             )
 
@@ -605,8 +605,8 @@ class VerificationStore:
         payload["persisted_at"] = datetime.now(UTC).isoformat()
 
         try:
-            await self.dhara.put(key, payload)
-            await self.dhara.put(
+            await self.mcp.put(key, payload)
+            await self.mcp.put(
                 metadata_key,
                 {
                     "proposal_id": result.proposal_id,
@@ -658,18 +658,18 @@ class VerificationStore:
     async def get(self, proposal_id: str) -> VerificationResult | None:
         """Retrieve a persisted ``VerificationResult``.
 
-        Returns ``None`` when no record exists or when Dhara is unavailable.
+        Returns ``None`` when no record exists or when MCP is unavailable.
         """
-        if self.dhara is None:
+        if self.mcp is None:
             return None
         try:
-            data = await self.dhara.get(self._result_key(proposal_id))
+            data = await self.mcp.get(self._result_key(proposal_id))
         except Exception:
             logger.exception("verification.get_failed proposal_id=%s", proposal_id)
             return None
         if not data:
             return None
-        # Strip the audit-trail-only fields Dhara added; the model_dump
+        # Strip the audit-trail-only fields MCP added; the model_dump
         # shape already matches VerificationResult minus persisted_at.
         data.pop("persisted_at", None)
         try:

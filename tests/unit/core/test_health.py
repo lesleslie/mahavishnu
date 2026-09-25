@@ -319,7 +319,7 @@ class TestDependencyWaiter:
     async def test_wait_for_optional_skipped(self, waiter):
         """Test that optional dependencies can be skipped."""
         dependencies = {
-            "dhara": DependencyConfig(
+            "mcp": DependencyConfig(
                 host="localhost",
                 port=8683,
                 required=False,
@@ -329,7 +329,7 @@ class TestDependencyWaiter:
 
         # Mock the checker to return unhealthy
         mock_result = HealthCheckResult(
-            service_name="dhara",
+            service_name="mcp",
             status=HealthStatus.UNHEALTHY,
             error="Connection refused",
         )
@@ -342,15 +342,15 @@ class TestDependencyWaiter:
         ):
             result = await waiter.wait_for_all(dependencies)
 
-            # Should succeed because dhara is optional
+            # Should succeed because mcp is optional
             assert result.success
-            assert "dhara" in result.skipped_optional
+            assert "mcp" in result.skipped_optional
 
     @pytest.mark.asyncio
     async def test_wait_for_optional_healthy(self, waiter):
         """Test that healthy optional dependencies are tracked without skips."""
         dependencies = {
-            "dhara": DependencyConfig(
+            "mcp": DependencyConfig(
                 host="localhost",
                 port=8683,
                 required=False,
@@ -359,7 +359,7 @@ class TestDependencyWaiter:
         }
 
         mock_result = HealthCheckResult(
-            service_name="dhara",
+            service_name="mcp",
             status=HealthStatus.OK,
             latency_ms=2.0,
         )
@@ -373,14 +373,14 @@ class TestDependencyWaiter:
             result = await waiter.wait_for_all(dependencies)
 
             assert result.success
-            assert result.dependencies["dhara"].status == HealthStatus.OK
+            assert result.dependencies["mcp"].status == HealthStatus.OK
             assert result.skipped_optional == []
 
     @pytest.mark.asyncio
     async def test_wait_for_optional_unhealthy_records_skip(self, waiter):
         """Test optional dependency unhealthy path before skip fallback."""
         dependencies = {
-            "dhara": DependencyConfig(
+            "mcp": DependencyConfig(
                 host="localhost",
                 port=8683,
                 required=False,
@@ -389,7 +389,7 @@ class TestDependencyWaiter:
         }
 
         unhealthy_result = HealthCheckResult(
-            service_name="dhara",
+            service_name="mcp",
             status=HealthStatus.UNHEALTHY,
             error="Connection refused",
         )
@@ -403,8 +403,8 @@ class TestDependencyWaiter:
             result = await waiter.wait_for_all(dependencies)
 
             assert result.success
-            assert result.dependencies["dhara"].status == HealthStatus.UNHEALTHY
-            assert "dhara" in result.skipped_optional
+            assert result.dependencies["mcp"].status == HealthStatus.UNHEALTHY
+            assert "mcp" in result.skipped_optional
 
     @pytest.mark.asyncio
     async def test_wait_for_single_degraded(self, waiter):
@@ -416,7 +416,7 @@ class TestDependencyWaiter:
             timeout_seconds=1,
         )
         mock_result = HealthCheckResult(
-            service_name="dhara",
+            service_name="mcp",
             status=HealthStatus.DEGRADED,
             latency_ms=3.0,
         )
@@ -427,7 +427,7 @@ class TestDependencyWaiter:
             new_callable=AsyncMock,
             return_value=mock_result,
         ):
-            result = await waiter._wait_for_single("dhara", dependency)
+            result = await waiter._wait_for_single("mcp", dependency)
 
             assert isinstance(result, HealthCheckResult)
             assert result.status == HealthStatus.DEGRADED

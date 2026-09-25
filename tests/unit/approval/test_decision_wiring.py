@@ -26,7 +26,7 @@ def manager_with_pending_request() -> tuple[ApprovalManager, MagicMock, Approval
     mock_dhara = MagicMock()
     mock_dhara.schedule_put = MagicMock()
     mock_dhara.schedule_delete = MagicMock()
-    manager = ApprovalManager(dhara_state=mock_dhara)
+    manager = ApprovalManager(mcp_state=mock_dhara)
     request = manager.create_request(approval_type="publish", context={})
     mock_dhara.schedule_put.reset_mock()
     return manager, mock_dhara, request
@@ -105,7 +105,7 @@ def test_respond_uses_actor_from_request_context(
     assert mock_writer.call_args.kwargs["decided_by"] == "alice@example.com"
 
 
-def test_respond_does_not_schedule_dhara_delete_when_flag_enabled(
+def test_respond_does_not_schedule_mcp_delete_when_flag_enabled(
     manager_with_pending_request: tuple[ApprovalManager, MagicMock, ApprovalRequest],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

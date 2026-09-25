@@ -1,7 +1,7 @@
 """PostgreSQL persistence layer for adaptive routing metrics.
 
 This module provides PostgreSQL-backed storage for the ExecutionTracker,
-replacing the Dhara-based storage assumptions with Mahavishnu's consolidated
+replacing the MCP-based storage assumptions with Mahavishnu's consolidated
 PostgreSQL cluster.
 
 Design:

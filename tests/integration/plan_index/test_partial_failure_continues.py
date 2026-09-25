@@ -14,7 +14,7 @@ import pytest
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 def _bad_record() -> PlanRecord:
@@ -61,7 +61,7 @@ def _good_record() -> PlanRecord:
 class TestPartialFailureContinues:
     @pytest.mark.asyncio
     async def test_bad_record_logged_good_record_succeeds(self) -> None:
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rb = PlanIndexRebuilder()
         success, errors_count, errors = await rb.upsert_all(
             [_bad_record(), _good_record()], store

@@ -11,7 +11,7 @@ Counts and surfaces:
   the ratio for fast dashboard reads.
 
 Crackerjack quality score (spec §14: "≥75 after rollout") is sourced
-from ``crackerjack run --json`` and persisted to Dhara per the
+from ``crackerjack run --json`` and persisted to MCP per the
 project convention; it is surfaced via
 ``mcp__mahavishnu__get_observability_metrics`` — not via this class.
 """

@@ -1,0 +1,59 @@
+# Registry local-overlay - EXAMPLE FILE
+#
+# Copy this file to settings/registry_metadata.local.yaml and fill in your own
+# personal archive/excluded repos. settings/registry_metadata.local.yaml is
+# gitignored - never commit your populated copy.
+#
+# This overlay is the per-machine half of the registry metadata:
+#   - excluded_repos: projects you removed from settings/ecosystem.yaml but
+#                     still want surfaced in the registry's "Excluded" section.
+#   - archived_repos: projects moved to local archive storage.
+#
+# The tracked half (settings/registry_metadata.yaml) holds the shareable overlay:
+# phase ordering, provenance, fastmcp_pin, registry_notes per ecosystem.yaml repo.
+# The registry merges both halves at render time.
+#
+# Each entry below is keyed by the repo's name as it appeared in ecosystem.yaml
+# (or, for repos you never added there, the local name you want rendered).
+
+version: '1.0'
+schema: bodai-registry-overlay-local-v1
+last_updated: REPLACE-WITH-ISO-DATE
+
+# Repos you removed from the ecosystem catalog but want surfaced as "Excluded".
+# Replace placeholders with your values.
+excluded_repos:
+  excluded-repo-name:
+    exclusion_reason: "why-this-is-excluded"
+    removed_from_ecosystem_yaml: "YYYY-MM-DD"
+    # Local on-disk path (the maintainer's filesystem layout). May be null if
+    # the repo was deleted outright and only its name is preserved here.
+    archive_path: /Users/YOU/Projects/excluded-repo-name/
+    # Or:
+    # archive_path: null
+
+# Repos you archived to local storage. Path is per-machine.
+archived_repos:
+  archived-repo-name:
+    archive_path: /Users/YOU/Projects/ARCHIVED/archived-repo-name/
+    archived_on: "YYYY-MM-DD"
+    exclusion_reason: "why-this-was-archived"
+
+# =================== FIELD REFERENCE ===================
+#
+# excluded_repos[<repo-name>]:
+#   exclusion_reason (required):         One-line why this repo is excluded.
+#   removed_from_ecosystem_yaml (date):  ISO date it was removed from the
+#                                       main ecosystem catalog. Project-level
+#                                       metadata, safe for any install to know.
+#   archive_path (optional):            Per-machine on-disk location.
+#                                       Use null if the repo was deleted and
+#                                       only its name is preserved.
+#
+# archived_repos[<repo-name>]:
+#   archive_path (required):            Per-machine on-disk archive location.
+#   archived_on (date, required):        ISO date.
+#   exclusion_reason (required):        One-line why this was archived.
+#
+# Both blocks are public-knowledge-friendly IF you strip the per-machine paths;
+# the rule of thumb is: reason + date = safe to share, archive_path = personal.

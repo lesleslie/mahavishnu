@@ -1,10 +1,10 @@
-"""Hybrid adapter registry combining entry-point discovery + Dhara persistence.
+"""Hybrid adapter registry combining entry-point discovery + MCP persistence.
 
 This module implements the HybridAdapterRegistry using the composite pattern,
 combining three specialized components:
 
-1. **AdapterDiscoveryEngine** - Entry points + Dhara MCP discovery
-2. **AdapterPersistenceLayer** - Dhara/SQLite state and health storage
+1. **AdapterDiscoveryEngine** - Entry points + MCP MCP discovery
+2. **AdapterPersistenceLayer** - MCP/SQLite state and health storage
 3. **HealthIntegration** - Health monitoring, metrics, and alerts
 
 Architecture:
@@ -13,8 +13,8 @@ Architecture:
     │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
     │  │  Discovery      │  │  Persistence    │  │  Health         │   │
     │  │  Engine         │  │  Layer          │  │  Integration    │   │
-    │  │  (entry points, │  │  (Dhara/SQLite)│  │  (metrics,      │   │
-    │  │   Dhara MCP)    │  │                 │  │   alerts)       │   │
+    │  │  (entry points, │  │  (MCP/SQLite)│  │  (metrics,      │   │
+    │  │   MCP MCP)    │  │                 │  │   alerts)       │   │
     │  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘   │
     │           │                    │                    │            │
     │           └────────────────────┼────────────────────┘            │
@@ -66,11 +66,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _build_dhara_registry_config(config: Any, registry_config: Any) -> dict[str, Any]:
-    """Build AdapterDiscoveryEngine config for Dhara registry access."""
+def _build_mcp_registry_config(config: Any, registry_config: Any) -> dict[str, Any]:
+    """Build AdapterDiscoveryEngine config for MCP registry access."""
     base_url = getattr(registry_config, "base_url", None)
     if not base_url:
-        dependency = getattr(getattr(config, "health", None), "dependencies", {}).get("dhara")
+        dependency = getattr(getattr(config, "health", None), "dependencies", {}).get("mcp")
         if dependency is not None:
             scheme = "https" if getattr(dependency, "use_tls", False) else "http"
             base_url = f"{scheme}://{dependency.host}:{dependency.port}/mcp"
@@ -123,15 +123,15 @@ class RegistrationReport:
 
 
 class HybridAdapterRegistry:
-    """Hybrid adapter registry with entry-point discovery + Dhara persistence.
+    """Hybrid adapter registry with entry-point discovery + MCP persistence.
 
     This registry implements the composite pattern, delegating to specialized
     components for discovery, persistence, and health monitoring.
 
     Features:
     - Entry point plugin discovery
-    - Dhara MCP remote discovery
-    - Dhara/SQLite state persistence
+    - MCP MCP remote discovery
+    - MCP/SQLite state persistence
     - Capability-based routing with caching
     - Health monitoring integration
     - Thread-safe operations
@@ -178,14 +178,14 @@ class HybridAdapterRegistry:
         # Composite components
         adapter_registry_config = getattr(config, "adapter_registry", None)
         oneiric_config = getattr(config, "oneiric_mcp", None)
-        dhara_registry_enabled = bool(
+        mcp_registry_enabled = bool(
             getattr(
                 oneiric_config,
                 "enabled",
                 getattr(config, "oneiric_mcp_enabled", False),
             )
         )
-        dhara_registry_config = _build_dhara_registry_config(config, oneiric_config)
+        mcp_registry_config = _build_mcp_registry_config(config, oneiric_config)
 
         self.discovery = AdapterDiscoveryEngine(
             config={
@@ -193,8 +193,8 @@ class HybridAdapterRegistry:
                 or getattr(config, "adapter_allowlist_patterns", None)
                 or ["mahavishnu.adapters.*", "mahavishnu.engines.*"],
                 "cache_ttl_seconds": getattr(adapter_registry_config, "cache_ttl_seconds", 300),
-                "enable_dhara_registry": dhara_registry_enabled,
-                "dhara_registry_config": dhara_registry_config,
+                "enable_mcp_registry": mcp_registry_enabled,
+                "mcp_registry_config": mcp_registry_config,
             }
         )
         self.persistence = AdapterPersistenceLayer()
@@ -224,7 +224,7 @@ class HybridAdapterRegistry:
 
         This is the main entry point for adapter registration. It:
         1. Discovers adapters from entry points
-        2. Discovers adapters from Dhara MCP
+        2. Discovers adapters from MCP MCP
         3. Loads persisted state for known adapters
         4. Instantiates and registers adapters
 

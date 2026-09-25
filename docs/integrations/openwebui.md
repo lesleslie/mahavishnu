@@ -170,7 +170,7 @@ Run each prompt in Arena mode (blind A/B), record which model wins:
 | 7 | "Summarize the Dhara integration approach in 3 bullet points" | Fast model |
 | 8 | "Route this task to the least-loaded pool and explain the decision" (with tools) | Either, test routing |
 | 9 | "Write pytest tests for an approval manager that uses Dhara persistence" | Code model |
-| 10 | "What architectural pattern does `DharaStateBackend` implement and why?" | Reasoning model |
+| 10 | "What architectural pattern does `MCPStateBackend` implement and why?" | Reasoning model |
 
 After 10 prompts, export the ELO table from **Admin → Evaluations** and update `settings/models.yaml` task-category routing if the data contradicts current defaults.
 

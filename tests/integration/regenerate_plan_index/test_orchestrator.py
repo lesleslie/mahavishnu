@@ -50,10 +50,10 @@ class TestParserWiring:
         args = parser.parse_args(["--render-to", "/tmp/index.md"])
         assert args.render_to == "/tmp/index.md"
 
-    def test_parser_includes_dhara_url(self) -> None:
+    def test_parser_includes_mcp_url(self) -> None:
         parser = build_parser()
-        args = parser.parse_args(["--dhara-url", "http://localhost:8683"])
-        assert args.dhara_url == "http://localhost:8683"
+        args = parser.parse_args(["--mcp-url", "http://localhost:8683"])
+        assert args.mcp_url == "http://localhost:8683"
 
     def test_parser_includes_preflight_mode(self) -> None:
         parser = build_parser()
@@ -87,7 +87,7 @@ class TestParserWiring:
         for flag in (
             "--dry-run", "--check", "--skip-render",
             "--rebuild-from", "--exclude", "--exclude-from",
-            "--preflight-mode", "--render-to", "--dhara-url",
+            "--preflight-mode", "--render-to", "--mcp-url",
             "--repo-root",
         ):
             assert flag in out, f"--help output missing {flag}"

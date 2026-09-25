@@ -1,7 +1,7 @@
 """Round-trip test for ``mahavishnu.core.models.persistence``.
 
 Pins the wire-format compatibility with the original Dhara types
-(``dhara.schema.{WorkflowOutcome, ApprovalLog, WebhookIngress}``) by
+(``mcp.schema.{WorkflowOutcome, ApprovalLog, WebhookIngress}``) by
 asserting that ``msgspec.to_builtins(...)`` produces the exact field set
 Dhara would produce for an equivalent instance. Any drift in field name,
 type, or ``frozen=True`` status surfaces here as a test failure rather
@@ -21,7 +21,7 @@ from mahavishnu.core.models.persistence import (
 )
 
 
-def test_workflow_outcome_roundtrip_matches_dhara_shape() -> None:
+def test_workflow_outcome_roundtrip_matches_mcp_shape() -> None:
     """Round-trip a WorkflowOutcome through msgspec.to_builtins."""
     outcome = WorkflowOutcome(
         workflow_id="wf-001",
@@ -43,7 +43,7 @@ def test_workflow_outcome_roundtrip_matches_dhara_shape() -> None:
     assert restored == outcome
 
 
-def test_approval_log_roundtrip_matches_dhara_shape() -> None:
+def test_approval_log_roundtrip_matches_mcp_shape() -> None:
     """Round-trip an ApprovalLog through msgspec.to_builtins."""
     entry = ApprovalLog(
         approval_id="apr-001",
@@ -64,7 +64,7 @@ def test_approval_log_roundtrip_matches_dhara_shape() -> None:
     assert restored == entry
 
 
-def test_webhook_ingress_roundtrip_matches_dhara_shape() -> None:
+def test_webhook_ingress_roundtrip_matches_mcp_shape() -> None:
     """Round-trip a WebhookIngress through msgspec.to_builtins."""
     record = WebhookIngress(
         webhook_id="wh-001",

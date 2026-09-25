@@ -81,7 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_case_retrospectives_workflow
 Run the project's Dhara migration runner (or `execute()` the SQL directly):
 
 ```python
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 with open("mahavishnu/core/dhara_migrations/case_retrospectives.sql") as f:
     execute(f.read())
 ```
@@ -230,7 +230,7 @@ from __future__ import annotations
 
 import uuid
 
-from mahavishnu.core.dhara_client import execute
+from mahavishnu.core.mcp_client import execute
 from mahavishnu.core.events.subscribers.report_persister import (
     get_iteration_history,
     get_workflow_report,
@@ -413,7 +413,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from mahavishnu.core.dhara_client import query
+from mahavishnu.core.mcp_client import query
 
 
 SOP_PATH = Path.home() / ".mahavishnu" / "sop.md"

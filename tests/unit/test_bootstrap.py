@@ -296,7 +296,7 @@ class TestLoadRepos:
 class TestComponentEndpointRegistration:
     """Tests for Dhara component endpoint registration helpers."""
 
-    def test_register_component_endpoint_no_dhara_state(self, caplog):
+    def test_register_component_endpoint_no_mcp_state(self, caplog):
         """No state backend should log and return without error."""
         with caplog.at_level(logging.WARNING):
             bootstrap._register_component_endpoint(None, "mahavishnu", "http://localhost")
@@ -315,13 +315,13 @@ class TestComponentEndpointRegistration:
         monkeypatch.setattr(asyncio, "get_running_loop", lambda: object())
         monkeypatch.setattr(asyncio, "create_task", fake_create_task)
 
-        dhara_state = type(
+        mcp_state = type(
             "DharaState",
             (),
             {"put": lambda self, key, value: asyncio.sleep(0)},
         )()
 
-        bootstrap._register_component_endpoint(dhara_state, "mahavishnu", "http://localhost")
+        bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
 
         assert len(created) == 1
 
@@ -339,9 +339,9 @@ class TestComponentEndpointRegistration:
             async def put(self, key, value):
                 self.put_calls.append((key, value))
 
-        fake_client = FakeClient("http://dhara")
+        fake_client = FakeClient("http://mcp")
         monkeypatch.setattr(
-            "mahavishnu.core.dhara_adapter.DharaClient", lambda base_url: fake_client
+            "mahavishnu.core.mcp_adapter.MCPClient", lambda base_url: fake_client
         )
 
         def fake_run(coro):
@@ -353,13 +353,13 @@ class TestComponentEndpointRegistration:
 
         monkeypatch.setattr(asyncio, "run", fake_run)
 
-        dhara_state = type(
+        mcp_state = type(
             "DharaState",
             (),
-            {"_client": type("Client", (), {"_base_url": "http://dhara"})()},
+            {"_client": type("Client", (), {"_base_url": "http://mcp"})()},
         )()
 
-        bootstrap._register_component_endpoint(dhara_state, "mahavishnu", "http://localhost")
+        bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
 
         assert fake_client.put_calls == [
             (
@@ -424,22 +424,22 @@ class TestBootstrapDeepHelpers:
             asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop"))
         )
 
-        fake_module = types.ModuleType("mahavishnu.core.dhara_adapter")
+        fake_module = types.ModuleType("mahavishnu.core.mcp_adapter")
 
-        class FakeDharaClient:
+        class FakeMCPClient:
             def __init__(self, base_url):
                 self.base_url = base_url
 
             async def put(self, key, value):
                 raise RuntimeError("write failed")
 
-        fake_module.DharaClient = FakeDharaClient
-        monkeypatch.setitem(sys.modules, "mahavishnu.core.dhara_adapter", fake_module)
+        fake_module.MCPClient = FakeDharaClient
+        monkeypatch.setitem(sys.modules, "mahavishnu.core.mcp_adapter", fake_module)
 
-        dhara_state = SimpleNamespace(_client=SimpleNamespace(_base_url="http://dhara"))
+        mcp_state = SimpleNamespace(_client=SimpleNamespace(_base_url="http://mcp"))
 
         with caplog.at_level(logging.WARNING):
-            bootstrap._register_component_endpoint(dhara_state, "mahavishnu", "http://localhost")
+            bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
 
         assert "failed to register" in caplog.text.lower()
 
@@ -609,13 +609,13 @@ class TestBootstrapDeepHelpers:
     def test_init_terminal_manager_normal_path(self):
         assert bootstrap.init_terminal_manager(SimpleNamespace()) is None
 
-    def test_resolve_dhara_url_default_and_tls(self):
+    def test_resolve_mcp_url_default_and_tls(self):
         default_config = SimpleNamespace(health=SimpleNamespace(dependencies={}))
-        assert bootstrap.resolve_dhara_url(default_config) == "http://localhost:8683/mcp"
+        assert bootstrap.resolve_mcp_url(default_config) == "http://localhost:8683/mcp"
 
-        dependency = SimpleNamespace(use_tls=True, host="dhara.example", port=9443)
-        custom_config = SimpleNamespace(health=SimpleNamespace(dependencies={"dhara": dependency}))
-        assert bootstrap.resolve_dhara_url(custom_config) == "https://dhara.example:9443/mcp"
+        dependency = SimpleNamespace(use_tls=True, host="mcp.example", port=9443)
+        custom_config = SimpleNamespace(health=SimpleNamespace(dependencies={"mcp": dependency}))
+        assert bootstrap.resolve_mcp_url(custom_config) == "https://mcp.example:9443/mcp"
 
     def test_init_pool_manager_success_and_failure(self, monkeypatch, caplog):
         fake_message_bus_module = types.ModuleType("mahavishnu.mcp.protocols.message_bus")
@@ -631,12 +631,12 @@ class TestBootstrapDeepHelpers:
                 self.strategy = strategy
 
         class FakePoolManager:
-            def __init__(self, terminal_manager, session_buddy_client, message_bus, dhara_state):
+            def __init__(self, terminal_manager, session_buddy_client, message_bus, mcp_state):
                 captured["init"] = (
                     terminal_manager,
                     session_buddy_client,
                     message_bus,
-                    dhara_state,
+                    mcp_state,
                 )
                 self.selector = None
 
@@ -655,7 +655,7 @@ class TestBootstrapDeepHelpers:
         app = SimpleNamespace(
             terminal_manager="term",
             session_buddy="buddy",
-            _dhara_state="dhara",
+            _mcp_state="mcp",
             config=SimpleNamespace(
                 pools=SimpleNamespace(routing_strategy="least_loaded", default_type="mahavishnu")
             ),
@@ -732,9 +732,9 @@ class TestBootstrapDeepHelpers:
             assert bootstrap.init_learning_pipeline(app) is None
 
     @pytest.mark.asyncio
-    async def test_recover_workflow_and_approvals_from_dhara(self, caplog):
+    async def test_recover_workflow_and_approvals_from_mcp(self, caplog):
         app = SimpleNamespace(
-            _dhara_state=SimpleNamespace(
+            _mcp_state=SimpleNamespace(
                 recover_workflows=AsyncMock(
                     return_value=[
                         {"status": "running", "execution_id": "wf-1"},
@@ -745,29 +745,29 @@ class TestBootstrapDeepHelpers:
             ),
             active_workflows=set(),
             approval_manager=SimpleNamespace(
-                restore_from_dhara_entries=lambda entries: len(entries)
+                restore_from_mcp_entries=lambda entries: len(entries)
             ),
         )
 
         with caplog.at_level(logging.INFO):
-            await bootstrap.recover_workflow_state_from_dhara(app)
-            await bootstrap.recover_approvals_from_dhara(app)
+            await bootstrap.recover_workflow_state_from_mcp(app)
+            await bootstrap.recover_approvals_from_mcp(app)
 
         assert "wf-1" in app.active_workflows
 
-        app._dhara_state.recover_workflows = AsyncMock(side_effect=RuntimeError("wf boom"))
-        app._dhara_state.list_prefix = AsyncMock(side_effect=RuntimeError("appr boom"))
+        app._mcp_state.recover_workflows = AsyncMock(side_effect=RuntimeError("wf boom"))
+        app._mcp_state.list_prefix = AsyncMock(side_effect=RuntimeError("appr boom"))
 
         with caplog.at_level(logging.DEBUG):
-            await bootstrap.recover_workflow_state_from_dhara(app)
-            await bootstrap.recover_approvals_from_dhara(app)
+            await bootstrap.recover_workflow_state_from_mcp(app)
+            await bootstrap.recover_approvals_from_mcp(app)
 
     @pytest.mark.asyncio
     async def test_recover_helpers_return_early_without_dhara(self):
-        app = SimpleNamespace(_dhara_state=None, active_workflows=set(), approval_manager=None)
+        app = SimpleNamespace(_mcp_state=None, active_workflows=set(), approval_manager=None)
 
-        await bootstrap.recover_workflow_state_from_dhara(app)
-        await bootstrap.recover_approvals_from_dhara(app)
+        await bootstrap.recover_workflow_state_from_mcp(app)
+        await bootstrap.recover_approvals_from_mcp(app)
 
     def test_set_app_context_with_agno_adapter(self, monkeypatch):
         fake_context = types.ModuleType("mahavishnu.core.context")
@@ -778,22 +778,22 @@ class TestBootstrapDeepHelpers:
         def fake_set_context(**kwargs):
             captured["context"] = kwargs
 
-        def fake_set_dhara_client_base_url(url):
-            captured["dhara_url"] = url
+        def fake_set_mcp_client_base_url(url):
+            captured["mcp_url"] = url
 
         class FakeLLM:
             def __init__(self, **kwargs):
                 captured["llm_kwargs"] = kwargs
 
         fake_context.set_app_context = fake_set_context
-        fake_oneiric.set_dhara_client_base_url = fake_set_dhara_client_base_url
+        fake_oneiric.set_mcp_client_base_url = fake_set_mcp_client_base_url
         fake_agno_llm.LLM = FakeLLM
         monkeypatch.setitem(sys.modules, "mahavishnu.core.context", fake_context)
         monkeypatch.setitem(sys.modules, "mahavishnu.core.oneiric_client", fake_oneiric)
         monkeypatch.setitem(sys.modules, "agno.llm", fake_agno_llm)
 
         app = SimpleNamespace(
-            dhara_url="http://dhara",
+            mcp_url="http://mcp",
             config=SimpleNamespace(
                 agno=SimpleNamespace(
                     llm=SimpleNamespace(
@@ -808,7 +808,7 @@ class TestBootstrapDeepHelpers:
 
         bootstrap.set_app_context(app)
 
-        assert captured["dhara_url"] == "http://dhara"
+        assert captured["mcp_url"] == "http://mcp"
         assert captured["context"]["agno_adapter"] is app.adapters["agno"]
         assert captured["context"]["llm_factory"] is not None
         factory = captured["context"]["llm_factory"]
@@ -874,7 +874,7 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
         install(
-            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
         )
 
         routing_metrics_module = types.ModuleType("mahavishnu.core.routing_metrics")
@@ -905,7 +905,7 @@ class TestBootstrapDeepHelpers:
                     default_type="mahavishnu",
                 ),
                 learning=SimpleNamespace(enabled=True),
-                dhara_state=SimpleNamespace(
+                mcp_state=SimpleNamespace(
                     enabled=False,
                     flush_interval_seconds=10,
                     max_routing_buffer_age_seconds=20,
@@ -921,7 +921,7 @@ class TestBootstrapDeepHelpers:
             ),
             observability=object(),
             adapters={},
-            dhara_url=None,
+            mcp_url=None,
             _init_terminal_manager=lambda: "terminal-manager",
             _init_pool_manager=lambda: "pool-manager",
             _init_memory_aggregator=lambda: "memory-aggregator",
@@ -985,7 +985,7 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
         install(
-            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
         )
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_Boom)
 
@@ -1006,7 +1006,7 @@ class TestBootstrapDeepHelpers:
                     default_type="mahavishnu",
                 ),
                 learning=SimpleNamespace(enabled=False),
-                dhara_state=SimpleNamespace(
+                mcp_state=SimpleNamespace(
                     enabled=True,
                     flush_interval_seconds=10,
                     max_routing_buffer_age_seconds=20,
@@ -1022,10 +1022,10 @@ class TestBootstrapDeepHelpers:
             ),
             observability=object(),
             adapters={},
-            dhara_url="http://dhara",
+            mcp_url="http://mcp",
             active_workflows=set(),
             approval_manager=SimpleNamespace(
-                restore_from_dhara_entries=lambda entries: len(entries)
+                restore_from_mcp_entries=lambda entries: len(entries)
             ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
@@ -1035,7 +1035,7 @@ class TestBootstrapDeepHelpers:
 
         assert app.coordination_memory is None
         assert app.repository_messenger is None
-        assert app._dhara_state is not None
+        assert app._mcp_state is not None
         assert app.routing_metrics_server is None
         assert app.session_buddy_poller is None
 
@@ -1079,7 +1079,7 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
         install(
-            "mahavishnu.core.state_backends.dhara", DharaStateBackend=_NoOp, DharaStateConfig=_NoOp
+            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
         )
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_NoOp)
 
@@ -1103,7 +1103,7 @@ class TestBootstrapDeepHelpers:
                     default_type="mahavishnu",
                 ),
                 learning=SimpleNamespace(enabled=False),
-                dhara_state=SimpleNamespace(
+                mcp_state=SimpleNamespace(
                     enabled=False,
                     flush_interval_seconds=10,
                     max_routing_buffer_age_seconds=20,
@@ -1119,10 +1119,10 @@ class TestBootstrapDeepHelpers:
             ),
             observability=object(),
             adapters={},
-            dhara_url=None,
+            mcp_url=None,
             active_workflows=set(),
             approval_manager=SimpleNamespace(
-                restore_from_dhara_entries=lambda entries: len(entries)
+                restore_from_mcp_entries=lambda entries: len(entries)
             ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")

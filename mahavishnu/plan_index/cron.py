@@ -3,7 +3,7 @@
 NOT in fitness_analyzer.py (that's an OTel trace-tag filter, not a
 periodic-task registry).
 
-Per-task lock with stale-PID detection. Per-task DLQ for Dhara write
+Per-task lock with stale-PID detection. Per-task DLQ for MCP write
 failures. Hostname is hashed (not raw) for the lock key.
 
 The cycle itself lives in cron_core.run_rebuild_cycle — kept separate so

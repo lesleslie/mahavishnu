@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Snapshot docs/plans/PLAN_INDEX.md before the first Dhara-only render.
 
-Per the migration runbook (docs/runbooks/migrate-plan-index-dhara.md
+Per the migration runbook (docs/runbooks/migrate-plan-index-mcp.md
 step 0), the operator takes a backup of the legacy PLAN_INDEX.md BEFORE
 the bootstrap script writes any Dhara records. This guards against
 "the cron path produced a broken PLAN_INDEX.md" — the rollback path

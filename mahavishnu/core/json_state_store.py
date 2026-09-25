@@ -5,7 +5,7 @@ Used by:
 - ``mahavishnu.distill.llm_usage.LLMUsageStore``
 
 (Precommit used this module historically via JsonFileLockStore, which
-was retired in 2026-08-04 in favor of the Dhara substrate D-LOCK
+was retired in 2026-08-04 in favor of the MCP substrate D-LOCK
 primitive — see docs/superpowers/specs/2026-08-04-d-lock-design.md.)
 """
 

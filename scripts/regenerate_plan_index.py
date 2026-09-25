@@ -965,7 +965,7 @@ def _glob_to_regex(pattern: str, *, anchored: bool) -> str:
 def _run_phase_b(
     repo_root: Path,
     records: list[Any],
-    dhara_url: str,
+    mcp_url: str,
 ) -> tuple[int, int]:
     """Run PlanIndexRebuilder.upsert_all against a real Dhara endpoint.
 
@@ -977,10 +977,10 @@ def _run_phase_b(
     from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
     from mahavishnu.plan_index.store import PlanIndexStore
 
-    from mahavishnu.core.dhara_adapter import DharaClient
+    from mahavishnu.core.mcp_adapter import MCPClient
 
     async def _upsert() -> tuple[int, int, list]:
-        client = DharaClient(base_url=dhara_url, timeout=30.0)
+        client = MCPClient(base_url=mcp_url, timeout=30.0)
         try:
             store = PlanIndexStore(client)  # type: ignore[arg-type]
             rebuilder = PlanIndexRebuilder()
@@ -1063,7 +1063,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-render",
         action="store_true",
-        help="Skip writing PLAN_INDEX.md; Dhara upsert (Phase B) still runs when --dhara-url is set.",
+        help="Skip writing PLAN_INDEX.md; Dhara upsert (Phase B) still runs when --mcp-url is set.",
     )
     parser.add_argument(
         "--rebuild-from",
@@ -1113,7 +1113,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "--dhara-url",
+        "--mcp-url",
         metavar="URL",
         default=None,
         help=(
@@ -1195,10 +1195,10 @@ def main(argv: list[str] | None = None) -> int:
         total_with_frontmatter += len(store_entries)
 
     # Phase B — optional Dhara upsert via PlanIndexRebuilder. Only runs
-    # when --dhara-url is provided; otherwise the script is a pure renderer.
+    # when --mcp-url is provided; otherwise the script is a pure renderer.
     phase_b_success = 0
     phase_b_errors = 0
-    if args.dhara_url is not None and not args.dry_run:
+    if args.mcp_url is not None and not args.dry_run:
         try:
             from mahavishnu.plan_index.cron_core import discover_records
         except ImportError as exc:
@@ -1212,10 +1212,10 @@ def main(argv: list[str] | None = None) -> int:
                 phase_b_success, phase_b_errors = _run_phase_b(
                     repo_root,
                     records,
-                    args.dhara_url,
+                    args.mcp_url,
                 )
             except Exception as exc:
-                sys.stderr.write(f"phase-b: dhara upsert failed: {exc}\n")
+                sys.stderr.write(f"phase-b: mcp upsert failed: {exc}\n")
                 phase_b_errors = -1  # sentinel for "unknown error count"
 
     # --rebuild-from is documented as a one-shot backfill hook. The current
@@ -1298,7 +1298,7 @@ def main(argv: list[str] | None = None) -> int:
             "stores": stores,
             "per_store": {store: len(entries_by_store.get(store, [])) for store in stores},
             "phase_b": {
-                "ran": args.dhara_url is not None and not args.dry_run,
+                "ran": args.mcp_url is not None and not args.dry_run,
                 "success": phase_b_success,
                 "errors": phase_b_errors,
             },

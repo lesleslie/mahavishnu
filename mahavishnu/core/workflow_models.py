@@ -20,7 +20,7 @@ def generate_config_id() -> str:
     """Generate a new ULID for a config / workflow / pool execution record.
 
     Delegates to :func:`oneiric.core.ulid.generate` (drop-in for the
-    previous ``dhara.generate`` per Phase 8 Task 6).
+    previous ``mcp.generate`` per Phase 8 Task 6).
     """
     return _generate_ulid()
 

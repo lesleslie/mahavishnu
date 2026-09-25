@@ -61,7 +61,7 @@ ______________________________________________________________________
 
 ### Dhara State Backend
 
-Mahavishnu persists durable operational state to Dhara (the Bodai ecosystem's ACID object store, port 8683) via `DharaStateBackend` in `mahavishnu/core/state_backends/dhara.py`.
+Mahavishnu persists durable operational state to Dhara (the Bodai ecosystem's ACID object store, port 8683) via `MCPStateBackend` in `mahavishnu/core/state_backends/mcp.py`.
 
 **Key schema:**
 
@@ -72,7 +72,7 @@ Mahavishnu persists durable operational state to Dhara (the Bodai ecosystem's AC
 | `routing/v1/{task_class}/{timestamp_ms}` | Routing decisions (pool_id, selector, reason) | `PoolManager._persist_routing_decision()` on `route_task()` |
 | `approval/v1/{request_id}` | Pending approval records with 24-hour TTL | `ApprovalManager.request_approval()` |
 
-**Degraded-boot mode:** `DharaStateBackend` has an inline circuit breaker (3 consecutive failures → open for 30 s). On startup, `MahavishnuApp.wait_for_dependencies()` recovers last-known workflow and approval state from Dhara before accepting traffic.
+**Degraded-boot mode:** `MCPStateBackend` has an inline circuit breaker (3 consecutive failures → open for 30 s). On startup, `MahavishnuApp.wait_for_dependencies()` recovers last-known workflow and approval state from Dhara before accepting traffic.
 
 **Fire-and-forget writes:** All persistence calls use `asyncio.create_task()` — callers never block on Dhara. If Dhara is unavailable, writes are silently dropped and logged at DEBUG level.
 

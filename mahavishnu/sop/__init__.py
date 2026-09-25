@@ -10,7 +10,7 @@ This package ships the per-deployment SOP substrate:
   implementation and an ``HttpSOPPersister`` typed stub.
 
 Substrate status (per the implementation plan): sql_blocked + http_blocked.
-The Dhara-backed implementation is a follow-up (Workstream C) and reuses
+The MCP-backed implementation is a follow-up (Workstream C) and reuses
 the same ``SOPPersister`` Protocol so callers do not break when it lands.
 """
 

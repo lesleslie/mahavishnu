@@ -16,7 +16,7 @@ topic: dhara-substrate-extension
 
 ## Goal
 
-Expose the SQL `execute()` / `query()` surface and HTTP CRUD routes that the 2026-06-22 batch of 10 specs (Phase 3 in particular) assume. Today the Dhara surface is key-value/object only (`put` / `get` / `call_tool` / `list_prefix` / `query_time_series`) — five Phase 1/2 specs and four Phase 3 specs import `from mahavishnu.core.dhara_client import execute, query`, and the HTTP CRUD routes `/adapters/<id>/active-settings-version`, `/tenants/<id>/context-versions`, `/workflows/<id>/progress-snapshots` do not exist.
+Expose the SQL `execute()` / `query()` surface and HTTP CRUD routes that the 2026-06-22 batch of 10 specs (Phase 3 in particular) assume. Today the Dhara surface is key-value/object only (`put` / `get` / `call_tool` / `list_prefix` / `query_time_series`) — five Phase 1/2 specs and four Phase 3 specs import `from mahavishnu.core.mcp_client import execute, query`, and the HTTP CRUD routes `/adapters/<id>/active-settings-version`, `/tenants/<id>/context-versions`, `/workflows/<id>/progress-snapshots` do not exist.
 
 The 2026-05-25 serverless plan added `PostgresStorageAdapter` (asyncpg) + `RedisCacheAdapter` with SQL migrations for `dhara_objects` + `dhara_dirty_oids`, but **does NOT expose the SQL `execute()` / `query()` surface** or HTTP routes the new specs require.
 
@@ -28,7 +28,7 @@ Two new Dhara-side surfaces, plus a migration runner:
 
 Thin MCP tools proxying to the asyncpg pool already provided by `PostgresStorageAdapter` in `dhara/storage/postgres.py`. These expose `asyncpg.Connection.execute` and `asyncpg.Connection.fetch` to Mahavishnu callers.
 
-**Why MCP tools and not a Python module:** the spec/plan codebase uses `from mahavishnu.core.dhara_client import execute, query` — that module is absent. The MCP tool path is the only authenticated way to expose the asyncpg pool without leaking the DSN into Mahavishnu's process memory.
+**Why MCP tools and not a Python module:** the spec/plan codebase uses `from mahavishnu.core.mcp_client import execute, query` — that module is absent. The MCP tool path is the only authenticated way to expose the asyncpg pool without leaking the DSN into Mahavishnu's process memory.
 
 **Surface:**
 
@@ -103,7 +103,7 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 
 1. **Day 1** — Add `dhara_migrations_applied` table + `dhara_apply_migration` MCP tool. Idempotency tests; partial-migration rollback on failure.
 1. **Day 2** — Add `dhara_sql_execute` and `dhara_sql_query` MCP tools. Auth gates (`read`/`write`). Error class `DharaSQLError` that does **NOT** echo the DSN. Stress test: 1000 sequential execute() calls.
-1. **Day 3** — Add `mahavishnu/core/dhara_client.py` thin wrapper that calls the new MCP tools. Mirrors what the specs import (`execute`, `query`). Add unit tests.
+1. **Day 3** — Add `mahavishnu/core/mcp_client.py` thin wrapper that calls the new MCP tools. Mirrors what the specs import (`execute`, `query`). Add unit tests.
 1. **Day 4** — Add `mahavishnu/core/dhara_migrations/` directory + first 4 migrations (`iteration_reports`, `workflow_reports`, `skill_transitions`, `case_retrospectives`). Each migration runs idempotently.
 1. **Day 5** — Integration tests against real Postgres (Neon or local). Verify Spec #1, #5, #7 import paths work end-to-end.
 
@@ -120,7 +120,7 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 
 **New:**
 
-- `mahavishnu/core/dhara_client.py` — thin wrapper exposing `execute`, `query`
+- `mahavishnu/core/mcp_client.py` — thin wrapper exposing `execute`, `query`
 - `mahavishnu/core/dhara_migrations/` — SQL migration directory
 - `mahavishnu/core/dhara_migrations/0001_dhara_migrations_applied.sql`
 - `mahavishnu/core/dhara_migrations/0002_iteration_reports.sql`
@@ -143,7 +143,7 @@ Total: **12 new tables, ~20 indexes** (counting partial uniques).
 ## Acceptance criteria
 
 - All 12 tables created via migrations; idempotent on re-apply.
-- `from mahavishnu.core.dhara_client import execute, query` works end-to-end against a real Postgres backend.
+- `from mahavishnu.core.mcp_client import execute, query` works end-to-end against a real Postgres backend.
 - All 9 HTTP CRUD routes respond 200 for valid input, 4xx for invalid, 5xx only on backend failure.
 - Auth gates enforced (unauthenticated calls rejected).
 - DSN never appears in any error message or log line.

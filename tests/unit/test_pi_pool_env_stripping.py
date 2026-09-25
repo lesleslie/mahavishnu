@@ -62,7 +62,7 @@ def seed_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MAHAVISHNU_AUTH_SECRET", "super-secret-mahavishnu-token-value")
     monkeypatch.setenv("MINIMAX_API_KEY", "sk-minimax-abcdef1234567890XYZ")
     monkeypatch.setenv("ZAI_API_KEY", "sk-zai-abcdef1234567890XYZ")
-    monkeypatch.setenv("DHARA_API_TOKEN", "dhara-secret-token-value")
+    monkeypatch.setenv("DHARA_API_TOKEN", "mcp-secret-token-value")
     monkeypatch.setenv("AKOSHA_AUTH_SECRET", "akosha-secret-token-value")
     monkeypatch.setenv("SESSION_BUDDY_API_KEY", "session-buddy-secret-value")
     # Plus a benign value that MUST survive.
@@ -174,7 +174,7 @@ def test_runtime_denylist_strips_sensitive_keys_from_env() -> None:
         "MAHAVISHNU_AUTH_SECRET": "supersecret-1234567890",
         "MINIMAX_API_KEY": "minimax-key-abcdef",
         "ZAI_API_KEY": "zai-key-xyz",
-        "DHARA_TOKEN": "dhara-tok-1",
+        "DHARA_TOKEN": "mcp-tok-1",
         "AKOSHA_TOKEN": "akosha-tok-1",
         "SESSION_BUDDY_TOKEN": "sb-tok-1",
     }

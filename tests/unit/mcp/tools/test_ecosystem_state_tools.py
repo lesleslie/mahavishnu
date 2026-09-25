@@ -2,7 +2,7 @@
 
 Mirrors the test shape of ``test_workflow_tools.py`` / ``test_webhook_tools.py``:
 
-* Patch ``mahavishnu.core.ecosystem_state.dhara_calltime`` so a host-supplied
+* Patch ``mahavishnu.core.ecosystem_state.mcp_calltime`` so a host-supplied
   fake ``put`` / ``get`` swap routes into the leaf store without booting a real
   Dhara server.
 * Verify each tool: registers on the FastMCP server, delegates to the leaf
@@ -72,12 +72,12 @@ class _FakeSubstrate:
 
 
 def _patch_substrate(monkeypatch: pytest.MonkeyPatch, substrate: _FakeSubstrate) -> None:
-    """Swap the lazy ``dhara_calltime`` resolver on the ecosystem_state module.
+    """Swap the lazy ``mcp_calltime`` resolver on the ecosystem_state module.
 
     The substrate-compat shim is imported by name in
     :mod:`mahavishnu.core.ecosystem_state`; monkeypatch the symbol
     there so the writer resolves ``put`` / ``get`` to our fake without
-    spinning up a host dhara install.
+    spinning up a host mcp install.
     """
 
     def fake_calltime(name: str) -> Any:
@@ -88,7 +88,7 @@ def _patch_substrate(monkeypatch: pytest.MonkeyPatch, substrate: _FakeSubstrate)
         return None
 
     monkeypatch.setattr(
-        "mahavishnu.core.ecosystem_state.dhara_calltime", fake_calltime,
+        "mahavishnu.core.ecosystem_state.mcp_calltime", fake_calltime,
     )
 
 
@@ -493,8 +493,8 @@ async def test_leaf_store_handles_unbound_substrate() -> None:
 
     from mahavishnu.core import ecosystem_state
 
-    prev = ecosystem_state.dhara_calltime
-    ecosystem_state.dhara_calltime = calltime_returns_none  # type: ignore[assignment]
+    prev = ecosystem_state.mcp_calltime
+    ecosystem_state.mcp_calltime = calltime_returns_none  # type: ignore[assignment]
     try:
         store = ecosystem_state.AsyncEcosystemStateStore()
         # Reads → None / []
@@ -511,7 +511,7 @@ async def test_leaf_store_handles_unbound_substrate() -> None:
         )
         assert recorded["event_type"] == "e"
     finally:
-        ecosystem_state.dhara_calltime = prev  # type: ignore[assignment]
+        ecosystem_state.mcp_calltime = prev  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

@@ -115,7 +115,7 @@ class TestInMemoryBudgetStoreSeedingAndFailure:
         assert stored is not None
         assert stored["state"] == "active"
 
-    async def test_fail_next_op_simulates_dhara_down(
+    async def test_fail_next_op_simulates_mcp_down(
         self, store: InMemoryBudgetStore
     ) -> None:
         store.fail_next_op = "put"
@@ -316,7 +316,7 @@ class TestSettlePersistence:
                 "mahavishnu.settle.persistence.SETTLE_DEAD_LETTER_DIR",
                 Path(dl_root),
             ):
-                returned = persist_initial(record, dhara=None)
+                returned = persist_initial(record, mcp=None)
                 assert returned is record
                 # Dead-letter file should exist.
                 files = list(Path(dl_root).iterdir())
@@ -334,7 +334,7 @@ class TestSettlePersistence:
         loop = asyncio.new_event_loop()
         try:
             returned = loop.run_until_complete(
-                persist_initial_async(record, dhara=fake_dhara)
+                persist_initial_async(record, mcp=fake_dhara)
             )
             assert returned is record
             fake_dhara.put.assert_awaited_once()
@@ -348,7 +348,7 @@ class TestSettlePersistence:
         loop = asyncio.new_event_loop()
         try:
             returned = loop.run_until_complete(
-                persist_transition(record, dhara=fake_dhara)
+                persist_transition(record, mcp=fake_dhara)
             )
             assert returned is record
             fake_dhara.put.assert_awaited_once()
@@ -363,7 +363,7 @@ class TestSettlePersistence:
                 Path(dl_root),
             ):
                 _dead_letter_append(record)
-                loaded = load_record_sync("run-3", dhara=None)
+                loaded = load_record_sync("run-3", mcp=None)
                 assert loaded is not None
                 assert loaded.run_ref == "run-3"
                 assert loaded.bindings[0].path == "src/a.py"

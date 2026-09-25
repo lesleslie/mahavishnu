@@ -181,7 +181,7 @@ class TestApprovalManager:
         assert valid in manager.pending_requests
 
 
-class TestApprovalManagerDharaPersistence:
+class TestApprovalManagerMCPPersistence:
     """Tests for Dhara-backed durable persistence."""
 
     def _make_mock_dhara(self) -> MagicMock:
@@ -190,21 +190,21 @@ class TestApprovalManagerDharaPersistence:
         mock.schedule_delete = MagicMock()
         return mock
 
-    def test_create_request_schedules_dhara_persist(self) -> None:
+    def test_create_request_schedules_mcp_persist(self) -> None:
         mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(dhara_state=mock_dhara)
+        manager = ApprovalManager(mcp_state=mock_dhara)
         request = manager.create_request(approval_type="version_bump", context={})
         mock_dhara.schedule_put.assert_called_once()
         args = mock_dhara.schedule_put.call_args[0]
         assert args[0] == f"approval/v1/{request.id}"
         assert args[1]["id"] == request.id
 
-    def test_create_request_without_dhara_does_not_raise(self) -> None:
+    def test_create_request_without_mcp_does_not_raise(self) -> None:
         manager = ApprovalManager()
         request = manager.create_request(approval_type="publish", context={})
         assert request.id.startswith("approval-")
 
-    def test_respond_schedules_dhara_delete(self) -> None:
+    def test_respond_schedules_mcp_delete(self) -> None:
         """Legacy delete-on-resolve behavior is gated behind
         APPROVAL_LOG_V1_ENABLED=false (rollback path). Default flag value
         means the legacy delete is NOT scheduled; instead the producer
@@ -212,16 +212,16 @@ class TestApprovalManagerDharaPersistence:
         tests/unit/approval/test_decision_wiring.py).
         """
         mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(dhara_state=mock_dhara)
+        manager = ApprovalManager(mcp_state=mock_dhara)
         request = manager.create_request(approval_type="publish", context={})
         mock_dhara.schedule_put.reset_mock()
         manager.respond(request.id, approved=True)
         # Default flag = v1 enabled, so legacy delete must NOT fire.
         mock_dhara.schedule_delete.assert_not_called()
 
-    def test_cleanup_expired_schedules_dhara_delete(self) -> None:
+    def test_cleanup_expired_schedules_mcp_delete(self) -> None:
         mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(dhara_state=mock_dhara)
+        manager = ApprovalManager(mcp_state=mock_dhara)
         expired = ApprovalRequest(
             id="exp-001",
             approval_type="version_bump",
@@ -246,7 +246,7 @@ class TestApprovalManagerDharaPersistence:
             options=[],
         )
         entries = [("approval/v1/expired-001", expired_request.to_dict())]
-        restored = manager.restore_from_dhara_entries(entries)
+        restored = manager.restore_from_mcp_entries(entries)
         assert restored == 0
         assert len(manager.pending_requests) == 0
 
@@ -261,7 +261,7 @@ class TestApprovalManagerDharaPersistence:
             options=[ApprovalOption(label="Publish", description="Do it", is_recommended=True)],
         )
         entries = [("approval/v1/valid-001", valid_request.to_dict())]
-        restored = manager.restore_from_dhara_entries(entries)
+        restored = manager.restore_from_mcp_entries(entries)
         assert restored == 1
         recovered = manager.get_request("valid-001")
         assert recovered is not None
@@ -279,7 +279,7 @@ class TestApprovalManagerDharaPersistence:
             "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
             "options": [],
         }
-        restored = manager.restore_from_dhara_entries([(f"approval/v1/{existing.id}", entry_data)])
+        restored = manager.restore_from_mcp_entries([(f"approval/v1/{existing.id}", entry_data)])
         assert restored == 0
 
     def test_restore_ignores_malformed_entries(self) -> None:
@@ -288,7 +288,7 @@ class TestApprovalManagerDharaPersistence:
             ("approval/v1/bad", {"missing": "required fields"}),
             ("approval/v1/also-bad", {}),
         ]
-        restored = manager.restore_from_dhara_entries(entries)
+        restored = manager.restore_from_mcp_entries(entries)
         assert restored == 0
 
     def test_default_timeout_is_24h(self) -> None:

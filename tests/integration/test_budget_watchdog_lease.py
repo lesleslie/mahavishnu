@@ -215,7 +215,7 @@ class TestMultiReplicaLease:
         )
         assert second.lease_acquired is True
 
-    async def test_dhara_unavailable_does_not_crash_watchdog(self) -> None:
+    async def test_mcp_unavailable_does_not_crash_watchdog(self) -> None:
         """When the store raises on every op, the cycle returns cleanly.
 
         This is the fail-open exit criterion: never crash the
@@ -245,7 +245,7 @@ class TestMultiReplicaLease:
 # =============================================================================
 
 
-class TestDharaFailOpen:
+class TestMCPFailOpen:
     """When Dhara is unreachable, the watchdog must NOT raise or stop."""
 
     async def test_get_failure_skips_record(self) -> None:
@@ -299,7 +299,7 @@ class TestDharaFailOpen:
         # Dhara unavailable path:
         assert result.dhara_unavailable is True
         assert result.lease_acquired is False
-        assert metrics.skipped_dhara_unavailable == 1
+        assert metrics.skipped_mcp_unavailable == 1
 
     async def test_list_keys_failure_records_skip(self) -> None:
         store = _make_store()
@@ -320,9 +320,9 @@ class TestDharaFailOpen:
             metrics=metrics,
         )
         assert result.dhara_unavailable is True
-        assert metrics.skipped_dhara_unavailable == 1
+        assert metrics.skipped_mcp_unavailable == 1
 
-    async def test_dhara_down_full_loop_does_not_crash(self) -> None:
+    async def test_mcp_down_full_loop_does_not_crash(self) -> None:
         """Even when every Dhara call raises, the loop survives."""
         store = _make_store()
         emitter = _RecordingEmitter()
@@ -338,7 +338,7 @@ class TestDharaFailOpen:
             ttl_seconds: int,
         ) -> bool:
             outage_calls["n"] += 1
-            raise RuntimeError("simulated dhara outage")
+            raise RuntimeError("simulated mcp outage")
 
         store.try_acquire_lease = always_failing_acquire  # type: ignore[method-assign]
 

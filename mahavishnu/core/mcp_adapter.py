@@ -1,6 +1,6 @@
-"""Minimal Dhara MCP client and analytics adapter.
+"""Minimal MCP MCP client and analytics adapter.
 
-This module provides a small async MCP client for Dhara's HTTP transport.
+This module provides a small async MCP client for MCP's HTTP transport.
 Mahavishnu uses it for health persistence and git analytics until a richer
 service-specific SDK exists.
 
@@ -21,8 +21,8 @@ from mcp_common.clients.common_mcp_client import CommonMCPClient
 logger = logging.getLogger(__name__)
 
 
-class DharaClient:
-    """Async MCP client for Dhara's tool endpoint via CommonMCPClient."""
+class MCPClient:
+    """Async MCP client for MCP's tool endpoint via CommonMCPClient."""
 
     def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
@@ -42,7 +42,7 @@ class DharaClient:
         return self.base_url
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Call a Dhara MCP tool over streamable-HTTP."""
+        """Call a MCP MCP tool over streamable-HTTP."""
         return await self._mcp.call_tool(name, arguments)
 
     async def put(self, key: str, value: Any, ttl: int | None = None) -> Any:
@@ -60,11 +60,11 @@ class DharaClient:
         await self._mcp.aclose()
 
 
-class DharaAdapter:
+class MCPAdapter:
     """Thin analytics adapter used by MCP tools."""
 
     def __init__(self, base_url: str, timeout: float = 30.0) -> None:
-        self.client = DharaClient(base_url=base_url, timeout=timeout)
+        self.client = MCPClient(base_url=base_url, timeout=timeout)
 
     async def query_time_series(
         self,
@@ -73,7 +73,7 @@ class DharaAdapter:
         start_date: str | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Query time-series metrics from Dhara."""
+        """Query time-series metrics from MCP."""
         arguments: dict[str, Any] = {
             "metric_type": metric_type,
             "entity_id": entity_id,
@@ -89,7 +89,7 @@ class DharaAdapter:
             records = result.get("records") or result.get("items") or result.get("result")
             if isinstance(records, list):
                 return records
-        logger.debug("Unexpected Dhara time-series response shape: %r", result)
+        logger.debug("Unexpected MCP time-series response shape: %r", result)
         return []
 
     async def aggregate_patterns(
@@ -97,7 +97,7 @@ class DharaAdapter:
         start_date: str,
         min_occurrences: int = 2,
     ) -> list[dict[str, Any]]:
-        """Query aggregated patterns from Dhara."""
+        """Query aggregated patterns from MCP."""
         result = await self.client.call_tool(
             "aggregate_patterns",
             {
@@ -111,8 +111,8 @@ class DharaAdapter:
             patterns = result.get("patterns") or result.get("result")
             if isinstance(patterns, list):
                 return patterns
-        logger.debug("Unexpected Dhara pattern response shape: %r", result)
+        logger.debug("Unexpected MCP pattern response shape: %r", result)
         return []
 
 
-__all__ = ["DharaAdapter", "DharaClient"]
+__all__ = ["MCPAdapter", "MCPClient"]

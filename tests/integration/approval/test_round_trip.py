@@ -4,9 +4,9 @@ End-to-end check of the validate-on-write + validate-on-read contract between
 ``mahavishnu.core.approval.decision_writer.record_approval_decision`` (Task 1
 producer) and ``mahavishnu.cli.approval_cli.list_approval_history`` (Task 2
 consumer). The Dhara substrate is substituted with an in-memory dict so writes
-from ``dhara.put`` are visible to ``dhara.list`` without a real Dhara binding.
+from ``mcp.put`` are visible to ``mcp.list`` without a real Dhara binding.
 
-Substrate-compat: ``dhara.put`` and ``dhara.list`` are runtime-attached
+Substrate-compat: ``mcp.put`` and ``mcp.list`` are runtime-attached
 attributes on the local substrate install; both modules stamp them to ``None``
 at import time if absent, so the fixture can safely ``monkeypatch.setattr(...)
 with raising=False``.
@@ -24,10 +24,10 @@ from mahavishnu.core.models.persistence import ApprovalLog
 
 
 @pytest.fixture
-def shared_dhara_storage(
+def shared_mcp_storage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, list[Any]]:
-    """In-memory substrate shared between the producer's ``dhara.put`` and the consumer's ``dhara.list``.
+    """In-memory substrate shared between the producer's ``mcp.put`` and the consumer's ``mcp.list``.
 
     Keyed by ``approval-history/{approval_id}/`` to mirror the production path
     prefix used by both modules. ``fake_put`` appends to the list; ``fake_list``
@@ -36,11 +36,11 @@ def shared_dhara_storage(
     the lower-bound, and adding fake-time semantics would cloud the contract.
 
     Both modules resolve their substrate bindings at call time via
-    :func:`dhara_calltime` (producer) and ``getattr(dhara, ...)`` (consumer),
-    so we patch the live ``dhara`` module (not the consumer/producer
-    modules — neither imports ``dhara`` as a name).
+    :func:`mcp_calltime` (producer) and ``getattr(mcp, ...)`` (consumer),
+    so we patch the live ``mcp`` module (not the consumer/producer
+    modules — neither imports ``mcp`` as a name).
     """
-    import dhara
+    import mcp
 
     storage: dict[str, list[Any]] = {}
 
@@ -58,13 +58,13 @@ def shared_dhara_storage(
             records = [r for r in records if getattr(r, "action", None) == status]
         return records
 
-    monkeypatch.setattr(dhara, "put", fake_put, raising=False)
-    monkeypatch.setattr(dhara, "list", fake_list, raising=False)
+    monkeypatch.setattr(mcp, "put", fake_put, raising=False)
+    monkeypatch.setattr(mcp, "list", fake_list, raising=False)
     return storage
 
 
 def test_approval_log_round_trips_with_struct_equality(
-    shared_dhara_storage: dict[str, list[Any]],
+    shared_mcp_storage: dict[str, list[Any]],
 ) -> None:
     """Producer writes; consumer reads; struct equality holds end-to-end."""
     written = record_approval_decision(
@@ -77,7 +77,7 @@ def test_approval_log_round_trips_with_struct_equality(
 
     assert isinstance(written, ApprovalLog)
     # Producer persisted exactly one struct under the documented path prefix.
-    assert shared_dhara_storage["approval-history/apr-roundtrip/"] == [written]
+    assert shared_mcp_storage["approval-history/apr-roundtrip/"] == [written]
 
     results = list_approval_history(
         approval_id="apr-roundtrip",
@@ -100,7 +100,7 @@ def test_approval_log_round_trips_with_struct_equality(
 
 
 def test_approval_log_round_trip_with_status_filter(
-    shared_dhara_storage: dict[str, list[Any]],
+    shared_mcp_storage: dict[str, list[Any]],
 ) -> None:
     """``status`` filter narrows the read-back to matching action values."""
     record_approval_decision(
@@ -147,7 +147,7 @@ def test_approval_log_round_trip_with_status_filter(
 
 
 def test_approval_log_round_trip_isolates_per_approval_id(
-    shared_dhara_storage: dict[str, list[Any]],
+    shared_mcp_storage: dict[str, list[Any]],
 ) -> None:
     """Each ``approval_id`` has its own substrate prefix — read-back is scoped to the requested ID."""
     record_approval_decision(
@@ -177,14 +177,14 @@ def test_approval_log_round_trip_isolates_per_approval_id(
     assert second[0].approval_id == "apr-200"
     assert second[0].metadata["rationale"] == "Two"
     # Cross-check the substrate-level invariant: two distinct keys exist.
-    assert set(shared_dhara_storage.keys()) == {
+    assert set(shared_mcp_storage.keys()) == {
         "approval-history/apr-100/",
         "approval-history/apr-200/",
     }
 
 
 def test_approval_log_round_trip_default_metadata_round_trips(
-    shared_dhara_storage: dict[str, list[Any]],
+    shared_mcp_storage: dict[str, list[Any]],
 ) -> None:
     """When the caller omits ``metadata``, the producer defaults to an empty dict and the round-trip preserves it."""
     written = record_approval_decision(

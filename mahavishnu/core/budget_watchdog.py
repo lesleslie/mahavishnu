@@ -4,12 +4,12 @@ This module is the **per-run** enforcement primitive that lives in the
 control plane (Phase 3 of the v2 plan). It walks the state machine in
 :mod:`mahavishnu.core.budget` once every polling interval and:
 
-1. Acquires a soft lease in Dhara so only one Mahavishnu replica runs
+1. Acquires a soft lease in MCP so only one Mahavishnu replica runs
    enforcement per cycle (multi-replica safety).
 2. Lists active budget records.
 3. Reads the latest usage for each active budget.
 4. Transitions any record that has breached a cap to ``EXCEEDED``.
-5. Writes the updated record back to Dhara.
+5. Writes the updated record back to MCP.
 
 Per-turn reads do **not** flow through this module — they stay
 in-process inside the worker (contrarian review of v1):
@@ -20,10 +20,10 @@ in-process inside the worker (contrarian review of v1):
 
 Failure semantics:
 
-* Dhara unavailability — **fail-open**. The watchdog logs at ``WARNING``
-  with ``budget.dhara_unavailable`` and returns cleanly so the next
+* MCP unavailability — **fail-open**. The watchdog logs at ``WARNING``
+  with ``budget.mcp_unavailable`` and returns cleanly so the next
   cycle has another chance. The plan's exit criteria require this; if
-  we failed closed, a brief Dhara blip would silently pass every
+  we failed closed, a brief MCP blip would silently pass every
   exceeded budget through.
 
 * Stuck cycle (e.g., a record write hangs) — the watchdog uses an
@@ -76,7 +76,7 @@ logger = logging.getLogger(__name__)
 class BudgetStore(Protocol):
     """Async storage interface for budget records.
 
-    Implemented by :class:`DharaBudgetStore` against the real Dhara
+    Implemented by :class:`MCPBudgetStore` against the real MCP
     substrate and by an in-memory fake (``_InMemoryBudgetStore``) for
     tests. The lease operations are best-effort soft locks: a missing
     implementation should NOT raise (the watchdog falls back to
@@ -116,28 +116,28 @@ class BudgetStore(Protocol):
         """Release the lease if (and only if) we still own it."""
 
 
-class DharaBudgetStore:
-    """Adapter over the Mahavishnu Dhara client for budget persistence.
+class MCPBudgetStore:
+    """Adapter over the Mahavishnu MCP client for budget persistence.
 
-    Uses :meth:`DharaClient.put` for record writes and the same for
-    lease writes (Dhara honors ``ttl_seconds``). Lease acquisition is
+    Uses :meth:`MCPClient.put` for record writes and the same for
+    lease writes (MCP honors ``ttl_seconds``). Lease acquisition is
     get-then-cas — safe enough for a 60s watchdog because the worst
     case is two replicas running for one poll cycle (no permanent
     damage).
 
     The store is intentionally narrow: it has only the methods the
     watchdog needs, so a unit test can drop in an in-memory fake without
-    dragging the rest of Dhara along.
+    dragging the rest of MCP along.
     """
 
     def __init__(
         self,
-        dhara_client: Any,
+        mcp_client: Any,
         *,
         record_prefix: str = "mahavishni://budgets/",
         lease_key: str = "mahavishni://budgets/lease.json",
     ) -> None:
-        self._client = dhara_client
+        self._client = mcp_client
         self._record_prefix = record_prefix
         self._lease_key = lease_key
 
@@ -146,7 +146,7 @@ class DharaBudgetStore:
             "get",
             {"key": key},
         )
-        # Dhara's get returns either a JSON object or None; tests provide both shapes.
+        # MCP's get returns either a JSON object or None; tests provide both shapes.
         if raw is None:
             return None
         if isinstance(raw, dict):
@@ -177,7 +177,7 @@ class DharaBudgetStore:
     async def list_keys(self, prefix: str) -> list[str]:
         """Return workflow IDs (without the prefix) for all budget records.
 
-        Implementation calls ``list_keys`` via the Dhara client and
+        Implementation calls ``list_keys`` via the MCP client and
         filters to ``prefix``. Test fakes can shortcut to a known set.
         """
         raw = await self._client.call_tool(
@@ -204,7 +204,7 @@ class DharaBudgetStore:
         *,
         ttl_seconds: int,
     ) -> bool:
-        """Cas-style soft lease against Dhara.
+        """Cas-style soft lease against MCP.
 
         1. Read current lease; if absent or expired-or-foreign, write ours.
         2. If present and held by us, refresh the TTL.
@@ -264,7 +264,7 @@ class WatchdogMetrics:
     The production OTel bridge maps each field to a metric:
 
     * ``cycles`` → counter ``budget.check.cycles``
-    * ``skipped_dhara_unavailable`` → counter ``budget.dhara_skip.count``
+    * ``skipped_mcp_unavailable`` → counter ``budget.mcp_skip.count``
     * ``lease_lost`` → counter ``budget.lease.lost``
     * ``exceeded[dimension]`` → counter ``budget.exceeded.count`` with
       label ``dimension=<tokens|turns|wallclock>``
@@ -273,7 +273,7 @@ class WatchdogMetrics:
     """
 
     cycles: int = 0
-    skipped_dhara_unavailable: int = 0
+    skipped_mcp_unavailable: int = 0
     lease_lost: int = 0
     exceeded: dict[str, int] = field(default_factory=dict)
     last_cycle_at: datetime | None = None
@@ -336,7 +336,7 @@ class WatchdogCycleResult:
     lease_acquired: bool
     records_scanned: int
     records_transitioned: int
-    dhara_unavailable: bool = False
+    mcp_unavailable: bool = False
     cycle_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -371,10 +371,10 @@ async def run_watchdog_cycle(
        the record to ``EXCEEDED`` and increment counters.
     5. Release the lease and return.
 
-    Dhara unavailability surfaces as ``DharaConnectionError`` from
-    :class:`DharaBudgetStore` — and as ``Exception`` from the generic
+    MCP unavailability surfaces as ``MCPConnectionError`` from
+    :class:`MCPBudgetStore` — and as ``Exception`` from the generic
     protocol — and is caught at the **highest** level so the cycle
-    returns with ``dhara_unavailable=True`` and the outer loop can
+    returns with ``mcp_unavailable=True`` and the outer loop can
     log + continue (fail-open).
     """
     emitter = emitter or _NullEmitter()
@@ -384,19 +384,19 @@ async def run_watchdog_cycle(
     span = emitter.start_span("budget.check")
     try:
         metrics.cycles += 1
-        acquired, dhara_unavailable = await _acquire_lease_or_failopen(
+        acquired, mcp_unavailable = await _acquire_lease_or_failopen(
             store=store,
             lease_key=f"{record_prefix}lease.json",
             holder=holder,
             lease_ttl_seconds=lease_ttl_seconds,
             metrics=metrics,
         )
-        if dhara_unavailable:
+        if mcp_unavailable:
             return WatchdogCycleResult(
                 lease_acquired=False,
                 records_scanned=0,
                 records_transitioned=0,
-                dhara_unavailable=True,
+                mcp_unavailable=True,
             )
 
         if not acquired:
@@ -417,7 +417,7 @@ async def run_watchdog_cycle(
                     lease_acquired=True,
                     records_scanned=0,
                     records_transitioned=0,
-                    dhara_unavailable=True,
+                    mcp_unavailable=True,
                 )
 
             scanned, transitioned = await _scan_and_persist(
@@ -456,17 +456,17 @@ async def _acquire_lease_or_failopen(
     lease_ttl_seconds: int,
     metrics: WatchdogMetrics,
 ) -> tuple[bool, bool]:
-    """Try to acquire the watchdog lease, fail-open on Dhara errors.
+    """Try to acquire the watchdog lease, fail-open on MCP errors.
 
-    Returns ``(acquired, dhara_unavailable)``. On a Dhara failure
-    ``metrics.skipped_dhara_unavailable`` is incremented and the
-    caller surfaces ``dhara_unavailable=True`` on the cycle result.
+    Returns ``(acquired, mcp_unavailable)``. On a MCP failure
+    ``metrics.skipped_mcp_unavailable`` is incremented and the
+    caller surfaces ``mcp_unavailable=True`` on the cycle result.
     """
     try:
         acquired = await store.try_acquire_lease(lease_key, holder, ttl_seconds=lease_ttl_seconds)
     except Exception as exc:  # noqa: BLE001 - watchdog must fail-open
-        metrics.skipped_dhara_unavailable += 1
-        logger.warning("budget.dhara_unavailable while acquiring lease: %s", exc)
+        metrics.skipped_mcp_unavailable += 1
+        logger.warning("budget.mcp_unavailable while acquiring lease: %s", exc)
         return False, True
     return acquired, False
 
@@ -477,17 +477,17 @@ async def _list_budget_keys_or_failopen(
     prefix: str,
     metrics: WatchdogMetrics,
 ) -> tuple[list[str] | None, bool]:
-    """List budget record keys, fail-open on Dhara errors.
+    """List budget record keys, fail-open on MCP errors.
 
-    Returns ``(keys, list_failed)``. On Dhara failure ``keys`` is None
-    and ``list_failed`` is True (caller surfaces ``dhara_unavailable``
+    Returns ``(keys, list_failed)``. On MCP failure ``keys`` is None
+    and ``list_failed`` is True (caller surfaces ``mcp_unavailable``
     on the cycle result).
     """
     try:
         keys = await store.list_keys(prefix)
     except Exception as exc:  # noqa: BLE001 - watchdog must fail-open
-        metrics.skipped_dhara_unavailable += 1
-        logger.warning("budget.dhara_unavailable while listing records: %s", exc)
+        metrics.skipped_mcp_unavailable += 1
+        logger.warning("budget.mcp_unavailable while listing records: %s", exc)
         return None, True
     return keys, False
 
@@ -535,13 +535,13 @@ async def _process_one_budget_record(
     """Process a single budget record. Returns True if it was transitioned.
 
     Failures are logged and swallowed so one bad record doesn't abort
-    the cycle — Dhara may be partially available, the usage source
+    the cycle — MCP may be partially available, the usage source
     may have hiccups, and the record may simply not be active yet.
     """
     try:
         raw = await store.get(f"{record_prefix}{key}")
     except Exception as exc:  # noqa: BLE001 - per-record fail-soft
-        logger.warning("budget.dhara_unavailable fetching %s: %s", key, exc)
+        logger.warning("budget.mcp_unavailable fetching %s: %s", key, exc)
         return False
     if not isinstance(raw, dict):
         return False
@@ -568,7 +568,7 @@ async def _process_one_budget_record(
             sm.record.to_dict(),
         )
     except Exception as exc:  # noqa: BLE001 - per-record persist failure
-        logger.warning("budget.dhara_unavailable persisting %s: %s", sm.record.workflow_id, exc)
+        logger.warning("budget.mcp_unavailable persisting %s: %s", sm.record.workflow_id, exc)
     return dimension is not None
 
 
@@ -640,7 +640,7 @@ async def run_watchdog(
     surrounding task is cancelled (tests). Catches
     :class:`asyncio.CancelledError` cleanly so the loop exits between
     cycles rather than mid-cycle; if cancellation happens mid-cycle
-    we let the in-flight cycle complete (because re-entering Dhara
+    we let the in-flight cycle complete (because re-entering MCP
     mid-write is worse than missing one cycle).
 
     The ``_now`` seam is exposed via ``now`` so deterministic tests
@@ -683,10 +683,10 @@ async def run_watchdog(
             await sleep(config.poll_interval_seconds)
     except asyncio.CancelledError:
         logger.info(
-            "budget.watchdog.stopped holder=%s cycles=%s dhara_skips=%s",
+            "budget.watchdog.stopped holder=%s cycles=%s mcp_skips=%s",
             config.holder,
             metrics.cycles,
-            metrics.skipped_dhara_unavailable,
+            metrics.skipped_mcp_unavailable,
         )
         raise
 
@@ -701,7 +701,7 @@ class InMemoryBudgetStore:
 
     Supports TTL via a ``datetime.now`` reference; leases honor
     ``holder``-matching only (no time check). The behavior matches
-    real Dhara closely enough that the watchdog's fail-open paths get
+    real MCP closely enough that the watchdog's fail-open paths get
     exercised in tests.
     """
 
@@ -710,8 +710,8 @@ class InMemoryBudgetStore:
         self._records: dict[str, dict[str, Any]] = {}
         self._leases: dict[str, dict[str, Any]] = {}
         self.fail_next_op: str | None = None
-        """When set, the next matching op raises RuntimeError to simulate Dhara down."""
-        # Real Dhara has serial per-key semantics; we mirror that with a
+        """When set, the next matching op raises RuntimeError to simulate MCP down."""
+        # Real MCP has serial per-key semantics; we mirror that with a
         # per-store lock so concurrent ``try_acquire_lease`` calls do
         # not race past each other in unit tests.
         self._lock = asyncio.Lock()
@@ -784,7 +784,7 @@ class InMemoryBudgetStore:
     def _maybe_fail(self, op: str) -> None:
         if self.fail_next_op == op:
             self.fail_next_op = None
-            raise RuntimeError(f"in-memory store simulated dhara failure on {op}")
+            raise RuntimeError(f"in-memory store simulated mcp failure on {op}")
 
     # Helper for tests -----------------------------------------------------
 

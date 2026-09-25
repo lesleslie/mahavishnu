@@ -1,8 +1,8 @@
-"""Dhara-backed adapter registry client.
+"""MCP-backed adapter registry client.
 
-The former ``oneiric_mcp`` gRPC package has been folded into Dhara's canonical
+The former ``oneiric_mcp`` gRPC package has been folded into MCP's canonical
 FastMCP surface. This module keeps the historic class names as compatibility
-aliases while routing adapter discovery through Dhara MCP tools.
+aliases while routing adapter discovery through MCP MCP tools.
 """
 
 from __future__ import annotations
@@ -14,30 +14,30 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .dhara_adapter import DharaClient
+    from .mcp_adapter import MCPClient
 
 logger = logging.getLogger(__name__)
-_dhara_clients: dict[tuple[str, str | None], DharaClient] = {}
-_default_dhara_base_url = "http://localhost:8683/mcp"
+_mcp_clients: dict[tuple[str, str | None], MCPClient] = {}
+_default_mcp_base_url = "http://localhost:8683/mcp"
 
 
-def get_dhara_client(base_url: str | None = None, token: str | None = None) -> DharaClient:
-    """Return a cached Dhara MCP client."""
-    from .dhara_adapter import DharaClient
+def get_mcp_client(base_url: str | None = None, token: str | None = None) -> MCPClient:
+    """Return a cached MCP MCP client."""
+    from .mcp_adapter import MCPClient
 
-    resolved_base_url = (base_url or _default_dhara_base_url).rstrip("/")
+    resolved_base_url = (base_url or _default_mcp_base_url).rstrip("/")
     cache_key = (resolved_base_url, token)
-    client = _dhara_clients.get(cache_key)
+    client = _mcp_clients.get(cache_key)
     if client is None:
-        client = DharaClient(base_url=resolved_base_url, token=token)
-        _dhara_clients[cache_key] = client
+        client = MCPClient(base_url=resolved_base_url, token=token)
+        _mcp_clients[cache_key] = client
     return client
 
 
-def set_dhara_client_base_url(base_url: str) -> None:
-    """Set the default Dhara MCP URL used by get_dhara_client()."""
-    global _default_dhara_base_url
-    _default_dhara_base_url = base_url.rstrip("/")
+def set_mcp_client_base_url(base_url: str) -> None:
+    """Set the default MCP MCP URL used by get_mcp_client()."""
+    global _default_mcp_base_url
+    _default_mcp_base_url = base_url.rstrip("/")
 
 
 def _parse_datetime(value: Any) -> datetime | None:
@@ -59,7 +59,7 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 @dataclass
 class AdapterEntry:
-    """Normalized adapter entry returned from Dhara's adapter registry."""
+    """Normalized adapter entry returned from MCP's adapter registry."""
 
     adapter_id: str
     project: str
@@ -75,8 +75,8 @@ class AdapterEntry:
     health_status: str = "unknown"
 
     @classmethod
-    def from_dhara(cls, adapter: dict[str, Any]) -> AdapterEntry:
-        """Create an entry from Dhara's adapter registry schema."""
+    def from_mcp(cls, adapter: dict[str, Any]) -> AdapterEntry:
+        """Create an entry from MCP's adapter registry schema."""
         metadata = dict(adapter.get("metadata") or {})
         domain = str(adapter.get("domain") or "")
         key = str(adapter.get("key") or metadata.get("key") or metadata.get("category") or "")
@@ -140,8 +140,8 @@ class AdapterEntry:
 
 
 @dataclass
-class DharaAdapterRegistryConfig:
-    """Configuration for Dhara adapter registry discovery."""
+class MCPAdapterRegistryConfig:
+    """Configuration for MCP adapter registry discovery."""
 
     enabled: bool = True
     base_url: str | None = None
@@ -150,7 +150,7 @@ class DharaAdapterRegistryConfig:
     token: str | None = None
 
 
-OneiricMCPConfig = DharaAdapterRegistryConfig
+OneiricMCPConfig = MCPAdapterRegistryConfig
 
 
 class AdapterCircuitBreaker:
@@ -189,29 +189,27 @@ class AdapterCircuitBreaker:
                 )
 
 
-class DharaAdapterRegistryClient:
-    """Async client for Dhara's adapter registry MCP tools."""
+class MCPAdapterRegistryClient:
+    """Async client for MCP's adapter registry MCP tools."""
 
-    def __init__(self, config: DharaAdapterRegistryConfig | None = None):
-        self.config = config or DharaAdapterRegistryConfig()
-        self._client = get_dhara_client(self.config.base_url, self.config.token)
+    def __init__(self, config: MCPAdapterRegistryConfig | None = None):
+        self.config = config or MCPAdapterRegistryConfig()
+        self._client = get_mcp_client(self.config.base_url, self.config.token)
         self._circuit_breaker = AdapterCircuitBreaker()
         self._cache: dict[str, tuple[list[AdapterEntry], datetime]] = {}
         self._connected = False
-        logger.info(
-            "Dhara adapter registry client initialized (base_url=%s)", self._client.base_url
-        )
+        logger.info("MCP adapter registry client initialized (base_url=%s)", self._client.base_url)
 
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         if not self.config.enabled:
-            raise ConnectionError("Dhara adapter registry client disabled")
+            raise ConnectionError("MCP adapter registry client disabled")
         try:
             result = await self._client.call_tool(name, arguments)
             self._connected = True
             return result
         except Exception as exc:
             self._connected = False
-            raise ConnectionError(f"Dhara adapter registry unavailable: {exc}") from exc
+            raise ConnectionError(f"MCP adapter registry unavailable: {exc}") from exc
 
     def _make_cache_key(
         self,
@@ -236,7 +234,7 @@ class DharaAdapterRegistryClient:
         healthy_only: bool = False,
         use_cache: bool = True,
     ) -> list[AdapterEntry]:
-        """List adapters from Dhara with optional local filtering."""
+        """List adapters from MCP with optional local filtering."""
         if not self.config.enabled:
             return []
 
@@ -252,10 +250,10 @@ class DharaAdapterRegistryClient:
             {"domain": domain, "category": category},
         )
         if isinstance(payload, dict) and payload.get("success") is False:
-            raise ConnectionError(payload.get("error") or "Dhara list_adapters failed")
+            raise ConnectionError(payload.get("error") or "MCP list_adapters failed")
 
         raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []  # type: ignore[var-annotated]
-        adapters = [AdapterEntry.from_dhara(a) for a in raw_adapters if isinstance(a, dict)]
+        adapters = [AdapterEntry.from_mcp(a) for a in raw_adapters if isinstance(a, dict)]
 
         if project:
             adapters = [a for a in adapters if a.project == project]
@@ -266,7 +264,7 @@ class DharaAdapterRegistryClient:
         return adapters
 
     async def get_adapter(self, adapter_id: str) -> AdapterEntry | None:
-        """Get a specific adapter by Dhara adapter ID."""
+        """Get a specific adapter by MCP adapter ID."""
         if not self.config.enabled:
             return None
         if not await self._circuit_breaker.is_available(adapter_id):
@@ -282,7 +280,7 @@ class DharaAdapterRegistryClient:
                 await self._circuit_breaker.record_failure(adapter_id)
                 return None
             await self._circuit_breaker.record_success(adapter_id)
-            return AdapterEntry.from_dhara(payload["adapter"])
+            return AdapterEntry.from_mcp(payload["adapter"])
         except ValueError:
             for adapter in await self.list_adapters(use_cache=False):
                 if adapter.adapter_id == adapter_id:
@@ -296,7 +294,7 @@ class DharaAdapterRegistryClient:
             return None
 
     async def check_adapter_health(self, adapter_id: str) -> bool:
-        """Check adapter health through Dhara."""
+        """Check adapter health through MCP."""
         if not self.config.enabled:
             return False
         if not await self._circuit_breaker.is_available(adapter_id):
@@ -343,7 +341,7 @@ class DharaAdapterRegistryClient:
         return None
 
     async def send_heartbeat(self, adapter_id: str) -> bool:
-        """Compatibility method; Dhara has no adapter heartbeat tool."""
+        """Compatibility method; MCP has no adapter heartbeat tool."""
         return await self.get_adapter(adapter_id) is not None
 
     async def invalidate_cache(self) -> None:
@@ -351,7 +349,7 @@ class DharaAdapterRegistryClient:
         self._cache.clear()
 
     async def health_check(self) -> dict[str, Any]:
-        """Check Dhara registry health and contract availability."""
+        """Check MCP registry health and contract availability."""
         if not self.config.enabled:
             return {"status": "disabled", "connected": False}
         try:
@@ -372,15 +370,15 @@ class DharaAdapterRegistryClient:
             }
 
     async def close(self) -> None:
-        """Mark the shared Dhara client as disconnected."""
+        """Mark the shared MCP client as disconnected."""
         self._connected = False
 
 
 def _split_adapter_id(adapter_id: str) -> tuple[str, str, str]:
     parts = adapter_id.split(":")
     if len(parts) != 3 or not all(parts):
-        raise ValueError(f"Invalid Dhara adapter_id: {adapter_id}")
+        raise ValueError(f"Invalid MCP adapter_id: {adapter_id}")
     return parts[0], parts[1], parts[2]
 
 
-OneiricMCPClient = DharaAdapterRegistryClient
+OneiricMCPClient = MCPAdapterRegistryClient

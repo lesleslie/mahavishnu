@@ -5,14 +5,14 @@ records persisted by :mod:`mahavishnu.webhooks.receiver` and returns
 validated typed structs via :func:`msgspec.convert`. The
 consumer/producer contract is
 the persistence key ``f"webhook-ingress/{webhook_id}/"`` — producers
-write here via :func:`dhara.put`, consumers read here via
-:func:`dhara.get`.
+write here via :func:`mcp.put`, consumers read here via
+:func:`mcp.get`.
 
 This module is intentionally separate from
 :mod:`mahavishnu.webhooks.receiver` — the receiver is an HTTP producer
 that validates inbound payloads; this module is a leaf consumer that
 reads them back. Mirrors the producer's substrate-compat guard pattern
-so a host dhara install that has not injected a ``dhara.get`` binding
+so a host mcp install that has not injected a ``mcp.get`` binding
 returns ``None`` instead of raising ``AttributeError``.
 """
 
@@ -21,7 +21,7 @@ from __future__ import annotations
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.mcp.tools._workflow_id_guard import validate_webhook_id
 
@@ -41,7 +41,7 @@ def webhook_replay(
             ``@require_auth`` contract on the MCP surface): missing or
             non-JWT-shaped tokens are rejected. Full user→role→permission
             mapping is enforced at the FastAPI middleware/dependency layer
-            in production; here we block the read before any Dhara call
+            in production; here we block the read before any MCP call
             so the leaf function can never be exercised without auth.
 
     Returns:
@@ -74,7 +74,7 @@ def webhook_replay(
         )
         return None
 
-    # Path-traversal guard: ``webhook_id`` is spliced into the Dhara key
+    # Path-traversal guard: ``webhook_id`` is spliced into the MCP key
     # ``f"webhook-ingress/{webhook_id}/"`` below. Reject caller-supplied
     # values that contain traversal characters BEFORE the substrate sees
     # them. Matches the existing convention for the substrate-unbound
@@ -89,12 +89,12 @@ def webhook_replay(
         )
         return None
 
-    get = dhara_calltime("get")
+    get = mcp_calltime("get")
     if get is None:
         logger.warning(
             "webhook_replay_skipped",
             extra={
-                "reason": "dhara.get_unbound",
+                "reason": "mcp.get_unbound",
                 "webhook_id": webhook_id,
             },
         )

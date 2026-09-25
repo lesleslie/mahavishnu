@@ -1,12 +1,12 @@
-"""Test helpers for plan_index — mock Dhara client."""
+"""Test helpers for plan_index — mock MCP client."""
 
 from __future__ import annotations
 
-__all__ = ["FakeDhara"]
+__all__ = ["FakeMCP"]
 
 
-class FakeDhara:
-    """Minimal in-memory Dhara stand-in for tests.
+class FakeMCP:
+    """Minimal in-memory MCP stand-in for tests.
 
     Implements the subset of AsyncClient API used by PlanIndexStore.
     """

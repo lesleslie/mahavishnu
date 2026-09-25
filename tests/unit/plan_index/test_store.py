@@ -7,7 +7,7 @@ import pytest
 
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara  # to be added in this task
+from mahavishnu.plan_index.testing import FakeMCP  # to be added in this task
 
 
 def _sample_record(plan_id: str = "11111111111111111111111111111111") -> PlanRecord:
@@ -30,8 +30,8 @@ def _sample_record(plan_id: str = "11111111111111111111111111111111") -> PlanRec
 
 @pytest.fixture
 def store() -> PlanIndexStore:
-    fake = FakeDhara()
-    return PlanIndexStore(dhara=fake)  # type: ignore[arg-type]
+    fake = FakeMCP()
+    return PlanIndexStore(mcp=fake)  # type: ignore[arg-type]
 
 
 class TestUpsertAndGet:
@@ -90,7 +90,7 @@ class TestTTLConsistency:
         rec = _sample_record()
         d = store._to_dict(rec)
         await store.upsert(rec)
-        fake = store._dhara
+        fake = store._mcp
         for key in (
             store._primary_key(rec.plan_id),
             store._status_key(d),
@@ -105,16 +105,16 @@ class TestAtomicity:
     async def test_primary_failure_removes_secondaries(self, store: PlanIndexStore) -> None:
         rec = _sample_record()
         d = store._to_dict(rec)
-        fake = store._dhara
+        fake = store._mcp
         original_put = fake.put
 
         async def failing_put(key: str, value: str, *, ttl: int | None = None) -> None:
             if key == store._primary_key(rec.plan_id):
-                raise RuntimeError("dhara down")
+                raise RuntimeError("mcp down")
             await original_put(key, value, ttl=ttl)
 
         fake.put = failing_put  # type: ignore[method-assign]
-        with pytest.raises(RuntimeError, match="dhara down"):
+        with pytest.raises(RuntimeError, match="mcp down"):
             await store.upsert(rec)
         fake.put = original_put  # type: ignore[method-assign]
 
@@ -126,23 +126,23 @@ class TestCorruptedValues:
     @pytest.mark.asyncio
     async def test_get_corrupted_returns_none(self, store: PlanIndexStore) -> None:
         rec = _sample_record()
-        await store._dhara.put(store._primary_key(rec.plan_id), "not-json")
+        await store._mcp.put(store._primary_key(rec.plan_id), "not-json")
         assert await store.get(rec.plan_id) is None
 
     @pytest.mark.asyncio
     async def test_list_by_status_skips_corrupted(self, store: PlanIndexStore) -> None:
         good = _sample_record("aa" * 16)
         await store.upsert(good)
-        await store._dhara.put("plan_index/status/active/2026-09-15/bbbbbbbb", "not-json")
+        await store._mcp.put("plan_index/status/active/2026-09-15/bbbbbbbb", "not-json")
         records = await store.list_by_status("active")
         assert len(records) == 1
         assert records[0]["plan_id"] == good.plan_id
 
     @pytest.mark.asyncio
     async def test_vitals_corrupted_counters_default_to_zero(self, store: PlanIndexStore) -> None:
-        await store._dhara.put("plan_index/meta/cycles_total", "not-an-int")
-        await store._dhara.put("plan_index/meta/errors_total", "oops")
-        await store._dhara.put("plan_index/meta/recent_errors", "{{{")
+        await store._mcp.put("plan_index/meta/cycles_total", "not-an-int")
+        await store._mcp.put("plan_index/meta/errors_total", "oops")
+        await store._mcp.put("plan_index/meta/recent_errors", "{{{")
         v = await store.vitals()
         assert v["cycles_total"] == 0
         assert v["errors_total"] == 0
@@ -150,15 +150,15 @@ class TestCorruptedValues:
 
     @pytest.mark.asyncio
     async def test_rebuild_status_corrupted_counters(self, store: PlanIndexStore) -> None:
-        await store._dhara.put("plan_index/meta/cycles_total", "nope")
-        await store._dhara.put("plan_index/meta/last_rebuild_ms", "nope")
+        await store._mcp.put("plan_index/meta/cycles_total", "nope")
+        await store._mcp.put("plan_index/meta/last_rebuild_ms", "nope")
         s = await store.rebuild_status()
         assert s["cycles_total"] == 0
         assert "last_rebuild_ms" not in s
 
     @pytest.mark.asyncio
     async def test_search_tolerates_missing_fields(self, store: PlanIndexStore) -> None:
-        await store._dhara.put("plan_index/" + "cc" * 16, '{"plan_id": "x"}')
+        await store._mcp.put("plan_index/" + "cc" * 16, '{"plan_id": "x"}')
         assert await store.search("foo") == []
 
 

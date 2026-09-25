@@ -3,7 +3,7 @@
 Pure functions for SHA-256 hashing of worktree bundles. Used by
 ``LocalWorktreeProvider.fetch`` and ``RemoteWorktreeProvider.fetch`` to
 verify bundle hash matches the ``WorktreeHandle.sha256`` field recorded
-in the Dhara registry.
+in the MCP registry.
 
 Mismatch raises ``WorktreeIntegrityError`` (subclass of ``WorktreeError``
 per ``mahavishnu/core/errors.py``) and emits the
@@ -58,8 +58,8 @@ def verify_sha256_streaming(
     pre-computed ``principal_short`` is NOT re-hashed — per round-2
     BLOCKER B-DI-03 / R2-22).
 
-    Writes a Dhara audit row for forensic chain-of-custody (per
-    round-2 BLOCKER B-DI-11) via ``write_dhara_audit_row``.
+    Writes a MCP audit row for forensic chain-of-custody (per
+    round-2 BLOCKER B-DI-11) via ``write_mcp_audit_row``.
 
     Raises:
         ValueError: If ``backend`` is not in ``ALLOWED_BACKEND_KINDS``.
@@ -82,7 +82,7 @@ def verify_sha256_streaming(
             "actual_sha_prefix8": actual_sha[:8],
         },
     )
-    write_dhara_audit_row(
+    write_mcp_audit_row(
         kind="bundle_integrity_failure",
         backend=backend,
         principal_short=principal_short,
@@ -107,7 +107,7 @@ def record_bundle_integrity_failure_short(*, backend: str, principal_short: str)
     _bundle_integrity_failure_counter.add(1, attributes=labels)
 
 
-def write_dhara_audit_row(
+def write_mcp_audit_row(
     *,
     kind: str,
     backend: str,
@@ -115,20 +115,20 @@ def write_dhara_audit_row(
     expected_sha_prefix8: str,
     actual_sha_prefix8: str,
 ) -> None:
-    """Write a forensic audit row to Dhara (B-DI-11).
+    """Write a forensic audit row to MCP (B-DI-11).
 
-    Placeholder until the Dhara orchestrator wires the audit pipeline.
+    Placeholder until the MCP orchestrator wires the audit pipeline.
     Currently logs the row at INFO level with the same fields so the
     audit chain is captured in the structured-log surface even before
-    Dhara persistence is connected. The Dhara-side write is a no-op
-    until the orchestrator ships ``mahavishnu.audit.dhara_writer``.
+    MCP persistence is connected. The MCP-side write is a no-op
+    until the orchestrator ships ``mahavishnu.audit.mcp_writer``.
 
     The signature is intentionally keyword-only so callers (and
     tests) can monkeypatch by attribute name and forward extra fields
     without positional-arg drift.
     """
     _logger.info(
-        "dhara-audit-row-pending",
+        "mcp-audit-row-pending",
         extra={
             "kind": kind,
             "backend": backend,

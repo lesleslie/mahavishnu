@@ -79,7 +79,7 @@ requirements:
 - **mahavishnu** (9 files):
   - `mahavishnu/cli/approval_cli.py`
   - `mahavishnu/cli/precommit_cli.py`
-  - `mahavishnu/core/_dhara_substrate_compat.py` (shim module — re-exports)
+  - `mahavishnu/core/_mcp_substrate_compat.py` (shim module — re-exports)
   - `mahavishnu/core/approval/decision_writer.py`
   - `mahavishnu/core/workflow/outcome_writer.py`
   - `mahavishnu/mcp/tools/webhook_tools.py`
@@ -90,7 +90,7 @@ requirements:
   - `session_buddy/_dhara_substrate_compat.py` (shim module — re-exports)
   - `session_buddy/channel/state_writer.py`
 
-The `_dhara_substrate_compat.py` shims are pattern: `from dhara import X; re-export under shim path`. They let downstream code do `from mahavishnu.core._dhara_substrate_compat import Outcome` instead of `from dhara.schema import Outcome`. Removing the shim's underlying import deletes the cross-dep linkage; call-sites either go through oneiric directly or through a leaner shim.
+The `_dhara_substrate_compat.py` shims are pattern: `from dhara import X; re-export under shim path`. They let downstream code do `from mahavishnu.core._mcp_substrate_compat import Outcome` instead of `from dhara.schema import Outcome`. Removing the shim's underlying import deletes the cross-dep linkage; call-sites either go through oneiric directly or through a leaner shim.
 
 #### Task 2 — Reject the "oneiric equivalents" antipattern (no-op verification)
 **Files:** `oneiric/` tree — read-only.
@@ -115,7 +115,7 @@ The `_dhara_substrate_compat.py` shims are pattern: `from dhara import X; re-exp
 **Files:**
 - Modify: `mahavishnu/core/workflow/outcome_writer.py` — `from dhara.schema import WorkflowOutcome` → `from mahavishnu.core.models.persistence import WorkflowOutcome`
 - Modify: `mahavishnu/mcp/tools/workflow_tools.py` — same
-- Modify: `mahavishnu/core/_dhara_substrate_compat.py` — re-route the `Outcome` re-export to the local type, or delete the shim if no in-process callers remain
+- Modify: `mahavishnu/core/_mcp_substrate_compat.py` — re-route the `Outcome` re-export to the local type, or delete the shim if no in-process callers remain
 - Modify: `mahavishnu/core/approval/decision_writer.py` — `ApprovalLog` import → local
 - Modify: `mahavishnu/cli/approval_cli.py` — same
 - Modify: `mahavishnu/mcp/tools/webhook_tools.py` — `WebhookIngress` → local
@@ -130,7 +130,7 @@ The `_dhara_substrate_compat.py` shims are pattern: `from dhara import X; re-exp
 #### Task 5 — Replace `dhara.lock.DharaLock` with a local sentinel in `mahavishnu/core/_lock_sentinel.py`
 **Files:**
 - Create: `mahavishnu/core/_lock_sentinel.py` — provides a minimal `Lock` sentinel (`acquire(timeout: float) -> bool`, `release() -> None`, context-manager support) plus the `LockHandle` / `LockTimeout` / `LockLost` / `LockPermanentError` exception classes (matching dhara's protocol enough that call-sites don't change shape). For the actual locking primitive, use `asyncio.Lock` directly inside the sentinel — the cross-process "DharaLock" semantics were not actually exercised across separate processes in any current consumer code; they were an in-process lock with elaborate error protocol.
-- Modify: `mahavishnu/core/_dhara_substrate_compat.py` — re-route the lock re-export to the local sentinel
+- Modify: `mahavishnu/core/_mcp_substrate_compat.py` — re-route the lock re-export to the local sentinel
 - Modify: `mahavishnu/core/approval/decision_writer.py` (if direct import; otherwise already covered via shim)
 - Modify: `mahavishnu/cli/precommit_cli.py` (if direct import)
 - Verify: any test fixture that mocked `dhara.lock.DharaLock` must now mock `mahavishnu.core._lock_sentinel.Lock` (the new path). Add a 1-paragraph note in the commit message flagging this for test authors.
@@ -331,7 +331,7 @@ If any grep returns hits, they represent drift between the per-wave task verific
 - [x] `mahavishnu/cli/precommit_cli.py` (Task 5) — swap `dhara.lock.DharaLock` to local sentinel per Task 5's decision rule. **Done in `1f1f8712`.**
 - [x] Create `mahavishnu/core/_lock_sentinel.py` (Task 5) — minimal `Lock` + exception classes wrapping `asyncio.Lock`. **Done in `1f1f8712`. In-process dict sentinel (asyncio.Lock would have been overkill for the witness-pattern use); `try_acquire` + `get` only, matching the actual API surface `HypothesisLock` exercises. Drop-in for `dhara.lock.in_memory.InMemoryDharaLock`.**
 - [x] Test fixtures updated for the lock migration (`test_cli_async_wrapper.py`, `test_precommitment.py` rewritten; cross-instance persistence test dropped because the in-process dict can't provide that guarantee). **Done in `1f1f8712`.**
-- [ ] `mahavishnu/core/_dhara_substrate_compat.py` (Tasks 4 + 5) — re-route re-exports or delete the shim if no in-process callers remain. **Defer**: this file is NOT a re-export shim (the plan description was inaccurate); it's a `dhara.put` stamper. The `import dhara` at line 26 is out of Task 4/5 scope. Will need handling for Task 8's final grep — likely needs lazy-loading dhara inside the shim's functions, or removing the substrate-compat gate entirely. **Tracked as a follow-up; will be addressed in the next task iteration.**
+- [ ] `mahavishnu/core/_mcp_substrate_compat.py` (Tasks 4 + 5) — re-route re-exports or delete the shim if no in-process callers remain. **Defer**: this file is NOT a re-export shim (the plan description was inaccurate); it's a `dhara.put` stamper. The `import dhara` at line 26 is out of Task 4/5 scope. Will need handling for Task 8's final grep — likely needs lazy-loading dhara inside the shim's functions, or removing the substrate-compat gate entirely. **Tracked as a follow-up; will be addressed in the next task iteration.**
 - [ ] All `from dhara import generate` / `is_ulid` importers (Task 6) — swap to `oneiric.core.ulid`.
 - [ ] `session_buddy/_dhara_substrate_compat.py` (Task 7) — re-route or thin out.
 - [ ] `session_buddy/channel/state_writer.py` (Task 7) — swap direct dhara import.

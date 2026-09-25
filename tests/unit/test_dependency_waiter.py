@@ -16,7 +16,7 @@ async def test_wait_for_dependencies_returns_true_when_disabled() -> None:
             health=SimpleNamespace(enabled=False, dependencies={}),
             unified_validation_enabled=False,
         ),
-        _dhara_state=None,
+        _mcp_state=None,
     )
 
     result = await wait_for_dependencies(app)
@@ -60,7 +60,7 @@ async def test_wait_for_dependencies_recovers_and_validates(
     monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
     monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
 
-    dhara_state = SimpleNamespace(
+    mcp_state = SimpleNamespace(
         probe=AsyncMock(return_value=True),
     )
     app = SimpleNamespace(
@@ -68,17 +68,17 @@ async def test_wait_for_dependencies_recovers_and_validates(
             health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
             unified_validation_enabled=False,
         ),
-        _dhara_state=dhara_state,
-        _recover_workflow_state_from_dhara=AsyncMock(),
-        _recover_approvals_from_dhara=AsyncMock(),
+        _mcp_state=mcp_state,
+        _recover_workflow_state_from_mcp=AsyncMock(),
+        _recover_approvals_from_mcp=AsyncMock(),
     )
 
     result_value = await wait_for_dependencies(app)
 
     assert result_value is True
-    dhara_state.probe.assert_awaited_once()
-    app._recover_workflow_state_from_dhara.assert_awaited_once()
-    app._recover_approvals_from_dhara.assert_awaited_once()
+    mcp_state.probe.assert_awaited_once()
+    app._recover_workflow_state_from_mcp.assert_awaited_once()
+    app._recover_approvals_from_mcp.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -112,9 +112,9 @@ async def test_wait_for_dependencies_returns_false_on_strict_validation_error(
             health=SimpleNamespace(enabled=True, dependencies={"akosha": object()}),
             unified_validation_enabled=True,
         ),
-        _dhara_state=None,
-        _recover_workflow_state_from_dhara=AsyncMock(),
-        _recover_approvals_from_dhara=AsyncMock(),
+        _mcp_state=None,
+        _recover_workflow_state_from_mcp=AsyncMock(),
+        _recover_approvals_from_mcp=AsyncMock(),
     )
 
     result_value = await wait_for_dependencies(app)
@@ -151,9 +151,9 @@ async def test_wait_for_dependencies_returns_false_on_failed_health_check(
             health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
             unified_validation_enabled=True,
         ),
-        _dhara_state=None,
-        _recover_workflow_state_from_dhara=AsyncMock(),
-        _recover_approvals_from_dhara=AsyncMock(),
+        _mcp_state=None,
+        _recover_workflow_state_from_mcp=AsyncMock(),
+        _recover_approvals_from_mcp=AsyncMock(),
     )
 
     result_value = await wait_for_dependencies(app)
@@ -192,9 +192,9 @@ async def test_wait_for_dependencies_swallows_validation_exception(
             health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
             unified_validation_enabled=False,
         ),
-        _dhara_state=None,
-        _recover_workflow_state_from_dhara=AsyncMock(),
-        _recover_approvals_from_dhara=AsyncMock(),
+        _mcp_state=None,
+        _recover_workflow_state_from_mcp=AsyncMock(),
+        _recover_approvals_from_mcp=AsyncMock(),
     )
 
     result_value = await wait_for_dependencies(app)

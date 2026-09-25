@@ -92,13 +92,13 @@ def golden_path_incident_fixture() -> GoldenPathIncidentFixture:
                 mock_strategy="Index derived incident/fix memory with the shared correlation_id.",
             ),
             MockServiceContract(
-                repo="dhara",
+                repo="mcp",
                 owner_role="curator",
                 entrypoints=(
-                    "DharaStateBackend.persist_workflow",
-                    "DharaStateBackend.persist_pool",
-                    "DharaStateBackend.persist_routing_decision",
-                    "DharaStateBackend.persist_approval",
+                    "MCPStateBackend.persist_workflow",
+                    "MCPStateBackend.persist_pool",
+                    "MCPStateBackend.persist_routing_decision",
+                    "MCPStateBackend.persist_approval",
                 ),
                 preserved_surfaces=(
                     "recover_workflows",

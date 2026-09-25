@@ -10,14 +10,14 @@ This module owns two layers:
   in-process so operators can poll via ``list_progress_snapshots``.
 
 Substrate status: ``http_blocked (/workflows/<id>/progress-snapshots)``.
-Until Workstream C ships the Dhara HTTP CRUD endpoint, ``_persister`` is
+Until Workstream C ships the MCP HTTP CRUD endpoint, ``_persister`` is
 a TODO stub that always fails-soft — the in-process recorder remains
 the source of truth and the substrate call degrades to a no-op. When
 the endpoint ships, swap the stub for ``httpx.AsyncClient.post(...)``
-to ``{dhara_base_url}/workflows/{workflow_id}/progress-snapshots``.
+to ``{mcp_base_url}/workflows/{workflow_id}/progress-snapshots``.
 
 Architectural property (per the spec):
-- Serverless-native: stateless MCP server, all state in Dhara.
+- Serverless-native: stateless MCP server, all state in MCP.
 - Snapshots are periodic state (cheap to query "what is this workflow
   doing right now?").
 - Events (separate, in ``mahavishnu.core.events``) are facts; they live
@@ -148,7 +148,7 @@ _recorders_lock = asyncio.Lock()
 
 
 async def _persister(snapshot: ProgressSnapshot) -> None:
-    """Stub for the Dhara HTTP CRUD call.
+    """Stub for the MCP HTTP CRUD call.
 
     TODO(Workstream C): when substrate endpoint
     ``/workflows/<id>/progress-snapshots`` is unblocked, replace this

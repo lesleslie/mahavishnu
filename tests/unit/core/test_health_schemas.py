@@ -217,7 +217,7 @@ class TestWaitResult:
                 )
             },
             total_wait_seconds=0.1,
-            skipped_optional=["dhara"],
+            skipped_optional=["mcp"],
         )
         assert result.success is True
-        assert result.skipped_optional == ["dhara"]
+        assert result.skipped_optional == ["mcp"]

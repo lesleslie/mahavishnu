@@ -25,7 +25,7 @@ ______________________________________________________________________
 
 | Component | Path | Status | Repo |
 |---|---|---|---|
-| Mahavishnu thin client | `/Users/les/Projects/mahavishnu/mahavishnu/core/dhara_client.py` | **MOD** — add `execute(sql, params)` and `query(sql, params)` methods | mahavishnu |
+| Mahavishnu thin client | `/Users/les/Projects/mahavishnu/mahavishnu/core/mcp_client.py` | **MOD** — add `execute(sql, params)` and `query(sql, params)` methods | mahavishnu |
 | Dhara SQL proxy (new MCP tool module) | `/Users/les/Projects/dhara/dhara/mcp/tools/sql_proxy.py` | **NEW** | dhara |
 | Dhara MCP server registration | `/Users/les/Projects/dhara/dhara/mcp/server.py` | **MOD** — register 3 new HTTP CRUD routes + import `sql_proxy` | dhara |
 | Migration runner | `/Users/les/Projects/dhara/dhara/migrations/runner.py` | **NEW** | dhara |
@@ -37,7 +37,7 @@ ______________________________________________________________________
 
 ### 1.2 Component responsibilities
 
-**`mahavishnu/core/dhara_client.py` (MOD)**
+**`mahavishnu/core/mcp_client.py` (MOD)**
 
 - Add `execute(sql: str, params: Sequence | None = None) -> list[dict[str, Any]]`
 - Add `query(sql: str, params: Sequence | None = None) -> list[dict[str, Any]]`
@@ -131,7 +131,7 @@ def audit_subscriber(duckdb_pool) -> AuditLogSubscriber:
 
 | Module | Test file | Approx. test count | Coverage focus |
 |---|---|---|---|
-| `mahavishnu/core/dhara_client.py` thin client | `mahavishnu/tests/unit/core/test_dhara_client.py` | **8** | `execute` happy path, `query` happy path, connection failure, MCP error surface, param forwarding, empty result, retry once on 5xx, HTTP timeout |
+| `mahavishnu/core/mcp_client.py` thin client | `mahavishnu/tests/unit/core/test_dhara_client.py` | **8** | `execute` happy path, `query` happy path, connection failure, MCP error surface, param forwarding, empty result, retry once on 5xx, HTTP timeout |
 | `dhara/mcp/tools/sql_proxy.py` | `dhara/tests/unit/mcp/tools/test_sql_proxy.py` | **14** | backend selection via env, parameter binding for both backends, dangerous-statement guard (DROP DATABASE rejected), transaction rollback on error, connection-pool acquire failure, row mapping to dict, param-style translation `$1` ↔ `?`, empty result, large result truncation at 10k rows |
 | `dhara/mcp/server.py` new HTTP routes | `dhara/tests/integration/mcp/test_http_crud_routes.py` | **12** (4 per resource) | POST creates + returns id; GET retrieves; PUT updates; DELETE removes; 404 on missing; auth required on every route; tenant isolation; workflow cascade delete |
 | `dhara/migrations/runner.py` | `dhara/tests/unit/migrations/test_runner.py` | **7** | discovers files in order, applies pending only, idempotent re-run, status accuracy, missing dir error, bad filename ignored, applied_at timestamp |
@@ -163,7 +163,7 @@ Use `git worktree add` per `superpowers:using-git-worktrees`. Each workstream is
 - **Repo:** `/Users/les/Projects/mahavishnu`
 - **Branch:** `feat/dhara-substrate-A-thin-client`
 - **Base:** `main`
-- **Scope:** Modify only `mahavishnu/core/dhara_client.py` and add `mahavishnu/tests/unit/core/test_dhara_client.py`. No Dhara changes.
+- **Scope:** Modify only `mahavishnu/core/mcp_client.py` and add `mahavishnu/tests/unit/core/test_dhara_client.py`. No Dhara changes.
 - **Exit criteria:** All 8 tests green; `crackerjack run` passes locally; PR opened.
 - **Duration:** 1 day.
 - **Parallelizable with B/C/D:** Yes (touches a different repo).

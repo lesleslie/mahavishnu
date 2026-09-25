@@ -23,7 +23,7 @@ from mahavishnu.plan_index.cron_core import (
 )
 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 
 class TestStaleTakeoverWorks:
@@ -34,29 +34,29 @@ class TestStaleTakeoverWorks:
         ``finally`` block deleted the history key along with the holder,
         so subsequent cycles had no provenance of the takeover event.
         """
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
-        dhara = store._dhara  # type: ignore[attr-defined]
+        mcp = store._mcp  # type: ignore[attr-defined]
 
         # Plant a lock acquired 5 minutes ago (well past the 60s TTL).
         five_min_ago_ms = int(time.time() * 1000) - 5 * 60 * 1000
         stale_holder = "deadhost/1111"
-        await dhara.put("plan_index/meta/rebuild_lock/holder", stale_holder)
-        await dhara.put("plan_index/meta/rebuild_lock/acquired_at_ms", str(five_min_ago_ms))
+        await mcp.put("plan_index/meta/rebuild_lock/holder", stale_holder)
+        await mcp.put("plan_index/meta/rebuild_lock/acquired_at_ms", str(five_min_ago_ms))
 
         # Cycle B takes over.
         result = await run_rebuild_cycle(store, rebuilder)
         assert result.cycles_total >= 1
 
         # The active holder was released (finally block ran).
-        new_holder_after = await dhara.get("plan_index/meta/rebuild_lock/holder")
+        new_holder_after = await mcp.get("plan_index/meta/rebuild_lock/holder")
         assert new_holder_after is None, (
             "finally should delete the active lock holder; "
             f"but it is still {new_holder_after!r}"
         )
 
         # The history key was written and SURVIVED the finally block.
-        history_entries = await dhara.list_prefix(REBUILD_LOCK_HISTORY_KEY_PREFIX)
+        history_entries = await mcp.list_prefix(REBUILD_LOCK_HISTORY_KEY_PREFIX)
         assert history_entries, (
             "expected at least one lock-history key to be retained "
             f"under prefix {REBUILD_LOCK_HISTORY_KEY_PREFIX!r}"
@@ -88,14 +88,14 @@ class TestStaleTakeoverWorks:
 
     async def test_fresh_lock_acquisition_does_not_write_history(self) -> None:
         """No takeover == no history key (no false-positive provenance)."""
-        store = PlanIndexStore(FakeDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
-        dhara = store._dhara  # type: ignore[attr-defined]
+        mcp = store._mcp  # type: ignore[attr-defined]
 
         # No prior holder — fresh acquisition path.
         await run_rebuild_cycle(store, rebuilder)
 
-        history_entries = await dhara.list_prefix(REBUILD_LOCK_HISTORY_KEY_PREFIX)
+        history_entries = await mcp.list_prefix(REBUILD_LOCK_HISTORY_KEY_PREFIX)
         assert history_entries == [], (
             "fresh lock acquisition must NOT write a history key; "
             f"got {history_entries!r}"

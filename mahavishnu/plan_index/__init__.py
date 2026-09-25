@@ -1,4 +1,4 @@
-"""Plan-index Dhara-canonical metadata layer."""
+"""Plan-index MCP-canonical metadata layer."""
 
 from __future__ import annotations
 

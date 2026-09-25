@@ -1,6 +1,6 @@
 """Hook guards — planned guard layer for ``bodai_hook_bridge``.
 
-Per docs/spec/2026-09-14-dhara-mcp-decomposition-design.md §4.13.3
+Per docs/spec/2026-09-14-mcp-mcp-decomposition-design.md §4.13.3
 the bridge delegates PreToolUse decisions to a ``license_guard``
 callable. That guard is planned for a future task; this stub keeps
 ``mahavishnu.hook_guards`` importable so the bridge's

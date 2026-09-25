@@ -152,7 +152,7 @@ class PoolManager:
         session_buddy_client: Any = None,
         message_bus: MessageBus | None = None,
         event_publisher: Any = None,
-        dhara_state: Any = None,
+        mcp_state: Any = None,
     ):
         """Initialize pool manager.
 
@@ -164,7 +164,7 @@ class PoolManager:
         self.terminal_manager = terminal_manager
         self.session_buddy_client = session_buddy_client
         self.message_bus = message_bus or MessageBus(event_publisher=event_publisher)
-        self._dhara_state = dhara_state
+        self._mcp_state = mcp_state
         # Tier 1 Phase 2: per-pool queueing observation buffer
         # (REQ-008). Keyed by pool_id. Populated lazily by
         # _record_arrival once queueing is enabled in config.
@@ -179,8 +179,8 @@ class PoolManager:
         self._worker_count_heap: list[tuple[int, str]] = []
 
         # req: REQ-ORC-001, REQ-ORC-004
-        # Phase 4: Routing fitness reader — reads signals from Dhara
-        self._routing_fitness_reader = RoutingFitnessReader(dhara_state=dhara_state)
+        # Phase 4: Routing fitness reader — reads signals from MCP
+        self._routing_fitness_reader = RoutingFitnessReader(mcp_state=mcp_state)
 
         # Phase 1.5 Item 2: PEER_AFFINITY resolver. Lazily constructed
         # on first use so existing call sites that never use peer
@@ -226,10 +226,10 @@ class PoolManager:
         logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
 
     async def _persist_pool_state(self, pool_id: str, pool: BasePool, status: str) -> None:
-        if self._dhara_state is None:
+        if self._mcp_state is None:
             return
         try:
-            await self._dhara_state.persist_pool(
+            await self._mcp_state.persist_pool(
                 pool_id,
                 {
                     "pool_id": pool_id,
@@ -258,7 +258,7 @@ class PoolManager:
         observed_wait_s: float | None = None,
         effective_selector: str | None = None,
     ) -> None:  # req: REQ-003
-        if self._dhara_state is None:
+        if self._mcp_state is None:
             return
         try:
             task_class = str(task.get("category") or task.get("type") or "unknown")
@@ -283,7 +283,7 @@ class PoolManager:
                 record["observed_wait_s"] = observed_wait_s
             if effective_selector is not None:
                 record["effective_selector"] = effective_selector
-            await self._dhara_state.persist_routing_decision(
+            await self._mcp_state.persist_routing_decision(
                 task_class,
                 record,
                 timestamp=datetime.now(UTC),
@@ -1021,7 +1021,7 @@ class PoolManager:
         selector: PoolSelector,
         task_class: str,
     ) -> PoolSelector:
-        """Phase 4: override selector from Dhara fitness signals when available."""
+        """Phase 4: override selector from MCP fitness signals when available."""
         if not task_class:
             return selector
         try:
@@ -1041,7 +1041,7 @@ class PoolManager:
                     except ValueError:
                         pass  # Unknown selector string — keep current selector
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.debug("Dhara selector override skipped: %s", e)
+            logger.debug("MCP selector override skipped: %s", e)
         return selector
 
     async def _route_by_affinity(

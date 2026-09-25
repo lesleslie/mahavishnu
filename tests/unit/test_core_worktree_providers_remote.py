@@ -179,8 +179,8 @@ class _FakeCache:
         return True
 
 
-class FakeDharaClient:
-    """In-memory Dhara thin client fake (mirrors ``test_dhara_registry``)."""
+class FakeMCPClient:
+    """In-memory Dhara thin client fake (mirrors ``test_mcp_registry``)."""
 
     def __init__(self) -> None:
         self._registry: dict[str, dict[str, Any]] = {}
@@ -434,11 +434,11 @@ class TestCreateWorktreeHandleStreaming:
         )
 
         storage = _FakeCloudStorage(backend="s3")
-        dhara = FakeDharaClient()
+        mcp = FakeDharaClient()
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=_FakeCache(),
-            dhara_client=dhara,
+            dhara_client=mcp,
             backend="s3",
         )
         principal = _principal()
@@ -466,7 +466,7 @@ class TestCreateWorktreeHandleStreaming:
         assert handle.bytes_size > 0
         assert handle.sha256
         # Dhara registration was attempted by the production code.
-        rows = await dhara.query(
+        rows = await mcp.query(
             "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
             {"h": handle.handle_id},
         )
@@ -771,17 +771,17 @@ class TestFetchStreaming:
 class TestRemoveHandle:
     """``remove_handle`` calls storage.delete, invalidates cache, removes from Dhara."""
 
-    async def test_remove_handle_calls_storage_delete_and_dhara_remove(self) -> None:
+    async def test_remove_handle_calls_storage_delete_and_mcp_remove(self) -> None:
         storage = _FakeCloudStorage()
         cache = _FakeCache()
-        dhara = FakeDharaClient()
+        mcp = FakeDharaClient()
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=cache,
-            dhara_client=dhara,
+            dhara_client=mcp,
             backend="s3",
         )
-        from mahavishnu.core.worktree_providers.dhara_registry import (
+        from mahavishnu.core.worktree_providers.mcp_registry import (
             register_handles as dhara_register,
         )
 
@@ -796,7 +796,7 @@ class TestRemoveHandle:
         )
         # Seed storage with a fake blob so delete() can find the key.
         storage._blobs[handle.storage_ref.key] = b"x"
-        await dhara_register(dhara, [handle], caller=principal_full)
+        await dhara_register(mcp, [handle], caller=principal_full)
 
         removed = await provider.remove_handle(handle, caller=principal_full)
         assert removed is True
@@ -806,7 +806,7 @@ class TestRemoveHandle:
         # Cache invalidate called
         assert cache.invalidate_calls == [handle.handle_id]
         # Dhara primary row removed
-        rows = await dhara.query(
+        rows = await mcp.query(
             "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
             {"h": handle.handle_id},
         )

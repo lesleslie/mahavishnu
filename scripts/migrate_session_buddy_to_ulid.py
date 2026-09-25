@@ -174,7 +174,7 @@ def main():
         print()
         print("2. Update session_buddy/session_manager.py:")
         print('   - Replace: session_id = f"{project_name}-{timestamp}"')
-        print("   - With: from dhara import generate; session_ulid = generate()")
+        print("   - With: from mcp import generate; session_ulid = generate()")
         print()
         print("3. Backfill existing sessions:")
         print("   UPDATE sessions")

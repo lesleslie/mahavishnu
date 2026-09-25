@@ -13,7 +13,7 @@ the new caller-kind contract:
   ``RateLimitError`` BEFORE any Dhara write happens, otherwise a
   saturated caller would still produce audit noise.
 
-The tests use a MagicMock for ``_dhara_state`` so the persist call
+The tests use a MagicMock for ``_mcp_state`` so the persist call
 arguments are inspectable; no real Dhara is involved.
 """
 
@@ -51,7 +51,7 @@ class _StubPool:
 
 
 @pytest.fixture
-def dhara_state() -> MagicMock:
+def mcp_state() -> MagicMock:
     """An async-friendly MagicMock for the Dhara state backend."""
     mock = MagicMock()
     mock.persist_routing_decision = AsyncMock(return_value=None)
@@ -60,13 +60,13 @@ def dhara_state() -> MagicMock:
 
 
 @pytest.fixture
-def pool_mgr(dhara_state: MagicMock) -> PoolManager:
+def pool_mgr(mcp_state: MagicMock) -> PoolManager:
     """PoolManager with a stub pool and a mock Dhara backend attached."""
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=None,
             session_buddy_client=None,
-            dhara_state=dhara_state,
+            mcp_state=mcp_state,
         )
     mgr._pools["pool_test"] = _StubPool()  # type: ignore[assignment]
     mgr._pool_worker_counts["pool_test"] = 1
@@ -88,8 +88,8 @@ class TestRouteTaskPersistsCallerKind:
             parent_session_id="ses_abc",
         )
         # Find the persist call for routing decisions.
-        assert pool_mgr._dhara_state.persist_routing_decision.await_count == 1
-        value = pool_mgr._dhara_state.persist_routing_decision.call_args.args[1]
+        assert pool_mgr._mcp_state.persist_routing_decision.await_count == 1
+        value = pool_mgr._mcp_state.persist_routing_decision.call_args.args[1]
         assert value["caller_kind"] == "ultracode"
         assert value["parent_session_id"] == "ses_abc"
 
@@ -120,7 +120,7 @@ class TestRouteTaskEnforcesQuotaAtEntry:
                 parent_session_id="ses_abc",
             )
         # Critical: NO persist call should have been issued.
-        pool_mgr._dhara_state.persist_routing_decision.assert_not_awaited()
+        pool_mgr._mcp_state.persist_routing_decision.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ class TestCallerKindUnknownNormalizes:
         rogue_bucket = coerce_caller_kind("ultracode-rogue-1")
         assert rogue_bucket is CallerKind.UNKNOWN
         # The persisted value carries the canonical UNKNOWN string.
-        value = pool_mgr._dhara_state.persist_routing_decision.call_args.args[1]
+        value = pool_mgr._mcp_state.persist_routing_decision.call_args.args[1]
         assert value["caller_kind"] == "unknown"
 
 
@@ -165,6 +165,6 @@ class TestCallerKindStrEnumCoercionAtBoundary:
             caller_kind=CallerKind.ULTRA_CODE,
             parent_session_id="ses_abc",
         )
-        value = pool_mgr._dhara_state.persist_routing_decision.call_args.args[1]
+        value = pool_mgr._mcp_state.persist_routing_decision.call_args.args[1]
         # Persisted as the enum's underlying string, not the enum repr.
         assert value["caller_kind"] == "ultracode"

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._dhara_substrate_compat import dhara_calltime
+from mahavishnu.core._mcp_substrate_compat import mcp_calltime
 from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
@@ -25,32 +25,32 @@ async def workflow_get_outcome(
     """Read back the persisted WorkflowOutcome via from_dict, validating the payload.
 
     Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``
-    OR when the substrate does not expose ``dhara.get`` (logged WARNING, see
+    OR when the substrate does not expose ``mcp.get`` (logged WARNING, see
     the substrate-compat gate below).
     Returns ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}``
     when ``workflow_id`` is rejected by the conservative path-traversal guard
     (mirrors the sibling parity gate in ``pool_tools.workflow_result``);
-    Dhara is never queried in that case.
+    MCP is never queried in that case.
     """
     # Path-traversal guard: caller-supplied workflow_id is spliced into
     # ``f"workflow-results/{workflow_id}/"`` below, so reject anything
-    # outside the conservative regex BEFORE the Dhara read.
+    # outside the conservative regex BEFORE the MCP read.
     if not validate_workflow_id(workflow_id):
         return {"workflow_id": workflow_id, "status": "invalid_workflow_id"}
 
-    # Substrate-compat gate: only read when dhara.get is exposed. Missing
+    # Substrate-compat gate: only read when mcp.get is exposed. Missing
     # substrate → return None and warn (do not conflate with "no record").
     # Tests substitute via `monkeypatch.setattr(
-    # "mahavishnu.core._dhara_substrate_compat.dhara_calltime", ...)` —
+    # "mahavishnu.core._mcp_substrate_compat.mcp_calltime", ...)` —
     # the call-time resolution routes through whatever is bound on the
-    # ``dhara`` module at the moment of the read.
-    get_fn = dhara_calltime("get")
+    # ``mcp`` module at the moment of the read.
+    get_fn = mcp_calltime("get")
     if get_fn is None:
         logger.warning(
             "workflow_outcome_read_skipped",
             extra={
                 "workflow_id": workflow_id,
-                "reason": "dhara.get_unbound",
+                "reason": "mcp.get_unbound",
             },
         )
         return None

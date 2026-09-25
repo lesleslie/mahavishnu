@@ -1156,7 +1156,7 @@ from mahavishnu.core.events.report_validation import (
     validate_iteration_report,
     validate_workflow_report,
 )
-from mahavishnu.core.dhara_client import execute, query
+from mahavishnu.core.mcp_client import execute, query
 
 logger = get_logger(__name__)
 

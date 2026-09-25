@@ -6,10 +6,10 @@ operational telemetry substrate described in
 
 Status
 ------
-The Dhara-backed HTTP CRUD surface
+The MCP-backed HTTP CRUD surface
 (``/adapters/<id>/active-settings-version`` and friends) is ``http_blocked``
 per the substrate status (overlaps with Plan 4 Phase D). This module
-therefore ships the **model + persister interface** only. The Dhara-backed
+therefore ships the **model + persister interface** only. The MCP-backed
 implementation is a stub that raises ``NotImplementedError`` with a
 ``TODO(Workstream C - substrate)`` marker so accidental wiring is caught
 at runtime.
@@ -25,9 +25,9 @@ Once Plan 4's wiring lands, ``TrackedSettings`` will call
 
 Seam with Workstream C substrate
 --------------------------------
-The Dhara-backed persister will satisfy ``SettingsActivationPersister``
+The MCP-backed persister will satisfy ``SettingsActivationPersister``
 once the substrate lands (Day 9 of the substrate plan). The class
-``DharaSettingsActivationPersister`` here is the placeholder.
+``MCPSettingsActivationPersister`` here is the placeholder.
 
 Mahavishnu conventions honored
 ------------------------------
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 class AdapterSettingsVersion:
     """Immutable record of one settings activation for a single adapter.
 
-    Mirrors the Dhara ``adapter_settings_versions`` row schema
+    Mirrors the MCP ``adapter_settings_versions`` row schema
     (Spec #8 §Storage Schema). Frozen + append-only by design: history is
     preserved, no edits, no deletes. The ``(adapter_id, version)`` pair is
     the natural primary key.
@@ -108,7 +108,7 @@ class SettingsActivationRecord:
     source of activation truth) constructs and hands to
     ``record_activation``. It carries the data needed to write the
     activation but does NOT include ``activated_at`` — the persister
-    stamps that at save time (or, for the Dhara implementation, Dhara
+    stamps that at save time (or, for the MCP implementation, MCP
     stamps it via its ``activated_at`` column on INSERT).
 
     The frozen dataclass mirrors Spec #5's ``SkillTransition`` shape:
@@ -142,7 +142,7 @@ class SettingsActivationPersister(Protocol):
     - Return shallow copies from ``history`` / ``history_for`` so callers
       cannot mutate internal state.
 
-    The Dhara-backed implementation (planned for Workstream C substrate)
+    The MCP-backed implementation (planned for Workstream C substrate)
     will satisfy this protocol by INSERTing into ``adapter_settings_versions``
     and reading via ``SELECT ... ORDER BY recorded_at``.
     """
@@ -169,7 +169,7 @@ class SettingsActivationPersister(Protocol):
 class InMemorySettingsActivationPersister:
     """In-memory implementation of :class:`SettingsActivationPersister`.
 
-    Suitable for unit tests, local development, and the dhara-still-pending
+    Suitable for unit tests, local development, and the mcp-still-pending
     Workstream C. Stores records in a list keyed by
     ``(adapter_id, version)`` so PK collisions raise on ``save`` rather
     than silently overwriting history.
@@ -206,21 +206,21 @@ class InMemorySettingsActivationPersister:
 
 
 # ---------------------------------------------------------------------------
-# Dhara-backed implementation stub
+# MCP-backed implementation stub
 # ---------------------------------------------------------------------------
 
 
-class DharaSettingsActivationPersister:
-    """Stub for the Dhara-backed implementation.
+class MCPSettingsActivationPersister:
+    """Stub for the MCP-backed implementation.
 
-    The Dhara ``adapter_settings_versions`` table is the durable backing
-    store for this substrate. Until the Dhara substrate lands
+    The MCP ``adapter_settings_versions`` table is the durable backing
+    store for this substrate. Until the MCP substrate lands
     (Workstream C — Day 9 of the substrate plan), this stub raises
     ``NotImplementedError`` so the call site is documented and
-    import-time visible, but no Dhara write occurs.
+    import-time visible, but no MCP write occurs.
 
-    TODO(Workstream C - substrate): replace ``save`` with a Dhara INSERT
-    via ``mahavishnu.core.dhara_client.execute`` using the SQL::
+    TODO(Workstream C - substrate): replace ``save`` with a MCP INSERT
+    via ``mahavishnu.core.mcp_client.execute`` using the SQL::
 
         INSERT INTO adapter_settings_versions
             (version_id, adapter_id, version_number, config,
@@ -233,21 +233,21 @@ class DharaSettingsActivationPersister:
 
     def save(self, record: SettingsActivationRecord) -> None:
         raise NotImplementedError(
-            "DharaSettingsActivationPersister is a stub. "
+            "MCPSettingsActivationPersister is a stub. "
             "TODO(Workstream C - substrate): wire INSERT INTO "
-            "adapter_settings_versions via DharaThinClient.execute. "
+            "adapter_settings_versions via MCPThinClient.execute. "
             f"Would have recorded: adapter_id={record.adapter_id!r} "
             f"version={record.version} settings_hash={record.settings_hash[:12]}..."
         )
 
     def history(self) -> list[SettingsActivationRecord]:
         raise NotImplementedError(
-            "DharaSettingsActivationPersister.history() pending Workstream C substrate."
+            "MCPSettingsActivationPersister.history() pending Workstream C substrate."
         )
 
     def history_for(self, adapter_id: str) -> list[SettingsActivationRecord]:
         raise NotImplementedError(
-            "DharaSettingsActivationPersister.history_for() pending Workstream C substrate."
+            "MCPSettingsActivationPersister.history_for() pending Workstream C substrate."
         )
 
 
@@ -265,7 +265,7 @@ def record_activation(
 
     This is the single entry point Plan 4's ``TrackedSettings`` (and any
     other upstream source) will call. Keeping the call site stable lets
-    the in-memory and Dhara-backed implementations swap without touching
+    the in-memory and MCP-backed implementations swap without touching
     callers.
 
     Parameters
@@ -275,7 +275,7 @@ def record_activation(
         and ``activated_by`` are required.
     persister:
         The destination persister. Must satisfy
-        :class:`SettingsActivationPersister`. The :class:`DharaSettingsActivationPersister`
+        :class:`SettingsActivationPersister`. The :class:`MCPSettingsActivationPersister`
         stub raises ``NotImplementedError`` until Workstream C lands.
 
     Raises
@@ -284,15 +284,15 @@ def record_activation(
         If the persister rejects the record as a duplicate
         ``(adapter_id, version)``.
     NotImplementedError
-        If the persister is the Dhara stub (current state).
+        If the persister is the MCP stub (current state).
     """
     persister.save(record)
 
 
 __all__ = [
     "AdapterSettingsVersion",
-    "DharaSettingsActivationPersister",
     "InMemorySettingsActivationPersister",
+    "MCPSettingsActivationPersister",
     "SettingsActivationPersister",
     "SettingsActivationRecord",
     "record_activation",

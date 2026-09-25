@@ -6,7 +6,7 @@ The decorator is applied here; ``tests/unit/mcp/test_plan_tools_auth_gate.py``
 enforces that it stays applied.
 
 The store is injected via ``store_provider`` so tests can supply a
-``FakeDhara``-backed store. Production wires a real Dhara-backed store at
+``FakeMCP``-backed store. Production wires a real MCP-backed store at
 ``MahavishnuApp`` startup (Task 12); there is deliberately no production
 default here.
 
@@ -27,7 +27,7 @@ from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
 from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeDhara
+from mahavishnu.plan_index.testing import FakeMCP
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -45,13 +45,13 @@ logger = get_logger(__name__)
 
 
 def plan_tools_default_store_provider() -> PlanIndexStore:
-    """Dev/test store provider backed by the in-memory :class:`FakeDhara`.
+    """Dev/test store provider backed by the in-memory :class:`FakeMCP`.
 
-    Production callers MUST inject a real Dhara-backed provider instead;
+    Production callers MUST inject a real MCP-backed provider instead;
     this exists so tests (and local smoke runs) can register the tools
-    without standing up Dhara.
+    without standing up MCP.
     """
-    return PlanIndexStore(FakeDhara())
+    return PlanIndexStore(FakeMCP())
 
 
 def register_plan_tools(
@@ -63,7 +63,7 @@ def register_plan_tools(
     """Register the five ``plan_*`` tools with the FastMCP server.
 
     ``store_provider`` is keyword-only and required: ``MahavishnuApp`` injects
-    the real Dhara-backed store at startup. Tests pass
+    the real MCP-backed store at startup. Tests pass
     :func:`plan_tools_default_store_provider`.
 
     ``rbac_manager`` is keyword-only and defaults to ``None``. Production

@@ -9,15 +9,15 @@ from typing import Any
 import pytest
 
 from mahavishnu.auth import Principal
-from mahavishnu.core.worktree_providers.dhara_registry import (
+from mahavishnu.core.worktree_providers.mcp_registry import (
     list_handles,
     register_handles,
 )
 from mahavishnu.core.worktree_providers.pre_migrate import synthesize_handle
 
 
-class FakeDharaClient:
-    """In-memory fake of the DharaThinClient interface."""
+class FakeMCPClient:
+    """In-memory fake of the MCPThinClient interface."""
 
     def __init__(self) -> None:
         self._registry: dict[str, dict[str, Any]] = {}
@@ -706,7 +706,7 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
 @pytest.mark.asyncio
 async def test_remove_handle_owner_can_delete() -> None:
     """Owner with ``worktree:remove`` scope can delete their own handle."""
-    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+    from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
     client = FakeDharaClient()
     await _ensure_schema(client)
@@ -732,7 +732,7 @@ async def test_remove_handle_non_owner_raises_permission_error() -> None:
     The fix mirrors ``register_handles`` per-handle ownership: the
     caller's uid must match the handle's owner uid.
     """
-    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+    from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
     client = FakeDharaClient()
     await _ensure_schema(client)
@@ -751,7 +751,7 @@ async def test_remove_handle_non_owner_raises_permission_error() -> None:
 @pytest.mark.asyncio
 async def test_remove_handle_admin_can_delete_any() -> None:
     """Admin (``worktree:register-any``) bypasses the ownership check."""
-    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+    from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
     client = FakeDharaClient()
     await _ensure_schema(client)
@@ -767,7 +767,7 @@ async def test_remove_handle_admin_can_delete_any() -> None:
 @pytest.mark.asyncio
 async def test_remove_handle_unauthorized_raises() -> None:
     """Caller without ``worktree:remove`` or admin scope is rejected."""
-    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+    from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
     client = FakeDharaClient()
     await _ensure_schema(client)
@@ -784,7 +784,7 @@ async def test_remove_handle_unauthorized_raises() -> None:
 @pytest.mark.asyncio
 async def test_remove_handle_not_found_returns_false() -> None:
     """Missing handle returns False (no exception)."""
-    from mahavishnu.core.worktree_providers.dhara_registry import remove_handle
+    from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
     client = FakeDharaClient()
     await _ensure_schema(client)
@@ -814,7 +814,7 @@ def test_principal_has_scope_treats_empty_scopes_as_all() -> None:
     """Empty (or unspecified) scopes mean "all scopes" per the wire-up contract.
 
     Note: this is the documented behaviour that
-    mahavishnu/core/state_backends/dhara_registry.py:336 explicitly works
+    mahavishnu/core/state_backends/mcp_registry.py:336 explicitly works
     around with a raw ``in caller.scopes`` check rather than has_scope(),
     because for security-sensitive checks the "empty = all" semantics is
     unsafe. Both paths remain in the codebase; has_scope() is the

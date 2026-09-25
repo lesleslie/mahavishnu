@@ -259,7 +259,7 @@ _bundle_integrity_failure_counter: Counter = _meter.create_counter(
 )
 _worktree_registry_drift_counter: Counter = _meter.create_counter(
     name="worktree_registry_drift_total",
-    description="Drift between S3 inventory and Dhara registry (orphans / ghosts).",
+    description="Drift between S3 inventory and MCP registry (orphans / ghosts).",
 )
 
 
@@ -406,21 +406,21 @@ def record_lock_held(repo: str, branch: str, principal: str | None, held_seconds
     _worktree_lock_held_histogram.record(held_seconds, attributes=labels)
 
 
-def record_registry_drift(*, missing_in_s3: int = 0, missing_in_dhara: int = 0) -> None:
-    """Record drift between S3 inventory and Dhara registry.
+def record_registry_drift(*, missing_in_s3: int = 0, missing_in_mcp: int = 0) -> None:
+    """Record drift between S3 inventory and MCP registry.
 
     Two label dimensions collapse into one counter via a single
-    ``drift_kind`` label (``"missing_in_s3"`` or ``"missing_in_dhara"``)
+    ``drift_kind`` label (``"missing_in_s3"`` or ``"missing_in_mcp"``)
     so the meter doesn't multiply cardinality by 2.
     """
     if missing_in_s3:
         labels = {"drift_kind": "missing_in_s3"}
         _validate_labels(labels)
         _worktree_registry_drift_counter.add(missing_in_s3, attributes=labels)
-    if missing_in_dhara:
-        labels = {"drift_kind": "missing_in_dhara"}
+    if missing_in_mcp:
+        labels = {"drift_kind": "missing_in_mcp"}
         _validate_labels(labels)
-        _worktree_registry_drift_counter.add(missing_in_dhara, attributes=labels)
+        _worktree_registry_drift_counter.add(missing_in_mcp, attributes=labels)
 
 
 def record_cache_fallback(from_tier: str, to_tier: str) -> None:

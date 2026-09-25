@@ -4,9 +4,9 @@ Writes each report as a JSON file under ``$XDG_CACHE_HOME/mahavishnu/
 completion_reports/`` (or ``$HOME/.cache/mahavishnu/completion_reports/``
 when ``XDG_CACHE_HOME`` is unset). Filename is ``{report_id}.json``.
 
-This is the v0 reference implementation. The Dhara-backed persister is
+This is the v0 reference implementation. The MCP-backed persister is
 a follow-up once the substrate lands; the API here is the contract that
-the Dhara implementation must satisfy.
+the MCP implementation must satisfy.
 
 The persister deliberately uses synchronous file I/O because saving a
 report is a side-effect at workflow end, not in the hot path of the

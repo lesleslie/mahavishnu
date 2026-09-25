@@ -1,6 +1,6 @@
-"""Dhara-backed durable state persistence for Mahavishnu.
+"""MCP-backed durable state persistence for Mahavishnu.
 
-Provides a thin coordination layer over DharaClient that implements
+Provides a thin coordination layer over MCPClient that implements
 degraded-boot mode and circuit-breaker protection. All writes are
 fire-and-forget — callers never block on persistence.
 
@@ -21,57 +21,57 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_DHARA_FAILURE_THRESHOLD = 3
-_DHARA_RECOVERY_SECONDS = 30.0
+_MCP_FAILURE_THRESHOLD = 3
+_MCP_RECOVERY_SECONDS = 30.0
 
 
 @dataclass
-class DharaStateConfig:
-    """Configuration for Dhara state persistence."""
+class MCPStateConfig:
+    """Configuration for MCP state persistence."""
 
     enabled: bool = True
     flush_interval_seconds: int = 60
     max_routing_buffer_age_seconds: int = 3600
 
 
-class DharaStateBackend:
-    """Durable state backend backed by Dhara.
+class MCPStateBackend:
+    """Durable state backend backed by MCP.
 
-    Wraps DharaClient with:
-    - Degraded-boot mode: if Dhara is unreachable, writes are no-ops
+    Wraps MCPClient with:
+    - Degraded-boot mode: if MCP is unreachable, writes are no-ops
     - Inline circuit breaker: 3 consecutive errors → open for 30 s
     - Fire-and-forget writes via asyncio.create_task
     """
 
-    def __init__(self, base_url: str, config: DharaStateConfig | None = None) -> None:
-        from mahavishnu.core.dhara_adapter import DharaClient
+    def __init__(self, base_url: str, config: MCPStateConfig | None = None) -> None:
+        from mahavishnu.core.mcp_adapter import MCPClient
 
-        self._client = DharaClient(base_url=base_url)
-        self._config = config or DharaStateConfig()
+        self._client = MCPClient(base_url=base_url)
+        self._config = config or MCPStateConfig()
         self._available = True
         self._consecutive_failures = 0
         self._circuit_open_until: float = 0.0
 
     @staticmethod
     def workflow_key(execution_id: str) -> str:
-        """Return the canonical Dhara key for workflow execution state."""
+        """Return the canonical MCP key for workflow execution state."""
         return f"workflow/v1/{execution_id}"
 
     @staticmethod
     def pool_key(pool_id: str) -> str:
-        """Return the canonical Dhara key for pool state."""
+        """Return the canonical MCP key for pool state."""
         return f"pool/v1/{pool_id}"
 
     @staticmethod
     def routing_key(task_class: str, timestamp: datetime | None = None) -> str:
-        """Return the canonical Dhara key for routing decision state."""
+        """Return the canonical MCP key for routing decision state."""
         when = timestamp or datetime.now(UTC)
         timestamp_ms = int(when.timestamp() * 1000)
         return f"routing/v1/{task_class}/{timestamp_ms}"
 
     @staticmethod
     def approval_key(request_id: str) -> str:
-        """Return the canonical Dhara key for approval state."""
+        """Return the canonical MCP key for approval state."""
         return f"approval/v1/{request_id}"
 
     @property
@@ -92,21 +92,21 @@ class DharaStateBackend:
         import time
 
         self._consecutive_failures += 1
-        if self._consecutive_failures >= _DHARA_FAILURE_THRESHOLD:
-            self._circuit_open_until = time.monotonic() + _DHARA_RECOVERY_SECONDS
+        if self._consecutive_failures >= _MCP_FAILURE_THRESHOLD:
+            self._circuit_open_until = time.monotonic() + _MCP_RECOVERY_SECONDS
             logger.warning(
-                "Dhara state backend circuit open — persistence disabled for %ds",
-                _DHARA_RECOVERY_SECONDS,
+                "MCP state backend circuit open — persistence disabled for %ds",
+                _MCP_RECOVERY_SECONDS,
             )
 
     def _record_success(self) -> None:
         if self._consecutive_failures > 0:
-            logger.info("Dhara state backend recovered — persistence re-enabled")
+            logger.info("MCP state backend recovered — persistence re-enabled")
         self._consecutive_failures = 0
         self._available = True
 
     async def put(self, key: str, value: dict[str, Any], ttl: int | None = None) -> None:
-        """Persist key/value to Dhara. No-op when unavailable or circuit open."""
+        """Persist key/value to MCP. No-op when unavailable or circuit open."""
         if not self._config.enabled or self._circuit_is_open():
             return
         try:
@@ -114,7 +114,7 @@ class DharaStateBackend:
             self._record_success()
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
-            logger.debug("Dhara put(%r) failed: %s", key, exc)
+            logger.debug("MCP put(%r) failed: %s", key, exc)
 
     async def persist_workflow(
         self,
@@ -154,27 +154,27 @@ class DharaStateBackend:
         await self.put(self.approval_key(request_id), value, ttl=ttl)
 
     async def recover_workflows(self) -> list[dict[str, Any]]:
-        """Recover workflow execution state from Dhara."""
+        """Recover workflow execution state from MCP."""
         entries = await self.list_prefix("workflow/v1/")
         return [value for _key, value in entries if isinstance(value, dict)]
 
     async def recover_pools(self) -> list[dict[str, Any]]:
-        """Recover pool state from Dhara."""
+        """Recover pool state from MCP."""
         entries = await self.list_prefix("pool/v1/")
         return [value for _key, value in entries if isinstance(value, dict)]
 
     async def recover_routing_decisions(self) -> list[dict[str, Any]]:
-        """Recover routing decisions from Dhara."""
+        """Recover routing decisions from MCP."""
         entries = await self.list_prefix("routing/v1/")
         return [value for _key, value in entries if isinstance(value, dict)]
 
     async def recover_approvals(self) -> list[dict[str, Any]]:
-        """Recover approval state from Dhara."""
+        """Recover approval state from MCP."""
         entries = await self.list_prefix("approval/v1/")
         return [value for _key, value in entries if isinstance(value, dict)]
 
     async def get(self, key: str) -> dict[str, Any] | None:
-        """Retrieve a value from Dhara. Returns None when unavailable."""
+        """Retrieve a value from MCP. Returns None when unavailable."""
         if not self._config.enabled or self._circuit_is_open():
             return None
         try:
@@ -185,11 +185,11 @@ class DharaStateBackend:
             return None
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
-            logger.debug("Dhara get(%r) failed: %s", key, exc)
+            logger.debug("MCP get(%r) failed: %s", key, exc)
             return None
 
     async def delete(self, key: str) -> None:
-        """Delete a key from Dhara. No-op when unavailable."""
+        """Delete a key from MCP. No-op when unavailable."""
         if not self._config.enabled or self._circuit_is_open():
             return
         try:
@@ -197,7 +197,7 @@ class DharaStateBackend:
             self._record_success()
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
-            logger.debug("Dhara delete(%r) failed: %s", key, exc)
+            logger.debug("MCP delete(%r) failed: %s", key, exc)
 
     async def list_prefix(self, prefix: str) -> list[tuple[str, dict[str, Any]]]:
         """List all keys under a prefix. Returns [] when unavailable."""
@@ -211,7 +211,7 @@ class DharaStateBackend:
             return []
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
-            logger.debug("Dhara list_prefix(%r) failed: %s", prefix, exc)
+            logger.debug("MCP list_prefix(%r) failed: %s", prefix, exc)
             return []
 
     def schedule_put(self, key: str, value: dict[str, Any], ttl: int | None = None) -> None:
@@ -223,7 +223,7 @@ class DharaStateBackend:
         asyncio.create_task(self.delete(key))
 
     async def probe(self) -> bool:
-        """Check if Dhara is reachable. Updates availability flag."""
+        """Check if MCP is reachable. Updates availability flag."""
         try:
             await self._client.call_tool("get", {"key": "__probe__"})
             self._available = True
@@ -231,7 +231,7 @@ class DharaStateBackend:
             return True
         except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._available = False
-            logger.warning("Dhara unavailable — state persistence disabled")
+            logger.warning("MCP unavailable — state persistence disabled")
             return False
 
     async def aclose(self) -> None:

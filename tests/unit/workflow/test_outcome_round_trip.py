@@ -3,7 +3,7 @@
 Writer (Task 1 ``record_workflow_outcome``) and consumer (Task 3
 ``workflow_get_outcome``) are exercised against a shared in-memory Dhara
 substrate. Both sides monkeypatch the same substrate-compat binding on the
-``dhara`` module — ``dhara.put`` (writer) and ``dhara.get`` (consumer) —
+``mcp`` module — ``mcp.put`` (writer) and ``mcp.get`` (consumer) —
 so the writer's persisted payload is the consumer's read-back payload.
 
 This locks the end-to-end contract:
@@ -11,7 +11,7 @@ This locks the end-to-end contract:
   1. ``record_workflow_outcome`` validates against the substrate schema and
      persists a typed ``WorkflowOutcome``.
   2. ``workflow_get_outcome`` reads the same payload back via
-     ``dhara.get(key)`` and re-validates via ``from_dict``.
+     ``mcp.get(key)`` and re-validates via ``from_dict``.
   3. Struct equality holds across the boundary — same ``workflow_id``,
      ``status``, ``started_at``, ``finished_at``, ``metadata``.
 
@@ -43,15 +43,15 @@ pytestmark = pytest.mark.unit
 def shared_dhara(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     """Patch both producer and consumer to share an in-memory dict.
 
-    Both modules' ``dhara.put`` / ``dhara.get`` resolve at call time via
-    :func:`dhara_calltime` / direct ``getattr(dhara, ...)`` on the live
-    ``dhara`` module. Patch the live module (NOT the producer/consumer
-    modules — neither imports ``dhara`` as a name anymore) so the writer's
+    Both modules' ``mcp.put`` / ``mcp.get`` resolve at call time via
+    :func:`mcp_calltime` / direct ``getattr(mcp, ...)`` on the live
+    ``mcp`` module. Patch the live module (NOT the producer/consumer
+    modules — neither imports ``mcp`` as a name anymore) so the writer's
     persisted payload lands in the same dict the consumer reads. Keys are
     formatted ``f"workflow-results/{workflow_id}/"`` to match the producer
     key format exactly.
     """
-    import dhara
+    import mcp
 
     store: dict[str, object] = {}
 
@@ -61,8 +61,8 @@ def shared_dhara(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
     async def get(key: str) -> object | None:
         return store.get(key)
 
-    monkeypatch.setattr(dhara, "put", put, raising=False)
-    monkeypatch.setattr(dhara, "get", get, raising=False)
+    monkeypatch.setattr(mcp, "put", put, raising=False)
+    monkeypatch.setattr(mcp, "get", get, raising=False)
     return store
 
 
@@ -90,7 +90,7 @@ async def test_round_trip_succeeded_outcome_round_trips(shared_dhara: dict[str, 
     assert written.metadata == metadata
 
     # Substrate-side key matches producer contract
-    assert f"workflow-results/{workflow_id}/" in shared_dhara
+    assert f"workflow-results/{workflow_id}/" in shared_mcp
 
     # Consumer reads back via from_dict validation
     read_back = await workflow_get_outcome(workflow_id)
