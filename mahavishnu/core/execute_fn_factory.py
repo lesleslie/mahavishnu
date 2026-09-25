@@ -147,7 +147,12 @@ def build_execute_fn(
         # ``WorkerResult``-compatible so A2A's ``_result_to_a2a``
         # serializes it without error. ACP's stub-acknowledged path
         # accepts the same shape.
-        from mahavishnu.workers.base import WorkerResult, WorkerStatus
+        # Phase 5b (Plan v3): WorkerStatus moved to mahavishnu.core.status as
+        # the canonical source; the import path through workers.base was a
+        # re-export shim that we're now closing. WorkerResult stays in
+        # workers/base (no canonical relocation needed).
+        from mahavishnu.workers.base import WorkerResult
+        from mahavishnu.core.status import WorkerStatus
 
         prompt = payload.get("prompt", "")
         return WorkerResult(
