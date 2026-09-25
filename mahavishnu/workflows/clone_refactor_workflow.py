@@ -1,315 +1,499 @@
 # Workflow-ID: 01JCLONEREF2026
 # Approved by: les
-"""Prefect DAG workflow for cross-repo clone extraction — Task 13 Phase B.
+"""Git-tree clone-refactor DAG.
 
-Orchestrates the ordered PR creation sequence for ecosystem clone refactoring:
-
-    Step 1: create_extraction_pr  → open PR in the extraction target repo
-                                    (oneiric or a new shared package)
-    Step 2: wait_for_merge        → poll PR status until merged (with timeout)
-    Step 3: create_consuming_prs  → open PRs in all consuming repos in parallel,
-                                    gated on Step 1 merge completion
-
-Cross-repo extractions are ALWAYS PROPOSE_APPROVE per M-NEW-5: no step
-here auto-merges — all PRs require human review and approval.
-
-If the extraction PR is closed (not merged), all consuming PRs are
-cancelled to prevent a half-migrated ecosystem state (M-NEW-7).
+Implements: REQ-CLONE-001, REQ-CLONE-002, REQ-CLONE-003, REQ-CLONE-010,
+            REQ-CLONE-011, REQ-CLONE-012, REQ-CLONE-013, REQ-CLONE-016
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 import logging
-from typing import Any
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Literal
+
+from prefect import flow, task
+from tenacity import retry_if_exception_type
+
+from mahavishnu.core.state_backends.mcp import MCPStateBackend
+from mahavishnu.mcp.tools.clone_claims import release_cluster_claim
+from mahavishnu.workflows import _git_ops
 
 logger = logging.getLogger(__name__)
 
-# Poll interval and ceiling for wait_for_merge
-_POLL_INTERVAL_S = 60
-_POLL_TIMEOUT_S = 3600  # 1 hour
+
+# ---- Dataclasses (REQ-CLONE-002) ------------------------------------------
+
+# TD-m1: status fields are Literal, not str — typos like "Completed" or
+# "queued " (trailing space) compile silently and break equality checks.
+RepoCommitStatus = Literal["completed", "failed"]
+DAGStateStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
 
 
-# ---------------------------------------------------------------------------
-# Data models
-# ---------------------------------------------------------------------------
+@dataclass(frozen=True, slots=True)  # TD-m4: immutable; slots for memory
+class RepoCommit:
+    """Per-repo commit result. Fields mirror §7.2 final state record shape.
 
+    TD-m4: frozen=True. SF-M7 partial-fill semantics preserved via
+    `dataclasses.replace(base, files_touched=..., working_tree_clean_after_commit=...)`
+    in write_canonical_symbol / write_replacement_diff (below).
+    """
 
-@dataclass
-class ExtractionPR:
-    pr_url: str
     repo: str
-    status: str = "open"  # open | merged | closed
+    sha: str | None
+    status: RepoCommitStatus
+    files_touched: tuple[str, ...] = ()  # frozen: must be immutable; tuple OK
+    working_tree_clean_after_commit: bool = True
+    error_type: str | None = None
+    error_diff_offset: int | None = None
+    error_conflict_marker: str | None = None
+    error_stderr: str | None = None
+    error_exit_code: int | None = None
 
 
-@dataclass
-class ConsumingPR:
-    pr_url: str
+@dataclass(frozen=True, slots=True)  # TD-m4
+class RepoHit:
+    """One row of detect_cluster_members output."""
+
     repo: str
-    status: str = "open"
+    match_score: float
 
 
-@dataclass
-class CloneRefactorResult:
-    cluster_id: str
-    extraction_pr: ExtractionPR | None
-    consuming_prs: list[ConsumingPR] = field(default_factory=list)
-    cancelled: bool = False
+@dataclass(frozen=True, slots=True)  # TD-m4
+class DAGState:
+    """Aggregate DAG lifecycle state — written to workflow/v1/{refactor_job_id}."""
+
+    schema_version: int = 2
+    refactor_job_id: str = ""
+    cluster_id: str = ""
+    target_repo: str = ""
+    consumer_repos: tuple[str, ...] = ()  # frozen: immutable
+    status: DAGStateStatus = "queued"
+    started_at: str = ""
+    dag_started_at: str = ""
+    dag_completed_at: str = ""
+    target_commit: str | None = None
+    target_commit_files_touched: tuple[str, ...] = ()  # frozen
+    consumer_commits: tuple[RepoCommit, ...] = ()  # frozen
+    failed_consumers: tuple[str, ...] = ()  # frozen
+
+
+@dataclass(frozen=True, slots=True)  # TD-m4
+class DAGResult:
+    status: RepoCommitStatus
+    consumer_commits: tuple[RepoCommit, ...]
+    target_commit: RepoCommit | None = None
     error: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Task implementations (pure async functions, importable by Prefect @task)
-# ---------------------------------------------------------------------------
+# ---- Commit-message convention (REQ-CLONE-012) ---------------------------
+
+def commit_message(refactor_job_id: str, repo: str, extracted_symbol: str) -> str:
+    """Format the consumer-write commit message. Includes refactor-job header
+    so operators can grep `git log --grep="^refactor-job:"` to disambiguate
+    DAG-A vs DAG-B commits (REQ-CLONE-012).
+    """
+    return (
+        f"refactor-job: {refactor_job_id}\n"
+        f"target: {repo}\n"
+        f"extracts: {extracted_symbol}\n"
+        f"\n"
+        f"Automated commit from clone_refactor_group DAG.\n"
+        f"Revert recipe: git reset --hard $(git log --grep='^refactor-job: {refactor_job_id}$' --pretty=%H -n 1)^"
+    )
 
 
-async def create_extraction_pr(
-    cluster_id: str,
+# ---- Step functions (@task) ----------------------------------------------
+
+@task(name="detect_cluster_members", retries=0)
+async def detect_cluster_members(cluster_id: str, repos: list[str]) -> list[RepoHit]:
+    """Detect cluster members. Stub that returns the input repos."""
+    return [RepoHit(repo=r, match_score=1.0) for r in repos]
+
+
+# CRITICAL: Prefect kwarg is `retry_condition_fn`, NOT `retry_condition`.
+# Verified at REPL: `retry_condition` raises TypeError.
+# CA-m1 note: `tenacity.retry_if_exception_type` is a callable class instance
+# that Prefect evaluates as `(exc) -> bool`. Works correctly with Prefect;
+# do not "fix" by removing the tenacity import.
+@task(
+    name="write_canonical_symbol",
+    retries=2,
+    retry_delay_seconds=5,
+    retry_condition_fn=retry_if_exception_type((_git_ops.GitCommitTransient,)),
+)
+async def write_canonical_symbol(
+    refactor_job_id: str,
     target_repo: str,
     extracted_symbol: str,
-    diff: str,
-    gh_client: Any | None = None,
-) -> ExtractionPR:
-    """Open a PR in the extraction target repo.
+    extraction_diff: str,
+) -> RepoCommit:
+    """Write the canonical-symbol change to the target repo's local main.
 
-    In production, `gh_client` is the GitHub REST client. In tests, it is mocked.
-    When `gh_client` is None, this stub records intent without network I/O.
-
-    Args:
-        cluster_id: Clone cluster being extracted.
-        target_repo: Repo receiving the extracted symbol (e.g. "oneiric").
-        extracted_symbol: Function/class name being extracted.
-        diff: Unified diff to apply.
-        gh_client: Optional GitHub client (None = dry-run stub).
-
-    Returns:
-        ExtractionPR with open status.
+    Implements: REQ-CLONE-011 (plain git stash wrap),
+                REQ-CLONE-012 (commit message convention),
+                REQ-CLONE-013 (transient retry only).
+    SF-M7: build the RepoCommit immediately after `git_commit` succeeds,
+    then fill in optional metadata (`files_touched`, `working_tree_clean`)
+    in a try/except. If metadata gathering fails, return the partial
+    `RepoCommit` with `working_tree_clean_after_commit=False` rather than
+    letting the exception swallow the successful commit record.
+    SF-B4: catch `StashPopFailed` and record typed error on the RepoCommit
+    (do not propagate — the commit may have already succeeded).
     """
-    logger.info(
-        "clone_refactor_workflow: create_extraction_pr cluster=%s target=%s symbol=%s",
-        cluster_id,
-        target_repo,
-        extracted_symbol,
-    )
-
-    if gh_client is None:
-        stub_url = f"https://github.com/{target_repo}/pulls/stub/{cluster_id[:8]}"
-        logger.info("create_extraction_pr: no gh_client — returning stub PR %s", stub_url)
-        return ExtractionPR(pr_url=stub_url, repo=target_repo, status="open")
-
+    repo_path = Path(target_repo)
+    # REQ-CLONE-011: plain git stash (NOT --keep-index — that's partial-commit workflow)
+    stash_ref = await _git_ops.stash_push(repo_path)
     try:
-        result = await gh_client.create_pr(
+        await _git_ops.git_apply(repo_path, extraction_diff)
+        await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
+        msg = commit_message(refactor_job_id, target_repo, extracted_symbol)
+        sha = await _git_ops.git_commit(repo_path, msg)
+        # SF-M7 + TD-m4: RepoCommit is frozen; build with empty defaults,
+        # then use dataclasses.replace() to fill in optional metadata.
+        base = RepoCommit(
             repo=target_repo,
-            title=f"refactor: extract clone cluster {cluster_id[:8]} → {extracted_symbol}",
-            body=(
-                f"Clone cluster `{cluster_id}` detected across multiple repos.\n\n"
-                f"This PR extracts `{extracted_symbol}` to `{target_repo}` as the canonical "
-                f"implementation. Consuming repos will follow in separate PRs once this merges."
-            ),
-            diff=diff,
+            sha=sha,
+            status="completed",
+            files_touched=(),
+            working_tree_clean_after_commit=False,
         )
-        return ExtractionPR(pr_url=result["html_url"], repo=target_repo, status="open")
-    except Exception as exc:
-        logger.exception("create_extraction_pr: failed for cluster %s", cluster_id)
-        raise RuntimeError(f"Failed to create extraction PR: {exc}") from exc
-
-
-async def wait_for_merge(
-    pr: ExtractionPR,
-    gh_client: Any | None = None,
-    poll_interval: int = _POLL_INTERVAL_S,
-    timeout: int = _POLL_TIMEOUT_S,
-) -> ExtractionPR:
-    """Poll PR status until merged or closed, with timeout.
-
-    Raises RuntimeError on timeout (> timeout seconds waiting).
-    Returns with status="merged" on success or status="closed" if the PR was closed.
-
-    Args:
-        pr: The extraction PR to watch.
-        gh_client: GitHub client (None = stub, immediately returns merged).
-        poll_interval: Seconds between status polls.
-        timeout: Maximum wait in seconds before raising RuntimeError.
-
-    Returns:
-        ExtractionPR updated with current status.
-    """
-    if gh_client is None:
-        logger.info("wait_for_merge: no gh_client — stub returns merged immediately")
-        return ExtractionPR(pr_url=pr.pr_url, repo=pr.repo, status="merged")
-
-    elapsed = 0
-    while elapsed < timeout:
         try:
-            status = await gh_client.get_pr_status(pr.pr_url)
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.warning("wait_for_merge: status poll failed: %s", exc)
-            status = "unknown"
+            files = await _git_ops.diff_files(repo_path)
+            clean = await _git_ops.is_working_tree_clean(repo_path)
+            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
+        except Exception as meta_exc:
+            logger.warning(
+                "write_canonical_symbol: post-commit metadata failed (%s); continuing",
+                meta_exc,
+            )
+            return base
+    except _git_ops.StashPopFailed as spf:
+        # SF-B4: stash pop failed AFTER commit landed. Record typed error
+        # on the result rather than propagating (the commit succeeded).
+        logger.warning(
+            "write_canonical_symbol: stash pop failed (%s); commit on main, dirty tree",
+            spf,
+        )
+        return RepoCommit(
+            repo=target_repo,
+            sha=None,
+            status="failed",
+            error_type="StashPopFailed",
+            error_stderr=spf.stderr,
+            error_exit_code=spf.exit_code,
+        )
+    finally:
+        # Best-effort: if stash_pop already raised, this is a no-op (the
+        # error is recorded on the result). If it succeeds, we're done.
+        try:
+            await _git_ops.stash_pop(repo_path, stash_ref)
+        except _git_ops.StashPopFailed:
+            pass  # already handled in the except arm above
 
-        if status == "merged":
-            logger.info("wait_for_merge: PR merged — %s", pr.pr_url)
-            return ExtractionPR(pr_url=pr.pr_url, repo=pr.repo, status="merged")
 
-        if status == "closed":
-            logger.warning("wait_for_merge: PR closed (not merged) — %s", pr.pr_url)
-            return ExtractionPR(pr_url=pr.pr_url, repo=pr.repo, status="closed")
-
-        await asyncio.sleep(poll_interval)
-        elapsed += poll_interval
-
-    raise RuntimeError(f"wait_for_merge: timed out after {timeout}s waiting for {pr.pr_url}")
-
-
-async def create_consuming_pr(
-    cluster_id: str,
+@task(
+    name="write_replacement_diff",
+    retries=2,
+    retry_delay_seconds=5,
+    retry_condition_fn=retry_if_exception_type((_git_ops.GitCommitTransient,)),
+)
+async def write_replacement_diff(
+    refactor_job_id: str,
     consumer_repo: str,
-    extracted_symbol: str,
-    extraction_target_repo: str,
-    diff: str,
-    gh_client: Any | None = None,
-) -> ConsumingPR:
-    """Open a single consuming PR to remove the duplicate and import from extraction target.
+    consuming_diff: str,
+) -> RepoCommit:
+    """Write the consuming diff to a single consumer repo.
 
-    Args:
-        cluster_id: Clone cluster being resolved.
-        consumer_repo: Repo that contains a duplicate and needs updating.
-        extracted_symbol: The extracted function/class name.
-        extraction_target_repo: The repo now owning the canonical implementation.
-        diff: Unified diff removing the duplicate + adding the import.
-        gh_client: GitHub client (None = stub).
-
-    Returns:
-        ConsumingPR with open status.
+    Same SF-B4/SF-M7 hardening as `write_canonical_symbol`.
     """
-    logger.info(
-        "clone_refactor_workflow: create_consuming_pr cluster=%s consumer=%s",
-        cluster_id,
-        consumer_repo,
+    repo_path = Path(consumer_repo)
+    stash_ref = await _git_ops.stash_push(repo_path)
+    try:
+        await _git_ops.git_apply(repo_path, consuming_diff)
+        await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
+        msg = commit_message(refactor_job_id, consumer_repo, "consuming-diff")
+        sha = await _git_ops.git_commit(repo_path, msg)
+        # SF-M7 + TD-m4: frozen dataclass via replace()
+        base = RepoCommit(
+            repo=consumer_repo,
+            sha=sha,
+            status="completed",
+            files_touched=(),
+            working_tree_clean_after_commit=False,
+        )
+        try:
+            files = await _git_ops.diff_files(repo_path)
+            clean = await _git_ops.is_working_tree_clean(repo_path)
+            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
+        except Exception as meta_exc:
+            logger.warning(
+                "write_replacement_diff: post-commit metadata failed (%s); continuing",
+                meta_exc,
+            )
+            return base
+    except _git_ops.StashPopFailed as spf:
+        logger.warning(
+            "write_replacement_diff: stash pop failed (%s); commit on main, dirty tree",
+            spf,
+        )
+        return RepoCommit(
+            repo=consumer_repo,
+            sha=None,
+            status="failed",
+            error_type="StashPopFailed",
+            error_stderr=spf.stderr,
+            error_exit_code=spf.exit_code,
+        )
+    finally:
+        try:
+            await _git_ops.stash_pop(repo_path, stash_ref)
+        except _git_ops.StashPopFailed:
+            pass
+
+
+@task(name="persist_dag_state", retries=0)
+async def persist_dag_state(mcp_backend: MCPStateBackend, state: DAGState) -> None:
+    """Best-effort write of aggregate DAG state (REQ-CLONE-003).
+
+    TD-m8: use `_dataclass_to_dict(state)` (which calls asdict) for nested
+    serialization instead of `state.__dict__` — the conventional idiom and
+    safe with frozen dataclasses.
+    """
+    await mcp_backend.try_put_with_log_context(
+        mcp_backend.dag_key(state.refactor_job_id),
+        _dataclass_to_dict(state),
+        log_context={"dag_id": state.refactor_job_id, "step_name": "persist_dag_state"},
     )
 
-    if gh_client is None:
-        stub_url = f"https://github.com/{consumer_repo}/pulls/stub/{cluster_id[:8]}"
-        return ConsumingPR(pr_url=stub_url, repo=consumer_repo, status="open")
 
-    try:
-        result = await gh_client.create_pr(
-            repo=consumer_repo,
-            title=f"refactor: use {extracted_symbol} from {extraction_target_repo}",
-            body=(
-                f"Clone cluster `{cluster_id}` has been extracted to "
-                f"`{extraction_target_repo}.{extracted_symbol}`.\n\n"
-                f"This PR removes the local duplicate and imports from the new canonical location."
-            ),
-            diff=diff,
-        )
-        return ConsumingPR(pr_url=result["html_url"], repo=consumer_repo, status="open")
-    except Exception as exc:
-        logger.exception(
-            "create_consuming_pr: failed for cluster %s consumer %s", cluster_id, consumer_repo
-        )
-        raise RuntimeError(f"Failed to create consuming PR in {consumer_repo}: {exc}") from exc
+# ---- Per-step write helpers (REQ-CLONE-010) ------------------------------
 
+async def _stage_all(repo_path: Path) -> None:
+    """Stage all working-tree changes for the next commit.
 
-# ---------------------------------------------------------------------------
-# Top-level DAG entrypoint
-# ---------------------------------------------------------------------------
+    Brief defect fix: the original brief code called `git_apply` then
+    `git_commit` directly, but `git_commit` (per Task 4's `_git_ops.py`)
+    requires staged changes. Task 4's own test fixture confirms this
+    (`subprocess.run(["git", "-C", str(git_repo), "add", "."], check=True)`
+    before `git_commit`). We centralize the staging step here so the
+    @task wrappers stay focused on apply→commit orchestration.
+    """
+    proc = await asyncio.create_subprocess_exec(
+        "git", "-C", str(repo_path), "add", "-A",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout_b, stderr_b = await proc.communicate()
+    if proc.returncode != 0:
+        stderr = stderr_b.decode() if stderr_b else ""
+        raise RuntimeError(f"git add -A failed (exit={proc.returncode}): {stderr}")
 
 
+async def _write_step_outcome(
+    mcp_backend: MCPStateBackend,
+    refactor_job_id: str,
+    step_name: str,
+    outcome: dict[str, Any],
+) -> None:
+    """Per-step durability: every @task writes its outcome before returning."""
+    log_context = {
+        "dag_id": refactor_job_id,
+        "step_name": step_name,
+        "files_touched": outcome.get("files_touched", []),
+    }
+    await mcp_backend.try_put_with_log_context(
+        f"workflow/v1/{refactor_job_id}/steps/{step_name}",
+        outcome,
+        log_context=log_context,
+    )
+
+
+async def _write_terminal_failed(
+    mcp_backend: MCPStateBackend,
+    refactor_job_id: str,
+    exc: BaseException,
+) -> None:
+    await _write_step_outcome(
+        mcp_backend,
+        refactor_job_id,
+        "failed",
+        {
+            "error_type": type(exc).__name__,
+            "error": str(exc),
+            "failed_at": datetime.now(UTC).isoformat(),
+        },
+    )
+
+
+async def _write_terminal_cancelled(
+    mcp_backend: MCPStateBackend,
+    refactor_job_id: str,
+) -> None:
+    await _write_step_outcome(
+        mcp_backend,
+        refactor_job_id,
+        "cancelled",
+        {"cancelled_at": datetime.now(UTC).isoformat()},
+    )
+
+
+def _dataclass_to_dict(obj: Any) -> dict[str, Any]:
+    """Convert a (frozen) dataclass to a dict for substrate writes.
+
+    TD-m8: prefer dataclasses.asdict() over obj.__dict__ for nested types.
+    Falls back to __dict__ for non-dataclass objects (e.g., BaseException).
+    """
+    from dataclasses import asdict, is_dataclass
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return asdict(obj)
+    return obj.__dict__
+
+
+# ---- @flow orchestrator ---------------------------------------------------
+
+# SF-M5: re-entry guard. Raised if the same refactor_job_id is invoked twice
+# (operator re-run, or cross-process race that slipped past cluster_claim).
+class DAGAlreadyRunning(Exception):
+    """Raised by run_clone_refactor_dag if the same refactor_job_id is already
+    in flight (status in {queued, running}). Prevents duplicate work."""
+
+    def __init__(self, existing_status: str) -> None:
+        super().__init__(f"DAG {existing_status} already; refusing re-entry")
+        self.existing_status = existing_status
+
+
+@flow(name="clone-refactor-dag", validate_parameters=False)
 async def run_clone_refactor_dag(
+    refactor_job_id: str,
     cluster_id: str,
+    mcp_backend: MCPStateBackend,
     target_repo: str,
     consumer_repos: list[str],
     extracted_symbol: str,
     extraction_diff: str,
     consuming_diffs: dict[str, str] | None = None,
-    gh_client: Any | None = None,
-) -> CloneRefactorResult:
-    """Run the 3-step cross-repo clone refactor DAG.
+) -> DAGResult:
+    """Run the full DAG. Implements REQ-CLONE-010 (per-step write + try/except/finally
+    with explicit CancelledError arm).
 
-    Step ordering (M-NEW-7 rollback strategy):
-        1. create_extraction_pr → PR in target repo (oneiric / new package)
-        2. wait_for_merge       → block until merged (or handle closed)
-        3. create_consuming_prs → parallel PRs in all consumer repos
+    SF-M5 re-entry guard: reads workflow/v1/{refactor_job_id} at entry; raises
+    DAGAlreadyRunning if status in {queued, running}.
 
-    If Step 2 returns status="closed": cancel all consuming PRs (never open
-    them) to keep the ecosystem in a consistent state.
+    CA-m2 note: `@flow` runs in-process; `DAGState` is a non-Pydantic
+    dataclass — Prefect serializes via pickle for in-memory flow, which
+    works. Cross-process deployment would break; the spec explicitly
+    intends in-process only.
 
-    Args:
-        cluster_id: Unique clone cluster ID.
-        target_repo: Extraction target (e.g. "oneiric" or "my-shared-pkg").
-        consumer_repos: Repos that contain the duplicate and need updating.
-        extracted_symbol: Function/class name extracted.
-        extraction_diff: Diff for the extraction PR.
-        consuming_diffs: Per-repo diffs for consuming PRs (None = same diff for all).
-        gh_client: GitHub client (None = stub mode for tests).
-
-    Returns:
-        CloneRefactorResult with PR details and status.
+    SF-m1 note: Phase 3 (consume) uses bare `asyncio.gather` (no
+    return_exceptions) because each consumer's failure is caught by the
+    `_run_consumer` wrapper, which builds a typed `RepoCommit`. Functionally
+    equivalent to `return_exceptions=True` for normal `Exception` subclasses;
+    the wrapper adds typed fields that bare `return_exceptions` cannot.
     """
-    result = CloneRefactorResult(cluster_id=cluster_id, extraction_pr=None)
+    # SF-M5: re-entry guard
+    existing_state = await mcp_backend.get(mcp_backend.dag_key(refactor_job_id))
+    if existing_state is not None and existing_state.get("status") in ("queued", "running"):
+        raise DAGAlreadyRunning(existing_status=existing_state.get("status", "unknown"))
 
-    # Step 1: create extraction PR
+    consumer_commits: tuple[RepoCommit, ...] = ()
+    target_commit: RepoCommit | None = None
+
     try:
-        extraction_pr = await create_extraction_pr(
-            cluster_id=cluster_id,
-            target_repo=target_repo,
-            extracted_symbol=extracted_symbol,
-            diff=extraction_diff,
-            gh_client=gh_client,
+        # Phase 1: detect
+        hits = await detect_cluster_members(cluster_id, [target_repo, *consumer_repos])
+        await _write_step_outcome(
+            mcp_backend, refactor_job_id, "detect", {"hits": len(hits)}
         )
-        result.extraction_pr = extraction_pr
+
+        # Phase 2: propose (target)
+        target_commit = await write_canonical_symbol(
+            refactor_job_id, target_repo, extracted_symbol, extraction_diff
+        )
+        await _write_step_outcome(
+            mcp_backend,
+            refactor_job_id,
+            "propose",
+            {"target_sha": target_commit.sha, "files_touched": target_commit.files_touched},
+        )
+
+        # Phase 3: consume (parallel) — collect success/failure per repo
+        async def _run_consumer(repo: str) -> RepoCommit:
+            diff = (consuming_diffs or {}).get(repo)
+            if diff is None:
+                return RepoCommit(
+                    repo=repo, sha=None, status="failed",
+                    error_type="MissingConsumingDiff",
+                    error_stderr=f"No consuming_diffs entry for {repo}",
+                )
+            try:
+                return await write_replacement_diff(refactor_job_id, repo, diff)
+            except Exception as exc:
+                return RepoCommit(
+                    repo=repo, sha=None, status="failed",
+                    error_type=type(exc).__name__,
+                    error_stderr=str(exc),
+                    error_diff_offset=getattr(exc, "diff_offset", None),
+                    error_conflict_marker=getattr(exc, "conflict_marker", None),
+                    error_exit_code=getattr(exc, "exit_code", None),
+                )
+
+        # TD-m4: consumer_commits is a tuple (RepoCommit is frozen)
+        consumer_commits = tuple(
+            await asyncio.gather(*(_run_consumer(r) for r in consumer_repos))
+        )
+        await _write_step_outcome(
+            mcp_backend,
+            refactor_job_id,
+            "consume",
+            {"consumer_commits": [_dataclass_to_dict(c) for c in consumer_commits]},
+        )
+
+        # Phase 4: finalize
+        all_completed = all(c.status == "completed" for c in consumer_commits)
+        status: RepoCommitStatus = "completed" if all_completed else "failed"
+        final = DAGResult(
+            status=status,
+            consumer_commits=consumer_commits,
+            target_commit=target_commit,
+        )
+        await persist_dag_state(
+            mcp_backend,
+            DAGState(
+                refactor_job_id=refactor_job_id,
+                cluster_id=cluster_id,
+                target_repo=target_repo,
+                consumer_repos=tuple(consumer_repos),
+                status=status,
+                dag_completed_at=datetime.now(UTC).isoformat(),
+                target_commit=target_commit.sha if target_commit else None,
+                target_commit_files_touched=target_commit.files_touched if target_commit else (),
+                consumer_commits=consumer_commits,
+                failed_consumers=tuple(c.repo for c in consumer_commits if c.status == "failed"),
+            ),
+        )
+        return final
+
+    except asyncio.CancelledError:
+        # REQ-CLONE-016: cancellation must persist terminal "cancelled" before re-raising
+        await _write_terminal_cancelled(mcp_backend, refactor_job_id)
+        raise
     except Exception as exc:
-        result.error = f"create_extraction_pr failed: {exc}"
-        logger.exception("run_clone_refactor_dag: Step 1 failed for cluster %s", cluster_id)
-        return result
-
-    # Step 2: wait for merge
-    try:
-        merged_pr = await wait_for_merge(extraction_pr, gh_client=gh_client)
-    except RuntimeError as exc:
-        result.error = str(exc)
-        return result
-
-    if merged_pr.status == "closed":
-        logger.warning(
-            "run_clone_refactor_dag: extraction PR closed for cluster %s — "
-            "cancelling all consuming PRs",
-            cluster_id,
-        )
-        result.extraction_pr = merged_pr
-        result.cancelled = True
-        return result
-
-    result.extraction_pr = merged_pr
-
-    # Step 3: create consuming PRs in parallel (gated on extraction merge)
-    consuming_tasks = [
-        create_consuming_pr(
-            cluster_id=cluster_id,
-            consumer_repo=repo,
-            extracted_symbol=extracted_symbol,
-            extraction_target_repo=target_repo,
-            diff=(consuming_diffs or {}).get(repo, extraction_diff),
-            gh_client=gh_client,
-        )
-        for repo in consumer_repos
-    ]
-    consuming_results = await asyncio.gather(*consuming_tasks, return_exceptions=True)
-
-    for repo, pr_or_exc in zip(consumer_repos, consuming_results, strict=False):
-        if isinstance(pr_or_exc, BaseException):
+        # REQ-CLONE-010: unhandled exception path. Record transitions to "failed".
+        await _write_terminal_failed(mcp_backend, refactor_job_id, exc)
+        raise
+    finally:
+        # REQ-CLONE-009: release cluster claim regardless of outcome.
+        # SF-B3: wrap release in try/except so a release failure never
+        # shadows the original DAG exception (Python's finally semantics
+        # would otherwise replace the traceback).
+        try:
+            await release_cluster_claim(mcp_backend, cluster_id)
+        except Exception as release_exc:
             logger.warning(
-                "run_clone_refactor_dag: consuming PR failed for %s: %s", repo, pr_or_exc
+                "release_cluster_claim failed for cluster_id=%s (%s); continuing",
+                cluster_id, release_exc,
             )
-        else:
-            result.consuming_prs.append(pr_or_exc)
-
-    logger.info(
-        "run_clone_refactor_dag: complete cluster=%s extraction=%s consuming=%d/%d",
-        cluster_id,
-        merged_pr.status,
-        len(result.consuming_prs),
-        len(consumer_repos),
-    )
-    return result
