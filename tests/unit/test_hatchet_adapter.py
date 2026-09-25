@@ -38,7 +38,7 @@ def test_hatchet_config_defaults():
     assert cfg.task_timeout_seconds == 300
 
 
-from mahavishnu.workers.task_router import TaskCategory, classify_task
+from mahavishnu.core.model_routing import TaskCategory, classify_task
 
 
 def test_task_category_agent_loop_exists():

@@ -309,7 +309,7 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is ret
   - `MiniMax-M2.7` and `MiniMax-M2.7-highspeed` — final fallback when M3 is unavailable
 - **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
 - **Auth env var**: `MINIMAX_API_KEY` (in the parent shell) is required by both the cloud worker and the `minimax-coding-plan` MCP server in `.mcp.json` — export it in your shell rc, never inline the literal. Region selector `MINIMAX_API_HOST` is already pinned to `https://api.minimax.io` in `.mcp.json`.
-- **Task-based routing**: `TaskRouter` in `mahavishnu/workers/task_router.py` maps task categories to optimal models; the in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml` are pinned in sync by a CI guard test (`tests/unit/test_task_router.py::TestYAMLRoutingSync`)
+- **Task-based routing**: `TaskRouter` in `mahavishnu/core/model_routing.py` maps task categories to optimal models; the in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml` are pinned in sync by a CI guard test (`tests/unit/test_task_router.py::TestYAMLRoutingSync`). Phase 3b (Plan v3) atomically migrated the routing primitives from `mahavishnu/workers/task_router.py` to `mahavishnu/core/model_routing.py` so the legacy worker surface can drain without breaking the model-routing CI guard.
 
 **Task-to-Model Mapping (MiniMax cloud)**:
 
@@ -323,7 +323,7 @@ For local fallbacks (`llama_server`, `ollama`), see `settings/models.yaml`.
 **Key files**:
 
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible worker for MiniMax
-- `mahavishnu/workers/task_router.py` — `TaskCategory` enum, model routing
+- `mahavishnu/core/model_routing.py` — `TaskCategory` enum, model routing (Phase 3b atomic migration from `mahavishnu/workers/`)
 - `settings/models.yaml` — YAML-driven provider and model configuration
 - `tests/unit/test_task_router.py::TestYAMLRoutingSync` — guard test pinning YAML ↔ in-code routing
 
@@ -725,7 +725,7 @@ Mahavishnu-specific guidance:
 - **Worker base**: `mahavishnu/workers/base.py` - Abstract worker interface
 - **Isolated workers**: `mahavishnu/workers/apple_container.py` (Apple silicon microVMs) and `mahavishnu/workers/e2b_sandbox.py` (E2B cloud sandboxes) - Docker/OrbStack removed 2026-07
 - **Cloud worker**: `mahavishnu/workers/cloud_worker.py` - OpenAI-compatible cloud worker with MiniMax primary defaults
-- **Task router**: `mahavishnu/workers/task_router.py` - Task classification + model selection
+- **Task router**: `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) - Task classification + model selection
 - **Terminal manager**: `mahavishnu/terminal/manager.py` - Terminal session management
 - **Terminal adapters**: `mahavishnu/terminal/adapters/`
   - `mahavishnu/terminal/adapters/base.py` - `TerminalAdapter` ABC + `TerminalError`/`SessionNotFoundError`

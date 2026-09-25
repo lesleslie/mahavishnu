@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
-from mahavishnu.workers.task_router import (
+from mahavishnu.core.model_routing import (
     DEFAULT_MINIMAX_ROUTING,
     DEFAULT_OLLAMA_ROUTING,
     TASK_PATTERNS,
@@ -694,7 +694,7 @@ class TestRateLimiter:
 
     @pytest.mark.asyncio
     async def test_allows_requests_under_limit(self) -> None:
-        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+        from mahavishnu.core.model_routing import RateLimitConfig, RateLimiter
 
         limiter = RateLimiter(RateLimitConfig(limit=3, window_seconds=60.0))
         for _ in range(3):
@@ -702,7 +702,7 @@ class TestRateLimiter:
 
     @pytest.mark.asyncio
     async def test_blocks_burst_exceeding_limit(self) -> None:
-        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+        from mahavishnu.core.model_routing import RateLimitConfig, RateLimiter
 
         limiter = RateLimiter(RateLimitConfig(limit=2, window_seconds=60.0))
         assert await limiter.check_and_record("glm-4.7") is True
@@ -714,7 +714,7 @@ class TestRateLimiter:
         import time as _time
         from unittest.mock import patch
 
-        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+        from mahavishnu.core.model_routing import RateLimitConfig, RateLimiter
 
         limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=1.0))
         assert await limiter.check_and_record("glm-4.7") is True
@@ -722,12 +722,12 @@ class TestRateLimiter:
 
         # Simulate window expiry by advancing monotonic clock
         future = _time.monotonic() + 2.0
-        with patch("mahavishnu.workers.task_router.time.monotonic", return_value=future):
+        with patch("mahavishnu.core.model_routing.time.monotonic", return_value=future):
             assert await limiter.check_and_record("glm-4.7") is True
 
     @pytest.mark.asyncio
     async def test_different_users_are_isolated(self) -> None:
-        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+        from mahavishnu.core.model_routing import RateLimitConfig, RateLimiter
 
         limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=60.0))
         assert await limiter.check_and_record("glm-4.7", "alice") is True
@@ -737,7 +737,7 @@ class TestRateLimiter:
 
     @pytest.mark.asyncio
     async def test_different_models_are_isolated(self) -> None:
-        from mahavishnu.workers.task_router import RateLimitConfig, RateLimiter
+        from mahavishnu.core.model_routing import RateLimitConfig, RateLimiter
 
         limiter = RateLimiter(RateLimitConfig(limit=1, window_seconds=60.0))
         assert await limiter.check_and_record("glm-4.7") is True
@@ -747,7 +747,7 @@ class TestRateLimiter:
 
     @pytest.mark.asyncio
     async def test_module_level_configure_and_get(self) -> None:
-        from mahavishnu.workers.task_router import (
+        from mahavishnu.core.model_routing import (
             RateLimitConfig,
             configure_rate_limiter,
             get_rate_limiter,

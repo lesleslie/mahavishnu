@@ -1,10 +1,16 @@
-"""Tests for mahavishnu.workers.task_router."""
+"""Tests for mahavishnu.core.model_routing.
+
+Phase 3b (Plan v3): the routing primitives were atomically migrated
+from ``mahavishnu/workers/task_router.py`` to ``mahavishnu/core/model_routing.py``.
+Test file path kept as ``tests/unit/test_task_router.py`` to preserve CI
+guard identity; only the import targets changed.
+"""
 
 from __future__ import annotations
 
 import pytest
 
-from mahavishnu.workers.task_router import (
+from mahavishnu.core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
     DEFAULT_OLLAMA_ROUTING,
@@ -394,7 +400,7 @@ class TestRateLimiterModuleLevel:
 
     def test_get_rate_limiter_none_when_unset(self):
         """get_rate_limiter returns None before configuration."""
-        import mahavishnu.workers.task_router as tr
+        import mahavishnu.core.model_routing as tr
 
         tr._rate_limiter = None
         assert get_rate_limiter() is None

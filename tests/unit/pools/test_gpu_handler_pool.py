@@ -9,7 +9,7 @@ import pytest
 
 from mahavishnu.pools.base import PoolConfig, PoolStatus
 from mahavishnu.pools.gpu_handler_pool import GPU_TASK_CATEGORIES, GpuHandlerPool
-from mahavishnu.workers.task_router import TaskCategory
+from mahavishnu.core.model_routing import TaskCategory
 
 
 @pytest.fixture
@@ -150,11 +150,11 @@ class TestGpuHandlerPoolExecution:
 
 class TestCategoryRouting:
     def test_ml_inference_routing_entry_in_ollama_table(self):
-        from mahavishnu.workers.task_router import DEFAULT_OLLAMA_ROUTING
+        from mahavishnu.core.model_routing import DEFAULT_OLLAMA_ROUTING
 
         assert TaskCategory.ML_INFERENCE in DEFAULT_OLLAMA_ROUTING
 
     def test_ml_inference_routing_entry_in_minimax_table(self):
-        from mahavishnu.workers.task_router import DEFAULT_MINIMAX_ROUTING
+        from mahavishnu.core.model_routing import DEFAULT_MINIMAX_ROUTING
 
         assert TaskCategory.ML_INFERENCE in DEFAULT_MINIMAX_ROUTING

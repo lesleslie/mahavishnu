@@ -11,7 +11,7 @@ import pytest
 
 from mahavishnu.core.status import WorkerStatus
 from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig, _build_fallback_chain
-from mahavishnu.workers.task_router import TaskCategory
+from mahavishnu.core.model_routing import TaskCategory
 
 if TYPE_CHECKING:
     from mcp_common.llm import LLMSettings
@@ -86,7 +86,7 @@ class TestCloudWorkerConfig:
         assert cfg.ollama_url == "http://mymac:11434/v1"
 
     def test_get_model_for_category_default(self):
-        from mahavishnu.workers.task_router import DEFAULT_MINIMAX_ROUTING
+        from mahavishnu.core.model_routing import DEFAULT_MINIMAX_ROUTING
 
         cfg = CloudWorkerConfig(model="default-model")
         assert (
@@ -293,7 +293,7 @@ class TestCloudWorkerExecute:
     @pytest.mark.asyncio
     async def test_execute_rate_limit_rejected(self, mock_chain):
         """Rate-limit rejection returns FAILED result without calling chain."""
-        from mahavishnu.workers.task_router import RateLimitConfig, configure_rate_limiter
+        from mahavishnu.core.model_routing import RateLimitConfig, configure_rate_limiter
 
         configure_rate_limiter(RateLimitConfig(limit=0))  # reject all
         try:
