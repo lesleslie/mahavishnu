@@ -11,11 +11,11 @@ import subprocess
 import pytest
 
 from mahavishnu.workflows._git_ops import (
-    GitApplyConflict,
-    GitCommandTimeout,
-    GitCommitPermanent,
-    GitCommitTransient,
-    StashPopFailed,
+    GitApplyConflictError,
+    GitCommandTimeoutError,
+    GitCommitPermanentError,
+    GitCommitTransientError,
+    StashPopFailedError,
     current_head_sha,
     git_apply,
     git_commit,
@@ -60,7 +60,7 @@ class TestGitApply:
 
         # Diff that conflicts with the existing file (-x = 1 doesn't match y = 99)
         bad_diff = "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 999\n"
-        with pytest.raises(GitApplyConflict) as exc_info:
+        with pytest.raises(GitApplyConflictError) as exc_info:
             await git_apply(git_repo, bad_diff)
         assert isinstance(exc_info.value.diff_offset, int)
         assert exc_info.value.conflict_marker  # non-empty
@@ -137,7 +137,7 @@ class TestGitCommit:
             return FakeProc()
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
-        with pytest.raises(GitCommitTransient) as exc_info:
+        with pytest.raises(GitCommitTransientError) as exc_info:
             await git_commit(git_repo, "x")
         assert "index.lock" in exc_info.value.reason
 
@@ -157,7 +157,7 @@ class TestGitCommit:
             return FakeProc()
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
-        with pytest.raises(GitCommitPermanent) as exc_info:
+        with pytest.raises(GitCommitPermanentError) as exc_info:
             await git_commit(git_repo, "x")
         assert exc_info.value.exit_code == 128
 
@@ -183,7 +183,7 @@ class TestGitCommit:
             return FakeProc()
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
-        with pytest.raises(GitCommitPermanent):
+        with pytest.raises(GitCommitPermanentError):
             await git_commit(git_repo, "x")
 
 
@@ -256,7 +256,7 @@ class TestErrorPaths:
 
     These tests cover the three Important test-coverage gaps flagged by the
     Task 4 reviewer:
-    - SF-B5: timeout classification (GitCommandTimeout → Transient)
+    - SF-B5: timeout classification (GitCommandTimeoutError → Transient)
     - SF-B4: stash pop failure must raise (was previously swallowed)
     - SF-m5: negative exit code = signal-killed → Permanent with signal_N reason
     """
@@ -264,9 +264,9 @@ class TestErrorPaths:
     async def test_timeout_raises_git_command_timeout(
         self, git_repo: Path, monkeypatch
     ) -> None:
-        """SF-B5: subprocess timeout raises GitCommandTimeout (Transient subclass).
+        """SF-B5: subprocess timeout raises GitCommandTimeoutError (Transient subclass).
 
-        Verifies (1) GitCommandTimeout is raised, (2) it is a GitCommitTransient
+        Verifies (1) GitCommandTimeoutError is raised, (2) it is a GitCommitTransientError
         so Prefect retries, (3) the timed-out subprocess was killed (proc.kill()
         was called) so we don't leak half-completed git processes.
         """
@@ -299,10 +299,10 @@ class TestErrorPaths:
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
         diff = "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
-        with pytest.raises(GitCommandTimeout) as exc_info:
+        with pytest.raises(GitCommandTimeoutError) as exc_info:
             await git_apply(git_repo, diff)
-        # SF-B5: GitCommandTimeout is a Transient subclass so Prefect retries.
-        assert isinstance(exc_info.value, GitCommitTransient)
+        # SF-B5: GitCommandTimeoutError is a Transient subclass so Prefect retries.
+        assert isinstance(exc_info.value, GitCommitTransientError)
         assert exc_info.value.reason == "timeout"
         # SF-B5: proc.kill() must terminate the timed-out subprocess.
         assert proc_killed, "proc.kill() must be called on timeout (SF-B5)"
@@ -310,7 +310,7 @@ class TestErrorPaths:
     async def test_stash_pop_failure_raises_stash_pop_failed(
         self, git_repo: Path, monkeypatch
     ) -> None:
-        """SF-B4: stash pop failure must raise StashPopFailed (not silently swallow).
+        """SF-B4: stash pop failure must raise StashPopFailedError (not silently swallow).
 
         The previous implementation used check=False and swallowed non-zero
         exits, leaving the working tree dirty. This regression test pins the
@@ -346,7 +346,7 @@ class TestErrorPaths:
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
         # stash_push is fully mocked to succeed (returncode=0, check=True).
         await stash_push(git_repo)
-        with pytest.raises(StashPopFailed) as exc_info:
+        with pytest.raises(StashPopFailedError) as exc_info:
             await stash_pop(git_repo)
         assert exc_info.value.exit_code == 1
         assert "untracked" in exc_info.value.stderr
@@ -354,7 +354,7 @@ class TestErrorPaths:
     async def test_negative_exit_code_raises_git_commit_permanent(
         self, git_repo: Path, monkeypatch
     ) -> None:
-        """SF-m5: negative exit code (signal-killed) → GitCommitPermanent signal_N.
+        """SF-m5: negative exit code (signal-killed) → GitCommitPermanentError signal_N.
 
         Operators need to distinguish a process that died from SIGKILL/SIGTERM
         (signal_-9 / signal_-15, transient resource pressure) from a process
@@ -376,9 +376,9 @@ class TestErrorPaths:
             return FakeProc()
 
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
-        with pytest.raises(GitCommitPermanent) as exc_info:
+        with pytest.raises(GitCommitPermanentError) as exc_info:
             await git_commit(git_repo, "x")
         assert exc_info.value.exit_code == -9
         assert exc_info.value.reason == "signal_9"
         # signal-killed commits should NOT be classified as Transient
-        assert not isinstance(exc_info.value, GitCommitTransient)
+        assert not isinstance(exc_info.value, GitCommitTransientError)

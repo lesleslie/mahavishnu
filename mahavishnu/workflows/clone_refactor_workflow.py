@@ -36,7 +36,7 @@ def _git_commit_transient_retry_predicate(task: Any, run: Any, state: Any) -> bo
     `except Exception: return False` (task_engine.py), which silently
     disables ALL retries. The 3-arg form below preserves the retry contract.
     """
-    return isinstance(state.data, _git_ops.GitCommitTransient)
+    return isinstance(state.data, _git_ops.GitCommitTransientError)
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,7 @@ async def write_canonical_symbol(
     in a try/except. If metadata gathering fails, return the partial
     `RepoCommit` with `working_tree_clean_after_commit=False` rather than
     letting the exception swallow the successful commit record.
-    SF-B4: catch `StashPopFailed` and record typed error on the RepoCommit
+    SF-B4: catch `StashPopFailedError` and record typed error on the RepoCommit
     (do not propagate — the commit may have already succeeded).
     """
     repo_path = Path(target_repo)
@@ -167,7 +167,7 @@ async def write_canonical_symbol(
         await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
         msg = commit_message(refactor_job_id, target_repo, extracted_symbol)
         sha = await _git_ops.git_commit(repo_path, msg)
-        # C3 fix: stash_pop runs HERE so a failure propagates as StashPopFailed
+        # C3 fix: stash_pop runs HERE so a failure propagates as StashPopFailedError
         # to the except arm with the captured SHA preserved, rather than being
         # silently swallowed in the finally block.
         if stash_ref is not None:
@@ -192,7 +192,7 @@ async def write_canonical_symbol(
                 meta_exc,
             )
             return base
-    except _git_ops.StashPopFailed as spf:
+    except _git_ops.StashPopFailedError as spf:
         # C3 fix: stash pop failed AFTER commit landed. Record typed error
         # on the result with the captured SHA (was previously discarded).
         logger.warning(
@@ -203,7 +203,7 @@ async def write_canonical_symbol(
             repo=target_repo,
             sha=sha,
             status="failed",
-            error_type="StashPopFailed",
+            error_type="StashPopFailedError",
             error_stderr=spf.stderr,
             error_exit_code=spf.exit_code,
         )
@@ -216,7 +216,7 @@ async def write_canonical_symbol(
         if not stash_popped and stash_ref is not None:
             try:
                 await _git_ops.stash_pop(repo_path, stash_ref)
-            except _git_ops.StashPopFailed:
+            except _git_ops.StashPopFailedError:
                 pass  # best-effort; operator can intervene via `git stash list`
 
 
@@ -269,7 +269,7 @@ async def write_replacement_diff(
                 meta_exc,
             )
             return base
-    except _git_ops.StashPopFailed as spf:
+    except _git_ops.StashPopFailedError as spf:
         # C3 fix: preserve captured SHA on stash_pop failure.
         logger.warning(
             "write_replacement_diff: stash pop failed (sha=%s, stderr=%s)",
@@ -279,7 +279,7 @@ async def write_replacement_diff(
             repo=consumer_repo,
             sha=sha,
             status="failed",
-            error_type="StashPopFailed",
+            error_type="StashPopFailedError",
             error_stderr=spf.stderr,
             error_exit_code=spf.exit_code,
         )
@@ -290,7 +290,7 @@ async def write_replacement_diff(
         if not stash_popped and stash_ref is not None:
             try:
                 await _git_ops.stash_pop(repo_path, stash_ref)
-            except _git_ops.StashPopFailed:
+            except _git_ops.StashPopFailedError:
                 pass
 
 

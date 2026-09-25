@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from pathlib import Path
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 
 # ---- Typed exceptions (REQ-CLONE-013) ------------------------------------
 
-class GitApplyConflict(Exception):
+class GitApplyConflictError(Exception):
     """Structured conflict from `git apply --check`. Never retried."""
 
     def __init__(self, diff_offset: int, conflict_marker: str, stderr: str) -> None:
-        super().__init__(f"GitApplyConflict at diff_offset={diff_offset}")
+        super().__init__(f"GitApplyConflictError at diff_offset={diff_offset}")
         self.diff_offset = diff_offset
         self.conflict_marker = conflict_marker
         self.stderr = stderr
 
 
-class GitCommitFailed(Exception):
+class GitCommitFailedError(Exception):
     """Base for both transient and permanent commit failures."""
 
     def __init__(self, stderr: str, exit_code: int) -> None:
@@ -38,7 +38,7 @@ class GitCommitFailed(Exception):
         self.exit_code = exit_code
 
 
-class GitCommitTransient(GitCommitFailed):
+class GitCommitTransientError(GitCommitFailedError):
     """Index lock contention or brief I/O. Retried up to retries=2 times.
 
     Implements: REQ-CLONE-013
@@ -49,7 +49,7 @@ class GitCommitTransient(GitCommitFailed):
         self.reason = reason
 
 
-class GitCommitPermanent(GitCommitFailed):
+class GitCommitPermanentError(GitCommitFailedError):
     """Permission denied, disk full, pre-commit hook failure, malformed
     message, missing user.email/user.name, repo in detached state. NOT
     retried — propagates immediately.
@@ -62,7 +62,7 @@ class GitCommitPermanent(GitCommitFailed):
         self.reason = reason
 
 
-class GitCommandTimeout(GitCommitTransient):
+class GitCommandTimeoutError(GitCommitTransientError):
     """Subprocess exceeded timeout. SF-B5: classified as Transient so Prefect
     retries it; the underlying git operation may have been partway through
     and a retry is safer than abandoning.
@@ -76,7 +76,7 @@ class GitCommandTimeout(GitCommitTransient):
         self.cmd = cmd
 
 
-class StashPopFailed(Exception):
+class StashPopFailedError(Exception):
     """Plain `git stash pop` failed. SF-B4: must be raised (not swallowed) so
     the @flow caller records a typed error on the RepoCommit.
 
@@ -100,7 +100,7 @@ _TRANSIENT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 
-def _classify_commit_failure(stderr: str, exit_code: int) -> GitCommitFailed:
+def _classify_commit_failure(stderr: str, exit_code: int) -> GitCommitFailedError:
     """Match stderr against transient patterns; otherwise permanent.
 
     SF-m5: negative exit codes mean the process was killed by a signal
@@ -109,15 +109,15 @@ def _classify_commit_failure(stderr: str, exit_code: int) -> GitCommitFailed:
     command-level failures.
     """
     if exit_code < 0:
-        return GitCommitPermanent(
+        return GitCommitPermanentError(
             reason=f"signal_{-exit_code}",
             stderr=stderr,
             exit_code=exit_code,
         )
     for reason_label, pattern in _TRANSIENT_PATTERNS:
         if pattern.search(stderr):
-            return GitCommitTransient(reason=reason_label, stderr=stderr)
-    return GitCommitPermanent(reason="see_stderr", stderr=stderr, exit_code=exit_code)
+            return GitCommitTransientError(reason=reason_label, stderr=stderr)
+    return GitCommitPermanentError(reason="see_stderr", stderr=stderr, exit_code=exit_code)
 
 
 # ---- Subprocess helpers ---------------------------------------------------
@@ -137,7 +137,7 @@ async def _run_git(
     """Run `git -C repo_path <args>` with optional stdin. Returns (stdout, stderr, exit_code).
 
     SF-B5: bounded by timeout_seconds; on timeout, kills the subprocess and
-    raises GitCommandTimeout (Transient subclass — Prefect retries).
+    raises GitCommandTimeoutError (Transient subclass — Prefect retries).
     """
     cmd = ["git", "-C", str(repo_path), *args]
     proc = await asyncio.create_subprocess_exec(
@@ -157,10 +157,10 @@ async def _run_git(
             proc.communicate(**comm_kwargs),
             timeout=timeout_seconds,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         await proc.wait()
-        raise GitCommandTimeout(timeout_seconds=timeout_seconds, cmd=list(cmd))
+        raise GitCommandTimeoutError(timeout_seconds=timeout_seconds, cmd=list(cmd))
     stdout = stdout_b.decode().strip() if stdout_b else ""
     stderr = stderr_b.decode().strip() if stderr_b else ""
     if check and proc.returncode != 0:
@@ -171,7 +171,7 @@ async def _run_git(
 # ---- Public API -----------------------------------------------------------
 
 async def git_apply(repo_path: Path, diff: str) -> None:
-    """Apply diff via stdin. Raises GitApplyConflict on conflict."""
+    """Apply diff via stdin. Raises GitApplyConflictError on conflict."""
     # Validate path
     repo_path = repo_path.resolve()
     if not (repo_path / ".git").exists():
@@ -203,7 +203,7 @@ async def git_apply(repo_path: Path, diff: str) -> None:
                 and "exit=" not in ln
             ]
             conflict_marker = error_lines[0] if error_lines else msg[:200].strip()
-        raise GitApplyConflict(
+        raise GitApplyConflictError(
             diff_offset=diff_offset,
             conflict_marker=conflict_marker,
             stderr=msg,
@@ -214,7 +214,7 @@ async def git_apply(repo_path: Path, diff: str) -> None:
 
 
 async def git_commit(repo_path: Path, message: str) -> str:
-    """Commit and return SHA. Raises GitCommitTransient or GitCommitPermanent."""
+    """Commit and return SHA. Raises GitCommitTransientError or GitCommitPermanentError."""
     repo_path = repo_path.resolve()
     _, stderr, exit_code = await _run_git(
         repo_path,
@@ -262,7 +262,7 @@ async def stash_push(repo_path: Path) -> str | None:
 
 
 async def stash_pop(repo_path: Path, stash_ref: str = "stash@{0}") -> None:
-    """Pop the stash. SF-B4: raises StashPopFailed on non-zero exit
+    """Pop the stash. SF-B4: raises StashPopFailedError on non-zero exit
     (previously swallowed with check=False — this was the silent-failure
     bug that left the working tree dirty).
 
@@ -273,7 +273,7 @@ async def stash_pop(repo_path: Path, stash_ref: str = "stash@{0}") -> None:
         repo_path, "stash", "pop", stash_ref, check=False
     )
     if exit_code != 0:
-        raise StashPopFailed(stderr=stderr, exit_code=exit_code)
+        raise StashPopFailedError(stderr=stderr, exit_code=exit_code)
 
 
 async def diff_files(repo_path: Path) -> list[str]:

@@ -314,7 +314,7 @@ class TestRunCloneRefactorDAG:
     async def test_dag_git_commit_permanent_no_retry(
         self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
     ) -> None:
-        # REQ-CLONE-013: GitCommitPermanent must NOT trigger Prefect retry.
+        # REQ-CLONE-013: GitCommitPermanentError must NOT trigger Prefect retry.
         # We verify by counting git_commit invocations — only 1 expected.
         from mahavishnu.workflows import _git_ops
         original_commit = _git_ops.git_commit
@@ -323,7 +323,7 @@ class TestRunCloneRefactorDAG:
         async def counting_commit(*args, **kwargs):
             nonlocal call_count
             call_count += 1
-            raise _git_ops.GitCommitPermanent(reason="test", stderr="x", exit_code=1)
+            raise _git_ops.GitCommitPermanentError(reason="test", stderr="x", exit_code=1)
 
         _git_ops.git_commit = counting_commit
         try:
@@ -331,7 +331,7 @@ class TestRunCloneRefactorDAG:
                 "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
                 new=AsyncMock(return_value=[{"repo": str(target_repo)}]),
             ):
-                with pytest.raises(_git_ops.GitCommitPermanent):
+                with pytest.raises(_git_ops.GitCommitPermanentError):
                     await run_clone_refactor_dag(
                         refactor_job_id="job-007",
                         cluster_id="cluster-1",
@@ -394,7 +394,7 @@ class TestRunCloneRefactorDAG:
         original_commit = _git_ops.git_commit
 
         async def failing_commit(*args, **kwargs):
-            raise _git_ops.GitCommitPermanent(reason="test", stderr="x", exit_code=1)
+            raise _git_ops.GitCommitPermanentError(reason="test", stderr="x", exit_code=1)
 
         _git_ops.git_commit = failing_commit
         try:
@@ -402,7 +402,7 @@ class TestRunCloneRefactorDAG:
                 "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
                 new=AsyncMock(return_value=[{"repo": str(target_repo)}]),
             ):
-                with pytest.raises(_git_ops.GitCommitPermanent):
+                with pytest.raises(_git_ops.GitCommitPermanentError):
                     await run_clone_refactor_dag(
                         refactor_job_id="job-009",
                         cluster_id="cluster-1",
@@ -429,13 +429,29 @@ class TestRunCloneRefactorDAG:
         self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
     ) -> None:
         # REQ-CLONE-016: cancellation must persist terminal "cancelled" state
-        # before re-raising CancelledError. Wrap run_clone_refactor_dag with
-        # asyncio.wait_for(timeout=0.5) to trigger CancelledError mid-flow;
-        # the @flow's `except asyncio.CancelledError` arm must call
-        # _write_terminal_cancelled before propagating.
+        # before re-raising CancelledError.
+        #
+        # This test was previously implemented with asyncio.wait_for(timeout=0.5),
+        # which was fragile: Prefect's @flow has setup overhead (transient server
+        # bootstrap, flow-run registration) that can exceed 0.5s in some environments,
+        # causing wait_for to cancel BEFORE the body ever reaches the awaited
+        # `detect_cluster_members(...)` call. The `except asyncio.CancelledError`
+        # arm in the flow body never ran, so the cancelled-state write never fired
+        # and the test failed (no "cancelled" step in try_put_with_log_context calls).
+        #
+        # The deterministic pattern below uses asyncio.create_task +
+        # task.cancel(): the test signals when the body has reached the awaited
+        # call (via an asyncio.Event inside the slow mock), then explicitly
+        # cancels. This is independent of Prefect's setup time.
+
+        detect_started = asyncio.Event()
 
         async def slow_detect(*_args, **_kwargs):
-            # Sleep long enough that asyncio.wait_for's timeout fires first.
+            # Signal that the body has reached the awaited call, then sleep
+            # long enough that we can reliably issue task.cancel() before this
+            # coroutine returns. The flow's `except asyncio.CancelledError` arm
+            # catches the cancellation that task.cancel() delivers here.
+            detect_started.set()
             await asyncio.sleep(5)
             return [{"repo": str(target_repo), "match_score": 1.0}]
 
@@ -443,22 +459,33 @@ class TestRunCloneRefactorDAG:
             "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
             new=AsyncMock(side_effect=slow_detect),
         ):
-            with pytest.raises(asyncio.TimeoutError):
-                await asyncio.wait_for(
-                    run_clone_refactor_dag(
-                        refactor_job_id="job-010",
-                        cluster_id="cluster-1",
-                        mcp_backend=mock_backend,
-                        target_repo=str(target_repo),
-                        consumer_repos=[str(consumer_repo)],
-                        extracted_symbol="Foo",
-                        extraction_diff=EXTRACTION_DIFF_SIMPLE,
-                    ),
-                    timeout=0.5,
-                )
+            task = asyncio.create_task(
+                run_clone_refactor_dag(
+                    refactor_job_id="job-010",
+                    cluster_id="cluster-1",
+                    mcp_backend=mock_backend,
+                    target_repo=str(target_repo),
+                    consumer_repos=[str(consumer_repo)],
+                    extracted_symbol="Foo",
+                    extraction_diff=EXTRACTION_DIFF_SIMPLE,
+                ),
+                name="test-cancel-dag",
+            )
 
-        # REQ-CLONE-016: terminal "cancelled" was written before the
-        # CancelledError was re-raised (and converted by wait_for to TimeoutError).
+            # Wait for the body to reach the awaited detect call.
+            # Bound this by something larger than worst-case Prefect setup time.
+            await asyncio.wait_for(detect_started.wait(), timeout=10.0)
+
+            # Cancel the in-flight flow. Cancellation propagates to
+            # slow_detect's `await asyncio.sleep(5)` → raises CancelledError
+            # into the flow body → body's `except asyncio.CancelledError`
+            # arm runs `_write_terminal_cancelled` then re-raises.
+            task.cancel()
+
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+        # REQ-CLONE-016: terminal "cancelled" was written before re-raising.
         cancelled_calls = [
             c
             for c in mock_backend.try_put_with_log_context.call_args_list
@@ -473,14 +500,14 @@ class TestRunCloneRefactorDAG:
     async def test_dag_git_commit_transient_does_retry(
         self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
     ) -> None:
-        """C1 fix: GitCommitTransient must trigger Prefect retry.
+        """C1 fix: GitCommitTransientError must trigger Prefect retry.
 
         Pre-fix, retry_condition_fn used tenacity.retry_if_exception_type which
         has a 1-arg __call__(retry_state); Prefect invokes it with 3 args
         (task, run, state). Prefect's `except Exception: return False` swallow
         made call_count == 1 for ALL exception types — including transient ones
         that should retry. After the fix, the 3-arg predicate returns True for
-        GitCommitTransient so Prefect retries up to retries=2.
+        GitCommitTransientError so Prefect retries up to retries=2.
         """
         from mahavishnu.workflows import _git_ops
         original_commit = _git_ops.git_commit
@@ -490,7 +517,7 @@ class TestRunCloneRefactorDAG:
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
-                raise _git_ops.GitCommitTransient(
+                raise _git_ops.GitCommitTransientError(
                     reason="index_lock",
                     stderr="Unable to create .git/index.lock",
                 )
@@ -518,7 +545,7 @@ class TestRunCloneRefactorDAG:
             # twice and succeeded on 3rd attempt (call_count == 3 there); the
             # consumer's write_replacement_diff runs once after (call_count == 4
             # total). Pre-fix this would have been call_count == 1 with the
-            # DAG propagating GitCommitTransient out of the flow.
+            # DAG propagating GitCommitTransientError out of the flow.
             assert call_count >= 3, (
                 f"expected at least 3 calls (1 initial + 2 retries), got {call_count}"
             )
@@ -534,15 +561,15 @@ class TestRunCloneRefactorDAG:
         as a typed RepoCommit with the captured SHA — not be silently swallowed
         in a finally block returning status='completed' with a dirty tree.
 
-        Pre-fix, the `finally: try stash_pop ... except StashPopFailed: pass`
+        Pre-fix, the `finally: try stash_pop ... except StashPopFailedError: pass`
         pattern discarded the captured SHA (sha=None) and returned RepoCommit(
         status='completed') while the worktree was dirty. After the fix,
-        stash_pop runs inside the main try; StashPopFailed is caught with
+        stash_pop runs inside the main try; StashPopFailedError is caught with
         sha preserved; finally only runs cleanup if commit failed.
 
         Note: we mock BOTH stash_push (return a non-None ref so the workflow
         takes the `if stash_ref is not None: stash_pop(...)` branch) and
-        stash_pop (raise StashPopFailed). The test fixtures start with a
+        stash_pop (raise StashPopFailedError). The test fixtures start with a
         clean working tree, so the unmodified stash_push would return
         None and skip stash_pop entirely.
         """
@@ -556,7 +583,7 @@ class TestRunCloneRefactorDAG:
             return "stash@{0}"
 
         async def always_failing_stash_pop(repo_path, stash_ref="stash@{0}"):
-            raise _git_ops.StashPopFailed(
+            raise _git_ops.StashPopFailedError(
                 stderr="conflict marker present", exit_code=1
             )
 
@@ -579,15 +606,15 @@ class TestRunCloneRefactorDAG:
                         str(consumer_repo): CONSUMING_DIFF_FROM_FOO,
                     },
                 )
-            # C3 fix: at least one StashPopFailed RepoCommit with captured SHA.
+            # C3 fix: at least one StashPopFailedError RepoCommit with captured SHA.
             stash_failures: list[tuple[str, object]] = []
-            if result.target_commit and result.target_commit.error_type == "StashPopFailed":
+            if result.target_commit and result.target_commit.error_type == "StashPopFailedError":
                 stash_failures.append(("target", result.target_commit))
             for c in result.consumer_commits:
-                if c.error_type == "StashPopFailed":
+                if c.error_type == "StashPopFailedError":
                     stash_failures.append((c.repo, c))
             assert stash_failures, (
-                "expected at least one StashPopFailed RepoCommit; "
+                "expected at least one StashPopFailedError RepoCommit; "
                 f"target={result.target_commit} "
                 f"consumers={result.consumer_commits}"
             )
