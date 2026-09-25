@@ -242,17 +242,22 @@ async def current_head_sha(repo_path: Path) -> str:
     return sha
 
 
-async def stash_push(repo_path: Path) -> str:
-    """Plain `git stash` (NOT --keep-index). Returns stash ref like 'stash@{0}'.
+async def stash_push(repo_path: Path) -> str | None:
+    """Plain `git stash` (NOT --keep-index). Returns the stash ref like
+    'stash@{0}' when a stash was created, or None when there were no local
+    changes to save.
 
     Implements: REQ-CLONE-011
     SF-m8 note: plain `git stash` does NOT stash staged-only changes. If
     the repo has staged but no unstaged changes, this exits 0 with "No
-    local changes to save". Callers needing to stash staged changes must
-    use `git stash --include-untracked` or commit first.
+    local changes to save" — but no stash@{0} entry is created. Callers
+    must handle the None return by skipping stash_pop (otherwise pop
+    fails with "stash@{0} is not a valid reference").
     """
     repo_path = repo_path.resolve()
     stdout, _, _ = await _run_git(repo_path, "stash", "push", "-m", "clone-refactor-WIP")
+    if "No local changes to save" in stdout:
+        return None
     return "stash@{0}"  # canonical reference for most-recent stash
 
 

@@ -5,20 +5,18 @@ Implements: REQ-CLONE-011, REQ-CLONE-013
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
+import subprocess
 
 import pytest
 
 from mahavishnu.workflows._git_ops import (
     GitApplyConflict,
     GitCommandTimeout,
-    GitCommitFailed,
     GitCommitPermanent,
     GitCommitTransient,
     StashPopFailed,
     current_head_sha,
-    diff_files,
     git_apply,
     git_commit,
     is_working_tree_clean,
@@ -124,7 +122,6 @@ class TestGitCommit:
 
     async def test_git_commit_transient_index_lock(self, git_repo: Path, monkeypatch) -> None:
         # Simulate the exact stderr pattern that triggers Transient
-        from unittest.mock import AsyncMock
         import asyncio
 
         async def fake_subprocess_exec(*args, stdin=None, **kwargs):

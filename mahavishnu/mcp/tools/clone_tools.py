@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import sys
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -34,19 +33,11 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# UUID7 guard (Change A) — requires Python 3.14+ for `from uuid import uuid7`.
-# Mirrors `pyproject.toml [requires-python] = ">=3.14"`.
+# UUID7 (Change A). pyproject.toml pins >=3.14, so `from uuid import uuid7`
+# is unconditional on supported interpreters.
 # ---------------------------------------------------------------------------
 
-if sys.version_info >= (3, 14):
-    from uuid import uuid7 as _new_uuid7
-else:
-    def _new_uuid7() -> Any:
-        raise RuntimeError(
-            "clone_refactor_group requires Python 3.14+ for uuid7(). "
-            "Upgrade the interpreter or pin pyproject.toml [requires-python]."
-        )
-
+from uuid import uuid7 as _new_uuid7
 
 # ---------------------------------------------------------------------------
 # Module-level MCPStateBackend singleton (Change B).

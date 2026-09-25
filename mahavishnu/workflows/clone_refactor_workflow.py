@@ -9,18 +9,34 @@ Implements: REQ-CLONE-001, REQ-CLONE-002, REQ-CLONE-003, REQ-CLONE-010,
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from prefect import flow, task
-from tenacity import retry_if_exception_type
 
-from mahavishnu.core.state_backends.mcp import MCPStateBackend
 from mahavishnu.mcp.tools.clone_claims import release_cluster_claim
 from mahavishnu.workflows import _git_ops
+
+if TYPE_CHECKING:
+    from mahavishnu.core.state_backends.mcp import MCPStateBackend
+
+
+def _git_commit_transient_retry_predicate(task: Any, run: Any, state: Any) -> bool:
+    """Prefect retry predicate for transient git commit failures.
+
+    Implements: REQ-CLONE-013 (transient retry only).
+
+    CA-m1: do NOT use tenacity.retry_if_exception_type here. Prefect calls
+    retry_condition_fn with 3 positional args (task, run, state) per
+    prefect.tasks.RetryConditionCallable; tenacity.retry_if_exception_type
+    has __call__(self, retry_state) — 1 arg. Prefect wraps the call in
+    `except Exception: return False` (task_engine.py), which silently
+    disables ALL retries. The 3-arg form below preserves the retry contract.
+    """
+    return isinstance(state.data, _git_ops.GitCommitTransient)
 
 logger = logging.getLogger(__name__)
 
@@ -114,16 +130,11 @@ async def detect_cluster_members(cluster_id: str, repos: list[str]) -> list[Repo
     return [RepoHit(repo=r, match_score=1.0) for r in repos]
 
 
-# CRITICAL: Prefect kwarg is `retry_condition_fn`, NOT `retry_condition`.
-# Verified at REPL: `retry_condition` raises TypeError.
-# CA-m1 note: `tenacity.retry_if_exception_type` is a callable class instance
-# that Prefect evaluates as `(exc) -> bool`. Works correctly with Prefect;
-# do not "fix" by removing the tenacity import.
 @task(
     name="write_canonical_symbol",
     retries=2,
     retry_delay_seconds=5,
-    retry_condition_fn=retry_if_exception_type((_git_ops.GitCommitTransient,)),
+    retry_condition_fn=_git_commit_transient_retry_predicate,
 )
 async def write_canonical_symbol(
     refactor_job_id: str,
@@ -145,13 +156,23 @@ async def write_canonical_symbol(
     (do not propagate — the commit may have already succeeded).
     """
     repo_path = Path(target_repo)
-    # REQ-CLONE-011: plain git stash (NOT --keep-index — that's partial-commit workflow)
-    stash_ref = await _git_ops.stash_push(repo_path)
+    # REQ-CLONE-011: plain git stash (NOT --keep-index — that's partial-commit workflow).
+    # stash_push returns None when there were no local changes to save (working tree
+    # clean at function entry); skip stash_pop in that case.
+    stash_ref: str | None = await _git_ops.stash_push(repo_path)
+    sha: str | None = None
+    stash_popped = False
     try:
         await _git_ops.git_apply(repo_path, extraction_diff)
         await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
         msg = commit_message(refactor_job_id, target_repo, extracted_symbol)
         sha = await _git_ops.git_commit(repo_path, msg)
+        # C3 fix: stash_pop runs HERE so a failure propagates as StashPopFailed
+        # to the except arm with the captured SHA preserved, rather than being
+        # silently swallowed in the finally block.
+        if stash_ref is not None:
+            await _git_ops.stash_pop(repo_path, stash_ref)
+        stash_popped = True
         # SF-M7 + TD-m4: RepoCommit is frozen; build with empty defaults,
         # then use dataclasses.replace() to fill in optional metadata.
         base = RepoCommit(
@@ -165,41 +186,45 @@ async def write_canonical_symbol(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:
+        except Exception as meta_exc:  # noqa: BLE001 — SF-M7 partial-fill fallback
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
                 meta_exc,
             )
             return base
     except _git_ops.StashPopFailed as spf:
-        # SF-B4: stash pop failed AFTER commit landed. Record typed error
-        # on the result rather than propagating (the commit succeeded).
+        # C3 fix: stash pop failed AFTER commit landed. Record typed error
+        # on the result with the captured SHA (was previously discarded).
         logger.warning(
-            "write_canonical_symbol: stash pop failed (%s); commit on main, dirty tree",
-            spf,
+            "write_canonical_symbol: stash pop failed (sha=%s, stderr=%s)",
+            sha, spf.stderr,
         )
         return RepoCommit(
             repo=target_repo,
-            sha=None,
+            sha=sha,
             status="failed",
             error_type="StashPopFailed",
             error_stderr=spf.stderr,
             error_exit_code=spf.exit_code,
         )
     finally:
-        # Best-effort: if stash_pop already raised, this is a no-op (the
-        # error is recorded on the result). If it succeeds, we're done.
-        try:
-            await _git_ops.stash_pop(repo_path, stash_ref)
-        except _git_ops.StashPopFailed:
-            pass  # already handled in the except arm above
+        # C3 fix: only run cleanup if we never reached the inner stash_pop
+        # AND there's an actual stash to pop. On commit failure
+        # (git_commit or git_apply raised), the inner stash_pop never ran
+        # and the worktree still holds the diff — clean it up so the
+        # agent's working tree is restored to pre-stash state.
+        if not stash_popped and stash_ref is not None:
+            try:
+                await _git_ops.stash_pop(repo_path, stash_ref)
+            except _git_ops.StashPopFailed:
+                pass  # best-effort; operator can intervene via `git stash list`
 
 
 @task(
     name="write_replacement_diff",
     retries=2,
     retry_delay_seconds=5,
-    retry_condition_fn=retry_if_exception_type((_git_ops.GitCommitTransient,)),
+    retry_condition_fn=_git_commit_transient_retry_predicate,
 )
 async def write_replacement_diff(
     refactor_job_id: str,
@@ -211,12 +236,21 @@ async def write_replacement_diff(
     Same SF-B4/SF-M7 hardening as `write_canonical_symbol`.
     """
     repo_path = Path(consumer_repo)
-    stash_ref = await _git_ops.stash_push(repo_path)
+    # REQ-CLONE-011: stash_push returns None when working tree was clean at
+    # function entry; skip stash_pop in that case.
+    stash_ref: str | None = await _git_ops.stash_push(repo_path)
+    sha: str | None = None
+    stash_popped = False
     try:
         await _git_ops.git_apply(repo_path, consuming_diff)
         await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
         msg = commit_message(refactor_job_id, consumer_repo, "consuming-diff")
         sha = await _git_ops.git_commit(repo_path, msg)
+        # C3 fix: stash_pop runs HERE so a failure propagates with the
+        # captured SHA rather than being silently swallowed.
+        if stash_ref is not None:
+            await _git_ops.stash_pop(repo_path, stash_ref)
+        stash_popped = True
         # SF-M7 + TD-m4: frozen dataclass via replace()
         base = RepoCommit(
             repo=consumer_repo,
@@ -229,30 +263,35 @@ async def write_replacement_diff(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:
+        except Exception as meta_exc:  # noqa: BLE001 — SF-M7 partial-fill fallback
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
                 meta_exc,
             )
             return base
     except _git_ops.StashPopFailed as spf:
+        # C3 fix: preserve captured SHA on stash_pop failure.
         logger.warning(
-            "write_replacement_diff: stash pop failed (%s); commit on main, dirty tree",
-            spf,
+            "write_replacement_diff: stash pop failed (sha=%s, stderr=%s)",
+            sha, spf.stderr,
         )
         return RepoCommit(
             repo=consumer_repo,
-            sha=None,
+            sha=sha,
             status="failed",
             error_type="StashPopFailed",
             error_stderr=spf.stderr,
             error_exit_code=spf.exit_code,
         )
     finally:
-        try:
-            await _git_ops.stash_pop(repo_path, stash_ref)
-        except _git_ops.StashPopFailed:
-            pass
+        # C3 fix: only run cleanup if the inner stash_pop never ran (i.e.,
+        # git_commit or git_apply raised). See write_canonical_symbol for
+        # rationale. Skip also when stash_ref is None (nothing was stashed).
+        if not stash_popped and stash_ref is not None:
+            try:
+                await _git_ops.stash_pop(repo_path, stash_ref)
+            except _git_ops.StashPopFailed:
+                pass
 
 
 @task(name="persist_dag_state", retries=0)
@@ -287,7 +326,7 @@ async def _stage_all(repo_path: Path) -> None:
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    stdout_b, stderr_b = await proc.communicate()
+    _, stderr_b = await proc.communicate()
     if proc.returncode != 0:
         stderr = stderr_b.decode() if stderr_b else ""
         raise RuntimeError(f"git add -A failed (exit={proc.returncode}): {stderr}")
@@ -357,7 +396,7 @@ def _dataclass_to_dict(obj: Any) -> dict[str, Any]:
 
 # SF-M5: re-entry guard. Raised if the same refactor_job_id is invoked twice
 # (operator re-run, or cross-process race that slipped past cluster_claim).
-class DAGAlreadyRunning(Exception):
+class DAGAlreadyRunningError(Exception):
     """Raised by run_clone_refactor_dag if the same refactor_job_id is already
     in flight (status in {queued, running}). Prevents duplicate work."""
 
@@ -381,7 +420,7 @@ async def run_clone_refactor_dag(
     with explicit CancelledError arm).
 
     SF-M5 re-entry guard: reads workflow/v1/{refactor_job_id} at entry; raises
-    DAGAlreadyRunning if status in {queued, running}.
+    DAGAlreadyRunningError if status in {queued, running}.
 
     CA-m2 note: `@flow` runs in-process; `DAGState` is a non-Pydantic
     dataclass — Prefect serializes via pickle for in-memory flow, which
@@ -397,7 +436,7 @@ async def run_clone_refactor_dag(
     # SF-M5: re-entry guard
     existing_state = await mcp_backend.get(mcp_backend.dag_key(refactor_job_id))
     if existing_state is not None and existing_state.get("status") in ("queued", "running"):
-        raise DAGAlreadyRunning(existing_status=existing_state.get("status", "unknown"))
+        raise DAGAlreadyRunningError(existing_status=existing_state.get("status", "unknown"))
 
     consumer_commits: tuple[RepoCommit, ...] = ()
     target_commit: RepoCommit | None = None
@@ -431,7 +470,7 @@ async def run_clone_refactor_dag(
                 )
             try:
                 return await write_replacement_diff(refactor_job_id, repo, diff)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — REQ-CLONE-010 failure-path: convert unanticipated exception to typed RepoCommit
                 return RepoCommit(
                     repo=repo, sha=None, status="failed",
                     error_type=type(exc).__name__,
@@ -492,7 +531,7 @@ async def run_clone_refactor_dag(
         # would otherwise replace the traceback).
         try:
             await release_cluster_claim(mcp_backend, cluster_id)
-        except Exception as release_exc:
+        except Exception as release_exc:  # noqa: BLE001 — best-effort claim release; never shadow original exception per SF-B3
             logger.warning(
                 "release_cluster_claim failed for cluster_id=%s (%s); continuing",
                 cluster_id, release_exc,

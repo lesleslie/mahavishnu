@@ -6,16 +6,15 @@ Implements: REQ-CLONE-010, REQ-CLONE-011, REQ-CLONE-012, REQ-CLONE-013
 from __future__ import annotations
 
 import asyncio
-import subprocess
-import warnings
 from pathlib import Path
+import subprocess
 from unittest.mock import AsyncMock, patch
+import warnings
 
 import pytest
 
 from mahavishnu.workflows.clone_refactor_workflow import (
     DAGResult,
-    RepoCommit,
     run_clone_refactor_dag,
 )
 
@@ -469,3 +468,139 @@ class TestRunCloneRefactorDAG:
         # The cancelled outcome payload includes a timestamp.
         payload = cancelled_calls[0].args[1]
         assert "cancelled_at" in payload
+
+    @pytest.mark.req(["REQ-CLONE-013"])
+    async def test_dag_git_commit_transient_does_retry(
+        self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
+    ) -> None:
+        """C1 fix: GitCommitTransient must trigger Prefect retry.
+
+        Pre-fix, retry_condition_fn used tenacity.retry_if_exception_type which
+        has a 1-arg __call__(retry_state); Prefect invokes it with 3 args
+        (task, run, state). Prefect's `except Exception: return False` swallow
+        made call_count == 1 for ALL exception types — including transient ones
+        that should retry. After the fix, the 3-arg predicate returns True for
+        GitCommitTransient so Prefect retries up to retries=2.
+        """
+        from mahavishnu.workflows import _git_ops
+        original_commit = _git_ops.git_commit
+        call_count = 0
+
+        async def transient_twice(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                raise _git_ops.GitCommitTransient(
+                    reason="index_lock",
+                    stderr="Unable to create .git/index.lock",
+                )
+            return await original_commit(*args, **kwargs)
+
+        _git_ops.git_commit = transient_twice
+        try:
+            with patch(
+                "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
+                new=AsyncMock(return_value=[{"repo": str(target_repo)}]),
+            ):
+                result = await run_clone_refactor_dag(
+                    refactor_job_id="job-011",
+                    cluster_id="cluster-1",
+                    mcp_backend=mock_backend,
+                    target_repo=str(target_repo),
+                    consumer_repos=[str(consumer_repo)],
+                    extracted_symbol="Foo",
+                    extraction_diff=EXTRACTION_DIFF_SIMPLE,
+                    consuming_diffs={
+                        str(consumer_repo): CONSUMING_DIFF_FROM_FOO,
+                    },
+                )
+            # REQ-CLONE-013: target's write_canonical_symbol hit transient
+            # twice and succeeded on 3rd attempt (call_count == 3 there); the
+            # consumer's write_replacement_diff runs once after (call_count == 4
+            # total). Pre-fix this would have been call_count == 1 with the
+            # DAG propagating GitCommitTransient out of the flow.
+            assert call_count >= 3, (
+                f"expected at least 3 calls (1 initial + 2 retries), got {call_count}"
+            )
+            assert result.status == "completed"
+            assert result.consumer_commits[0].status == "completed"
+        finally:
+            _git_ops.git_commit = original_commit
+
+    async def test_dag_stash_pop_failure_preserves_captured_sha(
+        self, target_repo: Path, consumer_repo: Path, mock_backend: AsyncMock
+    ) -> None:
+        """C3 fix: stash_pop failure after a successful commit must propagate
+        as a typed RepoCommit with the captured SHA — not be silently swallowed
+        in a finally block returning status='completed' with a dirty tree.
+
+        Pre-fix, the `finally: try stash_pop ... except StashPopFailed: pass`
+        pattern discarded the captured SHA (sha=None) and returned RepoCommit(
+        status='completed') while the worktree was dirty. After the fix,
+        stash_pop runs inside the main try; StashPopFailed is caught with
+        sha preserved; finally only runs cleanup if commit failed.
+
+        Note: we mock BOTH stash_push (return a non-None ref so the workflow
+        takes the `if stash_ref is not None: stash_pop(...)` branch) and
+        stash_pop (raise StashPopFailed). The test fixtures start with a
+        clean working tree, so the unmodified stash_push would return
+        None and skip stash_pop entirely.
+        """
+        from mahavishnu.workflows import _git_ops
+        original_stash_push = _git_ops.stash_push
+        original_stash_pop = _git_ops.stash_pop
+
+        async def fake_stash_push(repo_path):
+            # Don't actually create a stash entry; just return a ref so the
+            # workflow's `if stash_ref is not None` branch executes.
+            return "stash@{0}"
+
+        async def always_failing_stash_pop(repo_path, stash_ref="stash@{0}"):
+            raise _git_ops.StashPopFailed(
+                stderr="conflict marker present", exit_code=1
+            )
+
+        _git_ops.stash_push = fake_stash_push
+        _git_ops.stash_pop = always_failing_stash_pop
+        try:
+            with patch(
+                "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
+                new=AsyncMock(return_value=[{"repo": str(target_repo)}]),
+            ):
+                result = await run_clone_refactor_dag(
+                    refactor_job_id="job-012",
+                    cluster_id="cluster-1",
+                    mcp_backend=mock_backend,
+                    target_repo=str(target_repo),
+                    consumer_repos=[str(consumer_repo)],
+                    extracted_symbol="Foo",
+                    extraction_diff=EXTRACTION_DIFF_SIMPLE,
+                    consuming_diffs={
+                        str(consumer_repo): CONSUMING_DIFF_FROM_FOO,
+                    },
+                )
+            # C3 fix: at least one StashPopFailed RepoCommit with captured SHA.
+            stash_failures: list[tuple[str, object]] = []
+            if result.target_commit and result.target_commit.error_type == "StashPopFailed":
+                stash_failures.append(("target", result.target_commit))
+            for c in result.consumer_commits:
+                if c.error_type == "StashPopFailed":
+                    stash_failures.append((c.repo, c))
+            assert stash_failures, (
+                "expected at least one StashPopFailed RepoCommit; "
+                f"target={result.target_commit} "
+                f"consumers={result.consumer_commits}"
+            )
+            for repo, rc in stash_failures:
+                # C3 fix: captured SHA is preserved (was None pre-fix)
+                assert rc.sha is not None, (
+                    f"{repo}: stash_pop failed after commit; "
+                    f"captured SHA must be preserved (got None)"
+                )
+                assert rc.status == "failed"
+                assert rc.error_stderr is not None
+                assert "conflict marker" in rc.error_stderr
+            assert result.status == "failed"
+        finally:
+            _git_ops.stash_push = original_stash_push
+            _git_ops.stash_pop = original_stash_pop

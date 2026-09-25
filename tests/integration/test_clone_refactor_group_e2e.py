@@ -21,12 +21,11 @@ from uuid import UUID
 
 import pytest
 
-from mahavishnu.mcp.tools.clone_tools import CloneTools
 from mahavishnu.mcp.tools.clone_claims import (
     ConcurrentDAGError,
     MCPStateBackendUnavailable,
 )
-
+from mahavishnu.mcp.tools.clone_tools import CloneTools
 
 # REQ-CLONE-015
 CLUSTER_ID_RE = re.compile(r"^[a-z0-9-]{3,64}$")
@@ -101,8 +100,8 @@ class TestClusterIdNormalization:
 @pytest.fixture
 def git_repo(tmp_path):
     """Initialize a git repo at tmp_path/<random> with user.email/name."""
-    import subprocess
     import secrets
+    import subprocess
     repo = tmp_path / f"target-{secrets.token_hex(4)}"
     repo.mkdir()
     subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
