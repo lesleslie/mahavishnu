@@ -66,17 +66,18 @@ def _create_isolated_worker(
     session_buddy_client: Any,
     kwargs: dict[str, Any],
 ) -> BaseWorker:
-    """Create an isolated-execution worker using tiered microVM isolation.
+    """Create an isolated-execution worker.
 
-    Tier 1 is the local Apple ``container`` runtime (Apple silicon only);
-    when the host cannot run it, fall through to the E2B cloud sandbox
-    tier. An explicit ``e2b-sandbox`` worker type skips tier 1 entirely.
-    An explicit ``shepherd`` worker type (Phase 4 v2 plan) routes to the
-    Shepherd OS-level syscall-jail backend; it is fail-closed and does
-    **not** fall through to a less-secure tier.
+    Plan v3 Phase 4: the legacy isolated-worker surface (Apple container,
+    E2B sandbox) has been retired. ``worker_type == "shepherd"`` is the
+    ONLY supported isolated-worker type. Every other worker_type raises
+    ``ValueError`` with a helpful message pointing to the new ADR.
+
+    This MUST land before Phase 4.5b's ``git rm`` of ``apple_container.py``
+    and ``e2b_sandbox.py`` so the function body never imports a deleted
+    module.
     """
-    from ..core.errors import AppleContainerUnsupported, ErrorCode, MahavishnuError
-    from .e2b_sandbox import E2BSandboxWorker
+    from ..core.errors import ErrorCode, MahavishnuError
     from .shepherd_backend import ShepherdBackendWorker
 
     if worker_type == "shepherd":
@@ -96,26 +97,26 @@ def _create_isolated_worker(
             session_buddy_client=session_buddy_client,
         )
 
-    if worker_type != "e2b-sandbox":
-        try:
-            from .apple_container import AppleContainerWorker
-
-            return AppleContainerWorker(
-                image=kwargs.get("image", "python:3.13-slim"),
-                session_buddy_client=session_buddy_client,
-                cpus=kwargs.get("cpus"),
-                memory=kwargs.get("memory"),
-            )
-        except AppleContainerUnsupported as exc:
-            logger.info(
-                "Apple container tier unavailable (%s); using E2B sandbox tier",
-                exc.details.get("reason", "unsupported host"),
-            )
-    return E2BSandboxWorker(
-        template=kwargs.get("template", "base"),
-        timeout=kwargs.get("timeout", 300),
-        session_buddy_client=session_buddy_client,
+    # Every other worker_type is unsupported after the legacy-surface purge.
+    # Per .claude/plans/nifty-gliding-stallman.md v3 Phase 4: callers
+    # using a retired worker_type get a clear ValueError pointing at the
+    # migration ADR.
+    supported = sorted(WORKER_SUPPORTED_TYPES)
+    raise ValueError(
+        f"worker_type={worker_type!r} is no longer supported. "
+        f"The legacy isolated-worker surface has been retired — see "
+        f"docs/decisions/2026-09-24-legacy-worker-deprecation.md. "
+        f"For new isolated workloads use worker_type='shepherd'. "
+        f"For non-isolated workloads use mahavishnu/pools/ "
+        f"({type(supported).__name__}({supported}) is informational; "
+        f"see the registry for the canonical list)."
     )
+
+
+# Worker types supported by the isolated-worker factory above. The legacy
+# Apple-container and E2B-sandbox types are intentionally absent — see the
+# ADR.
+WORKER_SUPPORTED_TYPES: frozenset[str] = frozenset({"shepherd"})
 
 
 class WorkerManager:
