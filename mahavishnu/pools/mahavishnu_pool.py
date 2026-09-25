@@ -1,6 +1,15 @@
 """Direct worker management by Mahavishnu.
 
 Wraps existing WorkerManager to provide pool abstraction.
+
+Substrate-wrapper rationale (Plan v3 §10 #5 analysis, 2026-09-25):
+This pool is a leaf substrate wrapper, not a child of PoolManager.
+It wraps WorkerManager the same way SessionBuddyPool wraps
+CommonMCPClient and RunPodPool wraps runpod_flash.Endpoint. Do NOT
+rewrite execute_task to call pool_manager.route_task — that would
+create a circular dependency and double-enforce the per-CallerKind
+quota. See docs/POOL_ARCHITECTURE.md "Why pool types wrap substrates,
+not delegate to PoolManager.route_task" for the full rationale.
 """
 
 from __future__ import annotations

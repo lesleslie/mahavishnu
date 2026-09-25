@@ -62,6 +62,40 @@ The pool management architecture enables Mahavishnu to orchestrate worker tasks 
 └──────────────────────┘            └──────────────────────┘
 ```
 
+## Why pool types wrap substrates, not delegate to `PoolManager.route_task`
+
+Each pool type is a **leaf substrate wrapper**. They are peers, not children, of `PoolManager`. The pattern is:
+
+| Pool type | Wraps | Substrate type |
+|---|---|---|
+| `MahavishnuPool` | `WorkerManager` | In-process worker management (CLI/PTY) |
+| `SessionBuddyPool` | `CommonMCPClient` | Out-of-process MCP server (`http://localhost:8678/mcp`) |
+| `RunPodPool` | `runpod_flash.Endpoint` | GPU serverless SDK |
+
+Each pool implements the same 8 abstract methods on `BasePool` (`start`, `execute_task`, `execute_batch`, `scale`, `health_check`, `get_metrics`, `collect_memory`, `stop`) by delegating to its substrate. **`PoolManager.route_task` does not enter the picture** — it sits above all pool types, picks one pool, and calls `await pool.execute_task(task)`.
+
+If a pool delegated `execute_task` to `PoolManager.route_task`, three problems would emerge:
+
+1. **Circular dependency**: `PoolManager.route_task → pool.execute_task → PoolManager.route_task` (each pool type would have to hold a back-reference to `PoolManager`).
+2. **Double quota enforcement**: `route_task` enforces `_QuotaState` once per dispatch. If a pool re-enters `route_task`, quota is consumed twice for one user task.
+3. **Selector drift**: `route_task` may override the selector via `_apply_fitness_aware_routing` (`manager.py:703`) and `_apply_queueing_penalty`. A pool that re-enters `route_task` would get a different pool selected than itself.
+
+### Cross-pool routing vs. in-pool dispatch
+
+| Concern | Layer | Owner |
+|---|---|---|
+| "Which pool should I send this to?" | Cross-pool | `PoolManager.route_task` (selector strategies + fitness + queueing) |
+| "How does the chosen pool execute the task?" | In-pool | The pool's substrate (`WorkerManager` / `CommonMCPClient` / `Endpoint`) |
+| "How many calls per `CallerKind` per minute?" | Cross-pool | `PoolManager._QuotaState` (per `caller_kind`) |
+
+Mixing layers breaks the contract. Pool types **must** stay as leaf substrate wrappers.
+
+## What "rewrite to use `route_task` shape" would have meant
+
+If you wanted pool types to use `route_task` semantics, you'd need a different design: `PoolManager` as the only entry point (no pool type ever sees `execute_task` from above). That collapses the architecture into a single layer — which means losing the `BasePool` contract, losing peer extensibility (you can't add a new pool type without registering it with `PoolManager`), and breaking every existing pool implementation (`SessionBuddyPool`, `RunPodPool`, `pi_pool`, `gpu_handler_pool`).
+
+That's the architectural alternative, not a "rewrite" of one file.
+
 ## Pool Types
 
 ### 1. MahavishnuPool (Direct Management)

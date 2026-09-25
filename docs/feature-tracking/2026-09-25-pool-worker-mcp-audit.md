@@ -172,13 +172,17 @@ the plan parking lot.
 | `dispatch_to_pool` | KEEP — env-failure is Dhara, not code | none |
 | worker_* tools (18) | KEEP all — all LIVE with tests | none |
 | `mahavishnu_pool.py` docstring | FIXED (commit `dddceca9`) | done |
-| `mahavishnu_pool.py` rewrite | DEFER — separate plan | open |
+| `mahavishnu_pool.py` rewrite | RESOLVED 2026-09-25 as no-op (plan v4) | done |
 
 ## Open work (moved to parking lot)
 
-- **§10 #5 rewrite**: replace `mahavishnu_pool.py` WorkerManager-wrapping
-  design with `pool_manager.route_task`-shape selector dispatch.
-  Substantial refactor; needs its own plan with integration contract.
+- **§10 #5 rewrite**: **RESOLVED 2026-09-25 as no-op** (plan v4). `MahavishnuPool`
+  wrapping `WorkerManager` is the correct leaf substrate-wrapper pattern
+  (mirrors `SessionBuddyPool`/`RunPodPool`). Rewriting to call
+  `pool_manager.route_task` would create circular dependency + double
+  quota enforcement. Rationale documented in
+  `docs/POOL_ARCHITECTURE.md` "Why pool types wrap substrates" + module
+  docstring. **No code changes required.**
 - **`workers/cloud_worker.py` retirement** (Plan §10 #3): after Phase
   3b, routing logic lives in `core/model_routing.py`. The cloud
   worker is now a thin wrapper. Decision needed: keep as

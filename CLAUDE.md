@@ -111,7 +111,11 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 
 **MahavishnuPool** (Direct Management):
 
-- Wraps existing WorkerManager for local worker execution
+- Wraps existing WorkerManager for local worker execution. Pool type is a
+  leaf substrate wrapper — see `docs/POOL_ARCHITECTURE.md` "Why pool types
+  wrap substrates, not delegate to PoolManager.route_task" for the design
+  rationale. Do not rewrite to call `pool_manager.route_task` from inside
+  the pool.
 - Low-latency task execution
 - Dynamic scaling (min_workers to max_workers)
 - Use for: local development, debugging, CI/CD
