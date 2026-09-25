@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 _MCP_FAILURE_THRESHOLD = 3
 _MCP_RECOVERY_SECONDS = 30.0
 
+# SF-M2: reserved LogRecord attrs that would collide with logger.warning(extra=...)
+_RESERVED_LOGRECORD_ATTRS = frozenset({
+    "name", "msg", "args", "levelname", "levelno", "pathname",
+    "filename", "module", "exc_info", "exc_text", "stack_info",
+    "lineno", "funcName", "created", "msecs", "relativeCreated",
+    "thread", "threadName", "processName", "process", "message",
+    "asctime", "key",  # 'key' is reserved in some impls; keep for safety
+})
+
+
+def _safe_extra(ctx: dict[str, Any] | None) -> dict[str, Any]:
+    """Filter log_context against reserved LogRecord attrs.
+
+    Implements: REQ-CLONE-014 (SF-M2 hardening)
+    """
+    if not ctx:
+        return {}
+    return {k: v for k, v in ctx.items() if k not in _RESERVED_LOGRECORD_ATTRS}
+
 
 @dataclass
 class MCPStateConfig:
@@ -74,6 +93,35 @@ class MCPStateBackend:
         """Return the canonical MCP key for approval state."""
         return f"approval/v1/{request_id}"
 
+    @staticmethod
+    def dag_key(refactor_job_id: str) -> str:
+        """Return the canonical MCP key for clone-refactor DAG lifecycle records.
+
+        Implements: REQ-CLONE-007
+        Distinct from workflow_key() because semantic intent differs
+        (DAG lifecycle vs. workflow execution).
+        """
+        return f"workflow/v1/{refactor_job_id}"
+
+    @staticmethod
+    def cluster_key(cluster_id: str) -> str:
+        """Return the canonical MCP key for per-cluster consumer-progress records.
+
+        Implements: REQ-CLONE-009 (claim sentinel sits in cluster/v1/{id}/in_flight,
+        a different key from this consumer-progress record).
+        """
+        return f"cluster/v1/{cluster_id}"
+
+    @staticmethod
+    def in_flight_key(cluster_id: str) -> str:
+        """Return the canonical MCP key for the cluster-claim sentinel.
+
+        Implements: REQ-CLONE-009
+        Distinct from cluster_key() — the claim sentinel and consumer-progress
+        are two different concerns under the same prefix.
+        """
+        return f"cluster/v1/{cluster_id}/in_flight"
+
     @property
     def available(self) -> bool:
         return self._available
@@ -115,6 +163,73 @@ class MCPStateBackend:
         except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self._record_failure()
             logger.debug("MCP put(%r) failed: %s", key, exc)
+
+    async def try_put_with_log_context(
+        self,
+        key: str,
+        value: dict[str, Any],
+        *,
+        log_context: dict[str, Any] | None = None,
+    ) -> bool:
+        """Persist key/value with structured-log context on failure.
+
+        Returns True on success, False if the substrate is unavailable
+        or circuit-open. NEVER raises — substrate failures are logged
+        with the caller's log_context so the audit trail is intact.
+
+        Implements: REQ-CLONE-014
+        Used by the clone-refactor DAG so the structured
+        `clone_refactor.substrate_silent_write` log always carries
+        `dag_id, step_name, files_touched`.
+
+        SF-M1 hardening: _record_failure() is wrapped in its own try/except
+        so a metrics-sink failure cannot suppress the structured log line.
+        SF-M2 hardening: log_context is filtered against the LogRecord
+        reserved-attribute set so caller-supplied keys like {"message": "x"}
+        do not raise KeyError/AttributeError out of logger.warning().
+        CR-m1: _record_failure failures are logged at WARNING (not DEBUG)
+        per CLAUDE.md style — operators running at INFO must see this.
+        """
+        try:
+            if not self._config.enabled or self._circuit_is_open():
+                try:
+                    logger.warning(
+                        "clone_refactor.substrate_silent_write",
+                        extra={"key": key, **_safe_extra(log_context)},
+                    )
+                except Exception:  # noqa: BLE001 - SF-m2: NEVER raises
+                    pass
+                return False
+            await self._client.put(key, value, ttl=None)
+            self._record_success()
+            return True
+        except Exception as exc:  # noqa: BLE001 - boundary handler
+            # SF-M1 + CR-m1: wrap _record_failure() in try/except so a
+            # metrics-sink failure cannot suppress the structured log
+            # line. Log the _record_failure failure at WARNING (not DEBUG)
+            # per CLAUDE.md style.
+            try:
+                self._record_failure()
+            except Exception as record_exc:  # noqa: BLE001
+                try:
+                    logger.warning(
+                        "MCPStateBackend._record_failure failed; continuing",
+                        exc_info=record_exc,
+                    )
+                except Exception:  # noqa: BLE001 - SF-m2: NEVER raises
+                    pass
+            try:
+                logger.warning(
+                    "clone_refactor.substrate_silent_write",
+                    extra={
+                        "key": key,
+                        "substrate_error": str(exc),
+                        **_safe_extra(log_context),
+                    },
+                )
+            except Exception:  # noqa: BLE001 - SF-m2: NEVER raises
+                pass
+            return False
 
     async def persist_workflow(
         self,
@@ -237,3 +352,47 @@ class MCPStateBackend:
     async def aclose(self) -> None:
         """Release the underlying HTTP client."""
         await self._client.aclose()
+
+
+class MCPStateBackendError(Exception):
+    """Raised by MCPStateBackend when the substrate is unavailable AND the caller
+    has opted into explicit-failure semantics.
+
+    The default put() still swallows (preserves existing callers' no-throw
+    contract); only callers using try_put_with_log_context and explicitly
+    raising this class opt into the failure mode. See §6.4 of the spec.
+
+    Implements: REQ-CLONE-014
+    """
+
+    def __init__(
+        self,
+        key: str,
+        reason: str,
+        *,
+        log_context: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(f"MCPStateBackend put({key!r}) failed: {reason}")
+        self.key = key
+        self.reason = reason
+        self.log_context = log_context or {}
+
+
+# TD-m9: MCPStateBackendUnavailable is defined here (next to its peer
+# MCPStateBackendError) for architectural consistency. Re-exported from
+# clone_claims.py for the wire-up code path.
+class MCPStateBackendUnavailable(Exception):
+    """Raised when the substrate is unreachable AND the caller has opted into
+    fail-loud semantics.
+
+    SF-B6: cluster_state_claim raises this when the circuit is open, rather
+    than silently returning True (which would allow two cross-process DAGs to
+    race for the same cluster claim).
+
+    Implements: REQ-CLONE-014
+    """
+
+    def __init__(self, key: str, reason: str) -> None:
+        super().__init__(f"MCPStateBackend unavailable: {key} ({reason})")
+        self.key = key
+        self.reason = reason
