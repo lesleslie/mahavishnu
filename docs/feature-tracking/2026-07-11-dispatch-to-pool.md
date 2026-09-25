@@ -2,8 +2,21 @@
 
 **Owner:** mahavishnu core
 **Created:** 2026-07-11
-**Last updated:** 2026-07-11
+**Last updated:** 2026-09-25
 **Repo(s):** /Users/les/Projects/mahavishnu
+
+## Decision
+
+- **2026-09-25:** `decision: deferred` — local MCP substrate at `http://localhost:8683`
+  is unreachable in this dev environment (`MCPStateBackend.probe()` returns
+  `False`; emits log line `MCP unavailable — state persistence disabled` before
+  returning). Per Task 1 of the 2026-09-25 clone-refactor wire-up plan, this
+  surface failure does **not** block Task 1; full structured probe
+  (`try_put_with_log_context`) is deferred to Task 2 Step 1 where it will run
+  against the new symbols. Task 1's gate is "is the substrate reachable at
+  all" — answer is currently `False`, expected to flip to `True` once the
+  dev-env's MCP substrate is started. No code change required; the feature
+  is still un-built per the State checklist below.
 
 ## State — pick one
 
