@@ -11,7 +11,7 @@
 
 Provide ONE minimal ecosystem intake endpoint for internal Bodai components (crontroller, git-monitor, ops-bridge) to push events into Mahavishnu. **External systems (GitHub, Stripe, etc.) publish to Akosha directly via the standard Akosha publisher — NOT through Mahavishnu.** Crackerjack's `review-pr` skill subscribes to an Akosha pattern, not to a Mahavishnu HTTP endpoint.
 
-**Why this is Mahavishnu-shaped**: per `docs/adr/0001-mahavishnu-niche.md`, Mahavishnu is an LLM control plane + repo orchestrator. The original C-10 (HMAC + nonce + DLQ + multi-secret rotation + register MCP tool) was Conductor-shape scope that competes with the source tool's niche. **Replace with the minimal viable intake below.**
+**Why this is Mahavishnu-shaped**: per `docs/adr/0001-mahavishnu-niche.md`, Mahavishnu is an LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The original C-10 (HMAC + nonce + DLQ + multi-secret rotation + register MCP tool) was Conductor-shape scope that competes with the source tool's niche. **Replace with the minimal viable intake below.**
 
 **No HMAC.** No nonce. No DLQ. No registration MCP tool. No multi-secret support. Body is sanitized via Oneiric `DataSanitizeAction` and forwarded via `safe_publish`.
 

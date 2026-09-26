@@ -39,6 +39,8 @@ Without an explicit niche statement, every borrowable feature from these tools b
 
 - **LLM control plane**: the central dispatcher for LLM-based work across Mahavishnu-managed repos. Routes prompts to pools of workers, retries on transient failures, dispatches via `pool_route_execute`.
 - **Repo orchestrator**: executes work in isolated worktrees (`WorktreeInfo`, `worktree_manager`), coordinates multi-repo workflows, tracks per-repo state.
+- **Multi-engine**: runs Prefect, LlamaIndex, and Agno adapters (`CLAUDE.md` "Production-ready"). Borrowed features must be engine-agnostic — no hardcoded references to a specific engine's runtime class, API surface, or config schema.
+- **Harness-agnostic**: MCP-first (173 tools across 35 profile-gated groups). Works with Claude Code, Session-Buddy, and any MCP-compatible client. Borrowed features must expose themselves via the MCP tool surface, not hardcode one harness's CLI conventions, env vars, or directory layout.
 - **Bodai event-bus publisher**: publishes workflow lifecycle events to Akosha via `safe_publish(envelope)`. Other Bodai components (Crackerjack, Akosha, Session-Buddy) consume those events.
 - **MCP-first**: 173 tools (146 decorated + 27 inline core) across 35 profile-gated groups. External clients interact via MCP, not CLI.
 

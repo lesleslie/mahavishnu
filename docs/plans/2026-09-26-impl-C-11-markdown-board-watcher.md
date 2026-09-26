@@ -8,7 +8,7 @@
 **Blocks:** None directly (C-13 doesn't depend on C-11 — they trigger on different things)
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
-**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (deadlock fix, exception redundancy fix, `from __future__ import annotations`, dropped `Field` import, scoped to our jot files only).
 
 ## Goal

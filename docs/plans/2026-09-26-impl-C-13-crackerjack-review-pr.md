@@ -30,7 +30,7 @@ Build a Crackerjack skill that subscribes to an Akosha pattern (per round-4 nich
 ```python
 """Crackerjack review-pr skill — Akosha-pattern-triggered PR review.
 
-Per niche filter (docs/adr/0001-mahavishnu-niche.md in the mahavishnu repo):
+Per niche filter (docs/adr/0001-mahavishnu-niche.md in the mahavishnu repo) — Mahavishnu is LLM control plane + repo orchestrator + multi-engine + harness-agnostic:
 - Trigger is Akosha pattern subscription, NOT a Mahavishnu webhook.
 - Pulls GitHub PR diff via env var reference (never raw token).
 - Dispatches code-review via mahavishnu.pool_route_execute(idempotency=...).

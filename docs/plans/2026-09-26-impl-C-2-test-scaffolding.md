@@ -5,7 +5,7 @@
 **Blocks:** Every wire-up plan that lands a test (C-3, C-4, C-5, C-6, C-8, C-9, C-10, C-11, C-12, C-13). Each future plan's `tests/integration/test_*.py` consumes one or more of these fixtures.
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
-**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in.
 
 ## Goal

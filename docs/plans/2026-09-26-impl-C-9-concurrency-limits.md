@@ -7,7 +7,7 @@
 **Blocks:** C-13 (crackerjack review-pr workflow runs under `TaskCategory.CODE_REVIEW` and hits the gate)
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
-**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (per-process scope documented prominently, `pool_worker_id` label added, `_estimate_retry` helper extracted, `_specs.get` replaced by `spec_for()`).
 
 ## Goal
