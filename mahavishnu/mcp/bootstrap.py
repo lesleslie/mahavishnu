@@ -7,6 +7,7 @@ import datetime as dt
 import shutil
 from typing import TYPE_CHECKING, cast
 
+import mcp_common
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
@@ -312,6 +313,10 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
             "status": "ok" if all_ok else "degraded",
             "service": "mahavishnu",
             "version": version,
+            # REQ-005 — launcher version field for incident triage (e.g.
+            # `mcp_common.server.launcher@0.28.0`). Read at request time so
+            # editable-install version drift doesn't lie.
+            "launcher": f"mcp_common.server.launcher@{mcp_common.__version__}",
             "checks": checks,
         }
         return JSONResponse(body, status_code=200 if all_ok else 503)
