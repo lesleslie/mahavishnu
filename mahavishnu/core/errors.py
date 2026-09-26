@@ -776,6 +776,33 @@ class EventEnvelopeConversionError(MahavishnuError):
         )
 
 
+class IdempotencyStoreUnavailable(MahavishnuError):  # noqa: N818
+    """Idempotency store unreachable; fail-CLOSED behavior expected.
+
+    Raised by C-6 idempotency layer when EventStore cannot be reached.
+    The C-6 default is to fail-CLOSED (reject the request) rather than
+    fail-open (allow duplicates) — per the no-backcompat policy.
+
+    Implements: REQ-003
+    """  # req: REQ-003
+
+    def __init__(
+        self,
+        message: str = "Idempotency store unreachable",
+        *,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "subsystem": "idempotency",
+            **(details or {}),
+        }
+        super().__init__(
+            message,
+            ErrorCode.INTERNAL_ERROR,
+            details=merged_details,
+        )
+
+
 class ConfigurationError(MahavishnuError):
     """Configuration-related error."""
 

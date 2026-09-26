@@ -75,7 +75,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with the given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        transaction_per_migration=False,  # NEW per C-3 / C-4 — required for forward-only DDL
+    )
 
     with context.begin_transaction():
         context.run_migrations()

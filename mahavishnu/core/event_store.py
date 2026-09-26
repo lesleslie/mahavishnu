@@ -80,6 +80,14 @@ class TaskEventType(StrEnum):
     WEBHOOK_RECEIVED = "webhook_received"
     SYNCED = "synced"
 
+    # NEW per round-4 review (mahavishnu specialist). C-6 idempotency
+    # path sets PENDING before COMPLETED. C-10 historical webhook path
+    # reads PENDING from the row state column. Appended LAST (not
+    # alphabetically) so downstream plans (C-6, C-10) can rely on stable
+    # iteration order — the test `test_pending_is_last_value` enforces
+    # this invariant.
+    PENDING = "pending"
+
 
 @dataclass
 class TaskEvent:
@@ -629,3 +637,220 @@ class EventStore:
 
             if len(events) < batch_size:
                 break
+
+
+# ============================================================================
+# Execution Events (REQ-003) — C-3 forward-only schema + module-level helpers
+# ============================================================================
+#
+# Distinct from `task_events` (idempotency tracking in C-6). The
+# `execution_events` table is for workflow lifecycle history consumed by
+# `mahavishnu executions show` (C-12). They share the file but not the
+# schema — no FK between them.
+
+from sqlalchemy import JSON, DateTime, Index, String
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class _Base(DeclarativeBase):
+    """SQLAlchemy 2.0 declarative base for execution_events table."""
+
+
+class ExecutionEvent(_Base):
+    """One row per workflow lifecycle event.
+
+    The autoincrement primary key prevents duplicate-row inserts.
+    Duplicate (execution_id, event_type, occurred_at) tuples ARE allowed —
+    e.g., two CREATED events for the same execution across retries are
+    valid history.
+
+    Implements: REQ-003
+    """  # req: REQ-003
+
+    __tablename__ = "execution_events"
+    __table_args__ = (
+        Index(
+            "ix_execution_events_execution_id_occurred_at",
+            "execution_id",
+            "occurred_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    execution_id: Mapped[str] = mapped_column(String(255), index=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON)
+    actor: Mapped[str] = mapped_column(String(255))
+    correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+
+
+# Module-level engine + session factory. Lazy-initialized via
+# ``init_engine``; tests can monkey-patch ``_session_factory`` to inject
+# an isolated in-memory engine. Production callers run ``init_engine``
+# during app startup.
+_engine: AsyncEngine | None = None
+_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def init_engine(database_url: str) -> AsyncEngine:
+    """Initialise the module-level async engine.
+
+    Args:
+        database_url: SQLAlchemy URL — asyncpg for Postgres, aiosqlite for SQLite.
+
+    Returns:
+        The created ``AsyncEngine``.
+
+    Raises:
+        DatabaseError: If the engine cannot be created.
+    """
+    global _engine, _session_factory
+    try:
+        _engine = create_async_engine(database_url, future=True)
+        _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
+    except Exception as e:
+        raise DatabaseError(
+            f"Failed to create execution_events engine: {e}",
+            details={"database_url": database_url},
+        ) from e
+    return _engine
+
+
+async def dispose_engine() -> None:
+    """Dispose the module-level engine. Idempotent."""
+    global _engine, _session_factory
+    if _engine is not None:
+        await _engine.dispose()
+    _engine = None
+    _session_factory = None
+
+
+def _require_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the active session factory or raise DatabaseError."""
+    if _session_factory is None:
+        raise DatabaseError(
+            "execution_events engine not initialised; call init_engine() first",
+        )
+    return _session_factory
+
+
+async def record_execution_event(
+    execution_id: str,
+    event_type: TaskEventType,
+    data: dict[str, Any],
+    actor: str,
+    *,
+    correlation_id: str | None = None,
+    occurred_at: datetime | None = None,
+) -> ExecutionEvent:
+    """Persist one workflow lifecycle event.
+
+    Autoincrement primary key prevents duplicate-row inserts. Duplicate
+    (execution_id, event_type, occurred_at) tuples ARE allowed — e.g.,
+    two CREATED events for the same execution across retries are valid
+    history.
+
+    Implements: REQ-003
+    """  # req: REQ-003
+    import time
+
+    factory = _require_session_factory()
+    event = ExecutionEvent(
+        execution_id=execution_id,
+        event_type=event_type.value,
+        data=data,
+        actor=actor,
+        correlation_id=correlation_id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    start = time.perf_counter()
+    try:
+        async with factory() as session:
+            session.add(event)
+            await session.flush()
+            await session.commit()
+    finally:
+        EXECUTION_EVENT_LOG_LATENCY.observe(time.perf_counter() - start)
+    # Counter is incremented AFTER successful commit so failed inserts
+    # do not inflate the metric. Matches Prometheus Counter semantics.
+    EXECUTION_EVENTS_TOTAL.labels(event_type=event_type.value).inc()
+    return event
+
+
+async def get_execution_events(execution_id: str) -> list[ExecutionEvent]:
+    """Return all events for an execution, ordered by occurred_at ASC.
+
+    Implements: REQ-003
+    """  # req: REQ-003
+    from sqlalchemy import select
+
+    factory = _require_session_factory()
+    async with factory() as session:
+        stmt = (
+            select(ExecutionEvent)
+            .where(ExecutionEvent.execution_id == execution_id)
+            .order_by(ExecutionEvent.occurred_at.asc())
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+
+__all__ = [
+    "EXECUTION_EVENTS_TOTAL",
+    "EXECUTION_EVENT_LOG_LATENCY",
+    "EventStore",
+    "ExecutionEvent",
+    "TaskEvent",
+    "TaskEventType",
+    "TaskState",
+    "dispose_engine",
+    "get_execution_events",
+    "init_engine",
+    "record_execution_event",
+]
+
+
+# Prometheus metrics (REQ-003 observability). Increment only AFTER successful
+# flush so failed inserts do not inflate counters. Wrapped in try/except so
+# missing prometheus_client (e.g. slim build) does not break event-store imports.
+try:
+    from prometheus_client import Counter, Histogram
+
+    EXECUTION_EVENTS_TOTAL = Counter(
+        "execution_events_total",
+        "Total execution events persisted, labeled by event_type.",
+        labelnames=["event_type"],
+    )
+
+    EXECUTION_EVENT_LOG_LATENCY = Histogram(
+        "execution_event_log_latency_seconds",
+        "Latency of record_execution_event() from call to commit.",
+        buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+    )
+except ImportError:
+    # Module-level fallbacks so callers can still reference the symbols
+    # even if prometheus_client is unavailable. The fallbacks swallow
+    # ``.labels(...)``/``.observe(...)`` calls without side-effects.
+
+    class _NoOpMetric:
+        def labels(self, **_kwargs: object) -> _NoOpMetric:
+            return self
+
+        def inc(self, *_args: object, **_kwargs: object) -> None:
+            return None
+
+        def observe(self, *_args: object, **_kwargs: object) -> None:
+            return None
+
+    EXECUTION_EVENTS_TOTAL = _NoOpMetric()
+    EXECUTION_EVENT_LOG_LATENCY = _NoOpMetric()
