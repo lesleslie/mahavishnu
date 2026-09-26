@@ -436,10 +436,10 @@ class TestPoolRouteExecuteWorktree:
         """FIX (round-5): the `finally` block in pool_route_execute must
         run `git worktree remove --force` even when the dispatch raises.
 
-        This is the most important safety property of the whole feature —
-        a worktree leak after every dispatch failure would accumulate and
-        fill disk. The plan claimed cleanup runs in finally but no test
-        verified this. The previous test suite did not exercise this path.
+        FIX (round-6): the test must also patch `_repo_has_git` (added by C-8
+        to gate the worktree path) to return True; otherwise an unregistered
+        repo_nickname causes the worktree block to short-circuit, worktree_info
+        stays None, and cleanup never runs.
 
         Without this test, a future refactor that accidentally moves
         `cleanup_worktree` outside the `finally` block would silently leak
@@ -460,7 +460,8 @@ class TestPoolRouteExecuteWorktree:
             ttl_seconds=3600,
         )
         # Patch create_worktree to return success; patch _dispatch_internal
-        # to raise; patch cleanup_worktree to track calls.
+        # to raise; patch cleanup_worktree to track calls. FIX round-6: also
+        # patch _repo_has_git so the worktree path activates.
         with patch.object(
             WorktreeManager, "create_worktree",
             new=AsyncMock(return_value=mock_worktree_info),
@@ -470,11 +471,10 @@ class TestPoolRouteExecuteWorktree:
         ) as mock_cleanup, patch(
             "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
             new=AsyncMock(side_effect=RuntimeError("dispatch failed")),
+        ), patch(
+            "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+            new=AsyncMock(return_value=True),  # FIX round-6: activate worktree path
         ):
-            from mahavishnu.core.config import get_settings
-            settings = get_settings()
-            settings.worktree_storage.enabled = True
-
             with pytest.raises(RuntimeError, match="dispatch failed"):
                 await pool_route_execute(
                     prompt="edit test",

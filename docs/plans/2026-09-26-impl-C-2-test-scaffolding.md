@@ -65,9 +65,10 @@ from mahavishnu.core.config import (
     get_settings,
 )
 from mahavishnu.core.event_store import EventStore
+from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database, not a Path
 
 if TYPE_CHECKING:
-    from mahavishnu.core.worktree import WorktreeManager
+    from mahavishnu.core.worktree_manager import WorktreeManager  # FIX round-6: real module is worktree_manager, not worktree
     from mahavishnu.pools import PoolManager
 ```
 
@@ -80,15 +81,18 @@ Then the fixtures, in this order:
 async def isolated_database() -> AsyncIterator[Path]:
     """Per-test fresh SQLite DB. NOT :memory: — aiosqlite :memory: is per-connection
     and xdist workers share state. tempfile.NamedTemporaryFile + EventStore.connect
-    gives one DB per test even under -n auto."""
+    gives one DB per test even under -n auto.
+
+    FIX round-6: EventStore takes a Database instance, not a Path. We construct
+    a Database wrapping the temp SQLite file. The fixture yields the path so
+    downstream code can use it for direct aiosqlite operations if needed.
+    """
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         path = Path(f.name)
-    store = EventStore(path)
+    db = Database(path)  # FIX round-6: real EventStore constructor takes Database
     try:
-        await store.initialize()
-        yield path
+        yield path  # Yield the path; downstream code creates its own EventStore(db)
     finally:
-        await store.close()
         path.unlink(missing_ok=True)
 ```
 
@@ -143,9 +147,12 @@ async def worktree_manager_factory(
     from mahavishnu.core.worktree import WorktreeManager
 
     settings = get_settings()
+    # FIX round-6: WorktreeManager takes a Database, not a Path, and EventStore
+    # takes a Database, not a Path. Construct both from the isolated_database path.
+    db = Database(isolated_database)
     mgr = WorktreeManager(
         base_path=settings.worktree_storage.storage_root,
-        event_store=EventStore(isolated_database),
+        event_store=EventStore(db),
     )
     yield mgr
 ```
@@ -387,11 +394,11 @@ class TestEcosystemIntakeTestClient:
 @pytest.mark.req(["REQ-002"])
 class TestFrozenClock:
     def test_freezes_time_time(self, frozen_clock) -> None:
-        # FIX (round-5): 1737946800 corresponds to 2025-01-23 (wrong year!).
-        # The freeze_time is at "2026-09-26T12:00:00Z" which is ~1789753200.
-        # Original assertion passed vacuously because abs=1.0 accepts any
-        # timestamp within ±1s of the wrong value.
-        assert time.time() == pytest.approx(1789753200.0, abs=1.0)
+        # FIX round-6: 2026-09-26T12:00:00Z corresponds to Unix timestamp 1790424000.
+        # Round-5 used 1789753200 (which is 2026-09-18T17:42:00Z — wrong).
+        # Original used 1737946800 (2025-01-27T03:00:00Z — wrong year).
+        # Correct: 1790424000.
+        assert time.time() == pytest.approx(1790424000.0, abs=1.0)
 
     def test_freezes_datetime_now(self, frozen_clock) -> None:
         now = datetime.now(UTC)

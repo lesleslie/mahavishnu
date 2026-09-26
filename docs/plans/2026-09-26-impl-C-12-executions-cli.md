@@ -13,6 +13,10 @@ Add a Typer CLI to surface execution history. The CLI reads from the `execution_
 ## Pre-flight checks
 
 1. **C-3 has landed.** `get_execution_events(execution_id) -> list[ExecutionEvent]` exists at `mahavishnu/core/event_store.py`.
+
+   FIX round-6: C-12 imports `ExecutionEvent` and `get_execution_events` from `mahavishnu.core.event_store` — these do NOT exist until C-3 lands. Without C-3 first, the import will fail at module load. **Hard dependency on C-3** (not just on tests via shared fixtures). The pre-flight must verify C-3's commit is in main before C-12 can land.
+
+   Additional FIX round-6: the existing `TaskEvent` and `TaskEventType` are the existing primitives; `ExecutionEvent` and `get_execution_events` are added by C-3 (per `docs/plans/2026-09-26-impl-C-3-event-history-persistence.md` lines 281-285).
 2. **`mahavishnu/_main_cli.py` exists at the package root** (per the round-4 correction). The plan registers the new sub-app at lines 164-165 of that file — NOT at `mahavishnu/cli/_main_cli.py` (which does not exist).
 3. **`mahavishnu debug` does NOT exist** anywhere (`grep -r "mahavishnu debug" mahavishnu/` returns nothing). The round-4 review rejected the original spec's "renamed from `mahavishnu debug`" rationale as vacuous — that CLI was never real.
 4. **`typer` available** (used by other Mahavishnu CLIs).

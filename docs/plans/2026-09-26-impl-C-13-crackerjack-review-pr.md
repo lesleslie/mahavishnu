@@ -49,6 +49,7 @@ from uuid import uuid4
 from crackerjack.skills.comment_poster import post_pr_comment
 from crackerjack.skills.durable_queue import DurableQueue
 from crackerjack.skills.github_client import fetch_pr_diff, GitHubAPIError
+from crackerjack.metrics import review_metrics  # FIX round-6: metrics module must be imported; `metrics.pr_review_post_total` is a NameError without it
 from oneiric.core.logging import get_logger
 
 logger = get_logger(__name__)

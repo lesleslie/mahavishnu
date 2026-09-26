@@ -15,9 +15,15 @@ The existing `mahavishnu/core/events/eventbridge_resolver.py` (`eventbridge_reso
 ## Pre-flight checks
 
 1. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.core.logging import get_logger"`. The plan uses `get_logger(__name__)` per crackerjack-compliant-code ("Use the Oneiric logger — not stdlib `logging`").
-2. **Existing publisher implementation exists.** Verify `mahavishnu/core/events/eventbridge_adapter.py` (or `mahavishnu_publisher.py`) exposes `EventBridgePublisher` with a `publish(envelope: OneiricEventEnvelope) -> None` (or similar async method). The singleton wraps this — it does not reimplement the publish logic.
+2. **Existing publisher implementation exists.** Verify `mahavishnu/core/events/eventbridge_adapter.py` exposes `EventBridgePublisher` with a `publish(envelope) -> None` async method. The singleton wraps this — it does not reimplement the publish logic.
+
+   FIX round-6: `mahavishnu/core/events/mahavishnu_publisher.py` ALSO exists (9593 bytes; exports `publish_workflow_started`, `publish_workflow_completed`, `publish_workflow_failed`, etc.) and is imported by `mahavishnu/websocket/server.py:656-674`. The new `publisher.py` (added by this plan) and `mahavishnu_publisher.py` are distinct modules. **C-5 does NOT migrate or delete `mahavishnu_publisher.py`** — that module is workflow-publish-specific (publish_workflow_started/completed/failed) and serves a different concern than the singleton helper (`safe_publish` for arbitrary envelopes). Both modules coexist in `mahavishnu/core/events/`. **Acceptance criterion #2.5: both `publisher.py` and `mahavishnu_publisher.py` exist; no import collision; `websocket/server.py` continues to import from `mahavishnu_publisher.py`.**
 3. **`mahavishnu/factories.py:_wire_eventbridge_publisher` exists.** This is where `set_publisher()` will be called at app boot.
+
+   FIX round-6: the real signature is `_wire_eventbridge_publisher(server)` (synchronous, takes a server arg, calls `resolve_event_publisher(settings, server=server, bridge=bridge)` internally). The plan's Before/After snippets showed `(server) -> EventBridgePublisher` which is correct; the new version is `_wire_eventbridge_publisher(server) -> EventBridgePublisher` (synchronous, NOT async, returns the publisher instance) and calls `set_publisher(publisher)` as a side effect.
 4. **All downstream callers of `resolve_event_publisher(server)` identified.** `grep -r "resolve_event_publisher" mahavishnu/` to enumerate the migration scope. Each caller must be updated to use `get_publisher()` instead.
+
+   FIX round-6: `tests/unit/test_eventbridge_resolver.py` exists (5 test methods, imports `resolve_event_publisher`). When C-5 deletes `eventbridge_resolver.py`, this test file becomes an orphan. **C-5 must also DELETE `tests/unit/test_eventbridge_resolver.py`** (it tests the deleted module's SUT — there is nothing left to test). Acceptance criterion updated: the test file is removed in the same commit.
 5. **C-1 has landed.** The settings section referenced in `factories.py` (likely `eventbridge:` or similar) must exist for `set_publisher()` to wire at boot.
 6. **C-3 has landed.** `IdempotencyStoreUnavailable` exception exists (used by C-6's fail-closed path; not by C-5 directly, but related wiring).
 

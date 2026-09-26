@@ -27,7 +27,7 @@ The original `pool_route_execute` had 7 positional args; this plan adds 2 (`idem
    - C-3 added `TaskEventType.PENDING = "pending"` and `IdempotencyStoreUnavailable` exception.
    - C-4 added `audit.task_events.idempotency_key` column + unique partial index.
    - C-5 added `safe_publish()` module-global for Akosha event publishing.
-2. **`mahavishnu.actions.security.HashAction` importable** with the documented payload shape: `HashAction().execute({"algorithm": "sha256", "data": "<raw-string>"})` returns `{"digest": "<hex-digest>"}`. Verify the real import path by reading `oneiric/actions/security.py` (or equivalent) — the plan's import is `from oneiric.actions.security import HashAction` per Oneiric's flat-import convention.
+2. **`mahavishnu.actions.security.HashAction` importable** with the documented payload shape: `HashAction().execute({"algorithm": "sha256", "data": "<raw-string>"})` returns `{"digest": "<hex-digest>"}`. Verify the real import path by reading `oneiric/actions/security.py` (or equivalent) — the plan's import is `from oneiric.actions.compression import HashAction  # FIX round-6: HashAction lives in compression.py, not security.py` per Oneiric's flat-import convention.
 3. **`mahavishnu.mcp.tools.pool_tools.pool_route_execute` is the dispatch entry point.** Read the existing signature to confirm the parameter list before extending. The plan assumes the existing 7-param signature is preserved with one new keyword arg.
 4. **`audit.task_events` has an `actor VARCHAR(255)` and `data JSONB`** column already (from earlier migrations; verify).
 5. **No existing `IdempotencyOptions` class** in the codebase (`grep -r "class IdempotencyOptions" mahavishnu/` returns nothing). If found, the plan is wrong — re-plan.
@@ -54,11 +54,12 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
-from oneiric.actions.security import HashAction
+from oneiric.actions.compression import HashAction  # FIX round-6: HashAction lives in compression.py, not security.py
 from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import IdempotencyStoreUnavailable
 from mahavishnu.core.event_store import TaskEvent, TaskEventType
+from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database instance, not a Path
 
 if TYPE_CHECKING:
     from mahavishnu.core.event_store import EventStore
@@ -107,7 +108,7 @@ class IdempotencyStore:
         """
         ttl_bucket = options.ttl_seconds // 3600  # 1h bucket
         raw = f"{options.source}:{options.nonce}:{payload_hash}:{ttl_bucket}"
-        result = HashAction().execute({"algorithm": "sha256", "data": raw})
+        result = await HashAction().execute({"algorithm": "sha256", "data": raw})  # FIX round-6: HashAction.execute() is async; missing await raises TypeError at runtime
         return result["digest"]  # ty: ignore[unresolved-attribute]
 
     async def _lock_for(self, key: str) -> asyncio.Lock:
@@ -134,11 +135,14 @@ class IdempotencyStore:
                 # Create new PENDING row. The DB unique constraint is the
                 # second line of defense — if a concurrent process races
                 # past the lock check, the constraint aborts the insert.
-                return await self._store.create_task_event(
-                    idempotency_key=key,
+                # FIX round-6: real EventStore API is `append()`, not `create_task_event()`.
+                # The append() signature: append(task_id, event_type, data, actor, ...).
+                # We pass idempotency_key via the data dict since append() doesn't have a dedicated field.
+                return await self._store.append(
+                    task_id=key,  # task_id serves as the idempotency_key for lookup
                     event_type=TaskEventType.PENDING,
                     actor=actor,
-                    data={"source": options.source, "nonce": options.nonce},
+                    data={"source": options.source, "nonce": options.nonce, "idempotency_key": key},
                 )
             except IdempotencyStoreUnavailable:
                 raise  # fail-CLOSED: do not dispatch without idempotency record
@@ -155,7 +159,14 @@ class IdempotencyStore:
         """Single-row in-place PENDING → COMPLETED transition."""
         event.event_type = TaskEventType.COMPLETED
         event.data = {**event.data, "result": result}
-        await self._store.update_task_event(event)
+        # FIX round-6: real EventStore API uses `append()` with updated task_id for state transitions.
+        # append() is upsert-style: same task_id overwrites the prior event.
+        await self._store.append(
+            task_id=event.task_id,  # reuse task_id to overwrite PENDING row
+            event_type=TaskEventType.COMPLETED,
+            actor=event.actor,
+            data=event.data,
+        )
         return event
 
     async def is_expired(self, event: TaskEvent, options: IdempotencyOptions) -> bool:
@@ -210,7 +221,7 @@ async def pool_route_execute(
                               extra={"error_id": "IDEMPOTENCY_STORE_UNAVAILABLE"})
             return {"status": "error", "error": "idempotency store unavailable"}
 
-        if existing.event_type == TaskEventType.SYNCED:
+        if existing.event_type == TaskEventType.COMPLETED:
             # Duplicate dispatch — return the cached result.
             logger.info("idempotency hit; returning cached result",
                          extra={"idempotency_key": existing.idempotency_key})
@@ -223,9 +234,15 @@ async def pool_route_execute(
     except Exception:
         if idempotency is not None and existing is not None:
             # Mark as FAILED so a future retry does not return stale PENDING.
-            existing.event_type = TaskEventType.UPDATED  # FAILED-ish
+            existing.event_type = TaskEventType.FAILED  # FIX round-6: FAILED = "failed" already exists in StrEnum at event_store.py:69
             existing.data = {**existing.data, "error": "dispatch failed"}
-            await event_store.update_task_event(existing)
+            # FIX round-6: real EventStore API is `append()` for state transitions.
+            await event_store.append(
+                task_id=existing.task_id,
+                event_type=TaskEventType.FAILED,
+                actor=existing.actor,
+                data=existing.data,
+            )
         raise
 
     if idempotency is not None and existing is not None:
@@ -530,7 +547,9 @@ class TestGetOrCreate:
     ) -> None:
         from mahavishnu.core.event_store import EventStore
 
-        store = EventStore(isolated_database)
+        # FIX round-6: EventStore takes a Database, not a Path.
+        db = Database(isolated_database)
+        store = EventStore(db)
         idem = IdempotencyStore(store)
         opts = IdempotencyOptions(source="cli.dispatch", nonce="first-1")
         event = await idem.get_or_create(opts, "payload-hash", actor="test")
@@ -541,7 +560,9 @@ class TestGetOrCreate:
     ) -> None:
         from mahavishnu.core.event_store import EventStore
 
-        store = EventStore(isolated_database)
+        # FIX round-6: EventStore takes a Database, not a Path.
+        db = Database(isolated_database)
+        store = EventStore(db)
         idem = IdempotencyStore(store)
         opts = IdempotencyOptions(source="cli.dispatch", nonce="first-1")
         event1 = await idem.get_or_create(opts, "payload-hash", actor="test")
@@ -552,13 +573,17 @@ class TestGetOrCreate:
         """Per REQ-007: IdempotencyStoreUnavailable → no dispatch happens."""
         from mahavishnu.core.event_store import EventStore
 
-        store = EventStore(isolated_database)
-        # Close the store to force unavailability
-        await store.close()
-        idem = IdempotencyStore(store)
-        opts = IdempotencyOptions(source="cli.dispatch", nonce="first-1")
-        with pytest.raises(IdempotencyStoreUnavailable):
-            await idem.get_or_create(opts, "payload-hash", actor="test")
+        # FIX round-6: EventStore takes a Database, not a Path; EventStore has
+        # no close() method. Simulate unavailability by patching the underlying
+        # DB connection to raise on the next execute.
+        from unittest.mock import patch
+        db = Database(isolated_database)
+        store = EventStore(db)
+        with patch.object(db, "execute", side_effect=ConnectionError("store down")):
+            idem = IdempotencyStore(store)
+            opts = IdempotencyOptions(source="cli.dispatch", nonce="first-1")
+            with pytest.raises(IdempotencyStoreUnavailable):
+                await idem.get_or_create(opts, "payload-hash", actor="test")
 
 
 @pytest.mark.req(["REQ-006"])
@@ -566,12 +591,14 @@ class TestMarkCompleted:
     async def test_pending_to_synced_transition(self, isolated_database) -> None:
         from mahavishnu.core.event_store import EventStore
 
-        store = EventStore(isolated_database)
+        # FIX round-6: EventStore takes a Database, not a Path.
+        db = Database(isolated_database)
+        store = EventStore(db)
         idem = IdempotencyStore(store)
         opts = IdempotencyOptions(source="cli.dispatch", nonce="first-1")
         event = await idem.get_or_create(opts, "payload-hash", actor="test")
         await idem.mark_completed(event, {"status": "ok", "output": "done"})
-        assert event.event_type == TaskEventType.SYNCED
+        assert event.event_type == TaskEventType.COMPLETED
         assert event.data["result"] == {"status": "ok", "output": "done"}
 
 
@@ -586,7 +613,9 @@ class TestAsyncioLockFallback:
         from mahavishnu.core.event_store import EventStore
         import asyncio
 
-        store = EventStore(isolated_database)
+        # FIX round-6: EventStore takes a Database, not a Path.
+        db = Database(isolated_database)
+        store = EventStore(db)
         idem = IdempotencyStore(store)
         opts = IdempotencyOptions(source="cli.dispatch", nonce="concurrent-1")
 
@@ -693,7 +722,7 @@ The fail-CLOSED behavior surfaces via the existing `_register_health_tools` aggr
 - **The asyncio.Lock is a fallback, not the primary defense.** The DB unique constraint (added in C-4) is the primary defense against duplicates; the lock only narrows the race window between the in-process `get_or_create` check and the DB insert.
 - **The lock dict grows unbounded.** For long-running processes, a `cachetools.LRUCache(maxsize=1024)` bounds memory. C-9's concurrency gate uses this pattern.
 - **Mark-completed is in-place UPDATE** (not insert-then-update). This matches the REQ-006 spec and avoids the audit-trail fragmentation of multiple rows for one logical event.
-- **`event_type=SYNCED` is "COMPLETED" in the existing StrEnum.** The plan uses `TaskEventType.SYNCED` because the existing enum has no `COMPLETED` value (C-3 only added `PENDING`). SYNCED is the closest existing semantic; a follow-up commit could add `COMPLETED` if naming becomes a friction point.
+- **`event_type=SYNCED` is "COMPLETED" in the existing StrEnum.** The plan uses `TaskEventType.COMPLETED` because the existing enum has no `COMPLETED` value (C-3 only added `PENDING`). SYNCED is the closest existing semantic; a follow-up commit could add `COMPLETED` if naming becomes a friction point.
 - **The Pydantic model `extra="forbid"`** prevents callers from passing unknown fields (e.g., a typo'd `idempotancy_key`). Validation error surfaces immediately.
 - **`actor="pool_route_execute"`** is a placeholder; production should pass the authenticated caller's identity. The plan does not wire auth — that's a separate concern.
 
