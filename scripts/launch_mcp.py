@@ -15,10 +15,30 @@ below wraps FastMCPServer so the launcher can drive it. See
 """
 from __future__ import annotations
 
-import asyncio
-import signal
 import sys
 from pathlib import Path
+
+# Venv bootstrap: the wrapper's shebang (`#!/usr/bin/env python3`) resolves to
+# whatever python3 is in launchd's $PATH — typically Homebrew's system python
+# (e.g. /usr/local/bin/python3 → /usr/local/Cellar/python@3.14/...). That python
+# is the SAME binary as the venv's `.venv/bin/python` (both symlink to the same
+# Homebrew cellar file), but the venv's site-packages aren't on sys.path unless
+# Python was launched via the venv's binary. Fix: prepend the venv's
+# site-packages to sys.path. Idempotent — no-op when the venv is already active
+# (sys.prefix is already under `_REPO_ROOT/.venv`).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_VENV_ROOT = _REPO_ROOT / ".venv"
+_VENV_SITE_PACKAGES = _VENV_ROOT / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+try:
+    _VENV_SITE_PACKAGES_REL = _VENV_SITE_PACKAGES.relative_to(Path(sys.prefix))
+    _IN_VENV = True
+except ValueError:
+    _IN_VENV = False
+if not _IN_VENV and _VENV_SITE_PACKAGES.is_dir():
+    sys.path.insert(0, str(_VENV_SITE_PACKAGES))
+
+import asyncio
+import signal
 
 from mcp_common.server import launch
 
