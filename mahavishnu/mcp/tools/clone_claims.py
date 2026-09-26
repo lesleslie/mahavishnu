@@ -32,8 +32,7 @@ class ConcurrentDAGError(Exception):
 # TD-m9: MCPStateBackendUnavailable is defined in state_backends/mcp.py
 # (alongside its peer MCPStateBackendError). Re-exported here for backward
 # compat with Task 6's import path.
-from mahavishnu.core.state_backends.mcp import MCPStateBackendUnavailable  # noqa: E402, F401
-
+from mahavishnu.core.state_backends.mcp import MCPStateBackendUnavailable
 
 # In-process locks keyed by cluster_id. Cross-process dedup is out of scope
 # (MCPStateBackend.put() is not CAS — see spec §3 Non-Goals + §6.4 v4 MAJOR-fix M4).
@@ -82,9 +81,7 @@ async def cluster_state_claim(
             # SF-M4: missing/None refactor_job_id (corrupt/legacy sentinel) is
             # treated as unowned — overwrite rather than raise with None.
             if existing_job_id is None:
-                logger.warning(
-                    "cluster_claim: stale sentinel at %s, overwriting", sentinel_key
-                )
+                logger.warning("cluster_claim: stale sentinel at %s, overwriting", sentinel_key)
             elif existing_job_id == refactor_job_id:
                 # Idempotent: same caller re-claiming their own job
                 return
@@ -94,7 +91,6 @@ async def cluster_state_claim(
             sentinel_key,
             {"refactor_job_id": refactor_job_id, "claimed_at": asyncio.get_event_loop().time()},
         )
-        return
 
 
 async def release_cluster_claim(
@@ -113,5 +109,6 @@ async def release_cluster_claim(
     except Exception as exc:  # noqa: BLE001 - release is best-effort
         logger.warning(
             "release_cluster_claim: delete failed for %s (%s); continuing",
-            sentinel_key, exc,
+            sentinel_key,
+            exc,
         )
