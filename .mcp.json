@@ -19,10 +19,6 @@
       "type": "http",
       "url": "http://localhost:3050/mcp"
     },
-    "dhara": {
-      "type": "http",
-      "url": "http://localhost:8683/mcp"
-    },
     "excalidraw": {
       "type": "http",
       "url": "http://localhost:3032/mcp"
@@ -60,6 +56,10 @@
     "neo4j": {
       "type": "http",
       "url": "http://localhost:3045/mcp"
+    },
+    "oneiric": {
+      "type": "http",
+      "url": "http://localhost:8681/mcp"
     },
     "penpot-api": {
       "type": "http",
