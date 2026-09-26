@@ -151,8 +151,8 @@ def build_execute_fn(
         # the canonical source; the import path through workers.base was a
         # re-export shim that we're now closing. WorkerResult stays in
         # workers/base (no canonical relocation needed).
-        from mahavishnu.workers.base import WorkerResult
         from mahavishnu.core.status import WorkerStatus
+        from mahavishnu.workers.base import WorkerResult
 
         prompt = payload.get("prompt", "")
         return WorkerResult(

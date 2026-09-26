@@ -52,11 +52,12 @@ def _extract_tool_payload(call_result: Any) -> Any:
         if isinstance(text, str):
             # Try JSON-parse for tools that return JSON strings; fall back to raw text.
             import json
+
             try:
                 parsed = json.loads(text)
                 if isinstance(parsed, (dict, list)):
                     return parsed
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
             return text
     return call_result
@@ -165,10 +166,11 @@ class SessionBuddyPool(BasePool):
             if not isinstance(pool_id, str) or not pool_id:
                 pool_id = ""
 
-            self._workers = {
-                f"{pool_id}-worker-{i}": f"worker_{i}"
-                for i in range(self.max_workers)
-            } if pool_id else {}
+            self._workers = (
+                {f"{pool_id}-worker-{i}": f"worker_{i}" for i in range(self.max_workers)}
+                if pool_id
+                else {}
+            )
             self._status = PoolStatus.RUNNING
 
             logger.info(
@@ -383,8 +385,7 @@ class SessionBuddyPool(BasePool):
                 }
 
             logger.info(
-                f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks "
-                f"in {duration:.2f}s"
+                f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks in {duration:.2f}s"
             )
 
             return task_results
@@ -585,14 +586,10 @@ class SessionBuddyPool(BasePool):
                 return
 
             try:
-                await self._call_mcp_tool(
-                    "delete_pool", {"pool_id": pool_id, "timeout": 5.0}
-                )
+                await self._call_mcp_tool("delete_pool", {"pool_id": pool_id, "timeout": 5.0})
                 self._workers.clear()
                 self._status = PoolStatus.STOPPED
-                logger.info(
-                    f"SessionBuddyPool {self.pool_id} stopped (pool_id={pool_id})"
-                )
+                logger.info(f"SessionBuddyPool {self.pool_id} stopped (pool_id={pool_id})")
             except MCPServerError as e:
                 logger.error(f"Failed to stop SessionBuddyPool {self.pool_id}: {e}")
                 # Local cleanup happens regardless so the Mahavishnu-side

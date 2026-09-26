@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ---- Typed exceptions (REQ-CLONE-013) ------------------------------------
 
+
 class GitApplyConflictError(Exception):
     """Structured conflict from `git apply --check`. Never retried."""
 
@@ -172,6 +173,7 @@ async def _run_git(
 
 # ---- Public API -----------------------------------------------------------
 
+
 async def git_apply(repo_path: Path, diff: str) -> None:
     """Apply diff via stdin. Raises GitApplyConflictError on conflict."""
     # Validate path
@@ -200,9 +202,7 @@ async def git_apply(repo_path: Path, diff: str) -> None:
             error_lines = [
                 ln.strip()
                 for ln in msg.split("\n")
-                if ln.strip()
-                and "git apply" not in ln.lower()
-                and "exit=" not in ln
+                if ln.strip() and "git apply" not in ln.lower() and "exit=" not in ln
             ]
             conflict_marker = error_lines[0] if error_lines else msg[:200].strip()
         raise GitApplyConflictError(
@@ -271,9 +271,7 @@ async def stash_pop(repo_path: Path, stash_ref: str = "stash@{0}") -> None:
     Implements: REQ-CLONE-011
     """
     repo_path = repo_path.resolve()
-    _, stderr, exit_code = await _run_git(
-        repo_path, "stash", "pop", stash_ref, check=False
-    )
+    _, stderr, exit_code = await _run_git(repo_path, "stash", "pop", stash_ref, check=False)
     if exit_code != 0:
         raise StashPopFailedError(stderr=stderr, exit_code=exit_code)
 

@@ -4,7 +4,7 @@
 **Locked**: 2026-09-25 (Demo Track, Phase 0)
 **Branch**: local `main` (Bodai pre-1.0 merge-to-main policy)
 
----
+______________________________________________________________________
 
 ## Q1 — Duplicate-class sweep (`WorkerResult`, `WorkerConfig`, `TaskResult`)
 
@@ -16,11 +16,12 @@ mahavishnu/workers/registry.py:63:class WorkerConfig:                    (regist
 ```
 
 **Status**: NO action items.
+
 - `TaskResult(BaseModel)` in `pydantic_ai_adapter.py:268` is inside a `>>>` docstring example — false positive.
 - `core/config.py:1552 WorkerConfig(BaseModel)` is a Pydantic **config schema** (different from registry.py's **registry dataclass**). Naming collision only; no behavior overlap. OUT OF SCOPE per size/efficiency audit.
 - `workers/base.py:15 WorkerResult` is the live one. `workers/registry.py:63 WorkerConfig` is the live one. Phase 5b already verifies the canonicalization of `WorkerStatus` — no parallel action for `WorkerResult`/`WorkerConfig` needed.
 
----
+______________________________________________________________________
 
 ## Q2 — `_exec_guard.py` callers
 
@@ -33,7 +34,7 @@ tests/unit/workers/test_shepherd_backend.py (live test, KEEP)
 
 **Decision (locked)**: `_exec_guard.py` is KEEP. After Phase 4.5b deletes `apple_container.py` and `e2b_sandbox.py`, only `shepherd_backend.py` remains as a caller. `_exec_guard.py` lives.
 
----
+______________________________________________________________________
 
 ## Q3 — 18 test file pre-flight (Phase 4.5b deletion list)
 
@@ -60,7 +61,7 @@ tests/unit/test_cloud_worker.py                      19533 bytes — exists
 
 **All 18 test files exist on disk.** Phase 4.5b's `git rm` batch can proceed.
 
----
+______________________________________________________________________
 
 ## Q4 — `_main_cli.py` dead-class imports
 
@@ -71,7 +72,7 @@ $ git grep -nE "AppleContainerWorker|ApplicationWorker|CrowWorker|E2BSandboxWork
 
 **Correction to v3 plan**: Agent C's inventory cited line numbers (73, 74, 76, 1421, 1438, 1563, 1564, 1570, 1571) for `_main_cli.py`. **Those references are stale.** The current `_main_cli.py` has zero dead-class imports. Phase 4.5b's `_main_cli.py` audit subtask is **dropped** — no work to do there.
 
----
+______________________________________________________________________
 
 ## Q5 — `StateManager` in `workers/task_router.py`
 
@@ -88,7 +89,7 @@ $ git grep -nE "StateManager" mahavishnu/workers/task_router.py
 > above is preserved as a record of the original Phase-0 verification; the
 > grep would now return "no such file or directory" rather than "(no matches)".
 
----
+______________________________________________________________________
 
 ## Q6 — `cloud_worker.py` task_router import line
 
@@ -98,7 +99,7 @@ mahavishnu/workers/cloud_worker.py:25: from .task_router import (
 
 **Decision (locked)**: Phase 3b must update this line to `from ..core.model_routing import (` — runtime import path.
 
----
+______________________________________________________________________
 
 ## Q7 — `pool_route_execute` reference enumeration
 
@@ -121,7 +122,7 @@ docs/archive/sprints-and-fixes/POOL_IMPLEMENTATION_PROGRESS.md:65,218  (archive 
 
 **Decision (locked)**: Archive documents (`docs/archive/**`) — leave alone per v3's "Optional polish" decision. Current docs (`docs/adr/`, `docs/architecture/`, `docs/POOL_ARCHITECTURE.md`, `docs/POOL_MIGRATION.md`, `docs/SHEPHERD_BACKEND.md`, `docs/BUDGET_ENFORCEMENT.md`, `docs/WORKFLOW_DIAGRAMS.md`) **already describe the tool as live** — Phase 2m's implementation matches, so no doc edits needed in Demo Track.
 
----
+______________________________________________________________________
 
 ## Q8 — `pools_enabled` config-gate
 
@@ -131,7 +132,7 @@ mahavishnu/mcp/lifecycle.py:52:        server.app.config, "pools_enabled", True
 
 **Decision (locked)**: Phase 1m MUST preserve the `pools_enabled` config-gate as the FIRST check in `init_pool_manager`, before the `try/except`. This keeps the opt-out path unchanged.
 
----
+______________________________________________________________________
 
 ## Phase 0 Lock Decision
 
@@ -146,7 +147,7 @@ mahavishnu/mcp/lifecycle.py:52:        server.app.config, "pools_enabled", True
 
 **PHASE 0 LOCKED — Demo Track Phase 1m, Phase 2m, and Phase 7 may proceed.**
 
----
+______________________________________________________________________
 
 ## Memory (for plan execution)
 

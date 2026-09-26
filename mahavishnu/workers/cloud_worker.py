@@ -21,8 +21,6 @@ from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
 
-from .base import BaseWorker, WorkerResult
-
 from ..core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
@@ -32,6 +30,7 @@ from ..core.model_routing import (
     get_rate_limiter,
     routing_to_task_map,
 )
+from .base import BaseWorker, WorkerResult
 
 logger = logging.getLogger(__name__)
 

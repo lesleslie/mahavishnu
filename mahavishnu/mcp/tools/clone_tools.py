@@ -54,6 +54,7 @@ from uuid import uuid7 as _new_uuid7
 # fields are valid in settings.
 # ---------------------------------------------------------------------------
 
+
 def _build_mcp_backend(app: Any | None = None) -> MCPStateBackend:
     """Build the module-level MCPStateBackend singleton.
 
@@ -61,17 +62,24 @@ def _build_mcp_backend(app: Any | None = None) -> MCPStateBackend:
     by register_clone_tools() (with `app`) for production reconfiguration.
     Tests monkeypatch the resulting `mcp_backend` module attribute.
     """
-    url = getattr(app, "mcp_url", "http://localhost:8683") if app is not None else "http://localhost:8683"
+    url = (
+        getattr(app, "mcp_url", "http://localhost:8683")
+        if app is not None
+        else "http://localhost:8683"
+    )
     settings = getattr(app, "settings", None) if app is not None else None
     mcp_state_cfg = getattr(settings, "mcp_state", None) if settings is not None else None
     return MCPStateBackend(
         base_url=url,
         config=MCPStateConfig(
             enabled=getattr(mcp_state_cfg, "enabled", True) if mcp_state_cfg else True,
-            flush_interval_seconds=getattr(mcp_state_cfg, "flush_interval_seconds", 60) if mcp_state_cfg else 60,
+            flush_interval_seconds=getattr(mcp_state_cfg, "flush_interval_seconds", 60)
+            if mcp_state_cfg
+            else 60,
             max_routing_buffer_age_seconds=(
                 getattr(mcp_state_cfg, "max_routing_buffer_age_seconds", 3600)
-                if mcp_state_cfg else 3600
+                if mcp_state_cfg
+                else 3600
             ),
         ),
     )

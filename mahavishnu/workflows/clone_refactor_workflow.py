@@ -38,6 +38,7 @@ def _git_commit_transient_retry_predicate(task: Any, run: Any, state: Any) -> bo
     """
     return isinstance(state.data, _git_ops.GitCommitTransientError)
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +108,7 @@ class DAGResult:
 
 # ---- Commit-message convention (REQ-CLONE-012) ---------------------------
 
+
 def commit_message(refactor_job_id: str, repo: str, extracted_symbol: str) -> str:
     """Format the consumer-write commit message. Includes refactor-job header
     so operators can grep `git log --grep="^refactor-job:"` to disambiguate
@@ -123,6 +125,7 @@ def commit_message(refactor_job_id: str, repo: str, extracted_symbol: str) -> st
 
 
 # ---- Step functions (@task) ----------------------------------------------
+
 
 @task(name="detect_cluster_members", retries=0)
 async def detect_cluster_members(cluster_id: str, repos: list[str]) -> list[RepoHit]:
@@ -197,7 +200,8 @@ async def write_canonical_symbol(
         # on the result with the captured SHA (was previously discarded).
         logger.warning(
             "write_canonical_symbol: stash pop failed (sha=%s, stderr=%s)",
-            sha, spf.stderr,
+            sha,
+            spf.stderr,
         )
         return RepoCommit(
             repo=target_repo,
@@ -273,7 +277,8 @@ async def write_replacement_diff(
         # C3 fix: preserve captured SHA on stash_pop failure.
         logger.warning(
             "write_replacement_diff: stash pop failed (sha=%s, stderr=%s)",
-            sha, spf.stderr,
+            sha,
+            spf.stderr,
         )
         return RepoCommit(
             repo=consumer_repo,
@@ -311,6 +316,7 @@ async def persist_dag_state(mcp_backend: MCPStateBackend, state: DAGState) -> No
 
 # ---- Per-step write helpers (REQ-CLONE-010) ------------------------------
 
+
 async def _stage_all(repo_path: Path) -> None:
     """Stage all working-tree changes for the next commit.
 
@@ -322,7 +328,11 @@ async def _stage_all(repo_path: Path) -> None:
     @task wrappers stay focused on apply→commit orchestration.
     """
     proc = await asyncio.create_subprocess_exec(
-        "git", "-C", str(repo_path), "add", "-A",
+        "git",
+        "-C",
+        str(repo_path),
+        "add",
+        "-A",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -387,12 +397,14 @@ def _dataclass_to_dict(obj: Any) -> dict[str, Any]:
     Falls back to __dict__ for non-dataclass objects (e.g., BaseException).
     """
     from dataclasses import asdict, is_dataclass
+
     if is_dataclass(obj) and not isinstance(obj, type):
         return asdict(obj)
     return obj.__dict__
 
 
 # ---- @flow orchestrator ---------------------------------------------------
+
 
 # SF-M5: re-entry guard. Raised if the same refactor_job_id is invoked twice
 # (operator re-run, or cross-process race that slipped past cluster_claim).
@@ -444,9 +456,7 @@ async def run_clone_refactor_dag(
     try:
         # Phase 1: detect
         hits = await detect_cluster_members(cluster_id, [target_repo, *consumer_repos])
-        await _write_step_outcome(
-            mcp_backend, refactor_job_id, "detect", {"hits": len(hits)}
-        )
+        await _write_step_outcome(mcp_backend, refactor_job_id, "detect", {"hits": len(hits)})
 
         # Phase 2: propose (target)
         target_commit = await write_canonical_symbol(
@@ -464,7 +474,9 @@ async def run_clone_refactor_dag(
             diff = (consuming_diffs or {}).get(repo)
             if diff is None:
                 return RepoCommit(
-                    repo=repo, sha=None, status="failed",
+                    repo=repo,
+                    sha=None,
+                    status="failed",
                     error_type="MissingConsumingDiff",
                     error_stderr=f"No consuming_diffs entry for {repo}",
                 )
@@ -472,7 +484,9 @@ async def run_clone_refactor_dag(
                 return await write_replacement_diff(refactor_job_id, repo, diff)
             except Exception as exc:  # noqa: BLE001 — REQ-CLONE-010 failure-path: convert unanticipated exception to typed RepoCommit
                 return RepoCommit(
-                    repo=repo, sha=None, status="failed",
+                    repo=repo,
+                    sha=None,
+                    status="failed",
                     error_type=type(exc).__name__,
                     error_stderr=str(exc),
                     error_diff_offset=getattr(exc, "diff_offset", None),
@@ -481,9 +495,7 @@ async def run_clone_refactor_dag(
                 )
 
         # TD-m4: consumer_commits is a tuple (RepoCommit is frozen)
-        consumer_commits = tuple(
-            await asyncio.gather(*(_run_consumer(r) for r in consumer_repos))
-        )
+        consumer_commits = tuple(await asyncio.gather(*(_run_consumer(r) for r in consumer_repos)))
         await _write_step_outcome(
             mcp_backend,
             refactor_job_id,
@@ -534,5 +546,6 @@ async def run_clone_refactor_dag(
         except Exception as release_exc:  # noqa: BLE001 — best-effort claim release; never shadow original exception per SF-B3
             logger.warning(
                 "release_cluster_claim failed for cluster_id=%s (%s); continuing",
-                cluster_id, release_exc,
+                cluster_id,
+                release_exc,
             )

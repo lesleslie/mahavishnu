@@ -25,13 +25,33 @@ _MCP_FAILURE_THRESHOLD = 3
 _MCP_RECOVERY_SECONDS = 30.0
 
 # SF-M2: reserved LogRecord attrs that would collide with logger.warning(extra=...)
-_RESERVED_LOGRECORD_ATTRS = frozenset({
-    "name", "msg", "args", "levelname", "levelno", "pathname",
-    "filename", "module", "exc_info", "exc_text", "stack_info",
-    "lineno", "funcName", "created", "msecs", "relativeCreated",
-    "thread", "threadName", "processName", "process", "message",
-    "asctime", "key",  # 'key' is reserved in some impls; keep for safety
-})
+_RESERVED_LOGRECORD_ATTRS = frozenset(
+    {
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
+        "asctime",
+        "key",  # 'key' is reserved in some impls; keep for safety
+    }
+)
 
 
 def _safe_extra(ctx: dict[str, Any] | None) -> dict[str, Any]:

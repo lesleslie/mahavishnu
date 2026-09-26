@@ -818,14 +818,12 @@ def init_pool_manager(app: Any) -> Any:
             getattr(exc, "name", None) or exc,
         )
         return None
-    except Exception as exc:
+    except Exception:
         # Hard error — TypeError, RuntimeError, ValueError, etc. These are real
         # bugs (bad config, ACL misconfig, message bus init failure). Surface via
         # full traceback so an operator sees the real failure instead of a silent
         # None. Per Plan v3 Phase 1m.
-        logger.exception(
-            "Pool manager hard failure — see traceback; this is a real bug"
-        )
+        logger.exception("Pool manager hard failure — see traceback; this is a real bug")
         raise
 
 

@@ -51,6 +51,7 @@ from mahavishnu.workers.shepherd_backend import (
 )
 
 __all__ = [
+    "WORKER_REGISTRY",
     "BaseWorker",
     "CloudWorker",
     "CloudWorkerConfig",
@@ -60,7 +61,6 @@ __all__ = [
     "ShepherdJailUnavailableError",
     "WorkerCategory",
     "WorkerConfig",
-    "WORKER_REGISTRY",
     "WorkerManager",
     "WorkerResult",
     "WorkerStatus",

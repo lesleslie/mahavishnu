@@ -40,10 +40,8 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
             from ..core.bootstrap import init_pool_manager
 
             server.app.pool_manager = init_pool_manager(server.app)
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must surface hard failures
-            logger.exception(
-                "Failed to initialize pool manager during mcp start — see traceback"
-            )
+        except Exception:
+            logger.exception("Failed to initialize pool manager during mcp start — see traceback")
 
     if getattr(server.app, "memory_aggregator", None) is None and getattr(
         server.app.config, "memory_aggregation_enabled", False
@@ -52,7 +50,7 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
             from ..core.bootstrap import init_memory_aggregator
 
             server.app.memory_aggregator = init_memory_aggregator(server.app)
-        except Exception as exc:  # noqa: BLE001 - MCP boundary
+        except Exception:
             logger.exception(
                 "Failed to initialize memory aggregator during mcp start — see traceback"
             )

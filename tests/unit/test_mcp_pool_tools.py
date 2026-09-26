@@ -587,4 +587,3 @@ class TestPoolRouteExecuteTool:
         await execute(prompt="hi2", caller_kind="definitely_not_an_enum_value")
         kwargs2 = mock_pool_manager.route_task.await_args.kwargs
         assert "caller_kind" in kwargs2
-

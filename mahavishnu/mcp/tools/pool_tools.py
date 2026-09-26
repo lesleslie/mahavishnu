@@ -21,9 +21,8 @@ try:
     # and the quota error type. Each is defensive-imported so test patching
     # can inject sentinel versions without instantiating the full pools
     # package on import.
-    from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
-
     from mahavishnu.core.errors import RateLimitError
+    from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
 except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
     PoolSelector = None
     CallerKind = None
@@ -368,10 +367,8 @@ def register_pool_tools(
                 "status": "failed",
                 "error": str(exc),
             }
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-            logger.exception(
-                "Failed to route task via pool_route_execute — see traceback"
-            )
+        except Exception as exc:
+            logger.exception("Failed to route task via pool_route_execute — see traceback")
             return {
                 "status": "failed",
                 "error": str(exc),

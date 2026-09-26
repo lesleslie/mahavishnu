@@ -77,8 +77,8 @@ Each pool implements the same 8 abstract methods on `BasePool` (`start`, `execut
 If a pool delegated `execute_task` to `PoolManager.route_task`, three problems would emerge:
 
 1. **Circular dependency**: `PoolManager.route_task → pool.execute_task → PoolManager.route_task` (each pool type would have to hold a back-reference to `PoolManager`).
-2. **Double quota enforcement**: `route_task` enforces `_QuotaState` once per dispatch. If a pool re-enters `route_task`, quota is consumed twice for one user task.
-3. **Selector drift**: `route_task` may override the selector via `_apply_fitness_aware_routing` (`manager.py:703`) and `_apply_queueing_penalty`. A pool that re-enters `route_task` would get a different pool selected than itself.
+1. **Double quota enforcement**: `route_task` enforces `_QuotaState` once per dispatch. If a pool re-enters `route_task`, quota is consumed twice for one user task.
+1. **Selector drift**: `route_task` may override the selector via `_apply_fitness_aware_routing` (`manager.py:703`) and `_apply_queueing_penalty`. A pool that re-enters `route_task` would get a different pool selected than itself.
 
 ### Cross-pool routing vs. in-pool dispatch
 
