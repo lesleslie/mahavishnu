@@ -347,6 +347,20 @@ force-sort-within-sections = true
 # imports appear unused to ruff but they're consumed via
 # ``from tests.conftest import X`` from subdir conftests.
 "tests/conftest.py" = ["F401"]
+# MCPStateBackend carries three S110 sites (lines 220/239/250) inside
+# ``logger.warning(...)`` recovery paths: logging the swallowed exception
+# would itself be a logging call, risking the same recursive failure the
+# try/except was added to prevent (SF-m2 hardening — see module docstring
+# SF-M2 note + the `noqa: BLE001 - SF-m2: NEVER raises` markers in
+# source). ``MCPStateBackendUnavailable`` (line 404) is named by-design
+# to distinguish *transient substrate condition* from its peer's
+# *deterministic fault* — see module comment lines 401-403 + SF-B6
+# (cluster_state_claim raises it instead of silently returning True).
+# Override is removable once either: (a) SF-m2 silence is replaced by a
+# non-logging sink (e.g. metrics counter), or (b) the
+# Available/Error naming convention is ratified for the rest of the
+# substrate layer and the per-file carve-out becomes redundant.
+"mahavishnu/core/state_backends/mcp.py" = ["S110", "N818"]
 # Skill scripts under .claude/skills/tools/ use ``typer.Option(...)`` in
 # default args, which is the documented idiom for Typer and produces
 # B008. These aren't production code paths.
