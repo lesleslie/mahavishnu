@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.4] - 2026-09-26
+
+### Added
+
+- Add clone-refactor-wireup topic to seed vocabulary
+- clone-claims: Cluster_state_claim with in-process lock + ConcurrentDAGError
+- clone-tools: Wire clone_refactor_group to git-tree DAG
+- git-ops: _git_ops.py with typed GitCommit* exceptions (REQ-CLONE-013)
+- mahavishnu: Wire pgvector OTel storage + Postgres 16/17/18 CI matrix
+- pools: Add pool_route_execute MCP tool (Plan v3 Phase 2m)
+- state-backends: Add dag_key/cluster_key/in_flight_key + try_put_with_log_context
+- workflows: Rewrite clone_refactor_workflow.py as git-tree DAG
+
+### Changed
+
+- Atomic migration workers/task_router.py -> core/model_routing.py (Phase 3b)
+- Clone-refactor + session-buddy + worker leftovers from prior session
+- clone_claims: Drop redundant trailing return (refurb FURB125)
+- clone_tools: Extract verification-gate + cleanup helpers from clone_refactor_group
+- Close WorkerStatus stragglers in execute_fn_factory.py (Phase 5b)
+- mahavishnu: Re-export canonical AgentMetadata/SkillMetadata aliases (Phase 10 task 4)
+- session_buddy_pool: Extract pool_id/working_dirs/stitch helpers from execute_batch
+- workers: Narrow _create_isolated_worker to shepherd-only (Phase 4)
+- workers: Retire legacy isolated-worker surface (Phase 4.5b)
+- workers: Single-dispatch worker factory via _create_isolated_worker
+
+### Fixed
+
+- bootstrap: Make pool init real bugs visible (Plan v3 Phase 1m)
+- clone-tools: Address multi-agent review's CRITICAL findings
+- clone_tools: Restore REJECT-path observability log
+- docs: Resolve 12 frontmatter validation errors (status/role/date/topic)
+- git-ops: Add coverage for GitCommandTimeout, StashPopFailed, signal exit paths
+- git-ops: Apply Error suffix to _git_ops exception classes (N818)
+- git-ops: Move pathlib.Path annotation into TYPE_CHECKING (TC003)
+- pool_tools: Guard RateLimitError catch against defensive-import sentinel
+- pools: SessionBuddyPool re-pointed at structured pool tools
+- workflows: Silence Prefect AsyncMock warnings + add REQ-CLONE-016 cancellation test
+
+### Documentation
+
+- adr: Re-evaluate LangGraph as engine adapter (Phase 6)
+- CloudWorker retirement decision — KEEP
+- drift: Migrate 10 task_router refs + retire 2 stale worker trackers + fix pool ASCII
+- feature-tracking: Record Task 1 P0 probe — substrate unreachable, deferred
+- plan: Clone-refactor wire-up v2 — review-pass feedback applied
+- plan: Clone-refactor wire-up v3 — re-review sweep applied
+- plan: Clone-refactor wire-up v4 — final review pass sweep applied
+- plans: Add Phase 0 inventory lock for orchestrator fix
+- Pool + worker MCP tool audit (Plan §10 #1, #2, #5)
+- pools: Substrate-wrapper rationale + Plan §10 #5 resolution (v4)
+- portfolio: Retire D-AUDIT and update D-OBJ-SCHEMA scope (Wave 2 follow-up)
+- Refine LangGraph ADR with §10 follow-up evidence (same-day refresh)
+- spec: Clone-refactor wire-up + dispatch_to_pool env-failure design (v1)
+- spec: Clone-refactor wire-up design (v2) — multi-reviewer feedback applied
+- spec: Clone-refactor wire-up design (v3) — final-review-pass feedback applied
+- spec: Clone-refactor wire-up design (v4) — sanity-check fixes
+
+### Testing
+
+- workers: Pin retired-worker_type ValueError contract
+
+### Internal
+
+- clone-tools: Post-wireup polish
+- lint: Silence S110/N818 fast-hook findings in MCPStateBackend
+- Remove .github/workflows/ci.yml (Bodai uses crackerjack per feedback-bodai-no-provider-specific-ci.md)
+
 ## [0.28.2] - 2026-09-24
 
 ### Documentation
