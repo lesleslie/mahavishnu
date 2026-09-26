@@ -138,6 +138,75 @@ class CloneTools:
         if self._store is None and getattr(app, "settings", None) is not None:
             self._store = build_default_store(app)
 
+    @staticmethod
+    def _validate_clone_refactor_inputs(
+        cluster_id: str,
+        target_repo: str,
+        extracted_symbol: str,
+    ) -> None:
+        """Validate ingress args for clone_refactor_group.
+
+        Raises ValueError on invalid_cluster_id or null-byte input
+        (REQ-CLONE-015). Pure sync check — extracted from
+        ``clone_refactor_group`` to drop its cyclomatic complexity.
+        """
+        if not CLUSTER_ID_RE.match(cluster_id):
+            raise ValueError(f"invalid_cluster_id: {cluster_id!r}")
+        for arg_name, arg_val in (
+            ("cluster_id", cluster_id),
+            ("target_repo", target_repo),
+            ("extracted_symbol", extracted_symbol),
+        ):
+            if "\x00" in arg_val:
+                raise ValueError(f"invalid_{arg_name}: contains null byte")
+
+    @staticmethod
+    async def _run_verification_gate(
+        proposal: Proposal,
+        app: Any,
+        store: Any | None,
+    ) -> tuple[VerificationResult, dict[str, Any], str]:
+        """Run verify_proposal and return (result, payload, decision).
+
+        ``decision`` is "propose_approve" or "blocked_by_verification".
+        On REJECT, the caller is responsible for releasing the cluster
+        claim — this helper does NOT touch the claim (separation of
+        concerns; the same caller code path handles REJECT and
+        exception-driven cleanup).
+
+        Extracted from ``clone_refactor_group`` to drop its cyclomatic
+        complexity; the verification gate has its own decision tree
+        (verify → persist → REJECT?) that does not need to live inline.
+        """
+        verification_result = await verify_proposal(proposal)
+        if store is not None:
+            verification_result = await store.persist(verification_result)
+        verification_payload = verification_result.model_dump(mode="json")
+        decision = "propose_approve"
+        if (
+            is_verification_enabled(app)
+            and verification_result.consensus == Consensus.REJECT
+        ):
+            decision = "blocked_by_verification"
+        return verification_result, verification_payload, decision
+
+    @staticmethod
+    async def _cleanup_on_failure(
+        claim_acquired: bool,
+        mcp_backend: MCPStateBackend,
+        cluster_id: str,
+    ) -> None:
+        """Release the cluster claim if we held it.
+
+        Used by every except arm that fires AFTER ``claim_acquired``
+        was set, plus the REJECT early-return path. Mirrors the
+        post-claim claim-release discipline (REQ-CLONE-001 +
+        REQ-CLONE-016 semantics) so the body of ``clone_refactor_group``
+        reads as a linear flow.
+        """
+        if claim_acquired:
+            await release_cluster_claim(mcp_backend, cluster_id)
+
     async def _scan_repos_for_clones(
         self,
         repos: list[str] | None,
@@ -295,18 +364,9 @@ class CloneTools:
             MCPStateBackendUnavailable: substrate circuit is open (REQ-CLONE-014).
             asyncio.CancelledError: client cancelled mid-flight (REQ-CLONE-016).
         """
-        # Change C: cluster_id normalization (REQ-CLONE-015)
-        if not CLUSTER_ID_RE.match(cluster_id):
-            raise ValueError(f"invalid_cluster_id: {cluster_id!r}")
-
+        # Change C: cluster_id normalization (REQ-CLONE-015) +
         # SF-m4: reject null bytes in ingress args
-        for arg_name, arg_val in (
-            ("cluster_id", cluster_id),
-            ("target_repo", target_repo),
-            ("extracted_symbol", extracted_symbol),
-        ):
-            if "\x00" in arg_val:
-                raise ValueError(f"invalid_{arg_name}: contains null byte")
+        self._validate_clone_refactor_inputs(cluster_id, target_repo, extracted_symbol)
 
         # Change D: UUID7 (REQ-CLONE-007) — time-sortable, lexicographic
         refactor_job_id = str(_new_uuid7())
@@ -330,7 +390,8 @@ class CloneTools:
             await cluster_state_claim(mcp_backend, cluster_id, refactor_job_id)
             claim_acquired = True
 
-            # Phase 1 (Task 1.3): verify_proposal before spawning DAG
+            # Phase 1 (Task 1.3): verify_proposal before spawning DAG.
+            # See ``_run_verification_gate`` for the REJECT decision tree.
             proposal = Proposal(
                 proposal_id=refactor_job_id,
                 proposal_type="clone_refactor",
@@ -341,26 +402,12 @@ class CloneTools:
                     "refactor_job_id": refactor_job_id,
                 },
             )
-            verification_result = await verify_proposal(proposal)
-            if self._store is not None:
-                verification_result = await self._store.persist(verification_result)
-            verification_payload = verification_result.model_dump(mode="json")
-
-            decision = "propose_approve"
-            if (
-                is_verification_enabled(self.app)
-                and verification_result.consensus == Consensus.REJECT
-            ):
+            _, verification_payload, decision = await self._run_verification_gate(
+                proposal, self.app, self._store
+            )
+            if decision == "blocked_by_verification":
                 # REQ-CLONE-001: REJECT blocks DAG. Release claim, return early.
-                decision = "blocked_by_verification"
-                logger.info(
-                    "clone_refactor_group: decision=blocked_by_verification "
-                    "job=%s cluster=%s consensus=%s",
-                    refactor_job_id,
-                    cluster_id,
-                    verification_result.consensus.value,
-                )
-                await release_cluster_claim(mcp_backend, cluster_id)
+                await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
                 claim_acquired = False
                 return {
                     "refactor_job_id": refactor_job_id,
@@ -408,21 +455,18 @@ class CloneTools:
 
         except asyncio.CancelledError:
             # SF-B1: cancellation anywhere after claim acquisition; release.
-            if claim_acquired:
-                await release_cluster_claim(mcp_backend, cluster_id)
+            await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
             raise
-        except ConcurrentDAGError:
-            # Claim rejected by cluster_state_claim (sentinel owned by another job);
-            # we never acquired, so no release.
-            raise
-        except MCPStateBackendUnavailable:
-            # SF-M6: surface to MCP client as 503. Cluster_claim raised before
-            # the sentinel was overwritten; no claim to release.
+        except (ConcurrentDAGError, MCPStateBackendUnavailable):
+            # ConcurrentDAGError: claim rejected by cluster_state_claim (sentinel
+            # owned by another job) — we never acquired, no release.
+            # MCPStateBackendUnavailable (SF-M6): surface to MCP client as 503;
+            # cluster_claim raised before the sentinel was overwritten — no claim.
+            # Both paths share "raise without cleanup".
             raise
         except Exception:
             # Any other exception: release claim (if acquired) before re-raising.
-            if claim_acquired:
-                await release_cluster_claim(mcp_backend, cluster_id)
+            await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
             raise
 
     async def get_verification_result(self, proposal_id: str) -> dict[str, Any]:
