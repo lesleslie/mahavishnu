@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-09-26
+
+### Added
+
+- Migrate launcher to mcp_common.server.launcher.launch()
+
+### Fixed
+
+- wrapper: Prepend venv site-packages so mcp_common is importable from system python
+- wrapper: Use site.addsitedir to process .pth files in venv site-packages
+
+### Documentation
+
+- mahavishnu: Align launcher-discovery frontmatter role with cj twin
+- mahavishnu: Phase 4a launcher migration design note (REQ-013)
+
+### Internal
+
+- mahavishnu: Bring .gitignore into Bodai canonical conformance
+- mahavishnu: Broken plan links + mdformat/ruff-format hygiene
+- mahavishnu: Decommission Dhara from .mcp.json + refresh uv.lock
+- MCP launcher migration audit script (REQ-012, REQ-015)
+- MCP server migration tracker (REQ-012, REQ-015)
+
 ## [0.28.4] - 2026-09-26
 
 ### Added
