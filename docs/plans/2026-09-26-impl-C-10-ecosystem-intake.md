@@ -82,13 +82,24 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
     if len(payload) > settings.webhook_intake.max_payload_size_bytes:
         return JSONResponse({"status": "too_large"}, status_code=413)
     try:
+        # FIX round-8 (Tier 4): the actual code path must produce structured
+        # dict payloads, not sanitized strings. The previous code passed
+        # `payload.decode(errors="replace")` (a STRING) to DataSanitizeAction,
+        # which returns a dict with `{"data": <sanitized-string>}` — but
+        # consumers (C-13) read `payload.data.pr_url` (dict access). This
+        # raises AttributeError at consumer side. The fix: parse JSON before
+        # sanitize, then sanitize the dict, then emit a dict payload.
+        try:
+            raw_body = json.loads(payload.decode(errors="replace"))
+        except json.JSONDecodeError:
+            # Non-JSON body — sanitize as text but emit empty data dict
+            raw_body = {"_raw": payload.decode(errors="replace")}
+
         sanitized = await DataSanitizeAction().execute({
-            "data": payload.decode(errors="replace"),
+            "data": raw_body,
             "mask_fields": ["Authorization", "token", "key", "secret"],
         })
-        # FIX (round-5 INC-4): structured payload schema. Each source type
-        # emits typed fields; consumers (C-13 crackerjack review-pr) read
-        # typed fields instead of parsing sanitized strings. The schema is:
+        # Schema:
         #   {
         #     "source": "<source_name>",
         #     "data": {
@@ -99,12 +110,11 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
         #       # For crontroller / ops-bridge events: extend as needed
         #     },
         #   }
-        # Sanitization masks credential fields but preserves the dict structure.
         envelope = create_event_envelope(
             event_type="ecosystem.event.received",
             payload={
                 "source": source_name,
-                "data": sanitized.get("data", {}),  # FIX: was "" (string); now dict
+                "data": sanitized.get("data", {}),
             },
             source=f"mahavishnu.webhooks.ecosystem.{source_name}",
             correlation_id=str(uuid4()),

@@ -205,7 +205,12 @@ async def pool_route_execute(
 ) -> dict[str, Any]:
     settings = get_settings()
     event_store = _get_event_store()  # existing factory call
-    idem_store = IdempotencyStore(event_store)
+    # FIX round-8 (Tier 4): use the module-global singleton, NOT per-call
+    # construction. Per-call construction defeats the asyncio.Lock fallback
+    # because each call gets its own `_locks` dict — two concurrent calls
+    # with the same idempotency key cannot serialize.
+    idem_store = get_idempotency_store()
+    breaker = get_idempotency_breaker()
 
     payload_hash = _hash_prompt(prompt)  # SHA-256 of the prompt text
 
@@ -292,6 +297,30 @@ def get_idempotency_store() -> IdempotencyStore:
             "idempotency store not configured; set via set_idempotency_store() at app boot"
         )
     return _idempotency_store
+
+
+# FIX round-8 (Tier 4): also define module-global singletons for the breaker.
+# Without these, `breaker = get_idempotency_breaker()` at the call site raises
+# NameError. Per the breaker pattern, both singleton and breaker are injected
+# at app boot via factories.py:_wire_idempotency.
+_idempotency_breaker: IdempotencyCircuitBreaker | None = None
+
+
+def set_idempotency_breaker(breaker: IdempotencyCircuitBreaker | None) -> None:
+    """Inject the breaker singleton. Called by factories.py at app boot."""
+    global _idempotency_breaker
+    _idempotency_breaker = breaker
+
+
+def get_idempotency_breaker() -> IdempotencyCircuitBreaker:
+    """Return the injected breaker singleton. Returns a default instance
+    if not configured (permissive default for tests; production should
+    inject a configured breaker via set_idempotency_breaker()).
+    """
+    global _idempotency_breaker
+    if _idempotency_breaker is None:
+        _idempotency_breaker = IdempotencyCircuitBreaker()
+    return _idempotency_breaker
 ```
 
 Additionally, bound the `_locks` dict with `cachetools.LRUCache(maxsize=1024)` per architecture-council recommendation (long-running processes leak memory otherwise):

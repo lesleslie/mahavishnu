@@ -23,7 +23,7 @@ The companion CLIs `mahavishnu board {init,status,validate}` provide manual boar
 
 ## Pre-flight checks
 
-1. **C-1 has landed.** `markdown_board:` settings section exists with `watcher_lag_seconds`, `state_sidecar_path`, `watch_paths` keys.
+1. **C-1 has landed.** `markdown_board:` settings section exists with `watcher_lag_seconds`, `state_sidecar_suffix`, `default_path`, `path_resolution`, `watcher_debounce_seconds`, `section_mapping` keys. FIX round-8 (Tier 4): the previous pre-flight text listed fictional keys (`state_sidecar_path`, `watch_paths`) that C-1 does NOT define. The actual keys are `state_sidecar_suffix` (a suffix, not a path — C-11 derives the path at runtime) and `default_path` (the path to the board file).
 2. **`watchfiles` available.** Per `feedback-crackerjack-gitignore-sync-dev-dep-downgrade.md`, pin to `watchfiles~=1.0,<1.1` (C-1 plan already adds this dep; verify it's there before C-11 lands).
 3. **C-3 has landed.** `record_execution_event()` + `get_execution_events()` available for board history.
 4. **C-5 has landed.** `safe_publish()` available for Akosha event emission.
