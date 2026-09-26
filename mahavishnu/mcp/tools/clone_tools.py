@@ -13,6 +13,7 @@ from mahavishnu.core.state_backends.mcp import MCPStateBackend, MCPStateConfig
 from mahavishnu.core.verification import (
     Consensus,
     Proposal,
+    VerificationResult,
     VerificationStore,
     build_default_store,
     is_verification_enabled,
@@ -402,11 +403,20 @@ class CloneTools:
                     "refactor_job_id": refactor_job_id,
                 },
             )
-            _, verification_payload, decision = await self._run_verification_gate(
-                proposal, self.app, self._store
+            verification_result, verification_payload, decision = (
+                await self._run_verification_gate(proposal, self.app, self._store)
             )
             if decision == "blocked_by_verification":
-                # REQ-CLONE-001: REJECT blocks DAG. Release claim, return early.
+                # REQ-CLONE-001: REJECT blocks DAG. Log the rejection first so
+                # operators can grep for the consensus that drove the block
+                # without re-running verify_proposal. Release claim, return early.
+                logger.info(
+                    "clone_refactor_group: decision=blocked_by_verification "
+                    "job=%s cluster=%s consensus=%s",
+                    refactor_job_id,
+                    cluster_id,
+                    verification_result.consensus.value,
+                )
                 await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
                 claim_acquired = False
                 return {
