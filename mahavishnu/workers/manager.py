@@ -19,7 +19,7 @@ from .capabilities import (
     evaluate_worker_capabilities,
     invalidate_capability,
 )
-from .registry import get_worker_config, get_worker_entry
+from .registry import WorkerConfig, get_worker_config, get_worker_entry
 
 if TYPE_CHECKING:
     from ..core.config import MahavishnuSettings
@@ -120,15 +120,15 @@ WORKER_SUPPORTED_TYPES: frozenset[str] = frozenset({"shepherd"})
 
 
 class WorkerManager:
-    """Manage worker lifecycle for concurrent task execution.
+    """Manages isolated-execution workers (``worker_type == "shepherd"`` only).
 
-    Features:
-    - Spawn multiple workers of different types
-    - Submit one-shot prompts to single-task workers
-    - Monitor worker progress
-    - Collect results with aggregation
-    - Handle failures with retries
-    - Support for terminal, container, and application workers
+    Non-isolated workloads route through ``mahavishnu/pools/``. The legacy
+    isolated-worker surface (Apple container, E2B sandbox, generic_shell,
+    application workers, gateways, A2A) was retired per
+    ``docs/decisions/2026-09-24-legacy-worker-deprecation.md``; callers
+    passing any other ``worker_type`` now receive a clear ``ValueError``
+    from :func:`_create_isolated_worker` instead of an opaque
+    ``ModuleNotFoundError`` or silent fallback.
 
     Args:
         terminal_manager: TerminalManager for terminal session control
@@ -351,22 +351,28 @@ class WorkerManager:
     def _create_worker(self, worker_type: str, **kwargs: Any) -> BaseWorker:
         """Factory method for worker creation.
 
+        After Plan v3 Phase 4.5b (legacy-worker-deprecation), every
+        dispatch flows through :func:`_create_isolated_worker` — the
+        single function that already knows how to fail loud on retired
+        worker_types via a clear ``ValueError``. ``worker_type ==
+        "shepherd"`` is the only supported type; ``ShepherdBackendWorker``
+        is returned for it. See
+        ``docs/decisions/2026-09-24-legacy-worker-deprecation.md``.
+
         Args:
-            worker_type: Type of worker to create
-            **kwargs: Additional parameters for worker (e.g., host for SSH)
+            worker_type: Type of worker to create (must be in
+                ``mahavishnu.workers.registry.WORKER_REGISTRY``).
+            **kwargs: Additional parameters for worker (e.g., host for SSH).
 
         Returns:
-            Configured worker instance
+            Configured worker instance.
 
         Raises:
-            ValueError: If worker_type is unknown
+            ValueError: If ``worker_type`` is unknown or no longer
+                supported (retired legacy surface).
             MahavishnuError: If ``required_env`` from the new registry is
                 missing from the process environment.
         """
-        # Import registry for worker type lookup
-        from .registry import WorkerCategory, get_worker_config
-
-        # Get worker config from registry
         config = get_worker_config(worker_type)
 
         if config is None:
@@ -383,146 +389,38 @@ class WorkerManager:
         # error before any terminal/shell machinery runs.
         self._validate_required_tool(worker_type)
 
-        # Create worker based on category
-        if config.category == WorkerCategory.CONTAINER:
-            return _create_isolated_worker(
-                config.worker_type,
-                self.session_buddy_client,
-                kwargs,
-            )
+        # Single dispatch: _create_isolated_worker handles every worker_type
+        # uniformly — returns ShepherdBackendWorker for "shepherd" and
+        # raises ValueError with a pointer to the migration ADR for every
+        # retired legacy type (apple-container, e2b-sandbox, container,
+        # terminal-crow, gateway-openclaw, openhands, a2a, application-*).
+        return self._create_isolated_worker_from_config(config, kwargs)
 
-        elif config.category in (
-            WorkerCategory.SHELL,
-            WorkerCategory.REMOTE,
-        ):
-            # Use GenericShellWorker for shell/REPL/SSH types
-            from .generic_shell import GenericShellWorker
+    def _create_isolated_worker_from_config(
+        self,
+        config: WorkerConfig,
+        kwargs: dict[str, Any],
+    ) -> BaseWorker:
+        """Adapter from :class:`WorkerConfig` to ``_create_isolated_worker``'s kwargs.
 
-            return GenericShellWorker(
-                terminal_manager=self.terminal_manager,
-                worker_type=worker_type,
-                config=config,
-                session_buddy_client=self.session_buddy_client,
-                **kwargs,
-            )
+        Lets :meth:`_create_worker` route every request through the
+        single dispatch that already knows how to fail loud on retired
+        worker_types. Replaces the previous category-keyed ``if``/``elif``
+        chain that hard-coded constructors for every category (all of
+        which have since been retired).
 
-        elif config.category == WorkerCategory.AI_ASSISTANT:
-            # AI assistants: dedicated class for HTTP-API workers (terminal-crow),
-            # fall through to GenericShellWorker for shell-launched ones.
-            if worker_type == "terminal-crow":
-                from .crow import CrowWorker
+        Args:
+            config: Resolved :class:`WorkerConfig` from the registry.
+            kwargs: Forwarded to :func:`_create_isolated_worker`.
 
-                return CrowWorker()
-
-            from .generic_shell import GenericShellWorker
-
-            return GenericShellWorker(
-                terminal_manager=self.terminal_manager,
-                worker_type=worker_type,
-                config=config,
-                session_buddy_client=self.session_buddy_client,
-                **kwargs,
-            )
-
-        elif config.category == WorkerCategory.APPLICATION:
-            # Application workers via MCP
-            from .application import ApplicationWorker
-
-            if self.mcp_client is None:
-                raise ValueError(
-                    f"Application worker '{worker_type}' requires MCP client. "
-                    f"Provide mcp_client parameter to WorkerManager."
-                )
-
-            return ApplicationWorker(
-                worker_type=worker_type,
-                mcp_client=self.mcp_client,
-                config=config,
-                session_buddy_client=self.session_buddy_client,
-                **kwargs,
-            )
-
-        elif config.category == WorkerCategory.GATEWAY:
-            # Gateway workers (HTTP/RPC integration)
-            if worker_type == "gateway-openclaw":
-                from .openclaw_gateway import (
-                    HTTPOpenClawGatewayClient,
-                    OpenClawGatewayConfig,
-                    OpenClawGatewayWorker,
-                )
-
-                gateway_url = kwargs.get(
-                    "gateway_url",
-                    os.getenv("OPENCLAW_GATEWAY_URL", "http://localhost:8787"),
-                )
-                token = kwargs.get("token", os.getenv("OPENCLAW_GATEWAY_TOKEN"))
-                rpc_path = kwargs.get(
-                    "rpc_path",
-                    os.getenv("OPENCLAW_GATEWAY_RPC_PATH", "/rpc"),
-                )
-                timeout = float(kwargs.get("timeout", config.default_timeout))
-                default_method = kwargs.get("default_method", "agent.run")
-
-                gateway_client = HTTPOpenClawGatewayClient(
-                    base_url=gateway_url,
-                    token=token,
-                    rpc_path=rpc_path,
-                    timeout=timeout,
-                )
-                gateway_config = OpenClawGatewayConfig(
-                    gateway_url=gateway_url,
-                    token=token,
-                    default_method=default_method,
-                    default_timeout=int(timeout),
-                )
-                return OpenClawGatewayWorker(
-                    gateway_client=gateway_client,
-                    config=gateway_config,
-                )
-
-            if worker_type == "openhands":
-                from .openhands import OpenHandsWorker
-
-                return OpenHandsWorker()
-
-            if worker_type == "a2a":
-                from .a2a import A2AAgentConfig, A2AWorker
-
-                agent_configs = kwargs.get("agent_configs")
-                if agent_configs is None and self.settings is not None:
-                    a2a_settings = getattr(self.settings, "a2a", None)
-                    settings_agents = (
-                        getattr(a2a_settings, "agents", None) if a2a_settings is not None else None
-                    )
-                    if isinstance(settings_agents, dict):
-                        agent_configs = settings_agents
-                    elif settings_agents:
-                        agent_configs = {
-                            entry.name: A2AAgentConfig(
-                                name=entry.name,
-                                url=entry.url,
-                                description=entry.description,
-                                api_key=(
-                                    os.getenv(entry.api_key_env) if entry.api_key_env else None
-                                ),
-                            )
-                            for entry in settings_agents
-                        }
-                return A2AWorker(agent_configs=agent_configs or {})
-
-            raise ValueError(f"Unknown gateway worker type: {worker_type}")
-
-        else:
-            # Fallback - try GenericShellWorker
-            from .generic_shell import GenericShellWorker
-
-            return GenericShellWorker(
-                terminal_manager=self.terminal_manager,
-                worker_type=worker_type,
-                config=config,
-                session_buddy_client=self.session_buddy_client,
-                **kwargs,
-            )
+        Returns:
+            The constructed :class:`BaseWorker`.
+        """
+        return _create_isolated_worker(
+            worker_type=config.worker_type,
+            session_buddy_client=self.session_buddy_client,
+            kwargs=kwargs,
+        )
 
     async def execute_task(
         self,
