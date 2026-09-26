@@ -1,34 +1,43 @@
-"""Tests for WorktreeStorageSettings + WorktreeCacheSettings (PR-D.0)."""
+"""Tests for WorktreeCacheSettings (kept) + WorktreeStorageSettings new shape.
+
+REQ-001: Oneiric nested settings models for 5 new sections (WorktreeStorageSettings
+replaces the previous multi-backend storage hierarchy per no-backcompat pre-1.0).
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
+import pytest
 
 from mahavishnu.core.config import (
     MahavishnuSettings,
     WorktreeCacheSettings,
-    WorktreeLocalStorageSettings,
     WorktreeStorageSettings,
 )
 
 
-def test_worktree_storage_settings_defaults() -> None:
-    s = WorktreeStorageSettings()
-    assert s.backend_preference == ["local", "s3"]
-    assert isinstance(s.local, WorktreeLocalStorageSettings)
-    assert s.s3.bucket is None
-    assert s.gcs.bucket is None
-    assert s.azure.container is None
+@pytest.mark.req(["REQ-001"])
+class TestWorktreeStorageSettingsNewShape:
+    """New spec-driven WorktreeStorageSettings shape (C-1 prep)."""
 
+    def test_loads_with_defaults(self) -> None:
+        s = WorktreeStorageSettings()
+        assert s.enabled is False
+        assert s.default_isolation == "host"
+        assert s.max_concurrent == 5
 
-def test_worktree_local_storage_default_base_path_uses_helper() -> None:
-    """Default base_path should come from get_worktree_base_path(), not
-    a hardcoded ``~/worktrees`` literal (Phase 0.3 fix)."""
-    s = WorktreeLocalStorageSettings()
-    assert isinstance(s.base_path, Path)
-    # The helper returns the configured path. We only check it's a Path,
-    # not the literal value, to avoid coupling to env-specific config.
-    assert s.base_path.is_absolute() or s.base_path.expanduser().is_absolute()
+    def test_rejects_extra_fields(self) -> None:
+        with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+            WorktreeStorageSettings(unknown_field="nope")  # type: ignore[call-arg]
+
+    def test_rejects_invalid_isolation(self) -> None:
+        with pytest.raises(ValueError, match="default_isolation"):
+            WorktreeStorageSettings(default_isolation="unknown")  # type: ignore[arg-type]
+
+    def test_max_concurrent_bounds(self) -> None:
+        with pytest.raises(ValueError, match="max_concurrent"):
+            WorktreeStorageSettings(max_concurrent=0)
+        with pytest.raises(ValueError, match="max_concurrent"):
+            WorktreeStorageSettings(max_concurrent=10_000)
 
 
 def test_worktree_cache_settings_key_prefix_is_canonical() -> None:
@@ -48,7 +57,9 @@ def test_mahavishnu_settings_exposes_worktree_blocks() -> None:
     assert isinstance(settings.worktree_cache, WorktreeCacheSettings)
     # Defaults carry through
     assert settings.worktree_cache.key_prefix == "mahavishnu:worktree-cache:"
-    assert settings.worktree_storage.backend_preference == ["local", "s3"]
+    # New shape defaults
+    assert settings.worktree_storage.enabled is False
+    assert settings.worktree_storage.max_concurrent == 5
 
 
 def test_worktree_cache_settings_env_override(monkeypatch: object) -> None:

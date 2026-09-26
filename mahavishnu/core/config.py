@@ -25,7 +25,6 @@ from pydantic._internal._utils import deep_update
 from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
 
 from ..terminal.config import TerminalSettings
-from .paths import get_worktree_base_path
 
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)
@@ -2420,77 +2419,109 @@ class DistillSettings(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Worktree storage + cache settings (ADR 015 v4 §3, §18 Phase 2)
+# Worktree storage + isolation settings (C-1 prep — pre 1.0 no-backcompat)
+# Replaces the previous multi-backend storage hierarchy. C-8 reads every
+# field on this model.
 # ---------------------------------------------------------------------------
 
 
-class WorktreeLocalStorageSettings(BaseModel):
-    """Local-storage adapter config for the worktree provider."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    base_path: Path = Field(
-        default_factory=get_worktree_base_path,
-        description="Local worktree base directory. Defaults via get_worktree_base_path().",
-    )
-    create_parents: bool = Field(
-        default=True,
-        description="Create the base_path (parents) on adapter init() if missing.",
-    )
-
-
-class WorktreeS3StorageSettings(BaseModel):
-    """S3-storage adapter config for the worktree provider."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    bucket: str | None = Field(default=None, description="S3 bucket name.")
-    region: str | None = Field(default=None, description="S3 region (e.g. us-east-1).")
-    endpoint_url: str | None = Field(
-        default=None,
-        description="Custom endpoint URL (S3-compatible: MinIO, R2, etc.).",
-    )
-
-
-class WorktreeGCSStorageSettings(BaseModel):
-    """GCS-storage adapter config for the worktree provider."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    bucket: str | None = Field(default=None, description="GCS bucket name.")
-    credentials_path: str | None = Field(
-        default=None, description="Path to GCS service-account JSON credentials."
-    )
-
-
-class WorktreeAzureStorageSettings(BaseModel):
-    """Azure-storage adapter config for the worktree provider."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    container: str | None = Field(default=None, description="Azure Blob storage container name.")
-
-
 class WorktreeStorageSettings(BaseModel):
-    """Top-level worktree storage config block.
+    """Worktree storage + isolation settings.
 
-    Each backend block is consumed by ``RemoteWorktreeProvider`` when
-    constructing the corresponding Oneiric storage adapter. ``local``
-    is consumed by ``LocalWorktreeProvider``. ``backend_preference``
-    controls the auto-selection order in ``WorktreeProviderRegistry``
-    (the first configured backend with a healthy adapter wins).
+    Per the no-backcompat policy, the spec's original ``worktree_isolation:``
+    settings are CONSOLIDATED into this existing ``worktree_storage:`` section
+    (no sibling). C-8 reads every field on this model.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    backend_preference: list[str] = Field(
-        default_factory=lambda: ["local", "s3"],
-        description="Auto-selection order for the worktree provider registry.",
+    enabled: bool = False
+    default_isolation: Literal["host", "worktree"] = "host"
+    base_branch: str = "main"
+    storage_root: str | None = None  # None = $XDG_DATA_HOME/mahavishnu/worktrees/
+    max_concurrent: int = Field(default=5, ge=1, le=100)
+    cleanup_grace_seconds: int = Field(default=300, ge=0)
+    ttl_seconds: int = Field(default=86_400, ge=60)
+
+
+class IdempotencySettings(BaseModel):
+    """Idempotency layer on ``pool_route_execute``.
+
+    Per round-4 security finding, default ``fail_mode`` is ``closed``
+    (rejected dispatch on DB outage) not ``open`` (proceed silently).
+    Operations teams can override via env var post-C-1.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    default_ttl_seconds: int = Field(default=86_400, ge=1)
+    fail_mode: Literal["open", "closed"] = "closed"
+    storage_backend: Literal["event_store", "session_buddy"] = "event_store"
+    pending_timeout_seconds: int = Field(default=30, ge=1)
+
+
+class WebhookIntakeSettings(BaseModel):
+    """C-10 simplified ecosystem intake.
+
+    Reduced surface vs original spec: no HMAC, no nonce, no DLQ,
+    no per-source secrets. Source allowlist is configured constant
+    in ``mahavishnu/webhooks/ecosystem_intake.py:ALLOWED_SOURCES``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    bind_host: str = "127.0.0.1"
+    bind_port: int = 8695  # PENDING BODAI_REPO_REGISTRY.md verification during impl
+    tls_required: bool = True
+    max_payload_size_bytes: int = Field(default=1_048_576, ge=1024)
+
+
+class ConcurrencyLimitsSettings(BaseModel):
+    """Per-TaskCategory concurrency gate (C-9).
+
+    Per round-4 security finding: this gate is per-process.
+    With N workers, effective limit is N x spec.limit.
+    Documented in ``docs/runbooks/concurrency-limit-storm.md``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = True
+    default: int | None = None  # None = unlimited
+    by_category: dict[str, ConcurrencyLimitSpec] = Field(default_factory=dict)
+
+
+class ConcurrencyLimitSpec(BaseModel):
+    """Per-category limit (referenced from ``by_category`` map)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concurrency_limit: int | None = None
+    global_override: bool = False
+    refill_rate_per_second: float = Field(default=1.0, ge=0.0)
+
+
+class MarkdownBoardSettings(BaseModel):
+    """C-11 markdown board watcher — scoped to our jot files per niche filter."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    default_path: str = ".mahavishnu/board.md"
+    path_resolution: Literal["repo", "global"] = "repo"  # restrict to repo paths
+    watcher_debounce_seconds: float = Field(default=1.0, ge=0.0)
+    watcher_lag_seconds: float = Field(default=30.0, ge=1.0)
+    state_sidecar_suffix: str = ".state.json"
+    section_mapping: dict[str, str] = Field(
+        default_factory=lambda: {
+            "backlog": "backlog",
+            "ready": "ready",
+            "in_progress": "in_progress",
+            "done": "done",
+        }
     )
-    local: WorktreeLocalStorageSettings = Field(default_factory=WorktreeLocalStorageSettings)
-    s3: WorktreeS3StorageSettings = Field(default_factory=WorktreeS3StorageSettings)
-    gcs: WorktreeGCSStorageSettings = Field(default_factory=WorktreeGCSStorageSettings)
-    azure: WorktreeAzureStorageSettings = Field(default_factory=WorktreeAzureStorageSettings)
 
 
 class WorktreeCacheSettings(BaseModel):
@@ -2757,14 +2788,33 @@ class MahavishnuSettings(BaseSettings):
         description="OpenTelemetry trace ingester configuration",
     )
 
-    # Worktree storage (ADR 015 v4 §1, §18 Phase 2)
+    # Worktree storage + isolation (C-1 prep). Replaces the previous
+    # multi-backend storage hierarchy. C-8 reads every field on this model.
     worktree_storage: WorktreeStorageSettings = Field(
         default_factory=WorktreeStorageSettings,
-        description="Worktree storage backends (local / s3 / gcs / azure).",
+        description="Worktree storage + isolation settings (C-1 prep; C-8 reads every field).",
     )
     worktree_cache: WorktreeCacheSettings = Field(
         default_factory=WorktreeCacheSettings,
         description="Worktree multi-tier cache (L1 memory + L2 Redis).",
+    )
+
+    # C-1 prep — 4 net-new top-level sections (no-backcompat, no deprecation)
+    idempotency: IdempotencySettings = Field(
+        default_factory=IdempotencySettings,
+        description="Idempotency layer on pool_route_execute (fail_mode defaults to closed).",
+    )
+    webhook_intake: WebhookIntakeSettings = Field(
+        default_factory=WebhookIntakeSettings,
+        description="C-10 simplified ecosystem intake (no HMAC, no DLQ).",
+    )
+    concurrency_limits: ConcurrencyLimitsSettings = Field(
+        default_factory=ConcurrencyLimitsSettings,
+        description="Per-TaskCategory concurrency gate (per-process; N*limit effective).",
+    )
+    markdown_board: MarkdownBoardSettings = Field(
+        default_factory=MarkdownBoardSettings,
+        description="C-11 markdown board watcher scoped to our jot files.",
     )
 
     # OpenSearch
@@ -3142,9 +3192,15 @@ __all__ = [
     "AgnoToolsConfig",
     "AuthConfig",
     "ChangepointConfig",
+    # C-1 prep sections (no-backcompat net-new models)
+    "ConcurrencyLimitSpec",
+    "ConcurrencyLimitsSettings",
     "DLQConfig",
     # Health check configuration
     "DependencyConfig",
+    "IdempotencySettings",
+    "MarkdownBoardSettings",
+    "WebhookIntakeSettings",
     "FallbackStrategy",
     # Goal-Driven Teams configuration
     "GoalParsingConfig",

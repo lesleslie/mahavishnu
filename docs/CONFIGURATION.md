@@ -574,3 +574,73 @@ See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH 
 See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M2.7 and M2.7-highspeed are fallback models. Local `llama_server` (qwen3.5) and `ollama` (qwen2.5-coder) remain secondary fallbacks.
 
 Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`); the YAML and in-code routing are intentionally pinned together.
+
+## C-1 Config Sections
+
+### `worktree_storage.*` (C-1)
+
+Replaces the previous multi-backend storage hierarchy (no sibling). C-8 reads every field.
+
+- `enabled` — `bool`, default `False`; master switch.
+- `default_isolation` — `str`, default `"host"`; `"host"` or `"worktree"`.
+- `base_branch` — `str`, default `"main"`; branch worktrees base from.
+- `storage_root` — `str | null`, default `null` → `$XDG_DATA_HOME/mahavishnu/worktrees/`.
+- `max_concurrent` — `int`, `1`-`100`, default `5`.
+- `cleanup_grace_seconds` — `int`, `≥0`, default `300`.
+- `ttl_seconds` — `int`, `≥60`, default `86400`.
+
+Env vars: `MAHAVISHNU_WORKTREE_STORAGE__ENABLED`, `MAHAVISHNU_WORKTREE_STORAGE__DEFAULT_ISOLATION`, `MAHAVISHNU_WORKTREE_STORAGE__BASE_BRANCH`, `MAHAVISHNU_WORKTREE_STORAGE__STORAGE_ROOT`, `MAHAVISHNU_WORKTREE_STORAGE__MAX_CONCURRENT`, `MAHAVISHNU_WORKTREE_STORAGE__CLEANUP_GRACE_SECONDS`, `MAHAVISHNU_WORKTREE_STORAGE__TTL_SECONDS`.
+
+### `idempotency.*` (C-1)
+
+Idempotency layer on `pool_route_execute`. Default `fail_mode` is `closed` (reject on DB outage).
+
+- `enabled` — `bool`, default `True`.
+- `default_ttl_seconds` — `int`, `≥1`, default `86400`.
+- `fail_mode` — `str`, default `"closed"`; `"open"` or `"closed"`.
+- `storage_backend` — `str`, default `"event_store"`; `"event_store"` or `"session_buddy"`.
+- `pending_timeout_seconds` — `int`, `≥1`, default `30`.
+
+Env vars: `MAHAVISHNU_IDEMPOTENCY__ENABLED`, `MAHAVISHNU_IDEMPOTENCY__DEFAULT_TTL_SECONDS`, `MAHAVISHNU_IDEMPOTENCY__FAIL_MODE`, `MAHAVISHNU_IDEMPOTENCY__STORAGE_BACKEND`, `MAHAVISHNU_IDEMPOTENCY__PENDING_TIMEOUT_SECONDS`.
+
+### `webhook_intake.*` (C-1)
+
+C-10 simplified ecosystem intake. No HMAC, no nonce, no DLQ.
+
+- `enabled` — `bool`, default `False`; master switch.
+- `bind_host` — `str`, default `"127.0.0.1"`.
+- `bind_port` — `int`, default `8695`.
+- `tls_required` — `bool`, default `True`.
+- `max_payload_size_bytes` — `int`, `≥1024`, default `1048576`.
+
+Env vars: `MAHAVISHNU_WEBHOOK_INTAKE__ENABLED`, `MAHAVISHNU_WEBHOOK_INTAKE__BIND_HOST`, `MAHAVISHNU_WEBHOOK_INTAKE__BIND_PORT`, `MAHAVISHNU_WEBHOOK_INTAKE__TLS_REQUIRED`, `MAHAVISHNU_WEBHOOK_INTAKE__MAX_PAYLOAD_SIZE_BYTES`.
+
+### `concurrency_limits.*` (C-1)
+
+Per-TaskCategory concurrency gate (per-process; effective limit = `N` workers × spec.limit).
+
+- `enabled` — `bool`, default `True`.
+- `default` — `int | null`, default `null` (unlimited).
+- `by_category` — `dict[str, ConcurrencyLimitSpec]`, default `{}`; per-category specs.
+
+`ConcurrencyLimitSpec` fields:
+
+- `concurrency_limit` — `int | null`, default `null`; per-category limit.
+- `global_override` — `bool`, default `False`.
+- `refill_rate_per_second` — `float`, `≥0.0`, default `1.0`.
+
+Env vars: `MAHAVISHNU_CONCURRENCY_LIMITS__ENABLED`, `MAHAVISHNU_CONCURRENCY_LIMITS__DEFAULT`, plus per-category `MAHAVISHNU_CONCURRENCY_LIMITS__BY_CATEGORY__<KEY>__CONCURRENCY_LIMIT`.
+
+### `markdown_board.*` (C-1)
+
+C-11 markdown board watcher scoped to our jot files.
+
+- `enabled` — `bool`, default `False`.
+- `default_path` — `str`, default `".mahavishnu/board.md"`.
+- `path_resolution` — `str`, default `"repo"`; `"repo"` or `"global"`.
+- `watcher_debounce_seconds` — `float`, `≥0.0`, default `1.0`.
+- `watcher_lag_seconds` — `float`, `≥1.0`, default `30.0`.
+- `state_sidecar_suffix` — `str`, default `".state.json"`.
+- `section_mapping` — `dict[str, str]`, default `backlog→backlog`, `ready→ready`, `in_progress→in_progress`, `done→done`.
+
+Env vars: `MAHAVISHNU_MARKDOWN_BOARD__ENABLED`, `MAHAVISHNU_MARKDOWN_BOARD__DEFAULT_PATH`, `MAHAVISHNU_MARKDOWN_BOARD__PATH_RESOLUTION`, `MAHAVISHNU_MARKDOWN_BOARD__WATCHER_DEBOUNCE_SECONDS`, `MAHAVISHNU_MARKDOWN_BOARD__WATCHER_LAG_SECONDS`, `MAHAVISHNU_MARKDOWN_BOARD__STATE_SIDECAR_SUFFIX`.

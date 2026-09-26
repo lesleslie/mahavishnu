@@ -578,3 +578,45 @@ jot:
       status_call_timeout_seconds: 30
     default_pool_selector: "least_loaded"
     default_workflow_adapter: "prefect"
+
+# C-1: append to existing settings/mahavishnu.yaml
+worktree_storage:
+  enabled: false
+  default_isolation: "host"
+  base_branch: "main"
+  storage_root: null
+  max_concurrent: 5
+  cleanup_grace_seconds: 300
+  ttl_seconds: 86400
+
+idempotency:
+  enabled: true
+  default_ttl_seconds: 86400
+  fail_mode: "closed"            # closed = reject on DB outage
+  storage_backend: "event_store"
+  pending_timeout_seconds: 30
+
+webhook_intake:
+  enabled: false
+  bind_host: "127.0.0.1"
+  bind_port: 8695               # PENDING BODAI_REPO_REGISTRY.md verification
+  tls_required: true
+  max_payload_size_bytes: 1048576
+
+concurrency_limits:
+  enabled: true
+  default: null
+  by_category: {}
+
+markdown_board:
+  enabled: false
+  default_path: ".mahavishnu/board.md"
+  path_resolution: "repo"
+  watcher_debounce_seconds: 1.0
+  watcher_lag_seconds: 30.0
+  state_sidecar_suffix: ".state.json"
+  section_mapping:
+    backlog: "backlog"
+    ready: "ready"
+    in_progress: "in_progress"
+    done: "done"
