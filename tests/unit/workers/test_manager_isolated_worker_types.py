@@ -15,8 +15,10 @@ import pytest
 
 from mahavishnu.workers.manager import (
     WORKER_SUPPORTED_TYPES,
+    WorkerManager,
     _create_isolated_worker,
 )
+from mahavishnu.workers.registry import RuntimeKind, WorkerCategory, WorkerConfig
 
 
 class TestIsolatedWorkerFactoryHappyPath:
@@ -137,3 +139,85 @@ class TestWorkerSupportedTypesMetadata:
         assert isinstance(WORKER_SUPPORTED_TYPES, frozenset)
         # Sanity: container protocol so iteration is stable.
         assert list(WORKER_SUPPORTED_TYPES) == ["shepherd"]
+
+
+# Worker types retired per docs/decisions/2026-09-24-legacy-worker-deprecation.md.
+# Every entry MUST raise ValueError from WorkerManager._create_isolated_worker_from_config
+# with a message naming the retirement, pointing to shepherd as the migration target,
+# and citing the ADR filename.
+_RETIRED_WORKER_TYPES: tuple[tuple[str, WorkerCategory], ...] = (
+    ("e2b-sandbox", WorkerCategory.CONTAINER),
+    ("apple-container", WorkerCategory.CONTAINER),
+    ("terminal-crow", WorkerCategory.AI_ASSISTANT),
+    ("a2a", WorkerCategory.GATEWAY),
+    ("openclaw", WorkerCategory.GATEWAY),
+    ("openhands", WorkerCategory.GATEWAY),
+    ("generic-shell", WorkerCategory.SHELL),
+    ("application", WorkerCategory.APPLICATION),
+    ("gateway-openclaw", WorkerCategory.GATEWAY),
+)
+
+
+class TestCreateIsolatedWorkerFromConfigContract:
+    """Pin the contract Task 1 introduced on WorkerManager._create_isolated_worker_from_config.
+
+    Task 1 refactored WorkerManager so every retired worker_type raises a
+    ValueError from a single dispatch surface. This pins the contract so
+    future refactors that silently regress the message or skip a retired
+    type fail CI rather than reaching production.
+    """
+
+    @pytest.fixture
+    def manager(self) -> WorkerManager:
+        """Build a WorkerManager with a mocked terminal_manager (unused here)."""
+        return WorkerManager(terminal_manager=MagicMock(), max_concurrent=1)
+
+    @pytest.mark.parametrize(
+        ("retired_type", "category"),
+        _RETIRED_WORKER_TYPES,
+    )
+    def test_retired_type_raises_value_error_with_advertised_message(
+        self,
+        manager: WorkerManager,
+        retired_type: str,
+        category: WorkerCategory,
+    ) -> None:
+        """ValueError must name (a) the retirement, (b) shepherd, (c) the ADR."""
+        config = WorkerConfig(
+            name=retired_type,
+            worker_type=retired_type,
+            command="",
+            category=category,
+            description=retired_type,
+            required_env=[],
+            runtime_kind=RuntimeKind.NONE,
+        )
+        with pytest.raises(ValueError) as exc_info:
+            manager._create_isolated_worker_from_config(config, {})
+
+        msg = str(exc_info.value)
+        assert "legacy isolated-worker surface has been retired" in msg, msg
+        assert "shepherd" in msg, msg
+        assert "2026-09-24-legacy-worker-deprecation.md" in msg, msg
+
+    def test_shepherd_happy_path_returns_shepherd_backend_worker(
+        self,
+        manager: WorkerManager,
+        tmp_path,
+    ) -> None:
+        """Shepherd still constructs ShepherdBackendWorker (Task 1 preserved the happy path)."""
+        config = WorkerConfig(
+            name="shepherd",
+            worker_type="shepherd",
+            command="",
+            category=WorkerCategory.CONTAINER,
+            description="shepherd OS-level syscall jail",
+            required_env=[],
+            runtime_kind=RuntimeKind.NONE,
+        )
+        worker = manager._create_isolated_worker_from_config(
+            config,
+            {"writable_root": tmp_path},
+        )
+        assert worker is not None
+        assert getattr(worker, "writable_root", None) == tmp_path
