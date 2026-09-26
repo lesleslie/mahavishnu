@@ -1,7 +1,11 @@
 ---
+status: draft
+role: implementation
+date: 2026-09-25
+last_reviewed: 2026-09-25
+topic: clone-refactor-wireup
 revision: v4
 plan_status: ready-for-execution
-last_reviewed: 2026-09-25
 prior-revision: v3 (re-review sweep applied)
 ---
 

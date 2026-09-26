@@ -4,6 +4,7 @@ role: canonical
 kind: spec
 date: 2026-09-25
 last_reviewed: 2026-09-25
+topic: clone-refactor-wireup
 revision: v4
 owner: platform-team
 scope: clone-refactor-group wire-up + dispatch-to-pool env-failure
