@@ -278,6 +278,107 @@ class SessionBuddyPool(BasePool):
                         working_dir,
                     )
 
+    @staticmethod
+    def _resolve_pool_id(workers: dict[str, Any]) -> str:
+        """Return the ``pool_id`` prefix from the first worker's id.
+
+        Raises RuntimeError if no workers are available.
+        """
+        if not workers:
+            raise RuntimeError("No workers available in pool")
+        worker_id = next(iter(workers.keys()))
+        return worker_id.rsplit("-worker-", 1)[0] if worker_id else ""
+
+    @staticmethod
+    def _collect_working_dirs(tasks: list[dict[str, Any]]) -> list[str]:
+        """Dedupe ``working_dir`` values from tasks in input order.
+
+        Raises ValueError when more than one distinct ``working_dir`` is
+        present — the underlying MCP tool accepts only one shared context.
+        Callers should split batches by ``working_dir`` beforehand.
+        """
+        working_dirs: list[str] = []
+        seen: set[str] = set()
+        for task in tasks:
+            wd = task.get("working_dir")
+            if wd and wd not in seen:
+                seen.add(wd)
+                working_dirs.append(wd)
+        if len(working_dirs) > 1:
+            raise ValueError(
+                f"execute_batch supports at most one distinct working_dir "
+                f"per batch; got {len(working_dirs)}: {working_dirs}. "
+                f"Split the batch by working_dir before calling."
+            )
+        return working_dirs
+
+    async def _mark_working_dir(self, working_dir: str) -> None:
+        """Call ``subagent_marker`` to mark ``working_dir`` before executing."""
+        await self._call_mcp_tool(
+            "subagent_marker",
+            {"working_dir": working_dir, "action": "mark"},
+        )
+
+    def _stitch_results(
+        self,
+        tasks: list[dict[str, Any]],
+        batch_results: list[Any],
+        worker_id: str,
+        duration: float,
+    ) -> dict[str, Any]:
+        """Stitch ``batch_results`` back into task_id-keyed envelopes.
+
+        Updates ``self._tasks_completed``/``self._tasks_failed`` and appends
+        to ``self._task_durations`` as a side effect.
+        """
+        for entry in batch_results:
+            status_value = (
+                entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
+            )
+            if status_value == "completed":
+                self._tasks_completed += 1
+            else:
+                self._tasks_failed += 1
+        self._task_durations.append(duration / max(len(tasks), 1))
+
+        task_results: dict[str, Any] = {}
+        for idx, task in enumerate(tasks):
+            entry = batch_results[idx] if idx < len(batch_results) else {}
+            entry = entry if isinstance(entry, dict) else {}
+            task_id = task.get("task_id") or str(idx)
+            task_results[task_id] = {
+                "pool_id": self.pool_id,
+                "worker_id": worker_id,
+                "status": entry.get("status", "unknown"),
+                "output": entry.get("output"),
+                "error": entry.get("error"),
+            }
+        return task_results
+
+    def _error_envelope(
+        self,
+        tasks: list[dict[str, Any]],
+        worker_id: str,
+        error: Exception,
+    ) -> dict[str, Any]:
+        """Build the error envelope when MCPServerError fires.
+
+        Must include ``"output": None`` for shape parity with the success path
+        (audit BUG: missing field caused KeyError in downstream
+        PoolManager consumers).
+        """
+        self._tasks_failed += len(tasks)
+        return {
+            task.get("task_id") or str(idx): {
+                "pool_id": self.pool_id,
+                "worker_id": worker_id,
+                "status": "failed",
+                "output": None,
+                "error": str(error),
+            }
+            for idx, task in enumerate(tasks)
+        }
+
     async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
         """Execute tasks via session-buddy's ``execute_batch_on_pool``.
 
@@ -296,38 +397,11 @@ class SessionBuddyPool(BasePool):
         Returns:
             Dictionary mapping task_id -> result envelope.
         """
-        if not self._workers:
-            raise RuntimeError("No workers available in pool")
-
+        pool_id = self._resolve_pool_id(self._workers)
         worker_id = next(iter(self._workers.keys()))
-        pool_id = worker_id.rsplit("-worker-", 1)[0] if worker_id else ""
-
-        # Collect the working_dirs to mark; preserve order while
-        # de-duplicating. Fail fast on multiple distinct dirs — the
-        # underlying MCP tool accepts only ONE shared context, so we
-        # can't preserve per-task working_dir semantics.
-        working_dirs: list[str] = []
-        seen: set[str] = set()
-        for task in tasks:
-            wd = task.get("working_dir")
-            if wd and wd not in seen:
-                seen.add(wd)
-                working_dirs.append(wd)
-
-        if len(working_dirs) > 1:
-            raise ValueError(
-                f"execute_batch supports at most one distinct working_dir "
-                f"per batch; got {len(working_dirs)}: {working_dirs}. "
-                f"Split the batch by working_dir before calling."
-            )
-
-        # Wrap mark loop in its own try/finally so partial mark failure
-        # doesn't leak earlier marks (defense against MCPServerError on Nth dir).
+        working_dirs = self._collect_working_dirs(tasks)
         if working_dirs:
-            await self._call_mcp_tool(
-                "subagent_marker",
-                {"working_dir": working_dirs[0], "action": "mark"},
-            )
+            await self._mark_working_dir(working_dirs[0])
 
         try:
             # Extract prompts; share the (at most one) working_dir as context.
@@ -345,13 +419,13 @@ class SessionBuddyPool(BasePool):
                     "context": context,
                 },
             )
-
             duration = time.time() - start_time
 
             # Structured response handling.
             if not result.get("success"):
-                error_msg = result.get("error", "execute_batch_on_pool returned success=False")
-                self._tasks_failed += len(tasks)
+                error_msg = result.get(
+                    "error", "execute_batch_on_pool returned success=False"
+                )
                 raise MCPServerError(error_msg)
 
             # session-buddy returns results in input order; align by index.
@@ -359,53 +433,15 @@ class SessionBuddyPool(BasePool):
             if not isinstance(batch_results, list):
                 batch_results = []
 
-            # Track statistics from per-task status.
-            for entry in batch_results:
-                status_value = (
-                    entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
-                )
-                if status_value == "completed":
-                    self._tasks_completed += 1
-                else:
-                    self._tasks_failed += 1
-            self._task_durations.append(duration / max(len(tasks), 1))
-
-            # Stitch results back into task_id-keyed envelopes.
-            task_results: dict[str, Any] = {}
-            for idx, task in enumerate(tasks):
-                entry = batch_results[idx] if idx < len(batch_results) else {}
-                entry = entry if isinstance(entry, dict) else {}
-                task_id = task.get("task_id") or str(idx)
-                task_results[task_id] = {
-                    "pool_id": self.pool_id,
-                    "worker_id": worker_id,
-                    "status": entry.get("status", "unknown"),
-                    "output": entry.get("output"),
-                    "error": entry.get("error"),
-                }
-
+            task_results = self._stitch_results(tasks, batch_results, worker_id, duration)
             logger.info(
                 f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks in {duration:.2f}s"
             )
-
             return task_results
 
         except MCPServerError as e:
             logger.error(f"Failed to execute batch on SessionBuddyPool: {e}")
-            self._tasks_failed += len(tasks)
-            # Error envelope MUST include "output": None for shape parity
-            # with the success path (audit BUG: missing field caused KeyError
-            # in downstream PoolManager consumers).
-            return {
-                task.get("task_id") or str(idx): {
-                    "pool_id": self.pool_id,
-                    "worker_id": worker_id,
-                    "status": "failed",
-                    "output": None,
-                    "error": str(e),
-                }
-                for idx, task in enumerate(tasks)
-            }
+            return self._error_envelope(tasks, worker_id, e)
         finally:
             if working_dirs:
                 try:
