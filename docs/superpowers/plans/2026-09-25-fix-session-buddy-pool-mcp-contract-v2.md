@@ -42,15 +42,18 @@
 | `mahavishnu/tests/unit/pools/test_session_buddy_pool_marker_hook.py` | mahavishnu | MODIFY 6+ assertions | Update tool name assertions from `worker_execute` → `execute_on_pool` |
 | `mahavishnu/tests/integration/test_pool_orchestration.py` | mahavishnu | NO CHANGE | Public envelope preserved |
 
----
+______________________________________________________________________
 
 ### Task 0a: Refactor session-buddy pool wrappers to return structured dicts
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/infrastructure/pools.py:403-547` (replace 9 `@mcp.tool()` functions)
 
 **Interfaces:**
+
 - Consumes: existing helpers `pool_create`, `pool_execute`, `pool_execute_batch`, `pool_route_task`, `pool_list`, `pool_status`, `pool_health`, `pool_delete`, `pool_manager_status` (lines 20-399 — they already return dicts)
+
 - Produces: 9 wrappers returning `dict[str, Any]` (FastMCP structured output) with shape `{"success": True|False, ...payload, "error": optional}`
 
 - [ ] **Step 1: Replace `_register_pool_execution_tools` body (lines 403-468)**
@@ -162,15 +165,18 @@ def _register_pool_management_tools(mcp: FastMCP) -> None:
 Run: `cd /Users/les/Projects/session-buddy && .venv/bin/python -c "import ast; ast.parse(open('session_buddy/mcp/tools/infrastructure/pools.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 0b: Fix `pool_execute_batch` to preserve per-task structured results
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/infrastructure/pools.py:149-154`
 
 **Interfaces:**
+
 - Consumes: `WorkerPool.execute_batch` (lines 147-192) which returns `list[Any]` of result-or-Exception
+
 - Produces: structured dict `{"success": True, "pool_id", "results_count", "results": list[Any]}`. Each result is normalized to a `{status, output, error}` dict.
 
 - [ ] **Step 1: Replace lines 149-154**
@@ -222,11 +228,12 @@ Then update the `results` field in the return to:
 Run: `cd /Users/les/Projects/session-buddy && .venv/bin/python -c "import ast; ast.parse(open('session_buddy/mcp/tools/infrastructure/pools.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 0c: Update session-buddy unit tests to expect structured dicts
 
 **Files:**
+
 - Modify: `session_buddy/tests/unit/test_pool_tools.py` (search for any test that mocks `pool_create` / `pool_execute` / etc. and asserts on the formatted string response)
 
 - [ ] **Step 1: Find affected tests**
@@ -265,15 +272,18 @@ git add session_buddy/mcp/tools/infrastructure/pools.py tests/unit/test_pool_too
 git commit -m "feat(mcp): return structured dicts from pool tool wrappers"
 ```
 
----
+______________________________________________________________________
 
 ### Task 1: Fix `_call_mcp_tool` to unwrap `CallToolResult`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:89-111`
 
 **Interfaces:**
+
 - Consumes: `CallToolResult` from `CommonMCPClient.call_tool`
+
 - Produces: plain dict payload (or string if the tool returns a string)
 
 - [ ] **Step 1: Add the `_extract_tool_payload` helper as a module-level function**
@@ -346,11 +356,12 @@ async def _call_mcp_tool(
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 2: Rewrite `SessionBuddyPool.start()` to call `create_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:113-148`
 
 - [ ] **Step 1: Replace the body of `start()`**
@@ -408,11 +419,12 @@ async def start(self) -> str:
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 3: Rewrite `SessionBuddyPool.execute_task()` to call `execute_on_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:150-237`
 
 - [ ] **Step 1: Replace the body of `execute_task()`**
@@ -518,16 +530,20 @@ async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 4: Rewrite `SessionBuddyPool.execute_batch()` to call `execute_batch_on_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:239-333`
 
 **Hardening from audit (edge case):**
+
 - Wrap mark loop in its own try/finally so partial mark failure doesn't leak earlier marks
+
 - Fail-fast on multiple distinct working_dirs in one batch (silent context loss)
+
 - Error path envelope MUST include `"output": None` for shape parity with success path
 
 - [ ] **Step 1: Replace the body of `execute_batch()`**
@@ -684,11 +700,12 @@ async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 4b: Rewrite `SessionBuddyPool.health_check()` to call `check_pool_health` with local fallback
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:348-385`
 
 **Hardening from audit:** when `pool_id` is empty (failed start), don't call upstream — return a local unhealthy marker instead. Avoids confusion where an empty-pool `health_check` returns "all pools healthy" via session-buddy's global mode.
@@ -778,11 +795,12 @@ async def health_check(self) -> dict[str, Any]:
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 4c: Rewrite `SessionBuddyPool.stop()` to call `delete_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:438-451`
 
 - [ ] **Step 1: Read the current `stop()` body to confirm the audit's claim**
@@ -836,11 +854,12 @@ async def stop(self) -> None:
 Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 5: Update unit tests
 
 **Files:**
+
 - Modify: `mahavishnu/tests/unit/pools/test_session_buddy_pool_coverage.py`
 - Modify: `mahavishnu/tests/unit/pools/test_session_buddy_pool_marker_hook.py`
 
@@ -1016,11 +1035,13 @@ async def test_health_check_with_workers_calls_check_pool_health(
 - [ ] **Step 7: Update marker hook test file — all `worker_execute`/`worker_execute_batch` assertions**
 
 Run:
+
 ```bash
 cd /Users/les/Projects/mahavishnu
 sed -i '' 's/"worker_execute"/"execute_on_pool"/g; s/"worker_execute_batch"/"execute_batch_on_pool"/g; s/"worker_close_all"/"delete_pool"/g' tests/unit/pools/test_session_buddy_pool_marker_hook.py
 grep -nE '"worker_execute|"worker_execute_batch|"worker_close_all' tests/unit/pools/test_session_buddy_pool_marker_hook.py
 ```
+
 Expected: zero matches (all replaced)
 
 The sed replaces string occurrences in both fixture functions and assertions. Verify by reading the file that all assertions still make sense — particularly the `default_worker_result` return value, which should now return a structured dict:
@@ -1042,15 +1063,10 @@ default_batch_result = {
 
 - [ ] **Step 8: Syntax check both test files**
 
-Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c "
-import ast
-for f in ('tests/unit/pools/test_session_buddy_pool_coverage.py', 'tests/unit/pools/test_session_buddy_pool_marker_hook.py'):
-    ast.parse(open(f).read())
-    print(f'{f}: OK')
-"`
+Run: `cd /Users/les/Projects/mahavishnu && .venv/bin/python -c " import ast for f in ('tests/unit/pools/test_session_buddy_pool_coverage.py', 'tests/unit/pools/test_session_buddy_pool_marker_hook.py'):     ast.parse(open(f).read())     print(f'{f}: OK') "`
 Expected: both OK
 
----
+______________________________________________________________________
 
 ### Task 6: Run all session-buddy + mahavishnu tests
 
@@ -1079,7 +1095,7 @@ git add mahavishnu/pools/session_buddy_pool.py \
 git commit -m "fix(pools): SessionBuddyPool re-pointed at structured pool tools"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Restart session-buddy + end-to-end smoke test
 
@@ -1095,26 +1111,7 @@ Wait ~5s.
 
 - [ ] **Step 2: Verify the 9 pool tools + new `subagent_marker` are live**
 
-Run: `.venv/bin/python -c "
-import asyncio
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
-async def main():
-    async with streamable_http_client('http://localhost:8678/mcp') as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            res = await s.list_tools()
-            names = sorted([t.name for t in res.tools])
-            expected = {'check_pool_health', 'create_pool', 'delete_pool',
-                        'execute_batch_on_pool', 'execute_on_pool',
-                        'get_pool_manager_status', 'get_pool_status',
-                        'list_pools', 'route_to_pool', 'subagent_marker'}
-            actual = set(n for n in names if 'pool' in n or 'worker' in n or n == 'subagent_marker')
-            missing = expected - actual
-            extra = actual - expected
-            print(f'expected: {len(expected)}, present: {len(actual)}, missing: {missing}, extra: {extra}')
-asyncio.run(main())
-"`
+Run: `.venv/bin/python -c " import asyncio from mcp import ClientSession from mcp.client.streamable_http import streamable_http_client async def main():     async with streamable_http_client('http://localhost:8678/mcp') as (r, w):         async with ClientSession(r, w) as s:             await s.initialize()             res = await s.list_tools()             names = sorted([t.name for t in res.tools])             expected = {'check_pool_health', 'create_pool', 'delete_pool',                         'execute_batch_on_pool', 'execute_on_pool',                         'get_pool_manager_status', 'get_pool_status',                         'list_pools', 'route_to_pool', 'subagent_marker'}             actual = set(n for n in names if 'pool' in n or 'worker' in n or n == 'subagent_marker')             missing = expected - actual             extra = actual - expected             print(f'expected: {len(expected)}, present: {len(actual)}, missing: {missing}, extra: {extra}') asyncio.run(main()) "`
 
 Expected: `missing: set()`, `extra: set()`
 
@@ -1157,10 +1154,15 @@ PY
 ```
 
 Expected:
+
 - `POOL: workers=3 ids=[..., ..., ...]`
+
 - `TASK: status=completed output={...}` (placeholder result)
+
 - `BATCH: a.status=completed b.status=completed`
+
 - `HEALTH: status=healthy worker_health.success=True`
+
 - `STOPPED cleanly`
 
 - [ ] **Step 4: Confirm the upstream pool was actually deleted**
@@ -1183,11 +1185,12 @@ git add docs/superpowers/plans/2026-09-25-fix-session-buddy-pool-mcp-contract-v2
 git commit -m "docs(plan): session-buddy pool contract fix v2 (structured wrappers)"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review
 
 1. **Spec coverage:**
+
    - BUG 1 (CallToolResult unwrap) → Task 1
    - BUG 2 (batch stringification) → Task 0b
    - BUG 3 (stop() broken) → Task 4c
@@ -1199,14 +1202,15 @@ git commit -m "docs(plan): session-buddy pool contract fix v2 (structured wrappe
    - Hardening: local fallback for empty-pool health_check → Task 4b Step 1
    - All BLOCKING issues + hardening recommendations from audit covered.
 
-2. **Placeholder scan:** No "TBD"/"TODO"/"implement later". All code blocks are concrete.
+1. **Placeholder scan:** No "TBD"/"TODO"/"implement later". All code blocks are concrete.
 
-3. **Type consistency:** `pool_id` is always `str`; `_workers` dict keys are always `{pool_id}-worker-{i}`; envelope shape is consistent across success/error paths.
+1. **Type consistency:** `pool_id` is always `str`; `_workers` dict keys are always `{pool_id}-worker-{i}`; envelope shape is consistent across success/error paths.
 
-4. **Public envelope preservation:** `execute_task` returns `{pool_id, worker_id, status, output, error, duration}`; `execute_batch` returns `{task_id: {pool_id, worker_id, status, output, error}}` — both compatible with `tests/integration/test_pool_orchestration.py:55-62`.
+1. **Public envelope preservation:** `execute_task` returns `{pool_id, worker_id, status, output, error, duration}`; `execute_batch` returns `{task_id: {pool_id, worker_id, status, output, error}}` — both compatible with `tests/integration/test_pool_orchestration.py:55-62`.
 
-5. **Restart strategy:** `launchctl kickstart -k` for user-domain launchd is correct per audit confirmation.
+1. **Restart strategy:** `launchctl kickstart -k` for user-domain launchd is correct per audit confirmation.
 
-6. **Risks not covered:**
+1. **Risks not covered:**
+
    - Session-buddy v0.27.0 editable install + v0.25.7 source drift is out of scope (pre-existing condition).
    - If `delete_pool` errors after workers are already torn down, the local `self._workers.clear()` still runs — operator may see a stale remote pool. Documented in Task 4c Step 2.

@@ -1,18 +1,12 @@
----
-status: active
-role: canonical
-kind: tracker
-date: 2026-09-26
-last_reviewed: 2026-09-26
-superseded_by: null
-topic: mcp-launcher-migration
----
+______________________________________________________________________
+
+## status: active role: canonical kind: tracker date: 2026-09-26 last_reviewed: 2026-09-26 superseded_by: null topic: mcp-launcher-migration
 
 # MCP Server Migration Tracker
 
 > **For agentic workers:** This tracker gates Phase 5b (per-server migration). Each per-server PR
 > updates exactly one row. Cross-reference Phase 3 of the MCP Launcher Standardization plan
-> ([`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../../plans/2026-09-26-mcp-launcher-standardization.md))
+> ([`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md))
 > §5 Phase 3.
 
 ## Status legend
@@ -93,22 +87,22 @@ desktop applications, Swift-only clients, libraries without MCP servers, or the 
 When a per-server PR lands:
 
 1. Change `status` from `todo` / `in-progress` / `planned-cookbook` to `done`.
-2. Set `migrated_at_commit` to the commit SHA (full 7-char hash minimum; full 40-char preferred).
-3. Append a `notes` line: `Phase X.Y — REQ-XXX satisfied` (e.g. `Phase 5b — REQ-001..005, REQ-007, REQ-013`).
+1. Set `migrated_at_commit` to the commit SHA (full 7-char hash minimum; full 40-char preferred).
+1. Append a `notes` line: `Phase X.Y — REQ-XXX satisfied` (e.g. `Phase 5b — REQ-001..005, REQ-007, REQ-013`).
 
 When starting a migration:
 
 1. Change `status` from `todo` / `planned-cookbook` to `in-progress`.
-2. Append the planned commit ID placeholder (e.g. `2.5a` or `5b.splashstand-discovery`).
+1. Append the planned commit ID placeholder (e.g. `2.5a` or `5b.splashstand-discovery`).
 
 When the transport is non-FastMCP and the cookbook does not apply:
 
 1. Keep `status: special`.
-2. Add a `notes` line documenting the discovery subtask outcome (e.g. `Phase 5b — discovery complete; uses stdio transport via custom subprocess manager, cookbook not applicable`).
+1. Add a `notes` line documenting the discovery subtask outcome (e.g. `Phase 5b — discovery complete; uses stdio transport via custom subprocess manager, cookbook not applicable`).
 
 ## Cross-references
 
-- **Plan**: [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../../plans/2026-09-26-mcp-launcher-standardization.md) §5 Phase 3 Task 3.2 (this file) and Phase 5a (this file's maintenance contract).
+- **Plan**: [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md) §5 Phase 3 Task 3.2 (this file) and Phase 5a (this file's maintenance contract).
 - **Cookbook**: `/Users/les/Projects/mcp-common/docs/mcp/launcher-cookbook.md` — 4 worked examples (oneiric, vishnu, ak, cj) generated in Phase 1 Task 1.7.
 - **Audit script**: `scripts/audit_mcp_launchers.py` — to be created in Phase 3 Task 3.1; detects MCP server presence per repo (`mcp.py`, `mcp/`, `*-mcp` pattern, `~/Library/LaunchAgents/com.mcp.*.plist`).
 - **Source of truth for repo list**: [`BODAI_REPO_REGISTRY.md`](../../BODAI_REPO_REGISTRY.md) (generated from `settings/ecosystem.yaml` + `settings/registry_metadata.yaml`; regenerate via `python3 scripts/regen_bodai_registry.py`).

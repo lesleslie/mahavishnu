@@ -184,10 +184,7 @@ class CloneTools:
             verification_result = await store.persist(verification_result)
         verification_payload = verification_result.model_dump(mode="json")
         decision = "propose_approve"
-        if (
-            is_verification_enabled(app)
-            and verification_result.consensus == Consensus.REJECT
-        ):
+        if is_verification_enabled(app) and verification_result.consensus == Consensus.REJECT:
             decision = "blocked_by_verification"
         return verification_result, verification_payload, decision
 
@@ -403,8 +400,8 @@ class CloneTools:
                     "refactor_job_id": refactor_job_id,
                 },
             )
-            verification_result, verification_payload, decision = (
-                await self._run_verification_gate(proposal, self.app, self._store)
+            verification_result, verification_payload, decision = await self._run_verification_gate(
+                proposal, self.app, self._store
             )
             if decision == "blocked_by_verification":
                 # REQ-CLONE-001: REJECT blocks DAG. Log the rejection first so
@@ -467,7 +464,7 @@ class CloneTools:
             # SF-B1: cancellation anywhere after claim acquisition; release.
             await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
             raise
-        except (ConcurrentDAGError, MCPStateBackendUnavailable):
+        except ConcurrentDAGError, MCPStateBackendUnavailable:
             # ConcurrentDAGError: claim rejected by cluster_state_claim (sentinel
             # owned by another job) — we never acquired, no release.
             # MCPStateBackendUnavailable (SF-M6): surface to MCP client as 503;

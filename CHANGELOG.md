@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add clone-refactor-wireup topic to seed vocabulary
 - clone-claims: Cluster_state_claim with in-process lock + ConcurrentDAGError
 - clone-tools: Wire clone_refactor_group to git-tree DAG
-- git-ops: _git_ops.py with typed GitCommit* exceptions (REQ-CLONE-013)
+- git-ops: \_git_ops.py with typed GitCommit\* exceptions (REQ-CLONE-013)
 - mahavishnu: Wire pgvector OTel storage + Postgres 16/17/18 CI matrix
 - pools: Add pool_route_execute MCP tool (Plan v3 Phase 2m)
 - state-backends: Add dag_key/cluster_key/in_flight_key + try_put_with_log_context
@@ -27,9 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Close WorkerStatus stragglers in execute_fn_factory.py (Phase 5b)
 - mahavishnu: Re-export canonical AgentMetadata/SkillMetadata aliases (Phase 10 task 4)
 - session_buddy_pool: Extract pool_id/working_dirs/stitch helpers from execute_batch
-- workers: Narrow _create_isolated_worker to shepherd-only (Phase 4)
+- workers: Narrow \_create_isolated_worker to shepherd-only (Phase 4)
 - workers: Retire legacy isolated-worker surface (Phase 4.5b)
-- workers: Single-dispatch worker factory via _create_isolated_worker
+- workers: Single-dispatch worker factory via \_create_isolated_worker
 
 ### Fixed
 
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - clone_tools: Restore REJECT-path observability log
 - docs: Resolve 12 frontmatter validation errors (status/role/date/topic)
 - git-ops: Add coverage for GitCommandTimeout, StashPopFailed, signal exit paths
-- git-ops: Apply Error suffix to _git_ops exception classes (N818)
+- git-ops: Apply Error suffix to \_git_ops exception classes (N818)
 - git-ops: Move pathlib.Path annotation into TYPE_CHECKING (TC003)
 - pool_tools: Guard RateLimitError catch against defensive-import sentinel
 - pools: SessionBuddyPool re-pointed at structured pool tools

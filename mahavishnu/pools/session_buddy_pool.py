@@ -332,9 +332,7 @@ class SessionBuddyPool(BasePool):
         to ``self._task_durations`` as a side effect.
         """
         for entry in batch_results:
-            status_value = (
-                entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
-            )
+            status_value = entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
             if status_value == "completed":
                 self._tasks_completed += 1
             else:
@@ -423,9 +421,7 @@ class SessionBuddyPool(BasePool):
 
             # Structured response handling.
             if not result.get("success"):
-                error_msg = result.get(
-                    "error", "execute_batch_on_pool returned success=False"
-                )
+                error_msg = result.get("error", "execute_batch_on_pool returned success=False")
                 raise MCPServerError(error_msg)
 
             # session-buddy returns results in input order; align by index.

@@ -101,9 +101,7 @@ PROBE_PATTERNS: dict[str, tuple[str, ...]] = {
         'transport="http"',
         'transport="streamable-http"',
     ),
-    "uvicorn_grace": (
-        "timeout_graceful_shutdown",
-    ),
+    "uvicorn_grace": ("timeout_graceful_shutdown",),
 }
 
 
@@ -610,9 +608,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.repo:
         wanted = args.repo.lower()
         audit_set = [
-            (name, path, notes)
-            for (name, path, notes) in audit_set
-            if wanted in name.lower()
+            (name, path, notes) for (name, path, notes) in audit_set if wanted in name.lower()
         ]
         if not audit_set:
             logger.error("No repo matched --repo=%s", args.repo)

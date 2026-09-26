@@ -30,15 +30,18 @@
 | `tests/unit/pools/test_session_buddy_pool_coverage.py` | MODIFY mocked tool names in ~6 tests | Update `call_tool.await_args.args[0]` assertions + `make_pool` mock fixtures |
 | `tests/integration/test_pool_orchestration.py` | NO CHANGE | Public envelope contract is preserved — these tests must still pass unmodified |
 
----
+______________________________________________________________________
 
 ### Task 1: Rewrite `SessionBuddyPool.start()` to call `create_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:113-148`
 
 **Interfaces:**
+
 - Consumes: `self.config: PoolConfig`, `self.max_workers: int` (always 3)
+
 - Produces: `self._workers: dict[str, str]` keyed by `{pool_id}-worker-{i}`, value `f"worker_{i}"`. `self.pool_id` is unchanged (Mahavishnu-internal UUID).
 
 - [ ] **Step 1: Replace the body of `start()` (lines 113-148)**
@@ -96,15 +99,18 @@ async def start(self) -> str:
 Run: `python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 2: Rewrite `SessionBuddyPool.execute_task()` to call `execute_on_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:150-237`
 
 **Interfaces:**
+
 - Consumes: `task: dict` with keys `prompt`, `timeout`, optional `working_dir`
+
 - Produces: `{"pool_id", "worker_id", "status", "output", "error", "duration"}` — envelope unchanged from current contract
 
 - [ ] **Step 1: Replace the body of `execute_task()` (lines 150-237)**
@@ -205,15 +211,18 @@ async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
 Run: `python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 3: Rewrite `SessionBuddyPool.execute_batch()` to call `execute_batch_on_pool`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:239-333`
 
 **Interfaces:**
+
 - Consumes: `tasks: list[dict]` — each task has `prompt`, optional `working_dir`, optional `timeout`. May carry extra fields the new tool ignores.
+
 - Produces: `dict[task_id, {pool_id, status, output, error}]` — envelope unchanged.
 
 - [ ] **Step 1: Replace the body of `execute_batch()` (lines 239-333)**
@@ -351,15 +360,18 @@ async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, Any]:
 Run: `python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 4: Rewrite `SessionBuddyPool.health_check()` to call `check_pool_health`
 
 **Files:**
+
 - Modify: `mahavishnu/pools/session_buddy_pool.py:348-385` (the `health_check` method body)
 
 **Interfaces:**
+
 - Consumes: `self._workers` (may be empty if pool failed to spawn)
+
 - Produces: `{"pool_id", "pool_type", "status", "workers_active", "max_workers", "worker_health", "tasks_completed", "tasks_failed", "session_buddy_url"}`
 
 - [ ] **Step 1: Replace the body of `health_check()` (lines 348-385)**
@@ -422,15 +434,18 @@ async def health_check(self) -> dict[str, Any]:
 Run: `python -c "import ast; ast.parse(open('mahavishnu/pools/session_buddy_pool.py').read()); print('OK')"`
 Expected: `OK`
 
----
+______________________________________________________________________
 
 ### Task 5: Update unit test mocked tool names
 
 **Files:**
+
 - Modify: `tests/unit/pools/test_session_buddy_pool_coverage.py`
 
 **Interfaces:**
+
 - Consumes: existing test fixtures (mock `call_tool`, `make_pool`)
+
 - Produces: tests that assert the new tool names (`create_pool`, `execute_on_pool`, `execute_batch_on_pool`, `check_pool_health`)
 
 - [ ] **Step 1: Update `test_start_pool_happy_path` (line ~140)**
@@ -552,11 +567,12 @@ async def test_health_check_calls_check_pool_health(
     assert last_call.args[0] == "check_pool_health"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Run unit tests + verify all pass
 
 **Files:**
+
 - Read: `tests/unit/pools/test_session_buddy_pool_coverage.py`, `tests/unit/pools/test_session_buddy_pool_marker_hook.py`
 
 - [ ] **Step 1: Run the coverage test file**
@@ -581,7 +597,7 @@ git add mahavishnu/pools/session_buddy_pool.py tests/unit/pools/test_session_bud
 git commit -m "fix(pools): re-point SessionBuddyPool at existing session-buddy pool tools"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Restart session-buddy daemon + verify pool tools are live
 
@@ -597,61 +613,67 @@ Wait ~5 seconds for the new process to bind 8678.
 
 - [ ] **Step 2: Verify the live server exposes the 9 pool tools**
 
-Run: `.venv/bin/python -c "
+Run: \`.venv/bin/python -c "
 import asyncio
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 async def main():
-    async with streamable_http_client('http://localhost:8678/mcp') as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            res = await s.list_tools()
-            names = sorted([t.name for t in res.tools])
-            pool = [n for n in names if 'pool' in n.lower() or 'worker' in n.lower()]
-            print('pool/worker tools:', pool)
+async with streamable_http_client('http://localhost:8678/mcp') as (r, w):
+async with ClientSession(r, w) as s:
+await s.initialize()
+res = await s.list_tools()
+names = sorted([t.name for t in res.tools])
+pool = [n for n in names if 'pool' in n.lower() or 'worker' in n.lower()]
+print('pool/worker tools:', pool)
 
 asyncio.run(main())
-"`
+"\`
 
 Expected: `['check_pool_health', 'create_pool', 'delete_pool', 'execute_batch_on_pool', 'execute_on_pool', 'get_pool_manager_status', 'get_pool_status', 'list_pools', 'route_to_pool']`
 
 - [ ] **Step 3: End-to-end smoke test — spawn + execute + health**
 
-Run: `.venv/bin/python << 'PY'
+Run: \`.venv/bin/python \<< 'PY'
 import asyncio, json
 from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
 from mahavishnu.pools.base import PoolConfig
 
 async def main():
-    cfg = PoolConfig(name='smoke-test', pool_type='session_buddy',
-                      min_workers=1, max_workers=3)
-    pool = SessionBuddyPool(cfg, session_buddy_url='http://localhost:8678/mcp')
-    pool_id = await pool.start()
-    print(f'POOL_ID={pool_id}  workers={len(pool._workers)}')
+cfg = PoolConfig(name='smoke-test', pool_type='session_buddy',
+min_workers=1, max_workers=3)
+pool = SessionBuddyPool(cfg, session_buddy_url='http://localhost:8678/mcp')
+pool_id = await pool.start()
+print(f'POOL_ID={pool_id} workers={len(pool.\_workers)}')
 
-    # Execute a single task
-    result = await pool.execute_task({'prompt': 'echo hello', 'timeout': 30})
-    print(f'EXECUTE: {json.dumps(result, default=str)}')
+```
+# Execute a single task
+result = await pool.execute_task({'prompt': 'echo hello', 'timeout': 30})
+print(f'EXECUTE: {json.dumps(result, default=str)}')
 
-    # Batch execute
-    batch = await pool.execute_batch([
-        {'task_id': 'a', 'prompt': 'first'},
-        {'task_id': 'b', 'prompt': 'second'},
-    ])
-    print(f'BATCH: {json.dumps(batch, default=str)}')
+# Batch execute
+batch = await pool.execute_batch([
+    {'task_id': 'a', 'prompt': 'first'},
+    {'task_id': 'b', 'prompt': 'second'},
+])
+print(f'BATCH: {json.dumps(batch, default=str)}')
 
-    # Health check
-    health = await pool.health_check()
-    print(f'HEALTH: {json.dumps(health, default=str)[:300]}')
+# Health check
+health = await pool.health_check()
+print(f'HEALTH: {json.dumps(health, default=str)[:300]}')
+```
 
 asyncio.run(main())
-PY`
+PY\`
 
-Expected: 
+Expected:
+
 - `POOL_ID=<uuid>  workers=3`
+
 - `EXECUTE: {... "status": "completed" ...}` (placeholder executor returns within 0.1s)
+
 - `BATCH: {"a": {...}, "b": {...}}`
+
 - `HEALTH: {"status": "healthy", "workers_active": 3, ...}`
 
 - [ ] **Step 4: Commit the plan document (no code change)**
@@ -663,15 +685,15 @@ git commit -m "docs(plan): session-buddy pool MCP contract fix"
 
 (Plan document lives in mahavishnu even though the fix spans both repos — it's the change log for this work.)
 
----
+______________________________________________________________________
 
 ## Self-Review
 
 1. **Spec coverage:** Demo conversation required (a) re-pointing 4 tool calls, (b) preserving the public return envelope, (c) restart + verify. Covered by Tasks 1-7.
-2. **Placeholder scan:** No "TBD"/"TODO"/"add appropriate" placeholders. All code blocks are concrete.
-3. **Type consistency:** `worker_id` is always a string. `pool_id` derivation `worker_id.rsplit("-worker-", 1)[0]` is consistent across all 4 methods.
-4. **Envelope preservation:** All return shapes match `tests/integration/test_pool_orchestration.py:55-62` requirements (`pool_id`, `worker_id`, `status`, `output`).
-5. **Restart command correctness:** `launchctl kickstart -k` for user-domain launchd requires `gui/$(id -u)/` prefix — confirmed via `launchctl list` showing `10809` (not `-` PID), which means it's in the user gui domain.
-6. **Risks not covered:**
+1. **Placeholder scan:** No "TBD"/"TODO"/"add appropriate" placeholders. All code blocks are concrete.
+1. **Type consistency:** `worker_id` is always a string. `pool_id` derivation `worker_id.rsplit("-worker-", 1)[0]` is consistent across all 4 methods.
+1. **Envelope preservation:** All return shapes match `tests/integration/test_pool_orchestration.py:55-62` requirements (`pool_id`, `worker_id`, `status`, `output`).
+1. **Restart command correctness:** `launchctl kickstart -k` for user-domain launchd requires `gui/$(id -u)/` prefix — confirmed via `launchctl list` showing `10809` (not `-` PID), which means it's in the user gui domain.
+1. **Risks not covered:**
    - Session-buddy v0.27.0 editable install + v0.25.7 source drift is out of scope — flagged in global constraints but not addressed (it's a pre-existing condition).
    - If live session-buddy restart fails to expose pool tools, the integration test in Task 7 Step 3 will fail and we need to investigate why — that's the smoke test catching the regression.
