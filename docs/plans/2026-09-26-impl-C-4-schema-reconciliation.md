@@ -4,6 +4,8 @@
 **Risk:** Medium (DB schema change with pre-flight safety check; forward-only; affects production deployments that ran `V202604021200__initial_consolidated_schema.sql`)
 **Blocks:** C-6 (idempotency layer in `pool_route_execute` requires the `idempotency_key` column + unique index to exist)
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (two-revision split + forward-only).
 
 ## Goal

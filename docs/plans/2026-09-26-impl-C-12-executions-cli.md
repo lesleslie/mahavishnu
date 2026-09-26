@@ -4,6 +4,8 @@
 **Risk:** Low (standalone CLI; no production code paths touched beyond reading `execution_events`)
 **Blocks:** None (C-13 doesn't depend on C-12)
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (correct package-root path; dropped vacuous `mahavishnu debug` rename claim).
 
 ## Goal

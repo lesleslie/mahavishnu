@@ -2,6 +2,8 @@
 
 **Repo:** mahavishnu
 **Branch:** `main` (direct commit per `bodai-pre-1.0-merge-policy.md`)
+
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Lands on:** commit on `main`
 **Risk:** Low (precondition for all wire-ups; no behavioral change to existing features)
 **Depends on:** none (first commit in the sequence)

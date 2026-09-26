@@ -4,6 +4,8 @@
 **Risk:** Medium (DB schema change, new exception class, enum modification; no public API breakage)
 **Blocks:** C-6 (`pool_route_execute` idempotency path requires `TaskEventType.PENDING`), C-12 (`mahavishnu executions show` needs `get_execution_events(execution_id)`)
 **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+
+**Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in.
 
 ## Goal
