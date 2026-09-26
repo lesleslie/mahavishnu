@@ -15,6 +15,7 @@ below wraps FastMCPServer so the launcher can drive it. See
 """
 from __future__ import annotations
 
+import site
 import sys
 from pathlib import Path
 
@@ -23,19 +24,24 @@ from pathlib import Path
 # (e.g. /usr/local/bin/python3 → /usr/local/Cellar/python@3.14/...). That python
 # is the SAME binary as the venv's `.venv/bin/python` (both symlink to the same
 # Homebrew cellar file), but the venv's site-packages aren't on sys.path unless
-# Python was launched via the venv's binary. Fix: prepend the venv's
-# site-packages to sys.path. Idempotent — no-op when the venv is already active
-# (sys.prefix is already under `_REPO_ROOT/.venv`).
+# Python was launched via the venv's binary. Fix: use `site.addsitedir` (NOT
+# just `sys.path.insert`) so `.pth` files in the venv's site-packages get
+# processed at runtime — `site.addsitedir` walks the directory and exec's any
+# `.pth` it finds (e.g. `_editable_impl_mahavishnu.pth` adds the repo root to
+# sys.path, which is where the editable `mahavishnu` package lives). A plain
+# `sys.path.insert` misses these because Python's site initialization ran
+# before our bootstrap prepend. Idempotent — no-op when the venv is already
+# active (sys.prefix is already under `_REPO_ROOT/.venv`).
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _VENV_ROOT = _REPO_ROOT / ".venv"
 _VENV_SITE_PACKAGES = _VENV_ROOT / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
 try:
-    _VENV_SITE_PACKAGES_REL = _VENV_SITE_PACKAGES.relative_to(Path(sys.prefix))
+    _VENV_SITE_PACKAGES.relative_to(Path(sys.prefix))
     _IN_VENV = True
 except ValueError:
     _IN_VENV = False
 if not _IN_VENV and _VENV_SITE_PACKAGES.is_dir():
-    sys.path.insert(0, str(_VENV_SITE_PACKAGES))
+    site.addsitedir(str(_VENV_SITE_PACKAGES))
 
 import asyncio
 import signal
