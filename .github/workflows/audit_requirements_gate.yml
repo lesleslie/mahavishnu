@@ -1,0 +1,73 @@
+name: audit-requirements-monthly-gate
+
+# Monthly hard gate for the traceable-specs REQ-NNN audit.
+#
+# Per crackerjack-compliant-code: "CI: weekly advisory run in
+# .github/workflows/audit-requirements-weekly.yml (hard gate promoted
+# after 30 days per the traceable-specs plan)."
+#
+# This workflow is the hard gate. It runs on the first of each month.
+# Exit code != 0 from `python scripts/audit_requirements.py` fails the workflow,
+# which fails the required check on PRs targeting main.
+
+on:
+  schedule:
+    # First of each month at 06:00 UTC
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  audit-gate:
+    name: audit-requirements-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run REQ-NNN audit (hard gate)
+        run: |
+          # Exit code 1 = orphans or phantoms; 2 = missing root; 3 = internal error.
+          # Any non-zero exit fails this job, which fails the required check.
+          python scripts/audit_requirements.py --json
+
+      - name: Verify REQ-marker coverage in tests
+        run: |
+          # Verify that every REQ-NNN referenced in plans has at least one
+          # @pytest.mark.req([...]) reference in tests/.
+          python -c "
+          import re
+          import pathlib
+
+          plan_refs = set()
+          for p in pathlib.Path('docs/plans').glob('2026-09-26-impl-C-*.md'):
+              content = p.read_text()
+              plan_refs.update(re.findall(r'REQ-\d+', content))
+
+          test_refs = set()
+          for p in pathlib.Path('tests').rglob('*.py'):
+              content = p.read_text()
+              test_refs.update(re.findall(r'REQ-\d+', content))
+
+          missing = plan_refs - test_refs
+          if missing:
+              print('Missing REQ-NNN test references:')
+              for r in sorted(missing):
+                  print(f'  {r}')
+              raise SystemExit(1)
+          print(f'All {len(plan_refs)} REQ-NNN have test coverage.')
+          "
