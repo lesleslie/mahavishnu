@@ -348,26 +348,29 @@ def register_pool_tools(
                 parent_session_id=parent_session_id,
                 auto_spawn=auto_spawn,
             )
-        except RateLimitError as exc:
-            details = getattr(exc, "details", {}) or {}
-            return {
-                "status": "rate_limited",
-                "retry_after_seconds": details.get("retry_after_seconds", 0),
-                "limit": details.get("limit", "caller_kind=unknown"),
-            }
-        except TimeoutError:
-            return {"status": "timeout"}
-        except ValueError as exc:
-            return {
-                "status": "invalid_selector",
-                "error": str(exc),
-            }
-        except RuntimeError as exc:
-            return {
-                "status": "failed",
-                "error": str(exc),
-            }
         except Exception as exc:
+            # ``RateLimitError`` is conditionally imported (None on defensive
+            # failure); ``except RateLimitError`` is a ty error + silent no-op
+            # in the sentinel branch, so dispatch via isinstance + None guard.
+            if RateLimitError is not None and isinstance(exc, RateLimitError):
+                details = getattr(exc, "details", {}) or {}
+                return {
+                    "status": "rate_limited",
+                    "retry_after_seconds": details.get("retry_after_seconds", 0),
+                    "limit": details.get("limit", "caller_kind=unknown"),
+                }
+            if isinstance(exc, TimeoutError):
+                return {"status": "timeout"}
+            if isinstance(exc, ValueError):
+                return {
+                    "status": "invalid_selector",
+                    "error": str(exc),
+                }
+            if isinstance(exc, RuntimeError):
+                return {
+                    "status": "failed",
+                    "error": str(exc),
+                }
             logger.exception("Failed to route task via pool_route_execute — see traceback")
             return {
                 "status": "failed",

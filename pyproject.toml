@@ -130,7 +130,6 @@ dev = [
     {include-group = "ai"},
     {include-group = "cache"},
     {include-group = "gpu"},
-    {include-group = "sandbox"},
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
     {include-group = "compression-zstd"},
@@ -235,11 +234,6 @@ ai = [
 # RunPod pool is deployed.
 gpu = [
     "runpod-flash>=1.19.0",
-]
-
-# E2B cloud sandbox tier for isolated worker execution (workers/e2b_sandbox.py)
-sandbox = [
-    "e2b>=2.45.1",
 ]
 
 # Phase 4 (Shepherd worker backend). shepherd-ai wraps the Shepherd OS-level
