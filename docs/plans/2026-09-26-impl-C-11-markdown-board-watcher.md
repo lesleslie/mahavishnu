@@ -51,11 +51,11 @@ from typing import Any
 from uuid import uuid4
 
 from oneiric.actions.data import ValidationSchemaAction
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import MarkdownParseError
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 CARD_SECTION_VALUES = ("backlog", "ready", "in_progress", "done")
@@ -304,9 +304,9 @@ from mahavishnu.jot.markdown_parser import parse_board
 from mahavishnu.jot.state_persistence import load_state, save_state
 from mahavishnu.mcp.tools.pool_tools import pool_route_execute
 from mahavishnu.core.idempotency import IdempotencyOptions
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def watch_board(
@@ -391,12 +391,19 @@ async def _handle_modified(
                 pool_selector="least_loaded",
                 idempotency=opts,
             )
+            # FIX (round-5): state save moved INSIDE the try block, AFTER
+            # successful dispatch. Previously the save happened BEFORE
+            # pool_route_execute was awaited, so a dispatch failure would
+            # leave state with a "successful" card id — `test_modified_event_
+            # dispatches_card` passed vacuously even when dispatch failed.
             state[card_id] = new_rev
             save_state(state_sidecar, state)
             metrics.markdown_board_dispatch_total.labels(
                 section=card["status"], result="success"
             ).inc()
         except Exception as exc:
+            # FIX (round-5): DO NOT update state on failure; the card stays
+            # in ready/in_progress for retry on the next file modification.
             metrics.markdown_board_dispatch_total.labels(
                 section=card["status"], result="error"
             ).inc()
@@ -435,13 +442,13 @@ import asyncio
 from pathlib import Path
 
 import typer
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import MahavishnuError
 from mahavishnu.jot.markdown_export import render_board
 from mahavishnu.jot.markdown_parser import parse_board
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 board_app = typer.Typer(help="Manage the local .mahavishnu/board.md file (jot board)")
 
 
@@ -511,7 +518,11 @@ def watch_cmd(
     from mahavishnu.jot.markdown_watcher import watch_board
 
     settings = get_settings()
-    state_sidecar = settings.markdown_board.state_sidecar_path
+    # Derive state sidecar path from default_path + state_sidecar_suffix
+    # (C-1's MarkdownBoardSettings defines suffix, not path — see INC-2 fix)
+    board_path = Path(board)
+    sidecar_suffix = settings.markdown_board.state_sidecar_suffix
+    state_sidecar = board_path.with_suffix(board_path.suffix + sidecar_suffix)
     asyncio.run(watch_board(board, state_sidecar, settings.markdown_board.watcher_lag_seconds))
 ```
 

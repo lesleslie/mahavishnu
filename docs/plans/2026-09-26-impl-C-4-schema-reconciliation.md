@@ -75,8 +75,14 @@ The pre-flight `DO $$` block runs BEFORE the `ALTER TABLE`. If duplicates exist,
 -- Note: no BEGIN here. The op.execute() wrapper in Alembic skips autocommit
 -- wrapping for this revision because env.py has transaction_per_migration=False.
 
+-- FIX (round-5 critique): audit.task_events is PARTITION BY RANGE (event_time) per
+-- V202604021200__initial_consolidated_schema.sql:112. Postgres requires the partition
+-- key in any UNIQUE constraint on a partitioned table. The original (idempotency_key)
+-- unique index would fail with "insufficient columns in UNIQUE constraint definition".
+-- Composite index on (idempotency_key, event_time) preserves uniqueness for
+-- non-null idempotency_key values while satisfying the partition requirement.
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_task_events_idempotency_key
-    ON audit.task_events (idempotency_key)
+    ON audit.task_events (idempotency_key, event_time)
     WHERE idempotency_key IS NOT NULL;
 ```
 

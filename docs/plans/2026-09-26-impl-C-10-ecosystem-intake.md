@@ -47,7 +47,7 @@ from typing import Final
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from oneiric.actions.data import DataSanitizeAction
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.config import get_settings
 from mahavishnu.core.errors import EcosystemIntakeError
@@ -59,7 +59,7 @@ ALLOWED_SOURCES: Final[frozenset[str]] = frozenset(
     {"git-monitor", "crontroller", "ops-bridge"}
 )
 """Default allowlist. Operators extend via webhook_intake.allowed_sources in settings."""
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.post("/webhooks/ecosystem/{source_name}")
@@ -86,9 +86,26 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
             "data": payload.decode(errors="replace"),
             "mask_fields": ["Authorization", "token", "key", "secret"],
         })
+        # FIX (round-5 INC-4): structured payload schema. Each source type
+        # emits typed fields; consumers (C-13 crackerjack review-pr) read
+        # typed fields instead of parsing sanitized strings. The schema is:
+        #   {
+        #     "source": "<source_name>",
+        #     "data": {
+        #       # For git-monitor events:
+        #       "pr_url": str,
+        #       "branch": str,
+        #       "commit_sha": str,
+        #       # For crontroller / ops-bridge events: extend as needed
+        #     },
+        #   }
+        # Sanitization masks credential fields but preserves the dict structure.
         envelope = create_event_envelope(
             event_type="ecosystem.event.received",
-            payload={"source": source_name, "data": sanitized.get("data", "")},
+            payload={
+                "source": source_name,
+                "data": sanitized.get("data", {}),  # FIX: was "" (string); now dict
+            },
             source=f"mahavishnu.webhooks.ecosystem.{source_name}",
             correlation_id=str(uuid4()),
             metadata={"severity": "info"},

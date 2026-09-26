@@ -49,9 +49,9 @@ from uuid import uuid4
 from crackerjack.skills.comment_poster import post_pr_comment
 from crackerjack.skills.durable_queue import DurableQueue
 from crackerjack.skills.github_client import fetch_pr_diff, GitHubAPIError
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def on_akosha_pattern(event: dict[str, Any]) -> None:
@@ -59,11 +59,17 @@ async def on_akosha_pattern(event: dict[str, Any]) -> None:
 
     Trigger: ecosystem.event.received{source="git-monitor"}.
     Pattern detection: mcp__akosha__detect_anomalies (or equivalent).
+
+    FIX (round-5 INC-4): consume structured payload, not sanitized string.
+    The producer (C-10 ecosystem intake OR a direct Akosha publisher for
+    external systems) emits `payload.data` as a dict with known fields;
+    the consumer reads typed fields. Sanitizing to a string was a half-measure.
     """
     source = event.get("payload", {}).get("source", "")
     if source != "git-monitor":
         return
 
+    # FIX (round-5 INC-4): structured payload — `data` is a dict, not a string
     pr_url = event.get("payload", {}).get("data", {}).get("pr_url", "")
     if not pr_url:
         logger.debug("no pr_url in event; skipping")
@@ -114,19 +120,30 @@ def _build_review_prompt(pr_url: str, diff: str) -> str:
 async def _dispatch_via_mahavishnu(prompt: str, idempotency_nonce: str) -> dict[str, Any]:
     """Cross-process dispatch via mahavishnu CLI.
 
-    Crackerjack is a separate repo; we shell out to `mahavishnu pool_route_execute`
+    Crackerjack is a separate repo; we shell out to `mahavishnu pool-route-execute`
     rather than importing across repos. The dispatch is async-subprocess to
     avoid blocking crackerjack's event loop.
+
+    TODO (round-5 fix): once crackerjack grows an MCP-aware runtime, swap this
+    subprocess dispatch for `mcp__mahavishnu__pool_route_execute` (MCP-mediated).
+    MCP-mediated dispatch gives observability (per-pool-worker-id metrics,
+    Akosha envelope correlation) that subprocess cannot. Until then, subprocess
+    is the lowest-friction cross-repo path. Both options are documented per
+    user decision "both".
+
+    FIX (round-5 INC-3): the original CLI invocation used `--idempotency-source=...`
+    flag-value syntax which no plan implemented. Updated to Typer-style
+    `--idempotency-source <value>` matching the C-6 Typer shim.
     """
     import json
     import subprocess
 
     cmd = [
-        "mahavishnu", "pool_route_execute",
+        "mahavishnu", "pool-route-execute", "execute",
         "--prompt", prompt,
-        "--pool_selector", "least_loaded",
-        f"--idempotency-source=crackerjack.review_pr",
-        f"--idempotency-nonce={idempotency_nonce}",
+        "--pool-selector", "least_loaded",
+        "--idempotency-source", "crackerjack.review_pr",
+        "--idempotency-nonce", idempotency_nonce,
     ]
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE

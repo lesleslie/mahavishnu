@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.config import get_settings
 from mahavishnu.core.errors import MahavishnuError
@@ -43,7 +43,7 @@ from mahavishnu.core.event_store import (
     get_execution_events,
 )
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 executions_app = typer.Typer(
     help="Inspect workflow executions (LLM dispatch history)."
 )

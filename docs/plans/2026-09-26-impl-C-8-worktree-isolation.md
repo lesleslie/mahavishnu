@@ -431,6 +431,58 @@ class TestPoolRouteExecuteWorktree:
                 worktree=opts,
             )
             assert result["status"] == "worktree_conflict"
+
+    async def test_finally_block_cleans_up_worktree_on_dispatch_failure(self) -> None:
+        """FIX (round-5): the `finally` block in pool_route_execute must
+        run `git worktree remove --force` even when the dispatch raises.
+
+        This is the most important safety property of the whole feature —
+        a worktree leak after every dispatch failure would accumulate and
+        fill disk. The plan claimed cleanup runs in finally but no test
+        verified this. The previous test suite did not exercise this path.
+
+        Without this test, a future refactor that accidentally moves
+        `cleanup_worktree` outside the `finally` block would silently leak
+        worktrees on every dispatch failure.
+        """
+        from unittest.mock import AsyncMock, patch
+        from mahavishnu.core.worktree_manager import WorktreeInfo, WorktreeManager
+        from mahavishnu.core.worktree_options import WorktreeOptions
+        from mahavishnu.mcp.tools.pool_tools import pool_route_execute
+        from datetime import UTC, datetime
+
+        mock_worktree_info = WorktreeInfo(
+            worktree_id="wt-leak-test",
+            repo_path=Path("/tmp/test-repo"),
+            branch_name="feature/wt-leak-test",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
+        )
+        # Patch create_worktree to return success; patch _dispatch_internal
+        # to raise; patch cleanup_worktree to track calls.
+        with patch.object(
+            WorktreeManager, "create_worktree",
+            new=AsyncMock(return_value=mock_worktree_info),
+        ), patch.object(
+            WorktreeManager, "cleanup_worktree",
+            new=AsyncMock(),
+        ) as mock_cleanup, patch(
+            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+            new=AsyncMock(side_effect=RuntimeError("dispatch failed")),
+        ):
+            from mahavishnu.core.config import get_settings
+            settings = get_settings()
+            settings.worktree_storage.enabled = True
+
+            with pytest.raises(RuntimeError, match="dispatch failed"):
+                await pool_route_execute(
+                    prompt="edit test",
+                    pool_selector="least_loaded",
+                    worktree=WorktreeOptions(isolation="worktree"),
+                )
+            # Cleanup MUST have run even though dispatch raised
+            mock_cleanup.assert_awaited_once()
 ```
 
 ### 7. `tests/property/test_worktree_path_uniqueness_property.py` — new file (~80 LoC)

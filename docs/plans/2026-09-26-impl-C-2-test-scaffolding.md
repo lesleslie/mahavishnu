@@ -15,7 +15,7 @@ Per round-3 QA: the file is ~300-400 LoC (~50% larger than round-2's estimate) b
 ## Pre-flight checks
 
 1. **C-1 has landed on main.** Verify the 5 new sections (`worktree_storage:`, `idempotency:`, `webhook_intake:`, `concurrency_limits:`, `markdown_board:`) appear in `settings/mahavishnu.yaml` and that `pytest --markers | grep ^req$` shows the `req` marker is registered. If absent, stop and ship C-1 first — fixtures like `idempotency_flag_monkeypatch` depend on the `idempotency:` section existing for `get_settings()` to return something patchable.
-2. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.logging import getLogger"`.
+2. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.core.logging import get_logger"`.
 3. **`freezegun` available.** `uv pip show freezegun` (used by `frozen_clock`); add as dev dep in this PR if not present.
 4. **`pytest-asyncio` is configured for auto-mode.** Confirm `asyncio_mode = "auto"` in `pyproject.toml [tool.pytest]` — async fixtures require this.
 5. **`fastapi` is a runtime dep** (used by `ecosystem_intake_test_client`).
@@ -144,7 +144,7 @@ async def worktree_manager_factory(
 
     settings = get_settings()
     mgr = WorktreeManager(
-        base_path=settings.worktree_storage.base_path,
+        base_path=settings.worktree_storage.storage_root,
         event_store=EventStore(isolated_database),
     )
     yield mgr
@@ -247,7 +247,17 @@ def idempotency_flag_monkeypatch(
 def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Patch set_publisher so safe_publish() goes to a per-test capture list.
     C-5 lands the real EventBridgePublisher; until then, tests must not depend
-    on the real Akosha publisher."""
+    on the real Akosha publisher.
+
+    FIX (round-5): explicitly reset `_publisher` to None in teardown so
+    publisher state does not leak across tests. The previous version used
+    monkeypatch.setattr for `_capture_singleton` (which is auto-reverted)
+    but called set_publisher(...) which mutates the module-global `_publisher`
+    (which monkeypatch does NOT undo). Without this fix, after the first
+    test, _publisher still references a lambda whose captured list is now
+    stale or dropped, causing subsequent tests to receive empty captures
+    or worse, to append to a list from a prior test.
+    """
     from mahavishnu.core.events.publisher import set_publisher
 
     captured: list[dict[str, Any]] = []
@@ -255,8 +265,12 @@ def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
         "mahavishnu.core.events.publisher._capture_singleton", captured
     )
     set_publisher(lambda envelope: captured.append(envelope.model_dump()))
-    yield
-```
+    try:
+        yield captured
+    finally:
+        # Explicit reset — monkeypatch.undo() does NOT undo set_publisher's
+        # side effect on the module-global _publisher.
+        set_publisher(None)
 
 **Autouse `mark_finished_tasks` (function scope)**
 
@@ -373,7 +387,11 @@ class TestEcosystemIntakeTestClient:
 @pytest.mark.req(["REQ-002"])
 class TestFrozenClock:
     def test_freezes_time_time(self, frozen_clock) -> None:
-        assert time.time() == pytest.approx(1737946800.0, abs=1.0)
+        # FIX (round-5): 1737946800 corresponds to 2025-01-23 (wrong year!).
+        # The freeze_time is at "2026-09-26T12:00:00Z" which is ~1789753200.
+        # Original assertion passed vacuously because abs=1.0 accepts any
+        # timestamp within ±1s of the wrong value.
+        assert time.time() == pytest.approx(1789753200.0, abs=1.0)
 
     def test_freezes_datetime_now(self, frozen_clock) -> None:
         now = datetime.now(UTC)

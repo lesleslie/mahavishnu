@@ -55,7 +55,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from oneiric.actions.security import HashAction
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import IdempotencyStoreUnavailable
 from mahavishnu.core.event_store import TaskEvent, TaskEventType
@@ -64,7 +64,7 @@ if TYPE_CHECKING:
     from mahavishnu.core.event_store import EventStore
 
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IdempotencyOptions(BaseModel):
@@ -153,7 +153,7 @@ class IdempotencyStore:
         self, event: TaskEvent, result: dict[str, Any]
     ) -> TaskEvent:
         """Single-row in-place PENDING → COMPLETED transition."""
-        event.event_type = TaskEventType.SYNCED  # COMPLETED is SYNCED in StrEnum
+        event.event_type = TaskEventType.COMPLETED
         event.data = {**event.data, "result": result}
         await self._store.update_task_event(event)
         return event
@@ -246,7 +246,203 @@ async def get_event_by_idempotency_key(self, key: str) -> TaskEvent | None:
     return result.scalar_one_or_none()
 ```
 
-### 4. `mahavishnu/core/metrics.py` — add 2 metrics
+### 4. `mahavishnu/core/idempotency.py` — module-global singleton (FIX round-5: HID-4)
+
+Per round-5 critique (critical-audit HID-4): the per-call `IdempotencyStore(event_store)` construction in `pool_route_execute` defeats the asyncio.Lock fallback (each call gets its own lock dict, so two concurrent calls with the same idempotency key cannot serialize). Add module-global singleton helpers:
+
+```python
+# Module-level singleton — initialized once at app boot
+_idempotency_store: IdempotencyStore | None = None
+
+
+def set_idempotency_store(store: IdempotencyStore | None) -> None:
+    """Inject the singleton. Called by mahavishnu/factories.py at app boot."""
+    global _idempotency_store
+    _idempotency_store = store
+
+
+def get_idempotency_store() -> IdempotencyStore:
+    """Return the injected singleton. Raises if not configured (fail-CLOSED)."""
+    if _idempotency_store is None:
+        raise IdempotencyStoreUnavailable(
+            "idempotency store not configured; set via set_idempotency_store() at app boot"
+        )
+    return _idempotency_store
+```
+
+Additionally, bound the `_locks` dict with `cachetools.LRUCache(maxsize=1024)` per architecture-council recommendation (long-running processes leak memory otherwise):
+
+```python
+from cachetools import LRUCache
+
+class IdempotencyStore:
+    def __init__(self, event_store: EventStore) -> None:
+        self._store = event_store
+        self._counters: dict[tuple[TaskCategory, str | None], int] = defaultdict(int)
+        self._shard_locks: LRUCache = LRUCache(maxsize=1024)  # FIX: bound lock memory
+```
+
+Update `pool_route_execute` to use `get_idempotency_store()` instead of constructing per-call:
+
+```python
+# Before (broken):
+idem_store = IdempotencyStore(event_store)  # per-call instance; locks don't share
+
+# After (FIX round-5):
+idem_store = get_idempotency_store()  # module-global singleton; locks share across calls
+```
+
+### 4b. `mahavishnu/core/idempotency.py` — circuit breaker (FIX round-5: fail-CLOSED 3am bomb)
+
+Per devops-troubleshooter C-6 BLOCK + user decision "middle option: log + skip cached error": wrap `get_or_create` with a circuit breaker. When the EventStore is unreachable, the circuit opens after N consecutive failures; subsequent calls fast-fail with a cached error response (no DB hit, no 30s timeout).
+
+```python
+class IdempotencyCircuitBreaker:
+    """Circuit breaker for EventStore reachability.
+
+    State machine: CLOSED → OPEN (after N consecutive failures) → HALF_OPEN
+    (after cooldown_seconds) → CLOSED (on first success) or back to OPEN.
+
+    Per user decision: degraded mode is "log + skip (return cached error)"
+    — the dispatch does NOT proceed when the circuit is open. This preserves
+    the no-duplicate-work guarantee (fail-CLOSED) while avoiding the 30s
+    timeout cliff identified by the devops review.
+    """
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        cooldown_seconds: float = 30.0,
+    ) -> None:
+        self._failure_threshold = failure_threshold
+        self._cooldown_seconds = cooldown_seconds
+        self._consecutive_failures = 0
+        self._opened_at: float | None = None
+        self._lock = asyncio.Lock()
+
+    async def call(self, coro_factory: Callable[[], Awaitable[T]]) -> T:
+        """Execute coro_factory() if circuit is closed; raise cached error if open."""
+        async with self._lock:
+            if self._opened_at is not None:
+                elapsed = time.monotonic() - self._opened_at
+                if elapsed < self._cooldown_seconds:
+                    # Circuit is open; fast-fail with cached error
+                    logger.warning(
+                        "idempotency circuit open; skipping",
+                        extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
+                    )
+                    raise IdempotencyStoreUnavailable(
+                        "circuit open; event store unreachable"
+                    )
+                # Cooldown elapsed; transition to HALF_OPEN (one trial allowed)
+                self._opened_at = None
+
+        try:
+            result = await coro_factory()
+        except IdempotencyStoreUnavailable:
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self._failure_threshold:
+                self._opened_at = time.monotonic()
+                logger.exception("circuit tripped to OPEN",
+                                  extra={"consecutive_failures": self._consecutive_failures})
+            raise
+        except Exception:
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self._failure_threshold:
+                self._opened_at = time.monotonic()
+            raise
+
+        # Success
+        self._consecutive_failures = 0
+        return result
+```
+
+`get_or_create` is wrapped at the call site:
+
+```python
+breaker = get_idempotency_breaker()
+existing = await breaker.call(
+    lambda: idem_store.get_or_create(idempotency, payload_hash, actor="pool_route_execute")
+)
+```
+
+### 4c. `mahavishnu/cli/pool_route_execute_cli.py` — Typer CLI shim (FIX round-5: INC-3)
+
+Per round-5 critique (critical-audit INC-3) + user decision "both": C-13 invokes `["mahavishnu", "pool_route_execute", ...]` CLI which no plan implemented. Add a thin CLI shim. TODO comment notes the future MCP-mediated dispatch path:
+
+```python
+"""mahavishnu pool_route_execute — CLI shim for cross-process dispatch.
+
+Per round-5 fix (critical-audit INC-3): C-13 in the crackerjack repo invokes
+this CLI via subprocess. Without this shim, C-13's `_dispatch_via_mahavishnu`
+fails with "unknown command".
+
+TODO (round-5): once crackerjack grows an MCP-aware runtime, swap this
+subprocess dispatch for `mcp__mahavishnu__pool_route_execute` (MCP-mediated).
+The subprocess path is a deliberate cross-repo boundary that preserves
+each repo's release cadence; MCP-mediated dispatch couples the repos at
+the wire level. Until then, subprocess is the lowest-friction path.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import sys
+from typing import Any
+
+import typer
+from oneiric.core.logging import get_logger
+
+from mahavishnu.core.config import get_settings
+from mahavishnu.mcp.tools.pool_tools import pool_route_execute
+
+logger = get_logger(__name__)
+pool_route_execute_app = typer.Typer(help="CLI shim for cross-process dispatch (see C-13).")
+
+
+@pool_route_execute_app.command("execute")
+def execute_cmd(
+    prompt: str = typer.Option(..., "--prompt"),
+    pool_selector: str = typer.Option("least_loaded", "--pool-selector"),
+    idempotency_source: str | None = typer.Option(None, "--idempotency-source"),
+    idempotency_nonce: str | None = typer.Option(None, "--idempotency-nonce"),
+    idempotency_ttl_seconds: int = typer.Option(86_400, "--idempotency-ttl-seconds"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Dispatch a prompt to a pool with optional idempotency."""
+    from mahavishnu.core.idempotency import IdempotencyOptions
+
+    idempotency = None
+    if idempotency_source and idempotency_nonce:
+        idempotency = IdempotencyOptions(
+            source=idempotency_source,
+            nonce=idempotency_nonce,
+            ttl_seconds=idempotency_ttl_seconds,
+        )
+
+    result = asyncio.run(
+        pool_route_execute(
+            prompt=prompt,
+            pool_selector=pool_selector,
+            idempotency=idempotency,
+        )
+    )
+    if json_output:
+        typer.echo(json.dumps(result, default=str))
+    else:
+        typer.echo(str(result))
+```
+
+Register in `mahavishnu/_main_cli.py` (after the `workflows_app` registration at lines 170-171):
+
+```python
+from mahavishnu.cli.pool_route_execute_cli import pool_route_execute_app
+app.add_typer(pool_route_execute_app, name="pool-route-execute")
+```
+
+This exposes `mahavishnu pool-route-execute execute --prompt "..." --idempotency-source ... --idempotency-nonce ...` for C-13's subprocess dispatch.
+
+### 4d. `mahavishnu/core/metrics.py` — add 2 metrics
 
 ```python
 IDEMPOTENCY_HIT_TOTAL = Counter(

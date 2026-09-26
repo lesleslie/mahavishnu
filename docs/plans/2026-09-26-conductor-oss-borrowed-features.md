@@ -393,7 +393,7 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_task_events_idempotency_key
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from oneiric.logging import getLogger  # project-standard logger, not stdlib
+from oneiric.core.logging import get_logger  # project-standard logger, not stdlib
 
 if TYPE_CHECKING:
     from mahavishnu.core.events.eventbridge_adapter import EventBridgePublisher
@@ -401,7 +401,7 @@ if TYPE_CHECKING:
 
 
 _publisher: EventBridgePublisher | None = None
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def set_publisher(publisher: EventBridgePublisher | None) -> None:
@@ -670,7 +670,7 @@ import uuid
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from oneiric.actions.data import DataSanitizeAction
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.config import get_settings
 from mahavishnu.core.errors import EcosystemIntakeError
@@ -680,7 +680,7 @@ from mahavishnu.core.events.publisher import safe_publish
 
 router = APIRouter()
 ALLOWED_SOURCES: frozenset[str] = frozenset({"git-monitor", "crontroller", "ops-bridge"})
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.post("/webhooks/ecosystem/{source_name}")
@@ -758,14 +758,14 @@ from pathlib import Path
 
 import aiofiles
 from watchfiles import awatch, Change
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.jot.paths import log_path as jot_paths_log_path
 from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.core.events.publisher import safe_publish
 
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def watch_board(board_path: Path, state_sidecar: Path,
@@ -837,14 +837,14 @@ import json
 import uuid
 
 import typer
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 from mahavishnu.core.config import get_settings
 from mahavishnu.core.event_store import get_execution_events
 from mahavishnu.core.errors import MahavishnuError
 
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 executions_app = typer.Typer(help="Inspect workflow executions (LLM history)")
 
 

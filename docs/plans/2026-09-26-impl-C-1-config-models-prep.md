@@ -18,7 +18,7 @@ This is the precondition for the entire wire-up sequence.
 
 Run `python scripts/audit_orphans.py` first; the working tree should be clean (`git status`). If not, `git stash --keep-index` the unrelated dirty files but DO NOT touch `docs/plans/2026-09-26-conductor-oss-borrowed-features.md` itself.
 
-Confirm the Oneiric logger import path exists in the active venv: `python -c "from oneiric.logging import getLogger; print(getLogger('test'))"`. If it fails, fix the venv before continuing.
+Confirm the Oneiric logger import path exists in the active venv: `python -c "from oneiric.core.logging import get_logger; print(getLogger('test'))"`. If it fails, fix the venv before continuing.
 
 ## File-by-file changes
 

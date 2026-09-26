@@ -14,7 +14,7 @@ The existing `mahavishnu/core/events/eventbridge_resolver.py` (`eventbridge_reso
 
 ## Pre-flight checks
 
-1. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.logging import getLogger"`. The plan uses `getLogger(__name__)` per crackerjack-compliant-code ("Use the Oneiric logger — not stdlib `logging`").
+1. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.core.logging import get_logger"`. The plan uses `get_logger(__name__)` per crackerjack-compliant-code ("Use the Oneiric logger — not stdlib `logging`").
 2. **Existing publisher implementation exists.** Verify `mahavishnu/core/events/eventbridge_adapter.py` (or `mahavishnu_publisher.py`) exposes `EventBridgePublisher` with a `publish(envelope: OneiricEventEnvelope) -> None` (or similar async method). The singleton wraps this — it does not reimplement the publish logic.
 3. **`mahavishnu/factories.py:_wire_eventbridge_publisher` exists.** This is where `set_publisher()` will be called at app boot.
 4. **All downstream callers of `resolve_event_publisher(server)` identified.** `grep -r "resolve_event_publisher" mahavishnu/` to enumerate the migration scope. Each caller must be updated to use `get_publisher()` instead.
@@ -40,14 +40,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 if TYPE_CHECKING:
     from mahavishnu.core.events.contract import OneiricEventEnvelope
     from mahavishnu.core.events.eventbridge_adapter import EventBridgePublisher
 
 _publisher: EventBridgePublisher | None = None
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def set_publisher(publisher: EventBridgePublisher | None) -> None:

@@ -41,14 +41,14 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from cachetools import LRUCache
-from oneiric.logging import getLogger
+from oneiric.core.logging import get_logger
 
 if TYPE_CHECKING:
     from mahavishnu.core.config import ConcurrencyLimitsSettings, ConcurrencyLimitSpec
     from mahavishnu.core.model_routing import TaskCategory
 
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConcurrencyGate:
@@ -332,6 +332,117 @@ class TestEstimateRetry:
             concurrency_limit=4, refill_rate_per_second=10.0, global_override=False
         )
         assert _estimate_retry(spec) == 1.0  # floor at 1s
+
+
+@pytest.mark.req(["REQ-012"])
+class TestRealConcurrency:
+    """FIX (round-5): real concurrent tests using asyncio.gather.
+
+    The existing tests in TestConcurrencyGate are sequential await chains
+    that pass regardless of whether the lock + counter work correctly.
+    These tests use asyncio.gather to fire N concurrent calls and
+    assert the gate's invariants under contention.
+    """
+
+    async def test_concurrent_try_acquire_never_exceeds_limit(
+        self, settings_with_limit
+    ) -> None:
+        """Fire 50 concurrent calls; exactly limit succeed."""
+        import asyncio
+        from mahavishnu.core.concurrency_gate import ConcurrencyGate
+        from mahavishnu.core.config import (
+            ConcurrencyLimitsSettings,
+            ConcurrencyLimitSpec,
+        )
+
+        spec = ConcurrencyLimitSpec(
+            concurrency_limit=5,
+            refill_rate_per_second=0.0,
+            global_override=False,
+        )
+        settings = ConcurrencyLimitsSettings(
+            by_category={TaskCategory.CODE_REVIEW: spec}
+        )
+        gate = ConcurrencyGate(settings)
+
+        results = await asyncio.gather(*[
+            gate.try_acquire(TaskCategory.CODE_REVIEW, "pool-1")
+            for _ in range(50)
+        ])
+        # Exactly 5 succeeded; 45 denied
+        assert sum(results) == 5
+        assert sum(1 for r in results if not r) == 45
+        # Internal counter agrees
+        assert gate._counters[(TaskCategory.CODE_REVIEW, "pool-1")] == 5
+
+    async def test_concurrent_per_pool_isolation(
+        self, settings_with_limit
+    ) -> None:
+        """Concurrent calls across different pool_ids do not interfere."""
+        import asyncio
+        from mahavishnu.core.concurrency_gate import ConcurrencyGate
+        from mahavishnu.core.config import (
+            ConcurrencyLimitsSettings,
+            ConcurrencyLimitSpec,
+        )
+
+        spec = ConcurrencyLimitSpec(
+            concurrency_limit=2,
+            refill_rate_per_second=0.0,
+            global_override=False,
+        )
+        settings = ConcurrencyLimitsSettings(
+            by_category={TaskCategory.CODE_GENERATION: spec}
+        )
+        gate = ConcurrencyGate(settings)
+
+        # 4 concurrent calls each on pool-1 and pool-2
+        tasks = []
+        for pool_id in ["pool-1", "pool-2"]:
+            for _ in range(4):
+                tasks.append(
+                    gate.try_acquire(TaskCategory.CODE_GENERATION, pool_id)
+                )
+        results = await asyncio.gather(*tasks)
+        # Per-pool limit = 2; 2 succeed per pool, 2 denied per pool
+        pool_1_results = results[0:4]
+        pool_2_results = results[4:8]
+        assert sum(pool_1_results) == 2
+        assert sum(pool_2_results) == 2
+
+    async def test_release_under_contention(
+        self, settings_with_limit
+    ) -> None:
+        """Release during concurrent acquisitions correctly frees slots."""
+        import asyncio
+        from mahavishnu.core.concurrency_gate import ConcurrencyGate
+        from mahavishnu.core.config import (
+            ConcurrencyLimitsSettings,
+            ConcurrencyLimitSpec,
+        )
+
+        spec = ConcurrencyLimitSpec(
+            concurrency_limit=3,
+            refill_rate_per_second=0.0,
+            global_override=False,
+        )
+        settings = ConcurrencyLimitsSettings(
+            by_category={TaskCategory.SWARM: spec}
+        )
+        gate = ConcurrencyGate(settings)
+
+        # Acquire 3 (saturate)
+        for _ in range(3):
+            assert await gate.try_acquire(TaskCategory.SWARM, "pool-1") is True
+        # 4th denied
+        assert await gate.try_acquire(TaskCategory.SWARM, "pool-1") is False
+        # Release 1, then concurrent acquisition of 4 — exactly 1 succeeds
+        await gate.release(TaskCategory.SWARM, "pool-1")
+        results = await asyncio.gather(*[
+            gate.try_acquire(TaskCategory.SWARM, "pool-1")
+            for _ in range(4)
+        ])
+        assert sum(results) == 1
 
 
 @pytest.mark.req(["REQ-012"])
