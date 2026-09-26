@@ -61,6 +61,31 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 - `pool_route_execute` returns success on retry
 - `worktree_created` Akosha envelopes resume
 
+## Scenario 4: Idempotency circuit OPEN >5 minutes (FIX round-7 Tier 2)
+
+**Symptoms:**
+- `idempotency_circuit_state` gauge = 1 for >5 minutes (per SLO alert)
+- `idempotency_circuit_transitions_total{transition="open"}` rate elevated
+- `pool_route_execute_total{result="error"}` rate elevated with `error: "circuit open; event store unreachable"`
+- All idempotent dispatches fast-fail; non-idempotent dispatches continue
+
+**Diagnosis:**
+1. Confirm circuit state: `curl http://localhost:8680/metrics | grep idempotency_circuit_state`
+2. Check EventStore health: `curl http://localhost:8680/health | jq .event_store`
+3. Check DB latency: `psql $DATABASE_URL -c "SELECT 1"` (round-trip should be <10ms)
+4. Check if circuit is in cooldown probe: `idempotency_circuit_transitions_total{transition="half_open"}` — frequent probes indicate sustained outage
+
+**Recovery:**
+1. **If DB genuinely down**: fix the DB outage first; circuit will self-recover on next successful probe after cooldown (default 30s)
+2. **If circuit threshold too aggressive** (transient blips trip it): raise `idempotency.failure_threshold` in settings; restart Mahavishnu
+3. **If probe storm overwhelming sick DB**: increase `idempotency.cooldown_seconds` to reduce probe frequency; restart Mahavishnu
+4. **Restart clears in-memory breaker** but does NOT fix the underlying outage — restart only helps if the breaker is itself stuck (rare; bug)
+
+**Verification:**
+- `idempotency_circuit_state` gauge returns to 0 within 1 cooldown cycle
+- `pool_route_execute_total{result="duplicate"}` rate resumes (idempotent dispatches start working again)
+- `idempotency_circuit_transitions_total{transition="closed"}` increments at least once
+
 ## Scenario 3: Worktree leak detection
 
 **Symptoms:**

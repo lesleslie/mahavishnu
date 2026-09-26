@@ -415,22 +415,55 @@ class TestPoolRouteExecuteWorktree:
 
     async def test_worktree_lock_conflict_returns_error(self) -> None:
         """If two concurrent calls request the same worktree, one must
-        observe WorktreeLockedError and return 'worktree_conflict'."""
+        observe WorktreeLockedError and return 'worktree_conflict'.
+
+        FIX round-7 (Tier 3): add concurrent caller coverage via asyncio.gather.
+        Without the concurrent caller, the test would pass even if the production
+        code catches WorktreeLockedError on every call (always returning
+        'worktree_conflict'). The fixture only raises once; the second call sees
+        success. One of each result in the gather output proves the conflict
+        path is reachable.
+        """
+        import asyncio
         from mahavishnu.mcp.tools.pool_tools import pool_route_execute
+        from mahavishnu.core.worktree_manager import WorktreeInfo, WorktreeManager
         from mahavishnu.core.worktree_options import WorktreeOptions
 
+        mock_wt = WorktreeInfo(
+            worktree_id="wt-conflict-test",
+            repo_path=Path("/tmp/test-repo"),
+            branch_name="feature/concurrent",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
+        )
+        # Side-effect function: first call returns success, second raises
+        call_count = {"n": 0}
+        def _side_effect(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return mock_wt
+            raise WorktreeLockedError("test conflict")
+
         opts = WorktreeOptions(isolation="worktree")
-        # First call succeeds; second call (simulated) sees lock conflict
-        with patch(
-            "mahavishnu.core.worktree_manager.WorktreeManager.create_worktree",
-            side_effect=WorktreeLockedError("test"),
+        with patch.object(
+            WorktreeManager, "create_worktree", side_effect=_side_effect
+        ), patch(
+            "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+            new=AsyncMock(return_value=True),
         ):
-            result = await pool_route_execute(
-                prompt="edit repo",
-                pool_selector="least_loaded",
-                worktree=opts,
+            # Fire two concurrent dispatches; one succeeds, one observes conflict.
+            results = await asyncio.gather(
+                pool_route_execute(
+                    prompt="edit repo", pool_selector="least_loaded", worktree=opts
+                ),
+                pool_route_execute(
+                    prompt="edit repo", pool_selector="least_loaded", worktree=opts
+                ),
             )
-            assert result["status"] == "worktree_conflict"
+            # One result is success, one is conflict
+            statuses = {r["status"] for r in results}
+            assert statuses == {"success", "worktree_conflict"}
 
     async def test_finally_block_cleans_up_worktree_on_dispatch_failure(self) -> None:
         """FIX (round-5): the `finally` block in pool_route_execute must

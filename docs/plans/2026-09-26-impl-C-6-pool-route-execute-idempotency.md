@@ -57,7 +57,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from oneiric.actions.compression import HashAction  # FIX round-6: HashAction lives in compression.py, not security.py
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core.errors import IdempotencyStoreUnavailable
+from mahavishnu.core.errors import IdempotencyStoreUnavailable, IdempotencyCircuitOpen  # FIX round-7: distinct exception for circuit-open vs underlying failure
 from mahavishnu.core.event_store import TaskEvent, TaskEventType
 from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database instance, not a Path
 
@@ -236,17 +236,24 @@ async def pool_route_execute(
             # Mark as FAILED so a future retry does not return stale PENDING.
             existing.event_type = TaskEventType.FAILED  # FIX round-6: FAILED = "failed" already exists in StrEnum at event_store.py:69
             existing.data = {**existing.data, "error": "dispatch failed"}
-            # FIX round-6: real EventStore API is `append()` for state transitions.
-            await event_store.append(
-                task_id=existing.task_id,
-                event_type=TaskEventType.FAILED,
-                actor=existing.actor,
-                data=existing.data,
+            # FIX round-7 (Tier 2): wrap mark-failed through the same breaker.
+            # Without this, a DB hiccup at dispatch-completion time loses the
+            # result and the row stays PENDING until manual cleanup.
+            await breaker.call(
+                lambda: event_store.append(
+                    task_id=existing.task_id,
+                    event_type=TaskEventType.FAILED,
+                    actor=existing.actor,
+                    data=existing.data,
+                )
             )
         raise
 
     if idempotency is not None and existing is not None:
-        await idem_store.mark_completed(existing, result)
+        # FIX round-7 (Tier 2): wrap mark_completed through the breaker too.
+        await breaker.call(
+            lambda: idem_store.mark_completed(existing, result)
+        )
 
     return result
 ```
@@ -324,6 +331,11 @@ class IdempotencyCircuitBreaker:
     — the dispatch does NOT proceed when the circuit is open. This preserves
     the no-duplicate-work guarantee (fail-CLOSED) while avoiding the 30s
     timeout cliff identified by the devops review.
+
+    FIX round-7 (Tier 2 operational polish): the breaker tracks state via
+    metrics so operators can distinguish "circuit OPEN" from "DB genuinely
+    down" at 3am. `IdempotencyCircuitOpen` is a distinct exception class
+    so callers can route differently if desired.
     """
 
     def __init__(
@@ -337,22 +349,35 @@ class IdempotencyCircuitBreaker:
         self._opened_at: float | None = None
         self._lock = asyncio.Lock()
 
+    @property
+    def is_open(self) -> bool:
+        """FIX round-7: expose circuit state for the metric gauge."""
+        return self._opened_at is not None
+
     async def call(self, coro_factory: Callable[[], Awaitable[T]]) -> T:
-        """Execute coro_factory() if circuit is closed; raise cached error if open."""
+        """Execute coro_factory() if circuit is closed; raise IdempotencyCircuitOpen
+        if open, or IdempotencyStoreUnavailable if the underlying call failed.
+        """
         async with self._lock:
             if self._opened_at is not None:
                 elapsed = time.monotonic() - self._opened_at
                 if elapsed < self._cooldown_seconds:
-                    # Circuit is open; fast-fail with cached error
+                    # Circuit is open; fast-fail with distinct exception.
+                    # FIX round-7: log structured + bump circuit-state metric.
+                    IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(1)
                     logger.warning(
                         "idempotency circuit open; skipping",
                         extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
                     )
-                    raise IdempotencyStoreUnavailable(
+                    raise IdempotencyCircuitOpen(
                         "circuit open; event store unreachable"
                     )
                 # Cooldown elapsed; transition to HALF_OPEN (one trial allowed)
                 self._opened_at = None
+                IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(0)
+                IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL.labels(
+                    transition="half_open"
+                ).inc()
 
         try:
             result = await coro_factory()
@@ -360,6 +385,10 @@ class IdempotencyCircuitBreaker:
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
                 self._opened_at = time.monotonic()
+                IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(1)
+                IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL.labels(
+                    transition="open"
+                ).inc()
                 logger.exception("circuit tripped to OPEN",
                                   extra={"consecutive_failures": self._consecutive_failures})
             raise
@@ -367,9 +396,18 @@ class IdempotencyCircuitBreaker:
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
                 self._opened_at = time.monotonic()
+                IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(1)
+                IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL.labels(
+                    transition="open"
+                ).inc()
             raise
 
         # Success
+        if self._consecutive_failures > 0:
+            IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL.labels(
+                transition="closed"
+            ).inc()
+            IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(0)
         self._consecutive_failures = 0
         return result
 ```
@@ -459,7 +497,7 @@ app.add_typer(pool_route_execute_app, name="pool-route-execute")
 
 This exposes `mahavishnu pool-route-execute execute --prompt "..." --idempotency-source ... --idempotency-nonce ...` for C-13's subprocess dispatch.
 
-### 4d. `mahavishnu/core/metrics.py` — add 2 metrics
+### 4d. `mahavishnu/core/metrics.py` — add 4 metrics
 
 ```python
 IDEMPOTENCY_HIT_TOTAL = Counter(
@@ -473,13 +511,45 @@ IDEMPOTENCY_MISS_TOTAL = Counter(
     "Total idempotent dispatch misses (fresh work dispatched).",
     labelnames=["source"],
 )
+
+# FIX round-7 (Tier 2 operational polish): circuit breaker observability.
+# Operators need to distinguish "circuit OPEN for 2 hours" from "DB slow"
+# at 3am. The gauge is 0 when CLOSED, 1 when OPEN. The counter records every
+# state transition for retrospective analysis.
+IDEMPOTENCY_CIRCUIT_STATE_GAUGE = Gauge(
+    "idempotency_circuit_state",
+    "Idempotency circuit breaker state (0=CLOSED, 1=OPEN).",
+)
+
+IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL = Counter(
+    "idempotency_circuit_transitions_total",
+    "Total idempotency circuit state transitions.",
+    labelnames=["transition"],  # "open" | "closed" | "half_open"
+)
 ```
 
 Increment `IDEMPOTENCY_HIT_TOTAL.labels(source=existing.data["source"])` on the duplicate-return path; `IDEMPOTENCY_MISS_TOTAL` on the create-new-PENDING path.
 
-### 5. `mahavishnu/core/errors.py` — verify `IdempotencyStoreUnavailable` (from C-3)
+Alert: `idempotency_circuit_state == 1 for >5m` → page on-call (per `docs/slos/2026-09-26-wireup-pool-dispatch.md`).
 
-Verify the exception class is present (added in C-3). If not, the integration is broken — escalate.
+### 5. `mahavishnu/core/errors.py` — verify `IdempotencyStoreUnavailable` (from C-3) and add `IdempotencyCircuitOpen` (FIX round-7 Tier 2)
+
+Verify `IdempotencyStoreUnavailable` is present (added in C-3). **FIX round-7**: add the new `IdempotencyCircuitOpen` exception class — distinct from `IdempotencyStoreUnavailable` so operators can route circuit-open fast-fails differently from underlying-store failures:
+
+```python
+class IdempotencyStoreUnavailable(MahavishnuError):
+    """Raised when the idempotency store unreachable; fail-CLOSED behavior expected."""
+
+
+class IdempotencyCircuitOpen(MahavishnuError):
+    """Raised by IdempotencyCircuitBreaker when the breaker is OPEN.
+
+    Distinct from IdempotencyStoreUnavailable so callers can route
+    differently. IdempotencyStoreUnavailable indicates the underlying
+    store raised; IdempotencyCircuitOpen indicates the breaker is gating
+    traffic without touching the underlying store.
+    """
+```
 
 ## Tests
 
@@ -494,7 +564,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.errors import IdempotencyStoreUnavailable
+from mahavishnu.core.errors import IdempotencyStoreUnavailable, IdempotencyCircuitOpen  # FIX round-7: distinct exception for circuit-open vs underlying failure
 from mahavishnu.core.event_store import TaskEventType
 from mahavishnu.core.idempotency import IdempotencyOptions, IdempotencyStore
 

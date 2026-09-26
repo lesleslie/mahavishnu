@@ -262,6 +262,9 @@ class TestConcurrencyGate:
         assert await gate.try_acquire(TaskCategory.CODE_GENERATION, "pool-1") is True
 
     async def test_acquire_beyond_limit_denied(self, settings_with_limit) -> None:
+        """FIX round-7 (Tier 3): this test is now redundant with
+        `test_concurrent_try_acquire_never_exceeds_limit` in TestRealConcurrency.
+        Marked as a no-race happy path only."""
         gate = ConcurrencyGate(settings_with_limit)
         await gate.try_acquire(TaskCategory.CODE_GENERATION, "pool-1")
         await gate.try_acquire(TaskCategory.CODE_GENERATION, "pool-1")
