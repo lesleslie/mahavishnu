@@ -1262,7 +1262,7 @@ class PoolManager:
             )
             raise RateLimitError(
                 limit=f"caller_kind={caller_kind.value}",
-                retry_after=retry_after,
+                retry_after_seconds=retry_after,
             )
 
         state.request_count += 1
