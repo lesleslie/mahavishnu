@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
 
 class ProducerCounters:
@@ -43,4 +43,25 @@ ECOSYSTEM_INTAKE_SANITIZE_DURATION: Histogram = Histogram(
     "ecosystem_intake_sanitize_duration_seconds",
     "Time to sanitize the request body via DataSanitizeAction.",
     buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0),
+)
+
+
+# ---------------------------------------------------------------------------
+# Worktree metrics (C-8 / REQ-010)
+# ---------------------------------------------------------------------------
+
+WORKTREE_CREATION_TOTAL: Counter = Counter(
+    "worktree_creation_total",
+    "Total worktree creation attempts, labeled by result.",
+    labelnames=["result"],  # success | lock_conflict | error
+)
+
+WORKTREE_ACTIVE_COUNT: Gauge = Gauge(
+    "worktree_active_count",
+    "Currently active worktrees.",
+)
+
+WORKTREE_DISK_BYTES: Gauge = Gauge(
+    "worktree_disk_bytes",
+    "Total disk bytes consumed by active worktrees.",
 )

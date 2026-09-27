@@ -1,838 +1,346 @@
-"""Tests for WorktreeManager - Git worktree lifecycle management."""
+"""Tests for WorktreeManager (post C-8 / REQ-010).
+
+The ``WorktreeInfo`` shape was REPLACED (no longer carries ``task_id``,
+``path``, ``branch``, ``state``, ``completed_at``, or ``metadata``).
+``WorktreeState`` and ``GitRunner`` were dropped per the no-backcompat
+policy. ``WorktreeManager`` now takes ``base_path`` + ``event_store``.
+"""
 
 from __future__ import annotations
 
+import subprocess
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from mahavishnu.core.worktree_manager import (
+    WorktreeCompletion,
     WorktreeError,
     WorktreeInfo,
     WorktreeManager,
-    WorktreeState,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-
-@pytest.fixture
-def mock_task_store() -> AsyncMock:
-    """Create a mock TaskStore."""
-    return AsyncMock()
-
-
-@pytest.fixture
-def mock_git_runner() -> MagicMock:
-    """Create a mock git command runner."""
-    runner = MagicMock()
-    runner.run = AsyncMock()
-    return runner
-
-
-@pytest.fixture
-def sample_worktree_info() -> WorktreeInfo:
-    """Create a sample worktree info."""
-    return WorktreeInfo(
-        worktree_id="wt-123",
-        task_id="task-1",
-        path="/repos/mahavishnu-worktree-task-1",
-        branch="feature/task-1",
-        base_branch="main",
-        state=WorktreeState.ACTIVE,
-        created_at=datetime.now(UTC),
-    )
-
-
-class TestWorktreeState:
-    """Tests for WorktreeState enum."""
-
-    def test_worktree_states(self) -> None:
-        """Test available worktree states."""
-        assert WorktreeState.ACTIVE.value == "active"
-        assert WorktreeState.COMPLETED.value == "completed"
-        assert WorktreeState.ABANDONED.value == "abandoned"
-        assert WorktreeState.MERGED.value == "merged"
 
 
 class TestWorktreeInfo:
-    """Tests for WorktreeInfo dataclass."""
+    """Tests for the REPLACED ``WorktreeInfo`` dataclass."""
 
-    def test_create_worktree_info(self) -> None:
-        """Create worktree info."""
+    def test_create_worktree_info_minimal(self) -> None:
         info = WorktreeInfo(
             worktree_id="wt-123",
-            task_id="task-1",
-            path="/path/to/worktree",
-            branch="feature/task-1",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-123",
             base_branch="main",
-            state=WorktreeState.ACTIVE,
             created_at=datetime.now(UTC),
+            ttl_seconds=3600,
         )
-
         assert info.worktree_id == "wt-123"
-        assert info.task_id == "task-1"
-        assert info.state == WorktreeState.ACTIVE
+        assert info.repo_path == Path("/tmp/repo")
+        assert info.branch_name == "feature/wt-123"
+        # New fields default to empty
+        assert info.diff == ""
+        assert info.merge is False
+        assert info.files_touched == []
 
-    def test_worktree_info_with_metadata(self) -> None:
-        """Create worktree info with metadata."""
+    def test_worktree_info_to_dict_includes_new_fields(self) -> None:
         info = WorktreeInfo(
-            worktree_id="wt-456",
-            task_id="task-2",
-            path="/path/to/worktree2",
-            branch="feature/task-2",
-            base_branch="develop",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-            metadata={"description": "Implement feature X"},
-        )
-
-        assert info.metadata is not None
-        assert info.metadata["description"] == "Implement feature X"
-
-    def test_worktree_info_to_dict(self) -> None:
-        """Convert worktree info to dictionary."""
-        info = WorktreeInfo(
-            worktree_id="wt-789",
-            task_id="task-3",
-            path="/path/to/worktree3",
-            branch="bugfix/task-3",
+            worktree_id="wt-001",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-001",
             base_branch="main",
-            state=WorktreeState.MERGED,
             created_at=datetime.now(UTC),
+            ttl_seconds=3600,
         )
-
+        info.diff = "diff content"
+        info.merge = True
+        info.files_touched = ["a.py", "b.py"]
         d = info.to_dict()
-        assert d["worktree_id"] == "wt-789"
-        assert d["task_id"] == "task-3"
-        assert d["state"] == "merged"
+        assert d["worktree_id"] == "wt-001"
+        assert d["diff"] == "diff content"
+        assert d["merge"] is True
+        assert d["files_touched"] == ["a.py", "b.py"]
+        assert d["repo_path"] == "/tmp/repo"
 
 
-class TestWorktreeManager:
-    """Tests for WorktreeManager class."""
+class TestWorktreeCompletion:
+    """Tests for ``WorktreeCompletion`` wrapper."""
 
-    @pytest.mark.asyncio
-    async def test_git_runner_and_default_worktree_path_generation(
-        self, mock_task_store: AsyncMock
-    ) -> None:
-        """Cover git runner success/failure and default path generation branches."""
-
-        class _Process:
-            def __init__(self, returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> None:
-                self.returncode = returncode
-                self._stdout = stdout
-                self._stderr = stderr
-
-            async def communicate(self) -> tuple[bytes, bytes]:
-                return self._stdout, self._stderr
-
-        runner = WorktreeManager(task_store=mock_task_store, git_runner=None)._git
-        assert runner.__class__.__name__ == "GitRunner"
-
-        async def _create_ok(*args, **kwargs):
-            return _Process(0, stdout=b"ok\n")
-
-        async def _create_fail(*args, **kwargs):
-            return _Process(1, stderr=b"boom")
-
-        with patch(
-            "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
-            side_effect=_create_ok,
-        ):
-            assert await runner.run("status", cwd="/tmp") == "ok"
-
-        with (
-            patch(
-                "mahavishnu.core.worktree_manager.asyncio.create_subprocess_exec",
-                side_effect=_create_fail,
-            ),
-            pytest.raises(Exception, match="boom"),
-        ):
-            await runner.run("status", cwd="/tmp")
-
-        manager = WorktreeManager(
-            task_store=mock_task_store, git_runner=MagicMock(), base_path="/repos"
+    def test_wraps_worktree_info(self) -> None:
+        info = WorktreeInfo(
+            worktree_id="wt-002",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-002",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
         )
-        assert manager._get_worktree_path("/repos/mahavishnu", "task-1") == "/repos/worktree-task-1"
+        completion = WorktreeCompletion(info=info)
+        assert completion.info is info
 
-        # Passing base_path="" opts into the legacy "repo parent + worktree-{task_id}"
-        # layout. (When base_path is omitted entirely the constructor defaults
-        # to ``str(get_worktree_base_path())`` — see WorktreeManager docstring.)
-        legacy_manager = WorktreeManager(
-            task_store=mock_task_store, git_runner=MagicMock(), base_path=""
-        )
-        assert (
-            legacy_manager._get_worktree_path("/repos/mahavishnu", "task-1")
-            == "/repos/mahavishnu-worktree-task-1"
-        )
 
-    @pytest.mark.asyncio
-    async def test_create_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Create a new worktree for a task."""
-        mock_git_runner.run.return_value = (
-            "Preparing worktree (new branch 'feature/task-1')\nHEAD is now at abc123 Initial commit"
-        )
+class TestWorktreeManagerConstructor:
+    """Tests for the REPLACED WorktreeManager constructor."""
 
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-            base_path="/repos",
-        )
+    def test_constructor_default(self) -> None:
+        mgr = WorktreeManager()
+        assert mgr._registry == {}
 
-        worktree = await manager.create_worktree(
-            task_id="task-1",
-            repo_path="/repos/mahavishnu",
-            branch_name="feature/task-1",
-        )
+    def test_constructor_with_base_path(self, tmp_path: Path) -> None:
+        mgr = WorktreeManager(base_path=str(tmp_path / "worktrees"))
+        assert mgr._base_path == str(tmp_path / "worktrees")
 
-        assert worktree is not None
-        assert worktree.task_id == "task-1"
-        assert worktree.state == WorktreeState.ACTIVE
-        assert "feature/task-1" in worktree.branch
+    def test_constructor_with_event_store(self) -> None:
+        mock_es = AsyncMock()
+        mgr = WorktreeManager(event_store=mock_es)
+        assert mgr._registry == {}
 
-    @pytest.mark.asyncio
-    async def test_create_worktree_with_base_branch(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Create worktree from specific base branch."""
-        mock_git_runner.run.return_value = "Preparing worktree (new branch)"
 
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-            base_path="/repos",
-        )
+class TestWorktreeManagerPathGeneration:
+    def test_worktree_path_generation(self, tmp_path: Path) -> None:
+        mgr = WorktreeManager(base_path=str(tmp_path / "worktrees"))
+        path = mgr._get_worktree_path(Path("/tmp/repo"), "wt-123")
+        assert path == Path("/tmp/repo/.worktrees/wt-123")
 
-        worktree = await manager.create_worktree(
-            task_id="task-2",
-            repo_path="/repos/mahavishnu",
-            branch_name="feature/task-2",
-            base_branch="develop",
-        )
+    def test_worktree_path_legacy(self) -> None:
+        mgr = WorktreeManager(base_path="")
+        path = mgr._get_worktree_path(Path("/repos/mahavishnu"), "wt-1")
+        assert path == Path("/repos/mahavishnu/.worktrees/wt-1")
 
-        assert worktree is not None
-        assert worktree.base_branch == "develop"
 
-    @pytest.mark.asyncio
-    async def test_list_worktrees(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """List all worktrees."""
-        mock_git_runner.run.return_value = (
-            "worktree /repos/mahavishnu\n"
-            "HEAD abc123def456\n"
-            "branch refs/heads/main\n"
-            "\n"
-            "worktree /repos/mahavishnu-worktree-task-1\n"
-            "HEAD def456abc123\n"
-            "branch refs/heads/feature/task-1\n"
-        )
+class TestWorktreeManagerRegistry:
+    def test_get_missing_worktree(self) -> None:
+        mgr = WorktreeManager()
+        assert mgr.get_worktree("missing") is None
+        assert mgr.worktree_exists("missing") is False
 
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
+    def test_list_worktrees_empty(self) -> None:
+        mgr = WorktreeManager()
+        assert mgr.list_worktrees() == []
 
-        # Add some tracked worktrees
-        manager._worktrees["wt-1"] = WorktreeInfo(
+    def test_get_summary(self) -> None:
+        mgr = WorktreeManager()
+        mgr._registry["wt-1"] = WorktreeInfo(
             worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/mahavishnu-worktree-task-1",
-            branch="feature/task-1",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-1",
             base_branch="main",
-            state=WorktreeState.ACTIVE,
             created_at=datetime.now(UTC),
+            ttl_seconds=3600,
         )
+        summary = mgr.get_summary()
+        assert summary["total_worktrees"] == 1
+        assert summary["active_worktrees"] == 1
 
-        worktrees = manager.list_worktrees()
 
-        assert len(worktrees) == 1
-        assert worktrees[0].task_id == "task-1"
-
+class TestCreateWorktree:
     @pytest.mark.asyncio
-    async def test_get_worktree_for_task(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Get worktree for a specific task."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
+    async def test_create_worktree_success(self, tmp_path: Path) -> None:
+        # Set up a real git repo so ``git worktree add`` can run.
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-
-        worktree = manager.get_worktree_for_task("task-1")
-
-        assert worktree is not None
-        assert worktree.task_id == "task-1"
-
-    @pytest.mark.asyncio
-    async def test_get_nonexistent_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Get worktree for non-existent task."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
+        (repo / "README.md").write_text("hi\n")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "initial"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-
-        worktree = manager.get_worktree_for_task("nonexistent")
-
-        assert worktree is None
-
-    @pytest.mark.asyncio
-    async def test_complete_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Mark worktree as completed."""
-        mock_git_runner.run.return_value = "Branch feature/task-1 merged into main"
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        result = await manager.complete_worktree("wt-1", merge=True, repo_path="/repos/mahavishnu")
-
-        assert result is True
-        assert manager._worktrees["wt-1"].state == WorktreeState.MERGED
-
-    @pytest.mark.asyncio
-    async def test_complete_and_sync_error_branches(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Cover not-found and exception branches for lifecycle methods."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        with pytest.raises(WorktreeError):
-            await manager.complete_worktree("missing")
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        mock_git_runner.run.side_effect = Exception("merge failed")
-        with pytest.raises(WorktreeError, match="merge failed"):
-            await manager.complete_worktree("wt-1", merge=True, repo_path="/repos/mahavishnu")
-
-        assert await manager.abandon_worktree("missing") is False
-        assert await manager.sync_with_base("missing") is False
-        assert await manager.get_status("missing") is None
-
-        mock_git_runner.run.side_effect = Exception("sync failed")
-        manager._worktrees["wt-2"] = WorktreeInfo(
-            worktree_id="wt-2",
-            task_id="task-2",
-            path="/repos/worktree-2",
-            branch="feature/task-2",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-        assert await manager.sync_with_base("wt-2") is False
-
-        mock_git_runner.run.side_effect = Exception("status failed")
-        manager._worktrees["wt-3"] = WorktreeInfo(
-            worktree_id="wt-3",
-            task_id="task-3",
-            path="/repos/worktree-3",
-            branch="feature/task-3",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-        status = await manager.get_status("wt-3")
-        assert status is not None
-        assert status["error"] == "status failed"
-
-    @pytest.mark.asyncio
-    async def test_complete_worktree_without_merge(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Complete worktree without merging."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        result = await manager.complete_worktree("wt-1", merge=False)
-
-        assert result is True
-        assert manager._worktrees["wt-1"].state == WorktreeState.COMPLETED
-
-    @pytest.mark.asyncio
-    async def test_abandon_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Abandon a worktree."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        result = await manager.abandon_worktree("wt-1")
-
-        assert result is True
-        assert manager._worktrees["wt-1"].state == WorktreeState.ABANDONED
-
-    @pytest.mark.asyncio
-    async def test_cleanup_completed_worktrees(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Cleanup old completed worktrees."""
-        mock_git_runner.run.return_value = "Worktree removed"
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        # Add worktrees in different states
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.MERGED,
-            created_at=datetime.now(UTC),
-        )
-        manager._worktrees["wt-2"] = WorktreeInfo(
-            worktree_id="wt-2",
-            task_id="task-2",
-            path="/repos/worktree-2",
-            branch="feature/task-2",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        cleaned = await manager.cleanup_completed()
-
-        assert cleaned >= 1  # At least one completed worktree cleaned
-
-    @pytest.mark.asyncio
-    async def test_cleanup_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Remove a single worktree."""
-        mock_git_runner.run.return_value = "Worktree removed"
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.COMPLETED,
-            created_at=datetime.now(UTC),
-        )
-
-        result = await manager.cleanup_worktree("wt-1")
-
-        assert result is True
-        assert "wt-1" not in manager._worktrees
-
-    @pytest.mark.asyncio
-    async def test_cleanup_and_prune_error_branches(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Cover cleanup git-remove and failure branches plus prune removal."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        removable = tmp_path / "repos" / "worktree-1"
-        removable.mkdir(parents=True, exist_ok=True)
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path=str(removable),
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.COMPLETED,
-            created_at=datetime.now(UTC),
-        )
-
-        mock_git_runner.run.return_value = "removed"
-        assert await manager.cleanup_worktree("wt-1") is True
-        assert "wt-1" not in manager._worktrees
-
-        failing = tmp_path / "repos" / "worktree-2"
-        failing.mkdir(parents=True, exist_ok=True)
-        manager._worktrees["wt-2"] = WorktreeInfo(
-            worktree_id="wt-2",
-            task_id="task-2",
-            path=str(failing),
-            branch="feature/task-2",
-            base_branch="main",
-            state=WorktreeState.COMPLETED,
-            created_at=datetime.now(UTC),
-        )
-
-        mock_git_runner.run.side_effect = Exception("cleanup failed")
-        assert await manager.cleanup_worktree("wt-2") is False
-        assert "wt-2" not in manager._worktrees
-
-        existing = tmp_path / "repos" / "keep"
-        existing.mkdir(parents=True, exist_ok=True)
-        stale = tmp_path / "repos" / "stale"
-        manager._worktrees["wt-3"] = WorktreeInfo(
-            worktree_id="wt-3",
-            task_id="task-3",
-            path=str(stale),
-            branch="feature/task-3",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-        manager._worktrees["wt-4"] = WorktreeInfo(
-            worktree_id="wt-4",
-            task_id="task-4",
-            path=str(existing),
-            branch="feature/task-4",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        monkeypatch.setattr(
-            "mahavishnu.core.worktree_manager.os.path.exists", lambda path: path == str(existing)
-        )
-        assert await manager.prune_stale() == 1
-        assert "wt-3" not in manager._worktrees
-        assert "wt-4" in manager._worktrees
-
-    @pytest.mark.asyncio
-    async def test_cleanup_nonexistent_worktree(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Cleanup non-existent worktree returns False."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        result = await manager.cleanup_worktree("nonexistent")
-
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_get_active_worktrees(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Get all active worktrees."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-        manager._worktrees["wt-2"] = WorktreeInfo(
-            worktree_id="wt-2",
-            task_id="task-2",
-            path="/repos/worktree-2",
-            branch="feature/task-2",
-            base_branch="main",
-            state=WorktreeState.COMPLETED,
-            created_at=datetime.now(UTC),
-        )
-        manager._worktrees["wt-3"] = WorktreeInfo(
-            worktree_id="wt-3",
-            task_id="task-3",
-            path="/repos/worktree-3",
-            branch="feature/task-3",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        active = manager.get_active_worktrees()
-
-        assert len(active) == 2
-        assert all(w.state == WorktreeState.ACTIVE for w in active)
-
-    @pytest.mark.asyncio
-    async def test_sync_branch(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Sync worktree branch with base."""
-        mock_git_runner.run.return_value = "Updated 5 files"
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        result = await manager.sync_with_base("wt-1")
-
-        assert result is True
-
-    @pytest.mark.asyncio
-    async def test_get_worktree_status(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Get status of a worktree."""
-        # Mock multiple git command outputs
-        mock_git_runner.run.side_effect = [
-            "feature/task-1",  # branch --show-current
-            " M file1.py\n M file2.py\n",  # status --short
-            "2\t0",  # rev-list ahead/behind
-        ]
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
-        )
-
-        status = await manager.get_status("wt-1")
-
-        assert status is not None
-        assert "branch" in status
-        assert status["branch"] == "feature/task-1"
-
-    @pytest.mark.asyncio
-    async def test_create_worktree_error_handling(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Handle errors during worktree creation."""
-        mock_git_runner.run.side_effect = Exception("Git error: branch exists")
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-            base_path="/repos",
-        )
-
-        with pytest.raises(WorktreeError):
-            await manager.create_worktree(
+        wt_root = tmp_path / "worktrees"
+        wt_root.mkdir()
+        mgr = WorktreeManager(base_path=str(wt_root))
+        try:
+            info = await mgr.create_worktree(
                 task_id="task-1",
-                repo_path="/repos/mahavishnu",
+                repo_path=repo,
                 branch_name="feature/task-1",
+                base_branch="main",
+                ttl_seconds=3600,
+            )
+            assert info.worktree_id.startswith("wt-")
+            assert info.branch_name == "feature/task-1"
+            assert info.base_branch == "main"
+            assert info.ttl_seconds == 3600
+            assert info.diff == ""
+            assert mgr.worktree_exists(info.worktree_id)
+        finally:
+            # Best-effort cleanup
+            subprocess.run(
+                ["git", "worktree", "remove", "--force"],
+                cwd=repo,
+                capture_output=True,
+                check=False,
+            )
+            subprocess.run(
+                ["git", "branch", "-D", "feature/task-1"],
+                cwd=repo,
+                capture_output=True,
+                check=False,
             )
 
     @pytest.mark.asyncio
-    async def test_worktree_path_generation(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Test worktree path generation."""
-        mock_git_runner.run.return_value = "Preparing worktree"
+    async def test_create_worktree_git_error_raises(self) -> None:
+        """When git fails, WorktreeError is raised."""
+        mgr = WorktreeManager()
+        with patch.object(
+            mgr,
+            "_get_worktree_path",
+            return_value=Path("/nonexistent/wt"),
+        ):
+            # Force the subprocess.run inside _git_worktree_add to raise
+            with patch(
+                "mahavishnu.core.worktree_manager.subprocess.run",
+                side_effect=subprocess.CalledProcessError(128, "git", stderr=b"fatal: bad"),
+            ):
+                with pytest.raises(WorktreeError, match="git diff failed|Failed to create"):
+                    await mgr.create_worktree(
+                        task_id="task-1",
+                        repo_path=Path("/nonexistent/repo"),
+                        branch_name="feature/task-1",
+                    )
 
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-            base_path="/repos/worktrees",
-        )
 
-        worktree = await manager.create_worktree(
-            task_id="task-123",
-            repo_path="/repos/mahavishnu",
-            branch_name="feature/task-123",
-        )
-
-        assert worktree is not None
-        assert "task-123" in worktree.path
-        assert "/repos/worktrees" in worktree.path or "worktree" in worktree.path.lower()
+class TestCompleteWorktree:
+    @pytest.mark.asyncio
+    async def test_complete_unknown_worktree_raises(self) -> None:
+        mgr = WorktreeManager()
+        with pytest.raises(WorktreeError, match="not found"):
+            await mgr.complete_worktree("missing", merge=False)
 
     @pytest.mark.asyncio
-    async def test_get_worktree_summary(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Get summary of all worktrees."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
+    async def test_complete_without_merge_populates_diff(self, tmp_path: Path) -> None:
+        # Real repo with initial commit + worktree + change + second commit.
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
-            worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
-            base_branch="main",
-            state=WorktreeState.ACTIVE,
-            created_at=datetime.now(UTC),
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-        manager._worktrees["wt-2"] = WorktreeInfo(
-            worktree_id="wt-2",
-            task_id="task-2",
-            path="/repos/worktree-2",
-            branch="feature/task-2",
-            base_branch="main",
-            state=WorktreeState.MERGED,
-            created_at=datetime.now(UTC),
+        (repo / "README.md").write_text("hi\n")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "initial"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
-
-        summary = manager.get_summary()
-
-        assert summary["total_worktrees"] == 2
-        assert summary["active_worktrees"] == 1
-        assert summary["merged_worktrees"] == 1
+        wt_root = tmp_path / "worktrees"
+        wt_root.mkdir()
+        mgr = WorktreeManager(base_path=str(wt_root))
+        try:
+            info = await mgr.create_worktree(
+                task_id="task-cw",
+                repo_path=repo,
+                branch_name="feature/task-cw",
+                base_branch="main",
+                ttl_seconds=3600,
+            )
+            wt_path = repo / ".worktrees" / info.worktree_id
+            (wt_path / "new_file.txt").write_text("hello\n")
+            subprocess.run(["git", "add", "new_file.txt"], cwd=wt_path, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "commit", "-m", "add file"],
+                cwd=wt_path,
+                check=True,
+                capture_output=True,
+            )
+            completion = await mgr.complete_worktree(
+                worktree_id=info.worktree_id,
+                merge=False,
+                repo_path=repo,
+            )
+            assert isinstance(completion, WorktreeCompletion)
+            assert "new_file.txt" in completion.info.files_touched
+            assert "new_file.txt" in completion.info.diff
+            assert completion.info.merge is False
+        finally:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force"],
+                cwd=repo,
+                capture_output=True,
+                check=False,
+            )
+            subprocess.run(
+                ["git", "branch", "-D", "feature/task-cw"],
+                cwd=repo,
+                capture_output=True,
+                check=False,
+            )
 
     @pytest.mark.asyncio
-    async def test_prune_stale_worktrees(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Prune stale worktrees (directory deleted)."""
-        mock_git_runner.run.return_value = "Pruned 2 worktrees"
-
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        pruned = await manager.prune_stale()
-
-        assert pruned >= 0
-
-    def test_worktree_exists(
-        self,
-        mock_task_store: AsyncMock,
-        mock_git_runner: MagicMock,
-    ) -> None:
-        """Check if worktree exists."""
-        manager = WorktreeManager(
-            task_store=mock_task_store,
-            git_runner=mock_git_runner,
-        )
-
-        manager._worktrees["wt-1"] = WorktreeInfo(
+    async def test_complete_missing_repo_path_raises_when_merge(self) -> None:
+        mgr = WorktreeManager()
+        mgr._registry["wt-1"] = WorktreeInfo(
             worktree_id="wt-1",
-            task_id="task-1",
-            path="/repos/worktree-1",
-            branch="feature/task-1",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-1",
             base_branch="main",
-            state=WorktreeState.ACTIVE,
             created_at=datetime.now(UTC),
+            ttl_seconds=3600,
         )
+        with pytest.raises(WorktreeError, match="repo_path required"):
+            await mgr.complete_worktree("wt-1", merge=True, repo_path=None)
 
-        assert manager.worktree_exists("wt-1") is True
-        assert manager.worktree_exists("nonexistent") is False
+
+class TestCleanupWorktree:
+    @pytest.mark.asyncio
+    async def test_cleanup_missing_returns_false(self) -> None:
+        mgr = WorktreeManager()
+        assert await mgr.cleanup_worktree("missing") is False
+
+    @pytest.mark.asyncio
+    async def test_cleanup_known_worktree_returns_true(self, tmp_path: Path) -> None:
+        mgr = WorktreeManager(base_path=str(tmp_path / "wt"))
+        mgr._registry["wt-1"] = WorktreeInfo(
+            worktree_id="wt-1",
+            repo_path=tmp_path,
+            branch_name="feature/wt-1",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
+        )
+        assert await mgr.cleanup_worktree("wt-1") is True
+        assert "wt-1" not in mgr._registry
+
+
+class TestAbandonWorktree:
+    @pytest.mark.asyncio
+    async def test_abandon_missing_returns_false(self) -> None:
+        mgr = WorktreeManager()
+        assert await mgr.abandon_worktree("missing") is False
+
+    @pytest.mark.asyncio
+    async def test_abandon_known_returns_true(self) -> None:
+        mgr = WorktreeManager()
+        mgr._registry["wt-1"] = WorktreeInfo(
+            worktree_id="wt-1",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-1",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
+        )
+        assert await mgr.abandon_worktree("wt-1") is True

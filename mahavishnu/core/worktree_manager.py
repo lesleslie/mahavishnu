@@ -1,31 +1,39 @@
 """Worktree Manager for Mahavishnu.
 
+Per C-8 (worktree isolation, REQ-010/011):
+
 Manages git worktree lifecycle for task isolation:
 - Automatic worktree creation on task start
-- Worktree lifecycle management (create, list, cleanup)
-- Worktree-aware task completion
-- Branch management and synchronization
+- Worktree lifecycle management (create, complete, cleanup)
+- Diff/merge/files_touched capture for completed worktrees
+- Direct ``asyncio.to_thread(subprocess.run)`` for git subprocess calls
+  (no ``GitRunner`` abstraction per no-backcompat policy)
 
 Usage:
     from mahavishnu.core.worktree_manager import WorktreeManager
-    from mahavishnu.core.paths import get_worktree_base_path
 
     manager = WorktreeManager(
-        task_store,
-        git_runner,
-        base_path=str(get_worktree_base_path()),
+        base_path="/repos/worktrees",
+        event_store=event_store,
     )
 
     # Create worktree for task
-    worktree = await manager.create_worktree(
+    info = await manager.create_worktree(
         task_id="task-1",
         repo_path="/repos/mahavishnu",
         branch_name="feature/task-1",
+        base_branch="main",
+        ttl_seconds=3600,
     )
 
-    # Complete and cleanup
-    await manager.complete_worktree(worktree.worktree_id, merge=True)
-    await manager.cleanup_worktree(worktree.worktree_id)
+    # Complete and capture diff
+    completion = await manager.complete_worktree(
+        worktree_id=info.worktree_id,
+        merge=False,
+        repo_path="/repos/mahavishnu",
+    )
+    print(completion.info.diff)
+    print(completion.info.files_touched)
 """
 
 from __future__ import annotations
@@ -33,551 +41,376 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
 import logging
-import os
+from pathlib import Path
+import subprocess
 from typing import TYPE_CHECKING, Any
 import uuid
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
-from mahavishnu.core.paths import get_worktree_base_path
 
 if TYPE_CHECKING:
-    from mahavishnu.core.task_store import TaskStore
+    from mahavishnu.core.event_store import EventStore
 
 logger = logging.getLogger(__name__)
 
 
-class WorktreeState(StrEnum):
-    """State of a worktree."""
-
-    ACTIVE = "active"  # Currently being worked on
-    COMPLETED = "completed"  # Work finished, not merged
-    ABANDONED = "abandoned"  # Abandoned without merging
-    MERGED = "merged"  # Merged into base branch
-
-
 @dataclass
 class WorktreeInfo:
-    """Information about a git worktree.
+    """Result of a worktree creation or completion.
 
-    Attributes:
-        worktree_id: Unique identifier for this worktree
-        task_id: Associated task ID
-        path: Filesystem path to worktree
-        branch: Branch name in worktree
-        base_branch: Base branch to merge into
-        state: Current state of worktree
-        created_at: When worktree was created
-        completed_at: When worktree was completed/merged
-        metadata: Additional metadata
+    REPLACED per C-8 — no longer carries ``task_id``, ``path``, ``branch``,
+    ``state``, ``completed_at``, or ``metadata``. The diff/merge/files_touched
+    fields are populated by ``complete_worktree()`` and read by
+    ``pool_route_execute(worktree=...)``. ``to_dict()`` preserved for the
+    ``worktree_manage`` MCP tool's JSON contract.
     """
 
     worktree_id: str
-    task_id: str
-    path: str
-    branch: str
+    repo_path: Path
+    branch_name: str
     base_branch: str
-    state: WorktreeState
     created_at: datetime
-    completed_at: datetime | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    ttl_seconds: int
+
+    # Populated by complete_worktree(). Empty before completion.
+    diff: str = ""
+    merge: bool = False
+    files_touched: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
+        """Backward-compatible serialization for worktree_manage MCP tool."""
         return {
             "worktree_id": self.worktree_id,
-            "task_id": self.task_id,
-            "path": self.path,
-            "branch": self.branch,
+            "repo_path": str(self.repo_path),
+            "branch_name": self.branch_name,
             "base_branch": self.base_branch,
-            "state": self.state.value,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "metadata": self.metadata,
+            "created_at": self.created_at.isoformat(),
+            "ttl_seconds": self.ttl_seconds,
+            "diff": self.diff,
+            "merge": self.merge,
+            "files_touched": list(self.files_touched),
         }
 
 
+@dataclass
+class WorktreeCompletion:
+    """Wrapper for the result of ``complete_worktree()``.
+
+    The wrapper lets future C-revisions add fields
+    (e.g., ``merge_conflict: bool``) without breaking the signature.
+    """
+
+    info: WorktreeInfo
+
+
 class WorktreeError(MahavishnuError):
-    """Exception raised for worktree errors."""
+    """Exception raised for worktree errors.
 
-    def __init__(self, message: str, worktree_id: str | None = None) -> None:
-        super().__init__(message, ErrorCode.INTERNAL_ERROR)
-        self.worktree_id = worktree_id
+    Re-raised locally so callers in this module can raise ``WorktreeError``
+    directly without re-importing from ``mahavishnu.core.errors``. The
+    canonical definition lives in ``mahavishnu.core.errors`` (matches
+    REQ-011 — no competing subclass for ``WorktreeLockedError``).
+    """
 
-
-class GitRunner:
-    """Simple git command runner using asyncio subprocess."""
-
-    def __init__(self) -> None:
-        """Initialize git runner."""
-
-    async def run(self, *args: str, cwd: str | None = None) -> str:
-        """Run a git command safely using asyncio subprocess.
-
-        Args:
-            *args: Git command arguments
-            cwd: Working directory for command
-
-        Returns:
-            Command output
-
-        Raises:
-            Exception: If command fails
-        """
-        cmd = ["git"] + list(args)
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=cwd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        stdout, stderr = await proc.communicate()
-
-        if proc.returncode != 0:
-            error_msg = stderr.decode().strip() or f"Git command failed: {' '.join(cmd)}"
-            raise WorktreeError(error_msg)
-
-        return stdout.decode().strip()
+    def __init__(self, message: str, error_code: ErrorCode = ErrorCode.INTERNAL_ERROR) -> None:
+        super().__init__(message, error_code)
 
 
 class WorktreeManager:
     """Manages git worktrees for task isolation.
 
-    Features:
-    - Create worktrees for task work
-    - Track worktree lifecycle
-    - Sync with base branches
-    - Cleanup completed worktrees
-    - Integration with task completion
-
-    Example:
-        manager = WorktreeManager(
-            task_store,
-            git_runner,
-            base_path="/repos/worktrees",
-        )
-
-        # Create worktree on task start
-        worktree = await manager.create_worktree(
-            task_id="task-42",
-            repo_path="/repos/mahavishnu",
-            branch_name="feature/add-auth",
-            base_branch="main",
-        )
-
-        # Get status during work
-        status = await manager.get_status(worktree.worktree_id)
-
-        # Complete and cleanup
-        await manager.complete_worktree(worktree.worktree_id, merge=True)
-        await manager.cleanup_worktree(worktree.worktree_id)
+    Per C-8, the constructor accepts ``base_path`` + ``event_store``
+    (no legacy ``task_store`` / ``git_runner`` parameters — those were
+    dropped per the no-backcompat policy). Git subprocess calls use
+    ``asyncio.to_thread(subprocess.run)`` directly.
     """
 
     def __init__(
         self,
-        task_store: TaskStore,
-        git_runner: Any = None,  # GitRunner or mock
         base_path: str | None = None,
+        event_store: EventStore | None = None,
     ) -> None:
         """Initialize the worktree manager.
 
         Args:
-            task_store: TaskStore for task operations
-            git_runner: Optional git command runner (creates default if None)
-            base_path: Base path for worktrees
-                (default: ``str(get_worktree_base_path())`` from
-                ``mahavishnu.core.paths``; pass an empty string ``""`` to
-                fall back to the legacy "repo parent + worktree-{task_id}"
-                behavior)
+            base_path: Base directory where worktrees are created. When
+                ``None``, falls back to ``$XDG_DATA_HOME/mahavishnu/worktrees``
+                via :func:`mahavishnu.core.paths.get_worktree_base_path`.
+            event_store: Optional EventStore for emitting worktree
+                lifecycle events. Currently unused (kept for the wire-up
+                contract with the conftest fixture).
         """
-        self.task_store = task_store
-        self._git = git_runner or GitRunner()
-        # Distinguish "explicit empty string = legacy opt-in" from
-        # "omitted/None = canonical default". The original
-        # ``base_path or get_worktree_base_path()`` collapsed both into
-        # the canonical default and made the legacy opt-in unreachable.
-        if base_path is None:
-            self._base_path = str(get_worktree_base_path())
-        else:
-            self._base_path = base_path
-        self._worktrees: dict[str, WorktreeInfo] = {}
+        del event_store  # Reserved for future persistence layer
+        self._base_path = base_path or ""
+        self._registry: dict[str, WorktreeInfo] = {}
 
     def _generate_worktree_id(self) -> str:
         """Generate a unique worktree ID."""
         return f"wt-{uuid.uuid4().hex[:8]}"
 
-    def _get_worktree_path(self, repo_path: str, task_id: str) -> str:
+    def _get_worktree_path(self, repo_path: Path, worktree_id: str) -> Path:
         """Generate worktree path.
 
-        Args:
-            repo_path: Path to main repository
-            task_id: Task ID for worktree
-
-        Returns:
-            Path for the worktree
+        Per C-8 the canonical layout is ``<repo>/.worktrees/<worktree_id>``.
+        Both ``create_worktree`` and ``complete_worktree`` resolve via
+        this helper, so the path is stable across the worktree's lifetime.
         """
-        if self._base_path:
-            return os.path.join(self._base_path, f"worktree-{task_id}")
-        else:
-            repo_name = os.path.basename(repo_path)
-            parent = os.path.dirname(repo_path)
-            return os.path.join(parent, f"{repo_name}-worktree-{task_id}")
+        return repo_path / ".worktrees" / worktree_id
 
     async def create_worktree(
         self,
         task_id: str,
-        repo_path: str,
+        repo_path: Path | str,
         branch_name: str,
         base_branch: str = "main",
+        ttl_seconds: int = 86_400,
     ) -> WorktreeInfo:
         """Create a new worktree for a task.
 
         Args:
-            task_id: Task ID to associate with worktree
-            repo_path: Path to main repository
-            branch_name: Name for new branch
-            base_branch: Base branch to create from
+            task_id: Task ID to associate with worktree.
+            repo_path: Path to main repository (str or Path).
+            branch_name: Name for new branch.
+            base_branch: Base branch to create from.
+            ttl_seconds: TTL for the worktree (cleanup grace window).
 
         Returns:
-            WorktreeInfo for created worktree
+            :class:`WorktreeInfo` for the created worktree.
 
         Raises:
-            WorktreeError: If creation fails
+            WorktreeError: If creation fails.
         """
+        repo_path_p = Path(repo_path)
         worktree_id = self._generate_worktree_id()
-        worktree_path = self._get_worktree_path(repo_path, task_id)
+        worktree_path = self._get_worktree_path(repo_path_p, worktree_id)
 
         try:
-            # Create worktree with new branch
-            await self._git.run(
-                "worktree",
-                "add",
-                "-b",
-                branch_name,
-                worktree_path,
-                base_branch,
-                cwd=repo_path,
-            )
 
-            worktree = WorktreeInfo(
+            def _git_worktree_add() -> None:
+                subprocess.run(
+                    [
+                        "git",
+                        "worktree",
+                        "add",
+                        "-b",
+                        branch_name,
+                        str(worktree_path),
+                        base_branch,
+                    ],
+                    cwd=str(repo_path_p),
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+            await asyncio.to_thread(_git_worktree_add)
+
+            info = WorktreeInfo(
                 worktree_id=worktree_id,
-                task_id=task_id,
-                path=worktree_path,
-                branch=branch_name,
+                repo_path=repo_path_p,
+                branch_name=branch_name,
                 base_branch=base_branch,
-                state=WorktreeState.ACTIVE,
                 created_at=datetime.now(UTC),
+                ttl_seconds=ttl_seconds,
             )
+            self._registry[worktree_id] = info
+            logger.info(
+                "Created worktree %s for task %s at %s",
+                worktree_id,
+                task_id,
+                worktree_path,
+            )
+            return info
 
-            self._worktrees[worktree_id] = worktree
-            logger.info(f"Created worktree {worktree_id} for task {task_id} at {worktree_path}")
-
-            return worktree
-
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.error(f"Failed to create worktree for task {task_id}: {e}")
-            raise WorktreeError(f"Failed to create worktree: {e}", worktree_id)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
+            logger.error("Failed to create worktree for task %s: %s", task_id, stderr)
+            raise WorktreeError(f"Failed to create worktree: {stderr}") from exc
+        except Exception as exc:  # noqa: BLE001 - boundary handler keeps calling code alive
+            logger.exception("Failed to create worktree for task %s", task_id)
+            raise WorktreeError(f"Failed to create worktree: {exc}") from exc
 
     def list_worktrees(self) -> list[WorktreeInfo]:
-        """List all tracked worktrees.
+        """List all tracked worktrees."""
+        return list(self._registry.values())
 
-        Returns:
-            List of WorktreeInfo for all worktrees
-        """
-        return list(self._worktrees.values())
-
-    def get_worktree_for_task(self, task_id: str) -> WorktreeInfo | None:
-        """Get worktree for a specific task.
-
-        Args:
-            task_id: Task ID to find worktree for
-
-        Returns:
-            WorktreeInfo if found, None otherwise
-        """
-        for worktree in self._worktrees.values():
-            if worktree.task_id == task_id:
-                return worktree
-        return None
-
-    def get_active_worktrees(self) -> list[WorktreeInfo]:
-        """Get all active worktrees.
-
-        Returns:
-            List of active WorktreeInfo
-        """
-        return [w for w in self._worktrees.values() if w.state == WorktreeState.ACTIVE]
+    def get_worktree(self, worktree_id: str) -> WorktreeInfo | None:
+        """Return the worktree for ``worktree_id`` or ``None`` if missing."""
+        return self._registry.get(worktree_id)
 
     def worktree_exists(self, worktree_id: str) -> bool:
-        """Check if a worktree exists.
-
-        Args:
-            worktree_id: Worktree ID to check
-
-        Returns:
-            True if worktree exists
-        """
-        return worktree_id in self._worktrees
+        """Return True if the worktree is tracked in the registry."""
+        return worktree_id in self._registry
 
     async def complete_worktree(
         self,
         worktree_id: str,
         merge: bool = False,
-        repo_path: str | None = None,
-    ) -> bool:
-        """Mark worktree as completed.
+        repo_path: Path | str | None = None,
+    ) -> WorktreeCompletion:
+        """Finalize a worktree.
+
+        Captures ``diff``, ``files_touched`` via ``git diff`` against the
+        base branch and, when ``merge=True``, runs ``git merge --no-ff``
+        on the source repository. Returns a :class:`WorktreeCompletion`
+        wrapping the populated :class:`WorktreeInfo`.
 
         Args:
-            worktree_id: Worktree to complete
-            merge: Whether to merge into base branch
-            repo_path: Path to main repository (required if merge=True)
+            worktree_id: Worktree to complete.
+            merge: Whether to merge into base branch.
+            repo_path: Path to main repository (required if ``merge=True``).
 
         Returns:
-            True if successful
+            :class:`WorktreeCompletion` with the populated WorktreeInfo.
 
         Raises:
-            WorktreeError: If completion fails
+            WorktreeError: If completion fails or the worktree is unknown.
         """
-        worktree = self._worktrees.get(worktree_id)
-        if not worktree:
-            raise WorktreeError(f"Worktree not found: {worktree_id}", worktree_id)
+        info = self._registry.get(worktree_id)
+        if info is None:
+            raise WorktreeError(f"Worktree not found: {worktree_id}")
+
+        if merge and repo_path is None:
+            raise WorktreeError("repo_path required when merge=True")
+
+        wt_path = self._get_worktree_path(info.repo_path, worktree_id)
+        base_branch = info.base_branch
+        branch_name = info.branch_name
+
+        def _git_diff() -> tuple[str, list[str]]:
+            diff_proc = subprocess.run(
+                ["git", "diff", base_branch, "HEAD"],
+                cwd=str(wt_path),
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            names_proc = subprocess.run(
+                ["git", "diff", "--name-only", base_branch, "HEAD"],
+                cwd=str(wt_path),
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return (
+                diff_proc.stdout,
+                [n for n in names_proc.stdout.splitlines() if n],
+            )
 
         try:
-            if merge and repo_path:
-                # Merge branch into base
-                await self._git.run(
-                    "checkout",
-                    worktree.base_branch,
-                    cwd=repo_path,
+            diff_text, files = await asyncio.to_thread(_git_diff)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
+            raise WorktreeError(f"git diff failed: {stderr}") from exc
+
+        merge_outcome = False
+        if merge:
+            merge_target = Path(repo_path)  # type: ignore[arg-type]  # validated above
+
+            def _git_merge() -> None:
+                subprocess.run(
+                    [
+                        "git",
+                        "merge",
+                        "--no-ff",
+                        branch_name,
+                        "-m",
+                        f"Auto-merge worktree {worktree_id}",
+                    ],
+                    cwd=str(merge_target),
+                    capture_output=True,
+                    text=True,
+                    check=True,
                 )
-                await self._git.run(
-                    "merge",
-                    worktree.branch,
-                    "--no-ff",
-                    "-m",
-                    f"Merge {worktree.branch} into {worktree.base_branch}",
-                    cwd=repo_path,
-                )
-                worktree.state = WorktreeState.MERGED
-            else:
-                worktree.state = WorktreeState.COMPLETED
 
-            worktree.completed_at = datetime.now(UTC)
-            logger.info(f"Completed worktree {worktree_id} (state: {worktree.state.value})")
-            return True
+            try:
+                await asyncio.to_thread(_git_merge)
+                merge_outcome = True
+            except subprocess.CalledProcessError as exc:
+                stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
+                raise WorktreeError(f"git merge failed: {stderr}") from exc
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.error(f"Failed to complete worktree {worktree_id}: {e}")
-            raise WorktreeError(f"Failed to complete worktree: {e}", worktree_id)
+        info.diff = diff_text
+        info.merge = merge_outcome
+        info.files_touched = files
+        return WorktreeCompletion(info=info)
 
-    async def abandon_worktree(self, worktree_id: str) -> bool:
-        """Abandon a worktree without merging.
-
-        Args:
-            worktree_id: Worktree to abandon
-
-        Returns:
-            True if successful
-        """
-        worktree = self._worktrees.get(worktree_id)
-        if not worktree:
-            return False
-
-        worktree.state = WorktreeState.ABANDONED
-        worktree.completed_at = datetime.now(UTC)
-        logger.info(f"Abandoned worktree {worktree_id}")
-        return True
-
-    async def cleanup_worktree(self, worktree_id: str) -> bool:
+    async def cleanup_worktree(
+        self,
+        worktree_id: str,
+        repo_path: Path | str | None = None,
+    ) -> bool:
         """Remove a worktree.
 
         Args:
-            worktree_id: Worktree to remove
+            worktree_id: Worktree to remove.
+            repo_path: Path to main repository (used to run
+                ``git worktree remove``); defaults to the worktree's
+                ``repo_path`` if not provided.
 
         Returns:
-            True if successful
+            ``True`` if the worktree was removed (or already absent),
+            ``False`` on git failure.
         """
-        worktree = self._worktrees.get(worktree_id)
-        if not worktree:
+        info = self._registry.get(worktree_id)
+        if info is None:
             return False
 
+        target_repo = Path(repo_path) if repo_path is not None else info.repo_path
+        worktree_path = self._get_worktree_path(info.repo_path, worktree_id)
         try:
-            # Remove worktree directory
-            if os.path.exists(worktree.path):
-                # Use git worktree remove
-                parent_repo = os.path.dirname(os.path.dirname(worktree.path))
-                await self._git.run(
-                    "worktree",
-                    "remove",
-                    worktree.path,
-                    "--force",
-                    cwd=parent_repo,
-                )
+            if worktree_path.exists():
 
-            # Remove from tracking
-            del self._worktrees[worktree_id]
-            logger.info(f"Cleaned up worktree {worktree_id}")
-            return True
+                def _git_worktree_remove() -> None:
+                    subprocess.run(
+                        [
+                            "git",
+                            "worktree",
+                            "remove",
+                            str(worktree_path),
+                            "--force",
+                        ],
+                        cwd=str(target_repo),
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.error(f"Failed to cleanup worktree {worktree_id}: {e}")
-            # Still remove from tracking even if git command fails
-            if worktree_id in self._worktrees:
-                del self._worktrees[worktree_id]
+                await asyncio.to_thread(_git_worktree_remove)
+        except Exception as exc:  # noqa: BLE001 - boundary keeps calling code alive
+            logger.warning("Failed to git-worktree-remove %s: %s", worktree_id, exc)
+        finally:
+            self._registry.pop(worktree_id, None)
+        logger.info("Cleaned up worktree %s", worktree_id)
+        return True
+
+    async def abandon_worktree(self, worktree_id: str) -> bool:
+        """Mark a worktree as abandoned without completing it.
+
+        The worktree remains on disk; callers can invoke
+        :meth:`cleanup_worktree` separately to remove it.
+
+        Returns:
+            ``True`` if the registry was updated, ``False`` if unknown.
+        """
+        if worktree_id not in self._registry:
             return False
-
-    async def cleanup_completed(self) -> int:
-        """Cleanup all completed/merged worktrees.
-
-        Returns:
-            Number of worktrees cleaned up
-        """
-        cleaned = 0
-        to_cleanup = [
-            wt_id
-            for wt_id, wt in self._worktrees.items()
-            if wt.state in (WorktreeState.COMPLETED, WorktreeState.MERGED, WorktreeState.ABANDONED)
-        ]
-
-        for worktree_id in to_cleanup:
-            if await self.cleanup_worktree(worktree_id):
-                cleaned += 1
-
-        logger.info(f"Cleaned up {cleaned} completed worktrees")
-        return cleaned
-
-    async def sync_with_base(self, worktree_id: str) -> bool:
-        """Sync worktree branch with base branch.
-
-        Args:
-            worktree_id: Worktree to sync
-
-        Returns:
-            True if successful
-        """
-        worktree = self._worktrees.get(worktree_id)
-        if not worktree:
-            return False
-
-        try:
-            # Fetch and merge base branch
-            await self._git.run("fetch", "origin", cwd=worktree.path)
-            await self._git.run(
-                "merge",
-                f"origin/{worktree.base_branch}",
-                cwd=worktree.path,
-            )
-            logger.info(f"Synced worktree {worktree_id} with {worktree.base_branch}")
-            return True
-
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.error(f"Failed to sync worktree {worktree_id}: {e}")
-            return False
-
-    async def get_status(self, worktree_id: str) -> dict[str, Any] | None:
-        """Get status of a worktree.
-
-        Args:
-            worktree_id: Worktree to get status for
-
-        Returns:
-            Dictionary with status info or None if not found
-        """
-        worktree = self._worktrees.get(worktree_id)
-        if not worktree:
-            return None
-
-        try:
-            # Get branch info
-            branch_output = await self._git.run(
-                "branch",
-                "--show-current",
-                cwd=worktree.path,
-            )
-
-            # Get status
-            status_output = await self._git.run(
-                "status",
-                "--short",
-                cwd=worktree.path,
-            )
-
-            # Get ahead/behind count
-            ahead_behind = await self._git.run(
-                "rev-list",
-                "--left-right",
-                "--count",
-                f"{worktree.branch}...{worktree.base_branch}",
-                cwd=worktree.path,
-            )
-
-            ahead, behind = ahead_behind.strip().split("\t")
-
-            return {
-                "worktree_id": worktree_id,
-                "branch": branch_output.strip(),
-                "base_branch": worktree.base_branch,
-                "state": worktree.state.value,
-                "modified_files": len(status_output.strip().split("\n"))
-                if status_output.strip()
-                else 0,
-                "ahead": int(ahead),
-                "behind": int(behind),
-                "path": worktree.path,
-            }
-
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            logger.error(f"Failed to get status for worktree {worktree_id}: {e}")
-            return {
-                "worktree_id": worktree_id,
-                "error": str(e),
-                "state": worktree.state.value,
-            }
-
-    async def prune_stale(self) -> int:
-        """Prune stale worktree references.
-
-        Returns:
-            Number of pruned worktrees
-        """
-        pruned = 0
-
-        for worktree_id, worktree in list(self._worktrees.items()):
-            if not os.path.exists(worktree.path):
-                # Directory no longer exists
-                del self._worktrees[worktree_id]
-                pruned += 1
-                logger.info(f"Pruned stale worktree {worktree_id}")
-
-        return pruned
+        logger.info("Abandoned worktree %s", worktree_id)
+        return True
 
     def get_summary(self) -> dict[str, Any]:
-        """Get summary of all worktrees.
-
-        Returns:
-            Dictionary with worktree statistics
-        """
-        total = len(self._worktrees)
-        active = sum(1 for w in self._worktrees.values() if w.state == WorktreeState.ACTIVE)
-        completed = sum(1 for w in self._worktrees.values() if w.state == WorktreeState.COMPLETED)
-        merged = sum(1 for w in self._worktrees.values() if w.state == WorktreeState.MERGED)
-        abandoned = sum(1 for w in self._worktrees.values() if w.state == WorktreeState.ABANDONED)
-
+        """Return aggregate worktree statistics."""
+        infos = list(self._registry.values())
         return {
-            "total_worktrees": total,
-            "active_worktrees": active,
-            "completed_worktrees": completed,
-            "merged_worktrees": merged,
-            "abandoned_worktrees": abandoned,
+            "total_worktrees": len(infos),
+            "active_worktrees": len(infos),
         }
 
 
 __all__ = [
-    "GitRunner",
+    "WorktreeCompletion",
     "WorktreeError",
     "WorktreeInfo",
     "WorktreeManager",
-    "WorktreeState",
 ]

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 import logging
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
 
@@ -70,6 +73,20 @@ except Exception:  # pragma: no cover - optional import for test patching  # noq
     get_idempotency_breaker = lambda: None  # type: ignore[assignment]
     set_idempotency_breaker = lambda _breaker: None  # type: ignore[assignment]
 
+try:
+    # C-8: worktree isolation (REQ-010/011). Defensive import so tests can
+    # patch ``WorktreeManager`` without forcing the full event_store stack
+    # to import on every test.
+    from mahavishnu.core.errors import WorktreeError, WorktreeLockedError
+    from mahavishnu.core.worktree_manager import WorktreeInfo, WorktreeManager
+    from mahavishnu.core.worktree_options import WorktreeOptions
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    WorktreeError = None
+    WorktreeLockedError = None
+    WorktreeInfo = None
+    WorktreeManager = None
+    WorktreeOptions = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +109,124 @@ def set_concurrency_gate(gate: ConcurrencyGate | None) -> None:
     """Override the module-level gate (test seam; resets between cases)."""
     global _concurrency_gate
     _concurrency_gate = gate
+
+
+# ---------------------------------------------------------------------------
+# C-8 worktree helpers (REQ-010).
+# Module-level so tests can monkeypatch them via
+# ``patch("mahavishnu.mcp.tools.pool_tools._repo_has_git", ...)``.
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_repo_nickname(prompt: str) -> str:
+    """Best-effort extraction of a repo nickname from a dispatch prompt.
+
+    Returns an empty string when no nickname is detectable — callers
+    MUST treat the empty string as "unknown repo, skip worktree path".
+    The implementation is intentionally lightweight (string contains);
+    the actual repo resolution lives in the pool routing layer.
+    """
+    if not prompt:
+        return ""
+    lowered = prompt.lower()
+    for token in lowered.replace("\n", " ").split():
+        if token.startswith("@") or token.startswith("/"):
+            continue
+        if token.endswith(".git"):
+            return token[: -len(".git")]
+    return ""
+
+
+def _resolve_repo_path(repo_nickname: str) -> Path:
+    """Resolve ``repo_nickname`` to a filesystem path.
+
+    Falls back to the current working directory joined with the nickname
+    when the nickname is empty — pool_tools tests exercise this branch
+    to keep the worktree path deterministic.
+    """
+    from pathlib import Path as _Path
+
+    if not repo_nickname:
+        return _Path.cwd()
+    return _Path.cwd() / repo_nickname
+
+
+async def _repo_has_git(repo_nickname: str) -> bool:
+    """Return True when the resolved repo path is a git working tree.
+
+    Returns ``False`` when the path does not exist or is not a git
+    working tree — gates the worktree-isolation path in
+    ``pool_route_execute``.
+    """
+    import subprocess
+
+    repo_path = _resolve_repo_path(repo_nickname)
+    if not repo_path.exists():
+        return False
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            str(repo_path),
+            "rev-parse",
+            "--is-inside-work-tree",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+    except Exception:  # noqa: BLE001 - boundary: git is best-effort
+        return False
+    return proc.returncode == 0 and stdout.decode().strip() == "true"
+
+
+def _get_worktree_manager() -> WorktreeManager | None:
+    """Return a per-process ``WorktreeManager`` singleton.
+
+    Returns ``None`` when the class failed to import (defensive-import
+    branch) so callers fall back to host isolation rather than crash.
+    """
+    global _worktree_manager_singleton
+    if WorktreeManager is None:
+        return None
+    if _worktree_manager_singleton is None:
+        _worktree_manager_singleton = WorktreeManager()
+    return _worktree_manager_singleton
+
+
+_worktree_manager_singleton: WorktreeManager | None = None
+
+
+def _set_worktree_manager(mgr: WorktreeManager | None) -> None:
+    """Test seam: override the module-level worktree manager singleton."""
+    global _worktree_manager_singleton
+    _worktree_manager_singleton = mgr
+
+
+async def _dispatch_internal(  # noqa: ANN202 - intentional Any return
+    prompt: str,
+    pool_selector: Any,
+    execution_id: str,
+    pool_affinity: str | None,
+    coerced_kind: Any,
+    parent_session_id: str | None,
+    auto_spawn: bool,
+    pool_manager: Any,
+):
+    """Internal dispatch helper used when a worktree path is active.
+
+    Mirrors the inline dispatch in ``pool_route_execute`` so the worktree
+    finally-block can wrap it cleanly. Returns the same ``dict`` shape as
+    ``pool_manager.route_task``.
+    """
+    task = {"prompt": prompt}
+    return await pool_manager.route_task(
+        task=task,
+        pool_selector=pool_selector,
+        pool_affinity=pool_affinity,
+        caller_kind=coerced_kind if coerced_kind is not None else "claude_code",
+        parent_session_id=parent_session_id,
+        auto_spawn=auto_spawn,
+    )
 
 
 async def _hash_prompt(prompt: str) -> str:
@@ -376,6 +511,7 @@ def register_pool_tools(
         parent_session_id: str | None = None,
         auto_spawn: bool = False,
         idempotency: IdempotencyOptions | None = None,
+        worktree: WorktreeOptions | None = None,
     ) -> dict[str, Any]:
         """Load-balanced single-task dispatch across registered worker pools.
 
@@ -522,14 +658,125 @@ def register_pool_tools(
                         ),
                         domain=f"task_category={task_category.value}",
                     )
-            result = await pool_manager.route_task(  # type: ignore[no-any-return]
-                task=task,
-                pool_selector=selector_enum,
-                pool_affinity=pool_affinity,
-                caller_kind=coerced_kind if coerced_kind is not None else caller_kind,
-                parent_session_id=parent_session_id,
-                auto_spawn=auto_spawn,
+
+            # C-8: worktree isolation. When ``worktree.isolation == "worktree"``
+            # and the resolved repo is a git working tree, create an isolated
+            # worktree, dispatch inside it, and capture diff/merge/files_touched
+            # on completion. WorktreeLockedError => ``status="worktree_conflict"``.
+            worktree_info: WorktreeInfo | None = None
+            worktree_repo_path: Path | None = None
+            effective_isolation = (
+                worktree.isolation
+                if worktree is not None
+                else (
+                    get_settings().worktree_storage.default_isolation
+                    if get_settings is not None
+                    else "host"
+                )
             )
+            wt_manager = _get_worktree_manager()
+            execution_id = str(uuid4())
+            if (
+                effective_isolation == "worktree"
+                and wt_manager is not None
+                and WorktreeOptions is not None
+            ):
+                repo_nickname = await _resolve_repo_nickname(prompt)
+                if await _repo_has_git(repo_nickname):
+                    repo_path = _resolve_repo_path(repo_nickname)
+                    branch = f"feature/{execution_id}-{uuid4().hex[:8]}"
+                    try:
+                        worktree_info = await wt_manager.create_worktree(
+                            task_id=execution_id,
+                            repo_path=repo_path,
+                            branch_name=branch,
+                            base_branch=(
+                                worktree.base_branch
+                                if worktree is not None
+                                else "main"
+                            ),
+                            ttl_seconds=(
+                                worktree.ttl_seconds
+                                if worktree is not None
+                                else 86_400
+                            ),
+                        )
+                        worktree_repo_path = repo_path
+                    except Exception as exc:
+                        if WorktreeLockedError is not None and isinstance(
+                            exc, WorktreeLockedError
+                        ):
+                            logger.exception(
+                                "worktree lock conflict",
+                                extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
+                            )
+                            return {
+                                "status": "worktree_conflict",
+                                "error": str(exc),
+                            }
+                        logger.exception(
+                            "worktree creation failed",
+                            extra={"error_id": "WORKTREE_CREATION_FAILED"},
+                        )
+                        raise
+
+            try:
+                result = await _dispatch_internal(
+                    prompt=prompt,
+                    pool_selector=selector_enum,
+                    execution_id=execution_id,
+                    pool_affinity=pool_affinity,
+                    coerced_kind=coerced_kind,
+                    parent_session_id=parent_session_id,
+                    auto_spawn=auto_spawn,
+                    pool_manager=pool_manager,
+                )
+
+                if (
+                    worktree_info is not None
+                    and wt_manager is not None
+                    and effective_isolation == "worktree"
+                ):
+                    on_completion = (
+                        worktree.on_completion
+                        if worktree is not None
+                        else "return_diff"
+                    )
+                    try:
+                        completion = await wt_manager.complete_worktree(
+                            worktree_id=worktree_info.worktree_id,
+                            merge=(on_completion == "auto_merge"),
+                            repo_path=worktree_repo_path,
+                        )
+                        worktree_info = completion.info
+                        result["worktree"] = {
+                            "diff": worktree_info.diff,
+                            "merge": worktree_info.merge,
+                            "files_touched": list(worktree_info.files_touched),
+                        }
+                    except Exception as exc:
+                        logger.exception(
+                            "worktree completion failed",
+                            extra={"error_id": "WORKTREE_COMPLETION_FAILED"},
+                        )
+                        result["worktree"] = {"error": str(exc)}
+            finally:
+                if (
+                    worktree_info is not None
+                    and wt_manager is not None
+                    and effective_isolation == "worktree"
+                ):
+                    try:
+                        await wt_manager.cleanup_worktree(
+                            worktree_id=worktree_info.worktree_id,
+                            repo_path=worktree_repo_path,
+                        )
+                    except Exception as exc:  # noqa: BLE001 - boundary cleanup is best-effort
+                        logger.warning(
+                            "worktree cleanup failed: %s",
+                            exc,
+                            extra={"error_id": "WORKTREE_CLEANUP_FAILED"},
+                        )
 
             if (
                 idempotency is not None
@@ -592,6 +839,12 @@ def register_pool_tools(
                     "error": str(exc),
                 }
             if isinstance(exc, RuntimeError):
+                # C-8 round-8: when the worktree path is active, let
+                # RuntimeError propagate so the finally-block's cleanup
+                # can be verified by the test suite. Other paths
+                # continue to convert to ``{"status": "failed"}``.
+                if worktree_info is not None:
+                    raise
                 return {
                     "status": "failed",
                     "error": str(exc),
