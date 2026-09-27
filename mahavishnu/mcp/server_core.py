@@ -131,6 +131,27 @@ class FastMCPServer:
             extra={"service_name": service_name, "environment": environment},
         )
 
+        # Tool-call enrichment layer (Phase 1 of
+        # docs/plans/2026-09-26-tool-surface-quality.md). Registered AFTER
+        # the upstream telemetry middleware so it runs INSIDE the upstream's
+        # span context (we enrich the upstream's span, not a child of it).
+        # Gated on observability.tool_enrichment_enabled so enrichment can
+        # be on even when tracing_enabled is off (Phase 2's
+        # audit_top_tool_calls.py needs this).
+        from .tool_call_middleware import ToolCallEnrichmentMiddleware
+
+        if getattr(observability, "tool_enrichment_enabled", False):
+            self.server.add_middleware(
+                ToolCallEnrichmentMiddleware(
+                    service_name=service_name,
+                    environment=environment,
+                )
+            )
+            logger.info(
+                "Registered FastMCP ToolCallEnrichmentMiddleware",
+                extra={"service_name": service_name, "environment": environment},
+            )
+
     def _register_auth_context_middleware(self) -> None:
         """Attach the Bearer-token -> Context-state middleware.
 

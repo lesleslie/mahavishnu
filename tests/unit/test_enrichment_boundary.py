@@ -55,10 +55,19 @@ def test_mcp_common_telemetry_unchanged() -> None:
     assert len(source) > 0
     compile(source, str(MCP_COMMON_TELEMETRY_PATH), "exec")
 
-    # Phase-1 exit-criteria gate: when this test runs in CI after Phase 1
-    # lands, the recorded pre-Phase-1 hash is pinned below and asserted.
-    # Until then, the test is a no-op that documents the gate location.
-    # Replace the placeholder with: pinned_pre_phase1_hash = "<hex>"
+    # Pinned 2026-09-27 (Phase 1 implementation day). If this hash changes
+    # after this commit lands, the local-subclass boundary was violated
+    # (the plan added a new middleware by SUBCLASSING, not by modifying
+    # mcp_common). Update this pin only after an explicit cross-repo
+    # coordination conversation + reviewer sign-off.
+    pinned_pre_phase1_hash = "66567d5462cde38a18529c77cd4ad458aaeec5c17854d974bc13b1a6ce458b8a"
+    assert expected_hash == pinned_pre_phase1_hash, (
+        f"mcp_common/server/telemetry.py sha256 changed "
+        f"({pinned_pre_phase1_hash[:12]}... -> {expected_hash[:12]}...); "
+        "Phase 1 added a new middleware by SUBCLASSING, not by modifying "
+        "mcp_common. If this change is intentional, update the pin and "
+        "document the cross-repo coordination in the plan."
+    )
 
 
 def test_enrichment_subclass_overrides_on_message() -> None:
@@ -108,7 +117,7 @@ async def test_enrichment_noop_for_non_tool_messages() -> None:
     ctx.active_span = FakeSpan()
 
     call_next = AsyncMock(return_value=None)
-    middleware = ToolCallEnrichmentMiddleware()
+    middleware = ToolCallEnrichmentMiddleware(service_name="unit-test")
 
     await middleware.on_message(ctx, call_next)
 

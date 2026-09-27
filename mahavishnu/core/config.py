@@ -1250,6 +1250,20 @@ class ObservabilityConfig(BaseModel):
         default=True,
         description="Enable distributed tracing",
     )
+    # REQ-TSQ-007 (docs/plans/2026-09-26-tool-surface-quality.md): independent
+    # flag so the tool-call enrichment layer can be on even when OTel tracing
+    # is off. Phase 2's audit_top_tool_calls.py needs the per-tool signal
+    # regardless of whether spans are being exported.
+    tool_enrichment_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable the local tool-call span enrichment layer "
+            "(task_class, selector, outcome, duration_ms). Independent of "
+            "tracing_enabled so Phase 2's top-N enumeration can run with "
+            "OTel tracing disabled. Requires the FastMCP telemetry middleware "
+            "to be installed (gated on tracing_enabled)."
+        ),
+    )
     otlp_endpoint: str = Field(
         default="http://localhost:4317",
         description="OTLP endpoint for metrics/traces",
