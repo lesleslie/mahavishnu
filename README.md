@@ -7,12 +7,8 @@
 [![Python: 3.14+](https://img.shields.io/badge/python-3.14%2B-green)](https://www.python.org/downloads/)
 
 > **Etymology**: From Sanskrit *maha* (great) + *Vishnu* (the preserver in Hindu trinity)
->
-> Part of the [Bodai Ecosystem](https://github.com/lesleslie/bodai) - The Orchestrator component
 
-**Mahavishnu** is the internal control plane for the Bodai ecosystem: a multi-repo, multi-engine, async-first orchestration system for coordinating work across our own repositories, MCP services, and AI-capable backends. It enables workflow routing, cross-repository coordination, operational tooling, and headless worker orchestration.
-
-Mahavishnu is maintained as ecosystem infrastructure for Bodai-owned repos.
+**Mahavishnu** is a multi-repo, multi-engine, async-first orchestration system for coordinating work across many repositories, MCP services, and AI-capable backends. It enables workflow routing, cross-repository coordination, operational tooling, and headless worker orchestration.
 
 ## Bodai Ecosystem Role
 
@@ -22,29 +18,15 @@ Standalone, Mahavishnu is a general-purpose multi-repo orchestration system — 
 
 ## Quality & CI
 
-Crackerjack is the standard quality-control and CI/CD gate across Mahavishnu and the broader Bodai ecosystem. Prefer Crackerjack-aligned local validation before relying on narrower repo-only checks.
-
-## Ecosystem Components
-
-| Component | Role | Port | Description |
-|-----------|------|------|-------------|
-| [Mahavishnu](https://github.com/lesleslie/mahavishnu) | Orchestrator | 8680 | Multi-engine workflow orchestration |
-| [Akosha](https://github.com/lesleslie/akosha) | Seer | 8682 | Cross-system intelligence & embeddings |
-| [Session-Buddy](https://github.com/lesleslie/session-buddy) | Builder | 8678 | Session lifecycle & knowledge graphs |
-| [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector | 8676 | Quality gates & CI/CD validation |
-| [Oneiric](https://github.com/lesleslie/oneiric) | Foundation | N/A | Component resolution, lifecycle management, adapter system, action kits, domain bridges, runtime orchestration, remote delivery |
-
-## Positioning
-
-Mahavishnu is best understood as an ecosystem control plane, not as a general-purpose coding agent. Its current sweet spot is coordinating repo-centric workflows, tools, and services across the Bodai stack.
+Crackerjack is the standard quality-control and CI/CD gate for this project. Prefer Crackerjack-aligned local validation before relying on narrower repo-only checks.
 
 ## Capabilities
 
 ### Implemented and actively used
 
-- **Multi-repo orchestration** - Coordinate workflows across Bodai-owned repositories and services
+- **Multi-repo orchestration** - Coordinate workflows across multiple repositories and services
 - **MCP server surface** - FastMCP-based server exposing orchestration, coordination, and operational tools
-- **Cross-repository coordination** - Track issues, todos, dependencies, and status across the ecosystem
+- **Cross-repository coordination** - Track issues, todos, dependencies, and status across multiple repositories
 - **Repository messaging** - Async message passing between repositories for event-driven coordination
 - **Headless worker orchestration** - Execute tasks in parallel using terminal-based and adapter-backed workers
 - **Goal-driven teams** - Create multi-agent teams from natural-language goals
@@ -673,7 +655,7 @@ crackerjack run
 crackerjack run --verbose
 ```
 
-Crackerjack is the **ecosystem-wide CI/quality gate runner** for Bodai/Mahavishnu repos and the authoritative source of validation results across components.
+Crackerjack is the **CI/quality gate runner** for this project and the authoritative source of validation results.
 
 ### Project Structure
 
