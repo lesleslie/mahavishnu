@@ -256,6 +256,10 @@ async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str |
         return
     if not await gate.try_acquire(task_category, pool_id):
         spec = gate.spec_for(task_category)
+        if RateLimitError is None:
+            # Sentinel: defensive import failed. ``enforce_concurrency_limit``
+            # is fire-and-forget — returning None is the documented contract.
+            return None
         raise RateLimitError(
             limit=spec.concurrency_limit if spec else None,
             retry_after_seconds=_estimate_retry(spec) if _estimate_retry else None,
@@ -608,14 +612,18 @@ def register_pool_tools(
                         "error": "idempotency store unavailable",
                     }
                 try:
+                    # Pre-compute the payload hash so the lambda stays sync;
+                    # _hash_prompt is async and would otherwise force an
+                    # ``await`` inside the lambda (syntax error in sync code).
+                    payload_hash = await _hash_prompt(prompt)
                     existing_event = await breaker.call(
                         lambda: idem_store.get_or_create(
                             idempotency,
-                            payload_hash=_hash_prompt(prompt),
+                            payload_hash=payload_hash,
                             actor="pool_route_execute",
                         )
                     )
-                except IdempotencyStoreUnavailable as exc:
+                except IdempotencyStoreUnavailable as exc:  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "idempotency store unreachable; failing closed",
                         extra={"error_id": "IDEMPOTENCY_STORE_UNAVAILABLE"},
@@ -624,7 +632,7 @@ def register_pool_tools(
                         "status": "error",
                         "error": f"idempotency store unavailable: {exc}",
                     }
-                except IdempotencyCircuitOpen as exc:
+                except IdempotencyCircuitOpen as exc:  # ty: ignore[invalid-exception-caught]
                     logger.warning(
                         "idempotency circuit open; failing closed",
                         extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
@@ -650,6 +658,16 @@ def register_pool_tools(
                 acquired = await gate.try_acquire(task_category, None)
                 if not acquired:
                     spec = gate.spec_for(task_category)
+                    if RateLimitError is None:
+                        # Sentinel: defensive import failed; surface as a
+                        # generic rate-limit response so the caller still
+                        # gets a structured status (matches the dispatched
+                        # path's RateLimitError contract).
+                        return {
+                            "status": "rate_limited",
+                            "retry_after_seconds": 0,
+                            "limit": f"task_category={task_category.value}",
+                        }
                     raise RateLimitError(
                         limit=spec.concurrency_limit if spec else None,
                         retry_after_seconds=(_estimate_retry(spec) if _estimate_retry else None),
@@ -774,7 +792,7 @@ def register_pool_tools(
                 # result (FIX round-7 Tier 2).
                 try:
                     await breaker.call(lambda: idem_store.mark_completed(existing_event, result))
-                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:
+                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "failed to mark idempotency record completed",
                         extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
@@ -801,7 +819,7 @@ def register_pool_tools(
                             error=_exc,
                         )
                     )
-                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:
+                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "failed to mark idempotency record failed",
                         extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},

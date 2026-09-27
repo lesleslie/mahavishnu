@@ -2517,7 +2517,7 @@ class ConcurrencyLimitsSettings(BaseModel):
         if value is None:
             return {}
         if not isinstance(value, dict):
-            return value  # type: ignore[return-value]
+            return value  # ty: ignore[invalid-return-type]
         # Build lookup: {upper-name, lower-value} -> TaskCategory member
         alias_to_member: dict[str, TaskCategory] = {}
         for member in TaskCategory:

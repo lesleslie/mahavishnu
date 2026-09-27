@@ -55,10 +55,10 @@ except ImportError:
         def set(self, *_args: object, **_kwargs: object) -> None:
             return None
 
-    IDEMPOTENCY_HIT_TOTAL = _NoOpMetric()
-    IDEMPOTENCY_MISS_TOTAL = _NoOpMetric()
-    IDEMPOTENCY_CIRCUIT_STATE_GAUGE = _NoOpMetric()
-    IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL = _NoOpMetric()
+    IDEMPOTENCY_HIT_TOTAL = _NoOpMetric()  # ty: ignore[invalid-assignment]
+    IDEMPOTENCY_MISS_TOTAL = _NoOpMetric()  # ty: ignore[invalid-assignment]
+    IDEMPOTENCY_CIRCUIT_STATE_GAUGE = _NoOpMetric()  # ty: ignore[invalid-assignment]
+    IDEMPOTENCY_CIRCUIT_TRANSITIONS_TOTAL = _NoOpMetric()  # ty: ignore[invalid-assignment]
 
 
 __all__ = [

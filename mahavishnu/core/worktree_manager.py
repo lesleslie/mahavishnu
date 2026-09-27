@@ -227,7 +227,7 @@ class WorktreeManager:
             stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
             logger.error("Failed to create worktree for task %s: %s", task_id, stderr)
             raise WorktreeError(f"Failed to create worktree: {stderr}") from exc
-        except Exception as exc:  # noqa: BLE001 - boundary handler keeps calling code alive
+        except Exception as exc:
             logger.exception("Failed to create worktree for task %s", task_id)
             raise WorktreeError(f"Failed to create worktree: {exc}") from exc
 
@@ -306,7 +306,7 @@ class WorktreeManager:
 
         merge_outcome = False
         if merge:
-            merge_target = Path(repo_path)  # type: ignore[arg-type]  # validated above
+            merge_target = Path(repo_path)  # ty: ignore[invalid-argument-type]  # validated above
 
             def _git_merge() -> None:
                 subprocess.run(

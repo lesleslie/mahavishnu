@@ -608,15 +608,19 @@ exclude_deps = [
     # warning without triggering "Redundant exclusion" (because creosote's
     # import detection also can't see the link).
     "shepherd-ai",
-    # coredis: installed for oneiric's redis_streams adapter
-    # (oneiric.adapters.queue.redis_streams lazy-imports ``from coredis
-    # import Redis`` inside its methods — verified: oneiric/adapters/queue/
-    # redis_streams.py:10,18 guard the import under TYPE_CHECKING and the
-    # runtime import lives in a try/except). mahavishnu itself never imports
-    # coredis by name; bodai_hook_bridge.py only imports oneiric.adapters.*.
-    # Creosote's scan paths = ["mahavishnu"] can't see into oneiric, so it
-    # would otherwise flag coredis as unused. Same pattern as shepherd-ai.
+    # coredis: used as a bare availability probe in
+    # mahavishnu/bodai_hook_bridge.py:55 (``import coredis  # noqa: F401``
+    # inside a try/except that sets ``_CACHE_DEPS_AVAILABLE``). The symbol
+    # itself is never referenced — the probe only checks installability so
+    # the hook can degrade gracefully when the optional dep is missing.
+    # Creosote sees the import statement but can't follow the probe pattern,
+    # so it flags coredis as unreferenced. Same pattern as shepherd-ai.
     "coredis",
+    # freezegun: only used in tests/integration/conftest_wireups.py. Creosote's
+    # scan paths = ["mahavishnu"] excludes the tests/ tree, so it sees the dep
+    # as unreferenced. Adding it here silences "Unused dependencies" without
+    # the cost of restructuring the dep into a test-only group.
+    "freezegun",
 ]
 
 [tool.refurb]

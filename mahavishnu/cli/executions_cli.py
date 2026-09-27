@@ -1,4 +1,5 @@
 """mahavishnu executions {list,show} — inspect workflow execution history."""
+
 from __future__ import annotations
 
 import asyncio
@@ -10,7 +11,7 @@ from oneiric.core.logging import get_logger
 from sqlalchemy import select
 import typer
 
-from mahavishnu.core.errors import DatabaseError, MahavishnuError
+from mahavishnu.core.errors import DatabaseError, ErrorCode, MahavishnuError
 from mahavishnu.core.event_store import (
     ExecutionEvent,
     TaskEventType,
@@ -67,8 +68,25 @@ async def _event_session() -> AsyncIterator[Any]:
         yield session
 
 
-def _format_event_markdown(event: ExecutionEvent, idx: int) -> str:
-    """One event as a markdown bullet."""
+def _format_event_markdown(
+    event: dict[str, Any] | ExecutionEvent, idx: int
+) -> str:
+    """One event as a markdown bullet.
+
+    Accepts both shapes because there are two callers in this file:
+
+    - ``_list_async`` (line 217) builds a display-form dict with
+      ``id``, ``event_type``, ``actor``, ``data``, ``correlation_id``,
+      and an ISO-formatted ``occurred_at`` string.
+    - ``_watch_loop`` (line 294) passes the raw ``ExecutionEvent``
+      ORM instance returned by ``get_execution_events``.
+    """
+    if isinstance(event, dict):
+        return (
+            f"{idx + 1}. **{event['event_type']}** "
+            f"(@ {event['occurred_at']}, actor={event['actor']})\n"
+            f"   - data: {json.dumps(event['data'])[:200]}"
+        )
     ts = event.occurred_at.strftime("%Y-%m-%d %H:%M:%S")
     return (
         f"{idx + 1}. **{event.event_type}** "
@@ -128,9 +146,7 @@ def list_cmd(
 ) -> None:
     """List recent executions."""
     try:
-        executions = _run(
-            _list_async(status=status, workflow_id=workflow_id, limit=limit)
-        )
+        executions = _run(_list_async(status=status, workflow_id=workflow_id, limit=limit))
     except MahavishnuError as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -197,9 +213,7 @@ async def _list_async(
     try:
         async with _event_session() as session:
             stmt = (
-                select(ExecutionEvent)
-                .order_by(ExecutionEvent.occurred_at.desc())
-                .limit(limit * 10)
+                select(ExecutionEvent).order_by(ExecutionEvent.occurred_at.desc()).limit(limit * 10)
             )
             if target_status is not None:
                 stmt = stmt.where(ExecutionEvent.event_type == target_status)
@@ -210,6 +224,7 @@ async def _list_async(
     except DatabaseError as exc:
         raise MahavishnuError(
             f"event store unavailable: {exc}",
+            error_code=ErrorCode.DATABASE_CONNECTION_ERROR,
             details={"reason": str(exc)},
         ) from exc
 
@@ -247,9 +262,7 @@ async def _show_async(
         target_type = _validate_event_type(step, flag="step type")
         events = [e for e in events if e.event_type == target_type]
         if not events:
-            typer.echo(
-                f"No events of type {step} for {execution_id}", err=True
-            )
+            typer.echo(f"No events of type {step} for {execution_id}", err=True)
             raise typer.Exit(code=1)
 
     output_format = "raw" if raw else fmt
@@ -294,7 +307,7 @@ async def _watch_new_events(
                         typer.echo(_format_event_markdown(event, idx))
                 last_id = new_events[-1].id
                 consecutive_failures = 0
-        except (KeyboardInterrupt, SystemExit):
+        except KeyboardInterrupt, SystemExit:
             raise
         except Exception as exc:  # noqa: BLE001 — surface watch-loop failures
             consecutive_failures += 1
@@ -307,8 +320,7 @@ async def _watch_new_events(
             )
             if consecutive_failures >= max_consecutive_failures:
                 typer.echo(
-                    f"Watch lost connection after "
-                    f"{max_consecutive_failures} retries; aborting",
+                    f"Watch lost connection after {max_consecutive_failures} retries; aborting",
                     err=True,
                 )
                 break

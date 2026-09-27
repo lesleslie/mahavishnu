@@ -93,12 +93,19 @@ def cmd_list(
     log_path: Path | None = None,
     status: str | None = None,
     limit: int = 50,
-) -> None:
-    """Render the jot list (newest first, optional status filter)."""
+) -> list[JotSummary]:
+    """Render the jot list (newest first, optional status filter).
+
+    Returns the filtered list so programmatic callers (e.g. the markdown
+    exporter) can consume the structured state without re-parsing the
+    terminal-formatted string.
+    """
     path = log_path or default_log_path()
     events = _read_log(path)
     result = build_states(events, enrich=False)
-    print(render_list(result.states, status_filter=status, limit=limit))
+    states = result.states
+    print(render_list(states, status_filter=status, limit=limit))
+    return states
 
 
 def cmd_show(*, log_path: Path | None = None, handle: str) -> None:

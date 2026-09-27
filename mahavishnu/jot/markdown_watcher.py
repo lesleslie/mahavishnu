@@ -27,9 +27,11 @@ state *before* dispatch, which masked dispatch failures behind a
 ``test_modified_event_dispatches_card`` relied on that surface and
 passed vacuously when dispatch actually failed.
 """
+
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import os
 from pathlib import Path
 
@@ -57,7 +59,7 @@ async def watch_board(
     state_sidecar: Path,
     watcher_lag_seconds: float,
     *,
-    dispatch: "DispatchFn | None" = None,
+    dispatch: DispatchFn | None = None,
 ) -> None:
     """Watch ``.mahavishnu/board.md`` and dispatch cards on modification.
 
@@ -87,17 +89,20 @@ async def watch_board(
                         if change_type is not Change.modified:
                             continue
                         await _handle_modified(
-                            Path(path), board_path, state_sidecar, state,
+                            Path(path),
+                            board_path,
+                            state_sidecar,
+                            state,
                             dispatch=dispatch,
                         )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "watcher timeout — restarting",
                 extra={"timeout_seconds": timeout_seconds},
             )
             MARKDOWN_BOARD_WATCHER_RESTARTS_TOTAL.inc()
             continue
-        except (KeyboardInterrupt, SystemExit):
+        except KeyboardInterrupt, SystemExit:
             raise
         except Exception as exc:
             logger.exception("watcher crashed; supervisor will restart")
@@ -122,7 +127,7 @@ async def _handle_modified(
     state_sidecar: Path,
     state: dict[str, int],
     *,
-    dispatch: "DispatchFn | None" = None,
+    dispatch: DispatchFn | None = None,
 ) -> None:
     """Handle one file modification event.
 
@@ -156,7 +161,7 @@ async def _dispatch_card(
     card: dict,
     state: dict[str, int],
     state_sidecar: Path,
-    dispatch: "DispatchFn | None",
+    dispatch: DispatchFn | None,
 ) -> None:
     """Dispatch one card; update state only on success.
 
@@ -172,7 +177,7 @@ async def _dispatch_card(
     if expected is not None:
         try:
             expected_int = int(expected)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             expected_int = prev_rev
         if expected_int != prev_rev:
             logger.info(
@@ -228,7 +233,7 @@ async def _default_dispatch(card: dict) -> None:
     the mcp tool surface (keeps tests cheap and avoids loading MCP at
     module import time).
     """
-    from mahavishnu.mcp.tools.pool_tools import pool_route_execute
+    from mahavishnu.mcp.tools.pool_tools import pool_route_execute  # ty: ignore[unresolved-import]
 
     prompt = str(card.get("prompt", ""))
     pool_selector = str(card.get("pool", "mahavishnu"))
@@ -248,6 +253,7 @@ async def _read_file(path: Path) -> str:
     the cheapest correct path; ``aiofiles`` would be marginally faster
     but adds an extra dependency surface that is not justified here.
     """
+
     def _sync_read() -> str:
         fd = os.open(str(path), os.O_RDONLY)
         try:
@@ -259,4 +265,4 @@ async def _read_file(path: Path) -> str:
 
 
 # Type alias for the test-injection dispatch hook.
-DispatchFn = object
+DispatchFn = Callable[[dict], Awaitable[None]]

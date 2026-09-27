@@ -27,8 +27,8 @@ from mahavishnu.jot.cli import (
 app = typer.Typer(help="Jot inbox: quick-capture scratchpad for humans and AI agents.")
 
 
-@app.command()
-def list(
+@app.command("list")
+def list_cmd(
     status: str | None = typer.Option(None, "--status", help="Filter: open|done"),
     limit: int = typer.Option(50, "--limit", help="Max results"),
 ) -> None:
