@@ -40,7 +40,7 @@ or higher.
 | session-buddy | /Users/les/Projects/session-buddy/ | >=3.14 | **Phase 0.4**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | akosha | /Users/les/Projects/akosha/ | >=3.14 | **Phase 0.5**. required akosha/mcp/client.py transport-fix for streamable_http_client 2-tuple return. FastMCP **>=4.0.3** (`2026-09-06`) |
 | crackerjack | /Users/les/Projects/crackerjack/ | >=3.14 | **Phase 0.6**. FastMCP >=3.4.2 (already open ceiling); already 4.0.3 capable. FastMCP **>=4.0.3** (`2026-09-06`) |
-| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.14 | **Phase 0.N**. needed for Phase D; last in rollout. FastMCP **>=4.0.3** (`2026-09-06`) |
+| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.14 | **Phase 0.N**. needed for Phase D; last in rollout. FastMCP **>=4.0.3** (`2026-09-06`). Port **8695** = `webhook_intake` (C-10 allowlist + sanitize; no HMAC/nonce/DLQ — disabled by default). |
 
 ### Web / framework libraries
 

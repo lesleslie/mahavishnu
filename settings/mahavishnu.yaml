@@ -599,7 +599,7 @@ idempotency:
 webhook_intake:
   enabled: false
   bind_host: "127.0.0.1"
-  bind_port: 8695               # PENDING BODAI_REPO_REGISTRY.md verification
+  bind_port: 8695               # registered in BODAI_REPO_REGISTRY.md (mahavishnu row, 2026-09-26)
   tls_required: true
   max_payload_size_bytes: 1048576
 
