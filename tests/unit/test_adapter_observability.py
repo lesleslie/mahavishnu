@@ -12,7 +12,7 @@ so this module ships:
 - ``SettingsActivationPersister`` Protocol - the persister interface that the
   Dhara-backed implementation will satisfy.
 - ``InMemorySettingsActivationPersister`` - in-memory implementation for v0.
-- ``DharaSettingsActivationPersister`` - stub that raises NotImplementedError
+- ``MCPSettingsActivationPersister`` - stub that raises NotImplementedError
   with a TODO referencing Workstream C substrate.
 - ``record_activation()`` - the single entry point used by upstream callers
   (Plan 4 TrackedSettings will call this once it ships).
@@ -43,7 +43,7 @@ import pytest
 
 from mahavishnu.observability.adapter_runtime import (
     AdapterSettingsVersion,
-    DharaSettingsActivationPersister,
+    MCPSettingsActivationPersister,
     InMemorySettingsActivationPersister,
     SettingsActivationPersister,
     SettingsActivationRecord,
@@ -247,13 +247,13 @@ class TestInMemorySettingsActivationPersister:
 
 
 # ---------------------------------------------------------------------------
-# DharaSettingsActivationPersister stub
+# MCPSettingsActivationPersister stub
 # ---------------------------------------------------------------------------
 
 
 class TestMCPSettingsActivationPersisterStub:
     def test_save_raises_not_implemented_with_substrate_marker(self) -> None:
-        stub = DharaSettingsActivationPersister()
+        stub = MCPSettingsActivationPersister()
         rec = SettingsActivationRecord(
             adapter_id="prefect",
             version=1,
@@ -286,7 +286,7 @@ class TestRecordActivation:
         assert persister.history() == [rec]
 
     def test_routes_to_mcp_stub_when_requested(self) -> None:
-        stub = DharaSettingsActivationPersister()
+        stub = MCPSettingsActivationPersister()
         rec = SettingsActivationRecord(
             adapter_id="prefect",
             version=1,

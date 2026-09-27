@@ -15,7 +15,7 @@ from mahavishnu.core.config import (
     AgnoMemoryConfig,
     AgnoToolsConfig,
     AuthConfig,
-    DharaStatePersistenceConfig,
+    MCPStatePersistenceConfig,
     FallbackStrategy,
     GoalParsingConfig,
     GoalTeamsConfig,
@@ -983,16 +983,16 @@ class TestIntegrationConfig:
 
 
 # ============================================================================
-# Test DharaStatePersistenceConfig
+# Test MCPStatePersistenceConfig
 # ============================================================================
 
 
 class TestMCPStatePersistenceConfig:
-    """Tests for DharaStatePersistenceConfig."""
+    """Tests for MCPStatePersistenceConfig."""
 
     def test_default_values(self):
-        """Test DharaStatePersistenceConfig defaults."""
-        config = DharaStatePersistenceConfig()
+        """Test MCPStatePersistenceConfig defaults."""
+        config = MCPStatePersistenceConfig()
         assert config.enabled is True
         assert config.flush_interval_seconds == 60
         assert config.max_routing_buffer_age_seconds == 3600
@@ -1000,7 +1000,7 @@ class TestMCPStatePersistenceConfig:
     def test_flush_interval_bounds(self):
         """Test flush_interval_seconds validation (10-3600)."""
         with pytest.raises(ValidationError):
-            DharaStatePersistenceConfig(flush_interval_seconds=5)
+            MCPStatePersistenceConfig(flush_interval_seconds=5)
 
 
 # ============================================================================

@@ -15,7 +15,7 @@ import hashlib
 import pytest
 
 from mahavishnu.distill.skill_pipeline import (
-    DharaSkillPipeline,
+    MCPSkillPipeline,
     InMemorySkillPipeline,
     SkillPipeline,
     SkillTransition,
@@ -122,7 +122,7 @@ class TestSkillPipelineInterface:
         assert isinstance(pipeline, SkillPipeline)
 
     def test_mcp_stub_raises_not_implemented(self) -> None:
-        pipeline = DharaSkillPipeline()
+        pipeline = MCPSkillPipeline()
         with pytest.raises(NotImplementedError):
             pipeline.record_transition(
                 SkillTransition(
