@@ -114,13 +114,10 @@ runpod_pool:
 # threat model and Integration Contract.
 pi_pool:
   enabled: false
-  default_model: "claude-sonnet-4-5"
-  rpc_timeout_seconds: 30
-  probe_timeout_seconds: 3
-  heartbeat_interval_seconds: 30
-  pinned_version: "@earendil-works/pi-coding-agent@^1.0.0"
-  # npx_command and env_allowlist intentionally not in defaults — must be
-  # overridden per environment via settings/local.yaml.
+  # NOTE (2026-09-27 audit): default_model, rpc_timeout_seconds,
+  # probe_timeout_seconds, heartbeat_interval_seconds, pinned_version,
+  # npx_command, env_allowlist were removed from the schema (no consumers).
+  # Only ``enabled`` remains.
 
 # Worker orchestration for headless AI execution
 workers:
@@ -131,7 +128,7 @@ workers:
   session_buddy_integration: true  # Enable Session-Buddy result storage for workers
   container:
     runtime: null  # auto-detect (orbstack > docker > podman)
-    socket_path: null  # override socket path
+    # NOTE (2026-09-27 audit): socket_path removed from schema (no consumers).
 
 # Storage Consolidation feature flags
 # See: docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
@@ -237,7 +234,7 @@ terminal:
   # existing DurableWorkerManager (Spec §9.4) and needs no extra
   # operator opt-in. Crow remains selectable via adapter_preference: "crow".
   adapter_preference: "tmux"
-  fallback_on_probe_failure: false
+  # NOTE (2026-09-27 audit): fallback_on_probe_failure removed from schema (no consumers).
 
   # Goose adapter (Block's goose serve over HTTP)
   # Operators must run `goose serve --port 8694 --auth-token $GOOSE_SECRET` separately.
@@ -246,7 +243,7 @@ terminal:
   goose_enabled: false
   goose_http_host: "127.0.0.1"
   goose_http_port: 8694
-  goose_poll_interval: 0.5
+  # NOTE (2026-09-27 audit): goose_poll_interval removed from schema (no consumers).
   # goose_secret_key: read from env var MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY only — never commit
 
 openhands:
@@ -362,12 +359,6 @@ health:
       required: false  # Optional intelligence layer in consolidated storage architecture
       timeout_seconds: 30
       use_tls: false
-    dhara:
-      host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__DHARA__HOST
-      port: 8683
-      required: false  # Optional dependency - log warning if unavailable
-      timeout_seconds: 10
-      use_tls: false
     crackerjack:
       host: "localhost"  # Override via MAHAVISHNU_HEALTH__DEPENDENCIES__CRACKERJACK__HOST
       port: 8676
@@ -380,12 +371,6 @@ health:
       required: false
       timeout_seconds: 10
       use_tls: false
-
-# Dhara state persistence (P2 — Storage Consolidation)
-dhara_state:
-  enabled: true
-  flush_interval_seconds: 60
-  max_routing_buffer_age_seconds: 3600
 
 # Ultracode Phase 1 — adversarial diverse-refuter verification gate.
 # See: docs/plans/2026-07-11-ultracode-integration-wiring.md §Phase 1
@@ -559,48 +544,27 @@ worker_registry:
 jot:
   surfacing:
     enabled: true
-    session_start: true
-    tool_result: true
-    throttle_ms: 5000
-    lexical_threshold: 0.20
-    semantic_threshold: 0.55
-    semantic_enabled: true
-    semantic_max_jots: 30
-    max_results: 3
-    short_context_min_tokens: 50
-  drain:
-    retry:
-      max_attempts: 2
-      backoff_seconds: 30
-    reconciler:
-      background_interval_seconds: 30
-      timeout_minutes: 10
-      status_call_timeout_seconds: 30
-    default_pool_selector: "least_loaded"
-    default_workflow_adapter: "prefect"
+    # NOTE (2026-09-27 audit): session_start, tool_result, throttle_ms,
+    # lexical_threshold, semantic_threshold, semantic_enabled,
+    # semantic_max_jots, max_results, short_context_min_tokens removed
+    # from schema (no consumers). Only ``enabled`` remains.
+  # NOTE (2026-09-27 audit): drain subsection removed entirely
+  # (JotDrainSettings class deleted, all fields DEAD).
 
 # C-1: append to existing settings/mahavishnu.yaml
 worktree_storage:
   enabled: false
-  default_isolation: "host"
-  base_branch: "main"
   storage_root: null
   max_concurrent: 5
-  cleanup_grace_seconds: 300
   ttl_seconds: 86400
 
 idempotency:
   enabled: true
-  default_ttl_seconds: 86400
   fail_mode: "closed"            # closed = reject on DB outage
   storage_backend: "event_store"
-  pending_timeout_seconds: 30
 
 webhook_intake:
   enabled: false
-  bind_host: "127.0.0.1"
-  bind_port: 8695               # registered in BODAI_REPO_REGISTRY.md (mahavishnu row, 2026-09-26)
-  tls_required: true
   max_payload_size_bytes: 1048576
 
 concurrency_limits:
@@ -642,13 +606,8 @@ concurrency_limits:
 
 markdown_board:
   enabled: false
-  default_path: ".mahavishnu/board.md"
-  path_resolution: "repo"
-  watcher_debounce_seconds: 1.0
+  # NOTE (2026-09-27 audit): default_path, path_resolution,
+  # watcher_debounce_seconds, section_mapping were removed from the schema
+  # (no consumers). watcher_lag_seconds and state_sidecar_suffix remain.
   watcher_lag_seconds: 30.0
   state_sidecar_suffix: ".state.json"
-  section_mapping:
-    backlog: "backlog"
-    ready: "ready"
-    in_progress: "in_progress"
-    done: "done"

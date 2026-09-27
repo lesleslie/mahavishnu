@@ -13,6 +13,7 @@ Architecture:
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
@@ -598,79 +599,24 @@ class PiPoolSettings(BaseModel):
             "testing; production should pin to the package version tested."
         ),
     )
-    rpc_timeout_seconds: float = Field(
-        default=30.0,
-        ge=1.0,
-        le=600.0,
-        description="Per-request JSON-RPC timeout in seconds (1-600).",
-    )
-    default_model: str = Field(
-        default="claude-sonnet-4-5",
-        description="Default model identifier passed to Pi's RPC layer.",
-    )
-    probe_timeout_seconds: float = Field(
-        default=3.0,
-        ge=0.1,
-        le=30.0,
-        description="Subprocess startup probe timeout in seconds (0.1-30).",
-    )
-    heartbeat_interval_seconds: float = Field(
-        default=30.0,
-        ge=5.0,
-        le=300.0,
-        description="Watchdog heartbeat interval in seconds (5-300).",
-    )
     enabled: bool = Field(
         default=False,
         description="Enable Pi pool type. Off by default — opt-in per environment.",
     )
-    recipe_path: str | None = Field(
-        default=None,
-        description="Optional path to a Pi recipe file (forwarded to --rpc on startup).",
-    )
-    env_allowlist: tuple[str, ...] = Field(
-        default=("PATH", "HOME", "LANG", "NODE_PATH", "NODE_ENV", "TMPDIR"),
-        description=(
-            "Env vars forwarded to the Pi subprocess. MAHAVISHNU_AUTH_SECRET, "
-            "MINIMAX_API_KEY, MAHAVISHNU_*, MINIMAX_*, ZAI_*, DHARA_*, "
-            "AKOSHA_*, SESSION_BUDDY_* are NEVER included."
-        ),
-    )
-    pinned_version: str = Field(
-        default="@earendil-works/pi-coding-agent@^1.0.0",
-        description="npm pinned-version range. Catches silent breaking changes from upstream.",
-    )
+    # NOTE (2026-09-27 audit): ``rpc_timeout_seconds``, ``default_model``,
+    # ``probe_timeout_seconds``, ``heartbeat_interval_seconds``,
+    # ``recipe_path``, ``env_allowlist``, and ``pinned_version`` had no
+    # consumer in the Bodai ecosystem — the Pi pool runtime uses
+    # hardcoded constants. Kept ``enabled`` (master toggle) and
+    # ``npx_command`` (consumed by ``_npx_command_allowlist`` validator
+    # and the JSONRPCStdioClient subprocess launcher). Removed.
 
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="after")
-    def _env_allowlist_denylist(self) -> PiPoolSettings:
-        """Reject any ``env_allowlist`` entry that matches a sensitive prefix.
-
-        This is the model-level counterpart to the runtime denylist in
-        ``JSONRPCStdioClient._build_subprocess_env``. Validator rejects
-        at construction time (fail-fast); runtime strips defensively.
-
-        Req: REQ-PI-003
-        """  # req: REQ-PI-003
-        sensitive_prefixes: tuple[str, ...] = (
-            "MAHAVISHNU_",
-            "MINIMAX_",
-            "ZAI_",
-            "DHARA_",
-            "AKOSHA_",
-            "SESSION_BUDDY_",
-        )
-        for key in self.env_allowlist:
-            if any(key.startswith(prefix) for prefix in sensitive_prefixes):
-                from .errors import ConfigurationError
-
-                raise ConfigurationError(
-                    f"pi_pool.env_allowlist contains sensitive key {key!r}; "
-                    f"prefixes MAHAVISHNU_/MINIMAX_/ZAI_/DHARA_/AKOSHA_/SESSION_BUDDY_ "
-                    f"are never forwarded to the subprocess."
-                )
-        return self
+    # NOTE (2026-09-27 audit): ``_env_allowlist_denylist`` validator was
+    # removed along with the ``env_allowlist`` field — there is no longer
+    # any user-configurable env-stripping knob to validate. The runtime
+    # denylist in ``JSONRPCStdioClient._build_subprocess_env`` still applies.
 
     @model_validator(mode="after")
     def _npx_command_allowlist(self) -> PiPoolSettings:
@@ -974,14 +920,10 @@ class OTelIngesterConfig(BaseModel):
             "Set via MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE"
         ),
     )
-    storage_pg_url: str = Field(
-        default="",
-        description=(
-            "PostgreSQL connection string for pgvector-backed OTel storage. "
-            "Required when storage_type='postgresql'. "
-            "Set via MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL"
-        ),
-    )
+    # NOTE (2026-09-27 audit): ``storage_pg_url`` had no consumer in the
+    # Bodai ecosystem — the OTel ingester reads the connection string via
+    # the inherited ``OneiricOTelStorageSettings.connection_string`` and
+    # the OTel storage backend's own config. Removed.
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2",
         description="Sentence transformer model for OTel ingester embeddings",
@@ -1547,10 +1489,9 @@ class ContainerSettings(BaseModel):
         default=None,
         description="Container runtime to use; null = auto-detect (orbstack > docker > podman)",
     )
-    socket_path: str | None = Field(
-        default=None,
-        description="Override path to the container daemon socket (e.g. OrbStack)",
-    )
+    # NOTE (2026-09-27 audit): ``socket_path`` had no consumer in the
+    # Bodai ecosystem — the container worker uses auto-discovered socket
+    # paths (``runtime`` is the toggle). Removed.
 
 
 class WorkerConfig(BaseModel):
@@ -2441,11 +2382,11 @@ class WorktreeStorageSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    default_isolation: Literal["host", "worktree"] = "host"
-    base_branch: str = "main"
+    # NOTE (2026-09-27 audit): ``default_isolation``, ``base_branch``, and
+    # ``cleanup_grace_seconds`` had no consumer in the Bodai ecosystem — the
+    # worktree subsystem uses its own constants/defaults. Removed.
     storage_root: str | None = None  # None = $XDG_DATA_HOME/mahavishnu/worktrees/
     max_concurrent: int = Field(default=5, ge=1, le=100)
-    cleanup_grace_seconds: int = Field(default=300, ge=0)
     ttl_seconds: int = Field(default=86_400, ge=60)
 
 
@@ -2460,10 +2401,12 @@ class IdempotencySettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    default_ttl_seconds: int = Field(default=86_400, ge=1)
     fail_mode: Literal["open", "closed"] = "closed"
     storage_backend: Literal["event_store", "session_buddy"] = "event_store"
-    pending_timeout_seconds: int = Field(default=30, ge=1)
+    # NOTE (2026-09-27 audit): ``default_ttl_seconds`` and
+    # ``pending_timeout_seconds`` had no consumer in the Bodai ecosystem —
+    # the idempotency layer's TTL semantics were scaffolded but the
+    # downstream dispatcher never consulted them. Removed.
 
 
 class WebhookIntakeSettings(BaseModel):
@@ -2479,9 +2422,10 @@ class WebhookIntakeSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    bind_host: str = "127.0.0.1"
-    bind_port: int = 8695  # PENDING BODAI_REPO_REGISTRY.md verification during impl
-    tls_required: bool = True
+    # NOTE (2026-09-27 audit): ``bind_host``, ``bind_port``, and
+    # ``tls_required`` had no consumer in the Bodai ecosystem — the webhook
+    # intake module binds via its own constants, not via these settings.
+    # Scaffolded for an intake service that didn't ship. Removed.
     max_payload_size_bytes: int = Field(default=1_048_576, ge=1024)
     allowed_sources: frozenset[str] = Field(default_factory=frozenset)
 
@@ -2554,19 +2498,13 @@ class MarkdownBoardSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    default_path: str = ".mahavishnu/board.md"
-    path_resolution: Literal["repo", "global"] = "repo"  # restrict to repo paths
-    watcher_debounce_seconds: float = Field(default=1.0, ge=0.0)
     watcher_lag_seconds: float = Field(default=30.0, ge=1.0)
     state_sidecar_suffix: str = ".state.json"
-    section_mapping: dict[str, str] = Field(
-        default_factory=lambda: {
-            "backlog": "backlog",
-            "ready": "ready",
-            "in_progress": "in_progress",
-            "done": "done",
-        }
-    )
+    # NOTE (2026-09-27 audit): ``default_path``, ``path_resolution``,
+    # ``watcher_debounce_seconds``, and ``section_mapping`` had no consumer
+    # in the Bodai ecosystem — the markdown board watcher was scaffolded
+    # but not shipped. Kept ``enabled``, ``watcher_lag_seconds``, and
+    # ``state_sidecar_suffix`` for forward compatibility.
 
 
 class WorktreeCacheSettings(BaseModel):
@@ -2607,7 +2545,9 @@ class WorktreeCacheSettings(BaseModel):
         default="mahavishnu:worktree-cache:",
         description="Canonical Redis key prefix for worktree cache entries.",
     )
-    default_ttl_seconds: int = Field(default=3600, ge=0)
+    # NOTE (2026-09-27 audit): ``default_ttl_seconds`` had no consumer in
+    # the Bodai ecosystem — the worktree cache uses per-tier TTLs
+    # (l1_ttl_seconds, l2_ttl_seconds) directly. Removed.
 
 
 class EnginesConfig(BaseModel):
@@ -2629,46 +2569,32 @@ class JotSurfacingSettings(BaseModel):
     """
 
     enabled: bool = True
-    session_start: bool = True
-    tool_result: bool = True
-    throttle_ms: int = 5000
-    lexical_threshold: float = 0.20
-    semantic_threshold: float = 0.55
-    semantic_enabled: bool = True
-    semantic_max_jots: int = 30
-    max_results: int = 3
-    short_context_min_tokens: int = 50
+    # NOTE (2026-09-27 audit): ``session_start``, ``tool_result``,
+    # ``throttle_ms``, ``lexical_threshold``, ``semantic_threshold``,
+    # ``semantic_enabled``, ``semantic_max_jots``, ``max_results``, and
+    # ``short_context_min_tokens`` had no consumer in the Bodai ecosystem —
+    # surfacing scaffolded knobs without an implementation reading them.
+    # Only ``enabled`` is wired. Removed.
 
 
 class JotRetrySettings(BaseModel):
     """Drain retry policy (spec §5.8, §6.4). Max 2 attempts total."""
 
     max_attempts: int = 2
-    backoff_seconds: int = 30
-
-
-class JotReconcilerSettings(BaseModel):
-    """Tier-2 background reconciler config (spec §5.8, §6.3)."""
-
-    background_interval_seconds: int = 30
-    timeout_minutes: int = 10
-    status_call_timeout_seconds: int = 30
-
-
-class JotDrainSettings(BaseModel):
-    """Drain dispatch orchestration config (spec §5.8, §6)."""
-
-    retry: JotRetrySettings = Field(default_factory=JotRetrySettings)
-    reconciler: JotReconcilerSettings = Field(default_factory=JotReconcilerSettings)
-    default_pool_selector: str = "least_loaded"
-    default_workflow_adapter: str = "prefect"
+    # NOTE (2026-09-27 audit): ``backoff_seconds`` had no consumer in the
+    # Bodai ecosystem — JotRetrySettings is referenced via the now-removed
+    # JotDrainSettings, so its only consumer was the deleted drain
+    # subsystem. Kept ``max_attempts`` for forward compatibility.
 
 
 class JotSettings(BaseModel):
     """Top-level jot config (spec §5.8). Nested under MahavishnuSettings.jot."""
 
     surfacing: JotSurfacingSettings = Field(default_factory=JotSurfacingSettings)
-    drain: JotDrainSettings = Field(default_factory=JotDrainSettings)
+    # NOTE (2026-09-27 audit): ``JotDrainSettings`` and
+    # ``JotReconcilerSettings`` were entirely DEAD — the drain dispatch
+    # subsystem was scaffolded but never wired. Removed both classes
+    # and the ``drain`` field on ``JotSettings``. Re-add when drain ships.
 
 
 class MahavishnuSettings(BaseSettings):
@@ -2785,9 +2711,11 @@ class MahavishnuSettings(BaseSettings):
     a2a: A2ASettings | None = None
 
     # ACP (Agent Client Protocol) configuration (optional, defaults are
-    # sane — the module-level ``mahavishnu acp serve`` CLI builds its own
-    # ``ACPSettings()`` and does not need this top-level wiring).
-    acp: ACPSettings | None = None
+    # NOTE (2026-09-27 audit): ``acp`` (root-level ``ACPSettings`` wiring) had
+    # no consumer in the Bodai ecosystem — the module-level ``mahavishnu acp
+    # serve`` CLI builds its own ``ACPSettings()`` and does not need this
+    # top-level wiring. Scaffolded for an ACP service that ships via CLI
+    # not settings. Removed.
 
     # ===== Grouped Configuration =====
 
@@ -2910,15 +2838,10 @@ class MahavishnuSettings(BaseSettings):
         description="Resilience configuration",
     )
 
-    # Distilled Workflows (Plan 5)
-    distill: DistillSettings = Field(
-        default_factory=DistillSettings,
-        description=(
-            "Distilled Workflows pipeline configuration (Plan 5). "
-            "Controls the H4 source provenance gate (publisher "
-            "allowlist) and the H6 reviewer identity gate."
-        ),
-    )
+    # NOTE (2026-09-27 audit): ``DistillSettings`` and the root ``distill``
+    # field were entirely DEAD — the distilled-workflows pipeline reads
+    # via ``ReviewerIdentity.from_env`` (env var) instead of settings.
+    # Both class and root field are removed.
 
     # Observability
     observability: ObservabilityConfig = Field(
@@ -3030,8 +2953,10 @@ class MahavishnuSettings(BaseSettings):
     capability_enabled: bool = False
     capability_scopes: list[str] = Field(default_factory=list)
 
-    # Phase 3b: legacy tool deprecation gate
-    legacy_tools: bool = False
+    # NOTE (2026-09-27 audit): ``legacy_tools`` had no consumer in the
+    # Bodai ecosystem — the "Phase 3b: legacy tool deprecation gate" was
+    # scaffolded but the legacy-tool code path it gated was not wired
+    # through ``MahavishnuSettings``. Removed.
 
     # Phase 4 (settle-semantic-merge plan): mergiraf opt-in default.
     # ``merge_driver_default`` is the global strategy pick — ``"line"`` (Phase 0/1/2/3
@@ -3082,13 +3007,48 @@ class MahavishnuSettings(BaseSettings):
         dotenv_settings,
         file_secret_settings,
     ):
-        """Customize settings sources to include YAML files."""
-        # Add YAML configuration sources
+        """Customize settings sources to include YAML files.
+
+        Layered config precedence (highest wins; later in tuple = newer =
+        overrides earlier per the ``_settings_build_values`` override below):
+            1. init_settings (kwargs passed to ``__init__``)
+            2. env_settings      (``MAHAVISHNU_*``)
+            3. dotenv_settings   (``.env`` in CWD)
+            4. file_secret_settings (Docker/secrets)
+            5. ``~/.config/mahavishnu/local.yaml``  (XDG overlay — NEW 2026-09-27)
+            6. ``~/.config/mahavishnu/config.yaml`` (XDG defaults — NEW)
+            7. ``settings/local.yaml``   (repo overlay)
+            8. ``settings/mahavishnu.yaml`` (committed defaults)
+            9. Code defaults (lowest)
+
+        The two XDG layers were added 2026-09-27 to standardize on the
+        Oneiric XDG pattern (see ``oneiric/core/config.py:load_settings``).
+        Operators migrate by copying content from ``settings/local.yaml``
+        into ``~/.config/mahavishnu/local.yaml``; the repo file can then
+        be deleted once all consumers have migrated.
+        """
         yaml_sources = []
+        # Repo layer (existing) — added FIRST so the XDG layer
+        # (appended below) wins the pydantic-settings "later-wins" merge.
+        # The ``_settings_build_values`` override in this class makes later
+        # sources in the tuple override earlier ones via
+        # ``deep_update(state, source_state)``.
         for yaml_file in ("settings/mahavishnu.yaml", "settings/local.yaml"):
             yaml_path = Path(yaml_file)
             if yaml_path.exists():
                 yaml_sources.append(YamlConfigSettingsSource(settings_cls, yaml_path))
+
+        # XDG layer (NEW 2026-09-27) — appended LAST so it appears last
+        # in the sources tuple and wins the "later-wins" merge.
+        xdg_config_home = Path(
+            os.environ.get("XDG_CONFIG_HOME", "~/.config"),
+        ).expanduser()
+        xdg_dir = xdg_config_home / "mahavishnu"
+        for xdg_file in (xdg_dir / "config.yaml", xdg_dir / "local.yaml"):
+            if xdg_file.exists():
+                yaml_sources.append(
+                    YamlConfigSettingsSource(settings_cls, xdg_file)
+                )
 
         return (
             init_settings,

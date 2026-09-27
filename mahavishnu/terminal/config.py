@@ -51,10 +51,9 @@ class TerminalSettings(BaseModel):
         default="mock",
         description="Preferred adapter: mock, tmux, crow, goose, or auto. Default mock is safe — no external dependencies until iTerm2/tmux/crow/goose is explicitly configured.",
     )
-    fallback_on_probe_failure: bool = Field(
-        default=False,
-        description="Fall back to mock adapter if probe fails; True = fallback, False = fail startup",
-    )
+    # NOTE (2026-09-27 audit): ``fallback_on_probe_failure`` had no consumer
+    # in the Bodai ecosystem — the terminal manager either fails startup or
+    # uses ``adapter_preference`` directly. Removed.
     # Crow adapter (bundled bodai-crow HTTP server). Defaults to disabled because
     # the default settings/mahavishnu.yaml sets adapter_preference="crow" but the
     # CLI callers don't yet construct an mcp_client. Operators opt in by setting
@@ -117,15 +116,10 @@ class TerminalSettings(BaseModel):
             "MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY when unset."
         ),
     )
-    goose_poll_interval: float = Field(
-        default=0.5,
-        ge=0.05,
-        le=10.0,
-        description=(
-            "Default polling interval in seconds for capture_output (v1 HTTP). "
-            "Adapters may override per-call."
-        ),
-    )
+    # NOTE (2026-09-27 audit): ``goose_poll_interval`` had no consumer in
+    # the Bodai ecosystem — the Goose terminal adapter was scaffolded but
+    # never wired. Kept the other goose_* fields (consumed by the
+    # ``_goose_auth_required_when_enabled`` validator). Removed.
 
     @model_validator(mode="after")
     def _goose_auth_required_when_enabled(self) -> TerminalSettings:

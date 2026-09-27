@@ -44,7 +44,7 @@
 
 ## MCP & Ecosystem Notes
 
-- Mahavishnu is the orchestrator for the Bodai ecosystem and commonly integrates with Session-Buddy, Akosha, Crackerjack, Dhara, Oneiric, and related MCP services.
+- Mahavishnu is the orchestrator for the Bodai ecosystem and commonly integrates with Session-Buddy, Akosha, Crackerjack, Oneiric, and related MCP services. (Dhara is a Bodai-maintained persistence library but no longer a Core component — see `BODAI_REPO_REGISTRY.md` § Libraries.)
 - Treat Mahavishnu as an ecosystem-internal control plane first. When editing docs, features, or examples, prefer language that reflects Bodai-owned repos and services as the primary operating scope unless the work is explicitly about external productization.
 - This repository does not use GitHub Actions for active CI or quality gating. Use Crackerjack-based validation and repository-local test commands instead of adding or relying on `.github/workflows/*` for enforcement.
 - Treat external service ports, URLs, and auth settings as configuration, not constants embedded in new code.

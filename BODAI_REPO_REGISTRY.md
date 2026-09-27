@@ -30,13 +30,13 @@ or higher.
 
 ## Confirmed Bodai repos (>=3.13 currently; bumping to >=3.14 in Phases 0.1–0.N)
 
-### Core 7 (in-scope for streaming tar Phase 3)
+### Core 5 (in-scope for streaming tar Phase 3)
+
+> **2026-09-27 update (x2):** Dhara removed from Core (Dhara MCP server removed). Then `mcp-common` removed from Core (re-classified as a supporting library — every Core component ships its own settings, so the fallback path is unreachable). Effective Core = **5**. `mcp-common` lives in the "Libraries (Bodai-maintained, not Core)" section below; the import is still required everywhere but it's library, not coordination plane.
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| mcp-common | /Users/les/Projects/mcp-common/ | >=3.14 | **Phase 0.1**. Leaf dep. FastMCP **>=4.0.3** (`2026-09-06`) |
 | oneiric | /Users/les/Projects/oneiric/ | >=3.14 | **Phase 0.2**. needed by Phase A |
-| dhara | /Users/les/Projects/dhara/ | >=3.14 | **Phase 0.3**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | session-buddy | /Users/les/Projects/session-buddy/ | >=3.14 | **Phase 0.4**. FastMCP **>=4.0.3** (`2026-09-06`) |
 | akosha | /Users/les/Projects/akosha/ | >=3.14 | **Phase 0.5**. required akosha/mcp/client.py transport-fix for streamable_http_client 2-tuple return. FastMCP **>=4.0.3** (`2026-09-06`) |
 | crackerjack | /Users/les/Projects/crackerjack/ | >=3.14 | **Phase 0.6**. FastMCP >=3.4.2 (already open ceiling); already 4.0.3 capable. FastMCP **>=4.0.3** (`2026-09-06`) |
@@ -97,6 +97,19 @@ or higher.
 |---|---|---|---|
 | bodai | /Users/les/Projects/bodai/ | >=3.14 | The Orb — ecosystem meta-project |
 
+### Libraries (Bodai-maintained, not Core)
+
+> Repos here are Bodai-maintained, >=3.14, but are **not** part of the Core coordination
+> stack. Imported by Core components but do not participate in routing, observability,
+> or memory themselves. Tracked here so that `settings/repos.yaml` /
+> `settings/ecosystem.yaml` can resolve them; out of scope for Core standardization
+> plans unless the user re-promotes them.
+
+| Repo | Path | Current `requires-python` | Notes |
+|---|---|---|---|
+| mcp-common | /Users/les/Projects/mcp-common/ | >=3.14 | **Phase 0.1**. Shared library (BearerTokenMiddleware, MCP base settings). **Re-classified from Core to Library 2026-09-27** — every Core component ships its own settings, so the mcp-common fallback config is unreachable in practice. Still required as a leaf dep. FastMCP **>=4.0.3** (`2026-09-06`) |
+| dhara | /Users/les/Projects/dhara/ | >=3.14 | Standalone durus-only persistence library. **Removed from Core 2026-09-27** — the Dhara MCP server has been removed and downstream MCP tools were consolidated into the other Mahavishnu components. Still Bodai-maintained and version-pinned; revisit only if an MCP server is reintroduced. |
+
 ### Deprecated / Archived (moved to `~/Projects/ARCHIVED/`)
 
 | Repo | Archive path | `requires-python` | Notes |
@@ -106,15 +119,16 @@ or higher.
 
 ## Summary counts
 
-- Core 7 (in-scope for streaming tar Phase 3): 7
+- Core 5 (in-scope for streaming tar Phase 3): 5
 - Web / framework libraries: 5
 - Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 21
 - Extensions: 1
 - Desktop / GUI: 2
 - Meta: 1
+- Libraries (Bodai-maintained, not Core): 2
 - Deprecated/Archived: 2
 
-**Total active Bodai repos: 37**
+**Total active Bodai repos: 38**
 
 ## Per-project MCP server and agent scoping
 
