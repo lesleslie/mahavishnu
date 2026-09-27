@@ -7,15 +7,30 @@ last_reviewed: 2026-09-27
 superseded_by: null
 blocks_on: []
 topic: mcp-design
-shipped_commits:
-  mahavishnu:
-    - 67095d98 feat(mahavishnu): tool-call span enrichment + Akosha-bound OTel attributes
-    - 5e9ad579 fix(mahavishnu): Phase 1 verification fixes (split gates, real e2e, microbench)
-    - 8705f469 fix(mahavishnu): upgrade microbench to exercise real OTel span path
-  akosha:
-    - a6ff6a7 feat(akosha): wire mcp_tool_call feed into /health aggregator (Phase 1 Task 1.5)
-    - 076d63b fix(akosha): expose mcp_tool_call_feed per-feed dict in /health wire-out
+phase_1:
+  status: shipped
+  commits:
+    mahavishnu:
+      - 67095d98 feat(mahavishnu): tool-call span enrichment + Akosha-bound OTel attributes
+      - 5e9ad579 fix(mahavishnu): Phase 1 verification fixes (split gates, real e2e, microbench)
+      - 8705f469 fix(mahavishnu): upgrade microbench to exercise real OTel span path
+    akosha:
+      - a6ff6a7 feat(akosha): wire mcp_tool_call feed into /health aggregator (Phase 1 Task 1.5)
+      - 076d63b fix(akosha): expose mcp_tool_call_feed per-feed dict in /health wire-out
+phase_2:
+  status: partial
+  shipped:
+    - task_2_1: 3215d824 feat(mahavishnu): top-N MCP tool audit script (Phase 2 Task 2.1) — scripts/audit_top_tool_calls.py + 15 tests + DELETE empty stub scripts/audit_mcp_tools.py
+    - task_2_2: f5903d6c feat(mahavishnu): tool description rubric + structural validator (Phase 2 Task 2.2) — .claude/decisions/tool-description-rubric.md + 18 tests
+  blocked:
+    - task_2_3: top-10 description= rewrites, one atomic commit per tool — requires ≥7 days of mcp_tool_call traces from production traffic to rank tools by call count
+    - task_2_4: tests/integration/test_tool_selection_accuracy.py (before/after measurement) — requires both before-data and after-data, neither exists yet
+  blocker:
+    description: Tasks 2.3 and 2.4 share the same production-data dependency: Phase 1 telemetry enrichment shipped 2026-09-27 but no real call volume has accumulated yet. Once a few days of operator + agent traffic flow through mcp__mahavishnu__* calls, scripts/audit_top_tool_calls.py (Task 2.1) produces the top-10 ranking and Tasks 2.3 + 2.4 can proceed.
+    activation_signal: scripts/audit_top_tool_calls.py returns >=10 distinct selectors
 follow_on_plan: docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md
+unblocks:
+  - docs/plans/drafts/2026-09-26-eval-methodology.md (Plan 2 — needs top-N ranking from Task 2.1 + fixture proposal + reviewer sign-off)
 ---
 
 # Tool Surface Quality — Implementation Plan (v2)

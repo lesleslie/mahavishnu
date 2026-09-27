@@ -3,10 +3,17 @@ status: draft
 role: implementation
 kind: plan
 date: 2026-09-26
-last_reviewed: 2026-09-26
+last_reviewed: 2026-09-27
 superseded_by: null
 blocks_on:
   - docs/plans/2026-09-26-tool-surface-quality.md
+activation_readiness:
+  - met: Plan 1 Phase 1 shipped (commit dbc2c7fa, mahavishnu)
+  - met: Plan 1 Phase 2 Task 2.1 shipped (commit 3215d824 — scripts/audit_top_tool_calls.py ranks tools by call count, exactly the §6 step 2 prerequisite)
+  - met: Plan 1 Phase 2 Task 2.2 shipped (commit f5903d6c — tool-description-rubric.md, useful for the rubric strategy section of the fixture proposal)
+  - blocked: ≥7 days of mcp_tool_call traces covering top-20 tools (depends on production traffic post-Phase 1 deploy)
+  - blocked: short proposal document naming fixture list + rubric strategy
+  - blocked: Phase 0 reviewer sign-off on fixture list
 topic: adapter-architecture
 ---
 
