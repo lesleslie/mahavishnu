@@ -34,13 +34,15 @@ import logging
 import threading
 from typing import TYPE_CHECKING, Any
 
+from oneiric.core.logging import get_logger
+
 from mahavishnu.pools import PoolManager
 from mahavishnu.websocket import MahavishnuWebSocketServer
 
 if TYPE_CHECKING:
     from mahavishnu.terminal import TerminalManager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Singleton instances
 _pool_manager: PoolManager | None = None
@@ -155,24 +157,25 @@ def _wire_eventbridge_publisher(server: MahavishnuWebSocketServer) -> None:
     Failure modes are caught and logged at WARNING -- wiring must
     never fail WebSocketServer construction.
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
     try:
         from mahavishnu.core.config import MahavishnuSettings
-        from mahavishnu.core.events.eventbridge_resolver import (
-            resolve_event_publisher,
-        )
+        from mahavishnu.core.events.eventbridge_adapter import EventBridgePublisher
+        from mahavishnu.core.events.publisher import set_publisher
 
         settings = MahavishnuSettings()
         bridge = _resolve_bridge_from_env(settings)
-        publisher = resolve_event_publisher(settings, server=server, bridge=bridge)
-        if publisher is not None:
+        eb = settings.eventbridge
+        if eb.enabled and not eb.dry_run and bridge is not None:
+            publisher = EventBridgePublisher(bridge)
+            server.set_eventbridge_publisher(publisher)
+            set_publisher(publisher)
             logger.info(
                 "EventBridge publisher wired (endpoint=%s)",
-                settings.eventbridge.endpoint or "default",
+                eb.endpoint or "default",
             )
         else:
+            set_publisher(None)
+            server.set_eventbridge_publisher(None)
             logger.debug("EventBridge publisher not wired (opt-out or runtime unavailable)")
     except Exception as exc:  # noqa: BLE001 -- opt-in path, never fail server start
         logger.warning(

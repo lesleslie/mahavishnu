@@ -24,3 +24,10 @@ class ProducerCounters:
 
 
 COUNTERS = ProducerCounters()
+
+
+EVENTBRIDGE_PUBLISH_TOTAL: Counter = Counter(
+    "mahavishnu_eventbridge_publish_total",
+    "Total EventBridge publish attempts, labeled by envelope topic and result.",
+    labelnames=["envelope_topic", "result"],
+)
