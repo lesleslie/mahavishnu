@@ -376,10 +376,24 @@ def test_classify_returns_correct_enumeration_for_each_exception_type() -> None:
 
 
 def test_middleware_overhead_under_p99_budget() -> None:
-    """Per-call enrichment overhead stays under the 5ms p99 budget."""
+    """Per-call enrichment overhead stays under the 5ms p99 budget.
+
+    The microbench wires a REAL InMemorySpanExporter (not a no-op span)
+    AND wraps each call in a recording-span context — same shape the
+    upstream ``FastMCPOpenTelemetryMiddleware`` produces in production
+    via ``with self._tracer.start_as_current_span(...)``. Without that
+    context, ``trace.get_current_span()`` returns a no-op span and
+    ``set_attribute`` is a free no-op that bypasses every SDK codepath
+    the budget is supposed to measure. All 1000 iterations share a
+    single event loop (no per-iteration ``asyncio.run`` overhead).
+    """
     from unittest.mock import AsyncMock, MagicMock
 
+    from opentelemetry import trace
+
     from mahavishnu.mcp.tool_call_middleware import ToolCallEnrichmentMiddleware
+
+    exporter, tracer = _build_in_memory_exporter()
 
     middleware = ToolCallEnrichmentMiddleware(service_name="perf")
     ctx = MagicMock()
@@ -389,10 +403,11 @@ def test_middleware_overhead_under_p99_budget() -> None:
 
     async def run_n(n: int) -> list[float]:
         times: list[float] = []
-        for _ in range(n):
-            start = time.perf_counter()
-            await middleware.on_message(ctx, call_next)
-            times.append((time.perf_counter() - start) * 1000.0)
+        with tracer.start_as_current_span("perf-outer-span"):
+            for _ in range(n):
+                start = time.perf_counter()
+                await middleware.on_message(ctx, call_next)
+                times.append((time.perf_counter() - start) * 1000.0)
         return times
 
     times = asyncio.run(run_n(1000))
@@ -410,3 +425,24 @@ def test_middleware_overhead_under_p99_budget() -> None:
         f"enrichment p50 = {p50:.3f}ms exceeds 1ms sanity "
         f"(p99={p99:.3f}ms, mean={mean:.3f}ms)"
     )
+    # Confirm the exporter actually captured spans — proves the recording
+    # span path was exercised (the no-op span path would silently capture
+    # nothing). If this fails, the microbench was measuring the wrong thing.
+    captured = exporter.get_finished_spans()
+    # The outer-span captures all 1000 set_attribute writes from inside
+    # its context. We don't expect 1000 outer spans (the outer is one),
+    # but the outer span should carry >= 1000 attribute writes from the
+    # enricher across the loop iterations.
+    assert len(captured) >= 1, (
+        f"expected at least 1 outer span captured, got {len(captured)}"
+    )
+    outer_attrs = dict(captured[-1].attributes or {})
+    # The outer span accumulates set_attribute writes from every iteration;
+    # at minimum the four REQ-TSQ-001 attributes must be present.
+    for required_attr in ("task_class", "selector", "outcome", "duration_ms"):
+        assert required_attr in outer_attrs, (
+            f"missing {required_attr} on outer span; "
+            f"got attrs: {sorted(outer_attrs.keys())}"
+        )
+    assert outer_attrs["task_class"] == "mcp_tool_call"
+    assert outer_attrs["selector"] == "perf_tool"
