@@ -43,6 +43,33 @@ except Exception:  # pragma: no cover - optional import for test patching  # noq
     _estimate_retry = None
     get_settings = None
 
+try:
+    # C-6: idempotency layer (REQ-006/007/008). Defensive import so tests can
+    # inject sentinels via ``set_idempotency_store(None)`` without forcing the
+    # full event_store stack to import on every test.
+    from mahavishnu.core.errors import IdempotencyCircuitOpen, IdempotencyStoreUnavailable
+    from mahavishnu.core.event_store import TaskEventType
+    from mahavishnu.core.idempotency import (
+        IdempotencyCircuitBreaker,
+        IdempotencyOptions,
+        IdempotencyStore,
+        get_idempotency_breaker,
+        get_idempotency_store,
+        set_idempotency_breaker,
+        set_idempotency_store,
+    )
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    IdempotencyCircuitOpen = None
+    IdempotencyStoreUnavailable = None
+    TaskEventType = None
+    IdempotencyCircuitBreaker = None
+    IdempotencyOptions = None
+    IdempotencyStore = None
+    get_idempotency_store = lambda: None  # type: ignore[assignment]
+    set_idempotency_store = lambda _store: None  # type: ignore[assignment]
+    get_idempotency_breaker = lambda: None  # type: ignore[assignment]
+    set_idempotency_breaker = lambda _breaker: None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,6 +92,19 @@ def set_concurrency_gate(gate: ConcurrencyGate | None) -> None:
     """Override the module-level gate (test seam; resets between cases)."""
     global _concurrency_gate
     _concurrency_gate = gate
+
+
+async def _hash_prompt(prompt: str) -> str:
+    """SHA-256 hex digest of the dispatch prompt text.
+
+    Used as the ``payload_hash`` for the idempotency fingerprint so a
+    duplicate dispatch with the same prompt produces the same key.
+    Async because Oneiric ``HashAction.execute`` is async.
+    """
+    from oneiric.actions.compression import HashAction
+
+    result = await HashAction().execute({"algorithm": "sha256", "data": prompt})
+    return result["digest"]  # type: ignore[no-any-return]
 
 
 async def _enforce_concurrency_limit(
@@ -335,6 +375,7 @@ def register_pool_tools(
         caller_kind: str = "claude_code",
         parent_session_id: str | None = None,
         auto_spawn: bool = False,
+        idempotency: IdempotencyOptions | None = None,
     ) -> dict[str, Any]:
         """Load-balanced single-task dispatch across registered worker pools.
 
@@ -412,6 +453,64 @@ def register_pool_tools(
         gate = get_concurrency_gate()
         acquired = False
         try:
+            # C-6 idempotency: lookup-or-create BEFORE dispatch so a duplicate
+            # call returns the cached result without ever entering the gate.
+            # When idempotency is configured, the store is the fail-CLOSED
+            # guard — if it's unreachable, we DO NOT dispatch (REQ-007).
+            existing_event: Any = None
+            idem_store = None
+            breaker = None
+            if idempotency is not None:
+                idem_store = get_idempotency_store() if get_idempotency_store is not None else None
+                breaker = get_idempotency_breaker() if get_idempotency_breaker is not None else None
+                if idem_store is None or breaker is None:
+                    logger.exception(
+                        "idempotency requested but layer not configured",
+                        extra={"error_id": "IDEMPOTENCY_NOT_CONFIGURED"},
+                    )
+                    return {
+                        "status": "error",
+                        "error": "idempotency store unavailable",
+                    }
+                try:
+                    existing_event = await breaker.call(
+                        lambda: idem_store.get_or_create(
+                            idempotency,
+                            payload_hash=_hash_prompt(prompt),
+                            actor="pool_route_execute",
+                        )
+                    )
+                except IdempotencyStoreUnavailable as exc:
+                    logger.exception(
+                        "idempotency store unreachable; failing closed",
+                        extra={"error_id": "IDEMPOTENCY_STORE_UNAVAILABLE"},
+                    )
+                    return {
+                        "status": "error",
+                        "error": f"idempotency store unavailable: {exc}",
+                    }
+                except IdempotencyCircuitOpen as exc:
+                    logger.warning(
+                        "idempotency circuit open; failing closed",
+                        extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
+                    )
+                    return {
+                        "status": "error",
+                        "error": f"idempotency circuit open: {exc}",
+                    }
+
+                if (
+                    existing_event is not None
+                    and TaskEventType is not None
+                    and existing_event.event_type == TaskEventType.COMPLETED
+                ):
+                    cached = (existing_event.data or {}).get("result", {})
+                    logger.info(
+                        "idempotency hit; returning cached result",
+                        extra={"idempotency_key": existing_event.idempotency_key},
+                    )
+                    return {"status": "duplicate", "result": cached}
+
             if gate is not None and task_category is not None:
                 acquired = await gate.try_acquire(task_category, None)
                 if not acquired:
@@ -423,7 +522,7 @@ def register_pool_tools(
                         ),
                         domain=f"task_category={task_category.value}",
                     )
-            return await pool_manager.route_task(  # type: ignore[no-any-return]
+            result = await pool_manager.route_task(  # type: ignore[no-any-return]
                 task=task,
                 pool_selector=selector_enum,
                 pool_affinity=pool_affinity,
@@ -431,7 +530,50 @@ def register_pool_tools(
                 parent_session_id=parent_session_id,
                 auto_spawn=auto_spawn,
             )
+
+            if (
+                idempotency is not None
+                and idem_store is not None
+                and breaker is not None
+                and existing_event is not None
+            ):
+                # Wrap mark_completed through the same breaker so a DB
+                # hiccup at dispatch-completion time does not lose the
+                # result (FIX round-7 Tier 2).
+                try:
+                    await breaker.call(
+                        lambda: idem_store.mark_completed(existing_event, result)
+                    )
+                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):
+                    logger.exception(
+                        "failed to mark idempotency record completed",
+                        extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
+                    )
+
+            return result
         except Exception as exc:
+            # If idempotency is wired, mark the record FAILED so a future
+            # retry does not return stale PENDING. Best-effort — a DB
+            # hiccup here must not mask the original dispatch error.
+            if (
+                idempotency is not None
+                and idem_store is not None
+                and breaker is not None
+                and existing_event is not None
+            ):
+                try:
+                    await breaker.call(
+                        lambda: idem_store.mark_failed(
+                            existing_event,
+                            error=str(exc),
+                        )
+                    )
+                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):
+                    logger.exception(
+                        "failed to mark idempotency record failed",
+                        extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},
+                    )
+
             # ``RateLimitError`` is conditionally imported (None on defensive
             # failure); ``except RateLimitError`` is a ty error + silent no-op
             # in the sentinel branch, so dispatch via isinstance + None guard.

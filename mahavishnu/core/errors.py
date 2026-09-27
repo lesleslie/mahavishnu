@@ -783,6 +783,10 @@ class IdempotencyStoreUnavailable(MahavishnuError):  # noqa: N818
     The C-6 default is to fail-CLOSED (reject the request) rather than
     fail-open (allow duplicates) — per the no-backcompat policy.
 
+    Distinct from ``IdempotencyCircuitOpen``: this exception indicates
+    the underlying store raised; circuit-open indicates the breaker is
+    gating traffic without touching the underlying store.
+
     Implements: REQ-003
     """  # req: REQ-003
 
@@ -794,6 +798,36 @@ class IdempotencyStoreUnavailable(MahavishnuError):  # noqa: N818
     ) -> None:
         merged_details: dict[str, object] = {
             "subsystem": "idempotency",
+            **(details or {}),
+        }
+        super().__init__(
+            message,
+            ErrorCode.INTERNAL_ERROR,
+            details=merged_details,
+        )
+
+
+class IdempotencyCircuitOpen(MahavishnuError):  # noqa: N818
+    """Raised by ``IdempotencyCircuitBreaker`` when the breaker is OPEN.
+
+    Distinct from ``IdempotencyStoreUnavailable`` so callers can route
+    circuit-open fast-fails differently from underlying-store failures.
+    The breaker fast-fails (no DB hit) once it has tripped — operators
+    distinguish "circuit OPEN for 2 hours" from "DB genuinely down" via
+    the ``idempotency_circuit_state`` metric and this exception class.
+
+    Implements: REQ-006, REQ-007, REQ-008
+    """  # req: REQ-006, REQ-007, REQ-008
+
+    def __init__(
+        self,
+        message: str = "idempotency circuit open",
+        *,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        merged_details: dict[str, object] = {
+            "subsystem": "idempotency",
+            "component": "circuit_breaker",
             **(details or {}),
         }
         super().__init__(
