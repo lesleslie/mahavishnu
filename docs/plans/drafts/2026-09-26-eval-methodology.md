@@ -11,9 +11,10 @@ activation_readiness:
   - met: Plan 1 Phase 1 shipped (commit dbc2c7fa, mahavishnu)
   - met: Plan 1 Phase 2 Task 2.1 shipped (commit 3215d824 — scripts/audit_top_tool_calls.py ranks tools by call count, exactly the §6 step 2 prerequisite)
   - met: Plan 1 Phase 2 Task 2.2 shipped (commit f5903d6c — tool-description-rubric.md, useful for the rubric strategy section of the fixture proposal)
+  - met: Fixture list proposal exists — docs/proposals/2026-09-27-eval-fixture-proposal.md (12 fixtures spanning 4 task classes × 3 adapters, two-track structural + LLM-as-judge rubric strategy, activation path documented)
   - blocked: ≥7 days of mcp_tool_call traces covering top-20 tools (depends on production traffic post-Phase 1 deploy)
-  - blocked: short proposal document naming fixture list + rubric strategy
-  - blocked: Phase 0 reviewer sign-off on fixture list
+  - blocked: Phase 0 reviewer sign-off on fixture list proposal
+proposal: docs/proposals/2026-09-27-eval-fixture-proposal.md
 topic: adapter-architecture
 ---
 
