@@ -68,13 +68,18 @@ def _extract_tool_name(context: "MiddlewareContext[Any]") -> str:
     return "<unknown>"
 
 
-def _classify(call_next_result: Any, exc: BaseException | None) -> str:
-    """Map a call_next outcome to the closed enumeration.
+def _classify(exc: BaseException | None) -> str:
+    """Map a call_next exception to the closed enumeration.
 
     Mirrors ``_classify_tool_result`` in
     ``mahavishnu/mcp/server_core.py:220`` plus the explicit exception
     classes that ``_wrap_tool_handler`` classifies. The two systems
     classify independently; both produce the same enumeration.
+
+    No ``call_next_result`` parameter — the original signature had one
+    but the only call site (``_classify(None, exc)`` in the ``finally``
+    branch) always passed ``None``. Removed 2026-09-27 after the
+    Performance lens flagged the dead parameter.
     """
     if exc is None:
         return "success"
@@ -121,7 +126,7 @@ class ToolCallEnrichmentMiddleware(FastMCPOpenTelemetryMiddleware):
             raise
         finally:
             duration_ms = (time.perf_counter() - start) * 1000.0
-            status = _classify(None, exc)
+            status = _classify(exc)
             try:
                 enrich_tool_call_span(
                     span,

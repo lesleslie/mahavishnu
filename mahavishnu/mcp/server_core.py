@@ -82,6 +82,7 @@ class FastMCPServer:
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         self._register_telemetry_middleware()
+        self._register_enrichment_middleware()
         self._register_auth_context_middleware()
 
         # Initialize terminal manager if enabled
@@ -131,26 +132,46 @@ class FastMCPServer:
             extra={"service_name": service_name, "environment": environment},
         )
 
-        # Tool-call enrichment layer (Phase 1 of
-        # docs/plans/2026-09-26-tool-surface-quality.md). Registered AFTER
-        # the upstream telemetry middleware so it runs INSIDE the upstream's
-        # span context (we enrich the upstream's span, not a child of it).
-        # Gated on observability.tool_enrichment_enabled so enrichment can
-        # be on even when tracing_enabled is off (Phase 2's
-        # audit_top_tool_calls.py needs this).
+    def _register_enrichment_middleware(self) -> None:
+        """Attach the tool-call span enrichment layer (REQ-TSQ-007).
+
+        Gated independently of ``tracing_enabled`` — REQ-TSQ-007 mandates
+        that ``tool_enrichment_enabled`` can be on even when OTel tracing
+        is off. When tracing is off, the upstream telemetry middleware is
+        not registered, so the active span is a no-op; enrichment still
+        runs (it can still observe call latency for non-exported
+        metrics), but its span writes are dropped. That matches the plan:
+        a deliberate capability, not a footgun.
+
+        Separated from ``_register_telemetry_middleware`` so the two
+        gates are evaluated independently. Earlier revisions bundled
+        the gates behind a single early-return, which made
+        ``tool_enrichment_enabled`` structurally dependent on
+        ``tracing_enabled`` — flagged by the security lens on 2026-09-27.
+        """
+        observability = getattr(self.app.config, "observability", None)
+        if observability is None or not getattr(
+            observability, "tool_enrichment_enabled", False
+        ):
+            return
+
+        service_name = getattr(self.app.config, "server_name", "mahavishnu")
+        environment = "production"
+        if hasattr(observability, "environment") and isinstance(observability.environment, str):
+            environment = observability.environment
+
         from .tool_call_middleware import ToolCallEnrichmentMiddleware
 
-        if getattr(observability, "tool_enrichment_enabled", False):
-            self.server.add_middleware(
-                ToolCallEnrichmentMiddleware(
-                    service_name=service_name,
-                    environment=environment,
-                )
+        self.server.add_middleware(
+            ToolCallEnrichmentMiddleware(
+                service_name=service_name,
+                environment=environment,
             )
-            logger.info(
-                "Registered FastMCP ToolCallEnrichmentMiddleware",
-                extra={"service_name": service_name, "environment": environment},
-            )
+        )
+        logger.info(
+            "Registered FastMCP ToolCallEnrichmentMiddleware",
+            extra={"service_name": service_name, "environment": environment},
+        )
 
     def _register_auth_context_middleware(self) -> None:
         """Attach the Bearer-token -> Context-state middleware.
