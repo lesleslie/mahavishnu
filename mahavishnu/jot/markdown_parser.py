@@ -3,6 +3,7 @@
 Scoped to the .mahavishnu/board.md format ONLY. Not a generic
 markdown-board engine (per mahavishnu niche filter).
 """
+
 from __future__ import annotations
 
 import re
@@ -68,17 +69,12 @@ async def parse_board(content: str) -> list[dict[str, Any]]:
     fields = _card_field_rules()
     failures: list[str] = []
     for card in cards:
-        result = await validator.execute(
-            {"data": card, "fields": fields}
-        )
+        result = await validator.execute({"data": card, "fields": fields})
         if result.get("errors"):
-            failures.append(
-                f"{card.get('id', '?')}: {result['errors']}"
-            )
+            failures.append(f"{card.get('id', '?')}: {result['errors']}")
     if failures:
         raise MarkdownParseError(
-            f"validation failed for {len(failures)} card(s): "
-            + "; ".join(failures[:3])
+            f"validation failed for {len(failures)} card(s): " + "; ".join(failures[:3])
         )
     return cards
 
@@ -123,7 +119,7 @@ def _parse_card_line(line: str, status: str) -> dict[str, Any] | None:
     or ``X``; callers that read parse_board's return list should treat
     the per-card ``status`` field as authoritative.
     """
-    if line.startswith("- [x]") or line.startswith("- [X]"):
+    if line.startswith(("- [x]", "- [X]")):
         status = "done"
         line = line[5:].strip()
     elif line.startswith("- [ ]"):

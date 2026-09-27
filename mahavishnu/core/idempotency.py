@@ -28,10 +28,12 @@ The module exposes:
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 import time
 from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 from cachetools import LRUCache
 from oneiric.actions.compression import HashAction
@@ -261,9 +263,7 @@ class IdempotencyCircuitBreaker:
                         "idempotency circuit open; skipping",
                         extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
                     )
-                    raise IdempotencyCircuitOpen(
-                        "circuit open; event store unreachable"
-                    )
+                    raise IdempotencyCircuitOpen("circuit open; event store unreachable")
                 # Cooldown elapsed — transition to HALF_OPEN (one trial allowed).
                 self._opened_at = None
                 IDEMPOTENCY_CIRCUIT_STATE_GAUGE.set(0)

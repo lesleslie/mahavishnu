@@ -18,16 +18,19 @@ A LOCK_EX acquired by one process blocks LOCK_EX on the same file from
 another process on the same host. It does NOT coordinate across hosts —
 the state sidecar is per-host only.
 """
+
 from __future__ import annotations
 
+from contextlib import contextmanager
+import fcntl
 import json
 import os
-import tempfile
 from pathlib import Path
-from typing import Any, Iterator
-from contextlib import contextmanager
+import tempfile
+from typing import TYPE_CHECKING, Any
 
-import fcntl
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @contextmanager
@@ -37,23 +40,22 @@ def flocked_file(path: Path, mode: str = "r") -> Iterator[Any]:
     Lock-fd leak risk: if the with-block raises between ``open()`` and
     ``fcntl.flock()``, the LOCK_EX would never be released. We attempt
     the flock unconditionally; even if it fails the underlying fd is
-    still closed in the finally clause.
+    still closed by the ``with open(...)`` context manager.
 
     The unlock in ``finally`` swallows ``OSError``: ``fcntl.flock`` raises
     if the underlying fd has been closed (e.g. by another path in a
     refactor), and we never want a finally-block that crashes the
     supervisor loop.
     """
-    fd = open(path, mode)
-    try:
+    with open(path, mode) as fd:
         fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
-        yield fd
-    finally:
         try:
-            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
-        except OSError:
-            pass  # best-effort unlock
-        fd.close()
+            yield fd
+        finally:
+            try:
+                fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+            except OSError:
+                pass  # best-effort unlock
 
 
 def load_state(state_path: Path) -> dict[str, int]:
@@ -69,7 +71,7 @@ def load_state(state_path: Path) -> dict[str, int]:
     with flocked_file(state_path, "r") as f:
         try:
             data = json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             return {}
     if not isinstance(data, dict):
         return {}
@@ -77,7 +79,7 @@ def load_state(state_path: Path) -> dict[str, int]:
     for key, value in data.items():
         try:
             coerced[str(key)] = int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
     return coerced
 

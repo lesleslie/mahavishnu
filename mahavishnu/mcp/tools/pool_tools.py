@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from mcp_common.fastmcp import FastMCP  # noqa: TC002
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from mahavishnu.core.budget import BudgetRecord, BudgetSpec, BudgetStateMachine
 
@@ -35,8 +37,8 @@ except Exception:  # pragma: no cover - optional import for test patching  # noq
 try:
     # C-9: per-TaskCategory concurrency gate (REQ-012, REQ-013).
     # Defensive import so test patching can inject a sentinel gate.
-    from mahavishnu.core.config import get_settings
     from mahavishnu.core.concurrency_gate import ConcurrencyGate
+    from mahavishnu.core.config import get_settings
     from mahavishnu.core.model_routing import TaskCategory, classify_task
     from mahavishnu.core.rate_limit import _estimate_retry
 except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
@@ -130,7 +132,7 @@ async def _resolve_repo_nickname(prompt: str) -> str:
         return ""
     lowered = prompt.lower()
     for token in lowered.replace("\n", " ").split():
-        if token.startswith("@") or token.startswith("/"):
+        if token.startswith(("@", "/")):
             continue
         if token.endswith(".git"):
             return token[: -len(".git")]
@@ -158,7 +160,6 @@ async def _repo_has_git(repo_nickname: str) -> bool:
     working tree — gates the worktree-isolation path in
     ``pool_route_execute``.
     """
-    import subprocess
 
     repo_path = _resolve_repo_path(repo_nickname)
     if not repo_path.exists():
@@ -202,7 +203,7 @@ def _set_worktree_manager(mgr: WorktreeManager | None) -> None:
     _worktree_manager_singleton = mgr
 
 
-async def _dispatch_internal(  # noqa: ANN202 - intentional Any return
+async def _dispatch_internal(
     prompt: str,
     pool_selector: Any,
     execution_id: str,
@@ -242,9 +243,7 @@ async def _hash_prompt(prompt: str) -> str:
     return result["digest"]  # type: ignore[no-any-return]
 
 
-async def _enforce_concurrency_limit(
-    task_category: TaskCategory, pool_id: str | None
-) -> None:
+async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str | None) -> None:
     """Acquire a TaskCategory slot or raise RateLimitError (fail-closed).
 
     No-op when the gate is unconfigured (defensive-import failure in tests)
@@ -653,9 +652,7 @@ def register_pool_tools(
                     spec = gate.spec_for(task_category)
                     raise RateLimitError(
                         limit=spec.concurrency_limit if spec else None,
-                        retry_after_seconds=(
-                            _estimate_retry(spec) if _estimate_retry else None
-                        ),
+                        retry_after_seconds=(_estimate_retry(spec) if _estimate_retry else None),
                         domain=f"task_category={task_category.value}",
                     )
 
@@ -690,22 +687,12 @@ def register_pool_tools(
                             task_id=execution_id,
                             repo_path=repo_path,
                             branch_name=branch,
-                            base_branch=(
-                                worktree.base_branch
-                                if worktree is not None
-                                else "main"
-                            ),
-                            ttl_seconds=(
-                                worktree.ttl_seconds
-                                if worktree is not None
-                                else 86_400
-                            ),
+                            base_branch=(worktree.base_branch if worktree is not None else "main"),
+                            ttl_seconds=(worktree.ttl_seconds if worktree is not None else 86_400),
                         )
                         worktree_repo_path = repo_path
                     except Exception as exc:
-                        if WorktreeLockedError is not None and isinstance(
-                            exc, WorktreeLockedError
-                        ):
+                        if WorktreeLockedError is not None and isinstance(exc, WorktreeLockedError):
                             logger.exception(
                                 "worktree lock conflict",
                                 extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
@@ -738,9 +725,7 @@ def register_pool_tools(
                     and effective_isolation == "worktree"
                 ):
                     on_completion = (
-                        worktree.on_completion
-                        if worktree is not None
-                        else "return_diff"
+                        worktree.on_completion if worktree is not None else "return_diff"
                     )
                     try:
                         completion = await wt_manager.complete_worktree(
@@ -788,10 +773,8 @@ def register_pool_tools(
                 # hiccup at dispatch-completion time does not lose the
                 # result (FIX round-7 Tier 2).
                 try:
-                    await breaker.call(
-                        lambda: idem_store.mark_completed(existing_event, result)
-                    )
-                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):
+                    await breaker.call(lambda: idem_store.mark_completed(existing_event, result))
+                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:
                     logger.exception(
                         "failed to mark idempotency record completed",
                         extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
@@ -809,13 +792,16 @@ def register_pool_tools(
                 and existing_event is not None
             ):
                 try:
+                    # Default-arg capture binds ``exc`` at lambda-definition
+                    # time so ruff's static analysis can resolve it through the
+                    # nested try/except scope.
                     await breaker.call(
-                        lambda: idem_store.mark_failed(
+                        lambda _exc=str(exc): idem_store.mark_failed(
                             existing_event,
-                            error=str(exc),
+                            error=_exc,
                         )
                     )
-                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):
+                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:
                     logger.exception(
                         "failed to mark idempotency record failed",
                         extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},

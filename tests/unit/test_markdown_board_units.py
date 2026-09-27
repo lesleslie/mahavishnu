@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mahavishnu.core.errors import MarkdownParseError, MarkdownWatcherDied
+from mahavishnu.core.errors import MarkdownParseError, MarkdownWatcherDiedError
 from mahavishnu.jot.markdown_export import render_board
 from mahavishnu.jot.markdown_parser import CARD_SECTION_VALUES, _section_to_status
 
@@ -40,8 +40,8 @@ def test_render_skips_missing_status() -> None:
 
 
 def test_watcher_died_inherits_mahavishnu_error() -> None:
-    with pytest.raises(MarkdownWatcherDied):
-        raise MarkdownWatcherDied("crash")
+    with pytest.raises(MarkdownWatcherDiedError):
+        raise MarkdownWatcherDiedError("crash")
 
 
 def test_parse_error_inherits_mahavishnu_error() -> None:

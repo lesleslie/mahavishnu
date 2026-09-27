@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
 
 import typer
 
@@ -233,4 +233,3 @@ def uuid_short() -> str:
     import uuid
 
     return uuid.uuid4().hex[:8]
-

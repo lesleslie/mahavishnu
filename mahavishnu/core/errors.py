@@ -2259,7 +2259,7 @@ class MarkdownParseError(MahavishnuError):
         )
 
 
-class MarkdownWatcherDied(MahavishnuError):
+class MarkdownWatcherDiedError(MahavishnuError):
     """Raised when the markdown board watcher crashes; supervisor restarts.
 
     Req: REQ-017

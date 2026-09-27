@@ -2,8 +2,8 @@
 
 **Date:** 2026-09-26
 **Status:** Draft — **round-3 corrections + round-4 (8-agent) review + niche filter + no-backcompat policy applied**. Needs further per-commit code correction before implementation phase. Direct-to-main commits per Bodai merge policy. Pre-1.0, **no backwards compatibility** per `feedback-no-backwards-compat-pre-1.0`.
-**Origin research:** [`docs/plans/2026-09-26-conductor-comparison-report.md`](2026-09-26-conductor-comparison-report.md) (companion comparison doc).
-**Companion ADR:** [`docs/adr/0001-mahavishnu-niche.md`](../../adr/0001-mahavishnu-niche.md) — defines the deepening filter that drops C-7 and radically simplifies C-10.
+**Origin research:** Companion comparison doc (see commit history — the dedicated comparison report was never committed; this plan stands on its own).
+**Companion ADR:** [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md) — defines the deepening filter that drops C-7 and radically simplifies C-10.
 
 ## Review history
 
@@ -13,15 +13,15 @@ This plan has been through four rounds of multi-agent review.
 - **Round 2** (6 reviewers) — Implementation realism. Caught citation drift, TOCTOU race in WP-3, sync I/O in async code, missing CLI companions, Akosha integration misses, exception-type gaps.
 - **Round 3** (6 reviewers) — Verification of round-2 corrections plus operational readiness. Caught remaining API drift (`EventBridgePublisher.publish()`, Oneiric `Action.execute()` uniform pattern), DB schema conflict between `init.sql` and consolidated migration, watcher deadlock (`watchfiles.awatch` + NFS), missing alert thresholds/runbooks/SLO docs, missing `EventBridgePublisher` injection helper.
 - **Round 4** (8 reviewers, 2026-09-26) — Cross-domain adversarial review with non-overlapping lenses:
-    - mahavishnu-specialist (wiring correctness) → needs-major-revisions
-    - oneiric-specialist (config + action-kit API) → needs-minor-fixes
-    - mcp-integration-expert (FastMCP wiring) → needs-major-revisions
-    - backend-developer (crackerjack gates) → needs-major-revisions
-    - api-security-specialist (HMAC, rate-limiting, secrets) → needs-major-revisions
-    - devops-troubleshooter (DB migrations, observability) → needs-major-revisions
-    - test-coverage-review-specialist (race tests, audit CI) → needs-major-revisions
-    - pr-review-toolkit:code-reviewer (ace, confidence-filtered) → needs-major-revisions
-    - **Union verdict**: needs-major-revisions. **21 critical findings**; cross-cutting criticals (3+ lens confirmation) include: `wait_for(async_generator)` TypeError (C-11), `pool_route_execute` arg-count failure (C-6+C-8), C-6/C-10 idempotency-key format mismatch, missing `@pytest.mark.req` marker + audit CI, `TaskEventType.PENDING` fictional, `oneiric_actions_compression_hash` fictional, `create_event_envelope` import path fictional, `severity=`/`topic=` kwargs fictional.
+  - mahavishnu-specialist (wiring correctness) → needs-major-revisions
+  - oneiric-specialist (config + action-kit API) → needs-minor-fixes
+  - mcp-integration-expert (FastMCP wiring) → needs-major-revisions
+  - backend-developer (crackerjack gates) → needs-major-revisions
+  - api-security-specialist (HMAC, rate-limiting, secrets) → needs-major-revisions
+  - devops-troubleshooter (DB migrations, observability) → needs-major-revisions
+  - test-coverage-review-specialist (race tests, audit CI) → needs-major-revisions
+  - pr-review-toolkit:code-reviewer (ace, confidence-filtered) → needs-major-revisions
+  - **Union verdict**: needs-major-revisions. **21 critical findings**; cross-cutting criticals (3+ lens confirmation) include: `wait_for(async_generator)` TypeError (C-11), `pool_route_execute` arg-count failure (C-6+C-8), C-6/C-10 idempotency-key format mismatch, missing `@pytest.mark.req` marker + audit CI, `TaskEventType.PENDING` fictional, `oneiric_actions_compression_hash` fictional, `create_event_envelope` import path fictional, `severity=`/`topic=` kwargs fictional.
 
 ## Constraints (Bodai convention)
 
@@ -62,11 +62,11 @@ Reviewers who reflexively add "backwards-compat for X" by default should **not**
 
 ## Strategic niche filter
 
-Per [`docs/adr/0001-mahavishnu-niche.md`](../../adr/0001-mahavishnu-niche.md), every borrowed feature must pass the **deepening filter**:
+Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), every borrowed feature must pass the **deepening filter**:
 
 1. Does it deepen our niche (LLM control plane + repo orchestrator)?
-2. Does it advance Bodai integration (Session-Buddy / Akosha / Crackerjack / Oneiric / mcp-common)?
-3. Does it compete with the source tool's core niche? ("yes" = drop or radically simplify)
+1. Does it advance Bodai integration (Session-Buddy / Akosha / Crackerjack / Oneiric / mcp-common)?
+1. Does it compete with the source tool's core niche? ("yes" = drop or radically simplify)
 
 Score **"no, no, yes"** = pivot, not deepening. Drop or simplify before committing LoC.
 
@@ -143,7 +143,7 @@ Per `crackerjack-compliant-code` skill, each wire-up declares REQ-NNN IDs in `##
 | REQ-019 | `mahavishnu executions {list,show}` Typer sub-app | C-12 |
 | REQ-020 | Oneiric `ValidationSchemaAction` + `DataTransformAction` + `DataSanitizeAction` for board parsing (with real payload shapes from `oneiric/actions/data.py`) | C-11 |
 
----
+______________________________________________________________________
 
 ## What already exists (verified across 19+ reviewers)
 
@@ -163,7 +163,7 @@ Per `crackerjack-compliant-code` skill, each wire-up declares REQ-NNN IDs in `##
 | TaskEventType enum | `mahavishnu/core/event_store.py:49-81` — has 19 values; C-3 adds `PENDING = "pending"` | Round-4 mahavishnu |
 | Oneiric logger | `oneiric.logging.getLogger` (project-standard; not stdlib `logging`, not `print`) | Round-4 oneiric + crackerjack |
 
----
+______________________________________________________________________
 
 ## C-1 (config models prep — must land FIRST)
 
@@ -172,6 +172,7 @@ Per `crackerjack-compliant-code` skill, each wire-up declares REQ-NNN IDs in `##
 **File scope:** `mahavishnu/core/config.py` (add `WorktreeStorageSettings`, `IdempotencySettings`, `WebhookIntakeSettings`, `ConcurrencyLimitsSettings`, `MarkdownBoardSettings` Pydantic models — the first extends an existing settings block, the other four are net-new top-level sections), `settings/mahavishnu.yaml` (add empty top-level sections with defaults), `tests/unit/test_config_sections.py`. **Plus** `pyproject.toml`: register `@pytest.mark.req` marker; **Plus** `.github/workflows/audit_requirements_advisory.yml` + `_gate.yml` (weekly + monthly).
 
 **Settings (per no-backcompat, nested YAML; new sections follow existing `changepoint:`, `hatchet:` precedent):**
+
 ```yaml
 # Worktree settings: nested under EXISTING worktree_storage (NOT a new sibling).
 # Real precedent sections for new siblings: changepoint:, hatchet:,
@@ -219,7 +220,8 @@ markdown_board:
     done: "done"
 ```
 
-**Env vars (MAHAVISHNU_*):**
+**Env vars (MAHAVISHNU\_\*):**
+
 - `MAHAVISHNU_WORKTREE_STORAGE__ENABLED`, `__DEFAULT_ISOLATION`, `__BASE_BRANCH`, `__STORAGE_ROOT`, `__MAX_CONCURRENT`, `__CLEANUP_GRACE_SECONDS`, `__TTL_SECONDS`
 - `MAHAVISHNU_IDEMPOTENCY__ENABLED`, `__DEFAULT_TTL_SECONDS`, `__FAIL_MODE`, `__STORAGE_BACKEND`, `__PENDING_TIMEOUT_SECONDS`
 - `MAHAVISHNU_WEBHOOK_INTAKE__ENABLED`, `__BIND_HOST`, `__BIND_PORT`, `__TLS_REQUIRED`, `__MAX_PAYLOAD_SIZE_BYTES`
@@ -233,6 +235,7 @@ markdown_board:
 **Oneiric config update:** update `docs/CONFIGURATION.md` "Configuration Block Reference" with all new sections + env-var table. Required for `crackerjack-gitignore-sync-dev-dep-downgrade.md` style automation.
 
 **Wire-up contract:**
+
 - *Triggered from:* operator upgrading or fresh-installing Mahavishnu.
 - *Returns to / updates:* `MahavishnuSettings` (top-level wrapper, `extra="allow"` at top; nested sections have `extra="forbid"` per `mahavishnu/core/config.py:2633-2637`).
 - *Demonstrable by:* `pytest tests/unit/test_config_sections.py::test_<each>_settings_loads_with_defaults`; `mahavishnu mcp start` does not fail with `ValidationError: extra fields not permitted`. **Plus** `pytest --markers` shows `req` registered. **Plus** `python scripts/audit_requirements.py --json` exits 0.
@@ -241,7 +244,7 @@ markdown_board:
 - *Health aggregation:* `_register_health_tools` includes config loader status.
 - *Acceptance criteria:* `@pytest.mark.req(["REQ-001"])` on every new test; `audit_requirements.py` reports 0 orphans; no `downgrade()` path on the Alembic revisions later.
 
----
+______________________________________________________________________
 
 ## C-2 (T-0 test scaffolding — lands AFTER C-1, BEFORE all wire-ups)
 
@@ -250,6 +253,7 @@ markdown_board:
 **File scope:** `tests/integration/conftest_wireups.py` (new, ~300-400 LoC — round 3 said ~50% larger than round-2 estimate).
 
 **Fixtures to ship:**
+
 - `isolated_database` — uses `tempfile.NamedTemporaryFile(suffix=".db")` (NOT `aiosqlite :memory:`, which is per-connection and shared across xdist workers per round-3 QA review). Per-test fresh DB.
 - `tmp_xdg_state_dir` — context manager monkeypatches `platformdirs`-derived paths to temp dir.
 - `controllable_pool_manager_mock` — counts `route_task` calls, can block on `asyncio.Event` for pending-status tests.
@@ -265,13 +269,14 @@ markdown_board:
 **Test runtime budget:** mark slow tests `@pytest.mark.slow` (per CLAUDE.md convention); cap suite wall-clock via `pytest -n auto --dist=loadfile` so worktree tests serialise on one worker. Each new test decorated `@pytest.mark.req(["REQ-NNN"])` per the REQ it covers.
 
 **Wire-up contract:**
+
 - *Triggered from:* pytest collection.
 - *Returns to:* existing `tests/conftest.py` (`frozen_clock` is new, `clock` reuses existing).
 - *Demonstrable by:* each fixture has its own unit test in `tests/unit/test_conftest_wireups.py`.
 - *Rollback signal:* N/A.
 - *Observability:* N/A.
 
----
+______________________________________________________________________
 
 ## C-3 (event-history persistence — precondition for C-12 and C-6)
 
@@ -280,6 +285,7 @@ markdown_board:
 **File scope:** `mahavishnu/core/event_store.py` (add `execution_events` table + `record_execution_event()` method + `get_execution_events(execution_id) -> list[ExecutionEvent]` + **add `PENDING = "pending"` to `TaskEventType` StrEnum at lines 49-81**), `mahavishnu/core/errors.py` (add `IdempotencyStoreUnavailable` exception class — used by C-6 and C-10 fail-closed paths), Alembic revision `migrations/versions/V202609260003__execution_events.sql`, `tests/integration/test_event_store_execution_events.py`.
 
 **Net-new symbols:**
+
 - `TaskEventType.PENDING = "pending"` (one line, one commit)
 - `record_execution_event(execution_id, event_type, data, actor, *, correlation_id=None, occurred_at=None)`
 - `get_execution_events(execution_id) -> list[ExecutionEvent]`
@@ -287,6 +293,7 @@ markdown_board:
 - `IdempotencyStoreUnavailable` exception (in `mahavishnu/core/errors.py`)
 
 **Sketch:**
+
 ```python
 # In mahavishnu/core/event_store.py
 class TaskEventType(StrEnum):
@@ -316,6 +323,7 @@ def get_execution_events(execution_id: str) -> list[ExecutionEvent]:
 ```
 
 **Wire-up contract:**
+
 - *Triggered from:* every workflow lifecycle event (`workflow.started`, `workflow.stage_started`, `workflow.stage_completed`, `workflow.completed`, `workflow.failed`).
 - *Returns to:* `EventStore`; `mahavishnu executions show` (after C-12 lands).
 - *Demonstrable by:* e2e test runs a 3-stage workflow, queries `event_store.get_execution_events(execution_id)`, asserts all 5+ events returned; `TaskEventType.PENDING.value == "pending"`.
@@ -323,7 +331,7 @@ def get_execution_events(execution_id: str) -> list[ExecutionEvent]:
 - *Observability added:* `execution_events_total{event_type}`, `execution_event_log_latency_seconds`.
 - *Acceptance criteria:* `@pytest.mark.req(["REQ-003"])` on tests; `PENDING` enum value works in C-6's idempotency path; no `downgrade()` body on the Alembic revision.
 
----
+______________________________________________________________________
 
 ## C-4 (WP-precond-1: schema reconciliation migration — must land BEFORE C-6)
 
@@ -332,6 +340,7 @@ def get_execution_events(execution_id: str) -> list[ExecutionEvent]:
 **File scope:** `migrations/versions/V202609260001__idempotency_key_unique.sql` (new forward-only Alembic revision), `tests/integration/test_migration_idempotency_key.py`.
 
 **Migration:**
+
 ```sql
 -- V202609260001__idempotency_key_unique.sql
 -- Forward-only. No downgrade. Recovery is a follow-up forward migration if needed.
@@ -361,6 +370,7 @@ ALTER TABLE audit.task_events ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(2
 ```
 
 And (separate revision B):
+
 ```sql
 -- V202609260001b__idempotency_key_index.sql
 -- Non-transactional: op.execute() runs outside the Alembic transaction
@@ -373,6 +383,7 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_task_events_idempotency_key
 **Implementation note**: Pick the two-revision approach (rev A = column, rev B = index). Avoid `transaction_per_migration = False` globally because other migrations may need transactional safety.
 
 **Wire-up contract:**
+
 - *Triggered from:* operator runs `alembic upgrade head` (or whatever the migration runner is — project uses `migrations/versions/V*.sql`, runner unclear; verify before landing).
 - *Returns to:* `EventStore` no longer broken on consolidated-schema deployments.
 - *Demonstrable by:* integration test against a DB initialized with `V202604021200__initial_consolidated_schema.sql`, run `V202609260001` and `V202609260001b`, assert column exists + index created; pre-flight throws if duplicate keys present.
@@ -380,7 +391,7 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_task_events_idempotency_key
 - *Observability added:* `migration_duration_seconds{revision, direction}` (Counter with `_bucket` histogram).
 - *Acceptance criteria:* migration runs end-to-end on the consolidated-schema DB; pre-flight trips if duplicate keys present; `alembic downgrade -1` is undefined (intentional); test `@pytest.mark.req(["REQ-004"])`.
 
----
+______________________________________________________________________
 
 ## C-5 (WP-precond-2: EventBridgePublisher module-global singleton — must land BEFORE all wire-ups that publish to Akosha)
 
@@ -389,6 +400,7 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_task_events_idempotency_key
 **File scope:** `mahavishnu/core/events/publisher.py` (new, ~50 LoC), `mahavishnu/factories.py` (wire `set_publisher()` to the existing `_wire_eventbridge_publisher`; **delete the server-scoped downstream callers that had been patched through** `eventbridge_resolver.resolve_event_publisher(server)` — they now use the global), `tests/unit/test_publisher.py`.
 
 **Sketch:**
+
 ```python
 from __future__ import annotations
 
@@ -433,6 +445,7 @@ async def safe_publish(envelope: OneiricEventEnvelope) -> bool:
 ```
 
 **Wire-up contract:**
+
 - *Triggered from:* `mahavishnu/factories.py:_wire_eventbridge_publisher` at app boot (already exists).
 - *Returns to:* singleton publisher for the whole process.
 - *Demonstrable by:* positive `test_publisher_safe_publish_returns_true_when_configured`; negative `test_publisher_safe_publish_handles_none_publisher`; exception-path `test_publisher_safe_publish_swallows_exception`; round-trip `test_set_publisher_roundtrip`.
@@ -440,15 +453,15 @@ async def safe_publish(envelope: OneiricEventEnvelope) -> bool:
 - *Observability added:* `eventbridge_publish_total{envelope_event_type, result}` (success/skip/error).
 - *Acceptance criteria:* `set_publisher` injects; `get_publisher` returns; `safe_publish` returns True on success / False on None / False on exception (without raising); server-scoped resolver callers migrated to global.
 
----
+______________________________________________________________________
 
 ## ~~C-7 (Webhook→EventStore nonce cleanup sweeper)~~ — DROPPED per niche filter
 
-**Decision**: Per [`docs/adr/0001-mahavishnu-niche.md`](../../adr/0001-mahavishnu-niche.md), the webhook nonce sweeper is a **Conductor-shape feature** that competes with the source tool's core niche, not Mahavishnu's. The webhook→EventStore nonce eviction loop serves external webhook intake — Mahavishnu is an LLM control plane + repo orchestrator, not an event intake daemon. **Drop.** The associated REQ-009 is removed from the traceable-spec IDs table.
+**Decision**: Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), the webhook nonce sweeper is a **Conductor-shape feature** that competes with the source tool's core niche, not Mahavishnu's. The webhook→EventStore nonce eviction loop serves external webhook intake — Mahavishnu is an LLM control plane + repo orchestrator, not an event intake daemon. **Drop.** The associated REQ-009 is removed from the traceable-spec IDs table.
 
 **Replacement event flow for cross-system triggers** (notifies C-13): External systems that need to trigger Mahavishnu work should publish to Akosha via standard Akosha publishers (not via Mahavishnu webhook intake). Crackerjack's `review-pr` skill then subscribes to an Akosha pattern, not to a Mahavishnu HTTP endpoint.
 
----
+______________________________________________________________________
 
 ## C-8 (WP-1: `pool_route_execute(worktree=WorktreeOptions(...))` — lands AFTER C-6)
 
@@ -457,6 +470,7 @@ async def safe_publish(envelope: OneiricEventEnvelope) -> bool:
 **File scope:** `mahavishnu/mcp/tools/pool_tools.py` (extend signature with `worktree: WorktreeOptions | None = None`), `mahavishnu/core/worktree_manager.py` (REPLACE `WorktreeInfo` — new shape includes `diff: str`, `merge: bool`, `files_touched: list[str]`; `complete_worktree` computes these), `mahavishnu/core/errors.py` (verify existing `WorktreeLockedError` at line 1792 + `WorktreeError` at line 1769), `tests/integration/test_pool_worktree_isolation.py`, `tests/property/test_worktree_path_uniqueness_property.py`.
 
 **Sketch (corrected — group params into WorktreeOptions):**
+
 ```python
 from __future__ import annotations
 
@@ -563,7 +577,7 @@ async def pool_route_execute(
 
 **Wire-up contract:** *Triggered from:* `pool_route_execute(worktree=WorktreeOptions(...), ...)`. *Demonstrable by:* integration + property test. *Rollback signal:* `worktree_storage.enabled: false` (C-1). *Observability:* `worktree_creation_total{result}`, `worktree_active_count`, `worktree_disk_bytes`. *Acceptance criteria:* `WorktreeInfo` REPLACED (no `WorktreeInfo.diff` method exists; the data field is set by `complete_worktree`); no `GitRunner` symbol; C-8 worktree operations stay within max-concurrent (settings.worktree_storage.max_concurrent * active_pool_count); `@pytest.mark.req(["REQ-010", "REQ-011"])` on tests.
 
----
+______________________________________________________________________
 
 ## C-9 (WP-4: Per-TaskCategory concurrency limits — lands AFTER C-1, parallel-safe with C-6)
 
@@ -572,6 +586,7 @@ async def pool_route_execute(
 **File scope:** `mahavishnu/core/rate_limit.py` (~80 LoC, extend `RateLimiter`), `mahavishnu/core/concurrency_gate.py` (new, ~150 LoC, with helper extraction per round-4 code-quality), `mahavishnu/mcp/tools/pool_tools.py` (wire at `budget_enforce` site), `settings/models.yaml` (extend per-TaskCategory limit config), `tests/integration/test_pool_concurrency_limit.py`, `tests/property/test_pool_concurrency_limit_property.py`.
 
 **Sketch (corrected — uses real `is_allowed` signature, helper extraction, typed):**
+
 ```python
 from __future__ import annotations
 
@@ -647,7 +662,7 @@ async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str) 
 
 **Wire-up contract:** *Demonstrable by:* integration + property test. *Observability:* `task_domain_concurrency{domain, pool_worker_id}` (gauge — added `pool_worker_id` label per security), `task_domain_rate_limited_total{domain}`, `task_domain_queue_depth{domain}`, `task_domain_throughput{domain}`, `task_domain_concurrency_drift_total` (atomicity-violation metric). *Acceptance criteria:* `@pytest.mark.req(["REQ-012", "REQ-013"])`; documented per-process limitation in runbook.
 
----
+______________________________________________________________________
 
 ## C-10 (ecosystem event intake — radically simplified; lands AFTER C-5)
 
@@ -662,6 +677,7 @@ async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str) 
 **Net-new symbols:** `EcosystemIntakeError`, `ALLOWED_SOURCES` frozenset. **Not added:** `WebhookSecretMissingError`, `webhook_register` MCP tool, `WebhookAuthError` (kept in `errors.py` for legacy paths; not relevant here), separate webhook DLQ, `webhook/registry.py`, `webhook/hmac.py`.
 
 **Sketch:**
+
 ```python
 from __future__ import annotations
 
@@ -726,7 +742,7 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
 
 **Wire-up contract:** *Demonstrable by:* 4 integration tests — allowed source 202, disallowed source 404, oversized 413, sanitization strips `Authorization`. Plus 1 unit test for `DataSanitizeAction` payload shape. *Rollback signal:* `webhook_intake.enabled: false` returns 503. *Observability:* as above. *Health aggregation:* `pool_health` reports `degraded` if `safe_publish` returns False >10% over 5m.
 
----
+______________________________________________________________________
 
 ## C-11 (WP-5: markdown board watcher — scoped to our jot files)
 
@@ -734,9 +750,10 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
 
 **File scope:** `mahavishnu/jot/markdown_export.py` (new, ~80 LoC), `mahavishnu/jot/markdown_watcher.py` (new, ~150 LoC — corrected from round-3's 120 due to genuine complexity), `mahavishnu/jot/markdown_parser.py` (new, ~100-150 LoC with explicit `ValidationFieldRule` list), `mahavishnu/cli/jot_cli.py` (add `export`, `watch` Typer commands), `mahavishnu/cli/board_cli.py` (new — `mahavishnu board {init,status,validate}`), `mahavishnu/mcp/tools/jot_tools.py` (add `jot_export_markdown` MCP tool), `mahavishnu/jot/state_persistence.py` (new, ~50 LoC, sidecar atomic write via `fcntl.flock` in `try/finally`), `pyproject.toml` (add `watchfiles` dep: `watchfiles~=1.0,<1.1` per `feedback-crackerjack-gitignore-sync-dev-dep-downgrade.md`), `tests/integration/test_jot_markdown_roundtrip.py`, `tests/property/test_jot_markdown_property.py`.
 
-**New exception classes:** `MarkdownWatcherDied`, `MarkdownParseError`.
+**New exception classes:** `MarkdownWatcherDiedError`, `MarkdownParseError`.
 
 **Critical corrections (round-4 review):**
+
 - **`wait_for(async_generator)` TypeError fixed** — replace with `async with asyncio.timeout(settings.markdown_board.watcher_lag_seconds * 3):` (Python 3.11+) around `async for changes in watchfiles.awatch(...)`.
 - **`except (OSError, FileNotFoundError)` redundancy fixed** — `FileNotFoundError` is a subclass of `OSError` per PEP 3151. Use `except OSError:` only.
 - **MHCard adds `from __future__ import annotations`** (crackerjack rule).
@@ -747,6 +764,7 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
 **Companion CLIs:** Same as round-3 (init/status/validate). **Scoped** to our repo's `.mahavishnu/board.md`.
 
 **Watcher sketch (corrected):**
+
 ```python
 from __future__ import annotations
 
@@ -797,6 +815,7 @@ async def watch_board(board_path: Path, state_sidecar: Path,
 ```
 
 **MHCard Pydantic model (corrected):**
+
 ```python
 from __future__ import annotations
 
@@ -818,7 +837,7 @@ class MHCard(BaseModel):
 
 **Wire-up contract:** *Demonstrable by:* integration test (roundtrip, watcher dispatch, malformed skip, file edit during dispatch, watcher crash recovery, sidecar consistency) + property test (`parse(render(cards)) == cards`) + race test (`asyncio.gather(N=10) with asyncio.Event` barrier). *Observability:* `markdown_board_watcher_up`, `markdown_board_watcher_restarts_total`, `markdown_board_card_age_seconds{section}`, `markdown_board_dispatch_total{section, result}`, `markdown_board_conflict_total`, `markdown_board_parse_errors_total`. *Acceptance criteria:* `@pytest.mark.req(["REQ-017", "REQ-018", "REQ-020"])`; concrete `ValidationFieldRule` list passed; full `from __future__ import annotations`.
 
----
+______________________________________________________________________
 
 ## C-12 (WP-6: `mahavishnu executions show` CLI — lands AFTER C-3)
 
@@ -829,6 +848,7 @@ class MHCard(BaseModel):
 **File scope:** `mahavishnu/cli/executions_cli.py` (new, ~150-200 LoC), `tests/integration/test_executions_cli.py`, `tests/e2e/test_executions_show_e2e.py` (per `.claude/decisions/mcp-backend-wiring-discipline.md`).
 
 **Sketch (corrected):**
+
 ```python
 from __future__ import annotations
 
@@ -877,7 +897,7 @@ def show_cmd(
 
 **Wire-up contract:** *Demonstrable by:* integration tests including known execution, `--step N`, unknown execution graceful error, `--watch` streaming, pagination at 10k+ events. *Rollback signal:* standalone CLI. *Observability:* standard CLI invocation metrics + Akosha `pattern.detected` on recurring debug sessions. *Acceptance criteria:* `_main_cli.py:164-165` is correct path; no `mahavishnu debug` rename claim; tests `@pytest.mark.req(["REQ-019"])`.
 
----
+______________________________________________________________________
 
 ## C-13 (WP-7: crackerjack review-pr skill — separate repo, separate plan)
 
@@ -888,6 +908,7 @@ def show_cmd(
 **File scope (specific filenames, not vague terms):** `crackerjack/skills/review_pr.py` (new, ~120 LoC), `crackerjack/skills/__init__.py` (registration), `crackerjack/skills/github_client.py` (new, ~60 LoC, `respx` mocks for CI), `crackerjack/skills/comment_poster.py` (new, ~40 LoC), `crackerjack/skills/durable_queue.py` (new, ~50 LoC — local queue for retry on GitHub 5xx), `crackerjack/tests/integration/test_review_pr.py` (5 error paths), `crackerjack/tests/e2e/test_review_pr_e2e.py` (per `mcp-backend-wiring-discipline.md`).
 
 **Crackerjack-side config:**
+
 ```yaml
 # crackerjack/settings/ai.yaml
 crack:
@@ -904,7 +925,7 @@ crack:
 
 **Cross-repo coupling:** Version-pin to `mahavishnu >= 0.29` (C-5 publishes `safe_publish`); write contract test asserting `MahavishnuSettings.webhook_intake.enabled` is queryable from crackerjack via the configured channel.
 
----
+______________________________________________________________________
 
 ## Cross-cutting requirements
 
@@ -996,6 +1017,7 @@ await safe_publish(envelope)  # NEVER raises; returns True if published, False i
 ### Typing standards (crackerjack-compliant-code skill)
 
 Per the skill:
+
 - `from __future__ import annotations` as first non-comment line of every source file
 - Imports ordered: stdlib → third-party → first-party
 - Full type annotations on all functions
@@ -1004,6 +1026,7 @@ Per the skill:
 - Per-file function complexity ≤ 15, parameters ≤ 10, return points ≤ 6, statements ≤ 55
 
 For `ty` suppressions:
+
 - `# ty: ignore[invalid-argument-type]` for None-to-required-T fixes; prefer `assert x is not None` or `t.cast("T", value)`
 - **NEVER** bare `# type: ignore` — ty silently ignores mypy/ruff syntax
 - If > 5 `# ty: ignore` in a single file, audit before adding more
@@ -1011,6 +1034,7 @@ For `ty` suppressions:
 ### crackerjack gates (per commit)
 
 Per `crackerjack-cli-run-subcommand.md`:
+
 - `crackerjack run -p minor` triggers ruff, mypy, pyright, ty, pytest `--cov-fail-under=89.01682905225863`, bandit, complexipy, refurb, safety, creosote, detect-secrets, pip-audit
 - **C-4 (schema reconciliation)** may trigger `crackerjack-staged-oneiric-downgrade.md` per memory — first crackerjack run stages oneiric `>=0.19.1`→`>=0.19.0` downgrade; expect and commit
 - `crackerjack-gitignore-sync-dev-dep-downgrade.md` per memory: `gitignore sync` modifies pyproject.toml; tight pins (`watchfiles~=1.0,<1.1`) survive; loose pins (`watchfiles>=0.1`) get clobbered
@@ -1018,12 +1042,13 @@ Per `crackerjack-cli-run-subcommand.md`:
 ### Audit infrastructure (C-1 includes)
 
 Per `crackerjack-compliant-code` skill:
+
 - `pyproject.toml [tool.pytest] markers]` adds: `req = "REQ-NNN requirement IDs this test covers"`
 - `.github/workflows/audit_requirements_advisory.yml` — `cron: '0 6 * * 1'` Mon 06:00 UTC (advisory)
 - `.github/workflows/audit_requirements_gate.yml` — `cron: '0 6 1 * *'` first of month (hard gate after 30-day advisory window)
 - Both workflows run `python scripts/audit_requirements.py --json`
 
----
+______________________________________________________________________
 
 ## Sequencing (risk-front-loaded, niche-filter applied)
 
@@ -1043,6 +1068,7 @@ Per `crackerjack-compliant-code` skill:
 | 12 | **C-13** WP-7 crackerjack review-pr | crackerjack | Medium | **C-5** (Akosha publisher only — webhook trigger dropped per niche filter) |
 
 **Hidden coupling** (round-3 backend, updated post-round-4 + niche filter):
+
 - C-6 → C-4 (schema reconciliation must precede; `idempotency_key UNIQUE` on `audit.task_events`)
 - ~~C-10 → C-6~~ (REMOVED — radically simplified C-10 no longer uses `idempotency_key`)
 - ~~C-10 → C-7~~ (REMOVED — C-7 dropped entirely)
@@ -1050,24 +1076,25 @@ Per `crackerjack-compliant-code` skill:
 - ~~C-13 → C-10~~ (REMOVED — C-13's PR trigger comes from Akosha pattern subscription)
 - **C-13 → C-5** (crackerjack review-pr needs Akosha publisher wired in `mahavishnu/factories.py:145`, which C-5 establishes)
 
----
+______________________________________________________________________
 
 ## Headline picks for announcement
 
 Per niche filter + competitive-positioning reviewer, the strongest public-facing announcement now combines (revised post-C-7-drop + C-10-simplification):
 
 1. **C-11 (markdown board, scoped to our jot files)** — uniquely Mahavishnu-shaped (we own jot; we don't try to be a generic markdown-board engine). Pairs with Akosha pattern detection.
-2. **C-8 (worktree isolation)** + **C-6 (idempotency)** — uniquely Mahavishnu; addresses documented PiPool/SessionBuddyPool pain. Stays intact through the niche filter.
+1. **C-8 (worktree isolation)** + **C-6 (idempotency)** — uniquely Mahavishnu; addresses documented PiPool/SessionBuddyPool pain. Stays intact through the niche filter.
 
 Pair naturally: a markdown-board card (C-11) dispatches work with idempotency (C-6) and creates a worktree (C-8), capturing a diff. This is the feature combo no competitor has, and **none of the dropped commitments (webhook nonce sweeper, multi-secret HMAC rotation, multi-source DLQ UI) detract from it**.
 
 **Note on what we DON'T lead with** (per niche filter):
+
 - Webhook intake is minimal ecosystem intake only, not a feature. External systems publish to Akosha directly.
 - Crackerjack review-pr integration is a Bodai synergy, not a headline; it works because Akosha is the bus, not because of fancy webhook plumbing.
 
 Philosophical anchor: P5 — *"the routing layer is deterministic; LLM responses are allowed to vary"* — competes with Temporal's durability narrative on Mahavishnu's home turf. Adopt in `CLAUDE.md` documentation.
 
----
+______________________________________________________________________
 
 ## Deferred items
 
@@ -1084,6 +1111,6 @@ These were in the original spec but are explicitly deferred to a future plan:
 - **HMAC webhook verification** — replaced by sanitization-only ecosystem intake (C-10); REQ-014 removed.
 - **Multi-secret webhook rotation** — replaced by configured allowlist (C-10); REQ-015 (webhook_register MCP tool) removed.
 
----
+______________________________________________________________________
 
 **Implementation phase**: ready to begin via implementation plan docs at `docs/plans/2026-09-26-impl-C-{N}-{slug}.md` (one per kept commit).
