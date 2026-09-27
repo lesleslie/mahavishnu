@@ -1601,8 +1601,10 @@ app.add_typer(pool_app, name="pool")
 # Import the sub-app from ``mahavishnu.cli.acp_cli``; commands are
 # registered on the sub-app via ``@app.command`` decorators there.
 from mahavishnu.cli.acp_cli import app as acp_app
+from mahavishnu.cli.executions_cli import executions_app
 
 app.add_typer(acp_app, name="acp")
+app.add_typer(executions_app, name="executions")
 
 
 @pool_app.command("spawn")
