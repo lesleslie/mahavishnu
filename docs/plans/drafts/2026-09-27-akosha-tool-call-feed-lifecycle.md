@@ -49,7 +49,7 @@ topic: observability
 - **`/health` is dynamic.** `akosha/mcp/server.py:776` calls `aggregate_feed_states` with a dict of feed names → `HealthFeedState` instances. The dict is built per request. Adding a `mcp_tool_call` entry requires (a) a new query against `hot_store` for `task_class == "mcp_tool_call"`, (b) a new `HealthFeedState("mcp_tool_call")` constructed from those query results, (c) adding the new feed to the aggregator dict.
 - **`HealthFeedState` is imported from `mcp_common.health.feed`.** `akosha/mcp/server.py:640` does the import. The shape is the canonical four-signal surface used across Bodai MCP servers.
 - **No Akosha-side pre-warm hook for new feeds.** Adding `mcp_tool_call` to the aggregator alone is insufficient — the feed needs to run at least one cycle within 60s of Akosha boot, otherwise `/health` returns `cycles_total == 0` which gates 503 per `mcp-backend-wiring-discipline.md`. Need a warm-up call to `fitness_analyzer.collect_traces("mcp_tool_call")` at boot.
-- **Parent plan ships Task 1.3 (the hardcoded list edit) but NOT Task 1.5 (the /health wiring).** Task 1.3 is committed in the akosha repo (paired-PR with the Mahavishnu-side commit `67095d98`). Task 1.5 is the work captured by this plan.
+- **Parent plan ships Task 1.3 (the hardcoded list edit) but NOT Task 1.5 (the /health wiring).** Task 1.3 is committed in the akosha repo (paired commit on Mahavishnu main (commit 67095d98) `67095d98`). Task 1.5 is the work captured by this plan.
 
 ## 4.5 Requirements (sketch — finalized when activated)
 
@@ -130,7 +130,7 @@ requirements:
 Three things must land first:
 
 1. **Mahavishnu Phase 1 commit `67095d98`** (lands today). Without this, there are no `mcp_tool_call` traces to retain or aggregate.
-2. **Akkosha fitness-analyzer Task 1.3 edit** (lands in paired-PR with the Mahavishnu commit; partially done in this session as a working-tree change awaiting review). Without this, the analyzer ignores `mcp_tool_call` traces.
+2. **Akkosha fitness-analyzer Task 1.3 edit** (lands as a paired commit on Mahavishnu main (commit 67095d98); partially done in this session as a working-tree change awaiting review). Without this, the analyzer ignores `mcp_tool_call` traces.
 3. **Real `N` for the retention window** — chosen from observed Phase 1 telemetry, not guessed. A 7-day default is a reasonable starting point but should be validated against actual call volume.
 
 This plan activates when all three are true. The activation step is a re-review (Phase 0) once the data shape is in hand.
