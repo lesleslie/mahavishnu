@@ -7,14 +7,28 @@ last_reviewed: 2026-09-27
 superseded_by: null
 blocks_on:
   - docs/plans/2026-09-26-tool-surface-quality.md
+  - docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md
 activation_readiness:
   - met: Plan 1 Phase 1 shipped (commit dbc2c7fa, mahavishnu)
   - met: Plan 1 Phase 2 Task 2.1 shipped (commit 3215d824 — scripts/audit_top_tool_calls.py ranks tools by call count, exactly the §6 step 2 prerequisite)
   - met: Plan 1 Phase 2 Task 2.2 shipped (commit f5903d6c — tool-description-rubric.md, useful for the rubric strategy section of the fixture proposal)
   - met: Fixture list proposal exists — docs/proposals/2026-09-27-eval-fixture-proposal.md (12 fixtures spanning 4 task classes × 3 adapters, two-track structural + LLM-as-judge rubric strategy, activation path documented)
+  - met: Phase 0 reviewer sign-off on fixture list proposal — APPROVED WITH REVISIONS at commit 38eb319a (mcp-integration-expert + feature-dev:code-architect + akosha-specialist lenses, 31 findings, 29 addressed in proposal revisions + 2 critical + 1 high in follow-on Akosha plan)
   - blocked: ≥7 days of mcp_tool_call traces covering top-20 tools (depends on production traffic post-Phase 1 deploy)
-  - blocked: Phase 0 reviewer sign-off on fixture list proposal
+  - blocked: Akosha eval-metric-sink plan shipped — REQ-MS-001 (MCP write-side tool) + REQ-MS-002 (persistence layer) + REQ-MS-003 (suffixed metric_name convention) must all land before REQ-EVAL-004 is implementable. See docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md (drafted as part of Phase 0 review resolution, commit 0915f545).
 proposal: docs/proposals/2026-09-27-eval-fixture-proposal.md
+akasha_sink_plan: docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md
+phase_0_review:
+  completed: 2026-09-27
+  verdict: APPROVED WITH REVISIONS
+  reviewers:
+    - mcp-integration-expert
+    - feature-dev:code-architect
+    - akosha-specialist
+  findings_total: 31
+  findings_addressed_in_proposal: 29
+  findings_addressed_in_akasha_plan: 2
+  finding_unresolved: 0
 topic: adapter-architecture
 ---
 
