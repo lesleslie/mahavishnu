@@ -91,9 +91,7 @@ def find_revision_file(revision_id: str) -> Path:
             f"No migration file found for revision {revision_id!r} in {_MIGRATIONS_DIR}"
         )
     if len(matches) > 1:
-        raise ValueError(
-            f"Multiple migration files found for revision {revision_id!r}: {matches}"
-        )
+        raise ValueError(f"Multiple migration files found for revision {revision_id!r}: {matches}")
     return matches[0]
 
 
@@ -187,8 +185,7 @@ async def apply_revision(
     """
     if direction != "up":
         raise ValueError(
-            f"downgrade not supported (forward-only per project policy); "
-            f"direction={direction!r}"
+            f"downgrade not supported (forward-only per project policy); direction={direction!r}"
         )
 
     rev_file = find_revision_file(revision_id)

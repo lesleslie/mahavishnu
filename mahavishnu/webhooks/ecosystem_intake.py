@@ -16,6 +16,7 @@ endpoint.
 
 Req: REQ-016 (C-10 simplified ecosystem intake)
 """  # req: REQ-016
+
 from __future__ import annotations
 
 import json
@@ -38,9 +39,7 @@ from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.core.events.publisher import safe_publish
 
 router = APIRouter()
-ALLOWED_SOURCES: Final[frozenset[str]] = frozenset(
-    {"git-monitor", "crontroller", "ops-bridge"}
-)
+ALLOWED_SOURCES: Final[frozenset[str]] = frozenset({"git-monitor", "crontroller", "ops-bridge"})
 """Default allowlist. Operators extend via ``webhook_intake.allowed_sources``
 in settings; the endpoint reads both lists (union)."""
 logger = get_logger(__name__)
@@ -86,13 +85,13 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
             raw_body = {"_value": raw_body}
 
         sanitize_start = time.perf_counter()
-        sanitized = await DataSanitizeAction().execute({
-            "data": raw_body,
-            "mask_fields": ["Authorization", "token", "key", "secret"],
-        })
-        ECOSYSTEM_INTAKE_SANITIZE_DURATION.observe(
-            time.perf_counter() - sanitize_start
+        sanitized = await DataSanitizeAction().execute(
+            {
+                "data": raw_body,
+                "mask_fields": ["Authorization", "token", "key", "secret"],
+            }
         )
+        ECOSYSTEM_INTAKE_SANITIZE_DURATION.observe(time.perf_counter() - sanitize_start)
 
         envelope = create_event_envelope(
             event_type="ecosystem.event.received",
@@ -110,9 +109,7 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
         raise
     except Exception:
         # Catch Exception, not BaseException — CancelledError propagates.
-        logger.exception(
-            "ecosystem intake failed", extra={"source": source_name}
-        )
+        logger.exception("ecosystem intake failed", extra={"source": source_name})
         ECOSYSTEM_INTAKE_TOTAL.labels(source=source_name, result="error").inc()
         return JSONResponse({"status": "error"}, status_code=500)
     result_label = "accepted" if published else "queued_no_publisher"

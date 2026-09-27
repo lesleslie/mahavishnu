@@ -3,6 +3,7 @@
 ## Service
 
 `mahavishnu.pool_route_execute` — the central dispatch path for LLM work. Covers:
+
 - **C-6**: idempotency layer (PENDING → COMPLETED transitions, fail-CLOSED default)
 - **C-8**: worktree isolation (per-task worktree lifecycle)
 - **C-9**: per-TaskCategory concurrency limits
@@ -22,7 +23,7 @@
 `pool_route_execute_total{result="success"} / pool_route_execute_total`
 
 - **Success rate >99.5% over 30-day rolling window**
-- `result="error"` rate <0.05/s sustained
+- `result="error"` rate \<0.05/s sustained
 - `result="duplicate"` rate (idempotency hits) < 5% of total
 
 ### Correctness SLI
@@ -36,10 +37,10 @@
 
 | Metric | Target | Burn-rate alert |
 |---|---|---|
-| `pool_route_execute_duration_seconds{p99}` | <30s | >30s for 5m → page |
-| `pool_route_execute_total{result="error"}` rate | <0.05/s sustained | >0.05/s for 5m → warn; >0.1/s for 5m → page |
+| `pool_route_execute_duration_seconds{p99}` | \<30s | >30s for 5m → page |
+| `pool_route_execute_total{result="error"}` rate | \<0.05/s sustained | >0.05/s for 5m → warn; >0.1/s for 5m → page |
 | `task_domain_concurrency_drift_total` rate | 0 in single-worker | >0.01/s → page |
-| `idempotency_hit_total` / `idempotency_miss_total` | <5% hits | >10% for 30m → warn (callers are hammering) |
+| `idempotency_hit_total` / `idempotency_miss_total` | \<5% hits | >10% for 30m → warn (callers are hammering) |
 
 ## Error Budget
 
@@ -61,10 +62,10 @@
 The following alerts MUST fire to PagerDuty / Slack:
 
 1. **`pool_route_execute_total{result="error"} rate > 0.05/s for 5m`** → Slack + page on-call
-2. **`task_domain_concurrency_drift_total rate > 0.01/s for 5m`** → Slack + page on-call
-3. **`worktree_disk_bytes > 80% of disk quota`** → Slack
-4. **`markdown_board_watcher_up == 0 for 2m`** → Slack + page on-call
-5. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call
+1. **`task_domain_concurrency_drift_total rate > 0.01/s for 5m`** → Slack + page on-call
+1. **`worktree_disk_bytes > 80% of disk quota`** → Slack
+1. **`markdown_board_watcher_up == 0 for 2m`** → Slack + page on-call
+1. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call
 
 ## Runbooks
 

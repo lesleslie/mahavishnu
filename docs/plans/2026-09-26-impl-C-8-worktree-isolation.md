@@ -1,11 +1,12 @@
 # C-8: `pool_route_execute(worktree=WorktreeOptions(...))` (WP-1 — worktree isolation)
 
 **REQ-NNN:** REQ-010, REQ-011
+
 - REQ-010: `pool_route_execute(worktree=WorktreeOptions(...))` with REPLACED `WorktreeInfo` (diff/merge/files_touched + `complete_worktree()` returns them)
 - REQ-011: `WorktreeLockedError` exception reused (no competing subclass)
-**Risk:** High (replaces `WorktreeInfo` class shape; touches the dispatch path that C-6 just extended; affects git subprocess calls)
-**Blocks:** C-13 (crackerjack review-pr workflow runs worktree-isolated LLM dispatches)
-**Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+  **Risk:** High (replaces `WorktreeInfo` class shape; touches the dispatch path that C-6 just extended; affects git subprocess calls)
+  **Blocks:** C-13 (crackerjack review-pr workflow runs worktree-isolated LLM dispatches)
+  **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
 **Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (`WorktreeInfo` REPLACED, `GitRunner` dropped, max-args guard preserved).
@@ -22,11 +23,11 @@ The arg-count concern from round-4: `pool_route_execute` now has 9 positional ar
    - C-1: `worktree_storage:` settings section exists; `default_isolation`, `base_branch`, `ttl_seconds`, `max_concurrent` keys.
    - C-5: `safe_publish()` available for Akosha event emission.
    - C-6: `IdempotencyOptions` accepted by `pool_route_execute`; `idempotency` kwarg works.
-2. **`mahavishnu/core/worktree_manager.py` exists at line 228+.** Read the existing `create_worktree()` and `complete_worktree()` signatures and the existing `WorktreeInfo` dataclass shape. The plan REPLACES `WorktreeInfo` — preserve any callers that read existing fields by updating them in the same commit.
-3. **`WorktreeLockedError` exists at `mahavishnu/core/errors.py:1792`** (per spec). Verify; do NOT create a competing subclass.
-4. **`WorktreeError` exists at `mahavishnu/core/errors.py:1769`** (per spec). Verify.
-5. **No `GitRunner` class exists** (`grep -r "class GitRunner" mahavishnu/` returns nothing). If found, this is a stale reference — the plan REPLACES the fictional symbol with direct `asyncio.to_thread(subprocess.run)` calls.
-6. **`worktree_manage` MCP tool exists** at `mahavishnu/mcp/tools/worktree_tools.py`. The new `WorktreeInfo` shape must remain backward-compatible with this tool's output (it reads via `WorktreeInfo.to_dict()`).
+1. **`mahavishnu/core/worktree_manager.py` exists at line 228+.** Read the existing `create_worktree()` and `complete_worktree()` signatures and the existing `WorktreeInfo` dataclass shape. The plan REPLACES `WorktreeInfo` — preserve any callers that read existing fields by updating them in the same commit.
+1. **`WorktreeLockedError` exists at `mahavishnu/core/errors.py:1792`** (per spec). Verify; do NOT create a competing subclass.
+1. **`WorktreeError` exists at `mahavishnu/core/errors.py:1769`** (per spec). Verify.
+1. **No `GitRunner` class exists** (`grep -r "class GitRunner" mahavishnu/` returns nothing). If found, this is a stale reference — the plan REPLACES the fictional symbol with direct `asyncio.to_thread(subprocess.run)` calls.
+1. **`worktree_manage` MCP tool exists** at `mahavishnu/mcp/tools/worktree_tools.py`. The new `WorktreeInfo` shape must remain backward-compatible with this tool's output (it reads via `WorktreeInfo.to_dict()`).
 
 ## File-by-file changes
 
@@ -75,9 +76,9 @@ class WorktreeInfo:
 Read the existing `complete_worktree()` signature (line 324 per spec). Extend it to:
 
 1. Compute `diff` via `git diff <base_branch>..HEAD` (run in `asyncio.to_thread`).
-2. Compute `files_touched` via `git diff --name-only <base_branch>..HEAD`.
-3. Optionally `git merge --no-ff` if `merge=True`.
-4. Return a `WorktreeInfo` (the same one passed in) with the three new fields populated.
+1. Compute `files_touched` via `git diff --name-only <base_branch>..HEAD`.
+1. Optionally `git merge --no-ff` if `merge=True`.
+1. Return a `WorktreeInfo` (the same one passed in) with the three new fields populated.
 
 ```python
 async def complete_worktree(
@@ -565,21 +566,22 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `mahavishnu/core/worktree_options.py` exists with `WorktreeOptions` Pydantic model.
-2. `WorktreeInfo` has new fields `diff: str`, `merge: bool`, `files_touched: list[str]` (REPLACED, not extended).
-3. `to_dict()` includes all 9 fields (5 original + 3 new + created_at preserved).
-4. `complete_worktree()` returns a `WorktreeCompletion` wrapping the populated `WorktreeInfo` (REPLACED — does not return a tuple or None).
-5. **No `GitRunner` class exists** anywhere in `mahavishnu/` (`grep -r "class GitRunner" mahavishnu/` returns nothing).
-6. `WorktreeLockedError` is the ONLY worktree-lock exception (no competing subclass).
-7. `pool_route_execute(worktree=...)` returns `result["worktree"]` dict with `diff`, `merge`, `files_touched` keys.
-8. Two concurrent dispatches with `isolation="worktree"` against the same repo: one succeeds, one observes `WorktreeLockedError` → `{"status": "worktree_conflict", ...}`.
-9. `pool_route_execute` arg count is ≤ 10 (C-6 + C-8 = 9 args; verified by `crackerjack run`).
-10. Property test passes for 50 random distinct task IDs.
-11. `python scripts/audit_requirements.py --json` reports REQ-010, REQ-011 wired.
-12. `crackerjack run` passes; coverage gate holds.
+1. `WorktreeInfo` has new fields `diff: str`, `merge: bool`, `files_touched: list[str]` (REPLACED, not extended).
+1. `to_dict()` includes all 9 fields (5 original + 3 new + created_at preserved).
+1. `complete_worktree()` returns a `WorktreeCompletion` wrapping the populated `WorktreeInfo` (REPLACED — does not return a tuple or None).
+1. **No `GitRunner` class exists** anywhere in `mahavishnu/` (`grep -r "class GitRunner" mahavishnu/` returns nothing).
+1. `WorktreeLockedError` is the ONLY worktree-lock exception (no competing subclass).
+1. `pool_route_execute(worktree=...)` returns `result["worktree"]` dict with `diff`, `merge`, `files_touched` keys.
+1. Two concurrent dispatches with `isolation="worktree"` against the same repo: one succeeds, one observes `WorktreeLockedError` → `{"status": "worktree_conflict", ...}`.
+1. `pool_route_execute` arg count is ≤ 10 (C-6 + C-8 = 9 args; verified by `crackerjack run`).
+1. Property test passes for 50 random distinct task IDs.
+1. `python scripts/audit_requirements.py --json` reports REQ-010, REQ-011 wired.
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 
 Per `feedback-no-backwards-compat-pre-1.0`:
+
 - `WorktreeInfo` is REPLACED (the new shape is incompatible with code that reads old fields). Code that reads old fields must be updated in the same commit (the `worktree_manage` MCP tool's `to_dict()` output is preserved for backward compat).
 - No `GitRunner` shim. The plan uses `asyncio.to_thread(subprocess.run)` directly.
 - `worktree.isolation` defaults to `"host"` (existing behavior); callers must opt in with `isolation="worktree"`.

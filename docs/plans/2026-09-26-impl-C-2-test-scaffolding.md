@@ -17,11 +17,11 @@ Per round-3 QA: the file is ~300-400 LoC (~50% larger than round-2's estimate) b
 ## Pre-flight checks
 
 1. **C-1 has landed on main.** Verify the 5 new sections (`worktree_storage:`, `idempotency:`, `webhook_intake:`, `concurrency_limits:`, `markdown_board:`) appear in `settings/mahavishnu.yaml` and that `pytest --markers | grep ^req$` shows the `req` marker is registered. If absent, stop and ship C-1 first — fixtures like `idempotency_flag_monkeypatch` depend on the `idempotency:` section existing for `get_settings()` to return something patchable.
-2. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.core.logging import get_logger"`.
-3. **`freezegun` available.** `uv pip show freezegun` (used by `frozen_clock`); add as dev dep in this PR if not present.
-4. **`pytest-asyncio` is configured for auto-mode.** Confirm `asyncio_mode = "auto"` in `pyproject.toml [tool.pytest]` — async fixtures require this.
-5. **`fastapi` is a runtime dep** (used by `ecosystem_intake_test_client`).
-6. **`aiosqlite` available.** Used by `isolated_database` for the per-test DB.
+1. **`oneiric.logging.getLogger` importable.** `python -c "from oneiric.core.logging import get_logger"`.
+1. **`freezegun` available.** `uv pip show freezegun` (used by `frozen_clock`); add as dev dep in this PR if not present.
+1. **`pytest-asyncio` is configured for auto-mode.** Confirm `asyncio_mode = "auto"` in `pyproject.toml [tool.pytest]` — async fixtures require this.
+1. **`fastapi` is a runtime dep** (used by `ecosystem_intake_test_client`).
+1. **`aiosqlite` available.** Used by `isolated_database` for the per-test DB.
 
 ## File-by-file changes
 
@@ -251,7 +251,7 @@ def idempotency_flag_monkeypatch(
 
 **Per-test autouse `safe_publisher_monkeypatch`**
 
-```python
+````python
 @pytest.fixture(autouse=True)
 def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Patch set_publisher so safe_publish() goes to a per-test capture list.
@@ -308,7 +308,7 @@ def mark_finished_tasks(request: pytest.FixtureRequest, tmp_xdg_state_dir: Path)
             check=False,
             capture_output=True,
         )
-```
+````
 
 ### 3. `tests/unit/test_conftest_wireups.py` — new file (~180 LoC)
 
@@ -511,18 +511,18 @@ uv run pytest --cov=mahavishnu --cov-fail-under=89.01682905225863
 uv run crackerjack run -p minor
 ```
 
-Wall-clock <30s on local. Crackerjack must pass with no new ty/mypy errors. `freezegun` 1.5+ is fully typed; `PoolManager` import is `TYPE_CHECKING`-guarded.
+Wall-clock \<30s on local. Crackerjack must pass with no new ty/mypy errors. `freezegun` 1.5+ is fully typed; `PoolManager` import is `TYPE_CHECKING`-guarded.
 
 ## Acceptance criteria (decisive pass/fail)
 
 1. `tests/integration/conftest_wireups.py` exists, defines all 11 named items, and is auto-collected by pytest from any nested test directory.
-2. `tests/unit/test_conftest_wireups.py` passes for every fixture (no skips, no xfails).
-3. `git grep "frozen_clock"` returns matches in `tests/integration/conftest_wireups.py` AND `tests/conftest.py` re-export.
-4. The legacy `clock` fixture in `tests/conftest.py:233` is unchanged (verified by `git diff tests/conftest.py` showing zero line changes around line 233).
-5. `pytest --markers | grep ^req$` shows `req` marker registered (depends on C-1 having landed).
-6. `pytest -n auto --dist=loadfile` runs the wire-up suite without per-test DB collisions.
-7. `python scripts/audit_requirements.py --json` reports 0 orphans for REQ-002.
-8. `crackerjack run` passes; coverage gate (89.01682905225863%) holds or improves.
+1. `tests/unit/test_conftest_wireups.py` passes for every fixture (no skips, no xfails).
+1. `git grep "frozen_clock"` returns matches in `tests/integration/conftest_wireups.py` AND `tests/conftest.py` re-export.
+1. The legacy `clock` fixture in `tests/conftest.py:233` is unchanged (verified by `git diff tests/conftest.py` showing zero line changes around line 233).
+1. `pytest --markers | grep ^req$` shows `req` marker registered (depends on C-1 having landed).
+1. `pytest -n auto --dist=loadfile` runs the wire-up suite without per-test DB collisions.
+1. `python scripts/audit_requirements.py --json` reports 0 orphans for REQ-002.
+1. `crackerjack run` passes; coverage gate (89.01682905225863%) holds or improves.
 
 ## Rollback / recovery narration
 

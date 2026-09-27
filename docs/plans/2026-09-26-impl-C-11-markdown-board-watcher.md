@@ -1,12 +1,13 @@
 # C-11: markdown board watcher (WP-5 — scoped to our jot files)
 
 **REQ-NNN:** REQ-017, REQ-018, REQ-020
+
 - REQ-017: Markdown board watcher with `async with asyncio.timeout(...)` deadlock mitigation + `fcntl.flock` sidecar
 - REQ-018: `mahavishnu board {init,status,validate}` companion CLIs (scoped to our jot files)
 - REQ-020: Oneiric `ValidationSchemaAction` + `DataTransformAction` + `DataSanitizeAction` for board parsing (with real payload shapes from `oneiric/actions/data.py`)
-**Risk:** Medium-High (file watcher deadlock mitigation; concurrent dispatch via fcntl.flock; Pydantic validation via Oneiric action kit)
-**Blocks:** None directly (C-13 doesn't depend on C-11 — they trigger on different things)
-**Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+  **Risk:** Medium-High (file watcher deadlock mitigation; concurrent dispatch via fcntl.flock; Pydantic validation via Oneiric action kit)
+  **Blocks:** None directly (C-13 doesn't depend on C-11 — they trigger on different things)
+  **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
 **Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (deadlock fix, exception redundancy fix, `from __future__ import annotations`, dropped `Field` import, scoped to our jot files only).
@@ -16,25 +17,25 @@
 Build `mahavishnu jot export --output .mahavishnu/board.md` and a file watcher that imports our jot cards. **Per niche filter, scoped to our jot files only** (NOT a generic markdown-board engine). The watcher:
 
 1. Reads `.mahavishnu/board.md` (a markdown checklist of `MHCard` entries).
-2. On `Change.modified`, parses the file, dispatches each card to `pool_route_execute`.
-3. Maintains a `state_sidecar` (atomic write via `fcntl.flock`) for CAS-style conflict detection.
-4. Uses `async with asyncio.timeout(...)` (NOT `wait_for(async_generator)`) around the watch loop to prevent deadlocks.
-5. Emits Akosha events via `safe_publish` for board state changes.
+1. On `Change.modified`, parses the file, dispatches each card to `pool_route_execute`.
+1. Maintains a `state_sidecar` (atomic write via `fcntl.flock`) for CAS-style conflict detection.
+1. Uses `async with asyncio.timeout(...)` (NOT `wait_for(async_generator)`) around the watch loop to prevent deadlocks.
+1. Emits Akosha events via `safe_publish` for board state changes.
 
 The companion CLIs `mahavishnu board {init,status,validate}` provide manual board management without the watcher running.
 
 ## Pre-flight checks
 
 1. **C-1 has landed.** `markdown_board:` settings section exists with `watcher_lag_seconds`, `state_sidecar_suffix`, `default_path`, `path_resolution`, `watcher_debounce_seconds`, `section_mapping` keys. FIX round-8 (Tier 4): the previous pre-flight text listed fictional keys (`state_sidecar_path`, `watch_paths`) that C-1 does NOT define. The actual keys are `state_sidecar_suffix` (a suffix, not a path — C-11 derives the path at runtime) and `default_path` (the path to the board file).
-2. **`watchfiles` available.** Per `feedback-crackerjack-gitignore-sync-dev-dep-downgrade.md`, pin to `watchfiles~=1.0,<1.1` (C-1 plan already adds this dep; verify it's there before C-11 lands).
-3. **C-3 has landed.** `record_execution_event()` + `get_execution_events()` available for board history.
-4. **C-5 has landed.** `safe_publish()` available for Akosha event emission.
-5. **C-6 has landed.** `IdempotencyOptions` available — board dispatch should be idempotent on (card_id, expected_revision).
-6. **`oneiric.actions.data.ValidationSchemaAction` importable** with the real payload shape: `{"schema": {"fields": [{"name": str, "type": str, "required": bool, ...}]}, "data": dict}` → returns `{"valid": bool, "errors": list[str]}`.
-7. **`oneiric.actions.data.DataTransformAction`** with shape `{"data": dict, "include_fields": list[str]}` → returns `{"data": dict}` (per round-4 correction: `include_fields` is the real field, NOT `target`).
-8. **`oneiric.actions.data.DataSanitizeAction`** with shape `{"data": str, "mask_fields": list[str]}` → returns `{"data": str}`.
-9. **No existing `mahavishnu/jot/markdown_*` files** (`ls mahavishnu/jot/` returns only existing jot files; no `markdown_export.py`, `markdown_watcher.py`, `markdown_parser.py`).
-10. **No existing `mahavishnu/cli/board_cli.py`** (`ls mahavishnu/cli/` — verify it does not exist).
+1. **`watchfiles` available.** Per `feedback-crackerjack-gitignore-sync-dev-dep-downgrade.md`, pin to `watchfiles~=1.0,<1.1` (C-1 plan already adds this dep; verify it's there before C-11 lands).
+1. **C-3 has landed.** `record_execution_event()` + `get_execution_events()` available for board history.
+1. **C-5 has landed.** `safe_publish()` available for Akosha event emission.
+1. **C-6 has landed.** `IdempotencyOptions` available — board dispatch should be idempotent on (card_id, expected_revision).
+1. **`oneiric.actions.data.ValidationSchemaAction` importable** with the real payload shape: `{"schema": {"fields": [{"name": str, "type": str, "required": bool, ...}]}, "data": dict}` → returns `{"valid": bool, "errors": list[str]}`.
+1. **`oneiric.actions.data.DataTransformAction`** with shape `{"data": dict, "include_fields": list[str]}` → returns `{"data": dict}` (per round-4 correction: `include_fields` is the real field, NOT `target`).
+1. **`oneiric.actions.data.DataSanitizeAction`** with shape `{"data": str, "mask_fields": list[str]}` → returns `{"data": str}`.
+1. **No existing `mahavishnu/jot/markdown_*` files** (`ls mahavishnu/jot/` returns only existing jot files; no `markdown_export.py`, `markdown_watcher.py`, `markdown_parser.py`).
+1. **No existing `mahavishnu/cli/board_cli.py`** (`ls mahavishnu/cli/` — verify it does not exist).
 
 ## File-by-file changes
 
@@ -286,6 +287,7 @@ def save_state(state_path: Path, state: dict[str, int]) -> None:
 ### 4. `mahavishnu/jot/markdown_watcher.py` — new file (~150 LoC)
 
 **Critical round-4 fixes**:
+
 - `async with asyncio.timeout(...)` (NOT `wait_for(async_generator)`)
 - `except OSError` only (NOT `(OSError, FileNotFoundError)` — `FileNotFoundError` is a subclass)
 - Full `from __future__ import annotations`
@@ -542,10 +544,10 @@ async def jot_export_markdown(output_path: str) -> dict[str, Any]:
     return {"status": "exported", "cards_count": len(cards), "path": output_path}
 ```
 
-### 8. `mahavishnu/core/errors.py` — add `MarkdownWatcherDied`, `MarkdownParseError`
+### 8. `mahavishnu/core/errors.py` — add `MarkdownWatcherDiedError`, `MarkdownParseError`
 
 ```python
-class MarkdownWatcherDied(MahavishnuError):
+class MarkdownWatcherDiedError(MahavishnuError):
     """Raised when the markdown board watcher crashes; supervisor restarts."""
 
 
@@ -753,25 +755,26 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `mahavishnu/jot/markdown_parser.py` exists with `parse_board()` function.
-2. `mahavishnu/jot/markdown_export.py` exists with `render_board()` function.
-3. `mahavishnu/jot/markdown_watcher.py` exists with `watch_board()` function using `async with asyncio.timeout(...)` (NOT `wait_for(async_generator)`).
-4. `mahavishnu/jot/state_persistence.py` exists with `flocked_file()` context manager.
-5. **No `wait_for(async_generator)`** anywhere in `mahavishnu/jot/` (verified by `git grep "wait_for" mahavishnu/jot/`).
-6. **No `from mahavishnu.jot... import Field`** (per round-4 drop of unused import).
-7. **All new Python files have `from __future__ import annotations` as first non-comment line** (verified by `git grep -L "__future__" mahavishnu/jot/markdown_*.py mahavishnu/jot/state_persistence.py` returns nothing).
-8. **`except OSError` only** (NOT `(OSError, FileNotFoundError)`) — round-4 redundancy fix.
-9. `parse(render(cards))` round-trip property test passes for 20+ examples.
-10. `watch_board()` times out and restarts cleanly (no deadlock).
-11. Two concurrent `save_state` calls do not corrupt the sidecar.
-12. `mahavishnu board {init,status,validate}` commands all work.
-13. `mahavishnu jot {export,watch}` commands both work.
-14. `jot_export_markdown` MCP tool is registered and callable.
-15. `python scripts/audit_requirements.py --json` reports REQ-017, REQ-018, REQ-020 wired.
-16. `crackerjack run` passes; coverage gate holds.
+1. `mahavishnu/jot/markdown_export.py` exists with `render_board()` function.
+1. `mahavishnu/jot/markdown_watcher.py` exists with `watch_board()` function using `async with asyncio.timeout(...)` (NOT `wait_for(async_generator)`).
+1. `mahavishnu/jot/state_persistence.py` exists with `flocked_file()` context manager.
+1. **No `wait_for(async_generator)`** anywhere in `mahavishnu/jot/` (verified by `git grep "wait_for" mahavishnu/jot/`).
+1. **No `from mahavishnu.jot... import Field`** (per round-4 drop of unused import).
+1. **All new Python files have `from __future__ import annotations` as first non-comment line** (verified by `git grep -L "__future__" mahavishnu/jot/markdown_*.py mahavishnu/jot/state_persistence.py` returns nothing).
+1. **`except OSError` only** (NOT `(OSError, FileNotFoundError)`) — round-4 redundancy fix.
+1. `parse(render(cards))` round-trip property test passes for 20+ examples.
+1. `watch_board()` times out and restarts cleanly (no deadlock).
+1. Two concurrent `save_state` calls do not corrupt the sidecar.
+1. `mahavishnu board {init,status,validate}` commands all work.
+1. `mahavishnu jot {export,watch}` commands both work.
+1. `jot_export_markdown` MCP tool is registered and callable.
+1. `python scripts/audit_requirements.py --json` reports REQ-017, REQ-018, REQ-020 wired.
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 
 Per `feedback-no-backwards-compat-pre-1.0`:
+
 - All new files; no existing API surface changed. Rollback is `git revert <commit-sha>`.
 - `mahavishnu board` and `mahavishnu jot export/watch` are new subcommands — old CLIs unchanged.
 - If the watcher crashes, the supervisor (per the `except Exception` block) emits an Akosha `anomaly.detected` event and re-raises. Operators see the metric `markdown_board_watcher_up` flip to 0.
@@ -781,6 +784,7 @@ Recovery for a runaway watcher: set `markdown_board.enabled: false` in settings 
 ## Observability added
 
 Six new Prometheus metrics (covered above). Operators alert on:
+
 - `markdown_board_watcher_up == 0` for >1m → page
 - `rate(markdown_board_watcher_restarts_total[5m]) > 0.1` → warn (too many restarts)
 - `rate(markdown_board_conflict_total[5m]) > 0.5` → warn (CAS conflicts suggest human-edit races)
@@ -813,7 +817,7 @@ Six new Prometheus metrics (covered above). Operators alert on:
 | `mahavishnu/cli/board_cli.py` | create | ~80 |
 | `mahavishnu/cli/jot_cli.py` | edit (add `export`, `watch` commands) | +50 |
 | `mahavishnu/mcp/tools/jot_tools.py` | edit (add `jot_export_markdown` MCP tool) | +20 |
-| `mahavishnu/core/errors.py` | edit (add `MarkdownWatcherDied`, `MarkdownParseError`) | +10 |
+| `mahavishnu/core/errors.py` | edit (add `MarkdownWatcherDiedError`, `MarkdownParseError`) | +10 |
 | `mahavishnu/core/metrics.py` | edit (add 6 metrics) | +35 |
 | `pyproject.toml` | verify (C-1 already added `watchfiles~=1.0,<1.1`) | 0 |
 | `tests/integration/test_jot_markdown_roundtrip.py` | create | +250 |

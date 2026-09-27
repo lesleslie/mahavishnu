@@ -1,11 +1,12 @@
 # C-9: per-TaskCategory concurrency limits (WP-4)
 
 **REQ-NNN:** REQ-012, REQ-013
+
 - REQ-012: `ConcurrencyGate` per-TaskCategory with shard locks by `(category, pool_id)`
 - REQ-013: Token-bucket rate limiting with fail-closed default
-**Risk:** Medium (per-process scope is a documented limitation; multi-worker pools must multiply spec limits)
-**Blocks:** C-13 (crackerjack review-pr workflow runs under `TaskCategory.CODE_REVIEW` and hits the gate)
-**Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+  **Risk:** Medium (per-process scope is a documented limitation; multi-worker pools must multiply spec limits)
+  **Blocks:** C-13 (crackerjack review-pr workflow runs under `TaskCategory.CODE_REVIEW` and hits the gate)
+  **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
 **Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (per-process scope documented prominently, `pool_worker_id` label added, `_estimate_retry` helper extracted, `_specs.get` replaced by `spec_for()`).
@@ -19,11 +20,11 @@ The plan also adds **token-bucket rate limiting with fail-closed default** per R
 ## Pre-flight checks
 
 1. **C-1 has landed.** `concurrency_limits:` section exists in `settings/mahavishnu.yaml` with `by_category:` map of `TaskCategory -> ConcurrencyLimitSpec`.
-2. **`TaskCategory` enum lives at `mahavishnu/core/model_routing.py`.** Read the existing values (per CLAUDE.md: `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `EMBEDDING`, `ML_INFERENCE`, `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL`).
-3. **`cachetools` available.** `uv pip show cachetools` — used by the `LRUCache(maxsize=1024)` for shard lock bounding.
-4. **`mahavishnu/core/rate_limit.py` exists at line 152+** with `is_allowed(key, config) -> tuple[bool, RateLimitInfo]`. Read the existing signature before extending.
-5. **`hypothesis` available** for the property test (`pip show hypothesis`).
-6. **`pytest.mark.timeout` registered** in `pyproject.toml [tool.pytest] markers`. The property test uses `@pytest.mark.timeout(120)`.
+1. **`TaskCategory` enum lives at `mahavishnu/core/model_routing.py`.** Read the existing values (per CLAUDE.md: `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `EMBEDDING`, `ML_INFERENCE`, `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL`).
+1. **`cachetools` available.** `uv pip show cachetools` — used by the `LRUCache(maxsize=1024)` for shard lock bounding.
+1. **`mahavishnu/core/rate_limit.py` exists at line 152+** with `is_allowed(key, config) -> tuple[bool, RateLimitInfo]`. Read the existing signature before extending.
+1. **`hypothesis` available** for the property test (`pip show hypothesis`).
+1. **`pytest.mark.timeout` registered** in `pyproject.toml [tool.pytest] markers`. The property test uses `@pytest.mark.timeout(120)`.
 
 ## File-by-file changes
 
@@ -538,18 +539,18 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `mahavishnu/core/concurrency_gate.py` exists with `ConcurrencyGate` class.
-2. `ConcurrencyGate.try_acquire()` returns False when at limit, True when slot available.
-3. `ConcurrencyGate.release()` decrements the counter; counter never goes below 0.
-4. `_estimate_retry()` handles `refill_rate_per_second=0` without `ZeroDivisionError`.
-5. `ConcurrencyGate.spec_for()` is the public accessor — no direct `_specs` access outside the class.
-6. `_enforce_concurrency_limit()` raises `RateLimitError` (fail-CLOSED) on denial.
-7. `LRUCache(maxsize=1024)` bounds the `_shard_locks` dict.
-8. Per-pool isolation works: same category, different pools have separate counters (unless `global_override=True`).
-9. Property test `test_invariant_active_count_never_exceeds_limit` passes for 20 random examples.
-10. `task_domain_concurrency{pool_worker_id}` label is present (verified via `metrics.py`).
-11. `python scripts/audit_requirements.py --json` reports REQ-012, REQ-013 wired.
-12. `crackerjack run` passes; coverage gate holds.
-13. **Runbook `docs/runbooks/concurrency-limit-storm.md` exists** documenting the per-process scope limitation.
+1. `ConcurrencyGate.try_acquire()` returns False when at limit, True when slot available.
+1. `ConcurrencyGate.release()` decrements the counter; counter never goes below 0.
+1. `_estimate_retry()` handles `refill_rate_per_second=0` without `ZeroDivisionError`.
+1. `ConcurrencyGate.spec_for()` is the public accessor — no direct `_specs` access outside the class.
+1. `_enforce_concurrency_limit()` raises `RateLimitError` (fail-CLOSED) on denial.
+1. `LRUCache(maxsize=1024)` bounds the `_shard_locks` dict.
+1. Per-pool isolation works: same category, different pools have separate counters (unless `global_override=True`).
+1. Property test `test_invariant_active_count_never_exceeds_limit` passes for 20 random examples.
+1. `task_domain_concurrency{pool_worker_id}` label is present (verified via `metrics.py`).
+1. `python scripts/audit_requirements.py --json` reports REQ-012, REQ-013 wired.
+1. `crackerjack run` passes; coverage gate holds.
+1. **Runbook `docs/runbooks/concurrency-limit-storm.md` exists** documenting the per-process scope limitation.
 
 ## Rollback / recovery narration
 
@@ -574,6 +575,7 @@ Operators alert on `rate(task_domain_rate_limited_total[5m]) > 0.1` (too many de
 ## Health aggregation
 
 The gate does not surface to `/health` directly. Operators observe health via:
+
 - `task_domain_concurrency{domain, pool_worker_id}` near saturation = worker overloaded
 - `task_domain_rate_limited_total{domain}` rate = limits rejecting too many requests
 

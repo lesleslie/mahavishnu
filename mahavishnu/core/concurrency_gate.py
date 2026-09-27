@@ -49,9 +49,7 @@ class ConcurrencyGate:
         # growth in long-running processes.
         self._shard_locks: LRUCache = LRUCache(maxsize=1024)
 
-    async def try_acquire(
-        self, category: TaskCategory, pool_id: str | None
-    ) -> bool:
+    async def try_acquire(self, category: TaskCategory, pool_id: str | None) -> bool:
         """Try to acquire a concurrency slot. Returns True if granted."""
         spec = self.spec_for(category)
         if spec is None or spec.concurrency_limit is None:

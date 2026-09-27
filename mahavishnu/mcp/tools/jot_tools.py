@@ -27,7 +27,6 @@ from typing import Literal, TypedDict
 import uuid
 
 from mahavishnu.jot.cli import _detail_from_summary
-
 from mahavishnu.jot.drain import (
     DispatchResultDict,
     DrainPlanDict,

@@ -5,10 +5,10 @@ the jot module rather than core/metrics.py because core/metrics.py does
 not exist in this repo (CR-1 surfaced 2026-09-26 during C-1 integration).
 A future refactor may promote them to a shared module.
 """
+
 from __future__ import annotations
 
 from prometheus_client import Counter, Gauge
-
 
 MARKDOWN_BOARD_WATCHER_UP = Gauge(
     "markdown_board_watcher_up",
@@ -38,9 +38,9 @@ MARKDOWN_BOARD_PARSE_ERRORS_TOTAL = Counter(
 
 
 __all__ = [
-    "MARKDOWN_BOARD_WATCHER_UP",
-    "MARKDOWN_BOARD_WATCHER_RESTARTS_TOTAL",
-    "MARKDOWN_BOARD_DISPATCH_TOTAL",
     "MARKDOWN_BOARD_CONFLICT_TOTAL",
+    "MARKDOWN_BOARD_DISPATCH_TOTAL",
     "MARKDOWN_BOARD_PARSE_ERRORS_TOTAL",
+    "MARKDOWN_BOARD_WATCHER_RESTARTS_TOTAL",
+    "MARKDOWN_BOARD_WATCHER_UP",
 ]

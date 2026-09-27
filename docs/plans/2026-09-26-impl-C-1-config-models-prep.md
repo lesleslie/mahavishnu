@@ -41,12 +41,14 @@ dependencies = [
 ```
 
 **Decisions justified**:
+
 - Per `feedback-crackerjack-gitignore-sync-dev-dep-downgrade.md`, the `~=1.0,<1.1` pin (tight floor AND ceiling) survives `gitignore sync` clobbering. Loose pins (`>=1.0`) get downgraded to minimum on next `uv sync`. **Tight pin mandatory.**
 - Watchfiles is added at C-1 (not C-11) because per no-backcompat + ace pacing note, declaring dependencies at the entry commit prevents mid-series `uv sync` re-resolutions.
 
 ### 2. `mahavishnu/core/config.py` — extend `MahavishnuSettings` with 5 new Pydantic models
 
 **Reference** (verified by reviewer):
+
 - Top-level wrapper at `mahavishnu/core/config.py:2633-2637`: `SettingsConfigDict(env_prefix="MAHAVISHNU_", env_nested_delimiter="__", extra="allow")` — top level ALLOWS unknown keys (does NOT reject them).
 - Nested sections (e.g. `PoolConfig` line 449, `ChangepointConfig` line 569): per-section `model_config = ConfigDict(extra="forbid")`.
 
@@ -423,13 +425,13 @@ Run on a working tree including `pyproject.toml`, `mahavishnu/core/config.py`, `
 The commit lands when **all** of the following are true:
 
 1. `pytest tests/unit/test_config_sections.py -v` exits 0.
-2. `python scripts/audit_requirements.py --json` exits 0.
-3. `mahavishnu mcp start` does NOT raise `ValidationError: extra fields not permitted` when `settings/mahavishnu.yaml` includes the 5 new sections.
-4. `mahavishnu mcp start` does NOT silently drop the 5 new sections (verify via `mahavishnu config get worktree_storage.enabled` returning `false`).
-5. `pytest --markers` lists `req: REQ-NNN requirement IDs this test covers (REQ-NNN traceable spec IDs)`.
-6. `git status` shows the new file `tests/unit/test_config_sections.py` + modifications to `config.py`, `pyproject.toml`, `settings/mahavishnu.yaml`, `.github/workflows/audit_requirements_*.yml`, `docs/CONFIGURATION.md`.
-7. Per-component coverage: `mahavishnu/core/config.py` shows ≥89% line coverage post-commit.
-8. `pytest -p no:cacheprovider --strict-markers` does NOT emit `PytestUnknownMarkWarning` for `req`.
+1. `python scripts/audit_requirements.py --json` exits 0.
+1. `mahavishnu mcp start` does NOT raise `ValidationError: extra fields not permitted` when `settings/mahavishnu.yaml` includes the 5 new sections.
+1. `mahavishnu mcp start` does NOT silently drop the 5 new sections (verify via `mahavishnu config get worktree_storage.enabled` returning `false`).
+1. `pytest --markers` lists `req: REQ-NNN requirement IDs this test covers (REQ-NNN traceable spec IDs)`.
+1. `git status` shows the new file `tests/unit/test_config_sections.py` + modifications to `config.py`, `pyproject.toml`, `settings/mahavishnu.yaml`, `.github/workflows/audit_requirements_*.yml`, `docs/CONFIGURATION.md`.
+1. Per-component coverage: `mahavishnu/core/config.py` shows ≥89% line coverage post-commit.
+1. `pytest -p no:cacheprovider --strict-markers` does NOT emit `PytestUnknownMarkWarning` for `req`.
 
 ## Rollback / recovery narration
 

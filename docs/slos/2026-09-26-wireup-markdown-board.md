@@ -13,7 +13,7 @@ The watcher uses `async with asyncio.timeout(...)` (NOT `wait_for(async_generato
 `markdown_board_watcher_up` gauge (1 = alive, 0 = dead):
 
 - **Up >99.5% over 30-day rolling window**
-- `markdown_board_watcher_restarts_total` rate <0.1/s sustained
+- `markdown_board_watcher_restarts_total` rate \<0.1/s sustained
 - Watch must NOT enter restart loop (round-5 devops finding)
 
 ### Latency SLI
@@ -36,18 +36,18 @@ State sidecar consistency:
 | Metric | Target | Burn-rate alert |
 |---|---|---|
 | `markdown_board_watcher_up` | 1 (gauge) | gauge = 0 for 2m → page (per round-4 ops gap-fix) |
-| `markdown_board_watcher_restarts_total` rate | <0.1/s | >0.5/s for 5m → page |
-| `markdown_board_card_age_seconds{section="ready"}` p99 | <120s | >300s for 5m → warn; >600s for 10m → page |
-| `markdown_board_dispatch_total{section="ready", result="error"}` rate | <0.05/s | >0.1/s for 5m → page |
-| `markdown_board_conflict_total` rate | <0.01/s | >0.05/s for 5m → warn (CAS conflicts suggest human-edit races) |
-| `markdown_board_parse_errors_total` rate | <0.05/s | >0.1/s for 5m → page |
+| `markdown_board_watcher_restarts_total` rate | \<0.1/s | >0.5/s for 5m → page |
+| `markdown_board_card_age_seconds{section="ready"}` p99 | \<120s | >300s for 5m → warn; >600s for 10m → page |
+| `markdown_board_dispatch_total{section="ready", result="error"}` rate | \<0.05/s | >0.1/s for 5m → page |
+| `markdown_board_conflict_total` rate | \<0.01/s | >0.05/s for 5m → warn (CAS conflicts suggest human-edit races) |
+| `markdown_board_parse_errors_total` rate | \<0.05/s | >0.1/s for 5m → page |
 
 ## Critical alerts (round-4 ops gap-fix)
 
 1. **`markdown_board_watcher_up == 0 for 2m`** → page (per spec)
-2. **`markdown_board_watcher_restarts_total` rate climbing** (3+ restarts in 5m) → warn
-3. **`markdown_board_card_age_seconds{section="ready"} > 600 for 10m`** → warn (cards stuck in ready)
-4. **`markdown_board_dispatch_total{section="ready", result="error"}` rate > 0.1/s for 5m** → page
+1. **`markdown_board_watcher_restarts_total` rate climbing** (3+ restarts in 5m) → warn
+1. **`markdown_board_card_age_seconds{section="ready"} > 600 for 10m`** → warn (cards stuck in ready)
+1. **`markdown_board_dispatch_total{section="ready", result="error"}` rate > 0.1/s for 5m** → page
 
 ## macOS flock caveat
 

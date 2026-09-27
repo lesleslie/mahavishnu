@@ -16,12 +16,12 @@ Build a Crackerjack skill that subscribes to an Akosha pattern (per round-4 nich
 ## Pre-flight checks
 
 1. **C-5 has landed (in Mahavishnu).** `safe_publish()` is available; `MahavishnuSettings.webhook_intake.enabled` is queryable. Crackerjack queries this setting via the configured channel.
-2. **C-6 has landed (in Mahavishnu).** `IdempotencyOptions` + `pool_route_execute(idempotency=...)` available for code-review dispatches.
-3. **`mcp__akosha__detect_anomalies` (or equivalent pattern subscription API) is reachable.** Crackerjack uses the Akosha MCP server to subscribe to patterns.
-4. **`CRACKERJACK_GITHUB_TOKEN` env var is set** in the operator's shell rc (NOT committed). Per Oneiric convention, the skill reads the token via the configured `api_key_env` reference, not raw.
-5. **Crackerjack version is `>=0.83.9`** (supports `async def` in `crackerjack audit` symbols per `feedback-crackerjack-release-audit-symbol-notation.md`).
-6. **No existing `crackerjack/skills/review_pr.py`** (`ls crackerjack/skills/` returns only the existing skills).
-7. **No `webhook_register` MCP tool exists** — the Akosha pattern subscription REPLACES it (per niche filter).
+1. **C-6 has landed (in Mahavishnu).** `IdempotencyOptions` + `pool_route_execute(idempotency=...)` available for code-review dispatches.
+1. **`mcp__akosha__detect_anomalies` (or equivalent pattern subscription API) is reachable.** Crackerjack uses the Akosha MCP server to subscribe to patterns.
+1. **`CRACKERJACK_GITHUB_TOKEN` env var is set** in the operator's shell rc (NOT committed). Per Oneiric convention, the skill reads the token via the configured `api_key_env` reference, not raw.
+1. **Crackerjack version is `>=0.83.9`** (supports `async def` in `crackerjack audit` symbols per `feedback-crackerjack-release-audit-symbol-notation.md`).
+1. **No existing `crackerjack/skills/review_pr.py`** (`ls crackerjack/skills/` returns only the existing skills).
+1. **No `webhook_register` MCP tool exists** — the Akosha pattern subscription REPLACES it (per niche filter).
 
 ## File-by-file changes (in Crackerjack repo)
 
@@ -512,22 +512,23 @@ uv run crackerjack run -p minor  # NOT in this commit — user-initiated
 ## Acceptance criteria (decisive pass/fail)
 
 1. `crackerjack/skills/review_pr.py` exists with `on_akosha_pattern()` function.
-2. `crackerjack/skills/github_client.py` exists with `fetch_pr_diff()` and `GitHubAPIError`.
-3. `crackerjack/skills/comment_poster.py` exists with `post_pr_comment()`.
-4. `crackerjack/skills/durable_queue.py` exists with `DurableQueue` class.
-5. **No `webhook_register` MCP tool** exists (the Akosha pattern subscription REPLACES it).
-6. **`CRACKERJACK_GITHUB_TOKEN` is referenced via env var**, NEVER raw (verified by `git grep "ghp_" crackerjack/skills/` returning nothing).
-7. **5 error paths covered**: 5xx, 429, auth failure (401), malformed diff, network timeout.
-8. Trigger is `ecosystem.event.received{source="git-monitor"}` (Akosha pattern), NOT a Mahavishnu webhook.
-9. Cross-repo contract test asserts `mahavishnu >= 0.29` (verifies safe_publish availability).
-10. Cross-repo contract test asserts `MahavishnuSettings.webhook_intake.enabled` is queryable from Crackerjack.
-11. E2E smoke test passes (gated by `CRACKERJACK_E2E=1`).
-12. DurableQueue's flock-based serialization works under concurrent writers.
-13. `crackerjack audit --strict` passes; coverage gate holds (Crackerjack's gate).
+1. `crackerjack/skills/github_client.py` exists with `fetch_pr_diff()` and `GitHubAPIError`.
+1. `crackerjack/skills/comment_poster.py` exists with `post_pr_comment()`.
+1. `crackerjack/skills/durable_queue.py` exists with `DurableQueue` class.
+1. **No `webhook_register` MCP tool** exists (the Akosha pattern subscription REPLACES it).
+1. **`CRACKERJACK_GITHUB_TOKEN` is referenced via env var**, NEVER raw (verified by `git grep "ghp_" crackerjack/skills/` returning nothing).
+1. **5 error paths covered**: 5xx, 429, auth failure (401), malformed diff, network timeout.
+1. Trigger is `ecosystem.event.received{source="git-monitor"}` (Akosha pattern), NOT a Mahavishnu webhook.
+1. Cross-repo contract test asserts `mahavishnu >= 0.29` (verifies safe_publish availability).
+1. Cross-repo contract test asserts `MahavishnuSettings.webhook_intake.enabled` is queryable from Crackerjack.
+1. E2E smoke test passes (gated by `CRACKERJACK_E2E=1`).
+1. DurableQueue's flock-based serialization works under concurrent writers.
+1. `crackerjack audit --strict` passes; coverage gate holds (Crackerjack's gate).
 
 ## Rollback / recovery narration
 
 Per `feedback-no-backwards-compat-pre-1.0` and Bodai pre-1.0 merge policy:
+
 - **Direct-to-main commit on Crackerjack's local `main` branch. No PRs.** Per `bodai-pre-1.0-merge-policy` (applies to all Bodai repos, not just mahavishnu).
 - **Rollback signal: binary flag** — `crack.review_pr.enabled: false` in `crackerjack/settings/ai.yaml`. Set to false to disable the skill without code rollback.
 - **Hard rollback: `git revert <commit-sha>`** — removes the skill entirely. Operators see Akosha pattern events for `git-monitor` get no response.

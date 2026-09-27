@@ -5,25 +5,29 @@ Operational guide for `mahavishnu executions {list,show}` and the `--watch` poll
 ## Scenario 1: `--watch` loses DB connection for 5 retries
 
 **Symptoms:**
+
 - `mahavishnu executions show <exec-id> --watch` exits with `Watch lost connection after 5 retries; aborting` after ~5 seconds
 - Operator sees `ERROR: <traceback>` on stderr
 - No progress indication during the 5-second silent period
 
 **Diagnosis:**
-1. Check DB latency: `psql $DATABASE_URL -c "SELECT 1"` (round-trip should be <10ms)
-2. Check `execution_events` table size: `psql $DATABASE_URL -c "SELECT count(*) FROM execution_events"`
-3. Check whether the execution has many events (>1000): `--watch` re-fetches all events each poll; large executions are slow
+
+1. Check DB latency: `psql $DATABASE_URL -c "SELECT 1"` (round-trip should be \<10ms)
+1. Check `execution_events` table size: `psql $DATABASE_URL -c "SELECT count(*) FROM execution_events"`
+1. Check whether the execution has many events (>1000): `--watch` re-fetches all events each poll; large executions are slow
 
 **Recovery:**
+
 1. **If DB transient**: the operator can re-run `--watch` after the DB recovers. The watch exits cleanly; subsequent runs succeed.
-2. **If DB chronically slow**: investigate slow queries; check `pg_stat_statements` for the `execution_events` query plan
-3. **If execution has 100k+ events**: add `--since-id <N>` (round-5 devops finding, not yet implemented) to resume from a known event id rather than re-fetching all events
-4. **If the operator wants progress indication** while waiting: add stderr heartbeat (round-5 devops finding):
+1. **If DB chronically slow**: investigate slow queries; check `pg_stat_statements` for the `execution_events` query plan
+1. **If execution has 100k+ events**: add `--since-id <N>` (round-5 devops finding, not yet implemented) to resume from a known event id rather than re-fetching all events
+1. **If the operator wants progress indication** while waiting: add stderr heartbeat (round-5 devops finding):
    ```python
    typer.echo("waiting...", err=True)  # every second while polling
    ```
 
 **Verification:**
+
 - Re-running `--watch` succeeds after the underlying issue is fixed
 - 5-second silent period is replaced with progress heartbeat (after the round-5 fix lands)
 
@@ -42,8 +46,8 @@ The `--watch` flag uses 1s polling + 5-retry failure limit. **It is NOT a push-b
 ## Known issues (round-5 devops critique)
 
 1. **No `--since-id` flag**: `--watch` re-fetches ALL events for the execution each poll. For an execution with 100k events, the operator must wait for the first poll to complete before new events arrive.
-2. **No exponential backoff**: 1s × 5 = 5s of failure before exit. Add backoff if the operator wants longer retry tolerance.
-3. **No progress indication**: terminal appears hung during retries. Add stderr heartbeat (`typer.echo("waiting...", err=True)`) to fix.
+1. **No exponential backoff**: 1s × 5 = 5s of failure before exit. Add backoff if the operator wants longer retry tolerance.
+1. **No progress indication**: terminal appears hung during retries. Add stderr heartbeat (`typer.echo("waiting...", err=True)`) to fix.
 
 These are deferred to follow-up commits; the current `--watch` is functional but unrefined.
 

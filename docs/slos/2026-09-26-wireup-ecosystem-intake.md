@@ -21,23 +21,23 @@ The endpoint sanitizes via `DataSanitizeAction` and forwards via `safe_publish`.
 `ecosystem_intake_total{result="accepted"} / ecosystem_intake_total`
 
 - **Success rate >99% over 30-day rolling window**
-- `result="error"` rate <0.05/s sustained (per round-4 ops gap-fix)
+- `result="error"` rate \<0.05/s sustained (per round-4 ops gap-fix)
 - `result="not_found"` rate is informational, not part of SLO (sources not in allowlist are correctly rejected)
 
 ## SLO Targets
 
 | Metric | Target | Burn-rate alert |
 |---|---|---|
-| `ecosystem_intake_sanitize_duration_seconds{p99}` | <100ms | >100ms for 5m → warn; >500ms for 5m → page |
-| `ecosystem_intake_total{result="error"}` rate | <0.05/s sustained | >0.05/s for 5m → Slack + page on-call (per round-4 ops gap-fix) |
+| `ecosystem_intake_sanitize_duration_seconds{p99}` | \<100ms | >100ms for 5m → warn; >500ms for 5m → page |
+| `ecosystem_intake_total{result="error"}` rate | \<0.05/s sustained | >0.05/s for 5m → Slack + page on-call (per round-4 ops gap-fix) |
 | `ecosystem_intake_total{result="accepted"}` rate | >0 (when publishers wired) | rate = 0 for >5m → page (Akosha publisher broken) |
-| `eventbridge_publish_total{result="error"}` rate from this endpoint | <0.01/s | >0.05/s for 5m → page |
+| `eventbridge_publish_total{result="error"}` rate from this endpoint | \<0.01/s | >0.05/s for 5m → page |
 
 ## Critical alerts (round-4 ops gap-fix)
 
 1. **`ecosystem_intake_total{result="error"} rate > 0.05/s for 5m`** → Slack + page on-call (per spec)
-2. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call (publish failures)
-3. **`ecosystem_intake_total{result="accepted"}` rate = 0 for 5m when sources are sending** → page (publisher broken or config drift)
+1. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call (publish failures)
+1. **`ecosystem_intake_total{result="accepted"}` rate = 0 for 5m when sources are sending** → page (publisher broken or config drift)
 
 ## Error Budget
 

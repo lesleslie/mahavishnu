@@ -1,4 +1,5 @@
 """Markdown exporter — converts card dicts back to .mahavishnu/board.md."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -34,9 +35,7 @@ def render_board(cards: list[dict[str, Any]]) -> str:
         lines.append("")
         for card in section_cards:
             marker = "x" if section == "done" else " "
-            lines.append(
-                f"- [{marker}] {card['id']} | {card['pool']} | {card['prompt']}"
-            )
+            lines.append(f"- [{marker}] {card['id']} | {card['pool']} | {card['prompt']}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

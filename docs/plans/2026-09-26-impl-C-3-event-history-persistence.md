@@ -17,11 +17,11 @@ The forward-only posture per `feedback-no-backwards-compat-pre-1.0` means: no `d
 ## Pre-flight checks
 
 1. **C-2 has landed.** The integration test for `event_store.record_execution_event()` consumes `isolated_database` + `safe_publisher_monkeypatch`. Without C-2 fixtures, the test cannot be written.
-2. **`TaskEventType` lives at `mahavishnu/core/event_store.py:49-81`.** Read the existing enum before editing — preserve the existing values (CREATED, UPDATED, ..., SYNCED) and append `PENDING` as the LAST value (preserves stable ordering for downstream comparisons).
-3. **`IdempotencyStoreUnavailable` consumers exist.** Verify C-6 and C-10 plans reference this exception class. If the plans do not yet exist, the new exception is unused and the audit will flag it as orphan. **Mitigation:** Add the exception with a `__all__` export; C-6 and C-10 will import it explicitly so the audit treats it as wired.
-4. **`alembic.ini` and `migrations/env.py` configured.** Confirm `transaction_per_migration = False` is set in env.py (per C-4 pattern) so forward-only Alembic revisions can use `op.execute()` post-COMMIT. **If absent, set it as part of C-3** — preemptive for both this migration's explicit `BEGIN`/`COMMIT` and the C-4 unique-concurrent-index case.
-5. **Migration filename follows Bodai convention.** Existing migrations use `V<timestamp>__<name>.sql` (12-digit timestamp). Use `V202609260003__execution_events.sql` per the spec.
-6. **`JSONB` column type is supported.** Postgres 12+ has JSONB. If running SQLite locally for tests, use `JSON` type — SQLAlchemy abstracts the difference.
+1. **`TaskEventType` lives at `mahavishnu/core/event_store.py:49-81`.** Read the existing enum before editing — preserve the existing values (CREATED, UPDATED, ..., SYNCED) and append `PENDING` as the LAST value (preserves stable ordering for downstream comparisons).
+1. **`IdempotencyStoreUnavailable` consumers exist.** Verify C-6 and C-10 plans reference this exception class. If the plans do not yet exist, the new exception is unused and the audit will flag it as orphan. **Mitigation:** Add the exception with a `__all__` export; C-6 and C-10 will import it explicitly so the audit treats it as wired.
+1. **`alembic.ini` and `migrations/env.py` configured.** Confirm `transaction_per_migration = False` is set in env.py (per C-4 pattern) so forward-only Alembic revisions can use `op.execute()` post-COMMIT. **If absent, set it as part of C-3** — preemptive for both this migration's explicit `BEGIN`/`COMMIT` and the C-4 unique-concurrent-index case.
+1. **Migration filename follows Bodai convention.** Existing migrations use `V<timestamp>__<name>.sql` (12-digit timestamp). Use `V202609260003__execution_events.sql` per the spec.
+1. **`JSONB` column type is supported.** Postgres 12+ has JSONB. If running SQLite locally for tests, use `JSON` type — SQLAlchemy abstracts the difference.
 
 ## File-by-file changes
 
@@ -382,14 +382,14 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `TaskEventType.PENDING.value == "pending"` (asserted in `TestTaskEventTypePending.test_pending_value`).
-2. `execution_events` table exists in DB after `alembic upgrade head` (verified by `TestRecordExecutionEvent.test_round_trip` which reads back the inserted row).
-3. `record_execution_event()` + `get_execution_events()` round-trip 6+ events for a 3-stage workflow.
-4. `IdempotencyStoreUnavailable` is a subclass of `MahavishnuError`.
-5. The Alembic revision has NO `downgrade()` function body (verified by `git grep "def downgrade" migrations/versions/V202609260003`).
-6. `python scripts/audit_requirements.py --json` reports REQ-003 wired (markers present, no orphans).
-7. The legacy `task_events` table and existing `EventStore.append()` are unchanged (verified by `git diff mahavishnu/core/event_store.py` showing only ADDED lines for the new symbols, no MODIFIED lines).
-8. `migrations/env.py` has `transaction_per_migration=False` (verified by `git grep transaction_per_migration migrations/env.py`).
-9. `crackerjack run` passes; coverage gate holds.
+1. `execution_events` table exists in DB after `alembic upgrade head` (verified by `TestRecordExecutionEvent.test_round_trip` which reads back the inserted row).
+1. `record_execution_event()` + `get_execution_events()` round-trip 6+ events for a 3-stage workflow.
+1. `IdempotencyStoreUnavailable` is a subclass of `MahavishnuError`.
+1. The Alembic revision has NO `downgrade()` function body (verified by `git grep "def downgrade" migrations/versions/V202609260003`).
+1. `python scripts/audit_requirements.py --json` reports REQ-003 wired (markers present, no orphans).
+1. The legacy `task_events` table and existing `EventStore.append()` are unchanged (verified by `git diff mahavishnu/core/event_store.py` showing only ADDED lines for the new symbols, no MODIFIED lines).
+1. `migrations/env.py` has `transaction_per_migration=False` (verified by `git grep transaction_per_migration migrations/env.py`).
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 

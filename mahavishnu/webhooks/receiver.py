@@ -57,7 +57,7 @@ app = FastAPI(
 # C-10 simplified ecosystem intake (REQ-016) — single endpoint, allowlist,
 # JSON→sanitize→safe_publish. Mounted alongside the durable /webhook route
 # so both surfaces share the same FastAPI app.
-from mahavishnu.webhooks.ecosystem_intake import router as ecosystem_intake_router  # noqa: E402
+from mahavishnu.webhooks.ecosystem_intake import router as ecosystem_intake_router
 
 app.include_router(ecosystem_intake_router)
 

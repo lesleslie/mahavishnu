@@ -19,10 +19,14 @@ Add a Typer CLI to surface execution history. The CLI reads from the `execution_
    FIX round-6: C-12 imports `ExecutionEvent` and `get_execution_events` from `mahavishnu.core.event_store` — these do NOT exist until C-3 lands. Without C-3 first, the import will fail at module load. **Hard dependency on C-3** (not just on tests via shared fixtures). The pre-flight must verify C-3's commit is in main before C-12 can land.
 
    Additional FIX round-6: the existing `TaskEvent` and `TaskEventType` are the existing primitives; `ExecutionEvent` and `get_execution_events` are added by C-3 (per `docs/plans/2026-09-26-impl-C-3-event-history-persistence.md` lines 281-285).
-2. **`mahavishnu/_main_cli.py` exists at the package root** (per the round-4 correction). The plan registers the new sub-app at lines 164-165 of that file — NOT at `mahavishnu/cli/_main_cli.py` (which does not exist).
-3. **`mahavishnu debug` does NOT exist** anywhere (`grep -r "mahavishnu debug" mahavishnu/` returns nothing). The round-4 review rejected the original spec's "renamed from `mahavishnu debug`" rationale as vacuous — that CLI was never real.
-4. **`typer` available** (used by other Mahavishnu CLIs).
-5. **`mahavishnu/cli/executions_cli.py` does NOT exist** (verify; this is a NEW file).
+
+1. **`mahavishnu/_main_cli.py` exists at the package root** (per the round-4 correction). The plan registers the new sub-app at lines 164-165 of that file — NOT at `mahavishnu/cli/_main_cli.py` (which does not exist).
+
+1. **`mahavishnu debug` does NOT exist** anywhere (`grep -r "mahavishnu debug" mahavishnu/` returns nothing). The round-4 review rejected the original spec's "renamed from `mahavishnu debug`" rationale as vacuous — that CLI was never real.
+
+1. **`typer` available** (used by other Mahavishnu CLIs).
+
+1. **`mahavishnu/cli/executions_cli.py` does NOT exist** (verify; this is a NEW file).
 
 ## File-by-file changes
 
@@ -429,18 +433,18 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `mahavishnu/cli/executions_cli.py` exists with `executions_app` Typer sub-app.
-2. `mahavishnu/_main_cli.py` (package ROOT) registers the sub-app at lines ~164-165.
-3. **No `mahavishnu debug` rename claim** anywhere in the plan or docs (the CLI never existed).
-4. `mahavishnu executions list` returns successfully (even with empty DB).
-5. `mahavishnu executions show <id>` returns events for known execution.
-6. `mahavishnu executions show <id>` returns exit code 1 for unknown execution.
-7. `--step <TaskEventType>` filters correctly.
-8. `--raw` emits JSON lines (one event per line, parseable).
-9. Pagination works at 10k+ events (`--limit 50` returns 50 events even when 10k exist).
-10. `python -m mahavishnu executions --help` lists both `list` and `show`.
-11. E2E smoke test passes against real CLI invocation.
-12. `python scripts/audit_requirements.py --json` reports REQ-019 wired.
-13. `crackerjack run` passes; coverage gate holds.
+1. `mahavishnu/_main_cli.py` (package ROOT) registers the sub-app at lines ~164-165.
+1. **No `mahavishnu debug` rename claim** anywhere in the plan or docs (the CLI never existed).
+1. `mahavishnu executions list` returns successfully (even with empty DB).
+1. `mahavishnu executions show <id>` returns events for known execution.
+1. `mahavishnu executions show <id>` returns exit code 1 for unknown execution.
+1. `--step <TaskEventType>` filters correctly.
+1. `--raw` emits JSON lines (one event per line, parseable).
+1. Pagination works at 10k+ events (`--limit 50` returns 50 events even when 10k exist).
+1. `python -m mahavishnu executions --help` lists both `list` and `show`.
+1. E2E smoke test passes against real CLI invocation.
+1. `python scripts/audit_requirements.py --json` reports REQ-019 wired.
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 

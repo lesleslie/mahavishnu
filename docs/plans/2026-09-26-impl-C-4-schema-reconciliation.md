@@ -17,10 +17,10 @@ The migration is **forward-only**. Per `feedback-no-backwards-compat-pre-1.0`: n
 ## Pre-flight checks
 
 1. **C-3 has landed.** `migrations/env.py` now has `transaction_per_migration=False` (set preemptively in C-3). This is required for the unique-index revision to use `CREATE UNIQUE INDEX CONCURRENTLY` post-COMMIT.
-2. **Migration runner is confirmed.** The spec notes "runner unclear; verify before landing". Read `migrations/env.py` and any `Makefile` / `pyproject.toml` scripts to identify the migration runner (likely `alembic upgrade head` or a custom script). If `alembic` is used, ensure the project is on a version that supports `transaction_per_migration` (Alembic 1.4+).
-3. **DB connection works for the target environment.** `psql $DATABASE_URL -c "\d audit.task_events"` shows the current schema (should NOT have `idempotency_key`).
-4. **Duplicate-key pre-flight is feasible.** `psql $DATABASE_URL -c "SELECT COUNT(*) - COUNT(DISTINCT idempotency_key) FROM audit.task_events WHERE idempotency_key IS NOT NULL;"` should return 0 (no duplicates). If >0, dedupe manually before running the migration.
-5. **C-1 has landed.** The `idempotency:` settings section must exist so C-6 has something to wire against.
+1. **Migration runner is confirmed.** The spec notes "runner unclear; verify before landing". Read `migrations/env.py` and any `Makefile` / `pyproject.toml` scripts to identify the migration runner (likely `alembic upgrade head` or a custom script). If `alembic` is used, ensure the project is on a version that supports `transaction_per_migration` (Alembic 1.4+).
+1. **DB connection works for the target environment.** `psql $DATABASE_URL -c "\d audit.task_events"` shows the current schema (should NOT have `idempotency_key`).
+1. **Duplicate-key pre-flight is feasible.** `psql $DATABASE_URL -c "SELECT COUNT(*) - COUNT(DISTINCT idempotency_key) FROM audit.task_events WHERE idempotency_key IS NOT NULL;"` should return 0 (no duplicates). If >0, dedupe manually before running the migration.
+1. **C-1 has landed.** The `idempotency:` settings section must exist so C-6 has something to wire against.
 
 ## File-by-file changes
 
@@ -302,27 +302,29 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `migrations/versions/V202609260001__idempotency_key_column.sql` exists and contains the pre-flight `DO $$` block + `ALTER TABLE`.
-2. `migrations/versions/V202609260001b__idempotency_key_unique_index.sql` exists and uses `CREATE UNIQUE INDEX CONCURRENTLY`.
-3. Both revisions have NO `DROP` statements (verified by `TestNoDowngrade`).
-4. Pre-flight trips on duplicate `idempotency_key` values (verified by `TestMigrationRevAColumn.test_pre_flight_aborts_on_duplicates`).
-5. Both revisions are idempotent on re-run (verified by `test_rev_a_idempotent` + `test_rev_b_idempotent`).
-6. After both revisions, `audit.task_events.idempotency_key` is unique for non-null values (verified by `test_unique_constraint_enforced`).
-7. `migrations/env.py` has `transaction_per_migration=False` (set in C-3; required for rev B's CONCURRENTLY).
-8. `python scripts/audit_requirements.py --json` reports REQ-004 wired (markers present, no orphans).
-9. `crackerjack run` passes; coverage gate holds.
+1. `migrations/versions/V202609260001b__idempotency_key_unique_index.sql` exists and uses `CREATE UNIQUE INDEX CONCURRENTLY`.
+1. Both revisions have NO `DROP` statements (verified by `TestNoDowngrade`).
+1. Pre-flight trips on duplicate `idempotency_key` values (verified by `TestMigrationRevAColumn.test_pre_flight_aborts_on_duplicates`).
+1. Both revisions are idempotent on re-run (verified by `test_rev_a_idempotent` + `test_rev_b_idempotent`).
+1. After both revisions, `audit.task_events.idempotency_key` is unique for non-null values (verified by `test_unique_constraint_enforced`).
+1. `migrations/env.py` has `transaction_per_migration=False` (set in C-3; required for rev B's CONCURRENTLY).
+1. `python scripts/audit_requirements.py --json` reports REQ-004 wired (markers present, no orphans).
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 
 Forward-only per `feedback-no-backwards-compat-pre-1.0`. Recovery for any schema miscalculation is a follow-up forward migration (e.g., `V202609260001c__fix_idempotency_key_index.sql` to alter the index definition) — not a downgrade.
 
 If the pre-flight trips on duplicates in production, the recovery is:
+
 1. Identify duplicate `idempotency_key` values: `SELECT idempotency_key, COUNT(*) FROM audit.task_events WHERE idempotency_key IS NOT NULL GROUP BY idempotency_key HAVING COUNT(*) > 1`
-2. Manually dedupe (decide which row wins; UPDATE or DELETE the others)
-3. Re-run `alembic upgrade head`
+1. Manually dedupe (decide which row wins; UPDATE or DELETE the others)
+1. Re-run `alembic upgrade head`
 
 If the unique-index revision (`V202609260001b`) fails partway through, the index may be left in an `INVALID` state. Recovery:
+
 1. `DROP INDEX CONCURRENTLY IF EXISTS idx_task_events_idempotency_key`
-2. Re-run `V202609260001b`
+1. Re-run `V202609260001b`
 
 ## Observability added
 

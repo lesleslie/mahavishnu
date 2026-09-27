@@ -1,12 +1,13 @@
 # C-6: `pool_route_execute(idempotency=IdempotencyOptions(...))` (WP-2 — idempotency layer)
 
 **REQ-NNN:** REQ-006, REQ-007, REQ-008
+
 - REQ-006: `pool_route_execute(idempotency=IdempotencyOptions(...))` with single-row in-place PENDING→COMPLETED update
 - REQ-007: DB-level unique constraint enforcement + asyncio.Lock fallback
 - REQ-008: SHA-256 hex fingerprinting via Oneiric `HashAction().execute(...)["digest"]`
-**Risk:** High (touches the most-called dispatch path; integrates C-3 + C-4 + C-5; uses new Pydantic input model)
-**Blocks:** C-8 (`pool_route_execute(worktree=...)` extends the same signature)
-**Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
+  **Risk:** High (touches the most-called dispatch path; integrates C-3 + C-4 + C-5; uses new Pydantic input model)
+  **Blocks:** C-8 (`pool_route_execute(worktree=...)` extends the same signature)
+  **Direct-to-main commit:** Yes (per `feedback-no-backwards-compat-pre-1.0` + `bodai-pre-1.0-merge-policy`).
 
 **Niche fit:** Per [`docs/adr/0001-mahavishnu-niche.md`](../adr/0001-mahavishnu-niche.md), this plan anchors Mahavishnu as LLM control plane + repo orchestrator + multi-engine + harness-agnostic. The three-question filter (deepens? Bodai integration? no source-tool competition?) was applied at planning time.
 **Status:** Draft — round-4 corrections baked in (arg-count grouped, hashed idempotency key, fail-CLOSED default).
@@ -16,10 +17,10 @@
 Add the `idempotency` Pydantic input model to `pool_route_execute` so duplicate dispatches (e.g., a retried webhook, a CLI user's double-submit) do not produce duplicate work. The idempotency layer:
 
 1. Computes a SHA-256 hex fingerprint of the dispatch payload (via Oneiric `HashAction`) and stores it in `audit.task_events.idempotency_key`.
-2. Looks up the key before dispatch; if found, returns the existing result (or PENDING if still in-flight).
-3. Stores the result with a single-row in-place PENDING→COMPLETED transition (not insert-then-update; the row is created with `event_type=PENDING` and updated to `COMPLETED` when the work finishes).
-4. Enforces uniqueness via the DB-level unique constraint (added in C-4) with an `asyncio.Lock` fallback for the in-process race window.
-5. Fails CLOSED if the EventStore is unreachable — no dispatch happens.
+1. Looks up the key before dispatch; if found, returns the existing result (or PENDING if still in-flight).
+1. Stores the result with a single-row in-place PENDING→COMPLETED transition (not insert-then-update; the row is created with `event_type=PENDING` and updated to `COMPLETED` when the work finishes).
+1. Enforces uniqueness via the DB-level unique constraint (added in C-4) with an `asyncio.Lock` fallback for the in-process race window.
+1. Fails CLOSED if the EventStore is unreachable — no dispatch happens.
 
 The original `pool_route_execute` had 7 positional args; this plan adds 2 (`idempotency` Pydantic model, `idempotency_ttl_seconds` field on the model). Total positional args stay under `max-args=10` because `idempotency` is a single Pydantic input.
 
@@ -29,10 +30,10 @@ The original `pool_route_execute` had 7 positional args; this plan adds 2 (`idem
    - C-3 added `TaskEventType.PENDING = "pending"` and `IdempotencyStoreUnavailable` exception.
    - C-4 added `audit.task_events.idempotency_key` column + unique partial index.
    - C-5 added `safe_publish()` module-global for Akosha event publishing.
-2. **`mahavishnu.actions.security.HashAction` importable** with the documented payload shape: `HashAction().execute({"algorithm": "sha256", "data": "<raw-string>"})` returns `{"digest": "<hex-digest>"}`. Verify the real import path by reading `oneiric/actions/security.py` (or equivalent) — the plan's import is `from oneiric.actions.compression import HashAction  # FIX round-6: HashAction lives in compression.py, not security.py` per Oneiric's flat-import convention.
-3. **`mahavishnu.mcp.tools.pool_tools.pool_route_execute` is the dispatch entry point.** Read the existing signature to confirm the parameter list before extending. The plan assumes the existing 7-param signature is preserved with one new keyword arg.
-4. **`audit.task_events` has an `actor VARCHAR(255)` and `data JSONB`** column already (from earlier migrations; verify).
-5. **No existing `IdempotencyOptions` class** in the codebase (`grep -r "class IdempotencyOptions" mahavishnu/` returns nothing). If found, the plan is wrong — re-plan.
+1. **`mahavishnu.actions.security.HashAction` importable** with the documented payload shape: `HashAction().execute({"algorithm": "sha256", "data": "<raw-string>"})` returns `{"digest": "<hex-digest>"}`. Verify the real import path by reading `oneiric/actions/security.py` (or equivalent) — the plan's import is `from oneiric.actions.compression import HashAction  # FIX round-6: HashAction lives in compression.py, not security.py` per Oneiric's flat-import convention.
+1. **`mahavishnu.mcp.tools.pool_tools.pool_route_execute` is the dispatch entry point.** Read the existing signature to confirm the parameter list before extending. The plan assumes the existing 7-param signature is preserved with one new keyword arg.
+1. **`audit.task_events` has an `actor VARCHAR(255)` and `data JSONB`** column already (from earlier migrations; verify).
+1. **No existing `IdempotencyOptions` class** in the codebase (`grep -r "class IdempotencyOptions" mahavishnu/` returns nothing). If found, the plan is wrong — re-plan.
 
 ## File-by-file changes
 
@@ -782,16 +783,16 @@ uv run crackerjack run -p minor
 ## Acceptance criteria (decisive pass/fail)
 
 1. `mahavishnu/core/idempotency.py` exists with `IdempotencyOptions` Pydantic model + `IdempotencyStore` class.
-2. `IdempotencyOptions` enforces `extra="forbid"`, source max 255, nonce max 128, ttl 60..604800.
-3. `IdempotencyStore.fingerprint()` returns 64-char lowercase hex (SHA-256 digest via Oneiric `HashAction`).
-4. Fingerprint varies with payload AND with TTL bucket.
-5. `pool_route_execute(idempotency=...)` returns `{"status": "duplicate", "result": <cached>}` on second call with same key.
-6. `IdempotencyStoreUnavailable` propagates from `get_or_create` and is converted to `{"status": "error", "error": "idempotency store unavailable"}` at the pool boundary (fail-CLOSED, no dispatch).
-7. Two concurrent `get_or_create()` calls with the same key return events with the same `idempotency_key` (asyncio.Lock fallback works).
-8. `mark_completed()` transitions a single row from PENDING to SYNCED in place (no insert-then-update).
-9. `python scripts/audit_requirements.py --json` reports REQ-006, REQ-007, REQ-008 wired.
-10. `pool_route_execute` arg count is ≤ 10 (verified by `crackerjack run`).
-11. `crackerjack run` passes; coverage gate holds.
+1. `IdempotencyOptions` enforces `extra="forbid"`, source max 255, nonce max 128, ttl 60..604800.
+1. `IdempotencyStore.fingerprint()` returns 64-char lowercase hex (SHA-256 digest via Oneiric `HashAction`).
+1. Fingerprint varies with payload AND with TTL bucket.
+1. `pool_route_execute(idempotency=...)` returns `{"status": "duplicate", "result": <cached>}` on second call with same key.
+1. `IdempotencyStoreUnavailable` propagates from `get_or_create` and is converted to `{"status": "error", "error": "idempotency store unavailable"}` at the pool boundary (fail-CLOSED, no dispatch).
+1. Two concurrent `get_or_create()` calls with the same key return events with the same `idempotency_key` (asyncio.Lock fallback works).
+1. `mark_completed()` transitions a single row from PENDING to SYNCED in place (no insert-then-update).
+1. `python scripts/audit_requirements.py --json` reports REQ-006, REQ-007, REQ-008 wired.
+1. `pool_route_execute` arg count is ≤ 10 (verified by `crackerjack run`).
+1. `crackerjack run` passes; coverage gate holds.
 
 ## Rollback / recovery narration
 

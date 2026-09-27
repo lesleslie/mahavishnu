@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.1] - 2026-09-27
+
+### Added
+
+- mahavishnu: C-1 config models prep
+- mahavishnu: C-10 ecosystem intake (simplified allowlist + sanitize)
+- mahavishnu: C-12 executions show CLI
+- mahavishnu: C-2 T-0 test scaffolding - 11 wire-up fixtures
+- mahavishnu: C-3 event-history + PENDING enum
+- mahavishnu: C-4 schema reconciliation
+- mahavishnu: C-5 EventBridgePublisher module-global singleton
+- mahavishnu: C-6 pool route execute idempotency
+- mahavishnu: C-8 worktree isolation
+- mahavishnu: C-9 concurrency limits (token-bucket per-category)
+
+### Changed
+
+- mahavishnu: Fix 12 ruff errors + 4 broken doc links (fast hooks)
+- mahavishnu: Remove vestigial TaskEventType.SYNCED
+
+### Fixed
+
+- mahavishnu: C-12 recovery — wire executions sub-app into _main_cli.py
+- mahavishnu: C-9 follow-up — rename retry_after= → retry_after_seconds= in PoolManager quota gate
+- mahavishnu: Resolve 17 ty errors + 2 creosote issues (comprehensive hooks)
+- mahavishnu: Resolve 3 collection-time import errors (baseline)
+
+### Documentation
+
+- mahavishnu: Add .claude/decisions/deployability-discipline.md pointer
+- mahavishnu: Add lite-schema frontmatter to deployability-discipline.md pointer
+- mahavishnu: Add niche ADR for LLM control plane + repo orchestrator positioning
+- mahavishnu: Add required frontmatter to C-10 ecosystem intake plan
+- mahavishnu: Downplay Bodai framing in README
+- mahavishnu: Expand niche to include multi-engine + harness-agnostic
+- mahavishnu: Register port 8695 in BODAI_REPO_REGISTRY + remove PENDING comment
+- mahavishnu: Round-5 revisions — fix 12 review blockers across 12 plans
+- mahavishnu: Round-5 Tier 4 deliverables — 5 runbooks + 3 SLOs + 2 audit workflows
+- mahavishnu: Round-6 Tier 1 corrections — fix runtime bugs in 6 plans
+- mahavishnu: Round-7 Tier 2+3 — operational polish + test quality fixes
+- mahavishnu: Round-8 Tier 4 — architectural fixes
+- mahavishnu: Round-9 Tier 4 — niche ADR citation rate fixed
+
+### Internal
+
+- repo: Remove 30 tracked runtime artifacts + extend gitignore
+
 ## [0.29.0] - 2026-09-26
 
 ### Added

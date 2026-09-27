@@ -4,15 +4,6 @@ from mahavishnu.core.errors import MahavishnuError as MahavishnuError
 from mahavishnu.core.events.canonical import (
     OPTIONAL_EVENT_HEADERS as OPTIONAL_EVENT_HEADERS,
 )
-from mahavishnu.core.events.publisher import (
-    get_publisher as get_publisher,
-)
-from mahavishnu.core.events.publisher import (
-    safe_publish as safe_publish,
-)
-from mahavishnu.core.events.publisher import (
-    set_publisher as set_publisher,
-)
 from mahavishnu.core.events.canonical import (
     REQUIRED_EVENT_HEADERS as REQUIRED_EVENT_HEADERS,
 )
@@ -68,6 +59,15 @@ from mahavishnu.core.events.migration import (
 )
 from mahavishnu.core.events.migration import (
     migrate_legacy_webhook_event as migrate_legacy_webhook_event,
+)
+from mahavishnu.core.events.publisher import (
+    get_publisher as get_publisher,
+)
+from mahavishnu.core.events.publisher import (
+    safe_publish as safe_publish,
+)
+from mahavishnu.core.events.publisher import (
+    set_publisher as set_publisher,
 )
 from mahavishnu.core.events.schema_registry import (
     EventSchema as EventSchema,
