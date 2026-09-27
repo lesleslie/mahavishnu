@@ -27,6 +27,7 @@ from typing import Literal, TypedDict
 import uuid
 
 from mahavishnu.jot.cli import _detail_from_summary
+
 from mahavishnu.jot.drain import (
     DispatchResultDict,
     DrainPlanDict,
@@ -319,6 +320,29 @@ def jot_resurface(
     return [_summary_dict(s) for s in result.matches]
 
 
+def jot_export_markdown(output_path: str) -> dict[str, object]:
+    """C-11 board export — render the markdown board scaffold to disk.
+
+    Req: REQ-018
+
+    Mirrors ``mahavishnu jot export`` at the MCP layer so agents can
+    pre-stage a board file. The actual dispatch path lives in
+    ``mahavishnu.jot.markdown_watcher``; this tool only renders.
+    """
+    from mahavishnu.jot.markdown_export import render_board
+
+    cards: list[dict[str, object]] = []
+    output = Path(output_path).expanduser()
+    content = render_board(cards)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content)
+    return {
+        "status": "exported",
+        "cards_count": len(cards),
+        "path": str(output),
+    }
+
+
 def register(mcp) -> None:  # type: ignore[no-untyped-def]
     """Register all 14 tools on the FastMCP instance.
 
@@ -341,6 +365,7 @@ def register(mcp) -> None:  # type: ignore[no-untyped-def]
         "jot_delete",
         "jot_retry",
         "jot_resurface",
+        "jot_export_markdown",
     ]
     module = sys.modules[__name__]
     for name in names:
@@ -394,6 +419,7 @@ def _wrap_at_import() -> None:
         "jot_delete",
         "jot_retry",
         "jot_resurface",
+        "jot_export_markdown",
     ]
     module = sys.modules[__name__]
     for name in names:

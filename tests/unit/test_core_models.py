@@ -288,12 +288,12 @@ class TestConvenienceErrors:
         assert err.error_code == ErrorCode.WEBHOOK_REPLAY_DETECTED
 
     def test_rate_limit_error(self):
-        err = RateLimitError("100 req/min")
+        err = RateLimitError(limit="100 req/min")
         assert err.error_code == ErrorCode.RATE_LIMIT_EXCEEDED
         assert err.details["limit"] == "100 req/min"
 
     def test_rate_limit_error_with_retry(self):
-        err = RateLimitError("10/s", retry_after=30)
+        err = RateLimitError(limit="10/s", retry_after_seconds=30)
         assert err.details["retry_after_seconds"] == 30
 
     def test_adapter_error(self):

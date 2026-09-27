@@ -852,12 +852,28 @@ class WebhookAuthError(MahavishnuError):
 
 
 class RateLimitError(MahavishnuError):
-    """Rate limit exceeded error."""
+    """Rate limit exceeded error.
 
-    def __init__(self, limit: str, retry_after: int | None = None) -> None:
-        details = {"limit": limit}
-        if retry_after:
-            details["retry_after_seconds"] = retry_after
+    Carries structured retry hints for callers: ``limit`` (the saturated
+    limit, either ``int`` for numeric caps or ``str`` for symbolic
+    descriptors like ``"caller_kind=ultracode"``), ``retry_after_seconds``
+    (float — ``0`` is treated as no-hint), and ``domain`` (a free-form
+    label like ``"task_category=CODE_GENERATION"``).
+    """
+
+    def __init__(
+        self,
+        limit: int | str | None = None,
+        retry_after_seconds: float | None = None,
+        domain: str | None = None,
+    ) -> None:
+        details: dict[str, object] = {}
+        if limit is not None:
+            details["limit"] = limit
+        if retry_after_seconds is not None:
+            details["retry_after_seconds"] = retry_after_seconds
+        if domain is not None:
+            details["domain"] = domain
         super().__init__(
             f"Rate limit exceeded: {limit}",
             ErrorCode.RATE_LIMIT_EXCEEDED,
@@ -2181,5 +2197,48 @@ class ChangePointError(MahavishnuError):
         super().__init__(
             message,
             ErrorCode.CHANGE_POINT_ERROR,
+            details=details,
+        )
+
+
+# ---------------------------------------------------------------------------
+# C-11 markdown board watcher errors (REQ-017, REQ-020)
+# ---------------------------------------------------------------------------
+
+
+class MarkdownParseError(MahavishnuError):
+    """Raised when .mahavishnu/board.md fails schema validation.
+
+    Req: REQ-017, REQ-020
+    """  # req: REQ-017, REQ-020
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.VALIDATION_ERROR,
+            details=details,
+        )
+
+
+class MarkdownWatcherDied(MahavishnuError):
+    """Raised when the markdown board watcher crashes; supervisor restarts.
+
+    Req: REQ-017
+    """  # req: REQ-017
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.INTERNAL_ERROR,
             details=details,
         )

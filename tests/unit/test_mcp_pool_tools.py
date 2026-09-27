@@ -473,9 +473,9 @@ class TestPoolRouteExecuteTool:
         """Scenario 2 — RateLimitError → {status: 'rate_limited', retry_after_seconds, limit}."""
         from mahavishnu.core.errors import RateLimitError
 
-        # RateLimitError signature: (limit: str, retry_after: int | None = None).
+        # RateLimitError signature: (limit, retry_after_seconds, domain).
         # The constructor stores details={"limit": ..., "retry_after_seconds": ...}.
-        err = RateLimitError("caller_kind=ultracode", retry_after=42)
+        err = RateLimitError(limit="caller_kind=ultracode", retry_after_seconds=42)
         mock_pool_manager.route_task = AsyncMock(side_effect=err)
 
         execute = _capture_pool_route_execute(mock_pool_manager)

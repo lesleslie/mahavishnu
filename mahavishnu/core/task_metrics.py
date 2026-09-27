@@ -139,6 +139,36 @@ class TaskMetrics:
             ["event_type", "result"],
         )
 
+        # C-9: per-TaskCategory concurrency gate metrics. The ``pool_worker_id``
+        # label on ``task_domain_concurrency`` lets operators aggregate across
+        # workers and spot per-worker hot spots (per round-4 security review:
+        # without it, per-worker counts are invisible).
+        self.task_domain_concurrency = Gauge(
+            "mahavishnu_task_domain_concurrency",
+            "Active concurrent tasks per domain, labeled by pool_worker_id.",
+            ["domain", "pool_worker_id"],
+        )
+        self.task_domain_rate_limited_total = Counter(
+            "mahavishnu_task_domain_rate_limited_total",
+            "Total rate-limit denials from the per-TaskCategory concurrency gate.",
+            ["domain"],
+        )
+        self.task_domain_queue_depth = Gauge(
+            "mahavishnu_task_domain_queue_depth",
+            "Pending tasks awaiting a concurrency slot, per domain.",
+            ["domain"],
+        )
+        self.task_domain_throughput = Counter(
+            "mahavishnu_task_domain_throughput",
+            "Completed tasks per domain (gate released cleanly).",
+            ["domain"],
+        )
+        self.task_domain_concurrency_drift_total = Counter(
+            "mahavishnu_task_domain_concurrency_drift_total",
+            "Atomicity violations: counter exceeded spec limit under contention.",
+            ["domain"],
+        )
+
     def _init_noop_metrics(self) -> None:
         """Initialize no-op metrics for when Prometheus is not available."""
 
@@ -169,6 +199,13 @@ class TaskMetrics:
         self.webhook_operations_total = noop
         self.validation_failures_total = noop
         self.audit_events_total = noop
+        # C-9 task-domain metrics (no-op fallback for environments without
+        # prometheus_client).
+        self.task_domain_concurrency = noop
+        self.task_domain_rate_limited_total = noop
+        self.task_domain_queue_depth = noop
+        self.task_domain_throughput = noop
+        self.task_domain_concurrency_drift_total = noop
 
     # Task lifecycle metrics
 

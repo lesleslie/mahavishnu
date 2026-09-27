@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
+
 import typer
 
 from mahavishnu.jot.cli import (
@@ -151,3 +154,83 @@ def resurface(
 ) -> None:
     """Surface relevant jots for the given context."""
     cmd_resurface(trigger=trigger, context_text=context_text)
+
+
+@app.command("export")
+def export_cmd(
+    output: Path = typer.Option(
+        ".mahavishnu/board.md",
+        "--output",
+        help="Destination path for the rendered markdown board",
+    ),
+) -> None:
+    """Render a starter .mahavishnu/board.md from current jot state.
+
+    The exporter enumerates existing open jots and renders one card
+    per jot into a markdown scaffold ready for manual editing. This is
+    intentionally a thin scaffold — the watcher dispatches whatever
+    markdown the operator decides to write, not whatever this CLI
+    generated last.
+    """
+    from mahavishnu.jot.markdown_export import render_board
+
+    summaries = cmd_list(status="open", limit=200)
+    cards: list[dict[str, object]] = []
+    for entry in summaries:
+        text = getattr(entry, "text", None) or str(entry)
+        cards.append(
+            {
+                "id": str(getattr(entry, "short_id", uuid_short())),
+                "status": "ready",
+                "pool": "mahavishnu",
+                "prompt": text,
+            }
+        )
+    content = render_board(cards)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content)
+    typer.echo(f"Exported {len(cards)} cards to {output}")
+
+
+@app.command("watch")
+def watch_cmd(
+    board: Path = typer.Option(
+        ".mahavishnu/board.md",
+        "--board",
+        help="Path to the board file to watch",
+    ),
+) -> None:
+    """Watch the board file and dispatch cards on each modification.
+
+    State sidecar path is derived from ``board_path + state_sidecar_suffix``
+    (the suffix is configured in ``settings.markdown_board``; the sidecar
+    itself is the file the watcher writes for CAS-style conflict
+    detection, NOT a setting the operator chooses directly).
+    """
+    from mahavishnu.core.config import get_settings
+    from mahavishnu.jot.markdown_watcher import watch_board
+
+    settings = get_settings()
+    if not settings.markdown_board.enabled:
+        typer.echo(
+            "markdown_board is disabled in settings; refusing to start the watcher",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    sidecar_suffix = settings.markdown_board.state_sidecar_suffix
+    state_sidecar = board.with_suffix(board.suffix + sidecar_suffix)
+    asyncio.run(
+        watch_board(
+            board_path=board,
+            state_sidecar=state_sidecar,
+            watcher_lag_seconds=settings.markdown_board.watcher_lag_seconds,
+        )
+    )
+
+
+def uuid_short() -> str:
+    """Generate a short UUID used as a card id when export has no source id."""
+    import uuid
+
+    return uuid.uuid4().hex[:8]
+

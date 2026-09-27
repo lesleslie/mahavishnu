@@ -277,14 +277,28 @@ class TestWebhookAuthError:
 
 class TestRateLimitError:
     def test_basic(self):
-        err = RateLimitError("100 req/min")
+        err = RateLimitError(limit="100 req/min")
         assert "100 req/min" in err.message
         assert err.details["limit"] == "100 req/min"
-        assert "retry_after" not in err.details
+        assert "retry_after_seconds" not in err.details
 
     def test_with_retry_after(self):
-        err = RateLimitError("100 req/min", retry_after=60)
+        err = RateLimitError(limit="100 req/min", retry_after_seconds=60)
         assert err.details["retry_after_seconds"] == 60
+
+    def test_with_int_limit(self):
+        err = RateLimitError(limit=4)
+        assert err.details["limit"] == 4
+
+    def test_with_domain(self):
+        err = RateLimitError(
+            limit=4, retry_after_seconds=1.0, domain="task_category=CODE_GENERATION"
+        )
+        assert err.details["domain"] == "task_category=CODE_GENERATION"
+
+    def test_none_limit_omits_details(self):
+        err = RateLimitError()
+        assert "limit" not in err.details
 
 
 class TestAdapterError:
@@ -896,13 +910,13 @@ class TestWebhookAuthErrorExtended:
 
 
 class TestRateLimitErrorExtended:
-    def test_retry_after_zero_not_included(self):
-        """retry_after=0 is falsy and should not be included."""
-        err = RateLimitError("10 req/min", retry_after=0)
-        assert "retry_after_seconds" not in err.details
+    def test_retry_after_zero_explicitly_included(self):
+        """retry_after_seconds=0 is a valid sentinel and IS included (None check, not falsy)."""
+        err = RateLimitError(limit="10 req/min", retry_after_seconds=0)
+        assert err.details["retry_after_seconds"] == 0
 
     def test_message_format(self):
-        err = RateLimitError("100/h")
+        err = RateLimitError(limit="100/h")
         assert err.message == "Rate limit exceeded: 100/h"
 
 

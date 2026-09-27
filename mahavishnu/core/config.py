@@ -26,6 +26,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettin
 
 from ..terminal.config import TerminalSettings
 
+# TaskCategory is referenced by ConcurrencyLimitsSettings.by_category below.
+# Imported at module load time (no risk of cycles; model_routing has no
+# dependency on this module).
+from .model_routing import TaskCategory
+
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)
 # ============================================================================
@@ -2490,7 +2495,44 @@ class ConcurrencyLimitsSettings(BaseModel):
 
     enabled: bool = True
     default: int | None = None  # None = unlimited
-    by_category: dict[str, ConcurrencyLimitSpec] = Field(default_factory=dict)
+    by_category: dict[TaskCategory, ConcurrencyLimitSpec] = Field(default_factory=dict)
+
+    @field_validator("by_category", mode="before")
+    @classmethod
+    def _coerce_string_keys_to_task_category(
+        cls, value: object
+    ) -> dict[TaskCategory, ConcurrencyLimitSpec]:
+        """Coerce string keys to ``TaskCategory`` enum members.
+
+        YAML and JSON config layers deliver string keys (``"CODE_GENERATION": ...``);
+        Python call sites and tests may pass enum keys directly. Both must work.
+
+        YAML keys are upper-snake (the canonical config style); enum values are
+        lower-snake (``code_generation``). We map both the upper-snake name and
+        the lower-snake value to the enum member.
+        """
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            return value  # type: ignore[return-value]
+        # Build lookup: {upper-name, lower-value} -> TaskCategory member
+        alias_to_member: dict[str, TaskCategory] = {}
+        for member in TaskCategory:
+            alias_to_member[member.name] = member  # e.g. "CODE_GENERATION"
+            alias_to_member[str(member.value)] = member  # e.g. "code_generation"
+        coerced: dict[TaskCategory, ConcurrencyLimitSpec] = {}
+        for key, spec in value.items():
+            if isinstance(key, TaskCategory):
+                coerced[key] = spec
+                continue
+            member = alias_to_member.get(str(key))
+            if member is None:
+                raise ValueError(
+                    f"Unknown TaskCategory in concurrency_limits.by_category: {key!r}. "
+                    f"Valid: {sorted(alias_to_member)}"
+                )
+            coerced[member] = spec
+        return coerced
 
 
 class ConcurrencyLimitSpec(BaseModel):

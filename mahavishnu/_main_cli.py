@@ -1376,6 +1376,11 @@ app.add_typer(repo_app, name="repo")
 # Add precommit CLI (Spec #2)
 app.add_typer(precommit_app_obj, name="precommit")
 
+# Add executions CLI (C-12) — inspect execution_events history.
+from .cli.executions_cli import executions_app
+
+app.add_typer(executions_app, name="executions")
+
 # Add SOP evolution CLI (Spec #7)
 add_sop_commands(app)
 
@@ -1383,6 +1388,11 @@ add_sop_commands(app)
 from .cli.jot_cli import app as jot_app
 
 app.add_typer(jot_app, name="jot")
+
+# C-11 markdown board CLI — manual management for .mahavishnu/board.md
+from .cli.board_cli import board_app
+
+app.add_typer(board_app, name="board")
 
 # Plan index CLI (mirror mcp__mahavishnu__plan_* tools)
 from .cli.plan_cli import plan_app

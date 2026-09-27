@@ -822,10 +822,22 @@ class TestRateLimitError:
         assert error.details["limit"] == "50/minute"
 
     def test_retry_after_in_details(self) -> None:
-        """Test that retry_after is in details when provided."""
-        error = RateLimitError(limit="100/hour", retry_after=3600)
+        """Test that retry_after_seconds is in details when provided."""
+        error = RateLimitError(limit="100/hour", retry_after_seconds=3600)
 
         assert error.details["retry_after_seconds"] == 3600
+
+    def test_int_limit_is_pydantic_compatible(self) -> None:
+        """Limit accepts int (C-9 concurrency gate passes integer caps)."""
+        error = RateLimitError(limit=4, retry_after_seconds=1.0)
+        assert error.details["limit"] == 4
+
+    def test_domain_in_details(self) -> None:
+        """C-9 uses domain to label the saturated resource."""
+        error = RateLimitError(
+            limit=4, retry_after_seconds=1.0, domain="task_category=CODE_GENERATION"
+        )
+        assert error.details["domain"] == "task_category=CODE_GENERATION"
 
 
 # =============================================================================

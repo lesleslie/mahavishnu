@@ -29,7 +29,64 @@ except Exception:  # pragma: no cover - optional import for test patching  # noq
     RateLimitError = None
     coerce_caller_kind = None
 
+try:
+    # C-9: per-TaskCategory concurrency gate (REQ-012, REQ-013).
+    # Defensive import so test patching can inject a sentinel gate.
+    from mahavishnu.core.config import get_settings
+    from mahavishnu.core.concurrency_gate import ConcurrencyGate
+    from mahavishnu.core.model_routing import TaskCategory, classify_task
+    from mahavishnu.core.rate_limit import _estimate_retry
+except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    ConcurrencyGate = None
+    TaskCategory = None
+    classify_task = None
+    _estimate_retry = None
+    get_settings = None
+
 logger = logging.getLogger(__name__)
+
+
+# Module-level singleton gate (per-process scope documented in
+# ``docs/runbooks/concurrency-limit-storm.md``). Test suites that want
+# isolation call ``set_concurrency_gate()`` to swap this out.
+_concurrency_gate: ConcurrencyGate | None = (
+    ConcurrencyGate(get_settings().concurrency_limits)
+    if ConcurrencyGate is not None and get_settings is not None
+    else None
+)
+
+
+def get_concurrency_gate() -> ConcurrencyGate | None:
+    """Return the module-level ``ConcurrencyGate`` (None when not configured)."""
+    return _concurrency_gate
+
+
+def set_concurrency_gate(gate: ConcurrencyGate | None) -> None:
+    """Override the module-level gate (test seam; resets between cases)."""
+    global _concurrency_gate
+    _concurrency_gate = gate
+
+
+async def _enforce_concurrency_limit(
+    task_category: TaskCategory, pool_id: str | None
+) -> None:
+    """Acquire a TaskCategory slot or raise RateLimitError (fail-closed).
+
+    No-op when the gate is unconfigured (defensive-import failure in tests)
+    or when no spec is registered for the category. Otherwise the gate
+    returns False on saturation and we raise — callers MUST NOT silently
+    proceed past a denial (REQ-013 fail-closed default).
+    """
+    gate = get_concurrency_gate()
+    if gate is None or task_category is None:
+        return
+    if not await gate.try_acquire(task_category, pool_id):
+        spec = gate.spec_for(task_category)
+        raise RateLimitError(
+            limit=spec.concurrency_limit if spec else None,
+            retry_after_seconds=_estimate_retry(spec) if _estimate_retry else None,
+            domain=f"task_category={task_category.value}",
+        )
 
 
 def register_pool_tools(
@@ -339,7 +396,33 @@ def register_pool_tools(
         if timeout is not None:
             task["timeout"] = timeout
 
+        # C-9: per-TaskCategory concurrency gate. Pool_id is unknown at the
+        # dispatch entry point (the selector picks it inside route_task), so
+        # we use pool_id=None — the gate falls back to the category-only key.
+        # Specs without an explicit limit are pass-through; failure here
+        # surfaces as RateLimitError and is caught by the envelope handler
+        # below (fail-closed per REQ-013).
+        task_category: TaskCategory | None = None
+        if classify_task is not None:
+            try:
+                task_category = classify_task(prompt)
+            except Exception:  # noqa: BLE001 - boundary: classify is best-effort
+                task_category = None
+
+        gate = get_concurrency_gate()
+        acquired = False
         try:
+            if gate is not None and task_category is not None:
+                acquired = await gate.try_acquire(task_category, None)
+                if not acquired:
+                    spec = gate.spec_for(task_category)
+                    raise RateLimitError(
+                        limit=spec.concurrency_limit if spec else None,
+                        retry_after_seconds=(
+                            _estimate_retry(spec) if _estimate_retry else None
+                        ),
+                        domain=f"task_category={task_category.value}",
+                    )
             return await pool_manager.route_task(  # type: ignore[no-any-return]
                 task=task,
                 pool_selector=selector_enum,
@@ -376,5 +459,12 @@ def register_pool_tools(
                 "status": "failed",
                 "error": str(exc),
             }
+        finally:
+            # Release the concurrency slot regardless of outcome (success,
+            # rate-limit denial, timeout, dispatch failure). Without this,
+            # the per-process counter would never decrement and the gate
+            # would saturate permanently after one burst.
+            if acquired and gate is not None and task_category is not None:
+                await gate.release(task_category, None)
 
     logger.info("Registered 9 pool management tools")

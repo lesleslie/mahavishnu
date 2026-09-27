@@ -21,7 +21,21 @@ if TYPE_CHECKING:
     import asyncio
     from collections.abc import Callable
 
+    from mahavishnu.core.config import ConcurrencyLimitSpec
+
 logger = getLogger(__name__)
+
+
+def _estimate_retry(spec: ConcurrencyLimitSpec | None) -> float:
+    """Estimate retry-after-seconds for a denied rate-limit request.
+
+    Returns 1.0 if ``refill_rate_per_second`` is non-positive (avoids
+    ZeroDivisionError and gives callers a sane floor under finite-burst
+    specs).
+    """
+    if spec is None or spec.refill_rate_per_second <= 0:
+        return 1.0
+    return max(1.0, 1.0 / spec.refill_rate_per_second)
 
 
 @dataclass

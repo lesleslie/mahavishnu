@@ -606,7 +606,39 @@ webhook_intake:
 concurrency_limits:
   enabled: true
   default: null
-  by_category: {}
+  by_category:
+    CODE_GENERATION:
+      concurrency_limit: 4
+      refill_rate_per_second: 1.0
+      global_override: false
+    CODE_REVIEW:
+      concurrency_limit: 8
+      refill_rate_per_second: 2.0
+      global_override: false
+    DEBUGGING:
+      concurrency_limit: 4
+      refill_rate_per_second: 1.0
+      global_override: false
+    REFACTORING:
+      concurrency_limit: 2
+      refill_rate_per_second: 0.5
+      global_override: false
+    TESTING:
+      concurrency_limit: 6
+      refill_rate_per_second: 1.5
+      global_override: false
+    REASONING:
+      concurrency_limit: 4
+      refill_rate_per_second: 1.0
+      global_override: false
+    SWARM:
+      concurrency_limit: 16
+      refill_rate_per_second: 0.0  # never refills — finite burst only
+      global_override: true  # spans all pools
+    QUICK:
+      concurrency_limit: 32
+      refill_rate_per_second: 8.0
+      global_override: true
 
 markdown_board:
   enabled: false
