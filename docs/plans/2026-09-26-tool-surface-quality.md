@@ -1,12 +1,21 @@
 ---
-status: active
+status: shipped
 role: implementation
 kind: plan
 date: 2026-09-26
-last_reviewed: 2026-09-26
+last_reviewed: 2026-09-27
 superseded_by: null
 blocks_on: []
 topic: mcp-design
+shipped_commits:
+  mahavishnu:
+    - 67095d98 feat(mahavishnu): tool-call span enrichment + Akosha-bound OTel attributes
+    - 5e9ad579 fix(mahavishnu): Phase 1 verification fixes (split gates, real e2e, microbench)
+    - 8705f469 fix(mahavishnu): upgrade microbench to exercise real OTel span path
+  akosha:
+    - a6ff6a7 feat(akosha): wire mcp_tool_call feed into /health aggregator (Phase 1 Task 1.5)
+    - 076d63b fix(akosha): expose mcp_tool_call_feed per-feed dict in /health wire-out
+follow_on_plan: docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md
 ---
 
 # Tool Surface Quality — Implementation Plan (v2)
@@ -302,3 +311,26 @@ v1 (`2026-09-26`) failed multi-agent review on 2026-09-26 with 3 of 5 reviewers 
 - [x] reviewer-5: `general-purpose` (security lens) — 2026-09-26 — **APPROVED** (all 10 v1 items RESOLVED; remaining attributes audited for new leakage vectors — none)
 
 **Verdict:** 5/5 verdicts at or above `APPROVED WITH REVISIONS`. 0 `REQUIRED HARDENING BEFORE SHIP`. §9 Promotion Rule met — status promoted `draft → active` on 2026-09-26. Plan is ready for Phase 1 implementation.
+
+### Round 3 — post-fix verification (Phase 1 implementation, 2026-09-27)
+
+After commits 67095d98 (mahavishnu) + a6ff6a7 (akosha) landed Phase 1, re-verification
+returned `REQUIRED HARDENING` (4 blocking findings: split gates, integration test
+structurally empty, /health aggregator missing mcp_tool_call entry, dead call_next_result
+parameter). All four addressed in commits 5e9ad579 (mahavishnu) + a6ff6a7 (akosha).
+
+Re-verification pass on 5e9ad579 + a6ff6a7 returned `APPROVED WITH REVISIONS` (4 lens
+verdicts: Correctness AWR, Security APPROVED, Performance AWR, Test quality AWR; 31
+findings, 3 medium + 28 low). The 3 medium findings were addressed in commits
+8705f469 (mahavishnu microbench) + 076d63b (akosha wire-out). Status promoted
+`active → shipped` on 2026-09-27.
+
+- Correctness: APPROVED WITH REVISIONS → fixed (Akkosha wire-out complete)
+- Security: APPROVED (clean)
+- Performance: APPROVED WITH REVISIONS → fixed (microbench exercises real OTel exporter)
+- Test quality: APPROVED WITH REVISIONS → fixed (test asserts span capture)
+
+**Verdict:** Status `shipped`. Phase 1 complete; Phase 2 deferred (REQ-TSQ-010/011/012:
+audit + rubric + description rewrites). Follow-on plan captured at
+`docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md` for retention
+tier + /health pre-warm wiring.
