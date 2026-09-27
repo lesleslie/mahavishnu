@@ -46,7 +46,6 @@ class TestTaskEventType:
             "tag_added",
             "tag_removed",
             "webhook_received",
-            "synced",
         ]
 
         for event_type in expected_types:

@@ -78,7 +78,6 @@ class TaskEventType(StrEnum):
 
     # Integration events
     WEBHOOK_RECEIVED = "webhook_received"
-    SYNCED = "synced"
 
     # NEW per round-4 review (mahavishnu specialist). C-6 idempotency
     # path sets PENDING before COMPLETED. C-10 historical webhook path

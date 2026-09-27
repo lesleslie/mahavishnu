@@ -77,7 +77,7 @@ class TestExecutionsList:
             "exec-list-001",
             [
                 (TaskEventType.PENDING, "workflow.started"),
-                (TaskEventType.SYNCED, "workflow.completed"),
+                (TaskEventType.COMPLETED, "workflow.completed"),
             ],
         )
 
@@ -98,7 +98,7 @@ class TestExecutionsList:
             "exec-status-001",
             [
                 (TaskEventType.PENDING, "start"),
-                (TaskEventType.SYNCED, "end"),
+                (TaskEventType.COMPLETED, "end"),
             ],
         )
 
@@ -136,14 +136,14 @@ class TestExecutionsShow:
             "exec-show-001",
             [
                 (TaskEventType.PENDING, "workflow.started"),
-                (TaskEventType.SYNCED, "workflow.completed"),
+                (TaskEventType.COMPLETED, "workflow.completed"),
             ],
         )
 
         result = runner.invoke(executions_app, ["show", "exec-show-001"])
         assert result.exit_code == 0
         assert "pending" in result.stdout.lower()
-        assert "synced" in result.stdout.lower()
+        assert "completed" in result.stdout.lower()
 
     async def test_show_unknown_execution_returns_error(
         self,
@@ -166,7 +166,7 @@ class TestExecutionsShow:
             [
                 (TaskEventType.PENDING, "start"),
                 (TaskEventType.UPDATED, "mid"),
-                (TaskEventType.SYNCED, "end"),
+                (TaskEventType.COMPLETED, "end"),
             ],
         )
 
@@ -175,7 +175,7 @@ class TestExecutionsShow:
         )
         assert result.exit_code == 0
         assert "pending" in result.stdout.lower()
-        assert "synced" not in result.stdout.lower()
+        assert "completed" not in result.stdout.lower()
 
     async def test_show_raw_format(
         self,
@@ -208,7 +208,7 @@ class TestExecutionsShow:
 
         result = runner.invoke(
             executions_app,
-            ["show", "exec-step-empty", "--step", "SYNCED"],
+            ["show", "exec-step-empty", "--step", "COMPLETED"],
         )
         assert result.exit_code == 1
         assert "No events of type" in result.output

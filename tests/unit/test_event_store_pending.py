@@ -174,7 +174,7 @@ class TestRecordExecutionEventRoundTrip:
             [
                 TaskEventType.PENDING,
                 TaskEventType.UPDATED,
-                TaskEventType.SYNCED,
+                TaskEventType.COMPLETED,
             ],
         ):
             await record_execution_event(
@@ -185,7 +185,7 @@ class TestRecordExecutionEventRoundTrip:
                 occurred_at=base.replace(second=offset),
             )
         events = await get_execution_events("exec-002")
-        assert [e.event_type for e in events] == ["pending", "updated", "synced"]
+        assert [e.event_type for e in events] == ["pending", "updated", "completed"]
 
     async def test_correlation_id_optional(self, sqlite_engine: AsyncEngine) -> None:
         """Correlation ID round-trips when explicitly provided."""
@@ -222,7 +222,7 @@ class TestE2EWorkflowLifecycle:
         self,
         sqlite_engine: AsyncEngine,
     ) -> None:
-        """Six lifecycle events round-trip; first=PENDING, last=SYNCED."""
+        """Six lifecycle events round-trip; first=PENDING, last=COMPLETED."""
         exec_id = "exec-workflow-001"
         for etype, step in [
             (TaskEventType.PENDING, "workflow.started"),
@@ -230,7 +230,7 @@ class TestE2EWorkflowLifecycle:
             (TaskEventType.UPDATED, "workflow.stage_completed"),
             (TaskEventType.UPDATED, "workflow.stage_started"),
             (TaskEventType.UPDATED, "workflow.stage_completed"),
-            (TaskEventType.SYNCED, "workflow.completed"),
+            (TaskEventType.COMPLETED, "workflow.completed"),
         ]:
             await record_execution_event(
                 execution_id=exec_id,
@@ -241,7 +241,7 @@ class TestE2EWorkflowLifecycle:
         events = await get_execution_events(exec_id)
         assert len(events) >= 5
         assert events[0].event_type == "pending"
-        assert events[-1].event_type == "synced"
+        assert events[-1].event_type == "completed"
 
 
 @pytest.mark.req(["REQ-003"])
