@@ -2242,3 +2242,28 @@ class MarkdownWatcherDied(MahavishnuError):
             ErrorCode.INTERNAL_ERROR,
             details=details,
         )
+
+
+# ---------------------------------------------------------------------------
+# C-10 ecosystem intake error
+# ---------------------------------------------------------------------------
+
+
+class EcosystemIntakeError(MahavishnuError):
+    """Raised by the ecosystem intake endpoint when sanitization or
+    envelope construction fails. Returns 500 to the caller.
+
+    Req: REQ-016 (C-10 simplified ecosystem intake)
+    """  # req: REQ-016
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.INTERNAL_ERROR,
+            details=details,
+        )

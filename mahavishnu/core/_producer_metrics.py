@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from prometheus_client import Counter
+from prometheus_client import Counter, Histogram
 
 
 class ProducerCounters:
@@ -30,4 +30,17 @@ EVENTBRIDGE_PUBLISH_TOTAL: Counter = Counter(
     "mahavishnu_eventbridge_publish_total",
     "Total EventBridge publish attempts, labeled by envelope topic and result.",
     labelnames=["envelope_topic", "result"],
+)
+
+ECOSYSTEM_INTAKE_TOTAL: Counter = Counter(
+    "ecosystem_intake_total",
+    "Total ecosystem intake requests, labeled by source and result.",
+    labelnames=["source", "result"],
+    # result in {accepted, queued_no_publisher, not_found, disabled, too_large, error}
+)
+
+ECOSYSTEM_INTAKE_SANITIZE_DURATION: Histogram = Histogram(
+    "ecosystem_intake_sanitize_duration_seconds",
+    "Time to sanitize the request body via DataSanitizeAction.",
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0),
 )

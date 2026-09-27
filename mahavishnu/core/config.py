@@ -2470,8 +2470,10 @@ class WebhookIntakeSettings(BaseModel):
     """C-10 simplified ecosystem intake.
 
     Reduced surface vs original spec: no HMAC, no nonce, no DLQ,
-    no per-source secrets. Source allowlist is configured constant
-    in ``mahavishnu/webhooks/ecosystem_intake.py:ALLOWED_SOURCES``.
+    no per-source secrets. Source allowlist is the union of the
+    hardcoded ``ALLOWED_SOURCES`` constant in
+    ``mahavishnu/webhooks/ecosystem_intake.py`` and the operator-extended
+    ``allowed_sources`` set on this settings object.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -2481,6 +2483,7 @@ class WebhookIntakeSettings(BaseModel):
     bind_port: int = 8695  # PENDING BODAI_REPO_REGISTRY.md verification during impl
     tls_required: bool = True
     max_payload_size_bytes: int = Field(default=1_048_576, ge=1024)
+    allowed_sources: frozenset[str] = Field(default_factory=frozenset)
 
 
 class ConcurrencyLimitsSettings(BaseModel):

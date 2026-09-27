@@ -1,3 +1,10 @@
+---
+requirements:
+  - id: REQ-016
+    title: 200 vs 202 response distinction for ecosystem intake
+    description: "POST /webhooks/ecosystem/{source_name} returns 202 (sanitized and forwarded to Akosha), 404 (source not in allowlist), 413 (oversized), 503 (intake disabled). No HMAC, no nonce, no DLQ, no registration MCP tool."
+---
+
 # C-10: ecosystem event intake (radically simplified — niche-filter scope cut)
 
 **REQ-NNN:** REQ-016 — 200 vs 202 response distinction (kept for C-10 simplified)
