@@ -893,7 +893,19 @@ class FastMCPServer:
 
         @server.tool()
         async def get_log_statistics() -> dict[str, Any]:
-            """Get log statistics and analytics."""
+            """Get aggregate log statistics.
+
+            Do NOT use to read individual log lines — use `search_logs` for
+            that.
+
+            Returns a dict with `status` and `statistics` (level counts,
+            error rates by category). Empty `statistics` means no logs are
+            indexed yet — not an error.
+
+            Fails with `status="error"` if the log index is unreachable.
+
+            Side effect: none.
+            """
             try:
                 stats = await self.app.opensearch_integration.get_log_stats()
 
