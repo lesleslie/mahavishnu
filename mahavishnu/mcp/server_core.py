@@ -1200,7 +1200,22 @@ class FastMCPServer:
 
         @server.tool()
         async def list_adapters() -> dict[str, Any]:
-            """List available adapters."""
+            """List registered engine adapters with per-adapter health.
+
+            Do NOT use to dispatch work — use `pool_route_execute` for that.
+            Do NOT use for one-off adapter queries — use
+            `get_capability_result` for that.
+
+            Returns a dict keyed by adapter name with `enabled`, `health`,
+            `type`, and `features`. Missing adapters are absent from the
+            result (not present with `enabled: false`).
+
+            Fails with `status="error"` if any adapter's health probe
+            times out.
+
+            Side effect: each adapter's `get_health()` may issue a network
+            probe to its backing service.
+            """
             adapters_info = {}
             for name, adapter in self.app.adapters.items():
                 try:
