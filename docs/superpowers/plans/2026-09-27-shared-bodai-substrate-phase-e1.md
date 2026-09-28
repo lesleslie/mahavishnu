@@ -37,7 +37,7 @@ Verbatim from spec §12:
 - Each component's override via `{PROJECT_NAME}__*` (e.g., `MAHAVISHNU__POOL__WORKERS_PER_INSTANCE`) wins over substrate defaults.
 - Every substrate adapter exposes `get_feed_state() -> FeedState`.
 - `oneiric/docs/substrate.md` documents the resolution order.
-- `grep -rn "class SubstrateSettings" .` returns exactly one hit (`oneiric/core/config.py` nested definition).
+- `grep -rn "class SubstrateSettings" .` returns exactly one hit (`oneiric/core/config.py` as **nested class** — NOT a top-level class, per spec §6.5 + §9 validation; v5 corrects v4 plan that proposed a sibling module `oneiric/core/substrate_settings.py`).
 - `pytest oneiric/tests/test_substrate_settings.py oneiric/tests/test_get_feed_state.py oneiric/tests/test_acl_enforced.py -v` all PASS.
 
 ## 2. Goals
@@ -72,21 +72,32 @@ Verbatim from spec §12:
 ```yaml
 requirements:
   - id: REQ-OSUB-E1-001
-    title: "SubstrateSettings nested in OneiricSettings with 30+ fields from spec §5.3"
+    title: "SubstrateSettings nested in OneiricSettings (NOT a sibling module) with 30+ fields from spec §5.3"
+    dep: "All consumers → oneiric.core.config.OneiricSettings"
   - id: REQ-OSUB-E1-002
     title: "ONEIRIC__SUBSTRATE__* env var resolution in _env_overrides layer"
+    dep: "oneiric.core.config; consumer → oneiric"
   - id: REQ-OSUB-E1-003
     title: "Per-component override {PROJECT}__* beats substrate defaults"
+    dep: "Component → oneiric (load_settings honors {PROJECT_NAME}__* over ONEIRIC__SUBSTRATE__*)"
   - id: REQ-OSUB-E1-004
     title: "MemoryCacheAdapter.get_feed_state returns valid FeedState (4 keys)"
+    dep: "Adapter → oneiric"
   - id: REQ-OSUB-E1-005
     title: "PgvectorAdapter.get_feed_state returns valid FeedState"
+    dep: "Adapter → oneiric"
   - id: REQ-OSUB-E1-006
     title: "HotStore Protocol gains get_feed_state method"
+    dep: "Adapter protocol → oneiric"
   - id: REQ-OSUB-E1-007
     title: "EmbeddingBase gets get_feed_state default implementation"
+    dep: "Adapter base class → oneiric"
   - id: REQ-OSUB-E1-008
     title: "oneiric/docs/substrate.md documents resolution order and adapter adoption"
+    dep: "Documentation, no implementation runtime dependency"
+  - id: REQ-OSUB-E1-009
+    title: "Storage adapters (gcs/s3/local/azure) gain get_feed_state per spec §5.6"
+    dep: "Adapter → oneiric (per spec §5.6 universal invariant)"
 ```
 
 ## 6. Implementation Tasks
@@ -94,8 +105,7 @@ requirements:
 ### Task 1: `SubstrateSettings` nested class + `oneiric_settings.substrate` field
 
 **Files:**
-- Modify: `oneiric/core/config.py:246` (extend `OneiricSettings`)
-- Create: `oneiric/core/substrate_settings.py` (new module containing `SubstrateSettings`)
+- Modify: `oneiric/core/config.py:246` (extend `OneiricSettings` AND nest `SubstrateSettings` class as a class inside the same module — **v5 corrects v4** which proposed a sibling module `oneiric/core/substrate_settings.py` at top-level; spec §6.5 + §9 require nested class so `grep "class SubstrateSettings"` returns exactly one hit in `config.py`)
 - Test: `oneiric/tests/test_substrate_settings.py` (new)
 
 #### Integration Contract ← REQUIRED
@@ -133,7 +143,7 @@ def test_substrate_default_when_no_override(monkeypatch):
 
 - [ ] **Step 2: Run, expect failure** (currently `substrate` does not exist on `OneiricSettings`).
 
-- [ ] **Step 3: Create `oneiric/core/substrate_settings.py`** with the `SubstrateSettings` class — exactly the field set from spec §5.3 (T0 cache, T1 warm, T2 cold, embedding, pool, retry, circuit_breaker, telemetry, backup, auth).
+- [ ] **Step 3: Nest the `SubstrateSettings` class inside `oneiric/core/config.py`** — class definition lives in the same module as `OneiricSettings`. **v5 correction**: do NOT create `oneiric/core/substrate_settings.py`. The exact field set comes from spec §5.3 (T0 cache, T1 warm, T2 cold, embedding, pool, retry, circuit_breaker, telemetry, backup, auth).
 
 - [ ] **Step 4: Add `substrate: "SubstrateSettings" = Field(default_factory=lambda: SubstrateSettings())` to `OneiricSettings`**.
 
@@ -145,7 +155,7 @@ def test_substrate_default_when_no_override(monkeypatch):
 
 ```bash
 cd /Users/les/Projects/oneiric
-git add oneiric/core/substrate_settings.py oneiric/core/config.py oneiric/tests/test_substrate_settings.py
+git add oneiric/core/config.py oneiric/tests/test_substrate_settings.py
 git commit -m "feat(oneiric): SubstrateSettings nested in OneiricSettings"
 ```
 
@@ -202,6 +212,14 @@ git commit -m "feat(oneiric): get_feed_state on MemoryCacheAdapter"
 - Modify: `oneiric/adapters/vector/pgvector.py`
 - Test: `oneiric/tests/test_get_feed_state.py` (extend combined test file)
 
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: Component `/health` aggregator (Phase E2 Task 5) calls `PgvectorAdapter.get_feed_state()` per `mcp-backend-wiring-discipline.md §3`.
+- **Returns to**: `FeedState` dict with 4 keys (entities_count, last_updated_timestamp, errors_total, cycles_total) sourced from `SELECT COUNT(*), MAX(updated_at)` against the namespace table.
+- **Demonstrable by**: `pytest oneiric/tests/test_get_feed_state.py -v` PASS.
+- **Rollback signal**: `get_feed_state()` raises on a healthy pgvector connection (caught by `/health` aggregator → 503 degraded).
+- **Observability added**: counters incremented on each pgvector query; OTel span `warm.pgvector.feed_state.sample` on each call.
+
 - [ ] **Step 1: Write failing test** (mirrors Task 2 for pgvector — counts from `SELECT COUNT(*) FROM <namespace>.reflections`).
 
 - [ ] **Step 2: Run, expect failure**.
@@ -217,6 +235,14 @@ git commit -m "feat(oneiric): get_feed_state on MemoryCacheAdapter"
 **Files:**
 - Modify: `oneiric/adapters/vector/hot_store.py:40`
 
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: Mahavishnu OTel ingester (uses `HotStore` Protocol via ADR 017); any consumer that depends on `HotStore` will see the new abstract method.
+- **Returns to**: `HotStore.get_feed_state()` becomes part of the Protocol contract.
+- **Demonstrable by**: mypy passes on `mahavishnu/ingesters/otel_ingester.py:605` (uses `DuckdbHotStore` in dev mode); `pytest oneiric/tests/test_get_feed_state.py -v` PASS.
+- **Rollback signal**: Protocol addition breaks a downstream consumer (revert the abstract method).
+- **Observability added**: OTel span on concrete `HotStore.get_feed_state()` calls.
+
 - [ ] **Step 1: Add `get_feed_state()` to the `HotStore` Protocol** (abstract method declaration).
 
 - [ ] **Step 2: Update concrete adapters implementing `HotStore`** (`DuckdbHotStore` etc.) to implement the method.
@@ -229,6 +255,14 @@ git commit -m "feat(oneiric): get_feed_state on MemoryCacheAdapter"
 
 **Files:**
 - Modify: `oneiric/adapters/embedding/embedding_interface.py:81`
+
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: Akosha + SB embedding calls (search indexing, reflection write) increment counters.
+- **Returns to**: `EmbeddingBase.get_feed_state()` returns `FeedState` with 4 keys; concrete adapters (`fastembed.py`, `llama_server.py`, `ollama.py`, `openai.py`) implement it.
+- **Demonstrable by**: `pytest oneiric/tests/test_get_feed_state.py -v` PASS.
+- **Rollback signal**: embedding service error rate > 1%; dimension mismatch between cache and warm store.
+- **Observability added**: counters `_calls_count`, `_last_call_ts`, `_error_count` per adapter.
 
 - [ ] **Step 1: Add abstract `get_feed_state()` to `EmbeddingBase`**; concrete adapters (`fastembed.py`, `llama_server.py`, `ollama.py`, `openai.py`) implement it.
 
@@ -246,8 +280,8 @@ git commit -m "feat(oneiric): get_feed_state on MemoryCacheAdapter"
 - **Triggered from**: Component authors reading `oneiric/docs/substrate.md` to understand adoption.
 - **Returns to**: Resolution order documented; per-component override pattern shown.
 - **Demonstrable by**: `cat oneiric/docs/substrate.md` shows resolution diagram, env var convention, adapter adoption checklist.
-- **Rollback signal**: N/A (documentation).
-- **Observability added**: N/A.
+- **Rollback signal**: doc-only change is reverted via `git revert` on its commit; no production-state risk. (`N/A` per template — rewording per v5 template-fidelity cleanup.)
+- **Observability added**: no new OTel/metric spans introduced; doc references existing `settings.load`, `cache.adapter.memory.get`, etc. spans.
 
 - [ ] **Step 1: Draft the doc** — sections: (1) Overview, (2) Resolution order, (3) `SubstrateSettings` field reference, (4) Adapter adoption checklist, (5) `get_feed_state` per adapter, (6) Cross-component invocation rules.
 
@@ -259,12 +293,43 @@ git add oneiric/docs/substrate.md
 git commit -m "docs(oneiric): substrate adoption guide"
 ```
 
+### Task 7: `get_feed_state()` on storage adapters (`gcs,s3,local,azure`)
+
+**Files:**
+- Modify: `oneiric/adapters/storage/gcs.py`
+- Modify: `oneiric/adapters/storage/s3.py`
+- Modify: `oneiric/adapters/storage/local.py`
+- Modify: `oneiric/adapters/storage/azure.py`
+
+**v5 addition (per spec §5.6 universal invariant — Phase C added `PrefixACL` to storage adapters, but `get_feed_state` was missed).**
+
+#### Integration Contract ← REQUIRED (v5 addition per spec §5.6)
+
+- **Triggered from**: Component `/health` aggregator (Phase E2 Task 5) calls `cold.adapter.{gcs,s3,local,azure}.get_feed_state()`; required because Phase E2 expects `feeds.cold_state` to be populated.
+- **Returns to**: each storage adapter's `get_feed_state()` returns `FeedState` with 4 keys (entities_count, last_updated_timestamp, errors_total, cycles_total).
+- **Demonstrable by**: `pytest oneiric/tests/test_get_feed_state.py -v` extended for storage adapters; integration test `tests/integration/test_health_feed_state_aggregated.py` (Phase E2 Task 5) reads `feeds.cold_state` without raising.
+- **Rollback signal**: storage adapter `get_feed_state()` raises on a healthy bucket (caught by `/health` aggregator → 503 degraded).
+- **Observability added**: per spec §5.6 — counters are observable via OTel.
+
+- [ ] **Step 1: Extend `oneiric/tests/test_get_feed_state.py`** with storage-adapter test cases (mocked responses from each backend's client).
+
+- [ ] **Step 2: Add `get_feed_state()` method to each storage adapter** — counts from list-objects + a `last_call_ts` per operation.
+
+- [ ] **Step 3: Run storage-adapter tests; verify integration**: `pytest oneiric/tests/test_get_feed_state.py -v` PASS.
+
+- [ ] **Step 4: Commit**:
+
+```bash
+cd /Users/les/Projects/oneiric
+git add oneiric/adapters/storage/{gcs,s3,local,azure}.py oneiric/tests/test_get_feed_state.py
+git commit -m "feat(oneiric): get_feed_state on storage adapters"
+```
+
 ## 7. Required Code Changes
 
 | File | Action | Phase task |
 |---|---|---|
-| `oneiric/core/substrate_settings.py` | CREATE: `SubstrateSettings` | Task 1 |
-| `oneiric/core/config.py:246` | MODIFY: extend `OneiricSettings.substrate` | Task 1 |
+| `oneiric/core/config.py:246` | MODIFY: extend `OneiricSettings.substrate` AND nest `SubstrateSettings` (v5: no sibling module) | Task 1 |
 | `oneiric/core/config.py:678-745` | MODIFY: `_env_overrides` scans `ONEIRIC__SUBSTRATE__*` | Task 1 |
 | `oneiric/tests/test_substrate_settings.py` | CREATE | Task 1 |
 | `oneiric/adapters/cache/memory.py` | MODIFY: add `get_feed_state` | Task 2 |
@@ -272,14 +337,18 @@ git commit -m "docs(oneiric): substrate adoption guide"
 | `oneiric/adapters/vector/hot_store.py:40` | MODIFY: Protocol gains `get_feed_state` | Task 4 |
 | `oneiric/adapters/embedding/embedding_interface.py:81` | MODIFY: add `get_feed_state` | Task 5 |
 | `oneiric/adapters/embedding/{fastembed,llama_server,ollama,openai}.py` | MODIFY: implement concrete `get_feed_state` | Task 5 |
-| `oneiric/tests/test_get_feed_state.py` | CREATE | Tasks 2-5 |
+| `oneiric/tests/test_get_feed_state.py` | CREATE / extend | Tasks 2-5, 7 |
 | `oneiric/docs/substrate.md` | CREATE | Task 6 |
+| `oneiric/adapters/storage/gcs.py` | MODIFY: add `get_feed_state` | Task 7 |
+| `oneiric/adapters/storage/s3.py` | MODIFY: add `get_feed_state` | Task 7 |
+| `oneiric/adapters/storage/local.py` | MODIFY: add `get_feed_state` | Task 7 |
+| `oneiric/adapters/storage/azure.py` | MODIFY: add `get_feed_state` | Task 7 |
 
 ## 8. Validation Matrix
 
 | Tool / Command | Expected outcome | Evidence |
 |---|---|---|
-| `grep -rn "class SubstrateSettings" .` | exactly 1 hit in `oneiric/core/substrate_settings.py` | shell grep |
+| `grep -rn "class SubstrateSettings" .` | exactly 1 hit in `oneiric/core/config.py` (nested class; v5 correction — was sibling module) | shell grep |
 | `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES=5 python -c "from oneiric.core.config import load_settings; s = load_settings(); print(s.substrate.cache__max_entries)"` | prints `5` | stdout |
 | `python -c "from oneiric.adapters.vector.pgvector import PgvectorAdapter; print(PgvectorAdapter().get_feed_state())"` | dict with 4 keys (may raise without DB; integration test) | stdout |
 | `pytest oneiric/tests/test_substrate_settings.py oneiric/tests/test_get_feed_state.py -v` | all green | pytest exit 0 |
@@ -294,6 +363,9 @@ git commit -m "docs(oneiric): substrate adoption guide"
 | `pydantic-settings` nested env-prefix breaks for `__SUBSTRATE__` because env-var names have 3 segments | Low | `env_nested_delimiter="__"` already configured; substrate uses `__` to mean nested field separator |
 | Existing `OneiricSettings` consumers break because `substrate` is new | Low | New field is additive; `extra="allow"` already set; existing callers ignore it |
 | `get_feed_state` raises on adapters without backing DB | Medium | Wrap in try/except; on failure return stale-but-valid dict so `/health` aggregator can flag degraded but not crash |
+| **(Meta, spec §10 #7) oneiric becomes a hard substrate dependency** | Medium | Phase E1 introduces `SubstrateSettings` nested in `OneiricSettings` (settings loaders across all components now require `oneiric`). CI guard test asserts minimum version. |
+| **(Meta, spec §10 #8) Cross-component import direction violation** | Low | Phase E1 is oneiric-only; no cross-component imports added. |
+| **(Meta, spec §10 #9) Rollback complexity across 6 phases × 4 repos** | Low for Phase E1 | Phase E1 is pure-additive; rollback reverts the nested class addition without breaking existing `OneiricSettings` consumers (`extra="allow"` preserves compatibility). |
 
 ## 10. Decision Rule
 

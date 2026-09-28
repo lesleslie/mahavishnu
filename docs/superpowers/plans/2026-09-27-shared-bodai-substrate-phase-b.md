@@ -69,16 +69,25 @@ Verbatim from spec §12:
 requirements:
   - id: REQ-OSUB-B-001
     title: "SBWarmStore wraps PgvectorAdapter with namespace=sb"
+    dep: "SB → oneiric (PgvectorAdapter)"
   - id: REQ-OSUB-B-002
     title: "Migration script DuckDB → pgvector verifies count + numpy.allclose(atol=1e-5)"
+    dep: "SB → oneiric (PgvectorAdapter); migration script → SB storage"
   - id: REQ-OSUB-B-003
     title: "SB /health returns 503 with state=migrating during freeze window"
+    dep: "SB mcp server → SB warm store; freeze is in-process flag"
   - id: REQ-OSUB-B-004
     title: "Cross-namespace ACL denies sb.* reads from akosha.* processes without explicit grant"
+    dep: "Akosha → oneiric (PgvectorAdapter ACL); SB → oneiric (PgvectorAdapter ACL)"
   - id: REQ-OSUB-B-005
     title: "SB p99 quick_search read latency ≤ 10ms from local pgvector"
+    dep: "SB → oneiric (PgvectorAdapter)"
   - id: REQ-OSUB-B-006
     title: "Delete DuckDB VSS HNSW knobs from session_buddy/adapters/settings.py"
+    dep: "SB → oneiric (PgvectorAdapter); deletes duckdb internals"
+  - id: REQ-OSUB-B-007
+    title: "Delete legacy DuckDB SQL migrations V1–V6 after 90-day archive window"
+    dep: "SB (deletes its own migrations); gated on DuckDB cold archive"
 ```
 
 ## 6. Implementation Tasks
@@ -134,6 +143,14 @@ git commit -m "feat(session-buddy): warm tier via PgvectorAdapter"
 
 **Files:**
 - Modify: `session_buddy/adapters/settings.py:24-52`
+
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: SB restart after Task 1 lands; the unused knobs become dead-on-arrival.
+- **Returns to**: `session_buddy/adapters/settings.py` no longer carries HNSW/DuckDB VSS knobs; `ReflectionAdapterSettings` shrinks to only pgvector-relevant fields.
+- **Demonstrable by**: `grep -rn "hnsw_m\|hnsw_ef_construction\|hnsw_ef_search\|enable_quantization" session_buddy/` returns zero hits.
+- **Rollback signal**: SB settings loader raises `ValidationError` on field removal (revert to keep both).
+- **Observability added**: count of `ReflectionAdapterSettings` fields logged at startup via `oneiric.logging` (drift detection).
 
 - [ ] **Step 1: Verify knobs are no longer read** — `grep -rn "hnsw_m\|hnsw_ef_construction\|hnsw_ef_search\|enable_quantization" session_buddy/` after Task 1 lands → expect zero hits in code (only in `settings.py` itself).
 
@@ -198,6 +215,14 @@ git commit -m "feat(session-buddy): DuckDB to pgvector migration script"
 **Files:**
 - Modify: `session_buddy/mcp/server.py` (or wherever `/health` aggregates; check via `grep -rn "/health" session_buddy/mcp/`)
 
+#### Integration Contract ← REQUIRED (v5 addition; also documents freeze ↔ migration sequencing per spec §6.7)
+
+- **Triggered from**: Operator sets `SB_MIGRATION_IN_PROGRESS=1` (or `/tmp/sb_migration_in_progress` flag) before running the Task 3 migration script. **Sequencing** (per spec §6.7): Task 4 must land and the operator must signal freeze BEFORE Task 3 runs; otherwise writes accumulate on both backends and the count + `numpy.allclose` equality check cannot verify. Document this in `docs/session-buddy/operations/migrate-to-pgvector.md` (created in Task 3).
+- **Returns to**: SB `/health` returns 503 with `{"status": "degraded", "state": "migrating", "feeds": {...}}` while freeze is active; clients/pool routers reject writes.
+- **Demonstrable by**: `pytest ... -v` asserts 503 when freeze is signaled.
+- **Rollback signal**: `SB_MIGRATION_IN_PROGRESS` flag stale for > 1 hour (operator forgot to clear) → 503 stuck → operator clears flag, `/health` returns 200.
+- **Observability added**: OTel span `health.freeze_window.active` with `actor`, `since_ts`; log line on entry/exit.
+
 - [ ] **Step 1: Identify current `/health` shape**.
 
 - [ ] **Step 2: Add freeze window state** — when an operator signals "freeze" (env var `SB_MIGRATION_IN_PROGRESS=1` or file flag `/tmp/sb_migration_in_progress`), `/health` returns 503 with `{"status": "degraded", "state": "migrating", "feeds": {...}}`.
@@ -216,8 +241,17 @@ def test_health_503_during_migration_freeze(monkeypatch, sb_health_callable):
 
 **Files:**
 - Create: `tests/integration/test_cross_namespace_acl_sb.py`
+- Create: `akosha/tests/integration/test_akosha_searches_sb_namespace.py` (v5 addition — positive cross-namespace path required by spec §6.2)
 
-- [ ] **Step 1: Write the test**:
+#### Integration Contract ← REQUIRED (v5 addition; also covers Observability)
+
+- **Triggered from**: CI gate on every PR touching `oneiric/adapters/vector/pgvector.py` or akosha search paths.
+- **Returns to**: `tests/integration/test_cross_namespace_acl_sb.py` asserts negative path (default-deny); `akosha/tests/integration/test_akosha_searches_sb_namespace.py` asserts positive path (admin-granted read of `sb.reflections`).
+- **Demonstrable by**: `pytest tests/integration/test_cross_namespace_acl_sb.py akosha/tests/integration/test_akosha_searches_sb_namespace.py -v` PASS.
+- **Rollback signal**: ACL raises on legitimate reads (false positive) OR returns silently on denied reads (false negative — `tests/integration/test_cross_namespace_acl_sb.py` catches false negative).
+- **Observability added**: OTel span `warm.pgvector.acl.assert` with `caller_namespace`, `target_namespace`, `decision=allow|deny` per `mcp-backend-wiring-discipline.md §3`.
+
+- [ ] **Step 1: Write the negative test**:
 
 ```python
 def test_akosha_namespace_cannot_read_sb_namespace_by_default():
@@ -228,11 +262,101 @@ def test_akosha_namespace_cannot_read_sb_namespace_by_default():
         adapter.search(embedding=[0.0]*384, top_k=5, namespace="sb")
 ```
 
+- [ ] **Step 1b: Write the positive cross-namespace test** in `akosha/tests/integration/test_akosha_searches_sb_namespace.py`:
+
+```python
+def test_akosha_granted_admin_reads_sb_namespace():
+    """Per spec §6.2 — admin grant permits Akosha caller to read sb.*  reflections."""
+    from oneiric.adapters.vector.pgvector import PgvectorAdapter
+    adapter = PgvectorAdapter(
+        namespace="akosha", pg_url="...",
+        cross_namespace_grant=True,
+    )
+    results = adapter.search(embedding=[0.0]*384, top_k=5, namespace="sb")
+    # Successful cross-namespace read returns rows; assertion is non-empty + log entries.
+    assert isinstance(results, list)
+```
+
 - [ ] **Step 2: Verify permission logic exists in `PgvectorAdapter`** — `oneiric/adapters/vector/pgvector.py` already namespaced? If not, add `assert_caller_namespace_allowed(target_namespace)` method (skeleton acceptable — full implementation lives in Phase C; this test pins the API).
 
 - [ ] **Step 3: Run, expect pass** with explicit `cross_namespace_grant=True` test variant.
 
 - [ ] **Step 4: Commit**.
+
+### Task 6: Delete legacy DuckDB SQL migrations V1–V6 after archive window
+
+**Files:**
+- Delete: `session_buddy/storage/migrations/V1__initial_schema.sql`
+- Delete: `session_buddy/storage/migrations/V2__add_semantic_search.sql`
+- Delete: `session_buddy/storage/migrations/V3__add_workflow_correlation.sql`
+- Delete: `session_buddy/storage/migrations/V4__phase4_extensions.sql`
+- Delete: `session_buddy/storage/migrations/V5__ulid_migration.sql`
+- Delete: `session_buddy/storage/migrations/V6__ulid_contract.sql`
+
+**v5 addition (per spec §6.2 "Files (delete after migration verified + 90-day cold-tier archive window)")**: tasks were absent in v4 plans.
+
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: SB operator, 90+ days after Phase B Phase B2 release-train gate closes; or operator-decision to retire the cold-tier archive earlier.
+- **Returns to**: `session_buddy/storage/migrations/` no longer contains DuckDB V1-V6 SQL files (none of which were about `query_cache_l2` — that table was runtime-CREATE'd in code, not migration'd).
+- **Demonstrable by**: `ls session_buddy/storage/migrations/` shows only migrations post-V6 (if any); `pytest` still passes.
+- **Rollback signal**: SB boot fails because a future migration runner depends on a V1-V6 file → restore from git.
+- **Observability added**: OTel span `migrations.legacy.duckdb.delete` with `count=6`, `since_commit_sha`.
+
+- [ ] **Step 1: Verify archive window closed** — `git log --since="90 days ago" -- session_buddy/storage/migrations/` shows no recent reference; cold archive of `reflection.duckdb` exists in R2 (`sb/cold/reflection.duckdb`).
+
+- [ ] **Step 2: Delete V1-V6 via `git rm`**:
+
+```bash
+cd /Users/les/Projects/session-buddy
+git rm session_buddy/storage/migrations/V[1-6]__*.sql
+git commit -m "refactor(session-buddy): delete legacy DuckDB V1-V6 migrations (post archive window)"
+```
+
+### Task 7: Performance test — p99 quick_search read latency ≤ 10ms
+
+**Files:**
+- Create: `tests/performance/test_sb_pgvector_p99.py` (per spec §6.2 Validation Matrix and §13 test list)
+
+**v5 addition (per spec §6.2 Demonstrable by implications and §13 test-list)**: was missing in v4 plans.
+
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: Pre-merge performance gate on every PR touching `session_buddy/storage/pgvector.py` or `session_buddy/adapters/reflection_adapter_oneiric.py`.
+- **Returns to**: `tests/performance/test_sb_pgvector_p99.py` reports `p99 quick_search latency ≤ 10ms` from local pgvector; CI passes the threshold.
+- **Demonstrable by**: `pytest tests/performance/test_sb_pgvector_p99.py -v --benchmark-disable-gc` PASS; `pytest-benchmark` report shows p99 within budget.
+- **Rollback signal**: p99 > 10ms over 3 consecutive runs → investigate warm-tier index; possibly disable HNSW knobs.
+- **Observability added**: histogram metric `warm.pgvector.search.duration_ms` with bucket `le="0.005","0.01","0.05","0.1","0.5","1","5","+Inf"`.
+
+- [ ] **Step 1: Write the test**:
+
+```python
+import time
+import statistics
+from session_buddy.storage.pgvector import SBWarmStore
+
+def test_sb_warm_pgvector_p99_under_10ms():
+    ws = SBWarmStore(namespace="sb", pg_url="postgresql://localhost:5432/oneiric_substrate_test")
+    seed = [[0.01 * i] * 384 for i in range(50)]
+    for vec in seed: ws.upsert(reflection_id=f"bench-{vec!r}", embedding=vec, metadata={})
+    durations_ms = []
+    for _ in range(1000):
+        t0 = time.perf_counter()
+        ws.search(embedding=seed[0], top_k=10)
+        durations_ms.append((time.perf_counter() - t0) * 1000)
+    p99 = statistics.quantiles(durations_ms, n=100)[-1]
+    assert p99 <= 10.0, f"p99={p99}ms exceeds 10ms budget"
+```
+
+- [ ] **Step 2: Run locally against docker-compose stack; record p99**; if > 10ms, investigate before promoting.
+
+- [ ] **Step 3: Commit**:
+
+```bash
+cd /Users/les/Projects/mahavishnu
+git add tests/performance/test_sb_pgvector_p99.py
+git commit -m "test(perf): SB p99 pgvector ≤ 10ms"
+```
 
 ## 7. Required Code Changes
 
@@ -258,8 +382,10 @@ def test_akosha_namespace_cannot_read_sb_namespace_by_default():
 | `pytest session_buddy/tests/integration/test_sb_warm_pgvector.py -v` | PASS | pytest exit 0 |
 | `pytest tests/integration/test_sb_migrated_from_duckdb.py -v` | PASS | pytest exit 0 |
 | `pytest tests/integration/test_cross_namespace_acl_sb.py -v` | PASS (PermissionError raised) | pytest exit 0 |
+| `pytest akosha/tests/integration/test_akosha_searches_sb_namespace.py -v` | PASS (admin-granted read works) | pytest exit 0 |
 | `pytest tests/performance/test_sb_pgvector_p99.py -v` | p99 ≤ 10ms | benchmark report |
 | `python scripts/migrate_sb_reflection_duckdb_to_pgvector.py` (against staging copy) | exit 0; counts match | shell exit 0 |
+| `ls session_buddy/storage/migrations/` post-Task-6 | only migrations post-V6 (or empty dir) | shell output |
 | `crackerjack run -v` (SB) | green | exit code 0 |
 
 ## 9. Risks
@@ -271,6 +397,9 @@ def test_akosha_namespace_cannot_read_sb_namespace_by_default():
 | Freeze window blocks writes during migration | Low (intended) | Operators explicitly signal freeze; `/health` 503 returns clearly to clients |
 | Cross-namespace data leak | Low | ACL test in Task 5; default-deny; explicit `cross_namespace_grant` required |
 | Akosha on different pgvector schema breaks Akosha | Low | Akosha namespace `akosha.*` independent; ACL isolation per spec §5.2 |
+| **(Meta, spec §10 #7) oneiric becomes a hard substrate dependency** | Medium | `oneiric>=<pinned>` to SB `pyproject.toml` already required for the cache substrate (Phase A); Phase B extends to PgvectorAdapter import. CI guard test asserts minimum version. |
+| **(Meta, spec §10 #8) Cross-component import direction violation** | Medium | Phase B adds SB → oneiric (PgvectorAdapter) and Akosha → oneiric (PgvectorAdapter); no Akosha→Mahavishnu / SB→Mahavishnu imports introduced. CI guard: `grep -rn "from mahavishnu" akosha/ session_buddy/` returns zero hits. |
+| **(Meta, spec §10 #9) Rollback complexity across 6 phases × 4 repos** | Medium for Phase B | Phase B is the largest phase (DuckDB→pgvector migration). Task 6 deletes DuckDB V1-V6 SQL only AFTER 90-day archive window. Earlier rollback restores DuckDB; later rollback points require cold-archive restore. Per spec §6.7 cross-phase rollback is union of per-phase rollbacks. |
 
 ## 10. Decision Rule
 

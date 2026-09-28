@@ -13,7 +13,7 @@ topic: shared-oneiric-substrate-phase-d
 
 **Goal:** Consolidate embedding backends on `oneiric.adapters.embedding.EmbeddingBase` with a forced single default model (`ONEIRIC__SUBSTRATE__EMBEDDING__MODEL`).
 
-**Architecture:** Add three new adapters (`fastembed.py`, `llama_server.py`, `ollama.py`) to `oneiric/adapters/embedding/`. Enforce L2-normalize in `EmbeddingBase.embed()` when `normalize=True` (idempotent + metric-correctness). Akosha's existing `akosha/processing/embeddings.py` shim delegates to new `EmbeddingBase`. SB's `session_buddy/reflection/embeddings.py` (HTTP-only, new `httpx.AsyncClient` per call, module-level `_embedding_cache` dict) is deleted. Per-component override of model name is forbidden — only `ONEIRIC__SUBSTRATE__EMBEDDING__MODEL` is read.
+**Architecture:** Add three new adapters (`fastembed.py`, `llama_server.py`, `ollama.py`) to `oneiric/adapters/embedding/`. Enforce L2-normalize in `EmbeddingBase.embed()` when `SubstrateSettings.embedding__normalize=True` (idempotent + metric-correctness). Akosha's existing `akosha/processing/embeddings.py` shim delegates to new `EmbeddingBase`. SB's `session_buddy/reflection/embeddings.py` (HTTP-only, **new `httpx2.AsyncClient` per call** — `import httpx2 as httpx` at lines 37 + 70; v5 corrects the library name from `httpx.AsyncClient` to `httpx2.AsyncClient` because the module does `import httpx2 as httpx`), module-level `_embedding_cache` dict (declaration at **line 116**; eviction logic at lines 138-141 — v5 corrects the citation) is deleted. Per-component override of model name is forbidden — only `ONEIRIC__SUBSTRATE__EMBEDDING__MODEL` is read.
 
 **Tech Stack:** Python 3.14, fastembed (ONNX), httpx2 (single client per service instance), Ollama HTTP API, llama-server HTTP API, numpy.
 
@@ -61,7 +61,7 @@ Verbatim from spec §12:
 - **`EmbeddingBase` exists**: `oneiric/adapters/embedding/embedding_interface.py:81` defines `EmbeddingBase` ABC with `PoolingStrategy` and `VectorNormalization` enums.
 - **Only `openai.py` exists in `oneiric/adapters/embedding/`** — no `fastembed.py`, `llama_server.py`, `ollama.py`.
 - **Akosha shim**: `akosha/processing/embeddings.py:30-31` subclasses `oneiric.adapters.observability.embedding_settings.EmbeddingSettings` + `oneiric.adapters.observability.embeddings.EmbeddingService`. Folds to new `EmbeddingBase` (audit finding B2).
-- **SB HTTP-only embeddings**: `session_buddy/reflection/embeddings.py:35-97`. New `httpx2.AsyncClient` per call (line 39-46), module-level `_embedding_cache` dict (line 138-141, "evict oldest 10% when size > 1024"), `EMBEDDING_DIM=384`.
+- **SB HTTP-only embeddings**: `session_buddy/reflection/embeddings.py:35-97`. New `httpx2.AsyncClient` per call (line 39-46, imported via `import httpx2 as httpx` at line 37), module-level `_embedding_cache: dict[str, list[float]] = {}` declared at **line 116** (v5 corrects the cited line; the eviction logic at lines 138-141 is what `evict oldest 10% when size > 1024` does — both are deleted when the file is deleted), `EMBEDDING_DIM=384`.
 - **Per-component model override forbidden** — single source of truth: `ONEIRIC__SUBSTRATE__EMBEDDING__MODEL` (audit finding C3).
 
 ## 5. Requirements
@@ -70,18 +70,28 @@ Verbatim from spec §12:
 requirements:
   - id: REQ-OSUB-D-001
     title: "oneiric.adapters.embedding.fastembed implements EmbeddingBase with ONNX in-process"
+    dep: "Akosha → oneiric (FastembedEmbeddingAdapter); SB → oneiric (FastembedEmbeddingAdapter)"
   - id: REQ-OSUB-D-002
     title: "oneiric.adapters.embedding.llama_server implements EmbeddingBase with single AsyncClient per instance"
+    dep: "Akosha → oneiric (LlamaServerEmbeddingAdapter); SB → oneiric (LlamaServerEmbeddingAdapter)"
   - id: REQ-OSUB-D-003
     title: "oneiric.adapters.embedding.ollama implements EmbeddingBase against /api/embed"
+    dep: "Akosha → oneiric (OllamaEmbeddingAdapter); SB → oneiric (OllamaEmbeddingAdapter)"
   - id: REQ-OSUB-D-004
-    title: "EmbeddingBase.embed() enforces L2-normalize when normalize=True (idempotent)"
+    title: "EmbeddingBase.embed() enforces L2-normalize when SubstrateSettings.embedding__normalize=True (idempotent)"
+    dep: "Akosha → oneiric (EmbeddingBase config); SB → oneiric (EmbeddingBase config)"
   - id: REQ-OSUB-D-005
     title: "Akosha embedding shim delegates to EmbeddingBase"
+    dep: "Akosha → oneiric (EmbeddingBase)"
   - id: REQ-OSUB-D-006
     title: "SB session_buddy/reflection/embeddings.py deleted; callers use oneiric.adapters.embedding.EmbeddingBase"
+    dep: "SB → oneiric (EmbeddingBase)"
   - id: REQ-OSUB-D-007
     title: "Cross-component alignment: Akosha + SB produce same vector under same backend (audit C3)"
+    dep: "Akosha → oneiric (EmbeddingBase); SB → oneiric (EmbeddingBase); same model"
+  - id: REQ-OSUB-D-008
+    title: "Cross-backend alignment: same text under fastembed vs llama-server produces same vector when both use the same model (spec §6.4 Demonstrable by)"
+    dep: "Akosha + SB → oneiric (both backends)"
 ```
 
 ## 6. Implementation Tasks
@@ -151,7 +161,7 @@ git commit -m "feat(oneiric): add fastembed embedding adapter"
 
 - **Triggered from**: Component init when `SubstrateSettings.embedding__backend="llama_server"` (default per §5.3 spec).
 - **Returns to**: Embedding vectors via HTTP to llama-server at `embedding__endpoint_url`.
-- **Demonstrable by**: Single `httpx.AsyncClient` per service instance (verified via `inspect`); unit test mocks HTTP and verifies request shape; `pytest oneiric/tests/adapters/embedding/test_llama_server.py -v` PASS.
+- **Demonstrable by**: Single `httpx2.AsyncClient` per service instance (verified via `inspect`; per `import httpx2 as httpx` in module — v5 corrects library name from `httpx.AsyncClient`); unit test mocks HTTP and verifies request shape; `pytest oneiric/tests/adapters/embedding/test_llama_server.py -v` PASS.
 - **Rollback signal**: llama-server 5xx > 1%; timeout ratio > 0.5%.
 - **Observability added**: OTel span `embedding.llama_server.embed` with `backend="llama_server"`, `model`, `dim`, `normalize`, `latency_ms`.
 
@@ -240,26 +250,36 @@ git commit -m "feat(oneiric): add llama_server embedding adapter (shared AsyncCl
 - **Rollback signal**: pgvector cosine similarity rankings off by > 0.1 across 100 random pairs.
 - **Observability added**: OTel attribute `normalize=true|false` on `embedding.*.embed` span.
 
-- [ ] **Step 1: Write failing tests**:
+- [ ] **Step 1: Write failing tests** (pulling normalize flag from `SubstrateSettings` per v5 correction; pre-v5 hardcoded `normalize=True` was bypass-layer):
 
 ```python
-def test_l2_normalize_enforced_when_flag_true():
-    a = LlamaServerEmbeddingAdapter(model_name="m", normalize=True)
+from oneiric.core.config import load_settings
+
+def test_l2_normalize_enforced_when_substrate_flag_true(monkeypatch):
+    monkeypatch.setenv("ONEIRIC__SUBSTRATE__EMBEDDING__NORMALIZE", "true")
+    s = load_settings(project_name="oneiric")
+    a = LlamaServerEmbeddingAdapter(
+        model_name="m",
+        normalize=s.substrate.embedding__normalize,
+    )
     v = a.embed(["hi"])[0]
     assert np.isclose(np.linalg.norm(v), 1.0, atol=1e-5)
 
 def test_l2_normalize_idempotent():
     a = LlamaServerEmbeddingAdapter(model_name="m", normalize=True)
     v1 = a.embed(["hi"])[0]
-    # Re-feed normalized vector; norm stays ~1.
     v2 = a.embed([v1.tolist()])[0]
     assert np.allclose(v1, v2, atol=1e-5)
 
-def test_no_normalize_when_flag_false():
-    a = LlamaServerEmbeddingAdapter(model_name="m", normalize=False)
+def test_no_normalize_when_substrate_flag_false(monkeypatch):
+    monkeypatch.setenv("ONEIRIC__SUBSTRATE__EMBEDDING__NORMALIZE", "false")
+    s = load_settings(project_name="oneiric")
+    a = LlamaServerEmbeddingAdapter(
+        model_name="m",
+        normalize=s.substrate.embedding__normalize,
+    )
     v = a.embed(["hi"])[0]
-    # Pre-normalized backend outputs have norm ~1; flag=False leaves them.
-    # (Backend may still pre-normalize; just verify flag=False does not re-normalize un-normalized inputs.)
+    # Backend may pre-normalize; flag=False does not re-normalize un-normalized inputs.
 ```
 
 - [ ] **Step 2: Run, expect failure**.
@@ -315,18 +335,21 @@ git add akosha/processing/embeddings.py akosha/tests/processing/test_embeddings.
 git commit -m "refactor(akosha): embedding shim uses oneiric EmbeddingBase"
 ```
 
-### Task 6: Delete SB `embeddings.py` and migrate callers
+### Task 6: Cross-backend alignment (llama_server vs fastembed) + delete SB `embeddings.py` + cross-component alignment
 
 **Files:**
 - Delete: `session_buddy/reflection/embeddings.py`
 - Modify: callers (find via `grep -rn "from session_buddy.reflection.embeddings\|session_buddy.reflection.embeddings\." session_buddy/`)
-- Test: `tests/integration/test_cross_component_embedding_alignment.py` (new — see below)
+- Create: `oneiric/tests/adapters/embedding/test_cross_backend_alignment.py` (v5 addition — required by spec §6.4 Demonstrable by)
+- Create: `tests/integration/test_cross_component_embedding_alignment.py` (Akosha + SB under same backend)
+
+#### Integration Contract ← REQUIRED (v5: Task renamed to include cross-backend alignment per spec §6.4)
 
 #### Integration Contract
 
 - **Triggered from**: First `mcp__session-buddy__store_reflection` after SB restart (warm-write hits embedding path).
 - **Returns to**: SB reflections embedded by `oneiric.adapters.embedding.LlamaServerEmbeddingAdapter` (per default `embedding__backend="llama_server"`); cache writes go to `MemoryCacheAdapter`.
-- **Demonstrable by**: `grep -rn "session_buddy.reflection.embeddings\|self._embedding_cache" session_buddy/` returns zero hits; alignment test PASS.
+- **Demonstrable by**: `grep -rn "session_buddy.reflection.embeddings\|self._embedding_cache" session_buddy/` returns zero hits; cross-component alignment test PASS (`numpy.allclose(atol=1e-5)`); **cross-backend alignment test PASS** (`oneiric/tests/adapters/embedding/test_cross_backend_alignment.py` — same model, two backends → same vector).
 - **Rollback signal**: SB embedding error rate > 1%.
 - **Observability added**: OTel attributes carry `component="session-buddy"`, `backend`, `model`, `normalize`, `latency_ms`, `cache.hit_ratio`.
 
@@ -336,7 +359,7 @@ git commit -m "refactor(akosha): embedding shim uses oneiric EmbeddingBase"
 grep -rn "from session_buddy.reflection.embeddings" /Users/les/Projects/session-buddy
 ```
 
-- [ ] **Step 2: Write failing test** (alignment):
+- [ ] **Step 2: Write failing tests** (alignment — both cross-component and cross-backend per v5):
 
 ```python
 # tests/integration/test_cross_component_embedding_alignment.py
@@ -349,6 +372,22 @@ def test_akosha_and_sb_produce_same_vector_for_same_text():
     v_ak = np.array(ak_svc.embed([text])[0])
     v_sb = np.array(sb_svc.embed([text])[0])
     assert np.allclose(v_ak, v_sb, atol=1e-5)
+
+
+# oneiric/tests/adapters/embedding/test_cross_backend_alignment.py  (v5 addition)
+@pytest.mark.skipif(not has_fastembed() or not has_llama_server(), reason="both backends required")
+def test_fastembed_vs_llama_server_same_text_same_vector_atol_1e_5():
+    """Per spec §6.4 Demonstrable by — same text under both backends (same model) yields same vector."""
+    from oneiric.adapters.embedding.fastembed import FastembedEmbeddingAdapter
+    from oneiric.adapters.embedding.llama_server import LlamaServerEmbeddingAdapter
+    import numpy as np
+    text = "the quick brown fox"
+    # NOTE: requires a model that both backends can serve; e.g., nomic-embed-text via llama-server.
+    fa = FastembedEmbeddingAdapter(model_name="nomic-embed-text")
+    la = LlamaServerEmbeddingAdapter(endpoint_url="http://localhost:8081", model_name="nomic-embed-text")
+    v_fe = np.array(fa.embed([text])[0])
+    v_ls = np.array(la.embed([text])[0])
+    assert np.allclose(v_fe, v_ls, atol=1e-5)
 ```
 
 - [ ] **Step 3: Run, expect failure**.
@@ -405,6 +444,9 @@ git commit -m "refactor(session-buddy): adopt oneiric EmbeddingBase; delete besp
 | Embedding backend returns un-normalized vectors (metric nonsense) | Medium | `EmbeddingBase._normalize` enforcement; idempotence test; metric-operator pairing test (`<=>` cosine for normalized) |
 | AsyncClient-per-call at SB scale | Low (resolved) | `llama_server.py` shares AsyncClient per instance (REQ-OSUB-D-002) |
 | Existing SB reflections need re-embedding under chosen backend | Medium | Phase D2 release-train gate per spec §6.7 explicitly handles this; out of scope for D1 implementation |
+| **(Meta, spec §10 #7) oneiric becomes a hard substrate dependency** | Medium | Phase D extends oneiric (new adapter files); Akosha + SB gain 3 new `EmbeddingBase` adapters. CI guard test for oneiric minimum. |
+| **(Meta, spec §10 #8) Cross-component import direction violation** | Medium | Phase D adds Akosha→oneiric (EmbeddingBase) and SB→oneiric (EmbeddingBase); no new Mahavishnu imports. CI guard unchanged. |
+| **(Meta, spec §10 #9) Rollback complexity across 6 phases × 4 repos** | Low for Phase D | Phase D adds three new adapters; rollback deletes them + restores `akosha/processing/embeddings.py` shim and `session_buddy/reflection/embeddings.py`. |
 
 ## 10. Decision Rule
 

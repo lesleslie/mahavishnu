@@ -72,14 +72,19 @@ Verbatim from spec §12:
 requirements:
   - id: REQ-OSUB-E2-001
     title: "akosha/config.py reads cache__max_entries, warm__*, cold__*, embedding__*, pool__*, retry__*, auth__* via OneiricSettings.substrate"
+    dep: "Akosha → oneiric (OneiricSettings.substrate)"
   - id: REQ-OSUB-E2-002
     title: "session_buddy/settings.py reads substrate fields; deletes redundant local keys atomically"
+    dep: "SB → oneiric (OneiricSettings.substrate)"
   - id: REQ-OSUB-E2-003
     title: "mahavishnu/core/config.py reads pool__*, telemetry__*, retry__*, auth__* via OneiricSettings.substrate"
+    dep: "Mahavishnu → oneiric (OneiricSettings.substrate)"
   - id: REQ-OSUB-E2-004
-    title: "auth__enabled=False short-circuits BOTH middleware AND decorator gates (preserved behavior)"
+    title: "auth__enabled=False short-circuits BOTH middleware AND decorator gates (preserved behavior); auth__loopback_trusted=True permits localhost unauth'd"
+    dep: "Each component middleware → oneiric.auth__enabled/loopback_trusted"
   - id: REQ-OSUB-E2-005
-    title: "/health endpoint returns feeds.{cache, warm, cold, embedding}_state with all 4 FeedState keys"
+    title: "/health endpoint returns feeds.{cache, warm, cold, embedding}_state with all 4 FeedState keys; returns 503 when any feed is stale (>5×poll)"
+    dep: "Component /health → oneiric (adapters' get_feed_state)"
 ```
 
 ## 6. Implementation Tasks
@@ -94,7 +99,7 @@ requirements:
 
 - **Triggered from**: Akosha process restart with new settings loader.
 - **Returns to**: `akosha.config.<field>` reads from `OneiricSettings.substrate.<field>` via a thin property layer. Local keys deleted.
-- **Demonstrable by**: `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES=42 python -c "from akosha.config import settings; print(settings.cache_max_entries)"` prints `42` (or through whatever public Akosha settings surface exists); `pytest akosha/tests/test_substrate_settings_via_oneiric.py -v` PASS.
+- **Demonstrable by**: `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES=42 python -c "from akosha.config import load_settings; s = load_settings(); print(s.substrate.cache__max_entries)"` prints `42` (v5 correction — substrate field uses **double** underscore per spec §5.3 nested prefix, not single underscore); `pytest akosha/tests/test_substrate_settings_via_oneiric.py -v` PASS.
 - **Rollback signal**: Akosha fails to start with new settings loader; `auth__enabled` not propagated.
 - **Observability added**: OTel span `settings.substrate.access` with `component="akosha"`, `field`.
 
@@ -109,12 +114,12 @@ from akosha.config import settings  # public surface
 def test_akosha_settings_pick_up_substrate_default(monkeypatch):
     monkeypatch.setenv("ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES", "42")
     s = settings()  # reload function
-    assert s.cache_max_entries == 42
+    assert s.substrate.cache__max_entries == 42
 
 def test_akosha_pool_workers_via_substrate(monkeypatch):
     monkeypatch.setenv("ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE", "5")
     s = settings()
-    assert s.pool_workers_per_instance == 5
+    assert s.substrate.pool__workers_per_instance == 5
 ```
 
 - [ ] **Step 2: Run, expect failure** — current `akosha.config` reads local keys.
@@ -122,7 +127,7 @@ def test_akosha_pool_workers_via_substrate(monkeypatch):
 - [ ] **Step 3: Audit current `akosha/config.py` to find ALL local settings fields that map to substrate**. Cross-reference spec §5.3 fields.
 
 - [ ] **Step 4: Rewrite `akosha/config.py`** — single commit **atomically**:
-  - DELETE local fields that have a substrate equivalent (`cache_max_entries`, `pool_workers_per_instance`, `retry_max_attempts`, `auth_enabled`, `auth_loopback_trusted`, etc.).
+  - DELETE local fields that have a substrate equivalent (note substrate double-underscore per spec §5.3: `cache__max_entries`, `pool__workers_per_instance`, `retry__max_attempts`, `auth__enabled`, `auth__loopback_trusted`, etc.).
   - KEEP any truly Akosha-specific fields (`akosha_url`, MCP server port, etc.) unchanged.
   - Refactor getter functions/properties to read from `OneiricSettings.substrate.<field>`.
 
@@ -220,7 +225,9 @@ git commit -m "refactor(mahavishnu): adopt OneiricSettings.substrate for pool/te
 
 - **Triggered from**: Component startup with `auth__enabled=False`.
 - **Returns to**: Both middleware AND decorator auth gates short-circuit cleanly.
-- **Demonstrable by**: `pytest tests/integration/test_auth_short_circuit_preserved.py -v` PASS for Akosha + SB + Mahavishnu.
+- **Demonstrable by**: `pytest tests/integration/test_auth_short_circuit_preserved.py -v` PASS for Akosha + SB + Mahavishnu, covering both halves of the invariant:
+  - `auth__enabled=False` short-circuits both middleware AND decorator gates.
+  - **`auth__loopback_trusted=True` permits localhost unauth'd connections** (v5 addition — pre-v5 only tested the first half per `feedback-bodai-localhost-no-auth.md`).
 - **Rollback signal**: middleware or decorator raises `AuthRequired` despite `auth__enabled=False`.
 - **Observability added**: log line `auth.short_circuited=true` with `component`.
 
@@ -259,7 +266,7 @@ git commit -m "test: assert auth short-circuit preserved across substrate adopti
 ### Task 5: `/health` feed-state aggregation
 
 **Files:**
-- Modify: `akosha/mcp/server.py`, `session_buddy/mcp/server.py`, `mahavishnu/mcp/server.py` (or wherever `/health` aggregates)
+- Modify: `akosha/mcp/server.py`, `session_buddy/mcp/server.py`, `mahavishnu/mcp/server_core.py` (or wherever `/health` aggregates; **v5 correction** — actual `/health` aggregator lives in `mahavishnu/mcp/server_core.py` at lines 1129+, not `server.py`)
 - Test: `tests/integration/test_health_feed_state_aggregated.py`
 
 #### Integration Contract
@@ -291,7 +298,7 @@ def test_health_returns_four_feeds(port):
 
 - [ ] **Step 2: Run, expect failure** (current `/health` doesn't aggregate `get_feed_state`).
 
-- [ ] **Step 3: Implement aggregation in each component's `/health`**. The Akosha, SB, and Mahavishnu `mcp/server.py` (or wherever `/health` lives) gather substrate adapter `get_feed_state()` results and emit the JSON shape.
+- [ ] **Step 3: Implement aggregation in each component's `/health`**. The Akosha, SB, and Mahavishnu `mcp/server.py` (or `mcp/server_core.py` — verify per component) gather substrate adapter `get_feed_state()` results and emit the JSON shape.
 
 - [ ] **Step 4: Re-run test, expect pass** (against running services or in-process via FastAPI test client).
 
@@ -299,7 +306,7 @@ def test_health_returns_four_feeds(port):
 
 ```bash
 cd /Users/les/Projects/mahavishnu  # or appropriate component repo
-git add mcp/server.py tests/integration/test_health_feed_state_aggregated.py
+git add mcp/server.py mcp/server_core.py tests/integration/test_health_feed_state_aggregated.py  # v5: includes server_core.py
 git commit -m "feat(mahavishnu): /health aggregates substrate feed state"
 # Repeat for akosha and session-buddy repos if their /health lives there.
 ```
@@ -317,7 +324,7 @@ git commit -m "feat(mahavishnu): /health aggregates substrate feed state"
 | `tests/integration/test_auth_short_circuit_preserved.py` | CREATE | Task 4 |
 | `akosha/mcp/server.py` (or health handler) | MODIFY: aggregate feed state | Task 5 |
 | `session_buddy/mcp/server.py` (or health handler) | MODIFY: aggregate feed state | Task 5 |
-| `mahavishnu/mcp/server.py` (or health handler) | MODIFY: aggregate feed state | Task 5 |
+| `mahavishnu/mcp/server_core.py` (or health handler; v5: not `server.py`) | MODIFY: aggregate feed state | Task 5 |
 | `tests/integration/test_health_feed_state_aggregated.py` | CREATE | Task 5 |
 
 ## 8. Validation Matrix
@@ -338,10 +345,13 @@ git commit -m "feat(mahavishnu): /health aggregates substrate feed state"
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | Partial migration during rollout (file reads from substrate while sibling file still has local key) → resolution ambiguity | High | **Atomic per-file rule** — Tasks 1/2/3 each land in single commit. CI guard test asserts no hybrid state |
-| Auth short-circuit regresses (one path reads substrate, the other reads local) | Medium | Task 4 pinned test |
-| `/health` aggregator misses a feed | Medium | Task 5 parametrized test runs against three ports |
+| Auth short-circuit regresses (one path reads substrate, the other reads local) | Medium | Task 4 pinned test (both `auth__enabled=False` and `auth__loopback_trusted=True` halves) |
+| `/health` aggregator misses a feed | Medium | Task 5 parametrized test runs against three ports + 503 trigger test |
 | Settings loader regressions break external callers | Low | Public `get_settings()` / `load_settings()` signatures stay; only internals change |
 | OTel spans duplicated across three components | Low | Each is namespaced under `component=<name>`; OK |
+| **(Meta, spec §10 #7) oneiric becomes a hard substrate dependency** | High (Phase E2 is the culmination) | Each component's `pyproject.toml` already has `oneiric` from prior phases; Phase E2 adds explicit settings-layer dependency. CI guard test asserts minimum version with oneiric-specific test vector. |
+| **(Meta, spec §10 #8) Cross-component import direction violation** | Medium | Phase E2 introduces none; `OneiricSettings.substrate` import is `Component → oneiric`. CI guard: `grep -rn "from mahavishnu\|import mahavishnu\|from akosha\|import akosha\|from session_buddy\|import session_buddy" mahavishnu/akosha/session_buddy/` returns zero cross-component hits. |
+| **(Meta, spec §10 #9) Rollback complexity across 6 phases × 4 repos** | Medium for Phase E2 | Phase E2 atomic per-file adoption allows surgical per-component rollback. Reverting one component's `config.py` restores local fields; substrate field remains but unused. Per-component rollback works. |
 
 ## 10. Decision Rule
 

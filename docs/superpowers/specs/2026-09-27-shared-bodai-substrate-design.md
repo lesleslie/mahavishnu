@@ -5,15 +5,15 @@ kind: spec
 date: 2026-09-27
 last_reviewed: 2026-09-27
 topic: shared-oneiric-substrate
-revision: v4
+revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
 related: docs/decisions/oneiric-substrate-extraction.md; .claude/decisions/wire-up-contract.md; .claude/decisions/mcp-backend-wiring-discipline.md; docs/superpowers/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
 ---
 
-# Shared Oneiric Substrate - Design v4
+# Shared Oneiric Substrate - Design v5
 
-> **About this design (v4, 2026-09-27)**: v3 → v4 rename pass. Per `feedback-no-bodai-prefix-in-config-names.md`, env var prefix is now `ONEIRIC__SUBSTRATE__*` (not `BODAI__*`), settings class is `SubstrateSettings` (not `BodaiSettings`), field access is `OneiricSettings.substrate.X` (not `.bodai.X`). Oneiric publishes substrate defaults because it's the foundation - components outside the Bodai ecosystem may adopt oneiric without opting into Bodai, so prefixing defaults with `BODAI__*` misleads operators about scope. v3 itself was a rewrite from scratch after a 3-agent spec audit (code-explorer, code-reviewer, architecture-council) found 31 issues across structural, logical, and factual dimensions.
+> **About this design (v5, 2026-09-27)**: v4 → v5 fix pass after a 2-agent final-review (code-explorer citation audit + code-reviewer logical-completeness review). Fixed: hard citation drifts (Phase A `class QueryCacheManager` line, Phase D `_embedding_cache` dict line), 7 structural gaps (Phase B V1-V6 deletion + p99 perf test + akosha-searches-sb test, Phase D llama-server vs fastembed alignment test, Phase E1 storage adapter `get_feed_state`, Phase E1 `SubstrateSettings` nested per §9 validation), high-priority hygiene (cross-component dep diagrams per wire-up-contract §2, naming hygiene, `auth__loopback_trusted` test, /health 503 trigger logic, Observability on missing tasks), and 4 spec internal contradictions (shim-then-delete vs replace-not-extend, §4.6 mis-cite, §6.6 typo, §5.3 env-prefix ambiguity reconciled below). v4 itself was a rename pass per `feedback-no-bodai-prefix-in-config-names.md`; v3 was a rewrite from scratch after a 3-agent spec audit (code-explorer, code-reviewer, architecture-council) found 31 issues across structural, logical, and factual dimensions.
 
 ## 1. Outcome
 
@@ -180,9 +180,18 @@ class OneiricSettings(BaseModel):
 class SubstrateSettings(BaseModel):
     """Cross-component defaults for the Oneiric substrate.
 
-    Loaded from `ONEIRIC__SUBSTRATE__*` env vars. Per-component overrides use the
-    standard `{PROJECT_NAME}__*` prefix (already supported by
-    `_env_overrides`).
+    Loaded from `ONEIRIC__SUBSTRATE__*` env vars via the parent
+    `OneiricSettings` (`env_prefix="ONEIRIC_"`, `env_nested_delimiter="__"`).
+    Per-component overrides use the standard `{PROJECT_NAME}__*` prefix
+    (already supported by `_env_overrides`).
+
+    **Note (this v5 corrects v4 inconsistency)**: `SubstrateSettings`' own
+    `env_prefix` field is shown as `ONEIRIC_SUBSTRATE_` here, but when nested
+    under `OneiricSettings`, pydantic-settings resolves env vars through the
+    **parent's** env_prefix + delimiter (`ONEIRIC__SUBSTRATE__*`). The
+    `SubstrateSettings.env_prefix` is illustrative and not the resolution
+    source. Don't read this field as defining env-var resolution rules; read
+    the spec §7.3 resolution chain.
     """
     model_config = SettingsConfigDict(
         env_prefix="ONEIRIC_SUBSTRATE_",
@@ -334,7 +343,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes.
 
 **Files (modify)**:
-- `session_buddy/cache/query_cache.py` — DELETE `class QueryCacheManager`. Replace with thin shim that delegates to `MemoryCacheAdapter` for one release, then DELETE the shim too.
+- `session_buddy/cache/query_cache.py` — DELETE `class QueryCacheManager`. Per §12 replace-not-extend, deletion lands in the same commit that adopts `MemoryCacheAdapter`. **No** deprecation shim-for-one-release (this v5 corrects v4 §6.1 wording; v5 honors §12 over the obsolete "shim-then-delete" framing).
 - `session_buddy/cache/query_cache.py:139-155` — DELETE runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` block.
 - `session_buddy/adapters/reflection_adapter_oneiric.py:759-778` — DELETE runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` block (the duplicate at the second location).
 - `session_buddy/adapters/reflection_adapter_oneiric.py:2732` — DELETE `"query_cache_l2"` string (used by `delete_table_names`).
@@ -469,7 +478,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 **Integration Contract**:
 - **Triggered from**: Akosha, SB, Mahavishnu restart with new settings.
 - **Returns to**: components read from `OneiricSettings.substrate.*` instead of their own config keys. Auth short-circuit preserved.
-- **Demonstrable by**: `grep -rn "auth.enabled" akosha/config.py session_buddy/config.py mahavishnu/core/config.py` returns references to `OneiricSettings.substrate.auth__enabled`; `auth.enabled=false` still short-circuits middleware + decorator gates per `feedback-bodai-localhost-no-auth.md`.
+- **Demonstrable by**: `grep -rn "auth.enabled" akosha/config.py session_buddy/settings.py mahavishnu/core/config.py` returns references to `OneiricSettings.substrate.auth__enabled`; `auth.enabled=false` still short-circuits middleware + decorator gates per `feedback-bodai-localhost-no-auth.md`. **Note (this v5 fixes v4 typo):** SB's settings module path is `session_buddy/settings.py`, not `session_buddy/config.py` (which does not exist).
 - **Rollback signal**: any component fails to start with new settings; `auth__enabled` doesn't propagate.
 - **Observability added**: OTel span `settings.substrate.access` with `component`, `field`.
 
@@ -524,7 +533,7 @@ Phase E2: Akosha + SB + Mahavishnu adopt OneiricSettings.substrate
 
 **Freeze window for Phase B2** (audit finding 7): "no SB reflection writes for the duration of the DuckDB→pgvector migration script run". Without this, the script can't verify count/embedding equality because both stores accumulate writes during cutover. Implementation: SB `/health` returns 503 with `state=migrating` during freeze; load balancer or pool router rejects writes.
 
-**Cross-namespace search enforcement** (audit finding 7): `WarmSubstrate.search(query, namespace="sb")` raises `PermissionError` when called from a process whose `OneiricSettings.substrate.warm__schema_namespace` is `"akosha"` AND no explicit `cross_namespace_grant` is set. Phase A's tests assert this.
+**Cross-namespace search enforcement** (audit finding 7): `WarmSubstrate.search(query, namespace="sb")` raises `PermissionError` when called from a process whose `OneiricSettings.substrate.warm__schema_namespace` is `"akosha"` AND no explicit `cross_namespace_grant` is set. **Phase B's** tests assert this (this v5 corrects v4 §6.7 mis-cite; Phase A predates cross-namespace ACL — Phase A Tests lack warm-tier semantics).
 
 ## 7. Data flow
 
@@ -644,7 +653,7 @@ Resolution:
 
 ### Test infrastructure (no new project deps)
 
-- Local Postgres + pgvector: existing Docker Compose stack at `akosha/dev/docker-compose.yml`.
+- Local Postgres + pgvector: **v5 correction** — `akosha/dev/docker-compose.yml` does not exist in the akosha tree. Operators must either (a) add a `dev/` directory with a docker-compose for local pgvector (CREATE task in Phase B Task 1 of `phase-b.md`), or (b) use Homebrew `postgres` + `pgvector` extension, or (c) reuse a sibling repo's compose file. Per Phase B Task 1 Step 4 the implementer picks one.
 - Local R2: existing `fake-gcs-server` (Homebrew) covers S3-compat endpoint + GCS-compat endpoint.
 - Local llama-server: existing setup at `http://localhost:8081`.
 - Local Ollama: existing setup at `http://localhost:11434`.
@@ -812,4 +821,5 @@ If any step fails, stop. Don't proceed to the next phase until the current phase
 | 2026-09-27 | v1 | platform-team | Initial design: 5 substrate moves (tier simplification + 4 config consolidations) consolidated into 5 phases. |
 | 2026-09-27 | v2 | platform-team | Split Phase E into E1 (operations substrate, oneiric-only, additive) + E2 (per-component adoption). Total: 6 phases. Self-review fixes: replaced "TBD" with verification step; annotated `duckdb_vss` as offline-mode-only; clarified `vishnu` schema namespace. |
 | 2026-09-27 | v3 | platform-team | **Rewrite from scratch after 3-agent spec audit (code-explorer + code-reviewer + architecture-council) found 31 issues.** Corrected: removed proposed `oneiric.substrate.*` namespace (existing `oneiric.adapters.*` is the substrate); removed parallel `SubstrateSettings` class (extend `OneiricSettings` via pydantic-settings nested prefix); dropped `duckdb_vss` from warm backend literal; corrected file paths (e.g., `akosha/storage/cold_store.py` not `akosha/cold_store.py`; `akosha/processing/embeddings.py` not `akosha/embeddings.py`; `session_buddy/reflection/embeddings.py` not `session_buddy/embeddings.py`); corrected V1-V6 migration contents (none are `query_cache_l2`; the table is created at runtime in 2 places); corrected DEAD field names (`enable_global_toolkits`, `llama_server_default_model`, `llama_server_model` — not `enable_http_transport`); acknowledged Mahavishnu OTel already on `HotStore` via ADR 017 (Phase work is for Akosha + SB only); added Integration Contract blocks per phase per `wire-up-contract.md`; added deployment-order release-train gates per phase; added `get_feed_state()` instrumentation per `mcp-backend-wiring-discipline.md §3`; added `PrefixACL` for cold-tier cross-namespace reads; defined embedding normalization layer (`L2-normalize when normalize=True`); forced single default embedding model across components; defined atomic per-file adoption rule for Phase E2. |
+| 2026-09-27 | v5 | platform-team | **Fix pass after 2-agent final-review.** Hard citation drifts fixed (`class QueryCacheManager` actual line 59 not 90 in phase-a cited files; `_embedding_cache` dict actual line 116 not 138-141 in phase-d). Structural gaps closed: Phase B adds Task 6 (V1-V6 SQL migration deletion after archive window) + Task 7 (`tests/performance/test_sb_pgvector_p99.py`); Phase B Task 5 adds `akosha/tests/integration/test_akosha_searches_sb_namespace.py` (positive cross-namespace path); Phase D Task 6 renamed to "Cross-backend alignment" and adds llama-server vs fastembed alignment test required by §6.4 Demonstrable by; Phase E1 adds Task 7 (`get_feed_state()` on storage adapters per §5.6); Phase E1 `SubstrateSettings` nested in `oneiric/core/config.py` per §9 validation (was sibling module). High-priority hygiene: cross-component dep diagrams added per wire-up-contract §2 across all 6 plans; cache_max_entries → cache__max_entries (double underscore) per spec §5.3; `auth__loopback_trusted` exercised by parametrized test in phase-e2 Task 4; `normalize=True` pulled from `SubstrateSettings.embedding__normalize` in phase-d Task 4; /health 503 trigger logic asserted via mocked stale feed in phase-e2 Task 5; task-level IC blocks + Observability added per missing-task gaps. Soft drift fixes (citation name corrections): `class CloudSync` → `class CloudSyncMethod` (line 66 of `cloud_sync.py`); `delete_table_names` → `reset_database` (line 2705); `httpx.AsyncClient` → `httpx2.AsyncClient` (`import httpx2 as httpx`); `akosha/dev/docker-compose.yml` → either CREATEd task or alternative local stack (operator decision); `mahavishnu/mcp/server.py` → `mahavishnu/mcp/server_core.py`. **Spec internal contradictions fixed**: §6.1 "thin shim for one release then delete" reverted — pre-1.0 replace-not-extend per §12 (no shim-for-one-release); §4.6 + §6.7 mis-cite "Phase A's tests assert this" → corrected to Phase B; §6.6 typo `session_buddy/config.py` → `session_buddy/settings.py`; §5.3 env_prefix ambiguity resolved (parent `env_prefix` + delimiter is the resolution source, not the nested `SubstrateSettings.env_prefix`). |
 | 2026-09-27 | v4 | platform-team | **Rename pass per `feedback-no-bodai-prefix-in-config-names.md`.** Env var prefix `BODAI__*` → `ONEIRIC__SUBSTRATE__*`; settings class `BodaiSettings` → `SubstrateSettings`; field access `OneiricSettings.bodai.X` → `OneiricSettings.substrate.X`; test file names `test_bodai_settings*` → `test_substrate_settings*`; R2 bucket `bodai-shared` → `oneiric-substrate-shared`; Postgres DB `bodai` → `oneiric_substrate`; OTel span `settings.bodai.access` → `settings.substrate.access`; OTel namespace `telemetry__service_namespace` default `"bodai"` → `"oneiric-substrate"`; spec topic slug `shared-bodai-substrate` → `shared-oneiric-substrate`. Rationale: oneiric is the foundation that publishes substrate defaults — components outside the Bodai ecosystem may adopt oneiric without opting into Bodai, so prefixing defaults with `BODAI__*` misleads operators about scope. Reserve `BODAI__*` for settings that genuinely require Bodai-orchestration membership (Mahavishnu pool state, Akosha↔Mahavishnu coordination, ecosystem-wide observability tags). Memory file references in §14 (e.g., `feedback-bodai-*`) and the spec file path itself retain `bodai` because those are pre-existing identifiers, not new config names. |

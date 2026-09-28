@@ -56,7 +56,7 @@ Verbatim from spec §12:
 
 ## 4. Current Findings
 
-- **SB cache is hand-rolled**: `session_buddy/cache/query_cache.py:90` defines `class QueryCacheManager` (L1 OrderedDict, max 1024). Runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` at `session_buddy/cache/query_cache.py:139-155` and `session_buddy/adapters/reflection_adapter_oneiric.py:759-778`. `"query_cache_l2"` string at `session_buddy/adapters/reflection_adapter_oneiric.py:2732` (used by `delete_table_names`).
+- **SB cache is hand-rolled**: `session_buddy/cache/query_cache.py:59` defines `class QueryCacheManager`; line 90 is `self._l1_cache: OrderedDict[str, QueryCacheEntry] = OrderedDict()` (the L1 attribute that backs the cache strategy). max 1024 (from `__init__`). Runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` at `session_buddy/cache/query_cache.py:139-155` and `session_buddy/adapters/reflection_adapter_oneiric.py:759-778`. `"query_cache_l2"` string at `session_buddy/adapters/reflection_adapter_oneiric.py:2732` (used by `reset_database`, defined at line 2705 — **v5 corrects the function name from `delete_table_names`**).
 - **Akosha cache is unbounded dict**: `akosha/config.py:241-258` defines `CacheConfig` with `dict` backend; no L1/L2 semantics, no TTL, no eviction.
 - **MemoryCacheAdapter exists and is adoption-ready**: `oneiric/adapters/cache/memory.py:29` (`class MemoryCacheAdapter`) provides bounded LRU + TTL + `delete_prefix`. Zero adoption today.
 
@@ -66,12 +66,16 @@ Verbatim from spec §12:
 requirements:
   - id: REQ-OSUB-A-001
     title: "SB cache delegates entirely to oneiric MemoryCacheAdapter"
+    dep: "SB → oneiric (MemoryCacheAdapter)"
   - id: REQ-OSUB-A-002
     title: "SB deletes both runtime CREATE TABLE query_cache_l2 blocks (query_cache.py + reflection_adapter_oneiric.py)"
+    dep: "SB → oneiric (MemoryCacheAdapter); deletes duckdb internals"
   - id: REQ-OSUB-A-003
     title: "Akosha CacheConfig delegates to oneiric MemoryCacheAdapter (bounded by default)"
+    dep: "Akosha → oneiric (MemoryCacheAdapter)"
   - id: REQ-OSUB-A-004
     title: "Both components emit cache.adapter.memory OTel spans with size and hit_ratio attributes"
+    dep: "SB → oneiric (OTel); Akosha → oneiric (OTel)"
 ```
 
 ## 6. Implementation Tasks
@@ -124,7 +128,15 @@ git commit -m "feat(session-buddy): adopt MemoryCacheAdapter for query cache"
 
 **Files:**
 - Modify: `session_buddy/adapters/reflection_adapter_oneiric.py:759-778` (DELETE block)
-- Modify: `session_buddy/adapters/reflection_adapter_oneiric.py:2732` (DELETE `"query_cache_l2"` string)
+- Modify: `session_buddy/adapters/reflection_adapter_oneiric.py:2732` (DELETE `"query_cache_l2"` string inside `reset_database`, line 2705)
+
+#### Integration Contract ← REQUIRED (v5 addition; per wire-up-contract.md §1 every deliverable has IC)
+
+- **Triggered from**: SB restart with new warm-write/read path (relieves legacy CREATE TABLE on first reflection write).
+- **Returns to**: `reflection_adapter_oneiric.py` no longer references `query_cache_l2`; L2 DuckDB table is no longer created.
+- **Demonstrable by**: `grep -rn "query_cache_l2" session_buddy/` returns zero hits.
+- **Rollback signal**: SB warm-write path errors > 1%; orphan `query_cache_l2` reference detected by `tests/integration/test_query_cache_l2_orphaned.py`.
+- **Observability added**: count of `query_cache_l2` references at module import time (logged once via `oneiric.logging`).
 
 - [ ] **Step 1: Read the exact CREATE TABLE block at 759-778** (`grep -n "query_cache_l2" session_buddy/adapters/reflection_adapter_oneiric.py`).
 
@@ -197,6 +209,14 @@ git commit -m "feat(akosha): adopt MemoryCacheAdapter for cache"
 **Files:**
 - Create: `tests/integration/test_query_cache_l2_orphaned.py` (in `mahavishnu` repo per spec §6.1)
 
+#### Integration Contract ← REQUIRED (v5 addition)
+
+- **Triggered from**: CI gate on every PR touching session-buddy or akosha caches.
+- **Returns to**: an audit assertion in `tests/integration/test_query_cache_l2_orphaned.py` that no path references `query_cache_l2` after Phase A lands.
+- **Demonstrable by**: `pytest tests/integration/test_query_cache_l2_orphaned.py -v` PASS.
+- **Rollback signal**: test reports orphaned references; CI blocks the PR.
+- **Observability added**: per-CI-run structured log line `audit.orphans.query_cache_l2=0|≥1`.
+
 - [ ] **Step 1: Write the orphan test**:
 
 ```python
@@ -258,6 +278,9 @@ git commit -m "test: assert no references to query_cache_l2 after Phase A"
 | SB callers depend on L2 semantics (cross-process) that `MemoryCacheAdapter` (in-process) doesn't replicate | Low | L2 table was never actually populated in practice per audit; SB is single-process |
 | OTel span cardinality blows up if every get/set emits a span | Medium | Use `tracer.start_as_current_span` (not `start_span`); for hot-path get/set, sample at low rate |
 | Akosha bounded cache creates eviction churn | Low | Default `cache__max_entries=10_000` is high; verify with p99 quick_search latency |
+| **(Meta, spec §10 #7) oneiric becomes a hard substrate dependency** | Medium | Add `oneiric>=<pinned>` to `[project.dependencies]` in SB and Akosha `pyproject.toml`; CI guard test asserts minimum version. Phase A is the first phase where SB and Akosha require `oneiric` for cache. |
+| **(Meta, spec §10 #8) Cross-component import direction violation** | Medium | Phase A only adds SB→oneiric and Akosha→oneiric imports; no Akosha→Mahavishnu / SB→Mahavishnu / Mahavishnu→SB imports introduced. CI guard: `grep -rn "from mahavishnu\|import mahavishnu" akosha/ session_buddy/` returns zero hits. |
+| **(Meta, spec §10 #9) Rollback complexity across 6 phases × 4 repos** | Low for Phase A | Phase A is pure-substitution; rollback restores old `QueryCacheManager` and the two runtime CREATE TABLE blocks. Each phase has its own release-train gate; reverting one does not break others. Cross-repo rollback is the union of per-phase rollbacks. |
 
 ## 10. Decision Rule
 
