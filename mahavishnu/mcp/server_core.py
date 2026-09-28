@@ -1058,9 +1058,18 @@ class FastMCPServer:
 
         @server.tool()
         async def get_monitoring_dashboard() -> dict[str, Any]:
-            """Get comprehensive monitoring dashboard data.
+            """Get the canonical ecosystem status report.
 
-            Compatibility wrapper around the canonical ecosystem status report.
+            Do NOT use for raw per-tool metrics — use `get_observability_metrics`
+            or `get_workflow_statistics` for that.
+
+            Returns a dict with `status` and `ecosystem_status` (health roll-up
+            across pools, recovery, and workflows).
+
+            Fails with `status="error"` if any subsystem backing the report is
+            unreachable.
+
+            Side effect: none.
             """
             try:
                 from ..core.ecosystem_status import EcosystemStatusService
