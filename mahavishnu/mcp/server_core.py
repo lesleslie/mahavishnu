@@ -564,7 +564,21 @@ class FastMCPServer:
             offset: int = 0,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """List workflows with optional filtering."""
+            """List workflows matching optional status filter.
+
+            Do NOT use to run a new workflow — use `trigger_workflow` for that.
+            Do NOT use for aggregate metrics — use `get_workflow_statistics`
+            for that.
+
+            Returns a dict with `workflows`, `total_count`, and the `status`
+            filter that was applied. Empty `workflows` is a valid output
+            (no workflows match the filter).
+
+            Fails with `status="error"` if the caller lacks the
+            LIST_WORKFLOWS permission.
+
+            Side effect: none.
+            """
             try:
                 from ..core.workflow_state import WorkflowStatus
 
