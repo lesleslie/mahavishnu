@@ -80,6 +80,16 @@ def enrich_tool_call_span(
     if not hasattr(span, "set_attribute"):
         return
 
+    # 2026-09-28 trace-pipeline Phase 1.5 fix: Akosha's _normalize_span reads
+    # the ``task.class`` attribute (dot-separated, per OTel semantic
+    # conventions). The original implementation wrote ``task_class``
+    # (underscore) which never matched the SQL filter on
+    # ``metadata.attributes.task_class`` in
+    # ``akosha_query_local_traces`` — so mcp_tool_call_feed stayed at 0
+    # entities even with traces flowing. Write BOTH the dot-form (the
+    # documented contract) AND the underscore-form (the documented
+    # plan name) so either reader picks it up.
+    span.set_attribute("task.class", TASK_CLASS)
     span.set_attribute("task_class", TASK_CLASS)
     span.set_attribute("selector", tool_name)
     span.set_attribute("outcome", status)

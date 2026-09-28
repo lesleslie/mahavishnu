@@ -20,18 +20,28 @@ try:
     from opentelemetry import metrics, trace
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.instrumentation.system_metrics import (  # ty: ignore[unresolved-import]
-        SystemMetricsInstrumentor,
-    )
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
+
+# ``SystemMetricsInstrumentor`` is an *optional* dependency — only required
+# when the operator wants auto-instrumented host CPU/RAM metrics. The
+# 2026-09-28 trace-pipeline Phase 1.5 fix: isolate its import from the
+# core OTel block so a missing ``opentelemetry-instrumentation-system-
+# metrics`` doesn't poison OTEL_AVAILABLE (which would silently fall
+# back to MockTracer and break the mcp_tool_call feed end-to-end).
+try:
+    from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor  # ty: ignore[unresolved-import]
+    SYSTEM_METRICS_AVAILABLE = True
+except ImportError:
+    SystemMetricsInstrumentor = None  # type: ignore[assignment]
+    SYSTEM_METRICS_AVAILABLE = False
 
     # Define minimal fallback classes
     class MockCounter:
@@ -124,7 +134,7 @@ class ObservabilityManager:
 
             # Initialize tracer
             trace_provider = TracerProvider(resource=resource)
-            processor = BatchSpanProcessor(
+            processor = SimpleSpanProcessor(
                 OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
             )
             trace_provider.add_span_processor(processor)
@@ -139,8 +149,9 @@ class ObservabilityManager:
             metrics.set_meter_provider(meter_provider)
             self.meter = metrics.get_meter(__name__)
 
-            # Instrument system metrics
-            SystemMetricsInstrumentor().instrument()
+            # Instrument system metrics (optional — see SYSTEM_METRICS_AVAILABLE guard)
+            if SYSTEM_METRICS_AVAILABLE and SystemMetricsInstrumentor is not None:
+                SystemMetricsInstrumentor().instrument()
 
             # Create common instruments
             self.workflow_counter = self.meter.create_counter(
