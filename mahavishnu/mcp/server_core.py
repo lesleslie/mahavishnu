@@ -1089,7 +1089,20 @@ class FastMCPServer:
 
         @server.tool()
         async def get_active_alerts() -> dict[str, Any]:
-            """Get all active (non-acknowledged) alerts."""
+            """Get currently-firing (non-acknowledged) alerts.
+
+            Do NOT use to acknowledge or resolve alerts — use
+            `acknowledge_alert` for that.
+
+            Returns a dict with `alerts` (list of `{id, timestamp, severity,
+            type, title, description, details}`) and `count`. Empty `alerts`
+            is a valid output (no alerts currently firing).
+
+            Fails with `status="error"` if the monitoring subsystem is not
+            initialized.
+
+            Side effect: none.
+            """
             try:
                 if not self.app.monitoring_service or not self.app.monitoring_service.alert_manager:
                     return {"status": "error", "error": "Monitoring service not initialized"}
