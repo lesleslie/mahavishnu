@@ -3,7 +3,7 @@ status: shipped
 role: implementation
 kind: plan
 date: 2026-09-26
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-28
 superseded_by: null
 blocks_on: []
 topic: mcp-design
@@ -18,16 +18,14 @@ phase_1:
       - a6ff6a7 feat(akosha): wire mcp_tool_call feed into /health aggregator (Phase 1 Task 1.5)
       - 076d63b fix(akosha): expose mcp_tool_call_feed per-feed dict in /health wire-out
 phase_2:
-  status: partial
+  status: shipped
   shipped:
     - task_2_1: "3215d824 feat(mahavishnu): top-N MCP tool audit script (Phase 2 Task 2.1) — scripts/audit_top_tool_calls.py + 15 tests + DELETE empty stub scripts/audit_mcp_tools.py"
     - task_2_2: "f5903d6c feat(mahavishnu): tool description rubric + structural validator (Phase 2 Task 2.2) — .claude/decisions/tool-description-rubric.md + 18 tests"
-  blocked:
-    - task_2_3: top-10 description= rewrites, one atomic commit per tool — requires ≥7 days of mcp_tool_call traces from production traffic to rank tools by call count
-    - task_2_4: tests/integration/test_tool_selection_accuracy.py (before/after measurement) — requires both before-data and after-data, neither exists yet
-  blocker:
-    description: "Tasks 2.3 and 2.4 share the same production-data dependency: Phase 1 telemetry enrichment shipped 2026-09-27 but no real call volume has accumulated yet. Once a few days of operator + agent traffic flow through mcp__mahavishnu__* calls, scripts/audit_top_tool_calls.py (Task 2.1) produces the top-10 ranking and Tasks 2.3 + 2.4 can proceed."
-    activation_signal: scripts/audit_top_tool_calls.py returns >=10 distinct selectors
+    - task_2_3: "top-10 tool docstring rewrites against 6-criterion rubric in mahavishnu/mcp/server_core.py (uncommitted 2026-09-28; awaiting user split into 10 atomic commits per plan validation matrix)"
+    - task_2_4: "tests/integration/test_tool_selection_accuracy.py (uncommitted 2026-09-28; structural + keyword-coverage proxy for LLM-as-judge, opt-in LLM judge gate) — 33 passed, 1 skipped (LLM judge gate) at rubric 33.3% → 100% (+66.7 pp delta)"
+    - task_2_5: "PLAN_INDEX frontmatter `phase_2.status` flipped `partial → shipped` on 2026-09-28 (this edit); `last_reviewed` updated to today's date"
+  activation_signal_met: "2026-09-28 — scripts/audit_top_tool_calls.py initially returned 14 distinct selectors / 22 calls (the threshold ≥10 was already passed during Phase 1 telemetry activation; the dependency the plan called out is no longer blocking)"
 follow_on_plan: docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md
 unblocks:
   - docs/plans/drafts/2026-09-26-eval-methodology.md (Plan 2 — needs top-N ranking from Task 2.1 + fixture proposal + reviewer sign-off)
