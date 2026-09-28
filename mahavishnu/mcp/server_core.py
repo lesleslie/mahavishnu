@@ -308,7 +308,21 @@ class FastMCPServer:
             offset: int | None = None,
             user_id: str | None = None,
         ) -> dict[str, Any]:
-            """List repositories with optional filtering and pagination."""
+            """List repositories in the registry.
+
+            Do NOT use to scan or read repository contents — this returns the
+            catalog only. Use `pool_route_execute` to dispatch work against a
+            repo, or `get_capability_result` to query a registered adapter.
+
+            Returns a dict with keys `repos` (list of `{path, exists}`),
+            `total_count`, `filtered_count`, and the `tag` filter that was
+            applied. Empty `repos` is a valid output — the registry has no
+            entries matching the filter (not an error).
+
+            Fails with `status="error"` if the registry file is unreadable.
+
+            Side effect: none.
+            """
             try:
                 repos = self.app.get_repos(tag=tag, user_id=user_id)
 
