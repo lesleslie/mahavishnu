@@ -866,7 +866,20 @@ class FastMCPServer:
 
         @server.tool()
         async def get_workflow_statistics() -> dict[str, Any]:
-            """Get workflow statistics and analytics."""
+            """Get aggregate workflow statistics over the corpus.
+
+            Do NOT use to enumerate specific workflows — use `list_workflows`
+            for that. Do NOT use for per-tool performance — use
+            `get_observability_metrics` for that.
+
+            Returns a dict with `status` and `statistics` (status counts,
+            duration distributions). Empty `statistics` means no workflows
+            are indexed yet — not an error.
+
+            Fails with `status="error"` if the workflow corpus is unreachable.
+
+            Side effect: none.
+            """
             try:
                 stats = await self.app.opensearch_integration.get_workflow_stats()
 
