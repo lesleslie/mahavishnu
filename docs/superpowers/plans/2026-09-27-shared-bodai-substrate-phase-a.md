@@ -4,6 +4,7 @@ role: implementation
 kind: plan
 date: 2026-09-27
 last_reviewed: 2026-09-27
+revision: v2 (2026-09-27 — Task 1 + Task 3 revised; pre-SDD pre-flight surfaced 647-line QueryCacheManager + Akosha CacheConfig-is-Pydantic issues)
 topic: shared-oneiric-substrate-phase-a
 ---
 
@@ -80,49 +81,150 @@ requirements:
 
 ## 6. Implementation Tasks
 
-### Task 1: SB QueryCacheManager → MemoryCacheAdapter shim
+### Task 1: SB `QueryCacheManager` → `MemoryCacheAdapter` substitution (REVISED 2026-09-27)
+
+**Why revised**: pre-flight surfaced that `session_buddy/cache/query_cache.py` is **647 lines** with substantial L2 DuckDB infrastructure (8 helper methods + `initialize(conn)` + `aclose()` + `cleanup_expired()` + shutdown race machinery) and the brief's `max_size=10` constructor argument was a rename that contradicts spec §6.1 "pure substitution". Constructed detailed deletion/preserve rules in the corresponding task brief (`.superpowers/sdd/2026-09-27-shared-bodai-substrate-phase-a/task-1-brief.md`).
 
 **Files:**
-- Modify: `session_buddy/cache/query_cache.py` (rewrite body of `QueryCacheManager` to delegate)
-- Test: `session_buddy/tests/cache/test_memory_adapter.py` (new)
+- Modify: `session_buddy/cache/query_cache.py` (full rewrite, preserving public surface)
+- Create: `session_buddy/tests/cache/test_memory_adapter.py` (new)
+
+(Per atomic per-file adoption rule + spec §6.1 pure substitution, NO other files in this commit. Caller sites at `reflection_adapter_oneiric.py:532`, `cache_tools.py:333`, `tests/unit/test_query_cache.py`, etc. continue to work because the public surface — including `l1_max_size` / `l2_ttl_days` kwargs — is preserved.)
 
 #### Integration Contract ← REQUIRED
 
 - **Triggered from**: First call to `mcp__session-buddy__quick_search` after SB restart.
 - **Returns to**: cache writes go to a `MemoryCacheAdapter` instance managed by SB cache module; L2 DuckDB `query_cache_l2` table is no longer created.
-- **Demonstrable by**: `grep -rn "query_cache_l2" session_buddy/` returns zero hits after Task 2 lands.
+- **Demonstrable by**: `grep -rn "query_cache_l2\|self._l1_cache: OrderedDict" session_buddy/` returns zero hits in `query_cache.py` post-Task-1 (Task 1 scope). The duplicate block in `reflection_adapter_oneiric.py:759-778` remains until Task 2.
 - **Rollback signal**: SB `/health` returns 503 with `feeds.cache_health == degraded`; p99 `quick_search` latency > 50ms.
-- **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes.
+- **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes (delegated to `MemoryCacheAdapter`'s internal logger).
 
-- [ ] **Step 1: Write failing test for shim delegation**
+#### Constructor preservation (per spec §6.1 pure substitution)
+
+The existing public `__init__(self, l1_max_size: int = 1000, l2_ttl_days: int = 7)` signature is **preserved verbatim**. Internally translates to `MemoryCacheSettings(max_entries=l1_max_size, default_ttl=l2_ttl_days * 86400.0)`. The `l2_ttl_days` kwarg is forwarded to the adapter's TTL — kept for caller compat, semantically preserved.
+
+#### Sync/async bridge (sync API callers must keep working)
+
+Callers reach `cache.get(...)` and `cache.put(...)` synchronously. The bridge:
 
 ```python
-# session_buddy/tests/cache/test_memory_adapter.py
-from session_buddy.cache import QueryCacheManager
-from oneiric.adapters.cache.memory import MemoryCacheAdapter
-
-def test_query_cache_delegates_to_memory_adapter():
-    qc = QueryCacheManager(max_size=10)
-    qc.set("k", "v")
-    assert qc.get("k") == "v"
-    assert isinstance(qc._cache, MemoryCacheAdapter)
+def _run_async(self, coro):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError(
+            "QueryCacheManager sync API cannot be called from a running event loop. "
+            "Use the underlying MemoryCacheAdapter async interface directly."
+        )
+    return asyncio.run(coro)
 ```
 
-- [ ] **Step 2: Run, expect failure**: `pytest session_buddy/tests/cache/test_memory_adapter.py -v` → FAIL (current QueryCacheManager has OrderedDict backend).
+#### L2 DuckDB infrastructure deleted in this commit (per v5 §6.1 + §10 risk #1)
 
-- [ ] **Step 3: Replace `QueryCacheManager` body with delegation** (delete the OrderedDict code; constructor accepts `max_size` + `default_ttl_seconds` and instantiates `MemoryCacheAdapter(...)`).
+Methods removed: `_ensure_l2_table`, `_get_from_l2`, `_put_to_l2`, `_delete_from_l2`, `_clear_l2`, `_update_l2_access`, `_track_operation`, `_complete_operation`, `_execute_in_executor`, `initialize(conn)`, `aclose()`, `cleanup_expired`. Imports removed: `duckdb` (TYPE_CHECKING), `threading`, `asyncio.Lock`, `OrderedDict`, `dataclass`/`field`. The `QueryCacheEntry` dataclass is removed (only used by L2 path).
 
-- [ ] **Step 4: Re-run test, expect pass**.
+- [ ] **Step 1: Write failing tests for shim delegation, constructor preservation, sync-loop guard, and L2 deletion**
 
-- [ ] **Step 5: Delete runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` block at `query_cache.py:139-155`**.
+```python
+# session_buddy/tests/cache/test_memory_adapter.py (new)
+from __future__ import annotations
 
-- [ ] **Step 6: Commit (atomic — Task 1 lands as one commit)**:
+import asyncio
+
+import pytest
+
+from oneiric.adapters.cache.memory import MemoryCacheAdapter
+
+from session_buddy.cache.query_cache import QueryCacheManager
+
+
+@pytest.mark.req(["REQ-OSUB-A-001"])
+def test_query_cache_delegates_to_memory_adapter() -> None:
+    qc = QueryCacheManager(l1_max_size=10)  # NOTE: l1_max_size (NOT max_size — pure substitution)
+    qc.put("k", ["v"], normalized_query="q", project=None)
+    assert qc.get("k") == ["v"]
+    assert isinstance(qc._cache, MemoryCacheAdapter)
+
+
+@pytest.mark.req(["REQ-OSUB-A-001"])
+def test_query_cache_constructor_signature_preserved() -> None:
+    """Per spec §6.1 pure substitution — constructor arg names unchanged."""
+    qc = QueryCacheManager(l1_max_size=42, l2_ttl_days=3)
+    assert qc.l1_max_size == 42
+    assert qc.l2_ttl_seconds == 3 * 86400
+
+
+@pytest.mark.req(["REQ-OSUB-A-001"])
+def test_sync_api_raises_in_running_loop() -> None:
+    """Sync API is non-blocking-call-safe."""
+    qc = QueryCacheManager(l1_max_size=10)
+
+    async def inside() -> None:
+        qc.put("k", ["v"], normalized_query="q", project=None)
+
+    with pytest.raises(RuntimeError, match="running event loop"):
+        asyncio.run(inside())
+
+
+@pytest.mark.req(["REQ-OSUB-A-001", "REQ-OSUB-A-002"])
+def test_query_cache_l2_table_block_deleted() -> None:
+    """The runtime CREATE TABLE query_cache_l2 block in query_cache.py is gone."""
+    import subprocess
+    result = subprocess.run(
+        ["grep", "-n", "query_cache_l2", "session_buddy/cache/query_cache.py"],
+        capture_output=True, text=True,
+    )
+    assert result.stdout == "", f"query_cache_l2 still in query_cache.py:\n{result.stdout}"
+```
+
+- [ ] **Step 2: Run, expect RED**: `pytest session_buddy/tests/cache/test_memory_adapter.py -v` → all 4 tests FAIL.
+
+- [ ] **Step 3: Rewrite `session_buddy/cache/query_cache.py`** — preserved `__init__` + preserved `normalize_query` (static) + preserved `compute_cache_key` (static) + delegated `get`/`put`/`invalidate` via `_run_async` + sync `close()`. Reference rewrite in `.superpowers/sdd/.../task-1-brief.md` Step 3.
+
+- [ ] **Step 4: Re-run focused test, expect GREEN**: `pytest session_buddy/tests/cache/test_memory_adapter.py -v` → all 4 PASS.
+
+- [ ] **Step 5: Verify L2 + DuckDB symbols gone**:
+
+```bash
+grep -n "query_cache_l2\|_l1_cache: OrderedDict\|class QueryCacheManager\|duckdb" session_buddy/cache/query_cache.py | head -5
+```
+
+Expected: **exit code 1** (zero hits). The duplicate block in `reflection_adapter_oneiric.py:759-778` and the `"query_cache_l2"` string at `:2732` remain (Task 2's scope).
+
+- [ ] **Step 6: Note downstream-test breakage (logged as DONE_WITH_CONCERNS, NOT in this commit)**:
+
+`tests/unit/test_query_cache.py` and `tests/performance/test_query_cache_performance.py` reference removed symbols. **Do NOT modify those tests in this commit** — that's Task 1b (test-migration follow-up).
+
+- [ ] **Step 7: Atomic commit (TWO files only)**:
 
 ```bash
 cd /Users/les/Projects/session-buddy
 git add session_buddy/cache/query_cache.py session_buddy/tests/cache/test_memory_adapter.py
-git commit -m "feat(session-buddy): adopt MemoryCacheAdapter for query cache"
+git commit -m "feat(session-buddy): adopt MemoryCacheAdapter for query cache
+
+Rewrite QueryCacheManager to delegate to oneiric.adapters.cache.memory
+.MemoryCacheAdapter and delete the runtime CREATE TABLE query_cache_l2
+block plus all L2 DuckDB infrastructure (dead per spec §10 risk #1).
+
+Pure substitution per spec §6.1: the constructor signature
+(__init__(l1_max_size=..., l2_ttl_days=...)) is preserved verbatim so
+existing call-sites at reflection_adapter_oneiric.py:532 and 4 test
+files continue to work without changes. Sync API (get/put/invalidate)
+preserved with a per-call asyncio.run() bridge guarded against running
+event loops; the async backend is reachable directly from async contexts.
+
+The duplicate CREATE TABLE query_cache_l2 block in
+reflection_adapter_oneiric.py:759-778 (Task 2 scope) and the
+\"query_cache_l2\" string at :2732 (Task 2 scope) are NOT touched in
+this commit; per the atomic per-file adoption rule each deletion lands
+in its own commit.
+
+Implements: REQ-OSUB-A-001, REQ-OSUB-A-002"
 ```
+
+No `Co-Authored-By` trailer. Author email `les@wedgwoodwebworks.com`.
 
 ### Task 2: Delete the duplicate runtime `CREATE TABLE` block in `reflection_adapter_oneiric.py`
 
@@ -156,53 +258,89 @@ git add session_buddy/adapters/reflection_adapter_oneiric.py
 git commit -m "refactor(session-buddy): delete duplicate query_cache_l2 CREATE TABLE block"
 ```
 
-### Task 3: Akosha CacheConfig delegates to MemoryCacheAdapter
+### Task 3: Akosha `CacheManager` over `MemoryCacheAdapter` (REVISED 2026-09-27)
 
-**Files:**
-- Modify: `akosha/config.py:241-258`
-- Create: `akosha/cache/__init__.py`
-- Test: `akosha/tests/cache/test_memory_adapter.py` (new)
+**Why revised**: pre-flight surfaced that `CacheConfig` (`akosha/config.py:241-258`) is a **Pydantic `BaseModel`**, NOT an "unbounded `dict` cache" as spec v5 §4.1 described. `CacheConfig` is config-only; the only consumer is `A koshaSettings.cache` (sub-config). There is no `akosha/cache/` directory in the tree today, and the brief's test `cfg.backend = MemoryCacheAdapter` was structurally impossible because Pydantic fields can't hold runtime adapter instances.
+
+**Right design**: introduce a new `CacheManager` runtime wrapper in a new `akosha/cache/` module; leave `CacheConfig` (Pydantic config) untouched. Spec v5 §4.1's "CacheConfig only" row is factually wrong — flagged for spec revision post-Phase-A.
+
+**Files (revised):**
+- Create: `akosha/cache/__init__.py` (re-exports `CacheManager` and `MemoryCacheAdapter`)
+- Create: `akosha/cache/manager.py` (`CacheManager` class)
+- Create: `akosha/tests/cache/test_memory_adapter.py`
+
+**Files NOT modified in this task (revision):**
+- `akosha/config.py:241-258` — `CacheConfig` Pydantic model stays unchanged.
 
 #### Integration Contract
 
-- **Triggered from**: First call to `mcp__akosha__search_code_patterns` after Akosha restart.
-- **Returns to**: cache writes go to `MemoryCacheAdapter` instance managed by Akosha config.
-- **Demonstrable by**: `grep -rn "CacheConfig.*dict\|self.cache: dict" akosha/` returns zero hits; `pytest akosha/tests/cache/test_memory_adapter.py -v` PASS.
+- **Triggered from**: First call to any Akosha path that opens a cache (`mcp__akosha__search_code_patterns`, `search_all_systems`, etc. — after Phase D wires embedding lookup through this cache).
+- **Returns to**: cache reads/writes flow through `MemoryCacheAdapter`; no legacy dict-backed cache anywhere.
+- **Demonstrable by**:
+  - `pytest akosha/tests/cache/test_memory_adapter.py -v` all PASS.
+  - `python -c "from akosha.cache import CacheManager; from akosha.config import CacheConfig; cm = CacheManager(CacheConfig(backend='memory')); cm.set('k', 'v'); print(cm.get('k'))"` prints `v`.
 - **Rollback signal**: Akosha `/health` returns 503 with `feeds.cache_health == degraded`.
-- **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio`.
+- **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes (delegated to MemoryCacheAdapter's internal logger).
 
 - [ ] **Step 1: Write failing tests**:
 
 ```python
-# akosha/tests/cache/test_memory_adapter.py
+# akosha/tests/cache/test_memory_adapter.py (new)
+from __future__ import annotations
+
+import pytest
+
+from akosha.cache import CacheManager
 from akosha.config import CacheConfig
 from oneiric.adapters.cache.memory import MemoryCacheAdapter
 
-def test_cache_config_uses_memory_adapter():
-    cfg = CacheConfig(max_size=10)
-    assert isinstance(cfg.backend, MemoryCacheAdapter)
 
-def test_cache_config_round_trip():
-    cfg = CacheConfig(max_size=10)
-    cfg.set("k", "v")
-    assert cfg.get("k") == "v"
+@pytest.mark.req(["REQ-OSUB-A-003"])
+def test_cache_manager_uses_memory_adapter() -> None:
+    cfg = CacheConfig(backend="memory", local_ttl_seconds=60)
+    cm = CacheManager(settings=cfg)
+    assert isinstance(cm.backend, MemoryCacheAdapter)
+
+
+@pytest.mark.req(["REQ-OSUB-A-003"])
+def test_cache_manager_round_trip() -> None:
+    cm = CacheManager(settings=CacheConfig(backend="memory"))
+    cm.set("k", "v")
+    assert cm.get("k") == "v"
 ```
 
-- [ ] **Step 2: Run, expect failure** (current `CacheConfig` is dict-based).
+- [ ] **Step 2: Run, expect RED** (ModuleNotFoundError on `akosha.cache`).
 
-- [ ] **Step 3: Replace CacheConfig body** — replace `dict` storage with a private `MemoryCacheAdapter` instance. Public surface stays (`get/set/...`) so callers don't break.
+- [ ] **Step 3: Create `akosha/cache/manager.py`** with `CacheManager` class per `.superpowers/sdd/.../task-3-brief.md` Step 3 — owns `MemoryCacheAdapter` instance, exposes `get/set/delete/delete_prefix/clear`, raises `NotImplementedError` for non-`"memory"` backends (Redis adapter is future work, NOT in Phase A).
 
-- [ ] **Step 4: Wrap get/set in OTel spans** per Integration Contract Observability row.
+- [ ] **Step 4: Create `akosha/cache/__init__.py`** — re-exports `CacheManager` and `MemoryCacheAdapter`.
 
-- [ ] **Step 5: Run tests, expect pass**.
+- [ ] **Step 5: Run focused tests, expect GREEN**.
 
-- [ ] **Step 6: Commit**:
+- [ ] **Step 6: Atomic commit (THREE files: 2 new modules + 1 test; `akosha/config.py` is NOT touched)**:
 
 ```bash
 cd /Users/les/Projects/akosha
-git add akosha/config.py akosha/cache/__init__.py akosha/tests/cache/test_memory_adapter.py
-git commit -m "feat(akosha): adopt MemoryCacheAdapter for cache"
+git add akosha/cache/__init__.py akosha/cache/manager.py akosha/tests/cache/test_memory_adapter.py
+git commit -m "feat(akosha): introduce CacheManager over MemoryCacheAdapter
+
+Per spec §6.1, Phase A adopts the oneiric substrate for Akosha's
+cache tier. The previous brief assumed CacheConfig (Pydantic) was a
+runtime cache — that description was wrong. CacheConfig is and remains
+a config-only Pydantic model; this commit introduces CacheManager, a
+runtime wrapper that reads CacheConfig and owns a MemoryCacheAdapter by
+default. No call-site rewrites are required because Akosha has no
+business code touching cache today (verified 2026-09-27 via grep).
+
+Per pre-1.0 replace-not-extend, this introduces the first runtime cache
+in Akosha. The legacy framing in spec §4.1 ('unbounded dict cache
+backend') is superseded by this implementation; spec v5's other shape
+decisions stand.
+
+Implements: REQ-OSUB-A-003, REQ-OSUB-A-004"
 ```
+
+No `Co-Authored-By` trailer. Author email `les@wedgwoodwebworks.com`.
 
 ### Task 4: Cross-component orphan test
 
@@ -244,32 +382,40 @@ git add tests/integration/test_query_cache_l2_orphaned.py
 git commit -m "test: assert no references to query_cache_l2 after Phase A"
 ```
 
-## 7. Required Code Changes
+## 7. Required Code Changes (REVISED 2026-09-27)
 
 | File | Action | Phase task |
 |---|---|---|
-| `session_buddy/cache/query_cache.py` | MODIFY: rewrite body of `QueryCacheManager` to delegate | Task 1 |
-| `session_buddy/cache/query_cache.py:139-155` | DELETE runtime CREATE TABLE block | Task 1 |
+| `session_buddy/cache/query_cache.py` | MODIFY: full rewrite preserving public surface; delete L2 DuckDB plumbing (`_ensure_l2_table`, `_get_from_l2`, `_put_to_l2`, `_delete_from_l2`, `_clear_l2`, `_update_l2_access`, `_track_operation`, `_complete_operation`, `_execute_in_executor`, `initialize(conn)`, `aclose()`, `cleanup_expired`); sync API delegates to `MemoryCacheAdapter` via per-call `asyncio.run()` with running-loop guard | Task 1 |
+| `session_buddy/cache/query_cache.py:139-155` | DELETE runtime CREATE TABLE block (covered by Task 1's full rewrite; listed for grep validation only) | Task 1 |
 | `session_buddy/adapters/reflection_adapter_oneiric.py:759-778` | DELETE runtime CREATE TABLE block | Task 2 |
 | `session_buddy/adapters/reflection_adapter_oneiric.py:2732` | DELETE `"query_cache_l2"` string | Task 2 |
-| `session_buddy/cache/__init__.py` | CREATE: re-export MemoryCacheAdapter | Task 1 |
-| `session_buddy/tests/cache/test_memory_adapter.py` | CREATE | Task 1 |
-| `akosha/config.py:241-258` | MODIFY: CacheConfig delegates | Task 3 |
-| `akosha/cache/__init__.py` | CREATE: re-export MemoryCacheAdapter | Task 3 |
+| `session_buddy/cache/__init__.py` | CREATE: re-export MemoryCacheAdapter (note: existing `session_buddy/cache/__init__.py` likely already re-exports `QueryCacheManager`; preserve that, add MemoryCacheAdapter) | Task 1 |
+| `session_buddy/tests/cache/test_memory_adapter.py` | CREATE: 4 tests (delegation, constructor preservation, sync-loop guard, L2 deletion grep) | Task 1 |
+| `tests/unit/test_query_cache.py` | (Task 1b follow-up — NOT in Task 1's atomic commit) tests reference removed symbols; migrate or delete in follow-up | Task 1b |
+| `tests/performance/test_query_cache_performance.py` | (Task 1b follow-up) same | Task 1b |
+| `akosha/config.py:241-258` | UNCHANGED (CacheConfig Pydantic; not modified in Phase A) | (none) |
+| `akosha/cache/__init__.py` | CREATE: re-export `CacheManager` and `MemoryCacheAdapter` | Task 3 |
+| `akosha/cache/manager.py` | CREATE: `CacheManager` runtime wrapper | Task 3 |
 | `akosha/tests/cache/test_memory_adapter.py` | CREATE | Task 3 |
-| `tests/integration/test_query_cache_l2_orphaned.py` | CREATE | Task 4 |
+| `tests/integration/test_query_cache_l2_orphaned.py` | CREATE: greps `query_cache_l2` across both SB and Akosha | Task 4 |
 
-## 8. Validation Matrix
+## 8. Validation Matrix (REVISED 2026-09-27)
 
 | Tool / Command | Expected outcome | Evidence |
 |---|---|---|
-| `grep -rn "class QueryCacheManager" session_buddy/ akosha/` | zero hits | exit code 1 |
-| `grep -rn "self._l1_cache: OrderedDict" session_buddy/ akosha/` | zero hits | exit code 1 |
-| `grep -rn "query_cache_l2" session_buddy/ akosha/` | zero hits | exit code 1 |
-| `pytest session_buddy/tests/cache/ akosha/tests/cache/ -v` | all green | pytest exit 0 |
-| `pytest tests/integration/test_query_cache_l2_orphaned.py -v` | PASS | pytest exit 0 |
+| `grep -n "class QueryCacheManager" session_buddy/cache/query_cache.py` | zero hits | exit code 1 |
+| `grep -n "self._l1_cache: OrderedDict\|query_cache_l2\|duckdb" session_buddy/cache/query_cache.py` | zero hits (Task 1 scope; Task 2's `reflection_adapter_oneiric.py` block remains until Task 2) | exit code 1 |
+| `grep -rn "query_cache_l2" session_buddy/ akosha/` | zero hits (after all of Phase A lands — Tasks 1+2+4) | exit code 1 |
+| `grep -rn "_l2_lock\|_shutdown_event\|_conn" session_buddy/cache/query_cache.py` | zero hits (Task 1: all L2 plumbing removed) | exit code 1 |
+| `pytest session_buddy/tests/cache/test_memory_adapter.py -v` | 4 tests PASS (Task 1) | pytest exit 0 |
+| `pytest session_buddy/tests/unit/test_query_cache.py -v` | KNOWN FAIL (Task 1 concern; tests reference removed L2 symbols) — Task 1b follow-up | pytest exit nonzero |
+| `pytest akosha/tests/cache/test_memory_adapter.py -v` | PASS (Task 3) | pytest exit 0 |
+| `pytest tests/integration/test_query_cache_l2_orphaned.py -v` | PASS (Task 4) | pytest exit 0 |
 | `python -c "from oneiric.adapters.cache.memory import MemoryCacheAdapter; c = MemoryCacheAdapter(); c.set('k', 'v'); print(c.get('k'))"` | prints `v` | stdout |
-| `crackerjack run -v` (on SB and Akosha) | green | exit code 0 |
+| `python -c "from akosha.cache import CacheManager; from akosha.config import CacheConfig; cm = CacheManager(CacheConfig(backend='memory')); cm.set('k', 'v'); print(cm.get('k'))"` | prints `v` | stdout |
+| `python -c "from session_buddy.cache.query_cache import QueryCacheManager; q = QueryCacheManager(l1_max_size=10); q.put('k', ['v'], normalized_query='q', project=None); print(q.get('k'))"` | prints `['v']` (Task 1 constructor + sync API preserved) | stdout |
+| `crackerjack run -v` (on SB and Akosha) | green for new files only; existing files have KNOWN FAILURES from Task 1b follow-up | exit code nonzero acceptable during Task 1 landing; Task 1b fixes |
 
 ## 9. Risks
 
@@ -299,3 +445,10 @@ Phase A is complete when ALL of:
 - `oneiric/adapters/cache/memory.py:29` — MemoryCacheAdapter
 - `.claude/decisions/wire-up-contract.md` — Integration Contract rules
 - `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability
+
+## Revision history
+
+| Date | Revision | Author | Notes |
+|---|---|---|---|
+| 2026-09-27 | v1 | platform-team | Initial plan: 4 tasks (SB + Akosha cache consolidation, duplicate-block deletion, cross-component orphan test). |
+| 2026-09-27 | v2 | platform-team | **Pre-SDD pre-flight revision.** Task 1 brief undersized: `QueryCacheManager` is 647 lines with substantial L2 DuckDB infrastructure; revised brief preserves constructor signature (`l1_max_size` / `l2_ttl_days` verbatim per spec §6.1 pure substitution), explicit per-method deletion list, sync/async bridge via per-call `asyncio.run()` with running-loop guard. Task 3 brief structurally wrong: `CacheConfig` is a Pydantic `BaseModel` (config-only), not an "unbounded dict cache" as spec §4.1 said; revised brief introduces a new `CacheManager` runtime wrapper in `akosha/cache/`, leaves `CacheConfig` untouched. Downstream-test breakage (Task 1b follow-up) noted. **Two latent spec errors flagged for post-Phase-A spec revision** (not in this commit): (a) spec §4.1 Akosha row is factually wrong about cache state; (b) — none other found.
