@@ -33,10 +33,51 @@ import sys
 from collections import Counter
 from typing import Any
 
-# Selector attribute name — set by the ToolCallEnrichmentMiddleware
-# (Phase 1, commit 67095d98). Mirrored here so the script does NOT depend
-# on importing mahavishnu at runtime (it's a top-level command).
+# Selector attribute location — set by the ToolCallEnrichmentMiddleware
+# (Phase 1, commit 67095d98) on each span as a top-level OTel attribute.
+# After the OtelTraceIngester ingests a span, the ``selector`` lives
+# nested at ``metadata.attributes.selector`` (alongside ``task_class``,
+# ``outcome``, ``duration_ms``). The previous flat-top-level contract
+# (``trace["selector"]``) only held when the audit script ran against
+# an adapter that copied the attribute up — Akosha's hot_store does not,
+# so the audit script now digs into the metadata attributes.
 SELECTOR_ATTR = "selector"
+
+
+def _selector_from_trace(trace: dict[str, Any]) -> str | None:
+    """Pull the per-tool ``selector`` string out of an Akosha trace dict.
+
+    Returns the selector when present (and non-empty), else ``None``.
+    Looks at the nested ``metadata.attributes.selector`` location first
+    (current Akosha layout) and falls back to a top-level
+    ``trace["selector"]`` for forward compatibility with adapters that
+    promote the attribute.
+
+    Akosha returns ``metadata`` as a JSON-encoded STRING on the wire
+    (FastMCP serialises dict-typed metadata that way through DuckDB's
+    JSON column). When the value is a string we parse it here so the
+    audit script doesn't have to do that at every call site.
+    """
+    meta = trace.get("metadata")
+    attrs: Any = None
+    if isinstance(meta, dict):
+        attrs = meta.get("attributes")
+    elif isinstance(meta, str) and meta:
+        try:
+            import json as _json
+            parsed = _json.loads(meta)
+        except (TypeError, ValueError):
+            parsed = None
+        if isinstance(parsed, dict):
+            attrs = parsed.get("attributes")
+    if isinstance(attrs, dict):
+        sel = attrs.get(SELECTOR_ATTR)
+        if isinstance(sel, str) and sel:
+            return sel
+    sel = trace.get(SELECTOR_ATTR)
+    if isinstance(sel, str) and sel:
+        return sel
+    return None
 
 # Exit codes — exported so tests can assert CLI behavior without parsing stdout.
 EXIT_OK = 0
@@ -69,8 +110,8 @@ def rank_tools_by_call_count(
     """
     counts: Counter[str] = Counter()
     for trace in traces:
-        selector = trace.get(SELECTOR_ATTR)
-        if isinstance(selector, str) and selector:
+        selector = _selector_from_trace(trace)
+        if selector is not None:
             counts[selector] += 1
 
     # Counter.most_common is NOT stable for ties — it uses insertion order,
@@ -122,55 +163,67 @@ def format_ranked_tools(
 async def _fetch_traces_from_akosha(limit: int) -> list[dict[str, Any]]:
     """Call Akosha MCP to fetch mcp_tool_call traces for mahavishnu.
 
-    The MCP call is a thin HTTP wrapper around the FastMCP server on
-    ``akosha_url`` (default ``http://localhost:8682/mcp``). Importing
-    the full FastMCP client here would force the script to depend on
-    mahavishnu's venv; instead we call the endpoint via the standard
-    httpx client (already a transitive dep via FastMCP). Errors are
-    caught and re-raised as ``MCPFetchError`` so ``main()`` can return
-    a clean exit code.
+    Uses the official FastMCP streamable-HTTP client (``mcp.client.
+    streamable_http.streamable_http_client`` + ``ClientSession``) so the
+    handshake, session-ID negotiation, and reconnection logic are
+    handled correctly. The previous raw ``httpx.AsyncClient.post(json=...)``
+    approach returned HTTP 400 against Akosha v0.21.0 + FastMCP 4.x,
+    which require ``initialize`` first plus ``Accept:
+    application/json, text/event-stream`` headers and session-ID tracking.
 
-    Note: this function is best-effort. Phase 1 of the parent plan
-    ships the writer-side enrichment; until production traffic
-    accumulates, this will typically return an empty list (which is
-    a valid output, not an error).
+    Errors are caught and re-raised as ``MCPFetchError`` so ``main()`` can
+    return a clean exit code.
+
+    Note: this function is best-effort. Phase 1 of the parent plan ships
+    the writer-side enrichment; until the trace pipeline delivers data
+    into Akosha's hot_store, this will typically return an empty list
+    (which is a valid output, not an error).
     """
-    import httpx
+    from mcp.client.session import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
 
     akosha_url = "http://localhost:8682/mcp"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                akosha_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "tools/call",
-                    "params": {
-                        "name": "query_local_traces",
-                        "arguments": {
-                            "system_id": "mahavishnu",
-                            "task_class": "mcp_tool_call",
-                            "limit": limit,
-                        },
+        async with streamable_http_client(akosha_url) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(
+                    "akosha_query_local_traces",
+                    arguments={
+                        "system_id": "mahavishnu",
+                        "task_class": "mcp_tool_call",
+                        "limit": limit,
                     },
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
-    except (httpx.HTTPError, ValueError, KeyError) as exc:
+                )
+    except Exception as exc:
         raise MCPFetchError(f"Akosha MCP query failed: {exc}") from exc
 
-    # MCP JSON-RPC envelope: {"result": {"content": [{"type": "text",
-    # "text": "<json string>"}]}}. Parse the inner text blob.
-    try:
-        inner_text = payload["result"]["content"][0]["text"]
-        traces = __import__("json").loads(inner_text)
-    except (KeyError, IndexError, TypeError, __import__("json").JSONDecodeError) as exc:
-        raise MCPFetchError(f"Akosha MCP payload malformed: {exc}") from exc
+    # FastMCP wraps tools with an output schema as ``structured_content``;
+    # tools without an output schema return text via ``content[0].text``.
+    # The ``akosha_query_local_traces`` tool returns structured content
+    # shaped ``{"result": [...spans...]}``, so prefer that path and
+    # fall back to the text path for tools that don't declare a schema.
+    import json as _json
+    structured = getattr(result, "structured_content", None)
+    if structured is not None:
+        if not isinstance(structured, dict) or "result" not in structured:
+            raise MCPFetchError(
+                f"Akosha MCP structured_content missing 'result' key "
+                f"(keys={list(structured.keys()) if isinstance(structured, dict) else 'n/a'})"
+            )
+        traces = structured["result"]
+    else:
+        try:
+            text_payload = result.content[0].text
+            traces = _json.loads(text_payload)
+        except (AttributeError, IndexError, KeyError, TypeError,
+                _json.JSONDecodeError) as exc:
+            raise MCPFetchError(f"Akosha MCP payload malformed: {exc}") from exc
 
     if not isinstance(traces, list):
-        raise MCPFetchError(f"Akosha MCP returned non-list payload (type={type(traces).__name__})")
+        raise MCPFetchError(
+            f"Akosha MCP returned non-list payload (type={type(traces).__name__})"
+        )
     return traces
 
 
