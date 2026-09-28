@@ -81,8 +81,18 @@ class FastMCPServer:
         self.auth_handler = get_auth_from_config(self.app.config)
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
-        self._register_telemetry_middleware()
+        # 2026-09-28 trace-pipeline Phase 1.5 fix: register the enrichment
+        # middleware FIRST (so it's INNER) and the upstream telemetry
+        # middleware SECOND (so it's OUTER). FastMCP applies middlewares
+        # in reverse registration order — registration order [enrich,
+        # upstream] means call order [upstream, enrich, tool] and the
+        # enrichment's finally block runs BEFORE the upstream's span
+        # ends, so the task_class/selector/outcome attributes land on a
+        # live span. Reversed from the original [upstream, enrich]
+        # registration, which made enrichment outer and lost the attributes
+        # on the already-ended upstream span.
         self._register_enrichment_middleware()
+        self._register_telemetry_middleware()
         self._register_auth_context_middleware()
 
         # Initialize terminal manager if enabled
