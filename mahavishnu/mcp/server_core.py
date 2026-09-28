@@ -919,7 +919,19 @@ class FastMCPServer:
 
         @server.tool()
         async def get_recovery_metrics() -> dict[str, Any]:
-            """Get metrics about error recovery and resilience operations."""
+            """Get metrics about error recovery and resilience operations.
+
+            Do NOT use to trigger recovery — use `heal_workflows` for that.
+
+            Returns a dict with `status` and `metrics` (recovery attempt
+            counts, success rates, mean-time-to-recover). Empty `metrics` is
+            a valid output (no recovery operations have run yet).
+
+            Fails with `status="error"` if the recovery subsystem is not
+            initialized.
+
+            Side effect: none.
+            """
             try:
                 metrics = await self.app.error_recovery_manager.get_recovery_metrics()
 
