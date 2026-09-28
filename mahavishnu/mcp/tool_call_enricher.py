@@ -37,9 +37,7 @@ if TYPE_CHECKING:
 # in ``mahavishnu/mcp/server_core.py:220`` so the analyzer's per-tool
 # failure_rate computation has signal. Do NOT extend this set without
 # also extending the analyzer's outcome-handling.
-_OUTCOME_VALUES: Final[frozenset[str]] = frozenset(
-    {"success", "error", "cancelled", "timeout"}
-)
+_OUTCOME_VALUES: Final[frozenset[str]] = frozenset({"success", "error", "cancelled", "timeout"})
 
 # Filter key for Akosha's ``query_local_traces(task_class=...)``. Hardcoded
 # so a typo on the writer side surfaces as a missing task_class in Akosha
@@ -48,7 +46,7 @@ TASK_CLASS: Final[str] = "mcp_tool_call"
 
 
 def enrich_tool_call_span(
-    span: "Span",
+    span: Span,
     *,
     tool_name: str,
     status: str,
@@ -76,9 +74,7 @@ def enrich_tool_call_span(
             rather than silently write a value the analyzer can't parse.
     """
     if status not in _OUTCOME_VALUES:
-        raise ValueError(
-            f"status must be one of {sorted(_OUTCOME_VALUES)}, got {status!r}"
-        )
+        raise ValueError(f"status must be one of {sorted(_OUTCOME_VALUES)}, got {status!r}")
     if span is None:
         return
     if not hasattr(span, "set_attribute"):

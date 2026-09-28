@@ -68,9 +68,7 @@ async def _event_session() -> AsyncIterator[Any]:
         yield session
 
 
-def _format_event_markdown(
-    event: dict[str, Any] | ExecutionEvent, idx: int
-) -> str:
+def _format_event_markdown(event: dict[str, Any] | ExecutionEvent, idx: int) -> str:
     """One event as a markdown bullet.
 
     Accepts both shapes because there are two callers in this file:

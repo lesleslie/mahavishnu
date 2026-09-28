@@ -150,9 +150,7 @@ class FastMCPServer:
         ``tracing_enabled`` — flagged by the security lens on 2026-09-27.
         """
         observability = getattr(self.app.config, "observability", None)
-        if observability is None or not getattr(
-            observability, "tool_enrichment_enabled", False
-        ):
+        if observability is None or not getattr(observability, "tool_enrichment_enabled", False):
             return
 
         service_name = getattr(self.app.config, "server_name", "mahavishnu")

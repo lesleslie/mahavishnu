@@ -259,7 +259,7 @@ async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str |
         if RateLimitError is None:
             # Sentinel: defensive import failed. ``enforce_concurrency_limit``
             # is fire-and-forget — returning None is the documented contract.
-            return None
+            return
         raise RateLimitError(
             limit=spec.concurrency_limit if spec else None,
             retry_after_seconds=_estimate_retry(spec) if _estimate_retry else None,
@@ -680,14 +680,13 @@ def register_pool_tools(
             # on completion. WorktreeLockedError => ``status="worktree_conflict"``.
             worktree_info: WorktreeInfo | None = None
             worktree_repo_path: Path | None = None
+            # ``worktree_storage.default_isolation`` was removed in the
+            # 2026-09-27 config audit (no Bodai consumer); the worktree
+            # subsystem manages its own constants/defaults. When the
+            # caller passes no per-call ``worktree`` parameter, isolation
+            # stays off ("host").
             effective_isolation = (
-                worktree.isolation
-                if worktree is not None
-                else (
-                    get_settings().worktree_storage.default_isolation
-                    if get_settings is not None
-                    else "host"
-                )
+                worktree.isolation if worktree is not None else "host"
             )
             wt_manager = _get_worktree_manager()
             execution_id = str(uuid4())
@@ -792,7 +791,7 @@ def register_pool_tools(
                 # result (FIX round-7 Tier 2).
                 try:
                     await breaker.call(lambda: idem_store.mark_completed(existing_event, result))
-                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):  # ty: ignore[invalid-exception-caught]
+                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "failed to mark idempotency record completed",
                         extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
@@ -819,7 +818,7 @@ def register_pool_tools(
                             error=_exc,
                         )
                     )
-                except (IdempotencyStoreUnavailable, IdempotencyCircuitOpen):  # ty: ignore[invalid-exception-caught]
+                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "failed to mark idempotency record failed",
                         extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},

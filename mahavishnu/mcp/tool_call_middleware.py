@@ -37,10 +37,9 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
-from opentelemetry import trace
-from opentelemetry.trace import Status, StatusCode
-
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
+from oneiric.core.logging import get_logger
+from opentelemetry import trace
 
 from .tool_call_enricher import enrich_tool_call_span
 
@@ -51,8 +50,10 @@ if TYPE_CHECKING:
 
     type CallNext = Callable[[MiddlewareContext[Any]], Awaitable[Any]]
 
+log = get_logger(__name__)
 
-def _extract_tool_name(context: "MiddlewareContext[Any]") -> str:
+
+def _extract_tool_name(context: MiddlewareContext[Any]) -> str:
     """Return ``context.message.name`` or ``"<unknown>"`` if missing.
 
     Mirrors the upstream middleware's ``_component_name`` shape — for
@@ -99,9 +100,7 @@ class ToolCallEnrichmentMiddleware(FastMCPOpenTelemetryMiddleware):
     (same tracer, same OTel context).
     """
 
-    async def on_message(
-        self, context: "MiddlewareContext[Any]", call_next: "CallNext"
-    ) -> Any:
+    async def on_message(self, context: MiddlewareContext[Any], call_next: CallNext) -> Any:
         """Gate on ``tools/call`` and enrich the upstream's span."""
         if context.method != "tools/call":
             # Pass through unchanged. The upstream middleware still emits
@@ -134,10 +133,13 @@ class ToolCallEnrichmentMiddleware(FastMCPOpenTelemetryMiddleware):
                     status=status,
                     duration_ms=duration_ms,
                 )
-            except Exception:  # noqa: BLE001 - middleware MUST NOT raise
+            except Exception:  # middleware MUST NOT raise
                 # Span enrichment is best-effort. A failure here must
                 # never propagate to the caller; the only consequence is
                 # that Akosha won't see the per-tool signal for this call.
                 # The upstream middleware's own exception recording will
                 # still mark the span.
-                pass
+                log.exception(
+                    "mcp tool-call span enrichment failed for tool=%r",
+                    tool_name,
+                )

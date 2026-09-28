@@ -13,8 +13,8 @@ Architecture:
 
 from __future__ import annotations
 
-import os
 from enum import StrEnum
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -3060,9 +3060,7 @@ class MahavishnuSettings(BaseSettings):
         xdg_dir = xdg_config_home / "mahavishnu"
         for xdg_file in (xdg_dir / "config.yaml", xdg_dir / "local.yaml"):
             if xdg_file.exists():
-                yaml_sources.append(
-                    YamlConfigSettingsSource(settings_cls, xdg_file)
-                )
+                yaml_sources.append(YamlConfigSettingsSource(settings_cls, xdg_file))
 
         return (
             init_settings,

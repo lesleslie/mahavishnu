@@ -22,16 +22,11 @@ class TestWorktreeStorageSettingsNewShape:
     def test_loads_with_defaults(self) -> None:
         s = WorktreeStorageSettings()
         assert s.enabled is False
-        assert s.default_isolation == "host"
         assert s.max_concurrent == 5
 
     def test_rejects_extra_fields(self) -> None:
         with pytest.raises(ValueError, match="Extra inputs are not permitted"):
             WorktreeStorageSettings(unknown_field="nope")  # type: ignore[call-arg]
-
-    def test_rejects_invalid_isolation(self) -> None:
-        with pytest.raises(ValueError, match="default_isolation"):
-            WorktreeStorageSettings(default_isolation="unknown")  # type: ignore[arg-type]
 
     def test_max_concurrent_bounds(self) -> None:
         with pytest.raises(ValueError, match="max_concurrent"):

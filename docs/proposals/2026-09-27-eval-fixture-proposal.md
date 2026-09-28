@@ -11,11 +11,11 @@ Plan 2 (Eval Methodology) §8 names four conditions that must ALL hold before
 the plan promotes from `draft` to `active`:
 
 1. Plan 1 Phase 1 shipped. ✅ Met (`dbc2c7fa`, 2026-09-27).
-2. Plan 1 Phase 2 Task 2.1 shipped. ✅ Met (`3215d824`, 2026-09-27).
+1. Plan 1 Phase 2 Task 2.1 shipped. ✅ Met (`3215d824`, 2026-09-27).
    `scripts/audit_top_tool_calls.py` is the §6 step 2 prerequisite.
-3. ≥7 days of `mcp_tool_call` traces covering top-20 tools. ❌ Blocked
+1. ≥7 days of `mcp_tool_call` traces covering top-20 tools. ❌ Blocked
    on production traffic post-Phase 1 deploy.
-4. **This proposal** + §8 reviewer sign-off. ⏳ This document.
+1. **This proposal** + §8 reviewer sign-off. ⏳ This document.
 
 This proposal addresses the third missing piece: **what fixtures** and
 **what rubric strategy** will define the cross-adapter eval mini-suite.
@@ -59,7 +59,7 @@ cross-adapter ordering" exit criterion is satisfied by fixtures 1-5 +
 9-11, not by uniform 4×3 coverage.
 
 **Why 12, not 10:** the original sketch said "10–20." 12 keeps the suite
-small enough for nightly CI (<10 min total) while spanning all four
+small enough for nightly CI (\<10 min total) while spanning all four
 task classes with cross-adapter coverage. Fixtures 9/10/11 exercise
 adapter-specific deploy paths, which is where the cross-adapter ranking
 is most likely to discriminate (Prefect vs LlamaIndex vs Agno handle
@@ -97,9 +97,10 @@ LLM-judge track is skipped.
 ### Track 2: LLM-as-judge
 
 Track 2 runs when **either** of these conditions hold:
+
 1. `task.json.judge_required: true` (fixture-class signal — the fixture
    declares semantic evaluation is needed, e.g. `refactor-py-decompose-class`).
-2. Two or more adapters tie at Track 1 on a given fixture run (runtime
+1. Two or more adapters tie at Track 1 on a given fixture run (runtime
    tie-breaking signal).
 
 For Track 2, an LLM-as-judge with a **pinned rubric prompt** evaluates
@@ -179,7 +180,7 @@ existing pattern at `tests/fixtures/adapter_mocks.py`:
 - **Smoke tests against live backends** (separately, in
   `tests/integration/test_eval_smoke.py`) — run weekly, not nightly.
 
-Line-count reality: simple fixtures (1, 4) are <100 lines. Complex
+Line-count reality: simple fixtures (1, 4) are \<100 lines. Complex
 fixtures with mocking (5, 8, 9-12) are 300-500 lines including the
 canned-response JSON. The "under 200 lines per fixture" line in the
 parent plan §5 is wrong; this proposal supersedes it.
@@ -191,8 +192,8 @@ implements a **fixture-local tool-call recorder** wrapping the adapter's
 MCP client. Each tool call goes through the recorder, which:
 
 1. Appends to an in-memory list (`calls: list[ToolCall]`).
-2. Forwards to the real MCP client.
-3. Returns the result.
+1. Forwards to the real MCP client.
+1. Returns the result.
 
 After fixture execution, the recorder is asserted to NOT contain any
 tool in `task.json.forbidden_tools`. The recorder is **NOT** the
@@ -239,7 +240,7 @@ doesn't apply here:
    `audit_top_tool_calls.py` returns real top-N data, the activation
    step reconciles this list against the data using the explicit
    thresholds below. The list is a starting point, not a contract.
-2. **The rubric strategy is fixture-agnostic.** Two-track scoring
+1. **The rubric strategy is fixture-agnostic.** Two-track scoring
    (structural + LLM) is methodology that doesn't depend on which
    specific tools get called. It's decided once and reused across
    fixtures.
@@ -306,20 +307,20 @@ Consumer sites (per `feedback-cli-flag-consumer-wiring` memory):
 **Pre-conditions (all must be true):**
 
 1. Plan 1 Phase 1 + Phase 2 Tasks 2.1 + 2.2 shipped. ✅ All met.
-2. ≥7 days of production `mcp_tool_call` traces. ❌ Blocked on traffic.
-3. Phase 0 reviewer sign-off on this proposal. ❌ Pending — this review.
-4. **Deployment confirmation:** `web_reader` MCP server running on
+1. ≥7 days of production `mcp_tool_call` traces. ❌ Blocked on traffic.
+1. Phase 0 reviewer sign-off on this proposal. ❌ Pending — this review.
+1. **Deployment confirmation:** `web_reader` MCP server running on
    port 8699 in the eval CI environment (fixtures 6-8 require it).
    Add to activation checklist.
-5. **Akkosha follow-on plan shipped:** the metric-sink MCP write tool
-   + persistence layer are required for the eval results to actually
-   sink. See `docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md`
-   (deferred; not yet drafted as of this proposal's revision).
+1. **Akkosha follow-on plan shipped:** the metric-sink MCP write tool
+   - persistence layer are required for the eval results to actually
+     sink. See `docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md`
+     (deferred; not yet drafted as of this proposal's revision).
 
 **Activation steps:**
 
 1. Run `scripts/audit_top_tool_calls.py` against the ≥7-day corpus.
-2. Reconcile the fixture list using **explicit thresholds**:
+1. Reconcile the fixture list using **explicit thresholds**:
    - **Drop a task class** if total call count across all its tools
      is `<5` in the 7-day window.
    - **Drop a fixture** if any of its tooling touchpoints has `<1`
@@ -328,12 +329,12 @@ Consumer sites (per `feedback-cli-flag-consumer-wiring` memory):
      no current fixture covers.
    - **Cross-adapter coverage** required: minimum 2 adapters per task
      class (3 if the canonical adapter set is fully available).
-3. Derive budgets per "Budget derivation" subsection.
-4. Promote Plan 2 from `draft` to `active`. Add finalized REQ-IDs and
+1. Derive budgets per "Budget derivation" subsection.
+1. Promote Plan 2 from `draft` to `active`. Add finalized REQ-IDs and
    task list per §4.5.
-5. Run Phase 0 multi-agent review on the promoted plan.
-6. Implement Phase 1 (cross-adapter eval mini-suite + task.json schema
-   + CLI surface + tool-call recorder + mocks).
+1. Run Phase 0 multi-agent review on the promoted plan.
+1. Implement Phase 1 (cross-adapter eval mini-suite + task.json schema
+   - CLI surface + tool-call recorder + mocks).
 
 ## Cross-repo dependencies (corrected after Phase 0 review)
 
@@ -341,7 +342,7 @@ The Phase 0 review surfaced two critical Akosha-side gaps that block
 the eval metric sink:
 
 1. `add_metric()` is in-process only; no MCP write path exists.
-2. `TimeSeriesAnalytics._metrics_cache` is in-memory only; no
+1. `TimeSeriesAnalytics._metrics_cache` is in-memory only; no
    persistence layer (Dhara was decommissioned).
 
 Both are captured in the follow-on plan
@@ -360,6 +361,7 @@ on LLM-as-judge), and the cross-repo Akosha dependencies are
 correctly enumerated.
 
 **Proposed reviewers (suggested):**
+
 - `mcp-integration-expert` — covers the tooling touchpoints column.
 - `feature-dev:code-architect` — covers the fixture-level testability.
 - `akosha-specialist` — covers the metric storage + anomaly detection

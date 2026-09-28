@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.2] - 2026-09-28
+
+### Added
+
+- mahavishnu: Single-source-of-truth version stamps via importlib.metadata
+- mahavishnu: Tool description rubric + structural validator (Phase 2 Task 2.2)
+- mahavishnu: Tool-call span enrichment + Akosha-bound OTel attributes
+- mahavishnu: Top-N MCP tool audit script (Phase 2 Task 2.1)
+
+### Fixed
+
+- mahavishnu: Phase 1 verification fixes (split gates, real e2e, microbench)
+- mahavishnu: Upgrade microbench to exercise real OTel span path
+
+### Documentation
+
+- mahavishnu: Akosha eval-metric-sink follow-on plan
+- mahavishnu: Akosha tool-call feed lifecycle follow-on plan
+- mahavishnu: Correct akosha pytest paths in Phase A plan
+- mahavishnu: Drop paired-PR framing from plans (per bodai-pre-1.0)
+- mahavishnu: Phase 0 review revisions to eval fixture proposal
+- mahavishnu: Phase 2 partial-progress + plan 2 activation readiness
+- mahavishnu: Phase A plan v2 — Task 1 + Task 3 brief revisions after pre-SDD pre-flight
+- mahavishnu: Plan 2 fixture list + rubric strategy proposal
+- mahavishnu: Plan 2 frontmatter reflects Phase 0 review + Akosha sink blocker
+- mahavishnu: Promote tool-surface-quality plan active -> shipped
+- mahavishnu: Shared oneiric substrate design spec v4
+- mahavishnu: Shared oneiric substrate phase plans A/B/C/D/E1/E2
+- mahavishnu: Shared substrate v5 fix pass after 2-agent review
+
+### Testing
+
+- Assert no references to query_cache_l2 after Phase A
+
+### Internal
+
+- mahavishnu: Settings wiring audit + XDG overlay test + PLAN_INDEX regen
+
 ## [0.29.1] - 2026-09-27
 
 ### Added
@@ -27,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- mahavishnu: C-12 recovery — wire executions sub-app into _main_cli.py
+- mahavishnu: C-12 recovery — wire executions sub-app into \_main_cli.py
 - mahavishnu: C-9 follow-up — rename retry_after= → retry_after_seconds= in PoolManager quota gate
 - mahavishnu: Resolve 17 ty errors + 2 creosote issues (comprehensive hooks)
 - mahavishnu: Resolve 3 collection-time import errors (baseline)

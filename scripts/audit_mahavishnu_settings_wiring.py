@@ -92,10 +92,10 @@ DEAD = "DEAD"
 
 @dataclass(frozen=True)
 class Field:
-    group: str          # top-level group, e.g. "remote"
-    leaf: str           # leaf field name, e.g. "circuit_breaker_threshold"
-    parent: str         # parent class name, e.g. "RemoteSourceConfig"
-    python_path: str    # "remote.circuit_breaker_threshold"
+    group: str  # top-level group, e.g. "remote"
+    leaf: str  # leaf field name, e.g. "circuit_breaker_threshold"
+    parent: str  # parent class name, e.g. "RemoteSourceConfig"
+    python_path: str  # "remote.circuit_breaker_threshold"
     is_list_parent: bool = False  # True if this is a list[X] / dict[X] field whose inner fields are accessed transitively
 
 
@@ -216,9 +216,7 @@ def scan_with_ripgrep(
     # We match the prefix then capture `<group>(.<leaf>)?`. Dict-key access
     # (`hot_cfg["pg_url"]`, `hot.get("pg_url", ...)`) is also a legitimate
     # consumer pattern, captured as a separate pass below.
-    prefix_alt = (
-        r"settings|cfg|config|_settings|self\.config|self\._config"
-    )
+    prefix_alt = r"settings|cfg|config|_settings|self\.config|self\._config"
     pattern = rf"(?:{prefix_alt})\.([a-z_][a-z0-9_]*)(?:\.([a-z_][a-z0-9_]*))?"
     # Dict-key patterns: `<var>["<leaf>"]` or `<var>.get("<leaf>", ...)`.
     # The variable name is irrelevant — we only care about the leaf inside
@@ -232,7 +230,12 @@ def scan_with_ripgrep(
 
     for root in consumer_roots:
         argv = [
-            rg_path, "--json", "--no-config", "--no-messages", "-g", "*.py",
+            rg_path,
+            "--json",
+            "--no-config",
+            "--no-messages",
+            "-g",
+            "*.py",
         ]
         for g in EXCLUDE_GLOBS:
             argv.extend(["-g", g])
@@ -289,8 +292,14 @@ def scan_with_ripgrep(
     # Wire all fields whose leaf name appears as a quoted dict key.
     for root in consumer_roots:
         argv = [
-            rg_path, "--json", "--no-config", "--no-messages",
-            "-g", "*.py", dict_key_pattern, str(root),
+            rg_path,
+            "--json",
+            "--no-config",
+            "--no-messages",
+            "-g",
+            "*.py",
+            dict_key_pattern,
+            str(root),
         ]
         for g in EXCLUDE_GLOBS:
             argv.extend(["-g", g])
@@ -334,9 +343,7 @@ def scan_with_grep(
         field_index[(g, f.leaf)] = f.python_path
         leaf_index.setdefault(f.leaf, []).append(f.python_path)
     grep_bin = grep()
-    prefix_alt = (
-        r"settings|cfg|config|_settings|self\.config|self\._config"
-    )
+    prefix_alt = r"settings|cfg|config|_settings|self\.config|self\._config"
     pattern = rf"(?:{prefix_alt})\.([a-z_][a-z0-9_]*)(?:\.([a-z_][a-z0-9_]*))?"
 
     for root in consumer_roots:
@@ -344,8 +351,12 @@ def scan_with_grep(
         for g in EXCLUDE_GLOBS:
             excludes.extend(["--exclude-dir", g.lstrip("!")])
         argv = [
-            grep_bin, "-rEn", "--include=*.py", *excludes,
-            pattern, str(root),
+            grep_bin,
+            "-rEn",
+            "--include=*.py",
+            *excludes,
+            pattern,
+            str(root),
         ]
         try:
             proc = subprocess.run(argv, capture_output=True, text=True, timeout=120)
@@ -383,9 +394,7 @@ def scan_with_grep(
     return consumers
 
 
-def find_dynamic_consumers(
-    fields: list[Field], consumer_roots: list[Path]
-) -> dict[str, bool]:
+def find_dynamic_consumers(fields: list[Field], consumer_roots: list[Path]) -> dict[str, bool]:
     """Find fields consumed via ``getattr(settings.X, "...")`` with a runtime name.
 
     Conservative heuristic: a field is WIRED-DYNAMIC if its leaf appears as
@@ -412,8 +421,14 @@ def find_dynamic_consumers(
     for root in consumer_roots:
         for pattern in patterns:
             argv = [
-                rg_path, "--no-config", "--no-messages", "-o",
-                "-g", "*.py", pattern, str(root),
+                rg_path,
+                "--no-config",
+                "--no-messages",
+                "-o",
+                "-g",
+                "*.py",
+                pattern,
+                str(root),
             ]
             for g in EXCLUDE_GLOBS:
                 argv.extend(["-g", g])
@@ -495,18 +510,13 @@ def print_report(
     consumer_roots: list[Path],
     title: str = "config-schema wiring audit",
 ) -> None:
-    by_status: dict[str, list[Field]] = {
-        WIRED: [], WIRED_DYNAMIC: [], INDIRECT: [], DEAD: []
-    }
+    by_status: dict[str, list[Field]] = {WIRED: [], WIRED_DYNAMIC: [], INDIRECT: [], DEAD: []}
     for f, status, _ in results:
         by_status[status].append(f)
     total = len(results)
     print()
     print("=" * 78)
-    print(
-        f"{title} "
-        f"({total} fields, {len(consumer_roots)} repos)"
-    )
+    print(f"{title} ({total} fields, {len(consumer_roots)} repos)")
     print("=" * 78)
     print()
     for status in (WIRED, WIRED_DYNAMIC, INDIRECT, DEAD):
@@ -534,7 +544,8 @@ def print_report(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--show-wired", action="store_true",
+        "--show-wired",
+        action="store_true",
         help="Print every WIRED field with its first consumer file:line.",
     )
     args = parser.parse_args()
