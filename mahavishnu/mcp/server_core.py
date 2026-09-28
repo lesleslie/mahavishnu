@@ -739,7 +739,21 @@ class FastMCPServer:
 
         @server.tool()
         async def get_observability_metrics() -> dict[str, Any]:
-            """Get current observability metrics from the system."""
+            """Get the current observability snapshot.
+
+            Do NOT use to query historical metrics or read log lines — use
+            `search_logs` for that. Do NOT use for the ecosystem health roll-up
+            — use `get_monitoring_dashboard` for that.
+
+            Returns a dict with `performance_metrics`, `recent_logs_count`,
+            and `recent_logs_preview` (last 10 log lines). Empty
+            `recent_logs_preview` is a valid output (no logs in window).
+
+            Fails with `status="error"` if the observability subsystem is not
+            initialized.
+
+            Side effect: none.
+            """
             try:
                 if not self.app.observability:
                     return {"error": "Observability system not initialized", "metrics": {}}
