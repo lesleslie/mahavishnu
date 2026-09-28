@@ -968,7 +968,21 @@ class FastMCPServer:
 
         @server.tool()
         async def list_backups() -> dict[str, Any]:
-            """List all available backups."""
+            """List available system backups.
+
+            Do NOT use to create a backup — use `create_backup` for that.
+            Do NOT use to restore from a backup — use `restore_backup` for
+            that.
+
+            Returns a dict with `backups` (list of `{backup_id, timestamp,
+            size_bytes, location, status}`) and `total_count`. Empty
+            `backups` means no backups have been taken yet — not an error.
+
+            Fails with `status="error"` if the backup directory is
+            unreachable.
+
+            Side effect: none.
+            """
             try:
                 from ..core.backup_recovery import BackupManager
 
