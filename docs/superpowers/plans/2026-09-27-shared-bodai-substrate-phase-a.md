@@ -267,7 +267,7 @@ git commit -m "refactor(session-buddy): delete duplicate query_cache_l2 CREATE T
 **Files (revised):**
 - Create: `akosha/cache/__init__.py` (re-exports `CacheManager` and `MemoryCacheAdapter`)
 - Create: `akosha/cache/manager.py` (`CacheManager` class)
-- Create: `akosha/tests/cache/test_memory_adapter.py`
+- Create: `tests/cache/test_memory_adapter.py`
 
 **Files NOT modified in this task (revision):**
 - `akosha/config.py:241-258` — `CacheConfig` Pydantic model stays unchanged.
@@ -277,7 +277,7 @@ git commit -m "refactor(session-buddy): delete duplicate query_cache_l2 CREATE T
 - **Triggered from**: First call to any Akosha path that opens a cache (`mcp__akosha__search_code_patterns`, `search_all_systems`, etc. — after Phase D wires embedding lookup through this cache).
 - **Returns to**: cache reads/writes flow through `MemoryCacheAdapter`; no legacy dict-backed cache anywhere.
 - **Demonstrable by**:
-  - `pytest akosha/tests/cache/test_memory_adapter.py -v` all PASS.
+  - `pytest tests/cache/test_memory_adapter.py -v` all PASS.
   - `python -c "from akosha.cache import CacheManager; from akosha.config import CacheConfig; cm = CacheManager(CacheConfig(backend='memory')); cm.set('k', 'v'); print(cm.get('k'))"` prints `v`.
 - **Rollback signal**: Akosha `/health` returns 503 with `feeds.cache_health == degraded`.
 - **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes (delegated to MemoryCacheAdapter's internal logger).
@@ -285,7 +285,7 @@ git commit -m "refactor(session-buddy): delete duplicate query_cache_l2 CREATE T
 - [ ] **Step 1: Write failing tests**:
 
 ```python
-# akosha/tests/cache/test_memory_adapter.py (new)
+# tests/cache/test_memory_adapter.py (new)
 from __future__ import annotations
 
 import pytest
@@ -321,7 +321,7 @@ def test_cache_manager_round_trip() -> None:
 
 ```bash
 cd /Users/les/Projects/akosha
-git add akosha/cache/__init__.py akosha/cache/manager.py akosha/tests/cache/test_memory_adapter.py
+git add akosha/cache/__init__.py akosha/cache/manager.py tests/cache/test_memory_adapter.py
 git commit -m "feat(akosha): introduce CacheManager over MemoryCacheAdapter
 
 Per spec §6.1, Phase A adopts the oneiric substrate for Akosha's
@@ -397,7 +397,7 @@ git commit -m "test: assert no references to query_cache_l2 after Phase A"
 | `akosha/config.py:241-258` | UNCHANGED (CacheConfig Pydantic; not modified in Phase A) | (none) |
 | `akosha/cache/__init__.py` | CREATE: re-export `CacheManager` and `MemoryCacheAdapter` | Task 3 |
 | `akosha/cache/manager.py` | CREATE: `CacheManager` runtime wrapper | Task 3 |
-| `akosha/tests/cache/test_memory_adapter.py` | CREATE | Task 3 |
+| `tests/cache/test_memory_adapter.py` | CREATE | Task 3 |
 | `tests/integration/test_query_cache_l2_orphaned.py` | CREATE: greps `query_cache_l2` across both SB and Akosha | Task 4 |
 
 ## 8. Validation Matrix (REVISED 2026-09-27)
@@ -410,7 +410,7 @@ git commit -m "test: assert no references to query_cache_l2 after Phase A"
 | `grep -rn "_l2_lock\|_shutdown_event\|_conn" session_buddy/cache/query_cache.py` | zero hits (Task 1: all L2 plumbing removed) | exit code 1 |
 | `pytest session_buddy/tests/cache/test_memory_adapter.py -v` | 4 tests PASS (Task 1) | pytest exit 0 |
 | `pytest session_buddy/tests/unit/test_query_cache.py -v` | KNOWN FAIL (Task 1 concern; tests reference removed L2 symbols) — Task 1b follow-up | pytest exit nonzero |
-| `pytest akosha/tests/cache/test_memory_adapter.py -v` | PASS (Task 3) | pytest exit 0 |
+| `pytest tests/cache/test_memory_adapter.py -v` | PASS (Task 3) | pytest exit 0 |
 | `pytest tests/integration/test_query_cache_l2_orphaned.py -v` | PASS (Task 4) | pytest exit 0 |
 | `python -c "from oneiric.adapters.cache.memory import MemoryCacheAdapter; c = MemoryCacheAdapter(); c.set('k', 'v'); print(c.get('k'))"` | prints `v` | stdout |
 | `python -c "from akosha.cache import CacheManager; from akosha.config import CacheConfig; cm = CacheManager(CacheConfig(backend='memory')); cm.set('k', 'v'); print(cm.get('k'))"` | prints `v` | stdout |
@@ -434,7 +434,7 @@ Phase A is complete when ALL of:
 
 - All 4 tasks land in commits on the working branch.
 - `grep -rn "class QueryCacheManager\|query_cache_l2" session_buddy/ akosha/` returns zero hits.
-- `pytest session_buddy/tests/cache/ akosha/tests/cache/ tests/integration/test_query_cache_l2_orphaned.py` all pass.
+- `pytest session_buddy/tests/cache/ tests/cache/ tests/integration/test_query_cache_l2_orphaned.py` all pass.
 - `crackerjack run -v` green on SB and Akosha.
 
 **Release-train gate**: user pins a oneiric release (no-op, MemoryCacheAdapter already shipped) + user pins new SB + user pins new Akosha. Phase A2 green.
