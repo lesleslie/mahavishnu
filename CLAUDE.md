@@ -57,6 +57,27 @@ Claude Code memory is split by layer — **do not write `project` or `reference`
 
 When saving `project`/`reference` memory, call `store_reflection(content, tags=["project"|"reference", <topic-tags>])` via the Session-Buddy MCP. When recalling, use `quick_search` or `search_by_concept`.
 
+## Task System (Bodai)
+
+Mahavishnu owns the **dispatch edge** in the Bodai task system: `mcp__mahavishnu__tasks_handoff_to_workflow`. This is the only path from a session-buddy task to a running workflow.
+
+### Spec & skill
+
+- Spec: `docs/superpowers/specs/2026-09-29-task-system-design.md`
+- Skill: `session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md` (session-buddy side)
+
+### Cross-repo PR dependency
+
+This is PR #2. It depends on PR #1 (session-buddy):
+
+- PR #1 ships `tasks_create`, `tasks_get`, `tasks_update` in session-buddy
+- PR #2 ships `tasks_handoff_to_workflow` in mahavishnu — the two-call flow (lookup → dispatch → back-link) calls session-buddy's `tasks_get` and `tasks_update`
+- **PR #2 cannot merge before PR #1 is tagged.** Once PR #1 is tagged, the operator manually bumps the `session-buddy>=0.30.0` pin in this repo's `pyproject.toml` (per `feedback-mcp-common-version-bump-is-user`).
+
+### Feature-flag fallback
+
+`mahavishnu/mcp/tools/tasks_handoff_gate.py:tasks_handoff_to_workflow_available()` lets the registration code in `server_core.py:_register_tools()` activate the tool only when session-buddy 0.30+ is installed. Pre-PR #1 systems see a `logger.warning(...)` instead of an exception — server startup stays clean.
+
 ## Key Architecture
 
 **Oneiric layered config**: Defaults → `settings/mahavishnu.yaml` → `settings/local.yaml` → env vars (`MAHAVISHNU_*`).
