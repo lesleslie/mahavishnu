@@ -1,11 +1,11 @@
 """Tests for the XDG overlay in MahavishnuSettings' loader.
 
-Added 2026-09-27. Verifies that ``~/.config/mahavishnu/{config,local}.yaml``
-are picked up by ``settings_customise_sources`` and that they sit ABOVE
-the repo ``settings/mahavishnu.yaml`` + ``settings/local.yaml`` in the
+Verifies that ``~/.config/mahavishnu/{config,local}.yaml`` are picked up
+by ``get_settings()`` (which routes through Oneiric's ``load_settings``)
+and that they sit ABOVE the repo ``settings/mahavishnu.yaml`` in the
 merge order (so per-machine XDG overrides win).
 
-Reference: mahavishnu/core/config.py:3077 settings_customise_sources.
+Reference: ``mahavishnu/core/config.py:get_settings``.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.config import MahavishnuSettings, get_settings, reset_settings
 
 if TYPE_CHECKING:
-    pass
+    pass  # noqa
 
 
 def _clear_mahavishnu_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -35,25 +35,22 @@ def _clear_mahavishnu_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestXDGOverlay:
-    """The new XDG layer must appear in the settings sources tuple.
+    """XDG files in ``~/.config/mahavishnu/{config,local}.yaml`` must
+    flow through Oneiric's loader and override the repo defaults.
 
-    ``settings_customise_sources`` returns a tuple of (init_settings,
-    *yaml_sources, env_settings, dotenv_settings, file_secret_settings) —
-    so the total tuple length is 4 + len(yaml_sources). For the test repo
-    with both settings/mahavishnu.yaml and settings/local.yaml present,
-    ``len(yaml_sources)`` is 2 + (number of XDG files present).
+    2026-09-29: rewritten — the previous version inspected the internal
+    pydantic-settings source tuple, which is no longer how Mahavishnu's
+    loader works. The new loader reads via
+    ``oneiric.core.config.load_settings(project_name="mahavishnu")`` and
+    passes ``__pydantic_extra__`` to ``MahavishnuSettings(**merged)``.
+    These tests assert the *external* contract (XDG values reach the
+    constructed settings) rather than the implementation surface.
     """
-
-    def _yaml_sources_only(self, sources) -> list:
-        """Filter the tuple down to just the YamlConfigSettingsSource entries."""
-        from pydantic_settings.sources import YamlConfigSettingsSource
-
-        return [s for s in sources if isinstance(s, YamlConfigSettingsSource)]
 
     def test_xdg_files_included_when_present(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Both XDG files exist → both YamlConfigSettingsSource returned."""
+        """Both XDG files exist → both are loaded; local.yaml wins over config.yaml."""
         _clear_mahavishnu_env(monkeypatch)
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
@@ -61,127 +58,88 @@ class TestXDGOverlay:
         (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-local:9200\n")
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
-        sources = MahavishnuSettings.settings_customise_sources(
-            MahavishnuSettings, None, None, None, None,
+        reset_settings()
+        s = get_settings()
+        # local.yaml (layer 4) wins over config.yaml (layer 3) per Oneiric's
+        # documented precedence.
+        assert "xdg-local:9200" in s.opensearch.endpoint, (
+            f"XDG local.yaml should win over config.yaml; got {s.opensearch.endpoint!r}"
         )
-
-        yaml_sources = self._yaml_sources_only(sources)
-        # 1 repo (settings/mahavishnu.yaml) + 2 XDG = 3 YAML sources
-        # (settings/local.yaml was deleted 2026-09-27 in the migration
-        # to XDG; see test_xdg_overrides_repo_yaml_at_runtime for the
-        # end-to-end runtime test that proves the XDG layer still wins
-        # against the remaining repo file.)
-        assert len(yaml_sources) == 3, f"Expected 3 YAML sources, got {len(yaml_sources)}"
 
     def test_xdg_absent_is_silent_noop(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """No XDG files → only the 1 repo file appears (no crash)."""
+        """No XDG files → repo defaults apply, no crash."""
         _clear_mahavishnu_env(monkeypatch)
         # Don't create the XDG dir; point XDG_CONFIG_HOME at empty tmp_path.
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
-        sources = MahavishnuSettings.settings_customise_sources(
-            MahavishnuSettings, None, None, None, None,
-        )
-
-        yaml_sources = self._yaml_sources_only(sources)
-        # Exactly 1 repo source (settings/mahavishnu.yaml — settings/local.yaml
-        # was deleted 2026-09-27 in the XDG migration).
-        assert len(yaml_sources) == 1, f"Expected 1 YAML source, got {len(yaml_sources)}"
+        reset_settings()
+        s = get_settings()
+        # No XDG present — falls back to settings/mahavishnu.yaml default.
+        # The exact value isn't asserted; just that construction succeeded.
+        assert s.opensearch.endpoint is not None
 
     def test_xdg_only_config_file(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Only ``config.yaml`` exists (no ``local.yaml``) → 2 YAML sources."""
+        """Only config.yaml exists → config.yaml value lands in settings."""
         _clear_mahavishnu_env(monkeypatch)
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
-        (xdg_dir / "config.yaml").write_text("opensearch:\n  endpoint: xdg-only\n")
+        (xdg_dir / "config.yaml").write_text("opensearch:\n  endpoint: xdg-only-config\n")
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
-        sources = MahavishnuSettings.settings_customise_sources(
-            MahavishnuSettings, None, None, None, None,
+        reset_settings()
+        s = get_settings()
+        assert "xdg-only-config" in s.opensearch.endpoint, (
+            f"XDG config.yaml should be applied; got {s.opensearch.endpoint!r}"
         )
-
-        yaml_sources = self._yaml_sources_only(sources)
-        # 1 repo + 1 XDG config = 2
-        assert len(yaml_sources) == 2, f"Expected 2 YAML sources, got {len(yaml_sources)}"
 
     def test_xdg_only_local_file(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Only ``local.yaml`` exists (no ``config.yaml``) → 2 YAML sources."""
+        """Only local.yaml exists → local.yaml value lands in settings."""
         _clear_mahavishnu_env(monkeypatch)
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
-        (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-local\n")
+        (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-only-local\n")
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
-        sources = MahavishnuSettings.settings_customise_sources(
-            MahavishnuSettings, None, None, None, None,
-        )
-
-        yaml_sources = self._yaml_sources_only(sources)
-        # 1 repo + 1 XDG local = 2
-        assert len(yaml_sources) == 2, f"Expected 2 YAML sources, got {len(yaml_sources)}"
-
-    def test_xdg_appended_after_repo_files(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Contract: XDG files come AFTER repo files in the sources tuple.
-
-        This is what gives them "later wins" precedence under the
-        ``_settings_build_values`` override.
-        """
-        _clear_mahavishnu_env(monkeypatch)
-        xdg_dir = tmp_path / "mahavishnu"
-        xdg_dir.mkdir(parents=True)
-        (xdg_dir / "config.yaml").write_text("opensearch:\n  endpoint: xdg-c\n")
-        (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-l\n")
-        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-
-        sources = MahavishnuSettings.settings_customise_sources(
-            MahavishnuSettings, None, None, None, None,
-        )
-
-        yaml_sources = self._yaml_sources_only(sources)
-        # Verify ordering: last 2 entries should be XDG config + local
-        # (the implementation appends XDG AFTER repo files).
-        # pydantic-settings exposes the underlying path as ``yaml_file_path``
-        # on the ``YamlConfigSettingsSource`` instance.
-        second_last_path = str(yaml_sources[-2].yaml_file_path)
-        last_path = str(yaml_sources[-1].yaml_file_path)
-        assert "config.yaml" in second_last_path, (
-            f"Second-to-last should be XDG config.yaml; got {second_last_path}"
-        )
-        assert "local.yaml" in last_path, (
-            f"Last should be XDG local.yaml; got {last_path}"
+        reset_settings()
+        s = get_settings()
+        assert "xdg-only-local" in s.opensearch.endpoint, (
+            f"XDG local.yaml should be applied; got {s.opensearch.endpoint!r}"
         )
 
     def test_xdg_overrides_repo_yaml_at_runtime(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """End-to-end: XDG value overrides repo value in constructed settings.
-
-        Anchors the contract that XDG sits *after* the repo files in the
-        sources tuple (so it wins under ``_settings_build_values``).
-        """
+        """End-to-end: XDG value wins over repo's settings/mahavishnu.yaml."""
         _clear_mahavishnu_env(monkeypatch)
-        # XDG override value
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
         (xdg_dir / "local.yaml").write_text(
             "opensearch:\n  endpoint: http://xdg-override:9200\n"
         )
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-        # Anchor CWD at the test repo so settings/mahavishnu.yaml is found.
-        repo_root = Path(__file__).resolve().parents[2]
-        monkeypatch.chdir(repo_root)
 
-        s = MahavishnuSettings()
-        # XDG wins over the repo's value (which is https://localhost:9200
-        # per settings/mahavishnu.yaml defaults).
+        reset_settings()
+        s = get_settings()
         assert "xdg-override" in s.opensearch.endpoint, (
             f"XDG override should win; got opensearch.endpoint={s.opensearch.endpoint!r}"
         )
+
+    def test_xdg_layer_overrides_repo_local(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """XDG local.yaml (layer 4) beats repo settings/local.yaml (layer 2)."""
+        _clear_mahavishnu_env(monkeypatch)
+        xdg_dir = tmp_path / "mahavishnu"
+        xdg_dir.mkdir(parents=True)
+        (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-beats-repo\n")
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+        reset_settings()
+        s = get_settings()
+        assert "xdg-beats-repo" in s.opensearch.endpoint

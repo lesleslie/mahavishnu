@@ -1251,7 +1251,7 @@ async def create_otel_ingester(
     embedding_model: str = "all-MiniLM-L6-v2",
     cache_size: int = 1000,
     preferred_backend: EmbeddingBackend | str | None = None,
-    storage_type: StorageType | str = StorageType.DUCKDB,
+    storage_type: StorageType | str | None = None,
     pgvector_dsn: str | None = None,
     pgvector_collection: str = "otel_traces",
     akosha_url: str = "http://localhost:8682/mcp",
@@ -1291,16 +1291,65 @@ async def create_otel_ingester(
     """
     import os
 
-    # Phase 1.1b: Honor env vars for backend selection (Oneiric convention)
+    # Phase 1.1b + 2026-09-29: layered resolution for backend selection.
+    # Precedence (highest wins):
+    #   1. Explicit factory arg (pgvector_dsn / storage_type parameter)
+    #   2. MahavishnuSettings.otel_ingester via Oneiric XDG loader
+    #      (~/.config/mahavishnu/local.yaml under otel_ingester.{pg_url,storage_type})
+    #   3. MAHAVISHNU__OTEL_INGESTER__STORAGE__{TYPE,PG_URL} env vars
+    #      (legacy Oneiric convention; preserved for callers not yet migrated)
+    #
+    # NOTE: the legacy env-var names use a 3-segment path that doesn't
+    # match the flat field layout (``otel_ingester.storage_type`` is a
+    # leaf on ``OTelIngesterConfig``, not ``otel_ingester.storage.type``).
+    # pydantic-settings' ``env_nested_delimiter="__"`` maps
+    # ``MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE`` to
+    # ``otel_ingester.storage.type`` — wrong shape. We bridge by reading
+    # the legacy env var directly via os.getenv here and treating it as
+    # a leaf-level value, then checking get_settings() first (the
+    # XDG/Oneiric path produces correctly-shaped data).
     _env_storage_type = os.getenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", "")
     _env_pg_url = os.getenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "")
 
-    # Apply env var overrides if factory params are at defaults and env vars are set
-    if _env_storage_type and storage_type == StorageType.DUCKDB:
-        storage_type = StorageType(_env_storage_type)
+    # Oneiric XDG-aware settings path. Lazy import keeps module-load time
+    # clean and avoids cycles when the OTel ingester is loaded before
+    # mahavishnu.core.bootstrap has finished wiring the config cache.
+    _settings_pg_url: str | None = None
+    _settings_storage_type: str | None = None
+    try:
+        from mahavishnu.core.config import get_settings
 
-    if _env_pg_url and pgvector_dsn is None and _env_pg_url:
-        pgvector_dsn = _env_pg_url
+        _settings = get_settings()
+        _settings_pg_url = _settings.otel_ingester.pg_url
+        _settings_storage_type = _settings.otel_ingester.storage_type
+    except Exception:
+        # Settings unavailable (early import, test setup without fixtures, etc.)
+        # — fall through to env-var path; factory still works.
+        pass
+
+    # Apply layered overrides. Explicit args > env vars > XDG > defaults.
+    # We use ``None`` as the "unset" sentinel so an explicit
+    # ``storage_type="duckdb"`` factory call isn't silently overridden
+    # by an XDG-local.yaml that also says postgresql (the user's
+    # explicit factory arg should win over XDG defaults). Layered
+    # resolution only applies when the caller left storage_type unset.
+    if storage_type is None:
+        for candidate in (_env_storage_type, _settings_storage_type):
+            if not candidate:
+                continue
+            try:
+                storage_type = StorageType(candidate)
+                break
+            except ValueError:
+                continue
+        if storage_type is None:
+            storage_type = StorageType.DUCKDB
+
+    if pgvector_dsn is None:
+        if _env_pg_url:
+            pgvector_dsn = _env_pg_url
+        elif _settings_pg_url:
+            pgvector_dsn = _settings_pg_url
 
     # Convert string to enum if needed
     if isinstance(storage_type, str):

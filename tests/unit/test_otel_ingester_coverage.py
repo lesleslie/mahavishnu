@@ -1243,8 +1243,20 @@ class TestCreateOtelIngester:
         finally:
             await ingester.close()
 
-    async def test_hot_store_path_file(self) -> None:
+    async def test_hot_store_path_file(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Non-':memory:' path passes a file path to HotStore."""
+        # 2026-09-29: hermetic XDG so the factory doesn't pick up
+        # ``~/.config/mahavishnu/local.yaml``'s postgresql override.
+        empty_xdg = tmp_path / "_empty_xdg"
+        empty_xdg.mkdir()
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(empty_xdg))
+        monkeypatch.delenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", raising=False)
+        monkeypatch.delenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", raising=False)
+        from mahavishnu.core.config import reset_settings as _rs
+        _rs()
+
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
@@ -1261,7 +1273,7 @@ class TestCreateOtelIngester:
         finally:
             await ingester.close()
 
-    async def test_tilde_path_expansion(self) -> None:
+    async def test_tilde_path_expansion(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Tilde in hot_store_path is expanded in _duckdb_path."""
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()

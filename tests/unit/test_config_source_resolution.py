@@ -5,15 +5,16 @@ Tracks the bug described in
 
 pydantic-settings' default ``_settings_build_values`` merges sources
 with ``state = deep_update(source_state, state)`` — which makes the
-*earlier* source win. The override on ``MahavishnuSettings._settings_build_values``
-swaps the merge direction so later sources (env > local.yaml >
-mahavishnu.yaml > defaults) take precedence, and pushes the
-``InitSettingsSource`` to the end of the source list so init kwargs
-remain the documented highest-precedence source.
+*earlier* source win. The override on
+``MahavishnuSettings._settings_build_values`` swapped the merge
+direction so later sources (env > local.yaml > mahavishnu.yaml >
+defaults) took precedence.
 
-These tests pin the contract: every nested config subtree must accept
-env-var and ``settings/local.yaml`` overrides, not just the few that
-happen to be absent from ``settings/mahavishnu.yaml``.
+2026-09-29: the override was removed when Mahavishnu migrated to
+Oneiric's ``load_settings`` (oneiric's ``_deep_merge`` enforces the
+same precedence). These tests now use ``get_settings(project_root=...)``
+to anchor the loader at a hermetic ``tmp_path`` instead of monkey-
+patching the deleted ``settings_customise_sources`` method.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 import yaml
 
-from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.config import MahavishnuSettings, get_settings, reset_settings
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,7 +64,7 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     (
         "mcp_state",
         "max_routing_buffer_age_seconds",
-        "DHARA_STATE__MAX_ROUTING_BUFFER_AGE_SECONDS",
+        "MCP_STATE__MAX_ROUTING_BUFFER_AGE_SECONDS",
         "120",
     ),
     ("monitoring", "routing_metrics_enabled", "MONITORING__ROUTING_METRICS_ENABLED", "false"),
@@ -78,19 +79,6 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True)
-def _clean_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Wipe MAHAVISHNU_* env vars and clear the settings cache per test."""
-    for k in list(os.environ):
-        if k.startswith("MAHAVISHNU_"):
-            monkeypatch.delenv(k, raising=False)
-    import mahavishnu.core.config as cfg_mod
-
-    cfg_mod._settings_cache = None
-    yield
-    cfg_mod._settings_cache = None
 
 
 def test_settings_constructs_with_current_pydantic_settings_api() -> None:
@@ -133,6 +121,11 @@ def test_env_var_overrides_yaml_default(
         assert str(actual) == raw, (
             f"{subtree}.{leaf} = {actual!r}, env var MAHAVISHNU_{suffix}={raw!r} was ignored"
         )
+
+
+# ---------------------------------------------------------------------------
+# Two-level deep path
+# ---------------------------------------------------------------------------
 
 
 def test_env_var_overrides_opensearch_full_block(
@@ -198,9 +191,13 @@ def test_local_yaml_overrides_committed_yaml(
     expected: str | bool | int,
 ) -> None:
     """settings/local.yaml must override settings/mahavishnu.yaml for any subtree."""
-    _install_yaml(monkeypatch, tmp_path, local_overrides={subtree: {leaf: expected}})
+    _install_yaml(
+        tmp_path,
+        local_overrides={subtree: {leaf: expected}},
+        monkeypatch=monkeypatch,
+    )
 
-    s = MahavishnuSettings()
+    s = get_settings(project_root=tmp_path)
     actual = getattr(getattr(s, subtree), leaf)
     if isinstance(expected, bool):
         assert actual is expected
@@ -214,7 +211,6 @@ def test_env_var_wins_over_local_yaml(
 ) -> None:
     """Env var must beat settings/local.yaml (highest non-init precedence)."""
     _install_yaml(
-        monkeypatch,
         tmp_path,
         local_overrides={
             "opensearch": {
@@ -222,10 +218,11 @@ def test_env_var_wins_over_local_yaml(
                 "use_ssl": False,
             },
         },
+        monkeypatch=monkeypatch,
     )
     monkeypatch.setenv("MAHAVISHNU_OPENSEARCH__ENDPOINT", "http://from-env:9200")
 
-    s = MahavishnuSettings()
+    s = get_settings(project_root=tmp_path)
     assert s.opensearch.endpoint == "http://from-env:9200"
     assert s.opensearch.use_ssl is False  # from local.yaml (env did not set)
 
@@ -249,10 +246,9 @@ def test_defaults_unchanged_when_no_overrides(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sanity check: with no env vars and no local.yaml present, defaults stand."""
-    # Run with an empty dir so the only YAML source is what we install.
-    _install_yaml(monkeypatch, tmp_path, main_only=True)
+    _install_yaml(tmp_path, main_only=True, monkeypatch=monkeypatch)
 
-    s = MahavishnuSettings()
+    s = get_settings(project_root=tmp_path)
     # Defaults from the temporary mahavishnu.yaml we wrote:
     assert s.opensearch.endpoint == "https://default:9200"
     assert s.opensearch.use_ssl is True
@@ -266,17 +262,27 @@ def test_defaults_unchanged_when_no_overrides(
 
 
 def _install_yaml(
-    monkeypatch: pytest.MonkeyPatch,
     directory: Path,
     local_overrides: dict[str, Any] | None = None,
     main_only: bool = False,
+    monkeypatch: pytest.MonkeyPatch | None = None,
 ) -> None:
-    """Install a temp settings/mahavishnu.yaml (and optionally local.yaml).
+    """Install a temp ``settings/mahavishnu.yaml`` (and optionally local.yaml)
+    under ``directory`` so Oneiric's ``load_settings(project_root=directory)``
+    reads them hermetically.
 
-    Rewrites ``settings_customise_sources`` to look in ``directory`` so
-    the test gets a hermetic, predictable source order.
+    Anchors at ``directory/settings/`` (not ``directory/``) to match the
+    layout Oneiric's loader expects.
+
+    Strips XDG + caches so the test sees only the YAML we install — the
+    machine's real ``~/.config/mahavishnu/local.yaml`` would otherwise win
+    over our temp ``settings/local.yaml`` (XDG is layer 4, repo-local is
+    layer 2 — XDG wins by design).
     """
-    main_yaml = directory / "mahavishnu.yaml"
+    settings_dir = directory / "settings"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+
+    main_yaml = settings_dir / "mahavishnu.yaml"
     main_yaml.write_text(
         yaml.safe_dump(
             {
@@ -293,25 +299,33 @@ def _install_yaml(
     )
 
     if not main_only:
-        local_yaml = directory / "local.yaml"
+        local_yaml = settings_dir / "local.yaml"
         local_yaml.write_text(yaml.safe_dump(local_overrides or {}))
 
-    from pydantic_settings import YamlConfigSettingsSource
+    # Hermetic XDG: point XDG_CONFIG_HOME at a fresh empty tmp dir.
+    # Without this, the machine's real ~/.config/mahavishnu/local.yaml
+    # would mask our test fixtures (XDG is layer 4, repo-local is layer 2).
+    empty_xdg = directory / "_empty_xdg"
+    empty_xdg.mkdir(parents=True, exist_ok=True)
+    if monkeypatch is not None:
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(empty_xdg))
+        monkeypatch.delenv("MAHAVISHNU_XDG_CONFIG_HOME", raising=False)
+    else:
+        os.environ["XDG_CONFIG_HOME"] = str(empty_xdg)
+        os.environ.pop("MAHAVISHNU_XDG_CONFIG_HOME", None)
 
-    import mahavishnu.core.config as cfg_mod
-
-    def _patched(settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
-        yaml_sources = []
-        for name in ("mahavishnu.yaml", "local.yaml"):
-            path = directory / name
-            if path.exists():
-                yaml_sources.append(YamlConfigSettingsSource(settings_cls, path))
-        return (init_settings, *yaml_sources, env_settings, dotenv_settings, file_secret_settings)
-
-    # Replace on the class — the call below in pydantic-settings passes
-    # init_settings as a kwarg, so the function signature must match.
-    monkeypatch.setattr(
-        cfg_mod.MahavishnuSettings,
-        "settings_customise_sources",
-        staticmethod(_patched),
-    )
+    # Ensure cached settings from any prior test don't leak in.
+    reset_settings()
+    # Strip env vars that would override our installed defaults.
+    for key in (
+        "MAHAVISHNU_OPENSEARCH__ENDPOINT",
+        "MAHAVISHNU_OPENSEARCH__USE_SSL",
+        "MAHAVISHNU_OPENSEARCH__VERIFY_CERTS",
+        "MAHAVISHNU_OPENSEARCH__SSL_ASSERT_HOSTNAME",
+        "MAHAVISHNU_AUTH__ALGORITHM",
+        "MAHAVISHNU_QC__MIN_SCORE",
+    ):
+        if monkeypatch is not None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            os.environ.pop(key, None)

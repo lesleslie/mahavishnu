@@ -22,8 +22,7 @@ from oneiric.adapters.observability.settings import (
     OTelStorageSettings as _OneiricOTelStorageSettings,
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pydantic._internal._utils import deep_update
-from pydantic_settings import BaseSettings, SettingsConfigDict, YamlConfigSettingsSource
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..terminal.config import TerminalSettings
 
@@ -920,10 +919,21 @@ class OTelIngesterConfig(BaseModel):
             "Set via MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE"
         ),
     )
-    # NOTE (2026-09-27 audit): ``storage_pg_url`` had no consumer in the
-    # Bodai ecosystem — the OTel ingester reads the connection string via
-    # the inherited ``OneiricOTelStorageSettings.connection_string`` and
-    # the OTel storage backend's own config. Removed.
+    # 2026-09-29: re-introduced. Required when ``storage_type='postgresql'``;
+    # read by ``create_otel_ingester()`` in otel_ingester.py. XDG-activatable
+    # via ``otel_ingester.pg_url`` in ~/.config/mahavishnu/local.yaml
+    # (Oneiric loader picks this up via the standard layered config path).
+    # The historical ``MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL`` env var
+    # continues to work as a fallback for callers that haven't migrated.
+    pg_url: str | None = Field(
+        default=None,
+        description=(
+            "PostgreSQL DSN for pgvector storage when storage_type='postgresql'. "
+            "Set via ~/.config/mahavishnu/local.yaml under otel_ingester.pg_url "
+            "(XDG), or the MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL env var "
+            "(legacy fallback)."
+        ),
+    )
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2",
         description="Sentence transformer model for OTel ingester embeddings",
@@ -3012,146 +3022,14 @@ class MahavishnuSettings(BaseSettings):
         """Expand user path (~) in repos_path."""
         return str(Path(v).expanduser())
 
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls,
-        init_settings,
-        env_settings,
-        dotenv_settings,
-        file_secret_settings,
-    ):
-        """Customize settings sources to include YAML files.
-
-        Layered config precedence (highest wins; later in tuple = newer =
-        overrides earlier per the ``_settings_build_values`` override below):
-            1. init_settings (kwargs passed to ``__init__``)
-            2. env_settings      (``MAHAVISHNU_*``)
-            3. dotenv_settings   (``.env`` in CWD)
-            4. file_secret_settings (Docker/secrets)
-            5. ``~/.config/mahavishnu/local.yaml``  (XDG overlay — NEW 2026-09-27)
-            6. ``~/.config/mahavishnu/config.yaml`` (XDG defaults — NEW)
-            7. ``settings/local.yaml``   (repo overlay)
-            8. ``settings/mahavishnu.yaml`` (committed defaults)
-            9. Code defaults (lowest)
-
-        The two XDG layers were added 2026-09-27 to standardize on the
-        Oneiric XDG pattern (see ``oneiric/core/config.py:load_settings``).
-        Operators migrate by copying content from ``settings/local.yaml``
-        into ``~/.config/mahavishnu/local.yaml``; the repo file can then
-        be deleted once all consumers have migrated.
-        """
-        yaml_sources = []
-        # Repo layer (existing) — added FIRST so the XDG layer
-        # (appended below) wins the pydantic-settings "later-wins" merge.
-        # The ``_settings_build_values`` override in this class makes later
-        # sources in the tuple override earlier ones via
-        # ``deep_update(state, source_state)``.
-        for yaml_file in ("settings/mahavishnu.yaml", "settings/local.yaml"):
-            yaml_path = Path(yaml_file)
-            if yaml_path.exists():
-                yaml_sources.append(YamlConfigSettingsSource(settings_cls, yaml_path))
-
-        # XDG layer (NEW 2026-09-27) — appended LAST so it appears last
-        # in the sources tuple and wins the "later-wins" merge.
-        xdg_config_home = Path(
-            os.environ.get("XDG_CONFIG_HOME", "~/.config"),
-        ).expanduser()
-        xdg_dir = xdg_config_home / "mahavishnu"
-        for xdg_file in (xdg_dir / "config.yaml", xdg_dir / "local.yaml"):
-            if xdg_file.exists():
-                yaml_sources.append(YamlConfigSettingsSource(settings_cls, xdg_file))
-
-        return (
-            init_settings,
-            *yaml_sources,
-            env_settings,
-            dotenv_settings,
-            file_secret_settings,
-        )
-
-    @classmethod
-    def _settings_build_values(cls, sources, init_kwargs):
-        """Override pydantic-settings merge order so later sources win.
-
-        pydantic-settings' default ``_settings_build_values`` calls
-        ``state = deep_update(source_state, state)`` on every iteration.
-        ``deep_update(mapping, *updating)`` copies ``mapping`` and overlays
-        the ``updating`` dicts onto it, so the *older* accumulated state
-        wins over the newer ``source_state``. That makes earlier sources
-        (init_settings) override later sources (env), which is the opposite
-        of the documented precedence: defaults -> YAML -> env -> init.
-
-        For nested subtrees that appear in ``settings/mahavishnu.yaml``
-        (e.g. ``opensearch``) the bug masked env var and
-        ``settings/local.yaml`` overrides. For subtrees absent from
-        ``mahavishnu.yaml`` (e.g. ``agno``) the bug was invisible because
-        the upstream YAML state was empty for that subtree.
-
-        We fix this by:
-        1. Reordering sources so ``init_settings`` is processed LAST
-           (init kwargs are documented as the highest-precedence source).
-        2. Merging with the correct direction: ``deep_update(state, source_state)``
-           so the *newer* source overlays the older accumulated state.
-
-        Net result: init_settings > env_settings > dotenv_settings >
-        file_secret_settings > local.yaml > mahavishnu.yaml > defaults.
-        See docs/followups/2026-06-29-pydantic-settings-source-resolution.md.
-        """
-        if not sources:
-            return {}
-
-        from pydantic_settings.sources import (
-            DefaultSettingsSource,
-            InitSettingsSource,
-            PydanticBaseSettingsSource,
-        )
-
-        # Reorder so init_settings is last (highest precedence). Other
-        # sources keep their relative order from the customiser.
-        # NOTE: YamlConfigSettingsSource subclasses InitSettingsSource, so
-        # we use type() to avoid misidentifying YAML sources as init.
-        init_source = None
-        ordered = []
-        for source in sources:
-            if type(source) is InitSettingsSource:
-                init_source = source
-            else:
-                ordered.append(source)
-        if init_source is not None:
-            ordered.append(init_source)
-
-        state: dict = {}
-        defaults: dict = {}
-        for source in ordered:
-            if isinstance(source, PydanticBaseSettingsSource):
-                source._set_current_state(state)
-                # _set_settings_sources_data accepts a states dict; some
-                # pydantic-settings versions track sibling source state
-                # for alias resolution. Provide the running state so any
-                # lookup inside the source sees the accumulated values.
-                source._set_settings_sources_data({"__running__": state})
-            source_state = source()
-            if isinstance(source, DefaultSettingsSource):
-                defaults = source_state
-            # Later sources must win: keep `state` as the base and apply
-            # the new source_state on top. This is the inverse of
-            # pydantic-settings' default `deep_update(source_state, state)`.
-            state = deep_update(state, source_state)
-
-        # Strip defaults that ended up matching the field default — they
-        # are not "set" by any source.
-        state = {
-            key: val for key, val in state.items() if key not in defaults or defaults[key] != val
-        }
-        restore_init_kwargs = cls._settings_restore_init_kwarg_names
-        # pydantic_settings>=2.16 added the required ``init_state`` parameter.
-        from pydantic_settings.main import InitState
-
-        last_source = sources[-1]
-        init_state = getattr(last_source, "_init_state", None) or InitState()
-        restore_init_kwargs(cls, init_kwargs, state, init_state)
-        return state
+    # 2026-09-29: ``settings_customise_sources`` and ``_settings_build_values``
+    # have been removed. Mahavishnu's layered config now flows through
+    # Oneiric's ``load_settings(project_name="mahavishnu")`` in :func:`get_settings`
+    # below. Oneiric's ``_deep_merge`` already implements the right precedence
+    # (init > env > XDG-local > XDG-config > repo-local > repo-defaults), which
+    # subsumes the 2026-06-29 source-resolution bugfix the dropped methods
+    # worked around. See docs/followups/2026-06-29-pydantic-settings-source-resolution.md
+    # for the historical context.
 
 
 # ============================================================================
@@ -3162,12 +3040,14 @@ class MahavishnuSettings(BaseSettings):
 _settings_cache: MahavishnuSettings | None = None
 
 
-def get_settings() -> MahavishnuSettings:
+def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
     """Return the process-wide ``MahavishnuSettings`` (lazy module-level cache).
 
-    The first call instantiates ``MahavishnuSettings()`` (which reads from
-    environment variables and the Oneiric YAML files in ``settings/``).
-    Subsequent calls return the cached instance.
+    The first call merges Oneiric's XDG-aware layered config (defaults →
+    ``settings/mahavishnu.yaml`` → ``settings/local.yaml`` →
+    ``~/.config/mahavishnu/config.yaml`` → ``~/.config/mahavishnu/local.yaml``
+    → env vars) and constructs a ``MahavishnuSettings`` from the
+    Mahavishnu-relevant fields. Subsequent calls return the cached instance.
 
     Stateless callers (e.g. FastAPI routers, MCP tool decorators) use this to
     obtain a configured ``MahavishnuSettings`` without depending on a
@@ -3176,11 +3056,150 @@ def get_settings() -> MahavishnuSettings:
     For tests and app-init code that need a pre-configured settings object,
     use :func:`set_settings` to override the cache, or :func:`reset_settings`
     to clear it.
+
+    Args:
+        project_root: Override the default project root used to anchor
+            ``settings/{mahavishnu,local}.yaml`` lookups. Defaults to the
+            package install directory (``Path(__file__).resolve().parent.parent``).
+            Tests pass a hermetic ``tmp_path`` to avoid touching the real
+            repo config files. The cache is keyed on this parameter so two
+            calls with different ``project_root`` values produce different
+            cached instances.
+
+    2026-09-29: Loader rewritten to route through Oneiric's
+    ``load_settings(project_name="mahavishnu")`` instead of the previous
+    pydantic-settings customiser. Behavioural equivalence:
+    - Oneiric's ``_deep_merge`` enforces the same precedence the previous
+      ``_settings_build_values`` workaround achieved.
+    - ``MAHAVISHNU_*`` env vars are still applied by pydantic-settings
+      when ``MahavishnuSettings(**data)`` is constructed.
+    - Only Oneiric's ``__pydantic_extra__`` fields are passed to
+      ``MahavishnuSettings(**merged)``. Oneiric's declared fields
+      (``adapters``, ``services``, ``tasks``, ``workflows``, etc.) are the
+      framework's own registry schema and would collide with
+      MahavishnuSettings's stricter sub-config models (which use
+      ``extra="forbid"``). The extras path is what carries XDG / YAML values
+      for Mahavishnu-specific top-level sections like ``opensearch``,
+      ``terminal``, ``otel_ingester``, ``adapters``, etc.
     """
-    global _settings_cache
-    if _settings_cache is None:
-        _settings_cache = MahavishnuSettings()
+    cache_key = Path(project_root).resolve() if project_root else None
+    global _settings_cache_root, _settings_cache
+    if _settings_cache is None or _settings_cache_root != cache_key:
+        from oneiric.core.config import load_settings as _oneiric_load
+
+        anchor = (
+            Path(project_root).resolve()
+            if project_root
+            else Path(__file__).resolve().parent.parent
+        )
+        merged: dict = {}
+        try:
+            oneiric_obj = _oneiric_load(
+                project_name="mahavishnu",
+                project_root=anchor,
+            )
+            # Pydantic v2 stores ``extra="allow"`` additions on a private
+            # attr; ``model_dump()`` includes them too but also leaks
+            # Oneiric's declared framework fields (adapters, services,
+            # tasks, etc.) that would clash with MahavishnuSettings's
+            # extra="forbid" sub-models. Use the private attr directly.
+            extras = getattr(oneiric_obj, "__pydantic_extra__", None) or {}
+            merged = {
+                k: v
+                for k, v in extras.items()
+                if k in MahavishnuSettings.model_fields and v is not None
+            }
+
+            # Apply MAHAVISHNU_* env vars as a final overlay so they win
+            # over Oneiric-loaded values where they collide. This
+            # preserves the documented precedence
+            # (defaults -> YAML -> env -> init) and avoids Oneiric's
+            # backward-compat alias ``LOG_LEVEL -> logging.level``
+            # (oneiric/core/config.py:702) silently swallowing
+            # ``MAHAVISHNU_LOG_LEVEL`` into Oneiric's framework field
+            # instead of MahavishnuSettings.log_level.
+            #
+            # CRITICAL: merge per-key for nested sections. A naive
+            # ``merged.update(env_overlay)`` would replace the entire
+            # ``opensearch`` sub-dict, clobbering YAML-fed siblings like
+            # ``use_ssl`` when only ``MAHAVISHNU_OPENSEARCH__ENDPOINT``
+            # is set in the env.
+            env_overlay = _mahavishnu_env_overlay()
+            _merge_env_overlay(merged, env_overlay)
+        except Exception:
+            # Oneiric unavailable (early import, test setup without the
+            # dependency, etc.) — fall back to defaults + env-var-only
+            # construction so the factory never raises purely on a
+            # missing loader. The ``MAHAVISHNU_*`` env-var overlay is
+            # still applied by the code path below; pydantic-settings
+            # reads env vars natively via MahavishnuSettings.model_config.
+            pass
+
+        _settings_cache = MahavishnuSettings(**merged)
+        _settings_cache_root = cache_key
     return _settings_cache
+
+
+_settings_cache_root: Path | None = None
+
+
+def _mahavishnu_env_overlay() -> dict[str, Any]:
+    """Convert ``MAHAVISHNU_*`` env vars into a nested-dict overlay.
+
+    Mirrors the pydantic-settings source precedence used inside
+    ``MahavishnuSettings.model_config`` (``env_prefix="MAHAVISHNU_"``,
+    ``env_nested_delimiter="__"``) but bypasses Oneiric's own backward-compat
+    aliasing (e.g. ``LOG_LEVEL -> logging.level``) that would misroute env
+    vars away from Mahavishnu's top-level fields.
+
+    Only top-level keys present in ``MahavishnuSettings.model_fields`` are
+    returned. Scalar coercion follows pydantic-settings' lazy defaults
+    (``str`` is left as a string; downstream validation runs inside
+    ``MahavishnuSettings(**merged)``).
+    """
+    overlay: dict[str, Any] = {}
+    for key, value in os.environ.items():
+        if not key.startswith("MAHAVISHNU_"):
+            continue
+        suffix = key[len("MAHAVISHNU_") :]
+        if "__" in suffix:
+            # Nested subtree — ``MAHAVISHNU_AUTH__ALGORITHM`` -> auth.algorithm
+            section, leaf = suffix.split("__", 1)
+            section_lower = section.lower()
+            if section_lower in MahavishnuSettings.model_fields:
+                sub = overlay.setdefault(section_lower, {})
+                if isinstance(sub, dict):
+                    sub[leaf.lower()] = value
+            continue
+        # Flat key — ``MAHAVISHNU_LOG_LEVEL`` -> log_level
+        flat = suffix.lower()
+        if flat in MahavishnuSettings.model_fields:
+            overlay[flat] = value
+    return overlay
+
+
+def _merge_env_overlay(merged: dict[str, Any], env_overlay: dict[str, Any]) -> None:
+    """Merge env-var overlay into ``merged`` with per-key nested-dict semantics.
+
+    Top-level keys in ``env_overlay`` replace ``merged``'s top-level value.
+    For sub-dicts (e.g. ``opensearch``), merge per-key so a single env var
+    like ``MAHAVISHNU_OPENSEARCH__ENDPOINT`` overrides only ``endpoint``,
+    not the whole ``opensearch`` block (which would clobber YAML-fed
+    siblings like ``use_ssl``).
+
+    Scalar coercion follows the same rules as ``_mahavishnu_env_overlay``:
+    ``str`` values pass through; downstream validation runs in
+    ``MahavishnuSettings(**merged)``.
+    """
+    for key, env_value in env_overlay.items():
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(env_value, dict):
+            # Shallow merge: existing YAML-fed keys preserved; env wins on
+            # collision. Deep merge is unnecessary because Mahavishnu's
+            # sub-configs are flat (no nested models below the top section).
+            merged[key] = {**existing, **env_value}
+        else:
+            merged[key] = env_value
 
 
 def set_settings(settings: MahavishnuSettings) -> None:
@@ -3190,9 +3209,15 @@ def set_settings(settings: MahavishnuSettings) -> None:
 
 
 def reset_settings() -> None:
-    """Clear the cached settings (for tests that need to re-read env / YAML)."""
-    global _settings_cache
+    """Clear the cached settings (for tests that need to re-read env / YAML).
+
+    Clears both ``_settings_cache`` and ``_settings_cache_root`` so the next
+    :func:`get_settings` call re-evaluates the Oneiric loader regardless of
+    the project_root argument.
+    """
+    global _settings_cache, _settings_cache_root
     _settings_cache = None
+    _settings_cache_root = None
 
 
 # ============================================================================
