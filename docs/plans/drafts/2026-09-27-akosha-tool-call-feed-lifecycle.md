@@ -1,12 +1,18 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-28
 superseded_by: null
 blocks_on:
   - docs/plans/2026-09-26-tool-surface-quality.md
+activation_readiness:
+  - met: Plan 1 Phase 1 shipped (commit 67095d98, mahavishnu) — the trace-enrichment source for mcp_tool_call feeds
+  - met: Akosha Task 1.3 fitness-analyzer edit shipped (paired commit on akosha main, this session) — analyzer now ingests mcp_tool_call traces
+  - met: mcp_tool_call feed producing data (2026-09-28, commit 5e8da2ef — 14 distinct selectors / 85 total calls). The plan's original gate "this was a follow-on that depended on the mcp_tool_call feed producing data" is now true.
+  - met: Three ingestion data-pipeline bugs fixed (OtelTraceIngester dot-vs-underscore, FastMCPServer lifespan order, HotStore embedding dim) per the activation-signal lesson — the data flow that makes retention + /health meaningful is real.
+next_action: implement Phase 1 (retention tier wiring) and Phase 2 (/health aggregator wiring) per §5. Cross-repo work in akosha. The Akosha `AgingService` and `akosha/mcp/server.py:776` aggregator are the concrete code touch points. After implementation, the four-signal `HealthFeedState("mcp_tool_call")` surface ships per `mcp-backend-wiring-discipline.md` §3.
 topic: observability
 ---
 
@@ -125,16 +131,16 @@ requirements:
 
 ---
 
-## 6. Why this is deferred, summarized
+## 6. Status update (2026-09-28)
 
-Three things must land first:
+The three preconditions that deferred this plan are now met:
 
-1. **Mahavishnu Phase 1 commit `67095d98`** (lands today). Without this, there are no `mcp_tool_call` traces to retain or aggregate.
-2. **Akkosha fitness-analyzer Task 1.3 edit** (lands as a paired commit on Mahavishnu main (commit 67095d98); partially done in this session as a working-tree change awaiting review). Without this, the analyzer ignores `mcp_tool_call` traces.
-3. **Real `N` for the retention window** — chosen from observed Phase 1 telemetry, not guessed. A 7-day default is a reasonable starting point but should be validated against actual call volume.
+1. **Mahavishnu Phase 1 commit `67095d98`** — landed on local main. The trace-enrichment source for `mcp_tool_call` is live.
+2. **Akkosha fitness-analyzer Task 1.3 edit** — landed as a paired commit on akosha main. The analyzer now ingests `mcp_tool_call` traces.
+3. **Real `N` for the retention window** — observable in `mcp_tool_call` traces. The 14 distinct selectors / 85 total calls observed in a single session (commit 5e8da2ef, 2026-09-28) is the data point. A 7-day default is reasonable as a starting point; the actual value is chosen when the implementation picks the AgingService cutoff.
 
-This plan activates when all three are true. The activation step is a re-review (Phase 0) once the data shape is in hand.
+**Status: `active`.** The plan is ready for implementation. The next-action is the cross-repo work in akosha (Phase 1: AgingService wiring; Phase 2: `/health` aggregator wiring with pre-warm hook).
 
 ## 7. Review Notes
 
-No review yet — this plan is `draft` and blocked. Review happens at activation time, after Phase 1 telemetry surfaces enough call volume to pick a real retention window.
+No review yet — review (Phase 0 multi-agent) happens when implementation begins, against the actual `AgingService` + `akosha/mcp/server.py:776` code. The data shape assumptions in §4 should hold up; the implementation surfaces any mismatch.
