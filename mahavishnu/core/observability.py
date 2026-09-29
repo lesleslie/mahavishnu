@@ -37,8 +37,8 @@ except ImportError:
 # metrics`` doesn't poison OTEL_AVAILABLE (which would silently fall
 # back to MockTracer and break the mcp_tool_call feed end-to-end).
 try:
-    from opentelemetry.instrumentation.system_metrics import (
-        SystemMetricsInstrumentor,  # ty: ignore[unresolved-import]
+    from opentelemetry.instrumentation.system_metrics import (  # ty: ignore[unresolved-import]
+        SystemMetricsInstrumentor,
     )
 
     SYSTEM_METRICS_AVAILABLE = True
