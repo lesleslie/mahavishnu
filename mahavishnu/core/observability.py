@@ -24,7 +24,7 @@ try:
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -37,7 +37,10 @@ except ImportError:
 # metrics`` doesn't poison OTEL_AVAILABLE (which would silently fall
 # back to MockTracer and break the mcp_tool_call feed end-to-end).
 try:
-    from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor  # ty: ignore[unresolved-import]
+    from opentelemetry.instrumentation.system_metrics import (
+        SystemMetricsInstrumentor,  # ty: ignore[unresolved-import]
+    )
+
     SYSTEM_METRICS_AVAILABLE = True
 except ImportError:
     SystemMetricsInstrumentor = None  # type: ignore[assignment]

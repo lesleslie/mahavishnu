@@ -14,6 +14,7 @@ Architecture:
 from __future__ import annotations
 
 from enum import StrEnum
+import logging
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -30,6 +31,8 @@ from ..terminal.config import TerminalSettings
 # Imported at module load time (no risk of cycles; model_routing has no
 # dependency on this module).
 from .model_routing import TaskCategory
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)
@@ -3088,9 +3091,7 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
         from oneiric.core.config import load_settings as _oneiric_load
 
         anchor = (
-            Path(project_root).resolve()
-            if project_root
-            else Path(__file__).resolve().parent.parent
+            Path(project_root).resolve() if project_root else Path(__file__).resolve().parent.parent
         )
         merged: dict = {}
         try:
@@ -3133,7 +3134,7 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
             # missing loader. The ``MAHAVISHNU_*`` env-var overlay is
             # still applied by the code path below; pydantic-settings
             # reads env vars natively via MahavishnuSettings.model_config.
-            pass
+            logger.exception("oneiric_loader_failed_falling_back_to_env")
 
         _settings_cache = MahavishnuSettings(**merged)
         _settings_cache_root = cache_key

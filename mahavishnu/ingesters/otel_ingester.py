@@ -1325,7 +1325,7 @@ async def create_otel_ingester(
     except Exception:
         # Settings unavailable (early import, test setup without fixtures, etc.)
         # — fall through to env-var path; factory still works.
-        pass
+        logger.exception("settings_unavailable_falling_back_to_env")
 
     # Apply layered overrides. Explicit args > env vars > XDG > defaults.
     # We use ``None`` as the "unset" sentinel so an explicit
