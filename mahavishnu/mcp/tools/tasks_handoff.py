@@ -416,12 +416,13 @@ def register_tasks_handoff_tools(
         try:
             _HANDOFF_RATE_LIMITER.check(caller_key)
         except RateLimitError as exc:
+            # Always raises (by contract — see helper). No fallback path.
             _raise_rate_limited(exc)
-            # Unreachable — _raise_rate_limited always raises. The return
-            # annotation keeps ty/mypy happy if it ever stops raising.
-            raise AssertionError(  # pragma: no cover - defensive only
-                "_raise_rate_limited must raise"
-            )
+            # ``_raise_rate_limited`` is contract-bound to raise. The
+            # bare ``raise`` below is a defensive ``NoReturn`` hint for
+            # ty / mypy: if the helper ever stops raising, re-raise
+            # ``RateLimitError`` rather than silently falling through.
+            raise
 
         # Bind the injected dependencies (if any) at call time so a
         # registration-time miss doesn't blow up test discovery.
