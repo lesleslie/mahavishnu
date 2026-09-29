@@ -1,16 +1,21 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-29
 superseded_by: null
 blocks_on: []
 unblocks:
   - docs/plans/drafts/2026-09-26-eval-methodology.md (Plan 2 — REQ-EVAL-004 sink path)
   - docs/proposals/2026-09-27-eval-fixture-proposal.md (metric_name convention must be locked before Phase 1 fixtures ship)
-topic: akosha-eval-integration
 activation_signal: Plan 2 eval suite ready to run nightly (≥7 days of mcp_tool_call traces captured)
+delivered:
+  - phase_1: commit f09035f (akosha local main, 2026-09-29) — REQ-MS-001 + REQ-MS-003 + REQ-MS-006. MCP write-side tool `akosha_add_eval_metric`, suffixed metric_name guard `is_eval_metric_name(name)`, `AddEvalMetricRequest` Pydantic schema. In-memory cache only; persistence is Phase 2.
+remaining:
+  - phase_2: REQ-MS-002 (SQLite persistence) + REQ-MS-004 (restart-survival integration test) + REQ-MS-005 (backwards-compat). Plan 2's REQ-EVAL-004 has a working write path now but data is lost on Akosha restart; until Phase 2 lands, the >10% week-over-week anomaly detector is bounded to the process lifetime.
+  - phase_3: Update Plan 2 activation_readiness to reflect Phase 1 + Phase 2 shipped.
+topic: akosha-eval-integration
 ---
 
 # Akosha Eval Metric Sink — Cross-Repo Follow-On Plan (DRAFT)
