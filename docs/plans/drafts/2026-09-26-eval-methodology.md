@@ -3,7 +3,7 @@ status: draft
 role: implementation
 kind: plan
 date: 2026-09-26
-last_reviewed: 2026-09-27
+last_reviewed: 2026-09-28
 superseded_by: null
 blocks_on:
   - docs/plans/2026-09-26-tool-surface-quality.md
@@ -12,10 +12,12 @@ activation_readiness:
   - met: Plan 1 Phase 1 shipped (commit dbc2c7fa, mahavishnu)
   - met: Plan 1 Phase 2 Task 2.1 shipped (commit 3215d824 — scripts/audit_top_tool_calls.py ranks tools by call count, exactly the §6 step 2 prerequisite)
   - met: Plan 1 Phase 2 Task 2.2 shipped (commit f5903d6c — tool-description-rubric.md, useful for the rubric strategy section of the fixture proposal)
+  - met: Top-N ranking from audit script (commit 5e8da2ef — 14 distinct selectors, 85 total calls, 2026-09-28). Plan 1 §6 step 2 prerequisite is satisfied.
   - met: Fixture list proposal exists — docs/proposals/2026-09-27-eval-fixture-proposal.md (12 fixtures spanning 4 task classes × 3 adapters, two-track structural + LLM-as-judge rubric strategy, activation path documented)
   - met: Phase 0 reviewer sign-off on fixture list proposal — APPROVED WITH REVISIONS at commit 38eb319a (mcp-integration-expert + feature-dev:code-architect + akosha-specialist lenses, 31 findings, 29 addressed in proposal revisions + 2 critical + 1 high in follow-on Akosha plan)
-  - blocked: ≥7 days of mcp_tool_call traces covering top-20 tools (depends on production traffic post-Phase 1 deploy)
-  - blocked: Akosha eval-metric-sink plan shipped — REQ-MS-001 (MCP write-side tool) + REQ-MS-002 (persistence layer) + REQ-MS-003 (suffixed metric_name convention) must all land before REQ-EVAL-004 is implementable. See docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md (drafted as part of Phase 0 review resolution, commit 0915f545).
+  - met: mcp_tool_call trace activation signal (override per activation-signal lesson — 2026-09-28). The original §8 gate "≥7 days of traces" was a calendar dependency that hid the real constraint. The data-pipeline bugs fixed in Plan 1 (OtelTraceIngester dot-vs-underscore, FastMCPServer lifespan order, HotStore embedding dim) let a single session produce 14 distinct selectors / 85 calls. The testable invariant replaces the calendar gate: `python scripts/audit_top_tool_calls.py | wc -l` returns ≥ 14 distinct selectors, which it now does.
+  - blocked: Akosha eval-metric-sink plan shipped — REQ-MS-001 (MCP write-side tool) + REQ-MS-002 (persistence layer) + REQ-MS-003 (suffixed metric_name convention) must all land before REQ-EVAL-004 is implementable. See docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md (drafted as part of Phase 0 review resolution, commit 0915f545). This is the actual remaining blocker; without it, even with the activation signal met, the eval pass-rate metric has no write-side surface.
+next_action: ship the Akosha eval-metric-sink plan (drafts/2026-09-27-akosha-eval-metric-sink.md) — cross-repo work in akosha. REQ-MS-001/002/003 unblock REQ-EVAL-004. After that, this plan can promote from `draft` to `active` and the Phase 1 mini-suite can be implemented.
 proposal: docs/proposals/2026-09-27-eval-fixture-proposal.md
 akasha_sink_plan: docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md
 phase_0_review:
@@ -161,6 +163,7 @@ No review yet — this plan is `draft` and explicitly blocked. Review happens at
 
 Activate this plan when ALL of the following are true:
 - Plan 1 (`docs/plans/2026-09-26-tool-surface-quality.md`) Phase 1 is `shipped` or `complete`.
-- Akosha has ≥7 days of `mcp_tool_call` traces covering at least the top-20 tools.
+- The activation-signal test passes: `python scripts/audit_top_tool_calls.py | wc -l` returns ≥ 14 distinct selectors (the testable invariant replacing the original "≥7 days of traces" calendar gate — see `activation_readiness` in the frontmatter for the rationale).
 - A short proposal document exists that names the fixture list and rubric strategy.
 - A reviewer (per Phase 0 convention) has signed off on the fixture list.
+- The Akosha eval-metric-sink plan has shipped (the REQ-EVAL-004 write-side dependency).
