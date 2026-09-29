@@ -114,6 +114,42 @@ class TaskNotFoundError(Exception):
         super().__init__(f"[MHV-101] Task not found: {self.task_id}")
 
 
+class WorkflowNotReturnedError(Exception):
+    """Raised when ``pool_route_execute`` succeeded but did not return a
+    ``workflow_id``. The v1.1 sweeper would chase a phantom orphan if we
+    emitted one here, so this surfaces as a typed caller-visible failure
+    instead. Carries the raw dispatch envelope for diagnostics.
+    """
+
+    code: str = "MHV-102"
+
+    def __init__(
+        self,
+        task_id: str,
+        dispatch_result: dict[str, Any],
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        self.task_id = str(task_id)
+        self.dispatch_result = dict(dispatch_result)
+        self.details = {
+            "task_id": self.task_id,
+            "dispatch_keys": sorted(dispatch_result.keys()),
+            **(details or {}),
+        }
+        super().__init__(
+            f"[MHV-102] pool_route_execute did not return a workflow_id "
+            f"for task {self.task_id}: {self.dispatch_result!r}"
+        )
+
+
+# Canonical orphan reasons (per Fix Round 1). Keep these as module-level
+# constants rather than an Enum so the upstream task_events literal type
+# stays string-typed and avoids a cross-package import.
+_ORPHAN_REASON_STEP_3_UPDATE_FAILED = "step_3_update_failed"
+_ORPHAN_REASON_STEP_2_DISPATCH_FAILED = "step_2_dispatch_failed"
+_ORPHAN_REASON_UNEXPECTED = "unexpected_error"
+
+
 # ---------------------------------------------------------------------------
 # Content validation (mirrors session-buddy's sanitizer so dispatch-time
 # validation rejects the same set of malformed payloads without depending
@@ -142,9 +178,7 @@ def _validate_task_content_for_dispatch(content: str) -> str:
     truncated = encoded.decode("utf-8", errors="replace")
     if encoded != sanitized.encode("utf-8"):
         # Lost bytes during cap — refuse rather than silently truncate.
-        raise ValueError(
-            f"task content exceeds {_MAX_CONTENT_BYTES} bytes after sanitization"
-        )
+        raise ValueError(f"task content exceeds {_MAX_CONTENT_BYTES} bytes after sanitization")
     return truncated
 
 
@@ -228,13 +262,13 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
     so this is typed-but-side-effect-free in the current environment.
     """
     try:
-        from session_buddy.mcp.tools.tasks_events import (
-            publish_task_event,  # type: ignore[import-not-found]
+        from session_buddy.mcp.tools.tasks_events import (  # ty: ignore[import-not-found]
+            publish_task_event,
         )
     except ImportError:
         return
     try:
-        await publish_task_event(event_type, payload)  # type: ignore[arg-type]
+        await publish_task_event(event_type, payload)  # ty: ignore[arg-type]
     except Exception as exc:  # noqa: BLE001 - publisher is best-effort
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 
@@ -348,7 +382,19 @@ def register_tasks_handoff_tools(
     imported by test suites that exercise just the validation /
     rate-limit / event-publish branches without binding the upstream
     clients.
+
+    Raises:
+        RuntimeError: If the T16 gate reports session-buddy 0.30+ with
+            PR #1 tools is not importable. This is a registration-time
+            check (per Fix Round 1) so failures surface immediately
+            rather than at first dispatch.
     """
+    # Registration-time gate (Fix Round 1 #2): surface session-buddy
+    # absence once, at registration, not on every call.
+    if not tasks_handoff_to_workflow_available():
+        raise RuntimeError(
+            "tasks_handoff_to_workflow requires session-buddy>=0.30.0 with PR #1 tools"
+        )
 
     @mcp.tool()
     async def tasks_handoff_to_workflow(
@@ -366,26 +412,32 @@ def register_tasks_handoff_tools(
 
         Rate limit: 10 calls/minute per caller.
         """
-        if not tasks_handoff_to_workflow_available():
-            raise RuntimeError(
-                "tasks_handoff_to_workflow requires session-buddy>=0.30.0 with PR #1 tools"
-            )
-
         caller_key = _derive_caller_key()
         try:
             _HANDOFF_RATE_LIMITER.check(caller_key)
         except RateLimitError as exc:
-            return _rate_limited_envelope(exc)
+            _raise_rate_limited(exc)
+            # Unreachable — _raise_rate_limited always raises. The return
+            # annotation keeps ty/mypy happy if it ever stops raising.
+            raise AssertionError(  # pragma: no cover - defensive only
+                "_raise_rate_limited must raise"
+            )
 
         # Bind the injected dependencies (if any) at call time so a
         # registration-time miss doesn't blow up test discovery.
-        get_task = session_buddy_client.tasks_get if session_buddy_client is not None else _session_buddy_get_task
+        get_task = (
+            session_buddy_client.tasks_get
+            if session_buddy_client is not None
+            else _session_buddy_get_task
+        )
         update_task = (
             session_buddy_client.tasks_update
             if session_buddy_client is not None
             else _session_buddy_update_task
         )
-        pool_dispatch = pool_route_execute_fn if pool_route_execute_fn is not None else _pool_route_execute
+        pool_dispatch = (
+            pool_route_execute_fn if pool_route_execute_fn is not None else _pool_route_execute
+        )
 
         # ---- Step 1: lookup ----
         try:
@@ -408,30 +460,42 @@ def register_tasks_handoff_tools(
         # to avoid double-emission when step 3's failure bubbles up.
         orphan_handled = False
         try:
-            dispatch_selector = (params.pool_selector if params else "least_loaded")
+            dispatch_selector = params.pool_selector if params else "least_loaded"
             dispatch_timeout = (
-                params.timeout_seconds if (params and params.timeout_seconds is not None) else timeout
+                params.timeout_seconds
+                if (params and params.timeout_seconds is not None)
+                else timeout
             )
 
-            dispatch_result = await pool_dispatch(
-                prompt=task_content,
-                pool_selector=dispatch_selector,
-                timeout=float(dispatch_timeout) if dispatch_timeout is not None else None,
-            )
+            try:
+                dispatch_result = await pool_dispatch(
+                    prompt=task_content,
+                    pool_selector=dispatch_selector,
+                    timeout=float(dispatch_timeout) if dispatch_timeout is not None else None,
+                )
+            except Exception:
+                # Step 2 dispatch failure — no workflow exists, so emit
+                # an orphan with workflow_id="" so the v1.1 sweeper can
+                # tell step-2 from step-3 failures (Fix Round 1 #4).
+                _publish_task_handoff_orphan(
+                    task_id=task_id,
+                    reason=_ORPHAN_REASON_STEP_2_DISPATCH_FAILED,
+                    workflow_id="",
+                )
+                orphan_handled = True
+                raise
+
             workflow_id = str(dispatch_result.get("workflow_id", ""))
             pool_name = str(dispatch_result.get("pool_id", ""))
 
             if not workflow_id:
-                # The router must always return a workflow_id; surface as orphan
-                # so the v1.1 sweeper can re-link or quarantine the task.
-                _publish_task_handoff_orphan(
+                # The router succeeded but didn't give us a usable
+                # workflow_id. Don't emit an orphan — the v1.1 sweeper
+                # would chase a phantom (Fix Round 1 #5). Surface as a
+                # typed caller-visible error instead.
+                raise WorkflowNotReturnedError(
                     task_id=task_id,
-                    reason="step_3_update_failed",
-                    workflow_id="",
-                )
-                orphan_handled = True
-                raise RuntimeError(
-                    f"tasks_handoff: pool_route_execute returned no workflow_id: {dispatch_result!r}"
+                    dispatch_result=dispatch_result,
                 )
 
             # ---- Step 3: write workflow_id back onto the task ----
@@ -441,10 +505,11 @@ def register_tasks_handoff_tools(
                     metadata={"workflow_id": workflow_id},
                 )
             except Exception:
-                # Workflow is running, task not updated → orphan.
+                # Workflow is running, task not updated → orphan
+                # with the canonical step-3 reason (Fix Round 1 #4).
                 _publish_task_handoff_orphan(
                     task_id=task_id,
-                    reason="step_3_update_failed",
+                    reason=_ORPHAN_REASON_STEP_3_UPDATE_FAILED,
                     workflow_id=workflow_id,
                 )
                 orphan_handled = True
@@ -476,28 +541,35 @@ def register_tasks_handoff_tools(
                     workflow_id=workflow_id or "",
                 )
             raise
+        except WorkflowNotReturnedError:
+            # Already typed — never emitted an orphan. Re-raise as-is.
+            raise
         except Exception:
-            # Step 2 dispatch failure or other unexpected error after start.
+            # Catch-all for anything the inner branches didn't tag. If
+            # step 2 returned a workflow_id but the failure happened
+            # AFTER (e.g. step 3 fault OR a downstream consumer error),
+            # tag the orphan with the unexpected_error reason so the
+            # v1.1 sweeper can disambiguate.
             if workflow_id and not orphan_handled:
                 _publish_task_handoff_orphan(
                     task_id=task_id,
-                    reason="step_3_update_failed",
+                    reason=_ORPHAN_REASON_UNEXPECTED,
                     workflow_id=workflow_id,
                 )
             raise
 
 
-def _rate_limited_envelope(exc: RateLimitError) -> HandoffResult:
-    """Return a placeholder :class:`HandoffResult` carrying rate-limit metadata.
+def _raise_rate_limited(exc: RateLimitError) -> None:
+    """Log + re-raise :class:`RateLimitError`.
 
-    The task is NOT updated; the caller is told to back off. The
-    placeholder ``workflow_id`` is the empty string + a synthetic marker
-    so consumers can branch on the rate-limit signal without parsing
-    the exception envelope.
+    Renamed from ``_rate_limited_envelope`` (Fix Round 1 #3): the helper
+    has always raised — it never returned a :class:`HandoffResult`
+    placeholder. The name now matches the behavior at the call site.
+
+    Raising (not returning) keeps the :class:`HandoffResult` envelope
+    contract honest: a rate-limit denial has no workflow yet, so the
+    contract forbids returning one. FastMCP translates the raised
+    exception into a structured error envelope upstream.
     """
     logger.warning("tasks_handoff_to_workflow rate-limited: %s", exc)
-    # We must raise — the HandoffResult envelope contract requires a
-    # workflow_id, and a rate-limit denial has no workflow yet. Raising
-    # keeps the contract honest and lets FastMCP translate the failure
-    # into a structured error envelope upstream.
     raise exc

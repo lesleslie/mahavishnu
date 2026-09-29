@@ -33,6 +33,7 @@ from mahavishnu.mcp.tools.tasks_handoff import (
     HandoffResult,
     RateLimitError,
     TaskNotFoundError,
+    WorkflowNotReturnedError,
     register_tasks_handoff_tools,
 )
 
@@ -84,7 +85,9 @@ def fake_sb_client() -> MagicMock:
             "status": "pending",
         }
     )
-    client.tasks_update = AsyncMock(return_value={"id": _VALID_TASK_ID, "metadata": {"workflow_id": "wf-1"}})
+    client.tasks_update = AsyncMock(
+        return_value={"id": _VALID_TASK_ID, "metadata": {"workflow_id": "wf-1"}}
+    )
     return client
 
 
@@ -312,6 +315,108 @@ class TestCancellation:
         assert any(c["reason"] == "caller_disconnected" for c in orphan_calls)
         # tasks_update MUST NOT have run.
         fake_sb_client.tasks_update.assert_not_awaited()
+
+
+class TestEmptyWorkflowId:
+    """When ``pool_route_execute`` succeeds without a ``workflow_id``,
+    the tool must raise :class:`WorkflowNotReturnedError` — NOT emit a
+    phantom orphan that the v1.1 sweeper would chase."""
+
+    @pytest.mark.asyncio
+    async def test_tasks_handoff_raises_typed_error_on_empty_workflow_id(
+        self,
+        stub_mcp: _StubMCP,
+        fake_sb_client: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _reset_rate_limiter()
+        orphan_calls = _capture_orphan_events(monkeypatch)
+
+        # pool_route_execute succeeds but the envelope is missing workflow_id.
+        pool_dispatch = AsyncMock(return_value={"pool_id": "pool-a", "status": "active"})
+
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=fake_sb_client,
+            pool_route_execute_fn=pool_dispatch,
+        )
+        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(WorkflowNotReturnedError) as exc_info:
+            await tool(task_id=_VALID_TASK_ID, adapter="prefect")
+
+        assert exc_info.value.code == "MHV-102"
+        assert exc_info.value.task_id == _VALID_TASK_ID
+        assert "pool_id" in exc_info.value.dispatch_result
+
+        # NO orphan event must be emitted — the v1.1 sweeper would
+        # otherwise chase a phantom workflow_id.
+        assert orphan_calls == []
+
+        # Step 3 MUST NOT have run — there is no workflow_id to back-link.
+        fake_sb_client.tasks_update.assert_not_awaited()
+
+
+class TestOrphanReasonDisambiguation:
+    """Step-2 failures and step-3 failures must produce distinct orphan
+    reasons so the v1.1 sweeper can disambiguate (Fix Round 1 #4)."""
+
+    @pytest.mark.asyncio
+    async def test_tasks_handoff_distinguishes_step_2_vs_step_3_failure_in_orphan(
+        self,
+        stub_mcp: _StubMCP,
+        fake_sb_client: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _reset_rate_limiter()
+
+        # ---- Case A: step 2 fails ----
+        orphan_a = _capture_orphan_events(monkeypatch)
+        pool_a = AsyncMock(side_effect=RuntimeError("step-2 boom"))
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=fake_sb_client,
+            pool_route_execute_fn=pool_a,
+        )
+        tool_a = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(RuntimeError, match="step-2 boom"):
+            await tool_a(task_id=_VALID_TASK_ID, adapter="prefect")
+
+        assert len(orphan_a) == 1
+        assert orphan_a[0]["reason"] == "step_2_dispatch_failed"
+        assert orphan_a[0]["workflow_id"] == ""  # no workflow existed
+
+        # ---- Case B: step 3 fails (workflow_id already set) ----
+        orphan_b = _capture_orphan_events(monkeypatch)
+        pool_b = AsyncMock(return_value={"workflow_id": "wf-b", "pool_id": "pool-b"})
+        sb_b = MagicMock()
+        sb_b.tasks_get = AsyncMock(
+            return_value={
+                "id": _VALID_TASK_ID,
+                "content": "do it",
+                "owner": "user-1",
+                "metadata": {},
+                "status": "pending",
+            }
+        )
+        sb_b.tasks_update = AsyncMock(side_effect=ConnectionError("step-3 boom"))
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=sb_b,
+            pool_route_execute_fn=pool_b,
+        )
+        tool_b = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(ConnectionError, match="step-3 boom"):
+            await tool_b(task_id=_VALID_TASK_ID, adapter="prefect")
+
+        assert len(orphan_b) == 1
+        assert orphan_b[0]["reason"] == "step_3_update_failed"
+        assert orphan_b[0]["workflow_id"] == "wf-b"  # workflow IS running
+
+        # The two reasons must be distinct — the sweeper disambiguates on this.
+        assert orphan_a[0]["reason"] != orphan_b[0]["reason"]
 
 
 class TestContentValidation:
