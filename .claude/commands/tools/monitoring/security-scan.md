@@ -2,14 +2,13 @@ title: Security Scan
 owner: Platform Reliability Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXCV4ZRSDTB7BSM54R7X8
-  category: monitoring
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXCV4ZRSDTB7BSM54R7X8
+category: monitoring
 
 ______________________________________________________________________
 

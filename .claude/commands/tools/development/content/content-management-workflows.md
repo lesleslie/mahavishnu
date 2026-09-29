@@ -2,14 +2,13 @@ title: Content Management Workflows
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXC470WJWDGXFSKX74911
-  category: development/content
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXC470WJWDGXFSKX74911
+category: development/content
 
 ______________________________________________________________________
 

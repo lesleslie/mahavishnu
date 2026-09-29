@@ -2,23 +2,22 @@ title: GraphQL API Scaffold
 owner: Developer Enablement Guild
 last_reviewed: 2025-10-01
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6H9DJ3RDGFNDADS8GNG9522
-  category: development/api
-  agents:
-- graphql-architect
-- architecture-council
-- qa-strategist
-  tags:
-- graphql
-- api
-- schema
-- apollo
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6H9DJ3RDGFNDADS8GNG9522
+category: development/api
+agents:
+  - graphql-architect
+  - architecture-council
+  - qa-strategist
+tags:
+  - graphql
+  - api
+  - schema
+  - apollo
 
 ______________________________________________________________________
 

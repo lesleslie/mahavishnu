@@ -2,14 +2,13 @@ title: Ai Review
 owner: Operations Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXCZEJGV8Y9045QEJ8SC9
-  category: workflow
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXCZEJGV8Y9045QEJ8SC9
+category: workflow
 
 ______________________________________________________________________
 

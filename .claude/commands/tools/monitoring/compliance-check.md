@@ -2,14 +2,13 @@ title: Compliance Check
 owner: Platform Reliability Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXCSJBJ5T0T218BE5KPFC
-  category: monitoring
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXCSJBJ5T0T218BE5KPFC
+category: monitoring
 
 ______________________________________________________________________
 

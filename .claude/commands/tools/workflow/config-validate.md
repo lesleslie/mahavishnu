@@ -2,14 +2,13 @@ title: Config Validate
 owner: Operations Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  required_scripts: []
-  risk: medium
-  status: active
-  id: 01K6EEXD1MZSEWY34FPMG3ZKHA
-  category: workflow
+  - macOS
+  - Linux
+required_scripts: []
+risk: medium
+status: active
+id: 01K6EEXD1MZSEWY34FPMG3ZKHA
+category: workflow
 
 ______________________________________________________________________
 

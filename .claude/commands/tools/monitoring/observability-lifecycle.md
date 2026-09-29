@@ -2,13 +2,12 @@ title: Observability Lifecycle Guide
 owner: Platform Reliability Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-
-- macOS
-- Linux
-  risk: medium
-  status: active
-  id: 01K6EERCEZDKFSGPW13C1CZNAQ
-  category: monitoring
+  - macOS
+  - Linux
+risk: medium
+status: active
+id: 01K6EERCEZDKFSGPW13C1CZNAQ
+category: monitoring
 
 ______________________________________________________________________
 
