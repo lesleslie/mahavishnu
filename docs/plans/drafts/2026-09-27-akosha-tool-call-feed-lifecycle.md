@@ -12,7 +12,11 @@ activation_readiness:
   - met: Akosha Task 1.3 fitness-analyzer edit shipped (paired commit on akosha main, this session) — analyzer now ingests mcp_tool_call traces
   - met: mcp_tool_call feed producing data (2026-09-28, commit 5e8da2ef — 14 distinct selectors / 85 total calls). The plan's original gate "this was a follow-on that depended on the mcp_tool_call feed producing data" is now true.
   - met: Three ingestion data-pipeline bugs fixed (OtelTraceIngester dot-vs-underscore, FastMCPServer lifespan order, HotStore embedding dim) per the activation-signal lesson — the data flow that makes retention + /health meaningful is real.
-next_action: implement Phase 1 (retention tier wiring) and Phase 2 (/health aggregator wiring) per §5. Cross-repo work in akosha. The Akosha `AgingService` and `akosha/mcp/server.py:776` aggregator are the concrete code touch points. After implementation, the four-signal `HealthFeedState("mcp_tool_call")` surface ships per `mcp-backend-wiring-discipline.md` §3.
+  - met: Phase 1 + Phase 2 shipped (commits 1da8d27 + 7235911, merged via 222718e on akosha local main 2026-09-29). All four signals (entities_count, last_updated_timestamp, cycles_total, errors_total) wire through `mcp_tool_call_feed`; per-task-class cycle/error tracking replaces the ingester-level globals; AgingService cron + pre-warm hook keep `/health` populated on boot.
+delivered:
+  - phase_1: commit 1da8d27 (akosha local main, 2026-09-29) — REQ-FEED-001. AgingService.migrate_hot_to_warm accepts optional `task_class` parameter; JSON-path filter `metadata->>'task_class' = ?` for mcp_tool_call retention tier. 14 aging tests pass.
+  - phase_2: commit 7235911 (akosha local main, 2026-09-29), merged via 222718e — REQ-FEED-002 + REQ-FEED-003 + REQ-FEED-004 + REQ-FEED-005. Per-task-class cycle/error counters in OtelTraceIngester (accessors: get_cycles_for_task_class, get_errors_for_task_class); /health mcp_tool_call_feed reads per-task-class values; AgingService cron task wired into lifespan with AKOSHA_AGING_INTERVAL_SECONDS + AKOSHA_AGING_CUTOFF_DAYS + AKOSHA_SKIP_AGING=1 opt-out; pre-warm runs one migration cycle synchronously before yield so /health shows aging_feed.cycles_total >= 1 immediately; new /health check `aging_feed` surfaces per-feed HealthFeedState. 16 passed / 0 failed (incl. health_aggregator + aging regression).
+remaining: []
 topic: observability
 ---
 
