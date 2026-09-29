@@ -35,6 +35,4 @@ def test_tasks_handoff_to_workflow_available_via_real_imports() -> None:
     if Version(session_buddy.__version__) >= Version("0.30.0"):
         assert tasks_handoff_to_workflow_available() is True
     else:
-        pytest.skip(
-            f"session-buddy {session_buddy.__version__} < 0.30.0 — pre-PR #1"
-        )
+        pytest.skip(f"session-buddy {session_buddy.__version__} < 0.30.0 — pre-PR #1")
