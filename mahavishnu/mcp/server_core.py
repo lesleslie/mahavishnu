@@ -1460,6 +1460,23 @@ class FastMCPServer:
                 )
             return response
 
+        # T18: Wire tasks_handoff_to_workflow (Bodai task system dispatch edge).
+        # The T16 gate is informational; registration activates automatically
+        # once session-buddy PR #1 ships and the operator bumps the version pin.
+        from .tools.tasks_handoff import register_tasks_handoff_tools
+        from .tools.tasks_handoff_gate import (
+            tasks_handoff_to_workflow_available,
+        )
+
+        if tasks_handoff_to_workflow_available():
+            register_tasks_handoff_tools(self.server)
+        else:
+            logger.warning(
+                "tasks_handoff_to_workflow NOT wired — session-buddy PR #1 "
+                "not yet merged. PR #2 will activate this once "
+                "session-buddy>=0.30.0 is pinned."
+            )
+
     async def start(self, host: str = "127.0.0.1", port: int = 3000):
         """Start the MCP server."""
         await _start_server_helper(self, host=host, port=port)
