@@ -2,13 +2,14 @@ title: Frontend Bundle Analyze
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCFPKR8SGCRGWFJMJ9E7
-category: development/frontend
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCFPKR8SGCRGWFJMJ9E7
+  category: development/frontend
 
 ______________________________________________________________________
 

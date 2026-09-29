@@ -65,8 +65,9 @@ def _selector_from_trace(trace: dict[str, Any]) -> str | None:
     elif isinstance(meta, str) and meta:
         try:
             import json as _json
+
             parsed = _json.loads(meta)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             parsed = None
         if isinstance(parsed, dict):
             attrs = parsed.get("attributes")
@@ -78,6 +79,7 @@ def _selector_from_trace(trace: dict[str, Any]) -> str | None:
     if isinstance(sel, str) and sel:
         return sel
     return None
+
 
 # Exit codes — exported so tests can assert CLI behavior without parsing stdout.
 EXIT_OK = 0
@@ -204,6 +206,7 @@ async def _fetch_traces_from_akosha(limit: int) -> list[dict[str, Any]]:
     # shaped ``{"result": [...spans...]}``, so prefer that path and
     # fall back to the text path for tools that don't declare a schema.
     import json as _json
+
     structured = getattr(result, "structured_content", None)
     if structured is not None:
         if not isinstance(structured, dict) or "result" not in structured:
@@ -216,14 +219,11 @@ async def _fetch_traces_from_akosha(limit: int) -> list[dict[str, Any]]:
         try:
             text_payload = result.content[0].text
             traces = _json.loads(text_payload)
-        except (AttributeError, IndexError, KeyError, TypeError,
-                _json.JSONDecodeError) as exc:
+        except (AttributeError, IndexError, KeyError, TypeError, _json.JSONDecodeError) as exc:
             raise MCPFetchError(f"Akosha MCP payload malformed: {exc}") from exc
 
     if not isinstance(traces, list):
-        raise MCPFetchError(
-            f"Akosha MCP returned non-list payload (type={type(traces).__name__})"
-        )
+        raise MCPFetchError(f"Akosha MCP returned non-list payload (type={type(traces).__name__})")
     return traces
 
 

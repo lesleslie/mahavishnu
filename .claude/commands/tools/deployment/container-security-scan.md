@@ -2,13 +2,14 @@ title: Container Security Scan
 owner: Delivery Operations
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXBKG02QVEGX82SFYMDED
-category: deployment
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXBKG02QVEGX82SFYMDED
+  category: deployment
 
 ______________________________________________________________________
 

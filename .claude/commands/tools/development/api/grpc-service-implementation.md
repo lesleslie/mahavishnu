@@ -2,22 +2,23 @@ title: gRPC Service Implementation
 owner: Developer Enablement Guild
 last_reviewed: 2025-10-01
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6H9DJ3RDGFNDADS8GNG9523
-category: development/api
-agents:
-  - grpc-specialist
-  - architecture-council
-  - observability-incident-lead
-tags:
-  - grpc
-  - protobuf
-  - microservices
-  - rpc
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6H9DJ3RDGFNDADS8GNG9523
+  category: development/api
+  agents:
+- grpc-specialist
+- architecture-council
+- observability-incident-lead
+  tags:
+- grpc
+- protobuf
+- microservices
+- rpc
 
 ______________________________________________________________________
 

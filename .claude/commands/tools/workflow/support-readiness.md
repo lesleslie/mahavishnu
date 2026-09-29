@@ -2,12 +2,13 @@ title: Support Readiness Runbook
 owner: Customer Experience
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-risk: medium
-status: active
-id: 01K6EETMG3BH9AFPB7HTE2JDNV
-category: workflow
+
+- macOS
+- Linux
+  risk: medium
+  status: active
+  id: 01K6EETMG3BH9AFPB7HTE2JDNV
+  category: workflow
 
 ______________________________________________________________________
 

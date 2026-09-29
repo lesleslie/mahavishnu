@@ -2,13 +2,14 @@ title: Langchain Agent
 owner: Developer Enablement Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCGP24B686B6KDWQSKGX
-category: development/specialized
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCGP24B686B6KDWQSKGX
+  category: development/specialized
 
 ______________________________________________________________________
 

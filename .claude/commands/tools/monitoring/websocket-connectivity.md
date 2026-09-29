@@ -2,13 +2,14 @@ title: Websocket Connectivity
 owner: Platform Reliability Guild
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: medium
-status: active
-id: 01K6EEXCX1SQH376FZYGBHPCMQ
-category: monitoring
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: medium
+  status: active
+  id: 01K6EEXCX1SQH376FZYGBHPCMQ
+  category: monitoring
 
 ______________________________________________________________________
 

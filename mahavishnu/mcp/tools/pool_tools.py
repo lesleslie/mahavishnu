@@ -685,9 +685,7 @@ def register_pool_tools(
             # subsystem manages its own constants/defaults. When the
             # caller passes no per-call ``worktree`` parameter, isolation
             # stays off ("host").
-            effective_isolation = (
-                worktree.isolation if worktree is not None else "host"
-            )
+            effective_isolation = worktree.isolation if worktree is not None else "host"
             wt_manager = _get_worktree_manager()
             execution_id = str(uuid4())
             if (

@@ -2,25 +2,26 @@ title: Dependency Lifecycle Management
 owner: Platform Engineering Guild
 last_reviewed: 2025-10-01
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts:
-  - scripts/agent_metadata_audit.py
-risk: medium
-status: active
-id: 01K6EEP8QJFB1XTCXAWQ09YSAB
-category: development/code-quality
-agents:
-  - python-pro
-  - javascript-pro
-  - golang-pro
-  - security-auditor
-tags:
-  - dependencies
-  - security
-  - vulnerabilities
-  - automation
-  - supply-chain
+
+- macOS
+- Linux
+  required_scripts:
+- scripts/agent_metadata_audit.py
+  risk: medium
+  status: active
+  id: 01K6EEP8QJFB1XTCXAWQ09YSAB
+  category: development/code-quality
+  agents:
+- python-pro
+- javascript-pro
+- golang-pro
+- security-auditor
+  tags:
+- dependencies
+- security
+- vulnerabilities
+- automation
+- supply-chain
 
 ______________________________________________________________________
 

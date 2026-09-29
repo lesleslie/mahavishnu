@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-09-29
+
+### Added
+
+- mahavishnu: Migrate config loader to Oneiric + OTel ingester pgbouncer plumbing
+- mahavishnu: Phase 1 trace pipeline hardening (Task 1.4 + 1.5)
+- mahavishnu: Tool selection accuracy test + Phase 2 status flip
+
+### Changed
+
+- Rewire top-10 descriptions — get_active_alerts (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — get_log_statistics (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — get_monitoring_dashboard (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — get_observability_metrics (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — get_recovery_metrics (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — get_workflow_statistics (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — list_adapters (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — list_backups (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — list_repos (Phase 2 Task 2.3)
+- Rewire top-10 descriptions — list_workflows (Phase 2 Task 2.3)
+
+### Fixed
+
+- mahavishnu: Address fast-hook ruff failures (S110/BLE001/F401)
+- mahavishnu: Audit script reads selector from metadata.attributes
+- mahavishnu: Register telemetry middleware AFTER enrichment middleware
+- mahavishnu: Repair YAML frontmatter in 49 tool files
+- mahavishnu: Ty unresolved-import suppression on correct line
+
+### Documentation
+
+- mahavishnu: Akosha eval-metric-sink plan — promote to active (Phase 1 shipped)
+- mahavishnu: Akosha tool-call feed lifecycle — promote to active
+- mahavishnu: Eval-methodology plan — activation-signal override
+- mahavishnu: Flip Phase 2 to delivered across both Akosha plans
+- mahavishnu: Task-system design spec — Bodai-native TaskCreate replacement
+- mahavishnu: Task-system implementation plan v1.1
+- mahavishnu: Task-system spec v1.1 — apply 4-lens multi-agent review
+
+### Internal
+
+- Bump Bodai core deps + transitive deps to latest published versions
+
 ## [0.29.2] - 2026-09-28
 
 ### Added

@@ -2,12 +2,13 @@ title: Release Management Playbook
 owner: Delivery Operations
 last_reviewed: 2026-09-06
 supported_platforms:
-  - macOS
-  - Linux
-risk: medium
-status: active
-id: 01K6EESJ4FMWZHNZZJZD54QFXE
-category: deployment
+
+- macOS
+- Linux
+  risk: medium
+  status: active
+  id: 01K6EESJ4FMWZHNZZJZD54QFXE
+  category: deployment
 
 ______________________________________________________________________
 

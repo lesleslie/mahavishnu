@@ -87,18 +87,21 @@ The recon agents found 3 factual errors in the spec. The plan addresses them; th
 - `akosha.tasks_*` read tools (6 of them per spec) — these are rolled into session-buddy PR #1 since akosha picks up the `kind=task` discriminator from session-buddy's index. The 6 akosha tools are added in a separate small PR after session-buddy lands the discriminator.
 - v1.1 follow-ups (orphan sweeper, team-mode ACL, marketplace submission).
 
----
+______________________________________________________________________
 
 ## Tasks
 
 ### T1: Pydantic Model Layer (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/tools/tasks_models.py`
 - Test: `tests/unit/test_tasks_models.py`
 
 **Interfaces:**
+
 - Consumes: nothing
+
 - Produces: `JsonValue`, `TASK_ID_PATTERN`, `OWNER_PATTERN`, `Task`, `UpdateTaskRequest`, `TaskListResult`, `TaskHistoryResult`, `HandoffParams`, `HandoffResult`, `LegacyTaskRow`, `new_task_id()`
 
 - [ ] **Step 1: Write failing tests for TASK_ID_PATTERN + new_task_id()**
@@ -164,15 +167,17 @@ def new_task_id() -> str:
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): task-system Pydantic model layer"`
 
-
 ### T2: Event Payload Schemas + Field Sanitization (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/tools/tasks_events.py`
 - Test: `tests/unit/test_tasks_events.py`
 
 **Interfaces:**
+
 - Consumes: `JsonValue` from T1, `TASK_ID_PATTERN`
+
 - Produces: 6 `TaskXxxPayload` Pydantic models, `serialize_event_field()`, `publish_task_event(event_type, payload, redis)`
 
 - [ ] **Step 1: Write failing tests for serializer**
@@ -200,16 +205,18 @@ def test_serialize_truncates_oversize():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): task-event payload schemas + serializer"`
 
-
 ### T3: Identity Derivation Helper + Rate Limiter (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/tools/tasks_identity.py`
 - Create: `session_buddy/mcp/tools/tasks_security.py`
 - Test: `tests/unit/test_tasks_identity.py`, `tests/unit/test_tasks_security.py`
 
 **Interfaces:**
+
 - Consumes: nothing (T1 is enough for types)
+
 - Produces: `derive_caller_identity(mcp_context) -> str`, `RateLimiter` class, `enforce_visibility_filter(caller, task) -> bool`, `validate_owner_format(owner: str)` raising on format error
 
 - [ ] **Step 1: Write failing tests**
@@ -248,15 +255,17 @@ def test_rate_limiter_blocks_over_quota():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): task-system identity derivation + rate limiter"`
 
-
 ### T4: `tasks_create` Tool (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/tools/tasks_tools.py` (skeleton + `tasks_create` only initially)
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_create_*`
 
 **Interfaces:**
+
 - Consumes: `Task`, `UpdateTaskRequest`, `TaskListResult`, `TaskHistoryResult`, `HandoffParams`, `HandoffResult` from T1; `derive_caller_identity`, `RateLimiter` from T3; `serialize_event_field`, `publish_task_event` from T2
+
 - Produces: `register_tasks_tools(mcp: FastMCP) -> None`
 
 - [ ] **Step 1: Write failing tests**
@@ -351,15 +360,17 @@ async def tasks_create(
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): tasks_create tool with server-derived identity"`
 
-
 ### T5: `tasks_list` Tool with Pagination + Visibility Filter (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py` (add `tasks_list`)
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_list_*`
 
 **Interfaces:**
+
 - Consumes: T1 models, T3 identity + visibility filter, T2 events
+
 - Produces: `tasks_list(...) -> TaskListResult`
 
 - [ ] **Step 1: Write failing tests**
@@ -405,11 +416,12 @@ async def test_tasks_list_includes_total():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): tasks_list with visibility filter + pagination + include_legacy"`
 
-
 ### T6: `tasks_get` + `tasks_update` Tools (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py`
+
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_get_*`, `test_tasks_update_*`
 
 - [ ] **Step 1: Write failing tests for `tasks_get`**
@@ -468,11 +480,12 @@ async def test_tasks_update_records_diff_in_history():
 
 - [ ] **Step 8: Commit** — `git commit -m "feat(session-buddy): tasks_get + tasks_update with authz + diff history"`
 
-
 ### T7: `tasks_complete` Tool — No Implicit Dispatch (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py`
+
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_complete_*`
 
 - [ ] **Step 1: Write failing tests**
@@ -508,11 +521,12 @@ async def test_tasks_complete_does_NOT_dispatch_even_with_handoff_prefix():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): tasks_complete (no implicit dispatch)"`
 
-
 ### T8: `tasks_search` Tool with `quick_search` Parity (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py`
+
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_search_*`
 
 - [ ] **Step 1: Write failing tests**
@@ -540,11 +554,12 @@ async def test_tasks_search_supports_min_score():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): tasks_search with project/min_score parity"`
 
-
 ### T9: `tasks_history` Tool with Pagination (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py`
+
 - Test: `tests/unit/test_tasks_tools.py::test_tasks_history_*`
 
 - [ ] **Step 1: Write failing tests**
@@ -568,11 +583,12 @@ async def test_tasks_history_emits_typed_events():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): tasks_history with pagination"`
 
-
 ### T10: Legacy Coercion Path (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/tools/tasks_legacy.py`
+
 - Test: `tests/unit/test_tasks_legacy.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -606,17 +622,20 @@ def test_coerce_legacy_defaults_visibility_to_private():
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(session-buddy): task legacy coercion path"`
 
-
 ### T11: Skill Catalog Entry (session-buddy)
 
 **Files:**
+
 - Create: `session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md`
 
 **Interfaces:**
+
 - Consumes: nothing (markdown only)
+
 - Produces: A skill markdown file published via existing `skill_tools.py` mechanism
 
 - [ ] **Step 1: Write the skill markdown** using the Draft SKILL.md from spec §Draft SKILL.md as the starting point. Refine based on actual tool signatures from T4-T9. Add:
+
   - Frontmatter `name: bodai-session-buddy-task-system`
   - Frontmatter `description:` with 6-10 trigger phrases (similar to `bodai-radar` per session-buddy recon)
   - Decision tree (in-session vs subagent vs session-buddy vs mahavishnu vs akosha)
@@ -629,12 +648,14 @@ def test_coerce_legacy_defaults_visibility_to_private():
 
 - [ ] **Step 3: Commit** — `git commit -m "feat(session-buddy): bodai-session-buddy-task-system skill catalog entry"`
 
-
 ### T12: Wire Tool Registration into REGISTRATION_MAP (session-buddy)
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/profiles.py`
+
 - Modify: `session_buddy/mcp/tools/__init__.py`
+
 - Test: existing `tests/unit/test_mcp_server_core.py` should pass; add one new test asserting `tasks_*` tools are exposed.
 
 - [ ] **Step 1: Write failing test**
@@ -658,28 +679,33 @@ def test_tasks_tools_exposed_on_mcp_server():
 
 - [ ] **Step 6: Commit** — `git commit -m "feat(session-buddy): register tasks_tools in REGISTRATION_MAP"`
 
-
 ### T13: Update `auto-coordinate` Skill Body Branch (user-global ~/.claude/skills/)
 
 **Files:**
+
 - Modify: `~/.claude/skills/auto-coordinate/SKILL.md`
 
 **Interfaces:**
+
 - Consumes: existing auto-coordinate skill (from recon: 214 lines, prompt-based, no hooks)
+
 - Produces: Updated skill with `tasks_create` and `tasks_complete` triggers
 
 - [ ] **Step 1: Update frontmatter `description`** — append "or after Claude calls tasks_create / tasks_complete on session-buddy" to the description string.
 
 - [ ] **Step 2: Update the trigger table** in §Activation — add two new rows:
+
   - `tasks_create` → suggest branch naming from task content
   - `tasks_complete` → remind to commit/push, suggest branch cleanup
 
 - [ ] **Step 3: Add a new "Step 5: After Creating a Task" implementation block** that teaches:
+
   - How to resolve a session-buddy `t-{hex}` task ID to its reflection URL
   - How to persist the branch link via `mcp__session-buddy__tasks_update(task_id, UpdateTaskRequest(metadata={"branch": "..."}))` (NOT via mahavishnu's `ecosystem.yaml`)
   - Branch naming convention for tasks: `{task_id_short}-{slug-of-content}` (mirror the existing `MHV-042-fix-auth-middleware` pattern)
 
 - [ ] **Step 4: Add a new "Step 6: After Completing a Task" block** that teaches:
+
   - Check `git status --short` for uncommitted changes
   - Remind to commit and push
   - Suggest `git branch -d` cleanup if merged
@@ -688,11 +714,12 @@ def test_tasks_tools_exposed_on_mcp_server():
 
 - [ ] **Step 6: Verify** by reading the committed skill and confirming the changes are visible to Claude.
 
-
 ### T14: Integration Tests (session-buddy)
 
 **Files:**
+
 - Create: `tests/integration/test_tasks_authz.py`
+
 - Create: `tests/integration/test_tasks_end_to_end.py`
 
 - [ ] **Step 1: Write failing authz isolation test**
@@ -740,16 +767,18 @@ async def test_input_size_caps_enforced():
 
 - [ ] **Step 6: Commit** — `git commit -m "test(session-buddy): task-system integration tests for authz + lifecycle + legacy"`
 
-
 ### T15: Update `~/.claude/CLAUDE.md` and CLAUDE.md (session-buddy) — PR #1 Finalization
 
 **Files:**
+
 - Modify: `CLAUDE.md` (session-buddy repo) — cross-link to spec + skill
+
 - Optional: add to `~/.claude/CLAUDE.md` (user-global memory) per the project's `feedback-memories-must-be-dual-stored.md` rule
 
 - [ ] **Step 1: Add a "Task System" section** to session-buddy's `CLAUDE.md` that references:
+
   - Spec path: `docs/superpowers/specs/2026-09-29-task-system-design.md`
-  - Tool list (7 tasks_* tools)
+  - Tool list (7 tasks\_\* tools)
   - Skill path: `~/.claude/skills/bodai-session-buddy-task-system/` (after federation)
   - The missing-builtins substitution: this is the TodoWrite replacement
 
@@ -757,11 +786,12 @@ async def test_input_size_caps_enforced():
 
 - [ ] **Step 3: Commit** — `git commit -m "docs(session-buddy): CLAUDE.md cross-link for task system"`
 
-
 ### T16: Pin `session-buddy` in `mahavishnu/pyproject.toml` (mahavishnu PR #2 prep)
 
 **Files:**
+
 - Modify: `pyproject.toml` (mahavishnu)
+
 - Modify: `mahavishnu/mcp/tools/profiles.py` (or wherever pool/handoff tools wire)
 
 - [ ] **Step 1: Pin `session-buddy`**
@@ -789,15 +819,17 @@ def _tasks_handoff_to_workflow_enabled() -> bool:
 
 - [ ] **Step 3: Commit** — `git commit -m "build(mahavishnu): pin session-buddy for tasks_handoff_to_workflow + feature-flag fallback"`
 
-
 ### T17: `tasks_handoff_to_workflow` Tool (mahavishnu)
 
 **Files:**
+
 - Create: `mahavishnu/mcp/tools/tasks_handoff.py`
 - Test: `tests/unit/test_tasks_handoff.py`
 
 **Interfaces:**
+
 - Consumes: `HandoffParams`, `HandoffResult` from T1 (re-imported or copied); `pool_route_execute` from mahavishnu MCP; existing `RateLimitError`, `WorkerUnavailableError`
+
 - Produces: `tasks_handoff_to_workflow(...) -> HandoffResult` on the Mahavishnu MCP server
 
 - [ ] **Step 1: Write failing tests**
@@ -949,11 +981,12 @@ async def tasks_handoff_to_workflow(
 
 - [ ] **Step 5: Commit** — `git commit -m "feat(mahavishnu): tasks_handoff_to_workflow with try/finally orphan handling"`
 
-
 ### T18: Wire `tasks_handoff_to_workflow` into Mahavishnu MCP Server (mahavishnu PR #2 finalization)
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/server_core.py` (or wherever `trigger_workflow` is registered)
+
 - Test: `tests/integration/test_tasks_handoff_e2e.py`
 
 - [ ] **Step 1: Register the tool** by adding it to the appropriate registration list. Pattern follows `trigger_workflow` registration at `server_core.py:351`.
@@ -964,14 +997,16 @@ async def tasks_handoff_to_workflow(
 
 - [ ] **Step 4: Commit** — `git commit -m "feat(mahavishnu): wire tasks_handoff_to_workflow into MCP server"`
 
-
 ### T19: Update `~/.claude/CLAUDE.md` and CLAUDE.md (mahavishnu) — PR #2 Finalization
 
 **Files:**
+
 - Modify: `CLAUDE.md` (mahavishnu repo) — cross-link to spec + skill
+
 - Optional: dual-store per project convention
 
 - [ ] **Step 1: Add a "Task System" section** to mahavishnu's `CLAUDE.md` that references:
+
   - Spec path
   - The `tasks_handoff_to_workflow` tool
   - The cross-repo PR dependency
@@ -979,8 +1014,7 @@ async def tasks_handoff_to_workflow(
 
 - [ ] **Step 2: Commit** — `git commit -m "docs(mahavishnu): CLAUDE.md cross-link for task system"`
 
-
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1027,7 +1061,7 @@ Searched the plan for: TBD, TODO, "implement later", "fill in details", "similar
 
 No type mismatches found.
 
----
+______________________________________________________________________
 
 ## Execution Handoff
 
@@ -1035,6 +1069,6 @@ Plan complete and saved to `docs/superpowers/plans/2026-09-29-task-system.md`. T
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Best for tasks that are well-isolated (which all 19 are here — PR #1 first, PR #2 after).
 
-2. **Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`, batch execution with checkpoints. Faster wall-clock but uses this session's context heavily.
+1. **Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`, batch execution with checkpoints. Faster wall-clock but uses this session's context heavily.
 
 **Which approach?**

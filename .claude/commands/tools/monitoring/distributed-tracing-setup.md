@@ -2,23 +2,24 @@ title: Distributed Tracing Setup
 owner: Observability Guild
 last_reviewed: 2025-10-01
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: low
-status: active
-id: 01K6HDRW9VMXPQ3K7N8YJHZ2T6
-category: monitoring
-agents:
-  - observability-incident-lead
-  - architecture-council
-tags:
-  - tracing
-  - opentelemetry
-  - jaeger
-  - zipkin
-  - observability
-  - distributed-systems
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: low
+  status: active
+  id: 01K6HDRW9VMXPQ3K7N8YJHZ2T6
+  category: monitoring
+  agents:
+- observability-incident-lead
+- architecture-council
+  tags:
+- tracing
+- opentelemetry
+- jaeger
+- zipkin
+- observability
+- distributed-systems
 
 ______________________________________________________________________
 

@@ -2,26 +2,27 @@ title: Secrets Management
 owner: Security Guild
 last_reviewed: 2025-10-01
 supported_platforms:
-  - macOS
-  - Linux
-required_scripts: []
-risk: high
-status: active
-id: 01K6HDST4YKZQV8PX3NMWJ7HG2
-category: deployment
-agents:
-  - security-auditor
-  - devops-troubleshooter
-  - architecture-council
-  - terraform-specialist
-tags:
-  - secrets
-  - vault
-  - aws-secrets-manager
-  - gcp-secret-manager
-  - azure-key-vault
-  - kubernetes
-  - security
+
+- macOS
+- Linux
+  required_scripts: []
+  risk: high
+  status: active
+  id: 01K6HDST4YKZQV8PX3NMWJ7HG2
+  category: deployment
+  agents:
+- security-auditor
+- devops-troubleshooter
+- architecture-council
+- terraform-specialist
+  tags:
+- secrets
+- vault
+- aws-secrets-manager
+- gcp-secret-manager
+- azure-key-vault
+- kubernetes
+- security
 
 ______________________________________________________________________
 
