@@ -611,3 +611,13 @@ markdown_board:
   # (no consumers). watcher_lag_seconds and state_sidecar_suffix remain.
   watcher_lag_seconds: 30.0
   state_sidecar_suffix: ".state.json"
+
+# T9 (v1.1 Bodai task system): the orphan sweeper re-links tasks whose
+# handoff back-link to session-buddy failed. It runs as a background
+# asyncio task started/stopped by the MCP server's lifespan hooks (T10).
+task_orphan_sweeper:
+  enabled: true
+  stream: "bodai:events"
+  consumer_group: "bodai-task-orphan-sweeper"
+  block_ms: 5000
+  count: 10
