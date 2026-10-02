@@ -307,6 +307,38 @@ def _decode_direct_triplet(
     )
 
 
+def _decode_flat_fields(
+    message_payload: dict[str, Any],
+) -> EventEnvelope | None:
+    """Decode the v1.1 flat-fields XADD shape into a canonical envelope.
+
+    Session-buddy's :class:`BodaiEventsPublisher` writes flat XADD fields
+    where ``channel`` is the event type and the rest of the payload sits
+    at the top level (no ``envelope`` JSON wrapper, no direct
+    ``topic/payload/headers`` triplet). Consumers filter on ``channel``.
+
+    Returns ``None`` when the payload does NOT match the flat shape, so
+    the caller can fall through to the canonical/legacy decode paths.
+    """
+    if (
+        "envelope" in message_payload
+        or "topic" in message_payload
+        or "channel" not in message_payload
+    ):
+        return None
+    channel = message_payload.get("channel", "unknown")
+    headers_raw = message_payload.get("headers", "{}")
+    headers = json.loads(headers_raw) if headers_raw else {}
+    payload = {
+        k: v for k, v in message_payload.items() if k not in {"channel", "headers"}
+    }
+    return create_oneiric_envelope(
+        topic=channel,
+        payload=payload,
+        source=headers.get("source", "session-buddy"),
+    )
+
+
 def _decode_with_legacy_fallback(
     *,
     canonical_call: Any,
@@ -350,6 +382,9 @@ def _decode_envelope(
 
     Canonical-first decoding:
 
+    0. If the v1.1 flat-fields shape is present (``channel`` at top level
+       and no ``envelope``/``topic`` fields), synthesize a canonical
+       envelope via :func:`_decode_flat_fields`.
     1. If ``envelope=<JSON>`` field is present, call
        :func:`decode_oneiric_envelope`.
     2. Else, if a direct ``topic/payload/headers`` triplet is present, call
@@ -364,6 +399,10 @@ def _decode_envelope(
         EventEnvelopeConversionError: when canonical decoding fails and
             legacy reads are disabled, or when both paths fail.
     """
+    flat_envelope = _decode_flat_fields(message_payload)
+    if flat_envelope is not None:
+        return flat_envelope
+
     envelope_blob = message_payload.get("envelope")
 
     if envelope_blob is not None and envelope_blob != b"" and envelope_blob != "":

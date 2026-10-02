@@ -342,6 +342,29 @@ def test_decode_envelope_no_envelope_no_topic_raises() -> None:
         _decode_envelope({})
 
 
+def test_decode_envelope_handles_flat_shape() -> None:
+    """v1.1 flat-fields XADDs (channel + payload fields) decode to a synthesized envelope.
+
+    Session-buddy's ``BodaiEventsPublisher`` writes flat XADD fields where
+    ``channel`` is the event type and the rest of the payload is at the
+    top level (no ``envelope`` JSON wrapper, no direct ``topic/payload/headers``
+    triplet). Consumers filter on ``channel``; ``_decode_envelope`` must
+    synthesize a canonical envelope for downstream callback/queue code.
+    """
+    record = {
+        "channel": "task.created",
+        "task_id": "t-x",
+        "actor": "a",
+        "headers": '{"source": "session-buddy"}',
+    }
+    envelope = _decode_envelope(record)
+    assert envelope is not None
+    assert envelope.topic == "task.created"
+    assert envelope.payload["task_id"] == "t-x"
+    assert envelope.payload["actor"] == "a"
+    assert envelope.headers["source"] == "session-buddy"
+
+
 # ---------------------------------------------------------------------------
 # Subscriber loop helpers (mocked redis)
 # ---------------------------------------------------------------------------
