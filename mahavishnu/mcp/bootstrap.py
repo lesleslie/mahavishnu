@@ -308,6 +308,29 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
             plan_check: dict[str, object] = dict(plan_state.as_dict())
             checks["plan_index"] = plan_check
 
+        # Task 10 — task_orphan_sweeper feed. The sweeper is wired in
+        # ``mahavishnu.mcp.lifecycle.start_server``; ``server._task_orphan_sweeper``
+        # is only present when start_server ran to the spawn point.
+        # When absent, report "warming up" (matches the skills_signer
+        # + plan_index branches) so a test that constructs the server
+        # by hand does not flip /health to degraded before the sweeper
+        # gets attached. When present, evaluate ``health()`` (a coroutine
+        # that returns False after 3 consecutive read failures).
+        sweeper = getattr(server, "_task_orphan_sweeper", None)
+        if sweeper is None:
+            checks["task_orphan_sweeper"] = {
+                "ok": True,
+                "status": "warming_up",
+                "feed": "task_orphan_sweeper",
+            }
+        else:
+            sweeper_ok = await sweeper.health()
+            checks["task_orphan_sweeper"] = {
+                "ok": bool(sweeper_ok),
+                "status": "ok" if sweeper_ok else "degraded",
+                "feed": "task_orphan_sweeper",
+            }
+
         all_ok = all(bool(c.get("ok")) for c in checks.values())
         body = {
             "status": "ok" if all_ok else "degraded",

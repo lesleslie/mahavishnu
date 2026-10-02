@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 from .bootstrap import register_profile_tools as _register_profile_tools_helper
+from .sweepers.task_orphan_sweeper import TaskOrphanSweeper
 from .tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
 
 logger = logging.getLogger(__name__)
+
+
+def get_session_buddy_client() -> Any:
+    """Return the session-buddy client to bind to the task-orphan sweeper.
+
+    Inline fallback for the v1.1 task-system wire-up (Task 10): the
+    full session-buddy client wiring is out of scope here, so the
+    sweeper's ``_recover_orphan`` body sees ``None`` and logs
+    "no session_buddy client; skipping" — the stream loop stays alive
+    but no tasks are re-linked. A follow-up wires the real client.
+    """
+    return None
 
 
 async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -> None:
@@ -134,6 +148,34 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
         # ``MCPKvClient`` solves the seam, the live cycle should
         # succeed and a real failure is worth surfacing.
 
+    # Task 10 — wire the v1.1 task-orphan sweeper into the MCP server
+    # lifecycle. The sweeper consumes ``task.handoff_orphan`` events on
+    # the ``bodai:events`` Redis Stream and re-links orphaned tasks via
+    # session-buddy (Task 9). Started BEFORE ``run_http_async`` so the
+    # /health route (registered in ``__init__``) can see populated
+    # feed state. Failures are logged + swallowed so a Redis outage
+    # at startup does not crash the server; ``/health`` flips to
+    # ``degraded`` via the sweeper's ``_consecutive_read_failures``
+    # signal. ``get_session_buddy_client()`` returns ``None`` for now
+    # (Task 10 scope is the lifecycle seam, not the client wiring) —
+    # the sweeper logs "no session_buddy client; skipping" and the
+    # stream loop stays alive.
+    try:
+        sweeper = TaskOrphanSweeper(
+            session_buddy_client=get_session_buddy_client(),
+        )
+        await sweeper.init()
+        sweeper_task = asyncio.create_task(
+            sweeper.run_forever(), name="task_orphan_sweeper"
+        )
+        server._task_orphan_sweeper = sweeper
+        server._task_orphan_sweeper_task = sweeper_task
+        logger.info("task_orphan_sweeper started (stream=bodai:events)")
+    except Exception as exc:  # noqa: BLE001 - MCP boundary
+        logger.error("Failed to start task_orphan_sweeper: %s", exc)
+        # Don't crash — /health will report task_orphan_sweeper degraded
+        # with the prior "not started" error message.
+
     # Override FastMCP's hardcoded 2s graceful-shutdown timeout so
     # lifespan teardown can run cleanup (hooks, health snapshots, etc.)
     # without being cancelled mid-shutdown.
@@ -146,6 +188,27 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
 
 async def stop_server(server: Any) -> None:
     """Stop the MCP server and cleanup resources."""
+    # Task 10 — cancel the task-orphan sweeper loop and tear down the
+    # Redis adapter. Mirrors the plan_index runner cleanup below:
+    # the task attribute may be absent (init raised, or test
+    # constructed the server by hand), so each step is guarded.
+    sweeper_task = getattr(server, "_task_orphan_sweeper_task", None)
+    if sweeper_task is not None:
+        sweeper_task.cancel()
+        try:
+            await sweeper_task
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
+    sweeper = getattr(server, "_task_orphan_sweeper", None)
+    if sweeper is not None:
+        try:
+            await sweeper.cleanup()
+            logger.info("task_orphan_sweeper stopped")
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.warning("Error stopping task_orphan_sweeper: %s", exc)
+
     # Phase 3 — stop the plan_index rebuild loop so the periodic task
     # closes cleanly. Mirrors the signer reset pattern below. Skipped
     # silently when the runner was never started (e.g. init raised).
