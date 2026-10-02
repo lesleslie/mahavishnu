@@ -3459,7 +3459,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.30.0"
+version = "0.31.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3691,7 +3691,7 @@ dev = [
 ecosystem = [
     { name = "akosha", specifier = ">=0.20.0" },
     { name = "crackerjack", specifier = ">=0.84.1" },
-    { name = "session-buddy", specifier = ">=0.30.0" },
+    { name = "session-buddy", editable = "/Users/les/Projects/session-buddy" },
 ]
 gpu = [{ name = "runpod-flash", specifier = ">=1.20.0" }]
 hatchet = [{ name = "hatchet-sdk", specifier = ">=1.41.1,<2" }]
@@ -6805,9 +6805,10 @@ wheels = [
 [[package]]
 name = "session-buddy"
 version = "0.30.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "/Users/les/Projects/session-buddy" }
 dependencies = [
     { name = "aiofiles" },
+    { name = "coredis" },
     { name = "crackerjack" },
     { name = "cryptography" },
     { name = "duckdb" },
@@ -6829,9 +6830,60 @@ dependencies = [
     { name = "typer" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/4e/24dcd4f9741b756be0669cd0def2311cc37943e3fdb817fc06c3a17f113c/session_buddy-0.30.0.tar.gz", hash = "sha256:13473609ec58e794dd3e771c1749a9f3cc7e8df569044df9a7dc34a7637b5f8c", size = 5726477, upload-time = "2026-10-02T06:50:26.868Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/cc/d539342f70fe19549ee3036fb53a3b1473e03fc5100e775cb5b13ac78e0d/session_buddy-0.30.0-py3-none-any.whl", hash = "sha256:e605627f0edb74c68fa6a009ee8e64bce4f963ec89ba931a52b3285edb7a36cf", size = 1152700, upload-time = "2026-10-02T06:50:24.842Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = ">=25.1.0" },
+    { name = "coredis", specifier = ">=6.9.0" },
+    { name = "crackerjack", specifier = ">=0.70.0" },
+    { name = "cryptography", specifier = ">=50.0.0" },
+    { name = "duckdb", specifier = ">=1.5.3" },
+    { name = "fastmcp", specifier = ">=3.4.0,<5" },
+    { name = "hatchling", specifier = ">=1.30.1" },
+    { name = "httpx2", specifier = ">=0.28.1" },
+    { name = "mcp-common", specifier = ">=0.28.0" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "oneiric", specifier = ">=0.20" },
+    { name = "prometheus-client", specifier = ">=0.25.0" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "python-ulid", specifier = ">=2.0.0" },
+    { name = "pytz", specifier = ">=2024.1" },
+    { name = "rich", specifier = ">=15.0.0" },
+    { name = "scikit-learn", specifier = ">=1.9.0" },
+    { name = "scipy", specifier = ">=1.17.1" },
+    { name = "sqlmodel", specifier = ">=0.0.16" },
+    { name = "structlog", specifier = ">=25.5.0" },
+    { name = "typer", specifier = ">=0.26.6" },
+    { name = "websockets", specifier = ">=16.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "crackerjack", specifier = ">=0.70.0" },
+    { name = "deadcode", specifier = ">=2.4.1" },
+    { name = "factory-boy", specifier = ">=3.3.3" },
+    { name = "faker", specifier = ">=40.20.0" },
+    { name = "hypothesis", specifier = ">=6.0" },
+]
+llm = [
+    { name = "anthropic", specifier = ">=0.39.0" },
+    { name = "tiktoken", specifier = ">=0.7.0" },
+]
+llm-providers = [{ name = "openai", specifier = ">=2.41.0" }]
+storage = [
+    { name = "boto3", specifier = ">=1.34.0" },
+    { name = "redis", specifier = ">=5.0.0" },
+]
+telemetry = [
+    { name = "opentelemetry-api", specifier = ">=1.20.0" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.20.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.20.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.20.0" },
+]
+treesitter = [
+    { name = "tree-sitter", specifier = ">=0.25.2" },
+    { name = "tree-sitter-go", specifier = ">=0.25.0" },
+    { name = "tree-sitter-python", specifier = ">=0.25.0" },
 ]
 
 [[package]]

@@ -168,7 +168,7 @@ cache = [
 ecosystem = [
     "akosha>=0.20.0",
     "crackerjack>=0.84.1",
-    "session-buddy>=0.30.0",
+    "session-buddy>=0.31.0",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
@@ -701,3 +701,18 @@ src = { include = ["mahavishnu/**/*.py"] }
 # suppress a real error under crackerjack (stricter ty config). Treat
 # unused-ignore as informational only so directives work in both contexts.
 unused-ignore-comment = "ignore"
+
+# Local-merge-path source override for session-buddy.
+#
+# Per SDD Ruling 14 (2026-10-02-bodai-task-system-v1.1): the operator owns
+# the 0.31.0 publish (see feedback-mcp-common-version-bump-is-user). For
+# local-only SDD execution the editable redirect bypasses the PyPI gate so
+# `uv lock` + `uv sync` resolve the `>=0.31.0` pin against the local
+# session-buddy checkout, which already ships the Phase 1 symbols
+# (BodaiEventsPublisher, publish_task_event_raw, T12 visibility fix) on
+# commit a0036b01.
+#
+# The operator REPLACES this block with a PyPI source (or removes it
+# entirely) at ship time once session-buddy 0.31.0 is published.
+[tool.uv.sources]
+session-buddy = { path = "/Users/les/Projects/session-buddy", editable = true }
