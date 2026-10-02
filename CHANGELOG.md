@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-10-02
+
+### Added
+
+- mahavishnu: Tasks_handoff_to_workflow tool (the only dispatch edge — T17)
+- mahavishnu: Wire tasks_handoff_to_workflow into MCP server (T18)
+
+### Fixed
+
+- mahavishnu: T16 review NITs — trailing newlines + ruff format cleanup
+- mahavishnu: T17 fix round 1 follow-up — drop defensive AssertionError, bare raise is sufficient
+- mahavishnu: T17 fix round 1 — ty directive, registration-time gate, typed errors, distinct orphan reasons
+
+### Documentation
+
+- mahavishnu: CLAUDE.md cross-link for task system
+
+### Build
+
+- mahavishnu: Add tasks_handoff_to_workflow feature-flag gate (PR #1 prep)
+
 ## [0.30.0] - 2026-09-29
 
 ### Added

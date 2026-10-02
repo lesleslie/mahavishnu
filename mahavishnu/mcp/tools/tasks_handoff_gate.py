@@ -30,7 +30,7 @@ def tasks_handoff_to_workflow_available() -> bool:
     FastMCP's registration loop.
     """
     try:
-        from session_buddy.mcp.tools.tasks_models import (  # noqa: F401
+        from session_buddy.mcp.tools.tasks_models import (  # ty: ignore[unresolved-import]  # noqa: F401
             HandoffParams,
             HandoffResult,
         )

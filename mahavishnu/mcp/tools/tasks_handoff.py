@@ -262,13 +262,13 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
     so this is typed-but-side-effect-free in the current environment.
     """
     try:
-        from session_buddy.mcp.tools.tasks_events import (  # ty: ignore[import-not-found]
+        from session_buddy.mcp.tools.tasks_events import (  # ty: ignore[unresolved-import]
             publish_task_event,
         )
     except ImportError:
         return
     try:
-        await publish_task_event(event_type, payload)  # ty: ignore[arg-type]
+        await publish_task_event(event_type, payload)  # ty: ignore[invalid-argument-type]
     except Exception as exc:  # noqa: BLE001 - publisher is best-effort
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 

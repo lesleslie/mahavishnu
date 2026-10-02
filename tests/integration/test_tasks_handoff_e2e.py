@@ -27,7 +27,7 @@ async def test_tasks_handoff_to_workflow_registration_idempotent() -> None:
     """Registering twice does not duplicate the tool.
 
     The T17 factory's @mcp.tool() decorator must dedupe re-registrations
-    so the tool list stays stable across FastMCP server re-uses. Skips
+    so the tool list stays stable across FastMCP server reuses. Skips
     when the T16 gate is closed (pre-PR #1 session-buddy <0.30).
     """
     if not tasks_handoff_to_workflow_available():

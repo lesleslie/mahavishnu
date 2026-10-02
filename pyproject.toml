@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.30.0"
+version = "0.31.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -168,7 +168,7 @@ cache = [
 ecosystem = [
     "akosha>=0.20.0",
     "crackerjack>=0.84.1",
-    "session-buddy>=0.29.2",
+    "session-buddy>=0.30.0",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
