@@ -909,3 +909,14 @@ Inherit the user-level convention from `~/.claude/CLAUDE.md`. The canonical path
     ~/.local/state/mahavishnu/worktrees/<basename-of-cwd>/
 
 The superpowers `using-git-worktrees` skill reads this block before its hard-coded project-local default, so the XDG path wins.
+
+# Merge workflow
+
+The `/merge-to-main` slash command, the `agent-merge-on-end.py` SessionEnd
+hook, and the `mahavishnu.core.merge_to_main` orchestration module all
+live in this repo. Other 5 core repos (akosha, session-buddy, crackerjack,
+oneiric, mcp-common) inherit the convention without per-repo edits —
+their workers run inside mahavishnu's orchestration.
+
+See `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.
