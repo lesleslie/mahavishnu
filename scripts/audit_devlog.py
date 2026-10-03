@@ -7,7 +7,6 @@ Implements: REQ-011
 """
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -52,19 +51,20 @@ def main() -> int:
     if not dev_log_dir.exists():
         print(f"ERROR: dev-log dir missing: {dev_log_dir}", file=sys.stderr)
         return 2
-    entry_dates = {f.stem.split("-", 3)[0] for f in dev_log_dir.glob("*.md")}
+    entry_dates = {f.stem for f in dev_log_dir.glob("*.md")}
 
     # 3. Check each merge commit has a corresponding entry.
     missing = []
     for sha, date, subject in merge_commits:
         merge_date = date[:10]  # YYYY-MM-DD
-        if merge_date not in entry_dates:
+        # entry_date stems are <YYYY-MM-DD>-<branch>; substring match suffices.
+        if not any(merge_date == stem[: len(merge_date)] for stem in entry_dates):
             missing.append((sha, merge_date, subject))
 
     if missing:
         print(f"FAIL: {len(missing)} merge commit(s) without audit-log entry:")
         for sha, date, subject in missing:
-            print(f"  {sha[:12]} {date} {subject[:60]}")
+            print(f"  {sha[:12]} {date} {subject[:57] + '...'}")
         return 1
 
     print(f"OK: all {len(merge_commits)} merge commits on main have audit entries.")
