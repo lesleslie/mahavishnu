@@ -93,7 +93,7 @@ _Regenerated 2026-10-03 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `active` | `canonical` | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
 | [`docs/plans/2026-09-26-oneiric-runtime-config-registry.md`](2026-09-26-oneiric-runtime-config-registry.md) | 2026-09-26 | `active` | `implementation` | `oneiric-runtime-config-registry` | Oneiric Runtime Config Registry — Implementation Plan (v2) |
 | [`docs/plans/2026-09-26-tool-surface-quality.md`](2026-09-26-tool-surface-quality.md) | 2026-09-26 | `shipped` | `implementation` | `mcp-design` | Tool Surface Quality — Implementation Plan (v2) |
-| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
