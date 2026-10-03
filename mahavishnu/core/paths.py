@@ -31,6 +31,7 @@ RUNTIME_DIR: Final[Path] = Path(_dirs.user_runtime_dir)
 
 LOG_DIR: Final[Path] = STATE_DIR / "logs"
 AUDIT_DIR: Final[Path] = STATE_DIR / "audit"
+DEV_LOG_DIR: Final[Path] = STATE_DIR / "dev-log"
 
 
 def ensure_directories() -> None:
@@ -43,6 +44,7 @@ def ensure_directories() -> None:
     - STATE_DIR
     - LOG_DIR
     - AUDIT_DIR
+    - DEV_LOG_DIR
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,6 +52,9 @@ def ensure_directories() -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+    # Compute DEV_LOG_DIR at call time so tests can monkeypatch STATE_DIR
+    # (the module-level Final constant is bound at import time).
+    (STATE_DIR / "dev-log").mkdir(parents=True, exist_ok=True)
 
 
 def get_data_path(*path_parts: str) -> Path:
@@ -148,6 +153,22 @@ def get_audit_path(*path_parts: str) -> Path:
         Path('~/.local/state/mahavishnu/audit/audit.log')
     """
     return AUDIT_DIR.joinpath(*path_parts)
+
+
+def get_dev_log_path(*path_parts: str) -> Path:
+    """Get XDG-compliant dev-log directory path.
+
+    Args:
+        *path_parts: Path components to join with DEV_LOG_DIR
+
+    Returns:
+        Path to dev-log file/directory
+
+    Examples:
+        >>> get_dev_log_path("2026-10-03-fix-ty.md")
+        PosixPath('~/.local/state/mahavishnu/dev-log/2026-10-03-fix-ty.md')
+    """
+    return DEV_LOG_DIR.joinpath(*path_parts)
 
 
 def get_worktree_base_path() -> Path:
