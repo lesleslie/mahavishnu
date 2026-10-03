@@ -11,6 +11,7 @@ from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     AGENT_POOL,
     REVIEW_STATE_SCHEMA_VERSION,
+    aggregate_verdicts,
     parse_verdict,
     read_review_state,
     run_review,
@@ -148,3 +149,39 @@ def test_run_review_three_agents_in_dispatch_order(monkeypatch: pytest.MonkeyPat
     assert len(AGENT_POOL) == 7
     # The spec allows _CODE_QUALITY_AGENT to overlap with AGENT_POOL; we don't
     # assert membership either way, but we do confirm the pool is the documented size.
+
+
+def test_aggregate_any_block_blocks() -> None:
+    verdicts = [
+        {"decision": "pass", "note": ""},
+        {"decision": "block", "note": "x"},
+        {"decision": "pass", "note": ""},
+    ]
+    assert aggregate_verdicts(verdicts) == "block"
+
+
+def test_aggregate_two_pass_proceeds() -> None:
+    verdicts = [
+        {"decision": "pass", "note": ""},
+        {"decision": "pass", "note": ""},
+        {"decision": "needs_adjustment", "note": "minor"},
+    ]
+    assert aggregate_verdicts(verdicts) == "proceed"
+
+
+def test_aggregate_one_pass_iterates() -> None:
+    verdicts = [
+        {"decision": "pass", "note": ""},
+        {"decision": "needs_adjustment", "note": "x"},
+        {"decision": "needs_adjustment", "note": "y"},
+    ]
+    assert aggregate_verdicts(verdicts) == "iterate"
+
+
+def test_aggregate_all_needs_adjustment_iterates() -> None:
+    verdicts = [
+        {"decision": "needs_adjustment", "note": "a"},
+        {"decision": "needs_adjustment", "note": "b"},
+        {"decision": "needs_adjustment", "note": "c"},
+    ]
+    assert aggregate_verdicts(verdicts) == "iterate"

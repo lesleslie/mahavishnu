@@ -178,3 +178,20 @@ def run_review(
             "note": verdict["note"],
         })
     return results
+
+
+def aggregate_verdicts(verdicts: list[dict[str, str]]) -> str:
+    """Apply the spec §4.4 verdict rule order (priority high to low).
+
+    Returns one of: "proceed", "iterate", "block".
+    """
+    decisions = [v["decision"] for v in verdicts]
+    # Rule 1: any block → block (highest priority)
+    if "block" in decisions:
+        return "block"
+    # Rule 2: ≥2 pass → proceed
+    pass_count = decisions.count("pass")
+    if pass_count >= 2:
+        return "proceed"
+    # Rule 3: otherwise → iterate
+    return "iterate"
