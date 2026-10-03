@@ -301,13 +301,13 @@ cron/jobs.json
 # ============================================================================
 # Superpowers Skill Artifacts (local-only, per-project runtime)
 # ============================================================================
-# Plan/spec/review artifacts produced by superpowers skills live under
-# `.superpowers/`. Most are intentionally committed (plans, specs, final
-# reviews) so future contributors see the design history. Only the
-# scratch and merge-conflict-resolution subdirs are local-only.
-.superpowers/sdd/preserve/
-.superpowers/sdd/*.diff
-.superpowers/sdd/progress.md
+# All `.superpowers/` content is scratch: SDD controller workspace
+# (briefs, reports, ledger, review packages) keyed by plan-basename, and
+# the brainstorm visual-companion's mockup HTML + server-state JSON.
+# Plans and specs live at `docs/plans/` and `docs/specs/` instead — they
+# are committed under their canonical paths, never under `.superpowers/`.
+# See `.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`.
+.superpowers/
 
 .superprofits/
 
