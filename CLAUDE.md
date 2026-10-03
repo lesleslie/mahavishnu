@@ -912,6 +912,19 @@ Inherit the user-level convention from `~/.claude/CLAUDE.md`. The canonical path
 
 The superpowers `using-git-worktrees` skill reads this block before its hard-coded project-local default, so the XDG path wins.
 
+# Plans / specs path preference (per-repo)
+
+Inherit the user-level convention from `~/.claude/CLAUDE.md`. This repo's
+canonical homes:
+
+- **Plans** → `docs/plans/YYYY-MM-DD-<feature-name>.md`
+- **Specs** → `docs/specs/YYYY-MM-DD-<topic>-design.md`
+- Archived plans/specs → `docs/plans/.archive/` and `docs/specs/.archive/`
+
+`docs/superpowers/` only holds `eval/` here (legacy, unrelated). New
+plans and specs do not land under `docs/superpowers/`. See
+`.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`.
+
 # Merge workflow
 
 The `/merge-to-main` slash command, the `agent-merge-on-end.py` SessionEnd
