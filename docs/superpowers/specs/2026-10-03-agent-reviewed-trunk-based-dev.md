@@ -50,7 +50,7 @@ A piece of work proceeds through seven stages. Stages 1–6 are owned by the AI 
 
 | Stage | Owner | Action | Gate | Failure mode |
 |---|---|---|---|---|
-| **1. Worktree** | AI worker | `git worktree add -b <ephemeral> <path> <base>`; commit normally | Path outside repo, branch name unique | Branch collision → choose another |
+| **1. Worktree** | AI worker | If `MAHAVISHNU_AUTO_WORKTREE=1` (default; SessionStart hook auto-provisions a session worktree), the worker's ephemeral branch lives **inside** the existing session worktree as a child commit (the ephemeral branch is named `<branch>`, not the session-worktree's auto-name). Otherwise: `git worktree add -b <ephemeral> <path> <base>`; commit normally | Path outside repo, branch name unique | Branch collision → choose another |
 | **2. Review** | AI ensemble | 2 specialized agents + 1 random generalist review the diff; iterate if rejected | `block` from any agent blocks; otherwise 2/3 `pass` proceeds; `needs_adjustment` triggers iteration | All three disagree with each other → escalate to user |
 | **3. Quality gate** | AI worker | `crackerjack run -v` | non-zero exit blocks merge | Worker fixes and re-enters stage 2 |
 | **4. Squash-merge** | AI worker | `git rebase <base>` (catch-up) → re-verify base SHA unchanged → `git checkout <base>` → `git merge --squash <branch>` → semantic `git commit` | Rebase clean; pre-merge `git status` clean | Conflict → return to stage 1 in worktree |
@@ -164,7 +164,7 @@ session_buddy_reflection_id: <uuid>  # set when mirror succeeds
 ---
 ```
 
-**Session-Buddy dual-store:** Each audit entry is mirrored to session-buddy via `mcp__session-buddy__store_reflection(content=entry_yaml, tags=["dev-log", "merge-workflow", repo])`. Failure to mirror is logged but does not block the merge (local file is canonical; session-buddy mirror is for cross-tool queryability).
+**Session-Buddy dual-store:** Each audit entry is mirrored to session-buddy via `mcp__session-buddy__store_reflection(content=entry_yaml, tags=["dev-log", "merge-workflow", repo])`. On mirror success, the audit entry's `session_buddy_reflection_id` is set to the returned UUID. On mirror failure, the field is set to `null` and the failure is logged (the audit entry is still written; session-buddy mirror is best-effort, local file is canonical).
 
 **Retention:** indefinitely, local only. Rotation policy: `audit_orphans.py` extension (see §Verification) prunes entries older than 365 days with `commits_merged == 0` (orphan markers).
 
@@ -172,7 +172,7 @@ session_buddy_reflection_id: <uuid>  # set when mirror succeeds
 
 **Default ensemble (3 agents):**
 
-- **Agent 1 — domain specialist.** Selected from agents that **actually exist in `.claude/agents/`** today (verified 2026-10-03): `python-pro`, `rust-pro`, `jinja2-template-designer`, `docker-specialist`, `terraform-specialist`, `mcp-integration-expert`, `mahavishnu-specialist`, `oneiric-specialist`, `performance-review-specialist`, `pytest-hypothesis-specialist`, `test-coverage-review-specialist`, `critical-audit-specialist`, `architecture-council`, `documentation-review-specialist`, `qa-strategist`, `observability-incident-lead`, `playwright-specialist`, `redis-specialist`, `postgresql-specialist`, `vector-database-specialist`, `websocket-specialist`, `grpc-specialist`, `data-pipeline-engineer`, `helm-specialist`, `database-operations-specialist`, `devops-troubleshooter`, `sqlite-specialist`, `starlette-specialist`, `vitest-specialist`, `css-architect`, `tui-designer`, `orchestration-specialist`, `mahavishnu-orchestrator`, `oneiric-specialist`, `akoshai-specialist`, `anthropic-claude-specialist`, `openai-specialist`, `authentication-specialist`, `api-security-specialist`, `agent-creation-specialist`, `reference-builder`, `accessibility-auditor`, `pycharm-plugin-creator`, `pyo3-specialist`, `privacy-officer`, `claude-environment-auditor`, `data-retention-specialist`, `documentation-specialist`, `mermaid-expert`, `pyo3-specialist`, `starlette-specialist`. Selection rule: worker specifies `--review-domain <agent-name>`; default is `python-pro`.
+- **Agent 1 — domain specialist.** Selected from agents that **actually exist in `.claude/agents/`** today (verified 2026-10-03; 48 agents, deduped and sorted alphabetically): `accessibility-auditor`, `agent-creation-specialist`, `akosha-specialist`, `anthropic-claude-specialist`, `api-security-specialist`, `architecture-council`, `authentication-specialist`, `claude-environment-auditor`, `critical-audit-specialist`, `css-architect`, `data-pipeline-engineer`, `data-retention-specialist`, `database-operations-specialist`, `devops-troubleshooter`, `docker-specialist`, `documentation-review-specialist`, `documentation-specialist`, `grpc-specialist`, `helm-specialist`, `jinja2-template-designer`, `mahavishnu-orchestrator`, `mahavishnu-specialist`, `mcp-integration-expert`, `mermaid-expert`, `observability-incident-lead`, `oneiric-specialist`, `openai-specialist`, `orchestration-specialist`, `performance-review-specialist`, `playwright-specialist`, `postgresql-specialist`, `privacy-officer`, `pycharm-plugin-creator`, `pyo3-specialist`, `pytest-hypothesis-specialist`, `python-pro`, `qa-strategist`, `redis-specialist`, `reference-builder`, `rust-pro`, `sqlite-specialist`, `starlette-specialist`, `terraform-specialist`, `test-coverage-review-specialist`, `tui-designer`, `vector-database-specialist`, `vitest-specialist`, `websocket-specialist`. Selection rule: worker specifies `--review-domain <agent-name>`; default is `python-pro`.
 
 - **Agent 2 — code-quality specialist.** Always `code-reviewer` (use whichever code-reviewer is available — `critical-audit-specialist` in this repo, or `pr-review-toolkit:code-reviewer` if the plugin is installed and discoverable).
 
@@ -187,13 +187,36 @@ session_buddy_reflection_id: <uuid>  # set when mirror succeeds
 </verdict>
 ```
 
-The Python module parses this block from the agent's response. If the block is missing or malformed, the verdict is `block` (fail-loud).
+The Python module parses this block from the agent's response. If the block is missing or malformed, the verdict is `block` (fail-loud). The module exits with code `1` (review failure / not mergeable), records the parse failure in the audit log's `gate.reviewers` array, and emits a stderr message: `"Hook output: reviewer <agent-name> returned malformed verdict; merge blocked. Re-run with --review default to retry."`.
 
 **Verdict rule order** (priority high to low, first match wins):
 
 1. **Any `block` verdict → block the merge.** No further rules apply.
 2. **≥2 of 3 verdicts are `pass` → proceed.**
 3. **Otherwise → iterate** (worker fixes, re-enters stage 2). Covers the cases where all 3 are `needs_adjustment`, or 1 `pass` + 2 `needs_adjustment`.
+
+**Cross-session resume schema (`.review-state.json`):** Written at the worktree root on every stage transition. JSON shape:
+
+```json
+{
+  "schema_version": 1,
+  "ephemeral_branch": "fix-ty-errors",
+  "base": "origin/main",
+  "pre_rebase_base_sha": "b116d395",
+  "stages_completed": ["stage_1_worktree", "stage_2_review"],
+  "current_stage": "stage_3_gate",
+  "stage_failed": null,
+  "reviewers_invoked": [
+    {"agent": "python-pro", "verdict": "pass", "timestamp": "2026-10-03T15:32:11Z"}
+  ],
+  "stage_2_started_at": "2026-10-03T15:32:00Z",
+  "stage_2_completed_at": "2026-10-03T15:32:11Z",
+  "audit_log_path": "/Users/les/.local/state/mahavishnu/dev-log/2026-10-03-fix-ty-errors.md",
+  "session_buddy_reflection_id": null
+}
+```
+
+Idempotency: `stages_completed` is append-only. Resume reads `current_stage` to pick up. Corrupt JSON → fallback to stage 2 (per REQ-014). `session_buddy_reflection_id` is `null` until the session-buddy mirror succeeds.
 
 **Quick mode (`--review quick`):** Skips the ensemble. Allowed only when **all** of:
 - All changed paths match `^.*\.(md|txt|rst|yaml|yml|toml|json)$` AND
@@ -265,14 +288,14 @@ Per the repo's audit-script requirement, every plan-time deliverable maps to a `
 | **REQ-003** | `mahavishnu/core/dev_log.py::write_entry()` writes with file-lock + atomic rename, mirrors to session-buddy | Unit test for concurrency; integration test for session-buddy mirror |
 | **REQ-004** | `.claude/commands/merge-to-main.md` exists with required frontmatter + body that calls `mahavishnu.core.merge_to_main` | `python scripts/agent_metadata_audit.py` + `python scripts/tool_frontmatter_validator.py` |
 | **REQ-005** | `.claude/hooks/agent-merge-on-end.py` exists and fires at SessionEnd per the existing `_hook_io.py` contract | Manual test: end a session in a worktree, observe the hook runs |
-| **REQ-006** | `.claude/settings.json` wires the new hook into the SessionEnd array | `cat .claude/settings.json | jq` shows the new entry |
+| **REQ-006** | `.claude/settings.json` wires the new hook into the SessionEnd array, **appended after the existing `worktree-session-isolation.py` entry** (the existing hook runs first, this new hook runs second) | `cat .claude/settings.json | jq '.hooks.SessionEnd'` shows the new entry at position ≥ 1 of the array |
 | **REQ-007** | `.claude/decisions/2026-10-03-main-autopush.md` exists and supersedes the relevant clause of `feedback-bodai-push-is-user-controlled` | Cross-link check |
 | **REQ-008** | `.claude/decisions/2026-10-03-trunk-based-agent-review.md` exists | File exists |
 | **REQ-009** | Session-buddy dual-store: every audit entry has a `session_buddy_reflection_id` field | `git log --oneline origin/main..main` for-each entry |
 | **REQ-010** | `MAHAVISHNU_AUTO_MERGE` default is 1 (on) per user choice | Source inspection + `~/.zshenv` has explicit `export MAHAVISHNU_AUTO_MERGE=1` |
 | **REQ-011** | Pre-deploy gate: every merge commit on `main` has a corresponding audit log entry | `audit_orphans.py` extension (new script); CI smoke runs it |
 | **REQ-012** | SessionEnd cleanup routes through `mahavishnu worktree prune-merged` (NOT silent removal) | Code inspection of `mahavishnu/core/merge_to_main.py` |
-| **REQ-013** | The merge path invokes `crackerjack run -v` (NEVER `-p`) | Code inspection + CI guard test |
+| **REQ-013** | The merge path invokes `crackerjack run -v` (NEVER `-p`); any non-zero exit blocks the merge (exit code 2) | Code inspection + CI guard test that asserts the invocation string starts with `crackerjack run -v ` and does not contain `-p` |
 | **REQ-014** | The audit-log writer handles corrupt `.review-state.json` gracefully (fallback to stage 2) | Unit test with malformed JSON |
 
 ## Integration Contract
@@ -345,7 +368,7 @@ Per `.claude/decisions/wire-up-contract.md`, every deliverable has the following
 
 **Create new memory `feedback-bodai-merge-workflow.md`** capturing the workflow contract (which CLAUDE.md readers can use to know what the slash command and SessionEnd hook do). Dual-store: also `mcp__session-buddy__store_reflection(content=..., tags=["feedback", "merge-workflow"])`.
 
-**Add entry to `MEMORY.md` index** for `feedback-bodai-merge-workflow.md`.
+**Add entry to the user-level `MEMORY.md` index at `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/MEMORY.md`** for `feedback-bodai-merge-workflow.md`. This is the Claude Code auto-memory index (NOT a project-level file — there is no project-level `MEMORY.md`; the index lives in the per-project user-state location).
 
 ### CLAUDE.md
 
