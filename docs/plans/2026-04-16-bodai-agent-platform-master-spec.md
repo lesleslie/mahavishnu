@@ -5,6 +5,8 @@ date: 2026-04-16
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: mcp-design
+title: "Bodai Agent Platform Master Spec"
+
 ---
 
 # Bodai Agent Platform Master Spec

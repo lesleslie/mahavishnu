@@ -6,6 +6,8 @@ last_reviewed: 2026-09-26
 superseded_by: null
 topic: oneiric-runtime-config-registry
 kind: plan
+title: "Oneiric Runtime Config Registry — Implementation Plan (v2)"
+
 ---
 
 # Oneiric Runtime Config Registry — Implementation Plan (v2)

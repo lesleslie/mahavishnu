@@ -4,6 +4,8 @@ role: implementation
 date: 2026-07-21
 last_reviewed: 2026-07-21
 topic: lifecycle
+title: "PyPI Auth Redesign Implementation Plan"
+
 ---
 
 # PyPI Auth Redesign Implementation Plan

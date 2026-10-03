@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: track2-openhands
+title: "Track 2 — OpenHands Integration Implementation Plan"
+
 ---
 
 # Track 2 — OpenHands Integration Implementation Plan

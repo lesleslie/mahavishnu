@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: m-approval-log
+title: "M-APPROVAL-LOG Implementation Plan"
+
 ---
 
 # M-APPROVAL-LOG Implementation Plan

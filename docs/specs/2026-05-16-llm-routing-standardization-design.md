@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: '2026-09-14'
 superseded_by: 'docs/plans/2026-05-10-minimax27-provider-migration.md'
 blocks_on: []
+title: "LLM Routing Standardization — Design Spec"
+
 ---
 # LLM Routing Standardization — Design Spec
 

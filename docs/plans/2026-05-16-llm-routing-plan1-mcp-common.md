@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: llm-routing-plan1
+title: "LLM Routing Standardization — Plan 1: mcp-common LLM Module"
+
 ---
 
 # LLM Routing Standardization — Plan 1: mcp-common LLM Module

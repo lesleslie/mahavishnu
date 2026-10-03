@@ -27,6 +27,8 @@ requirements:
   title: /health merge_driver.{available, binary, version, grammars, degraded_since}
 related:
 - 2026-09-12-finish-partial-implementations.md
+title: "Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics"
+
 ---
 # Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics
 

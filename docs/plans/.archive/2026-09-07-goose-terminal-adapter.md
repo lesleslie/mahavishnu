@@ -22,6 +22,8 @@ requirements:
   title: Goose error classes redact any details field whose name matches secret|token|key|bearer|authorization
 - id: REQ-GOO-007
   title: GooseTerminalAdapter integrates with the D0 terminal adapter registry
+title: "Goose Terminal Adapter (D3)"
+
 ---
 # Goose Terminal Adapter (D3)
 

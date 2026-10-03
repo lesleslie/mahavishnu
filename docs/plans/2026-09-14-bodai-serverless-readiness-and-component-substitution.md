@@ -28,6 +28,8 @@ review_summary:
     - "Phase 11 (Harness-agnostic enablement) added 2026-09-14"
     - "14 new REQs covering Qwen Code v0.23.4 target (Codex CLI deferred per user decision 2026-09-14)"
     - "spec-kit workflow + superpowers skill-schema + bodai-skill-schema PyPI package adopted"
+title: "Revisions (2026-09-14, post-research)"
+
 ---
 
 # Revisions (2026-09-14, post-research)

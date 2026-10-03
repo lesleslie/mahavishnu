@@ -5,6 +5,8 @@ date: 2026-09-07
 last_reviewed: 2026-09-07
 superseded_by: null
 topic: worktree-management
+title: "Bodai Worktree Cleanup Policy — Implementation Plan"
+
 ---
 
 # Bodai Worktree Cleanup Policy — Implementation Plan

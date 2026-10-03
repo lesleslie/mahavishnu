@@ -5,6 +5,8 @@ date: 2026-05-07
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: storage-consolidation
+title: "P2 Addendum — MCPStateBackend Interface"
+
 ---
 
 # P2 Addendum — MCPStateBackend Interface

@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: mcp-deps-crackerjack-loop
+title: "`*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan"
+
 ---
 
 # `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan

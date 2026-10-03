@@ -28,6 +28,8 @@ requirements:
   title: Per-pool arrival timestamps recorded at the route boundary
 - id: REQ-009
   title: Continuous metric sample stream available via new fixed-cadence sampler
+title: "Bodai Math Initiatives — Tier 1 Implementation Plan (v3)"
+
 ---
 # Bodai Math Initiatives — Tier 1 Implementation Plan (v3)
 

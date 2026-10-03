@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: vestigial-bs4-removal
+title: "Remove Vestigial beautifulsoup4 from Mahavishnu Implementation Plan"
+
 ---
 
 # Remove Vestigial beautifulsoup4 from Mahavishnu Implementation Plan

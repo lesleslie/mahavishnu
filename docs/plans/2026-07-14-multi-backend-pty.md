@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: multi-backend-pty
+title: "Multi-Backend PTY Implementation Plan"
+
 ---
 
 # Multi-Backend PTY Implementation Plan

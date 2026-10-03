@@ -9,6 +9,8 @@ scope: bodai-tui-shell
 purpose: verify and polish the bodai shell + dashboard TUIs and the mahavishnu monitor --tui; standardize the AdminShell subclass pattern across Core 7
 superseded_by: null
 blocks_on: [docs/plans/2026-06-19-track3-toad-tui.md]
+title: "Bodai TUI & Admin Shell Surface"
+
 ---
 
 # Bodai TUI & Admin Shell Surface

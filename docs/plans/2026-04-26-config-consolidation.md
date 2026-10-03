@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: config-consolidation
+title: "Config Consolidation: Mahavishnu as Self-Contained Dev Environment — Implementation Plan"
+
 ---
 
 # Config Consolidation: Mahavishnu as Self-Contained Dev Environment — Implementation Plan

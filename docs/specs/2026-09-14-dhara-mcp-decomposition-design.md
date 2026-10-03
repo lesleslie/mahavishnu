@@ -14,6 +14,8 @@ related:
   - docs/plans/2026-07-26-mahavishnu-acp-server.md
   - docs/specs/2026-04-27-bodai-auth-standardization-design.md
   - docs/specs/2026-05-24-dhara-serverless-design.md
+title: "Dhara MCP Decomposition — Design Specification"
+
 ---
 
 # Dhara MCP Decomposition — Design Specification

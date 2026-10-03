@@ -22,6 +22,8 @@ requirements:
   title: PiPool.execute_task maps RPC errors to pool result shape
 - id: REQ-PI-008
   title: PiPool unit tests cover scale, env-stripping, npx-allowlist, and registry
+title: "Pi Pool Backend (D1)"
+
 ---
 # Pi Pool Backend (D1)
 

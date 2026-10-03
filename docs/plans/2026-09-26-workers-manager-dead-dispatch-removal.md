@@ -6,6 +6,8 @@ last_reviewed: 2026-09-26
 topic: workers-manager-dead-dispatch-removal
 revision: v1
 plan_status: ready-for-execution
+title: "Plan A: Remove dead non-isolated dispatch factory in `workers/manager.py`"
+
 ---
 
 # Plan A: Remove dead non-isolated dispatch factory in `workers/manager.py`

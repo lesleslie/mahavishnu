@@ -12,6 +12,8 @@ related:
   - 2026-09-06-medium-mcp.md
   - 2026-09-06-scapy-mcp.md
   - 2026-09-06-port-bodai-reconciliation.md
+title: "FastMCP ≥4 Upgrade Plan — Bodai Ecosystem"
+
 ---
 
 # FastMCP ≥4 Upgrade Plan — Bodai Ecosystem

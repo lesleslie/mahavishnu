@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: code-indexing-integration
+title: "Code Indexing Integration Plan"
+
 ---
 
 # Code Indexing Integration Plan

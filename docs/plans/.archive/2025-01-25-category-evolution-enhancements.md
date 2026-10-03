@@ -5,6 +5,8 @@ date: 2025-01-25
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: memory-architecture
+title: "Category Evolution Enhancements - Design Document"
+
 ---
 
 # Category Evolution Enhancements - Design Document

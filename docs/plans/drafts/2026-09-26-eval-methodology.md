@@ -32,6 +32,8 @@ phase_0_review:
   findings_addressed_in_akasha_plan: 2
   finding_unresolved: 0
 topic: adapter-architecture
+title: "Evaluation Methodology — Implementation Plan (DEFERRED)"
+
 ---
 
 # Evaluation Methodology — Implementation Plan (DEFERRED)

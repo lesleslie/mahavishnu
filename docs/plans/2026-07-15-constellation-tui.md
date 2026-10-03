@@ -7,6 +7,8 @@ superseded_by: null
 blocks_on: []
 related: 2026-07-15-constellation-tui-design.md
 topic: constellation-tui
+title: "Constellation TUI Implementation Plan"
+
 ---
 
 # Constellation TUI Implementation Plan

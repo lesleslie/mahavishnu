@@ -5,6 +5,8 @@ superseded_by: null
 topic: session-buddy-worktree-tools
 status: draft
 role: implementation
+title: "Session-Buddy MCP worktree tools — Implementation Plan"
+
 ---
 
 # Session-Buddy MCP worktree tools — Implementation Plan

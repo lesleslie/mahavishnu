@@ -16,6 +16,8 @@ delivered:
 remaining:
   - phase_3: Plan 2 activation gate + Plan 2 promotion from `draft` to `active`. The Akosha-side blocker (`docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md` Phase 1+2) is now met; only Plan 2 itself remains.
 topic: akosha-eval-integration
+title: "Akosha Eval Metric Sink — Cross-Repo Follow-On Plan (DRAFT)"
+
 ---
 
 # Akosha Eval Metric Sink — Cross-Repo Follow-On Plan (DRAFT)

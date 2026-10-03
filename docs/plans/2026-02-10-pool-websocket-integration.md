@@ -5,6 +5,8 @@ date: 2026-02-10
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: observability
+title: "Pool WebSocket Integration & Production Hardening Plan"
+
 ---
 
 # Pool WebSocket Integration & Production Hardening Plan

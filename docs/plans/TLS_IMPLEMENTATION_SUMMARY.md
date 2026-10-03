@@ -6,6 +6,8 @@ last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
 topic: mcp-design
+title: "TLS/WSS Implementation Summary"
+
 ---
 
 # TLS/WSS Implementation Summary

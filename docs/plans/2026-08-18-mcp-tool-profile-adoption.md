@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: mcp-tool-profile-adoption
+title: "MCP Tool Profile Adoption Implementation Plan"
+
 ---
 
 # MCP Tool Profile Adoption Implementation Plan

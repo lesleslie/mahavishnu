@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: mcp-design
+title: "2-Repo Plugin POC Scope: graphics-mcp + css-mcp"
+
 ---
 
 # 2-Repo Plugin POC Scope: graphics-mcp + css-mcp

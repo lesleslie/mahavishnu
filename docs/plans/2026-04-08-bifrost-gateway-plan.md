@@ -5,6 +5,8 @@ date: 2026-04-08
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: routing-composition
+title: "Bifrost Gateway Plan"
+
 ---
 
 # Bifrost Gateway Plan

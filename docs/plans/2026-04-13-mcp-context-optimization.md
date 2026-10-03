@@ -5,6 +5,8 @@ date: 2026-04-13
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: mcp-design
+title: "MCP Context Optimization Plan"
+
 ---
 
 # MCP Context Optimization Plan

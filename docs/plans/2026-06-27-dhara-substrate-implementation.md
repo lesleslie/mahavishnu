@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: dhara-substrate-implementation
+title: "Dhara Substrate Implementation Plan"
+
 ---
 
 # Dhara Substrate Implementation Plan

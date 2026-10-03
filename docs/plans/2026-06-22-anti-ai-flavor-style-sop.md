@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-10
 superseded_by: mahavishnu/core/style_sop.py
 topic: style-sop
+title: "Anti-AI-Flavor Style SOP v1.0 Implementation Plan"
+
 ---
 
 # Anti-AI-Flavor Style SOP v1.0 Implementation Plan

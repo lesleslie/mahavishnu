@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: bodai-auth
+title: "Bodai Inter-Service Authentication Standardization — Implementation Plan"
+
 ---
 
 # Bodai Inter-Service Authentication Standardization — Implementation Plan

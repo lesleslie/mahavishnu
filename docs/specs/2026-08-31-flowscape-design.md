@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: flowscape
+title: "flowscape — Modern Network Visualization for macOS"
+
 ---
 
 # flowscape — Modern Network Visualization for macOS

@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: precommitment-hypothesis-lock
+title: "Precommitment Hypothesis Lock v1.1 Implementation Plan"
+
 ---
 
 # Precommitment Hypothesis Lock v1.1 Implementation Plan

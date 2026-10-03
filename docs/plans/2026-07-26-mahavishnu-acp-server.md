@@ -5,6 +5,8 @@ date: 2026-07-26
 last_reviewed: 2026-09-19
 superseded_by: null
 topic: acp-server
+title: "Mahavishnu ACP Server — Build Plan"
+
 ---
 
 # Mahavishnu ACP Server — Build Plan

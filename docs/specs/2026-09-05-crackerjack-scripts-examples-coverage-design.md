@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: crackerjack-scripts-examples-coverage
+title: "Crackerjack: scripts/ and examples/ Coverage in Fast Hooks"
+
 ---
 
 # Crackerjack: scripts/ and examples/ Coverage in Fast Hooks

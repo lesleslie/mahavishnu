@@ -5,6 +5,8 @@ date: 2026-08-31
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: flowscape-v1-bootstrap
+title: "Plan: `flowscape` v1 Bootstrap"
+
 ---
 
 # Plan: `flowscape` v1 Bootstrap

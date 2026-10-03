@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: llm-routing-plan2
+title: "LLM Routing Standardization — Plan 2: Downstream Migration"
+
 ---
 
 # LLM Routing Standardization — Plan 2: Downstream Migration

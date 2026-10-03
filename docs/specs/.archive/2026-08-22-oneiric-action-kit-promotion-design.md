@@ -6,6 +6,8 @@ date: 2026-08-22
 last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
+title: "Oneiric Action-Kit Adoption: Promotion Infrastructure"
+
 ---
 # Oneiric Action-Kit Adoption: Promotion Infrastructure
 

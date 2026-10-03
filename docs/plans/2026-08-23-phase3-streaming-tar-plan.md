@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: phase3-streaming-tar-plan
+title: "Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan"
+
 ---
 
 # Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan

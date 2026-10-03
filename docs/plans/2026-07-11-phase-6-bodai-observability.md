@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: observability
+title: "Phase 6 — Bodai-Wide Observability Surfacing"
+
 ---
 
 # Phase 6 — Bodai-Wide Observability Surfacing

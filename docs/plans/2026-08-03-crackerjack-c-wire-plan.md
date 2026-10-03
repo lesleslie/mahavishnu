@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: crackerjack-c-wire-plan
+title: "Crackerjack C-WIRE Implementation Plan"
+
 ---
 
 # Crackerjack C-WIRE Implementation Plan

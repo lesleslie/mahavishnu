@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
+title: "Dhara Serverless Architecture — Design Specification"
+
 ---
 
 # Dhara Serverless Architecture — Design Specification

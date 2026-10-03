@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on: []
+title: "Wave 2a: Chaos Hardening Design"
+
 ---
 # Wave 2a: Chaos Hardening Design
 

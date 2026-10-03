@@ -9,6 +9,8 @@ scope: session-buddy/serverless-storage, session-buddy/reflection-schema
 kind: plan
 supersedes: null
 prior-art: docs/plans/2026-09-25-pool-workers-hybrid-d-and-a.md
+title: "Session-Buddy: Serverless Storage Tiering + Memory Provenance"
+
 ---
 
 # Session-Buddy: Serverless Storage Tiering + Memory Provenance

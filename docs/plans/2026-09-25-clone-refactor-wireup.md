@@ -7,6 +7,8 @@ topic: clone-refactor-wireup
 revision: v4
 plan_status: ready-for-execution
 prior-revision: v3 (re-review sweep applied)
+title: "Clone-Refactor Wire-Up Implementation Plan (v4)"
+
 ---
 
 # Clone-Refactor Wire-Up Implementation Plan (v4)

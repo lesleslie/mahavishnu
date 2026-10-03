@@ -9,6 +9,8 @@ topic: m-webhook-durable
 entity: webhook_ingress
 owner_repo: mahavishnu
 subscribes_to: dhara.schema.webhook_ingress
+title: "M-WEBHOOK-DURABLE Design Spec"
+
 ---
 
 # M-WEBHOOK-DURABLE Design Spec

@@ -5,6 +5,8 @@ date: 2026-04-16
 last_reviewed: 2026-07-16
 superseded_by: docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md
 topic: convergence-control-plane
+title: "Bodai Master Implementation Plan"
+
 ---
 
 # Bodai Master Implementation Plan

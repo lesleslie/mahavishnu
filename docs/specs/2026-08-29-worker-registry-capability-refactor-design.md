@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: adapter-registry
+title: "Worker Registry Capability Refactor + Engine Composition Layer"
+
 ---
 
 # Worker Registry Capability Refactor + Engine Composition Layer

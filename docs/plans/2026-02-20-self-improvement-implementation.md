@@ -5,6 +5,8 @@ date: 2026-02-20
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: learning-pipeline
+title: "Self-Improvement System Implementation Plan"
+
 ---
 
 # Self-Improvement System Implementation Plan

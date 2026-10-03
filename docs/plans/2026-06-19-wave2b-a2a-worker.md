@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: wave2b-a2a-worker
+title: "Wave 2b: A2A Worker & Server Implementation Plan"
+
 ---
 
 # Wave 2b: A2A Worker & Server Implementation Plan

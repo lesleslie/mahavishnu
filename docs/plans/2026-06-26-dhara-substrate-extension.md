@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: dhara-substrate-extension
+title: "Dhara Substrate Extension Plan"
+
 ---
 
 # Dhara Substrate Extension Plan

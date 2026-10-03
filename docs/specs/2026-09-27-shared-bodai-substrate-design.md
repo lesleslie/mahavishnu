@@ -9,6 +9,8 @@ revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
 related: docs/decisions/oneiric-substrate-extraction.md; .claude/decisions/wire-up-contract.md; .claude/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
+title: "Shared Oneiric Substrate - Design v5"
+
 ---
 
 # Shared Oneiric Substrate - Design v5

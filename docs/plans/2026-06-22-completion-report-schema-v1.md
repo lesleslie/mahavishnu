@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-10
 superseded_by: docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md
 topic: completion-report-schema
+title: "Completion Report Schema v1 Implementation Plan"
+
 ---
 
 # Completion Report Schema v1 Implementation Plan

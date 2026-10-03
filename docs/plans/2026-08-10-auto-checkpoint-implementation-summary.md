@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: persistence
+title: "Auto-Checkpoint Implementation — Summary"
+
 ---
 
 # Auto-Checkpoint Implementation — Summary

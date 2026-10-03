@@ -8,6 +8,8 @@ topic: claude-env-remediation
 scope: claude-env
 purpose: remediate drift, dead config, and bloat discovered by the 2026-08-24 ultracode
   audit
+title: "Claude Environment Audit Remediation"
+
 ---
 # Claude Environment Audit Remediation
 

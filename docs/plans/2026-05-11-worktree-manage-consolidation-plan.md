@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: worktree-management
+title: "Worktree Manage Consolidation Plan"
+
 ---
 
 # Worktree Manage Consolidation Plan

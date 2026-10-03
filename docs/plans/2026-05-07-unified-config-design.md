@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
+title: "P3 Design Note — UnifiedConfig and Startup Validation"
+
 ---
 
 # P3 Design Note — UnifiedConfig and Startup Validation

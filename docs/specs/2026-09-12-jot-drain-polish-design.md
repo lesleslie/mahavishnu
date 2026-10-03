@@ -7,6 +7,8 @@ last_reviewed: 2026-09-19
 superseded_by: null
 blocks_on: []
 topic: jot-drain-polish
+title: "Jot Drain Polish Spec"
+
 ---
 
 # Jot Drain Polish Spec

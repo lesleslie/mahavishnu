@@ -7,6 +7,8 @@ last_reviewed: 2026-09-26
 superseded_by: null
 blocks_on: []
 topic: mcp-design
+title: "C-10: ecosystem event intake (radically simplified — niche-filter scope cut)"
+
 ---
 
 # C-10: ecosystem event intake (radically simplified — niche-filter scope cut)

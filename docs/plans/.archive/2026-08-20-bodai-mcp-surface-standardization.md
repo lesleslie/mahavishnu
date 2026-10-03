@@ -5,6 +5,8 @@ date: 2026-08-20
 last_reviewed: '2026-09-12'
 superseded_by: null
 topic: bodai-mcp-surface-standardization
+title: "Bodai Core MCP Surface Standardization"
+
 ---
 # Bodai Core MCP Surface Standardization
 

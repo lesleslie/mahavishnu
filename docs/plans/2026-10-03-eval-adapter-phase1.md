@@ -6,6 +6,8 @@ date: 2026-10-03
 last_reviewed: 2026-10-03
 superseded_by: null
 topic: model-evaluation
+title: "Model Evaluation — Phase 1 Implementation Plan"
+
 ---
 
 # Model Evaluation — Phase 1 Implementation Plan

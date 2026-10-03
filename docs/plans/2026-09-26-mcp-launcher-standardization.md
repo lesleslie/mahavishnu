@@ -6,6 +6,8 @@ date: 2026-09-26
 last_reviewed: 2026-09-26
 superseded_by: null
 topic: mcp-launcher-standardization
+title: "MCP Launcher Standardization Plan"
+
 ---
 
 # MCP Launcher Standardization Plan

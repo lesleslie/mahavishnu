@@ -22,6 +22,8 @@ requirements:
     title: "Cross-component orchestration includes Akosha, Dhara, Session-Buddy, Crackerjack integrations"
   - id: REQ-ORC-005
     title: "Health-aware pool selection can mark degraded pools unavailable"
+title: "Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot)"
+
 ---
 
 # Orchestrator Research Synthesis & Adoption Plan (v2 — Pivot)

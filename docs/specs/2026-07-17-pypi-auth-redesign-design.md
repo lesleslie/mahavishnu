@@ -6,6 +6,8 @@ date: 2026-07-17
 last_reviewed: 2026-08-29
 superseded_by: null
 blocks_on: []
+title: "PyPI Auth Redesign in Crackerjack — Design (2026-07-17)"
+
 ---
 
 # PyPI Auth Redesign in Crackerjack — Design (2026-07-17)

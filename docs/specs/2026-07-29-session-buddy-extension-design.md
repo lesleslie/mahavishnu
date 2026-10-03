@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: session-buddy-extension
+title: "Session-Buddy Extension Design (Mahavishnu seam hardening)"
+
 ---
 
 # Session-Buddy Extension Design (Mahavishnu seam hardening)

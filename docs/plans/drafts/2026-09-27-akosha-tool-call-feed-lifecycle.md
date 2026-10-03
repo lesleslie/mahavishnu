@@ -18,6 +18,8 @@ delivered:
   - phase_2: commit 7235911 (akosha local main, 2026-09-29), merged via 222718e — REQ-FEED-002 + REQ-FEED-003 + REQ-FEED-004 + REQ-FEED-005. Per-task-class cycle/error counters in OtelTraceIngester (accessors: get_cycles_for_task_class, get_errors_for_task_class); /health mcp_tool_call_feed reads per-task-class values; AgingService cron task wired into lifespan with AKOSHA_AGING_INTERVAL_SECONDS + AKOSHA_AGING_CUTOFF_DAYS + AKOSHA_SKIP_AGING=1 opt-out; pre-warm runs one migration cycle synchronously before yield so /health shows aging_feed.cycles_total >= 1 immediately; new /health check `aging_feed` surfaces per-feed HealthFeedState. 16 passed / 0 failed (incl. health_aggregator + aging regression).
 remaining: []
 topic: observability
+title: "Akosha Tool-Call Feed Lifecycle — Follow-On Plan (DEFERRED)"
+
 ---
 
 # Akosha Tool-Call Feed Lifecycle — Follow-On Plan (DEFERRED)

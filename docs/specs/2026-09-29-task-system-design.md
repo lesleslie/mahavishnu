@@ -6,6 +6,8 @@ date: 2026-09-29
 last_reviewed: 2026-09-29
 superseded_by: null
 blocks_on: []
+title: "Bodai Task System Design"
+
 ---
 
 # Bodai Task System Design

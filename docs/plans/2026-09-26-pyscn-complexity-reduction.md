@@ -6,6 +6,8 @@ last_reviewed: 2026-09-26
 topic: pyscn-complexity-reduction
 revision: v1
 plan_status: ready-for-execution
+title: "Plan B: pyscn Cyclomatic Complexity Reduction"
+
 ---
 
 # Plan B: pyscn Cyclomatic Complexity Reduction

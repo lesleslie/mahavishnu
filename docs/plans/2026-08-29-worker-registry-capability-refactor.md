@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: adapter-registry
+title: "Worker Registry Capability Refactor Implementation Plan"
+
 ---
 
 # Worker Registry Capability Refactor Implementation Plan

@@ -5,6 +5,8 @@ date: 2026-02-20
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: adapter-architecture
+title: "Status Enum Consolidation Plan for Mahavishnu (MHV-008)"
+
 ---
 
 # Status Enum Consolidation Plan for Mahavishnu (MHV-008)

@@ -5,6 +5,8 @@ superseded_by: null
 topic: license-false-intent-postmortem
 status: complete
 role: historical
+title: "2026-07-20 LICENSE False-Intent Incident: Postmortem and Forward Rules"
+
 ---
 
 # 2026-07-20 LICENSE False-Intent Incident: Postmortem and Forward Rules

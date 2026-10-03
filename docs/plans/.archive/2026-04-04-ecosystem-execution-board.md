@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: '2026-09-12'
 superseded_by: null
 topic: convergence-control-plane
+title: "Bodai Ecosystem Execution Board (Prioritized)"
+
 ---
 # Bodai Ecosystem Execution Board (Prioritized)
 

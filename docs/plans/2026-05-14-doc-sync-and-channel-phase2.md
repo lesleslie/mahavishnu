@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: '2026-09-14'
 superseded_by: null
 topic: convergence-control-plane
+title: "Doc Status Sync and Session-Buddy Channel Phase 2 Implementation Plan"
+
 ---
 # Doc Status Sync and Session-Buddy Channel Phase 2 Implementation Plan
 

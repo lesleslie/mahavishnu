@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: session-buddy-schema-alignment
+title: "Session-Buddy v2/Legacy Schema Alignment Plan"
+
 ---
 
 # Session-Buddy v2/Legacy Schema Alignment Plan

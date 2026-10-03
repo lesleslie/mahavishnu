@@ -6,6 +6,8 @@ last_reviewed: 2026-09-09
 superseded_by: docs/plans/.archive/2026-09-09-bodai-skill-agent-distribution.md
 blocks_on: []
 topic: plugin-standardization
+title: "Bodai Slash-Command TUI Discoverability Plan"
+
 ---
 
 > **Superseded 2026-09-09** by [bodai-skill-agent-distribution.md](.archive/2026-09-09-bodai-skill-agent-distribution.md).

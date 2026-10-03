@@ -5,6 +5,8 @@ date: 2026-02-20
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: learning-pipeline
+title: "Mahavishnu Self-Improvement System Design"
+
 ---
 
 # Mahavishnu Self-Improvement System Design

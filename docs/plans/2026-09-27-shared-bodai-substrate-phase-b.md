@@ -5,6 +5,8 @@ kind: plan
 date: 2026-09-27
 last_reviewed: 2026-09-27
 topic: shared-oneiric-substrate-phase-b
+title: "Phase B: SB Warm Tier = pgvector — Implementation Plan"
+
 ---
 
 # Phase B: SB Warm Tier = pgvector — Implementation Plan

@@ -12,6 +12,8 @@ related:
   - docs/adr/017-oneiric-shared-persistence-substrate.md
   - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md
   - .claude/decisions/wire-up-contract.md
+title: "Phase-1 Precondition Fixes — Serverless-Readiness Plan"
+
 ---
 
 # Phase-1 Precondition Fixes — Serverless-Readiness Plan

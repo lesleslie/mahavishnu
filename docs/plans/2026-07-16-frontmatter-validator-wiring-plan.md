@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-17
 superseded_by: null
 blocks_on: []
+title: "Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan"
+
 ---
 
 # Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan

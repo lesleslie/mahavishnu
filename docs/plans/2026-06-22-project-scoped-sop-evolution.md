@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: project-scoped-sop-evolution
+title: "Project-Scoped SOP Evolution v1.0 Implementation Plan"
+
 ---
 
 # Project-Scoped SOP Evolution v1.0 Implementation Plan

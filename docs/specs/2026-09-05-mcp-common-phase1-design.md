@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: mcpserver-settings-convention
+title: "mcp-common Phase 1: Critical Bugs + Release-Audit Subsystem"
+
 ---
 
 # mcp-common Phase 1: Critical Bugs + Release-Audit Subsystem

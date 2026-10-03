@@ -7,6 +7,8 @@ last_reviewed: 2026-09-25
 superseded_by: null
 blocks_on: []
 topic: bodai-openclaw-hermes-inspired-portfolio
+title: "Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design"
+
 ---
 
 # Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design

@@ -5,6 +5,8 @@ date: 2026-08-20
 last_reviewed: 2026-09-13
 superseded_by: null
 topic: mcp-lifespan-startup-ordering
+title: "Mahavishnu MCP `/health` Lifespan Bypass"
+
 ---
 
 # Mahavishnu MCP `/health` Lifespan Bypass

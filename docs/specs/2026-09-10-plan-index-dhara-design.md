@@ -32,6 +32,8 @@ requirements:
     title: "PlanIndexRebuilder.normalize_repo_url() runs before plan_id derivation"
   - id: REQ-PLAN-012
     title: "errors.log never contains raw path or repo (only path_hash and normalized repo_url_hash)"
+title: "Plan Index — Dhara-Canonical Metadata Layer"
+
 ---
 
 # Plan Index — Dhara-Canonical Metadata Layer

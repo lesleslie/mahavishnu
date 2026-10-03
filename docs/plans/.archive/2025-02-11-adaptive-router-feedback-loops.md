@@ -5,6 +5,8 @@ date: 2025-02-11
 last_reviewed: 2026-08-29
 superseded_by: docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md
 topic: routing-composition
+title: "Adaptive Router with Feedback Loops Implementation Plan"
+
 ---
 
 # Adaptive Router with Feedback Loops Implementation Plan

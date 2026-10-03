@@ -9,6 +9,8 @@ topic: m-approval-log
 entity: approval_log
 owner_repo: mahavishnu
 subscribes_to: dhara.schema.approval_log
+title: "M-APPROVAL-LOG Design Spec"
+
 ---
 
 # M-APPROVAL-LOG Design Spec

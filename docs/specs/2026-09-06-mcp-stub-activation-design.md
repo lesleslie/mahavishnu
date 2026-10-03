@@ -5,6 +5,8 @@ date: 2026-09-06
 last_reviewed: 2026-09-06
 superseded_by: null
 topic: mcp-stub-activation
+title: "MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp"
+
 ---
 
 # MCP Stub Activation — archive-org-mcp, medium-mcp, scapy-mcp

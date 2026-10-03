@@ -7,6 +7,8 @@ superseded_by: null
 blocks_on:
 - docs/specs/2026-09-06-mcp-stub-activation-design.md
 topic: mcp-stub-activation
+title: "Registry Manifest Migration (Plan 0a) Implementation Plan"
+
 ---
 # Registry Manifest Migration (Plan 0a) Implementation Plan
 

@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-29
 superseded_by: null
 blocks_on: []
+title: "Frontmatter Validator Wiring — Design (2026-07-16)"
+
 ---
 
 # Frontmatter Validator Wiring — Design (2026-07-16)

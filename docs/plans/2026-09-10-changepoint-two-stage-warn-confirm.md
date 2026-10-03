@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: changepoint-two-stage-warn-confirm
+title: "Two-Stage Warn/Confirm Drift Detector Implementation Plan"
+
 ---
 
 # Two-Stage Warn/Confirm Drift Detector Implementation Plan

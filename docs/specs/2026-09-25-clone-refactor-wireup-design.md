@@ -9,6 +9,8 @@ revision: v4
 owner: platform-team
 scope: clone-refactor-group wire-up + dispatch-to-pool env-failure
 related: docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md; docs/decisions/2026-09-25-langgraph-as-engine-adapter.md; .claude/decisions/wire-up-contract.md; docs/plans/TEMPLATE.md
+title: "Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design"
+
 ---
 
 # Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design

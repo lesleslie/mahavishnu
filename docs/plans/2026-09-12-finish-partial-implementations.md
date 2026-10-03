@@ -5,6 +5,8 @@ date: 2026-09-12
 last_reviewed: '2026-09-14'
 superseded_by: null
 topic: lifecycle
+title: "Plan: Finish Genuine Partial Implementations (revision 3, post-re-review)"
+
 ---
 # Plan: Finish Genuine Partial Implementations (revision 3, post-re-review)
 

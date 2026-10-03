@@ -9,6 +9,8 @@ blocks_on:
 related:
   - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
+title: "Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan"
+
 ---
 
 

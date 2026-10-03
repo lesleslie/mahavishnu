@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-09-14
 superseded_by: null
 topic: routing-composition
+title: "Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel"
+
 ---
 
 ## Re-Review Status (2026-09-14)

@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-10
 superseded_by: mahavishnu/core/events/confidence_ceiling.py
 topic: confidence-ceiling-gate
+title: "Confidence Ceiling Gate v1.1 Implementation Plan"
+
 ---
 
 # Confidence Ceiling Gate v1.1 Implementation Plan

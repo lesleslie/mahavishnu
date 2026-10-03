@@ -6,6 +6,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
 blocks_on: []
+title: "Claw-Inspired Orchestration Enhancements for Mahavishnu"
+
 ---
 
 # Claw-Inspired Orchestration Enhancements for Mahavishnu

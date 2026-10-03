@@ -7,6 +7,8 @@ last_reviewed: 2026-09-14
 superseded_by: null
 topic: mcpserver-settings-convention
 revision: 2
+title: "CommonMCPClient Transport Unification Across Bodai (v2)"
+
 ---
 
 # CommonMCPClient Transport Unification Across Bodai (v2)

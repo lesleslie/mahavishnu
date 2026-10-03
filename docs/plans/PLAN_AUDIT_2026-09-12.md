@@ -5,6 +5,8 @@ kind: audit
 date: 2026-09-12
 last_reviewed: 2026-09-13
 topic: followups-lifecycle
+title: "Plan Audit — 2026-09-12"
+
 ---
 
 # Plan Audit — 2026-09-12

@@ -8,6 +8,8 @@ superseded_by: null
 blocks_on: []
 topic: mcp-registrar
 revision: 2
+title: "MCP Registrar Implementation Plan"
+
 ---
 
 > **Revision 2 (2026-09-19):** Second-pass fixes from 5-agent re-review.

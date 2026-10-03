@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: observability
+title: "Mahavishnu Ecosystem Control Plane Update Plan"
+
 ---
 
 # Mahavishnu Ecosystem Control Plane Update Plan

@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: error-handling
+title: "Unified Exception Logging Across Bodai — Design Doc"
+
 ---
 
 # Unified Exception Logging Across Bodai — Design Doc

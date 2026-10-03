@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: oneiric-config
+title: "Oneiric EventEnvelope Wire Standardization Implementation Plan"
+
 ---
 
 # Oneiric EventEnvelope Wire Standardization Implementation Plan

@@ -5,6 +5,8 @@ date: 2026-04-25
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: adapter-architecture
+title: "Type Adapter Migration Plan"
+
 ---
 
 # Type Adapter Migration Plan

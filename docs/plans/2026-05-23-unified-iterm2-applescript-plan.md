@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: unified-iterm2-applescript
+title: "Unified iTerm2 AppleScript Integration — Implementation Plan"
+
 ---
 
 # Unified iTerm2 AppleScript Integration — Implementation Plan

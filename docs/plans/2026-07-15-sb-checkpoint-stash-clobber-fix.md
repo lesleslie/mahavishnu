@@ -6,6 +6,8 @@ last_reviewed: 2026-09-19
 superseded_by: null
 blocks_on: []
 topic: sb-checkpoint-stash-clobber-fix
+title: "Session-Buddy Checkpoint Stash-Clobber Fix Implementation Plan"
+
 ---
 
 ## Re-Review Status (2026-09-19)

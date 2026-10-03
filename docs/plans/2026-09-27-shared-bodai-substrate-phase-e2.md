@@ -5,6 +5,8 @@ kind: plan
 date: 2026-09-27
 last_reviewed: 2026-09-27
 topic: shared-oneiric-substrate-phase-e2
+title: "Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan"
+
 ---
 
 # Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan

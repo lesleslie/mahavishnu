@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: followups-lifecycle
+title: "Plan Index Dhara-Canonical Metadata Layer Implementation Plan"
+
 ---
 
 # Plan Index Dhara-Canonical Metadata Layer Implementation Plan

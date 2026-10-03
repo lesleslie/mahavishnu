@@ -9,6 +9,8 @@ topic: m-workflow-outcome
 entity: workflow_outcome
 owner_repo: mahavishnu
 subscribes_to: dhara.schema.workflow_outcome
+title: "M-WORKFLOW-OUTCOME Design Spec"
+
 ---
 
 # M-WORKFLOW-OUTCOME Design Spec

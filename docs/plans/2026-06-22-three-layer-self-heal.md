@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-10
 superseded_by: null
 topic: three-layer-self-heal
+title: "Three-Layer Self-Heal v1.0 Implementation Plan"
+
 ---
 
 # Three-Layer Self-Heal v1.0 Implementation Plan

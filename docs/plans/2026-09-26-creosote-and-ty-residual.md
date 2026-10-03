@@ -6,6 +6,8 @@ last_reviewed: 2026-09-26
 topic: creosote-and-ty-residual
 revision: v1
 plan_status: ready-for-execution
+title: "Plan C: creosote `e2b` Audit + ty `RateLimitError` Catch Fix"
+
 ---
 
 # Plan C: creosote `e2b` Audit + ty `RateLimitError` Catch Fix

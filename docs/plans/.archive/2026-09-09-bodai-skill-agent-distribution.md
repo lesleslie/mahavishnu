@@ -35,6 +35,8 @@ review_notes:
   other 4 servers); 1 Cosmetic applied (dhara trailing newline commit 9e81d98). Phase
   1 wire protocol and public helper API now byte-equivalent across all 5 servers;
   Phase 2 installer is unblocked.'
+title: "Bodai Skill + Agent Distribution Plan"
+
 ---
 # Bodai Skill + Agent Distribution Plan
 

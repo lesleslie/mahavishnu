@@ -29,6 +29,8 @@ phase_2:
 follow_on_plan: docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md
 unblocks:
   - docs/plans/drafts/2026-09-26-eval-methodology.md (Plan 2 — needs top-N ranking from Task 2.1 + fixture proposal + reviewer sign-off)
+title: "Tool Surface Quality — Implementation Plan (v2)"
+
 ---
 
 # Tool Surface Quality — Implementation Plan (v2)

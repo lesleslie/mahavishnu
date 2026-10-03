@@ -9,6 +9,8 @@ related:
   - ../adr/013-mahavishnu-dhara-adapter-tool-boundary.md
   - ../adr/017-oneiric-shared-persistence-substrate.md
 blocks_on: []
+title: "Dhara MCP Retirement — Cross-Dep Removal Plan (Phase 8 First Pass)"
+
 ---
 
 # Dhara MCP Retirement — Cross-Dep Removal Plan (Phase 8 First Pass)

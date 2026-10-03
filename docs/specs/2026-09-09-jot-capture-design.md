@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: jot-capture
+title: "Jot Inbox: Capture Sub-Plan Design"
+
 ---
 
 # Jot Inbox: Capture Sub-Plan Design

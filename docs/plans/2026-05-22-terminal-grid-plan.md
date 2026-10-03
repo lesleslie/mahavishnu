@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: terminal-grid
+title: "Terminal Grid Orchestration Implementation Plan"
+
 ---
 
 # Terminal Grid Orchestration Implementation Plan

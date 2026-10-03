@@ -9,6 +9,8 @@ blocks_on: []
 related:
   - 2026-04-02-storage-consolidation-and-akosha-role.md
   - 2026-05-07-dhara-state-backend-addendum.md
+title: "Dhara AsyncStorage Bug Fix + Outstanding Items Plan"
+
 ---
 
 # Dhara AsyncStorage Bug Fix + Outstanding Items Plan

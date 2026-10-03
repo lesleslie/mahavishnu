@@ -6,6 +6,8 @@ date: 2026-09-27
 last_reviewed: 2026-09-27
 revision: v2 (2026-09-27 — Task 1 + Task 3 revised; pre-SDD pre-flight surfaced 647-line QueryCacheManager + Akosha CacheConfig-is-Pydantic issues)
 topic: shared-oneiric-substrate-phase-a
+title: "Phase A: Cache Consolidation (SB + Akosha) — Implementation Plan"
+
 ---
 
 # Phase A: Cache Consolidation (SB + Akosha) — Implementation Plan

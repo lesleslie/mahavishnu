@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: fastmcp-3-upgrade
+title: "FastMCP 3.x Ecosystem Inventory (2026-06-26)"
+
 ---
 
 # FastMCP 3.x Ecosystem Inventory (2026-06-26)

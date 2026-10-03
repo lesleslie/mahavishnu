@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: durable-local-workers
+title: "Durable Local Workers — Design Spec"
+
 ---
 
 # Durable Local Workers — Design Spec

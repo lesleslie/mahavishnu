@@ -7,6 +7,8 @@ last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on: []
 topic: streaming-tar-phase3
+title: "Streaming tar.zst bundles for worktree providers — Phase 3 design"
+
 ---
 
 # Streaming tar.zst bundles for worktree providers — Phase 3 design

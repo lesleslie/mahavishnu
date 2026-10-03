@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 topic: convergence-control-plane
+title: "Bodai Deployment Guide: Local vs Serverless"
+
 ---
 
 # Bodai Deployment Guide: Local vs Serverless

@@ -5,6 +5,8 @@ date: 2026-08-23
 last_reviewed: '2026-09-12'
 superseded_by: null
 topic: oneiric-action-kit-promotion
+title: "Oneiric Action-Kit Promotion Implementation Plan"
+
 ---
 # Oneiric Action-Kit Promotion Implementation Plan
 

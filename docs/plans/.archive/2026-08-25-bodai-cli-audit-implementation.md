@@ -5,6 +5,8 @@ date: 2026-08-25
 last_reviewed: '2026-09-12'
 superseded_by: null
 topic: convergence-control-plane
+title: "Bodai Core 7 CLI Audit & Standardization Implementation Plan"
+
 ---
 # Bodai Core 7 CLI Audit & Standardization Implementation Plan
 

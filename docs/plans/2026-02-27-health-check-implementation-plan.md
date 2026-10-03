@@ -5,6 +5,8 @@ date: 2026-02-27
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: observability
+title: "Health Check System Implementation Plan"
+
 ---
 
 # Health Check System Implementation Plan

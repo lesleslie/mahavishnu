@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: '2026-09-14'
 superseded_by: null
 topic: mcp-design
+title: "Bodai Plugin Standardization Implementation Plan"
+
 ---
 # Bodai Plugin Standardization Implementation Plan
 

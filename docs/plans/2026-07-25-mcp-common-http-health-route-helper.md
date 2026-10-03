@@ -5,6 +5,8 @@ superseded_by: null
 topic: mcp-common-http-health-route-helper
 status: draft
 role: implementation
+title: "mcp-common `register_http_health_route` Helper — Implementation Plan"
+
 ---
 
 # mcp-common `register_http_health_route` Helper — Implementation Plan

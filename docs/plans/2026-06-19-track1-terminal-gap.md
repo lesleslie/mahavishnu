@@ -5,6 +5,8 @@ date: 2026-07-16
 last_reviewed: 2026-08-29
 superseded_by: null
 topic: track1-terminal-gap
+title: "Track 1 — Terminal Gap Implementation Plan"
+
 ---
 
 # Track 1 — Terminal Gap Implementation Plan

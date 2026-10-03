@@ -9,6 +9,8 @@ scope: bodai-cli
 purpose: comprehensive critical audit of CLI commands across the Bodai Core 7, plus
   phased standardization via BodaiCLIBase and bodai-as-umbrella composition
 superseded_by: null
+title: "Bodai Core 7 CLI Audit & Standardization"
+
 ---
 # Bodai Core 7 CLI Audit & Standardization
 

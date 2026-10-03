@@ -6,6 +6,8 @@ last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on: []
 topic: adapter-architecture
+title: "Prefect Adapter Completion Plan"
+
 ---
 
 # Prefect Adapter Completion Plan

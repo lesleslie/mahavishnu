@@ -8,6 +8,8 @@ superseded_by: null
 blocks_on: []
 topic: mcp-registrar
 revision: 1
+title: "Mahavishnu MCP Registrar"
+
 ---
 
 # Mahavishnu MCP Registrar
