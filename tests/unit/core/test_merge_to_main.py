@@ -94,3 +94,16 @@ def test_parse_verdict_invalid_decision_returns_block() -> None:
     result = parse_verdict(response)
     assert result["decision"] == "block"
     assert "malformed" in result["note"].lower()
+
+
+def test_parse_verdict_needs_adjustment() -> None:
+    text = (
+        "<verdict>\n"
+        "  decision: needs_adjustment\n"
+        "  note: missing type hints on public functions\n"
+        "</verdict>\n"
+    )
+    assert parse_verdict(text) == {
+        "decision": "needs_adjustment",
+        "note": "missing type hints on public functions",
+    }

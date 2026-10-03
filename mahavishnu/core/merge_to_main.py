@@ -102,7 +102,7 @@ def make_review_state(
     }
 
 
-def parse_verdict(response: str) -> dict[str, str]:
+def parse_verdict(agent_text: str) -> dict[str, str]:
     """Parse `<verdict>decision: ...</verdict>` block from agent output.
 
     Per spec §4.4: missing or malformed block returns decision='block'
@@ -110,7 +110,7 @@ def parse_verdict(response: str) -> dict[str, str]:
     either the agent's explanation (on success) or a 'malformed: ...'
     string describing what was wrong (on failure).
     """
-    match = VERDICT_RE.search(response)
+    match = VERDICT_RE.search(agent_text)
     if match is None:
         return {
             "decision": "block",
