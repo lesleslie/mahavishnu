@@ -6,6 +6,7 @@ squash-merge, auto-push, cleanup. Cross-session resume via
 
 Implements: REQ-004, REQ-009, REQ-013, REQ-014
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,8 +81,7 @@ def read_review_state(worktree_root: Path) -> dict[str, Any] | None:
     except (json.JSONDecodeError, OSError) as exc:
         # Corrupt or unreadable; spec REQ-014 graceful fallback.
         print(
-            f"[merge_to_main] corrupt .review-state.json: {exc!r}; "
-            f"falling back to stage 2.",
+            f"[merge_to_main] corrupt .review-state.json: {exc!r}; falling back to stage 2.",
             file=sys.stderr,
         )
         return None
@@ -181,11 +181,13 @@ def run_review(
     for agent in selected:
         response = dispatcher(agent, prompt)
         verdict = parse_verdict(response)
-        results.append({
-            "agent": agent,
-            "decision": verdict["decision"],
-            "note": verdict["note"],
-        })
+        results.append(
+            {
+                "agent": agent,
+                "decision": verdict["decision"],
+                "note": verdict["note"],
+            }
+        )
     return results
 
 
@@ -207,7 +209,7 @@ def aggregate_verdicts(verdicts: list[dict[str, str]]) -> str:
 
 
 def run_crackerjack_gate(worktree_root: Path) -> tuple[int, str]:
-    """Run ``crackerjack run -v --exitcode 0`` in ``worktree_root`` (REQ-013).
+    """Run ``crackerjack run -v`` in ``worktree_root`` (REQ-013).
 
     Per spec REQ-013, the merge-gate invocation is ``crackerjack run -v``
     (NEVER ``-p``; the publish stage must never fire on the merge path).
@@ -219,7 +221,7 @@ def run_crackerjack_gate(worktree_root: Path) -> tuple[int, str]:
     (shell=False) is used so the constant's content cannot trigger shell
     injection if it is ever extended.
     """
-    full_cmd = (CRACKERJACK_INVOCATION + "--exitcode 0").split()
+    full_cmd = CRACKERJACK_INVOCATION.strip().split()
     result = subprocess.run(
         full_cmd,
         cwd=worktree_root,
@@ -531,7 +533,7 @@ def run_pipeline(
     return EXIT_OK
 
 
-def _build_arg_parser() -> "argparse.ArgumentParser":
+def _build_arg_parser() -> argparse.ArgumentParser:
     """Build the ``__main__`` argument parser.
 
     Args:
@@ -576,10 +578,7 @@ def _build_arg_parser() -> "argparse.ArgumentParser":
         "--from",
         dest="base",
         default=None,
-        help=(
-            "rebase base override (default: origin/main if remote "
-            "exists, else main)"
-        ),
+        help=("rebase base override (default: origin/main if remote exists, else main)"),
     )
     return parser
 
