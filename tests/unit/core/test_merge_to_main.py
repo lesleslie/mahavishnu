@@ -10,6 +10,7 @@ import pytest
 
 from mahavishnu.core.merge_to_main import (
     REVIEW_STATE_SCHEMA_VERSION,
+    parse_verdict,
     read_review_state,
     write_review_state,
 )
@@ -45,3 +46,51 @@ def test_read_review_state_corrupt_json_returns_none(tmp_path: Path) -> None:
 def test_read_review_state_missing_returns_none(tmp_path: Path) -> None:
     """Missing file returns None."""
     assert read_review_state(tmp_path) is None
+
+
+def test_parse_verdict_pass_block() -> None:
+    """Well-formed <verdict>decision: pass</verdict> returns decision='pass'."""
+    response = (
+        "Reviewed the diff; no issues found.\n"
+        "<verdict>\n"
+        "  decision: pass\n"
+        "  note: Looks correct, types check out.\n"
+        "</verdict>\n"
+    )
+    result = parse_verdict(response)
+    assert result["decision"] == "pass"
+    assert "Looks correct" in result["note"]
+
+
+def test_parse_verdict_block_decision() -> None:
+    """Well-formed block decision returns decision='block' (not a parse error)."""
+    response = (
+        "<verdict>\n"
+        "  decision: block\n"
+        "  note: Security vulnerability in auth path.\n"
+        "</verdict>\n"
+    )
+    result = parse_verdict(response)
+    assert result["decision"] == "block"
+    assert "Security" in result["note"]
+
+
+def test_parse_verdict_missing_block_returns_block() -> None:
+    """Missing <verdict> block returns block decision (fail-loud per spec §4.4)."""
+    response = "No verdict marker here, just prose with no closing tag."
+    result = parse_verdict(response)
+    assert result["decision"] == "block"
+    assert "malformed" in result["note"].lower()
+
+
+def test_parse_verdict_invalid_decision_returns_block() -> None:
+    """<verdict> block with unknown decision value returns block (fail-loud)."""
+    response = (
+        "<verdict>\n"
+        "  decision: maybe\n"
+        "  note: not sure\n"
+        "</verdict>\n"
+    )
+    result = parse_verdict(response)
+    assert result["decision"] == "block"
+    assert "malformed" in result["note"].lower()
