@@ -30,9 +30,9 @@ parse pattern.
    (non-FF push fails the hook), (b) cleanup routes through
    `mahavishnu worktree prune-merged` (not silent), (c) the user is the
    operator.
-2. **`worktree_path` empty or unresolvable.**
-3. **`is_worktree(worktree_path)` False** (cwd is not a git worktree).
-4. **`is_sticky_failed(worktree_path)` True** (`.review-state.json`
+1. **`worktree_path` empty or unresolvable.**
+1. **`is_worktree(worktree_path)` False** (cwd is not a git worktree).
+1. **`is_sticky_failed(worktree_path)` True** (`.review-state.json`
    marks a sticky failure — typically stage 6 cleanup failure).
 
 The hook propagates the subprocess returncode verbatim (1=review,
@@ -84,6 +84,7 @@ subprocess mocking that the sister test pattern deliberately avoids.
 ## Verification
 
 **Tests:**
+
 - `pytest tests/unit/hooks/test_agent_merge_on_end.py -v` →
   `2 passed in 9.12s` (no coverage failure — `--no-cov` flag for the
   targeted run).
@@ -92,6 +93,7 @@ subprocess mocking that the sister test pattern deliberately avoids.
   the suite is collected multiple times.
 
 **Smoke test (manual, via `python -c`):**
+
 - `main()` with empty stdin → rc=0, logs "empty worktree_path; skipping".
 - `main()` with empty cwd → rc=0.
 - `main()` with non-existent cwd → rc=0, logs "is not a git worktree; skipping".
@@ -104,6 +106,7 @@ All five skip paths return rc=0 (the exit-0-always posture).
 `findings.md` 121 lines ≤ 250; all links resolve.
 
 **Mypy (project config, no `--strict`):**
+
 - `.claude/hooks/agent-merge-on-end.py` → `Success: no issues found`.
 - `tests/unit/hooks/test_agent_merge_on_end.py` → 6 errors
   (`module_from_spec(None)` narrowing + `object` type for the hook
@@ -113,6 +116,7 @@ All five skip paths return rc=0 (the exit-0-always posture).
   (`disallow_untyped_defs = false`) tolerates them.
 
 **Ruff (project config):**
+
 - `.claude/hooks/agent-merge-on-end.py` → 1 error: `I001` import-block
   ordering. Same `I001` error in the sister hook
   `worktree-session-isolation.py` line 129; tolerated by the project
@@ -128,8 +132,7 @@ line 1).
 ## Decisions / NITs
 
 - **Brief file did not exist in the SDD ledger.** Per the
-  `feedback-keep-plan-files-tracked.md` memory ("`git add
-  docs/plans/*.md` first; `git reset`/`git clean -fd` destroys
+  `feedback-keep-plan-files-tracked.md` memory ("`git add docs/plans/*.md` first; `git reset`/`git clean -fd` destroys
   untracked plan edits"), I wrote `task-3.1-brief.md` first as a
   scratch artifact documenting the task's contract, then committed
   it alongside the implementation so the next implementer / reviewer

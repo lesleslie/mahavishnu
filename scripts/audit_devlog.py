@@ -5,6 +5,7 @@ log entry." Failure exits non-zero.
 
 Implements: REQ-011
 """
+
 from __future__ import annotations
 
 import os
@@ -21,7 +22,8 @@ def main() -> int:
 
     # 1. Get merge commits on main within lookback.
     log_cmd = [
-        "git", "log",
+        "git",
+        "log",
         f"--since={cutoff.isoformat()}",
         "--merges",
         "--first-parent",

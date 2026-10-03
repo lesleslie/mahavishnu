@@ -26,9 +26,9 @@ hook (which runs first via the SessionEnd array in `.claude/settings.json`).
 1. `MAHAVISHNU_AUTO_MERGE` env var set to a falsy value (`=0`, `=false`,
    `=no`, `=off`). Unset defaults to "auto-merge on" per spec §4.2 — the
    user has explicitly chosen default-on for this workflow.
-2. `worktree_path` is empty / unresolvable.
-3. `is_worktree(worktree_path)` returns False (not inside a git worktree).
-4. `is_sticky_failed(worktree_path)` returns True.
+1. `worktree_path` is empty / unresolvable.
+1. `is_worktree(worktree_path)` returns False (not inside a git worktree).
+1. `is_sticky_failed(worktree_path)` returns True.
 
 **Constants:**
 
@@ -54,7 +54,7 @@ hook (which runs first via the SessionEnd array in `.claude/settings.json`).
 1. `test_is_sticky_failed_true_when_stage_failed_set` — write a temp dir
    with a `.review-state.json` containing `"stage_failed": "stage_6_cleanup"`
    (and required schema keys), call `is_sticky_failed(tmp_path)`, assert True.
-2. `test_is_sticky_failed_false_when_marker_absent_or_clean` — call
+1. `test_is_sticky_failed_false_when_marker_absent_or_clean` — call
    `is_sticky_failed(tmp_path)` on a dir with no `.review-state.json`,
    assert False.
 

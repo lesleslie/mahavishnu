@@ -906,7 +906,9 @@ data transforms), check `oneiric.actions` — catalog lives at
 
 Inherit the user-level convention from `~/.claude/CLAUDE.md`. The canonical path for this repo is:
 
-    ~/.local/state/mahavishnu/worktrees/<basename-of-cwd>/
+```
+~/.local/state/mahavishnu/worktrees/<basename-of-cwd>/
+```
 
 The superpowers `using-git-worktrees` skill reads this block before its hard-coded project-local default, so the XDG path wins.
 

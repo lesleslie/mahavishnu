@@ -93,6 +93,7 @@ _Regenerated 2026-10-03 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `active` | `canonical` | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
 | [`docs/plans/2026-09-26-oneiric-runtime-config-registry.md`](2026-09-26-oneiric-runtime-config-registry.md) | 2026-09-26 | `active` | `implementation` | `oneiric-runtime-config-registry` | Oneiric Runtime Config Registry — Implementation Plan (v2) |
 | [`docs/plans/2026-09-26-tool-surface-quality.md`](2026-09-26-tool-surface-quality.md) | 2026-09-26 | `shipped` | `implementation` | `mcp-design` | Tool Surface Quality — Implementation Plan (v2) |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -201,6 +202,7 @@ _Regenerated 2026-10-03 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/superpowers/specs/2026-09-25-clone-refactor-wireup-design.md`](../superpowers/specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `partial` | `canonical` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
 | [`docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md`](../superpowers/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `draft` | `canonical` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
 | [`docs/superpowers/specs/2026-09-29-task-system-design.md`](../superpowers/specs/2026-09-29-task-system-design.md) | 2026-09-29 | `draft` | `implementation` | `tooling` | Bodai Task System Design |
+| [`docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`](../superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md) | 2026-10-03 | `draft` | `implementation` | `dev-workflow` | Agent-Reviewed Trunk-Based Development |
 
 ### Docs: superpowers/plans
 
@@ -317,6 +319,8 @@ _Regenerated 2026-10-03 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `mcp-routing` | Bodai MCP and agent routing pattern |
 | [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `session-worktree-isolation` | Cross-repo fanout CWD isolation |
 | [`.claude/decisions/2026-09-26-mcp-launcher-migration.md`](../../.claude/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `active` | `implementation` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
+| [`.claude/decisions/2026-10-03-mainautopush.md`](../../.claude/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | `active` | `canonical` | `mainautopush` | Main auto-push — narrow exception to user-controlled push |
+| [`.claude/decisions/2026-10-03-trunk-based-agent-review.md`](../../.claude/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | `active` | `canonical` | `trunk-based-agent-review` | Trunk-Based Agent-Reviewed Dev Workflow |
 | [`.claude/decisions/README.md`](../../.claude/decisions/README.md) | 2026-07-26 | `active` | `canonical` | `decision-index` | `.claude/decisions/` index |
 | [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | `active` | `canonical` | `agent-curation` | agent curation strategy |
 | [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | `active` | `canonical` | `bodai-observability` | Bodai Observability Pattern — One Subscriber, One Bus |
@@ -392,9 +396,9 @@ _Regenerated 2026-10-03 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 10 | 51 | 2 | 1 | 15 | **79** |
-| `implementation` | 94 | 37 | · | 20 | 34 | **185** |
+| `canonical` | 10 | 53 | 2 | 1 | 15 | **81** |
+| `implementation` | 96 | 37 | · | 20 | 34 | **187** |
 | `umbrella` | · | 1 | · | · | 1 | **2** |
 | `historical` | 1 | 4 | · | 2 | 72 | **79** |
 | `superseded` | · | · | · | · | 11 | **11** |
-| **Total** | **105** | **93** | **2** | **23** | **133** | **356** |
+| **Total** | **107** | **95** | **2** | **23** | **133** | **360** |

@@ -67,13 +67,14 @@ Carried from spec §"Goals & Non-Goals", §"Components", and project conventions
 | `~/.claude/CLAUDE.md` | Add "Dev workflow" subsection (Task 4.5) |
 | `~/Projects/mahavishnu/CLAUDE.md` | Note merge command location (Task 4.6) |
 
----
+______________________________________________________________________
 
 ## Task Group 1: Foundation (dev_log writer + paths.py helper)
 
 **Implements:** REQ-002, REQ-003 (per spec §Requirements)
 
 **Files:**
+
 - Modify: `mahavishnu/core/paths.py:25-52, 47, 137-150` (add `DEV_LOG_DIR` + extend `ensure_directories()` + add `get_dev_log_path()`)
 - Create: `mahavishnu/core/dev_log.py`
 - Test: `tests/unit/core/test_paths_dev_log.py` (new)
@@ -82,7 +83,9 @@ Carried from spec §"Goals & Non-Goals", §"Components", and project conventions
 ### Task 1.1: Add `DEV_LOG_DIR` constant + `get_dev_log_path()` to paths.py
 
 **Interfaces:**
+
 - Consumes: existing `STATE_DIR: Final[Path]` from `mahavishnu/core/paths.py:29`
+
 - Produces: `paths.DEV_LOG_DIR: Final[Path]` (constant); `paths.get_dev_log_path(*path_parts) -> Path` (helper); `paths.ensure_directories()` now creates `DEV_LOG_DIR`
 
 - [ ] **Step 1: Write the failing test**
@@ -184,7 +187,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 1.2: Create `mahavishnu/core/dev_log.py` with `write_entry()` skeleton
 
 **Interfaces:**
+
 - Consumes: `mahavishnu.core.paths.DEV_LOG_DIR`, `get_dev_log_path()`
+
 - Produces: `write_entry(metadata: dict, body: str, *, mirror_to_session_buddy: bool = True) -> Path`
 
 - [ ] **Step 1: Write the failing test**
@@ -442,13 +447,14 @@ file is canonical; mirror failure logs to stderr.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task Group 2: Orchestration (`merge_to_main.py` + slash command)
 
 **Implements:** REQ-004, REQ-009, REQ-013, REQ-014
 
 **Files:**
+
 - Create: `mahavishnu/core/merge_to_main.py`
 - Create: `.claude/commands/merge-to-main.md`
 - Test: `tests/unit/core/test_merge_to_main.py`
@@ -458,7 +464,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.1: Create `.review-state.json` schema + writer/parser
 
 **Interfaces:**
+
 - Consumes: `pathlib.Path` (worktree root), `dict` (stage markers)
+
 - Produces: `write_review_state(worktree_root: Path, state: dict) -> None`; `read_review_state(worktree_root: Path) -> dict | None`
 
 - [ ] **Step 1: Write the failing test**
@@ -638,7 +646,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.2: Implement verdict envelope parser
 
 **Interfaces:**
+
 - Consumes: agent response text (str)
+
 - Produces: `parse_verdict(agent_text: str) -> dict` (with keys `decision`, `note`, or `{"decision": "block", "note": "malformed: <reason>"}`)
 
 - [ ] **Step 1: Write the failing test**
@@ -750,7 +760,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.3: Implement 3-agent ensemble orchestration (stage 2)
 
 **Interfaces:**
+
 - Consumes: `domain_specialist: str`, `generalist_pool: list[str]`, prompt template, agent dispatcher
+
 - Produces: `run_review(domain_specialist, generalist_pool, prompt, dispatcher) -> list[dict]` (3 verdicts)
 
 - [ ] **Step 1: Write the failing test**
@@ -864,7 +876,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.4: Implement verdict-rule aggregation
 
 **Interfaces:**
+
 - Consumes: `verdicts: list[dict]` (3 entries)
+
 - Produces: `aggregate_verdicts(verdicts) -> str` returning `"proceed"`, `"iterate"`, or `"block"`
 
 - [ ] **Step 1: Write the failing test**
@@ -959,7 +973,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.5: Implement stage 3 (`crackerjack run -v` gate)
 
 **Interfaces:**
+
 - Consumes: `subprocess.run` (or wrapper)
+
 - Produces: `run_crackerjack_gate(worktree_root: Path) -> tuple[int, str]` returning (exit_code, stderr)
 
 - [ ] **Step 1: Write the failing test**
@@ -1053,6 +1069,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 2.6: Create slash command `.claude/commands/merge-to-main.md`
 
 **Files:**
+
 - Create: `.claude/commands/merge-to-main.md`
 
 - [ ] **Step 1: Write the slash command body**
@@ -1096,7 +1113,9 @@ Idempotent and resumeable across sessions via `.review-state.json`.
 ## Usage
 
 ```
-/merge-to-main [--branch <name>] [--review <mode>] [--no-push] [--no-cleanup] [--from <base>]
+
+/merge-to-main \[--branch <name>\] \[--review <mode>\] [--no-push] [--no-cleanup] \[--from <base>\]
+
 ```
 
 ### Arguments
@@ -1141,13 +1160,14 @@ note (slash command is no-op on MiniMax; use Skill tool).
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task Group 3: SessionEnd hook (`agent-merge-on-end.py`)
 
 **Implements:** REQ-005, REQ-006, REQ-010 (co-delivered), REQ-012
 
 **Files:**
+
 - Create: `.claude/hooks/agent-merge-on-end.py`
 - Modify: `.claude/settings.json` (append SessionEnd entry, REQ-006)
 
@@ -1156,7 +1176,9 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 3.1: Create `agent-merge-on-end.py` SessionEnd hook
 
 **Interfaces:**
+
 - Consumes: SessionEnd stdin payload (per `.claude/hooks/_hook_io.py`), `MAHAVISHNU_AUTO_MERGE` env var
+
 - Produces: subprocess invocation of `python -m mahavishnu.core.merge_to_main`
 
 - [ ] **Step 1: Write the failing test**
@@ -1322,6 +1344,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 3.2: Wire the hook into `.claude/settings.json` SessionEnd array
 
 **Files:**
+
 - Modify: `.claude/settings.json`
 
 - [ ] **Step 1: Inspect current SessionEnd hook array**
@@ -1369,13 +1392,14 @@ Appended after existing worktree-session-isolation.py entry per spec
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
----
+______________________________________________________________________
 
 ## Task Group 4: Governance (decision docs, memory, CLAUDE.md, CI gate)
 
 **Implements:** REQ-007, REQ-008, REQ-009 (dual-store), REQ-011 (CI gate)
 
 **Files:**
+
 - Create: `.claude/decisions/2026-10-03-mainautopush.md`
 - Create: `.claude/decisions/2026-10-03-trunk-based-agent-review.md`
 - Create: `scripts/audit_devlog.py`
@@ -1664,6 +1688,7 @@ and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.
 ### Task 4.7: Create `scripts/audit_devlog.py` (CI gate for REQ-011)
 
 **Files:**
+
 - Create: `scripts/audit_devlog.py`
 
 - [ ] **Step 1: Write the script**
@@ -1782,7 +1807,7 @@ pointing to `scripts/audit_devlog.py`.
 
 (No code change required for v1; document the manual pre-publish gate.)
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
@@ -1830,6 +1855,7 @@ the prior session's `~/.zshenv` edit; no additional action in this plan.)
 ### 3. Type consistency
 
 Verified:
+
 - `write_entry(metadata: dict[str, Any], body: str, *, mirror_to_session_buddy: bool = True) -> Path`
 - `read_review_state(worktree_root: Path) -> dict[str, Any] | None`
 - `parse_verdict(agent_text: str) -> dict[str, str]`

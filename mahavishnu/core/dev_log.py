@@ -6,12 +6,13 @@ Best-effort session-buddy mirror via mcp__session_buddy__store_reflection.
 
 Implements: REQ-003
 """
+
 from __future__ import annotations
 
 import fcntl
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 from .paths import DEV_LOG_DIR, get_dev_log_path
@@ -38,9 +39,7 @@ def _format_frontmatter(metadata: dict[str, Any]) -> str:
                 else:
                     lines.append(f"  - {_yaml_scalar(item)}")
         elif isinstance(value, dict):
-            lines.append(
-                f"{key}: {json.dumps(value, sort_keys=True, separators=(',', ':'))}"
-            )
+            lines.append(f"{key}: {json.dumps(value, sort_keys=True, separators=(',', ':'))}")
         else:
             lines.append(f"{key}: {_yaml_scalar(value)}")
     lines.append("---")
@@ -68,8 +67,17 @@ def _yaml_scalar(value: Any) -> str:
         # or that contains a YAML-special character.
         lowered = value.strip().lower()
         yaml_special = {
-            "true", "false", "yes", "no", "on", "off", "null", "~",
-            "nan", "inf", "-inf",
+            "true",
+            "false",
+            "yes",
+            "no",
+            "on",
+            "off",
+            "null",
+            "~",
+            "nan",
+            "inf",
+            "-inf",
         }
         if lowered in yaml_special:
             return json.dumps(value)
@@ -78,7 +86,32 @@ def _yaml_scalar(value: Any) -> str:
             return json.dumps(value)
         except ValueError:
             pass
-        if any(ch in value for ch in (":", "#", "{", "}", "[", "]", ",", "&", "*", "!", "|", ">", "'", '"', "%", "@", ">", "<", "?", "\n", "\t")):
+        if any(
+            ch in value
+            for ch in (
+                ":",
+                "#",
+                "{",
+                "}",
+                "[",
+                "]",
+                ",",
+                "&",
+                "*",
+                "!",
+                "|",
+                ">",
+                "'",
+                '"',
+                "%",
+                "@",
+                ">",
+                "<",
+                "?",
+                "\n",
+                "\t",
+            )
+        ):
             return json.dumps(value)
         return value
     return json.dumps(value, separators=(",", ":"))
@@ -133,9 +166,7 @@ def write_entry(
     return target
 
 
-def _mirror_to_session_buddy(
-    metadata: dict[str, Any], body: str, target: Path
-) -> None:
+def _mirror_to_session_buddy(metadata: dict[str, Any], body: str, target: Path) -> None:
     """Best-effort session-buddy mirror. On success, the target file's
     session_buddy_reflection_id field is set to the returned UUID. On
     failure, logs to stderr; entry remains canonical.
@@ -181,7 +212,8 @@ def _set_session_buddy_reflection_id(target: Path, reflection_id: str) -> None:
     text = target.read_text()
     if "session_buddy_reflection_id:" in text:
         new_lines = [
-            line for line in text.splitlines()
+            line
+            for line in text.splitlines()
             if not line.startswith("session_buddy_reflection_id:")
         ]
         new_lines.insert(

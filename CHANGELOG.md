@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- mahavishnu: _decode_envelope accepts v1.1 flat-fields XADD shape
+- mahavishnu: \_decode_envelope accepts v1.1 flat-fields XADD shape
 - mahavishnu: TaskOrphanSweeper consumes task.handoff_orphan events
 - mahavishnu: Wire TaskOrphanSweeper into start_server/stop_server + /health
 
