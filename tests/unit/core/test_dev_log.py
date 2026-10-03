@@ -3,6 +3,8 @@ writer for the trunk-based agent-review workflow (REQ-003).
 """
 from __future__ import annotations
 
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -58,3 +60,31 @@ def test_write_entry_uses_atomic_rename(tmp_dev_log_dir: Path) -> None:
     # No leftover .tmp file (rename should have cleaned up)
     tmp_files = list(tmp_dev_log_dir.glob("*.md.tmp"))
     assert tmp_files == []
+
+
+def test_write_entry_annotates_null_on_mirror_failure(
+    tmp_dev_log_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When session-buddy mirror raises, the YAML frontmatter is annotated
+    with ``session_buddy_reflection_id: null`` (spec §4.3) and the body is
+    still written (canonical-local-file contract).
+    """
+    fake_module = types.ModuleType("mcp__session_buddy")
+
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("simulated session-buddy outage")
+
+    fake_module.store_reflection = _raise  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "mcp__session_buddy", fake_module)
+
+    metadata = {"date": "2026-10-03", "branch": "fix-ty"}
+    body = "# fix-ty\n\nBody survives mirror failure.\n"
+    path = write_entry(
+        metadata=metadata, body=body, mirror_to_session_buddy=True
+    )
+
+    text = path.read_text()
+    # Body must still be written (canonical-local-file contract).
+    assert "# fix-ty\n\nBody survives mirror failure.\n" in text
+    # Frontmatter must record the failure with the literal string "null".
+    assert "session_buddy_reflection_id: null\n" in text

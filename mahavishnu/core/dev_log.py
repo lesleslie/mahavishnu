@@ -145,7 +145,9 @@ def _mirror_to_session_buddy(
         # server context. Tests stub this via monkeypatch.
         from mcp__session_buddy import store_reflection  # type: ignore[import-not-found]
     except ImportError:
-        # MCP client not available; log and skip.
+        # MCP client not available; per spec §4.3 record the failure
+        # in the frontmatter and log to stderr.
+        _set_session_buddy_reflection_id(target, "null")
         print(
             f"[dev_log] session-buddy MCP client unavailable; "
             f"local entry at {target} is canonical.",
@@ -162,7 +164,9 @@ def _mirror_to_session_buddy(
         if reflection_id:
             _set_session_buddy_reflection_id(target, reflection_id)
     except Exception as exc:  # pragma: no cover
-        # Mirror is best-effort. Log to stderr; entry remains canonical.
+        # Mirror is best-effort. Per spec §4.3 record the failure in the
+        # frontmatter and log to stderr; entry remains canonical.
+        _set_session_buddy_reflection_id(target, "null")
         print(
             f"[dev_log] session-buddy mirror failed: {exc!r}; "
             f"local entry at {target} is canonical.",
