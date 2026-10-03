@@ -155,6 +155,10 @@ tests/archived/
 # survive a clean checkout. See docs/followups/README.md for the lifecycle.
 !docs/followups/.archive/
 !docs/followups/.archive/**
+!docs/plans/.archive/
+!docs/plans/.archive/**
+!docs/specs/.archive/
+!docs/specs/.archive/**
 
 # ============================================================================
 # Documentation — image assets
