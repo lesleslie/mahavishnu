@@ -10,10 +10,12 @@ import pytest
 from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     AGENT_POOL,
+    CRACKERJACK_INVOCATION,
     REVIEW_STATE_SCHEMA_VERSION,
     aggregate_verdicts,
     parse_verdict,
     read_review_state,
+    run_crackerjack_gate,
     run_review,
     write_review_state,
 )
@@ -185,3 +187,72 @@ def test_aggregate_all_needs_adjustment_iterates() -> None:
         {"decision": "needs_adjustment", "note": "c"},
     ]
     assert aggregate_verdicts(verdicts) == "iterate"
+
+
+def test_crackerjack_invocation_pinned_to_run_v() -> None:
+    """REQ-013 CI guard: invocation starts with `crackerjack run -v ` and lacks `-p`.
+
+    The publish stage (`-p`) must never fire on the merge path; this
+    assertion is the regex-equivalent of the spec invariant
+    "any -p anywhere → fail".
+    """
+    assert CRACKERJACK_INVOCATION.startswith("crackerjack run -v ")
+    assert "-p" not in CRACKERJACK_INVOCATION
+
+
+def test_run_crackerjack_gate_invokes_run_v_with_exitcode_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """REQ-013: subprocess runs `crackerjack run -v --exitcode 0` in worktree.
+
+    Monkeypatches ``subprocess.run`` so the test does not actually
+    invoke crackerjack (operator-driven; would require a full venv +
+    fixtures the test env cannot reproduce cheaply).
+    """
+    captured: dict[str, object] = {}
+
+    class _Result:
+        returncode = 0
+        stderr = ""
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _Result:
+        captured["cmd"] = cmd
+        captured["kwargs"] = kwargs
+        return _Result()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    rc, stderr = run_crackerjack_gate(tmp_path)
+
+    assert rc == 0
+    assert stderr == ""
+    # Exact subprocess call per spec REQ-013: `crackerjack run -v --exitcode 0`.
+    assert captured["cmd"] == ["crackerjack", "run", "-v", "--exitcode", "0"]
+    assert captured["kwargs"]["cwd"] == tmp_path
+    assert captured["kwargs"]["capture_output"] is True
+    assert captured["kwargs"]["text"] is True
+
+
+def test_run_crackerjack_gate_propagates_returncode_and_stderr(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Non-zero exit and stderr propagate to the caller; the function does not
+    re-interpret them. The merge-gate decision is made at the call site
+    (which maps any non-zero exit to ``EXIT_CRACKERJACK_FAILURE = 2``).
+    """
+    class _Result:
+        returncode = 7
+        stderr = "ruff: 3 errors found\n"
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _Result:
+        return _Result()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    rc, stderr = run_crackerjack_gate(tmp_path)
+    assert rc == 7
+    assert stderr == "ruff: 3 errors found\n"

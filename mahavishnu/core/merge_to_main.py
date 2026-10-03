@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import random
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -38,6 +39,13 @@ EXIT_CRACKERJACK_FAILURE = 2
 EXIT_REBASE_CONFLICT = 3
 EXIT_PUSH_DIVERGENCE = 4
 EXIT_CLEANUP_FAILURE = 5
+
+# Pinned crackerjack invocation for the merge gate (spec REQ-013).
+# The trailing space separates the verb from any appended flags; the
+# CI-guard test in tests/unit/core/test_merge_to_main.py asserts this
+# starts with "crackerjack run -v " and never contains "-p". The
+# publish stage (`-p`) must never fire on the merge path.
+CRACKERJACK_INVOCATION: str = "crackerjack run -v "
 
 
 def write_review_state(worktree_root: Path, state: dict[str, Any]) -> None:
@@ -195,3 +203,27 @@ def aggregate_verdicts(verdicts: list[dict[str, str]]) -> str:
         return "proceed"
     # Rule 3: otherwise → iterate
     return "iterate"
+
+
+def run_crackerjack_gate(worktree_root: Path) -> tuple[int, str]:
+    """Run ``crackerjack run -v --exitcode 0`` in ``worktree_root`` (REQ-013).
+
+    Per spec REQ-013, the merge-gate invocation is ``crackerjack run -v``
+    (NEVER ``-p``; the publish stage must never fire on the merge path).
+    Any non-zero returncode blocks the merge — the call site maps that to
+    ``EXIT_CRACKERJACK_FAILURE = 2``.
+
+    Returns ``(returncode, stderr_text)`` verbatim from ``subprocess.run``;
+    this wrapper does not re-interpret the result. The split form
+    (shell=False) is used so the constant's content cannot trigger shell
+    injection if it is ever extended.
+    """
+    full_cmd = (CRACKERJACK_INVOCATION + "--exitcode 0").split()
+    result = subprocess.run(
+        full_cmd,
+        cwd=worktree_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return (result.returncode, result.stderr)
