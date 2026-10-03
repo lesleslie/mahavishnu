@@ -10,7 +10,6 @@ Implements: REQ-004, REQ-009, REQ-013, REQ-014
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 import fcntl
 import json
 from pathlib import Path
@@ -18,7 +17,10 @@ import random
 import re
 import subprocess
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 REVIEW_STATE_SCHEMA_VERSION: int = 1
 REVIEW_STATE_FILENAME: str = ".review-state.json"

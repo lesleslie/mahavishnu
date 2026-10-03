@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import fcntl
 import json
-from pathlib import Path
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .paths import DEV_LOG_DIR, get_dev_log_path
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _format_frontmatter(metadata: dict[str, Any]) -> str:
@@ -174,7 +176,7 @@ def _mirror_to_session_buddy(metadata: dict[str, Any], body: str, target: Path) 
     try:
         # Lazy import: the MCP client is only available in the running
         # server context. Tests stub this via monkeypatch.
-        from mcp__session_buddy import store_reflection  # type: ignore[import-not-found]
+        from mcp__session_buddy import store_reflection  # ty: ignore[unresolved-import]
     except ImportError:
         # MCP client not available; per spec §4.3 record the failure
         # in the frontmatter and log to stderr.
@@ -194,7 +196,13 @@ def _mirror_to_session_buddy(metadata: dict[str, Any], body: str, target: Path) 
         reflection_id = getattr(result, "id", None)
         if reflection_id:
             _set_session_buddy_reflection_id(target, reflection_id)
-    except Exception as exc:  # pragma: no cover
+    except (
+        ConnectionError,
+        TimeoutError,
+        OSError,
+        RuntimeError,
+        ValueError,
+    ) as exc:  # pragma: no cover
         # Mirror is best-effort. Per spec §4.3 record the failure in the
         # frontmatter and log to stderr; entry remains canonical.
         _set_session_buddy_reflection_id(target, "null")

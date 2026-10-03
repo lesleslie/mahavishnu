@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-10-03
+
+### Added
+
+- mahavishnu: /merge-to-main slash command (REQ-004)
+- mahavishnu: Add dev_log.write_entry() (REQ-003)
+- mahavishnu: Add DEV_LOG_DIR + get_dev_log_path() (REQ-002)
+- mahavishnu: Aggregate_verdicts() — 3-rule priority (REQ-004)
+- mahavishnu: Apply worktree convention (XDG path default)
+- mahavishnu: Audit_devlog.py CI gate (REQ-011)
+- mahavishnu: Merge_to_main scaffold + .review-state.json I/O (REQ-014)
+- mahavishnu: Parse_verdict() for ensemble review (REQ-004)
+- mahavishnu: Run_crackerjack_gate() pinned to run -v (REQ-013)
+- mahavishnu: Run_pipeline() + entry point — completes merge-to-main cycle (REQ-004 + REQ-012)
+- mahavishnu: Run_review() — 3-agent ensemble (REQ-004)
+- mahavishnu: SessionEnd hook for merge-to-main (REQ-005)
+
+### Fixed
+
+- mahavishnu: Annotate dev_log entry on session-buddy mirror failure
+- mahavishnu: Audit_devlog.py — per-merge matching + cleanups
+- mahavishnu: Drop invalid --exitcode 0 from crackerjack invocation
+- mahavishnu: Parse_verdict() — add needs_adjustment test + agent_text param name
+
+### Documentation
+
+- mahavishnu: Agent-reviewed trunk-based dev spec
+- mahavishnu: Eval-adapter Phase 1 plan — promote to active
+- mahavishnu: Mainautopush governance decision (REQ-007)
+- mahavishnu: Note merge workflow location in CLAUDE.md
+- mahavishnu: Plans-specs canonical paths decision + CLAUDE.md preference
+- mahavishnu: Spec revision after round-1 multi-agent review
+- mahavishnu: Spec v3 — round-2 fixes applied inline
+- mahavishnu: Task 3.1 report (REQ-005 SessionEnd hook)
+- mahavishnu: Trunk-based-agent-review implementation plan
+- mahavishnu: Trunk-based-agent-review workflow doc (REQ-008)
+
+### Internal
+
+- mahavishnu: Backfill title: frontmatter for plan-index eligibility
+- mahavishnu: Consolidate trunk-based workflow + main branch protection
+- mahavishnu: Delete old docs/superpowers/{plans,specs}/ paths
+- mahavishnu: Gitignore .superpowers/; untrack scratch state
+- mahavishnu: Relocate plans to docs/plans, specs to docs/specs
+- mahavishnu: Rewrite 170 in-repo references to new plan/spec paths
+- mahavishnu: Untrack archived plans/specs still at old paths
+- mahavishnu: Wire SessionEnd hook + cleanups (REQ-006)
+
 ## [0.32.0] - 2026-10-03
 
 ### Added

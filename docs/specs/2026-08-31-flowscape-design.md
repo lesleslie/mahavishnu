@@ -15,7 +15,7 @@ title: "flowscape — Modern Network Visualization for macOS"
 
 **Status:** Revision 3 — moves scapy-mcp from v2+ to v1 client-side enrichment; softens MCP regulatory gate for client-side scope only (2026-09-06)
 **Date:** 2026-09-06 (originally 2026-08-31)
-**Author:** Claude (brainstorming session; revised 2026-09-06 to integrate scapy-mcp enrichment in v1 per [ADR 0016](../../adr/0016-scapy-mcp-integration.md))
+**Author:** Claude (brainstorming session; revised 2026-09-06 to integrate scapy-mcp enrichment in v1 per ADR 0016)
 **Scope:** v1 design — full repo, end-to-end architecture, IPC contract, distribution plan, enrichment integration
 
 ______________________________________________________________________

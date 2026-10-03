@@ -398,7 +398,7 @@ Acceptance criteria:
 
 ### 6.4 Code Knowledge Graph
 
-**Design spec:** [2026-04-26-code-indexing-integration-design.md](../superpowers/specs/2026-04-26-code-indexing-integration-design.md)
+**Design spec:** 2026-04-26-code-indexing-integration-design.md (target file removed during path consolidation; see git history for the original design)
 
 This section adds three code intelligence capabilities by extending existing infrastructure (DuckDB/DuckPGQ, tree-sitter, mcp-common) rather than introducing new dependencies. No Neo4j, no TiDB, no external graph database.
 

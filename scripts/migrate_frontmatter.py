@@ -36,7 +36,6 @@ TODAY = "2026-09-13"
 
 STORES = [
     "docs/plans",
-    "docs/plans",
     "docs/specs",
     "docs/followups",
 ]
@@ -45,16 +44,14 @@ STORES = [
 DEFAULT_STATUS = {
     "docs/plans": "active",
     "docs/specs": "draft",
-    "docs/plans": "active",
     "docs/followups": "active",
 }
 
 # Default role per schema § Legacy Mapping: "(no frontmatter) -> draft, implementation"
-# but specs/plans/followups/plans are still implementation role unless overridden.
+# but specs/plans/followups are still implementation role unless overridden.
 DEFAULT_ROLE = {
     "docs/plans": "implementation",
     "docs/specs": "implementation",
-    "docs/plans": "implementation",
     "docs/followups": "implementation",
 }
 

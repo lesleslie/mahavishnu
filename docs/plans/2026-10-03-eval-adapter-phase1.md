@@ -209,7 +209,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   from __future__ import annotations
   from typing import Literal
   from pydantic import BaseModel, ConfigDict, Field
-  
+
   class EvalSettings(BaseModel):
       model_config = ConfigDict(extra="forbid")
       enabled: bool = False
@@ -222,7 +222,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
       concurrency: int = 20
       regression_threshold: float = 0.05
       db_path: str = "~/.local/state/mahavishnu/eval/runs.sqlite"
-  
+
   def get_eval_settings() -> "EvalSettings":
       """Module-level lazy getter; mirrors get_settings() at mahavishnu/core/config.py:3046."""
       from mahavishnu.core.config import get_settings

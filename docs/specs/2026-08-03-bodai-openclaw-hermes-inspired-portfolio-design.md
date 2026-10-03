@@ -211,11 +211,11 @@ State per item. Updated at each layer gate.
 | D-AUDIT | dhara | archived 2026-09-24 | [completion report](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-10-d-audit.md) | — | Retired in Wave 2 of the Dhara-Bodai split (per `dhara/CHANGELOG.md` `[Unreleased]` 2026-09-24 entry). Substrate was Bodai-internal observability; no public Dhara API depended on it. |
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
-| M-WEBHOOK-DURABLE | mahavishnu | building | [completion report](../../feature-tracking/2026-08-10-m-webhook-durable.md) | [spec](2026-08-10-m-webhook-durable-design.md) |
+| M-WEBHOOK-DURABLE | mahavishnu | building | — | [spec](2026-08-10-m-webhook-durable-design.md) |
 | M-WEBHOOK-DURABLE-WIRED | mahavishnu | parked | — | — | (mount receiver in production ingress — plan not yet authored)
-| M-APPROVAL-LOG | mahavishnu | wired | [completion report](../../feature-tracking/2026-08-10-m-approval-log.md) | [spec](2026-08-10-m-approval-log-design.md) |
+| M-APPROVAL-LOG | mahavishnu | wired | — | [spec](2026-08-10-m-approval-log-design.md) |
 | M-WORKER-LEASE | mahavishnu | parked | — | — |
-| M-WORKFLOW-OUTCOME | mahavishnu | wired | [completion report](../../feature-tracking/2026-08-10-m-workflow-outcome.md) | [spec](2026-08-10-m-workflow-outcome-design.md) |
+| M-WORKFLOW-OUTCOME | mahavishnu | wired | — | [spec](2026-08-10-m-workflow-outcome-design.md) |
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
 | M-TRANSCRIPT-TAIL | mahavishnu | parked | — | — |
 | S-MEM-VERSIONS | session-buddy | parked | — | — |

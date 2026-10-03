@@ -76,7 +76,7 @@ When this plan ships, Bodai will have:
 4. **In-kernel agent primitives.** Non-Goal #3 from v1 stands: "Mahavishnu is a control plane, not an in-process agent." Phase 4 from v1's `await goal.get()` per-turn bridge is dead on arrival. v2's goal-equivalent is budget enforcement on pool runs, network-mediated only.
 5. **In-house static analyzer as security boundary.** Phase 6 from v1. Defeated by `importlib`, `subprocess`, `socket`. Shepherd uses OS-level jails precisely because this approach is unsound. v2 adopts Shepherd; it does not reimplement its security model.
 6. **Cross-repo file changes inside this repo.** v1 listed `oneiric/`, `crackerjack/`, and `akosha/` files under `mahavishnu/`. v2 explicitly opens PRs in the right repos; this repo's `Required Code Changes` lists only files that actually live here.
-7. **Capability contracts** (signatures, capability registry, conductor, `execute_capability`, `get_capability_result`). These ship via [`docs/plans/2026-08-29-worker-registry-capability-refactor.md`](../superpowers/plans/2026-08-29-worker-registry-capability-refactor.md) (Stage 2 + Stage 3a + Stage 3b). v2 does not duplicate that work. v2's Phase 1 (cross-repo capability search) depends on worker-registry's `Capability` registry but does not redefine it.
+7. **Capability contracts** (signatures, capability registry, conductor, `execute_capability`, `get_capability_result`). These ship via `docs/plans/2026-08-29-worker-registry-capability-refactor.md` (Stage 2 + Stage 3a + Stage 3b). v2 does not duplicate that work. v2's Phase 1 (cross-repo capability search) depends on worker-registry's `Capability` registry but does not redefine it.
 
 ## 4. Current Findings
 

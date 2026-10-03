@@ -11,14 +11,14 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
 def main() -> int:
     """Run the audit gate. Returns 0 on pass, non-zero on fail."""
     lookback_days = int(os.environ.get("AUDIT_DEVLOG_LOOKBACK_DAYS", "90"))
-    cutoff = datetime.now() - timedelta(days=lookback_days)
+    cutoff = datetime.now(tz=UTC) - timedelta(days=lookback_days)
 
     # 1. Get merge commits on main within lookback.
     log_cmd = [

@@ -5,7 +5,7 @@ Extraction pipeline (Plan 1 Tasks 7-9 escalation):
 1. **Primary**: ``trafilatura.extract()`` — F1=0.937 readability extractor
    that drops navigation/footer/aside/script/style and returns the main
    article body.
-2. **CSS-selector fallback**: ``selectolax.parser.HTMLParser`` with a CSS
+2. **CSS-selector fallback**: ``selectolax.lexbor.LexborHTMLParser`` with a CSS
    selector — 30x faster than bs4. Used when trafilatura returns empty
    (e.g. minimal pages, single-section docs).
 3. **Near-duplicate detection**: ``rapidfuzz.process.extract`` over the
@@ -31,7 +31,7 @@ import re
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from rapidfuzz import fuzz, process
-from selectolax.parser import HTMLParser as _SelectolaxParser
+from selectolax.lexbor import LexborHTMLParser as _SelectolaxParser
 
 from mahavishnu.mcp.crow.client import get_http_client
 from mahavishnu.mcp.crow.path_security import validate_url

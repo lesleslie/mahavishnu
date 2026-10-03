@@ -21,7 +21,7 @@ title: "Two-Stage Warn/Confirm Drift Detector Implementation Plan"
 
 **Tech Stack:** Python 3.14+, stdlib dataclasses, existing `mahavishnu.observability.changepoint` module (`CUSUMDetector`, `PageHinkleyDetector`), OpenTelemetry (existing), Prometheus (existing), Oneiric config (existing).
 
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §1 (success metrics) and §6 Phase 6 (change-point integration). The plan argues from §1's "median ≤ 30 samples for 0.5σ shift" and §7's "≤ 2 fires per 10,080 quiet samples" success metrics; both travel together.
+**Spec:** `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1 (success metrics) and §6 Phase 6 (change-point integration). The plan argues from §1's "median ≤ 30 samples for 0.5σ shift" and §7's "≤ 2 fires per 10,080 quiet samples" success metrics; both travel together.
 
 ## Global Constraints
 
