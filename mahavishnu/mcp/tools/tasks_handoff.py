@@ -100,7 +100,7 @@ class TaskNotFoundError(Exception):
 
     Deliberately does NOT inherit from :class:`mahavishnu.core.errors.MahavishnuError`
     because the upstream enum maps ``MHV-101`` to ``TASK_CREATION_FAILED``;
-    this tool re-uses the code for a ``not-found`` surface per the brief.
+    this tool reuses the code for a ``not-found`` surface per the brief.
     The code is exposed as a plain string attribute so test assertions and
     FastMCP error envelopes can branch on it without coupling to the
     mahavishnu error taxonomy.

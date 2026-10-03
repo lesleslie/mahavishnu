@@ -19,7 +19,7 @@ Spec-wide; every task implicitly includes them. Carried verbatim from the spec +
 - **FastMCP** (`mcp_common.fastmcp.FastMCP`). All session-buddy tools are `async def`.
 - **Sequenced cross-repo merge** (per `bodai-pre-1.0-merge-policy.md`, no PR review gate):
   1. session-buddy merge → tag → publish (operator bumps `0.30.0 → 0.31.0`).
-  2. mahavishnu merge (after pin is satisfied) → tag → publish (operator bumps `0.31.0 → 0.32.0`).
+  1. mahavishnu merge (after pin is satisfied) → tag → publish (operator bumps `0.31.0 → 0.32.0`).
 - **Pin rule vs version rule** (per `feedback-mcp-common-version-bump-is-user.md`):
   - Implementer updates `dependencies` pin in `pyproject.toml` (mahavishnu's `session-buddy>=0.31.0`).
   - Operator updates `version` field via `crackerjack run -p minor`.
@@ -95,17 +95,19 @@ Spec-wide; every task implicitly includes them. Carried verbatim from the spec +
 | `mahavishnu/settings/mahavishnu.yaml` | New `task_orphan_sweeper:` section (enabled, stream, consumer_group, block_ms, count) |
 | `tests/unit/test_bodai_subscriber.py` (or extend existing) | Add `test_decode_envelope_handles_flat_shape` |
 
----
+______________________________________________________________________
 
 ## Phase 1 — session-buddy (merge 1)
 
 ### Task 1: T12 visibility_public fix
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_tools.py` — `_build_task` (line 344, hardcoded visibility at 400), `_persist_task_update` (line 706, takes `task: Task` after `_apply_update_request`)
 - Modify: `tests/unit/test_tasks_tools.py` — remove `@pytest.mark.skip(...)` decorator block at lines 2022-2029 (8 lines); add `test_tasks_user_team_visibility_persists`
 
 **Interfaces:**
+
 - Consumes: existing `_build_task(task_id, sidecar_meta) -> Task` (line 344); existing `_persist_task_update(reflection_id, task, sidecar_meta, diff_events, actor) -> None` (line 706). The function takes the already-mutated `task` (not a `request`); sidecar_meta is already a local parameter.
 - Produces: `_build_task` reads `sidecar_meta.get("visibility", "private")` (default `"private"` ONLY when sidecar is missing); `_persist_task_update` writes `new_meta["visibility"] = task.visibility` after `new_meta = dict(sidecar_meta)` (mirroring the `priority`/`effort` pattern at lines 723-727).
 
@@ -189,17 +191,19 @@ git add session_buddy/mcp/tools/tasks_tools.py tests/unit/test_tasks_tools.py
 git commit -m "fix(session-buddy): T12 visibility_public reads from sidecar metadata"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: BodaiEventsPublisher class + settings + OTel span
 
 **Files:**
+
 - Create: `session_buddy/mcp/events/__init__.py` (empty package marker)
 - Create: `session_buddy/mcp/events/bodai_events_publisher.py` (~140 LOC)
 - Create: `tests/unit/test_bodai_events_publisher.py` (~140 LOC, 6 tests)
 - Modify: `session_buddy/settings/session-buddy.yaml` (note: hyphen, not underscore) — add `bodai_events:` section
 
 **Interfaces:**
+
 - Produces: `class BodaiEventsPublisher` with:
   - `__init__(*, stream="bodai:events", consumer_group="bodai-default", enabled=True)`
   - `_init_transport()` — inner method, raises on transport errors
@@ -471,15 +475,17 @@ git add session_buddy/mcp/events/ session_buddy/mcp/events/bodai_events_publishe
 git commit -m "feat(session-buddy): BodaiEventsPublisher owns Redis Streams + OTel"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: publish_task_event_raw + envelope lookup
 
 **Files:**
+
 - Modify: `session_buddy/mcp/tools/tasks_events.py` — add `_ENVELOPE_BY_EVENT_TYPE` dict, `_get_publisher()` helper, `publish_task_event_raw()` function (~50 LOC). Modify `publish_task_event()` body to delegate (~10 LOC).
 - Modify: `tests/unit/test_tasks_events.py` (or extend `test_bodai_events_publisher.py`) — add 4 tests.
 
 **Interfaces:**
+
 - Produces:
   - `_ENVELOPE_BY_EVENT_TYPE: dict[str, type[BaseModel]]` — module-level constant
   - `_publisher: BodaiEventsPublisher | None` — module-level slot
@@ -668,11 +674,12 @@ git add session_buddy/mcp/tools/tasks_events.py tests/unit/test_tasks_events.py
 git commit -m "feat(session-buddy): publish_task_event_raw + envelope-by-type lookup"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Lifespan integration in server.py
 
 **Files:**
+
 - Modify: `session_buddy/mcp/server.py` — `_lifespan_with_dhara_cleanup` (lines 279-329, decorator at 278-279); `init_signer_feed_state` pattern at lines 343-357; bare `yield` at line 389. Surface `publisher.health()` in `/health` aggregator.
 
 **Steps:**
@@ -680,8 +687,11 @@ git commit -m "feat(session-buddy): publish_task_event_raw + envelope-by-type lo
 - [ ] **Step 1: Read current `_lifespan_with_dhara_cleanup` body**
 
 Read lines 278-390 of `session_buddy/mcp/server.py`. Note:
+
 - Lifespan declared as `AsyncGenerator[None]`.
+
 - Bare `yield` at line 389.
+
 - `init_signer_feed_state` instantiation pattern at lines 343-357.
 
 - [ ] **Step 2: Write a failing test that lifespan instantiates publisher**
@@ -768,11 +778,12 @@ git add session_buddy/mcp/server.py tests/unit/test_mcp_server.py
 git commit -m "feat(session-buddy): wire BodaiEventsPublisher into FastMCP lifespan"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Skill file update
 
 **Files:**
+
 - Modify: `session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md`
 
 **Steps:**
@@ -784,18 +795,21 @@ Run: `cat /Users/les/Projects/session-buddy/session_buddy/mcp/skills_catalog/bod
 - [ ] **Step 2: Replace T12 note**
 
 Find the T12 line/section. Replace:
+
 > T12 visibility_public (currently hardcoded private)
-with:
+> with:
 > T12 fixed in v1.1; `visibility="public"` is supported.
 
 - [ ] **Step 3: Replace "events emitted to no-op stub" wording**
 
 Find the section about event publishing. Replace "events emitted to a no-op stub" with:
+
 > events emitted to `bodai:events` Redis Stream via oneiric `RedisStreamsQueueAdapter`; consumers read via `XREADGROUP` with consumer group `bodai-task-orphan-sweeper`.
 
 - [ ] **Step 4: Add TaskOrphanSweeper note**
 
 Append a new paragraph:
+
 > v1.1 adds the `TaskOrphanSweeper` in mahavishnu that re-links tasks on `task.handoff_orphan` events.
 
 - [ ] **Step 5: Move team-mode ACL to v2+ scope**
@@ -815,11 +829,12 @@ git add session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md
 git commit -m "docs(session-buddy): skill catalog reflects T12 fix + BodaiEventsPublisher + TaskOrphanSweeper"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Publisher e2e + register pytest marker
 
 **Files:**
+
 - Create: `tests/integration/test_bodai_events_publisher_e2e.py` (~50 LOC)
 - Modify: `session_buddy/pyproject.toml` — add `requires_network` to `[tool.pytest].markers` (lines 127-153)
 
@@ -886,7 +901,7 @@ git add session_buddy/pyproject.toml tests/integration/test_bodai_events_publish
 git commit -m "test(session-buddy): BodaiEventsPublisher e2e Redis round-trip"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 1 gate
 
@@ -897,13 +912,14 @@ Operator merges session-buddy `main` when ready, then bumps `0.30.0 → 0.31.0` 
 Run: `cd /Users/les/Projects/session-buddy && crackerjack run -v`
 Expected: All checks pass (ruff, ty, refurb, tests).
 
----
+______________________________________________________________________
 
 ## Phase 2 — mahavishnu (merge 2, gated on session-buddy 0.31.0)
 
 ### Task 7: Pin bump in pyproject.toml
 
 **Files:**
+
 - Modify: `mahavishnu/pyproject.toml` — line 171: `session-buddy>=0.30.0` → `session-buddy>=0.31.0`
 - Modify: `mahavishnu/uv.lock` — surgical refresh
 
@@ -941,11 +957,12 @@ git add pyproject.toml uv.lock
 git commit -m "build(mahavishnu): bump session-buddy pin to >=0.31.0 for v1.1 sweeper"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Switch tasks_handoff.py to publish_task_event_raw
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/tools/tasks_handoff.py` — `_publish_task_event` body (lines 258-273); remove `# ty: ignore[invalid-argument-type]` at line 271
 
 **Steps:**
@@ -990,17 +1007,19 @@ git add mahavishnu/mcp/tools/tasks_handoff.py
 git commit -m "refactor(mahavishnu): tasks_handoff uses publish_task_event_raw dict API"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: TaskOrphanSweeper class + settings + OTel + adapter shape
 
 **Files:**
+
 - Create: `mahavishnu/mcp/sweepers/__init__.py` (empty package marker)
 - Create: `mahavishnu/mcp/sweepers/task_orphan_sweeper.py` (~190 LOC)
 - Modify: `mahavishnu/settings/mahavishnu.yaml` (add `task_orphan_sweeper:` section)
 - Create: `tests/unit/test_task_orphan_sweeper.py` (~220 LOC, 8 tests + OTel span test)
 
 **Interfaces:**
+
 - Produces: `class TaskOrphanSweeper` with:
   - `__init__(*, stream="bodai:events", consumer_group="bodai-task-orphan-sweeper", consumer_name="mahavishnu-{pid}", enabled=True, block_ms=5000, count=10, session_buddy_client=None)`
   - `init()` — outer try/except; logs + swallows on `_init_transport()` failure
@@ -1431,11 +1450,12 @@ git add mahavishnu/mcp/sweepers/ mahavishnu/settings/mahavishnu.yaml tests/unit/
 git commit -m "feat(mahavishnu): TaskOrphanSweeper consumes task.handoff_orphan events"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Sweeper lifecycle integration
 
 **Files:**
+
 - Modify: `mahavishnu/mcp/lifecycle.py` — `start_server(server, host=, port=)` (line 14, positional `server` required); `stop_server(server)` (line 147, positional `server` required); `plan_index` periodic runner pattern at lines 95-158; `/health` aggregator.
 
 **Steps:**
@@ -1443,6 +1463,7 @@ git commit -m "feat(mahavishnu): TaskOrphanSweeper consumes task.handoff_orphan 
 - [ ] **Step 1: Read `start_server()` and `stop_server()` in lifecycle.py**
 
 Read `mahavishnu/mcp/lifecycle.py`. Note the signatures:
+
 - `start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -> None` (line 14) — `server` is REQUIRED positional
 - `stop_server(server: Any) -> None` (line 147) — `server` is REQUIRED positional
 
@@ -1543,11 +1564,12 @@ git add mahavishnu/mcp/lifecycle.py tests/unit/test_lifecycle.py
 git commit -m "feat(mahavishnu): wire TaskOrphanSweeper into start_server/stop_server"
 ```
 
----
+______________________________________________________________________
 
 ### Task 11: 10-LOC subscriber patch in bodai_subscriber.py
 
 **Files:**
+
 - Modify: `mahavishnu/core/events/bodai_subscriber.py` — add fourth early branch to `_decode_envelope` (lines 346-402), inserted BEFORE line 367 (~10 LOC)
 - Modify: `tests/unit/test_bodai_subscriber.py` (or extend existing) — add `test_decode_envelope_handles_flat_shape` (~30 LOC)
 
@@ -1629,11 +1651,12 @@ git add mahavishnu/core/events/bodai_subscriber.py tests/unit/test_bodai_subscri
 git commit -m "feat(mahavishnu): _decode_envelope accepts v1.1 flat-fields XADD shape"
 ```
 
----
+______________________________________________________________________
 
 ### Task 12: Integration test for sweeper e2e
 
 **Files:**
+
 - Create: `tests/integration/test_task_orphan_sweeper_e2e.py` (~80 LOC)
 
 **Steps:**
@@ -1727,7 +1750,7 @@ git add tests/integration/test_task_orphan_sweeper_e2e.py
 git commit -m "test(mahavishnu): TaskOrphanSweeper e2e Redis round-trip + ack verification"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2 gate
 
@@ -1738,7 +1761,7 @@ Operator merges mahavishnu `main` when ready, then bumps `0.31.0 → 0.32.0` and
 Run: `cd /Users/les/Projects/mahavishnu && unset VIRTUAL_ENV UV_ACTIVE && crackerjack run -v`
 Expected: All checks pass (ruff, ty, refurb, tests).
 
----
+______________________________________________________________________
 
 ## Self-Review (plan author, post-reviewer-folding)
 
@@ -1787,4 +1810,4 @@ Plan complete and saved to `/Users/les/Projects/mahavishnu/docs/superpowers/plan
 Two execution options:
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration.
-2. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.
+1. **Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.

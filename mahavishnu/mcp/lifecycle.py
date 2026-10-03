@@ -165,9 +165,7 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
             session_buddy_client=get_session_buddy_client(),
         )
         await sweeper.init()
-        sweeper_task = asyncio.create_task(
-            sweeper.run_forever(), name="task_orphan_sweeper"
-        )
+        sweeper_task = asyncio.create_task(sweeper.run_forever(), name="task_orphan_sweeper")
         server._task_orphan_sweeper = sweeper
         server._task_orphan_sweeper_task = sweeper_task
         logger.info("task_orphan_sweeper started (stream=bodai:events)")

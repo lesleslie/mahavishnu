@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-10-03
+
+### Added
+
+- mahavishnu: _decode_envelope accepts v1.1 flat-fields XADD shape
+- mahavishnu: TaskOrphanSweeper consumes task.handoff_orphan events
+- mahavishnu: Wire TaskOrphanSweeper into start_server/stop_server + /health
+
+### Changed
+
+- mahavishnu: Tasks_handoff uses publish_task_event_raw dict API
+
+### Documentation
+
+- mahavishnu: V1.1 implementation plan for Bodai task-system addendum
+- mahavishnu: V1.1 plan rev2 — fold 2-agent review findings
+- mahavishnu: V1.1 spec for Bodai task-system addendum
+
+### Testing
+
+- mahavishnu: TaskOrphanSweeper e2e Redis round-trip + ack verification
+
+### Build
+
+- deps: Drop editable session-buddy redirect, use published 0.31.0
+- mahavishnu: Bump session-buddy pin to >=0.31.0 for v1.1 sweeper
+
+### Internal
+
+- mahavishnu: Add minimax_health.sh probe script
+
 ## [0.31.0] - 2026-10-02
 
 ### Added

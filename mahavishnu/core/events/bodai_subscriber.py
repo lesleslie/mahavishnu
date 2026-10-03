@@ -329,9 +329,7 @@ def _decode_flat_fields(
     channel = message_payload.get("channel", "unknown")
     headers_raw = message_payload.get("headers", "{}")
     headers = json.loads(headers_raw) if headers_raw else {}
-    payload = {
-        k: v for k, v in message_payload.items() if k not in {"channel", "headers"}
-    }
+    payload = {k: v for k, v in message_payload.items() if k not in {"channel", "headers"}}
     return create_oneiric_envelope(
         topic=channel,
         payload=payload,

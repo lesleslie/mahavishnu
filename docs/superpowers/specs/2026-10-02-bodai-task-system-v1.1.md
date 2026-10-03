@@ -8,6 +8,7 @@
 **Goal:** Close out the three deferred items from the v1 release so the
 task-system emits real events, recovers from dispatch-edge orphans, and
 enforces the public/private visibility read boundary. Note: per
+
 > [Decision #3](#decisions-resolved-from-brainstorming-2026-10-02) the
 > `task.handoff_completed` event semantic shifts in v1.1 — it now fires
 > when a task is *bound to a workflow_id*, not strictly when the workflow
@@ -25,6 +26,7 @@ depend on oneiric; no new dependency.
 **Tech Stack:** Python 3.14, oneiric `RedisStreamsQueueAdapter` (transport),
 FastMCP, Pydantic v2, `pytest-mock` for the fake publisher fixture.
 **Glossary:**
+
 - `oneiric.adapters.queue.redis_streams.RedisStreamsQueueAdapter` — the
   XADD / XREADGROUP transport; lifecycle via `init()`/`cleanup()`;
   per-call `enqueue(data)` and `read(...)`; per-message `ack(message_ids)`
@@ -94,7 +96,7 @@ rejected-alternatives table, etc.) see `2026-09-29-task-system-design.md`.
 | 7 (post-trio) | `ack()` in sweeper | **Yes** — `await adapter.adapter.clear([message_id])` after successful recovery |
 | 8 (post-trio) | Sweeper settings `block_ms`/`count` | **YAML-tunable** (matches other settings) |
 
----
+______________________________________________________________________
 
 ## Item 1 — T12 visibility_public fix (bounded, session-buddy)
 
@@ -117,7 +119,7 @@ the immediate return, but the next `_build_task` call still returns
    visibility from `sidecar_meta.get("visibility", "private")` instead
    of hardcoding. Default `"private"` only when sidecar metadata is
    missing (not when it explicitly says `"private"`).
-2. `_persist_task_update` in the same file: when the request includes
+1. `_persist_task_update` in the same file: when the request includes
    `visibility`, write `{"visibility": request.visibility}` into the
    sidecar metadata dict.
 
@@ -143,7 +145,7 @@ the immediate return, but the next `_build_task` call still returns
 | **Rollback signal** | log: `logger.warning("tasks_tools: visibility_public fall-back engaged: %s", exc)` if `_build_task` errors reading sidecar; existing test passes when visibility_default = "private" hardcoded |
 | **Observability added** | Existing `task.updated` event includes `visibility` in the diff (v1 envelope change is automatic); no new OTel spans. |
 
----
+______________________________________________________________________
 
 ## Item 2 — T4 (Bodai task #4) — Redis event-stream publishing (architectural, session-buddy)
 
@@ -363,15 +365,14 @@ analogous sites in `tasks_tools.py` stays. The mutation path
 ### Tests
 
 - **Unit** (no Redis required):
+
   - `test_publish_task_event_no_publisher_is_noop` — no publisher = no
     raise, return `None`.
   - `test_publish_task_event_with_publisher_enqueues` — stub publisher
     gets one `await publisher.publish(event_type, payload)` call with
     the right envelope; assert the message id surfaces back.
   - `test_publish_task_event_raw_wraps_dict_into_base_model` —
-    `publish_task_event_raw("task.handoff_orphan", {"task_id": "...",
-    "workflow_id": "...", "reason": "step_3_update_failed",
-    "orphaned_at": iso_now, "actor": "default"})` constructs a
+    `publish_task_event_raw("task.handoff_orphan", {"task_id": "...", "workflow_id": "...", "reason": "step_3_update_failed", "orphaned_at": iso_now, "actor": "default"})` constructs a
     `TaskHandoffOrphanPayload` and forwards to the publisher.
   - `test_envelope_lookup_unknown_event_type_logs_and_noops` —
     `publish_task_event_raw("bogus", {})` logs warning + does not raise.
@@ -383,8 +384,10 @@ analogous sites in `tasks_tools.py` stays. The mutation path
     the API-level `consumer_group` arg.
 
 - **Integration** (Redis required, gated by `@pytest.mark.requires_network`
-  + `@pytest.mark.integration`):
-  - `tests/integration/test_bodai_events_publisher_e2e.py`:
+
+  - `@pytest.mark.integration`):
+
+  * `tests/integration/test_bodai_events_publisher_e2e.py`:
     - Spins up a real Redis via `pytest-redis` fixture (or
       `docker.services.test` per `tests/integration/test_ci_gates.py`).
     - Asserts `BodaiEventsPublisher.publish("task.created", payload)`
@@ -401,7 +404,7 @@ analogous sites in `tasks_tools.py` stays. The mutation path
 | **Rollback signal** | `logger.warning("bodai_events: init failed (degraded to no-op): %s", exc)` + `/health` returns 503 from `BodaiEventsPublisher.health() == False` |
 | **Observability added** | `BodaiEventsPublisher.entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` (§3 metrics); OTel span `bodai_events.publish` with attributes `event_type`, `task_id`, `outcome=success\|failure\|disabled` |
 
----
+______________________________________________________________________
 
 ## Item 3 — v1.1 orphan sweeper (architectural, in mahavishnu)
 
@@ -583,6 +586,7 @@ async def start_server() -> None:
 
 - **Unit** (no Redis required, uses `_FakeAdapter` pattern from
   `tests/unit/test_event_transport.py:35-66`):
+
   - `test_sweeper_processes_orphan_event` — fake adapter with one
     `task.handoff_orphan` message → one `tasks_update` call with the
     right metadata dict.
@@ -607,6 +611,7 @@ async def start_server() -> None:
 
 - **Integration** (Redis required, `@pytest.mark.requires_network` +
   `@pytest.mark.integration`):
+
   - `tests/integration/test_task_orphan_sweeper_e2e.py`:
     - Spins up Redis + session-buddy fake.
     - Publishes an orphan event → asserts the sweeper picks it up and
@@ -623,7 +628,7 @@ async def start_server() -> None:
 | **Rollback signal** | `logger.warning("task_orphan_sweeper: init failed (degraded to no-op): %s", exc)` + `/health` returns 503 |
 | **Observability added** | `TaskOrphanSweeper.entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` (§3 metrics); OTel span `task_orphan_sweeper.recover` with attributes `task_id`, `workflow_id`, `outcome=success\|skipped\|failed` |
 
----
+______________________________________________________________________
 
 ## Cross-repo wire-up patches
 
@@ -631,6 +636,7 @@ async def start_server() -> None:
 
 The existing `bodai_subscriber.py:_decode_envelope` (line 346-401) only
 decodes two shapes:
+
 - `envelope=<JSON>` (the `oneiric-v1` envelope used by
   `mahavishnu/core/events/transport.py`)
 - `topic/payload/headers` triplet
@@ -659,7 +665,7 @@ This patch is in **mahavishnu**, not in this spec's "Item 3 (sweeper)" —
 it's a sibling change. The mahavishnu merge includes both the sweeper
 (Item 3) and this patch.
 
----
+______________________________________________________________________
 
 ## Direct-merge-to-main sequencing (replaces PR strategy)
 
@@ -674,7 +680,7 @@ it's a sibling change. The mahavishnu merge includes both the sweeper
 CI time. No PRs (per `bodai-pre-1.0-merge-policy.md`). The implementer
 updates the `dependencies` pin; the operator does the `version` field.
 
----
+______________________________________________________________________
 
 ## Wire-Up Discipline (per `wire-up-contract.md` + `mcp-backend-wiring-discipline.md`)
 
@@ -692,7 +698,7 @@ updates the `dependencies` pin; the operator does the `version` field.
     re-links tasks on `task.handoff_orphan` events."
   - Move "team-mode ACL" from line 173 to v2+ scope.
 
----
+______________________________________________________________________
 
 ## Non-Goals (v1.1 explicitly does NOT ship)
 
@@ -704,7 +710,7 @@ updates the `dependencies` pin; the operator does the `version` field.
   on its next reindex cycle automatically).
 - **Version bumps in any `pyproject.toml`** — operator does this.
 
----
+______________________________________________________________________
 
 ## Self-review checklist (run by author)
 
