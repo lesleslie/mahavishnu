@@ -6,7 +6,7 @@ last_reviewed: 2026-07-27
 owner: mahavishnu
 role: canonical
 plan: docs/plans/2026-07-26-mahavishnu-acp-server.md
-spec: docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md
+spec: docs/specs/2026-07-15-mahavishnu-acp-server-design.md
 related: docs/feature-tracking/worktree-autoremove.md
 ---
 
@@ -126,14 +126,14 @@ now `active`); that gate is unblocked but not yet shipped.
 
 ## Related
 
-- Spec: `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`
+- Spec: `docs/specs/2026-07-15-mahavishnu-acp-server-design.md`
   (the prerequisite for the Toad decision)
 - Plan: `docs/plans/2026-07-26-mahavishnu-acp-server.md` (companion, in
   construction)
-- Defer history: `docs/superpowers/plans/2026-06-19-track3-toad-tui.md`
-  (draft), `docs/superpowers/specs/2026-06-19-external-integrations-design.md:324-380`
-  (Toad ACP deferred), `docs/superpowers/specs/2026-07-15-constellation-tui-design.md:10-16,41-47`
-  and `docs/superpowers/plans/2026-07-15-constellation-tui.md:59-63`
+- Defer history: `docs/plans/2026-06-19-track3-toad-tui.md`
+  (draft), `docs/specs/2026-06-19-external-integrations-design.md:324-380`
+  (Toad ACP deferred), `docs/specs/2026-07-15-constellation-tui-design.md:10-16,41-47`
+  and `docs/plans/2026-07-15-constellation-tui.md:59-63`
   (Track2 Toad/ACP out of scope)
 - Sibling feature tracker: `docs/feature-tracking/worktree-autoremove.md`
   (newer YAML-frontmatter style; this file mirrors it)

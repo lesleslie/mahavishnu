@@ -2,7 +2,7 @@
 
 The three-zone pipeline is the architectural fix for autonomous self-learning
 silently overwriting manually-tuned skills (see design spec
-``docs/superpowers/specs/2026-06-22-three-zone-skill-pipeline-design.md``).
+``docs/specs/2026-06-22-three-zone-skill-pipeline-design.md``).
 
 Zones:
 

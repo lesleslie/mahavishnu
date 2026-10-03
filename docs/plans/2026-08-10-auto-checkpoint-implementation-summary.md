@@ -100,6 +100,6 @@ Build the four-component design from the approved 2026-07-15 spec (`SubagentDete
 
 ## Tracking
 
-Originating observation: 2026-07-15 comprehensive-hooks-cleanup wave. Source spec: `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`. Plan: `docs/superpowers/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`. This summary: `docs/superpowers/plans/2026-08-10-auto-checkpoint-implementation-summary.md`.
+Originating observation: 2026-07-15 comprehensive-hooks-cleanup wave. Source spec: `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`. Plan: `docs/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`. This summary: `docs/plans/2026-08-10-auto-checkpoint-implementation-summary.md`.
 
 **Implementation commits**: 19 in `5af5cb48^..e9ee0d21` (auto-checkpoint landing window).

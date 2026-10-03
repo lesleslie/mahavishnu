@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, existing `mahavishnu` orchestrator, existing `crackerjack` quality tool, existing `session-buddy` `store_reflection` MCP, existing `.claude/hooks/` SessionEnd contract (mirrors `worktree-session-isolation.py`), `platformdirs` for XDG paths, no new MCP server.
 
-**Spec:** `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` (commit `c667df52`). The spec argues the design; this plan argues the steps. Where they conflict, this plan wins (deviations documented inline in §"Spec Deviations" below).
+**Spec:** `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` (commit `c667df52`). The spec argues the design; this plan argues the steps. Where they conflict, this plan wins (deviations documented inline in §"Spec Deviations" below).
 
 ## Global Constraints
 
@@ -1462,7 +1462,7 @@ All other push types remain user-controlled per
 
 ## Cross-references
 
-- Spec: `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4.6
+- Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4.6
 - Memory: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-push-is-user-controlled.md` (the rule this amends; cross-link added)
 - Implementation: REQ-007 in spec; `mahavishnu/core/merge_to_main.py::run_push()` (added in Task Group 2)
 ```
@@ -1520,7 +1520,7 @@ exported in `~/.zshenv`). To disable auto-merge at SessionEnd, set
 
 ## Cross-references
 
-- Spec: `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+- Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 - Auto-push governance: `.claude/decisions/2026-10-03-mainautopush.md`
 - Memory: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md`
 - Implementation: `mahavishnu/core/merge_to_main.py`, `.claude/hooks/agent-merge-on-end.py`, `.claude/commands/merge-to-main.md`
@@ -1609,9 +1609,9 @@ auto-publish.
 
 ## Reference
 
-- Spec: `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+- Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 - Decisions: `.claude/decisions/2026-10-03-mainautopush.md`, `.claude/decisions/2026-10-03-trunk-based-agent-review.md`
-- Plan: `docs/superpowers/plans/2026-10-03-trunk-based-agent-review.md`
+- Plan: `docs/plans/2026-10-03-trunk-based-agent-review.md`
 ```
 
 - [ ] **Step 2: Dual-store to session-buddy**
@@ -1660,8 +1660,8 @@ the canonical flow is the **trunk-based agent-review workflow**:
 disable auto-merge at SessionEnd, set `MAHAVISHNU_AUTO_MERGE=0`.
 
 For full design and implementation contracts, see:
-- Spec: `~/Projects/mahavishnu/docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
-- Plan: `~/Projects/mahavishnu/docs/superpowers/plans/2026-10-03-trunk-based-agent-review.md`
+- Spec: `~/Projects/mahavishnu/docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+- Plan: `~/Projects/mahavishnu/docs/plans/2026-10-03-trunk-based-agent-review.md`
 - Decisions: `~/.claude/decisions/2026-10-03-mainautopush.md` and `2026-10-03-trunk-based-agent-review.md`
 ```
 
@@ -1681,7 +1681,7 @@ live in this repo. Other 5 core repos (akosha, session-buddy, crackerjack,
 oneiric, mcp-common) inherit the convention without per-repo edits —
 their workers run inside mahavishnu's orchestration.
 
-See `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.
 ```
 

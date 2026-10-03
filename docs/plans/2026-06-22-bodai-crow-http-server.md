@@ -13,7 +13,7 @@ topic: bodai-crow-http-server
 > **Goal:** Build a Bodai-native HTTP MCP server at port 8675 that exposes file, web, and terminal tools to all Bodai consumers (pool workers, CLI, ACP agents) — not just Claude Code.
 > **Architecture:** A-hybrid: `terminal` proxies to a persistent crow-mcp stdio subprocess via `AsyncExitStack`-managed `ClientSession`; all other tools (`read`, `write`, `edit`, `glob`, `grep`, `web_fetch`, `web_fetch_batch`, `web_search`) are natively implemented with async-first I/O, ripgrep, trafilatura, and a vendored rapidfuzz-accelerated edit cascade. Server uses mcp-common `StandardServer` at `mcp_common.profiles.standard`.
 > **Tech Stack:** Python 3.13, FastMCP / mcp-common `StandardServer`, httpx2[zstd], aiofiles, rapidfuzz, trafilatura, selectolax, ripgrep (system binary), SearXNG (Docker), respx (tests)
-> **Spec:** `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`
+> **Spec:** `docs/specs/2026-06-21-bodai-crow-server-design.md`
 > **Out of scope:** httpx2 migration across repos (spec §9) — separate plan.
 
 ## Revision Notes

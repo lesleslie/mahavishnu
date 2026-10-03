@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, FastMCP lifespan, oneiric `RedisStreamsQueueAdapter` + `RedisStreamsQueueSettings`, Pydantic v2, OTel (existing oneiric OTLP exporter), `pytest-mock` for fake adapters, `pytest-redis` for e2e (per existing session-buddy tests/integration pattern).
 
-**Spec:** `docs/superpowers/specs/2026-10-02-bodai-task-system-v1.1.md` (commit `864c0205`). The spec argues the design (decisions, wire-up contracts, counter increment policy). This plan argues the steps. Where they conflict, this plan wins.
+**Spec:** `docs/specs/2026-10-02-bodai-task-system-v1.1.md` (commit `864c0205`). The spec argues the design (decisions, wire-up contracts, counter increment policy). This plan argues the steps. Where they conflict, this plan wins.
 
 ## Global Constraints
 
@@ -1805,7 +1805,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `/Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-10-02-bodai-task-system-v1.1.md`.
+Plan complete and saved to `/Users/les/Projects/mahavishnu/docs/plans/2026-10-02-bodai-task-system-v1.1.md`.
 
 Two execution options:
 

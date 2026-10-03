@@ -19,7 +19,7 @@ topic: durable-local-workers
 
 **Tech Stack:** Python 3.13, asyncio, tmux 3.4+, Pydantic, msgspec (already used in Oneiric), Oneiric canonical event envelope, Crackerjack quality gates.
 
-**Reference spec:** `docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
+**Reference spec:** `docs/specs/2026-07-26-durable-local-workers-design.md`
 
 ## Global Constraints
 
@@ -2531,8 +2531,8 @@ for the legacy `worker_execute` and `dispatch_to_pool` async path.
 
 Workers are durable across Mahavishnu controller restarts; the
 `worker_id` is the stable identity. See
-`docs/superpowers/specs/2026-07-26-durable-local-workers-design.md`
-for the design and `docs/superpowers/plans/2026-07-26-durable-local-workers.md`
+`docs/specs/2026-07-26-durable-local-workers-design.md`
+for the design and `docs/plans/2026-07-26-durable-local-workers.md`
 for the implementation plan.
 ```
 

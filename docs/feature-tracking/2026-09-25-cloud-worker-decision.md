@@ -53,7 +53,7 @@ and its package export.
 - `docs/plans/2026-09-12-finish-partial-implementations.md` — partial-implementations tracker
 - `docs/plans/PLAN_INDEX.md` — plan registry
 
-Plus 3 archived (`docs/superpowers/...`).
+Plus 3 archived (`docs/plans/.archive/...` and `docs/specs/.archive/...`).
 
 ## Decision: **KEEP**
 

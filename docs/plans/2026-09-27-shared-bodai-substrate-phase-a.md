@@ -18,7 +18,7 @@ topic: shared-oneiric-substrate-phase-a
 
 **Tech Stack:** Python 3.14, oneiric.adapters.cache.memory, pytest, OTel.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.1, §6.7 (Phase A1+A2 release-train gates).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.1, §6.7 (Phase A1+A2 release-train gates).
 
 ## Global Constraints
 
@@ -441,7 +441,7 @@ Phase A is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.1 — Phase A contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.1 — Phase A contract
 - `oneiric/adapters/cache/memory.py:29` — MemoryCacheAdapter
 - `.claude/decisions/wire-up-contract.md` — Integration Contract rules
 - `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability

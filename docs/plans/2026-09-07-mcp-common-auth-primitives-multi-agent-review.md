@@ -14,8 +14,8 @@ reviewers:
   - feature-dev:code-architect
   - documentation-specialist
 subjects:
-  - plan: /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md
-  - spec: /Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md
+  - plan: /Users/les/Projects/mahavishnu/docs/plans/2026-09-07-mcp-common-auth-primitives.md
+  - spec: /Users/les/Projects/mahavishnu/docs/specs/2026-09-06-mcp-common-auth-primitives-design.md
 ---
 
 # mcp-common Auth Primitives Plan — Multi-Agent Review
@@ -231,8 +231,8 @@ l. **Fix I-1 (OneiricMCPConfig terminology drift) — reconcile spec vs plan.**
 
 ## Files referenced by reviewers
 
-- `/Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`
-- `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`
+- `/Users/les/Projects/mahavishnu/docs/plans/2026-09-07-mcp-common-auth-primitives.md`
+- `/Users/les/Projects/mahavishnu/docs/specs/2026-09-06-mcp-common-auth-primitives-design.md`
 - `/Users/les/Projects/mcp-common/mcp_common/health.py:810` (existing `register_http_health_route`)
 - `/Users/les/Projects/mcp-common/mcp_common/cli/settings.py:15` (`MCPServerSettings`)
 - `/Users/les/Projects/mcp-common/mcp_common/auth/identity.py:7-15` (`KNOWN_SERVICES`)

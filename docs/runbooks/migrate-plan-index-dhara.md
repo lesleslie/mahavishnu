@@ -78,7 +78,7 @@ uv run python scripts/bootstrap_plan_index.py --repo-root . --backup-index
 ```
 
 Inspect the summary: `success` should match the number of `.md` files
-under `docs/plans/`, `docs/adr/`, `docs/superpowers/`, and other
+under `docs/plans/`, `docs/adr/`, `docs/specs/`, and other
 discovered stores with `status:` + `title:` frontmatter. `skipped`
 should be near zero — partial frontmatter is rare.
 

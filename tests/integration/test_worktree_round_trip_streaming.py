@@ -15,7 +15,7 @@ Skip rules (per task brief):
   requires the streaming-enabled adapter.
 
 Test cases mirror Task C.8 from
-``docs/superpowers/plans/2026-08-23-phase3-streaming-tar-plan.md``:
+``docs/plans/2026-08-23-phase3-streaming-tar-plan.md``:
 
 - ``test_round_trip_local_storage_streaming`` — happy path through the
   Oneiric local adapter with SHA round-trip + content match.

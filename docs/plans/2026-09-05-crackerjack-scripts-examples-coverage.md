@@ -21,7 +21,7 @@ topic: crackerjack-scripts-examples-coverage
 
 **Tech Stack:** Python 3.14, ruff (with `--config='<inline TOML>'` CLI flag for starter pack injection), pytest, mypy.
 
-**Spec:** `docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md`
+**Spec:** `docs/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md`
 
 ## Global Constraints
 
@@ -407,7 +407,7 @@ noisily in admin/demo code (EXE001, BLE001, F541, C901, SIM*).
 The starter pack travels with crackerjack; no per-repo config edits needed.
 
 This is commit 1 of 5 for scripts/examples coverage in fast hooks.
-Spec: docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md
+Spec: docs/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -1066,7 +1066,7 @@ violations are per-repo rules (UP034, DTZ005, RUF012, etc.) intentionally
 NOT in the universal starter pack — these are signal for follow-up cleanup.
 
 This is commit 5 of 5 for scripts/examples coverage in fast hooks.
-Spec: docs/superpowers/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md
+Spec: docs/specs/2026-09-05-crackerjack-scripts-examples-coverage-design.md
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

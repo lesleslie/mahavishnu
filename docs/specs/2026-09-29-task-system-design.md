@@ -839,5 +839,5 @@ A v1 ship is complete when **all** of the following hold:
 - CLAUDE.md `Memory Routing` section — distinguishes `user`/`feedback` (CC memory) from `project`/`reference` (Session-Buddy `store_reflection`)
 - CLAUDE.md `Crackerjack-Compliant Code` — `from __future__ import annotations`, Python 3.14, hard limits (100 char line, 10 args, 89% coverage)
 - Bodai CLAUDE.md `SessionBuddyPool` and `MahavishnuPool` — `dispatch_to_pool` is C-NEW-5 fire-and-forget
-- Existing skill precedent: `~/.claude/skills/bodai-radar/SKILL.md` (referenced from `docs/superpowers/specs/2026-04-14-bodai-radar-design.md`)
+- Existing skill precedent: `~/.claude/skills/bodai-radar/SKILL.md` (referenced from `docs/specs/2026-04-14-bodai-radar-design.md`)
 - Review artifacts: 4-agent multi-lens review (MCP / Bodai architecture / Claude Code skill UX / Security) — see commit history

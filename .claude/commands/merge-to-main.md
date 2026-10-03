@@ -121,7 +121,7 @@ wherever `.review-state.json` left off.
 
 ## See also
 
-- Spec: `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4.1
+- Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4.1
 - Module: `mahavishnu/core/merge_to_main.py`
 - Tests: `tests/unit/core/test_merge_to_main.py`
 - SessionEnd hook: `.claude/hooks/agent-merge-on-end.py`

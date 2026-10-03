@@ -13,7 +13,7 @@ role: canonical
 **Created:** 2026-08-10
 **Last updated:** 2026-08-10
 **Repo(s):** /Users/les/Projects/mahavishnu
-**Plan:** `docs/superpowers/plans/2026-08-10-m-webhook-durable.md`
+**Plan:** `docs/plans/2026-08-10-m-webhook-durable.md`
 
 ## State — pick one
 
@@ -138,7 +138,7 @@ Owner: mahavishnu core. Target: M-WEBHOOK-DURABLE-WIRED (follow-up plan) before 
 
 ## Related
 
-- Plan: `docs/superpowers/plans/2026-08-10-m-webhook-durable.md`
+- Plan: `docs/plans/2026-08-10-m-webhook-durable.md`
 - Task 1 commit: `cf188d60` — `feat(webhooks): durable webhook receiver (validate-on-write)`
 - Task 1 fix commit: `9dc547c1` — `fix(webhooks): add WEBHOOK_DURABLE_V1_ENABLED flag + runtime gate`
 - Task 2 commit: `7af40ce6` — `feat(webhooks): webhook_replay MCP tool — read-back via from_dict`

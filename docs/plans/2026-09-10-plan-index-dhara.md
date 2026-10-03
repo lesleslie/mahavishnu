@@ -21,7 +21,7 @@ topic: followups-lifecycle
 
 **Tech Stack:** Python 3.14, Dhara (canonical store), Oneiric EventBridge (telemetry topic), typer (CLI), FastMCP (tool registration), pytest + Hypothesis (property tests).
 
-**Spec:** `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`
+**Spec:** `docs/specs/2026-09-10-plan-index-dhara-design.md`
 
 ## Global Constraints
 
@@ -5099,7 +5099,7 @@ Status: **built**
 ## What this tracks
 
 The lifecycle of the plan_index Dhara-canonical layer per
-`docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`.
+`docs/specs/2026-09-10-plan-index-dhara-design.md`.
 
 ## State transitions
 
@@ -5341,7 +5341,7 @@ class TestCIGates:
         """crackerjack docs validate must accept the spec's frontmatter."""
         result = subprocess.run(
             ["uv", "run", "crackerjack", "docs", "validate", "--strict",
-             "--pkg-path", "docs/superpowers/specs"],
+             "--pkg-path", "docs/specs"],
             capture_output=True, text=True, cwd="/Users/les/Projects/mahavishnu",
         )
         # Either passes (exit 0) or reports a specific issue; we don't assert 0
@@ -5352,7 +5352,7 @@ class TestCIGates:
         """REQs in the spec frontmatter must be recognized."""
         result = subprocess.run(
             [sys.executable, "scripts/audit_requirements.py",
-             "--plans", "docs/superpowers/specs/", "--include-tests"],
+             "--plans", "docs/specs/", "--include-tests"],
             capture_output=True, text=True, cwd="/Users/les/Projects/mahavishnu",
         )
         # Output should reference REQ-PLAN-001..012
@@ -5914,7 +5914,7 @@ in flight?", "show me the plan index"), the skill calls
 auth-gated). On degraded Dhara response, fall back to filesystem
 read of `docs/plans/PLAN_INDEX.md`.
 
-See `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md` §Read
+See `docs/specs/2026-09-10-plan-index-dhara-design.md` §Read
 paths for the full read-path contract.
 ```
 
@@ -5972,9 +5972,9 @@ The implementation is complete when **all** of the following are true:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md` (the
+- `docs/specs/2026-09-10-plan-index-dhara-design.md` (the
   spec this plan implements — read together with this plan)
-- `docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md`
+- `docs/plans/2026-07-16-plan-lifecycle-unification.md`
   (frontmatter contract)
 - `.claude/decisions/wire-up-contract.md` (Integration Contract rule)
 - `.claude/decisions/mcp-backend-wiring-discipline.md` (4-signal feed-state contract)

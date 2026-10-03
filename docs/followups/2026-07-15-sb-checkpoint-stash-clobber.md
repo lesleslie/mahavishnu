@@ -18,7 +18,7 @@ blocks_on: []
 >
 > In practical terms: `SubagentDetector.is_active()` returns False when the lockfile doesn't exist, and nothing in this codebase creates the lockfile. So the stash-clobber protection is **constructed but inert** — it would activate if/when an external producer creates the lockfile, but no such producer is wired today. The followup's "Option A" (detect-and-defer) is *structurally* in place but functionally dormant.
 >
-> Action: keep this followup `active`. Add a sibling note that the **producer half** (lockfile creation at subagent start, owned by the subagent-runtime team) is the actual remaining work. Plan reference: `docs/superpowers/plans/2026-08-10-auto-checkpoint-implementation-summary.md` (C-1).
+> Action: keep this followup `active`. Add a sibling note that the **producer half** (lockfile creation at subagent start, owned by the subagent-runtime team) is the actual remaining work. Plan reference: `docs/plans/2026-08-10-auto-checkpoint-implementation-summary.md` (C-1).
 
 ## Summary
 

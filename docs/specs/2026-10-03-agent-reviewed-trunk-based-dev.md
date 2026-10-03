@@ -443,7 +443,7 @@ Each plan is independently testable with a single Integration Contract deliverab
 
 ## Cross-references
 
-- `docs/superpowers/specs/2026-09-29-task-system-design.md` — the Task system uses ephemeral branches for `auto-coordinate`-linked work; this spec is compatible.
+- `docs/specs/2026-09-29-task-system-design.md` — the Task system uses ephemeral branches for `auto-coordinate`-linked work; this spec is compatible.
 - `.claude/decisions/worktree-cleanup-policy.md` — tier rubric and `LOCKED-live`/`LOCKED-orphan` semantics used by stage 6 cleanup.
 - `.claude/decisions/worktree-autoremove-policy.md` — Rule 5 (SessionEnd automation prohibition); the spec's default `MAHAVISHNU_AUTO_MERGE=1` deviates from the spirit of this rule. **The new governance decision** `.claude/decisions/2026-10-03-main-autopush.md` documents the deviation.
 - `.claude/decisions/wire-up-contract.md` — Integration Contract requirement (per deliverable).

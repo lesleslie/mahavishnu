@@ -526,14 +526,14 @@ Open questions:
 - WezTerm multiplexing: https://wezterm.org/multiplexing.html
 - iTerm2 tmux integration: https://iterm2.com/documentation-tmux-integration.html
 - iTerm2 Python API: https://iterm2.com/python-api
-- Constellation design spec: `docs/superpowers/specs/2026-07-15-constellation-tui-design.md`
-- Constellation implementation plan: `docs/superpowers/plans/2026-07-15-constellation-tui.md`
+- Constellation design spec: `docs/specs/2026-07-15-constellation-tui-design.md`
+- Constellation implementation plan: `docs/plans/2026-07-15-constellation-tui.md`
 - Oneiric canonical event envelope: `mahavishnu/core/events/canonical.py`
 - Worker readiness observability: `mahavishnu/workers/capabilities/_observability.py`
 - Worker manager execution path: `mahavishnu/workers/manager.py`
 - Pool route and async dispatch: `mahavishnu/pools/manager.py`,
   `mahavishnu/mcp/tools/pool_tools.py`
-- Multi-backend PTY design: `docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md`
-- Worker-readiness design: `docs/superpowers/specs/2026-07-21-worker-readiness-design.md`
-- Unified iTerm2 AppleScript design (legacy): `docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`
-- Terminal grid design: `docs/superpowers/specs/2026-05-22-terminal-grid-design.md`
+- Multi-backend PTY design: `docs/specs/2026-07-14-multi-backend-pty-design.md`
+- Worker-readiness design: `docs/specs/2026-07-21-worker-readiness-design.md`
+- Unified iTerm2 AppleScript design (legacy): `docs/specs/2026-05-23-unified-iterm2-applescript-design.md`
+- Terminal grid design: `docs/specs/2026-05-22-terminal-grid-design.md`

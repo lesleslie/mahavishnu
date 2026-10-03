@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # still fails the actual worktree tool calls. Set the env var to "true"
 # (or set `worktree_providers.session_buddy_enabled: true` in
 # settings/mahavishnu.yaml) once session-buddy exposes those tools.
-# Tracking: docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md
+# Tracking: docs/plans/2026-07-26-session-buddy-worktree-tools.md
 _SESSION_BUDDY_ENABLED = os.environ.get(
     "MAHAVISHNU_WORKTREE_SESSION_BUDDY_ENABLED", "true"
 ).lower() in ("1", "true", "yes", "on")
@@ -115,7 +115,7 @@ class WorktreeCoordinator:
             # worktree-remove). Until then, the provider's health_check()
             # only verifies TCP reachability and the actual tool calls
             # fail with "Unknown tool". See
-            # docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md.
+            # docs/plans/2026-07-26-session-buddy-worktree-tools.md.
             if _SESSION_BUDDY_ENABLED:
                 providers.insert(0, SessionBuddyWorktreeProvider())  # Primary
 

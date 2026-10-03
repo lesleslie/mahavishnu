@@ -1181,7 +1181,7 @@ Simpler check — re-run Step 3 with a NEW pool name and confirm `len(self._work
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add docs/superpowers/plans/2026-09-25-fix-session-buddy-pool-mcp-contract-v2.md
+git add docs/plans/2026-09-25-fix-session-buddy-pool-mcp-contract-v2.md
 git commit -m "docs(plan): session-buddy pool contract fix v2 (structured wrappers)"
 ```
 

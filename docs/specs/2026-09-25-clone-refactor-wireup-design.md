@@ -967,7 +967,7 @@ This design is "done enough" when:
 - `mahavishnu/mcp/tools/clone_tools.py:161-231` — current stub `clone_refactor_group`
 - `mahavishnu/workflows/clone_refactor_workflow.py` — current aspirational PR-shape DAG
 - Commit `4090965b` — Phase 2m `pool_route_execute` (sync alternative)
-- `docs/superpowers/specs/2026-04-09-tui-design.md` et al. — prior spec file format precedent
+- `docs/specs/2026-04-09-tui-design.md` et al. — prior spec file format precedent
 
 ## 15. Revision history
 

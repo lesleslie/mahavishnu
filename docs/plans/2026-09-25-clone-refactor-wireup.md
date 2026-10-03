@@ -19,7 +19,7 @@ prior-revision: v3 (re-review sweep applied)
 
 **Tech Stack:** Prefect (in-process `@flow`/`@task`, no server), `asyncio.create_subprocess_exec` for git ops, `MCPClient` for substrate writes, `uuid7()` (Python 3.14 stdlib), pytest + pytest-asyncio + `tmp_path`.
 
-**Spec:** `docs/superpowers/specs/2026-09-25-clone-refactor-wireup-design.md` (v4, 1023 lines). **The plan argues from the spec — implementers read both.**
+**Spec:** `docs/specs/2026-09-25-clone-refactor-wireup-design.md` (v4, 1023 lines). **The plan argues from the spec — implementers read both.**
 
 ## Global Constraints
 
@@ -3178,7 +3178,7 @@ After writing this plan, I checked it against the spec:
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-09-25-clone-refactor-wireup.md`. Six tasks total:
+Plan complete and saved to `docs/plans/2026-09-25-clone-refactor-wireup.md`. Six tasks total:
 
 1. **P0 environment verifications** — must pass before anything else
 2. **MCPStateBackend substrate additions** — exception + key constructors + try_put_with_log_context + tests

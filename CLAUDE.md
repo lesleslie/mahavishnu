@@ -63,7 +63,7 @@ Mahavishnu owns the **dispatch edge** in the Bodai task system: `mcp__mahavishnu
 
 ### Spec & skill
 
-- Spec: `docs/superpowers/specs/2026-09-29-task-system-design.md`
+- Spec: `docs/specs/2026-09-29-task-system-design.md`
 - Skill: `session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md` (session-buddy side)
 
 ### Cross-repo PR dependency
@@ -920,5 +920,5 @@ live in this repo. Other 5 core repos (akosha, session-buddy, crackerjack,
 oneiric, mcp-common) inherit the convention without per-repo edits —
 their workers run inside mahavishnu's orchestration.
 
-See `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.

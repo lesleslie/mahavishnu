@@ -14,7 +14,7 @@ topic: splashstand-oneiric
 > **Goal:** Replace all ACB imports with Oneiric equivalents across 17 Splashstand source files, restoring pyproject.toml and adding a `resolve_dep()` helper.
 > **Architecture:** Mechanical import rename from `acb.*` to `oneiric.*` plus a `splashstand/deps.py` helper module. The `depends.inject` decorator is replaced with direct `resolve_dep()` calls. `dump`/`load` from `acb.actions.encode` are replaced with `yaml`/`json` standard library calls.
 > **Tech Stack:** Python 3.13, Oneiric (replacement for ACB), Fastblocks, PyYAML, Starlette
-> **Spec:** `docs/superpowers/specs/2026-04-26-splashstand-oneiric-migration-design.md`
+> **Spec:** `docs/specs/2026-04-26-splashstand-oneiric-migration-design.md`
 > **Working directory:** `/Users/les/Projects/splashstand`
 
 ______________________________________________________________________

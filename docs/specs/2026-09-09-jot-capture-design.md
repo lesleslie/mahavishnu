@@ -622,8 +622,8 @@ A reviewer can mark sub-plan 1 complete when:
 1. ✅ Ruff clean (per `pyproject.toml` config, line length 100)
 1. ✅ Mypy strict clean (with `from __future__ import annotations` on every file)
 1. ✅ Manual verification: synthetic stdin invocation writes the expected event and exits 2
-1. ✅ Spec is committed to git at `docs/superpowers/specs/2026-09-09-jot-capture-design.md`
-1. ✅ Implementation plan exists at `docs/superpowers/plans/YYYY-MM-DD-jot-capture.md` (after writing-plans skill)
+1. ✅ Spec is committed to git at `docs/specs/2026-09-09-jot-capture-design.md`
+1. ✅ Implementation plan exists at `docs/plans/YYYY-MM-DD-jot-capture.md` (after writing-plans skill)
 
 **NOT done in sub-plan 1 (must remain NOT-done):**
 
@@ -676,8 +676,8 @@ ______________________________________________________________________
 
 - **Sub-plan:** 1 of 3 (Capture)
 - **Estimated implementation:** ~500-700 lines of code, 1-2 days for an experienced implementer following the plan
-- **Spec path:** `docs/superpowers/specs/2026-09-09-jot-capture-design.md`
-- **Implementation plan path:** `docs/superpowers/plans/<written by writing-plans skill>.md`
-- **Union spec:** `docs/superpowers/specs/2026-09-09-jot-inbox-design.md` (commit ad620124, archive after sub-plan 1 ships)
+- **Spec path:** `docs/specs/2026-09-09-jot-capture-design.md`
+- **Implementation plan path:** `docs/plans/<written by writing-plans skill>.md`
+- **Union spec:** `docs/specs/2026-09-09-jot-inbox-design.md` (commit ad620124, archive after sub-plan 1 ships)
 - **Decisions in this spec:** D1-D4 (4 new), UD1-UD9 (9 inherited)
 - **Open questions:** OQ1 (node identifier), OQ2 (synthetic error events), OQ3 (errors.log drain)

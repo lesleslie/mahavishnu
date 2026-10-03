@@ -35,9 +35,9 @@ ______________________________________________________________________
 | Action | Path | Change |
 |--------|------|--------|
 | Modify | `docs/plans/PLAN_INDEX.md` | Fix status of Remaining Work, Terminal Unification, Hatchet entries; update Current Implementation Priority block |
-| Modify | `docs/superpowers/plans/2026-05-08-hatchet-adapter.md` | Tick all 8 task checkboxes |
+| Modify | `docs/plans/2026-05-08-hatchet-adapter.md` | Tick all 8 task checkboxes |
 | Modify | `docs/plans/2026-05-07-mahavishnu-master-backlog.md` | Mark P2 deferred PoolManager/RoutingDecisionBuffer/arch-doc items delivered |
-| Modify | `docs/superpowers/plans/2026-04-26-config-consolidation.md` | Tick all checkboxes; add delivered header note |
+| Modify | `docs/plans/2026-04-26-config-consolidation.md` | Tick all checkboxes; add delivered header note |
 | Modify | `docs/architecture/ARCHITECTURE.md` | Add Dhara Persistence Layer section; update Last Updated date |
 
 ### Track B — Session-Buddy Channel Phase 2
@@ -122,7 +122,7 @@ Replace with:
 ```
 ### Hatchet Integration
 
-- Plan: [docs/superpowers/plans/2026-05-08-hatchet-adapter.md](../superpowers/plans/2026-05-08-hatchet-adapter.md)
+- Plan: [docs/plans/2026-05-08-hatchet-adapter.md](../superpowers/plans/2026-05-08-hatchet-adapter.md)
 - Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
 - Status: `complete`, `historical`
 - Use for: historical record. P7 (sliding-window rate limiter in `task_router.py`), P8 (durable approval persistence to Dhara), and P10 (`HatchetAdapterImpl` in `mahavishnu/engines/hatchet_adapter_impl.py` with `WaitForEvent` approval bridge) are all delivered as of 2026-05-08.
@@ -138,7 +138,7 @@ Find the block starting with `## Current Implementation Priority` (around line 2
 *Last verified: 2026-05-14. All backlog priorities (P0–P10) and convergence phases (C0–C7) are complete. The remaining-work execution queue is also complete (T1/T4 merged 2026-05-13).*
 
 **No active implementation queue.** Open work:
-- Session-Buddy Channel Phase 2 (Dhara time-series publishing) — tracked in `docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md`
+- Session-Buddy Channel Phase 2 (Dhara time-series publishing) — tracked in `docs/plans/2026-05-14-doc-sync-and-channel-phase2.md`
 - OpenWebUI P9 manual UI steps (tool registration in OpenWebUI Admin, model arena run) — no code changes required
 - Bodai Agent Platform I4 optional extensions — gated on product justification document
 
@@ -166,28 +166,28 @@ ______________________________________________________________________
 
 **Files:**
 
-- Modify: `docs/superpowers/plans/2026-05-08-hatchet-adapter.md`
+- Modify: `docs/plans/2026-05-08-hatchet-adapter.md`
 
 The code was shipped 2026-05-08 but none of the 8 tasks had their checkboxes ticked.
 
 - [ ] **Step 1: Tick all checkboxes**
 
-Run a global replace in `docs/superpowers/plans/2026-05-08-hatchet-adapter.md`:
+Run a global replace in `docs/plans/2026-05-08-hatchet-adapter.md`:
 
 ```bash
-sed -i '' 's/- \[ \] \*\*Step/- [x] **Step/g' /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-05-08-hatchet-adapter.md
+sed -i '' 's/- \[ \] \*\*Step/- [x] **Step/g' /Users/les/Projects/mahavishnu/docs/plans/2026-05-08-hatchet-adapter.md
 ```
 
 - [ ] **Step 2: Verify**
 
 ```bash
-grep -c "- \[ \]" /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-05-08-hatchet-adapter.md
+grep -c "- \[ \]" /Users/les/Projects/mahavishnu/docs/plans/2026-05-08-hatchet-adapter.md
 ```
 
 Expected: `0`
 
 ```bash
-grep -c "- \[x\]" /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-05-08-hatchet-adapter.md
+grep -c "- \[x\]" /Users/les/Projects/mahavishnu/docs/plans/2026-05-08-hatchet-adapter.md
 ```
 
 Expected: `40` (5 steps × 8 tasks)
@@ -195,7 +195,7 @@ Expected: `40` (5 steps × 8 tasks)
 - [ ] **Step 3: Commit**
 
 ```bash
-git -C /Users/les/Projects/mahavishnu add docs/superpowers/plans/2026-05-08-hatchet-adapter.md
+git -C /Users/les/Projects/mahavishnu add docs/plans/2026-05-08-hatchet-adapter.md
 git -C /Users/les/Projects/mahavishnu commit -m "docs: tick all hatchet adapter plan checkboxes — delivered 2026-05-08"
 ```
 
@@ -278,19 +278,19 @@ ______________________________________________________________________
 
 **Files:**
 
-- Modify: `docs/superpowers/plans/2026-04-26-config-consolidation.md`
+- Modify: `docs/plans/2026-04-26-config-consolidation.md`
 
 Everything in this plan is shipped: `scripts/migrate_config_to_project.py` (241 lines), `tests/unit/test_migration_script.py` (224 lines, 8 tests), `.claude/` directory populated, CLI commands `list-agents`/`sync-from-global` implemented.
 
 - [ ] **Step 1: Tick all checkboxes in the plan**
 
 ```bash
-sed -i '' 's/- \[ \] \*\*Step/- [x] **Step/g' /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-04-26-config-consolidation.md
+sed -i '' 's/- \[ \] \*\*Step/- [x] **Step/g' /Users/les/Projects/mahavishnu/docs/plans/2026-04-26-config-consolidation.md
 ```
 
 - [ ] **Step 2: Add a delivered header after the opening block**
 
-Open `docs/superpowers/plans/2026-04-26-config-consolidation.md`. After the line:
+Open `docs/plans/2026-04-26-config-consolidation.md`. After the line:
 
 ```
 **Tech Stack:** Python stdlib (`pathlib`, `json`, `shutil`, `yaml`), Typer (existing in Mahavishnu CLI), pytest.
@@ -307,7 +307,7 @@ Insert:
 - [ ] **Step 3: Verify no unchecked boxes remain**
 
 ```bash
-grep -c "- \[ \]" /Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-04-26-config-consolidation.md
+grep -c "- \[ \]" /Users/les/Projects/mahavishnu/docs/plans/2026-04-26-config-consolidation.md
 ```
 
 Expected: `0`
@@ -315,7 +315,7 @@ Expected: `0`
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C /Users/les/Projects/mahavishnu add docs/superpowers/plans/2026-04-26-config-consolidation.md
+git -C /Users/les/Projects/mahavishnu add docs/plans/2026-04-26-config-consolidation.md
 git -C /Users/les/Projects/mahavishnu commit -m "docs: mark config consolidation plan delivered — all tasks verified in codebase"
 ```
 
@@ -849,16 +849,16 @@ Clean — all code steps show complete implementations with no TBD/TODO/placehol
 
 ## Re-Review Status (2026-09-14)
 
-**Status**: `complete` — Track A documentation house-keeping landed (PLAN_INDEX entries, hatchet checkboxes, P2 deferred items, ARCHITECTURE.md Dhara persistence section). Track B's `DharaChannelPublisher` path was superseded by the actual session-buddy checkpoint subsubsystem architecture that landed in `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`.
+**Status**: `complete` — Track A documentation house-keeping landed (PLAN_INDEX entries, hatchet checkboxes, P2 deferred items, ARCHITECTURE.md Dhara persistence section). Track B's `DharaChannelPublisher` path was superseded by the actual session-buddy checkpoint subsubsystem architecture that landed in `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`.
 
 **Track A deliverables landed** (verified via `last_reviewed: 2026-09-12`):
 
 - `docs/plans/PLAN_INDEX.md` — Remaining Work / Terminal Worker / Hatchet entries updated to `complete, historical`
-- `docs/superpowers/plans/2026-05-08-hatchet-adapter.md` — all 8 task checkboxes ticked
+- `docs/plans/2026-05-08-hatchet-adapter.md` — all 8 task checkboxes ticked
 - `docs/plans/2026-05-07-mahavishnu-master-backlog.md` — P2 deferred items (PoolManager, RoutingDecisionBuffer, arch doc) marked delivered
-- `docs/superpowers/plans/2026-04-26-config-consolidation.md` — all checkboxes ticked + delivered header
+- `docs/plans/2026-04-26-config-consolidation.md` — all checkboxes ticked + delivered header
 - `docs/architecture/ARCHITECTURE.md` — Last Updated 2026-05-14; Dhara Persistence Layer section added
 
-**Track B path-not-taken**: The plan's `DharaChannelPublisher` (httpx-based fire-and-forget to Dhara's `record_time_series`) was a 2026-05-14-era design. The actual session-buddy channel tracking shipped under a different architecture — `track_channel_session` MCP tool + `_ChannelSessionStore` in-memory store + checkpoint subsubsystem (SubagentDetector, SnapshotMechanism, CheckpointPolicy, CheckpointOrchestrator) — per `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`. The architectural shape is materially different: in-memory store + checkpoint orchestrator vs. the original plan's httpx fire-and-forget pattern. Closing this plan to `complete` reflects that the work landed through the orchestrator path, not the publisher path.
+**Track B path-not-taken**: The plan's `DharaChannelPublisher` (httpx-based fire-and-forget to Dhara's `record_time_series`) was a 2026-05-14-era design. The actual session-buddy channel tracking shipped under a different architecture — `track_channel_session` MCP tool + `_ChannelSessionStore` in-memory store + checkpoint subsubsystem (SubagentDetector, SnapshotMechanism, CheckpointPolicy, CheckpointOrchestrator) — per `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`. The architectural shape is materially different: in-memory store + checkpoint orchestrator vs. the original plan's httpx fire-and-forget pattern. Closing this plan to `complete` reflects that the work landed through the orchestrator path, not the publisher path.
 
 **No follow-up needed.** The original Track B intent (Dhara time-series visibility for channel events) is now satisfied indirectly by the checkpoint orchestrator's structured logging; if explicit Dhara time-series publishing becomes a future requirement, that ships as a separate plan.

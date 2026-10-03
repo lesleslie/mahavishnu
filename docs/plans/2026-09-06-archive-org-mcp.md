@@ -5,8 +5,8 @@ date: 2026-09-06
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
-- docs/superpowers/plans/.archive/2026-09-06-registry-manifest-migration.md
-- docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md
+- docs/plans/.archive/2026-09-06-registry-manifest-migration.md
+- docs/plans/2026-09-06-port-bodai-reconciliation.md
 related:
   - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
@@ -19,7 +19,7 @@ topic: mcp-stub-activation
 
 `/Users/les/Projects/archive-org-mcp` has 22 commits spanning 2026-09-06 to 2026-09-10. All 5 planned MCP tools exist: `wayback_snapshots`, `wayback_closest` (`archive_org_mcp/tools/wayback.py`); `catalog_search`, `catalog_metadata` (`archive_org_mcp/tools/catalog.py`); `retrieve_snapshot` (`archive_org_mcp/tools/retrieval.py`). All planned client modules exist: `backoff.py`, `base_client.py`, `catalog_client.py`, `retrieval_client.py`, `wayback_client.py`. Profile dispatcher at `archive_org_mcp/tools/profiles.py`. Latest release: `0.1.1` (per `f1f23ed chore: bump version to 0.1.1`).
 
-**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/superpowers/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
+**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
 
 ## Re-Review Status (2026-09-13)
 
@@ -27,7 +27,7 @@ topic: mcp-stub-activation
 
 `/Users/les/Projects/archive-org-mcp` has 22 commits spanning 2026-09-06 to 2026-09-10. All 5 planned MCP tools exist: `wayback_snapshots`, `wayback_closest` (`archive_org_mcp/tools/wayback.py`); `catalog_search`, `catalog_metadata` (`archive_org_mcp/tools/catalog.py`); `retrieve_snapshot` (`archive_org_mcp/tools/retrieval.py`). All planned client modules exist: `backoff.py`, `base_client.py`, `catalog_client.py`, `retrieval_client.py`, `wayback_client.py`. Profile dispatcher at `archive_org_mcp/tools/profiles.py`. Latest release: `0.1.1` (per `f1f23ed chore: bump version to 0.1.1`).
 
-**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/superpowers/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
+**Frontmatter cleanup applied**: removed dangling `blocks_on` reference to `docs/plans/2026-09-06-registry-manifest-migration.md` (file does not exist — that plan was never authored). The other `blocks_on` entry (`2026-09-06-port-bodai-reconciliation.md`) is retained; see its Re-Review Status.
 
 # archive-org-mcp Implementation Plan
 
@@ -46,7 +46,7 @@ identifying User-Agent — is the server's own responsibility.
 **Tech Stack:** Python 3.14, fastmcp, httpx2, mcp-common, oneiric, pydantic,
 pydantic-settings, pytest, crackerjack.
 
-**Spec:** `docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md`
+**Spec:** `docs/specs/2026-09-06-mcp-stub-activation-design.md`
 (§4.4, §4.7, §4.8, §4.10, §5.2-§5.8, §6.1, §8, §13.2)
 
 **This plan is the pattern-setter.** It has no authentication, so it validates the shared

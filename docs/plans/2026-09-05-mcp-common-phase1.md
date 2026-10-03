@@ -19,7 +19,7 @@ topic: mcpserver-settings-convention
 
 **Tech Stack:** Python 3.14, pytest, pytest-cov, coverage.py, ruff, mypy, crackerjack, typer, Pydantic, Git
 
-**Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-05-mcp-common-phase1-design.md`
+**Spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-09-05-mcp-common-phase1-design.md`
 
 ## Global Constraints
 

@@ -1019,7 +1019,7 @@ ______________________________________________________________________
 - `docs/plans/TEMPLATE.md` — Integration Contract structure
 - `.claude/decisions/wire-up-contract.md` — plan-time integration policy
 - `.claude/decisions/mcp-backend-wiring-discipline.md` — runtime feed-state policy
-- `docs/superpowers/specs/2026-08-31-flowscape-design.md` — per-module coverage gates,
+- `docs/specs/2026-08-31-flowscape-design.md` — per-module coverage gates,
   BPF privilege constraint
 - `raindropio-mcp/raindropio_mcp/server.py` — profile dispatch, health routes,
   sync-async bridge precedent

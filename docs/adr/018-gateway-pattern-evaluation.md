@@ -9,8 +9,8 @@ blocks_on:
   - "docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md"
   - "docs/adr/017-oneiric-shared-persistence-substrate.md"
 related:
-  - "docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md"
-  - "docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
+  - "docs/specs/2026-09-14-dhara-mcp-decomposition-design.md"
+  - "docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
   - "docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
 decision_date: null
 topic: mcp-routing
@@ -23,7 +23,7 @@ topic: mcp-routing
 **Proposed** (2026-09-16) — pending review.
 
 The Dhara MCP decomposition spec
-(`docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md`)
+(`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`)
 introduced `mcp_common.tools.dispatch.register_local_namespace(component=..., tools=[...])`
 (Phase 1.5) and its generalization
 `mcp_common.tools.dispatch.register_remote_tools(server, namespace, tools=...)`
@@ -511,10 +511,10 @@ If Option C's wrapper consolidation introduces regressions:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md`
+- `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`
   §5 Phase 1.5 (wrapper consolidation) + §4.6 (Phase 11
   `register_remote_tools` rename).
-- `docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md`
+- `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md`
   — Phase 1.5 sequencing.
 - `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
   — Phase 8 (EventBridge WAL) and Phase 10 (Postgres consolidation
@@ -524,7 +524,7 @@ If Option C's wrapper consolidation introduces regressions:
   state and process layers).
 - `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` —
   adapter catalog boundary; Option C respects the same surface.
-- `docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md`
+- `docs/specs/2026-04-27-bodai-auth-standardization-design.md`
   — auth consolidation that gives Option B its "single auth surface"
   benefit (Option C retains per-component auth secrets).
 - `.claude/decisions/wire-up-contract.md` and

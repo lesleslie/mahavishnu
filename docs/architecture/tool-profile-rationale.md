@@ -87,7 +87,7 @@ invariants. Plus the existing `test_mcp_profiles.py` regression suite.
 
 ## References
 
-- Master plan: `docs/superpowers/plans/2026-08-18-mcp-tool-profile-adoption.md`
+- Master plan: `docs/plans/2026-08-18-mcp-tool-profile-adoption.md`
 - Helper source: `/Users/les/Projects/mcp-common/mcp_common/tools/dispatch.py`
 - Profiles module: `mahavishnu/mcp/tools/profiles.py`
 - Per-group bootstrap functions: `mahavishnu/mcp/bootstrap.py`

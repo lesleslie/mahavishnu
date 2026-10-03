@@ -227,8 +227,8 @@ the re-apply so it can be traced to a config change.
 
 For the working-tree clobber pattern tracked in Step 3e above, the
 implementation plan lives at
-`docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
-(spec at `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`).
+`docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+(spec at `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`).
 **This pickup prompt does NOT replace the plan** — it addresses
 *additional* concerns (MCP transport drops in Steps 1-2, hook firing
 verification in Step 3) that are out of scope for the stash-clobber

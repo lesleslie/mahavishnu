@@ -46,8 +46,8 @@ Per-store breakdown (40 audited + 4 already-complete = 44 in scope):
 | Store | → complete | → partial | keep active |
 |---|---|---|---|
 | `docs/plans/` (16 audited) | 9 | 3 | 4 |
-| `docs/superpowers/plans/` (12) | 2 | 3 | 7 |
-| `docs/superpowers/specs/` (10) | 5 | 2 | 3 |
+| `docs/plans/` (12) | 2 | 3 | 7 |
+| `docs/specs/` (10) | 5 | 2 | 3 |
 | `docs/followups/` (2) | 0 | 0 | 2 |
 | **Subtotal audited** | **16** | **8** | **16** |
 | Index drift (already complete on disk) | 4 | — | — |
@@ -90,7 +90,7 @@ needed** — only the index regeneration.
 | `2026-09-10-settle-semantic-merge.md` | active | 75% | **partial** | `mahavishnu/settle/merge.py` exists; 16a61969, 83acd9a2, 4239c8cf, 212d3d8d landed; some requirements (git-merge-tree diagnostic, /health merge_driver signals) deferred per design. |
 | `2026-09-12-finish-partial-implementations.md` | active | 60% | **partial** | Brand-new plan just promoted from draft post 3-agent re-review; targets tracked workstreams not yet flipped. |
 
-### `docs/superpowers/plans/` — 12 audited
+### `docs/plans/` — 12 audited
 
 | Path | Current | Prob | Proposed | Evidence summary |
 |---|---|---|---|---|
@@ -107,7 +107,7 @@ needed** — only the index regeneration.
 | `2026-09-06-scapy-mcp.md` | active | 25% | keep active | Feed registry landed (784b3f88) but full Phase 0a/0b/1 surface shows no evidence. |
 | `2026-09-12-jot-drain-polish.md` | active | 55% | **partial** | Items 2, 5, 6 (and partial 3) landed (444fa4a9, 4239c8cf, 655143b9, 664eed32, 8bb0a466, ce27c697, def3eb7a); items 1 (slash command) and 4 (spec-lock) show no commit yet. |
 
-### `docs/superpowers/specs/` — 10 audited
+### `docs/specs/` — 10 audited
 
 | Path | Current | Prob | Proposed | Evidence summary |
 |---|---|---|---|---|

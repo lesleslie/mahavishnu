@@ -19,7 +19,7 @@ fake ``put`` callable when asked for ``"put"``.
 Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary —
 internal async (MemoryOutbox flush, PostgresBackendLock resolution) is the
 substrate's concern, not the caller's. See
-``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the full architectural decision.
 """
 

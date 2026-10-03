@@ -61,7 +61,7 @@ The roadmap assumes the following operating stance:
 
 ## Phase 1: Harden the Control Plane
 
-**Status**: COMPLETE — shipped 2026-05-07. `checkpoint.py` and `qc/checker.py` rewritten as real HTTP MCP clients; `is_healthy()` guards wired into pre-execution path; 45 unit tests passing. See `docs/superpowers/plans/2026-05-07-bodai-phase1-harden-control-plane.md`. The workstreams below are reference only.
+**Status**: COMPLETE — shipped 2026-05-07. `checkpoint.py` and `qc/checker.py` rewritten as real HTTP MCP clients; `is_healthy()` guards wired into pre-execution path; 45 unit tests passing. See `docs/plans/2026-05-07-bodai-phase1-harden-control-plane.md`. The workstreams below are reference only.
 
 **Window**: 0-30 days
 
@@ -111,7 +111,7 @@ Without this phase, the ecosystem risks building more advanced automation on top
 
 ### Workstreams
 
-- Execute the shared auth migration described in `docs/superpowers/plans/2026-04-27-bodai-auth-standardization.md`.
+- Execute the shared auth migration described in `docs/plans/2026-04-27-bodai-auth-standardization.md`.
 - Move JWT verification, RBAC, audit event shapes, and service identity rules into `mcp-common`.
 - Standardize request correlation IDs, actor identity, workflow IDs, and repository IDs across service boundaries.
 - Define a shared event schema for:
@@ -147,7 +147,7 @@ This is what turns the Bodai ecosystem from "connected services" into a trustwor
 
 ## Phase 3: Make Cross-Repo Coordination Operational
 
-**Status**: COMPLETE — shipped 2026-05-07. `get_ecosystem_status()` + `coord_get_ecosystem_status` MCP tool + `ecosystem-status`/`roadmap` CLI commands added; Akosha integration in `CoordinationMemory`; `_run_command_safe()` security fix; 19 new tests (154 total coordination tests). See `docs/superpowers/plans/2026-05-07-bodai-phase3-cross-repo-coordination.md`. The workstreams below are reference only.
+**Status**: COMPLETE — shipped 2026-05-07. `get_ecosystem_status()` + `coord_get_ecosystem_status` MCP tool + `ecosystem-status`/`roadmap` CLI commands added; Akosha integration in `CoordinationMemory`; `_run_command_safe()` security fix; 19 new tests (154 total coordination tests). See `docs/plans/2026-05-07-bodai-phase3-cross-repo-coordination.md`. The workstreams below are reference only.
 
 **Window**: 60-90 days
 
@@ -188,13 +188,13 @@ This is the phase that makes Mahavishnu feel like an actual control plane instea
 ## Phase 4: Add Code-Aware Automation and Safer Agent Work
 
 **Window**: 90-120 days
-**Status**: COMPLETE — shipped 2026-04-30. All 42 tasks in `docs/superpowers/plans/2026-04-26-code-indexing-integration.md` are done. Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy. The workstreams below are reference only.
+**Status**: COMPLETE — shipped 2026-04-30. All 42 tasks in `docs/plans/2026-04-26-code-indexing-integration.md` are done. Call chain resolution, impact analysis, and incremental re-indexing are live in Session-Buddy. The workstreams below are reference only.
 
 **Goal**: Give the ecosystem structural code understanding so automation can reason about blast radius and dependencies before acting.
 
 ### Workstreams
 
-- Execute the code graph integration path in `docs/superpowers/plans/2026-04-26-code-indexing-integration.md`.
+- Execute the code graph integration path in `docs/plans/2026-04-26-code-indexing-integration.md`.
 - Let Session-Buddy own the ecosystem code graph and expose code call chain and impact analysis tools.
 - Let Mahavishnu orchestrate indexing, incremental refresh, and operator-facing queries.
 - Add pre-execution risk checks for automated changes:

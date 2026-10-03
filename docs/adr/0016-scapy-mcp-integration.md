@@ -6,20 +6,20 @@ date: 2026-09-06
 last_reviewed: 2026-09-07
 reviewed_by: "i10-parallel-reviewer (architecture-council lens) 2026-09-07"
 superseded_by: null
-blocks_on: ["docs/superpowers/specs/2026-08-31-flowscape-design.md"]
+blocks_on: ["docs/specs/2026-08-31-flowscape-design.md"]
 decision_date: 2026-09-06
 topic: mcp-enrichment-posture
 rev: 4
 rev_note: "Closed mcp-common authentication primitives v4+ deferred item (item 3) — auth surface now designed and shipped in mcp-common 0.25.0 (2026-09-07)."
 related_artefacts:
-  - "docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md (canonical spec, 2026-09-06)"
-  - "docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md (implementation plan, 17 tasks closed)"
+  - "docs/specs/2026-09-06-mcp-common-auth-primitives-design.md (canonical spec, 2026-09-06)"
+  - "docs/plans/2026-09-07-mcp-common-auth-primitives.md (implementation plan, 17 tasks closed)"
   - "mcp-common/mcp_common/auth/{principal,provider,context,middleware,health,config,identity}.py"
   - "docs/legal/gdpr-posture.md (added §10 in this revision)"
 related:
-  - "docs/superpowers/plans/2026-08-31-flowscape.md"
-  - "docs/superpowers/specs/2026-08-31-flowscape-design.md"
-  - "docs/superpowers/plans/2026-09-06-scapy-mcp.md"
+  - "docs/plans/2026-08-31-flowscape.md"
+  - "docs/specs/2026-08-31-flowscape-design.md"
+  - "docs/plans/2026-09-06-scapy-mcp.md"
   - "docs/adr/0016-multi-agent-review.md"
   - "docs/feature-tracking/scapy-mcp-enrichment.md"
 ---
@@ -28,11 +28,11 @@ related:
 
 ## Context
 
-Flowscape v1 (`docs/superpowers/plans/2026-08-31-flowscape.md`) is a macOS 3D network visualization tool that ships with statistical heuristics (beaconing, port-scan) and Etherape-shaped top-talkers + conversation panels. The original plan deferred scapy-mcp integration to v2+, treating it as an "enrichment plugin for `heuristics.py` / `graph.py`".
+Flowscape v1 (`docs/plans/2026-08-31-flowscape.md`) is a macOS 3D network visualization tool that ships with statistical heuristics (beaconing, port-scan) and Etherape-shaped top-talkers + conversation panels. The original plan deferred scapy-mcp integration to v2+, treating it as an "enrichment plugin for `heuristics.py` / `graph.py`".
 
 Three forces converged in 2026-09-06 to make v1 integration the right move:
 
-1. **Substrate readiness**: `mcp-common` ships `bootstrap_baseline_tools`, `seed_liveness_context`, `register_http_health_route` for server-side baseline. Current published version is **0.24.4** (6 minor releases headroom; no API in flight). Client-side primitives used here: `fastmcp.Client` against a streamable-HTTP endpoint (`http://scapy_mcp_host:scapy_mcp_port/mcp`), `mcp_common.testing.baseline_surface.assert_baseline_surface(url)` as a preflight assertion, and `BASELINE_TOOL_NAMES` from `mcp_common.baseline_tools` (note: `EXPECTED_BASELINE` does NOT exist as an mcp-common symbol — sibling stub-activation plans have hit the same gap; we define it locally). scapy-mcp itself is an active implementation plan (`docs/superpowers/plans/2026-09-06-scapy-mcp.md`) with port **3056** allocated by the `2026-09-06-port-bodai-reconciliation.md` plan.
+1. **Substrate readiness**: `mcp-common` ships `bootstrap_baseline_tools`, `seed_liveness_context`, `register_http_health_route` for server-side baseline. Current published version is **0.24.4** (6 minor releases headroom; no API in flight). Client-side primitives used here: `fastmcp.Client` against a streamable-HTTP endpoint (`http://scapy_mcp_host:scapy_mcp_port/mcp`), `mcp_common.testing.baseline_surface.assert_baseline_surface(url)` as a preflight assertion, and `BASELINE_TOOL_NAMES` from `mcp_common.baseline_tools` (note: `EXPECTED_BASELINE` does NOT exist as an mcp-common symbol — sibling stub-activation plans have hit the same gap; we define it locally). scapy-mcp itself is an active implementation plan (`docs/plans/2026-09-06-scapy-mcp.md`) with port **3056** allocated by the `2026-09-06-port-bodai-reconciliation.md` plan.
 
 2. **Build-time scapy already exists**: `scripts/gen_pcap_fixtures.py` uses scapy as a build-time dep to generate deterministic test pcaps. Switching from static fixtures to runtime scapy-mcp enrichment is a feature gain, not just a refactor — Flowscape gets *fresh* PCAP analysis (top-N ranking, threat score enrichment) instead of only the static fixture corpus.
 
@@ -242,7 +242,7 @@ Data-driven thresholds (closes L5 BLOCKER B-Op2; supersedes the v1 operator-judg
 
 ## Open Questions
 
-1. **Multi-host scapy-mcp**: what happens when scapy-mcp is on a remote host? Currently `scapy_mcp_host = localhost` is the default. Remote requires explicit user opt-in AND mcp-common's authentication primitives — now designed and shipped in mcp-common 0.25.0 (2026-09-07, see `docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md` and `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`). Remote-host deployment now flows through `BearerTokenMiddleware` + `JWTIdentityProvider` + `AnthropicIdentityProvider` (JWKS-only) with per-request trusted-issuers default-deny enforcement. v4 revision (this one) closes the auth-primitive gate.
+1. **Multi-host scapy-mcp**: what happens when scapy-mcp is on a remote host? Currently `scapy_mcp_host = localhost` is the default. Remote requires explicit user opt-in AND mcp-common's authentication primitives — now designed and shipped in mcp-common 0.25.0 (2026-09-07, see `docs/specs/2026-09-06-mcp-common-auth-primitives-design.md` and `docs/plans/2026-09-07-mcp-common-auth-primitives.md`). Remote-host deployment now flows through `BearerTokenMiddleware` + `JWTIdentityProvider` + `AnthropicIdentityProvider` (JWKS-only) with per-request trusted-issuers default-deny enforcement. v4 revision (this one) closes the auth-primitive gate.
 2. **Bidirectional enrichment**: should Flowscape expose its own heuristics back to scapy-mcp as MCP tools (server-mode for THIS specific surface)? Out of scope for this ADR; revisit if unifi-mcp or similar wants Flowscape's heuristic events.
 3. **Wire-format regression detection** (L5 BLOCKER B-Op6, partial close): the runtime wire-format guard is specified (regex-based field-name filter over `enrich_batch()` return values; emit WARN + increment `flowscape.enrichment.wire_format_violation_total` on hit) but the implementation is deferred to v3 alongside the proto type definitions (`GraphEdge`, `HeuristicEvent`). Without those types, the merge step itself is a phantom — see §Deferred to v3 below.
 
@@ -357,11 +357,11 @@ class TopNChurnDetail(BaseModel):
 
 ## Cross-References
 
-- **Flowscape plan** (`docs/superpowers/plans/2026-08-31-flowscape.md`) — revision 5 (2026-09-06) added §"MCP integration scope" section referencing this ADR
-- **Flowscape spec** (`docs/superpowers/specs/2026-08-31-flowscape-design.md`) — revision 3 (2026-09-06) updated subsystems table, PEP 735 dep groups, out-of-scope table, and MCP activation regulatory event
-- **scapy-mcp plan** (`docs/superpowers/plans/2026-09-06-scapy-mcp.md`) — the dependent server; ships port 3056 + `scapy_mcp_enabled` consumer semantics
-- **Port allocation** (`docs/superpowers/plans/2026-09-06-port-bodai-reconciliation.md`) — port 3056 is allocated to scapy-mcp via this plan
-- **Registry** (`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`) — registers scapy-mcp in `settings/ecosystem.yaml`
+- **Flowscape plan** (`docs/plans/2026-08-31-flowscape.md`) — revision 5 (2026-09-06) added §"MCP integration scope" section referencing this ADR
+- **Flowscape spec** (`docs/specs/2026-08-31-flowscape-design.md`) — revision 3 (2026-09-06) updated subsystems table, PEP 735 dep groups, out-of-scope table, and MCP activation regulatory event
+- **scapy-mcp plan** (`docs/plans/2026-09-06-scapy-mcp.md`) — the dependent server; ships port 3056 + `scapy_mcp_enabled` consumer semantics
+- **Port allocation** (`docs/plans/2026-09-06-port-bodai-reconciliation.md`) — port 3056 is allocated to scapy-mcp via this plan
+- **Registry** (`docs/plans/2026-09-06-registry-manifest-migration.md`) — registers scapy-mcp in `settings/ecosystem.yaml`
 - **Server-mode MCP gate** (ADR 0007) — separate posture, not superseded by this ADR
 
 ## Review History
@@ -384,14 +384,14 @@ class TopNChurnDetail(BaseModel):
   - **L2 I-3.5 (enrichment payload shape)**: pinned `EnrichmentMetadata` Pydantic model with `extra="forbid"` and an allow-list of `{top_n_rank, threat_score, confidence_boost}`.
   - **L1 I.A2 (client-side primitive)**: replaced `apply_tool_profile` reference with `fastmcp.Client` against the streamable-HTTP endpoint.
   - **L1 I.A3 (`EXPECTED_BASELINE` gap)**: cited `BASELINE_TOOL_NAMES` from `mcp_common.baseline_tools`; flagged that `EXPECTED_BASELINE` does not exist as an mcp-common symbol and is a recurring import failure mode across the stub-activation sibling plans.
-  - **Three BLOCKERs remain deferred to v3** because they require work outside this ADR: **CB-4** (phantom APIs in spec — spec lives in `docs/superpowers/specs/`), **CB-5** (phantom proto types — proto lives in `proto/flowscape.proto` which doesn't exist yet), and the full **CB-3 GDPR reframe + `docs/legal/gdpr-posture.md`** (pre-1.0 scope currently makes it a v1.0-public-release prerequisite).
+  - **Three BLOCKERs remain deferred to v3** because they require work outside this ADR: **CB-4** (phantom APIs in spec — spec lives in `docs/specs/`), **CB-5** (phantom proto types — proto lives in `proto/flowscape.proto` which doesn't exist yet), and the full **CB-3 GDPR reframe + `docs/legal/gdpr-posture.md`** (pre-1.0 scope currently makes it a v1.0-public-release prerequisite).
 - 2026-09-06 — **v3 revision**. Closes the three BLOCKERs that remained deferred at v2 close:
   - **CB-3 (GDPR full reframe + posture doc)**: created `docs/legal/gdpr-posture.md` capturing the controller/processor reframing (Article 4(7)+(8)), personal-data scope (heuristic event metadata IS personal data per Recital 30 + CJEU *Breyer*), lawful basis analysis (Article 6(1)(f) legitimate interests + Article 6(1)(a) consent for remote-host), Article 35 DPIA scope and v1.x-public-release prerequisites, Article 32 security baseline inheritance, Articles 44-50 international transfers, and the v1.x-public-release trigger. See ADR §Scope for cross-reference.
   - **CB-4 (phantom APIs in spec)**: spec edits landed. Replaced `oneiric.config.load_app_settings` with `from oneiric.core.config import load_settings`. Replaced `MCPServerSettings.model_config_section(...)` (6 occurrences) with explicit `BaseModel` inheritance. Added `BaseModel` inheritance to `BeaconingSettings`/`PortScanSettings`/`TopNChurnSettings` (which were plain classes — pre-existing bug, now fixed). Replaced `assert` in `LayoutSettings._check_bounds` with `if not ... raise ValueError(...)` per crackerjack B101 production rule. Added new `EnrichmentSettings(BaseModel)` per ADR 0016 v2.
   - **CB-5 (phantom proto types)**: added §"Proto contracts" specifying `GraphEdge`, `GraphEdgeEnrichment`, `HeuristicEvent`, `BeaconingDetail`, `PortScanDetail`, `TopNChurnDetail` as `BaseModel` with `extra="forbid"`. Wire-format invariant preserved (only `payload_sha256_prefix` is payload-derived; new `enrichment` field is opt-in). Round-trip property test specified. Phase 0b proto codegen lands the proto schema; field-for-field parity is required.
   - **Four items remain open, deferred to v4+**: (1) runtime wire-format guard implementation (L5 B-Op6 — needs proto types which now exist), (2) `.claude/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) mcp-common authentication primitives when designed (ADR 0016 v2 §"Open Questions" #1), (4) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
 - 2026-09-07 — **v4 revision**. Closes deferred item (3) — mcp-common authentication primitives now designed and shipped.
-  - **Closed deferred item (3) — mcp-common authentication primitives**: spec at `docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md` (canonical) and implementation plan at `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md` (17 tasks, all closed) shipped `mcp_common.auth.*` surface in mcp-common 0.25.0 (2026-09-07). Components: `Principal` model, `IdentityProvider` Protocol, `JWTIdentityProvider` (HS256, algorithms pinned, default-deny issuers, leeway=30), `AnthropicIdentityProvider` (JWKS verification only — OAuth flow deferred to Task 5b follow-up spec), `BearerTokenMiddleware` (FastMCP, uses `get_http_headers()`, bypass set for MCP handshake methods), `AuthErrorTranslationMiddleware` (JSON-RPC `-32001`), `@require_auth` decorator (reads Principal from request-scoped Context), `AuthConfig` Pydantic v2 surface (with `trusted_issuers`, `identity_providers`, `default_provider`, `allow_anonymous_paths`), `AuthHealth` Pydantic model (4-signal wiring-discipline shape, R2-2 redaction default). Sibling servers (scapy-mcp, archive-org-mcp, medium-mcp) wired via `Runtime._build_auth_middleware()` + `_build_auth_health_provider()`. `gdpr-posture.md` §10 added in this revision cycle to document Article 32 alignment.
+  - **Closed deferred item (3) — mcp-common authentication primitives**: spec at `docs/specs/2026-09-06-mcp-common-auth-primitives-design.md` (canonical) and implementation plan at `docs/plans/2026-09-07-mcp-common-auth-primitives.md` (17 tasks, all closed) shipped `mcp_common.auth.*` surface in mcp-common 0.25.0 (2026-09-07). Components: `Principal` model, `IdentityProvider` Protocol, `JWTIdentityProvider` (HS256, algorithms pinned, default-deny issuers, leeway=30), `AnthropicIdentityProvider` (JWKS verification only — OAuth flow deferred to Task 5b follow-up spec), `BearerTokenMiddleware` (FastMCP, uses `get_http_headers()`, bypass set for MCP handshake methods), `AuthErrorTranslationMiddleware` (JSON-RPC `-32001`), `@require_auth` decorator (reads Principal from request-scoped Context), `AuthConfig` Pydantic v2 surface (with `trusted_issuers`, `identity_providers`, `default_provider`, `allow_anonymous_paths`), `AuthHealth` Pydantic model (4-signal wiring-discipline shape, R2-2 redaction default). Sibling servers (scapy-mcp, archive-org-mcp, medium-mcp) wired via `Runtime._build_auth_middleware()` + `_build_auth_health_provider()`. `gdpr-posture.md` §10 added in this revision cycle to document Article 32 alignment.
   - **Open Question #1 (Multi-host scapy-mcp)**: updated to reflect that the auth gate is now open — remote-host deployment is technically possible (bearer + trusted-issuers), but the v1.x-public-release gate (Article 35 DPIA + consent-gate extension, item 4) remains the policy-level barrier for shipping to non-internal users.
   - **Three items remain open, deferred to v5+**: (1) runtime wire-format guard implementation (L5 B-Op6), (2) `.claude/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
 

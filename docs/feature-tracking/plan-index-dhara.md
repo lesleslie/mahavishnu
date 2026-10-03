@@ -14,7 +14,7 @@ Status: **adopted**
 ## What this tracks
 
 The lifecycle of the plan_index Dhara-canonical layer per
-`docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`.
+`docs/specs/2026-09-10-plan-index-dhara-design.md`.
 
 ## State transitions
 
@@ -97,6 +97,6 @@ date plus 14 days) *and* this file's `status` is `adopted`.
 
 ## Related
 
-- Plan: `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md`
+- Plan: `docs/specs/2026-09-10-plan-index-dhara-design.md`
 - Audit evidence: `scripts/audit_plan_index.py`
 - Gate: `scripts/check_step8_ready.py`

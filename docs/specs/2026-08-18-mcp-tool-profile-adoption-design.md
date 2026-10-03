@@ -362,6 +362,6 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - `crackerjack/mcp/tools/discover_tools.py:189-229` — Crackerjack's `discover_tools(query)` implementation (W2a `discovery_fn` override must preserve this shape)
 - `crackerjack/mcp/tools/discover_tools.py` — TO-BE-DELETED in W2a (178 lines incl. `TOOL_REGISTRY` + `DEFERRED_TOOLS` + `register_discover_tools`)
 - `crackerjack/docs/architecture/MEMORY_ARCHITECTURE.md` — annotated as resolved in W2a with the literal text provided above
-- `docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md` — sibling spec
+- `docs/specs/2026-08-12-bodai-ecosystem-consistency-design.md` — sibling spec
 - `.claude/decisions/removed-scripts.md`, `bodai-observability-pattern.md` — pattern for `tool-profile-rationale.md` per-repo decision files
 - `mcp-common` `pyproject.toml` — pin `mcp<2` per `minimax-coding-plan-mcp-v2-conflict` memory

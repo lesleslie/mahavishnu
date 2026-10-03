@@ -13,8 +13,8 @@ role: canonical
 **Created:** 2026-08-10
 **Last updated:** 2026-08-10
 **Repo(s):** /Users/les/Projects/mahavishnu
-**Plan:** `docs/superpowers/plans/2026-08-10-m-approval-log.md`
-**Spec:** `docs/superpowers/specs/2026-08-10-m-approval-log-design.md`
+**Plan:** `docs/plans/2026-08-10-m-approval-log.md`
+**Spec:** `docs/specs/2026-08-10-m-approval-log-design.md`
 
 ## State — pick one
 
@@ -119,8 +119,8 @@ Owner: mahavishnu core. Target: v1.1 hardening cycle.
 
 ## Related
 
-- Plan: `docs/superpowers/plans/2026-08-10-m-approval-log.md`
-- Spec: `docs/superpowers/specs/2026-08-10-m-approval-log-design.md`
+- Plan: `docs/plans/2026-08-10-m-approval-log.md`
+- Spec: `docs/specs/2026-08-10-m-approval-log-design.md`
 - Task 1 commits: `c8cec717` (producer) → `3fe46719` (cross-portfolio log warn consistency)
 - Task 2 commits: `d4c0937d` (log error type not str(err)) → `136df375` (consumer)
 - Task 3 commit: `b28ac619` (wire record_approval_decision into decision flow)

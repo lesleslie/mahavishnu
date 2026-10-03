@@ -862,7 +862,7 @@ def get_workers_by_category() -> dict[WorkerCategory, list[WorkerConfig]]:
 
 # wired: re-exported in mahavishnu/workers/__init__.py (line 49) and listed in
 # __all__ (line 91). Kept as compatibility wrapper per
-# docs/superpowers/specs/2026-07-21-worker-readiness-design.md:298.
+# docs/specs/2026-07-21-worker-readiness-design.md:298.
 def validate_worker_dependencies() -> dict[str, bool]:
     """Check if required tools for workers are installed.
 

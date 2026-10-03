@@ -187,7 +187,7 @@ A v1.5 release closes this followup by:
 
 - Source plan: `docs/plans/2026-07-26-mahavishnu-acp-server.md`
   §10 (the v1.5 follow-ups enumeration this file mirrors)
-- Source design: `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`
+- Source design: `docs/specs/2026-07-15-mahavishnu-acp-server-design.md`
 - TUI companion tracker: `docs/feature-tracking/tui.md` (the
   consumer of v1.5.7)
 - License reconciliation (v1.5.6): see the **Resolved Items** section above

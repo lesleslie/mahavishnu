@@ -14,7 +14,7 @@ topic: pattern-learning-scaffolding
 > **Goal:** Build a pattern learning and scaffolding system that learns Fastblocks/Oneiric architectural patterns from existing projects and generates new web applications from composed patterns — "Lovable for Fastblocks."
 > **Architecture:** Three-module pipeline — Pattern Library (YAML storage + query), Pattern Extractor (manual curation + AI suggestion), and Scaffolding Engine (Phase 1 deterministic template rendering, Phase 2 chat-driven incremental merge). Patterns are YAML files in `mahavishnu/patterns/`, version-controlled and human-editable.
 > **Tech Stack:** Python 3.13, Pydantic v2, Jinja2 (dual environments), Typer (CLI), YAML (pattern storage), difflib (structural similarity)
-> **Spec:** `docs/superpowers/specs/2026-04-26-pattern-learning-scaffolding-design.md`
+> **Spec:** `docs/specs/2026-04-26-pattern-learning-scaffolding-design.md`
 > **Working directory:** `/Users/les/Projects/mahavishnu`
 > **Prerequisites:** Code Indexing Integration (plan 1 of 3), Config Consolidation, Agent & Skill Modernization
 

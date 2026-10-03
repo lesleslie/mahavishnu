@@ -19,7 +19,7 @@ a 2026-08-26 incident in oneiric where a dispatched merge agent's default
 template included `git push origin main` and the push landed before a STOP
 message arrived.
 
-The 2026-10-03 spec `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+The 2026-10-03 spec `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 introduces a single-purpose, mechanically-gated branch-to-`main` workflow in
 this repo. The workflow's stage 5 is `git push origin main`, executed only by
 the Python module invoked from the SessionEnd hook or the `/merge-to-main`
@@ -35,7 +35,7 @@ canonical exception. Spec §4.6 is a summary of this doc.
 
 1. **Permitted push, in scope:** `git push origin main`, only on the local
    `main` branch, only after stages 1–4 of the workflow defined in
-   `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+   `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
    complete successfully, only by the Python module invoked from one of:
    - `.claude/hooks/agent-merge-on-end.py` (SessionEnd hook)
    - `.claude/commands/merge-to-main.md` (slash command body)
@@ -90,7 +90,7 @@ canonical exception. Spec §4.6 is a summary of this doc.
 - **Amends (by cross-link, NOT inline amendment):**
   `feedback-bodai-push-is-user-controlled` — the default rule this exception
   narrows.
-- **Spec source:** `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+- **Spec source:** `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
   §4.6 (push rule summary) and §REQ-007 (deliverable verification).
 - **Implementation:**
   - `mahavishnu/core/merge_to_main.py::run_pipeline()` — stage 5 push.

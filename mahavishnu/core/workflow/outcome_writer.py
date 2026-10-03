@@ -7,7 +7,7 @@ boundary so bad payloads never reach the durable store.
 Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary.
 The substrate's internal handling (MemoryOutbox queue, async flush) is
 opaque to callers. This producer is sync by design — see
-``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the cross-portfolio rationale.
 
 Feature flag: ``WORKFLOW_OUTCOME_V1_ENABLED`` (default True). When False, the

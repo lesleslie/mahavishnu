@@ -38,7 +38,7 @@ Authority matrix
 ----------------
 
 When the repo contains a Mahavishnu-style layout (detected by the
-presence of both ``docs/adr/`` and ``docs/superpowers/``), the matrix
+presence of both ``docs/adr/`` and ``docs/plans/``), the matrix
 section preserves the original Mahavishnu/Bodai authority rows. On
 non-Mahavishnu repos the matrix is generated dynamically from the
 discovered stores, listing each store's path and per-status document
@@ -130,8 +130,8 @@ MIN_STORE_DOCS: int = 2
 STORE_LABELS: dict[str, str] = {
     "docs/adr/": "Architecture Decision Records (`docs/adr/`)",
     "docs/plans/": "Plans & Specifications (`docs/plans/`)",
-    "docs/superpowers/specs/": "Superpowers Specs (`docs/superpowers/specs/`)",
-    "docs/superpowers/plans/": "Superpowers Plans (`docs/superpowers/plans/`)",
+    "docs/specs/": "Superpowers Specs (`docs/specs/`)",
+    "docs/plans/": "Superpowers Plans (`docs/plans/`)",
     ".claude/decisions/": "Repo-local Decisions (`.claude/decisions/`)",
     "docs/followups/": "Follow-up Notes (`docs/followups/`)",
 }
@@ -437,7 +437,7 @@ and reproduced here for index readability.
 
 def _is_mahavishnu_layout(repo_root: Path) -> bool:
     """True iff the repo looks like Mahavishnu's own docs layout (both
-    ``docs/adr/`` and ``docs/superpowers/`` present). Used to switch the
+    ``docs/adr/`` and ``docs/plans/`` present). Used to switch the
     Authority Matrix between the rich Mahavishnu-specific table and the
     generic dynamic one."""
     return (repo_root / "docs" / "adr").is_dir() and (repo_root / "docs" / "superpowers").is_dir()
@@ -469,7 +469,7 @@ def _authority_matrix(
 | Bodai-wide observability surface | `docs/plans/2026-07-11-phase-6-bodai-observability.md` |
 | Repo-local decisions index | `.claude/decisions/README.md` |
 | Follow-up tracker index | `docs/followups/README.md` |
-| Source plan defining this index | `docs/superpowers/plans/2026-07-16-plan-lifecycle-unification.md` |
+| Source plan defining this index | `docs/plans/2026-07-16-plan-lifecycle-unification.md` |
 """
 
     # Generic matrix — list every discovered store with status breakdown.

@@ -23,9 +23,9 @@ ______________________________________________________________________
 **Files:**
 
 - Create: `mcp-common/docs/iterm2-applescript-protocol.md`
-- Reference: `docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md`
+- Reference: `docs/specs/2026-05-23-unified-iterm2-applescript-design.md`
 
-This task is complete — the design doc at `docs/superpowers/specs/2026-05-23-unified-iterm2-applescript-design.md` serves as the source of truth. Copy the canonical portions to `mcp-common/docs/iterm2-applescript-protocol.md` for discoverability.
+This task is complete — the design doc at `docs/specs/2026-05-23-unified-iterm2-applescript-design.md` serves as the source of truth. Copy the canonical portions to `mcp-common/docs/iterm2-applescript-protocol.md` for discoverability.
 
 **Steps:**
 

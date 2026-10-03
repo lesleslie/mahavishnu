@@ -17,7 +17,7 @@ topic: shared-oneiric-substrate-phase-c
 
 **Tech Stack:** Python 3.14, `oneiric.adapters.storage.{gcs,s3,local,azure}`, fakeredis-compatible ACL testing, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.3, §6.7 (Phase C1+C2).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.3, §6.7 (Phase C1+C2).
 
 ## Global Constraints
 
@@ -325,7 +325,7 @@ Phase C is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.3 — Phase C contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.3 — Phase C contract
 - `oneiric/adapters/storage/{gcs,s3,local,azure}.py` — existing storage adapters
 - `akosha/storage/cold_store.py:29` — `class ColdStore` (line targets for replacement)
 - `session_buddy/storage/cloud_sync.py` — line-target for deletion

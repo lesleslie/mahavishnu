@@ -601,5 +601,5 @@ ______________________________________________________________________
 - **Sub-plan:** 2 of 3 (Read)
 - **Depends on:** sub-plan 1 (capture) at `8f8a90ea`
 - **Estimated implementation:** ~1,400 lines code, ~1,700 lines tests, 2-3 days
-- **Spec path:** `docs/superpowers/specs/2026-09-09-jot-read-design.md`
-- **Implementation plan path:** `docs/superpowers/plans/<written by writing-plans skill>.md`
+- **Spec path:** `docs/specs/2026-09-09-jot-read-design.md`
+- **Implementation plan path:** `docs/plans/<written by writing-plans skill>.md`

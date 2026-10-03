@@ -9,7 +9,7 @@ topic: mcp-stub-activation
 
 # Sibling `repos.yaml` Audit
 
-Opened by Plan 0a (`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`,
+Opened by Plan 0a (`docs/plans/2026-09-06-registry-manifest-migration.md`,
 Task 8) to bound its own scope. `crackerjack/settings/repos.yaml` and
 `mcp-common/settings/repos.yaml` exist alongside Mahavishnu's; their relationship was
 unverified.

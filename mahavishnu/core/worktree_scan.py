@@ -1,6 +1,6 @@
 """Worktree scan: classifier + scan driver (3-pass pipeline) + report formatters.
 
-Spec: docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md
+Spec: docs/specs/2026-09-07-worktree-cleanup-design.md
 Decision: .claude/decisions/worktree-cleanup-policy.md
 """
 

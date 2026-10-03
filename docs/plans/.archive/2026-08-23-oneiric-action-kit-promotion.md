@@ -12,7 +12,7 @@ topic: oneiric-action-kit-promotion
 > **Goal:** Establish discovery-first promotion infrastructure for oneiric action kits across the bodai ecosystem: a canonical catalog in oneiric, a decision doc + auto-trigger skill in mahavishnu, and one-line breadcrumbs in every other bodai repo.
 > **Architecture:** Three-layer split. oneiric owns the catalog (`oneiric/docs/action-kits.md` — source of truth for kit semantics). mahavishnu owns the decision (`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`) and the runtime surface (`mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`). Every other bodai repo carries a one-line breadcrumb pointing at the canonical paths.
 > **Tech Stack:** Markdown + YAML frontmatter; oneiric action-kit Python API (existing).
-> **Spec:** `docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md`
+> **Spec:** `docs/specs/2026-08-22-oneiric-action-kit-promotion-design.md`
 > **Working directories:**
 >   - oneiric repo: `/Users/les/Projects/oneiric`
 >   - mahavishnu repo: `/Users/les/Projects/mahavishnu` (use the existing `worktree-w4-promote-oneiric-kits` worktree for mahavishnu-side tasks)

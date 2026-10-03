@@ -85,7 +85,7 @@ These safeguards would have prevented or contained the 2026-07-20 incident. Docu
 
 This postmortem is "done" when:
 
-- [ ] Filed at `/Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-07-25-license-false-intent-postmortem.md`
+- [ ] Filed at `/Users/les/Projects/mahavishnu/docs/plans/2026-07-25-license-false-intent-postmortem.md`
 - [ ] Cross-referenced from [2026-07-13-mcp-server-family-mcpbase-migration.md](./2026-07-13-mcp-server-family-mcpbase-migration.md) (the re-anchor Edit G already added this note)
 - [ ] Future agents load this plan when they encounter unexpected `D` states in any Bodai repo
 

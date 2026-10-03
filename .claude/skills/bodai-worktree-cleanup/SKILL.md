@@ -88,7 +88,7 @@ or `python.*mahavishnu` — PID recycling is real).
 - Canonical rules: `.claude/decisions/worktree-cleanup-policy.md`
 - Tier rubric and lock + live-PID semantics: same doc, § Decision rule
   and § Lock + live-PID semantics
-- Origin plan: `docs/superpowers/plans/2026-09-07-worktree-cleanup.md`
+- Origin plan: `docs/plans/2026-09-07-worktree-cleanup.md`
 - Implementation:
   - `mahavishnu/core/worktree_scan.py` (classifier)
   - `mahavishnu/worktree_cli.py` (CLI)

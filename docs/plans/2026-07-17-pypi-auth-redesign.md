@@ -1460,7 +1460,7 @@ return auth, list(providers)
 
 ______________________________________________________________________
 
-**Plan complete and saved to `docs/superpowers/plans/2026-07-17-pypi-auth-redesign.md`.**
+**Plan complete and saved to `docs/plans/2026-07-17-pypi-auth-redesign.md`.**
 
 Two execution options:
 

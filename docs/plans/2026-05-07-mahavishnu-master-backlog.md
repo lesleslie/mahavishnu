@@ -92,8 +92,8 @@ ______________________________________________________________________
 
 ## Priority 3 — Config Consolidation
 
-**Plan**: `docs/superpowers/plans/2026-04-26-config-consolidation.md`
-**Spec**: `docs/superpowers/specs/2026-04-26-config-consolidation-design.md`
+**Plan**: `docs/plans/2026-04-26-config-consolidation.md`
+**Spec**: `docs/specs/2026-04-26-config-consolidation-design.md`
 **Status**: delivered 2026-05-07
 **Spec misalignment (2026-05-07)**: The existing spec covers file migration from `~/.claude/` into the project directory — it does not contain `UnifiedConfig`, `startup validation`, or `ConfigValidationError`. The validation tasks in this backlog entry are entirely unspecced. Before implementing them, write a separate design note covering: `UnifiedConfig` Pydantic model shape, which of the 5 YAML files it imports, `ConfigValidationError` structure, where startup validation hooks in (note: `MahavishnuApp` has no `initialize()` method — use `wait_for_dependencies()` or add one), and soft-launch strategy (`--config-strict` flag).
 **Architecture note**: `MahavishnuApp` has no `initialize()` method. The hook point for startup validation is `wait_for_dependencies()` or a new explicit `async def initialize()` entry point.
@@ -119,7 +119,7 @@ ______________________________________________________________________
 
 ## Priority 4 — RunPod Pool — Remaining Subtasks
 
-**Plan**: `docs/superpowers/plans/2026-05-01-runpod-flash-pool.md`
+**Plan**: `docs/plans/2026-05-01-runpod-flash-pool.md`
 **Status**: delivered 2026-05-07 — all 3 subtasks shipped; 11/11 tests passing
 
 ### Completed tasks

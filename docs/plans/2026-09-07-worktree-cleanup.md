@@ -20,7 +20,7 @@ topic: worktree-management
 
 **Tech Stack:** Python 3.14+, Typer (existing CLI framework in `worktree_cli.py`), Oneiric config loading, Typer-style `@worktree_app.command` decorator pattern, pytest markers (`unit`, `integration`, `crackerjack`)
 
-**Spec:** `docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md` (commit `2e70c9e3`)
+**Spec:** `docs/specs/2026-09-07-worktree-cleanup-design.md` (commit `2e70c9e3`)
 
 ---
 
@@ -404,7 +404,7 @@ Expected: `ModuleNotFoundError: No module named 'mahavishnu.core.worktree_scan'`
 ```python
 """Worktree scan: classifier + scan driver (3-pass pipeline) + report formatters.
 
-Spec: docs/superpowers/specs/2026-09-07-worktree-cleanup-design.md
+Spec: docs/specs/2026-09-07-worktree-cleanup-design.md
 """
 from __future__ import annotations
 

@@ -830,7 +830,7 @@ source of truth in this repo; Crackerjack imports it via
 `mahavishnu.scripts.validate_document_frontmatter`.
 
 See the design doc
-`docs/superpowers/specs/2026-07-16-frontmatter-validator-wiring-design.md`
+`docs/specs/2026-07-16-frontmatter-validator-wiring-design.md`
 for full integration details.
 ```
 
@@ -936,7 +936,7 @@ Expected: validator reports per-file issues (missing frontmatter, etc.). This is
 
 - [ ] **Step 4: Apply frontmatter across session-buddy's 6 stores (Pass 1)**
 
-Reuse the Wave A pattern from Mahavishnu: for each of `docs/adr/`, `docs/plans/`, `docs/superpowers/specs/`, `docs/superpowers/plans/`, `.claude/decisions/`, `docs/followups/`, prepend YAML frontmatter using the same template (`PLAN_FM_TEMPLATE` from `mahavishnu/scripts/_orphan_sweep_C1_2.py`). Status/role/topic assignments follow the same playbook as Mahavishnu. Use `crackerjack docs validate` to verify each store is clean.
+Reuse the Wave A pattern from Mahavishnu: for each of `docs/adr/`, `docs/plans/`, `docs/specs/`, `docs/plans/`, `.claude/decisions/`, `docs/followups/`, prepend YAML frontmatter using the same template (`PLAN_FM_TEMPLATE` from `mahavishnu/scripts/_orphan_sweep_C1_2.py`). Status/role/topic assignments follow the same playbook as Mahavishnu. Use `crackerjack docs validate` to verify each store is clean.
 
 - [ ] **Step 5: Run post-P5 link sweep**
 
@@ -976,7 +976,7 @@ topic: lifecycle
 
 ```bash
 cd /Users/les/Projects/session-buddy
-git add scripts/ docs/schemas/ docs/plans/PLAN_INDEX.md docs/plans/2026-07-16-p7-cross-repo-playbook.md docs/adr/ docs/plans/ docs/superpowers/specs/ docs/superpowers/plans/ .claude/decisions/ docs/followups/
+git add scripts/ docs/schemas/ docs/plans/PLAN_INDEX.md docs/plans/2026-07-16-p7-cross-repo-playbook.md docs/adr/ docs/plans/ docs/specs/ docs/plans/ .claude/decisions/ docs/followups/
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(session-buddy): apply plan-lifecycle-unification playbook (P7.A template)"
 ```
 

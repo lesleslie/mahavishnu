@@ -88,7 +88,7 @@ Replace "registered tool count" with "working tool count" in dashboards, READMEs
 
 **Amendment:** every Bodai component that consumes an external MCP server as an enrichment provider, plugin, or external dependency (Flowscape calling scapy-mcp is the first case; unifi-mcp-in-v2 is the second planned) MUST:
 
-- **7.1 — Register the dependency in `settings/ecosystem.yaml` with a `path` and `mcp:` field, just like the MCP servers themselves.** Consumer-side aggregations are first-class components, not "vendor libraries". The `mahavishnu list-repos` exit gate that applies to MCP servers (`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md` Task 1) applies equally to consumer-side aggregations.
+- **7.1 — Register the dependency in `settings/ecosystem.yaml` with a `path` and `mcp:` field, just like the MCP servers themselves.** Consumer-side aggregations are first-class components, not "vendor libraries". The `mahavishnu list-repos` exit gate that applies to MCP servers (`docs/plans/2026-09-06-registry-manifest-migration.md` Task 1) applies equally to consumer-side aggregations.
 - **7.2 — Expose the same four feed observability signals** that §3 mandates for MCP servers: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total`. For Flowscape's enrichment surface, these are `flowscape.enrichment.{entities_count, last_updated_timestamp, errors_total, cycles_total}` (per ADR 0016 v2 §"Operational SLOs and Feed Observability"). The no-op default (when `enrichment.scapy_mcp_enabled = false`) emits `0`/`now()`/`0`/`0` so "registered but disabled" looks identical to "registered and producing" — *not* "absent" — per the wiring-discipline audit posture.
 - **7.3 — `flowscape doctor --enrichment` (or equivalent per-component health check) surfaces the consumer-side feed state** with the same envelope as the MCP-server `/health` does. Exit codes: 0=healthy, 1=degraded, 2=dead, 3=not_registered. The doctor output schema is documented in ADR 0016 v2 §"`flowscape doctor --enrichment` output envelope".
 - **7.4 — Consumer-side aggregation enters the same `/health` aggregator** when the consuming component ships server-mode. Until then, the doctor command is the visible surface.
@@ -100,13 +100,13 @@ Replace "registered tool count" with "working tool count" in dashboards, READMEs
 
 ## Status
 
-Active. Implementing in Akosha first (Wave 5 of `docs/superpowers/specs/2026-09-05-akosha-hardening-design.md`), then rolling out to the other Bodai MCP servers in subsequent hardening waves.
+Active. Implementing in Akosha first (Wave 5 of `docs/specs/2026-09-05-akosha-hardening-design.md`), then rolling out to the other Bodai MCP servers in subsequent hardening waves.
 
 ## Cross-references
 
 - `wire-up-contract.md` — sibling decision at plan-time; this doc extends to runtime.
 - `bodai-observability-pattern.md` — observability surface for cross-component monitoring.
-- `docs/superpowers/specs/2026-09-05-akosha-hardening-design.md` — first implementation wave.
+- `docs/specs/2026-09-05-akosha-hardening-design.md` — first implementation wave.
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/mcp-surface-health-illusion.md` — the failure pattern that motivated this rule.
 
 ## Implementation checklist

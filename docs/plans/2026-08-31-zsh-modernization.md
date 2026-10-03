@@ -17,7 +17,7 @@ topic: config-consolidation
 
 **Tech Stack:** zsh 5.9+, Homebrew, Sheldon 0.8.5+, Starship 1.26+, Nerd Font (JetBrainsMono NF Mono 3.5+), Ghostty 1.3+, iTerm2 3.5+, Atuin 18.20+, zoxide 0.10+, delta 0.19+, fzf 0.74+, bat, eza, fd, ripgrep, direnv.
 
-**Spec:** [`docs/superpowers/specs/2026-08-31-zsh-modernization-design.md`](../specs/2026-08-31-zsh-modernization-design.md) — travels with this plan.
+**Spec:** [`docs/specs/2026-08-31-zsh-modernization-design.md`](../specs/2026-08-31-zsh-modernization-design.md) — travels with this plan.
 
 ## Global Constraints
 
@@ -1144,7 +1144,7 @@ Append to `~/.config/mahavishnu/zsh-migration.log`:
 
 ## Plan Complete
 
-Plan saved to `docs/superpowers/plans/2026-08-31-zsh-modernization.md`.
+Plan saved to `docs/plans/2026-08-31-zsh-modernization.md`.
 
 **Two execution options:**
 

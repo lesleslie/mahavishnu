@@ -357,7 +357,7 @@ believe it is actually merged, open an issue with the full output.
 
 - **Policy**: `.claude/decisions/worktree-autoremove-policy.md`
 - **Original rule**: `.claude/decisions/session-worktree-defaults.md` Rule 2
-- **Plan**: `docs/superpowers/plans/2026-07-26-worktree-autoremove.md`
+- **Plan**: `docs/plans/2026-07-26-worktree-autoremove.md`
 - **Core module**: `mahavishnu/core/worktree_prune_merged.py`
 - **CLI**: `mahavishnu/worktree_cli.py` (`prune-merged_worktrees`)
 - **General worktree docs**: `docs/WORKTREE_MANAGEMENT.md`

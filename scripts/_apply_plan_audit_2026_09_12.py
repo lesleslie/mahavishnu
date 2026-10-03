@@ -34,30 +34,30 @@ CHANGES: list[tuple[str, str, str]] = [
     ("docs/plans/2026-08-24-claude-env-audit-remediation.md", "active", "partial"),
     ("docs/plans/2026-09-10-settle-semantic-merge.md", "active", "partial"),
     ("docs/plans/2026-09-12-finish-partial-implementations.md", "active", "partial"),
-    # docs/superpowers/plans/ — 2 → complete
-    ("docs/superpowers/plans/2026-08-23-oneiric-action-kit-promotion.md", "active", "complete"),
-    ("docs/superpowers/plans/2026-09-06-registry-manifest-migration.md", "active", "complete"),
-    # docs/superpowers/plans/ — 3 → partial
-    ("docs/superpowers/plans/2026-05-14-doc-sync-and-channel-phase2.md", "active", "partial"),
-    ("docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md", "active", "partial"),
-    ("docs/superpowers/plans/2026-09-12-jot-drain-polish.md", "active", "partial"),
-    # docs/superpowers/specs/ — 5 → complete
-    ("docs/superpowers/specs/2026-06-19-external-integrations-design.md", "active", "complete"),
-    ("docs/superpowers/specs/2026-06-19-wave2a-chaos-hardening-design.md", "active", "complete"),
-    ("docs/superpowers/specs/2026-06-19-wave2b-a2a-worker-design.md", "active", "complete"),
-    ("docs/superpowers/specs/2026-07-14-multi-backend-pty-design.md", "active", "complete"),
+    # docs/plans/ — 2 → complete
+    ("docs/plans/2026-08-23-oneiric-action-kit-promotion.md", "active", "complete"),
+    ("docs/plans/2026-09-06-registry-manifest-migration.md", "active", "complete"),
+    # docs/plans/ — 3 → partial
+    ("docs/plans/2026-05-14-doc-sync-and-channel-phase2.md", "active", "partial"),
+    ("docs/plans/2026-07-16-bodai-plugin-standardization.md", "active", "partial"),
+    ("docs/plans/2026-09-12-jot-drain-polish.md", "active", "partial"),
+    # docs/specs/ — 5 → complete
+    ("docs/specs/2026-06-19-external-integrations-design.md", "active", "complete"),
+    ("docs/specs/2026-06-19-wave2a-chaos-hardening-design.md", "active", "complete"),
+    ("docs/specs/2026-06-19-wave2b-a2a-worker-design.md", "active", "complete"),
+    ("docs/specs/2026-07-14-multi-backend-pty-design.md", "active", "complete"),
     (
-        "docs/superpowers/specs/2026-08-22-oneiric-action-kit-promotion-design.md",
+        "docs/specs/2026-08-22-oneiric-action-kit-promotion-design.md",
         "active",
         "complete",
     ),
-    # docs/superpowers/specs/ — 2 → partial
+    # docs/specs/ — 2 → partial
     (
-        "docs/superpowers/specs/2026-05-16-llm-routing-standardization-design.md",
+        "docs/specs/2026-05-16-llm-routing-standardization-design.md",
         "active",
         "partial",
     ),
-    ("docs/superpowers/specs/2026-07-15-constellation-tui-design.md", "active", "partial"),
+    ("docs/specs/2026-07-15-constellation-tui-design.md", "active", "partial"),
 ]
 
 

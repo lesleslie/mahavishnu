@@ -14,7 +14,7 @@ topic: code-indexing-integration
 > **Goal:** Add call chain resolution, change impact analysis, and incremental re-indexing to the Bodai ecosystem by extending Session-Buddy's DuckPGQ property graph and adding Mahavishnu CLI commands.
 > **Architecture:** Session-Buddy owns the code graph (DuckDB/DuckPGQ). Mahavishnu orchestrates indexing via CLI + git hooks. Two new Session-Buddy MCP tools (`code_call_chain`, `code_impact_analysis`) query the graph via PGQ. Mahavishnu's CLI triggers parsing with mcp-common's `CodeGraphAnalyzer` and upserts to Session-Buddy via MCP.
 > **Tech Stack:** Python 3.12+, DuckDB + DuckPGQ, mcp-common CodeGraphAnalyzer, Typer CLI, Pydantic v2
-> **Spec:** `docs/superpowers/specs/2026-04-26-code-indexing-integration-design.md`
+> **Spec:** `docs/specs/2026-04-26-code-indexing-integration-design.md`
 > **Working directory:** `/Users/les/Projects/mahavishnu` (Mahavishnu) and `/Users/les/Projects/session-buddy` (Session-Buddy)
 
 ______________________________________________________________________

@@ -205,7 +205,7 @@ State per item. Updated at each layer gate.
 
 | ID | Repo | State | Plan link | Spec link |
 |---|---|---|---|---|
-| D-LOCK | dhara | wired | [v1 implementation (initial session)](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-04-d-lock.md) + [v1.1 follow-up plan](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/plans/2026-08-10-d-lock-v1.1-postgres-translation.md) | [spec](https://github.com/lesleslie/dhara/blob/main/docs/superpowers/specs/2026-08-04-d-lock-design.md) |
+| D-LOCK | dhara | wired | [v1 implementation (initial session)](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-04-d-lock.md) + [v1.1 follow-up plan](https://github.com/lesleslie/dhara/blob/main/docs/plans/2026-08-10-d-lock-v1.1-postgres-translation.md) | [spec](https://github.com/lesleslie/dhara/blob/main/docs/specs/2026-08-04-d-lock-design.md) |
 | D-AUDIT | dhara | archived 2026-09-24 | [completion report](https://github.com/lesleslie/dhara/blob/main/docs/feature-tracking/2026-08-10-d-audit.md) | — | Retired in Wave 2 of the Dhara-Bodai split (per `dhara/CHANGELOG.md` `[Unreleased]` 2026-09-24 entry). Substrate was Bodai-internal observability; no public Dhara API depended on it. |
 | D-OBJ-SCHEMA | dhara | parked | — | — |
 | D-REPLAY-VEC | dhara | parked | — | — |
@@ -217,7 +217,7 @@ State per item. Updated at each layer gate.
 | M-TOOL-AUDIT | mahavishnu | parked | — | — |
 | M-TRANSCRIPT-TAIL | mahavishnu | parked | — | — |
 | S-MEM-VERSIONS | session-buddy | parked | — | — |
-| S-CHANNEL-DURABLE | session-buddy | wired | [completion report](https://github.com/lesleslie/session-buddy/blob/main/docs/feature-tracking/2026-08-10-s-channel-durable.md) | [spec](https://github.com/lesleslie/session-buddy/blob/main/docs/superpowers/specs/2026-08-10-s-channel-durable-design.md) |
+| S-CHANNEL-DURABLE | session-buddy | wired | [completion report](https://github.com/lesleslie/session-buddy/blob/main/docs/feature-tracking/2026-08-10-s-channel-durable.md) | [spec](https://github.com/lesleslie/session-buddy/blob/main/docs/specs/2026-08-10-s-channel-durable-design.md) |
 | S-SKILL-PROVENANCE | session-buddy | parked | — | — |
 | S-REPLAY | session-buddy | parked | — | — |
 | A-EVENT-LOG | akosha | parked | — | — |

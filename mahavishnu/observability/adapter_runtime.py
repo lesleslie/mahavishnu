@@ -2,7 +2,7 @@
 
 This module is the seam between Mahavishnu's adapter subsystem and the
 operational telemetry substrate described in
-``docs/superpowers/specs/2026-06-22-adapter-runtime-observability-design.md``.
+``docs/specs/2026-06-22-adapter-runtime-observability-design.md``.
 
 Status
 ------

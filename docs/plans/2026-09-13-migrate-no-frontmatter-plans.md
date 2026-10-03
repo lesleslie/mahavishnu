@@ -12,8 +12,8 @@ topic: bodai-conformance
 
 ## 1. Outcome
 
-Every `.md` file in the four plan stores (`docs/plans/`, `docs/superpowers/plans/`,
-`docs/superpowers/specs/`, `docs/followups/`) carries a parseable `---\n...\n---`
+Every `.md` file in the four plan stores (`docs/plans/`, `docs/plans/`,
+`docs/specs/`, `docs/followups/`) carries a parseable `---\n...\n---`
 YAML frontmatter matching `docs/schemas/document-frontmatter-v1.md`. As a
 result, `scripts/regenerate_plan_index.py` lists them all in `docs/plans/PLAN_INDEX.md`.
 
@@ -61,8 +61,8 @@ Distribution by store (verified 2026-09-13, via `scripts/migrate_frontmatter.py`
 
 | Store                          | Count |
 |--------------------------------|-------|
-| `docs/superpowers/plans/`      | 22    |
-| `docs/superpowers/specs/`      | 15    |
+| `docs/plans/`      | 22    |
+| `docs/specs/`      | 15    |
 | `docs/plans/`                  | 1     |
 | `docs/followups/`              | 1     |
 
@@ -82,7 +82,7 @@ A regex sweep for legacy markers (`**Status:** <word>` and bare
 status:
 
 ```
-docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md: Draft
+docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md: Draft
 ```
 
 The other 38 require status inference from contextual signals (date,
@@ -114,7 +114,7 @@ Three templates are visible across these 39 files:
    marks phases complete (Phase 1/2/3 done) or references a shipped
    version → `status: complete`.
 
-2. **"Design Spec" template** (~15 files in `docs/superpowers/specs/`):
+2. **"Design Spec" template** (~15 files in `docs/specs/`):
    ```
    # <Title>
    Status: Draft (or Approved, or absent)
@@ -178,8 +178,8 @@ requirements:
   - `Resolved` → `status: complete`, role `historical`
   - `Superseded` → `status: complete`, role `superseded`
   - absent
-    → `status: active` for `docs/superpowers/plans/` (implementation
-      default); `status: draft` for `docs/superpowers/specs/`
+    → `status: active` for `docs/plans/` (implementation
+      default); `status: draft` for `docs/specs/`
       (specs awaiting design approval); `status: active` for
       `docs/plans/`; `status: active` for `docs/followups/`.
 * Renders the new frontmatter block above existing body content,
@@ -220,11 +220,11 @@ rationale-per-store.
 
 **Tasks:**
 
-1. Run `migrate_frontmatter.py` against `docs/superpowers/plans/`
+1. Run `migrate_frontmatter.py` against `docs/plans/`
    (22 files). Commit as
    `docs(scripts): migrate 22 superpowers/plans/ to v1 schema`,
    body listing each filename + heuristic result.
-2. Run against `docs/superpowers/specs/` (15 files). Same.
+2. Run against `docs/specs/` (15 files). Same.
 3. Run against `docs/plans/` (1 file). Same.
 4. Run against `docs/followups/` (1 file). Same.
 
@@ -294,7 +294,7 @@ validator.
 | Inline `Status:` line inside a code-block mistaken for real status | Medium | Code-block-aware regex; flag every match in dry-run output for human review |
 | Migration script overwrites important existing frontmatter | Low | Idempotent: skip files with `---\n...---` already |
 | Plan body's literal `**Status:** active` from a tutorial becomes `status: active` inadvertently | Low | Restrict detection to first 50 lines; in-doc contexts past line 50 are unreviewed |
-| Status inflation — promoting files to `active` when intent was `draft` | Medium | Conservative default for `docs/superpowers/specs/` is `draft`, not `active`. Audit trail in commit body. |
+| Status inflation — promoting files to `active` when intent was `draft` | Medium | Conservative default for `docs/specs/` is `draft`, not `active`. Audit trail in commit body. |
 | Scripted field values that are later hand-edited could diverge from truth | Low | Regenerate tracker doesn't enforce; just lists. Audit catches during review. |
 | Re-running on `## status: ...` single-line files | n/a | The pre-existing reflow script (commit 99dbb966) already handled those; live count is 0 such files. Migrator only touches files lacking `---\n...---` of any kind. |
 
@@ -340,8 +340,8 @@ Cluster A plans have frontmatter that closes at char ~280).
 
 | Commit | Store | Files |
 |---|---|---|
-| `5307fbab` | `docs/superpowers/plans/` | 22 (all `status: active`) |
-| `76b7bacf` | `docs/superpowers/specs/` | 15 (all `status: draft`) |
+| `5307fbab` | `docs/plans/` | 22 (all `status: active`) |
+| `76b7bacf` | `docs/specs/` | 15 (all `status: draft`) |
 | `d56651a2` | `docs/plans/` | 1 (`status: active`) |
 | `c3d5f513` | `docs/followups/` | 1 (`status: active`) |
 
@@ -365,7 +365,7 @@ per the heuristic in the plan.
 **Inventory delta**. The plan was authored against a 40-file estimate.
 Two reductions happened before the migrator ran: fastmcp-4-upgrade.md
 got full frontmatter during the Cluster A audit (commit `fab7cf1a`,
-removing 1 from `docs/superpowers/plans/`), and the companion
+removing 1 from `docs/plans/`), and the companion
 single-line reflow (commit `99dbb966`) cleared 9 single-line
 `## status:` files (already out of scope, but worth noting). One
 addition: `2026-09-07-worktree-cleanup-design.md` was created between

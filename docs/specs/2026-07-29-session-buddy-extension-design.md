@@ -11,7 +11,7 @@ topic: session-buddy-extension
 
 # Session-Buddy Extension Design (Mahavishnu seam hardening)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design task-by-task. The implementation plan will live at `docs/superpowers/plans/2026-07-29-session-buddy-extension.md` once the writing-plans skill runs.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design task-by-task. The implementation plan will live at `docs/plans/2026-07-29-session-buddy-extension.md` once the writing-plans skill runs.
 
 **Goal:** Close the Mahavishnu↔Session-Buddy seam so pool memory, hook commits, code-graph reads, and the Phase 1.5 conscious-agent loop are durable, cheap, and discoverable — without coupling the two repos beyond what's already necessary.
 

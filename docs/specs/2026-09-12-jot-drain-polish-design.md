@@ -15,8 +15,8 @@ topic: jot-drain-polish
 > **Date:** 2026-09-12
 > **Sub-plan:** Polish pass for the Jot Drain subsystem (sub-plan 3 of 3 in the Jot Inbox trilogy).
 > **Author:** Brainstorming session output, validated by user.
-> **Parent spec:** `docs/superpowers/specs/2026-09-10-jot-drain-design.md` (commits `aa43fe26` → `2f36d878` → `5361559f` → `50a8c7fb`).
-> **Parent plan:** `docs/superpowers/plans/2026-09-10-jot-drain.md` (COMPLETE on main, last commit `ce27c697`).
+> **Parent spec:** `docs/specs/2026-09-10-jot-drain-design.md` (commits `aa43fe26` → `2f36d878` → `5361559f` → `50a8c7fb`).
+> **Parent plan:** `docs/plans/2026-09-10-jot-drain.md` (COMPLETE on main, last commit `ce27c697`).
 
 ## 1. Context and Scope
 
@@ -81,7 +81,7 @@ These decisions were resolved during brainstorming and are not revisitable durin
 | `mahavishnu/commands/jot.md` | Add second command (after `/jot vitals`) for `/jot drain`. Mirror the existing `--query` / `--limit` / `--include-in-flight` flags from `mahavishnu jot drain`. Document the surface as "shows top-N drain candidates with suggested actions" |
 | `mahavishnu/jot/cli.py` | No code change — `cmd_drain` already supports the query/limit/include-in-flight flag set |
 | `tests/integration/jot/test_drain_slash_command.py` (NEW) | Add 1 static-content test asserting `mahavishnu/commands/jot.md` contains a `/jot drain` block with the correct frontmatter (`description`, `allowed-tools`). Distinct from `test_drain_cli.py` (which exercises the Typer surface) because slash commands aren't Typer |
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.5 | Update from "deferred" to "shipped" with the new artifact path |
+| `docs/specs/2026-09-10-jot-drain-design.md` §3.5 | Update from "deferred" to "shipped" with the new artifact path |
 
 **Command contract.**
 
@@ -113,7 +113,7 @@ Defaults: limit=5, include_in_flight=false. Pass `--query` to scope by surface t
 | `mahavishnu/jot/drain.py` lines 495, 553 | Replace `await _auto_retry_after(...)` with `asyncio.create_task(_auto_retry_after(...))`; capture task in a local var `task = asyncio.create_task(...)`; do NOT `await task`. Add a module-level `_retry_waiters: dict[str, asyncio.Event] = {}` — `_auto_retry_after` sets the event after `asyncio.sleep` returns; tests `await _retry_waiters[handle]` to observe (pattern 2 — per-jot waiter dict). Cleanup is per-key after test observation. |
 | `tests/unit/jot/test_drain_reconciler.py` | Rewrite in place the 9 patched-fake `_auto_retry_after` tests as adversarial tests that observe the call via `_retry_waiters` (NOT delete-and-recreate — the existing test function names stay so `tests/unit/jot/test_drain.py::test_drain_reconciler` lookup keeps working) |
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | Add 1 adversarial test: dispatch fails → reconciler picks up the failure → reconciler schedules retry → reconciler moves on to next jot **without waiting 30s** |
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §6.3 | Update reconciler diagram: "Auto-retry scheduled as background task (fire-and-forget) via `asyncio.create_task`" |
+| `docs/specs/2026-09-10-jot-drain-design.md` §6.3 | Update reconciler diagram: "Auto-retry scheduled as background task (fire-and-forget) via `asyncio.create_task`" |
 
 **Observability pattern (locked: pattern 2).** Adversarial tests observe `_auto_retry_after` running without blocking the reconciler via a per-jot waiter dict:
 
@@ -199,7 +199,7 @@ Active. First rule for any new SDD plan run on this repo.
 
 | File | Change |
 |---|---|
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.3 (insert §3.3.4) | Insert subsection "\_propose_action policy (locked)" with the exact 4-row table below, with `reason` strings copied verbatim from drain.py lines 710-713. Reference the implementation at `mahavishnu/jot/drain.py:705` for traceability |
+| `docs/specs/2026-09-10-jot-drain-design.md` §3.3 (insert §3.3.4) | Insert subsection "\_propose_action policy (locked)" with the exact 4-row table below, with `reason` strings copied verbatim from drain.py lines 710-713. Reference the implementation at `mahavishnu/jot/drain.py:705` for traceability |
 | `mahavishnu/jot/drain.py` line 706 | Update the docstring to point to the spec section: "Suggested action for a drain candidate (spec §3.3.4 — locked policy). Local implementation MUST match the spec table; spec changes require brainstorming re-open." Note: the word "heuristic" is removed — the policy is locked, not heuristic. |
 
 **Spec content to insert** (parent spec §3.3, after the existing surface definitions):
@@ -298,7 +298,7 @@ All polish items use existing imports. No `pyproject.toml` changes.
 | `tests/integration/jot/test_drain_cli.py` | (no polish touch — Typer CLI tests; item 1's slash-command test is in a new file, not this one) |
 | `tests/integration/jot/test_drain_slash_command.py` | 1 (NEW, item 1 — slash-command frontmatter test) |
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | 2 |
-| `docs/superpowers/specs/2026-09-10-jot-drain-design.md` | 1, 2, 5 |
+| `docs/specs/2026-09-10-jot-drain-design.md` | 1, 2, 5 |
 | `docs/MCP_TOOLS_SPECIFICATION.md` | 6 |
 | `.claude/decisions/sdd-bundling-defensive-pattern.md` | 4 (NEW) |
 | `.claude/decisions/README.md` | 4 (index entry) |

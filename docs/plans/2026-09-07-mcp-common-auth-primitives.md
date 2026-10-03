@@ -13,13 +13,13 @@ topic: bodai-auth
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement the `mcp_common/auth/` surface as specified in `docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md` — single phase, no backward-compat bridge, deep-imports only.
+**Goal:** Implement the `mcp_common/auth/` surface as specified in `docs/specs/2026-09-06-mcp-common-auth-primitives-design.md` — single phase, no backward-compat bridge, deep-imports only.
 
 **Architecture:** Add `Principal` model, `IdentityProvider` Protocol, `JWTIdentityProvider` and `AnthropicIdentityProvider` concretes, `BearerTokenMiddleware` (ASGI scope → Context), extended `@require_auth`, `AuthConfig` rewired into `MCPServerSettings`, `AuthHealth` surfaced via `/health`. Sibling MCP servers wire the middleware in their lifespan.
 
 **Tech Stack:** Python 3.14, Pydantic v2, FastMCP, PyJWT (existing), httpx (existing — for OAuth HTTP calls), contextvars (stdlib), respx (for HTTP mocking in tests).
 
-**Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`
+**Spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-09-06-mcp-common-auth-primitives-design.md`
 
 ## Global Constraints
 
@@ -2936,7 +2936,7 @@ date: 2026-09-07
 status: implemented
 audience: mcp-common contributors, sibling-server maintainers
 related:
-  - https://github.com/lesleslie/mahavishnu/blob/main/docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md (canonical spec)
+  - https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-09-06-mcp-common-auth-primitives-design.md (canonical spec)
 ---
 
 # mcp-common Auth Design
@@ -2945,7 +2945,7 @@ related:
 
 `mcp_common/auth/` provides authentication primitives for Bodai MCP servers. It
 implements the design documented at
-`mahavishnu/docs/superpowers/specs/2026-09-06-mcp-common-auth-primitives-design.md`.
+`mahavishnu/docs/specs/2026-09-06-mcp-common-auth-primitives-design.md`.
 
 The package is **internal** — consumers should import from `mcp_common.auth.*`
 directly (deep imports). Public-API graduation (re-export from `mcp_common/__init__.py`)
@@ -3576,7 +3576,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`.
+Plan complete and saved to `docs/plans/2026-09-07-mcp-common-auth-primitives.md`.
 
 **Two execution options:**
 

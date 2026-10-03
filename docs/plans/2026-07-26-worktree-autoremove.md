@@ -213,7 +213,7 @@ following exception:
 ## Cross-references
 
 - Original rule: `.claude/decisions/session-worktree-defaults.md` Rule 2
-- Plan: `docs/superpowers/plans/2026-07-26-worktree-autoremove.md`
+- Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
 - Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 ```
@@ -1474,7 +1474,7 @@ deferred:
     Wave 4 Manual testing section and a separate policy decision permits
     unattended execution.
 related:
-  plan: docs/superpowers/plans/2026-07-26-worktree-autoremove.md
+  plan: docs/plans/2026-07-26-worktree-autoremove.md
   policy: .claude/decisions/worktree-autoremove-policy.md
   user_docs: docs/WORKTREE_AUTOREMOVE.md
 ```

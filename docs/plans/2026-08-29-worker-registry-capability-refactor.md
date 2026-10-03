@@ -19,11 +19,11 @@ topic: adapter-registry
 
 **Tech Stack:** Python 3.14, Pydantic v2 (`frozen=True, extra="forbid"`), Oneiric (config), Prefect (DAG runtime), FastMCP (server), Dhara (envelope storage), pytest.
 
-**Spec:** `docs/superpowers/specs/2026-08-29-worker-registry-capability-refactor-design.md`
+**Spec:** `docs/specs/2026-08-29-worker-registry-capability-refactor-design.md`
 
 **Related plans (complementary, not duplicative):**
 
-- `docs/plans/2026-08-29-orchestrator-research-synthesis.md` — the synthesis plan has `blocks_on: docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md` (this plan). Synthesis Phases 0, 1, and 2 consume artifacts from this plan; see "Complementarity & sequencing rules" below for the two conflict points (Phases 3 and 4) that require coordination.
+- `docs/plans/2026-08-29-orchestrator-research-synthesis.md` — the synthesis plan has `blocks_on: docs/plans/2026-08-29-worker-registry-capability-refactor.md` (this plan). Synthesis Phases 0, 1, and 2 consume artifacts from this plan; see "Complementarity & sequencing rules" below for the two conflict points (Phases 3 and 4) that require coordination.
 
 ## Global Constraints
 
@@ -46,7 +46,7 @@ topic: adapter-registry
 
 ## Complementarity with the Orchestrator Synthesis Plan
 
-The synthesis plan (`docs/plans/2026-08-29-orchestrator-research-synthesis.md`) explicitly has `blocks_on: docs/superpowers/plans/2026-08-29-worker-registry-capability-refactor.md`. It does **not** redefine the Capability schema, conductor, or capability-tools surface. Synthesis consumes the following artifacts from this plan:
+The synthesis plan (`docs/plans/2026-08-29-orchestrator-research-synthesis.md`) explicitly has `blocks_on: docs/plans/2026-08-29-worker-registry-capability-refactor.md`. It does **not** redefine the Capability schema, conductor, or capability-tools surface. Synthesis consumes the following artifacts from this plan:
 
 | Synthesis Phase | Consumes from this plan | Notes |
 |---|---|---|

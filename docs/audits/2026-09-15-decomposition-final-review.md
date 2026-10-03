@@ -1,8 +1,8 @@
 # Dhara MCP Decomposition — Final Multi-Agent Review
 
 **Date:** 2026-09-15
-**Spec:** `docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md` (head commit `8badf605`)
-**Plan:** `docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` (head commit `8badf605`)
+**Spec:** `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` (head commit `8badf605`)
+**Plan:** `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` (head commit `8badf605`)
 **Reviewers:** 5 agents across non-overlapping lenses (per `multi-agent-review-catches-blind-spots.md`)
 **Outcome:** PATH A applied — 8 high-convergence fixes committed; ~70 findings logged for follow-up.
 

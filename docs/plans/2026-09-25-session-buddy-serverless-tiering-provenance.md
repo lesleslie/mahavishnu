@@ -8,7 +8,7 @@ owner: platform-team
 scope: session-buddy/serverless-storage, session-buddy/reflection-schema
 kind: plan
 supersedes: null
-prior-art: docs/superpowers/plans/2026-09-25-pool-workers-hybrid-d-and-a.md
+prior-art: docs/plans/2026-09-25-pool-workers-hybrid-d-and-a.md
 ---
 
 # Session-Buddy: Serverless Storage Tiering + Memory Provenance
@@ -93,7 +93,7 @@ Session-Buddy (dev)
 ## Track A: Hybrid D+A (in-flight in worktree)
 
 **Owner:** existing worktree at `/Users/les/Projects/session-buddy/.worktrees/feature-pool-workers-hybrid-d-and-a`
-**Plan:** `docs/superpowers/plans/2026-09-25-pool-workers-hybrid-d-and-a.md`
+**Plan:** `docs/plans/2026-09-25-pool-workers-hybrid-d-and-a.md`
 **Status:** Phase D + A drafted, implementation not started.
 
 This plan DOES NOT re-do Hybrid D+A. It **extends** one task with a credential-loading change, and threads provenance metadata through the existing `metadata` dict contract.
@@ -1194,7 +1194,7 @@ This plan is "done enough" when:
 
 ## References
 
-- `docs/superpowers/plans/2026-09-25-pool-workers-hybrid-d-and-a.md` — Hybrid D+A plan (worktree at `.worktrees/feature-pool-workers-hybrid-d-and-a`)
+- `docs/plans/2026-09-25-pool-workers-hybrid-d-and-a.md` — Hybrid D+A plan (worktree at `.worktrees/feature-pool-workers-hybrid-d-and-a`)
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-session-buddy-insights-pipeline-removed.md` — Prior research on memory patterns (Anthropic / Letta / Mem0 / Cline)
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-memories-must-be-dual-stored.md` — Cross-cutting rules must dual-store (CC memory + Session-Buddy)
 - Oneiric secrets docs — `oneiric/secrets/README.md` (consumed by Track A-ext1)

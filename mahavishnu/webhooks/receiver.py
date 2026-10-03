@@ -14,7 +14,7 @@ typed-Pydantic contract for OpenClaw's per-endpoint payload shapes.
 Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary;
 internal async behavior (MemoryOutbox flush, PostgresBackendLock
 resolution) is the substrate's concern and is invisible to callers. See
-``mcp/docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+``mcp/docs/specs/2026-08-10-substrate-call-boundary-contract.md``
 for the cross-portfolio rationale.
 """
 

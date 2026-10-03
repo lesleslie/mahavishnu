@@ -3,7 +3,7 @@
 Async DuckDB-backed writer for deferred memory writes. Owns the connection
 lifecycle; opens on first use, closes on `close()`.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 

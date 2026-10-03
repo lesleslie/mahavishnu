@@ -22,7 +22,7 @@ scope_note: |
   Phased graduation (internal vs. public API surface) is kept: the package remains deep-import
   only until usage anchors the API commitment.
 spec_location_note: |
-  This spec lives in mahavishnu/docs/superpowers/specs/ rather than mcp-common/docs/superpowers/specs/
+  This spec lives in mahavishnu/docs/specs/ rather than mcp-common/docs/specs/
   because the work has cross-repo coordination implications (this spec unblocks remote-host
   scapy-mcp, a sibling MCP server; the auth surface changes the public API contract of every
   Bodai MCP server that opts in). The implementation lands in mcp-common; the spec lives with
@@ -620,7 +620,7 @@ deferred until `MCPServerSettings` is migrated into Oneiric.
 ## Spec amendments (post 2026-09-07 multi-agent review)
 
 This spec was reviewed by 7 subagents (5 domain-relevant + 2 orthogonal). The
-review report is at `docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`.
+review report is at `docs/plans/2026-09-07-mcp-common-auth-primitives-multi-agent-review.md`.
 The following amendments were applied based on the review's 12 distinct BLOCKERs
 and 22 distinct cross-cutting IMPORTANTs:
 
@@ -661,5 +661,5 @@ and 22 distinct cross-cutting IMPORTANTs:
 - Tasks list updated for B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, I-1, I-2, I-3, I-4, I-7.
 - Cross-references updated for `AuthenticationRequiredError` and `MCPServerSettings`.
 
-The plan (`docs/superpowers/plans/2026-09-07-mcp-common-auth-primitives.md`) was
+The plan (`docs/plans/2026-09-07-mcp-common-auth-primitives.md`) was
 revised simultaneously (commit `682bbb7f`); spec and plan now agree.

@@ -17,7 +17,7 @@ topic: shared-oneiric-substrate-phase-e2
 
 **Tech Stack:** Python 3.14, pydantic-settings, OpenTelemetry.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.6, §6.7 (Phase E2).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.6, §6.7 (Phase E2).
 
 ## Global Constraints
 
@@ -367,7 +367,7 @@ Phase E2 is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.6 — Phase E2 contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.6 — Phase E2 contract
 - `oneiric/core/config.py:246` — canonical settings class
 - `oneiric/core/substrate_settings.py` — `SubstrateSettings` (added in Phase E1)
 - `feedback-bodai-localhost-no-auth.md` — auth short-circuit must be preserved

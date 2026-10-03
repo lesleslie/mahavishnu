@@ -1,6 +1,6 @@
 """Tests for the missing-wire terminal tool registration.
 
-Task 1 of docs/superpowers/plans/2026-07-14-crow-concurrent-sessions.md:
+Task 1 of docs/plans/2026-07-14-crow-concurrent-sessions.md:
 the bodai-crow-server lifespan spawns a single crow-mcp subprocess
 (see ``mahavishnu.mcp.crow.terminal_proxy``) but exposes no MCP tool
 that calls into it. This test pins the contract that an MCP tool

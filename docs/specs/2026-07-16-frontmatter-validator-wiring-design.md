@@ -288,7 +288,7 @@ fallback path). Document the fallback in the service docstring.
 - Pre-commit hook integration (explicitly excluded per user direction).
 - A new dedicated MCP server. Reuse existing Crackerjack MCP server.
 - P7 cross-repo normalization. See companion plan
-  `docs/superpowers/plans/2026-07-16-p7-cross-repo-playbook.md`
+  `docs/plans/2026-07-16-p7-cross-repo-playbook.md`
   (separate wave, separate design).
 
 ## P7 cross-repo expansion (companion decision)

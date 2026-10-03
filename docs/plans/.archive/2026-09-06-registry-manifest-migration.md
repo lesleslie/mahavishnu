@@ -5,7 +5,7 @@ date: 2026-09-06
 last_reviewed: '2026-09-12'
 superseded_by: null
 blocks_on:
-- docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
+- docs/specs/2026-09-06-mcp-stub-activation-design.md
 topic: mcp-stub-activation
 ---
 # Registry Manifest Migration (Plan 0a) Implementation Plan
@@ -25,7 +25,7 @@ migration it guards.
 
 **Tech Stack:** Python 3.14, PyYAML, pytest, Typer, crackerjack.
 
-**Spec:** `docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md` (§4.5, §4.6,
+**Spec:** `docs/specs/2026-09-06-mcp-stub-activation-design.md` (§4.5, §4.6,
 §7.1, §7.3)
 
 ## Global Constraints
@@ -669,7 +669,7 @@ to:
 
 ```python
 # Canonical manifest (settings/repos.yaml is deprecated — see
-# docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md §4.6).
+# docs/specs/2026-09-06-mcp-stub-activation-design.md §4.6).
 REPOS_CATALOG_PATH = Path("settings/ecosystem.yaml")
 ```
 
@@ -769,7 +769,7 @@ comment block. Replace that block with:
 # ecosystem.yaml remains a superset of this file.
 #
 # Deprecated 2026-09-06 — see
-# docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md §7.1
+# docs/specs/2026-09-06-mcp-stub-activation-design.md §7.1
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -837,7 +837,7 @@ topic: mcp-stub-activation
 
 # Sibling `repos.yaml` Audit
 
-Opened by Plan 0a (`docs/superpowers/plans/2026-09-06-registry-manifest-migration.md`,
+Opened by Plan 0a (`docs/plans/2026-09-06-registry-manifest-migration.md`,
 Task 8) to bound its own scope. `crackerjack/settings/repos.yaml` and
 `mcp-common/settings/repos.yaml` exist alongside Mahavishnu's; their relationship was
 unverified.

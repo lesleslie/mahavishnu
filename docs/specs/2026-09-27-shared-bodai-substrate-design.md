@@ -8,7 +8,7 @@ topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
-related: docs/decisions/oneiric-substrate-extraction.md; .claude/decisions/wire-up-contract.md; .claude/decisions/mcp-backend-wiring-discipline.md; docs/superpowers/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
+related: docs/decisions/oneiric-substrate-extraction.md; .claude/decisions/wire-up-contract.md; .claude/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
 ---
 
 # Shared Oneiric Substrate - Design v5
@@ -792,8 +792,8 @@ If any step fails, stop. Don't proceed to the next phase until the current phase
 
 ### Documentation
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` — this file (v4)
-- `docs/superpowers/plans/2026-09-27-shared-bodai-substrate-phase-{a,b,c,d,e1,e2}.md` — six plan files (one per phase), each with Integration Contract block at top per `wire-up-contract.md`
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` — this file (v4)
+- `docs/plans/2026-09-27-shared-bodai-substrate-phase-{a,b,c,d,e1,e2}.md` — six plan files (one per phase), each with Integration Contract block at top per `wire-up-contract.md`
 - `oneiric/docs/substrate.md` — usage guide for component authors (Phase E1)
 - `akosha/docs/migrated-to-oneiric-substrate.md` — migration note (Phase A + B + C)
 - `session-buddy/docs/migrated-to-oneiric-substrate.md` — migration note (Phase A + B + C + D)

@@ -20,7 +20,7 @@ ______________________________________________________________________
 **Created:** 2026-08-10
 **Last updated:** 2026-09-06
 **Repo(s):** /Users/les/Projects/mahavishnu
-**Plan:** `docs/superpowers/plans/2026-08-10-m-workflow-outcome.md`
+**Plan:** `docs/plans/2026-08-10-m-workflow-outcome.md`
 
 ## State — pick one
 
@@ -116,7 +116,7 @@ Owner: mahavishnu core. Target: v1.1 hardening cycle.
 
 ## Related
 
-- Plan: `docs/superpowers/plans/2026-08-10-m-workflow-outcome.md`
+- Plan: `docs/plans/2026-08-10-m-workflow-outcome.md`
 - Task 1 commit: `7fa38d15fe9a13edb8a61b80a9b6f6b71c5b37da` (producer)
 - Task 2 commit: `c0265696643493b9fce6b4a01c06209c54eb642a` (consumer)
 - Task 3 commits: `788f142a` (wiring) → `3fb597553567ada7dea6f07a11c4203a334912c3` (path-traversal fix)

@@ -13,7 +13,7 @@ topic: akosha-skills
 > **Goal:** Create two standalone Claude Code skills (SKILL.md files) that compose existing Akosha MCP tools into focused workflows: Code Archaeologist for cross-repo code discovery and Quality Pulse for adapter execution trend analysis.
 > **Architecture:** Pure SKILL.md prompt files in `~/.claude/skills/`. No Python code, no new MCP tools. Each skill composes existing Akosha MCP tools into multi-step workflows with smart defaults, structured output, and Mahavishnu-config-aware fallback.
 > **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), Akosha MCP tools, Mahavishnu ecosystem.yaml/repos.yaml resolution
-> **Spec:** `docs/superpowers/specs/2026-04-14-akosha-skills-design.md`
+> **Spec:** `docs/specs/2026-04-14-akosha-skills-design.md`
 
 ______________________________________________________________________
 

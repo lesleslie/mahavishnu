@@ -13,7 +13,7 @@ topic: bodai-radar
 > **Goal:** Create a standalone Claude Code skill (SKILL.md file) that provides a unified traffic-light health dashboard across all 5 Bodai components in a single command.
 > **Architecture:** Pure SKILL.md prompt file in `~/.claude/skills/`. No Python code, no new MCP tools. Composes one "best signal" tool from each component (Crackerjack, Mahavishnu, Akosha, Dhara, Session-Buddy) into a parallel fan-out sweep with graceful degradation.
 > **Tech Stack:** Claude Code skills (SKILL.md with YAML frontmatter), MCP tools from all 5 Bodai components.
-> **Spec:** `docs/superpowers/specs/2026-04-14-bodai-radar-design.md`
+> **Spec:** `docs/specs/2026-04-14-bodai-radar-design.md`
 
 ______________________________________________________________________
 

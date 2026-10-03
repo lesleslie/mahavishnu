@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, Pydantic v2, FastMCP, `uuid.uuid7()`, existing `bodai:events` Redis Stream, existing akosha reindex, existing `auto-coordinate` skill.
 
-**Spec:** `docs/superpowers/specs/2026-09-29-task-system-design.md` (commit `b1e2ed76`). Read both files together — the spec argues the design; this plan argues the steps. Where they conflict, this plan wins (see "Spec deviations discovered during recon" below).
+**Spec:** `docs/specs/2026-09-29-task-system-design.md` (commit `b1e2ed76`). Read both files together — the spec argues the design; this plan argues the steps. Where they conflict, this plan wins (see "Spec deviations discovered during recon" below).
 
 ## Global Constraints
 
@@ -137,7 +137,7 @@ def test_task_id_pattern_rejects_non_uuid7():
 # session_buddy/mcp/tools/tasks_models.py
 """Pydantic models for the task-system MCP tools.
 
-Implements the data model from docs/superpowers/specs/2026-09-29-task-system-design.md
+Implements the data model from docs/specs/2026-09-29-task-system-design.md
 (Bodai Task System Design, v1.1, commit b1e2ed76).
 """
 from __future__ import annotations
@@ -777,7 +777,7 @@ async def test_input_size_caps_enforced():
 
 - [ ] **Step 1: Add a "Task System" section** to session-buddy's `CLAUDE.md` that references:
 
-  - Spec path: `docs/superpowers/specs/2026-09-29-task-system-design.md`
+  - Spec path: `docs/specs/2026-09-29-task-system-design.md`
   - Tool list (7 tasks\_\* tools)
   - Skill path: `~/.claude/skills/bodai-session-buddy-task-system/` (after federation)
   - The missing-builtins substitution: this is the TodoWrite replacement
@@ -1065,7 +1065,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-09-29-task-system.md`. Two execution options:
+Plan complete and saved to `docs/plans/2026-09-29-task-system.md`. Two execution options:
 
 1. **Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Best for tasks that are well-isolated (which all 19 are here — PR #1 first, PR #2 after).
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One-shot bootstrap for the Dhara-canonical plan index.
 
-Migration step 1 (per docs/superpowers/plans/2026-09-10-plan-index-mcp.md
+Migration step 1 (per docs/plans/2026-09-10-plan-index-mcp.md
 §Migration): walk the filesystem, parse frontmatter, and upsert every
 plan record into Dhara. After this single run, the periodic
 ``mahavishnu.plan_index.cron`` cycle (Task 14) takes over for ongoing

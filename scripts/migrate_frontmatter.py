@@ -2,7 +2,7 @@
 """Migrate no-frontmatter plans to schema v1.1.
 
 Per docs/schemas/document-frontmatter-v1.md, every .md file in the four
-plan stores (docs/plans/, docs/superpowers/plans/, docs/superpowers/specs/,
+plan stores (docs/plans/, docs/plans/, docs/specs/,
 docs/followups/) must carry a parseable ---\\n...\\n--- YAML frontmatter
 block. As of 2026-09-13, 38 such files are missing it.
 
@@ -36,15 +36,15 @@ TODAY = "2026-09-13"
 
 STORES = [
     "docs/plans",
-    "docs/superpowers/plans",
-    "docs/superpowers/specs",
+    "docs/plans",
+    "docs/specs",
     "docs/followups",
 ]
 
 # Default status when no legacy marker is found (per plan §5 Phase 1)
 DEFAULT_STATUS = {
-    "docs/superpowers/plans": "active",
-    "docs/superpowers/specs": "draft",
+    "docs/plans": "active",
+    "docs/specs": "draft",
     "docs/plans": "active",
     "docs/followups": "active",
 }
@@ -52,8 +52,8 @@ DEFAULT_STATUS = {
 # Default role per schema § Legacy Mapping: "(no frontmatter) -> draft, implementation"
 # but specs/plans/followups/plans are still implementation role unless overridden.
 DEFAULT_ROLE = {
-    "docs/superpowers/plans": "implementation",
-    "docs/superpowers/specs": "implementation",
+    "docs/plans": "implementation",
+    "docs/specs": "implementation",
     "docs/plans": "implementation",
     "docs/followups": "implementation",
 }

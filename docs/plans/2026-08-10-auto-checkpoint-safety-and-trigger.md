@@ -27,7 +27,7 @@ Originating observation: 2026-07-15 comprehensive-hooks-cleanup wave.
 - Sibling recovery: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/drift-bundling-recovery.md`
 - Pickup prompt acceptance criterion #6: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md`
 - Defect record: `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
-- Source spec: `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
+- Source spec: `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
 
 ## Gating surface clarification
 
@@ -53,7 +53,7 @@ Four independent gates control auto-checkpoint behavior. The plan is explicit ab
 
 ## Global Constraints
 
-1. **Source spec**: `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md` — every invariant and component shape comes from there verbatim.
+1. **Source spec**: `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md` — every invariant and component shape comes from there verbatim.
 
 1. **Working tree is never mutated by a checkpoint** — snapshot capture writes only to `tempfile.gettempdir()/session-buddy-snapshots/snap-<uuid>.patch`. The legacy `git add -A && git commit` only runs after the snapshot succeeds AND no subagent is active.
 
@@ -2875,7 +2875,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`. **Now 10 tasks** (was 8; added cleanup contract and metrics), incorporating all critical + major findings from the 3 reviewer subagents:
+Plan complete and saved to `docs/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`. **Now 10 tasks** (was 8; added cleanup contract and metrics), incorporating all critical + major findings from the 3 reviewer subagents:
 
 - **Safety:** stash-clobber eliminated (read-only snapshots, subagent deferral, fail-loud restore).
 - **Durability:** pending-checkpoint marker drained on next tick or session-end (no more silent drops).

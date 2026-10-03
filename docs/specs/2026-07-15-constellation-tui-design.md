@@ -369,7 +369,7 @@ design that drives an implementation plan — has been fulfilled:
 **Role fix**: frontmatter previously read `role: implementation`
 (migrator heuristic glitch — the body discusses implementation
 deliverables, so the heuristic picked that). This is a design spec in
-`docs/superpowers/specs/`; corrected to `role: design` for consistency
+`docs/specs/`; corrected to `role: design` for consistency
 with the other 56 specs in that store.
 
 **Not `superseded`**: the impl plan stands on its own merit; it

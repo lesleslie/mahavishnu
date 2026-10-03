@@ -103,7 +103,7 @@ Schedule two calendar-driven reminders via CronCreate:
 ## Related
 
 - Plan: `docs/plans/2026-07-14-oneiric-event-envelope-wire-standardization.md` (untracked; see commit-decision follow-up)
-- Spec: `docs/superpowers/specs/2026-07-14-oneiric-event-envelope-wire-standardization-design.md`
+- Spec: `docs/specs/2026-07-14-oneiric-event-envelope-wire-standardization-design.md`
 - Merge commit: `bcc7aff` on `main`
 - Feature commit: `f103bcc` on branch `agent-bridge-phase1`
 - Final review: `.superpowers/sdd/final-review.md`

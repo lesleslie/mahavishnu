@@ -5,7 +5,7 @@ date: 2026-09-06
 last_reviewed: 2026-09-13
 superseded_by: null
 blocks_on:
-  - docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md
+  - docs/specs/2026-09-06-mcp-stub-activation-design.md
 related:
   - 2026-09-06-fastmcp-4-upgrade.md
 topic: mcp-stub-activation
@@ -21,7 +21,7 @@ topic: mcp-stub-activation
 - `2cc0be4 docs(ecosystem): register-or-exclude decision for four unregistered repos` (Task 8)
 - `26e4b57 test(ports): assert agreement across portmap, ecosystem, and repo settings` (Task 7)
 
-Plan 0a's sibling (`docs/superpowers/plans/2026-09-06-mcp-stub-activation-design.md`) is referenced in `blocks_on` and is itself shipped per Cluster A flips above.
+Plan 0a's sibling (`docs/plans/2026-09-06-mcp-stub-activation-design.md`) is referenced in `blocks_on` and is itself shipped per Cluster A flips above.
 
 # Port and Bodai Config Reconciliation (Plan 0b) Implementation Plan
 
@@ -40,7 +40,7 @@ three-source uniqueness guard.
 
 **Tech Stack:** Python 3.14, PyYAML, pytest, crackerjack.
 
-**Spec:** `docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md` (§4.9, §7.2,
+**Spec:** `docs/specs/2026-09-06-mcp-stub-activation-design.md` (§4.9, §7.2,
 §7.3)
 
 ## Global Constraints
@@ -147,7 +147,7 @@ Steps 1-4 under a heading each, then add a reconciled table:
 # Port Audit — 2026-09-06
 
 Opened by Plan 0b to close the verification gap in
-`mahavishnu/docs/superpowers/specs/2026-09-06-mcp-stub-activation-design.md` §4.9,
+`mahavishnu/docs/specs/2026-09-06-mcp-stub-activation-design.md` §4.9,
 which audited `settings/*.yaml` only.
 
 ## Raw scans
@@ -985,7 +985,7 @@ manifest: neither `mahavishnu/settings/ecosystem.yaml`,
   that does not exist, which is the `n8n-mcp` failure mode in reverse.
 
 Note: `flowscape` has a design spec and implementation plan in Mahavishnu
-(`docs/superpowers/specs/2026-08-31-flowscape-design.md`) but is pre-implementation.
+(`docs/specs/2026-08-31-flowscape-design.md`) but is pre-implementation.
 Registering a component with no server yet would make it appear routable.
 ```
 

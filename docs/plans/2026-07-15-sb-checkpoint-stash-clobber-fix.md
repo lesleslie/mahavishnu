@@ -56,7 +56,7 @@ In practical terms: the detect-and-defer mechanism is *structurally* in place bu
 > **Goal:** Eliminate the `git stash` race condition in the session-buddy auto-checkpoint cycle that clobbers subagent working-tree edits mid-task, while preserving the analytic value of midpoint checkpoints.
 > **Architecture:** A new `session_buddy/checkpoint/` package with four pluggable components (`SubagentDetector`, `SnapshotMechanism`, `CheckpointPolicy`, `CheckpointOrchestrator`) composes a thin wrapper around the existing `store_conversation_checkpoint` tool. The wrapper replaces any stash-based working-tree capture with a read-only `git diff > /tmp/snap-<uuid>.patch` snapshot, defers when a subagent is in flight, and emits structured decisions for observability.
 > **Tech Stack:** Python 3.13, asyncio, pytest + pytest-asyncio + hypothesis, `subprocess` for git invocations, no new third-party dependencies.
-> **Reference spec:** `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
+> **Reference spec:** `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`
 
 ## Global Constraints
 
@@ -138,7 +138,7 @@ three grep commands. Specifically:
 - Add Probe 4: trace inward from `_checkpoint_impl` to `create_checkpoint_commit`
 - Add Probe 5: trace mahavishnu's caller surface
 
-The probe findings file must go in `docs/superpowers/plans/probe-<date>-sb-stash.md`
+The probe findings file must go in `docs/plans/probe-<date>-sb-stash.md`
 (committed), NOT `/tmp/sb-stash-probe-findings.md` (lost on reboot).
 
 ### R2. Task 7 wire-into-tool — wrong code path (critical, blocks fix)
@@ -350,7 +350,7 @@ Read the conclusion. Three outcomes:
 - [ ] **Step 1.4: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md
+git add docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md
 # Note: /tmp/sb-stash-probe-findings.md is OUTSIDE the repo and not committed
 git commit --allow-empty -m "docs(superpowers): confirm fix location via architecture probe"
 ```
@@ -2464,7 +2464,7 @@ Append to `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`:
 
 **Status**: Implemented and verified.
 
-**Implementation**: see plan at `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md` and spec at `docs/superpowers/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`.
+**Implementation**: see plan at `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md` and spec at `docs/specs/2026-07-15-sb-checkpoint-stash-clobber-fix-design.md`.
 
 **Commits**:
 - [list commit hashes from session-buddy repo]
@@ -2502,7 +2502,7 @@ The updated Step 3f reads (template):
 [Existing body — preserved as-is]
 
 **Plan reworked 2026-MM-DD**: see the REWORK NOTES section at the top
-of `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+of `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
 for critical-blocker fixes that override the original tasks
 (specifically R1-R10 addressing probe scope, wrong code path,
 broken test spies, missing lockfile writer, cross-repo caller
@@ -2797,7 +2797,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`.
+Plan complete and saved to `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`.
 
 **Two execution options** (for the future session that will execute this):
 

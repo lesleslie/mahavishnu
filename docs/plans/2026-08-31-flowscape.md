@@ -17,7 +17,7 @@ topic: flowscape-v1-bootstrap
 
 **Tech Stack:** Python 3.14 (dpkt, pcapy-ng, betterproto2, protobuf, numpy, orjson, oneiric), Swift 6 / SwiftUI / Metal (swift-protobuf), macOS-only. Distribution via PyPI (`uvx flowscape`), Homebrew (`les/tap`), signed `.app` + launchd helper.
 
-**Spec:** [`docs/superpowers/specs/2026-08-31-flowscape-design.md`](../specs/2026-08-31-flowscape-design.md) — travels with this plan.
+**Spec:** [`docs/specs/2026-08-31-flowscape-design.md`](../specs/2026-08-31-flowscape-design.md) — travels with this plan.
 
 ## Global Constraints
 
@@ -111,7 +111,7 @@ The default fallback is "ship something useful earlier." `.app` distribution is 
 
 ## 4. Current Findings
 
-The spec at `docs/superpowers/specs/2026-08-31-flowscape-design.md` was authored in a brainstorming session and revised after:
+The spec at `docs/specs/2026-08-31-flowscape-design.md` was authored in a brainstorming session and revised after:
 
 - **8-agent parallel review.** All Tier-1 + Tier-2 wins incorporated into revision2.
 - **Final-pass architect-reviewer.** 9 contradictions + 17 ambiguities + 10 prereqs resolved inline. "Implementation clarifications" section in spec.

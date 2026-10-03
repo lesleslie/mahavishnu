@@ -405,7 +405,7 @@ The follow-on plan (rewriting the 21 `mcp__dhara__*` MCP tools per the design sp
 - `.claude/decisions/wire-up-contract.md` — Integration-Contract policy
 - `.claude/decisions/mcp-backend-wiring-discipline.md` — wire-up discipline for any new MCP-server surface introduced by this plan (not applicable: this plan retires an MCP-server dep, not creates one)
 - `docs/schemas/document-frontmatter-v1.md` — frontmatter schema
-- `docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md` — design source (read for context; not directly implemented by this plan)
+- `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` — design source (read for context; not directly implemented by this plan)
 - `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — sibling plan; cross-check for naming/port collisions
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/dhara-removal-direction-2026-09-16.md` — user-direction memory that this plan fulfills
 - `scripts/audit_orphans.py` — orphan-detection gate; run before claiming Wave A done

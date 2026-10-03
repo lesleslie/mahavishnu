@@ -21,7 +21,7 @@ topic: mcp-tool-profile-adoption
 
 ## Global Constraints
 
-The following are project-wide requirements from the design spec (`docs/superpowers/specs/2026-08-18-mcp-tool-profile-adoption-design.md`). Every task's requirements implicitly include this section:
+The following are project-wide requirements from the design spec (`docs/specs/2026-08-18-mcp-tool-profile-adoption-design.md`). Every task's requirements implicitly include this section:
 
 - **Pre-1.0 merge policy:** branch + ff-merge to main, no PRs, no review gates. Exception: W0 has a soft review gate by 1–2 W1 implementers before W1 starts.
 - **No backwards compatibility / legacy support.** Crackerjack's existing `TOOL_REGISTRY` is **deleted** via `git rm` (whole file), not wrapped.

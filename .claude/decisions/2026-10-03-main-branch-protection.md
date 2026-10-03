@@ -120,7 +120,7 @@ from `git reflog` in <5 minutes.
     no-PR policy that constrains this rule (no required reviews, no
     required status checks yet).
 - **Trunk-based workflow spec:**
-  `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+  `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
   — the workflow whose auto-merge path relies on this protection being
   just-strict-enough.
 - **Implementation:** applied via `gh api -X PUT

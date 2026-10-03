@@ -17,7 +17,7 @@ topic: shared-oneiric-substrate-phase-e1
 
 **Tech Stack:** Python 3.14, pydantic-settings, OpenTelemetry, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.5, §6.7 (Phase E1).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.5, §6.7 (Phase E1).
 
 ## Global Constraints
 
@@ -381,7 +381,7 @@ Phase E1 is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.5 — Phase E1 contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.5 — Phase E1 contract
 - `oneiric/core/config.py:246` — `OneiricSettings` canonical
 - `oneiric/core/config.py:678-745` — `_env_overrides` mechanism
 - `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability requirements

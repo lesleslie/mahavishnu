@@ -2,8 +2,8 @@
 
 **Status:** Shipped in working tree (`eb47401` + `084c505`). Auditable per HANDOFF Audit Finding #7.
 
-**Plan:** `/Users/les/Projects/mahavishnu/docs/superpowers/plans/2026-06-22-bodai-crow-http-server.md` (v2)
-**Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md` (v7)
+**Plan:** `/Users/les/Projects/mahavishnu/docs/plans/2026-06-22-bodai-crow-http-server.md` (v2)
+**Spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-06-21-bodai-crow-server-design.md` (v7)
 
 ## 1. Overview
 
@@ -161,7 +161,7 @@ A 200 response indicates the server is up and the lifespan (httpx2 client, crow-
 
 ### Rotate secrets
 
-There are **no embedded secrets** in the crow server itself. If `crow_mcp_command` is replaced with a binary that takes a token, set it via `MAHAVISHNU_CROW_CROW_MCP_COMMAND` and restart. The companion SearXNG container has its own `secret_key` in `settings/searxng/settings.yml` (see `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md` §7).
+There are **no embedded secrets** in the crow server itself. If `crow_mcp_command` is replaced with a binary that takes a token, set it via `MAHAVISHNU_CROW_CROW_MCP_COMMAND` and restart. The companion SearXNG container has its own `secret_key` in `settings/searxng/settings.yml` (see `docs/specs/2026-06-21-bodai-crow-server-design.md` §7).
 
 ### False-positive triage (`_PRIVATE_NETS` blocks a legitimate URL)
 

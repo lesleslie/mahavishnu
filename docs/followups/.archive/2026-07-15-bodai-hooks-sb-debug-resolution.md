@@ -128,7 +128,7 @@ top level (Claude Code docs put `permissions` and `hooks` as siblings).
 
 1. Four Claude Code sessions are actively running; a hot config change
    could re-trigger hook firing mid-session.
-1. The working tree has 47 dirty `docs/superpowers/plans/*.md` files
+1. The working tree has 47 dirty `docs/plans/*.md` files
    from another session's normalization wave. Bundling this fix with
    those changes risks the drift-bundling pattern flagged in the
    project memory.
@@ -148,7 +148,7 @@ top level (Claude Code docs put `permissions` and `hooks` as siblings).
 
 - **Originating pickup prompt**: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md`
 - **Failing test**: `tests/unit/test_claude_settings_hooks_format.py`
-- **Stash-clobber fix plan (separate defect)**: `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+- **Stash-clobber fix plan (separate defect)**: `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
 - **Project session log**: `docs/followups/2026-07-16-dlq-fail-closed-session-checkpoint.md` (DLQ work the previous day that hit the same transport-drop symptom)
 - **Global hook overlay (correct shape)**: `~/.claude/settings.local.json`
 - **Pre-existing checkpoint from originating wave**: `docs/followups/.archive/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md`

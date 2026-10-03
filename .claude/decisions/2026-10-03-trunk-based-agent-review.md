@@ -16,7 +16,7 @@ Replaces GitHub-PR-shaped review for AI-driven solo dev. Ephemeral
 branches + AI ensemble review + `crackerjack run -v` gate + squash-merge
 + auto-push `main` + governed cleanup. See spec §"The Workflow".
 
-The 2026-10-03 spec `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+The 2026-10-03 spec `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 ships a single-purpose, mechanically-gated branch-to-`main` workflow for
 this repo. Stages 1–6 are owned by the AI worker (slash command or
 SessionEnd hook); stage 7 (publish — `crackerjack run -p <level>` + version
@@ -58,11 +58,11 @@ Stage summary (per spec §Workflow):
 ## Cross-references
 
 - **Spec (source of truth for the workflow):**
-  `docs/superpowers/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
+  `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
   — §"The Workflow" (7 stages), §4.1–4.6 (component contracts),
   §"Failure Modes", §REQ-008 (deliverable verification).
 - **Spec plan (implementation plan):**
-  `docs/superpowers/plans/2026-10-03-trunk-based-agent-review.md`
+  `docs/plans/2026-10-03-trunk-based-agent-review.md`
   — the 4-plan decomposition that shipped this workflow.
 - **Sibling decision (auto-push governance):**
   `.claude/decisions/2026-10-03-mainautopush.md` (REQ-007) — the

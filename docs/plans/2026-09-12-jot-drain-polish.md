@@ -20,9 +20,9 @@ related:
 
 **Tech Stack:** Python 3.14, asyncio, pytest + Hypothesis, Ruff, mypy strict, Bodai pre-1.0 direct-to-main workflow.
 
-**Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-12-jot-drain-polish-design.md` (commits `e02deea2` → `37d8d4eb`, both on `main`).
+**Spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-09-12-jot-drain-polish-design.md` (commits `e02deea2` → `37d8d4eb`, both on `main`).
 
-**Parent spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-10-jot-drain-design.md`
+**Parent spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-09-10-jot-drain-design.md`
 
 ## Global Constraints
 
@@ -48,7 +48,7 @@ related:
 | 1 | Item 1 — `/jot drain` slash command | `mahavishnu/commands/jot.md`, parent spec §3.5, `tests/integration/jot/test_drain_slash_command.py` (NEW) | Low |
 | 2 | Item 4 — SDD bundling defensive note | `.claude/decisions/sdd-bundling-defensive-pattern.md` (NEW), `.claude/decisions/README.md` | Low |
 | 3 | Item 3 — `_validate_ctx` unknown-key rejection (whitelist) | `mahavishnu/jot/drain.py`, `tests/unit/jot/test_drain.py` | Medium (BLOCKER-class) |
-| 4 | Item 5 — `_propose_action` spec-lock | `docs/superpowers/specs/2026-09-10-jot-drain-design.md`, `mahavishnu/jot/drain.py:706` | Low |
+| 4 | Item 5 — `_propose_action` spec-lock | `docs/specs/2026-09-10-jot-drain-design.md`, `mahavishnu/jot/drain.py:706` | Low |
 | 5 | Item 6 — `action_proposals` docstring + MCP spec sync | `mahavishnu/jot/drain.py:244`, `:636`, `docs/MCP_TOOLS_SPECIFICATION.md` | Low |
 | 6 | Item 2 (code) — Reconciler production-revert | `mahavishnu/jot/drain.py:495`, `:553`, parent spec §6.3 | **High** (production behavior change) |
 | 7 | Item 2 (tests) — Adversarial tests for the revert | `tests/unit/jot/test_drain_reconciler.py`, `tests/integration/jot/test_drain_auto_retry_e2e.py` | Medium |
@@ -63,7 +63,7 @@ related:
 
 **Files:**
 - Modify: `mahavishnu/commands/jot.md` (add second slash command after `/jot vitals`)
-- Modify: `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §3.5 (mark from "deferred" to "shipped")
+- Modify: `docs/specs/2026-09-10-jot-drain-design.md` §3.5 (mark from "deferred" to "shipped")
 - Create: `tests/integration/jot/test_drain_slash_command.py` (static-content test)
 
 **Interfaces:**
@@ -165,10 +165,10 @@ Expected: all 3 tests pass.
 
 - [ ] **Step 6: Update parent spec §3.5 to mark `/jot drain` as shipped**
 
-In `docs/superpowers/specs/2026-09-10-jot-drain-design.md`, find the §3.5 reference (or any line referencing `/jot drain` as future work) and update it to reference the new artifact path. If no such reference exists, skip this step (the spec doesn't carry the deferred marker explicitly). Verify with:
+In `docs/specs/2026-09-10-jot-drain-design.md`, find the §3.5 reference (or any line referencing `/jot drain` as future work) and update it to reference the new artifact path. If no such reference exists, skip this step (the spec doesn't carry the deferred marker explicitly). Verify with:
 
 ```bash
-grep -n "jot drain\|deferred\|future work" docs/superpowers/specs/2026-09-10-jot-drain-design.md | head -10
+grep -n "jot drain\|deferred\|future work" docs/specs/2026-09-10-jot-drain-design.md | head -10
 ```
 
 If the parent spec contains no explicit deferred reference, no edit is needed.
@@ -197,7 +197,7 @@ Ref: spec 2026-09-12-jot-drain-polish-design.md item 1."
 If the parent spec edit in step 6 was needed, add its path to the commit:
 
 ```bash
-git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only tests/integration/jot/test_drain_slash_command.py mahavishnu/commands/jot.md docs/superpowers/specs/2026-09-10-jot-drain-design.md --no-verify -m "<as above>"
+git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only tests/integration/jot/test_drain_slash_command.py mahavishnu/commands/jot.md docs/specs/2026-09-10-jot-drain-design.md --no-verify -m "<as above>"
 ```
 
 ---
@@ -477,7 +477,7 @@ Ref: spec 2026-09-12-jot-drain-polish-design.md item 3."
 ### Task 4: `_propose_action` spec-lock (spec item 5)
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-09-10-jot-drain-design.md` (insert §3.3.4 after existing §3.3 surface definitions)
+- Modify: `docs/specs/2026-09-10-jot-drain-design.md` (insert §3.3.4 after existing §3.3 surface definitions)
 - Modify: `mahavishnu/jot/drain.py:706` (update `_propose_action` docstring)
 
 **Interfaces:**
@@ -487,7 +487,7 @@ Ref: spec 2026-09-12-jot-drain-polish-design.md item 3."
 - [ ] **Step 1: Locate the insertion point in parent spec**
 
 ```bash
-grep -n "^## 3\.\|^### 3\.\|^#### 3\." docs/superpowers/specs/2026-09-10-jot-drain-design.md
+grep -n "^## 3\.\|^### 3\.\|^#### 3\." docs/specs/2026-09-10-jot-drain-design.md
 ```
 
 Find the end of §3.3 (the existing surface definitions block). The insertion goes immediately after §3.3 closes, before §3.4 starts.
@@ -502,7 +502,7 @@ Verify the exact strings: `already in flight`, `retry via dispatch_jot — budge
 
 - [ ] **Step 3: Insert §3.3.4 into the parent spec**
 
-Append the following at the chosen insertion point in `docs/superpowers/specs/2026-09-10-jot-drain-design.md`:
+Append the following at the chosen insertion point in `docs/specs/2026-09-10-jot-drain-design.md`:
 
 ```markdown
 #### 3.3.4 `_propose_action` policy (locked)
@@ -573,7 +573,7 @@ def _propose_action(jot: JotSummary) -> ActionProposalDict:
 - [ ] **Step 5: Verify the verbatim check**
 
 ```bash
-diff <(sed -n '710,713p' mahavishnu/jot/drain.py) <(grep -A 10 "IN_FLIGHT" docs/superpowers/specs/2026-09-10-jot-drain-design.md | grep -E "^\| \`?(IN_FLIGHT|FAILED|SUCCEEDED|None)" | awk -F'\\|' '{print $4}')
+diff <(sed -n '710,713p' mahavishnu/jot/drain.py) <(grep -A 10 "IN_FLIGHT" docs/specs/2026-09-10-jot-drain-design.md | grep -E "^\| \`?(IN_FLIGHT|FAILED|SUCCEEDED|None)" | awk -F'\\|' '{print $4}')
 ```
 
 If this diff is non-empty, fix the spec text to match drain.py verbatim.
@@ -589,7 +589,7 @@ Expected: 0 failures. Docstring-only change should not move test outcomes.
 - [ ] **Step 7: Commit**
 
 ```bash
-git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only mahavishnu/jot/drain.py docs/superpowers/specs/2026-09-10-jot-drain-design.md --no-verify -m "spec(jot): lock _propose_action policy at §3.3.4 (polish item 5)
+git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only mahavishnu/jot/drain.py docs/specs/2026-09-10-jot-drain-design.md --no-verify -m "spec(jot): lock _propose_action policy at §3.3.4 (polish item 5)
 
 Adds parent spec §3.3.4 with the canonical _propose_action mapping
 table; reasons copied verbatim from drain.py:710-713 (NOT paraphrased —
@@ -738,7 +738,7 @@ Ref: spec 2026-09-12-jot-drain-polish-design.md item 6."
 - Modify: `mahavishnu/jot/drain.py:495` and `:553` (replace `await _auto_retry_after(...)` with `asyncio.create_task(...)`)
 - Modify: `mahavishnu/jot/drain.py` (add module-level `_retry_waiters: dict[str, asyncio.Event] = {}`)
 - Modify: `mahavishnu/jot/drain.py:379` (modify `_auto_retry_after` to set the waiter event after the sleep+fold path completes)
-- Modify: `docs/superpowers/specs/2026-09-10-jot-drain-design.md` §6.3 (update reconciler diagram wording)
+- Modify: `docs/specs/2026-09-10-jot-drain-design.md` §6.3 (update reconciler diagram wording)
 
 **Interfaces:**
 - Consumes: existing `_reconcile_if_in_flight` (drain.py:452-560), `_auto_retry_after` (drain.py:379-449)
@@ -921,7 +921,7 @@ becomes:
 
 - [ ] **Step 5: Update parent spec §6.3 reconciler wording**
 
-In `docs/superpowers/specs/2026-09-10-jot-drain-design.md`, find the §6.3 reconciler diagram/section. Update any wording that says "await" or "blocks on" to reflect fire-and-forget:
+In `docs/specs/2026-09-10-jot-drain-design.md`, find the §6.3 reconciler diagram/section. Update any wording that says "await" or "blocks on" to reflect fire-and-forget:
 
 ```markdown
 - Auto-retry scheduled as background task (fire-and-forget) via
@@ -929,7 +929,7 @@ In `docs/superpowers/specs/2026-09-10-jot-drain-design.md`, find the §6.3 recon
   `_retry_waiters[handle]` (per-jot `asyncio.Event`).
 ```
 
-(If the parent spec doesn't mention the reconciler's await-vs-create_task pattern explicitly, no edit is needed — the function code change is sufficient. Verify with `grep -n "create_task\|await.*auto_retry" docs/superpowers/specs/2026-09-10-jot-drain-design.md`.)
+(If the parent spec doesn't mention the reconciler's await-vs-create_task pattern explicitly, no edit is needed — the function code change is sufficient. Verify with `grep -n "create_task\|await.*auto_retry" docs/specs/2026-09-10-jot-drain-design.md`.)
 
 - [ ] **Step 6: Run unit-jot tests — expect FAILURES (this is intentional; tests are updated in Task 7)**
 
@@ -950,7 +950,7 @@ Expected: 0 failures outside the reconciler test file.
 - [ ] **Step 7: Commit**
 
 ```bash
-git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only mahavishnu/jot/drain.py docs/superpowers/specs/2026-09-10-jot-drain-design.md --no-verify -m "fix(jot): reconciler auto-retry is fire-and-forget (polish item 2 code)
+git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only mahavishnu/jot/drain.py docs/specs/2026-09-10-jot-drain-design.md --no-verify -m "fix(jot): reconciler auto-retry is fire-and-forget (polish item 2 code)
 
 Reverts Task 19's await _auto_retry_after to asyncio.create_task. In
 production, each FAILED-but-retriable jot was blocking the reconciler

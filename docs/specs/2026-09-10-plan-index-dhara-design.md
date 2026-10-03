@@ -6,7 +6,7 @@ date: 2026-09-10
 last_reviewed: 2026-09-10
 superseded_by: null
 blocks_on:
-  - docs/superpowers/specs/2026-09-09-jot-inbox-design.md
+  - docs/specs/2026-09-09-jot-inbox-design.md
 requirements:
   - id: REQ-PLAN-001
     title: "Dhara is the canonical store for plan metadata"
@@ -67,7 +67,7 @@ Three failure modes the current design cannot address:
    triggers. A scheduler that drives work out of plans needs a
    queryable index, not a static file.
 
-The jot inbox design (`docs/superpowers/specs/2026-09-09-jot-inbox-design.md`)
+The jot inbox design (`docs/specs/2026-09-09-jot-inbox-design.md`)
 established the project's canonical pattern for this class of problem
 (write → derive → query). This spec applies that pattern to plans,
 **inverting the canonical axis for writes** because plans are reviewable
@@ -118,7 +118,7 @@ downstream derives from it).
 Plan content stays in git; **plan metadata** (frontmatter fields) lives
 in Dhara. Cross-machine visibility is Dhara's existing replication,
 which jot sub-plan 3 will harden — we ride that work. This spec
-**blocks on** `docs/superpowers/specs/2026-09-09-jot-inbox-design.md`'s
+**blocks on** `docs/specs/2026-09-09-jot-inbox-design.md`'s
 sub-plan 3 (drain hardening) for the cross-machine slice; the local
 substrate works without it.
 
@@ -280,7 +280,7 @@ Migration step 8 (filesystem-read decommission in the two named
 skills) fires at the later of (a) this spec's cut-over + 14 days, or
 (b) jot sub-plan 3 ship date + 14 days. If jot sub-plan 3 has no
 ship date at evaluation time (it's currently deferred per
-`docs/superpowers/specs/2026-09-09-jot-read-design.md` line 5),
+`docs/specs/2026-09-09-jot-read-design.md` line 5),
 condition (b) is treated as unsatisfiable and step 8 reduces to
 condition (a) + feature-tracking `adopted` status. **PLAN_INDEX.md
 itself remains a supported read artifact indefinitely** (per D7).
@@ -961,7 +961,7 @@ CI gates this spec requires green before any merge:
 crackerjack docs validate --strict
 
 # REQ-ID traceability (separate concern)
-python scripts/audit_requirements.py --plans docs/superpowers/specs/ --include-tests
+python scripts/audit_requirements.py --plans docs/specs/ --include-tests
 
 # Three-way consistency check (NEW)
 python scripts/audit_plan_index.py
@@ -1089,11 +1089,11 @@ value.
 
 ## References
 
-- `docs/superpowers/specs/2026-09-09-jot-inbox-design.md` — pattern
+- `docs/specs/2026-09-09-jot-inbox-design.md` — pattern
   template (read substrate topology, fail-open, trip-wire philosophy)
-- `docs/superpowers/specs/2026-09-09-jot-read-design.md` — pure
+- `docs/specs/2026-09-09-jot-read-design.md` — pure
   function split pattern; TypedDicts + error hierarchy discipline
-- `docs/superpowers/specs/2026-09-09-jot-capture-design.md` —
+- `docs/specs/2026-09-09-jot-capture-design.md` —
   capture-path discipline; redaction patterns
 - `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` —
   `scripts/feature_eligibility.py` followup/feature-tracking half

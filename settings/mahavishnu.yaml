@@ -415,7 +415,7 @@ a2a:
 # (primary) and the DirectGitWorktreeProvider (fallback). The three
 # tools (`list_worktrees`, `create_worktree`, `remove_worktree`) were
 # added to session-buddy on 2026-07-26 (commit 6fc9595f) —
-# see docs/superpowers/plans/2026-07-26-session-buddy-worktree-tools.md.
+# see docs/plans/2026-07-26-session-buddy-worktree-tools.md.
 worktree_providers:
   session_buddy_enabled: true
 
@@ -540,7 +540,7 @@ worker_registry:
       default_timeout: 600
       provides: ["worker:ssh"]
 
-# Jot inbox (sub-plan 3: Drain) — see docs/superpowers/specs/2026-09-10-jot-drain-design.md §5.8
+# Jot inbox (sub-plan 3: Drain) — see docs/specs/2026-09-10-jot-drain-design.md §5.8
 jot:
   surfacing:
     enabled: true

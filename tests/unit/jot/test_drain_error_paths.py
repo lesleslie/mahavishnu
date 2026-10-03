@@ -2,7 +2,7 @@
 
 Targets the ~60 lines that the §7.6 coverage gate flagged at 85.47%
 on 2026-09-19. Each test maps to a specific missed range listed in
-the re-review header of `docs/superpowers/plans/2026-09-10-jot-drain.md`:
+the re-review header of `docs/plans/2026-09-10-jot-drain.md`:
 
 - _validate_ctx unknown-op raise (line 248)
 - _mcp_trigger_workflow exception path (392-406)

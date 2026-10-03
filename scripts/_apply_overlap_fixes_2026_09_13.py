@@ -99,7 +99,7 @@ def action_settle_related() -> None:
 
 
 def action_jot_drain_frontmatter() -> None:
-    path = REPO / "docs/superpowers/plans/2026-09-10-jot-drain.md"
+    path = REPO / "docs/plans/2026-09-10-jot-drain.md"
     text = path.read_text()
     raw, body = split_frontmatter(text)
     if raw:
@@ -124,7 +124,7 @@ def action_jot_drain_frontmatter() -> None:
 
 
 def action_jot_polish_related() -> None:
-    path = REPO / "docs/superpowers/plans/2026-09-12-jot-drain-polish.md"
+    path = REPO / "docs/plans/2026-09-12-jot-drain-polish.md"
     raw, body = split_frontmatter(path.read_text())
     fm = yaml.safe_load(raw)
     related_list = ensure_list(fm, "related")
@@ -142,9 +142,9 @@ def main() -> int:
 
     print("\nAction 2: Add blocks_on to stub MCP plans")
     for rel in [
-        "docs/superpowers/plans/2026-09-06-archive-org-mcp.md",
-        "docs/superpowers/plans/2026-09-06-medium-mcp.md",
-        "docs/superpowers/plans/2026-09-06-scapy-mcp.md",
+        "docs/plans/2026-09-06-archive-org-mcp.md",
+        "docs/plans/2026-09-06-medium-mcp.md",
+        "docs/plans/2026-09-06-scapy-mcp.md",
     ]:
         action_stub_mcp(rel)
 

@@ -126,7 +126,7 @@ Mahavishnu already has adapter discovery, adapter health, and capability routing
 
 The old TUI design file is no longer canonical:
 
-- `docs/superpowers/specs/2026-04-09-tui-design.md`
+- `docs/specs/2026-04-09-tui-design.md`
   - points to `docs/plans/2026-04-16-bodai-agent-platform-master-spec.md`
 
 Current canonical TUI guidance:

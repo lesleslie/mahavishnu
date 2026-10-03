@@ -6,7 +6,7 @@ last_reviewed: 2026-08-12
 topic: bodai-conformance
 title: Bodai Ecosystem Conformance
 blocks_on:
-  - docs/superpowers/specs/2026-08-12-bodai-ecosystem-consistency-design.md
+  - docs/specs/2026-08-12-bodai-ecosystem-consistency-design.md
 ---
 
 # Bodai Ecosystem Conformance — Implementation Plan
@@ -2872,7 +2872,7 @@ Expected: **exit 0** IF Task 0 (sync `__init__.py` + README banner) was applied.
 
 - [ ] **Step 4: Document Phase 1 completion**
 
-Append to `mahavishnu/docs/superpowers/plans/2026-08-12-bodai-conformance.md`:
+Append to `mahavishnu/docs/plans/2026-08-12-bodai-conformance.md`:
 
 ```markdown
 ## Phase 1 Status: complete (2026-08-12)

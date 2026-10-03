@@ -1943,7 +1943,7 @@ ______________________________________________________________________
 
 ## Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-07-16-bodai-plugin-standardization.md`.
+Plan complete and saved to `docs/plans/2026-07-16-bodai-plugin-standardization.md`.
 
 Two execution options:
 

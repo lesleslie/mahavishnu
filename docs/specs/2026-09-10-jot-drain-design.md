@@ -15,7 +15,7 @@ topic: jot-drain
 > **Date:** 2026-09-10
 > **Sub-plan:** 3 of 3 in the Jot Inbox trilogy (Capture → Read → **Drain**)
 > **Author:** Brainstorming session output, validated by user
-> **Spec prerequisites:** `docs/superpowers/specs/2026-09-09-jot-read-design.md` and `docs/superpowers/specs/2026-09-09-jot-capture-design.md` ship the foundational primitives that Drain extends.
+> **Spec prerequisites:** `docs/specs/2026-09-09-jot-read-design.md` and `docs/specs/2026-09-09-jot-capture-design.md` ship the foundational primitives that Drain extends.
 
 ## 1. Context and Scope
 
@@ -1603,9 +1603,9 @@ Drain reads configuration from `settings/mahavishnu.yaml` exclusively. No new en
 
 ## 11. References
 
-- `docs/superpowers/specs/2026-09-09-jot-capture-design.md` — Sub-plan 1: capture primitives, HLC, redact
-- `docs/superpowers/specs/2026-09-09-jot-read-design.md` — Sub-plan 2: fold, render, MCP tools (read surface)
-- `docs/superpowers/specs/2026-09-09-jot-inbox-design.md` — Umbrella spec for the Jot Inbox trilogy
+- `docs/specs/2026-09-09-jot-capture-design.md` — Sub-plan 1: capture primitives, HLC, redact
+- `docs/specs/2026-09-09-jot-read-design.md` — Sub-plan 2: fold, render, MCP tools (read surface)
+- `docs/specs/2026-09-09-jot-inbox-design.md` — Umbrella spec for the Jot Inbox trilogy
 - `mahavishnu/mcp/tools/profiles.py` — Tool profile registration (8 existing jot tools → 14 with drain)
 - `mahavishnu/mcp/server_core.py` — `trigger_workflow` (line 273), `get_workflow_status` (line 432). Drain's actual dispatch + status-check primitives.
 - `mahavishnu/workers/cloud_worker.py` — Worker contract that dispatched jots consume

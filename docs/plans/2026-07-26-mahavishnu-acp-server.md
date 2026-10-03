@@ -14,8 +14,8 @@ topic: acp-server
 **Status:** `active`, `implementation`
 **Owner:** Mahavishnu core
 **Scope:** New `mahavishnu/acp/` subpackage exposing Mahavishnu as an **ACP server** (stdio JSON-RPC 2.0), alongside the existing A2A HTTP+SSE server. Unblocks Toad/ACP client integration.
-**Purpose:** Resolve the design in `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md` into phased, mergeable, verifiable work. Each phase is independently demoable and ships behind a rollback signal.
-**Spec sibling:** `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md` (read first; this plan is the implementation contract, not a redesign).
+**Purpose:** Resolve the design in `docs/specs/2026-07-15-mahavishnu-acp-server-design.md` into phased, mergeable, verifiable work. Each phase is independently demoable and ships behind a rollback signal.
+**Spec sibling:** `docs/specs/2026-07-15-mahavishnu-acp-server-design.md` (read first; this plan is the implementation contract, not a redesign).
 **Companion tracker:** `docs/feature-tracking/tui.md` (the TUI/Toad decision is gated on this plan shipping).
 
 ## Review history
@@ -113,16 +113,16 @@ Toad config example that an operator can copy-paste and have work.
 
 ## 4. Current Findings
 
-- **The design is approved.** `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`
+- **The design is approved.** `docs/specs/2026-07-15-mahavishnu-acp-server-design.md`
   status `active` in `docs/plans/PLAN_INDEX.md:338`; body status
   "approved (design phase complete, awaiting plan)" at line 13. This
   plan is the "plan" the spec was waiting on.
 - **No ACP code exists today.** Four prior plan/specs defer Toad/ACP
   for the same structural reasons. The cleanest references are
-  `docs/superpowers/plans/2026-06-19-track3-toad-tui.md` (draft),
-  `docs/superpowers/specs/2026-06-19-external-integrations-design.md:324-380`,
-  `docs/superpowers/specs/2026-07-15-constellation-tui-design.md:10-16,41-47`,
-  and `docs/superpowers/plans/2026-07-15-constellation-tui.md:59-63`.
+  `docs/plans/2026-06-19-track3-toad-tui.md` (draft),
+  `docs/specs/2026-06-19-external-integrations-design.md:324-380`,
+  `docs/specs/2026-07-15-constellation-tui-design.md:10-16,41-47`,
+  and `docs/plans/2026-07-15-constellation-tui.md:59-63`.
 - **CrowWorker is not ACP.** `mahavishnu/workers/crow.py:17-25,38-128`
   uses a custom REST surface (`/acp/new_session`, `/acp/prompt`,
   `/acp/status/{id}`, `/acp/cancel/{id}`) that borrows the name "ACP"
@@ -939,16 +939,16 @@ Filed as separate plans or issues when this plan ships:
 
 ## References
 
-- Design spec: `docs/superpowers/specs/2026-07-15-mahavishnu-acp-server-design.md`
+- Design spec: `docs/specs/2026-07-15-mahavishnu-acp-server-design.md`
 - TUI feature tracker (the consumer of this plan):
   `docs/feature-tracking/tui.md`
 - Plan template: `docs/plans/TEMPLATE.md`
 - Wire-up contract: `.claude/decisions/wire-up-contract.md`
 - Prior Toad/ACP deferrals (4, not 5):
-  - `docs/superpowers/plans/2026-06-19-track3-toad-tui.md` (draft)
-  - `docs/superpowers/specs/2026-06-19-external-integrations-design.md:324-380` (Toad ACP deferred)
-  - `docs/superpowers/specs/2026-07-15-constellation-tui-design.md:10-16,41-47` (Track2 out of scope)
-  - `docs/superpowers/plans/2026-07-15-constellation-tui.md:59-63` (Track2 out of scope)
+  - `docs/plans/2026-06-19-track3-toad-tui.md` (draft)
+  - `docs/specs/2026-06-19-external-integrations-design.md:324-380` (Toad ACP deferred)
+  - `docs/specs/2026-07-15-constellation-tui-design.md:10-16,41-47` (Track2 out of scope)
+  - `docs/plans/2026-07-15-constellation-tui.md:59-63` (Track2 out of scope)
 - A2A server (partial implementation reference, then refactored
   in Phase 1.5): `mahavishnu/a2a/server.py`
 - EventBridge subscriber (consumed + extended): `mahavishnu/core/events/bodai_subscriber.py`

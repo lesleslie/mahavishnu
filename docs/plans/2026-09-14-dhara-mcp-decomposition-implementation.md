@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, FastMCP 3.4+, mcp-common ≥0.26, oneiric ≥0.20, Typer, pytest, redis (Bodai adapter), DuckDB (Akosha), pgvector (Oneiric), ed25519.
 
-**Spec:** `docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md` — this plan implements that spec task-by-task. Read the spec alongside the plan.
+**Spec:** `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` — this plan implements that spec task-by-task. Read the spec alongside the plan.
 
 ## Global Constraints
 
@@ -289,7 +289,7 @@ def _publish(channel: str, envelope: CanonicalEnvelope) -> None:
     bridge remains non-blocking on the hook hot path; tracking failures
     is observational.
 
-    Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.8.
+    Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.8.
     """
     try:
         from oneiric.adapters.bootstrap import queued_publisher  # type: ignore
@@ -449,7 +449,7 @@ UserPromptExpansion) preserve their exit codes per spec §4.13.3.
 
 Bus publish is fire-and-forget post-decision.
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13, §5 Phase 12a
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13, §5 Phase 12a
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -603,7 +603,7 @@ Per-file logic moves to mahavishnu.bodai_hook_bridge.handle(); bridge
 files become ≤30-line dispatchers reading stdin JSON and calling
 the canonical handler.
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13, §5 Phase 12a task 2
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13, §5 Phase 12a task 2
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -776,7 +776,7 @@ git commit -m "feat(mahavishnu): git-hook Typer sub-command (Phase 12a task 3)
 Adds 4 git-event handlers + dispatch entry. The .git/hooks/<event>
 bash scripts become thin wrappers (Task 4).
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12a task 3
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12a task 3
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -945,7 +945,7 @@ Per spec §4.13.4, hard cutover (no dual-write per Q4). All in-process
 producers publish to bus; readers (notably bodai-activity-subscriber
 driven via the bridge) consume from bus.
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13.4, §5 Phase 12a task 5
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13.4, §5 Phase 12a task 5
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1007,7 +1007,7 @@ cd /Users/les/Projects/mahavishnu
 git add mahavishnu/tests/integration/test_hook_bridge_e2e.py
 git commit -m "test(mahavishnu): full bridge e2e suite (Phase 12a task 6)
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12a task 6
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12a task 6
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1135,7 +1135,7 @@ Per spec §4.13.2 schema table — PostToolUseFailure, SessionDelete,
 MessageDisplay, StopFailure, SubagentStart, PreCompact, PostCompact,
 PermissionRequest, PermissionDenied, TodoCreated, TodoCompleted.
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13.2, §5 Phase 12b task 1
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §4.13.2, §5 Phase 12b task 1
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1317,7 +1317,7 @@ git commit -m "test(mahavishnu): Qwen bridge e2e suite (Phase 12b task 4)
 Tests skip when Qwen bridges are not installed; pass when operator has
 followed docs/runbooks/qwen-hook-setup.md to install them.
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12b task 4
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12b task 4
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1335,7 +1335,7 @@ cd /Users/les/Projects/mahavishnu
 git add docs/runbooks/codex-hook-setup.md
 git commit -m "docs: Codex bridge deferred (Phase 12b task 5)
 
-Refs: docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12b task 5
+Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12b task 5
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1445,7 +1445,7 @@ Substrate is the single source of truth for conversations-table DDL:
     oneiric/adapters/vector/duckdb_hot_store.py:143-156
 
 Refs:
-- docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md
+- docs/specs/2026-09-14-dhara-mcp-decomposition-design.md
   §Phase 5 follow-up
 - oneiric commits 93f60cd (Protocol) + 198564e (concrete)
 """
@@ -1625,8 +1625,8 @@ Result:
 - substrate-relationship pin: tests/unit/test_hot_store_subclass.py
 
 Refs:
-- docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md §Phase 5 follow-up
-- docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md Phase 5 follow-up
+- docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §Phase 5 follow-up
+- docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md Phase 5 follow-up
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -1665,7 +1665,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` (recreated this session after the prior version was lost to auto-checkpoint bundling).
+Plan complete and saved to `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` (recreated this session after the prior version was lost to auto-checkpoint bundling).
 
 **Two execution options:**
 

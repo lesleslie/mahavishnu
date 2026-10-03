@@ -33,7 +33,7 @@ class TestCIGates:
                 "validate",
                 "--strict",
                 "--store",
-                "docs/superpowers/specs/",
+                "docs/specs/",
             ],
             capture_output=True,
             text=True,
@@ -53,7 +53,7 @@ class TestCIGates:
                 sys.executable,
                 "scripts/audit_requirements.py",
                 "--plans",
-                "docs/superpowers/specs/",
+                "docs/specs/",
                 "--include-tests",
             ],
             capture_output=True,
@@ -62,7 +62,7 @@ class TestCIGates:
             check=False,
         )
         # Output should reference REQ-PLAN-001..012 declared in
-        # docs/superpowers/specs/2026-09-10-plan-index-mcp-design.md.
+        # docs/specs/2026-09-10-plan-index-mcp-design.md.
         # When the spec is scanned, those IDs appear in stdout. A non-zero
         # exit (e.g. orphans / phantoms) is acceptable as long as the IDs
         # are recognized.

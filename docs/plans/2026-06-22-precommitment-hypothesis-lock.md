@@ -996,6 +996,6 @@ After writing, check the plan against the spec.
 
 ______________________________________________________________________
 
-Plan complete and saved to `docs/superpowers/plans/2026-06-22-precommitment-hypothesis-lock.md`.
+Plan complete and saved to `docs/plans/2026-06-22-precommitment-hypothesis-lock.md`.
 
 Per the user's earlier scope decision (option A: full brainstorm + plan + commit cycle for each of the 9 remaining specs), this plan is part of spec #2's cycle. Moving on to spec #3 brainstorm (`confidence-ceiling-gate`) next.

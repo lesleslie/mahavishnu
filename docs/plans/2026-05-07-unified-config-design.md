@@ -10,7 +10,7 @@ blocks_on: []
 
 # P3 Design Note — UnifiedConfig and Startup Validation
 
-## **Created**: 2026-05-07 **Supplements**: `docs/superpowers/plans/2026-04-26-config-consolidation.md` **Status**: approved — written to unblock P3 implementation <!-- legacy status — see YAML frontmatter -->
+## **Created**: 2026-05-07 **Supplements**: `docs/plans/2026-04-26-config-consolidation.md` **Status**: approved — written to unblock P3 implementation <!-- legacy status — see YAML frontmatter -->
 
 ## Gap addressed
 

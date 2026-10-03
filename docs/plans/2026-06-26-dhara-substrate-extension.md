@@ -11,7 +11,7 @@ topic: dhara-substrate-extension
 
 **Status:** Drafted 2026-06-26, post-8-agent audit <!-- legacy status: Drafted — see YAML frontmatter -->
 **Owner:** TBD (no plan currently owns this work — it's the orphaned infrastructure between all open plans)
-**Supersedes/extends:** [`docs/superpowers/plans/2026-05-25-dhara-serverless-implementation-plan.md`](./2026-05-25-dhara-serverless-implementation-plan.md)
+**Supersedes/extends:** [`docs/plans/2026-05-25-dhara-serverless-implementation-plan.md`](./2026-05-25-dhara-serverless-implementation-plan.md)
 **Trigger:** HANDOFF.md "Audit Findings (2026-06-26)" section, items #1, #2, #3.
 
 ## Goal

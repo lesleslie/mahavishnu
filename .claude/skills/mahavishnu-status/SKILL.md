@@ -61,7 +61,7 @@ in flight?", "show me the plan index"), the skill calls
 auth-gated). On degraded Dhara response, fall back to filesystem
 read of `docs/plans/PLAN_INDEX.md`.
 
-See `docs/superpowers/specs/2026-09-10-plan-index-dhara-design.md` §Read
+See `docs/specs/2026-09-10-plan-index-dhara-design.md` §Read
 paths for the full read-path contract.
 
 ## Where to find more

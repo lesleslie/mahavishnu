@@ -5,7 +5,7 @@ MCP call). Respects the existing circuit breaker: when open, no calls are
 attempted. Rows that fail after `max_attempts` are marked `failed` for
 operator inspection.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 

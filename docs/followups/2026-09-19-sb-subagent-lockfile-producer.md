@@ -66,7 +66,7 @@ affected plans live, and (b) the followups lifecycle policy
 
 ## Blocks
 
-- `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+- `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
   (consumer-half plan, partial — closes to complete when this
   followup ships)
 - `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
@@ -125,7 +125,7 @@ Closure criteria status:
 - [x] "Functionally dormant" caveat removed from
   `session_buddy/checkpoint/subagent_detector.py`.
 - [x] Two blocking plans updated (`blocks_on:` removed, status promoted):
-  - `docs/superpowers/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
+  - `docs/plans/2026-07-15-sb-checkpoint-stash-clobber-fix.md`
     (`partial → complete`)
   - `docs/followups/2026-07-15-sb-checkpoint-stash-clobber.md`
     (`partial → complete`)

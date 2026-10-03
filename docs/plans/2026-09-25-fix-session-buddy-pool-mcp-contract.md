@@ -679,7 +679,7 @@ Expected:
 - [ ] **Step 4: Commit the plan document (no code change)**
 
 ```bash
-git add docs/superpowers/plans/2026-09-25-fix-session-buddy-pool-mcp-contract.md
+git add docs/plans/2026-09-25-fix-session-buddy-pool-mcp-contract.md
 git commit -m "docs(plan): session-buddy pool MCP contract fix"
 ```
 

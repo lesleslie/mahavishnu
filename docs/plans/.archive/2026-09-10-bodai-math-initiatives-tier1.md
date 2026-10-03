@@ -981,7 +981,7 @@ meta-plan in commit `671611ff`).
 
 - `docs/plans/TEMPLATE.md` — the integration-contract-required template
   this plan follows.
-- `docs/superpowers/specs/2026-09-09-jot-read-design.md` — recent
+- `docs/specs/2026-09-09-jot-read-design.md` — recent
   example of a spec-style document in this repo.
 - `.claude/decisions/wire-up-contract.md` — the policy that drives
   the Integration Contract requirement.

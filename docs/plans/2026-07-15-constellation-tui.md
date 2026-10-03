@@ -18,7 +18,7 @@ topic: constellation-tui
 
 ## Global Constraints
 
-**Spec source:** `docs/superpowers/specs/2026-07-15-constellation-tui-design.md` (committed `a143d5c`).
+**Spec source:** `docs/specs/2026-07-15-constellation-tui-design.md` (committed `a143d5c`).
 **Code conventions** (per project `CLAUDE.md` § Crackerjack-Compliant Code):
 
 - Every source file: `from __future__ import annotations` as first non-comment line (after module docstring).
@@ -2252,7 +2252,7 @@ ______________________________________________________________________
 **Files:**
 
 - Create: `docs/constellation/INSTALL.md`
-- Modify: `docs/superpowers/specs/2026-07-15-constellation-tui-design.md` (add a "Status: implementation complete" note)
+- Modify: `docs/specs/2026-07-15-constellation-tui-design.md` (add a "Status: implementation complete" note)
 
 **Required skills:**
 
@@ -2322,12 +2322,12 @@ ______________________________________________________________________
 
 - [ ] **Step 3: Update spec with completion note**
 
-  Append to `docs/superpowers/specs/2026-07-15-constellation-tui-design.md` (above the Status section):
+  Append to `docs/specs/2026-07-15-constellation-tui-design.md` (above the Status section):
 
   ```markdown
   ## Implementation status
 
-  Implemented per `docs/superpowers/plans/2026-07-15-constellation-tui.md`.
+  Implemented per `docs/plans/2026-07-15-constellation-tui.md`.
   Three surfaces wired; installer shipped; gated integration test in place.
   Operator doc at `docs/constellation/INSTALL.md`.
   ```
@@ -2347,7 +2347,7 @@ ______________________________________________________________________
 - [ ] **Step 5: Final commit**
 
   ```bash
-  git add docs/constellation/INSTALL.md docs/superpowers/specs/2026-07-15-constellation-tui-design.md
+  git add docs/constellation/INSTALL.md docs/specs/2026-07-15-constellation-tui-design.md
   git commit -m "docs(constellation): operator install guide + spec status"
   ```
 
@@ -2382,7 +2382,7 @@ ______________________________________________________________________
 
 ## Execution Handoff
 
-**Plan complete and saved to `docs/superpowers/plans/2026-07-15-constellation-tui.md`. Two execution options:**
+**Plan complete and saved to `docs/plans/2026-07-15-constellation-tui.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Uses `superpowers:subagent-driven-development`.
 

@@ -17,7 +17,7 @@ topic: session-buddy-extension
 
 **Tech Stack:** DuckDB (Mahavishnu WAL), Pydantic v2, FastMCP, asyncio, Crackerjack pre-commit hooks, ty (not mypy). No new infra, no new services.
 
-**Spec:** `docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md` (commit `aacb7533`).
+**Spec:** `docs/specs/2026-07-29-session-buddy-extension-design.md` (commit `aacb7533`).
 
 ## Global Constraints
 
@@ -136,7 +136,7 @@ The WAL captures deferred memory writes destined for Session-Buddy. The
 aggregator's existing circuit breaker gates the drainer; this module
 defines the row shape and the three terminal states.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 
@@ -245,7 +245,7 @@ CREATE INDEX IF NOT EXISTS idx_memory_outbox_pending
 Async DuckDB-backed writer for deferred memory writes. Owns the connection
 lifecycle; opens on first use, closes on `close()`.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 
@@ -497,7 +497,7 @@ MCP call). Respects the existing circuit breaker: when open, no calls are
 attempted. Rows that fail after `max_attempts` are marked `failed` for
 operator inspection.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 
@@ -919,7 +919,7 @@ Drops the second of two rapid checkpoint events within a TTL window, keyed
 by (project_path, agent_idx). No new schema; uses an in-process dict-of-locks
 with last-call timestamps.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q3: hook noise reduction).
 """
 
@@ -1132,7 +1132,7 @@ Reads mcp__session-buddy__distilled_skill_health and emits a skill_coverage_repo
 Returns 0 (pass), 1 (warn), or 2 (block). Warn-only by default; `--strict`
 makes warnings fatal.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q5: Phase 1.5 close-out).
 """
 
@@ -1273,9 +1273,9 @@ Use `gh issue create` on the Session-Buddy repo:
 ```bash
 gh issue create --repo lesleslie/session-buddy \
     --title "Cut 0.21.0: ship plugin manifest from spec 2026-07-29" \
-    --body "Mahavishnu spec docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+    --body "Mahavishnu spec docs/specs/2026-07-29-session-buddy-extension-design.md
 implements Q1 (thin-shell plugin) in commits from Task 3 of the plan at
-docs/superpowers/plans/2026-07-29-session-buddy-extension.md.
+docs/plans/2026-07-29-session-buddy-extension.md.
 
 Request: cut 0.21.0 with these plugin files included. No code changes needed;
 the manifest is purely additive."
@@ -1362,7 +1362,7 @@ Read-through facade over the canonical code_graphs v2 table. Akosha's
 search_code_patterns and Mahavishnu's treesitter_* shims call this instead
 of running their own DuckDB queries.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q4: code-graph consolidation).
 """
 
@@ -1470,7 +1470,7 @@ their own indexes as fallback when the facade is unreachable."
 
 ## Execution Handoff
 
-**Plan complete and saved to `docs/superpowers/plans/2026-07-29-session-buddy-extension.md`. Two execution options:**
+**Plan complete and saved to `docs/plans/2026-07-29-session-buddy-extension.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Uses `superpowers:subagent-driven-development`.
 

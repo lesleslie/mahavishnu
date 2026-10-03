@@ -17,7 +17,7 @@ topic: shared-oneiric-substrate-phase-d
 
 **Tech Stack:** Python 3.14, fastembed (ONNX), httpx2 (single client per service instance), Ollama HTTP API, llama-server HTTP API, numpy.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.4, §6.7 (Phase D1+D2).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.4, §6.7 (Phase D1+D2).
 
 ## Global Constraints
 
@@ -461,7 +461,7 @@ Phase D is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.4 — Phase D contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.4 — Phase D contract
 - `oneiric/adapters/embedding/embedding_interface.py:81` — `EmbeddingBase` ABC
 - `akosha/processing/embeddings.py:30-31` — Akosha shim
 - `session_buddy/reflection/embeddings.py:35-97, 138-141` — SB HTTP-only path + cache dict

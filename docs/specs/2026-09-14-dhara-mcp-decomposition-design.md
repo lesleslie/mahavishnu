@@ -12,8 +12,8 @@ related:
   - docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
   - docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md
   - docs/plans/2026-07-26-mahavishnu-acp-server.md
-  - docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md
-  - docs/superpowers/specs/2026-05-24-dhara-serverless-design.md
+  - docs/specs/2026-04-27-bodai-auth-standardization-design.md
+  - docs/specs/2026-05-24-dhara-serverless-design.md
 ---
 
 # Dhara MCP Decomposition — Design Specification
@@ -505,12 +505,12 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - `.claude/worktrees/agent-*/docs/adr/013-...md` (5 hits in worktree copies — non-canonical, ignored)
 - `mahavishnu/.claude/decisions/test-matrix-review-followups.md` (archival, fine)
 - `mahavishnu/core/skill_mcp_validator.py:62` (1 hit)
-- `docs/superpowers/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088)
+- `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088)
 - All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
 
 **Tasks:**
 
-0. **Enumerate all 86 `mcp__dhara__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/.claude/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/superpowers/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
+0. **Enumerate all 86 `mcp__dhara__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/.claude/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
 
 1. Create `oneiric/mcp/server_core.py` with `OneiricMCPServer` class following Dhara's `run_http_async` pattern (NOT the broken `MCPServerCLIFactory._start_server()` loop — see §4.6 for the pattern).
 
@@ -538,7 +538,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 12. Update `.claude/agents/database-operations-specialist.md` + `architecture-council.md` cross-references.
 
-13. Update `docs/superpowers/plans/2026-04-26-agent-skill-modernization.md` (lines 275, 685, 1079, 1088) to replace `mcp__dhara__*` with `mcp__oneiric__*` / `mcp__mahavishnu__*` / `mcp__crackerjack__*` / `mcp__akosha__*` per the §4.2 destination table.
+13. Update `docs/plans/2026-04-26-agent-skill-modernization.md` (lines 275, 685, 1079, 1088) to replace `mcp__dhara__*` with `mcp__oneiric__*` / `mcp__mahavishnu__*` / `mcp__crackerjack__*` / `mcp__akosha__*` per the §4.2 destination table.
 
 14. Update `mahavishnu/core/skill_mcp_validator.py:62` to call `mcp__oneiric__get_adapter` instead of `mcp__dhara__get_adapter`.
 
@@ -620,7 +620,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Tasks (documentation only — no code change in Phase 2 itself):**
 
-1. Update `docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md` — mark Dhara's row in the "per-service status" table as Done (no separate code migration was needed; the spec's pre-existing mcp_common adoption covered all four remaining services).
+1. Update `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — mark Dhara's row in the "per-service status" table as Done (no separate code migration was needed; the spec's pre-existing mcp_common adoption covered all four remaining services).
 2. Update `.claude/decisions/mcp-backend-wiring-discipline.md` if it cited Dhara's auth (verify).
 3. Verify by grep: `grep -r "from dhara.mcp.auth" /Users/les/Projects/` returns nothing (already enforced by Phase 1 + Phase 8 deletion, but record the verification step).
 
@@ -630,7 +630,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 - **Triggered from:** None (documentation update only; no runtime feature).
 - **Returns to / updates:** `2026-04-27-bodai-auth-standardization-design.md` § per-service status table.
-- **Demonstrable by:** `grep -rn "dhara" docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md` returns no references to "in-progress" or "pending Dhara migration"; the spec's §5.2 per-service adapter section explicitly lists Dhara as N/A (no MCP server post-Phase-1).
+- **Demonstrable by:** `grep -rn "dhara" docs/specs/2026-04-27-bodai-auth-standardization-design.md` returns no references to "in-progress" or "pending Dhara migration"; the spec's §5.2 per-service adapter section explicitly lists Dhara as N/A (no MCP server post-Phase-1).
 - **Rollback signal:** None (no runtime change).
 - **Observability added:** None (no runtime change).
 
@@ -1012,7 +1012,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
    - **Option C (hybrid — gateway for read-only, direct for stateful):** Mahavishnu gateways read-only wrapper tools (the Phase 1.5 consolidated wrappers); stateful domain tools stay in their own process. Splits the operational complexity cleanly: gateway handles the cross-cutting infra, components handle the stateful work.
 2. **Estimate the cost of each option** with concrete metrics: launchd plist count, /health endpoint count, auth secret env vars, OTel span propagation overhead, cross-component MCP call latency, operator muscle-memory disruption.
 3. **Recommend one option** based on the Phase 10 substrate outcomes (whether Postgres is the substrate or Dhara-as-engine is).
-4. **If Option B or C is recommended:** write a follow-up spec (`docs/superpowers/specs/2026-XX-XX-gateway-pattern-implementation.md`) describing the migration. The follow-up spec gets its own reviews and its own implementation plan.
+4. **If Option B or C is recommended:** write a follow-up spec (`docs/specs/2026-XX-XX-gateway-pattern-implementation.md`) describing the migration. The follow-up spec gets its own reviews and its own implementation plan.
 
 **Integration contract:**
 - **Triggered from:** ADR 018's option recommendation.
@@ -1225,8 +1225,8 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 - `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — to be amended (Phase 4 description, Phase 11 redirect).
 - `docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` — precondition plan; cross-references need updating.
 - `docs/plans/2026-07-26-mahavishnu-acp-server.md` — Phase 1.5 (skill distribution) routes through Crackerjack per Phase 4 of this spec.
-- `docs/superpowers/specs/2026-04-27-bodai-auth-standardization-design.md` — Phase 2 of this spec completes Dhara's row.
-- `docs/superpowers/specs/2026-05-24-dhara-serverless-design.md` — Phase 4 of the active plan (Dhara re-architecture) still applies; this spec decomposes the MCP surface.
+- `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — Phase 2 of this spec completes Dhara's row.
+- `docs/specs/2026-05-24-dhara-serverless-design.md` — Phase 4 of the active plan (Dhara re-architecture) still applies; this spec decomposes the MCP surface.
 - `docs/ZODB_COMPARISON.md` (in Dhara repo) — documents Dhara's lineage from Durus; informs "Dhara stays the engine" decision.
 - `dhara/NOTICE` — CNRI/Durus attribution preserved under BSD-3-Clause.
 - `.claude/decisions/wire-up-contract.md` — Integration Contract pattern used in every phase.

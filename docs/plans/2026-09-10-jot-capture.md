@@ -19,7 +19,7 @@ topic: jot-capture
 
 **Tech Stack:** Python 3.14+ stdlib (json, os, sys, uuid, time, socket, secrets, re, hashlib, traceback, dataclasses, pathlib). No `logging`, no `oneiric`, no `httpx`, no `requests` in the hook script. pytest 8.x + Hypothesis 6.x for tests.
 
-**Spec:** [`docs/superpowers/specs/2026-09-09-jot-capture-design.md`](../specs/2026-09-09-jot-capture-design.md) (commit `14cb30d2`).
+**Spec:** [`docs/specs/2026-09-09-jot-capture-design.md`](../specs/2026-09-09-jot-capture-design.md) (commit `14cb30d2`).
 
 ______________________________________________________________________
 

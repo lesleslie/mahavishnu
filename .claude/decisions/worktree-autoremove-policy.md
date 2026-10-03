@@ -65,7 +65,7 @@ cron, or other unattended invocation. The amended rule is recorded in
 ## Cross-references
 
 - Original rule: `.claude/decisions/session-worktree-defaults.md` Rule 2
-- Plan: `docs/superpowers/plans/2026-07-26-worktree-autoremove.md`
+- Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
 - Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 - v4 worktree types: `docs/adr/015-worktree-and-cache-storage-v2.md` §13

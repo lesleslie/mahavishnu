@@ -18,7 +18,7 @@
 - JetBrains Marketplace publish pipeline (manual)
 - Git: commits on main checkout of `/Users/les/Projects/jinja2-custom-delimiters`
 
-**Spec:** `/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-09-21-jinja2-custom-delimiters-1.0.4-update-design.md` (commit c93aeb67)
+**Spec:** `/Users/les/Projects/mahavishnu/docs/specs/2026-09-21-jinja2-custom-delimiters-1.0.4-update-design.md` (commit c93aeb67)
 
 ______________________________________________________________________
 

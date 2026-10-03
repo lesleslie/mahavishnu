@@ -11,7 +11,7 @@ topic: vestigial-bs4-removal
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Goal:** Remove the unused `beautifulsoup4` dependency from Mahavishnu's `pyproject.toml` and fix three stale doc references that claim BeautifulSoup is used for webpage ingestion.
-> **Architecture:** Pure cleanup. No code changes — bs4 has zero imports across `mahavishnu/`, `tests/`, and `examples/`. The actual webpage ingestion in `ContentIngester` delegates to a `web_reader` MCP server on port 8699; nothing in this repo parses HTML locally. A future `bodai-crow-server` (per `docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md`) will use `trafilatura` + `selectolax` for the actual parsing work — in *that* component, not this one.
+> **Architecture:** Pure cleanup. No code changes — bs4 has zero imports across `mahavishnu/`, `tests/`, and `examples/`. The actual webpage ingestion in `ContentIngester` delegates to a `web_reader` MCP server on port 8699; nothing in this repo parses HTML locally. A future `bodai-crow-server` (per `docs/specs/2026-06-21-bodai-crow-server-design.md`) will use `trafilatura` + `selectolax` for the actual parsing work — in *that* component, not this one.
 > **Tech Stack:** Python 3.13, uv, pyproject.toml (PEP 621), pytest.
 
 ## Global Constraints
@@ -199,7 +199,7 @@ This commit:
   docs/CONTENT_INGESTION_GUIDE.md:25)
 
 When the bodai-crow-server MCP (port 8675) ships per
-docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md, it will
+docs/specs/2026-06-21-bodai-crow-server-design.md, it will
 adopt trafilatura + selectolax for the actual web_fetch work. That is a
 separate component and a separate dep declaration.
 
@@ -252,7 +252,7 @@ Expected result (verified 2026-06-23):
 
 - [ ] **Step 2: Note the bodai-crow-server precedent**
 
-`/Users/les/Projects/mahavishnu/docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md` (the future web-fetching MCP server on port 8675) already specifies `selectolax~=0.3` + `trafilatura~=2.1` for its CSS fallback path. That component, when implemented, will own the only legitimate HTML-parsing dep in the ecosystem — and it will *not* be bs4.
+`/Users/les/Projects/mahavishnu/docs/specs/2026-06-21-bodai-crow-server-design.md` (the future web-fetching MCP server on port 8675) already specifies `selectolax~=0.3` + `trafilatura~=2.1` for its CSS fallback path. That component, when implemented, will own the only legitimate HTML-parsing dep in the ecosystem — and it will *not* be bs4.
 
 - [ ] **Step 3: Add the audit result as a PR comment**
 
@@ -294,6 +294,6 @@ When bodai-crow-server ships, the relevant comparison for *that* codebase will b
 | Tree mutation | Full (insert/replace/remove) | Append/prepend only — read-mostly |
 | Mature ecosystem | 20 years, ubiquitous | ~7 years, well-tested, smaller community |
 
-**For our usage** (CSS-selector fallback when trafilatura under-extracts an article body), selectolax wins on every axis that matters: speed (hot path of a server), CSS completeness (we need `:not(:has(...))` and similar), and HTML5 correctness. bs4 would only beat it if we needed in-place tree mutation or XML parsing — neither is on the bodai-crow-server roadmap. The existing spec (`docs/superpowers/specs/2026-06-21-bodai-crow-server-design.md:342`) already chose selectolax for the right reasons.
+**For our usage** (CSS-selector fallback when trafilatura under-extracts an article body), selectolax wins on every axis that matters: speed (hot path of a server), CSS completeness (we need `:not(:has(...))` and similar), and HTML5 correctness. bs4 would only beat it if we needed in-place tree mutation or XML parsing — neither is on the bodai-crow-server roadmap. The existing spec (`docs/specs/2026-06-21-bodai-crow-server-design.md:342`) already chose selectolax for the right reasons.
 
 **For Mahavishnu specifically:** neither library belongs here. This repo is an MCP client for `web_reader`; it doesn't parse HTML. The plan above is just cleanup of a vestigial declaration.

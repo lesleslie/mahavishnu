@@ -493,7 +493,7 @@ class MahavishnuError(Exception):
             "Install mergiraf: https://github.com/mergiraf/mergiraf/releases",
             "Verify 'mergiraf --version' succeeds in the same shell that runs mahavishnu",
             "Switch the merge_driver_default to 'git' in settings/mahavishnu.yaml to disable the mergiraf requirement",
-            "See docs/superpowers/specs/2026-09-12-settle-semantic-merge-design.md for the full fallback policy",
+            "See docs/specs/2026-09-12-settle-semantic-merge-design.md for the full fallback policy",
         ],
         # Prefect/Orchestration error recovery guidance
         ErrorCode.PREFECT_CONNECTION_ERROR: [
@@ -686,7 +686,7 @@ class MahavishnuError(Exception):
             "Iteration claim drifted from the locked hypothesis",
             "Lock the hypothesis before iteration 0 with 'mahavishnu precommit lock'",
             "Do not modify the claim field after signing",
-            "See docs/superpowers/specs/2026-06-22-precommitment-hypothesis-lock-design.md",
+            "See docs/specs/2026-06-22-precommitment-hypothesis-lock-design.md",
         ],
         ErrorCode.PRECOMMITMENT_SIGNATURE_MISMATCH: [
             "Stored lock hypothesis has been altered since signing",

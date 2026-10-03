@@ -278,8 +278,8 @@ pins its existence.
 
 ## Cross-references
 
-- Spec: `docs/superpowers/specs/2026-09-14-dhara-mcp-decomposition-design.md` §4.13
-- Plan: `docs/superpowers/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` §5 Phase 12b
+- Spec: `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` §4.13
+- Plan: `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` §5 Phase 12b
 - Bridge module: `mahavishnu/bodai_hook_bridge.py` (canonical handler + `_EVENT_HANDLERS` dispatch)
 - E2E test: `mahavishnu/tests/integration/test_qwen_hook_bridge_e2e.py`
 - Unit tests: `mahavishnu/tests/unit/test_bodai_hook_bridge.py` (Qwen-only parametrized tests)

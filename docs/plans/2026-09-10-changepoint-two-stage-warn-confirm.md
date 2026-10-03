@@ -1630,7 +1630,7 @@ If Step 7.5 surfaced follow-up items, add them as new tasks between Task 7 and t
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`. Two execution options:
+Plan complete and saved to `docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`. Two execution options:
 
 **1. Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Best for: catching defects early before they compound; 7 small tasks each independently reviewable.
 

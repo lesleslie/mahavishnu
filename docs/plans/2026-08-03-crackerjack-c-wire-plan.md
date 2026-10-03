@@ -13,7 +13,7 @@ topic: crackerjack-c-wire-plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Resolve six Crackerjack quality and wiring gaps identified in `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"C-WIRE", add per-task observability so each task reaches the `wired` state, and satisfy the portfolio's 5-field integration contract template at plan level.
+**Goal:** Resolve six Crackerjack quality and wiring gaps identified in `docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"C-WIRE", add per-task observability so each task reaches the `wired` state, and satisfy the portfolio's 5-field integration contract template at plan level.
 
 **Architecture:** Five independent tasks (Tasks 1, 3, 5 ship first as small additive fixes; Tasks 2 and 4 ship last because they are contract changes, not additive fixes). Task 6 (C-ASYNC-DURABILITY) is gated on D-LOCK from the Dhara substrate and ships as Phase 1.5. Each task follows strict TDD and emits a metric/log line so a smoke command can prove the change took effect.
 
@@ -39,7 +39,7 @@ Every task runs from `/Users/les/Projects/crackerjack/`. The plan file lives in 
 
 ## Plan-Level Integration Contract
 
-Per `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Integration contract (template)" the C-WIRE plan declares:
+Per `docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Integration contract (template)" the C-WIRE plan declares:
 
 - **Triggered from:** any `crackerjack run` invocation, `crackerjack publish` flow, MCP `search_skills` tool call, WebSocket subscription request, security audit invocation.
 - **Returns to / updates:** `SkillMetadata.success_rate` (per skill), `QualityGateReport.required_check_failures` (per gate), `HookPluginBase.metadata` (per plugin), WebSocket subscription allow-list, `SecurityAuditor.CRITICAL_HOOKS` lookup table, `crackerjack/skills_tracking.py::SessionBuddyMCPTracker.mcp_server_url` default.
@@ -875,7 +875,7 @@ ______________________________________________________________________
 
 ### Task 6: Persist AsyncTaskManager jobs (C-ASYNC-DURABILITY) — Phase 1.5, GATED ON D-LOCK
 
-**Do not start this task** until `D-LOCK` from `docs/superpowers/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Layer 0" has shipped into the Dhara substrate and is consumable from crackerjack. Verified: line 37 of `crackerjack/mcp/task_manager.py` is `self._cleanup_task = asyncio.create_task(self._cleanup_loop())` — the gating claim is accurate.
+**Do not start this task** until `D-LOCK` from `docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md` §"Layer 0" has shipped into the Dhara substrate and is consumable from crackerjack. Verified: line 37 of `crackerjack/mcp/task_manager.py` is `self._cleanup_task = asyncio.create_task(self._cleanup_loop())` — the gating claim is accurate.
 
 When unblocked, write a follow-up plan that:
 

@@ -17,7 +17,7 @@ topic: shared-oneiric-substrate-phase-b
 
 **Tech Stack:** Python 3.14, pgvector, `oneiric.adapters.vector.pgvector`, Parquet via pyarrow, numpy.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.2, §6.7 (Phase B1+B2).
+**Spec:** `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.2, §6.7 (Phase B1+B2).
 
 ## Global Constraints
 
@@ -415,7 +415,7 @@ Phase B is complete when ALL of:
 
 ## References
 
-- `docs/superpowers/specs/2026-09-27-shared-bodai-substrate-design.md` §6.2 — Phase B contract
+- `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.2 — Phase B contract
 - `oneiric/adapters/vector/pgvector.py` — PgvectorAdapter
 - `akosha/storage/pgvector_warm_store.py:150` — Akosha's pre-existing pgvector integration
 - `akosha/dev/docker-compose.yml` — local pgvector stack for tests

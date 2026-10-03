@@ -12,7 +12,7 @@ topic: changepoint-two-stage-polish
 # Followups — Tier 1 changepoint two-stage polish
 
 **Date:** 2026-09-10
-**Originating plan:** `docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`
+**Originating plan:** `docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`
 **Status:** Round-6 fixes landed (`3f61fa3a` + `b758ebba`); 115 tests pass; ops-UX re-review and audit-honesty re-review both clean (no CRITICAL/HIGH/MEDIUM remaining in Round-6 scope). 11 LOW items parked here for the next docs/code sweep.
 
 **Convention:** Each item lists severity, lens, location, defect, proposed fix, acceptance criteria. Items in **bold** are new (introduced or revealed by Round-6 review); items in *italic* were parked before Round-6 dispatch. All are non-blocking.
@@ -59,7 +59,7 @@ ______________________________________________________________________
 
 - **Lens:** audit-honesty (Round-6 re-review; **pre-existing drift, not a Round-6 regression**)
 
-- **Location:** `docs/superpowers/plans/2026-09-10-changepoint-two-stage-warn-confirm.md:1344` (Status line)
+- **Location:** `docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md:1344` (Status line)
 
 - **Defect:** The original plan snapshot still claims `108 tests collected across 4 files` — pre-dates both the F10 dispatch seam test (which added 2) and the F1 correction (which moved the count to 115/8). The audit doc itself was correctly updated; only the plan snapshot is stale.
 

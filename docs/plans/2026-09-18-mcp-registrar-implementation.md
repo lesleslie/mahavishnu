@@ -32,7 +32,7 @@ revision: 2
 
 **Tech Stack:** Pydantic v2, Typer, Python 3.14, `pathlib.Path`, `os.replace` for atomic writes.
 
-**Spec:** [docs/superpowers/specs/2026-09-18-mcp-registrar-design.md](../specs/2026-09-18-mcp-registrar-design.md)
+**Spec:** [docs/specs/2026-09-18-mcp-registrar-design.md](../specs/2026-09-18-mcp-registrar-design.md)
 
 ## Global Constraints
 
@@ -245,7 +245,7 @@ Expected: ImportError on `mahavishnu.mcp_servers_schema` (module does not exist)
 # mahavishnu/mcp_servers_schema.py
 """Canonical Pydantic v2 schema for mcp-servers.yaml.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md §Canonical YAML
+Per docs/specs/2026-09-18-mcp-registrar-design.md §Canonical YAML
 schema. Single source of truth for the registrar's input contract.
 """
 
@@ -451,7 +451,7 @@ hooks, model, ^[_.]+, contains [./], empty) rejected pre-Pydantic
 via assert_server_name_valid() with a clear error naming the
 offending key.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md
+Per docs/specs/2026-09-18-mcp-registrar-design.md
 §Canonical YAML schema.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -917,7 +917,7 @@ Known audit limits (operator-facing):
   any audit pass on mcp-servers.yaml. Fixing scan_file is a separate
   concern (would change existing CLI behavior).
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md §Audit.
+Per docs/specs/2026-09-18-mcp-registrar-design.md §Audit.
 ```
 
 - [ ] **Step 7: Commit**
@@ -1208,7 +1208,7 @@ Expected: ImportError on `mahavishnu.mcp.registrar` (module does not exist).
 # mahavishnu/mcp/registrar.py
 """Mahavishnu MCP registrar — canonical server-list owner.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md §Architecture:
+Per docs/specs/2026-09-18-mcp-registrar-design.md §Architecture:
 pure transform-on-write (no daemon, no long-lived process). The
 canonical input is ``<project>/mcp-servers.yaml``; the outputs are
 ``<project>/.mcp.json`` (Claude, full overwrite) and
@@ -1419,7 +1419,7 @@ os.replace with cross-FS copy+unlink fallback and logged warning).
 SyncEnvelope Pydantic model sets the JSON-parseable contract for
 the CLI output.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md
+Per docs/specs/2026-09-18-mcp-registrar-design.md
 §Sync flow + §Qwen-side concerns.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -2899,7 +2899,7 @@ Adds 'mahavishnu mcp sync [path]' that wraps Registrar.sync() with
 --verbose. Emits the SyncEnvelope as machine-parseable JSON;
 non-zero envelope status exits 1.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md
+Per docs/specs/2026-09-18-mcp-registrar-design.md
 §Manual: mahavishnu mcp sync [path].
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -3541,7 +3541,7 @@ present and mahavishnu is on PATH. Missing-binary is a hard fail
 (|| exit 1) per spec \u00a7Auto-sync \u2014 a silent skip would defeat
 the drift gate. Qwen-side emission stays operator-driven.
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md
+Per docs/specs/2026-09-18-mcp-registrar-design.md
 \u00a7Pre-commit integration.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -3687,7 +3687,7 @@ required — global constraint says 89% gate is non-negotiable).
 git -c user.email=les@wedgwoodwebworks.com add tests/integration/test_mcp_harness_smoke.py
 git -c user.email=les@wedgwoodwebworks.com commit -m "test(mcp-registrar): end-to-end smoke covering sync+validate+show
 
-Per docs/superpowers/specs/2026-09-18-mcp-registrar-design.md
+Per docs/specs/2026-09-18-mcp-registrar-design.md
 \u00a7Testing strategy \u00a7E2E smoke and
 .claude/decisions/wire-up-contract.md \u00a71 (every registered tool
 must have a working data feed). Asserts the envelope is
@@ -3779,8 +3779,8 @@ downstream tooling for per-side `wrote`/`unchanged`/`skipped` fields.
 
 ## Cross-references
 
-- Spec: `docs/superpowers/specs/2026-09-18-mcp-registrar-design.md`
-- Plan: `docs/superpowers/plans/2026-09-18-mcp-registrar-implementation.md`
+- Spec: `docs/specs/2026-09-18-mcp-registrar-design.md`
+- Plan: `docs/plans/2026-09-18-mcp-registrar-implementation.md`
 - Decision: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`
 - Runbook (sibling): `docs/runbooks/qwen-hook-setup.md`
 
@@ -3829,7 +3829,7 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "docs(mcp-registrar): rollo
 Operator-facing runbook covering Phase 1 (library + CLI), Phase 2
 (opt-in migration with commit order), Phase 3 (pre-commit hook
 re-install on each clone), and Phase 4 (SSE/plugin forward-compat,
-deferred). Per docs/superpowers/specs/2026-09-18-mcp-registrar-
+deferred). Per docs/specs/2026-09-18-mcp-registrar-
 design.md \u00a7Rollout.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"

@@ -4,7 +4,7 @@ The WAL captures deferred memory writes destined for Session-Buddy. The
 aggregator's existing circuit breaker gates the drainer; this module
 defines the row shape and the three terminal states.
 
-Spec: docs/superpowers/specs/2026-07-29-session-buddy-extension-design.md
+Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 (Q2: data-plane durability).
 """
 

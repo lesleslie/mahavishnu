@@ -6,7 +6,7 @@ Used by:
 
 (Precommit used this module historically via JsonFileLockStore, which
 was retired in 2026-08-04 in favor of the MCP substrate D-LOCK
-primitive — see docs/superpowers/specs/2026-08-04-d-lock-design.md.)
+primitive — see docs/specs/2026-08-04-d-lock-design.md.)
 """
 
 from __future__ import annotations

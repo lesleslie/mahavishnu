@@ -1053,7 +1053,7 @@ uv run pytest tests/ -v --tb=short 2>&1 | tail -20
 
 - [ ] **Step 5: If no LLM usage found in Step 1, document it**
 
-Add a comment to `docs/superpowers/plans/2026-05-16-llm-routing-plan2-downstream-migration.md`:
+Add a comment to `docs/plans/2026-05-16-llm-routing-plan2-downstream-migration.md`:
 
 ```
 Akosha audit result (YYYY-MM-DD): no direct LLM call sites found.
