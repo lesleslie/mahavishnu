@@ -149,17 +149,18 @@ def test_paths_helper_resolves_before_env_var_default() -> None:
     itself follows the documented order:
       1. MAHAVISHNU_WORKTREE_BASE_PATH (canonical, v4+)
       2. MAHAVISHNU_AUTO_WORKTREE_ROOT (legacy alias)
-      3. Path.home() / 'worktrees' (default)
+      3. STATE_DIR / 'worktrees' (XDG_STATE_HOME-aware via platformdirs)
     """
     from mahavishnu.core import paths
+    from mahavishnu.core.paths import STATE_DIR
 
     # Save and clear all relevant env vars
     saved: dict[str, str | None] = {}
     for var in ("MAHAVISHNU_WORKTREE_BASE_PATH", "MAHAVISHNU_AUTO_WORKTREE_ROOT"):
         saved[var] = os.environ.pop(var, None)
     try:
-        # 3. Default
-        assert paths.get_worktree_base_path() == (Path.home() / "worktrees").resolve()
+        # 3. Default (XDG-correct via STATE_DIR; honors XDG_STATE_HOME if set)
+        assert paths.get_worktree_base_path() == (STATE_DIR / "worktrees").resolve()
         # 2. Legacy env var
         os.environ["MAHAVISHNU_AUTO_WORKTREE_ROOT"] = "/tmp/legacy"
         assert paths.get_worktree_base_path() == Path("/tmp/legacy").resolve()

@@ -118,14 +118,23 @@ def _worktree_base_path() -> Path:
     tests/unit/test_worktree_base_path_resolution.py pins the resolution
     order here so the inline helper stays in sync with the package
     helper. If the env var name or default changes, update both.
+
+    The default uses platformdirs' user_state_dir directly (with the
+    same ``appname``/``version`` as paths.py) so the resolved path
+    honors ``XDG_STATE_HOME``. To skip the ``0.3.0`` version subdir,
+    set ``MAHAVISHNU_WORKTREE_BASE_PATH`` explicitly in the shell —
+    that is the convention documented in the user-level and per-repo
+    ``CLAUDE.md`` files.
     """
+    from platformdirs import PlatformDirs  # already a runtime dep; lazy to keep module-load cost low
     explicit = os.environ.get("MAHAVISHNU_WORKTREE_BASE_PATH")
     if explicit:
         return Path(explicit).expanduser().resolve()
     legacy = os.environ.get(ROOT_ENV)
     if legacy:
         return Path(legacy).expanduser().resolve()
-    return (Path.home() / "worktrees").resolve()
+    _state_dir = Path(PlatformDirs(appname="mahavishnu", version="0.3.0").user_state_dir)
+    return (_state_dir / "worktrees").resolve()
 
 
 def _log(msg: str) -> None:

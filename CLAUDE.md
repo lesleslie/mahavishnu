@@ -901,3 +901,11 @@ retries, redaction, HTTP probing, serialization, compression, hashing,
 data transforms), check `oneiric.actions` — catalog lives at
 `oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
 `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+
+# Worktree location preference (per-repo)
+
+Inherit the user-level convention from `~/.claude/CLAUDE.md`. The canonical path for this repo is:
+
+    ~/.local/state/mahavishnu/worktrees/<basename-of-cwd>/
+
+The superpowers `using-git-worktrees` skill reads this block before its hard-coded project-local default, so the XDG path wins.

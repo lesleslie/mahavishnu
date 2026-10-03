@@ -158,20 +158,30 @@ def get_worktree_base_path() -> Path:
     directly from any other location.
 
     Resolution order (ADR 015 v4 §1, §9):
-      1. ``MAHAVISHNU_WORKTREE_BASE_PATH`` (canonical, v4+)
+      1. ``MAHAVISHNU_WORKTREE_BASE_PATH`` (canonical, v4+; takes precedence)
       2. ``MAHAVISHNU_AUTO_WORKTREE_ROOT`` (legacy, 1-release alias)
-      3. Default: ``Path.home() / "worktrees"`` (preserves current behavior)
+      3. Default: ``STATE_DIR / "worktrees"`` (XDG_STATE_HOME-aware via
+         platformdirs; honors ``XDG_STATE_HOME`` if set, else falls back to
+         the platformdirs default of ``~/Library/Application Support/mahavishnu``
+         on macOS or ``~/.local/state/mahavishnu`` on Linux).
 
-    The default is intentionally NOT XDG-correct yet; future work (Phase
-    2/3) may migrate to ``DATA_DIR / "worktrees"`` once the per-MCP venv
-    registry lands and the workspace convention stabilizes.
+    To skip the ``platformdirs`` version subdir (e.g. ``0.3.0``) that
+    ``STATE_DIR`` includes by default, set ``MAHAVISHNU_WORKTREE_BASE_PATH``
+    in your shell (the convention the per-repo ``CLAUDE.md`` files document).
 
     Returns:
         Resolved, absolute Path to the worktree base directory.
 
     Examples:
-        >>> get_worktree_base_path()
-        PosixPath('/Users/les/worktrees')
+        With XDG_STATE_HOME unset on macOS::
+
+            >>> get_worktree_base_path()
+            PosixPath('/Users/les/Library/Application Support/mahavishnu/0.3.0/worktrees')
+
+        With ``MAHAVISHNU_WORKTREE_BASE_PATH=~/.local/state/mahavishnu/worktrees``::
+
+            >>> get_worktree_base_path()
+            PosixPath('/Users/les/.local/state/mahavishnu/worktrees')
     """
     explicit = os.environ.get("MAHAVISHNU_WORKTREE_BASE_PATH")
     if explicit:
@@ -179,7 +189,7 @@ def get_worktree_base_path() -> Path:
     legacy = os.environ.get("MAHAVISHNU_AUTO_WORKTREE_ROOT")
     if legacy:
         return Path(legacy).expanduser().resolve()
-    return (Path.home() / "worktrees").resolve()
+    return (STATE_DIR / "worktrees").resolve()
 
 
 def get_worktree_path(*path_parts: str) -> Path:
