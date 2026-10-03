@@ -8,11 +8,13 @@ Implements: REQ-004, REQ-009, REQ-013, REQ-014
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 import fcntl
 import json
+from pathlib import Path
+import random
 import re
 import sys
-from pathlib import Path
 from typing import Any
 
 REVIEW_STATE_SCHEMA_VERSION: int = 1
@@ -124,3 +126,55 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
             "note": f"malformed: unknown decision {decision_raw!r}",
         }
     return {"decision": decision_raw, "note": note}
+
+
+# In-repo generalist pool per spec §4.4 (verified 2026-10-03). The random
+# generalist is drawn uniformly from this list; each invocation re-shuffles.
+AGENT_POOL: list[str] = [
+    "performance-review-specialist",
+    "test-coverage-review-specialist",
+    "critical-audit-specialist",
+    "documentation-review-specialist",
+    "qa-strategist",
+    "observability-incident-lead",
+    "architecture-council",
+]
+
+# Code-quality specialist per spec §4.4. The spec leaves room for a
+# plugin-supplied pr-review-toolkit:code-reviewer fallback; for v1 the
+# in-repo critical-audit-specialist is the only available code-reviewer.
+_CODE_QUALITY_AGENT: str = "critical-audit-specialist"
+
+
+def run_review(
+    domain_specialist: str,
+    generalist_pool: list[str],
+    prompt: str,
+    dispatcher: Callable[[str, str], str],
+) -> list[dict[str, str]]:
+    """Run a 3-agent ensemble review (REQ-004, spec §4.4).
+
+    Dispatches the prompt to three reviewers in order:
+      1. ``domain_specialist`` (worker-supplied; default ``python-pro`` upstream)
+      2. ``_CODE_QUALITY_AGENT`` (constant)
+      3. one random pick from ``generalist_pool`` (default ``AGENT_POOL``)
+
+    Each agent's response is parsed via ``parse_verdict``; missing or
+    malformed verdict blocks already fail-loud to ``decision='block'``.
+
+    Returns a list of three ``{'agent', 'decision', 'note'}`` dicts in
+    dispatch order. The caller is responsible for applying the verdict
+    rule order (any block → block; ≥2 pass → proceed; else iterate).
+    """
+    generalist = random.choice(generalist_pool)
+    selected = (domain_specialist, _CODE_QUALITY_AGENT, generalist)
+    results: list[dict[str, str]] = []
+    for agent in selected:
+        response = dispatcher(agent, prompt)
+        verdict = parse_verdict(response)
+        results.append({
+            "agent": agent,
+            "decision": verdict["decision"],
+            "note": verdict["note"],
+        })
+    return results
