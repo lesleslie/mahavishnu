@@ -11,11 +11,15 @@ from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
+    EXIT_CRACKERJACK_FAILURE,
+    EXIT_OK,
+    EXIT_REVIEW_FAILURE,
     REVIEW_STATE_SCHEMA_VERSION,
     aggregate_verdicts,
     parse_verdict,
     read_review_state,
     run_crackerjack_gate,
+    run_pipeline,
     run_review,
     write_review_state,
 )
@@ -256,3 +260,172 @@ def test_run_crackerjack_gate_propagates_returncode_and_stderr(
     rc, stderr = run_crackerjack_gate(tmp_path)
     assert rc == 7
     assert stderr == "ruff: 3 errors found\n"
+
+
+# ── run_pipeline: stage-2 verdict mapping (REQ-004) ─────────────────────
+
+
+def _stub_helpers_for_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    verdicts: list[dict[str, str]],
+) -> None:
+    """Stub the helpers ``run_pipeline`` composes so the test exercises
+    only the stage-2 verdict → exit-code mapping.
+
+    The stubs for stages 3-6 are always-success (``(0, "")``) so the
+    only variable in the test is the canned ``verdicts`` list. The
+    ``run_review`` stub returns the canned list verbatim; the real
+    ``aggregate_verdicts`` is invoked to apply the spec §4.4 rule order.
+    """
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_review",
+        lambda *args, **kwargs: verdicts,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_crackerjack_gate",
+        lambda *args, **kwargs: (0, ""),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_squash_merge",
+        lambda *args, **kwargs: (0, ""),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_push",
+        lambda *args, **kwargs: (0, ""),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_cleanup",
+        lambda *args, **kwargs: (0, ""),
+    )
+
+
+def test_run_pipeline_proceeds_when_review_three_pass(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Three ``pass`` verdicts → aggregate returns ``"proceed"`` → EXIT_OK.
+
+    The pipeline continues to stages 3-6 (all stubbed to success) and
+    returns ``EXIT_OK = 0``. Asserts the spec §4.4 rule
+    "≥2 pass → proceed" via the exit code.
+    """
+    verdicts = [
+        {"agent": "python-pro", "decision": "pass", "note": "ok"},
+        {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+        {"agent": "performance-review-specialist", "decision": "pass", "note": "ok"},
+    ]
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=verdicts)
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_OK
+
+
+def test_run_pipeline_iterates_when_no_progress(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """One ``pass`` + two ``needs_adjustment`` → iterate → EXIT_REVIEW_FAILURE.
+
+    The pipeline aborts at stage 2 with no progress made. Stages 3-6
+    are not invoked (the verdict gate short-circuits).
+    """
+    verdicts = [
+        {"agent": "python-pro", "decision": "pass", "note": "ok"},
+        {"agent": "critical-audit-specialist", "decision": "needs_adjustment", "note": "lint"},
+        {"agent": "performance-review-specialist", "decision": "needs_adjustment", "note": "x"},
+    ]
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=verdicts)
+
+    # Track whether stage 3 was reached.
+    crackerjack_called: list[bool] = []
+    real_crackerjack_called = lambda *a, **kw: (crackerjack_called.append(True) or 0, "")  # noqa: E731
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_crackerjack_gate",
+        real_crackerjack_called,
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_REVIEW_FAILURE
+    assert crackerjack_called == [], "stage 3 must not run after iterate verdict"
+
+
+def test_run_pipeline_blocks_on_any_block_verdict(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Any single ``block`` → aggregate returns ``"block"`` → EXIT_REVIEW_FAILURE.
+
+    Per spec §4.4 rule order: any block is highest-priority; the pipeline
+    aborts at stage 2 regardless of the other two verdicts. Stages 3-6
+    are not invoked.
+    """
+    verdicts = [
+        {"agent": "python-pro", "decision": "block", "note": "security"},
+        {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+        {"agent": "performance-review-specialist", "decision": "pass", "note": "ok"},
+    ]
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=verdicts)
+
+    crackerjack_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_crackerjack_gate",
+        lambda *a, **kw: (crackerjack_called.append(True) or 0, ""),
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_REVIEW_FAILURE
+    assert crackerjack_called == [], "stage 3 must not run after block verdict"
+
+
+def test_run_pipeline_review_none_skips_stage_two(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--review none`` skips stage 2 entirely (user responsibility).
+
+    The pipeline runs stages 3-6 directly. With all-stub-success
+    helpers, returns ``EXIT_OK = 0``. Asserts that ``run_review`` is
+    never invoked.
+    """
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
+
+    review_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_review",
+        lambda *a, **kw: (review_called.append(True) or []),
+    )
+
+    rc = run_pipeline(
+        tmp_path, branch="feat-test", base="main", review_mode="none"
+    )
+    assert rc == EXIT_OK
+    assert review_called == [], "stage 2 must not run when review_mode='none'"
+
+
+def test_run_pipeline_crackerjack_failure_blocks_merge(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Non-zero crackerjack gate → ``EXIT_CRACKERJACK_FAILURE = 2``.
+
+    Stages 2 (review) and 3 (gate) are stubbed to return success / fail
+    respectively. Stages 4-6 must not run after a non-zero gate.
+    """
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": "ok"},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+            {"agent": "performance-review-specialist", "decision": "pass", "note": "ok"},
+        ],
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_crackerjack_gate",
+        lambda *a, **kw: (7, "ruff: 3 errors\n"),
+    )
+
+    squash_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_squash_merge",
+        lambda *a, **kw: (squash_called.append(True) or 0, ""),
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_CRACKERJACK_FAILURE
+    assert squash_called == [], "stage 4 must not run after crackerjack failure"

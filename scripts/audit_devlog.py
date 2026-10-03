@@ -40,6 +40,11 @@ def main() -> int:
             sha, date, subject = parts
             merge_commits.append((sha, date, subject))
 
+    # Short-circuit: no merges to audit → success, regardless of dev-log
+    # dir state. Per spec REQ-011 the gate is "every merge commit has a
+    # corresponding dev-log entry"; with zero commits there is nothing
+    # to check, and a missing dev-log dir is not a failure (it is only
+    # relevant when there is at least one merge to look up).
     if not merge_commits:
         print(f"OK: no merge commits on main in last {lookback_days} days.")
         return 0
