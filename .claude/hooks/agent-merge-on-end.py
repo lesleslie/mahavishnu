@@ -46,6 +46,10 @@ from pathlib import Path
 import subprocess  # nosec B404 — argv-list only, no shell
 import sys
 
+# Shared helper lives in the same .claude/hooks directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _hook_io import read_session_payload  # noqa: E402 — sys.path mutation must precede import
+
 
 # Env var that gates the whole feature. Per spec §4.2: unset = on (default);
 # truthy = on (explicit); falsy = off (opt-out). The worktree-session-isolation
@@ -263,41 +267,21 @@ def run_hook(
     return result.returncode
 
 
-def _coerce_str(value: object) -> str:
-    """Inline duplicate of ``_hook_io._coerce_str`` (fail-closed coercion)."""
-    return value if isinstance(value, str) else ""
-
-
 def main() -> int:
     """SessionEnd entry point — read stdin → extract cwd → invoke ``run_hook``.
 
-    Mirrors ``worktree-session-isolation.main()``: read stdin once,
-    parse defensively, thread the parsed dict into the run_hook
-    function. Returns the run_hook return code verbatim. No bridge
-    routing — the existing worktree hook already covers event-bus
-    publishing for SessionEnd.
+    Mirrors ``worktree-session-isolation.main()``: read stdin once
+    via the shared ``_hook_io.read_session_payload`` helper, then
+    thread the parsed cwd + raw dict into ``run_hook``. Returns the
+    run_hook return code verbatim. No bridge routing — the existing
+    worktree hook already covers event-bus publishing for SessionEnd.
 
     The stdin schema is the Claude Code SessionEnd contract: a JSON
     dict carrying at least ``cwd`` (and typically ``session_id``);
     see ``_hook_io.read_session_payload`` for the shared helper.
     """
-    try:
-        payload_text = sys.stdin.read()
-    except OSError:
-        payload_text = ""
-
-    if payload_text.strip():
-        try:
-            parsed = json.loads(payload_text)
-        except json.JSONDecodeError:
-            parsed = {}
-    else:
-        parsed = {}
-
-    payload = parsed if isinstance(parsed, dict) else {}
-    worktree_path = _coerce_str(payload.get("cwd"))
-
-    return run_hook(worktree_path=worktree_path, payload=payload)
+    hook_payload = read_session_payload()
+    return run_hook(worktree_path=hook_payload.cwd, payload=hook_payload.raw)
 
 
 if __name__ == "__main__":
