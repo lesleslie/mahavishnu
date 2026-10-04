@@ -7,11 +7,17 @@ Phase 4a Task 4a.1 migration. Replaces launch_mcp_with_secrets.py:
 - os.execvp hop is GONE — the launcher's launch() calls FastMCP's run_async
   in-process; launchd sees a single long-running Python process.
 
-Bridge: the launcher duck-types on `run_async(transport="http", host=, port=,
-uvicorn_config=)`. FastMCPServer exposes `start(host, port)` and the inner
-FastMCP exposes `run_http_async(...)` — neither matches. The _RunAsyncAdapter
-below wraps FastMCPServer so the launcher can drive it. See
-.claude/decisions/2026-09-26-mcp-launcher-migration.md §4 trap #1.
+2026-10-03 (lifespan refactor) — the previous ``_RunAsyncAdapter`` shim
+that bypassed ``FastMCPServer.start()`` has been removed. The wrapper
+now returns the ``FastMCPServer`` wrapper directly. Its
+``run_async(transport=..., host=..., port=..., uvicorn_config=...)``
+method satisfies the launcher's duck-typed contract and routes through
+``start()`` so the full post-listener lifespan (signer feed, plan_index
+rebuild, ``TaskOrphanSweeper`` spawn) actually runs. This closes the
+circular dep that hid behind the bypass — see
+``docs/specs/2026-10-04-mcp-lifespan-plan-index-init.md`` and the
+2026-09-26 launcher-migration decision Trap #1 (now superseded) for
+the historical context.
 """
 
 from __future__ import annotations
@@ -55,32 +61,23 @@ import signal
 from mcp_common.server import launch
 
 
-class _RunAsyncAdapter:
-    """Adapt FastMCPServer to the launcher's duck-typed run_async(transport=, ...) contract."""
-
-    def __init__(self, mhv_server) -> None:
-        self._server = mhv_server
-
-    async def run_async(self, *, transport, host, port, uvicorn_config):
-        # FastMCPServer.start() runs the full lifecycle (tool profile, feed warm,
-        # run_http_async). It honors its own uvicorn_config but ignores the
-        # launcher-passed one. We call the inner FastMCP directly so the
-        # launcher's timeout_graceful_shutdown (REQ-007) actually wins.
-        await self._server.server.run_http_async(
-            host=host,
-            port=port,
-            uvicorn_config=uvicorn_config,
-        )
-
-
 def build_server():
-    """Closure: returns the configured Mahavishnu MCP server. build_server() takes no args."""
+    """Closure: returns the configured Mahavishnu MCP server. build_server() takes no args.
+
+    ``FastMCPServer.run_async(transport="http", host=..., port=...,
+    uvicorn_config=...)`` satisfies the launcher's duck-typed contract,
+    so the wrapper can be returned directly — no adapter needed. The
+    launcher-driven ``start()`` path runs the post-listener lifespan
+    (init_signer_feed_state, plan_index rebuild, task_orphan_sweeper
+    spawn) so the three /health feeds warm correctly instead of
+    reporting permanent ``warming_up`` as they did under the previous
+    bypass.
+    """
     from mahavishnu.core.app import MahavishnuApp
     from mahavishnu.mcp.server_core import FastMCPServer
 
     maha_app = MahavishnuApp()
-    mhv_server = FastMCPServer(maha_app)
-    return _RunAsyncAdapter(mhv_server)
+    return FastMCPServer(maha_app)
 
 
 def main() -> int:

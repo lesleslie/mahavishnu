@@ -632,3 +632,157 @@ class TestServerIdentity:
         """A version string should be set on the FastMCP instance."""
         assert isinstance(server.server.version, str)
         assert server.server.version
+
+
+# =============================================================================
+# C1 (2026-10-03) — run_async adapter + uvicorn_config threading
+# =============================================================================
+
+
+class TestC1RunAsyncContract:
+    """C1 (2026-10-03) — ``FastMCPServer.run_async`` is the launcher-facing
+    surface that satisfies the
+    ``mcp_common.server.launcher.run_with_uvicorn_config`` duck-typed
+    contract (``server.run_async(transport="http", host=, port=,
+    uvicorn_config=)``). Routing through ``start()`` means the full
+    lifecycle (init_signer_feed_state, plan_index rebuild,
+    task_orphan_sweeper spawn) actually runs — closing the
+    three-feed-in-permanent-``warming_up`` bug that the previous
+    ``_RunAsyncAdapter`` shim caused.
+
+    These tests use ``__new__`` to bypass the heavy ``__init__`` (which
+    itself is not at fault — the pre-existing test failures in
+    ``TestLifecycle`` and ``TestServerLifecycle`` trace to the
+    plan_index subsystem in ``lifecycle.start_server`` making real
+    HTTP calls during its first cycle, not to ``__init__``). Bypassing
+    ``__init__`` lets the test focus purely on the new contract surface.
+    """
+
+    @pytest.mark.asyncio
+    async def test_run_async_delegates_http_to_start(self) -> None:
+        """HTTP transport: ``run_async`` must call ``start(host=, port=,
+        uvicorn_config=)`` with the exact kwargs the launcher passed in.
+        """
+        server = FastMCPServer.__new__(FastMCPServer)
+        server.start = AsyncMock()  # type: ignore[method-assign]
+
+        custom_uvicorn_config = {"timeout_graceful_shutdown": 30}
+        await server.run_async(
+            transport="http",
+            host="127.0.0.1",
+            port=8680,
+            uvicorn_config=custom_uvicorn_config,
+        )
+
+        server.start.assert_awaited_once_with(
+            host="127.0.0.1",
+            port=8680,
+            uvicorn_config=custom_uvicorn_config,
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_async_threads_none_uvicorn_config(self) -> None:
+        """The launcher may pass ``uvicorn_config=None`` (it does in
+        the smoke-test path); ``run_async`` must forward ``None`` to
+        ``start()`` so the lifecycle helper's default-fallback path
+        applies (``{"timeout_graceful_shutdown": 30}``).
+        """
+        server = FastMCPServer.__new__(FastMCPServer)
+        server.start = AsyncMock()  # type: ignore[method-assign]
+
+        await server.run_async(
+            transport="http",
+            host="127.0.0.1",
+            port=8680,
+            uvicorn_config=None,
+        )
+
+        server.start.assert_awaited_once_with(
+            host="127.0.0.1",
+            port=8680,
+            uvicorn_config=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_async_rejects_non_http_transport(self) -> None:
+        """``FastMCPServer`` is HTTP-only; any non-``"http"`` transport
+        must raise ``ValueError`` so a future caller that mistakenly
+        passes ``"stdio"`` (which the launcher also supports for
+        FastMCP-shaped servers) fails loudly at the contract boundary
+        instead of silently falling through to a broken path.
+        """
+        server = FastMCPServer.__new__(FastMCPServer)
+        server.start = AsyncMock()  # type: ignore[method-assign]
+
+        with pytest.raises(ValueError, match="only supports transport='http'"):
+            await server.run_async(
+                transport="stdio",
+                host="127.0.0.1",
+                port=8680,
+                uvicorn_config=None,
+            )
+        # start() must NOT have been called for a rejected transport.
+        server.start.assert_not_awaited()
+
+
+class TestC1StartForwardsUvicornConfig:
+    """C1 — ``FastMCPServer.start(uvicorn_config=...)`` must forward
+    the kwarg to the lifecycle helper verbatim. Default-None callers
+    (``mahavishnu mcp start`` and most tests) keep their pre-C1
+    behavior because the lifecycle helper falls back to the
+    hardcoded ``{"timeout_graceful_shutdown": 30}`` dict.
+    """
+
+    @pytest.mark.asyncio
+    async def test_start_forwards_uvicorn_config_kwarg(self) -> None:
+        server = FastMCPServer.__new__(FastMCPServer)
+        captured: dict[str, object] = {}
+
+        async def fake_start_server(
+            srv: object, *, host: str, port: int, uvicorn_config: object
+        ) -> None:
+            captured["host"] = host
+            captured["port"] = port
+            captured["uvicorn_config"] = uvicorn_config
+
+        with patch(
+            "mahavishnu.mcp.server_core._start_server_helper",
+            side_effect=fake_start_server,
+        ):
+            custom_uvicorn_config = {
+                "timeout_graceful_shutdown": 45,
+                "h11_max_incomplete_event_size": 16384,
+            }
+            await server.start(
+                host="127.0.0.1", port=8680, uvicorn_config=custom_uvicorn_config
+            )
+
+        assert captured == {
+            "host": "127.0.0.1",
+            "port": 8680,
+            "uvicorn_config": custom_uvicorn_config,
+        }
+
+    @pytest.mark.asyncio
+    async def test_start_default_uvicorn_config_is_none(self) -> None:
+        """When the caller does not pass ``uvicorn_config`` (the
+        historical shape used by ``mahavishnu mcp start``), the
+        kwarg forwarded to the lifecycle helper must be ``None``
+        so the helper's 30s-graceful-shutdown fallback applies.
+        """
+        server = FastMCPServer.__new__(FastMCPServer)
+        captured: dict[str, object] = {}
+
+        async def fake_start_server(
+            srv: object, *, host: str, port: int, uvicorn_config: object
+        ) -> None:
+            captured["uvicorn_config"] = uvicorn_config
+
+        with patch(
+            "mahavishnu.mcp.server_core._start_server_helper",
+            side_effect=fake_start_server,
+        ):
+            await server.start(host="127.0.0.1", port=3000)
+
+        assert captured == {"uvicorn_config": None}
+

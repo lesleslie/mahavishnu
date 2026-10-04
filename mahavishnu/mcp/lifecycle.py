@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .bootstrap import register_profile_tools as _register_profile_tools_helper
 from .sweepers.task_orphan_sweeper import TaskOrphanSweeper
 from .tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +29,199 @@ def get_session_buddy_client() -> Any:
     return None
 
 
-async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -> None:
-    """Start the MCP server with the active tool profile."""
+def build_post_start_lifespan(server: Any) -> Any:
+    """Return a FastMCP lifespan that runs all post-listener init.
+
+    Why this exists (2026-10-04 refactor; see
+    ``docs/specs/2026-10-04-mcp-lifespan-plan-index-init.md``):
+
+    The previous ``start_server`` ran three init steps *before*
+    ``run_http_async``: signer feed, plan_index rebuild, sweeper spawn.
+    The plan_index rebuild uses ``MCPKvClient`` which connects via
+    HTTP to the MCP server's own KV endpoints — a server that isn't
+    bound until ``run_http_async`` runs. The previous
+    ``_RunAsyncAdapter`` wrapper bypassed ``start_server`` entirely,
+    so the broken code path was never exercised in production. The
+    bypass hid a real bug, not just a wire-up contract.
+
+    The lifespan runs after uvicorn has bound the listener (FastMCP's
+    HTTP app lifespan, in ``fastmcp/server/http.py:667``, enters
+    ``server._lifespan_manager()`` which fires the user-configured
+    ``_lifespan``). All three post-init steps move here so the
+    ``MCPKvClient`` can reach a live server.
+
+    Returns the lifespan callable ready to assign to
+    ``server.server._lifespan`` before calling ``run_http_async``.
+    """
+    @asynccontextmanager
+    async def _lifespan(fastmcp: Any) -> AsyncIterator[dict[str, Any]]:
+        # ── startup (after uvicorn binds, before accepting) ──
+        # signer feed (pure data, no HTTP dep)
+        from .signer_feed import init_signer_feed_state
+
+        try:
+            init_signer_feed_state()
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.error("Failed to initialize skills_signer feed state: %s", exc)
+            # Don't crash the server — /health reports skills_signer
+            # as degraded with the error message.
+
+        # sweeper spawn (Redis subscribe is fast; the run_forever()
+        # body is the long-running part. Kept sync so the sweeper's
+        # first health probe is live before the server starts serving.)
+        sweeper_task: asyncio.Task | None = None
+        try:
+            sweeper = TaskOrphanSweeper(
+                session_buddy_client=get_session_buddy_client(),
+            )
+            await sweeper.init()
+            sweeper_task = asyncio.create_task(
+                sweeper.run_forever(), name="task_orphan_sweeper"
+            )
+            server._task_orphan_sweeper = sweeper
+            server._task_orphan_sweeper_task = sweeper_task
+            logger.info("task_orphan_sweeper started (stream=bodai:events)")
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.error("Failed to start task_orphan_sweeper: %s", exc)
+            # Don't crash — /health reports task_orphan_sweeper
+            # degraded with the prior "not started" error message.
+
+        # plan_index rebuild (needs MCP server's own KV endpoints —
+        # scheduled as a BACKGROUND TASK rather than awaited here).
+        # Why: when the lifespan runs, uvicorn has bound the listener
+        # but the accept loop hasn't started yet (it starts after the
+        # lifespan yields). An awaited HTTP call from inside the
+        # lifespan would sit in the OS TCP backlog and time out.
+        # Scheduling the work as a background task defers it until
+        # the event loop is free to process both the server's request
+        # handling and the client's response handling. The first
+        # /health check after startup may briefly see plan_index as
+        # ``warming_up``; the feed flips to ``ok`` once the background
+        # task completes (typically < 5s).
+        async def _init_plan_index() -> None:
+            from pathlib import Path
+
+            from ..core.bootstrap import resolve_mcp_url
+            from ..core.state_backends.mcp_kv import MCPKvClient, MCPKvConfig
+            from ..plan_index.cron import PeriodicTaskRunner
+            from ..plan_index.store import PlanIndexStore
+
+            try:
+                mcp_url = resolve_mcp_url(server.app.config)
+                kv_backend = MCPKvClient(
+                    base_url=mcp_url,
+                    config=MCPKvConfig(enabled=True),
+                )
+                server._plan_index_mcp_kv = kv_backend
+                store = PlanIndexStore(kv_backend)
+                # ``Path.cwd()`` is the mahavishnu repo root when
+                # launched via the launchd plist (``WorkingDirectory``
+                # is set), so ``discover_records`` finds the real
+                # ``docs/plans/*.md``. Falls back to ``None`` (zero-
+                # record cycle that still flips ``is_ok``) when cwd
+                # isn't the repo.
+                repo_root = Path.cwd() if Path("docs/plans").is_dir() else None
+                runner = PeriodicTaskRunner(store=store, repo_root=repo_root)
+                outcome = await runner.force_run()
+                runner.start()  # schedule the periodic loop for subsequent cycles
+                server._plan_index_runner = runner
+                logger.info(
+                    "plan_index cycle complete: success=%d errors=%d entities=%d (repo_root=%s)",
+                    outcome.success,
+                    outcome.errors,
+                    outcome.entities_count,
+                    repo_root or "<none — empty cycle>",
+                )
+            except Exception as exc:  # noqa: BLE001 - MCP boundary
+                logger.error("Failed to start plan_index subsystem: %s", exc)
+                # Don't crash — /health reports plan_index degraded.
+
+        plan_index_task = asyncio.create_task(
+            _init_plan_index(), name="plan_index_init"
+        )
+        server._plan_index_init_task = plan_index_task
+
+        # ── yield: server runs here ──
+        yield {}
+
+        # ── shutdown (on SIGTERM) ──
+        # Mirror stop_server's teardown semantics (lifespan replaces
+        # stop_server for these three subsystems).
+        if sweeper_task is not None:
+            sweeper_task.cancel()
+            try:
+                await sweeper_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001 - MCP boundary
+                logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
+        sweeper = getattr(server, "_task_orphan_sweeper", None)
+        if sweeper is not None:
+            try:
+                await sweeper.cleanup()
+                logger.info("task_orphan_sweeper stopped")
+            except Exception as exc:  # noqa: BLE001 - MCP boundary
+                logger.warning("Error stopping task_orphan_sweeper: %s", exc)
+
+        # plan_index init task (may have completed by now or may still
+        # be running; cancel and wait for cleanup)
+        plan_index_init_task = getattr(server, "_plan_index_init_task", None)
+        if plan_index_init_task is not None and not plan_index_init_task.done():
+            plan_index_init_task.cancel()
+            try:
+                await plan_index_init_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001 - MCP boundary
+                logger.warning("Error cancelling plan_index_init task: %s", exc)
+
+        runner = getattr(server, "_plan_index_runner", None)
+        if runner is not None:
+            try:
+                await runner.stop()
+                logger.info("plan_index runner stopped")
+            except Exception as exc:  # noqa: BLE001 - MCP boundary
+                logger.warning("Error stopping plan_index runner: %s", exc)
+
+        from .signer_feed import reset_signer_feed_state
+
+        try:
+            reset_signer_feed_state()
+        except Exception as exc:  # noqa: BLE001 - MCP boundary
+            logger.warning("Error resetting signer_feed_state: %s", exc)
+
+    return _lifespan
+
+
+async def start_server(
+    server: Any,
+    host: str = "127.0.0.1",
+    port: int = 3000,
+    *,
+    uvicorn_config: dict[str, Any] | None = None,
+) -> None:
+    """Start the MCP server with the active tool profile.
+
+    Post-listener init (signer feed, plan_index rebuild, sweeper spawn)
+    moved to the FastMCP lifespan returned by
+    :func:`build_post_start_lifespan` so it runs after uvicorn binds
+    the listener. The lifespan is assigned to ``server.server._lifespan``
+    here, before ``run_http_async``, so FastMCP's HTTP app lifespan
+    (in ``fastmcp/server/http.py:667``) enters the user lifespan via
+    ``server._lifespan_manager()`` after the listener is up.
+
+    Args:
+        server: The :class:`FastMCPServer` wrapper to start.
+        host: Bind host for the HTTP listener.
+        port: Bind port for the HTTP listener.
+        uvicorn_config: Optional dict passed verbatim to FastMCP's
+            ``run_http_async(uvicorn_config=...)``. When ``None`` the
+            historical default ``{"timeout_graceful_shutdown": 30}``
+            applies — keeps the pre-launcher contract identical for
+            ``mahavishnu mcp start`` and test callers that don't pass
+            one. The launchd-driven ``scripts/launch_mcp.py`` path
+            threads the launcher's config through so REQ-007 wins.
+    """
     server._active_profile = get_active_profile()
     methods_to_call = PROFILE_REGISTRATIONS[server._active_profile]
     methods_set = set(methods_to_call)
@@ -72,115 +267,31 @@ async def start_server(server: Any, host: str = "127.0.0.1", port: int = 3000) -
     await _register_profile_tools_helper(server, methods_set)
     server._update_registered_tool_metrics()
 
-    # Phase 1.5 — initialize the skills_signer feed state BEFORE
-    # ``run_http_async`` so the /health route (already registered in
-    # register_health_endpoint during __init__) can see the populated
-    # singleton. Per plan §10.3.2 option c: mahavishnu has no async
-    # lifespan so this init runs after the tool profile is applied.
-    # The launchd wrapper tolerates up to 120s of startup.
-    from .signer_feed import init_signer_feed_state
-
-    try:
-        init_signer_feed_state()
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-        logger.error("Failed to initialize skills_signer feed state: %s", exc)
-        # Don't crash the server — the /health route will report
-        # skills_signer as degraded with the error message.
-
-    # Phase 3 — start the plan_index periodic rebuild loop BEFORE
-    # ``run_http_async`` so the /health route can read populated feed
-    # state. Mirrors the signer_init pattern: ``PeriodicTaskRunner``
-    # exposes ``force_run()`` (async) and ``start()`` (schedules the
-    # periodic loop). We await ``force_run()`` once synchronously so
-    # the feed state is populated immediately — calling only
-    # ``start()`` would defer the first cycle to a background task
-    # that may not get scheduled before FastMCP's lifespan scope
-    # reshuffles the event loop.
-    #
-    # The cron calls ``mcp.get/.put/.list_prefix`` via
-    # ``PlanIndexStore`` — that interface (string KV) is implemented
-    # by ``MCPKvClient``, which unwraps MCP's
-    # ``{ok,key,value}`` wire envelope so ``cron_core`` can do
-    # ``int(await store._mcp.get(KEY))`` and ``json.loads(...)``
-    # against the raw stored string. ``MCPStateBackend`` (the
-    # workflow/pool/approval substrate) returns the envelope dict
-    # on purpose and would crash every cycle with
-    # ``int() argument must be ... not 'dict'``.
-    try:
-        from pathlib import Path
-
-        from ..core.bootstrap import resolve_mcp_url
-        from ..core.state_backends.mcp_kv import MCPKvClient, MCPKvConfig
-        from ..plan_index.cron import PeriodicTaskRunner
-        from ..plan_index.store import PlanIndexStore
-
-        mcp_url = resolve_mcp_url(server.app.config)
-        kv_backend = MCPKvClient(
-            base_url=mcp_url,
-            config=MCPKvConfig(enabled=True),
-        )
-        server._plan_index_mcp_kv = kv_backend
-        store = PlanIndexStore(kv_backend)
-        # ``Path.cwd()`` is the mahavishnu repo root when launched via
-        # the launchd plist (``WorkingDirectory`` is set), so
-        # ``discover_records`` finds the real ``docs/plans/*.md``.
-        # Falls back to ``None`` (zero-record cycle that still flips
-        # ``is_ok``) when cwd isn't the repo.
-        repo_root = Path.cwd() if Path("docs/plans").is_dir() else None
-        runner = PeriodicTaskRunner(store=store, repo_root=repo_root)
-        outcome = await runner.force_run()
-        runner.start()  # schedule the periodic loop for subsequent cycles
-        server._plan_index_runner = runner
-        logger.info(
-            "plan_index cycle complete: success=%d errors=%d entities=%d (repo_root=%s)",
-            outcome.success,
-            outcome.errors,
-            outcome.entities_count,
-            repo_root or "<none — empty cycle>",
-        )
-    except Exception as exc:  # noqa: BLE001 - MCP boundary
-        logger.error("Failed to start plan_index subsystem: %s", exc)
-        # Don't crash — /health will report plan_index degraded with
-        # the prior "awaiting start()" error message.
-        # Note: a previous version of this code synthesized a fake
-        # feed-state here so /health flipped even when the live cycle
-        # crashed. That hid the int(dict) wire-envelope bug; now that
-        # ``MCPKvClient`` solves the seam, the live cycle should
-        # succeed and a real failure is worth surfacing.
-
-    # Task 10 — wire the v1.1 task-orphan sweeper into the MCP server
-    # lifecycle. The sweeper consumes ``task.handoff_orphan`` events on
-    # the ``bodai:events`` Redis Stream and re-links orphaned tasks via
-    # session-buddy (Task 9). Started BEFORE ``run_http_async`` so the
-    # /health route (registered in ``__init__``) can see populated
-    # feed state. Failures are logged + swallowed so a Redis outage
-    # at startup does not crash the server; ``/health`` flips to
-    # ``degraded`` via the sweeper's ``_consecutive_read_failures``
-    # signal. ``get_session_buddy_client()`` returns ``None`` for now
-    # (Task 10 scope is the lifecycle seam, not the client wiring) —
-    # the sweeper logs "no session_buddy client; skipping" and the
-    # stream loop stays alive.
-    try:
-        sweeper = TaskOrphanSweeper(
-            session_buddy_client=get_session_buddy_client(),
-        )
-        await sweeper.init()
-        sweeper_task = asyncio.create_task(sweeper.run_forever(), name="task_orphan_sweeper")
-        server._task_orphan_sweeper = sweeper
-        server._task_orphan_sweeper_task = sweeper_task
-        logger.info("task_orphan_sweeper started (stream=bodai:events)")
-    except Exception as exc:  # noqa: BLE001 - MCP boundary
-        logger.error("Failed to start task_orphan_sweeper: %s", exc)
-        # Don't crash — /health will report task_orphan_sweeper degraded
-        # with the prior "not started" error message.
+    # Register the post-listener lifespan on the inner FastMCP before
+    # ``run_http_async`` binds the listener. FastMCP's HTTP app
+    # lifespan (in ``fastmcp/server/http.py:667``) enters
+    # ``server._lifespan_manager()`` which fires this callable after
+    # the listener is up — breaking the pre-refactor circular dep
+    # where plan_index init's ``MCPKvClient`` tried to reach a server
+    # that wasn't bound yet.
+    server.server._lifespan = build_post_start_lifespan(server)
 
     # Override FastMCP's hardcoded 2s graceful-shutdown timeout so
     # lifespan teardown can run cleanup (hooks, health snapshots, etc.)
-    # without being cancelled mid-shutdown.
+    # without being cancelled mid-shutdown. Caller-supplied
+    # ``uvicorn_config`` (e.g. from the launcher's
+    # ``timeout_graceful_shutdown`` kwarg) wins; the 30s literal is
+    # the historical fallback for ``mahavishnu mcp start`` and tests
+    # that don't pass one.
+    effective_uvicorn_config = (
+        uvicorn_config
+        if uvicorn_config is not None
+        else {"timeout_graceful_shutdown": 30}
+    )
     await server.server.run_http_async(
         host=host,
         port=port,
-        uvicorn_config={"timeout_graceful_shutdown": 30},
+        uvicorn_config=effective_uvicorn_config,
     )
 
 

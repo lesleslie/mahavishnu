@@ -1477,9 +1477,72 @@ class FastMCPServer:
                 "session-buddy>=0.30.0 is pinned."
             )
 
-    async def start(self, host: str = "127.0.0.1", port: int = 3000):
-        """Start the MCP server."""
-        await _start_server_helper(self, host=host, port=port)
+    async def start(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 3000,
+        *,
+        uvicorn_config: dict[str, Any] | None = None,
+    ) -> None:
+        """Start the MCP server.
+
+        Args:
+            host: Bind host for the HTTP listener.
+            port: Bind port for the HTTP listener.
+            uvicorn_config: Optional dict passed through to
+                :func:`mahavishnu.mcp.lifecycle.start_server`. When
+                ``None`` the historical default
+                ``{"timeout_graceful_shutdown": 30}`` applies. The
+                launchd-driven ``scripts/launch_mcp.py`` path threads
+                the launcher's config through so REQ-007 wins.
+        """
+        await _start_server_helper(
+            self, host=host, port=port, uvicorn_config=uvicorn_config
+        )
+
+    async def run_async(
+        self,
+        *,
+        transport: str,
+        host: str,
+        port: int,
+        uvicorn_config: dict[str, Any] | None,
+    ) -> None:
+        """Satisfy ``mcp_common.server.launcher.run_with_uvicorn_config``'s duck-typed contract.
+
+        The launcher's HTTP path calls
+        ``server.run_async(transport="http", host=, port=,
+        uvicorn_config=)``. We route through :meth:`start` so the full
+        lifecycle (post-listener lifespan: signer feed, plan_index,
+        task_orphan_sweeper) actually runs and the launcher-passed
+        ``uvicorn_config`` is honored end-to-end.
+
+        Replaces the previous ``scripts/launch_mcp.py:_RunAsyncAdapter``
+        shim, which bypassed ``start()`` to thread ``uvicorn_config``
+        through directly — at the cost of leaving the three health
+        feeds in permanent ``warming_up``. See C1 plan
+        (2026-10-03) and the lifespan spec
+        (``docs/specs/2026-10-04-mcp-lifespan-plan-index-init.md``) for
+        context.
+
+        Args:
+            transport: Transport name. Only ``"http"`` is supported
+                here; the launcher also passes ``"stdio"`` to the
+                FastMCP-shaped servers it constructs, but mahavishnu's
+                ``FastMCPServer`` is HTTP-only (no stdio transport
+                adapter). Any other value raises ``ValueError``.
+            host: Bind host.
+            port: Bind port.
+            uvicorn_config: Dict passed verbatim to FastMCP's
+                ``run_http_async``. May be ``None``; the lifecycle
+                helper applies its 30s-graceful-shutdown fallback in
+                that case.
+        """
+        if transport != "http":
+            raise ValueError(
+                f"FastMCPServer only supports transport='http', got {transport!r}"
+            )
+        await self.start(host=host, port=port, uvicorn_config=uvicorn_config)
 
     async def stop(self) -> None:
         """Stop the MCP server and cleanup resources."""
