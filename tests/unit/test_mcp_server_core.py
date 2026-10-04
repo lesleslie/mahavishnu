@@ -151,9 +151,31 @@ class TestFastMCPServerInit:
         # middleware, so isinstance() matches after the eviction.
         from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
 
-        mock_app.config.observability = MagicMock(tracing_enabled=False)
+        # MagicMock auto-creates unset attributes as truthy mocks, so
+        # ``tool_enrichment_enabled`` would default-truthy here and register
+        # the enrichment middleware (a SUBCLASS of FastMCPOpenTelemetryMiddleware,
+        # see mahavishnu/mcp/tool_call_middleware.py). The trace-pipeline
+        # refactor (Phase 1.5, 2026-09-27) split the two gates per the
+        # security lens — ``tool_enrichment_enabled`` is evaluated
+        # independently of ``tracing_enabled`` (REQ-TSQ-007). Disable both
+        # gates here so this test isolates the tracing gate cleanly.
+        mock_app.config.observability = MagicMock(
+            tracing_enabled=False, tool_enrichment_enabled=False
+        )
 
+        # ``session_buddy.server_optimized.attach_otel_middleware(mcp, ...)``
+        # is called at MODULE IMPORT time (not inside a function). The
+        # import chain triggered by ``FastMCPServer.__init__`` ->
+        # ``_register_tools`` -> ``tasks_handoff_to_workflow_available`` ->
+        # ``from session_buddy.mcp.tools.tasks_models import ...`` transitively
+        # loads that module and fires the attach. ``patch.object(FastMCP,
+        # 'add_middleware')`` is class-level and intercepts that call too,
+        # which would make the test read the session-buddy OTel attach
+        # instead of mahavishnu's tracing gate. Replace the symbol at its
+        # source module so the module-level call resolves to a no-op when
+        # ``session_buddy.server_optimized`` is first loaded.
         with (
+            patch("session_buddy.mcp.telemetry.attach_otel_middleware"),
             patch("mahavishnu.mcp.server_core.get_auth_from_config"),
             patch.object(FastMCP, "add_middleware") as mock_add,
         ):
@@ -179,7 +201,25 @@ class TestFastMCPServerInit:
         # middleware, so isinstance() matches after the eviction.
         from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
 
-        mock_app.config.observability = MagicMock(tracing_enabled=True, environment="testing")
+        # Disable ``tool_enrichment_enabled`` so the enrichment middleware
+        # (a SUBCLASS of FastMCPOpenTelemetryMiddleware) does not muddy the
+        # count. See REQ-TSQ-007 / 2026-09-27 security lens — the two gates
+        # are independent, so testing the tracing gate requires isolating
+        # the enrichment gate.
+        mock_app.config.observability = MagicMock(
+            tracing_enabled=True,
+            tool_enrichment_enabled=False,
+            environment="testing",
+        )
+
+        # ``session_buddy.server_optimized.attach_otel_middleware(mcp, ...)``
+        # is called at MODULE IMPORT time. The import chain triggered by
+        # ``FastMCPServer.__init__`` -> ``_register_tools`` ->
+        # ``tasks_handoff_to_workflow_available`` transitively loads
+        # ``session_buddy.server_optimized`` and fires the attach. Patch
+        # the source module so the module-level call resolves to a no-op
+        # (see sibling test for the same rationale).
+        otel_patcher = patch("session_buddy.mcp.telemetry.attach_otel_middleware")
 
         # Explicit patcher.start()/stop() instead of parenthesized
         # ``with`` blocks — pytest's parenthesized-with handling under
@@ -188,6 +228,7 @@ class TestFastMCPServerInit:
         # patch and ``mock_add.called`` stays False.
         auth_patcher = patch("mahavishnu.mcp.server_core.get_auth_from_config")
         add_patcher = patch.object(FastMCP, "add_middleware")
+        otel_patcher.start()
         auth_patcher.start()
         mock_add = add_patcher.start()
         try:
@@ -207,6 +248,7 @@ class TestFastMCPServerInit:
         finally:
             add_patcher.stop()
             auth_patcher.stop()
+            otel_patcher.stop()
 
 
 # =============================================================================
