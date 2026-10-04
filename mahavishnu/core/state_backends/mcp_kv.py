@@ -16,12 +16,22 @@ That is the canonical Mahavishnu KV surface — JSON-encoded strings on the
 wire — and is what ``cron_core.run_rebuild_cycle`` consumes directly (it
 does ``int(await mcp.get(KEY))``, ``json.loads(recent_raw)``, etc.).
 
-Routing ``PlanIndexStore`` through ``MCPStateBackend`` crashes every cycle
-with ``int() argument must be ... not 'dict'`` because the wire envelope is
-a dict, not the raw string the cycle expects.
+The four tools (``mahavishnu_kv_get`` / ``put`` / ``list`` / ``delete``)
+are registered on mahavishnu's own MCP server by
+:mod:`mahavishnu.mcp.tools.kv_tools`, backed by a process-local
+thread-safe dict (the previous MCP MCP server that hosted these tools
+was retired per ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md``;
+plan_index was left with no backend). Routing
+``PlanIndexStore`` through the new tools works because the seam —
+``MCPClient.call_tool`` returning the unwrapped tool return value
+(see ``mahavishnu.core.mcp_adapter``) — finally matches the
+``Protocol`` shape that ``PlanIndexStore`` declares.
 
-This adapter sits at the seam and unwraps MCP's wire envelope so both
-contracts can coexist on the same MCP instance.
+The new tools wrap their return in ``{"ok": True, ...}`` envelopes
+(matching the project-wide convention from the other ecosystem-state
+tools). This adapter unwraps the envelope and surfaces just the
+``value`` (or ``items`` list, or the ack) so ``PlanIndexStore`` sees
+the canonical string-shape contract.
 """
 
 from __future__ import annotations
@@ -40,23 +50,20 @@ class MCPKvConfig:
 
 
 class MCPKvClient:
-    """Thin adapter exposing MCP's KV store under the string-shape Protocol.
+    """Thin adapter exposing the self-hosted KV under the string-shape Protocol.
 
-    Wraps ``MCPClient`` (the raw MCP HTTP tool-call client). Each method
-    unwraps MCP's wire envelope:
-      - ``mcp_get`` returns ``{"ok": True, "key": K, "value": V}`` →
-        ``self.get`` returns ``V`` (as ``str``) or ``None``.
-      - ``mcp_put`` returns ``{"ok": True, "key": K}`` → ``self.put``
-        surfaces the ack by returning ``None`` (protocol: ``put → None``).
-      - ``mcp_list_prefix`` returns
-        ``{"ok": True, "count": N, "items": [{"key", "value"}, ...]}`` →
-        ``self.list_prefix`` flattens to ``[(key, str_value), ...]``.
-      - ``mcp_delete`` returns ``{"ok": True}`` → ``self.delete`` returns
-        ``None``.
+    Routes through the ``mahavishnu_kv_get`` / ``_put`` / ``_list`` /
+    ``_delete`` tools on the same mahavishnu MCP server. Each call's
+    response is ``{"ok": True, "value": "..."}`` /
+    ``{"ok": True, "key": "...", "stored_at_ms": N}`` /
+    ``{"ok": True, "items": [{"key", "value"}, ...], "count": N}`` /
+    ``{"ok": True, "key": "..."}`` — this adapter unwraps the
+    ``{"ok": True, ...}`` envelope and surfaces the string-shape value
+    so the ``PlanIndexStore`` Protocol contract holds.
 
     Failures are swallowed with a no-op (mirrors ``MCPStateBackend``).
     The KV layer is non-authoritative; ``/health`` reports degradation
-    rather than crashing the server on a MCP outage.
+    rather than crashing the server on a KV outage.
     """
 
     def __init__(self, base_url: str, config: MCPKvConfig | None = None) -> None:
@@ -67,10 +74,14 @@ class MCPKvClient:
         if not self._config.enabled:
             return None
         try:
-            envelope = await self._client.call_tool("get", {"key": key})
+            envelope = await self._client.call_tool(
+                "mahavishnu_kv_get", {"key": key}
+            )
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return None
         if not isinstance(envelope, dict):
+            return None
+        if not envelope.get("ok"):
             return None
         value = envelope.get("value")
         if value is None:
@@ -84,7 +95,9 @@ class MCPKvClient:
         if not self._config.enabled:
             return
         try:
-            await self._client.put(key, value, ttl=ttl)
+            await self._client.call_tool(
+                "mahavishnu_kv_put", {"key": key, "value": value, "ttl": ttl}
+            )
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return
 
@@ -92,10 +105,14 @@ class MCPKvClient:
         if not self._config.enabled:
             return []
         try:
-            envelope = await self._client.call_tool("list_prefix", {"prefix": prefix})
+            envelope = await self._client.call_tool(
+                "mahavishnu_kv_list", {"prefix": prefix}
+            )
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return []
         if not isinstance(envelope, dict):
+            return []
+        if not envelope.get("ok"):
             return []
         items = envelope.get("items")
         if not isinstance(items, list):
@@ -123,7 +140,9 @@ class MCPKvClient:
         if not self._config.enabled:
             return
         try:
-            await self._client.call_tool("delete", {"key": key})
+            await self._client.call_tool(
+                "mahavishnu_kv_delete", {"key": key}
+            )
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return
 

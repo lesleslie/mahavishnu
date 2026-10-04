@@ -43,6 +43,7 @@ from ..bootstrap import (
     _register_git_analytics_tools,
     _register_goal_team_tools,
     _register_health_tools,
+    _register_kv_tools,
     _register_openhands_tools,
     _register_otel_tools,
     _register_plan_tools,
@@ -190,6 +191,11 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # sibling Bodai components resolve services and read events via this
     # surface at any tool profile.
     "_register_ecosystem_state_tools": lambda s: _register_ecosystem_state_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # C1 follow-up (2026-10-04) — self-hosted KV for the plan_index
+    # periodic-rebuild lock store. See ``_register_kv_tools`` in
+    # ``bootstrap.py`` and ``mahavishnu.mcp.tools.kv_tools``. Always-on
+    # because the plan_index cron runs at every profile.
+    "_register_kv_tools": lambda s: _register_kv_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
     # init runs in start() because mahavishnu has no async lifespan.
     "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(s._mhv_server),  # type: ignore[attr-defined]

@@ -377,12 +377,21 @@ def _is_store_directory(directory: Path) -> bool:
 
 
 def discover_records(repo_root: Path) -> list[PlanRecord]:
-    """Walk `repo_root`, auto-discover stores, parse frontmatter, return records.
+    """Walk ``docs/plans/`` and ``docs/specs/`` under ``repo_root``,
+    parse frontmatter, return records.
 
     Importable so the CLI orchestrator (Task 15) can reuse this.
-    Mirrors `scripts/regenerate_plan_index.py` Phase A — auto-discover
-    stores (skipping system dirs), parse each .md file's frontmatter,
-    return a `PlanRecord` per file with ALL 14 fields populated.
+    Mirrors ``scripts/regenerate_plan_index.py`` Phase A — auto-discover
+    plans and specs (skipping system dirs), parse each .md file's
+    frontmatter, return a ``PlanRecord`` per file with ALL 14 fields
+    populated.
+
+    Scope: only ``docs/plans/`` and ``docs/specs/`` are walked. The
+    earlier "walk the whole repo, treat any 2-md-file dir with valid
+    frontmatter as a store" approach swept in runbooks, audits, ADRs,
+    and decisions — all of which have frontmatter but use ``role``
+    values outside the plan_index allowlist. Scoping to the two real
+    plan/spec directories closes that footgun.
 
     Defaults for fields missing from frontmatter:
       - role: "implementation" (most plans are implementation specs)
@@ -405,72 +414,76 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
 
     accepted_statuses = frozenset({"draft", "active", "partial", "shipped", "complete"})
 
-    for directory in sorted(repo_root.rglob("*")):
-        if not directory.is_dir():
+    # Only walk docs/plans/ and docs/specs/ — the actual plan_index scope.
+    plan_dirs = [repo_root / "docs" / name for name in ("plans", "specs")]
+
+    for plan_dir in plan_dirs:
+        if not plan_dir.is_dir():
             continue
-        if any(part in _EXCLUDED_DIR_NAMES for part in directory.parts):
-            continue
-        if not _is_store_directory(directory):
-            continue
-        for md in sorted(directory.rglob("*.md")):
-            if md.name in _EXCLUDED_FILE_NAMES:
+        for directory in sorted(plan_dir.rglob("*")):
+            if not directory.is_dir():
                 continue
-            try:
-                rel = md.relative_to(repo_root).as_posix()
-            except ValueError:
+            if any(part in _EXCLUDED_DIR_NAMES for part in directory.parts):
                 continue
-            try:
-                text = md.read_text(errors="replace")
-            except OSError:
-                continue
-            fm = _parse_frontmatter(text)
-            status = _coerce_str(fm.get("status"))
-            title = _coerce_str(fm.get("title"))
-            if not status or not title or status not in accepted_statuses:
-                continue
-            repo = _normalize_repo_url(_coerce_str(fm.get("repo")))
-            plan_id = _derive_plan_id(rel)
+            for md in sorted(directory.rglob("*.md")):
+                if md.name in _EXCLUDED_FILE_NAMES:
+                    continue
+                try:
+                    rel = md.relative_to(repo_root).as_posix()
+                except ValueError:
+                    continue
+                try:
+                    text = md.read_text(errors="replace")
+                except OSError:
+                    continue
+                fm = _parse_frontmatter(text)
+                status = _coerce_str(fm.get("status"))
+                title = _coerce_str(fm.get("title"))
+                if not status or not title or status not in accepted_statuses:
+                    continue
+                repo = _normalize_repo_url(_coerce_str(fm.get("repo")))
+                plan_id = _derive_plan_id(rel)
 
-            role = _coerce_str(fm.get("role")) or "implementation"
-            topic = _coerce_str(fm.get("topic"))
+                role = _coerce_str(fm.get("role")) or "implementation"
+                topic = _coerce_str(fm.get("topic"))
 
-            date = _coerce_date(fm.get("date"))
-            last_reviewed = _coerce_date(fm.get("last_reviewed"))
-            # Cross-fallback: prefer last_reviewed if date is empty, and vice-versa.
-            if not date and last_reviewed:
-                date = last_reviewed
-            if not last_reviewed and date:
-                last_reviewed = date
+                date = _coerce_date(fm.get("date"))
+                last_reviewed = _coerce_date(fm.get("last_reviewed"))
+                # Cross-fallback: prefer last_reviewed if date is empty, and vice-versa.
+                if not date and last_reviewed:
+                    date = last_reviewed
+                if not last_reviewed and date:
+                    last_reviewed = date
 
-            superseded_by_raw = _coerce_str(fm.get("superseded_by"))
-            superseded_by: str | None = (
-                superseded_by_raw
-                if superseded_by_raw and superseded_by_raw not in {"null", "~"}
-                else None
-            )
-
-            blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
-            sha = _git_blob_sha(repo_root, rel)
-            updated_at_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
-
-            records.append(
-                PlanRecord(
-                    plan_id=plan_id,  # ty: ignore[invalid-argument-type]
-                    path=rel,
-                    title=title,
-                    status=status,  # ty: ignore[invalid-argument-type]
-                    role=role,  # ty: ignore[invalid-argument-type]
-                    topic=topic,
-                    date=date,
-                    last_reviewed=last_reviewed,
-                    superseded_by=superseded_by,
-                    blocks_on=blocks_on,  # ty: ignore[invalid-argument-type]
-                    sha=sha,
-                    repo=repo,
-                    lifecycle_state=None,
-                    updated_at_ms=updated_at_ms,
+                superseded_by_raw = _coerce_str(fm.get("superseded_by"))
+                superseded_by: str | None = (
+                    superseded_by_raw
+                    if superseded_by_raw and superseded_by_raw not in {"null", "~"}
+                    else None
                 )
-            )
+
+                blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
+                sha = _git_blob_sha(repo_root, rel)
+                updated_at_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
+
+                records.append(
+                    PlanRecord(
+                        plan_id=plan_id,  # ty: ignore[invalid-argument-type]
+                        path=rel,
+                        title=title,
+                        status=status,  # ty: ignore[invalid-argument-type]
+                        role=role,  # ty: ignore[invalid-argument-type]
+                        topic=topic,
+                        date=date,
+                        last_reviewed=last_reviewed,
+                        superseded_by=superseded_by,
+                        blocks_on=blocks_on,  # ty: ignore[invalid-argument-type]
+                        sha=sha,
+                        repo=repo,
+                        lifecycle_state=None,
+                        updated_at_ms=updated_at_ms,
+                    )
+                )
     return records
 
 

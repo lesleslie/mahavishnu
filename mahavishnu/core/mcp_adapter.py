@@ -42,8 +42,42 @@ class MCPClient:
         return self.base_url
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        """Call a MCP MCP tool over streamable-HTTP."""
-        return await self._mcp.call_tool(name, arguments)
+        """Call a MCP MCP tool over streamable-HTTP.
+
+        Unwraps the FastMCP ``CallToolResult`` envelope so callers see
+        the tool's actual return value (a dict, list, or scalar), not
+        the SDK wrapper. The underlying ``CommonMCPClient`` returns
+        ``CallToolResult`` (a Pydantic model with ``content``,
+        ``structured_content``, ``is_error``). FastMCP tools annotated
+        with ``-> dict[str, Any]`` populate ``structured_content``;
+        string returns land in ``content[0].text``. PlanIndexStore and
+        the workflow / approval ``recover_*`` helpers consume the
+        unwrapped shape; the wire-envelope unwrap is the seam that
+        lets both contracts coexist on the same MCP instance.
+        """
+        from fastmcp.tools.tool import TextContent  # type: ignore[import-not-found]
+
+        result = await self._mcp.call_tool(name, arguments)
+        if result.is_error:
+            # Surface errors as a dict so callers can branch on
+            # ``{"error": "..."}`` without needing to import
+            # CallToolResult themselves. The original error text lives
+            # in the first TextContent (FastMCP always uses text content
+            # for errors, even when the tool is typed ``-> dict``).
+            message = ""
+            if result.content and isinstance(result.content[0], TextContent):
+                message = result.content[0].text
+            return {"error": message, "is_error": True}
+        if result.structured_content is not None:
+            return result.structured_content
+        if result.content and isinstance(result.content[0], TextContent):
+            import json
+
+            try:
+                return json.loads(result.content[0].text)
+            except (json.JSONDecodeError, TypeError):
+                return result.content[0].text
+        return None
 
     async def put(self, key: str, value: Any, ttl: int | None = None) -> Any:
         """Persist a key/value record if the server exposes a storage tool."""

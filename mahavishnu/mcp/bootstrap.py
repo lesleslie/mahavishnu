@@ -1003,6 +1003,28 @@ def _register_ecosystem_state_tools(server: FastMCPServer) -> None:
     )
 
 
+def _register_kv_tools(server: FastMCPServer) -> None:
+    """Register 4 self-hosted KV tools (always-on).
+
+    Backfill for the plan_index periodic-rebuild lock store
+    (commit f6f2976f + follow-ups). The original KV lived on a
+    separate MCP server (retired per
+    ``docs/plans/2026-09-16-mcp-mcp-retirement-plan.md``); the lock
+    keys are now self-served from a process-local thread-safe dict
+    inside :mod:`mahavishnu.mcp.tools.kv_tools`. Always-on (not gated
+    by tool profile) because the plan_index cron runs at every
+    profile.
+    """
+    from ..mcp.tools.kv_tools import register_kv_tools
+
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+    register_kv_tools(server.server, rbac_manager=rbac_manager)
+    logger.info(
+        "Registered 4 self-hosted KV tools "
+        "(mahavishnu_kv_get/put/list/delete) with MCP server"
+    )
+
+
 def _register_ecosystem_publish_url_tool(server: FastMCPServer) -> None:
     """Register the ecosystem publish-URL tool (sibling-tool for crackerjack).
 
