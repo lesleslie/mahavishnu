@@ -81,18 +81,38 @@ def test_record_approval_decision_passes_through_metadata(
 
 def test_record_approval_decision_emits_log_event(
     dhara_storage: MagicMock,
-    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import logging
+    """Decision writer emits a structlog INFO event named approval_log_recorded.
 
-    with caplog.at_level(logging.INFO, logger="mahavishnu.core.approval.decision_writer"):
-        record_approval_decision(
-            approval_id="apr-004",
-            decision="requested",
-            rationale="Need operator review",
-            decided_by="system",
-        )
-    assert any("approval_log_recorded" in rec.message for rec in caplog.records), [
-        rec.message for rec in caplog.records
-    ]
+    Oneiric configures structlog with its own handlers, so pytest's caplog
+    (stdlib logging) does not capture its output. Patch the module-level
+    logger.info directly to record the event the same way
+    tests/unit/test_confidence_ceiling.py does.
+    """
+    import mahavishnu.core.approval.decision_writer as dw_mod
+
+    captured: list[tuple[str, dict[str, Any]]] = []
+    monkeypatch.setattr(
+        dw_mod.logger,
+        "info",
+        lambda event, **kw: captured.append((event, kw)),
+    )
+
+    record_approval_decision(
+        approval_id="apr-004",
+        decision="requested",
+        rationale="Need operator review",
+        decided_by="system",
+    )
+
+    matching = [event for event, _ in captured if event == "approval_log_recorded"]
+    assert matching, (
+        f"expected an approval_log_recorded structlog event; got: {captured}"
+    )
+    payload = captured[-1][1]
+    extra = payload.get("extra", payload)
+    assert extra.get("approval_id") == "apr-004"
+    assert extra.get("action") == "requested"
+    assert extra.get("actor") == "system"
     assert dhara_storage.call_count == 1

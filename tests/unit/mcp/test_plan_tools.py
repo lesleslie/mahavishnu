@@ -28,7 +28,7 @@ from mahavishnu.mcp.tools.plan_tools import (
 from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeMCP
+from mahavishnu.plan_index.testing import FakeMCP as _StorageMCP
 
 TOOL_NAMES = (
     "plan_list",
@@ -58,10 +58,19 @@ class _FakeRBAC:
         return user_id == "alice"
 
 
-class FakeMCP:
-    """Minimal FastMCP stand-in that captures decorated tool functions."""
+class FakeMCP(_StorageMCP):
+    """FastMCP stand-in that also satisfies PlanIndexStore's MCP client surface.
+
+    The store's ``_MCPClient`` protocol requires ``put``/``get``/
+    ``list_prefix``/``delete``; we inherit them from
+    :class:`mahavishnu.plan_index.testing.FakeMCP` (imported above as
+    ``_StorageMCP``) and add the FastMCP-shaped ``tool`` decorator so
+    ``register_plan_tools`` can register handlers against the same
+    instance the test then hands to ``PlanIndexStore``.
+    """
 
     def __init__(self) -> None:
+        super().__init__()
         self.tools: dict[str, Any] = {}
 
     def tool(self, name: str | None = None, **kwargs: Any) -> Any:
