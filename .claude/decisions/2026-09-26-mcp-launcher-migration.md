@@ -1,5 +1,5 @@
 ---
-status: superseded
+status: complete
 role: implementation
 kind: migration-design
 date: 2026-09-26
