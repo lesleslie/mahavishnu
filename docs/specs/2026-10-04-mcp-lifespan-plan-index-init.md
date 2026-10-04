@@ -116,7 +116,7 @@ The key invariant: **all init that requires the server to be up runs after uvico
 
 **Current state** (the broken function, lines 28-184): 156 lines doing tool profile, defensive init, signer feed, plan_index rebuild, sweeper spawn, then `run_http_async`.
 
-**Target state**: split into two pieces.
+**Target state**: split into two pieces. **Implementation note (2026-10-04)**: the `plan_index` rebuild inside the lifespan is scheduled as a background task (`asyncio.create_task`) rather than being awaited, because uvicorn's accept loop hasn't started yet when the lifespan runs — awaited HTTP calls from the plan_index `MCPKvClient` to its own server sit in the OS TCP backlog and time out at 180s. The background task runs after the lifespan yields, when the event loop is free to process both the server's request handling and the client's response handling concurrently. The `/health` endpoint briefly reports `plan_index: warming_up` (until the background task completes) — for this codebase that means "forever, due to a pre-existing doc-frontmatter validation bug," which is a separate issue.
 
 ```python
 # New: extracted lifespan function (new file or top of lifecycle.py)
