@@ -1,10 +1,10 @@
 ---
-status: active
+status: superseded
 role: implementation
 kind: migration-design
 date: 2026-09-26
-last_reviewed: 2026-09-26
-superseded_by: null
+last_reviewed: 2026-10-04
+superseded_by: docs/specs/2026-10-04-mcp-lifespan-plan-index-init.md
 topic: mcp-launcher-migration
 phase: 4a-task-4a.1
 component: vishnu (mahavishnu)

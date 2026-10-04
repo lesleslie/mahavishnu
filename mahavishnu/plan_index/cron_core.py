@@ -86,6 +86,15 @@ _EXCLUDED_DIR_NAMES: frozenset[str] = frozenset(
         "backups",
         "coverage_report",
         "assets",
+        # Non-plan top-level docs subdirs. The plan_index walker treats
+        # any dir with >= 2 .md files that have valid ``status`` +
+        # ``title`` frontmatter as a "store", which used to sweep in
+        # ``docs/runbooks/`` (operational runbook docs whose frontmatter
+        # uses ``role: runbook`` — a value outside plan_index's role
+        # allowlist). Runbooks are not plans and should never be
+        # ingested; add other non-plan top-level subdirs here as
+        # they surface. See commit 2026-10-04 plan_index-runbook-fix.
+        "runbooks",
     }
 )
 _EXCLUDED_FILE_NAMES: frozenset[str] = frozenset({"PLAN_INDEX.md"})
