@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.33.0"
+version = "0.33.1"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -22,7 +22,7 @@ dependencies = [
     # CLI
     "typer>=0.27.2",
     # Oneiric ecosystem
-    "oneiric>=0.26.0",
+    "oneiric>=0.26.4",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -40,7 +40,7 @@ dependencies = [
     "tomli>=2.4.1",
     "aiofiles>=25.1.0",
     # XDG Base Directory compliance
-    "platformdirs>=4.12.1",
+    "platformdirs>=4.12.3",
     # Observability
     "opentelemetry-api>=1.45.0",
     "opentelemetry-sdk>=1.45.0",
@@ -62,7 +62,7 @@ dependencies = [
     "prefect>=3.8.7",
     "croniter>=6.2.4",  # Prefect cron schedule validation (lazy + try/except fallback in prefect_schedules.py:91)
     # Agno: Fast, scalable single/multi-agents
-    "agno>=3.0.11",
+    "agno>=3.1.1",
     # LlamaIndex: RAG pipelines
     "llama-index-core>=0.14.25,<0.15.0",
     "llama-index-embeddings-ollama>=0.8.6,<0.9.0",
@@ -72,22 +72,22 @@ dependencies = [
     "httpx2[http2]>=2.13.1",
     # Web extract escalation (Plan 1 Tasks 7-9)
     # trafilatura moved to optional "content-ingest" group (PEP 735).
-    "selectolax>=0.4.12",
+    "selectolax>=1.0.0",
     "rapidfuzz>=3.14.6",
     # AI integrations
     # pydantic-ai-slim moved to optional "ai" group (PEP 735).
-    "llama-cpp-python>=0.3.35",
+    "llama-cpp-python>=0.3.36",
     # Serverless GPU
     # runpod-flash moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
     "ty>=0.0.84",
     # Git operations
-    "gitpython>=3.1.62",
+    "gitpython>=3.2.0",
     # Async SQLite
     "aiosqlite>=0.22.1",
     # Encryption
-    "cryptography>=50.0.1",
+    "cryptography>=50.0.2",
     # Admin shell
     "ipython>=9.17.1",
     # Markdown board watcher (C-1 prep forward-only declaration)
@@ -123,15 +123,15 @@ dev = [
     "freezegun>=1.5.5",
     "ruff>=0.16.0",
     "pyright>=1.1.414",
-    "pylint>=4.0.9",
+    "pylint>=4.1.2",
     "bandit>=1.9.4",
     "safety>=3.7.0",
     "creosote>=5.2.0",
     "detect-secrets>=1.5.0",
     "refurb>=2.3.1",
     "complexipy>=8.0.1",
-    "zensical>=0.0.65",
-    "crackerjack>=0.84.1",
+    "zensical>=0.0.67",
+    "crackerjack>=0.84.3",
     {include-group = "ai"},
     {include-group = "cache"},
     {include-group = "gpu"},
@@ -166,9 +166,9 @@ cache = [
 
 # Bodai ecosystem integrations
 ecosystem = [
-    "akosha>=0.20.0",
-    "crackerjack>=0.84.1",
-    "session-buddy>=0.31.0",
+    "akosha>=0.22.1",
+    "crackerjack>=0.84.3",
+    "session-buddy>=0.31.1",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
@@ -179,7 +179,7 @@ treesitter = [
     "tree-sitter-go>=0.25.0",
 ]
 llm-providers = [
-    "openai>=3.19.2",
+    "openai>=3.24.0",
 ]
 # Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
 # inheritance is not transitive across Bodai repos, so each consumer must
@@ -231,7 +231,7 @@ vector = [
 # Optional: Pydantic AI agent runtime (mahavishnu.adapters.ai.pydantic_ai_adapter).
 # Lazy-imported at runtime; install only when the pydantic_ai adapter is used.
 ai = [
-    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.51.0",
+    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.54.0",
 ]
 
 # Optional: Serverless GPU execution via RunPod Flash
@@ -257,7 +257,7 @@ shepherd = [
 content-ingest = [
     "pypdf>=6.19.0",
     "ebooklib>=0.20",
-    "trafilatura>=2.2.0",
+    "trafilatura>=2.3.0",
 ]
 
 # Optional: PostgreSQL pgvector adapter for HNSW-backed vector search
