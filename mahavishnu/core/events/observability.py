@@ -23,22 +23,22 @@ _wire_decode_failed = _meter.create_counter("mahavishnu.event.wire.decode_failed
 def record_wire_converted(*, direction: str, source: str) -> None:
     attributes = {"direction": direction, "source": source}
     _wire_converted.add(1, attributes=attributes)
-    _logger.info("event.wire.converted", **attributes)
+    _logger.info("event.wire.converted", **attributes)  # ty: ignore[invalid-argument-type]
 
 
 def record_wire_conversion_failed(*, direction: str, reason: str) -> None:
     attributes = {"direction": direction, "reason": reason}
     _wire_conversion_failed.add(1, attributes=attributes)
-    _logger.warning("event.wire.conversion_failed", **attributes)
+    _logger.warning("event.wire.conversion_failed", **attributes)  # ty: ignore[invalid-argument-type]
 
 
 def record_legacy_decoded(*, consumer: str) -> None:
     attributes = {"consumer": consumer}
     _legacy_decoded.add(1, attributes=attributes)
-    _logger.info("event.wire.legacy_decoded", **attributes)
+    _logger.info("event.wire.legacy_decoded", **attributes)  # ty: ignore[invalid-argument-type]
 
 
 def record_wire_decode_failed(*, consumer: str, reason: str) -> None:
     attributes = {"consumer": consumer, "reason": reason}
     _wire_decode_failed.add(1, attributes=attributes)
-    _logger.warning("event.wire.decode_failed", **attributes)
+    _logger.warning("event.wire.decode_failed", **attributes)  # ty: ignore[invalid-argument-type]
