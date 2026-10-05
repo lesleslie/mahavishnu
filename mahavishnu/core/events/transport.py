@@ -6,8 +6,37 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
-from oneiric.core.logging import get_logger
-from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
+try:
+    from oneiric.core.logging import get_logger
+except ImportError:
+    # See `core/events/__init__.py` module docstring — the `mahavishnu`
+    # CLI must start from any CWD so the post-commit git hook installed
+    # by `mahavishnu index install-hooks` works in every Bodai repo.
+    from logging import getLogger as get_logger  # type: ignore[assignment]
+
+try:
+    from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
+except ImportError:
+    # Stub classes so type hints resolve at import time. The actual
+    # constructor (line 84: `return NotificationRoute(...)`) only fires
+    # when a notification is published; CLI startup, `mahavishnu --help`,
+    # and the `mahavishnu index repo --trigger git-event` post-commit
+    # hook never reach that line. If a subcommand that actually
+    # publishes an event runs without oneiric installed, the user gets
+    # a clear AttributeError at the call site.
+    class NotificationRoute:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise RuntimeError(
+                "oneiric is not importable; cannot construct NotificationRoute. "
+                "Run from /Users/les/Projects/mahavishnu (or any CWD where "
+                "the `oneiric` peer directory is on sys.path)."
+            )
+
+    class NotificationRouter:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise RuntimeError(
+                "oneiric is not importable; cannot construct NotificationRouter."
+            )
 
 from mahavishnu.core.dead_letter_queue import DeadLetterQueue, RetryPolicy
 from mahavishnu.core.errors import EventEnvelopeConversionError

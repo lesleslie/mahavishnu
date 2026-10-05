@@ -31,7 +31,13 @@ from __future__ import annotations
 from copy import deepcopy
 import os
 
-from oneiric.core.logging import get_logger
+try:
+    from oneiric.core.logging import get_logger
+except ImportError:
+    # See `core/events/__init__.py` module docstring — the `mahavishnu`
+    # CLI must start from any CWD so the post-commit git hook installed
+    # by `mahavishnu index install-hooks` works in every Bodai repo.
+    from logging import getLogger as get_logger  # type: ignore[assignment]
 
 logger = get_logger(__name__)
 

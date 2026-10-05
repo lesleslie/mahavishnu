@@ -1,33 +1,23 @@
-"""Typed event envelope and event-contract utilities."""
+"""Typed event envelope and event-contract utilities.
+
+Submodule re-exports whose underlying modules eagerly import `oneiric`
+(directly, or transitively via `mahavishnu.core.events.canonical`) are
+deferred via PEP 562 module-level `__getattr__`. `oneiric` is resolved
+as a sibling peer directory in the user's workspace, not as an
+installed wheel — when the `mahavishnu` CLI is invoked from a non-
+mahavishnu CWD (e.g. via the post-commit git hook installed by
+`mahavishnu index install-hooks` in crackerjack, session-buddy, etc.),
+the peer-directory resolution fails and an eager `from .<submodule>
+import ...` here crashes the CLI at startup before any subcommand can
+run. See `tests/unit/core/events/test_package_init_lazy_canonical.py`
+for the regression test that pins this contract.
+"""
+
+from __future__ import annotations
+
+import importlib
 
 from mahavishnu.core.errors import MahavishnuError as MahavishnuError
-from mahavishnu.core.events.canonical import (
-    OPTIONAL_EVENT_HEADERS as OPTIONAL_EVENT_HEADERS,
-)
-from mahavishnu.core.events.canonical import (
-    REQUIRED_EVENT_HEADERS as REQUIRED_EVENT_HEADERS,
-)
-from mahavishnu.core.events.canonical import (
-    RESERVED_EVENT_HEADERS as RESERVED_EVENT_HEADERS,
-)
-from mahavishnu.core.events.canonical import (
-    OneiricEventPublisherProtocol as OneiricEventPublisherProtocol,
-)
-from mahavishnu.core.events.canonical import (
-    create_oneiric_envelope as create_oneiric_envelope,
-)
-from mahavishnu.core.events.canonical import (
-    decode_oneiric_envelope as decode_oneiric_envelope,
-)
-from mahavishnu.core.events.canonical import (
-    encode_oneiric_envelope as encode_oneiric_envelope,
-)
-from mahavishnu.core.events.canonical import (
-    to_mahavishnu_envelope as to_mahavishnu_envelope,
-)
-from mahavishnu.core.events.canonical import (
-    to_oneiric_envelope as to_oneiric_envelope,
-)
 from mahavishnu.core.events.compatibility import (
     CompatibilityLevel as CompatibilityLevel,
 )
@@ -75,12 +65,54 @@ from mahavishnu.core.events.schema_registry import (
 from mahavishnu.core.events.schema_registry import (
     EventSchemaRegistry as EventSchemaRegistry,
 )
-from mahavishnu.core.events.transport import (
-    EventBusConsumer as EventBusConsumer,
-)
-from mahavishnu.core.events.transport import (
-    RedisEventTransport as RedisEventTransport,
-)
-from mahavishnu.core.events.transport import (
-    WebSocketEventHandler as WebSocketEventHandler,
-)
+
+
+# Names whose definition lives in a submodule that eagerly imports
+# `oneiric` (directly, or transitively via `mahavishnu.core.events.canonical`).
+# Accessing any of them triggers a one-time `import <submodule>` on
+# first use, which transitively loads `oneiric`. Keep this mapping
+# in lockstep with the actual re-exports — the regression test
+# `test_package_init_lazy_canonical.py` enforces the contract that
+# `envelope`/`schema_registry`/`contract`/etc. imports do NOT load
+# any of these names.
+_LAZY_HEAVY_REEXPORTS: dict[str, str] = {
+    # canonical: itself imports oneiric at module load.
+    "OPTIONAL_EVENT_HEADERS": "canonical",
+    "REQUIRED_EVENT_HEADERS": "canonical",
+    "RESERVED_EVENT_HEADERS": "canonical",
+    "OneiricEventPublisherProtocol": "canonical",
+    "create_oneiric_envelope": "canonical",
+    "decode_oneiric_envelope": "canonical",
+    "encode_oneiric_envelope": "canonical",
+    "to_mahavishnu_envelope": "canonical",
+    "to_oneiric_envelope": "canonical",
+    # transport: imports canonical at module load, which imports oneiric.
+    "EventBusConsumer": "transport",
+    "RedisEventTransport": "transport",
+    "WebSocketEventHandler": "transport",
+}
+
+
+def __getattr__(name: str):
+    # PEP 562 module-level __getattr__: defer loading any submodule
+    # that pulls in `oneiric` (directly or transitively) until a
+    # name that lives there is actually requested. This keeps
+    # `mahavishnu index ...` and other subcommands runnable from any
+    # CWD — including the background `mahavishnu index repo
+    # --trigger git-event` process started by the post-commit hook in
+    # every Bodai repo where `mahavishnu index install-hooks` has
+    # been run.
+    module_name = _LAZY_HEAVY_REEXPORTS.get(name)
+    if module_name is not None:
+        module = importlib.import_module(f".{module_name}", __name__)
+        try:
+            return getattr(module, name)
+        except AttributeError:
+            pass
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    # Surface the lazy names in `dir(mahavishnu.core.events)` so
+    # tab-completion and IDE introspection see them.
+    return sorted(set(globals().keys()) | _LAZY_HEAVY_REEXPORTS.keys())

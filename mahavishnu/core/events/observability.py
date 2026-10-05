@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from oneiric.core.logging import get_logger
+try:
+    from oneiric.core.logging import get_logger
+except ImportError:
+    # See `core/events/__init__.py` module docstring — the `mahavishnu`
+    # CLI must start from any CWD so the post-commit git hook installed
+    # by `mahavishnu index install-hooks` works in every Bodai repo.
+    from logging import getLogger as get_logger  # type: ignore[assignment]
+
 from opentelemetry import metrics
 
 _logger = get_logger("mahavishnu.event_wire")

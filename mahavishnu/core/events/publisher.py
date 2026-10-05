@@ -13,7 +13,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from oneiric.core.logging import get_logger
+try:
+    from oneiric.core.logging import get_logger
+except ImportError:
+    # Fallback so the `mahavishnu` CLI can start from any CWD (e.g. the
+    # post-commit hook in any Bodai repo). The oneiric peer-directory
+    # resolution only works when CWD is /Users/les/Projects/mahavishnu.
+    # See `core/events/__init__.py` module docstring for the contract.
+    from logging import getLogger as get_logger  # type: ignore[assignment]
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
 
