@@ -269,6 +269,9 @@ secrets/
 .archives/
 .backup/
 *.bak
+# `.bak.` infix — `*.bak` only matches a SUFFIX, so timestamped backups like
+# `.gitignore.bak.20261004T104858Z` slipped through. Added 2026-10-05.
+*.bak.*
 *.bak2
 *.bak3
 *.orig
@@ -329,6 +332,9 @@ docs/archive/test-artifacts/coverage*.json
 *.backup
 *.backup.*
 *.bak
+# `.bak.` infix (timestamped `.bak.YYYYMMDDTHHMMSSZ` backups) — see comment
+# in `crackerjack/templates/GITIGNORE_BODAI.md` for why `*.bak` is not enough.
+*.bak.*
 *.tmpl
 # XDG mistake dirs (env var expansion failed; literal names)
 ~
@@ -368,6 +374,9 @@ settings/registry_metadata.local.yaml
 *.backup
 *.backup.*
 *.bak
+# `.bak.` infix (timestamped `.bak.YYYYMMDDTHHMMSSZ` backups) — see comment
+# in `crackerjack/templates/GITIGNORE_BODAI.md` for why `*.bak` is not enough.
+*.bak.*
 *.tmpl
 # XDG mistake dirs (env var expansion failed; literal names)
 # Note: both `{` and `}` are escaped (`{` -> `[{]`, `}` -> `[}]`)
