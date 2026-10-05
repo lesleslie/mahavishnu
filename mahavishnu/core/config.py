@@ -181,9 +181,20 @@ class AgnoToolsConfig(BaseModel):
         default="http://localhost:8680/mcp",
         description="Mahavishnu MCP server URL for native tool integration",
     )
+    # 2026-10-05: flipped default ``"sse"`` → ``"streamable-http"``.
+    # The Agno SDK (3.1.1) emits ``WARNING SSE as a standalone
+    # transport is deprecated and will be removed in a future
+    # release. Please use Streamable HTTP instead.`` whenever
+    # ``MCPTools(transport="sse")`` is constructed. ``streamable-http``
+    # is one of the Literal["stdio","sse","streamable-http"] values
+    # accepted by ``MCPToolsRegistry.initialize`` (line 327 of
+    # engines/agno_adapter_impl.py), so the wiring is already in
+    # place. Override per-env via
+    # ``MAHAVISHNU_AGNO__TOOLS__MCP_TRANSPORT=streamable-http``
+    # (or revert to "sse" if a downstream consumer breaks).
     mcp_transport: str = Field(
-        default="sse",
-        description="MCP transport protocol (sse, stdio)",
+        default="streamable-http",
+        description="MCP transport protocol (streamable-http, sse, stdio)",
     )
     enabled_tools: list[str] = Field(
         default_factory=lambda: [

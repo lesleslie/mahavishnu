@@ -20,7 +20,7 @@ except ImportError:
     # post-commit hook in any Bodai repo). The oneiric peer-directory
     # resolution only works when CWD is /Users/les/Projects/mahavishnu.
     # See `core/events/__init__.py` module docstring for the contract.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # type: ignore[assignment]  # noqa: N813
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
 

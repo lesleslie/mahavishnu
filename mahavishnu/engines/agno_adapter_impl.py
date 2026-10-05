@@ -641,11 +641,21 @@ class AgnoAdapter(OrchestratorAdapter):
             await self._initialize_team_manager()
 
             self._initialized = True
+            # NOTE (2026-10-05): the previous "compatibility ping" — a plain
+            # ``httpx.AsyncClient.get(self.api_url)`` — was removed. It
+            # 1) didn't actually verify MCP compatibility (a GET on an
+            # MCP endpoint doesn't exercise JSON-RPC, streamable-http
+            # framing, or any protocol surface), 2) was guaranteed to
+            # race the FastMCP server's bind() at startup (the bind
+            # completes on the launcher thread; this init runs as a
+            # background task scheduled in launch_mcp.py), and 3) the
+            # resulting ``All connection attempts failed`` warning was
+            # cosmetic noise in the rollup. The init's real
+            # compatibility proof is the ``MCPToolsRegistry.initialize``
+            # call at line 630 (which actually constructs the MCP
+            # client) plus the SDK version + team manager validation.
+            # ``_client`` is kept because ``shutdown()`` closes it.
             self._client = httpx.AsyncClient(base_url=self.api_url)
-            try:
-                await self._client.get(self.api_url)
-            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
-                logger.warning(f"AgnoAdapter compatibility ping failed: {e}")
             logger.info(
                 f"AgnoAdapter initialized successfully: "
                 f"provider={self.agno_config.llm.provider.value}, "

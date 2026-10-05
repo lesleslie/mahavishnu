@@ -12,7 +12,7 @@ except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # type: ignore[assignment]  # noqa: N813
 
 try:
     from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
@@ -34,9 +34,8 @@ except ImportError:
 
     class NotificationRouter:  # type: ignore[no-redef]
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            raise RuntimeError(
-                "oneiric is not importable; cannot construct NotificationRouter."
-            )
+            raise RuntimeError("oneiric is not importable; cannot construct NotificationRouter.")
+
 
 from mahavishnu.core.dead_letter_queue import DeadLetterQueue, RetryPolicy
 from mahavishnu.core.errors import EventEnvelopeConversionError

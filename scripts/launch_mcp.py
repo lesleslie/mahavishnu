@@ -72,12 +72,61 @@ def build_server():
     spawn) so the three /health feeds warm correctly instead of
     reporting permanent ``warming_up`` as they did under the previous
     bypass.
+
+    2026-10-05: also schedules ``AgnoAdapter.initialize()`` on the running
+    event loop. Without this, the adapter's ``get_health()`` reports
+    ``status: "unhealthy", reason: "Adapter not initialized"`` (the only
+    adapter in the rollup that's *honest* about not having been
+    initialized at startup). The CLI path (``_main_cli.py:565``) was the
+    only existing call site; this is the MCP-server path.
     """
     from mahavishnu.core.app import MahavishnuApp
     from mahavishnu.mcp.server_core import FastMCPServer
 
     maha_app = MahavishnuApp()
+    agno = maha_app.adapters.get("agno")
+    if agno is not None and not getattr(agno, "_initialized", False):
+        # Belt-and-suspenders: schedule the init as a background task so we
+        # don't block the launcher's start path. The adapter's own
+        # ``initialize()`` is idempotent (early-return on _initialized) so
+        # a stray double-init from another path is a no-op.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not None:
+            loop.create_task(_safe_agno_init(agno))
+        else:
+            # No loop yet (shouldn't happen — launch() runs inside
+            # asyncio.run) — fall back to sync best-effort. We don't
+            # asyncio.run() here because the adapter's httpx client
+            # would bind to a closed loop.
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "agno_init_skipped_no_event_loop: adapter will report unhealthy "
+                "until first manual init"
+            )
     return FastMCPServer(maha_app)
+
+
+async def _safe_agno_init(adapter) -> None:
+    """Await AgnoAdapter.initialize() but never propagate exceptions.
+
+    The init ping (httpx GET on self.api_url = mahavishnu's own MCP URL)
+    may fail with a warning, not raise. The SDK validation, LLM factory,
+    and team manager steps could each raise — none of these should
+    block the MCP server from starting. The adapter's get_health()
+    will report unhealthy either way; we just don't want a boot crash.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    try:
+        await adapter.initialize()
+        logger.info("AgnoAdapter initialized at MCP server startup")
+    except Exception as e:
+        logger.warning(f"AgnoAdapter init failed at startup (non-fatal): {e}")
 
 
 def main() -> int:
