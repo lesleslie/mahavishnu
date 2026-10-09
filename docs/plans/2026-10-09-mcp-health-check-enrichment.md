@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-10-09
@@ -96,7 +96,7 @@ Plan §4.5 of the prior workflow flagged this as the §10 followup. The audit ha
 | **session-buddy** | `mcp__session-buddy__get_health()` | `session_buddy/server.py:create_app` | TBD by Phase 1 recon |
 | **oneiric** | `mcp__oneiric__get_health()` | (not yet shipped — oneiric may not have an MCP server) | TBD by Phase 1 recon |
 
-### 4.4 Requirements
+## 4.5 Requirements
 
 ```yaml
 requirements:
