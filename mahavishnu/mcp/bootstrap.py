@@ -958,6 +958,24 @@ def _register_health_tools(server: FastMCPServer) -> None:
     logger.info("Registered health check tools with MCP server")
 
 
+def _register_audit_health_tools(server: FastMCPServer) -> None:
+    """Register fleet-wide audit_health tool (always-on).
+
+    Phase 2 of the MCP /health enrichment plan. Sibling to
+    :func:`_register_health_tools` but fleet-bounded: it iterates
+    the 5 Bodai core repos and surfaces the silent-degraded case
+    (HTTP 200 with a degraded body). Always-on (MINIMAL tier) so
+    cron jobs and the monthly operator cadence can call it from
+    any profile. See
+    ``docs/plans/2026-10-09-mcp-health-check-enrichment.md`` §5
+    Phase 2.
+    """
+    from ..mcp.tools.audit_health_tool import register_audit_health_tools
+
+    register_audit_health_tools(server.server, server.app)
+    logger.info("Registered audit_health tool with MCP server")
+
+
 def _register_ecosystem_tools(server: FastMCPServer) -> None:
     """Register canonical ecosystem status tools (always-on)."""
     from ..mcp.tools.ecosystem_tools import register_ecosystem_tools

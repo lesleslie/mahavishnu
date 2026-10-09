@@ -838,6 +838,127 @@ def mcp_health() -> None:
     asyncio.run(_health())
 
 
+@mcp_app.command("audit-health")
+def mcp_audit_health(
+    repos: list[str] | None = typer.Option(
+        None,
+        "--repos",
+        "-r",
+        help=(
+            "Comma-separated subset of repo names to audit "
+            "(mahavishnu, akosha, crackerjack, session-buddy, oneiric). "
+            "Names not in the Bodai core set are silently dropped."
+        ),
+    ),
+    all_repos: bool = typer.Option(
+        False,
+        "--all-repos",
+        help=(
+            "Audit every entry in the Bodai core set regardless of "
+            "settings/ecosystem.yaml. Required for the monthly "
+            "operator cadence — the cron job passes --all-repos so "
+            "the audit cannot silently skip a missing entry."
+        ),
+    ),
+    timeout: float = typer.Option(
+        5.0,
+        "--timeout",
+        "-t",
+        min=1.0,
+        max=60.0,
+        help="Per-repo HTTP timeout in seconds.",
+    ),
+    json_output: bool = typer.Option(
+        True,
+        "--json/--human",
+        help=(
+            "Emit structured JSON (default) for machine consumption, "
+            "or human-readable text for operator eyes."
+        ),
+    ),
+) -> None:
+    """Audit /health endpoints across Bodai core MCP servers.
+
+    Phase 2 of mcp /health enrichment (REQ-HC-004). Calls
+    GET /health on each Bodai core repo and surfaces the
+    silent-degraded case (HTTP 200 + body claims degraded/failed).
+    See docs/plans/2026-10-09-mcp-health-check-enrichment.md §5
+    Phase 2.
+
+    Examples:
+
+        # Monthly operator cadence (cron): audit all 5 core repos.
+        mahavishnu mcp audit-health --all-repos
+
+        # Operator spot-check: just mahavishnu and akosha.
+        mahavishnu mcp audit-health --repos mahavishnu,akosha
+
+        # Human-readable output for the on-call runbook.
+        mahavishnu mcp audit-health --all-repos --human
+    """
+    from .mcp.tools.audit_health_tool import audit_health_async
+
+    async def _run() -> dict:
+        # Typer parses ``--repos mahavishnu,akosha`` as a single
+        # string; split on comma so the user can use either
+        # ``--repos mahavishnu --repos akosha`` or the
+        # comma-joined form. Whitespace tolerated; empty entries
+        # dropped so a trailing comma doesn't surface as an
+        # "unknown repo".
+        parsed_repos: list[str] | None = None
+        if repos is not None:
+            split = []
+            for entry in repos:
+                for piece in entry.split(","):
+                    name = piece.strip()
+                    if name:
+                        split.append(name)
+            parsed_repos = split or None
+        return await audit_health_async(
+            repos=parsed_repos,
+            all_repos=all_repos,
+            timeout=timeout,
+        )
+
+    report = asyncio.run(_run())
+
+    if json_output:
+        typer.echo(json.dumps(report, indent=2, default=str))
+        # Exit non-zero when at least one repo is silent-degraded so
+        # cron / monitoring can page on the exit code alone, without
+        # parsing the body. The M6 refuter concern ("silently
+        # degraded 200") is the bug the audit exists to surface; the
+        # exit code is the alarm.
+        if report.get("silent_degraded_count", 0) > 0:
+            raise typer.Exit(code=2)
+        return
+
+    # Human-readable summary.
+    total = report.get("total", 0)
+    silent = report.get("silent_degraded_count", 0)
+    healthy = report.get("healthy_count", 0)
+    skipped = report.get("skipped_count", 0)
+    degraded = report.get("degraded_count", 0)
+    typer.echo(
+        f"Audited {total} repo(s): healthy={healthy} degraded={degraded} skipped={skipped} silent_degraded={silent}"
+    )
+    for row in report.get("results", []):
+        repo = row.get("repo", "?")
+        http_code = row.get("http_code")
+        body_status = row.get("body_status")
+        if row.get("skipped"):
+            typer.echo(f"  - {repo}: SKIPPED ({row.get('reason', 'n/a')})")
+        elif row.get("error"):
+            typer.echo(f"  - {repo}: ERROR ({row.get('error')})")
+        elif row.get("silent_degraded"):
+            typer.echo(f"  - {repo}: SILENT DEGRADED (http={http_code}, body={body_status})")
+        else:
+            typer.echo(f"  - {repo}: http={http_code} body={body_status}")
+
+    if silent > 0:
+        raise typer.Exit(code=2)
+
+
 @app.command("health")
 def health_command(
     json_output: bool = typer.Option(

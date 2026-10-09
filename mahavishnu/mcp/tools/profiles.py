@@ -34,6 +34,7 @@ from mcp_common.tools import ToolProfile
 from ..bootstrap import (
     _register_adapter_registry_tools,
     _register_agents_tools,
+    _register_audit_health_tools,
     _register_capability_tools,
     _register_clone_tools,
     _register_dispatch_specialist_tools,
@@ -80,6 +81,13 @@ MINIMAL_REGISTRATIONS: list[str] = [
     # verification is on every Phase 2/6 install). Per plan §10.3.1
     # it MUST be visible from MINIMAL upward.
     "_register_skills_signer_tools",
+    # Phase 2 of mcp /health enrichment (plan §5 Phase 2). Always-on
+    # alongside health because the audit must be reachable from any
+    # profile — the monthly operator cadence runs against MINIMAL
+    # containers too. Sibling of _register_health_tools; surfaces the
+    # silent-degraded case (HTTP 200 + degraded body) across the 5
+    # Bodai core repos.
+    "_register_audit_health_tools",
 ]
 
 STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
@@ -182,6 +190,10 @@ def get_active_profile(
 REGISTRATION_MAP: dict[str, Callable] = {
     # Always-on groups (registered at every profile via mandatory_tools).
     "_register_health_tools": lambda s: _register_health_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Phase 2 of mcp /health enrichment (plan §5 Phase 2). Sibling of
+    # _register_health_tools; always-on so the monthly operator
+    # cadence can audit from any profile.
+    "_register_audit_health_tools": lambda s: _register_audit_health_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -278,6 +290,10 @@ REGISTRATION_MAP: dict[str, Callable] = {
 # `essential_tool_names` parameter (default: MANDATORY_TOOLS).
 MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_health_tools",
+    # Phase 2 of mcp /health enrichment (plan §5 Phase 2). Sibling
+    # of _register_health_tools; must be reachable at MINIMAL so the
+    # monthly operator cadence can run against any tier.
+    "_register_audit_health_tools",
     "_register_ecosystem_tools",
     "_register_workflow_tools",
     "_register_webhook_tools",
