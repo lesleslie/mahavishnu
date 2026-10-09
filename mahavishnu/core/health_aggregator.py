@@ -222,17 +222,26 @@ def _resolve_halflife_seconds() -> int:
     before the lifespan runs. ``is_healthy`` treats
     ``halflife_seconds <= 0`` as "decay disabled" — no error is ever
     treated as "recent" regardless of when it occurred.
+
+    Phase 1.1 (B1 refuter-review fix): the per-adopter default is
+    60s, not the mcp-common default of 300s. Per
+    ``docs/plans/2026-10-09-mcp-health-check-enrichment.md`` §1
+    Outcome, every Bodai core repo overrides ``HEALTH_FEED_HALFLIFE_SECONDS``
+    to 60s so a feed that has been broken-before-first-success OR
+    errors-accumulating for >60s is flagged DEGRADED and the
+    ``/health`` route returns 503. The 60s halflife is the soft
+    rollout — fresh servers recover before any operator notices.
     """
-    raw = os.getenv("HEALTH_FEED_HALFLIFE_SECONDS", "300")
+    raw = os.getenv("HEALTH_FEED_HALFLIFE_SECONDS", "60")
     try:
         value = int(raw)
     except ValueError:
         logger.warning(
             "health_aggregator: HEALTH_FEED_HALFLIFE_SECONDS=%r is not an int; "
-            "falling back to default 300",
+            "falling back to default 60",
             raw,
         )
-        return 300
+        return 60
     return value
 
 
@@ -298,6 +307,33 @@ def aggregate_mahavishnu_health(*, repo: str = "mahavishnu") -> MahavishnuHealth
             "operators will see no PromQL metrics for repo=%s until the "
             "next successful call",
             repo,
+        )
+
+    # Phase 1.1 (M2 polish): also emit the per-server
+    # ``mahavishnu_health_feed_status{feed, status}`` gauge from
+    # ``mahavishnu.observability.prometheus_metrics`` so dashboards
+    # can target the mahavishnu view directly without PromQL
+    # filtering on ``{repo="mahavishnu"}``. The canonical
+    # mcp-common metric above is the source of truth for the
+    # alerts; this M2 gauge is a server-specific convenience view.
+    # The M2 gauge shares the aggregator's private registry so the
+    # ``/metrics`` route exposes it on the same scrape surface as
+    # the canonical mcp-common metrics (no separate registry
+    # plumbing required).
+    try:
+        from mahavishnu.observability.prometheus_metrics import (
+            update_health_feed_status_metrics,
+        )
+
+        update_health_feed_status_metrics(
+            snap=snap,
+            registry=get_health_metrics_registry(),
+        )
+    except Exception:
+        logger.exception(
+            "health_aggregator: M2 mahavishnu_health_feed_status emit failed; "
+            "operators will see no per-server gauge until the next "
+            "successful call",
         )
 
     worst_status = snap["status"]

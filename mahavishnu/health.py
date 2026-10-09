@@ -104,10 +104,22 @@ def create_health_app(
         Response body shape (Phase 4):
         - legacy fields unchanged: ``status``, ``service``,
           ``version``, ``uptime_seconds``, ``timestamp``.
-        - new aggregator fields: ``worst_status``, ``feed_states``
+        - aggregator fields: ``worst_status``, ``feed_states``
           (per-feed ``status``/``healthy``/``reason_codes``),
           ``reason_codes`` (worst-feed's deduped union),
           ``aggregate_duration_ms``.
+
+        Phase 1.1 (B2 refuter-review fix): also emits the canonical
+        mcp-common ``HealthSnapshot`` envelope verbatim
+        (``canonical_status`` / ``canonical_checks`` /
+        ``canonical_reason_codes``) so MCP clients and ``/health``
+        consumers parse the same shape. Per
+        ``mcp-common/mcp_common/health/aggregator.py:33-46`` the
+        canonical contract is ``status`` (StatusValue str),
+        ``checks`` (per-feed ``FeedSnapshot``), ``reason_codes``
+        (worst-feed deduped union). MCP get_health + HTTP /health
+        now agree by construction — they both go through
+        ``aggregate_mahavishnu_health``.
         """
         verdict = aggregate_mahavishnu_health(repo=server_name)
         uptime = (datetime.now(UTC) - startup_time).total_seconds()
@@ -137,6 +149,13 @@ def create_health_app(
             feed_states=feed_states_json,
             reason_codes=reason_codes_json,
             aggregate_duration_ms=verdict.duration_ms,
+            # Phase 1.1 (B2 fix): canonical HealthSnapshot envelope
+            # mirrored verbatim so MCP clients and /health consumers
+            # parse the same shape. The legacy fields above are
+            # kept for backward compatibility with v1 API consumers.
+            canonical_status=verdict.worst_status.value,
+            canonical_checks=feed_states_json,
+            canonical_reason_codes=reason_codes_json,
         )
 
         # FastAPI's response_model validates the body but discards

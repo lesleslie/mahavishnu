@@ -141,6 +141,41 @@ class HealthResponse(BaseModel):
             "track /health latency."
         ),
     )
+    # Phase 1.1: canonical mcp-common ``HealthSnapshot`` envelope
+    # (B2 refuter-review fix). Per
+    # ``mcp-common/mcp_common/health/aggregator.py:33-46`` the canonical
+    # contract is ``status`` (StatusValue str), ``checks`` (per-feed
+    # ``FeedSnapshot``), ``reason_codes`` (worst-feed deduped union).
+    # We mirror those three top-level fields verbatim so MCP clients and
+    # /health consumers parse the same shape; the legacy fields above
+    # (status, feed_states, worst_status, reason_codes) remain for
+    # backward compatibility.
+    canonical_status: str | None = Field(
+        default=None,
+        description=(
+            "Canonical ``HealthSnapshot.status`` from mcp-common "
+            "(``healthy``/``warming_up``/``degraded``/``failed``). "
+            "Set when the route delegates to the aggregator."
+        ),
+    )
+    canonical_checks: dict[str, dict[str, object]] = Field(
+        default_factory=dict,
+        description=(
+            "Canonical ``HealthSnapshot.checks`` (per-feed verdict "
+            "keyed by feed name). Each entry carries "
+            "``status``/``healthy``/``reason_codes`` per the "
+            "``FeedSnapshot`` contract. Set when the route delegates "
+            "to the aggregator."
+        ),
+    )
+    canonical_reason_codes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Canonical ``HealthSnapshot.reason_codes`` (worst-feed's "
+            "deduped ``ReasonCode`` strings). Set when the route "
+            "delegates to the aggregator."
+        ),
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -171,6 +206,25 @@ class HealthResponse(BaseModel):
                     },
                     "reason_codes": [],
                     "aggregate_duration_ms": 0.42,
+                    "canonical_status": "healthy",
+                    "canonical_checks": {
+                        "storage": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                        "message_bus": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                        "adapters": {
+                            "status": "healthy",
+                            "healthy": True,
+                            "reason_codes": [],
+                        },
+                    },
+                    "canonical_reason_codes": [],
                 }
             ]
         }

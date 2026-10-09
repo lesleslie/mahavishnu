@@ -47,6 +47,22 @@ except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation fai
     __version__ = "0.0.0-unknown"
 
 
+# Phase 1.1 (B2 refuter-review fix): map mcp-common ``StatusValue``
+# to the legacy v1 health status strings so the canonical
+# aggregator's verdict stays JSON-native on the wire. The mapping
+# mirrors ``mahavishnu.health._WORST_STATUS_TO_LEGACY`` (used by the
+# HTTP ``/health`` route) so MCP and HTTP consumers parse the same
+# shape. Per the M1 refuter-review fix, ``WARMING_UP`` does NOT map
+# to ``degraded`` — the orchestrator is operational while producers
+# fill their feeds.
+_STATUS_TO_LEGACY: dict[str, str] = {
+    "healthy": "healthy",
+    "warming_up": "healthy",
+    "degraded": "degraded",
+    "failed": "unhealthy",
+}
+
+
 class FastMCPServer:
     """FastMCP server implementation for Mahavishnu."""
 
@@ -79,6 +95,13 @@ class FastMCPServer:
         else:
             self.app = app
         self.auth_handler = get_auth_from_config(self.app.config)
+        # Phase 1.1 (B2 refuter-review fix): record the server
+        # startup time so ``get_health`` can report ``uptime_seconds``
+        # without re-deriving it. The HTTP ``/health`` route uses the
+        # same canonical aggregator (see
+        # ``mahavishnu.core.health_aggregator.aggregate_mahavishnu_health``)
+        # so MCP and HTTP surfaces agree by construction.
+        self._startup_time = datetime.now(UTC)
         self._registered_tool_count = 0
         self._instrument_server_tool_registration()
         # 2026-09-28 trace-pipeline Phase 1.5 fix: register the enrichment
@@ -1265,86 +1288,95 @@ class FastMCPServer:
 
         @server.tool()
         async def get_health() -> dict[str, Any]:
-            """Get overall health status of the system."""
+            """Get overall health status of the system.
+
+            Phase 1.1 (B2 refuter-review fix): this tool now delegates
+            to :func:`mahavishnu.core.health_aggregator.aggregate_mahavishnu_health`
+            so the MCP ``get_health()`` and the HTTP ``/health`` route
+            route through the same canonical mcp-common aggregator.
+            Per ``mcp-backend-wiring-discipline.md``, disagreement
+            between the two surfaces is a bug. The body now mirrors
+            the canonical ``HealthSnapshot`` envelope
+            (``status``/``checks``/``reason_codes``) so MCP clients
+            and ``/health`` consumers parse the same shape.
+
+            Returns:
+                Dict with two surface shapes (legacy + canonical):
+
+                - **Canonical** (Phase 1.1): ``status``
+                  (``healthy``/``warming_up``/``degraded``/``failed``),
+                  ``checks`` (per-feed ``status``/``healthy``/``reason_codes``),
+                  ``reason_codes`` (worst-feed deduped union),
+                  ``aggregate_duration_ms``, ``http_status``.
+                - **Legacy**: ``status`` (``healthy``/``degraded``/``unhealthy``),
+                  ``service``, ``version``, ``uptime_seconds``,
+                  ``timestamp`` — preserved for v1 API consumers.
+            """
+            from ..core.health_aggregator import aggregate_mahavishnu_health
+
             try:
-                app_healthy = await self.app.is_healthy()
+                # ``_server_name`` is a local helper defined inside
+                # ``_register_tools`` (mirrors the pattern in
+                # ``_update_registered_tool_metrics``); the closest
+                # scope here is the class — read from ``self.app.config``.
+                server_name = getattr(self.app.config, "server_name", "mahavishnu")
+                if not isinstance(server_name, str) or not server_name:
+                    server_name = "mahavishnu"
 
-                # Check individual adapter health
-                adapter_health = {}
-                for name, adapter in self.app.adapters.items():
-                    try:
-                        health = await adapter.get_health()
-                        adapter_health[name] = health
-                    except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                        adapter_health[name] = {"status": "unhealthy", "error": str(e)}
+                verdict = aggregate_mahavishnu_health(repo=server_name)
+                uptime = (datetime.now(UTC) - self._startup_time).total_seconds()
 
-                # Check workflow state manager health
-                try:
-                    # Attempt to list a few workflows as a health check
-                    recent_workflows = await self.app.workflow_state_manager.list_workflows(limit=1)
-                    workflow_state_healthy = True
-                    workflow_state_info = {
-                        "status": "healthy",
-                        "recent_workflows_count": len(recent_workflows),
+                # Canonical HealthSnapshot envelope (B2 fix).
+                # Per-feed FeedSnapshot dicts: cast StatusValue → str,
+                # ReasonCode → str so the body stays JSON-native.
+                canonical_checks: dict[str, dict[str, object]] = {
+                    feed_name: {
+                        "status": feed_snapshot["status"].value,
+                        "healthy": feed_snapshot["healthy"],
+                        "reason_codes": [rc.value for rc in feed_snapshot["reason_codes"]],
                     }
-                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                    workflow_state_healthy = False
-                    workflow_state_info = {"status": "unhealthy", "error": str(e)}
-
-                # Check RBAC manager health
-                try:
-                    # Check if default roles are loaded
-                    rbac_healthy = len(self.app.rbac_manager.roles) > 0
-                    rbac_info = {
-                        "status": "healthy" if rbac_healthy else "unhealthy",
-                        "default_roles_count": len(self.app.rbac_manager.roles),
-                        "admin_role_exists": "admin" in self.app.rbac_manager.roles,
-                    }
-                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                    rbac_healthy = False
-                    rbac_info = {"status": "unhealthy", "error": str(e)}
-
-                # Check OpenSearch integration health
-                try:
-                    opensearch_health = await self.app.opensearch_integration.health_check()
-                    opensearch_healthy = opensearch_health.get("status") == "healthy"
-                    opensearch_info = opensearch_health
-                except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
-                    opensearch_healthy = False
-                    opensearch_info = {"status": "unhealthy", "error": str(e)}
-
-                overall_status = "healthy"
-                health_components = [
-                    app_healthy,
-                    workflow_state_healthy,
-                    rbac_healthy,
-                    opensearch_healthy,
+                    for feed_name, feed_snapshot in verdict.snapshot["checks"].items()
+                }
+                canonical_reason_codes: list[str] = [
+                    rc.value for rc in verdict.snapshot["reason_codes"]
                 ]
+                canonical_status_str = verdict.worst_status.value
 
-                if not all(health_components) or any(
-                    h.get("status") == "unhealthy" for h in adapter_health.values()
-                ):
-                    overall_status = "unhealthy"
-                elif any(h.get("status") == "degraded" for h in adapter_health.values()):
-                    overall_status = "degraded"
+                # Legacy status mapping for v1 API consumers. The
+                # aggregator's ``StatusValue.HEALTHY``/``WARMING_UP`` map
+                # to ``healthy``; ``DEGRADED``/``FAILED`` to
+                # ``degraded``/``unhealthy`` (per spec §4.8 contract;
+                # M1 refuter-review fix: warming_up does NOT map to
+                # ``degraded`` — the orchestrator is operational while
+                # producers fill their feeds).
+                legacy_status = _STATUS_TO_LEGACY.get(
+                    verdict.worst_status.value,
+                    "unhealthy",
+                )
 
                 return {
-                    "status": overall_status,
-                    "app_healthy": app_healthy,
-                    "workflow_state_healthy": workflow_state_healthy,
-                    "rbac_healthy": rbac_healthy,
-                    "opensearch_healthy": opensearch_healthy,
-                    "adapter_health": adapter_health,
-                    "workflow_state_info": workflow_state_info,
-                    "rbac_info": rbac_info,
-                    "opensearch_info": opensearch_info,
-                    "timestamp": asyncio.get_event_loop().time(),
+                    # Legacy fields (v1 API consumers)
+                    "status": legacy_status,
+                    "service": server_name,
+                    "version": __version__,
+                    "uptime_seconds": uptime,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    # Canonical HealthSnapshot envelope (Phase 1.1,
+                    # B2 refuter-review fix). The two surfaces now
+                    # share the same source of truth
+                    # (aggregate_mahavishnu_health).
+                    "canonical_status": canonical_status_str,
+                    "canonical_checks": canonical_checks,
+                    "canonical_reason_codes": canonical_reason_codes,
+                    "aggregate_duration_ms": verdict.duration_ms,
+                    "http_status": verdict.http_status,
                 }
-            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception as e:
+                logger.exception("get_health: aggregator delegation failed")
                 return {
                     "status": "unhealthy",
                     "error": str(e),
-                    "timestamp": asyncio.get_event_loop().time(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
 
         @server.tool()
@@ -1496,9 +1528,7 @@ class FastMCPServer:
                 launchd-driven ``scripts/launch_mcp.py`` path threads
                 the launcher's config through so REQ-007 wins.
         """
-        await _start_server_helper(
-            self, host=host, port=port, uvicorn_config=uvicorn_config
-        )
+        await _start_server_helper(self, host=host, port=port, uvicorn_config=uvicorn_config)
 
     async def run_async(
         self,
@@ -1539,9 +1569,7 @@ class FastMCPServer:
                 that case.
         """
         if transport != "http":
-            raise ValueError(
-                f"FastMCPServer only supports transport='http', got {transport!r}"
-            )
+            raise ValueError(f"FastMCPServer only supports transport='http', got {transport!r}")
         await self.start(host=host, port=port, uvicorn_config=uvicorn_config)
 
     async def stop(self) -> None:

@@ -340,11 +340,28 @@ goal_teams:
 #   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__HOST=remote-host
 #   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__PORT=443
 #   MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__USE_TLS=true
+#
+# Phase 1.1 (health-enrichment plan §1 Outcome / B1 refuter fix):
+# the per-feed aggregator halflife is read directly from the
+# environment variable ``HEALTH_FEED_HALFLIFE_SECONDS``. mcp-common
+# defaults to 300s; this plan overrides to 60s so a feed that has
+# been broken-before-first-success for >60s is flagged as DEGRADED
+# and the /health route returns 503. Set the env var in
+# settings/local.yaml or the deployment manifest:
+#   HEALTH_FEED_HALFLIFE_SECONDS=60
+# (The aggregator also honours ``HEALTH_FEED_HALFLIFE_SECONDS=0`` as
+# "decay disabled" — useful for offline tests; see mcp-common
+# v0.26.4 commit 837d64a.)
 health:
   enabled: true  # Enable health check system
   check_timeout_seconds: 5  # Timeout for individual health check requests
   retry_base_delay_seconds: 1.0  # Base delay for exponential backoff
   retry_max_delay_seconds: 16.0  # Maximum delay between retries
+  # Per-feed aggregator halflife (env: HEALTH_FEED_HALFLIFE_SECONDS).
+  # Documented for operator discoverability; the runtime reads the
+  # env var directly via ``os.getenv`` in
+  # ``mahavishnu.core.health_aggregator._resolve_halflife_seconds``.
+  feed_halflife_seconds: 60
   # Service dependencies to check on startup
   dependencies:
     session_buddy:
