@@ -45,6 +45,10 @@
           {
             "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/jot-session-start.py",
             "type": "command"
+          },
+          {
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/mahavishnu-pool-bootstrap.py",
+            "type": "command"
           }
         ],
         "matcher": "startup"

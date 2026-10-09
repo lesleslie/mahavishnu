@@ -27,11 +27,13 @@ try:
     # can inject sentinel versions without instantiating the full pools
     # package on import.
     from mahavishnu.core.errors import RateLimitError
+    from mahavishnu.pools.base import PoolConfig as RuntimePoolConfig
     from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
 except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
     PoolSelector = None
     CallerKind = None
     RateLimitError = None
+    RuntimePoolConfig = None  # type: ignore[assignment]
     coerce_caller_kind = None
 
 try:
@@ -210,7 +212,7 @@ async def _dispatch_internal(
     pool_affinity: str | None,
     coerced_kind: Any,
     parent_session_id: str | None,
-    auto_spawn: bool,
+    auto_spawn: bool | None,
     pool_manager: Any,
 ):
     """Internal dispatch helper used when a worktree path is active.
@@ -289,8 +291,10 @@ def register_pool_tools(
             in tests that don't exercise budgets) ``budget_enforce``
             returns ``{"status": "unconfigured"}`` rather than raising.
 
-    This registers 9 pool management tools:
+    This registers 11 pool management tools:
     - pool_list: List all active pools
+    - pool_spawn: Spawn a new pool (idempotent on name)
+    - pool_bootstrap: SessionStart bootstrap (spawn default pool if registry empty)
     - pool_monitor: Monitor pool metrics
     - pool_scale: Scale pool worker count
     - pool_close: Close a specific pool
@@ -309,6 +313,263 @@ def register_pool_tools(
         except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             logger.error(f"Failed to list pools: {e}")
             return []
+
+    @mcp.tool()
+    async def pool_spawn(
+        name: str,
+        pool_type: str = "mahavishnu",
+        min_workers: int | None = None,
+        max_workers: int | None = None,
+        worker_type: str = "terminal-claude",
+    ) -> dict[str, Any]:
+        """Spawn a new worker pool. Mirrors the CLI at ``_main_cli.py:1632-1756``.
+
+        Args:
+            name: Human-readable pool name (used as the idempotency key in
+                  ``PoolManager._pools_by_name``).
+            pool_type: One of the registry-registered types
+                  (mahavishnu, session-buddy, runpod).
+            min_workers: Minimum workers (mahavishnu only; ignored for
+                  session-buddy/runpod).
+            max_workers: Maximum workers (mahavishnu only; ignored for
+                  session-buddy/runpod).
+            worker_type: Worker backend — see the canonical list in
+                  ``mahavishnu.workers.registry.WORKER_REGISTRY``.
+
+        Returns:
+            ``{"status": "spawned" | "exists" | "warning" | "failed", ...}``
+            - ``spawned``: new pool created
+            - ``exists``: a pool with this name already exists (idempotent)
+            - ``warning``: spawn succeeded but sizing was ignored for
+              non-mahavishnu types
+
+        All failures return ``{"status": "failed", "error": "..."}`` —
+        this tool never raises.
+        """
+        logger.info(
+            "pool_spawn tool called",
+            extra={
+                "pool_name": name,
+                "pool_type": pool_type,
+                "min_workers": min_workers,
+                "max_workers": max_workers,
+            },
+        )
+
+        # Validate pool_type via the registry whitelist. canonicalize
+        # only does string normalization (it does NOT raise on unknowns);
+        # the membership check is the actual gate.
+        from mahavishnu.pools._registry import canonicalize_pool_type, list_pool_types
+
+        canonical = canonicalize_pool_type(pool_type)
+        if canonical not in list_pool_types():
+            return {
+                "status": "failed",
+                "error": (
+                    f"Unknown pool type: {pool_type!r}. "
+                    f"Supported: {', '.join(sorted(list_pool_types()))}"
+                ),
+            }
+
+        # Validate worker_type against the canonical registry.
+        # (Mirrors _main_cli.py:1682-1690; the CLI's enum is the
+        # authoritative source — keep the set in sync if you add a worker.)
+        from mahavishnu.workers.registry import WORKER_REGISTRY
+
+        valid_worker_types = set(WORKER_REGISTRY.keys()) | {
+            "gateway-openclaw",  # CLI-registered, may not be in WORKER_REGISTRY
+            "container-executor",
+        }
+        if worker_type not in valid_worker_types:
+            return {
+                "status": "failed",
+                "error": (
+                    f"Unknown worker type: {worker_type!r}. "
+                    f"Supported: {', '.join(sorted(valid_worker_types))}"
+                ),
+            }
+
+        # Idempotency: if a pool with this name already exists, return it.
+        # Uses the new _pools_by_name index from Task 3.5, NOT _pools
+        # (which is keyed by generated pool_id, not user-provided name).
+        existing_id = pool_manager._pools_by_name.get(name)  # type: ignore[union-attr]
+        if existing_id is not None:
+            logger.info(
+                "pool_spawn: pool with name already exists, returning existing",
+                extra={"pool_name": name, "pool_id": existing_id},
+            )
+            return {
+                "status": "exists",
+                "pool_id": existing_id,
+                "name": name,
+                "type": canonical,
+            }
+
+        # Build the config with type-specific sizing semantics.
+        sizing_warning: str | None = None
+        if canonical == "mahavishnu":
+            effective_min = min_workers if min_workers is not None else 1
+            effective_max = max_workers if max_workers is not None else 10
+            if effective_min < 1 or effective_max > 100:
+                return {
+                    "status": "failed",
+                    "error": (
+                        f"Worker count must be 1 <= min <= max <= 100; "
+                        f"got min={effective_min}, max={effective_max}"
+                    ),
+                }
+            if effective_min > effective_max:
+                return {
+                    "status": "failed",
+                    "error": (
+                        f"min_workers ({effective_min}) exceeds max_workers ({effective_max})"
+                    ),
+                }
+        else:
+            # session-buddy and runpod have substrate-fixed sizing;
+            # accept the params for API consistency but warn the caller.
+            if min_workers is not None or max_workers is not None:
+                sizing_warning = (
+                    f"min_workers/max_workers ignored for pool_type={canonical!r}; "
+                    f"sizing is fixed by the underlying pool substrate"
+                )
+            effective_min = 1
+            effective_max = 3 if canonical == "session-buddy" else 10
+
+        try:
+            # NOTE: the import alias `RuntimePoolConfig` is required because
+            # the settings class is also called `PoolConfig` (see task header).
+            # The alias is bound at module top by Task 4 step 3; no # type: ignore
+            # is needed because the alias is unconditionally defined.
+            pool_config = RuntimePoolConfig(
+                name=name,
+                pool_type=canonical,
+                min_workers=effective_min,
+                max_workers=effective_max,
+                worker_type=worker_type,
+            )
+        except Exception as exc:  # noqa: BLE001 - boundary: Pydantic validation can raise
+            return {"status": "failed", "error": f"invalid pool config: {exc}"}
+
+        try:
+            pool_id = await pool_manager.spawn_pool(canonical, pool_config)  # type: ignore[union-attr]
+        except Exception as exc:
+            logger.exception("pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"})
+            return {"status": "failed", "error": f"spawn failed: {exc}"}
+
+        result: dict[str, Any] = {
+            "status": "warning" if sizing_warning else "spawned",
+            "pool_id": pool_id,
+            "name": name,
+            "type": canonical,
+            "min_workers": effective_min,
+            "max_workers": effective_max,
+            "worker_type": worker_type,
+        }
+        if sizing_warning:
+            result["warning"] = sizing_warning
+        return result
+
+    @mcp.tool()
+    async def pool_bootstrap() -> dict[str, Any]:
+        """SessionStart bootstrap: ensure a default pool exists.
+
+        Reads ``pool_health`` (via ``health_check()``); if
+        ``pools_active == 0``, spawns a default pool via the
+        config-driven settings (``pools.auto_spawn_*``). Returns
+        structured status so the calling hook script can log/observe
+        without parsing.
+
+        The bridge handler ``handle_pool_bootstrap`` (separate from
+        this tool) emits audit telemetry for the same event but
+        cannot do the work itself — bridge handlers run in
+        subprocess context without PoolManager access.
+
+        CRITICAL: This tool never raises. All failures return
+        ``{"status": "failed", "error": "..."}`` so SessionStart
+        hooks that wrap this call cannot be blocked by MCP errors.
+        """
+        logger.info("pool_bootstrap: tool called")
+
+        try:
+            health = await pool_manager.health_check()  # type: ignore[union-attr]
+            pools_active_before = (health or {}).get("pools_active", 0)
+            if pools_active_before > 0:
+                logger.info(
+                    "pool_bootstrap: registry already populated",
+                    extra={"pools_active": pools_active_before},
+                )
+                return {
+                    "status": "skipped",
+                    "pools_active_before": pools_active_before,
+                    "pools_active_after": pools_active_before,
+                }
+        except Exception as exc:  # noqa: BLE001 - boundary: health check failure is not fatal
+            logger.warning(
+                "pool_bootstrap: health check failed; attempting spawn anyway",
+                extra={"error": str(exc)},
+            )
+            pools_active_before = 0
+
+        # Read config via PoolManager's shared helper. Single source of
+        # truth for the auto-spawn defaults (the same helper is used
+        # by route_task's defensive auto-spawn path).
+        from mahavishnu.pools.manager import PoolManager
+
+        defaults = PoolManager._resolve_auto_spawn_defaults()
+        spawn_type = defaults["spawn_type"]
+        min_workers = defaults["min_workers"]
+        max_workers = defaults["max_workers"]
+
+        # Same type-specific sizing as pool_spawn (Task 4)
+        sizing_warning: str | None = None
+        if spawn_type != "mahavishnu":
+            sizing_warning = (
+                f"min_workers/max_workers ignored for pool_type={spawn_type!r}; "
+                f"sizing is fixed by the underlying pool substrate"
+            )
+            effective_min = 1
+            effective_max = 3 if spawn_type == "session-buddy" else 10
+        else:
+            effective_min = min_workers
+            effective_max = max_workers
+
+        try:
+            # Use RuntimePoolConfig (the runtime dataclass, not the
+            # settings class). The alias is bound at module top by
+            # Task 4 step 3.
+            pool_config = RuntimePoolConfig(
+                name="session-start-bootstrap",
+                pool_type=spawn_type,
+                min_workers=effective_min,
+                max_workers=effective_max,
+            )
+            pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)  # type: ignore[union-attr]
+        except Exception as exc:
+            logger.exception(
+                "pool_bootstrap: spawn failed",
+                extra={"error_id": "POOL_BOOTSTRAP_SPAWN_FAILED"},
+            )
+            return {
+                "status": "failed",
+                "pools_active_before": pools_active_before,
+                "error": f"spawn failed: {exc}",
+            }
+
+        logger.info(
+            "pool_bootstrap: spawned default pool",
+            extra={"pool_id": pool_id, "pool_type": spawn_type},
+        )
+        result: dict[str, Any] = {
+            "status": "warning" if sizing_warning else "spawned",
+            "pools_active_before": pools_active_before,
+            "pools_active_after": pools_active_before + 1,
+            "pool_id": pool_id,
+            "pool_type": spawn_type,
+        }
+        if sizing_warning:
+            result["warning"] = sizing_warning
+        return result
 
     @mcp.tool()
     async def pool_monitor(
@@ -512,7 +773,7 @@ def register_pool_tools(
         pool_affinity: str | None = None,
         caller_kind: str = "claude_code",
         parent_session_id: str | None = None,
-        auto_spawn: bool = False,
+        auto_spawn: bool | None = None,
         idempotency: IdempotencyOptions | None = None,
         worktree: WorktreeOptions | None = None,
     ) -> dict[str, Any]:
@@ -722,6 +983,23 @@ def register_pool_tools(
                         )
                         raise
 
+            # Resolve auto_spawn from config when caller didn't specify.
+            # None means "read settings"; False / True are explicit overrides.
+            if auto_spawn is None:
+                if get_settings is not None:
+                    try:
+                        auto_spawn = get_settings().pools.auto_spawn
+                    except Exception:  # noqa: BLE001 - boundary: settings is best-effort
+                        auto_spawn = False  # fail-safe to existing default
+                else:
+                    auto_spawn = False  # module-level import failed; fail-safe
+            # Log the resolved value so the audit trail captures whether
+            # config drove the decision (or an explicit caller override).
+            logger.info(
+                "pool_route_execute: auto_spawn resolved",
+                extra={"auto_spawn_resolved": auto_spawn},
+            )
+
             try:
                 result = await _dispatch_internal(
                     prompt=prompt,
@@ -863,4 +1141,4 @@ def register_pool_tools(
             if acquired and gate is not None and task_category is not None:
                 await gate.release(task_category, None)
 
-    logger.info("Registered 9 pool management tools")
+    logger.info("Registered 11 pool management tools")

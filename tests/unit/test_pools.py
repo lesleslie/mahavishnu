@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -798,3 +798,82 @@ class TestPoolManagerIntegration:
         assert len(received) == 1
         assert received[0].source_pool_id == "pool1"
         assert received[0].target_pool_id == "pool2"
+
+
+@pytest.mark.asyncio
+async def test_spawn_pool_populates_pools_by_name_index() -> None:
+    """The real spawn_pool code populates _pools_by_name after _pools.
+
+    Drives the actual spawn_pool() implementation (not a stub) so a
+    typo in the Step 2 edit would be caught here. Uses a MagicPool
+    stub for the heavy terminal/worker setup, and patches
+    get_pool_factory to return a controllable factory.
+    """
+    pm = PoolManager(
+        terminal_manager=MagicMock(), message_bus=MagicMock()
+    )
+    # Stub the message_bus.publish and _persist_pool_state to be no-ops;
+    # the new line we test runs BEFORE both, so they don't matter.
+    pm.message_bus.publish = AsyncMock()
+    pm._persist_pool_state = AsyncMock()
+
+    # MagicPool: minimal stub for the BasePool that the factory returns.
+    magic_pool = MagicMock(spec=BasePool)
+    magic_pool.config = PoolConfig(
+        name="test-pool", pool_type="mahavishnu",
+        min_workers=1, max_workers=2,
+    )
+    magic_pool._workers = {}  # _refresh_pool_worker_metrics reads len(pool._workers)
+    magic_pool.start = AsyncMock(return_value="pid-real-1")
+
+    # Patch get_pool_factory to return a factory that returns our magic_pool.
+    fake_factory = MagicMock(return_value=magic_pool)
+    with patch(
+        "mahavishnu.pools.manager.get_pool_factory",
+        return_value=fake_factory,
+    ):
+        pool_id = await pm.spawn_pool("mahavishnu", magic_pool.config)
+
+    # 1. Pool was added to _pools
+    assert pool_id in pm._pools
+    assert pm._pools[pool_id] is magic_pool
+
+    # 2. Pool was added to _pools_by_name (THE LINE WE'RE TESTING)
+    assert "test-pool" in pm._pools_by_name, (
+        f"_pools_by_name is empty after spawn_pool; the Step 2 edit "
+        f"may be missing or have a typo. State: {pm._pools_by_name!r}"
+    )
+    assert pm._pools_by_name["test-pool"] == pool_id
+
+
+@pytest.mark.asyncio
+async def test_close_pool_removes_pools_by_name_entry() -> None:
+    """close_pool clears both _pools AND _pools_by_name entries.
+
+    Drives the actual close_pool() code path. A typo in Step 3's edit
+    (e.g. `_pools_by_name.pop(pool.config.name, None)` with the wrong
+    attribute) would be caught here.
+    """
+    pm = PoolManager(
+        terminal_manager=MagicMock(), message_bus=MagicMock()
+    )
+    pm.message_bus.publish = AsyncMock()
+    pm._persist_pool_state = AsyncMock()
+
+    # Set up state as if a real spawn happened
+    magic_pool = MagicMock(spec=BasePool)
+    magic_pool.config = PoolConfig(
+        name="close-test", pool_type="mahavishnu",
+        min_workers=1, max_workers=1,
+    )
+    magic_pool.start = AsyncMock(return_value="pid-close-1")
+    magic_pool.stop = AsyncMock()
+    pm._pools["pid-close-1"] = magic_pool
+    pm._pools_by_name["close-test"] = "pid-close-1"
+
+    # Now call the real close_pool
+    await pm.close_pool("pid-close-1")
+
+    # Both registries are cleaned
+    assert "pid-close-1" not in pm._pools
+    assert "close-test" not in pm._pools_by_name

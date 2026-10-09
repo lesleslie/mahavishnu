@@ -171,6 +171,7 @@ class PoolManager:
         self._queueing_buffers: dict[str, Any] = {}
 
         self._pools: dict[str, BasePool] = {}
+        self._pools_by_name: dict[str, str] = {}
         self._pool_selector = PoolSelector.LEAST_LOADED
         self._round_robin_index = 0
 
@@ -308,6 +309,60 @@ class PoolManager:
         for pool_type in known_types:
             pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
 
+    @staticmethod
+    def _resolve_auto_spawn_defaults() -> dict[str, Any]:
+        """Resolve the auto-spawn sizing defaults from settings.
+
+        Single source of truth for the auto-spawn sizing semantics used by
+        both ``route_task`` (defensive auto-spawn path) and the MCP tools
+        (``pool_spawn``, ``pool_bootstrap``). Type-specific sizing is
+        consistent with ``pool_spawn``/``pool_bootstrap``:
+          - ``mahavishnu``: honors ``min_workers``/``max_workers`` from config
+          - ``session-buddy``: substrate fixed at 3 workers
+          - ``runpod``: substrate fixed at ~10 workers
+
+        Returns a dict with keys ``spawn_type``, ``min_workers``,
+        ``max_workers``. On settings failure, falls back to safe defaults
+        AND logs a warning so operators can detect config drift.
+        """
+        from mahavishnu.core.config import get_settings
+        from mahavishnu.pools._registry import list_pool_types
+
+        result: dict[str, Any] = {
+            "spawn_type": "mahavishnu",
+            "min_workers": 1,
+            "max_workers": 3,
+        }
+        try:
+            pools_cfg = get_settings().pools
+            requested = pools_cfg.auto_spawn_type
+            valid_types = list_pool_types()
+        except Exception as exc:  # noqa: BLE001 - boundary: settings is best-effort
+            logger.warning(
+                "auto_spawn defaults: settings unavailable, using safe fallback",
+                extra={"error": str(exc)},
+            )
+            return result
+
+        if requested not in valid_types:
+            logger.warning(
+                "auto_spawn defaults: configured type not registered, falling back",
+                extra={"configured": requested, "valid": sorted(valid_types)},
+            )
+            return result
+
+        result["spawn_type"] = requested
+        if requested == "mahavishnu":
+            result["min_workers"] = pools_cfg.auto_spawn_min_workers
+            result["max_workers"] = pools_cfg.auto_spawn_max_workers
+        elif requested == "session-buddy":
+            result["min_workers"] = 1
+            result["max_workers"] = 3
+        else:  # runpod and any other substrate-fixed type
+            result["min_workers"] = 1
+            result["max_workers"] = 10
+        return result
+
     # req: REQ-ORC-001, REQ-ORC-002, REQ-ORC-003, REQ-ORC-005
     async def spawn_pool(
         self,
@@ -361,6 +416,7 @@ class PoolManager:
             # Start the pool
             pool_id = await pool.start()
             self._pools[pool_id] = pool
+            self._pools_by_name[config.name] = pool_id
 
             # Initialize worker count and add to heap
             initial_count = config.min_workers
@@ -606,7 +662,7 @@ class PoolManager:
         caller_pool_allowlist: set[str] | None = None,
         caller_kind: CallerKind | str = CallerKind.UNKNOWN,
         parent_session_id: str | None = None,
-        auto_spawn: bool = False,
+        auto_spawn: bool | None = False,
     ) -> dict[str, Any]:  # req: REQ-008
         """Route task to best pool based on selector strategy.
 
@@ -662,13 +718,24 @@ class PoolManager:
         """
         if not self._pools:
             if auto_spawn:
+                # Single source of truth for auto-spawn sizing (shared
+                # with pool_spawn/pool_bootstrap MCP tools). Logs a
+                # warning on settings drift so operators can detect when
+                # the resolved defaults diverge from their config.
+                defaults = self._resolve_auto_spawn_defaults()
+                spawn_type = defaults["spawn_type"]
+                min_workers = defaults["min_workers"]
+                max_workers = defaults["max_workers"]
+
+                # The mahavishnu substrate honors min/max; session-buddy
+                # and runpod have their own sizing models and ignore these.
                 await self.spawn_pool(
-                    "mahavishnu",
+                    spawn_type,
                     PoolConfig(
                         name="auto-spawned",
-                        pool_type="mahavishnu",
-                        min_workers=1,
-                        max_workers=1,
+                        pool_type=spawn_type,
+                        min_workers=min_workers,
+                        max_workers=max_workers,
                     ),
                 )
             else:
@@ -1340,6 +1407,11 @@ class PoolManager:
         if pool:
             await pool.stop()
             await self._persist_pool_state(pool_id, pool, "closed")
+            # Clear the name→id index entry before dropping the pool.
+            # BasePool.config is required (set in BasePool.__init__ at
+            # pools/base.py:114); the .pop default=None guards against
+            # any future pool type that bypasses BasePool.
+            self._pools_by_name.pop(pool.config.name, None)
             del self._pools[pool_id]
 
             # Remove from tracking structures

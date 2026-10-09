@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mahavishnu.core.config import MahavishnuSettings, PoolConfig as SettingsPoolConfig
 from mahavishnu.core.status import PoolStatus
 from mahavishnu.mcp.protocols.message_bus import MessageBus
 from mahavishnu.pools.base import BasePool, PoolConfig, PoolMetrics
@@ -1104,3 +1105,37 @@ class TestPoolManagerIntegration:
 
         # Should not fail entirely, just log warning and skip
         assert len(results) >= 0
+
+
+@pytest.mark.asyncio
+async def test_route_task_auto_spawn_reads_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When auto_spawn=True and registry is empty, route_task reads sizing from settings."""
+    pm = PoolManager(terminal_manager=MagicMock(), message_bus=MagicMock())
+    pm._pools = {}  # force empty registry
+
+    mock_spawn = AsyncMock(return_value="mock-pool-id")
+    monkeypatch.setattr(pm, "spawn_pool", mock_spawn)
+
+    settings = MahavishnuSettings(pools=SettingsPoolConfig(
+        auto_spawn=True,
+        auto_spawn_type="mahavishnu",
+        auto_spawn_min_workers=2,
+        auto_spawn_max_workers=5,
+    ))
+    monkeypatch.setattr("mahavishnu.core.config.get_settings", lambda: settings)
+
+    with pytest.raises(Exception):
+        # route_task will try to actually route after spawning;
+        # the spawn call itself is what we want to verify.
+        await pm.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.LEAST_LOADED,
+            auto_spawn=True,
+        )
+
+    mock_spawn.assert_awaited_once()
+    args, kwargs = mock_spawn.call_args
+    config = args[1]
+    assert config.min_workers == 2
+    assert config.max_workers == 5
+    assert config.pool_type == "mahavishnu"

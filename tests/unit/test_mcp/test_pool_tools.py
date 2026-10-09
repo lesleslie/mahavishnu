@@ -93,6 +93,8 @@ def registered_mcp(stub_mcp: _StubMCP, mock_pool_manager: AsyncMock) -> _StubMCP
 
 EXPECTED_TOOL_NAMES = {
     "pool_list",
+    "pool_spawn",
+    "pool_bootstrap",
     "pool_monitor",
     "pool_scale",
     "pool_close",
@@ -100,6 +102,7 @@ EXPECTED_TOOL_NAMES = {
     "pool_health",
     "pool_search_memory",
     "budget_enforce",
+    "pool_route_execute",
 }
 
 
@@ -399,3 +402,151 @@ class TestPoolSelectorEnum:
         }
         actual = {member.value for member in PoolSelector}
         assert expected.issubset(actual)
+
+
+# =============================================================================
+# pool_spawn tests (Task 4 of 2026-10-09-pool-bootstrap-mcp-tool.md)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_pool_spawn_idempotent_returns_existing(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """If a pool with this name already exists in _pools_by_name, return status='exists'."""
+    mock_pool_manager._pools_by_name = {"existing-pool": "pid-123"}
+    mock_pool_manager.spawn_pool = AsyncMock()  # must NOT be called
+
+    result = await registered_mcp.tools["pool_spawn"](
+        name="existing-pool", pool_type="mahavishnu"
+    )
+    assert result["status"] == "exists"
+    assert result["pool_id"] == "pid-123"
+    mock_pool_manager.spawn_pool.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pool_spawn_warns_when_sizing_ignored_for_non_mahavishnu(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """When pool_type is not 'mahavishnu' and sizing params are passed, return status='warning'."""
+    mock_pool_manager._pools_by_name = {}  # no existing pool
+    mock_pool_manager.spawn_pool = AsyncMock(return_value="pid-new")
+
+    result = await registered_mcp.tools["pool_spawn"](
+        name="new-sb-pool",
+        pool_type="session-buddy",
+        min_workers=5,
+        max_workers=10,
+    )
+    assert result["status"] == "warning"
+    assert "session-buddy" in result["warning"]
+    assert result["pool_id"] == "pid-new"
+    # min/max in the response reflect the substrate-fixed values
+    assert result["max_workers"] == 3  # session-buddy is fixed at 3
+
+
+@pytest.mark.asyncio
+async def test_pool_spawn_rejects_unknown_pool_type(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """Unknown pool types fail with status='failed' and a clear error."""
+    result = await registered_mcp.tools["pool_spawn"](
+        name="bogus", pool_type="nonexistent-pool-type"
+    )
+    assert result["status"] == "failed"
+    assert "nonexistent-pool-type" in result["error"]
+
+
+# =============================================================================
+# pool_route_execute auto_spawn config-driven (Task 5 of 2026-10-09-pool-bootstrap-mcp-tool.md)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_pool_route_execute_auto_spawn_default_from_config(
+    registered_mcp: _StubMCP,
+    mock_pool_manager: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When auto_spawn is None, pool_route_execute reads pools.auto_spawn from settings."""
+    from mahavishnu.core.config import MahavishnuSettings, PoolConfig as SettingsPoolConfig
+
+    settings = MahavishnuSettings(
+        pools=SettingsPoolConfig(
+            auto_spawn=True, auto_spawn_max_workers=4,
+        )
+    )
+    # patch the module-level get_settings reference (Task 5 Step 3)
+    import mahavishnu.mcp.tools.pool_tools as pool_tools_module
+    monkeypatch.setattr(pool_tools_module, "get_settings", lambda: settings)
+
+    # Force the auto-spawn branch by leaving the registry empty
+    mock_pool_manager._pools_by_name = {}
+    mock_pool_manager._pools = {}
+    mock_pool_manager.spawn_pool = AsyncMock(return_value="auto-id")
+    mock_pool_manager.route_task = AsyncMock(
+        side_effect=RuntimeError("stub: route_task reached")
+    )
+
+    pool_route_execute = registered_mcp.tools["pool_route_execute"]
+    # The real PoolManager.route_task is what reads `_pools` and calls
+    # spawn_pool. But on a mock_pool_manager, route_task is itself a mock.
+    # So the cleanest assertion is: route_task was invoked with auto_spawn=True
+    # (resolved from settings), not auto_spawn=False (the old hardcoded default).
+    await pool_route_execute(prompt="hello", pool_selector="least_loaded")
+
+    mock_pool_manager.route_task.assert_awaited_once()
+    _args, kwargs = mock_pool_manager.route_task.call_args
+    assert kwargs.get("auto_spawn") is True  # came from settings.auto_spawn=True
+
+
+# =============================================================================
+# pool_bootstrap tests (Task 9 of 2026-10-09-pool-bootstrap-mcp-tool.md)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_pool_bootstrap_no_op_when_pool_exists(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """If pools_active > 0, pool_bootstrap returns status='skipped' without spawning."""
+    mock_pool_manager._pools_by_name = {"existing": "pid-1"}  # registry non-empty
+    mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 1})
+    mock_pool_manager.spawn_pool = AsyncMock()  # must NOT be called
+
+    result = await registered_mcp.tools["pool_bootstrap"]()
+    assert result["status"] == "skipped"
+    assert result["pools_active_before"] == 1
+    mock_pool_manager.spawn_pool.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pool_bootstrap_spawns_when_registry_empty(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """If pools_active == 0, pool_bootstrap calls pool_manager.spawn_pool."""
+    mock_pool_manager._pools_by_name = {}  # empty registry
+    mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 0})
+    mock_pool_manager.spawn_pool = AsyncMock(return_value="auto-id")
+
+    result = await registered_mcp.tools["pool_bootstrap"]()
+    assert result["status"] == "spawned"
+    assert result["pool_id"] == "auto-id"
+    assert result["pools_active_before"] == 0
+    assert result["pools_active_after"] == 1
+    mock_pool_manager.spawn_pool.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_pool_bootstrap_returns_failed_on_spawn_error(
+    registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
+) -> None:
+    """If spawn_pool raises, pool_bootstrap returns status='failed' (never raises)."""
+    mock_pool_manager._pools_by_name = {}
+    mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 0})
+    mock_pool_manager.spawn_pool = AsyncMock(side_effect=RuntimeError("spawn failed"))
+
+    result = await registered_mcp.tools["pool_bootstrap"]()
+    assert result["status"] == "failed"
+    assert "spawn failed" in result["error"]

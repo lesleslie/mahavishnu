@@ -390,6 +390,36 @@ def handle_session_start(env: CanonicalEnvelope) -> int:
     return 0
 
 
+def handle_pool_bootstrap(env: CanonicalEnvelope) -> int:
+    """Telemetry-only handler for the pool-bootstrap SessionStart event.
+
+    The actual bootstrap work happens in the standalone hook script
+    (``.claude/hooks/mahavishnu-pool-bootstrap.py`` and the Qwen
+    equivalent) which calls the new ``mcp__mahavishnu__pool_bootstrap``
+    tool. This handler exists to record the event in the canonical
+    audit feed so the bridge sees a SessionStart with a
+    ``pool_bootstrap`` annotation regardless of which harness fired it.
+
+    CRITICAL: This handler must return 0 on every code path —
+    SessionStart hooks that fail block the entire harness from
+    starting. All exceptions are caught and logged; the user sees
+    the error via stderr but session start proceeds.
+    """
+    try:
+        logger.info(
+            "pool_bootstrap event observed",
+            extra={"harness": env.harness, "session_id": env.session_id},
+        )
+    except Exception as exc:  # noqa: BLE001 - boundary: SessionStart must never block
+        # Use stderr (not logger) to avoid a logging failure cascading
+        # into another try/except. SessionStart must always return 0.
+        import sys
+
+        sys.stderr.write(f"pool_bootstrap handler logging failed: {exc}\n")
+        sys.stderr.flush()
+    return 0
+
+
 def handle_session_end(env: CanonicalEnvelope) -> int:
     """Mark worktree abandoned + drain final envelopes.
 
@@ -569,29 +599,29 @@ def handle_todo_completed(env: CanonicalEnvelope) -> int:
     return 0
 
 
-_EVENT_HANDLERS: dict[str, Callable[[CanonicalEnvelope], int]] = {
-    "PostToolUse": handle_post_tool_use,
-    "SessionStart": handle_session_start,
-    "SessionEnd": handle_session_end,
-    "UserPromptSubmit": handle_user_prompt_submit,
-    "PreToolUse": handle_pre_tool_use,
-    "SubagentStop": handle_subagent_stop,
-    "Stop": handle_stop,
-    "UserPromptExpansion": handle_user_prompt_expansion,
+_EVENT_HANDLERS: dict[str, list[Callable[[CanonicalEnvelope], int]]] = {
+    "PostToolUse": [handle_post_tool_use],
+    "SessionStart": [handle_session_start, handle_pool_bootstrap],
+    "SessionEnd": [handle_session_end],
+    "UserPromptSubmit": [handle_user_prompt_submit],
+    "PreToolUse": [handle_pre_tool_use],
+    "SubagentStop": [handle_subagent_stop],
+    "Stop": [handle_stop],
+    "UserPromptExpansion": [handle_user_prompt_expansion],
     # Phase 12b: Qwen-only events (no Claude equivalent).
     # Permissive defaults; each exists so the audit feed can
     # distinguish a Qwen-only event from a forward-compat unknown.
-    "PostToolUseFailure": handle_post_tool_use_failure,
-    "SessionDelete": handle_session_delete,
-    "MessageDisplay": handle_message_display,
-    "StopFailure": handle_stop_failure,
-    "SubagentStart": handle_subagent_start,
-    "PreCompact": handle_pre_compact,
-    "PostCompact": handle_post_compact,
-    "PermissionRequest": handle_permission_request,
-    "PermissionDenied": handle_permission_denied,
-    "TodoCreated": handle_todo_created,
-    "TodoCompleted": handle_todo_completed,
+    "PostToolUseFailure": [handle_post_tool_use_failure],
+    "SessionDelete": [handle_session_delete],
+    "MessageDisplay": [handle_message_display],
+    "StopFailure": [handle_stop_failure],
+    "SubagentStart": [handle_subagent_start],
+    "PreCompact": [handle_pre_compact],
+    "PostCompact": [handle_post_compact],
+    "PermissionRequest": [handle_permission_request],
+    "PermissionDenied": [handle_permission_denied],
+    "TodoCreated": [handle_todo_created],
+    "TodoCompleted": [handle_todo_completed],
 }
 
 
@@ -618,12 +648,27 @@ def handle(
         preservation per spec §4.13.3).
     """
     env = _normalize(harness, payload or {})
-    handler = _EVENT_HANDLERS.get(event_name, handle_unknown)
-    exit_code = handler(env)
+    handlers = _EVENT_HANDLERS.get(event_name, [handle_unknown])
+    if not isinstance(handlers, list):  # Backward-compat
+        handlers = [handlers]
+    last_result = 0
+    for handler in handlers:
+        try:
+            last_result = handler(env)
+            if last_result != 0:
+                break  # First non-zero short-circuits (e.g. approval deny)
+        except Exception:
+            logger.exception(
+                "event handler failed",
+                extra={
+                    "event": event_name,
+                    "handler": getattr(handler, "__name__", "unknown"),
+                },
+            )
     # Post-decision bus publish — fire-and-forget; sync events
     # are unaffected by bus latency.
     _publish(channel=_channel_for(event_name), envelope=env)
-    return exit_code
+    return last_result
 
 
 # Optional health-monitor accessor used by ``_publish`` to increment

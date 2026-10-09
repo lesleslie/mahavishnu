@@ -176,6 +176,12 @@ The defaults in this section are Pydantic model defaults for typed blocks when a
 - `memory_sync_interval` — `int`, default `60`; seconds between memory syncs.
 - `session_buddy_url` — `str`, default `http://localhost:8678/mcp`; delegated Session-Buddy endpoint.
 - `akosha_url` — `str`, default `http://localhost:8682/mcp`; cross-pool analytics endpoint.
+- `auto_spawn` — `bool`, default `False`; when `True`, the first `pool_route_execute` call with an empty registry spawns a default pool before routing. Default-off; opt in via `settings/local.yaml`.
+- `auto_spawn_type` — `str`, default `mahavishnu`; pool type to auto-spawn. Only `mahavishnu` honors `auto_spawn_min/max_workers`; other types have substrate-fixed sizing.
+- `auto_spawn_min_workers` — `int`, default `1`; minimum workers for the auto-spawned `mahavishnu` pool. Ignored for non-`mahavishnu` types.
+- `auto_spawn_max_workers` — `int`, default `3`; maximum workers for the auto-spawned `mahavishnu` pool. Ignored for non-`mahavishnu` types.
+
+Env-var override format: `MAHAVISHNU__POOLS__AUTO_SPAWN` (double-underscore prefix per Oneiric's `SettingsConfigDict(env_prefix="MAHAVISHNU_", env_nested_delimiter="__")` at `config.py:2673-2676`).
 
 Example:
 

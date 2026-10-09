@@ -71,3 +71,8 @@ result = await pool_mgr.route_task(
     pool_selector=PoolSelector.LEAST_LOADED,
 )
 ```
+
+## Sizing semantics by pool type
+
+> **Sizing note (2026-10-09):** When spawning a `session-buddy` pool via `mcp__mahavishnu__pool_spawn`, the `min_workers` and `max_workers` parameters are accepted for API consistency but **ignored** by the underlying substrate. `SessionBuddyPool` is fixed at 3 workers per instance. The new tool returns `status="warning"` with a structured message when sizing params are passed for a non-`mahavishnu` pool. Only `mahavishnu` pool type honors caller-provided sizing.
+```

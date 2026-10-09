@@ -463,6 +463,57 @@ class PoolConfig(BaseModel):
         default="http://localhost:8682/mcp",
         description="Akosha MCP server URL for cross-pool analytics",
     )
+    auto_spawn: bool = Field(
+        default=False,
+        description="When True, the first pool_route_execute call with an empty registry spawns a default pool before routing. Default-off; opt-in via settings/local.yaml.",
+    )
+    auto_spawn_type: str = Field(
+        default="mahavishnu",
+        description="Pool type to auto-spawn (mahavishnu, session-buddy, runpod). Only the 'mahavishnu' type honors auto_spawn_min/max_workers; other types have substrate-fixed sizing.",
+    )
+    auto_spawn_min_workers: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description="Minimum workers for the auto-spawned mahavishnu pool. Ignored when auto_spawn_type is not 'mahavishnu'.",
+    )
+    auto_spawn_max_workers: int = Field(
+        default=3,
+        ge=1,
+        le=100,
+        description="Maximum workers for the auto-spawned mahavishnu pool. Ignored when auto_spawn_type is not 'mahavishnu'.",
+    )
+
+    # Validators — fail-fast on misconfig at settings-load time.
+    # We deliberately use a validator (not a Literal type) because the
+    # registry of valid pool types is loaded from mahavishnu.pools._registry
+    # (a runtime import that Pydantic v2 Literal can't express).
+    @field_validator("auto_spawn_type")
+    @classmethod
+    def _validate_auto_spawn_type(cls, v: str) -> str:
+        """Reject unknown pool types at config-load time with a clear message.
+
+        The validator is eager (Pydantic v2 runs it on instantiation), so
+        ``Settings(...)`` raises ValueError BEFORE the MCP server binds its
+        port. This is intentional — the user should see the config error
+        at startup, not as an opaque substrate error at first dispatch.
+
+        The pools registry import is wrapped in try/except so a settings-only
+        consumer (CLI subcommands, test fixtures) doesn't need the full
+        pools package to instantiate PoolConfig. If the registry is
+        unavailable we skip validation and let downstream callers surface
+        the real error at the call site.
+        """
+        try:
+            from mahavishnu.pools._registry import list_pool_types
+        except Exception:  # noqa: BLE001 - boundary: registry is best-effort at config-load
+            return v
+        if v not in list_pool_types():
+            raise ValueError(
+                f"pools.auto_spawn_type={v!r} is not a registered pool type. "
+                f"Supported: {', '.join(sorted(list_pool_types()))}"
+            )
+        return v
 
     model_config = ConfigDict(extra="forbid")
 
