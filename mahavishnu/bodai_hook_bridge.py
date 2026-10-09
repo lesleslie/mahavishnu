@@ -266,12 +266,18 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
                     try:
                         await aexit(None, None, None)
                     except BaseException:  # defensive: coredis teardown
-                        # We are post-publish; if close itself raises
-                        # (e.g., pool already torn down by Redis), let
-                        # the bridge's outer ``except Exception`` log
-                        # it as a publish failure rather than leaking a
-                        # fresh ValueError to stderr.
-                        pass
+                        # Post-publish close: the bridge's outer
+                        # ``except Exception`` in ``_publish`` already
+                        # logs this as a publish failure (the
+                        # operationally-correct signal), so we don't
+                        # double-log at ERROR via ``logger.exception``
+                        # here. A bare ``pass`` would trip bandit S110,
+                        # so emit a debug-level trace for operators
+                        # chasing teardown noise specifically.
+                        logger.debug(
+                            "coredis teardown suppressed (post-publish close)",
+                            exc_info=True,
+                        )
 
     try:
         # The bus reader (``read_bodai_events_since``) defaults to the

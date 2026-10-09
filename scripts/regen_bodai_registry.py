@@ -299,7 +299,7 @@ Python version coordination, dependency mapping, and Phase 4 (3.15) planning.
 1. Read MEMORY.md for inventory hints (e.g., `bodai-mcp-servers-not-mycelium-core.md`)
 1. `ls /Users/les/Projects/` for git repos
 1. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
-1. Document in [`settings/ecosystem.yaml`](settings/ecosystem.yaml) — the canonical source
+1. Document in `settings/ecosystem.yaml` (gitignored per-machine catalog) — copy [`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) and populate
 1. Add registry-only annotations (Phase, FastMCP pin, provenance) to [`settings/registry_metadata.yaml`](settings/registry_metadata.yaml)
 1. **Verification step** — every entry below is generated from the YAML files above; run `python3 scripts/regen_bodai_registry.py --check` to detect registry-vs-source drift.
 
@@ -320,8 +320,10 @@ def build_footer() -> str:
 > `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`. Update
 > this table whenever a project gains or loses MCP servers.
 
-_(Hand-maintained. Not generated. See `settings/ecosystem.yaml` for the
-authoritative per-project MCP server assignments.)_
+_(Hand-maintained. Not generated. See `settings/ecosystem.yaml` (gitignored
+per-machine) for the authoritative per-project MCP server assignments; the
+[`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) template
+documents the schema.)_
 
 ## Phase 4 (3.15) reuse
 
@@ -421,8 +423,22 @@ def main() -> int:
     local_overlay = Path(args.local_overlay)
     out = Path(args.output)
     if not eco.is_file():
-        print(f"ERROR: {eco} not found", file=sys.stderr)
-        return 2
+        # settings/ecosystem.yaml is gitignored (per-machine catalog);
+        # fall back to the committed .example so the script still works
+        # in fresh clones and CI. The link rendered in the generated
+        # markdown always points to the .example (see build_header /
+        # build_footer) so markdown link-checkers can resolve the
+        # target regardless of the operator's local ecosystem.yaml.
+        example = eco.with_name(eco.name + ".example")
+        if example.is_file():
+            print(
+                f"NOTE: {eco} not found; falling back to {example}",
+                file=sys.stderr,
+            )
+            eco = example
+        else:
+            print(f"ERROR: {eco} not found (and no {example} template)", file=sys.stderr)
+            return 2
     if not overlay.is_file():
         print(f"ERROR: {overlay} not found", file=sys.stderr)
         return 2
