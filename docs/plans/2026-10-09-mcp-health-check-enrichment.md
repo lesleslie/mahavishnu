@@ -38,11 +38,13 @@ topic: mcp-design
 
 When this plan ships:
 
-- `mcp__akosha__get_health()` and `GET /health` on akosha: `200` when every feed is healthy-or-warming-up; `503` when any feed has been broken-before-first-success for more than 60s OR has accumulating errors.
+- `mcp__akosha__get_health()` and `GET /health` on akosha: `200` with `{"status": "healthy"|"warming_up", "checks": {...}, "reason_codes": [...]}` when every feed is healthy-or-warming-up; `503` with `{"status": "degraded"|"failed", "checks": {...}, "reason_codes": [...]}` when any feed has been broken-before-first-success for more than 60s OR has accumulating errors. `WARMING_UP` returns 200 (warm but slow = serving 200).
 - `mcp__crackerjack__get_health()` and `GET /health` on crackerjack: same contract.
 - `mcp__session-buddy__get_health()` and `GET /health` on session-buddy: same contract.
 - `mcp__mahavishnu__get_health()` and `GET /health` on mahavishnu: same contract.
 - `mcp__oneiric__get_health()` and `GET /health` on oneiric: same contract.
+- The wire shape is the canonical `HealthSnapshot` from `mcp-common/mcp_common/health/aggregator.py:33-46`. A `degraded_feeds` key (derived client-side from `checks` where `healthy=False`) may be appended by each server's wrapper for operator convenience but is not in the canonical contract.
+- The 60s window is configurable per-adopter via the env var `HEALTH_FEED_HALFLIFE_SECONDS=60`. The mcp-common default is 300s; each of the 4 target repos overrides to 60s per this plan. **mcp-common pin:** each of the 4 target repos pins `mcp-common==<current-pinned-version>` for the duration of this plan. Verify the current mcp-common version on origin/main before each Phase 1.x ships.
 - The HNSW hardening branch in each server's `/health` consumer no longer fires on a fresh server with no data yet (the `cycles_total == 0` false-positive that the akosha `cd4733b` fix addressed fleet-wide).
 - Monthly `mcp audit_health` CLI runs against all 5 core repos and reports any server that returns `200` for a degraded feed state.
 
@@ -55,7 +57,7 @@ When this plan ships:
 ## 2. Goals
 
 1. **Adopt the mcp-common `HealthAggregator`** in each of the 5 Bodai core MCP servers, replacing any local per-feed health-state construction with the canonical aggregator. (REQ-HC-001)
-2. **Return 503 on degraded** in each server's `/health` route when the aggregator reports any feed in `broken-before-first-success` or `errors-accumulating` state for more than 60s. The route currently returns 200 with a degraded envelope in the body — that's the bug. (REQ-HC-002)
+2. **Return 503 on degraded** in each server's `/health` route when the aggregator reports any feed in `broken-before-first-success` or `errors-accumulating` state for more than 60s (configurable via `HEALTH_FEED_HALFLIFE_SECONDS`, default 300s in mcp-common; each adopter overrides to 60s per this plan). The route currently returns 200 with a degraded envelope in the body — that's the bug. (REQ-HC-002)
 3. **Make `mcp__<server>__get_health()` and `GET /health` agree** on the same feed-state. Today they can disagree (per the akosha Phase 4 example: the MCP tool reported `degraded` while `/health` returned 200 with `status: ok` in the body). The fix is to route both through the same aggregator. (REQ-HC-003)
 4. **Ship a monthly `mahavishnu mcp audit_health` CLI** that iterates the 5 core repos, calls `/health` on each, and reports any server that returns 200 with a degraded feed state (the silent-degraded case). Cadence: monthly, owned by the operator. (REQ-HC-004)
 
@@ -94,7 +96,7 @@ Plan §4.5 of the prior workflow flagged this as the §10 followup. The audit ha
 | **mahavishnu** | `mcp__mahavishnu__get_health()` | `mahavishnu/mcp/server_core.py` | TBD by Phase 1 recon |
 | **crackerjack** | `mcp__crackerjack__get_health()` | `crackerjack/mcp/server.py:create_app` | TBD by Phase 1 recon |
 | **session-buddy** | `mcp__session-buddy__get_health()` | `session_buddy/server.py:create_app` | TBD by Phase 1 recon |
-| **oneiric** | `mcp__oneiric__get_health()` | (not yet shipped — oneiric may not have an MCP server) | TBD by Phase 1 recon |
+| **oneiric** | `mcp__oneiric__get_health()` | `oneiric/oneiric/mcp/server.py` (verified to exist at recon time) | TBD by Phase 1 recon |
 
 ## 4.5 Requirements
 
@@ -112,6 +114,12 @@ requirements:
 
 ## 5. Implementation Phases
 
+### Phase 0: Verify parent-plan-status gate
+
+**Goal:** Confirm the dependency on `docs/plans/2026-10-09-bodai-search-infrastructure-fix.md` is met before starting Phase 1.
+
+**Task:** Verify the parent plan's frontmatter status is `shipped` (read `/Users/les/Projects/mahavishnu/docs/plans/2026-10-09-bodai-search-infrastructure-fix.md` line 2). If `active`, the parent plan commit references (`cd4733b` akosha pilot; `39c0f82` and `64714e8` crackerjack + session-buddy fixes) are the practical dependency — proceed with Phase 1 since those commits are already on origin/main. If `shipped`, the dependency is fully met. Skip Phase 0 only if the dependency is non-blocking (the implementer records the skip in the worktree commit message).
+
 ### Phase 1: Audit + adopt mcp-common HealthAggregator in each of the 4 remaining repos
 
 **Goal:** Each repo's `mcp__<server>__get_health()` and `/health` route route through the canonical `mcp_common.health.aggregator.HealthAggregator`. The akosha pilot is the reference implementation.
@@ -120,51 +128,52 @@ requirements:
 1. `git fetch origin main` from the source repo
 2. `git worktree add ~/.local/state/mahavishnu/worktrees/<repo>-health-enrichment -b phase-<N>-health-enrichment origin/main`
 3. `uv venv && source .venv/bin/activate && uv pip install -e ".[dev]"`
-4. Verify Python 3.14.x
+4. Verify Python 3.14
 
 **Tasks per repo:**
 1. **Recon:** Read the current `create_app` (or equivalent), the `mcp__<server>__get_health()` tool body, the `/health` route, and any per-feed state construction. Identify which feeds are subject to the broken-before-first-success false positive.
-2. **Adopt the aggregator:** Replace any local feed-state construction with a single `HealthAggregator` instance, fed by the existing ingester/processor cycle counters. The aggregator is the single source of truth for both `mcp__<server>__get_health()` and `/health`.
-3. **Wire 503:** Change the `/health` route's return code from `200` to `503` when the aggregator reports any feed in `broken-before-first-success` for >60s OR `errors-accumulating` for >60s. The body remains the same envelope (operators can still inspect which feed is degraded).
-4. **Add the `get_health` MCP tool** if not already present. Most repos already have it; verify it routes through the same aggregator.
-5. **Tests:** Add `tests/integration/test_health_e2e.py` that:
-   - Asserts the FastMCP tool returns 200 + ok envelope when every feed is healthy
-   - Asserts the tool returns 503 + degraded envelope when a stub feed reports `cycles_total=0` for >60s
-   - Asserts the wire-shape envelope (per REQ-012 pattern from the prior plan)
-6. **`crackerjack run -v`** (NEVER `-p`)
-7. **Commit + squash-merge** to local main
+2. **Cycle-ordering audit:** Audit cycle-ordering in `<repo>/ingesters/` and `<repo>/mcp/server.py`; if `sleep(interval)` runs before the cycle counter increments, fix per the akosha pilot pattern (`cd4733b`). **This is a precondition for the 503-wiring step** — without it, fresh servers will spuriously return 503 for the first interval.
+3. **Adopt the aggregator:** Replace any local feed-state construction with a single `HealthAggregator` instance, fed by the existing ingester/processor cycle counters. The aggregator is the single source of truth for both `mcp__<server>__get_health()` and `/health`.
+4. **Wire 503:** Change the `/health` route's return code from `200` to `503` when the aggregator reports any feed in `broken-before-first-success` for >60s OR `errors-accumulating` for >60s. The body remains the canonical `HealthSnapshot` envelope (operators can still inspect which feed is degraded). **Declare `HEALTH_FEED_HALFLIFE_SECONDS=60`** in the per-repo settings/env (default 300s in mcp-common; this plan overrides to 60s).
+5. **Add the `get_health` MCP tool** if not already present. Most repos already have it; verify it routes through the same aggregator.
+6. **Tests:** Add the per-repo integration test that:
+   - Asserts the FastMCP tool returns 200 + `{"status": "healthy"}` envelope when every feed is healthy
+   - Asserts the tool returns 503 + `{"status": "degraded"}` envelope when a stub feed reports `cycles_total=0` for >60s
+   - Asserts the wire-shape envelope matches the canonical `HealthSnapshot` (per `mcp-common/mcp_common/health/aggregator.py:33-46`)
+7. **`crackerjack run -v`** (NEVER `-p`)
+8. **Commit + squash-merge** to local main
 
 **Exit criteria per repo:** `mcp__<server>__get_health()` and `/health` agree, both return 503 on degraded, all tests pass.
 
 #### Integration Contract — Phase 1.1 (mahavishnu)
 - **Triggered from**: `GET /health` on mahavishnu (HTTP route, port 8680); `mcp__mahavishnu__get_health()` (MCP tool invocation); `mahavishnu mcp audit_health --repo mahavishnu` (CLI)
-- **Returns to / updates**: HTTP response code (200 or 503) and JSON envelope (status, feeds, tools, degraded_feeds)
-- **Demonstrable by**: `curl -sI http://localhost:8680/health` returns 200 (or 503 in degraded); `pytest tests/integration/test_health_e2e.py::test_health_returns_503_on_broken_feed` passes
+- **Returns to / updates**: HTTP response code (200 or 503) and canonical `HealthSnapshot` envelope (`status`, `checks`, `reason_codes`); a derived `degraded_feeds` key may be appended
+- **Demonstrable by**: `curl -s http://localhost:8680/health | jq .status` returns `"healthy"` (or `"degraded"`); `pytest mahavishnu/tests/integration/test_health_e2e.py::test_health_returns_503_on_broken_feed` passes; `HEALTH_FEED_HALFLIFE_SECONDS=60` is declared in `settings/mahavishnu.yaml` or repo env
 - **Rollback signal**: If `mcp__mahavishnu__get_health()` and `/health` disagree, OR if `/health` returns 503 when all feeds are healthy (false-positive 503), revert via `git reset --hard HEAD~1` on the worktree branch
 - **Observability added**: `mahavishnu.health.feed_status{feed, status}` counter, `mahavishnu.health.aggregate_status` counter
 - **Fulfils**: REQ-HC-001, REQ-HC-002, REQ-HC-003
 
 #### Integration Contract — Phase 1.2 (crackerjack)
 - **Triggered from**: `GET /health` on crackerjack (port 8676); `mcp__crackerjack__get_health()`; `mahavishnu mcp audit_health --repo crackerjack`
-- **Returns to / updates**: HTTP response code + JSON envelope
-- **Demonstrable by**: `curl -sI http://localhost:8676/health` returns 200 (or 503); `pytest tests/integration/test_health_e2e.py` passes
+- **Returns to / updates**: HTTP response code (200 or 503) + canonical `HealthSnapshot` envelope
+- **Demonstrable by**: `curl -s http://localhost:8676/health | jq .status` returns `"healthy"` (or `"degraded"`); `pytest crackerjack/crackerjack/tests/integration/test_health_e2e.py` passes; `HEALTH_FEED_HALFLIFE_SECONDS=60` is declared in `settings/crackerjack.yaml` or repo env
 - **Rollback signal**: Same as Phase 1.1
 - **Observability added**: `crackerjack.health.feed_status{feed, status}` counter
 - **Fulfils**: REQ-HC-001, REQ-HC-002, REQ-HC-003
 
 #### Integration Contract — Phase 1.3 (session-buddy)
 - **Triggered from**: `GET /health` on session-buddy (port 8678); `mcp__session-buddy__get_health()`; `mahavishnu mcp audit_health --repo session-buddy`
-- **Returns to / updates**: HTTP response code + JSON envelope
-- **Demonstrable by**: `curl -sI http://localhost:8678/health`; `pytest tests/integration/test_health_e2e.py` passes
-- **Rollback signal**: Same
+- **Returns to / updates**: HTTP response code (200 or 503) + canonical `HealthSnapshot` envelope
+- **Demonstrable by**: `curl -s http://localhost:8678/health | jq .status` returns `"healthy"` (or `"degraded"`); `pytest session_buddy/session_buddy/tests/integration/test_health_e2e.py` passes; `HEALTH_FEED_HALFLIFE_SECONDS=60` is declared in `settings/session_buddy.yaml` or repo env
+- **Rollback signal**: Same as Phase 1.1
 - **Observability added**: `session_buddy.health.feed_status{feed, status}` counter
 - **Fulfils**: REQ-HC-001, REQ-HC-002, REQ-HC-003
 
 #### Integration Contract — Phase 1.4 (oneiric)
-- **Triggered from**: `GET /health` on oneiric (if oneiric ships an MCP server; verify in recon); `mcp__oneiric__get_health()` (if it exists)
-- **Returns to / updates**: HTTP response code + JSON envelope
-- **Demonstrable by**: `curl -sI http://localhost:<oneiric-port>/health`; `pytest tests/integration/test_health_e2e.py` passes
-- **Rollback signal**: Same
+- **Triggered from**: `GET /health` on oneiric; `mcp__oneiric__get_health()`
+- **Returns to / updates**: HTTP response code (200 or 503) + canonical `HealthSnapshot` envelope
+- **Demonstrable by**: `curl -s http://localhost:<oneiric-port>/health | jq .status` returns `"healthy"` (or `"degraded"`); `pytest oneiric/oneiric/tests/integration/test_health_e2e.py` passes; `HEALTH_FEED_HALFLIFE_SECONDS=60` is declared in `settings/oneiric.yaml` or repo env
+- **Rollback signal**: Same as Phase 1.1
 - **Observability added**: `oneiric.health.feed_status{feed, status}` counter
 - **Fulfils**: REQ-HC-001, REQ-HC-002, REQ-HC-003
 
@@ -194,10 +203,16 @@ requirements:
 
 **Phase 1 per repo (4 repos: mahavishnu, crackerjack, session-buddy, oneiric):**
 - [ ] Recon: identify local feed-state construction + cycle-ordering pattern
+- [ ] Audit cycle-ordering per the akosha pilot pattern (`cd4733b`); fix if `sleep(interval)` runs before counter increment
 - [ ] Replace local feed-state with `mcp_common.health.aggregator.HealthAggregator`
-- [ ] Wire `/health` route to return 503 on degraded
+- [ ] Wire `/health` route to return 503 on degraded (canonical `HealthSnapshot` envelope)
+- [ ] Declare `HEALTH_FEED_HALFLIFE_SECONDS=60` in per-repo settings/env
 - [ ] Wire `mcp__<server>__get_health()` MCP tool to the same aggregator
-- [ ] Add `tests/integration/test_health_e2e.py`
+- [ ] Add per-repo integration test at the correct nested path:
+  - `mahavishnu/tests/integration/test_health_e2e.py`
+  - `crackerjack/crackerjack/tests/integration/test_health_e2e.py`
+  - `session_buddy/session_buddy/tests/integration/test_health_e2e.py`
+  - `oneiric/oneiric/tests/integration/test_health_e2e.py`
 - [ ] Add `crackerjack run -v` gate
 - [ ] Commit + squash-merge
 
@@ -210,22 +225,23 @@ requirements:
 
 | Probe | Expected | Evidence |
 |---|---|---|
-| `curl -sI http://localhost:8680/health` (mahavishnu healthy) | `200 OK` | `mahavishnu/tests/integration/test_health_e2e.py` |
-| `curl -sI http://localhost:8680/health` (mahavishnu degraded) | `503 Service Unavailable` | Same test, `test_health_returns_503_on_broken_feed` |
-| `curl -sI http://localhost:8682/health` (akosha) | `200` (or `503` if any feed in degraded state) | akosha regression test |
+| `curl -s -o /dev/null -w "%{http_code}" http://localhost:8680/health` (mahavishnu healthy) | `200` | `mahavishnu/tests/integration/test_health_e2e.py` |
+| `curl -s http://localhost:8680/health \| jq .status` (mahavishnu healthy) | `"healthy"` | Same test |
+| `curl -s http://localhost:8680/health \| jq .status` (mahavishnu degraded) | `"degraded"` AND HTTP code `503` | Same test, `test_health_returns_503_on_broken_feed` |
+| `curl -s http://localhost:8682/health \| jq .status` (akosha) | `"healthy"` (or `"degraded"` if any feed in degraded state, with HTTP code `503`) | akosha regression test |
 | `mcp__mahavishnu__get_health()` | Same feed-state as `/health` | `test_get_health_matches_http_health` |
 | `mahavishnu mcp audit_health --all-repos` | JSON report listing per-repo status | `mahavishnu/tests/integration/test_audit_health.py` |
-| `pytest tests/integration/test_health_e2e.py` (per repo) | All pass | Per-repo CI |
+| `pytest <per-repo-path>/integration/test_health_e2e.py` (per repo) | All pass | Per-repo CI |
 | `pytest tests/integration/test_audit_health.py` (mahavishnu) | All pass | mahavishnu CI |
 
 ## 8. Risks
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| False-positive 503 (every fresh server returns 503 for the first 60s) | Medium | The pilot's count→work→sleep reorder pattern (akosha `cd4733b`) must be applied where the same bug exists. Audit per repo will surface. |
-| Inflight rollout — mahavishnu adoption flips /health from 200 to 503 and breaks a load balancer | Low | Add a feature flag `MAHAVISHNU_HEALTH_ENFORCED` (default `false`); the route always populates the body but only returns 503 when the flag is on. Operators opt in per environment. |
+| False-positive 503 (every fresh server returns 503 for the first 60s) | Medium | The pilot's count→work→sleep reorder pattern (akosha `cd4733b`) must be applied where the same bug exists. The 60s window is itself the soft rollout — `HEALTH_FEED_HALFLIFE_SECONDS=60` per-adopter override (default in mcp-common is 300s) means fresh servers naturally recover before any operator notices the flip. Audit per repo will surface cycle-ordering bugs. |
 | The mcp-common `HealthAggregator` has a bug that surfaces in fleet-wide adoption | Low | Akosha pilot (4 months in production) is the reference. If a bug surfaces, fix in mcp-common and roll out. |
 | 503 returned when only one tool is degraded, taking the whole server out of LB rotation | Medium | The aggregator's `errors-accumulating` threshold (>60s) is meant to suppress transient single-tool blips. Tune per environment. |
+| Load balancer interprets `WARMING_UP` as 503 (false-positive 503 during warm-up) | Medium | Documented contract: `WARMING_UP` returns 200 (warm but slow = serving 200). Per-feed halflife override (`HEALTH_FEED_HALFLIFE_SECONDS=60`) keeps warm-up brief. |
 
 ## 9. Decision Rule
 
@@ -234,7 +250,7 @@ This plan is "done enough" when:
 - **Phase 1 (4 repos):** Each repo's `mcp__<server>__get_health()` and `/health` agree, both return 503 on degraded, integration test passes, `crackerjack run -v` clean, commit + squash-merge to local main. No push (user-controlled).
 - **Phase 2:** `mahavishnu mcp audit_health --all-repos` runs end-to-end and the integration test passes. Feature-flagged rollout is acceptable.
 
-**Scope-pressure cut line:** If a repo's health-check pattern is fundamentally different (e.g., oneiric has no MCP server, or its `/health` is implemented in a non-Python language), that repo is carved out of Phase 1 into a separate plan. The other 3 repos still ship.
+**Scope-pressure cut line:** If a repo's health-check pattern is fundamentally different (e.g., its `/health` is implemented in a non-Python language), that repo is carved out of Phase 1 into a separate plan. The remaining repos still ship.
 
 **Sequencing note:** Per `feedback-bodai-push-is-user-controlled.md`, all merges are local-only. Push is the user's call per repo. The user owns version bumps, PyPI publishes, and any cross-repo release coordination. This plan does NOT introduce shared release pressure.
 
