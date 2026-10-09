@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-10-09
@@ -41,9 +41,19 @@ When this plan ships:
 
 Concrete success metric: every probe call above either populates results or returns a typed `degraded` envelope — no `[]` empty arrays, no `'list' object has no attribute 'values'` tracebacks, and the `/akosha` picker still works (post Claude Code TUI consumer update).
 
+**Done when** (acceptance gates; lifted from §9 for compactness):
+- All 3 phases have shipped as 3 separate merge cycles, each with its own integration contracts fulfilled.
+- The 17 validation probes in §7 all pass when run against the released versions.
+- The picker-filter consumer update (REQ-008) has shipped in the sequenced Claude Code TUI PR.
+- The per-repo SessionEnd hooks (Phase 1.7, 2.5, 3.5) are wired AND the hook scripts are copied to each target repo's `.claude/hooks/`.
+- The per-repo push governance cross-links (Phase 1.8, 2.6, 3.6) are in each target repo's CLAUDE.md.
+- No new MCP tools were added.
+- No `/health` route was modified.
+- The followup plan for health-check-enrichment has been written (see §10 below).
+
 ## 2. Goals
 
-1. **Fix akosha tool-name registration bug**: every `@mcp.tool(name="akosha_*")` decorator loses its redundant `akosha_` prefix in the registered name. Source-doc strings, federation call sites, allowlist strings, and class docstrings that carry the prefix are updated in the same PR. (REQ-001, REQ-011)
+1. **Fix akosha tool-name registration bug**: every `@mcp.tool(name="akosha_*")` decorator loses its redundant `akosha_` prefix in the registered name. Source-doc strings, federation call sites, allowlist strings, and class docstrings that carry the prefix are updated in the same PR. (REQ-001)
 2. **Fix akosha picker-filter side-effect**: the Claude Code TUI `/akosha` picker implementation is updated to filter by server name (not prefix-match on registered name) so the prefix-rename doesn't break the picker. Lands in a separate Claude Code TUI PR, sequenced after the akosha rename. (REQ-008)
 3. **Fix akosha `search_code_patterns` handler**: the `'list' object has no attribute 'values'` runtime error in the code-pattern search handler is resolved at all 6 shape sites (not just one). The handler returns a structured response (populated or `degraded`), never a traceback. (REQ-002, REQ-009)
 4. **Fix crackerjack `search_code` empty-result bug**: a literal regex like `def test_` against `*.py` returns ≥1 result. (REQ-003)
@@ -68,6 +78,11 @@ Concrete success metric: every probe call above either populates results or retu
 ## 4. Current Findings
 
 > **Path convention used in this section:** All file paths are **worktree-relative** (i.e., relative to `~/.local/state/mahavishnu/worktrees/<repo>/`). Resolved absolute paths would be `<worktree>/akosha/mcp/tools/pycharm_tools.py` etc. This convention matches §6 and is what the implementer reads from inside the worktree.
+>
+> **Akosha-specific layout note (verified by `find . -maxdepth 2 -type d` on 2026-10-09):**
+> - The akosha Python package is at `<worktree>/akosha/` (single prefix from worktree root). Package files use `akosha/<sub>/<file>` form.
+> - The akosha tests are at `<worktree>/tests/` (top-level, **no** package prefix). Test files use `tests/<sub>/<file>` form. There is no `akosha/tests/` directory — `akosha/tests/` paths in pre-2026-10-09 plan revisions were a typo (corrected 2026-10-09).
+> - Crackerjack and session-buddy use different layouts: their packages are at `<worktree>/<repo>/<package>/` (crackerjack: `crackerjack/crackerjack/`; session-buddy: `session_buddy/session_buddy/`) and their tests are at `<worktree>/<repo>/<package>/tests/` (nested under the package, not at the top level). Always `find . -maxdepth 2 -type d` on the target repo before writing rg commands in the implementation PR.
 
 ### 4.1 Akosha: tool-name prefix bug (mechanical)
 
@@ -89,7 +104,7 @@ Concrete success metric: every probe call above either populates results or retu
 
 The Claude Code MCP loader builds tool names as `mcp__{server-instance-name}__{tool-name}`. With `akosha` as the server name and the registered tool name `search_code_patterns` (no prefix), the harness header is `mcp__akosha__search_code_patterns` — exactly the prompt-header shape that's currently failing to resolve. The redundant `akosha_` prefix in the registered name was the bug, not a FastMCP convention. (Confirmed by akosha-specialist.)
 
-**Downstream side-effect: Claude Code TUI picker filter (REQ-008).** Per the 29-day-old memory `bodai-tool-naming-gap-2026-09-09.md`, the TUI `/akosha` picker filter does prefix-match on the registered name. Stripping the prefix requires the picker implementation to switch from prefix-match to **server-name match**. **The Claude Code TUI lives in Anthropic's Claude Code, not in any Bodai repo — the picker consumer update must land in a separate Claude Code PR (or a Claude Code bug report), sequenced after the akosha rename.** The akosha rename can ship without the picker update if a Claude Code bug is filed in parallel; the picker update is sequenced and not in scope for this plan's three merge cycles. **Both findings from the multi-agent review are correct: the prefix-rename is right, AND the picker-filter implementation must be updated — but not in the "same PR."**
+**Downstream side-effect: Claude Code TUI picker filter (REQ-008).** Per the 29-day-old memory `bodai-tool-naming-gap-2026-09-09.md`, the TUI `/akosha` picker filter does prefix-match on the registered name. Stripping the prefix requires the picker implementation to switch from prefix-match to **server-name match**. **The Claude Code TUI lives in Anthropic's Claude Code, not in any Bodai repo — the picker consumer update must land via a Claude Code bug report (with a follow-up PR sequenced after Anthropic's triage), not via a Bodai PR.** The akosha rename can ship without the picker update if the bug is filed in parallel; the picker update is sequenced and not in scope for this plan's three merge cycles. **Both findings from the multi-agent review are correct: the prefix-rename is right, AND the picker-filter implementation must be updated — but not in the "same PR" and not in any Bodai repo.**
 
 **Additional source-doc / federation / allowlist / docstring string sites that carry the prefix and must be updated in the same PR (not just decorator arguments):**
 
@@ -223,11 +238,11 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 - **1.2 Picker-filter consumer update** (REQ-008, separate Claude Code TUI PR — **not in this plan's three merge cycles**). File a Claude Code bug report for the `/akosha` picker prefix-match → server-name match change. Sequence: akosha rename lands first; the Claude Code PR lands after (same-day or next-day, depending on Anthropic's review cadence). The akosha rename is safe to ship without the picker update because the prefix-rename makes the registered name `search_code_patterns` which the picker will simply not show — operations continue via direct tool calls, just no picker entry. The picker fix restores UX parity.
 - **1.3 Handler shape fix.** At all 6 sites in §4.2, replace the unguarded `.values()` with a per-site shape guard that handles dict (preferred), list (legacy), missing (empty). For the primary site at `pycharm_tools.py:391`, the fix is `nodes = graph["graph_data"].get("nodes") or {}; for node in (nodes.values() if isinstance(nodes, dict) else nodes):` — adapted per site. Return envelope: `{"status": "ok" | "degraded", "results": [...], "error": "..."}` per `wire-up-contract.md` "Returns to / updates" — the deprecation of the old traceback is the state.
-- **1.4 Regression tests (REQ-007, REQ-012).** `akosha/tests/unit/test_search_code_patterns.py` (new) — assert on the wire-shape envelope via FastMCP `Client` with `InMemoryTransport`, parsing `result.content[0].text` via a local helper, and checking `assert not result.isError` separately. The test must not depend on `mahavishnu.core.worktree_providers` (wrong layering); copy/inline the helper into `akosha/tests/_support/extract_tool_payload.py`. Stub the indexer to return dict, list, and missing shapes; assert the handler returns a structured response in all 3 cases.
+- **1.4 Regression tests (REQ-007, REQ-012).** `tests/unit/test_search_code_patterns.py` (new) — assert on the wire-shape envelope via FastMCP `Client` with `InMemoryTransport`, parsing `result.content[0].text` via a local helper, and checking `assert not result.isError` separately. The test must not depend on `mahavishnu.core.worktree_providers` (wrong layering); copy/inline the helper into `tests/_support/extract_tool_payload.py`. Stub the indexer to return dict, list, and missing shapes; assert the handler returns a structured response in all 3 cases.
 - **1.5 Test-fixture update.** Update 55+ test files that hard-code `akosha_*` tool names. Use the broader rg pattern (no `^name="` prefix anchor) to enumerate:
 
   ```bash
-  rg -l 'akosha_(search|get|find|analyze|publish|store|batch|list|run|cross|discover|query|generate|correlate|detect|add|pycharm)_' akosha/tests/
+  rg -l 'akosha_(search|get|find|analyze|publish|store|batch|list|run|cross|discover|query|generate|correlate|detect|add|pycharm)_' tests/
   # Expected post-rename: zero matches
   ```
 
@@ -261,8 +276,8 @@ One possible shared cause is a single reindex / migration step that left the thr
 #### Integration Contract — Phase 1.1 (tool-name + source-doc sweep, REQ-001 + REQ-011)
 - **Triggered from**: akosha MCP server startup (`akosha/mcp/server.py:__main__`); every Claude Code session that loads akosha's tool list; the federation server boot that reads `ecosystem_skills.py:97`.
 - **Returns to / updates**: the FastMCP tool registry on the akosha `app` instance; the `_FederationServer` config at `ecosystem_skills.py:97`; the tool-allowlist strings in `profiles.py:95-117` and `security.py`; the skill-catalog frontmatter; agent body text; class docstrings.
-- **Demonstrable by**: `pytest akosha/tests/unit/test_mcp_tool_inventory.py::test_no_akosha_prefix_in_registered_names` (new test, see §6).
-- **Rollback signal**: any `pytest akosha/tests/test_mcp_tool_inventory.py` failure; the inventory test enumerates expected tool names.
+- **Demonstrable by**: `pytest tests/unit/test_mcp_tool_inventory.py::test_no_akosha_prefix_in_registered_names` (new test, see §6).
+- **Rollback signal**: any `pytest tests/test_mcp_tool_inventory.py` failure; the inventory test enumerates expected tool names.
 - **Observability added**: log line on startup `akosha_mcp_tools_registered count={N}` (where N is the new total, post-rename). Existing `akosha_search_results_total` (line 210) and `akosha_search_latency_milliseconds` (line 186) Prometheus metrics are reused for any search-handler invocation. **No new metrics are added** (the `akosha_tools_registered_total` claim from the prior plan revision was a phantom — verified by `rg "akosha_tools_registered" akosha/observability/prometheus_metrics.py` returning zero matches).
 - **Fulfils**: REQ-001, REQ-011
 
@@ -277,18 +292,26 @@ One possible shared cause is a single reindex / migration step that left the thr
 #### Integration Contract — Phase 1.3 (handler shape fix, REQ-002 + REQ-009)
 - **Triggered from**: any `mcp__akosha__search_code_patterns` call (one of: akosha MCP server startup indexer probe, agent session, manual test).
 - **Returns to / updates**: the deprecation of the `'list' object has no attribute 'values'` traceback — the response envelope is the state. Old: `Error: 'list' object has no attribute 'values'`. New: `{"status": "ok" | "degraded", "results": [...], "error": "..."}`. This is a state change in the wire-shape contract.
-- **Demonstrable by**: `pytest akosha/tests/unit/test_search_code_patterns.py::test_dict_shape_returns_results`, `::test_list_shape_returns_degraded_envelope`, `::test_missing_shape_returns_degraded_envelope` — all three pass.
+- **Demonstrable by**: `pytest tests/unit/test_search_code_patterns.py::test_dict_shape_returns_results`, `::test_list_shape_returns_degraded_envelope`, `::test_missing_shape_returns_degraded_envelope` — all three pass.
 - **Rollback signal**: any `crashed_handler: pycharm_search_code_patterns` log line; the existing `akosha_errors_total` Prometheus counter (line 522) would tick on the old failure mode.
-- **Observability added**: existing `akosha_search_results_total` and `akosha_search_latency_milliseconds` are reused. New log line: `akosha_search_handler shape=<dict|list|missing> status=<ok|degraded>`.
+- **Observability added**: existing `akosha_search_results_total` and `akosha_search_latency_milliseconds` are reused. New log lines: `akosha_search_handler shape=<dict|list|missing> status=<ok|degraded>` (success path) and `crashed_handler: pycharm_search_code_patterns` (failure path — replaces the old unstructured traceback).
 - **Fulfils**: REQ-002, REQ-009
 
 #### Integration Contract — Phase 1.4 (regression tests, REQ-007 + REQ-012) and 1.5 (test-fixture update)
-- **Triggered from**: `pytest akosha/tests/ -k "search or tool or mcp_inventory"`
+- **Triggered from**: `pytest tests/ -k "search or tool or mcp_inventory"`
 - **Returns to / updates**: the test corpus; CI gate.
-- **Demonstrable by**: `pytest akosha/tests/ -k "search_code_patterns or mcp_tool_inventory"` exits 0.
+- **Demonstrable by**: `pytest tests/ -k "search_code_patterns or mcp_tool_inventory"` exits 0.
 - **Rollback signal**: any test failure.
 - **Observability added**: CI log line via the existing `crackerjack run -v` gate.
 - **Fulfils**: REQ-007, REQ-012
+
+#### Integration Contract — Phase 1.6 (.mcp.json impact check, REQ-011)
+- **Triggered from**: pre-merge CI gate, run from the akosha worktree.
+- **Returns to / updates**: zero `.mcp.json` references to the pre-rename `akosha_*` tool names across the 4 Bodai repos. The state destination is the on-disk `.mcp.json` files in `~/.local/state/mahavishnu/worktrees/{akosha,crackerjack,session-buddy,mahavishnu}/`.
+- **Demonstrable by**: the rg command in §5.1.6 exits 0 (no matches).
+- **Rollback signal**: rg command exits non-zero (matches found); merge blocked until sweep is complete.
+- **Observability added**: rg output captured to `~/.mahavishnu/logs/mcp_json_impact_akosha_<branch>.log` for audit.
+- **Fulfils**: REQ-011
 
 #### Integration Contract — Phase 1.7 (SessionEnd hook wiring, REQ-010)
 - **Triggered from**: Claude Code session-end event in a session operating inside `~/.local/state/mahavishnu/worktrees/akosha/`.
@@ -345,9 +368,29 @@ One possible shared cause is a single reindex / migration step that left the thr
 - **Observability added**: per-request counter on the MCP handler itself: `crackerjack_search_invoked_total{tool="search_code" | "search_semantic", status="ok" | "degraded"}`. This signal works regardless of whether the indexer is restored or not — it tracks the MCP handler invocation, not the indexer.
 - **Fulfils**: REQ-003, REQ-004, REQ-007, REQ-012
 
-#### Integration Contract — Phase 2.5 (SessionEnd hook, REQ-010) and 2.6 (push governance, REQ-013)
-- Same pattern as Phase 1.7 / 1.8.
-- **Fulfils**: REQ-010, REQ-013
+#### Integration Contract — Phase 2.4 (.mcp.json impact check, REQ-011)
+- **Triggered from**: pre-merge CI gate, run from the crackerjack worktree.
+- **Returns to / updates**: zero `.mcp.json` references to the pre-rename `crackerjack_*` tool names across the 2 Bodai repos (crackerjack + mahavishnu).
+- **Demonstrable by**: `rg 'crackerjack_(search|semantic)_' --glob '*.mcp.json' ~/.local/state/mahavishnu/worktrees/{crackerjack,mahavishnu}/` exits 0.
+- **Rollback signal**: rg exits non-zero; merge blocked.
+- **Observability added**: rg output to `~/.mahavishnu/logs/mcp_json_impact_crackerjack_<branch>.log`.
+- **Fulfils**: REQ-011
+
+#### Integration Contract — Phase 2.5 (SessionEnd hook wiring, REQ-010)
+- **Triggered from**: Claude Code session-end event in a session operating inside `~/.local/state/mahavishnu/worktrees/crackerjack/`.
+- **Returns to / updates**: `crackerjack/.claude/hooks/agent-merge-on-end.py` (new file, copied from mahavishnu); `crackerjack/.claude/hooks/worktree-session-isolation.py` (new file, copied from mahavishnu); `crackerjack/.claude/hooks/_hook_io.py` (new file if shared helper exists); `crackerjack/.claude/settings.json` SessionEnd array (new file + new entries — crackerjack has no `settings.json` yet).
+- **Demonstrable by**: a Claude Code session that opens and closes inside the crackerjack worktree fires the `agent-merge-on-end.py` hook.
+- **Rollback signal**: log line `merge-on-end not wired for repo=crackerjack`.
+- **Observability added**: existing session-buddy reflection store captures the merge event.
+- **Fulfils**: REQ-010
+
+#### Integration Contract — Phase 2.6 (push governance cross-link, REQ-013)
+- **Triggered from**: a user reading `crackerjack/CLAUDE.md` (governance documentation).
+- **Returns to / updates**: `crackerjack/CLAUDE.md` gains a one-line cross-link to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md`.
+- **Demonstrable by**: `grep '2026-10-03-mainautopush' crackerjack/CLAUDE.md` returns ≥1 hit.
+- **Rollback signal**: grep returns 0.
+- **Observability added**: none (documentation-only).
+- **Fulfils**: REQ-013
 
 ### Phase 3: session-buddy (third priority — `quick_search` returning 0 affects all session-buddy reflection flows)
 
@@ -387,9 +430,29 @@ One possible shared cause is a single reindex / migration step that left the thr
 - **Observability added**: per-request counter on the MCP handler: `session_buddy_search_invoked_total{tool="quick_search" | "search_by_concept", status="ok" | "degraded"}`. This signal works regardless of the indexer state.
 - **Fulfils**: REQ-005, REQ-006, REQ-007, REQ-012
 
-#### Integration Contract — Phase 3.5 / 3.6 (REQ-010, REQ-013)
-- Same pattern as Phase 1.7 / 1.8.
-- **Fulfils**: REQ-010, REQ-013
+#### Integration Contract — Phase 3.4 (.mcp.json impact check, REQ-011)
+- **Triggered from**: pre-merge CI gate, run from the session-buddy worktree.
+- **Returns to / updates**: zero `.mcp.json` references to the pre-rename `session_buddy_*` tool names across the 2 Bodai repos (session-buddy + mahavishnu).
+- **Demonstrable by**: `rg 'session_buddy_(quick|search|concept)_' --glob '*.mcp.json' ~/.local/state/mahavishnu/worktrees/{session-buddy,mahavishnu}/` exits 0.
+- **Rollback signal**: rg exits non-zero; merge blocked.
+- **Observability added**: rg output to `~/.mahavishnu/logs/mcp_json_impact_session_buddy_<branch>.log`.
+- **Fulfils**: REQ-011
+
+#### Integration Contract — Phase 3.5 (SessionEnd hook wiring, REQ-010)
+- **Triggered from**: Claude Code session-end event in a session operating inside `~/.local/state/mahavishnu/worktrees/session-buddy/`.
+- **Returns to / updates**: `session-buddy/.claude/hooks/agent-merge-on-end.py` (new file, copied from mahavishnu); `session-buddy/.claude/hooks/worktree-session-isolation.py` (new file, copied from mahavishnu); `session-buddy/.claude/hooks/_hook_io.py` (new file if shared helper exists); `session-buddy/.claude/settings.json` SessionEnd array (new entries — session-buddy has no SessionEnd array yet).
+- **Demonstrable by**: a Claude Code session that opens and closes inside the session-buddy worktree fires the `agent-merge-on-end.py` hook.
+- **Rollback signal**: log line `merge-on-end not wired for repo=session-buddy`.
+- **Observability added**: existing session-buddy reflection store captures the merge event.
+- **Fulfils**: REQ-010
+
+#### Integration Contract — Phase 3.6 (push governance cross-link, REQ-013)
+- **Triggered from**: a user reading `session-buddy/CLAUDE.md` (governance documentation).
+- **Returns to / updates**: `session-buddy/CLAUDE.md` gains a one-line cross-link to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md`.
+- **Demonstrable by**: `grep '2026-10-03-mainautopush' session-buddy/CLAUDE.md` returns ≥1 hit.
+- **Rollback signal**: grep returns 0.
+- **Observability added**: none (documentation-only).
+- **Fulfils**: REQ-013
 
 ## 6. Required Code Changes
 
@@ -436,33 +499,33 @@ One possible shared cause is a single reindex / migration step that left the thr
 - [ ] `akosha/.claude/hooks/_hook_io.py` — copy from mahavishnu (if shared helper exists)
 - [ ] `akosha/.claude/settings.json` — add SessionEnd array entries (mirroring `mahavishnu/.claude/settings.json:18-37`)
 - [ ] `akosha/CLAUDE.md` — push governance cross-link (REQ-013)
-- [ ] **New**: `akosha/tests/unit/test_search_code_patterns.py` — 3 shape-stubs + wire-envelope assertion (REQ-007, REQ-012)
-- [ ] **New**: `akosha/tests/_support/extract_tool_payload.py` — local helper (copy of `mahavishnu.core.worktree_providers.session_buddy._extract_tool_payload` or similar)
-- [ ] **New**: `akosha/tests/unit/test_mcp_tool_inventory.py` — `test_no_akosha_prefix_in_registered_names` (REQ-001 demonstrable)
+- [ ] **New**: `tests/unit/test_search_code_patterns.py` — 3 shape-stubs + wire-envelope assertion (REQ-007, REQ-012)
+- [ ] **New**: `tests/_support/extract_tool_payload.py` — local helper (copy of `mahavishnu.core.worktree_providers.session_buddy._extract_tool_payload` or similar)
+- [ ] **New**: `tests/unit/test_mcp_tool_inventory.py` — `test_no_akosha_prefix_in_registered_names` (REQ-001 demonstrable)
 
 #### PR-1b test-fixture update (rolled into PR-1b)
-- [ ] 55+ test files updated via the broader rg pattern in §5.1.5. Enumerated by `rg -l 'akosha_(search|get|find|analyze|publish|store|batch|list|run|cross|discover|query|generate|correlate|detect|add|pycharm)_' akosha/tests/`. High-count files:
-  - `akosha/tests/test_session_buddy_tools_coverage.py` (16 refs)
-  - `akosha/tests/unit/test_mcp_otel_tools.py` (6)
-  - `akosha/tests/unit/test_code_graph_tools.py` (8)
-  - `akosha/tests/unit/mcp/tools/test_fitness_tools.py` (8)
-  - `akosha/tests/unit/test_session_buddy_tools_integration.py` (2)
-  - `akosha/tests/unit/test_session_buddy_tools_standalone.py` (2)
-  - `akosha/tests/integration/test_query_local_traces_e2e.py` (1)
-  - `akosha/tests/integration/test_get_agent_e2e.py` (10+)
-  - `akosha/tests/integration/test_list_agents_e2e.py` (7)
-  - `akosha/tests/unit/test_mcp_tools_profiles.py` (8+)
-  - `akosha/tests/test_skills_signer.py`
-  - `akosha/tests/test_pycharm_tools_coverage.py`
-  - `akosha/tests/integration/test_mcp_integration.py`
-  - `akosha/tests/unit/test_mcp_tool_inventory.py`
-  - `akosha/tests/unit/test_mcp_akosha_tools.py`
-  - `akosha/tests/unit/test_mcp_akosha_tools_runtime.py`
-  - `akosha/tests/unit/test_cross_repo_capability_search.py`
+- [ ] 55+ test files updated via the broader rg pattern in §5.1.5. Enumerated by `rg -l 'akosha_(search|get|find|analyze|publish|store|batch|list|run|cross|discover|query|generate|correlate|detect|add|pycharm)_' tests/`. High-count files:
+  - `tests/test_session_buddy_tools_coverage.py` (16 refs)
+  - `tests/unit/test_mcp_otel_tools.py` (6)
+  - `tests/unit/test_code_graph_tools.py` (8)
+  - `tests/unit/mcp/tools/test_fitness_tools.py` (8)
+  - `tests/unit/test_session_buddy_tools_integration.py` (2)
+  - `tests/unit/test_session_buddy_tools_standalone.py` (2)
+  - `tests/integration/test_query_local_traces_e2e.py` (1)
+  - `tests/integration/test_get_agent_e2e.py` (10+)
+  - `tests/integration/test_list_agents_e2e.py` (7)
+  - `tests/unit/test_mcp_tools_profiles.py` (8+)
+  - `tests/test_skills_signer.py`
+  - `tests/test_pycharm_tools_coverage.py`
+  - `tests/integration/test_mcp_integration.py`
+  - `tests/unit/test_mcp_tool_inventory.py`
+  - `tests/unit/test_mcp_akosha_tools.py`
+  - `tests/unit/test_mcp_akosha_tools_runtime.py`
+  - `tests/unit/test_cross_repo_capability_search.py`
   - Plus any others surfaced by the broader rg pattern
-- [ ] `akosha/tests/fixtures/full/tool_names.json` — 6 names
-- [ ] `akosha/tests/fixtures/standard/tool_names.json` — 2 names
-- [ ] `akosha/tests/fixtures/minimal/tool_names.json` — verify and update
+- [ ] `tests/fixtures/full/tool_names.json` — 6 names
+- [ ] `tests/fixtures/standard/tool_names.json` — 2 names
+- [ ] `tests/fixtures/minimal/tool_names.json` — verify and update
 
 ### Phase 2: crackerjack (worktree: `~/.local/state/mahavishnu/worktrees/crackerjack/`)
 
@@ -495,10 +558,10 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 | Probe | Tool | Expected result | Evidence location |
 |---|---|---|---|
-| Akosha tool-name fix | `pytest akosha/tests/unit/test_mcp_tool_inventory.py::test_no_akosha_prefix_in_registered_names` | exits 0 | `akosha/tests/unit/test_mcp_tool_inventory.py` (REQ-001) |
-| Akosha source-doc sweep | `rg 'akosha_[a-z]+_' akosha/akosha/ akosha/tests/` | zero non-comment matches in production, only fixture/intentional refs in tests | shell |
-| Akosha handler shape fix (all 6 sites) | `pytest akosha/tests/unit/test_search_code_patterns.py` | exits 0; all 3 shape stubs return structured response | `akosha/tests/unit/test_search_code_patterns.py` (REQ-002, REQ-009) |
-| Akosha wire-envelope regression | `pytest akosha/tests/unit/test_search_code_patterns.py::test_wire_envelope_via_extract_tool_payload` (asserts `assert not result.isError` AND parses `result.content[0].text`) | exits 0 | `akosha/tests/unit/test_search_code_patterns.py` (REQ-012) |
+| Akosha tool-name fix | `pytest tests/unit/test_mcp_tool_inventory.py::test_no_akosha_prefix_in_registered_names` | exits 0 | `tests/unit/test_mcp_tool_inventory.py` (REQ-001) |
+| Akosha source-doc sweep | `rg 'akosha_[a-z]+_' akosha/ tests/` | zero non-comment matches in production, only fixture/intentional refs in tests | shell |
+| Akosha handler shape fix (all 6 sites) | `pytest tests/unit/test_search_code_patterns.py` | exits 0; all 3 shape stubs return structured response | `tests/unit/test_search_code_patterns.py` (REQ-002, REQ-009) |
+| Akosha wire-envelope regression | `pytest tests/unit/test_search_code_patterns.py::test_wire_envelope_via_extract_tool_payload` (asserts `assert not result.isError` AND parses `result.content[0].text`) | exits 0 | `tests/unit/test_search_code_patterns.py` (REQ-012) |
 | Akosha .mcp.json impact | `rg 'akosha_(search\|get\|find\|analyze\|publish\|store\|batch\|list\|run\|cross\|discover\|query\|generate\|correlate\|detect\|add\|pycharm)_' --glob '*.mcp.json' ~/.local/state/mahavishnu/worktrees/{akosha,crackerjack,session-buddy,mahavishnu}/` | zero matches | shell (REQ-011) |
 | Akosha picker (TUI consumer) | `/akosha` TUI picker | returns the akosha tool list post-rename (after sequenced Claude Code TUI PR) | Claude Code TUI test (REQ-008) |
 | Crackerjack code search | `pytest crackerjack/tests/unit/mcp/tools/test_search_code.py::test_search_code_finds_test_function` | exits 0 | `crackerjack/tests/unit/mcp/tools/test_search_code.py` (REQ-003) |
@@ -530,18 +593,9 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 ## 9. Decision Rule
 
-This plan is "done enough" when:
+The acceptance gates ("done when") live in §1 Outcome. This section states the **rules** that govern execution — the order of operations, scope-pressure cut lines, parallel-execution guidance, and Phase 1 PR sequencing. These are the rules an implementer follows; the gates in §1 are the targets.
 
-- All 3 phases have shipped as 3 separate merge cycles, each with its own integration contracts fulfilled.
-- The 16 validation probes in §7 all pass when run against the released versions.
-- The picker-filter consumer update (REQ-008) has shipped in the sequenced Claude Code TUI PR.
-- The per-repo SessionEnd hooks (Phase 1.7, 2.5, 3.5) are wired AND the hook scripts are copied to each target repo's `.claude/hooks/`.
-- The per-repo push governance cross-links (Phase 1.8, 2.6, 3.6) are in each target repo's CLAUDE.md.
-- No new MCP tools were added.
-- No `/health` route was modified.
-- The followup plan for health-check-enrichment has been written (see §10 below).
-
-**Order of operations (mandatory per phase, to be documented in the worker's brief):**
+### 9.1 Order of operations (mandatory per phase, to be documented in the worker's brief)
 
 1. Create worktree at `~/.local/state/mahavishnu/worktrees/<repo>/`
 2. Wire the SessionEnd hooks (Phase 1.7 / 2.5 / 3.5) — copy scripts, configure venv path, add SessionEnd array entries
@@ -578,7 +632,7 @@ This is a **separate plan** to be written after this plan ships. It is tracked h
 
 - `.claude/decisions/wire-up-contract.md` — Integration Contract policy this plan follows.
 - `.claude/decisions/mcp-backend-wiring-discipline.md` — referenced for §10.
-- `.claude/decisions/2026-10-03-mainautopush.md` — mahavishnu-scoped auto-push governance (referenced in §8 and §13).
+- `.claude/decisions/2026-10-03-mainautopush.md` — mahavishnu-scoped auto-push governance (referenced in §8).
 - `docs/plans/TEMPLATE.md` — plan structure this plan mirrors.
 - `docs/plans/2026-10-03-trunk-based-agent-review.md` — merge workflow spec.
 - `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` — merge workflow design.
