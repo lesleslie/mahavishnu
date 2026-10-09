@@ -227,7 +227,7 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
             asyncio.run(coro)
 
     async def _init_and_publish() -> None:
-        """Single-coroutine init → publish.
+        """Single-coroutine init → publish → close.
 
         coredis 6.x binds the connection pool to the event loop.
         ``asyncio.run(coro)`` creates a fresh loop for each call; if
@@ -237,11 +237,41 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
         ``RuntimeError: Connection pool is not initialized or has
         exited``. Keeping both calls in one coroutine + one
         ``asyncio.run`` keeps the pool initialisation alive.
+
+        The ``finally`` block closes the coredis async generator while
+        we are still in this task's Context. Without it, when
+        ``asyncio.run`` tears down the loop, ``shutdown_asyncgens``
+        closes the still-open ``Redis.__asynccontextmanager__``
+        generator from a different Context, and coredis's pool
+        ``__aexit__`` runs ``self._anchor_active.reset(token)`` for a
+        token from a now-defunct Context — Python 3.14 raises
+        ``ValueError: <Token ...> was created in a different
+        Context`` and prints the traceback to stderr (visible in the
+        session-startup transcript even though the publish itself
+        succeeded). The bridge always constructs adapters through
+        ``queued_publisher()`` with no injected client (see
+        ``_publish``), so ``_owns_client`` is always True here and
+        the explicit close is safe.
         """
         init = getattr(adapter, "init", None)
         if init is not None:
             await init()
-        await adapter.publish(channel=channel, payload=envelope.__dict__)
+        try:
+            await adapter.publish(channel=channel, payload=envelope.__dict__)
+        finally:
+            if getattr(adapter, "_owns_client", False):
+                client = getattr(adapter, "_client", None)
+                aexit = getattr(client, "__aexit__", None)
+                if aexit is not None:
+                    try:
+                        await aexit(None, None, None)
+                    except BaseException:  # defensive: coredis teardown
+                        # We are post-publish; if close itself raises
+                        # (e.g., pool already torn down by Redis), let
+                        # the bridge's outer ``except Exception`` log
+                        # it as a publish failure rather than leaking a
+                        # fresh ValueError to stderr.
+                        pass
 
     try:
         # The bus reader (``read_bodai_events_since``) defaults to the
