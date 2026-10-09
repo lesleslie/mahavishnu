@@ -20,9 +20,9 @@ classifiers = [
 ]
 dependencies = [
     # CLI
-    "typer>=0.27.2",
+    "typer>=0.27.3",
     # Oneiric ecosystem
-    "oneiric>=0.26.4",
+    "oneiric>=0.27.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -32,37 +32,37 @@ dependencies = [
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
-    "fastmcp>=4.0.10,<5",
+    "fastmcp>=4.1.0,<5",
     "uvicorn[standard]>=0.54.0",
     # Configuration
-    "pydantic>=2.13.5",
+    "pydantic>=2.14.0",
     "pyyaml>=6.0.3",
-    "tomli>=2.4.1",
+    "tomli>=2.5.0",
     "aiofiles>=25.1.0",
     # XDG Base Directory compliance
-    "platformdirs>=4.12.3",
+    "platformdirs>=4.12.4",
     # Observability
-    "opentelemetry-api>=1.45.0",
-    "opentelemetry-sdk>=1.45.0",
-    "opentelemetry-instrumentation>=0.66b0",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.45.0",
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-instrumentation>=0.66b1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     # Prometheus metrics
     "prometheus-client>=0.26.0",
     "structlog>=26.1.0",
     # Rate limiting
     "slowapi>=0.1.10",
     # OpenTelemetry trace storage
-    "asyncpg>=0.31.0",
+    "asyncpg>=0.32.0",
     # Embeddings: Use Ollama (local) or OpenAI API instead.
     # See: mahavishnu/core/embeddings.py for the OllamaProvider and OpenAIProvider.
     # Resilience
     "tenacity>=9.1.4",
     "starlette-context>=0.5.1",
     # Prefect: High-level orchestration
-    "prefect>=3.8.7",
+    "prefect>=3.8.8",
     "croniter>=6.2.4",  # Prefect cron schedule validation (lazy + try/except fallback in prefect_schedules.py:91)
     # Agno: Fast, scalable single/multi-agents
-    "agno>=3.1.1",
+    "agno>=3.1.2",
     # LlamaIndex: RAG pipelines
     "llama-index-core>=0.14.25,<0.15.0",
     "llama-index-embeddings-ollama>=0.8.6,<0.9.0",
@@ -81,7 +81,7 @@ dependencies = [
     # runpod-flash moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
-    "ty>=0.0.84",
+    "ty>=0.0.85",
     # Git operations
     "gitpython>=3.2.0",
     # Async SQLite
@@ -117,7 +117,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "pytest-mock>=3.16.0",
-    "hypothesis>=6.168.3",
+    "hypothesis>=6.168.5",
     "pytest-timeout>=2.4.0",
     "respx>=0.23.1",
     "freezegun>=1.5.5",
@@ -130,8 +130,8 @@ dev = [
     "detect-secrets>=1.5.0",
     "refurb>=2.3.1",
     "complexipy>=8.0.1",
-    "zensical>=0.0.67",
-    "crackerjack>=0.84.3",
+    "zensical>=0.0.69",
+    "crackerjack>=0.85.0",
     {include-group = "ai"},
     {include-group = "cache"},
     {include-group = "gpu"},
@@ -167,8 +167,8 @@ cache = [
 # Bodai ecosystem integrations
 ecosystem = [
     "akosha>=0.22.1",
-    "crackerjack>=0.84.3",
-    "session-buddy>=0.31.1",
+    "crackerjack>=0.85.0",
+    "session-buddy>=0.32.0",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
@@ -179,7 +179,7 @@ treesitter = [
     "tree-sitter-go>=0.25.0",
 ]
 llm-providers = [
-    "openai>=3.24.0",
+    "openai>=3.26.1",
 ]
 # Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
 # inheritance is not transitive across Bodai repos, so each consumer must
@@ -225,7 +225,7 @@ automation-vision = [
 
 # Optional: Explicit in-memory vector store (TurboVec)
 vector = [
-    "turbovec[llama-index]>=1.0.0",
+    "turbovec[llama-index]>=1.1.2",
 ]
 
 # Optional: Pydantic AI agent runtime (mahavishnu.adapters.ai.pydantic_ai_adapter).
@@ -257,13 +257,13 @@ shepherd = [
 content-ingest = [
     "pypdf>=6.19.0",
     "ebooklib>=0.20",
-    "trafilatura>=2.3.0",
+    "trafilatura>=2.3.1",
 ]
 
 # Optional: PostgreSQL pgvector adapter for HNSW-backed vector search
 # (mahavishnu.adapters.pgvector_adapter). Lazy-imported at runtime.
 storage-pg = [
-    "pgvector>=0.5.0",
+    "pgvector>=0.5.1",
 ]
 
 [tool.hatch.metadata]
