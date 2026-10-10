@@ -19,6 +19,7 @@ the topic, the third is the most recent state.
 | File | Topic | Status |
 |------|-------|--------|
 | `README.md` | This file — index of repo-local decisions and follow-up trackers. | Active. |
+| `2026-10-09-slash-commands-multi-call-only.md` | Slash commands are for multi-call user-invoked workflows only; single-tool wrappers are forbidden because MCP tools are the cross-harness capability (Claude Code / Cursor / Windsurf / Cline). Documents the 15 1:1 wrappers deleted 2026-10-09 (3 user-level, 10 in Bodai repos, 2 outliers in non-Bodai MCP server repos). | Active. |
 | `2026-10-03-main-branch-protection.md` | GitHub branch protection on `main` across all 6 Bodai core repos: blocks force-push + branch deletion, leaves admin direct-push intact, no PR/CI requirements yet (pre-1.0). Future CI addition is an amendment, not an inline change. | Active. |
 | `2026-10-03-plans-specs-canonical-paths.md` | Plans → `docs/plans/`, specs → `docs/specs/`. Both skills (`writing-plans`, `brainstorming`) document the CLAUDE.md preference override hook. `.superpowers/` blanket-gitignored via crackerjack template; fleet rollout is operator-driven via `crackerjack gitignore sync`. | Active. |
 | `2026-10-03-mainautopush.md` | Narrow exception to `feedback-bodai-push-is-user-controlled`: `git push origin main` permitted only after stages 1–4 of the trunk-based workflow, only by the Python module + SessionEnd hook + slash command. | Active. |
