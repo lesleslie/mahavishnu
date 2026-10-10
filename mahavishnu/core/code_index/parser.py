@@ -34,6 +34,56 @@ SKIP_DIRS = {
 _ALLOWED_NODE_TYPES = {"function", "class", "module", "file", "variable"}
 
 
+def _resolve_node_source(
+    node_type: str,
+    start_line: int | None,
+    end_line: int | None,
+    file_lines: list[str] | None,
+) -> str | None:
+    """Resolve the verbatim ``source`` slice for a single node.
+
+    Returns ``None`` when the slice can't be reconstructed (missing
+    file, missing line numbers, etc.); the caller leaves the
+    field empty and the akosha search has a disk-read fallback
+    for those.
+    """
+    if node_type == "file":
+        # File-level nodes have no ``start_line``/``end_line``;
+        # the full file is the searchable source.
+        if file_lines is not None:
+            return "".join(file_lines)
+        return None
+
+    if file_lines is None or not start_line or not end_line:
+        return None
+
+    # ``start_line``/``end_line`` are 1-indexed inclusive; convert
+    # to slice indices. Clamp ``end_line`` to the file length so a
+    # stale ``end_line`` from the parser can't ``IndexError``.
+    lo = max(0, int(start_line) - 1)
+    hi = min(len(file_lines), int(end_line))
+    return "".join(file_lines[lo:hi])
+
+
+def _extract_node_metadata(
+    node: Any,
+) -> tuple[str | None, int | None, int | None, int | None]:
+    """Return ``(signature, complexity, start_line, end_line)`` for
+    a parsed node based on its ``symbol_type``. Returns ``None`` for
+    every field that doesn't apply to the node type.
+    """
+    if node.node_type == "function":
+        return (
+            redact_signature(getattr(node, "docstring", None)),
+            getattr(node, "complexity", 1),
+            getattr(node, "start_line", None),
+            getattr(node, "end_line", None),
+        )
+    if node.node_type == "class":
+        return (None, None, getattr(node, "start_line", None), getattr(node, "end_line", None))
+    return (None, None, None, None)
+
+
 def parse_file(
     file_path: str,
     repo_path: str,
@@ -49,9 +99,8 @@ def parse_file(
     if path.suffix not in PARSABLE_EXTENSIONS:
         return None
 
-    for skip_dir in SKIP_DIRS:
-        if skip_dir in path.parts:
-            return None
+    if any(skip_dir in path.parts for skip_dir in SKIP_DIRS):
+        return None
 
     try:
         import asyncio
@@ -66,6 +115,18 @@ def parse_file(
         logger.warning(f"Parse failure for {file_path}: {e}")
         raise
 
+    # Read the file once so each node's ``source`` field can be
+    # populated with the verbatim line slice. A missing/unreadable
+    # file leaves ``source=None`` on every node; the akosha search
+    # has a disk-read fallback that reconstructs from
+    # ``start_line``/``end_line`` in that case.
+    try:
+        with path.open(encoding="utf-8") as _src_fh:
+            file_lines: list[str] | None = _src_fh.readlines()
+    except OSError as _e:
+        logger.debug(f"Could not read {path} for source slice: {_e}")
+        file_lines = None
+
     nodes: list[CodeGraphNode] = []
     edges: list[CodeGraphEdge] = []
 
@@ -76,19 +137,10 @@ def parse_file(
             continue
 
         symbol_id = f"{repo_path}|||{file_path}|||{node.node_type}|||{node.name}"
-        signature: str | None = None
-        complexity: int | None = None
-        start_line: int | None = None
-        end_line: int | None = None
-
-        if node.node_type == "function":
-            signature = redact_signature(getattr(node, "docstring", None))
-            complexity = getattr(node, "complexity", 1)
-            start_line = getattr(node, "start_line", None)
-            end_line = getattr(node, "end_line", None)
-        elif node.node_type == "class":
-            start_line = getattr(node, "start_line", None)
-            end_line = getattr(node, "end_line", None)
+        signature, complexity, start_line, end_line = _extract_node_metadata(node)
+        source = _resolve_node_source(
+            node.node_type, start_line, end_line, file_lines
+        )
 
         graph_node = CodeGraphNode(
             symbol_id=symbol_id,
@@ -103,6 +155,7 @@ def parse_file(
             complexity=complexity,
             last_indexed_at=now,
             commit_hash=commit_hash,
+            source=source,
         )
         nodes.append(graph_node)
 

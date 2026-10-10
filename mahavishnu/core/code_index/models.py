@@ -29,6 +29,15 @@ class CodeGraphNode(BaseModel):
     is_deleted: bool = False
     last_indexed_at: datetime
     commit_hash: str
+    # The verbatim source slice for the node (lines
+    # ``[start_line, end_line]`` of the original file, 1-indexed
+    # inclusive). Populated at parse time by
+    # ``core.code_index.parser.parse_file`` and shipped to
+    # session-buddy → akosha so cross-repo regex search has
+    # something to match against. ``None`` is permitted for nodes
+    # where the source file is missing or unreadable at parse
+    # time; the akosha search has a disk-read fallback for those.
+    source: str | None = None
 
 
 class CodeGraphEdge(BaseModel):
