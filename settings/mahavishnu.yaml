@@ -166,10 +166,15 @@ resilience:
   timeout_per_repo: 300  # Timeout per repo in seconds (30-3600)
 
 # Observability configuration
-observability:
-  metrics_enabled: true  # Enable OpenTelemetry metrics
-  tracing_enabled: true  # Enable distributed tracing
-  otlp_endpoint: "http://localhost:4317"  # OTLP endpoint for metrics/traces
+# 2026-10-10: Removed the `observability:` block. oneiric 0.28.0's
+# OTelStorageSettings schema (extra="forbid") rejected the 3 feature-flag
+# fields, causing load_settings to raise and MahavishnuSettings.get_settings
+# to fall back to ObservabilityConfig defaults — the block was silently
+# dead. Override the OTLP endpoint via env var when needed:
+#     export MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://127.0.0.1:14317
+# in ~/.zshenv. pydantic-settings reads the env var natively without
+# going through oneiric, so the OTelStorageSettings schema mismatch is
+# bypassed.
 
 # Tier 1 Phase 8: change-point detector on observability metrics.
 # Top-level block (matches pi_pool:, runpod_pool:, caller_quota:,
