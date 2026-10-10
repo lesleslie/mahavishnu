@@ -953,7 +953,7 @@ class OTelStorageConfig(_OneiricOTelStorageSettings):
             )
         return self
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = SettingsConfigDict(extra="forbid")
 
 
 class OTelIngesterConfig(BaseModel):

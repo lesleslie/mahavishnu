@@ -18,7 +18,7 @@ sets up an in-memory exporter and asserts on the captured spans.
 
 from __future__ import annotations
 
-from collections.abc import Iterator  # noqa: TC003 — used as the return type of the contextmanager
+from collections.abc import Generator  # noqa: TC003 — used as the return type of the contextmanager
 from contextlib import contextmanager
 import logging
 import time
@@ -85,7 +85,7 @@ def session_span(
     session_id: str,
     *,
     attributes: dict[str, Any] | None = None,
-) -> Iterator[dict[str, Any]]:
+) -> Generator[dict[str, Any]]:
     """Wrap an ``execute_fn`` invocation in a span with the plan's 4 attributes.
 
     Yields a mutable dict the caller uses to record the outcome:

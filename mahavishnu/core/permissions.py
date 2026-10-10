@@ -160,7 +160,8 @@ class RBACManager:
             # pass for an admin whose role grants both via the widened
             # permission list. Allowed_repos still gates per-repo.
             role_perm_values = {
-                (p.value if hasattr(p, "value") else str(p)).lower() for p in role.permissions
+                (p.value if isinstance(p, Permission) else str(p)).lower()  # ty: ignore[unresolved-attribute]
+                for p in role.permissions
             }
             if perm_value in role_perm_values and (
                 role.allowed_repos is None or repo in role.allowed_repos
@@ -176,12 +177,15 @@ class RBACManager:
             return []
 
         user = self.users[user_id]
-        permissions = set()
+        permissions: set[Permission] = set()
 
         for role in user.roles:
             # If role allows all repos or user has access to this specific repo
             if role.allowed_repos is None or repo in role.allowed_repos:
-                permissions.update(role.permissions)
+                # role.permissions is list[Permission | str] (the str entries
+                # are bridge values from mcp_common's widened permission model;
+                # this method's return type is the canonical Permission enum).
+                permissions.update(p for p in role.permissions if isinstance(p, Permission))
 
         return list(permissions)
 
