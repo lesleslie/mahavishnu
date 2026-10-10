@@ -39,7 +39,16 @@ class Permission(StrEnum):
 
 class Role(BaseModel):
     name: str
-    permissions: list[Permission]
+    # ``permissions`` accepts both ``Permission`` enum instances and
+    # string permission names (e.g. ``"read"``, ``"write"``). The latter
+    # are how ``mcp_common.auth.permissions.Permission`` values are
+    # forwarded through ``@require_mcp_auth``: the decorator passes the
+    # string value, the role holds it as a string, and ``check_permission``
+    # compares by ``.value`` (or by string equality) so both enums can
+    # co-exist in the same role's permission set without Pydantic
+    # rejecting foreign-enum instances. Per-repository scoping is still
+    # enforced via ``allowed_repos``.
+    permissions: list[Permission | str]
     allowed_repos: list[str] | None = None  # None = all repos
 
 
@@ -64,10 +73,16 @@ class RBACManager:
 
     def _init_default_roles(self):
         """Initialize default roles for the system."""
-        # Admin role - full access
+        # Admin role - full access. The mcp_common Permission values
+        # ('read', 'write', 'delete', 'admin') are added as string
+        # entries so admin grants satisfy BOTH the project-local
+        # ``@require_mcp_auth`` checks (which forward string permission
+        # values from mcp_common) AND the in-app ``RBACManager`` checks.
+        # Per-repository scoping (``allowed_repos=None`` for admin means
+        # "all repos") is preserved as the only blanket grant.
         admin_role = Role(
             name="admin",
-            permissions=list(Permission),
+            permissions=[p for p in Permission] + ["read", "write", "delete", "admin"],
             allowed_repos=None,  # All repos
         )
         self.roles["admin"] = admin_role
@@ -114,23 +129,40 @@ class RBACManager:
         return user
 
     async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
-        """Check if user has permission for repo."""
+        """Check if user has permission for repo.
+
+        Normalizes the requested permission to a canonical string value
+        so the ``in`` check works across BOTH the project-local
+        ``Permission`` enum (``READ_REPO`` = 'read_repo') and the
+        ``mcp_common.auth.permissions.Permission`` enum (``READ`` = 'read').
+        The two are different classes; Python ``in`` compares by identity,
+        so without value-comparison the admin role's permissions are
+        invisible to the other enum's checks. Per-repository scoping is
+        still enforced via ``role.allowed_repos`` so the audit trail and
+        per-repo ACLs are preserved.
+        """
         if isinstance(permission, str):
-            try:
-                permission = Permission(permission.lower())
-            except ValueError:
-                return False
+            perm_value = permission.lower()
+        elif hasattr(permission, "value"):
+            perm_value = str(permission.value).lower()
+        else:
+            perm_value = str(permission).lower()
 
         if user_id not in self.users:
             return False
 
         user = self.users[user_id]
 
-        # Check if user has the required permission in any of their roles
         has_permission = False
         for role in user.roles:
-            # If role allows all repos or user has access to this specific repo
-            if permission in role.permissions and (
+            # Compare by string value so both ``Permission.READ_REPO``
+            # (value 'read_repo') and ``MCPPermission.READ`` (value 'read')
+            # pass for an admin whose role grants both via the widened
+            # permission list. Allowed_repos still gates per-repo.
+            role_perm_values = {
+                (p.value if hasattr(p, "value") else str(p)).lower() for p in role.permissions
+            }
+            if perm_value in role_perm_values and (
                 role.allowed_repos is None or repo in role.allowed_repos
             ):
                 has_permission = True
