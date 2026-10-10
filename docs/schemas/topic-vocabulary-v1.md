@@ -180,6 +180,23 @@ contribution workflow below.
 | `tui` | Original TUI design (2026-04-09 pre-Track 3 era) — generic Textual + Rich framework; superseded by `track3-toad-tui`. |
 | `websocket-broadcaster-default` | WebSocket broadcaster default config/initialization gap (server should come up broadcasting on standard channels without explicit subscribe calls). |
 | `worker-status-isoformat-crash` | Worker status serialization crashes on non-ISO timestamps (e.g., epoch ints, locale-formatted strings) — needs tolerant parsing. |
+| `tooling` | Cross-cutting developer tooling surface — Crackerjack quality gates, Akosha/Mahavishnu/Session-Buddy CLI commands, the Bodai CLI inventory (`scripts/audit_cli_inventory.py`), and tool-surface audits. |
+| `mcp` | MCP umbrella (generalises `mcp-design` for documents that span multiple MCP sub-topics): server design, tool registration, tool profiles, routing, registrar, lifespan/health wiring. |
+| `dev-workflow` | Developer workflow conventions — trunk-based dev, agent-review, auto-merge, publish gate (`crackerjack run -v -p patch`), dep upgrade governance, worktree isolation. |
+| `model-evaluation` | Model evaluation work — provider selection (MiniMax M3 primary, M2.7 fallback), `TaskRouter` mapping (`mahavishnu/core/model_routing.py`), eval harness design, drift detection in cloud-worker routing. |
+| `shared-oneiric-substrate` | Shared Oneiric substrate work that affects every Bodai component — adapter catalog, layered config (settings/*.yaml + XDG), action kits, MCP health feeds, runtime observability path. |
+| `mahavishnu-niche` | Mahavishnu-specific niche features that don't generalise to the wider fleet — pool MCP dispatcher, worktree MCP tools, jot subsystem, durable local workers, MCP registrar (server-side agent/skill signing). |
+| `creosote-and-ty-residual` | Crackerjack 0.87.0 `ty` type-checker residuals after the `creosote` and `ty` integration — deprecation warnings, type-alias cross-module conflicts, small-fix ghost reverts, directive syntax (`# ty: ignore[...]` vs `# type: ignore`). |
+| `pyscn-complexity-reduction` | pyscn (Python complexity scanner) integration and the gate-driven complexity reduction across the codebase — per-file `complexipy`/pyscn reports and the multi-PR teardown plan. |
+| `workers-manager-dead-dispatch-removal` | Removal of the dead `dispatch_to_pool` path on the legacy `WorkerManager` (post-2026-09-24 worker deprecation); routing now lives entirely under `mahavishnu/pools/`. |
+| `mcp-launcher-migration` | Migration of MCP launchers (the `scripts/launch_mcp.py`-style shell wrappers) to the OneiricMCPConfig + per-server `mcp_server_settings.py` convention, eliminating hand-rolled launcher scripts. |
+| `main-branch-protection` | Trunk-based dev main-branch protection rules — no force-push, no direct commits pre-1.0, squash-merge only, agent-review required, two-eyes review for `release/` bumps. |
+| `mainautopush` | Auto-push from local `main` → `origin/main` after squash-merge — governed by `.claude/decisions/2026-10-03-mainautopush.md` and the `MAHAVISHNU_AUTO_MERGE` env var (default `1` in `~/.zshenv`). |
+| `trunk-based-agent-review` | Trunk-based agent-review workflow (spec §4.4) — worker creates a worktree, runs 2 specialist + 1 generalist ensemble review, crackerjack gates the merge, squash-merge to local `main`, auto-push to `origin/main`. |
+| `slash-commands-multi-call-only` | Slash-command policy: commands that fan out to multiple tool calls (vs single-call shortcuts like `/vishnu`) must be invoked explicitly by the user — never auto-dispatched by the harness. |
+| `deployability-discipline` | Deployability discipline (`.claude/decisions/wire-up-contract.md`) — every plan/feature delivery answers the wiring question before "done"; `audit_orphans.py` must be clean; integration-contract block on every plan phase. |
+| `sdd-bundling-defensive-pattern` | SDD (Spec-Driven Development) bundling defensive pattern — guard against code subagents + dirty working tree producing drift-bundled commits; uses `git reset --soft BASE` + targeted add (per memory `drift-bundling-recovery.md`). |
+| `cli-deprecation-drift` | CLI deprecation drift — historical CLI flags/commands/subcommands that were removed but still referenced in docs, tests, settings, or release notes (per memory `docs-audit-removed-but-referenced.md`). |
 
 ## Contribution Workflow
 
