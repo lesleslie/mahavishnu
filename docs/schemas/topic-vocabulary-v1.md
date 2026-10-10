@@ -197,6 +197,18 @@ contribution workflow below.
 | `deployability-discipline` | Deployability discipline (`.claude/decisions/wire-up-contract.md`) — every plan/feature delivery answers the wiring question before "done"; `audit_orphans.py` must be clean; integration-contract block on every plan phase. |
 | `sdd-bundling-defensive-pattern` | SDD (Spec-Driven Development) bundling defensive pattern — guard against code subagents + dirty working tree producing drift-bundled commits; uses `git reset --soft BASE` + targeted add (per memory `drift-bundling-recovery.md`). |
 | `cli-deprecation-drift` | CLI deprecation drift — historical CLI flags/commands/subcommands that were removed but still referenced in docs, tests, settings, or release notes (per memory `docs-audit-removed-but-referenced.md`). |
+| `bodai-cli-audit` | Bodai CLI surface audit — Core 7 repos' CLI inventory + per-repo MD summaries + cross-checks (per `docs/audit-inventory/` and the Bodai CLI audit Phase 0/1 plan). |
+| `gdpr-posture` | GDPR data-protection posture — lawful basis, data subject rights, retention, breach notification, third-party processors (per `docs/legal/gdpr-posture.md`). |
+| `health-aggregator` | Health aggregator — component-health + ecosystem status rollup; the `mahavishnu get_monitoring_dashboard` and `akosha get_system_metrics` convergence. |
+| `math-spec-review` | Math spec review — review of tier-1 math initiatives (hyperbolic embeddings, optimal transport, multi-metric drift, change-point detection) per `docs/audits/2026-09-10-math-spec-review.md`. |
+| `math-spec-verification` | Math spec verification — companion report to `math-spec-review` per `docs/audits/2026-09-10-math-spec-verification.md`. |
+| `mathematical-paradigms-orchestration` | Mathematical paradigms orchestration — the tier-1 math initiative umbrella (hyperbolic embeddings, optimal transport, multi-metric drift, change-point detection) per `docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`. |
+| `mcp-launcher-standardization` | MCP launcher standardization — consolidation of `scripts/launch_mcp.py` and per-server launchers into the OneiricMCPConfig + per-server `mcp_server_settings.py` convention (per `docs/plans/2026-09-26-mcp-launcher-standardization.md`). |
+| `oneiric-runtime-config-registry` | Oneiric runtime config registry — the adapter-runtime-observability ↔ OneiricMCPConfig bridge that exposes live runtime config to MCP consumers (per `docs/plans/2026-09-26-oneiric-runtime-config-registry.md`). |
+| `plan-index-dhara` | Dhara plan-index subsystem — file/feature cross-references within Dhara's plan store (legacy Dhara; superseded by Bodai `docs/plans/` + `docs/feature-tracking/`). |
+| `pool-backend-pi` | Pi pool backend — the `mahavishnu.pools.pi_pool` adapter (Pi coding-agent subprocess bridge; `PiPool` config schema per `docs/plans/.archive/2026-09-07-pi-pool-backend.md`). |
+| `skill-agent-distribution-via-mcp` | Skill/agent distribution via MCP — using the MCP registrar as the canonical distribution channel for skills and agents (post-A2A review per `docs/plans/.archive/2026-09-09-bodai-skill-agent-distribution.md`). |
+| `terminal-adapter-goose` | Goose terminal adapter — Block's `goose` HTTP backend (the D3 terminal adapter; port 8694 per `docs/CLAUDE.md` portmap). |
 
 ## Contribution Workflow
 
