@@ -7,9 +7,13 @@ from datetime import UTC, datetime
 import logging
 from pathlib import Path
 import subprocess
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.code_index.models import CodeGraphEdge, CodeGraphNode
 from mahavishnu.core.code_index.signature_redaction import redact_signature
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +142,7 @@ def parse_file(
 
         symbol_id = f"{repo_path}|||{file_path}|||{node.node_type}|||{node.name}"
         signature, complexity, start_line, end_line = _extract_node_metadata(node)
-        source = _resolve_node_source(
-            node.node_type, start_line, end_line, file_lines
-        )
+        source = _resolve_node_source(node.node_type, start_line, end_line, file_lines)
 
         graph_node = CodeGraphNode(
             symbol_id=symbol_id,
