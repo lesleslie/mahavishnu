@@ -374,9 +374,6 @@ settings/registry_metadata.local.yaml
 *.backup
 *.backup.*
 *.bak
-# `.bak.` infix (timestamped `.bak.YYYYMMDDTHHMMSSZ` backups) — see comment
-# in `crackerjack/templates/GITIGNORE_BODAI.md` for why `*.bak` is not enough.
-*.bak.*
 *.tmpl
 # XDG mistake dirs (env var expansion failed; literal names)
 # Note: both `{` and `}` are escaped (`{` -> `[{]`, `}` -> `[}]`)

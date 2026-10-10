@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-10-09
+
+### Added
+
+- Add mcp__mahavishnu__audit_health tool + audit_health CLI (Phase 2)
+- pool-bootstrap: MCP tool for spawning pools + SessionStart bootstrap
+
+### Changed
+
+- mahavishnu: Pre-existing test fixes (4 issues)
+
+### Fixed
+
+- mahavishnu: Adopt mcp-common HealthAggregator, wire 503 on /health, add health e2e test (Phase 1.1)
+- mahavishnu: Agno init, sse→streamable-http, compat-ping removal (launchd mcp startup)
+- mahavishnu: CLI starts from any CWD (defer oneiric via PEP 562 + stdlib fallback)
+- mahavishnu: Close coredis async generator in bridge publish
+- mahavishnu: Ignore *.bak.* (timestamped backups slip past *.bak)
+- mahavishnu: Suppress pre-existing ty errors in events/, drop redundant creosote exclusion
+- tests: Rename Dhara-typed fixtures in test_pools.py to MCP
+- tier2-cj: Replace silent pass in bodai_hook_bridge.py; fix broken link in BODAI_REPO_REGISTRY.md
+
+### Documentation
+
+- plans: Add bodai-mcp-search-infrastructure-fix plan
+- plans: Add mcp-health-check-enrichment followup plan (Phase 10 of bodai-search-infrastructure-fix)
+- plans: Apply 5 BLOCKERs + 4 MAJORs from refuter review to health-enrichment plan
+- plans: Fourth revision + activate bodai-search-infrastructure-fix
+- plans: Mark bodai-search-infrastructure-fix + mcp-health-check-enrichment as shipped
+- plans: Promote mcp-health-check-enrichment to active (2-agent review complete)
+- plans: Revise bodai-search-infrastructure-fix after 4-agent review
+- plans: Third revision of bodai-search-infrastructure-fix
+
+### Build
+
+- mahavishnu: Pin rustup stable + sync deps for turbovec build
+
 ## [0.33.2] - 2026-10-04
 
 ### Added
