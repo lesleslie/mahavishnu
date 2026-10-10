@@ -128,19 +128,24 @@ class TestCodeIntelTools:
     """The 5 code-intel tools (index_code_graph, get_function_context, etc.) all use server.app."""
 
     def test_index_code_graph_without_app(self):
-        """Without an app on the server, the tool returns a known error.
-
-        Note: the source does ``from ..session_buddy.integration import SessionBuddyManager``
-        before checking ``getattr(server, 'app', None)``. In environments where that
-        import fails (e.g. test env), the tool returns the catch-all
-        ``{"status": "error", "error": "Failed to ...: <import error>"}`` shape. We
-        only assert the documented contract: status='error'.
+        """Without an app on the server, ``index_code_graph`` must NOT
+        return the legacy ``"App instance not available"`` error — that
+        path was removed in 2026-10-10. The tool now delegates to
+        ``mahavishnu.core.code_index.indexer.index_repo`` directly via
+        ``asyncio.to_thread``. The success/failure of the indexing is
+        decided by ``index_repo`` itself; the tool's only contract is
+        that it does not error out on the missing ``.app`` attribute.
         """
         stub = _StubMCP(app=None)
         register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
         tool = stub.tools["index_code_graph"]
         result = _run(tool(user_id="test-user", project_path="/tmp/repo"))
-        assert result["status"] == "error"
+        # The legacy guard string must not appear in the result. Any
+        # other shape (success with a work item, or a real error from
+        # the indexer) is acceptable.
+        assert "App instance not available" not in str(result), (
+            f"Legacy 'App instance not available' guard must be removed; got {result!r}"
+        )
 
     def test_get_function_context_without_app(self):
         stub = _StubMCP(app=None)

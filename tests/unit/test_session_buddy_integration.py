@@ -203,7 +203,11 @@ async def test_integrate_code_graph_success_extracts_nodes(
     assert result["functions_extracted"] == 1
     assert result["classes_extracted"] == 1
     assert result["imports_extracted"] == 1
-    assert result["code_context_sent"] is True
+    # The legacy ``_send_code_context_to_session_buddy`` stub was removed
+    # in 2026-10-10 (the real cross-repo push is in
+    # ``mahavishnu.core.code_index.indexer``). The field is kept on the
+    # response for backward compatibility and is now always ``False``.
+    assert result["code_context_sent"] is False
     analysis = result["analysis_result"]
     assert analysis["files_indexed"] == 2
 
@@ -397,7 +401,11 @@ async def test_index_documentation_success(
 
     assert result["status"] == "success"
     assert result["documentation_items"] == 2
-    assert result["indexed"] is True
+    # The legacy ``_index_documentation_in_session_buddy`` stub was removed
+    # in 2026-10-10 (the real cross-repo push is in
+    # ``mahavishnu.core.code_index.indexer``). The field is kept on the
+    # response for backward compatibility and is now always ``False``.
+    assert result["indexed"] is False
 
 
 # Error path is covered by the parametrized test_analyzer_methods_return_error_dict_on_failure.

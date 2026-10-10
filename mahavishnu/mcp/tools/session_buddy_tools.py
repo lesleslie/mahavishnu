@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
+import asyncio
 import uuid
 import warnings
 
@@ -61,21 +62,30 @@ def register_session_buddy_tools(
     async def index_code_graph(
         project_path: str, include_docs: bool = True, user_id: str | None = None
     ) -> dict[str, Any]:
-        """Index codebase structure for better context in Session Buddy."""
+        """Index codebase structure for better context in Session Buddy.
+
+        Delegates to ``mahavishnu.core.code_index.indexer.index_repo``,
+        which is the real cross-repo push path — it parses the repo,
+        upserts the code graph to Session-Buddy via
+        ``store_code_graph_from_mahavishnu``, and falls back to a local
+        filesystem queue if Session-Buddy is unavailable.
+
+        ``include_docs`` is accepted for backward compatibility with the
+        deprecation shim contract but the indexer always includes
+        documentation, so it is currently ignored.
+        """
         _warn_code_intel_deprecation("index_code_graph", "code_index.index_repo")
         try:
-            from ...session_buddy.integration import SessionBuddyManager
+            from ...core.code_index.indexer import index_repo as _index_repo
 
-            # Assuming we have access to the main app through the server
-            # In a real implementation, this would be properly injected
-            app = getattr(server, "app", None)  # This would need to be set up properly
-            if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
-
-            session_manager = SessionBuddyManager(app)
-            result = await session_manager.process_repository_for_session_buddy(project_path)
-
-            return {"status": "success", "result": result}
+            # ``index_repo`` is sync (it acquires a RepoIndexLock, reads git,
+            # parses files, pushes to Session-Buddy via httpx). Run it in a
+            # worker thread so the MCP event loop is not blocked.
+            work_item = await asyncio.to_thread(_index_repo, project_path, "manual")
+            return {
+                "status": "success",
+                "result": work_item.model_dump(mode="json"),
+            }
         except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
             return {"status": "error", "error": f"Failed to index code graph: {e}"}
 

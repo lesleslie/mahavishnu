@@ -3539,7 +3539,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.33.2"
+version = "0.34.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3589,7 +3589,6 @@ ai = [
 ]
 automation = [
     { name = "mss" },
-    { name = "pillow" },
     { name = "pyautogui" },
 ]
 automation-vision = [
@@ -3721,7 +3720,6 @@ requires-dist = [
 ai = [{ name = "pydantic-ai-slim", extras = ["mcp", "openai", "anthropic", "google", "groq"], specifier = ">=2.54.0" }]
 automation = [
     { name = "mss", specifier = ">=10.2.0" },
-    { name = "pillow", specifier = ">=12.3.0" },
     { name = "pyautogui", specifier = ">=0.9.54" },
 ]
 automation-vision = [

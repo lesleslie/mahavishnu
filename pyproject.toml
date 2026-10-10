@@ -207,11 +207,12 @@ hatchet = [
 # Desktop automation
 # Note: pyatomac removed — fails to build on newer macOS SDKs (missing conversion.h).
 # pyautogui provides cross-platform mouse/keyboard/screenshot automation.
-# Note: dep name is lowercase ``pillow`` (PEP 503 normalized) so creosote's
-# case-sensitive dist-info lookup matches the installed package.
+# Note: ``pillow`` removed 2026-10-10 — creosote flagged it as an unused
+# dependency in the bloated venv, and a project-wide grep confirmed zero
+# ``from PIL`` / ``import PIL`` call sites. The pyautogui + mss combo handles
+# the screenshot work; remove pillow if you don't need direct PIL access.
 automation = [
     "pyautogui>=0.9.54",
-    "pillow>=12.3.0",
     "mss>=10.2.0",
 ]
 

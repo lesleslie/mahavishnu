@@ -82,7 +82,7 @@ class RBACManager:
         # "all repos") is preserved as the only blanket grant.
         admin_role = Role(
             name="admin",
-            permissions=[p for p in Permission] + ["read", "write", "delete", "admin"],
+            permissions=list(Permission) + ["read", "write", "delete", "admin"],
             allowed_repos=None,  # All repos
         )
         self.roles["admin"] = admin_role

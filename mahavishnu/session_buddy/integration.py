@@ -133,13 +133,10 @@ class SessionBuddyIntegration:
                             }
                         )
 
-            # Send code context to Session Buddy
-            await self._send_code_context_to_session_buddy(repo_path, code_context)
-
             return {
                 "status": "success",
                 "analysis_result": analysis_result,
-                "code_context_sent": True,
+                "code_context_sent": False,  # dead stub removed; push is in core.code_index.indexer
                 "functions_extracted": len(code_context["functions"]),
                 "classes_extracted": len(code_context["classes"]),
                 "imports_extracted": len(code_context["imports"]),
@@ -147,39 +144,6 @@ class SessionBuddyIntegration:
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error integrating code graph: {e}")
             return {"status": "error", "error": str(e)}
-
-    async def _send_code_context_to_session_buddy(
-        self, repo_path: str, code_context: dict[str, Any]
-    ):
-        """Send code context to Session Buddy via MCP or direct API."""
-        try:
-            # In a real implementation, this would send the code context to Session Buddy
-            # via MCP protocol or direct API call
-            self.logger.info(f"Sending code context for {repo_path} to Session Buddy")
-
-            # For now, we'll simulate sending the context
-            # In a real implementation, this would be an actual call to Session Buddy
-            # Codebase uses from_project/to_project/content_message; the bundled
-            # ``messaging.types.ProjectMessage`` (Pydantic BaseModel) requires
-            # ``project_id``/``message`` instead, and the fallback accepts **kwargs: Any.
-            session_buddy_message = ProjectMessage(
-                id=f"msg_{uuid4().hex}",
-                from_project=repo_path,
-                to_project=repo_path,
-                timestamp=datetime.now(UTC).isoformat(),
-                subject="Code context update",
-                priority=Priority.NORMAL,
-                status=MessageStatus.UNREAD,  # ty: ignore[unresolved-attribute]
-                content_type=MessageType.NOTIFICATION,  # ty: ignore[unresolved-attribute]
-                content_message=json.dumps(code_context, default=str),
-            )
-
-            # Log the message that would be sent
-            self.logger.info(
-                f"Session Buddy message prepared: {getattr(session_buddy_message, 'project_id', '<unknown>')}"
-            )
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
-            self.logger.error(f"Error sending code context to Session Buddy: {e}")
 
     async def get_related_code(self, repo_path: str, file_path: str) -> dict[str, Any]:
         """Get related code based on imports/calls using code graph."""
@@ -240,15 +204,11 @@ class SessionBuddyIntegration:
                             }
                         )
 
-            # In a real implementation, this would index the documentation
-            # in Session Buddy's knowledge base
-            await self._index_documentation_in_session_buddy(repo_path, documentation)
-
             return {
                 "status": "success",
                 "repo_path": repo_path,
                 "documentation_items": len(documentation),
-                "indexed": True,
+                "indexed": False,  # dead stub removed; push is in core.code_index.indexer
             }
         except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             self.logger.error(f"Error indexing documentation: {e}")
@@ -281,36 +241,6 @@ class SessionBuddyIntegration:
             return None
         except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
             return None
-
-    async def _index_documentation_in_session_buddy(
-        self, repo_path: str, documentation: list[dict[str, Any]]
-    ):
-        """Index documentation in Session Buddy's knowledge base."""
-        try:
-            # In a real implementation, this would send documentation to Session Buddy
-            # for indexing in its knowledge base
-            self.logger.info(
-                f"Indexing {len(documentation)} documentation items for {repo_path} in Session Buddy"
-            )
-
-            # Prepare a message for Session Buddy
-            _session_buddy_message = ProjectMessage(
-                id=f"msg_{uuid4().hex}",
-                from_project=repo_path,
-                to_project=repo_path,
-                timestamp=datetime.now(UTC).isoformat(),
-                subject="Documentation index",
-                priority=Priority.NORMAL,
-                status=MessageStatus.UNREAD,  # ty: ignore[unresolved-attribute]
-                content_type=MessageType.NOTIFICATION,  # ty: ignore[unresolved-attribute]
-                content_message=json.dumps(documentation, default=str),
-            )
-
-            # Log the message that would be sent
-            self.logger.info(f"Documentation index message prepared for {repo_path}")
-
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
-            self.logger.error(f"Error indexing documentation in Session Buddy: {e}")
 
     async def search_documentation(self, query: str) -> dict[str, Any]:
         """Search through indexed documentation."""
