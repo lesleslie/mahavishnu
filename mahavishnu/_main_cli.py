@@ -83,6 +83,14 @@ from .worktree_cli import worktree_app
 # from .cli.help_cli import help_group
 
 app = MahavishnuCLI(name="mahavishnu")
+# click's CliRunner reads ``app.name`` and ``app.main`` directly. typer
+# (via the OneiricCLIBase subclass) exposes the program name as
+# ``app.info.name`` and dispatches via ``__call__``. Bridge those so
+# the click test runner can dispatch the typer app — without this,
+# every test that does ``runner.invoke(cli_module.app, ...)`` fails
+# with ``AttributeError: 'MahavishnuCLI' object has no attribute 'name'``.
+app.name = app.info.name
+app.main = app.__call__
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
 
@@ -1728,6 +1736,33 @@ app.add_typer(acp_app, name="acp")
 app.add_typer(executions_app, name="executions")
 
 
+# Worker type allowlist for `pool spawn`. The legacy
+# terminal-claude / terminal-qwen / terminal-codex / container-executor
+# names were retired on 2026-09-24 (see
+# docs/decisions/2026-09-24-legacy-worker-deprecation.md). The
+# post-deprecation set is shepherd (default, fail-closed OS-level
+# syscall jail) and gateway-openclaw (HTTP gateway worker, requires
+# OPENCLAW_GATEWAY_URL env var). The CLI pre-validation gates on
+# this allowlist; the runtime side enforces the same contract via
+# WorkerManager.WORKER_SUPPORTED_TYPES (frozenset({"shepherd"})).
+# tests/unit/cli/test_spawn_allowlist.py pins this list — see
+# docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md for
+# the drift that motivated it. Non-isolated workloads route via
+# `mahavishnu/pools/` (pool_route_execute, dispatch_to_pool) instead.
+SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset({"shepherd", "gateway-openclaw"})
+
+SPAWN_WORKER_TYPE_ERROR_HINT: str = (
+    "Supported worker types: shepherd, gateway-openclaw. "
+    "Worker types `terminal-claude`, `terminal-codex`, `terminal-qwen`, "
+    "and `container-executor` were retired on 2026-09-24 — see "
+    "docs/decisions/2026-09-24-legacy-worker-deprecation.md and "
+    "docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md. "
+    "For non-isolated workloads use the `mahavishnu/pools/` "
+    "orchestration surface (`pool_route_execute`, `dispatch_to_pool`) "
+    "instead."
+)
+
+
 @pool_app.command("spawn")
 def pool_spawn(
     pool_type: str = typer.Option(
@@ -1740,17 +1775,29 @@ def pool_spawn(
     min_workers: int = typer.Option(1, "--min", "-m", min=1, max=10, help="Minimum workers"),
     max_workers: int = typer.Option(10, "--max", "-M", min=1, max=100, help="Maximum workers"),
     worker_type: str = typer.Option(
-        "terminal-claude",
+        "shepherd",
         "--worker-type",
         "-w",
         help=(
-            "Worker type "
-            "(terminal-qwen [legacy], terminal-claude, terminal-codex, "
-            "gateway-openclaw, container-executor)"
+            "Worker type (shepherd [default], gateway-openclaw). "
+            "terminal-claude / terminal-qwen / terminal-codex / container-executor "
+            "were retired on 2026-09-24 — see "
+            "docs/decisions/2026-09-24-legacy-worker-deprecation.md"
         ),
     ),
 ) -> None:
     """Spawn a new worker pool.
+
+    Architecture: the canonical place for pool state is the live MCP
+    server (PoolManager persists in the server's process). The CLI
+    from a fresh shell dispatches via JSON-RPC 2.0 over POST /mcp
+    to the server's ``pool_spawn`` tool — the same wire shape the
+    SessionStart bootstrap hook uses for ``pool_bootstrap``. If the
+    server is unreachable (e.g. running standalone with no MCP
+    process), the CLI falls back to a transient in-process
+    MahavishnuApp spawn with a clear warning. The transient pool
+    dies when the CLI exits, so it is NOT visible to future
+    SessionStart bootstraps.
 
     Example:
         $ mahavishnu pool spawn --type mahavishnu --name local --min 2 --max 5
@@ -1758,106 +1805,244 @@ def pool_spawn(
         $ mahavishnu pool spawn -t mahavishnu -n comms --worker-type gateway-openclaw
     """
 
-    async def _spawn():
-        from .pools import PoolConfig, PoolManager
-        from .terminal.manager import TerminalManager
+    # Local pre-validation (fail fast before network round-trip).
+    # Mirrors the contract the MCP server enforces, so the user
+    # gets a quick error message on bad input regardless of which
+    # path runs.
+    from mahavishnu.pools._registry import canonicalize_pool_type, list_pool_types
 
-        maha_app = MahavishnuApp()
-
-        # Check if pools are enabled
-        if not getattr(maha_app.config, "pools_enabled", True):
-            typer.echo("ERROR: Pool management is disabled")
-            raise typer.Exit(code=1)
-
-        # Pre-spawn validation. Fail-fast on the cheapest checks first so
-        # operators get actionable error messages before we spin up any
-        # infrastructure (terminal manager, message bus, pool manager).
-        # The order matters: cheap string comparisons before any I/O.
-        # See mahavishnu/pools/manager.py for the runtime enforcement
-        # in PoolConfig and PoolManager.spawn_pool().
-        # D0 refactor: whitelist is registry-driven. The CLI accepts both the canonical
-        # hyphen form ("session-buddy") and the legacy underscore form ("session_buddy")
-        # for backward compatibility; the registry uses canonical hyphens.
-        from mahavishnu.pools._registry import canonicalize_pool_type, list_pool_types
-
-        canonical_pool_type = canonicalize_pool_type(pool_type)
-        if canonical_pool_type not in list_pool_types():
-            typer.echo(f"ERROR: Unsupported pool type: {pool_type!r}", err=True)
-            typer.echo(f"Supported types: {', '.join(list_pool_types())}", err=True)
-            raise typer.Exit(code=1)
-        # Don't reassign pool_type (it's a closure variable; rebinding would
-        # make it locally unbound for the earlier canonicalize_pool_type read).
-        # Use the canonicalized form below.
-        if min_workers < 1 or max_workers > 100:
-            typer.echo("ERROR: Worker count must be 1 <= min <= max <= 100", err=True)
-            raise typer.Exit(code=1)
-        if min_workers > max_workers:
-            typer.echo(
-                f"ERROR: min_workers ({min_workers}) exceeds max_workers ({max_workers})",
-                err=True,
-            )
-            raise typer.Exit(code=1)
-        if not name or not isinstance(name, str):
-            typer.echo("ERROR: Pool name must be a non-empty string", err=True)
-            raise typer.Exit(code=1)
-        if worker_type not in {
-            "terminal-claude",
-            "terminal-codex",
-            "terminal-qwen",
-            "gateway-openclaw",
-            "container-executor",
-        }:
-            typer.echo(f"ERROR: Unknown worker type: {worker_type!r}", err=True)
-            raise typer.Exit(code=1)
-        # The pool configuration is well-formed; we can proceed to the
-        # expensive setup steps below. Logging context is set up by the
-        # spawn CLI command itself before reaching this point.
-        # The terminal manager and message bus live for the lifetime of
-        # the spawn call. The pool manager outlives this function and is
-        # stored on the MahavishnuApp instance for later pool commands.
-        # The crow MCP client is constructed via the helper so that the
-        # default (crow_enabled=false) falls through to the mock adapter.
-        # The default config in settings/mahavishnu.yaml sets crow_enabled
-        # to false to avoid coupling bootstrap to the bundled crow server.
-        # Operators opt in by setting crow_enabled: true in local.yaml.
-        # Create terminal manager
-        terminal_mgr = await TerminalManager.create(
-            maha_app.config,
-            mcp_client=_resolve_crow_mcp_client(maha_app.config),
+    canonical_pool_type = canonicalize_pool_type(pool_type)
+    if canonical_pool_type not in list_pool_types():
+        typer.echo(f"ERROR: Unsupported pool type: {pool_type!r}", err=True)
+        typer.echo(f"Supported types: {', '.join(list_pool_types())}", err=True)
+        raise typer.Exit(code=1)
+    if min_workers < 1 or max_workers > 100:
+        typer.echo("ERROR: Worker count must be 1 <= min <= max <= 100", err=True)
+        raise typer.Exit(code=1)
+    if min_workers > max_workers:
+        typer.echo(
+            f"ERROR: min_workers ({min_workers}) exceeds max_workers ({max_workers})",
+            err=True,
         )
+        raise typer.Exit(code=1)
+    if not name or not isinstance(name, str):
+        typer.echo("ERROR: Pool name must be a non-empty string", err=True)
+        raise typer.Exit(code=1)
+    if worker_type not in SPAWN_WORKER_TYPE_ALLOWLIST:
+        typer.echo(f"ERROR: Unknown worker type: {worker_type!r}", err=True)
+        typer.echo(SPAWN_WORKER_TYPE_ERROR_HINT, err=True)
+        raise typer.Exit(code=1)
 
-        # Create pool manager
-        from .mcp.protocols.message_bus import MessageBus
-
-        message_bus = MessageBus()
-        pool_mgr = PoolManager(
-            terminal_manager=terminal_mgr,
-            session_buddy_client=maha_app.session_buddy,
-            message_bus=message_bus,
-        )
-
-        # Create pool config
-        config = PoolConfig(
+    # Try to dispatch to the live MCP server. Lazy-import httpx so
+    # tests can monkeypatch ``httpx.Client`` before the function
+    # body runs.
+    try:
+        result = _dispatch_pool_spawn_via_mcp(
             name=name,
-            pool_type=canonical_pool_type,
+            canonical_pool_type=canonical_pool_type,
             min_workers=min_workers,
             max_workers=max_workers,
             worker_type=worker_type,
         )
+    except _MCPUnreachableError as exc:
+        # Fall back to local transient spawn so operators can still
+        # bring up a pool without the MCP server. The fallback
+        # emits a clear warning so the operator knows the new pool
+        # is NOT visible to future SessionStart bootstraps.
+        typer.echo(
+            f"⚠️  MCP server unreachable at {exc.mcp_url} — "
+            "falling back to local transient spawn. The new pool "
+            "will NOT be visible to future SessionStart bootstraps.",
+            err=True,
+        )
+        asyncio.run(
+            _spawn_transient(
+                name=name,
+                canonical_pool_type=canonical_pool_type,
+                min_workers=min_workers,
+                max_workers=max_workers,
+                worker_type=worker_type,
+            )
+        )
+        return
+    except Exception as exc:  # noqa: BLE001 - boundary: surface the MCP error to the operator
+        typer.echo(f"❌ MCP pool_spawn failed: {exc}", err=True)
+        raise typer.Exit(code=1)
 
-        # Spawn pool
-        try:
-            pool_id = await pool_mgr.spawn_pool(canonical_pool_type, config)
-            typer.echo(f"✅ Spawned {canonical_pool_type} pool: {pool_id}")
-            typer.echo(f"   Name: {name}")
-            typer.echo(f"   Workers: {min_workers}-{max_workers}")
-            typer.echo(f"   Worker type: {worker_type}")
+    # Render the MCP response to stdout.
+    status = result.get("status", "unknown")
+    pool_id = result.get("pool_id", "?")
+    warning = result.get("warning")
+    typer.echo(f"✅ Spawned {canonical_pool_type} pool: {pool_id}")
+    typer.echo(f"   Name: {name}")
+    typer.echo(f"   Workers: {min_workers}-{max_workers}")
+    typer.echo(f"   Worker type: {worker_type}")
+    if status == "warning" and warning:
+        typer.echo(f"   ⚠️  {warning}")
+    if status == "failed":
+        typer.echo(f"   ❌ {result.get('error', 'unknown error')}", err=True)
+        raise typer.Exit(code=1)
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
-            typer.echo(f"❌ Failed to spawn pool: {e}", err=True)
-            raise typer.Exit(code=1)
 
-    asyncio.run(_spawn())
+class _MCPUnreachableError(Exception):
+    """Raised when the live MCP server cannot be reached for a
+    pool_spawn dispatch. The CLI catches this and falls back to a
+    transient in-process spawn. Carries the URL we tried so the
+    warning message is actionable.
+    """
+
+    def __init__(self, mcp_url: str) -> None:
+        super().__init__(f"MCP server unreachable at {mcp_url}")
+        self.mcp_url = mcp_url
+
+
+def _dispatch_pool_spawn_via_mcp(
+    *,
+    name: str,
+    canonical_pool_type: str,
+    min_workers: int,
+    max_workers: int,
+    worker_type: str,
+) -> dict[str, Any]:
+    """Dispatch pool_spawn to the live MCP server over JSON-RPC 2.0.
+
+    Lazily imports ``httpx`` so the test suite can monkeypatch
+    ``httpx.Client`` before the function body runs. Raises
+    :class:`_MCPUnreachableError` when the server cannot be
+    reached (so the CLI can fall back) and re-raises other errors
+    verbatim for the CLI to surface.
+    """
+    import json
+    import os
+
+    import httpx
+
+    mcp_url = os.environ.get("MAHAVISHNU_MCP_URL", "http://localhost:8680/mcp")
+    body = {
+        "jsonrpc": "2.0",
+        "id": "cli-pool-spawn",
+        "method": "tools/call",
+        "params": {
+            "name": "pool_spawn",
+            "arguments": {
+                "name": name,
+                "pool_type": canonical_pool_type,
+                "min_workers": min_workers,
+                "max_workers": max_workers,
+                "worker_type": worker_type,
+            },
+        },
+    }
+    try:
+        with httpx.Client() as client:
+            response = client.post(
+                mcp_url,
+                json=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                },
+                timeout=10.0,
+            )
+            response.raise_for_status()
+            # The MCP server returns SSE-shaped responses even for
+            # tools/call. Parse the ``data:`` line if present;
+            # otherwise treat the whole body as JSON.
+            text = response.text
+            for line in text.splitlines():
+                if line.startswith("data:"):
+                    payload = line[len("data:") :].strip()
+                    break
+            else:
+                payload = text.strip()
+            data = json.loads(payload)
+    except (
+        httpx.ConnectError,
+        httpx.TimeoutException,
+        httpx.RemoteProtocolError,
+        ConnectionError,
+        OSError,
+    ) as exc:
+        raise _MCPUnreachableError(mcp_url) from exc
+
+    if "error" in data:
+        err = data["error"]
+        raise RuntimeError(f"{err.get('code', '?')}: {err.get('message', err)}")
+
+    result = data.get("result", {})
+    # FastMCP returns the tool payload under ``structuredContent``;
+    # fall back to ``content[0].text`` for older servers.
+    payload: dict[str, Any] = {}
+    if isinstance(result, dict):
+        if "structuredContent" in result and isinstance(result["structuredContent"], dict):
+            payload = result["structuredContent"]
+        else:
+            content = result.get("content")
+            if isinstance(content, list) and content:
+                first = content[0]
+                if isinstance(first, dict) and "text" in first:
+                    try:
+                        payload = json.loads(first["text"])
+                    except json.JSONDecodeError, TypeError:
+                        payload = {}
+    return payload
+
+
+async def _spawn_transient(
+    *,
+    name: str,
+    canonical_pool_type: str,
+    min_workers: int,
+    max_workers: int,
+    worker_type: str,
+) -> None:
+    """Legacy fallback: build a transient MahavishnuApp and spawn
+    locally. Used only when the live MCP server is unreachable
+    (e.g. operator ran the CLI on a host with no launchd plist
+    running the server). The transient pool dies when the CLI
+    exits — operators relying on SessionStart bootstrap must
+    bring the MCP server up first.
+    """
+    from .pools import PoolConfig, PoolManager
+    from .terminal.manager import TerminalManager
+
+    maha_app = MahavishnuApp()
+
+    if not getattr(maha_app.config, "pools_enabled", True):
+        typer.echo("ERROR: Pool management is disabled", err=True)
+        raise typer.Exit(code=1)
+
+    terminal_mgr = await TerminalManager.create(
+        maha_app.config,
+        mcp_client=_resolve_crow_mcp_client(maha_app.config),
+    )
+
+    from .mcp.protocols.message_bus import MessageBus
+
+    message_bus = MessageBus()
+    pool_mgr = PoolManager(
+        terminal_manager=terminal_mgr,
+        session_buddy_client=maha_app.session_buddy,
+        message_bus=message_bus,
+    )
+
+    config = PoolConfig(
+        name=name,
+        pool_type=canonical_pool_type,
+        min_workers=min_workers,
+        max_workers=max_workers,
+        worker_type=worker_type,
+    )
+
+    try:
+        pool_id = await pool_mgr.spawn_pool(canonical_pool_type, config)
+        typer.echo(f"✅ Spawned (transient) {canonical_pool_type} pool: {pool_id}")
+        typer.echo(f"   Name: {name}")
+        typer.echo(f"   Workers: {min_workers}-{max_workers}")
+        typer.echo(f"   Worker type: {worker_type}")
+    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors
+        typer.echo(f"❌ Failed to spawn pool: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 @pool_app.command("list")

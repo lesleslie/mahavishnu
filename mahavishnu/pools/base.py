@@ -16,7 +16,13 @@ class PoolConfig:
         pool_type: Type identifier ("mahavishnu", "session-buddy", "runpod")
         min_workers: Minimum number of workers (default: 1)
         max_workers: Maximum number of workers (default: 10)
-        worker_type: Type of workers to spawn (default: "terminal-claude")
+        worker_type: Type of workers to spawn (default: "shepherd")
+            — the post-2026-09-24 default. See
+            ``docs/decisions/2026-09-24-legacy-worker-deprecation.md`` and
+            ``docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md``.
+            ``terminal-claude`` / ``terminal-qwen`` / ``terminal-codex`` /
+            ``container-executor`` are retired; ``gateway-openclaw`` is the
+            other supported substrate (requires ``OPENCLAW_GATEWAY_URL``).
         auto_scale: Enable automatic scaling (default: False)
         memory_enabled: Enable memory aggregation (default: True)
     """
@@ -25,7 +31,7 @@ class PoolConfig:
     pool_type: str
     min_workers: int = 1
     max_workers: int = 10
-    worker_type: str = "terminal-claude"
+    worker_type: str = "shepherd"
     auto_scale: bool = False
     memory_enabled: bool = True
 

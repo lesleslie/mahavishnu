@@ -332,6 +332,15 @@ class PoolManager:
             "spawn_type": "mahavishnu",
             "min_workers": 1,
             "max_workers": 3,
+            # Default worker substrate is shepherd (post-2026-09-24
+            # deprecation). Surfaced here so SessionStart bootstrap and
+            # any caller that builds a PoolConfig from these defaults
+            # lands on a substrate WorkerManager can actually execute
+            # (WorkerManager.WORKER_SUPPORTED_TYPES == {"shepherd"}).
+            # Operators who want gateway-openclaw override this via
+            # MAHAVISHNU__POOLS__WORKER_TYPE or pass worker_type= explicitly
+            # to pool_spawn.
+            "worker_type": "shepherd",
         }
         try:
             pools_cfg = get_settings().pools

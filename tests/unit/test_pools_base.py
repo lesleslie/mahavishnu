@@ -20,7 +20,10 @@ class TestPoolConfig:
         assert config.pool_type == "mahavishnu"
         assert config.min_workers == 1
         assert config.max_workers == 10
-        assert config.worker_type == "terminal-claude"
+        # Wave 7 (2026-10-09): default is shepherd post-2026-09-24
+        # worker deprecation. See
+        # docs/decisions/2026-09-24-legacy-worker-deprecation.md.
+        assert config.worker_type == "shepherd"
         assert config.auto_scale is False
         assert config.memory_enabled is True
 

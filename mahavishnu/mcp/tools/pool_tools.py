@@ -320,7 +320,7 @@ def register_pool_tools(
         pool_type: str = "mahavishnu",
         min_workers: int | None = None,
         max_workers: int | None = None,
-        worker_type: str = "terminal-claude",
+        worker_type: str = "shepherd",
     ) -> dict[str, Any]:
         """Spawn a new worker pool. Mirrors the CLI at ``_main_cli.py:1632-1756``.
 
@@ -520,6 +520,35 @@ def register_pool_tools(
         spawn_type = defaults["spawn_type"]
         min_workers = defaults["min_workers"]
         max_workers = defaults["max_workers"]
+        # Wave 7 (2026-10-09): worker_type is now surfaced in the
+        # auto-spawn defaults (see manager.py). Pass it through
+        # explicitly so the bootstrap doesn't depend on PoolConfig's
+        # default.
+        worker_type = defaults.get("worker_type", "shepherd")
+
+        # Wave 7 (2026-10-09) skip gate: a ``mahavishnu`` pool needs
+        # a terminal_manager (shepherd uses it for output streaming
+        # via the configured terminal adapter — typically tmux).
+        # If the manager is uninitialized (lite-mode / tmux-unavailable
+        # / dev environments), skip the spawn with a structured
+        # reason instead of letting ``spawn_pool`` raise a cryptic
+        # ``RuntimeError("terminal_manager is not available")`` and
+        # crash the SessionStart hook. session-buddy / runpod are
+        # substrate-fixed and do NOT need a terminal manager, so
+        # the gate is pool-type-aware.
+        if spawn_type == "mahavishnu":
+            terminal_manager = getattr(pool_manager, "terminal_manager", None)
+            if terminal_manager is None:
+                logger.info(
+                    "pool_bootstrap: terminal_manager unavailable, skipping spawn",
+                    extra={"spawn_type": spawn_type},
+                )
+                return {
+                    "status": "skipped",
+                    "reason": "terminal_manager_unavailable",
+                    "pools_active_before": pools_active_before,
+                    "pools_active_after": pools_active_before,
+                }
 
         # Same type-specific sizing as pool_spawn (Task 4)
         sizing_warning: str | None = None
@@ -543,6 +572,7 @@ def register_pool_tools(
                 pool_type=spawn_type,
                 min_workers=effective_min,
                 max_workers=effective_max,
+                worker_type=worker_type,
             )
             pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)  # type: ignore[union-attr]
         except Exception as exc:
