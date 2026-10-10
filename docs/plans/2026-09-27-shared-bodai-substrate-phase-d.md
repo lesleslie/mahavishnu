@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-09-27
 last_reviewed: 2026-09-27
-topic: shared-oneiric-substrate-phase-d
+topic: shared-oneiric-substrate
 title: "Phase D: Embedding Consolidation — Implementation Plan"
 
 ---
