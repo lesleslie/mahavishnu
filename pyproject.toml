@@ -22,7 +22,7 @@ dependencies = [
     # CLI
     "typer>=0.27.3",
     # Oneiric ecosystem
-    "oneiric>=0.27.0",
+    "oneiric>=0.28.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -81,7 +81,7 @@ dependencies = [
     # runpod-flash moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
-    "ty>=0.0.85",
+    "ty>=0.0.86",
     # Git operations
     "gitpython>=3.2.0",
     # Async SQLite
@@ -166,9 +166,9 @@ cache = [
 
 # Bodai ecosystem integrations
 ecosystem = [
-    "akosha>=0.22.1",
+    "akosha>=0.23.1",
     "crackerjack>=0.85.0",
-    "session-buddy>=0.32.0",
+    "session-buddy>=0.33.1",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).
@@ -179,7 +179,7 @@ treesitter = [
     "tree-sitter-go>=0.25.0",
 ]
 llm-providers = [
-    "openai>=3.26.1",
+    "openai>=3.28.0",
 ]
 # Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
 # inheritance is not transitive across Bodai repos, so each consumer must
@@ -201,7 +201,7 @@ compression = [
 
 # Optional: Hatchet workflow orchestration
 hatchet = [
-    "hatchet-sdk>=1.41.1,<2",
+    "hatchet-sdk>=1.42.1,<2",
 ]
 
 # Desktop automation
@@ -232,14 +232,14 @@ vector = [
 # Optional: Pydantic AI agent runtime (mahavishnu.adapters.ai.pydantic_ai_adapter).
 # Lazy-imported at runtime; install only when the pydantic_ai adapter is used.
 ai = [
-    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.54.0",
+    "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.55.0",
 ]
 
 # Optional: Serverless GPU execution via RunPod Flash
 # (mahavishnu.pools.runpod_pool). Lazy-imported; install only when the
 # RunPod pool is deployed.
 gpu = [
-    "runpod-flash>=1.20.0",
+    "runpod-flash>=1.20.1",
 ]
 
 # Phase 4 (Shepherd worker backend). shepherd-ai wraps the Shepherd OS-level
@@ -256,7 +256,7 @@ shepherd = [
 # extractor. The base content ingester (mahavishnu/ingesters/content_ingester.py)
 # lazy-imports pypdf/ebooklib; trafilatura powers the web_extract escalation path.
 content-ingest = [
-    "pypdf>=6.19.0",
+    "pypdf>=6.20.0",
     "ebooklib>=0.20",
     "trafilatura>=2.3.1",
 ]
@@ -694,3 +694,16 @@ src = { include = ["mahavishnu/**/*.py"] }
 # suppress a real error under crackerjack (stricter ty config). Treat
 # unused-ignore as informational only so directives work in both contexts.
 unused-ignore-comment = "ignore"
+
+# ---------------------------------------------------------------------------
+# Temporary override: crackerjack>=0.87.0 requires websockets>=17.1, but
+# prefect==3.8.8 (the latest available) pins websockets<17.0. There is no
+# newer prefect that relaxes the pin, so we override prefect's declared
+# websockets cap to satisfy crackerjack. Risk: prefect Cloud I/O may
+# silently break if websockets 17 removed an API prefect relied on.
+# Mitigation: run the prefect-adapter tests + a PrefectClient smoke test
+# after the override; revert if anything breaks.
+# TODO: remove once crackerjack loosens its pin OR prefect lifts its cap.
+# ---------------------------------------------------------------------------
+[tool.uv]
+override-dependencies = ["websockets>=17.1,<18.0"]
