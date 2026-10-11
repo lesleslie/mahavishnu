@@ -1,5 +1,5 @@
 ---
-status: active
+status: archived
 role: canonical
 date: 2026-07-21
 last_reviewed: 2026-07-21
@@ -10,7 +10,7 @@ topic: workflows
 
 ## Status
 
-Active
+Archived
 
 ## Context
 
@@ -22,4 +22,5 @@ Use this workflow to establish a fresh coverage baseline and fan out test work a
 
 ## Status history
 
+- 2026-10-11 — Archived as part of coverage-fanout lifecycle sweep; workflow moved to `.claude/workflows/.archive/`.
 - 2026-07-17 — Decision record added for the existing active workflow.

@@ -1,5 +1,5 @@
 ---
-status: active
+status: archived
 role: canonical
 date: 2026-07-21
 last_reviewed: 2026-07-21
@@ -22,5 +22,6 @@ Re-run this workflow (or its part-2 sibling) when mahavishnu overall coverage dr
 
 ## Status history
 
+- 2026-10-11 — Archived as part of coverage-fanout lifecycle sweep; workflow moved to `.claude/workflows/.archive/`.
 - 2026-06-12 — Created.
 - 2026-06-12 — Superseded by mahavishnu-coverage-fanout-wave-2026-06-12-part2.js (this workflow is now in `.archive/`).

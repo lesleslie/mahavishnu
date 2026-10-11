@@ -1,5 +1,5 @@
 ---
-status: active
+status: archived
 role: canonical
 date: 2026-07-21
 last_reviewed: 2026-07-21
@@ -22,5 +22,6 @@ Re-run this workflow when crackerjack total coverage drops below 70% or when a n
 
 ## Status history
 
+- 2026-10-11 — Archived as part of coverage-fanout lifecycle sweep; workflow moved to `.claude/workflows/.archive/`.
 - 2026-04-26 — Created.
 - 2026-04-30 — Superseded by crackerjack-coverage-fanout-wave5.js (this workflow is now in `.archive/`).

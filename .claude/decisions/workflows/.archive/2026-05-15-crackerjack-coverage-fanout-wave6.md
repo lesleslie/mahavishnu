@@ -1,5 +1,5 @@
 ---
-status: active
+status: archived
 role: canonical
 date: 2026-07-21
 last_reviewed: 2026-07-21
@@ -22,5 +22,6 @@ Re-run this workflow as the final-mile pass when crackerjack has a handful of lo
 
 ## Status history
 
+- 2026-10-11 — Archived as part of coverage-fanout lifecycle sweep; workflow moved to `.claude/workflows/.archive/`.
 - 2026-05-15 — Created.
 - 2026-05-22 — Superseded by crackerjack-cleanup-wave7.js (this workflow is now in `.archive/`).
