@@ -650,7 +650,11 @@ class TestWorkflowExecution:
         mock_flow_run.state = mock_state
 
         mock_prefect_client.create_flow_run = AsyncMock(return_value=mock_flow_run)
-        mock_prefect_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+        # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+        # for a client method. Patch the instance attribute to skip the poll.
+        mock_flow_run.state = mock_state
+        prefect_adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
         with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
             mock_get_client.return_value = MagicMock(
@@ -683,7 +687,11 @@ class TestWorkflowExecution:
         """Test execute auto-initializes adapter if not initialized."""
         mock_flow_run.state = mock_state
         mock_prefect_client.create_flow_run = AsyncMock(return_value=mock_flow_run)
-        mock_prefect_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+        # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+        # for a client method. Patch the instance attribute to skip the poll.
+        mock_flow_run.state = mock_state
+        prefect_adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
         with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
             mock_get_client.return_value = MagicMock(

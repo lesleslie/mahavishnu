@@ -59,7 +59,10 @@ def mock_prefect_client():
     client.api_url = "http://localhost:4200"
     client.read_health = AsyncMock(return_value=MagicMock(version="3.0.0"))
     client.create_flow_run = AsyncMock()
-    client.wait_for_flow_run = AsyncMock()
+    # NOTE: ``client.wait_for_flow_run`` is no longer called by the adapter —
+    # in Prefect 3.x, the function lives at ``prefect.flow_runs.wait_for_flow_run``
+    # and is reached via ``adapter._wait_for_flow_run`` (defaulting to the
+    # real import). Tests override that instance attribute instead.
     return client
 
 
@@ -412,7 +415,11 @@ class TestExecute:
         mock_flow_run.id = "test-flow-run-id"
 
         mock_prefect_client.create_flow_run = AsyncMock(return_value=mock_flow_run)
-        mock_prefect_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        mock_flow_run.state = mock_state
+        # Skip the real prefect.flow_runs.wait_for_flow_run (which would talk to a
+        # server); override the adapter's callable with an AsyncMock that returns
+        # the FlowRun-shaped mock.
+        adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -443,7 +450,11 @@ class TestExecute:
         mock_flow_run.id = "flow-run-123"
 
         mock_prefect_client.create_flow_run = AsyncMock(return_value=mock_flow_run)
-        mock_prefect_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        mock_flow_run.state = mock_state
+        # Skip the real prefect.flow_runs.wait_for_flow_run (which would talk to a
+        # server); override the adapter's callable with an AsyncMock that returns
+        # the FlowRun-shaped mock.
+        adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -477,7 +488,11 @@ class TestExecute:
         mock_flow_run.id = "flow-run-456"
 
         mock_prefect_client.create_flow_run = AsyncMock(return_value=mock_flow_run)
-        mock_prefect_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        mock_flow_run.state = mock_state
+        # Skip the real prefect.flow_runs.wait_for_flow_run (which would talk to a
+        # server); override the adapter's callable with an AsyncMock that returns
+        # the FlowRun-shaped mock.
+        adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)

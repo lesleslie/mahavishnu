@@ -72,6 +72,7 @@ from prefect.exceptions import (
     ObjectNotFound,
     PrefectHTTPStatusError,
 )
+from prefect.flow_runs import wait_for_flow_run as _wait_for_flow_run_module
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -361,6 +362,30 @@ def _deployment_to_response(deployment: Any) -> DeploymentResponse:
     )
 
 
+def _coerce_seconds(value: Any) -> float | None:
+    """Coerce a Prefect SDK time-delta-ish value to float seconds.
+
+    Prefect 3.x SDK returns ``datetime.timedelta`` for flow-run durations
+    (in 2.x, it was raw ``float`` seconds). This helper accepts both, plus
+    ``None``, and fails closed on anything we don't recognise — silently
+    coercing arbitrary strings (e.g. ``"1.5"``) to ``1.5`` would hide upstream
+    schema breaks.
+
+    Args:
+        value: Candidate value — None, ``timedelta``, ``int``, ``float``.
+
+    Returns:
+        Float seconds, or None if the value can't be safely coerced.
+    """
+    if value is None:
+        return None
+    if hasattr(value, "total_seconds"):  # datetime.timedelta
+        return float(value.total_seconds())
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
 def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
     """Convert Prefect flow run object to FlowRunResponse.
 
@@ -386,8 +411,8 @@ def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
         updated_at=getattr(flow_run, "updated", None),
         start_time=getattr(flow_run, "start_time", None),
         end_time=getattr(flow_run, "end_time", None),
-        total_run_time_seconds=getattr(flow_run, "total_run_time", None),
-        estimated_run_time_seconds=getattr(flow_run, "estimated_run_time", None),
+        total_run_time_seconds=_coerce_seconds(getattr(flow_run, "total_run_time", None)),
+        estimated_run_time_seconds=_coerce_seconds(getattr(flow_run, "estimated_run_time", None)),
         work_queue_name=getattr(flow_run, "work_queue_name", None),
     )
 
@@ -537,6 +562,11 @@ class PrefectAdapter(OrchestratorAdapter):
         self._initialized = False
         self._client_context: Any = None
         self._flow_registry: FlowRegistry | None = None
+        # Override-able callable that blocks until a flow run completes.
+        # Defaults to the top-level prefect.flow_runs.wait_for_flow_run (which
+        # is NOT a PrefectClient method in 3.x — see git blame for context).
+        # Tests assign AsyncMock(return_value=mock_flow_run) to skip the poll.
+        self._wait_for_flow_run: Callable[..., Any] = _wait_for_flow_run_module
 
     def _resolved_api_url(self) -> str:
         """Return a usable API URL even when tests provide a loose mock config."""
@@ -757,19 +787,25 @@ class PrefectAdapter(OrchestratorAdapter):
                 yield client
             return
 
-        if self.config.api_key:
-            with self._api_key_env():
-                async with client_factory as client:
-                    yield client
-            return
-
-        # Use default client for local Prefect server
-        async with client_factory as client:
-            yield client
+        # Always wrap in the env-swap context so PREFECT_API_URL points at the
+        # configured server. The earlier "if self.config.api_key:" guard made
+        # URL routing optional, which caused the SDK to silently spin up an
+        # ephemeral server on :8285 when api_key was unset (Bug C, Oct 2026).
+        with self._api_key_env():
+            async with client_factory as client:
+                yield client
 
     @contextmanager
     def _api_key_env(self) -> Generator[None]:
         """Swap ``PREFECT_API_KEY`` / ``PREFECT_API_URL`` env vars for the wrapped scope.
+
+        PREFECT_API_URL is *always* written — independent of api_key presence —
+        because the SDK otherwise falls back to ephemeral mode on :8285 instead
+        of honouring the configured server. The URL is normalised to the
+        canonical ``/api`` suffix form (matches where the Prefect REST API
+        actually lives at the server). The api_key branch is independent of
+        the URL branch — operators running against a local server with no
+        workspace still need their ``PREFECT_API_URL`` routed.
 
         Restores prior values (or deletes them) on exit, even if the wrapped
         block raises. Keeping the swap-and-restore lifecycle in its own helper
@@ -778,11 +814,16 @@ class PrefectAdapter(OrchestratorAdapter):
         saved_api_key = os.environ.get("PREFECT_API_KEY")
         saved_api_url = os.environ.get("PREFECT_API_URL")
         api_key = self.config.api_key
+        # Canonicalise to "{base}/api" — accept either form on input.
+        api_url_base = self._resolved_api_url().rstrip("/")
+        if api_url_base.endswith("/api"):
+            sdk_api_url = api_url_base
+        else:
+            sdk_api_url = api_url_base + "/api"
         try:
             if api_key is not None:
                 os.environ["PREFECT_API_KEY"] = api_key
-            if self.config.api_url:
-                os.environ["PREFECT_API_URL"] = self.config.api_url
+            os.environ["PREFECT_API_URL"] = sdk_api_url
             yield
         finally:
             if saved_api_key is not None:
@@ -848,20 +889,24 @@ class PrefectAdapter(OrchestratorAdapter):
                     fallback="create_run",
                 )
 
-                # Wait for flow completion and get results
+                # Wait for flow completion and get results.
+                # In Prefect 3.x, wait_for_flow_run lives at prefect.flow_runs
+                # (NOT as a PrefectClient method) and returns a FlowRun — its
+                # ``.state`` attribute is the optional State we then probe.
                 flow_run_id = flow_run.id
-                state = await _invoke_client_method(
-                    client,
-                    "wait_for_flow_run",
+                polled_flow_run = await self._wait_for_flow_run(
                     flow_run_id,
                     timeout=self.config.timeout_seconds,
                 )
-
-                # Get actual results from flow run
-                is_completed = await _maybe_await(state.is_completed())
-                results = await _maybe_await(state.result()) if is_completed else []  # type: ignore[var-annotated]
-                if results is None:
-                    results = []
+                state = polled_flow_run.state
+                if state is None:
+                    is_completed = False
+                    results: list[dict[str, Any]] = []
+                else:
+                    is_completed = await _maybe_await(state.is_completed())
+                    results = await _maybe_await(state.result()) if is_completed else []  # type: ignore[var-annotated]
+                    if results is None:
+                        results = []
 
                 # Build response
                 response = {

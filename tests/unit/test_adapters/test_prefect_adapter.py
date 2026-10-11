@@ -365,7 +365,11 @@ async def test_adapter_execute_code_sweep(prefect_config, sample_repo_path):
 
     mock_client = AsyncMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
@@ -406,7 +410,11 @@ async def test_adapter_execute_multiple_repos(prefect_config, tmp_path):
 
     mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch(
@@ -461,7 +469,11 @@ async def test_adapter_execute_with_failures(prefect_config, tmp_path):
 
     mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch(
@@ -495,7 +507,11 @@ async def test_adapter_execute_flow_failure(prefect_config, sample_repo_path):
 
     mock_client = AsyncMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
@@ -563,7 +579,11 @@ async def test_execute_retry_on_transient_failure(prefect_config, sample_repo_pa
         return mock_flow_run
 
     mock_client.create_run = create_run_with_retry
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
@@ -642,7 +662,11 @@ async def test_flow_run_id_tracking(prefect_config, sample_repo_path):
 
     mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch(
@@ -681,7 +705,11 @@ async def test_flow_run_url_generation(prefect_config, sample_repo_path):
 
     mock_client = MagicMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch(
@@ -720,7 +748,11 @@ async def test_execute_with_empty_repo_list(prefect_config):
 
     mock_client = AsyncMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
@@ -752,7 +784,11 @@ async def test_execute_with_missing_task_id(prefect_config, sample_repo_path):
 
     mock_client = AsyncMock()
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
     mock_client.api_url = "http://localhost:4200"
 
     with patch("mahavishnu.engines.prefect_adapter_impl.get_client", return_value=mock_client):
@@ -802,7 +838,11 @@ async def test_full_prefect_workflow(prefect_config, sample_repo_path, mock_code
     mock_client = MagicMock()
     mock_client.api_url = "http://localhost:4200"
     mock_client.create_run = AsyncMock(return_value=mock_flow_run)
-    mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+    # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+    # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+    # for a client method. Patch the instance attribute to skip the poll.
+    mock_flow_run.state = mock_state
+    adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
     with patch(
         "mahavishnu.engines.prefect_adapter_impl.get_client",

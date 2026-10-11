@@ -123,7 +123,12 @@ async def test_prefect_adapter_real_flow_run_ids():
         mock_state = MagicMock()
         mock_state.is_completed.return_value = True
         mock_state.result.return_value = [{"status": "completed"}]
-        mock_client.wait_for_flow_run = AsyncMock(return_value=mock_state)
+        # Adapter now uses ``adapter._wait_for_flow_run`` (defaulting to the
+        # real ``prefect.flow_runs.wait_for_flow_run``) — it no longer reaches
+        # for a client method. Patch the instance attribute to skip the poll.
+        mock_flow_run.state = mock_state
+        wait_for_flow_run_mock = AsyncMock(return_value=mock_flow_run)
+        adapter._wait_for_flow_run = wait_for_flow_run_mock
 
         # Execute
         task = {"id": "test_task", "type": "code_sweep"}
@@ -141,7 +146,7 @@ async def test_prefect_adapter_real_flow_run_ids():
 
         # Verify Prefect client methods were called
         mock_client.create_run.assert_called_once()
-        mock_client.wait_for_flow_run.assert_called_once()
+        wait_for_flow_run_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
