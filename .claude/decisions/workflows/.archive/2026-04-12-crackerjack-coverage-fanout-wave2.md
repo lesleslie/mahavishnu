@@ -14,7 +14,7 @@ Archived
 
 ## Context
 
-Wave 2 followed the first Crackerjack coverage pass at roughly 67% coverage. It assigned parallel test writers to the next-highest-leverage packages and included a dedicated agent to repair regressions introduced by wave 1. The workflow is defined in [crackerjack-coverage-fanout-wave2.js](../../workflows/crackerjack-coverage-fanout-wave2.js).
+Wave 2 followed the first Crackerjack coverage pass at roughly 67% coverage. It assigned parallel test writers to the next-highest-leverage packages and included a dedicated agent to repair regressions introduced by wave 1. The workflow is defined in [crackerjack-coverage-fanout-wave2.js](../../../workflows/.archive/crackerjack-coverage-fanout-wave2.js).
 
 ## Decision rule
 

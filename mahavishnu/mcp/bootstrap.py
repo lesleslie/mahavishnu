@@ -1038,8 +1038,7 @@ def _register_kv_tools(server: FastMCPServer) -> None:
     rbac_manager = getattr(server.app, "rbac_manager", None)
     register_kv_tools(server.server, rbac_manager=rbac_manager)
     logger.info(
-        "Registered 4 self-hosted KV tools "
-        "(mahavishnu_kv_get/put/list/delete) with MCP server"
+        "Registered 4 self-hosted KV tools (mahavishnu_kv_get/put/list/delete) with MCP server"
     )
 
 

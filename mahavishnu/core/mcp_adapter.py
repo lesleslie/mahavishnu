@@ -75,7 +75,7 @@ class MCPClient:
 
             try:
                 return json.loads(result.content[0].text)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 return result.content[0].text
         return None
 

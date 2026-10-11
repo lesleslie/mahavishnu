@@ -45,7 +45,7 @@ from textual.widgets import (
 from mahavishnu.tui.command_palette import MahavishnuCommandProvider
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable
 
     from textual.command import Provider
 
@@ -1234,7 +1234,9 @@ class DashboardApp(App):
     TITLE = "Mahavishnu Dashboard"
     SUB_TITLE = f"Auto-refresh every {_REFRESH_INTERVAL}s · Press R to refresh now · Q to quit"
 
-    COMMANDS: ClassVar[set[type[Provider] | Callable[[], type[Provider]]]] = {MahavishnuCommandProvider}
+    COMMANDS: ClassVar[set[type[Provider] | Callable[[], type[Provider]]]] = {
+        MahavishnuCommandProvider
+    }
 
     CSS = """
     Screen {

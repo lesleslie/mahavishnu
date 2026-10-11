@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime
 from enum import Enum
-import json
 from pathlib import Path
 from typing import Any
 from uuid import uuid4

@@ -66,7 +66,6 @@ from mahavishnu.core.events.schema_registry import (
     EventSchemaRegistry as EventSchemaRegistry,
 )
 
-
 # Names whose definition lives in a submodule that eagerly imports
 # `oneiric` (directly, or transitively via `mahavishnu.core.events.canonical`).
 # Accessing any of them triggers a one-time `import <submodule>` on

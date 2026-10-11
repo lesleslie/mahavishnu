@@ -32,7 +32,7 @@ from asyncpg.exceptions import PostgresError
 from mahavishnu.core.errors import DatabaseError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +310,7 @@ class Database:
         )
 
     @asynccontextmanager
-    async def connection(self) -> AsyncIterator[Connection]:
+    async def connection(self) -> AsyncGenerator[Connection]:
         """Get a connection from the pool.
 
         Yields:
@@ -326,7 +326,7 @@ class Database:
             yield conn
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[Connection]:
+    async def transaction(self) -> AsyncGenerator[Connection]:
         """Start a transaction.
 
         Yields:

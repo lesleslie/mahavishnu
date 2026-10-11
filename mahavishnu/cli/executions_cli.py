@@ -20,7 +20,7 @@ from mahavishnu.core.event_store import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Coroutine
+    from collections.abc import AsyncGenerator, Coroutine
 
 logger = get_logger(__name__)
 executions_app = typer.Typer(
@@ -57,7 +57,7 @@ def _run[T](coro: Coroutine[Any, Any, T]) -> T:
 
 
 @asynccontextmanager
-async def _event_session() -> AsyncIterator[Any]:
+async def _event_session() -> AsyncGenerator[Any]:
     """Yield a session bound to the module-level async engine.
 
     Mirrors the lifetime used by ``record_execution_event`` /

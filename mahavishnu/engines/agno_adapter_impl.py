@@ -62,7 +62,7 @@ from ..core.errors import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from agno.agent import Agent
     from agno.run.agent import RunOutput
@@ -1128,7 +1128,7 @@ class AgnoAdapter(OrchestratorAdapter):
         return str(response)
 
     @asynccontextmanager
-    async def _require_semaphore(self) -> AsyncIterator[asyncio.Semaphore]:
+    async def _require_semaphore(self) -> AsyncGenerator[asyncio.Semaphore]:
         """Yield the concurrency semaphore or raise if not initialized."""
         sem = self._semaphore
         if sem is None:

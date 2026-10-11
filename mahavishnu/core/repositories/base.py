@@ -25,7 +25,7 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Sequence
+    from collections.abc import AsyncGenerator, Sequence
 
     from asyncpg import Connection, Pool
 
@@ -119,7 +119,7 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         return self._database
 
     @asynccontextmanager
-    async def connection(self) -> AsyncIterator[Connection]:
+    async def connection(self) -> AsyncGenerator[Connection]:
         """Get a database connection from the pool.
 
         Yields:
@@ -133,7 +133,7 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
             yield conn
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[Connection]:
+    async def transaction(self) -> AsyncGenerator[Connection]:
         """Start a database transaction.
 
         Yields:

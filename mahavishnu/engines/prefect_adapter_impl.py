@@ -114,7 +114,7 @@ from .prefect_schedules import (
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator
 
     from ..qc.checker import QualityControl
 
@@ -768,7 +768,7 @@ class PrefectAdapter(OrchestratorAdapter):
             yield client
 
     @contextmanager
-    def _api_key_env(self) -> Iterator[None]:
+    def _api_key_env(self) -> Generator[None]:
         """Swap ``PREFECT_API_KEY`` / ``PREFECT_API_URL`` env vars for the wrapped scope.
 
         Restores prior values (or deletes them) on exit, even if the wrapped

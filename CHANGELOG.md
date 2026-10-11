@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.2] - 2026-10-11
+
+### Documentation
+
+- Add WebSearch to MiniMax-modeled substitution table
+- Swap WebSearch default to minimax-coding-plan after Crow SearXNG CAPTCHA failure
+
+### Internal
+
+- Brave MCP --port 8769 (avoid 8080 collision)
+- Brave MCP needs --allowed-hosts and --allowed-origins for HTTP transport
+- Brave MCP server requires --transport http; stdio is unsupported
+- Fix MCP server wiring (tavily was never registered; brave --transport flag caused crash)
+- Register tavily and brave-search MCP servers; expand WebSearch to 4-tier fallback
+- Remove brave-search MCP server; demote chain to 3-tier
+- Remove unused tools/ slash commands
+- workflows: Archive all coverage-fanout lifecycle artifacts
+
 ## [0.34.1] - 2026-10-11
 
 ### Added
@@ -24,11 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add /jot drain slash command (polish item 1)
 - Add `mahavishnu acp serve` CLI surface (sub-commit 2.D)
 - Add clone-refactor-wireup topic to seed vocabulary
-- Add JotSummaryDict/JotVitalsDict surfaces + _summary_dict/_vitals_dict
+- Add JotSummaryDict/JotVitalsDict surfaces + \_summary_dict/\_vitals_dict
 - Add mahavishnu metrics dispatch subcommand
 - Add mahavishnu metrics verification subcommand
 - Add mahavishnu plugin manifest + namespaced commands (additive)
-- Add mcp__mahavishnu__audit_health tool + audit_health CLI (Phase 2)
+- Add mcp\_\_mahavishnu\_\_audit_health tool + audit_health CLI (Phase 2)
 - Add pre-commit hook to mahavishnu index install-hooks
 - Add tiered microVM isolation workers (Apple container + E2B)
 - Add ultracode Phase 1/3 settings
@@ -77,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - events: Add worker topic constants and helper
 - events: Oneiric wire standardization (canonical boundary, decoder, observability)
 - frontmatter: Migrate 217 docs to v1 schema
-- git-ops: _git_ops.py with typed GitCommit* exceptions (REQ-CLONE-013)
+- git-ops: \_git_ops.py with typed GitCommit\* exceptions (REQ-CLONE-013)
 - githooks: Wire audit_no_secrets_in_mcp.py as tracked pre-commit hook
 - hooks: Add discovery hint for opt-in worktree isolation (Phase 4)
 - hooks: Discover current branch, debug mode, credential safety, configurable timeout
@@ -89,21 +107,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot-drain: Add Task 8 — surfacing scorers + throttle + surface_relevant
 - jot-mcp: Add 6 drain tools + remove duplicate JotSummaryDict/JotVitalsDict
 - jot: 8 MCP tools with TypedDict returns (R1, R11)
-- jot: Add _auto_retry_after, _reconcile_if_in_flight, _background_reconciler_loop
-- jot: Add _is_surface_eligible, _is_drain_eligible, _should_exhaust_retry_budget
+- jot: Add \_auto_retry_after, \_reconcile_if_in_flight, \_background_reconciler_loop
+- jot: Add \_is_surface_eligible, \_is_drain_eligible, \_should_exhaust_retry_budget
 - jot: Build_states two-pass fold with parking (R3, R7 part 2)
 - jot: Capture sub-plan 1 — hook + log + redaction
 - jot: CLI handlers — list, show, vitals + write stubs
 - jot: Cmd_search lexical substring fallback
 - jot: Drain refactor + cli/hook/mcp-tools alignment + errors rename
-- jot: Drain.py skeleton with _append_event + TypedDict validation
+- jot: Drain.py skeleton with \_append_event + TypedDict validation
 - jot: Extend errors.py with drain error hierarchy
-- jot: Extend fold with _derive_dispatch_fields + DispatchState
+- jot: Extend fold with \_derive_dispatch_fields + DispatchState
 - jot: Extend Op literal with 6 drain event types
 - jot: FoldResult + parse_events (TD-B3, R7 part 1)
 - jot: Git enrichment via subprocess (R4)
 - jot: Register 8 tools in profiles + CI guards
-- jot: Reject unknown ctx keys in _validate_ctx (polish item 3)
+- jot: Reject unknown ctx keys in \_validate_ctx (polish item 3)
 - jot: Render layer (list, show, vitals)
 - jot: Resolve_handle with ambiguity error (R8)
 - jot: Typer app with 8 subcommands (R2)
@@ -117,7 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - lock-sentinel: Replace dhara.lock with local in-process Lock
 - mahavishnu: /merge-to-main slash command (REQ-004)
 - mahavishnu: 11 Qwen-only event handlers (Phase 12b task 1)
-- mahavishnu: _decode_envelope accepts v1.1 flat-fields XADD shape
+- mahavishnu: \_decode_envelope accepts v1.1 flat-fields XADD shape
 - mahavishnu: Add audit_cli_inventory.py for Core 7 CLI surface audit
 - mahavishnu: Add bus dependency-group with coredis
 - mahavishnu: Add dev_log.write_entry() (REQ-003)
@@ -187,7 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mcp: Phase 1 server-published skills (list_skills + get_skill)
 - mcp: Phase 3 task #5 H-3 specialist dispatcher
 - mcp: Pool tools route shell types through durable contract
-- mcp: Register plan_* tools in FULL profile (5-edit dance)
+- mcp: Register plan\_\* tools in FULL profile (5-edit dance)
 - mcp: Remove iTerm2 terminal bootstrap path
 - mcp: Remove iTerm2 terminal tool branches
 - mcp: Route worker_spawn shell types through durable contract
@@ -207,11 +225,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - observability: Verify_sha256_streaming + record_bundle_integrity_failure_short
 - observability: §17 OTel metrics + bundle integrity helpers (PR-B)
 - paths: Add get_worktree_base_path() and get_worktree_path() helpers
-- Per-session subprocess pool + crow_terminal_* tools
+- Per-session subprocess pool + crow_terminal\_\* tools
 - Per-session worktree registry + CLI (Phase 1)
 - permissions: Add READ_PLAN_INDEX for plan_index MCP tools
 - persistence: Vendor WorkflowOutcome/ApprovalLog/WebhookIngress locally
-- Plan_* tools with @require_mcp_auth (REQ-PLAN-010)
+- Plan\_\* tools with @require_mcp_auth (REQ-PLAN-010)
 - plan_index,health: Wire plan_index feed into /health aggregator
 - plan_index: Foundation — PlanId, errors hierarchy, paths
 - plan_index: Normalize_repo_url security helper
@@ -319,7 +337,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Continue CLI audit plan + worktree residue after rebase onto origin/main
 - coordinator: Extract preflight safety checks to reduce complexity
 - core: App/health/cli alignment + health CLI test scaffold
-- dhara-schema: Replace dhara.schema.* imports with local msgspec types
+- dhara-schema: Replace dhara.schema.\* imports with local msgspec types
 - events: Add trailing newlines to worker_topics files
 - factory: Promote execute_fn settings to real Pydantic fields (Option C)
 - jot-drain: Apply 14 reviewer findings to polish spec
@@ -331,8 +349,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jot: Apply 5-agent round-3 review findings
 - jot: Apply final-review critical fix batch (round 2)
 - jot: Apply user-approved cuts and round-2 self-fixes
-- jot: Lock _propose_action policy at §3.3.4 (polish item 5)
-- jot: Type _summary_dict/_detail_dict; strengthen MCP round-trip test
+- jot: Lock \_propose_action policy at §3.3.4 (polish item 5)
+- jot: Type \_summary_dict/\_detail_dict; strengthen MCP round-trip test
 - Mahavishnu (quality: 0/100) - 2026-07-16 19:44:17
 - Mahavishnu (quality: 72/100) - 2026-07-16 18:33:29
 - Mahavishnu (quality: 72/100) - 2026-07-16 18:50:08
@@ -351,10 +369,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Tasks_handoff uses publish_task_event_raw dict API
 - mahavishnu: Use apply_tool_profile() from mcp-common
 - mahavishnu: Use mandatory_groups + W0.5 fix from mcp-common 0.18.0
-- mahavishnu: Use unaliased _apply_tool_profile + pin mcp-common>=0.18.0
+- mahavishnu: Use unaliased \_apply_tool_profile + pin mcp-common>=0.18.0
 - Mcp-common auth primitives design — middleware, IdentityProvider, AuthHealth
 - Mcp-common auth primitives — 17-task implementation plan
-- observability: Extract _canonical_detector_name helper to remove detector-name normalization duplication
+- observability: Extract \_canonical_detector_name helper to remove detector-name normalization duplication
 - observability: Use elif in two-stage dispatch for mutually exclusive states
 - Revert "feat(githooks): wire audit_no_secrets_in_mcp.py as tracked pre-commit hook"
 - Rewire top-10 descriptions — get_active_alerts (Phase 2 Task 2.3)
@@ -382,13 +400,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - workers/contract: Add trailing newlines to publisher files
 - workers: Add dedicated factory branches for openhands, a2a, terminal-crow
 - workers: Complete DebugMonitorWorker Wave 2 removal; drop stale MCP test duplicate
-- workers: Narrow _create_isolated_worker to shepherd-only (Phase 4)
+- workers: Narrow \_create_isolated_worker to shepherd-only (Phase 4)
 - workers: Remove Docker/OrbStack ContainerWorker in favor of microVM tiers
 - workers: Replace WORKER_REGISTRY with Oneiric-loaded lookup
 - workers: Retire legacy isolated-worker surface (Phase 4.5b)
-- workers: Single-dispatch worker factory via _create_isolated_worker
+- workers: Single-dispatch worker factory via \_create_isolated_worker
 - workers: WorkerManager consumes command_argv from WorkerEntry
-- worktree-scan: Drop cyclomatic complexity under 15 in _format_text + scan_worktrees_cli
+- worktree-scan: Drop cyclomatic complexity under 15 in \_format_text + scan_worktrees_cli
 - worktree_providers: Apply crackerjack-compliant-code cleanup
 - worktree_providers: Rename direct_git.py -> local.py (1-release alias)
 - worktree_providers: Rename S3WorktreeProvider + S3WorktreeRef to remote variants
@@ -414,7 +432,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bootstrap: Make pool init real bugs visible (Plan v3 Phase 1m)
 - bootstrap: Thread skills_signer+agents+dispatch+jot through legacy path
 - claude-code-stop-hook: Use absolute Python paths in hook commands
-- claude: Enable bodai-activity-* hooks by nesting under 'hooks' key
+- claude: Enable bodai-activity-\* hooks by nesting under 'hooks' key
 - cli: Use timezone-aware datetime in precommit_lock
 - clone-tools: Address multi-agent review's CRITICAL findings
 - clone_tools: Restore REJECT-path observability log
@@ -433,7 +451,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - crow: Type register() with Union[FastMCP, StandardServer]
 - crow: Wire shutdown_all_sessions into FastMCP lifespan
 - Defer help_cli import to avoid known-broken module-load hang
-- deps: Override prefect's websockets<17.0 pin to allow crackerjack>=0.87.0
+- deps: Override prefect's websockets\<17.0 pin to allow crackerjack>=0.87.0
 - docs(plans)+audit: Phase 5 loop-2 (audit script fix, plan move, revert to partial)
 - docs+test(changepoint): round-6 fixes per task-7 review (default-detector drift + test count + drift_warning span parity)
 - docs: Add canonical frontmatter to mcp-deps-crackerjack-loop spec
@@ -461,7 +479,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - frontmatter: Re-convert 2026-04-09-tui-design.md
 - Gate workflow_get_outcome against workflow_id allowlist (sibling-parity)
 - git-ops: Add coverage for GitCommandTimeout, StashPopFailed, signal exit paths
-- git-ops: Apply Error suffix to _git_ops exception classes (N818)
+- git-ops: Apply Error suffix to \_git_ops exception classes (N818)
 - git-ops: Move pathlib.Path annotation into TYPE_CHECKING (TC003)
 - Honor nested workers.enabled setting in CLI
 - Honor terminal.adapter_preference in MCP bootstrap
@@ -472,10 +490,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - id-guard: Add validate_approval_id + validate_webhook_id guards
 - Importorskip/skipif for missing optional deps in integration tests
 - indexer: Tolerate RuntimeError from tree-sitter parse failures
-- jot-drain: Thread jot id through _append_event + restore DrainPlan.action_proposals
+- jot-drain: Thread jot id through \_append_event + restore DrainPlan.action_proposals
 - jot: Add noqa for PLC3002 IIFE lambda workaround
 - jot: Clamp replayed last_modified_ms + clear parked + I3 tests
-- jot: Make _wrap_at_import graceful when fastmcp is not installed
+- jot: Make \_wrap_at_import graceful when fastmcp is not installed
 - jot: Reconciler auto-retry is fire-and-forget (polish item 2 code)
 - jot: Remove dead MOD_WIDTH constant from render.py
 - jot: Remove extraneous parens around min() generator (ruff UP034)
@@ -504,7 +522,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Audit_devlog.py — per-merge matching + cleanups
 - mahavishnu: Bootstrap-helper-renames — 49 tests
 - mahavishnu: Bridge publishes to bodai:events stream + single-coroutine init/publish
-- mahavishnu: C-12 recovery — wire executions sub-app into _main_cli.py
+- mahavishnu: C-12 recovery — wire executions sub-app into \_main_cli.py
 - mahavishnu: C-9 follow-up — rename retry_after= → retry_after_seconds= in PoolManager quota gate
 - mahavishnu: CLI starts from any CWD (defer oneiric via PEP 562 + stdlib fallback)
 - mahavishnu: Cli-output-routing — 11 tests
@@ -527,7 +545,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Handle async publish in bodai_hook_bridge + redirect oneiric to local path
 - mahavishnu: Health + dispatch_to_pool — 3 tests
 - mahavishnu: Health + errors + mcp_auth + mcp_otel — 5 tests
-- mahavishnu: Ignore *.bak.* (timestamped backups slip past *.bak)
+- mahavishnu: Ignore *.bak.* (timestamped backups slip past \*.bak)
 - mahavishnu: Import TextContent from mcp.types, not fastmcp.tools.tool
 - mahavishnu: Inventory fallback for inherited Typer commands
 - mahavishnu: Make ty gate deterministic across sync states
@@ -584,7 +602,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Wire-envelope unwrap + self-hosted KV tools for plan_index
 - mahavishnu: Worktree + prefect + coordination — 5 tests
 - MCP streamable-http handshake + pydantic-settings 2.15 compat + pool auto-spawn
-- mcp/bootstrap: Thread rbac_manager to 4 register_*_tools callsites
+- mcp/bootstrap: Thread rbac_manager to 4 register\_\*\_tools callsites
 - mcp/lifecycle: Wire DharaKvClient into plan_index, drop synthetic fallback
 - mcp: Await list_envelopes in get_capability_result tool
 - mcp: Harden durable-routing fast path against Task 24 security review
@@ -594,8 +612,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move TYPE_CHECKING-only imports to runtime scope
 - observability: Add severity= and samples= to drift_warning log for parity with drift_detected
 - openclaw: Cap auto-restart and surface terminal failure
-- otel_ingester: Catch _get_client failures in check_available
-- otel_ingester: Normalise _extract_timestamp to naive UTC
+- otel_ingester: Catch \_get_client failures in check_available
+- otel_ingester: Normalise \_extract_timestamp to naive UTC
 - permissions: Bridge mcp_common Permission values into RBACManager
 - plan+spec: Apply Round 2 multi-agent review fixes (BLOCKER + IMPORTANT + selective MINOR)
 - plan+spec: Close 3 spec drift + 2 plan consistency issues from final pass
@@ -642,7 +660,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - round5-followup: Add --section flag to mahavishnu health for merge_driver
 - ruff: Resolve F821 undefined names + ASYNC blocking I/O (20 findings)
 - scan: Drop 5 dead CLI flags + unused safe_worktree_name + slow markers
-- scan: Wrap _run_ps identity check in TimeoutExpired handler
+- scan: Wrap \_run_ps identity check in TimeoutExpired handler
 - scripts: Audit_orphans detects FastAPI route decorators
 - scripts: Clean up 3 ruff diagnostics in migrate_to_streaming_tar
 - scripts: Make migrate_to_streaming_tar.py executable + drop EXE001 noqa
@@ -660,7 +678,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - terminal: Manager.create raises actionable error when mcp_client is None for BUILTIN_BACKENDS preference
 - terminal: Route all BUILTIN_BACKENDS names through McpretentiousAdapter
 - test-residue: Wire 5 production drift sites (Cluster 10 Item 5)
-- tests: Align _FakeStorage mock with load_stream rename
+- tests: Align \_FakeStorage mock with load_stream rename
 - tests: Align AgnoToolsConfig default URL with mahavishnu port
 - tests: Align otel_ingester mocks with post-Phase 3 CommonMCPClient API
 - tests: Assert MINIMAL profile registers health + skills_signer
@@ -726,7 +744,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - workers: Wire A2A agent configs from settings + add openhands test
 - workflow-outcome: Env-var gate + producer/consumer getattr runtime gates
 - workflows: Silence Prefect AsyncMock warnings + add REQ-CLONE-016 cancellation test
-- worktree-cli: Drop redundant cast() in _scan_validate_output_format
+- worktree-cli: Drop redundant cast() in \_scan_validate_output_format
 - worktree-registry: Close lost-update race + write-path TOCTOU
 - worktree: Component-aware allow-list check + per-repo subdir allowlist
 - worktree: Filter Session-Buddy provider when its tools are missing
@@ -770,7 +788,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BODAI_UPGRADE_WATCH.md - Phase 4 3.15 readiness tracker
 - Capture bodai diagram audit snapshot 2026-08-16
 - changelog: Document mcpretentious removal + quality_scorer rename
-- changepoint: Document warn re-fire updates _last_warning_result in TwoStageDetector state diagram
+- changepoint: Document warn re-fire updates \_last_warning_result in TwoStageDetector state diagram
 - CLAUDE.md: Add MCP backend wiring discipline cross-reference
 - CLAUDE: Add Bifrost LLM gateway to portmap (8471)
 - CLAUDE: Point portmap note at the crow-port-move commit
@@ -921,7 +939,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normalize docs/plans to unified frontmatter (P2 Pass 1)
 - Normalize docs/superpowers/plans to unified frontmatter (P4 Pass 1)
 - Note substrate put/get call-boundary contract in 3 producer module docstrings
-- observability: Note defensive isinstance guard rationale in _on_drift_warning
+- observability: Note defensive isinstance guard rationale in \_on_drift_warning
 - Oneiric action-kit promotion implementation plan
 - Open cross-repo followup for sb subagent lockfile producer
 - Pair existing wave workflows with decision files
@@ -1135,7 +1153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - superpowers: Apply multi-agent review fixes across 4 plans
 - superpowers: Apply Round 2 review fixes (cross-plan consistency + Python idiom)
 - superpowers: Fix ruff --config to use inline TOML, not file path
-- superpowers: Fix ruff --per-file-ignores -> --config=<file.toml>
+- superpowers: Fix ruff --per-file-ignores -> --config=\<file.toml>
 - superpowers: Medium-mcp implementation plan (14 tasks, 70 steps)
 - superpowers: Scapy-mcp implementation plan (13 tasks, 60 steps)
 - terminal: Document dual-spawn mcpretentious at boot
@@ -1211,7 +1229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - precommit: Cover duplicate async lock branch
 - precommit: Drop unused r1 assignment + unnecessary f-prefix
 - precommit: Replace vacuous duplicate-lock test + fix DTZ005
-- profiles: Align MINIMAL + jot_* invariants to Phase 1.5/3 canonical
+- profiles: Align MINIMAL + jot\_\* invariants to Phase 1.5/3 canonical
 - profiles: Cover REGISTRATION_MAP as canonical W0 dispatch surface
 - registry: Add edge case coverage + fix corrupt-shape bug
 - registry: Assert canonical is a superset of legacy (currently failing)
@@ -1220,14 +1238,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - registry: Pin legacy entry count against silent deletion
 - Round-trip + completion report for M-APPROVAL-LOG
 - Round-trip + completion report for M-WORKFLOW-OUTCOME
-- scan: Add 8 _format_text section tests (F-QA-12) + restore L4 tests
-- scan: Add _group_plan_orphans 4-test coverage set (F-QA-14)
+- scan: Add 8 \_format_text section tests (F-QA-12) + restore L4 tests
+- scan: Add \_group_plan_orphans 4-test coverage set (F-QA-14)
 - server_core: Check OTel tracing middleware by type, not call count
 - skill: Add 3 trigger-phrase + wrapper smoke tests (F-QA-15)
 - Supply fake rbac_manager to channel_session tool tests (W5 Cluster 2)
 - terminal: Cover removed iTerm2 preference fallback
 - terminal: Fix indentation after iTerm2 patch removal
-- terminal: Prune stale iterm2_* assertions after 3b.0 field removal
+- terminal: Prune stale iterm2\_\* assertions after 3b.0 field removal
 - terminal: Remove deleted iTerm2 test dependencies
 - terminal: Remove iTerm2-only suites
 - terminal: Remove leftover iTerm2-coupled suites
@@ -1235,7 +1253,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - tools: Supply fake rbac_manager to git_analytics tool tests (W5 Cluster 4)
 - webhooks: Round-trip + completion report for M-WEBHOOK-DURABLE
 - websocket: Cover broadcast_settle_transition in parametrized suite
-- wiring: Close 3 demo unsubscribe_* orphans via Attribute reference
+- wiring: Close 3 demo unsubscribe\_\* orphans via Attribute reference
 - wiring: Close audit_orphans findings for 7 residual symbols
 - wiring: Use Attribute access so audit walker counts the references
 - workers/contract: Add reconciliation integration test
@@ -1248,7 +1266,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - workers: Fix list-types ready-only test for log noise and path gating
 - workers: Fix WorkerResult import path (3b.4 cleanup)
 - workers: Pin retired-worker_type ValueError contract
-- workers: Smoke test all 16 terminal-* worker types
+- workers: Smoke test all 16 terminal-\* worker types
 - workers: Switch gate test to nested env-var override
 - workers: Update registry tests for resolve_worker_type de-coupling
 
@@ -1256,7 +1274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - deps: Drop dhara dep from ecosystem extras (Phase 8 T10)
 - deps: Drop editable session-buddy redirect, use published 0.31.0
-- deps: Lift fastmcp pin ceiling from <4 to <5
+- deps: Lift fastmcp pin ceiling from \<4 to \<5
 - deps: Unlock mcp-common to >=0.27.0
 - mahavishnu: Add tasks_handoff_to_workflow feature-flag gate (PR #1 prep)
 - mahavishnu: Bump session-buddy pin to >=0.31.0 for v1.1 sweeper
@@ -1315,17 +1333,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump version to 0.9.0
 - claude-md: Add oneiric action-kit discovery breadcrumb
 - Clean ADR 0016 frontmatter + regen PLAN_INDEX
-- cleanup: Remove unused _validate_approval_id + _validate_webhook_id aliases
+- cleanup: Remove unused \_validate_approval_id + \_validate_webhook_id aliases
 - clone-tools: Post-wireup polish
 - deps: Bump crackerjack>=0.70.0; remove duplicated validator script; fix plan/spec frontmatter
-- deps: Bump mcp-common floor to >=0.26.0,<0.27.0 (Phase 2.5)
+- deps: Bump mcp-common floor to >=0.26.0,\<0.27.0 (Phase 2.5)
 - deps: Bump oneiric floor to >=0.19.1
 - deps: Catch up uv.lock to in-tree version bump (0.26 → 0.27)
 - deps: Upgrade crackerjack to 0.87.1 (release-audit file-path claim fix)
 - ecosystem: Add 5 nicknames; docs(plans): track nickname + audit logger gaps
 - ecosystem: Add package field to all 8 repos
 - followups: Drop stale HEAD tracking of audit-orphans followup
-- gitignore: Add .coverage* + untrack .coverage-ratchet.json (bodai 2026-08-17)
+- gitignore: Add .coverage\* + untrack .coverage-ratchet.json (bodai 2026-08-17)
 - gitignore: Apply Bodai canonical snippet
 - gitignore: Ignore .claude/worktree-snapshots/
 - jot: Trivial docstring/comment typo + trailing newline fixes
@@ -1383,7 +1401,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add mcp__mahavishnu__audit_health tool + audit_health CLI (Phase 2)
+- Add mcp\_\_mahavishnu\_\_audit_health tool + audit_health CLI (Phase 2)
 - pool-bootstrap: MCP tool for spawning pools + SessionStart bootstrap
 
 ### Changed
@@ -1396,7 +1414,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Agno init, sse→streamable-http, compat-ping removal (launchd mcp startup)
 - mahavishnu: CLI starts from any CWD (defer oneiric via PEP 562 + stdlib fallback)
 - mahavishnu: Close coredis async generator in bridge publish
-- mahavishnu: Ignore *.bak.* (timestamped backups slip past *.bak)
+- mahavishnu: Ignore *.bak.* (timestamped backups slip past \*.bak)
 - mahavishnu: Suppress pre-existing ty errors in events/, drop redundant creosote exclusion
 - tests: Rename Dhara-typed fixtures in test_pools.py to MCP
 - tier2-cj: Replace silent pass in bodai_hook_bridge.py; fix broken link in BODAI_REPO_REGISTRY.md

@@ -497,6 +497,19 @@ Use these substitutes for the missing built-ins:
 
 The MCP search tools return ranked, scored results across an indexed knowledge graph — a strict upgrade over plain `Grep` for cross-repo work. For single-file, single-line inspection, `Read` + targeted `Bash(rg ...)` is fine. To restore `TodoWrite`, `Grep`, `Glob`, `MultiEdit`, `BashOutput`, `KillShell`, `NotebookRead`, `SlashCommand`, and `WebSearch` natively, override `ANTHROPIC_MODEL` in `.claude/settings.local.json` to a native Anthropic model ID (e.g. `claude-opus-5`) at the cost of losing MiniMax routing.
 
+### Cross-harness tool aliases (any MCP harness)
+
+The built-in `Read`/`Write`/`Edit`/`WebFetch` are Claude-Code-specific — they don't exist in Goose, OpenHands, Aider, or other MCP clients. For code that must run in any MCP harness (agents defined in `.claude/agents/`, slash commands, scripts under `scripts/`, the Mahavishnu `crow` terminal adapter, etc.) use the Crow equivalents — same intent, reachable from any MCP client:
+
+| Built-in (Claude Code only) | Cross-harness equivalent |
+|---|---|
+| `Read` | `mcp__crow__read` (`file_path`, `offset`, `limit`) |
+| `Write` | `mcp__crow__write` (`file_path`, `content`) |
+| `Edit` (exact match) | `mcp__crow__edit` (fuzzy match — use when the file may have drifted) |
+| `WebFetch` | `mcp__crow__web_fetch` (URL → markdown) |
+
+**Default to built-ins in this project** (faster, IDE-integrated, works in MiniMax sessions). Reach for the Crow equivalents only when writing code that needs to survive outside Claude Code. Note: `mcp__crow__edit` is **fuzzy** — a pre-computed exact `old_string` can match a different region if the file drifted; use the built-in `Edit` for precise patches. See `feedback-crow-cross-harness-tool-aliases.md` for the full rule and its dual-store mirror.
+
 ## Security
 
 See `docs/security/SECURITY_CHECKLIST.md` for comprehensive security guidelines. Key points:

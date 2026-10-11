@@ -74,9 +74,7 @@ class MCPKvClient:
         if not self._config.enabled:
             return None
         try:
-            envelope = await self._client.call_tool(
-                "mahavishnu_kv_get", {"key": key}
-            )
+            envelope = await self._client.call_tool("mahavishnu_kv_get", {"key": key})
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return None
         if not isinstance(envelope, dict):
@@ -105,9 +103,7 @@ class MCPKvClient:
         if not self._config.enabled:
             return []
         try:
-            envelope = await self._client.call_tool(
-                "mahavishnu_kv_list", {"prefix": prefix}
-            )
+            envelope = await self._client.call_tool("mahavishnu_kv_list", {"prefix": prefix})
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return []
         if not isinstance(envelope, dict):
@@ -140,9 +136,7 @@ class MCPKvClient:
         if not self._config.enabled:
             return
         try:
-            await self._client.call_tool(
-                "mahavishnu_kv_delete", {"key": key}
-            )
+            await self._client.call_tool("mahavishnu_kv_delete", {"key": key})
         except Exception:  # noqa: BLE001 - KV boundary never raises
             return
 

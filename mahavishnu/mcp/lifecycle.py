@@ -12,7 +12,7 @@ from .sweepers.task_orphan_sweeper import TaskOrphanSweeper
 from .tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,9 @@ def build_post_start_lifespan(server: Any) -> Any:
     Returns the lifespan callable ready to assign to
     ``server.server._lifespan`` before calling ``run_http_async``.
     """
+
     @asynccontextmanager
-    async def _lifespan(fastmcp: Any) -> AsyncIterator[dict[str, Any]]:
+    async def _lifespan(fastmcp: Any) -> AsyncGenerator[dict[str, Any]]:
         # ── startup (after uvicorn binds, before accepting) ──
         # signer feed (pure data, no HTTP dep)
         from .signer_feed import init_signer_feed_state
@@ -75,9 +76,7 @@ def build_post_start_lifespan(server: Any) -> Any:
                 session_buddy_client=get_session_buddy_client(),
             )
             await sweeper.init()
-            sweeper_task = asyncio.create_task(
-                sweeper.run_forever(), name="task_orphan_sweeper"
-            )
+            sweeper_task = asyncio.create_task(sweeper.run_forever(), name="task_orphan_sweeper")
             server._task_orphan_sweeper = sweeper
             server._task_orphan_sweeper_task = sweeper_task
             logger.info("task_orphan_sweeper started (stream=bodai:events)")
@@ -136,9 +135,7 @@ def build_post_start_lifespan(server: Any) -> Any:
                 logger.error("Failed to start plan_index subsystem: %s", exc)
                 # Don't crash — /health reports plan_index degraded.
 
-        plan_index_task = asyncio.create_task(
-            _init_plan_index(), name="plan_index_init"
-        )
+        plan_index_task = asyncio.create_task(_init_plan_index(), name="plan_index_init")
         server._plan_index_init_task = plan_index_task
 
         # ── yield: server runs here ──
@@ -284,9 +281,7 @@ async def start_server(
     # the historical fallback for ``mahavishnu mcp start`` and tests
     # that don't pass one.
     effective_uvicorn_config = (
-        uvicorn_config
-        if uvicorn_config is not None
-        else {"timeout_graceful_shutdown": 30}
+        uvicorn_config if uvicorn_config is not None else {"timeout_graceful_shutdown": 30}
     )
     await server.server.run_http_async(
         host=host,

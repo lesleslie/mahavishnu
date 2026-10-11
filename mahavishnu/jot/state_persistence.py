@@ -30,11 +30,11 @@ import tempfile
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 @contextmanager
-def flocked_file(path: Path, mode: str = "r") -> Iterator[Any]:
+def flocked_file(path: Path, mode: str = "r") -> Generator[Any]:
     """Open file with flock; release in ``finally``.
 
     Lock-fd leak risk: if the with-block raises between ``open()`` and

@@ -827,4 +827,3 @@ class TestC1StartForwardsUvicornConfig:
             await server.start(host="127.0.0.1", port=3000)
 
         assert captured == {"uvicorn_config": None}
-

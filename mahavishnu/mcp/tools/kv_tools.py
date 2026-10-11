@@ -134,28 +134,21 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_ECOSYSTEM_STATE
     )
-    async def mahavishnu_kv_list(
-        prefix: str, user_id: str | None = None
-    ) -> dict[str, Any]:
+    async def mahavishnu_kv_list(prefix: str, user_id: str | None = None) -> dict[str, Any]:
         """List (key, value) pairs whose key starts with ``prefix``.
 
         Returns ``{"ok": True, "items": [{"key", "value"}, ...]}``.
         Empty prefix matches all keys. The plan_index uses this to
         enumerate claim keys during lock takeover.
         """
-        items = [
-            {"key": k, "value": v}
-            for k, v in _kv_store.list_prefix(prefix)
-        ]
+        items = [{"key": k, "value": v} for k, v in _kv_store.list_prefix(prefix)]
         return {"ok": True, "items": items, "count": len(items)}
 
     @mcp.tool()
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.WRITE_ECOSYSTEM_STATE
     )
-    async def mahavishnu_kv_delete(
-        key: str, user_id: str | None = None
-    ) -> dict[str, Any]:
+    async def mahavishnu_kv_delete(key: str, user_id: str | None = None) -> dict[str, Any]:
         """Delete a string-shape KV record by ``key`` (no-op if absent)."""
         _kv_store.delete(key)
         return {"ok": True, "key": key}
