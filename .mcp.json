@@ -4,21 +4,6 @@
       "type": "http",
       "url": "http://localhost:8682/mcp"
     },
-    "brave-search": {
-      "args": [
-        "-y",
-        "@brave/brave-search-mcp-server",
-        "--transport",
-        "http",
-        "--port",
-        "8769",
-        "--allowed-hosts",
-        "127.0.0.1",
-        "--allowed-origins",
-        "http://127.0.0.1:8769"
-      ],
-      "command": "npx"
-    },
     "chart-antv": {
       "type": "http",
       "url": "http://localhost:3036/mcp"
