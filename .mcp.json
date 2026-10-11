@@ -9,7 +9,9 @@
         "-y",
         "@brave/brave-search-mcp-server",
         "--transport",
-        "http"
+        "http",
+        "--port",
+        "8769"
       ],
       "command": "npx"
     },
