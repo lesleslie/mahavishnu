@@ -5986,3 +5986,57 @@ The implementation is complete when **all** of the following are true:
 - `mahavishnu/mcp/signer_feed.py` (feed-state mirror)
 - `mahavishnu/mcp/auth.py` (`@require_mcp_auth` decorator)
 - `mahavishnu/core/permissions.py` (`Permission` registry)
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Substrate repointing required.** This plan's entire architecture
+  is "Dhara-canonical metadata index" with
+  `await self._dhara.put(self._primary_key(d["plan_id"]), json.dumps(d), ttl=86400)`
+  calls and references `docs/decisions/dhara-key-prefixes-2026-07-15.md`.
+  **Dhara has been removed from the Bodai core** (per
+  `feedback-substrate-compat-shim-rot.md`, confirmed 2026-10-11).
+  The `dhara.schema` / `_dhara` substrate package is not importable
+  post-removal.
+- **Target substrate: oneiric** (per **ADR 017** — canonical role, but
+  `status: draft` at the time of this patch; re-validate if the ADR
+  is rejected or amended. Already in active implementation via
+  Shared Oneiric Substrate phases A–E2.)
+  - Schema validation surface → oneiric's persisted-payload validator
+    (do not re-implement locally; the substrate owns schema/validation).
+  - `_dhara.put(...)` → **explicit per-adapter call** (oneiric has no
+    unified `put()` facade):
+    - Dev / local: `oneiric.adapters.storage.LocalStorageAdapter.save(key, data: bytes)`
+    - Serverless (S3): `oneiric.adapters.storage.S3StorageAdapter.upload(key, ...)`
+    - Serverless (Azure/GCS): `upload`/`save_stream` per adapter
+    Pick the backend explicitly via the substrate config layer.
+  - Slash-prefixed keys (`envelopes/...` / `plan-index/...`) per
+    the legacy `dhara-key-prefixes-2026-07-15.md` decision move to
+    the substrate-abstracted path namespace. The key-shape
+    (`envelopes/<plan_id>` or `plan-index/<plan_id>`) is substrate-
+    agnostic; the storage backend is pluggable.
+- **Archive `dhara-key-prefixes-2026-07-15.md`.** That decision doc
+  describes the slash-prefix convention of the now-removed
+  substrate; its operational content (slash separation, prefixes
+  like `envelopes/...` and `plan-index/...`) is substrate-portable
+  and lives on as a substrate-agnostic path-namespace convention.
+  But the doc itself is named "dhara-key-prefixes" and references
+  substrate internals — archive it next to the substrate-compat
+  deletion (per `feedback-substrate-compat-shim-rot.md`). The
+  slash-prefix convention itself should be re-documented as a
+  oneiric-or-substrate-agnostic path-namespace spec.
+- **ID format: UUID7 hex.** All `plan_id` and
+  `plan_primary_key(plan_id)` outputs should be UUID7 hex generated
+  via `from uuid import uuid7; uuid7().hex`. No ULID.
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
+- **MCP server shape (post-migration):** the plan's 5 typed-Dict MCP
+  tools must satisfy the 4-signal feed contract per
+  `.claude/decisions/mcp-backend-wiring-discipline.md` §3. The
+  `PlanIndexFeedState` mirror must tick `cycles_total` on every
+  operation attempt. No-op when Dhara substrate is gone (the
+  substrate is oneiric now).
+- **Companion spec:** `docs/specs/2026-09-10-plan-index-dhara-design.md`
+  gets the same repointing note. The design's "Dhara Substrate
+  Migration" prose is honest historical context (the spec was
+  authored before Dhara removal); the new "## Coordination notes"
+  section is the migration target.

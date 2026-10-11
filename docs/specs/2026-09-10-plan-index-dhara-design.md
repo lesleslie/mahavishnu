@@ -1135,3 +1135,37 @@ value.
 - `scripts/audit_requirements.py` — REQ-ID traceability (NOT
   frontmatter validation; do not conflate)
 - `scripts/audit_orphans.py` — wire-up contract's orphan gate
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Substrate repointing required (companion to the plan).** This
+  spec describes the architecture for `2026-09-10-plan-index-dhara.md`
+  and references the same Dhara substrate that has been removed
+  from the Bodai core (per `feedback-substrate-compat-shim-rot.md`,
+  confirmed 2026-10-11). All `await self._dhara.put(...)` calls in
+  the design move to oneiric substrate (per **ADR 017**, draft
+  status at the time of this patch; re-validate if the ADR is
+  rejected or amended).
+- **Target substrate: oneiric** (in active implementation via
+  Shared Oneiric Substrate phases A–E2):
+  - Schema validation surface → oneiric's persisted-payload validator
+    (do not re-implement locally; the substrate owns schema/validation).
+  - `_dhara.put(...)` → **explicit per-adapter call** (oneiric has no
+    unified `put()` facade):
+    - Dev / local: `oneiric.adapters.storage.LocalStorageAdapter.save(key, data: bytes)`
+    - Serverless (S3): `oneiric.adapters.storage.S3StorageAdapter.upload(key, ...)`
+    - Serverless (Azure/GCS): `upload`/`save_stream` per adapter
+    Pick the backend explicitly via the substrate config layer.
+  - Slash-prefixed keys (`envelopes/...` / `plan-index/...`) per
+    the legacy `dhara-key-prefixes-2026-07-15.md` decision move to
+    the substrate-abstracted path namespace. The shape is
+    substrate-agnostic; only the storage backend changes.
+- **Archive `dhara-key-prefixes-2026-07-15.md`.** The decision doc
+  is named for the removed substrate; archive it (per
+  `feedback-substrate-compat-shim-rot.md`). The slash-prefix
+  convention itself should be re-documented as a
+  substrate-agnostic path-namespace spec.
+- **ID format: UUID7 hex.** `plan_id` is UUID7 hex generated via
+  `from uuid import uuid7; uuid7().hex`. No ULID.
+- **Reference:** see `2026-09-10-plan-index-dhara.md` §10 cross-plan
+  patch table (the spec is patched in parallel with the plan).

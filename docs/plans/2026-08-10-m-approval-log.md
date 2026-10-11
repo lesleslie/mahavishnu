@@ -412,3 +412,41 @@ ______________________________________________________________________
 ## Self-review
 
 - No placeholders. Type consistency preserved (`ApprovalLog` from substrate). TDD discipline throughout. Rollback flag documented.
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Substrate repointing required.** This plan imports
+  `from dhara.schema.approval_log import ApprovalLog` and persists via
+  `dhara.put(...)` to a local path `approval-history/{approval_id}/`.
+  **Dhara has been removed from the Bodai core** (per
+  `feedback-substrate-compat-shim-rot.md`, confirmed 2026-10-11). The
+  `dhara.schema` package is not importable post-removal.
+- **Target substrate: oneiric** (per **ADR 017** — canonical role, but
+  `status: draft` per `docs/plans/PLAN_INDEX.md` frontmatter at the time
+  of this patch; if the ADR is rejected or amended during review,
+  re-validate the repointing direction. Already in active
+  implementation via the Shared Oneiric Substrate phases A–E2.)
+  - Schema validation surface → oneiric's persisted-payload validator
+    (do not re-implement locally; the substrate owns schema/validation).
+  - `dhara.put(...)` → **explicit per-adapter call** (oneiric has no
+    unified `put()` facade today):
+    - Dev / local: `oneiric.adapters.storage.LocalStorageAdapter.save(key, data: bytes)`
+    - Serverless (S3): `oneiric.adapters.storage.S3StorageAdapter.upload(key, ...)`
+    - Serverless (Azure): `oneiric.adapters.storage.AzureStorageAdapter.upload(...)` or `save_stream(...)`
+    - Serverless (GCS): same `upload`/`save_stream` pattern
+    Pick the backend explicitly via the substrate config layer; the
+    `oneiric.adapters.storage.put(...)` shorthand used in the first
+    draft of this patch is incorrect.
+  - Storage path `approval-history/{approval_id}/` is local-disk and
+    fails in serverless deploys (per
+    `2026-09-14-bodai-serverless-readiness-and-component-substitution.md`).
+    Use the substrate-abstracted path namespace; do **not** hardcode
+    `~/.cache/...` or `/var/lib/...`.
+- **ID format: UUID7 hex.** The `approval_id` is caller-supplied; the
+  only sanctioned generation path is
+  `from uuid import uuid7; uuid7().hex`. No `from ulid import ULID`,
+  no `from uuid_utils import uuid7` (the session-buddy carve-out from
+  the now-deleted `crackerjack.services.ulid_generator` is itself
+  deleted — see `docs/plans/2026-10-11-uuid7-only-migration.md`).
+- **Reference: §10 of the UUID7 plan** (`docs/plans/2026-10-11-uuid7-only-migration.md`)
+  lists this plan in its cross-plan patch table.

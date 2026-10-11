@@ -418,9 +418,54 @@ ______________________________________________________________________
 | Integration Contract: Observability counters | Deferred to follow-up (logger.info provides v1 visibility) |
 
 ## Self-review
-
 - **Placeholder scan**: no TBD/TODO/FIXME in plan.
 - **Spec coverage**: see map above; observability counters deferred (logged in v1).
 - **Type consistency**: `WorkflowOutcome` from `dhara.schema` used throughout. `record_workflow_outcome` signature consistent across Tasks 1, 3.
 - **TDD discipline**: every task has explicit RED → GREEN → commit steps.
 - **Rollback**: feature flag `WORKFLOW_OUTCOME_V1_ENABLED` gates the writer (no-op when False).
+
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Substrate repointing required.** This plan imports
+  `from dhara.schema.workflow_outcome import WorkflowOutcome` and
+  persists via `dhara.put(...)` to a local path
+  `workflow-results/{workflow_id}/`. **Dhara has been removed from
+  the Bodai core** (per `feedback-substrate-compat-shim-rot.md`,
+  confirmed 2026-10-11). The `dhara.schema` package is not
+  importable post-removal.
+- **Target substrate: oneiric** (per **ADR 017** — canonical role, but
+  `status: draft` at the time of this patch; re-validate if the ADR
+  is rejected or amended. Already in active implementation via
+  Shared Oneiric Substrate phases A–E2.)
+  - Schema validation surface → oneiric's persisted-payload validator.
+  - `dhara.put(...)` → **explicit per-adapter call** (oneiric has no
+    unified `put()` facade):
+    - Dev / local: `oneiric.adapters.storage.LocalStorageAdapter.save(key, data: bytes)`
+    - Serverless (S3): `oneiric.adapters.storage.S3StorageAdapter.upload(key, ...)`
+    - Serverless (Azure/GCS): `upload`/`save_stream` per adapter
+    Pick the backend explicitly via the substrate config layer.
+  - Storage path `workflow-results/{workflow_id}/` is local-disk and
+    fails in serverless deploys. Use the substrate-abstracted path
+    namespace; do not hardcode local-disk paths.
+- **ID format: UUID7 hex.** The `workflow_id` is caller-supplied;
+  `from uuid import uuid7; uuid7().hex` is the only sanctioned
+  generation path. No `from ulid import ULID`.
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
+- **MCP server shape (post-migration):** the new
+  `workflow_get_outcome(workflow_id)` MCP tool must satisfy the
+  4-signal feed contract per
+  `.claude/decisions/mcp-backend-wiring-discipline.md` §3:
+  `feed.entities_count`, `feed.last_updated_timestamp`,
+  `feed.errors_total`, `cycles_total`. Task 4's
+  `pytest.skip("Replace with the actual Dhara fixture once located")`
+  placeholder must be replaced with a real aggregator-verdict test
+  (e.g. `tests/integration/test_workflow_tools_e2e.py` asserting real
+  HTTP `/health` verdict), per `feedback-mcp-test-must-assert-aggregator-verdict`.
+  Retention/tiering analog: per the serverless tiering plan
+  (`2026-09-25-session-buddy-serverless-tiering-provenance.md`),
+  workflow outcomes should follow a similar GCS lifecycle policy
+  (Standard → Nearline 30d → Coldline 90d → Archive 365d); the
+  specifics are out of scope for the UUID7 migration but the patch
+  flags the gap.

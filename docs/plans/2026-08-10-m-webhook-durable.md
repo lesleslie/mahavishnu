@@ -287,5 +287,51 @@ ______________________________________________________________________
 | Observability counters | Deferred |
 
 ## Self-review
-
 - No placeholders. Type consistency. TDD discipline.
+
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Substrate repointing required.** This plan imports
+  `from dhara.schema.webhook_ingress import WebhookIngress` and
+  persists via `dhara.put(...)` (which the plan claims triggers a
+  D-AUDIT subscriber for `audit_record` emission). **Dhara has been
+  removed from the Bodai core** (per
+  `feedback-substrate-compat-shim-rot.md`, confirmed 2026-10-11).
+  The `dhara.schema` package is not importable post-removal.
+- **Target substrate: oneiric** (per **ADR 017** — canonical role, but
+  `status: draft` at the time of this patch; re-validate if the ADR
+  is rejected or amended. Already in active implementation via
+  Shared Oneiric Substrate phases A–E2.)
+  - Schema validation surface → oneiric's persisted-payload validator.
+  - `dhara.put(...)` → **explicit per-adapter call** (oneiric has no
+    unified `put()` facade):
+    - Dev / local: `oneiric.adapters.storage.LocalStorageAdapter.save(key, data: bytes)`
+    - Serverless (S3): `oneiric.adapters.storage.S3StorageAdapter.upload(key, ...)`
+    - Serverless (Azure/GCS): `upload`/`save_stream` per adapter
+    Pick the backend explicitly via the substrate config layer.
+  - **`audit_record` emission side-effect:** needs a migration path
+    forward. Oneiric has no equivalent audit-on-write adapter. The
+    webhook surface needs an OTel span
+    `webhook.ingress.record_written` (with `audit_record=true`
+    attribute) so the audit feed is observable through the existing
+    OTel → Akosha path. The actual `audit_record` event emission
+    hook is the responsibility of this plan's own PR (out of scope
+    for the UUID7 migration worktree).
+- **ID format: UUID7 hex.** The `webhook_id` is caller-supplied;
+  `from uuid import uuid7; uuid7().hex` is the only sanctioned
+  generation path.
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
+- **MCP server shape (post-migration):** the new `webhook_replay(webhook_id)`
+  MCP tool must satisfy the 4-signal feed contract per
+  `.claude/decisions/mcp-backend-wiring-discipline.md` §3:
+  `feed.entities_count`, `feed.last_updated_timestamp`,
+  `feed.errors_total`, `cycles_total`. Tool description must follow
+  `tool-description-rubric.md` (the bare name `webhook_replay` is
+  ambiguous — should disambiguate from `webhook_dispatch` via the
+  `description=` parameter, e.g. "Read a webhook payload by id; NOT
+  to retry — use `webhook_dispatch` for that"). Retention/tiering
+  analog: webhook ingress is inherently short-lived, but the durable
+  record may need 30-90 day retention for replay; the specifics are
+  out of scope for the UUID7 migration but the patch flags the gap.

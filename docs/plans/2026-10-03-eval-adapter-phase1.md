@@ -693,6 +693,16 @@ This plan is "done" when:
 If any of these fail, do not declare Phase 1 done. The wire-up contract is the bar.
 
 ## References
+- **No ULID-shaped keys.** Anything matching `^[0-9A-HJKMNP-TV-Z]{26}$`
+  (Crockford Base32 ULID) is rejected post-merge by the validation
+  matrix in `docs/plans/2026-10-11-uuid7-only-migration.md`
+  (§7 Validation Matrix).
+- **No legacy column shadow.** Unlike the old `crackerjack V5/V6`
+  ULID-hedge pattern, do **not** add a `*_ulid` shadow column with
+  dual-write. The `feedback-format-migration-lazy-dual-write.md`
+  pattern is forbidden in pre-1.0 (`feedback-no-backwards-compat-pre-1.0`).
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
 
 - `docs/plans/TEMPLATE.md` — the plan format this file follows.
 - `docs/plans/2026-05-10-minimax27-provider-migration.md` — example of a completed Mahavishnu plan.
@@ -714,3 +724,32 @@ If any of these fail, do not declare Phase 1 done. The wire-up contract is the b
 - `ADR 017: Oneiric as the shared persistence substrate for Bodai` — substrate conventions.
 - `pyproject.toml:407-420` — existing `per-file-ignores` carve-outs for Pydantic-heavy files (the model for Task 0's additions).
 - Memory items cross-referenced: `pydantic-future-annotations-forward-ref.md`, `feedback-no-bodai-prefix-in-config-names.md`, `feedback-memories-must-be-dual-stored.md`, `wire-protocol-source-of-truth.md`, `multi-agent-review-catches-blind-spots.md`.
+
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **ID format: UUID7 hex (required).** The new `runs` / `case_results`
+  / `scores` tables (Task 5) use `id TEXT PRIMARY KEY` (lines 334–360
+  of the original plan). The only sanctioned ID generation path
+  across the Bodai core, per the active UUID7 migration, is
+  `from uuid import uuid7; uuid7().hex`. Default values for the
+  `id` column should be either:
+  - App-layer: writer calls `uuid7().hex` and passes it in
+    (preferred; matches the session-buddy pattern post-Phase-0).
+  - Or schema-layer: `id TEXT PRIMARY KEY DEFAULT gen_random_uuid7()::TEXT`
+    (requires oneiric's `gen_random_uuid7()` UDF; only available if
+    the eval DB is on a PG backend with oneiric's UDF loaded).
+- **No ULID-shaped keys.** Anything matching `^[0-9A-HJKMNP-TV-Z]{26}$`
+  (Crockford Base32 ULID) is rejected post-merge by the validation
+  matrix in `docs/plans/2026-10-11-uuid7-only-migration.md`
+  (§7 Validation Matrix).
+- **No legacy column shadow.** Unlike the old `crackerjack V5/V6`
+  ULID-hedge pattern, do **not** add a `*_ulid` shadow column with
+  dual-write. The `feedback-format-migration-lazy-dual-write.md`
+  pattern is forbidden in pre-1.0 (`feedback-no-backwards-compat-pre-1.0`).
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
+- **ID generation is app-layer only.** The
+  `gen_random_uuid7()::TEXT` example in the v1 of this patch
+  described a UDF that oneiric does not ship. The app-layer path
+  is the only working option.

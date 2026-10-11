@@ -2633,9 +2633,6 @@ ______________________________________________________________________
 | NOT done (sub-plan 2/3 items) | N/A — explicitly deferred |
 
 ## Implementation Notes (post-review)
-
-After the plan was written, a pre-implementation review found 8 BLOCKERs + 5 HIGHs. All were addressed in commit `8f8a90ea`. Key implementation divergences from this plan:
-
 - **B2**: hostname is now sha256-hashed (not raw hostname[:4]). The `,,` capture-time path requires that the node field be exactly 8 hex chars regardless of hostname content. Raw hostname slicing could include letters like `y`, `s`, `t` that aren't valid hex.
 - **B3**: `node` is lazily initialized via `get_node()` module global, not at module import. Spec said "module import"; implementation defers to first call so tests can reset cleanly via the conftest fixture.
 - **B6**: `_do_capture` echoes to stderr BEFORE writing to log. If stderr fails, no log entry is written (prevents split-brain: event in log but Claude saw passthrough).
@@ -2665,3 +2662,39 @@ The plan's Task 8 implementation block (lines 2307-2491) shows the ORIGINAL impl
 | HIGH | 3 | `op` field always "capture" | Per-step try/except blocks |
 | HIGH | 4 | Regex compile failure crashes hook | Defensive per-pattern compile |
 | HIGH | 5 | `os.write` short write non-atomic | Loop until full write |
+
+
+## Coordination notes (post-2026-10-11 UUID7 migration)
+
+- **Serverless scope: local-only v1.** Jot persists to
+  `~/.claude/jot/{date}.jsonl` (host-local). In a serverless Claude
+  Code deploy (per
+  `2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
+  and ADR 018), there is no writable per-instance filesystem; the
+  path 404s.
+  - **Decision for v1: pin to local-only.** Jot is a per-user
+    quick-capture scratchpad; it is not durable agent memory and
+    does not need to survive Claude Code session restarts in the
+    cloud. Disabling jot in serverless mode is a legitimate scope
+    choice and avoids a v1 rework.
+  - **v2 (out of scope for this plan):** if jot must work in
+    serverless, repoint at `oneiric.adapters.storage.put(jot_path=...)`
+    with cloud-agnostic path resolution
+    (`jot/{user_id}/{date}/{event_id}.jsonl`).
+- **ID format: UUID7 hex.** All `event_id`, `short_id` (UD5 currently),
+  and `hlc.node_id` should use `from uuid import uuid7; uuid7().hex`
+  as the only sanctioned generation path. No ULID.
+- **Reference: §10 of the UUID7 plan** lists this plan in its
+  cross-plan patch table.
+- **Serverless disable mechanism (concrete):** the
+  `jot-session-start.py` SessionStart hook in
+  `.claude/settings.json` (registered in `2026-09-10-jot-drain.md`
+  line 1124-1126) MUST become a no-op (or be removed) in
+  serverless deploys because `~/.claude/jot/` doesn't exist. The
+  existing implementation in `mahavishnu/hooks/jot_capture.py`
+  falls back to `errors.log` + passthrough on `PermissionError`,
+  but the SessionStart hook (which surfaces jots via
+  `mcp__mahavishnu__jot_resurface`) needs the same fallback OR
+  an explicit operator-driven disable flag. Document this; do
+  not change the hook behavior in this UUID7 worktree (the
+  disable is the plan's own PR).
