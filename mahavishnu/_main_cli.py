@@ -1523,6 +1523,19 @@ from .cli.board_cli import board_app
 
 app.add_typer(board_app, name="board")
 
+# === DEMO SUB-COMMANDS (mahavishnu demo <engine|adapter>) ===
+# Re-creates the precedent set by commit 55630b45 (Oct 9 2026, since
+# reverted in an untraceable merge). Each sub-command runs an opinionated
+# scenario for a workflow engine or terminal adapter. Currently ships
+# tmux (full impl) + prefect (full impl) + 7 stubs (--why-stub flag).
+#
+# Anti-revert grep:    git grep -n 'DEMO SUB-COMMANDS' mahavishnu/_main_cli.py
+# Anti-revert test:    tests/unit/cli/test_cli_wireup_invariants.py
+# Module docstring:    mahavishnu/cli/demo_cli.py also references this block.
+from .cli.demo_cli import demo_app
+
+app.add_typer(demo_app, name="demo")
+
 # Plan index CLI (mirror mcp__mahavishnu__plan_* tools)
 from .cli.plan_cli import plan_app
 
