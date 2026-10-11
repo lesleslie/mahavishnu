@@ -1541,6 +1541,16 @@ from .cli.plan_cli import plan_app
 
 app.add_typer(plan_app, name="plan")
 
+# === LAUNCHD SUB-COMMANDS (mahavishnu launchd <service>) ===
+# Opt-in launchd management for substrate servers (Prefect, etc.).
+# Single-file CLI mirroring rollback_cli.py precedent — no nested setup/
+# package. Anti-revert grep:  git grep -n 'LAUNCHD SUB-COMMANDS' mahavishnu/_main_cli.py
+# Anti-revert test:           tests/unit/cli/test_cli_wireup_invariants.py
+# Memory-note caveat:          feedback-macos-reboot-launchd-keepalive-cascade.md
+from .cli.launchd_cli import launchd_app
+
+app.add_typer(launchd_app, name="launchd")
+
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Prefect server under launchd (com.mcp.mahavishnu.prefect).
+
+  Installed by: mahavishnu launchd prefect --install
+  Removed by:   mahavishnu launchd prefect --uninstall
+  Status:       mahavishnu launchd prefect status
+
+  Template uses %USER_HOME% as an explicit interpolation token so the
+  on-disk XML never carries literal '~' (launchd parses strictly).
+  Replace %USER_HOME% with the actual home path at install time.
+
+  Kill switch: ``MAHAVISHNU_AUTOSTART_PREFECT=0`` in ~/.config/secrets.env
+  prevents install() from running (handled by mahavishnu/cli/launchd_cli.py).
+-->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>LANG</key>
+		<string>en_US.UTF-8</string>
+		<key>LOG_LEVEL</key>
+		<string>INFO</string>
+		<key>PATH</key>
+		<string>/Users/les/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>PREFECT_API_URL</key>
+		<string>http://127.0.0.1:4200/api</string>
+		<key>PREFECT_HOME</key>
+		<string>%USER_HOME%/.local/state/prefect</string>
+		<key>MAHAVISHNU_PREFECT__API_URL</key>
+		<string>http://127.0.0.1:4200/api</string>
+		<key>MAHAVISHNU_PREFECT__WORK_POOL</key>
+		<string>default</string>
+	</dict>
+	<key>EnvironmentFile</key>
+	<string>%USER_HOME%/.config/secrets.env</string>
+	<key>HardResourceLimits</key>
+	<dict>
+		<key>Memory</key>
+		<integer>1073741824</integer>
+		<key>NumberOfFiles</key>
+		<integer>8192</integer>
+	</dict>
+	<key>KeepAlive</key>
+	<dict>
+		<key>Crashed</key>
+		<true/>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>Label</key>
+	<string>com.mcp.mahavishnu.prefect</string>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/les/.local/state/mcp/scripts/launch_with_healthcheck.sh</string>
+		<string>http://127.0.0.1:4200/api/health</string>
+		<string>--timeout</string>
+		<string>30</string>
+		<string>--</string>
+		<string>%USER_HOME%/Projects/mahavishnu/.venv/bin/prefect</string>
+		<string>server</string>
+		<string>start</string>
+		<string>--host</string>
+		<string>127.0.0.1</string>
+		<string>--port</string>
+		<string>4200</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>SoftResourceLimits</key>
+	<dict>
+		<key>NumberOfFiles</key>
+		<integer>4096</integer>
+	</dict>
+	<key>StandardErrorPath</key>
+	<string>%USER_HOME%/.local/state/mcp/logs/com.mcp.mahavishnu.prefect.err</string>
+	<key>StandardOutPath</key>
+	<string>%USER_HOME%/.local/state/mcp/logs/com.mcp.mahavishnu.prefect.log</string>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/les/Projects/mahavishnu</string>
+</dict>
+</plist>

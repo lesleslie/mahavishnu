@@ -13,8 +13,6 @@ Plan: ``/Users/les/.claude/plans/dazzling-waddling-ullman.md``
 
 from __future__ import annotations
 
-import pytest
-
 
 def test_demo_subcommands_wired_in_main_cli() -> None:
     """``mahavishnu demo <engine|adapter>`` must register on the root CLI.
@@ -34,19 +32,13 @@ def test_demo_subcommands_wired_in_main_cli() -> None:
     )
 
 
-@pytest.mark.xfail(
-    reason="Phase C: launchd_cli.py not yet wired (xfail flips to pass automatically when Phase C ships)",
-    strict=False,
-)
 def test_launchd_subcommands_wired_in_main_cli() -> None:
     """``mahavishnu launchd prefect`` must register on the root CLI.
 
-    Sibling to ``test_demo_subcommands_wired_in_main_cli`` — its absence
-    is a launched-by-the-Phase-C-PR wiring failure.
-
-    Marked ``xfail`` until Phase C (``mahavishnu/cli/launchd_cli.py``)
-    ships — flips to pass on its own without code change once Phase C
-    commits.
+    Was marked ``xfail`` until Phase C (``mahavishnu/cli/launchd_cli.py``)
+    shipped — now passes naturally. Sibling to
+    ``test_demo_subcommands_wired_in_main_cli`` — same anti-revert
+    pattern, three markers.
     """
     from mahavishnu._main_cli import app
 
