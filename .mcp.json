@@ -7,9 +7,7 @@
     "brave-search": {
       "args": [
         "-y",
-        "@brave/brave-search-mcp-server",
-        "--transport",
-        "stdio"
+        "@brave/brave-search-mcp-server"
       ],
       "command": "npx"
     },
@@ -84,6 +82,13 @@
     "session-buddy": {
       "type": "http",
       "url": "http://localhost:8678/mcp"
+    },
+    "tavily": {
+      "args": [
+        "-y",
+        "tavily-mcp@latest"
+      ],
+      "command": "npx"
     }
   }
 }
