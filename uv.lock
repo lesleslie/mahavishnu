@@ -1191,7 +1191,7 @@ wheels = [
 
 [[package]]
 name = "crackerjack"
-version = "0.87.0"
+version = "0.87.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1255,9 +1255,9 @@ dependencies = [
     { name = "websockets" },
     { name = "zuban" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/d6/edfa2620a16b319cb45c9813f8a301d064dfa4914b4872d77ce7cdca3bfa/crackerjack-0.87.0.tar.gz", hash = "sha256:e293ea6d5b20e952f12a3703208927202df36bcf6280d1306a2202489652ae90", size = 5005043, upload-time = "2026-10-10T17:45:07.667Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/8a/c0dbfdaa832409ac72ac91be1ff0888e8b2f1a338eb3e796167fa5f16642/crackerjack-0.87.1.tar.gz", hash = "sha256:a4941f7f8376f3e60abed0c4ee3f2b07e29d6c97049c52fef6c41b93c0b58318", size = 5007730, upload-time = "2026-10-11T06:38:53.721Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/44/847870c9902ebf44708ea60e86bea428c546b542add8ac90f460c410cf8d/crackerjack-0.87.0-py3-none-any.whl", hash = "sha256:630a58e761c5c40649b82773558edbaa03542d0852adf82f1d1181762baac971", size = 1528081, upload-time = "2026-10-10T17:45:04.472Z" },
+    { url = "https://files.pythonhosted.org/packages/19/6c/8a685f494953d6c452fd5b38ee0ca4b8bc1e6867daa4429e17a6d88c493c/crackerjack-0.87.1-py3-none-any.whl", hash = "sha256:59f73952e2a727877225b7e0e20c069e7706a64640f409c865c833ab6db42da6", size = 1531369, upload-time = "2026-10-11T06:38:51.154Z" },
 ]
 
 [[package]]
