@@ -39,7 +39,7 @@ import json
 from pathlib import Path
 import shutil
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx2 as httpx
 import typer
@@ -68,8 +68,8 @@ demo_app = typer.Typer(
 # Default demo command — banner with PID + timestamp, then sleep so the pane
 # stays alive for the capture/ACK step. Mirrors the 2026-10-09 manual flow.
 DEFAULT_TMUX_DEMO_CMD = (
-    "bash -c 'echo \"[worker $$] alive at $(date +%T)\"; "
-    "echo \"[worker $$] tmux session pane running claude_tui equivalent\"; "
+    'bash -c \'echo "[worker $$] alive at $(date +%T)"; '
+    'echo "[worker $$] tmux session pane running claude_tui equivalent"; '
     "sleep 120'"
 )
 ACK_COMMAND = "echo '[ack] from mahavishnu demo tmux'"
@@ -190,9 +190,7 @@ def demo_tmux(
     workers: int = typer.Option(
         3, "--workers", "-n", min=1, max=50, help="Number of tmux workers to spawn."
     ),
-    cmd: str | None = typer.Option(
-        None, "--cmd", "-c", help="Command to run inside each pane."
-    ),
+    cmd: str | None = typer.Option(None, "--cmd", "-c", help="Command to run inside each pane."),
     keep: bool = typer.Option(False, "--keep", help="Leave workers up after the demo."),
 ) -> None:
     """Spawn N tmux workers, capture panes, ACK, then reap (unless --keep).
@@ -234,9 +232,9 @@ DEFAULT_PRECONDITION_TIMEOUT = 5.0
 
 def _check_prefect_preconditions(
     *,
-    settings_getter: Callable[[], object] | None = None,
+    settings_getter: Callable[[], Any] | None = None,
     api_url_override: str | None = None,
-    http_probe: Callable[..., object] | None = None,
+    http_probe: Callable[..., Any] | None = None,
     which: Callable[[str], str | None] | None = None,
     timeout: float = DEFAULT_PRECONDITION_TIMEOUT,
 ) -> list[str]:
@@ -273,9 +271,7 @@ def _check_prefect_preconditions(
     try:
         resp = http_probe(health_url, timeout=timeout)
         if resp.status_code != 200:
-            failures.append(
-                f"Prefect server returned HTTP {resp.status_code} at {health_url}"
-            )
+            failures.append(f"Prefect server returned HTTP {resp.status_code} at {health_url}")
     except Exception as exc:  # noqa: BLE001
         failures.append(f"Prefect server unreachable at {health_url}: {exc}")
 
@@ -285,7 +281,7 @@ def _check_prefect_preconditions(
     return failures
 
 
-def _default_settings_getter():  # type: ignore[no-untyped-def]
+def _default_settings_getter() -> Any:
     # Lazy import so the precondition helper does not trigger Oneiric loader
     # at module-import time (which would break CLI test isolation).
     from mahavishnu.core.config import get_settings
@@ -315,15 +311,11 @@ async def _run_prefect_demo(
 
     module_dotted, _, attr_name = flow_dotted.partition(":")
     if not module_dotted or not attr_name:
-        raise ValueError(
-            f"--flow must be 'pkg.module:func' shape, got {flow_dotted!r}"
-        )
+        raise ValueError(f"--flow must be 'pkg.module:func' shape, got {flow_dotted!r}")
     flow_module = importlib.import_module(module_dotted)
     flow_func = getattr(flow_module, attr_name, None)
     if flow_func is None:
-        raise ValueError(
-            f"--flow resolves to {module_dotted!r} but no {attr_name!r} attribute"
-        )
+        raise ValueError(f"--flow resolves to {module_dotted!r} but no {attr_name!r} attribute")
 
     settings = _default_settings_getter()
     prefect_cfg = settings.prefect  # type: ignore[attr-defined]
@@ -341,9 +333,7 @@ async def _run_prefect_demo(
             name="mahavishnu-demo-prefect",
             work_pool_name=work_pool,
         )
-        polled_run = await wait_for_flow_run(
-            flow_run.id, timeout=prefect_cfg.timeout_seconds
-        )
+        polled_run = await wait_for_flow_run(flow_run.id, timeout=prefect_cfg.timeout_seconds)
         state = polled_run.state
         is_completed = bool(state and state.is_completed())
         results = state.result() if is_completed else []
@@ -373,9 +363,7 @@ def demo_prefect(
         help="Dotted path 'pkg.module:func' to a @flow-decorated function.",
     ),
     keep: bool = typer.Option(False, "--keep", help="Leave any deployment running."),
-    timeout: int = typer.Option(
-        120, "--timeout", help="Max seconds to wait for the flow run."
-    ),
+    timeout: int = typer.Option(120, "--timeout", help="Max seconds to wait for the flow run."),
 ) -> None:
     """Run a Prefect flow end-to-end against the live API server.
 
@@ -431,7 +419,9 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
         typer.echo(f"[{name}] implementation cost: {implementation_cost}")
         typer.echo("Plan: /Users/les/.claude/plans/dazzling-waddling-ullman.md")
         raise typer.Exit(code=0)
-    typer.echo("not implemented — see docs/plans/2026-10-11-prefect-adapter-bug-fixes-demo-cli-launchd.md")
+    typer.echo(
+        "not implemented — see docs/plans/2026-10-11-prefect-adapter-bug-fixes-demo-cli-launchd.md"
+    )
     raise typer.Exit(code=0)
 
 
@@ -454,7 +444,11 @@ def _stub_command(name: str) -> Callable[[bool], None]:
     silent failure modes).
     """
 
-    def callback(why_stub: bool = typer.Option(False, "--why-stub", help="Print implementation cost and exit.")) -> None:
+    def callback(
+        why_stub: bool = typer.Option(
+            False, "--why-stub", help="Print implementation cost and exit."
+        ),
+    ) -> None:
         _emit_stub_notice(name, why=why_stub, implementation_cost=_STUB_COSTS[name])
 
     return callback
@@ -463,8 +457,6 @@ def _stub_command(name: str) -> Callable[[bool], None]:
 # Register the 7 stubs. Live implementations land in follow-up PRs.
 for _stub_name in ("agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"):
     _cmd = _stub_command(_stub_name)
-    # Typer requires a unique callable name per command — bind the name.
-    _cmd.__name__ = f"demo_{_stub_name}"
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene
 
