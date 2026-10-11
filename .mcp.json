@@ -4,6 +4,15 @@
       "type": "http",
       "url": "http://localhost:8682/mcp"
     },
+    "brave-search": {
+      "args": [
+        "-y",
+        "@brave/brave-search-mcp-server",
+        "--transport",
+        "stdio"
+      ],
+      "command": "npx"
+    },
     "chart-antv": {
       "type": "http",
       "url": "http://localhost:3036/mcp"
