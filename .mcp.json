@@ -11,7 +11,11 @@
         "--transport",
         "http",
         "--port",
-        "8769"
+        "8769",
+        "--allowed-hosts",
+        "127.0.0.1",
+        "--allowed-origins",
+        "http://127.0.0.1:8769"
       ],
       "command": "npx"
     },
