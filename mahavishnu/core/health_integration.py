@@ -250,20 +250,50 @@ class AdapterHealthMonitor:
             logger.debug(f"Prometheus health metrics already registered: {e}")
 
     def _get_adapters(self) -> dict[str, OrchestratorAdapter]:
-        """Get adapters from registry.
+        """Get adapters from the Oneiric resolver.
 
         Returns:
-            Dictionary mapping adapter names to adapter instances
+            Dictionary mapping adapter names to adapter instances. For
+            string-typed factories (e.g. ``"module.path.ClassName"``)
+            the instance is not hydrated and the entry is omitted —
+            callers should use ``AdapterBridge.use()`` for hydration
+            when they need a live instance.
         """
-        if hasattr(self.registry, "adapters"):
-            # HybridAdapterRegistry or similar
-            return cast("dict[str, OrchestratorAdapter]", self.registry.adapters)
-        elif isinstance(self.registry, dict):
-            # Direct dictionary of adapters
-            return cast("dict[str, OrchestratorAdapter]", self.registry)
+        import inspect
+
+        registry = self.registry
+        candidates: list = []
+        if hasattr(registry, "list_active"):
+            # Oneiric ``Resolver`` — emit all active Candidates per
+            # orchestration domain.
+            try:
+                candidates = list(registry.list_active("adapter"))
+            except Exception as exc:  # noqa: BLE001 - substrate boundary
+                logger.warning(f"Resolver list_active failed: {exc}")
+                return {}
+        elif isinstance(registry, dict):
+            return cast("dict[str, OrchestratorAdapter]", registry)
         else:
-            logger.warning(f"Unknown registry type: {type(self.registry)}")
+            logger.warning(f"Unknown registry type: {type(registry)}")
             return {}
+
+        adapters: dict[str, OrchestratorAdapter] = {}
+        for cand in candidates:
+            provider = getattr(cand, "provider", None)
+            factory = getattr(cand, "factory", None)
+            if not provider or factory is None:
+                continue
+            if not callable(factory):
+                # String-typed factory (e.g. "module.path.ClassName");
+                # hydration requires the bridge — not done here.
+                continue
+            try:
+                instance = factory()
+            except Exception as exc:  # noqa: BLE001 - diagnostic
+                logger.debug(f"adapter-instantiation-error provider={provider}: {exc}")
+                continue
+            adapters[provider] = instance
+        return adapters
 
     async def check_all_health(self) -> dict[str, dict[str, Any]]:
         """Check health of all registered adapters.

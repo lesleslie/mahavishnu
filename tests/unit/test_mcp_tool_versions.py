@@ -47,7 +47,14 @@ class TestToolVersionsRegistry:
                 assert p.isdigit(), f"{name} version part {p!r} is not numeric"
 
     def test_known_tools_are_registered(self):
-        """Several well-known tools should be present in the registry."""
+        """Several well-known tools should be present in the registry.
+
+        Note: ``adapter_list`` (and the 6 other ``adapter_*`` tools) was
+        removed in the Phase 2 migration to Oneiric substrate — see
+        ``docs/plans/2026-10-12-adapter-registry-consolidation-to-
+        oneiric.md``. Consumers now use ``mcp__oneiric__list_adapters``
+        instead.
+        """
         expected = {
             "list_repos",
             "trigger_workflow",
@@ -55,7 +62,6 @@ class TestToolVersionsRegistry:
             "terminal_launch",
             "coord_create_issue",
             "treesitter_parse",
-            "adapter_list",
         }
         missing = expected - set(TOOL_VERSIONS)
         assert not missing, f"Missing tools in registry: {missing}"

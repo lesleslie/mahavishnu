@@ -657,7 +657,9 @@ class TestCapabilityRouter:
         high.capabilities = {"multi_agent", "tool_use"}
 
         registry = MagicMock()
-        registry.find_by_capabilities = AsyncMock(return_value=[low, high])
+        registry.list_active = MagicMock(return_value=[low, high])
+        # Disable find_by_capabilities so the production code picks list_active
+        del registry.find_by_capabilities
         router = CapabilityRouter(registry=registry)
         import asyncio
 
@@ -671,7 +673,8 @@ class TestCapabilityRouter:
 
     def test_route_handles_registry_exception(self) -> None:
         registry = MagicMock()
-        registry.find_by_capabilities = AsyncMock(side_effect=RuntimeError("boom"))
+        registry.list_active = MagicMock(side_effect=RuntimeError("boom"))
+        del registry.find_by_capabilities
         router = CapabilityRouter(registry=registry)
         import asyncio
 
@@ -686,13 +689,14 @@ class TestCapabilityRouter:
         candidate.capabilities = {"multi_agent", "tool_use"}
 
         registry = MagicMock()
-        registry.find_by_capabilities = AsyncMock(return_value=[candidate])
+        registry.list_active = MagicMock(return_value=[candidate])
+        del registry.find_by_capabilities
         router = CapabilityRouter(registry=registry)
         # Two calls → two registry invocations (cache may be disabled if
         # task_requirements cannot be imported)
         await router.route(TaskType.AI_TASK)
         await router.route(TaskType.AI_TASK)
-        assert registry.find_by_capabilities.await_count == 2
+        assert registry.list_active.call_count == 2
 
     def test_invalidate_cache(self) -> None:
         router = CapabilityRouter()

@@ -187,12 +187,20 @@ class TestGetAdapters:
         adapters = monitor._get_adapters()
         assert set(adapters.keys()) == {"a", "b"}
 
-    def test_object_with_adapters_attr(self):
+    def test_resolver_registry(self):
+        # New Oneiric Resolver shape: ``list_active("adapter")`` returns
+        # Candidates with callable factories. Hydrated instances are
+        # returned in the same shape as the legacy dict path.
+        candidate = MagicMock()
+        candidate.provider = "x"
+        candidate.factory = MagicMock(return_value="instance")
         registry = MagicMock()
-        registry.adapters = {"x": MagicMock()}
+        registry.list_active = MagicMock(return_value=[candidate])
+        del registry.adapters  # ensure the legacy duck-type is gone
         monitor = AdapterHealthMonitor(registry=registry)
         adapters = monitor._get_adapters()
         assert "x" in adapters
+        assert adapters["x"] == "instance"
 
     def test_unknown_type_returns_empty(self):
         monitor = AdapterHealthMonitor(registry="not_a_registry")

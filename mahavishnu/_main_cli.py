@@ -350,42 +350,6 @@ def workflow_prefect_clear_schedule(
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
-# ── Adapter sub-app (canonical adapter routing commands) ─────────────────
-
-adapter_app = typer.Typer(help="Adapter discovery and routing")
-app.add_typer(adapter_app, name="adapter")
-
-
-@adapter_app.command("list")
-def adapter_list_cmd(
-    domain: str | None = typer.Option(None, "--domain", "-d", help="Filter by domain"),
-    healthy_only: bool = typer.Option(False, "--healthy", help="Show only healthy adapters"),
-):
-    """List registered adapters with optional filtering."""
-    result = asyncio.run(_async_adapter_list(domain, healthy_only))
-    typer.echo(json.dumps(result, indent=2, default=str))
-
-
-@adapter_app.command("resolve")
-def adapter_resolve_cmd(
-    task_type: str = typer.Argument(..., help="Type of task to route"),
-    capabilities: list[str] = typer.Option(..., "--cap", "-c", help="Required capabilities"),
-    domain: str = typer.Option("orchestration", "--domain", "-d", help="Domain category"),
-):
-    """Resolve the best adapter for a task by capabilities."""
-    result = asyncio.run(_async_adapter_resolve(task_type, capabilities, domain))
-    typer.echo(json.dumps(result, indent=2, default=str))
-
-
-@adapter_app.command("health")
-def adapter_health_cmd(
-    name: str | None = typer.Argument(None, help="Specific adapter (omit for all)"),
-):
-    """Check health of one or all adapters."""
-    result = asyncio.run(_async_adapter_health(name))
-    typer.echo(json.dumps(result, indent=2, default=str))
-
-
 # ── Internal async helpers for workflow commands ─────────────────────────
 
 
@@ -498,27 +462,6 @@ async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> di
     return result
 
 
-async def _async_adapter_list(domain: str | None, healthy_only: bool) -> dict:
-    """List adapters via the canonical adapter registry path."""
-    from .core.adapter_registry import HybridAdapterRegistry
-    from .core.config import get_settings
-
-    registry = HybridAdapterRegistry(get_settings())
-    adapters = registry.list_adapters(domain=domain, healthy_only=healthy_only)
-    return {
-        "count": len(adapters),
-        "adapters": [
-            {
-                "name": a.get("name"),
-                "domain": a.get("domain"),
-                "status": a.get("healthy"),
-                "capabilities": a.get("capabilities"),
-            }
-            for a in adapters
-        ],
-    }
-
-
 async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain: str) -> dict:
     """Resolve adapter via the canonical routing path."""
     from .core.task_router import TaskRouter, TaskType
@@ -545,20 +488,6 @@ async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain
         "selected_adapter": result.get("adapter") if isinstance(result, dict) else str(result),
         "confidence": result.get("confidence") if isinstance(result, dict) else None,
     }
-
-
-async def _async_adapter_health(name: str | None) -> dict:
-    """Check adapter health via the canonical path."""
-    from .core.adapter_registry import HybridAdapterRegistry
-    from .core.config import get_settings
-
-    registry = HybridAdapterRegistry(get_settings())
-    results = await registry.check_all_health()
-    if name:
-        if name in results:
-            return {"adapter": name, **results[name]}
-        return {"adapter": name, "status": "not_found", "error": f"Adapter '{name}' not registered"}
-    return {"count": len(results), "adapters": results}
 
 
 # ── Internal async helpers for PrefectAdapter commands ───────────────────

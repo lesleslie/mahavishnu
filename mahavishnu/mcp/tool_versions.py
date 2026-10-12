@@ -143,14 +143,6 @@ TOOL_VERSIONS: dict[str, str] = {
     # Primitive introspection (primitive_tools.py) -- Keystone keystone_show analog
     "list_primitives": "1.0.0",
     "show_primitive": "1.0.0",
-    # Adapter registry tools (adapter_registry_tools.py)
-    "adapter_cache_invalidate": "1.0.0",
-    "adapter_discover": "1.0.0",
-    "adapter_enable": "1.0.0",
-    "adapter_health": "1.0.0",
-    "adapter_list": "1.0.0",
-    "adapter_metadata": "1.0.0",
-    "adapter_resolve": "1.0.0",
     # Desktop automation tools (desktop_automation_tools.py)
     "automation_activate_app": "1.0.0",
     "automation_check_permissions": "1.0.0",

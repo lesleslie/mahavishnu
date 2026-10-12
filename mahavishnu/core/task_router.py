@@ -425,7 +425,11 @@ class CapabilityRouter:
         """Initialize CapabilityRouter.
 
         Args:
-            registry: HybridAdapterRegistry for adapter discovery
+            registry: Oneiric ``Resolver`` (or any object with a
+                ``list_active(domain)`` method) for adapter discovery.
+                The legacy ``HybridAdapterRegistry.find_by_capabilities``
+                interface is no longer supported — migration to Oneiric
+                substrate (Phase 2).
             cache_ttl_seconds: TTL for resolution cache
         """
         self.registry = registry
@@ -484,7 +488,41 @@ class CapabilityRouter:
         start_time = time.time()
 
         try:
-            matching_adapters = await self.registry.find_by_capabilities(required_caps)
+            # Resolve candidates. Two supported interfaces:
+            # 1. Oneiric ``Resolver.list_active("adapter")`` — returns Candidates.
+            # 2. Legacy ``HybridAdapterRegistry.find_by_capabilities(caps)`` —
+            #    returns AdapterMetadata-shaped objects.
+            # The legacy interface is preserved during the migration so
+            # existing test mocks continue to work; once Phase 2 ships the
+            # mocks are updated to use the new shape (see the test file
+            # comments).
+            candidates_iter: list = []
+            if hasattr(self.registry, "list_active"):
+                # Oneiric ``Resolver`` path — exception propagates so
+                # callers see the substrate error in the route result.
+                candidates_iter = list(self.registry.list_active("adapter"))
+            elif hasattr(self.registry, "find_by_capabilities"):
+                # Legacy path: ``find_by_capabilities`` may be sync or async.
+                result = self.registry.find_by_capabilities(required_caps)
+                if hasattr(result, "__await__"):
+                    candidates_iter = list(await result)
+                else:
+                    candidates_iter = list(result)
+
+            def _cand_capabilities(cand: Any) -> list[str]:
+                # Prefer direct attribute (test mocks), fall back to metadata dict
+                direct = getattr(cand, "capabilities", None)
+                if direct is not None:
+                    return list(direct)
+                meta = getattr(cand, "metadata", None) or {}
+                return list(meta.get("capabilities", []))
+
+            required_caps_set = set(required_caps)
+            matching_adapters = [
+                c
+                for c in candidates_iter
+                if required_caps_set.issubset(set(_cand_capabilities(c)))
+            ]
 
             if not matching_adapters:
                 return {
@@ -495,7 +533,7 @@ class CapabilityRouter:
                 }
 
             # Select best adapter (highest priority)
-            best_adapter = max(matching_adapters, key=lambda m: m.priority)
+            best_adapter = max(matching_adapters, key=lambda m: m.priority or 0)
             resolution_time_ms = (time.time() - start_time) * 1000
 
             # Create routing decision
@@ -504,7 +542,7 @@ class CapabilityRouter:
                     adapter_name=best_adapter.adapter_id,
                     adapter=None,  # Lazy-loaded by registry
                     matched_capabilities=[
-                        cap for cap in required_caps if cap in best_adapter.capabilities
+                        cap for cap in required_caps if cap in _cand_capabilities(best_adapter)
                     ],
                     resolution_time_ms=resolution_time_ms,
                     fallback_used=False,

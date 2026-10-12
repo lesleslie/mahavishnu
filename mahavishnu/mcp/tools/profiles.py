@@ -32,7 +32,6 @@ from typing import TYPE_CHECKING
 from mcp_common.tools import ToolProfile
 
 from ..bootstrap import (
-    _register_adapter_registry_tools,
     _register_agents_tools,
     _register_audit_health_tools,
     _register_capability_tools,
@@ -116,7 +115,6 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_clone_tools",
     "_register_goal_team_tools",
     "_register_treesitter_tools",
-    "_register_adapter_registry_tools",
     "_register_pycharm_tools",
     "_register_search_tools",
     # Plan index tools (5 tools; Task 12). Delegates to the W0 helper via
@@ -246,7 +244,6 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_clone_tools": lambda s: _register_clone_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_goal_team_tools": lambda s: _register_goal_team_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_adapter_registry_tools": lambda s: _register_adapter_registry_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Plan index tools (Task 12). ``_register_plan_tools`` resolves the

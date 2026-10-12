@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Any
 
-from ..adapter_discovery import AdapterMetadata
+from oneiric.adapters.metadata import AdapterMetadata
 
 
 class AdapterType(StrEnum):

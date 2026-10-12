@@ -644,20 +644,6 @@ def _register_treesitter_block(server: FastMCPServer) -> None:
         logger.info("Tree-sitter tools not available: %s", exc)
 
 
-def _register_adapter_registry_block(server: FastMCPServer) -> None:
-    adapter_registry_config = getattr(server.app.config, "adapter_registry", None)
-    if adapter_registry_config and not adapter_registry_config.enabled:
-        logger.info("Adapter registry disabled, skipping tool registration")
-        return
-    try:
-        from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
-
-        register_adapter_registry_tools(server.server)
-        logger.info("Registered 7 adapter registry management tools with MCP server")
-    except ImportError as exc:
-        logger.warning("Adapter registry tools not available: %s", exc)
-
-
 def _register_pycharm_block(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.pycharm_tools import register_pycharm_tools
@@ -874,7 +860,6 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     ("_register_clone_tools", _register_clone_block),
     ("_register_goal_team_tools", _register_goal_team_block),
     ("_register_treesitter_tools", _register_treesitter_block),
-    ("_register_adapter_registry_tools", _register_adapter_registry_block),
     ("_register_pycharm_tools", _register_pycharm_block),
     ("_register_primitive_tools", _register_primitive_block),
     ("_register_openhands_tools", _register_openhands_block),
@@ -1211,21 +1196,6 @@ def _register_treesitter_tools(server: FastMCPServer) -> None:
         logger.info("Registered 7 tree-sitter code analysis tools with MCP server")
     except ImportError as exc:
         logger.info("Tree-sitter tools not available: %s", exc)
-
-
-def _register_adapter_registry_tools(server: FastMCPServer) -> None:
-    """Register adapter registry tools (optional import + config gate)."""
-    adapter_registry_config = getattr(server.app.config, "adapter_registry", None)
-    if adapter_registry_config and not adapter_registry_config.enabled:
-        logger.info("Adapter registry disabled, skipping tool registration")
-        return
-    try:
-        from ..mcp.tools.adapter_registry_tools import register_adapter_registry_tools
-
-        register_adapter_registry_tools(server.server)
-        logger.info("Registered 7 adapter registry management tools with MCP server")
-    except ImportError as exc:
-        logger.warning("Adapter registry tools not available: %s", exc)
 
 
 def _register_pycharm_tools(server: FastMCPServer) -> None:

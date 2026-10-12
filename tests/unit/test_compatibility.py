@@ -162,7 +162,7 @@ class TestAdapterMetadataContract:
         result = _check_adapter_metadata_contract()
         assert isinstance(result, ContractCheck)
         assert result.name == "adapter_metadata_contract"
-        assert result.component == "core/adapter_discovery"
+        assert result.component == "oneiric/adapters/metadata"
 
 
 # ---------------------------------------------------------------------------

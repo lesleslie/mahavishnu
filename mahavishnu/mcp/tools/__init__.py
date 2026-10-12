@@ -11,10 +11,8 @@
 # - git_analytics: Git analytics and cross-project aggregation
 # - goal_team_tools: Goal-driven team creation and management tools
 # - treesitter_tools: Tree-sitter code parsing and analysis tools
-# - adapter_registry_tools: Hybrid adapter registry management tools
 # - search_tools: Hybrid search (semantic + lexical) tools
 
-from .adapter_registry_tools import register_adapter_registry_tools
 from .agents_tools import register_agents_tools
 from .goal_team_tools import register_goal_team_tools
 from .primitive_tools import register_primitive_tools
@@ -22,7 +20,6 @@ from .search_tools import register_search_tools
 from .treesitter_tools import register_treesitter_tools
 
 __all__ = [
-    "register_adapter_registry_tools",
     "register_agents_tools",
     "register_goal_team_tools",
     "register_primitive_tools",

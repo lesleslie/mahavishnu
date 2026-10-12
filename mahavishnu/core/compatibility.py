@@ -9,7 +9,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, Mock
 
-from .adapter_discovery import AdapterMetadata
+from oneiric.adapters.metadata import AdapterMetadata
 from .adapters.base import OrchestratorAdapter
 
 if TYPE_CHECKING:
@@ -73,15 +73,14 @@ CONTRACT_MATRIX: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "adapter_metadata_contract",
-        "component": "core/adapter_discovery",
+        "component": "oneiric/adapters/metadata",
         "required_keys": (
-            "adapter_id",
             "domain",
-            "category",
+            "key",
             "provider",
-            "capabilities",
-            "factory_path",
+            "factory",
             "source",
+            "metadata",
         ),
     },
 )
@@ -198,16 +197,20 @@ def _check_adapter_lifecycle_contract() -> ContractCheck:
 
 
 def _check_adapter_metadata_contract() -> ContractCheck:
+    """Validate that Oneiric's ``AdapterMetadata`` → ``Candidate`` pipeline
+    preserves the substrate's required keys. The substrate of record is
+    now ``oneiric.adapters.metadata``; ``AdapterMetadata.to_candidate()``
+    produces a ``Candidate`` with hard-coded ``domain="adapter"`` and
+    ``key=<category>``.
+    """
     metadata = AdapterMetadata(
-        adapter_id="mahavishnu.contract",
-        domain="orchestration",
         category="workflow",
         provider="contract",
+        factory="mahavishnu.contract.Adapter",
         capabilities=["execute"],
-        factory_path="mahavishnu.contract:Adapter",
-        source="test",
+        priority=10,
     )
-    payload = metadata.to_dict()
+    payload = metadata.to_candidate().model_dump()
     required_keys = next(
         check["required_keys"]
         for check in CONTRACT_MATRIX
@@ -216,7 +219,7 @@ def _check_adapter_metadata_contract() -> ContractCheck:
     missing = sorted(key for key in required_keys if key not in payload)
     return ContractCheck(
         name="adapter_metadata_contract",
-        component="core/adapter_discovery",
+        component="oneiric/adapters/metadata",
         passed=not missing,
         details={"missing": missing, "payload_keys": sorted(payload)},
     )
