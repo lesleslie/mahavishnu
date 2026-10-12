@@ -7,10 +7,21 @@ last_reviewed: 2026-10-12
 superseded_by: null
 topic: mcp-launcher-standardization
 title: "MCP Launcher Standardization Plan"
+phase_state: "phase-1-shipped; phase-2-not-started; phase-3-not-started; phase-4a-design-complete-awaiting-impl; phase-4b-not-started; phase-5a-not-started; phase-5b-cuttable"
 
 ---
 
 # MCP Launcher Standardization Plan
+
+> **Current Phase State (2026-10-12)** — Phase 1 foundation **SHIPPED**: `mcp-common/mcp_common/server/launcher.py` exists; `mcp-common/tests/server/test_launcher.py` and `test_launcher_signal.py` (REQ-014 signal-handling smoke) exist; `from mcp_common.server.launcher import launch` exported from `mcp_common/server/__init__.py`. **Incomplete within Phase 1**: `from mcp_common import launch` does NOT work today — the top-level re-export (Phase 1 task 1.6) was not added to `mcp_common/__init__.py`. REQ-002 (load `secrets.env`) and REQ-007 (transport + uvicorn grace timeout) are shipped; REQ-004 (selective settings-only feed pre-warm) is shipped in code.
+>
+> Phase 2 (oneiric vendored CLI bug fixes at `oneiric/oneiric/cli/mcp.py` — REQ-009 processor wiring + REQ-010 `transport="http"`), Phase 3 (audit script + tracker), Phase 4a (vishnu + crackerjack migration), Phase 4b (ak + sb discovery + migration), Phase 5a (tracker CI wiring), Phase 5b (per-standalone-server migration) all **NOT STARTED**.
+>
+> Phase 4a Task 4a.1 (vishnu migration) is in **design-complete / implementation-pending** state — see `.claude/decisions/2026-09-26-mcp-launcher-migration.md` for the design sketch. The sketch includes a `_RunAsyncAdapter` class to bridge `FastMCPServer.start()` (sync constructor, exposes `start(host, port)` + internal `server.server.run_http_async(...)`) to the launcher's duck-typed `run_async(transport="http", host=, port=, uvicorn_config=)` contract — the cookbook Example 2's `build_mahavishnu_mcp_app` import name does NOT exist and must NOT be used by the implementer.
+>
+> Phase 5b is the most cuttable per the plan's own Decision Rule §9. Phases 1–4b are non-cuttable; the foundation deliverable has shipped.
+>
+> **Action**: keep `status: active`. The `phase_state` field is a non-standard frontmatter extension; `docs/plans/PLAN_INDEX.md` sync tooling does not yet understand it — treat as a doc-only annotation until the schema admits it, or migrate it into a structured per-phase section. Cross-check before merging any future frontmatter sweep.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: `superpowers:executing-plans` or `superpowers:subagent-driven-development`. Steps use checkbox (`- [ ]`) syntax for tracking.
 
