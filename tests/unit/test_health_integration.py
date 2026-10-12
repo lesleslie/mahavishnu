@@ -250,7 +250,18 @@ class TestCheckAdapterHealth:
         await monitor.check_adapter_health("a")
         assert "a" in monitor.health_states
 
-    async def test_state_change_to_unhealthy(self):
+    async def test_state_change_to_unhealthy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Disable the MCP persistence path — it tries to make a real
+        # network call, which is a pre-existing test-env footgun (anyio
+        # cancel-scope error if the MCP server is unreachable). The
+        # production code falls back to local SQLite when ``get_mcp_client``
+        # returns None; that fallback is covered by the SQLite-persistence
+        # tests.
+        monkeypatch.setattr(
+            "mahavishnu.core.oneiric_client.get_mcp_client", lambda: None
+        )
         cfg = HealthIntegrationConfig(unhealthy_threshold=1)
         adapter = AsyncMock()
         adapter.get_health = AsyncMock(return_value={"status": "unhealthy", "error": "down"})
