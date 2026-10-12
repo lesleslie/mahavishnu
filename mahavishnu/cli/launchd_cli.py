@@ -122,7 +122,7 @@ def _check_settings_uuid(uid_str: str) -> int | None:
     """Parse ``id -u``-style uid, or None on error."""
     try:
         return int(uid_str)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

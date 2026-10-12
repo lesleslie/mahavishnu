@@ -1,6 +1,6 @@
 # Plan Index
 
-_Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
+_Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 ### Docs: adr
 
@@ -136,7 +136,7 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-07-29-ruff-cleanup-waves.md`](2026-07-29-ruff-cleanup-waves.md) | 2026-07-29 | `active` | `implementation` | `ruff-cleanup-waves` | Ruff Cleanup Wave-Plan (2026-07-29) |
 | [`docs/plans/2026-07-29-session-buddy-extension.md`](2026-07-29-session-buddy-extension.md) | 2026-07-29 | `draft` | `implementation` | `session-buddy-extension` | Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening) |
 | [`docs/plans/2026-08-03-crackerjack-c-wire-plan.md`](2026-08-03-crackerjack-c-wire-plan.md) | 2026-08-03 | `active` | `implementation` | `crackerjack-c-wire-plan` | Crackerjack C-WIRE Implementation Plan |
-| [`docs/plans/2026-08-04-d-lock.md`](2026-08-04-d-lock.md) | 2026-08-04 | `active` | `implementation` | `d-lock` | D-LOCK Implementation Plan |
+| [`docs/plans/2026-08-04-d-lock.md`](2026-08-04-d-lock.md) | 2026-08-04 | `shipped` | `implementation` | `d-lock` | D-LOCK Implementation Plan |
 | [`docs/plans/2026-08-10-auto-checkpoint-implementation-summary.md`](2026-08-10-auto-checkpoint-implementation-summary.md) | 2026-08-10 | `active` | `implementation` | `persistence` | Auto-Checkpoint Implementation — Summary |
 | [`docs/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`](2026-08-10-auto-checkpoint-safety-and-trigger.md) | 2026-08-10 | `active` | `implementation` | `persistence` | Auto-Checkpoint Safety + Auto-Trigger Implementation Plan |
 | [`docs/plans/2026-08-10-m-approval-log.md`](2026-08-10-m-approval-log.md) | 2026-08-10 | `active` | `implementation` | `m-approval-log` | M-APPROVAL-LOG Implementation Plan |
@@ -146,7 +146,7 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/plans/2026-08-19-mcp-plugin-poc-scope.md`](2026-08-19-mcp-plugin-poc-scope.md) | 2026-08-19 | `active` | `implementation` | `mcp-design` | 2-Repo Plugin POC Scope: graphics-mcp + css-mcp |
 | [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `complete` | `canonical` | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
-| [`docs/plans/2026-08-20-mcp-deps-crackerjack-loop.md`](2026-08-20-mcp-deps-crackerjack-loop.md) | 2026-08-20 | `active` | `implementation` | `mcp-deps-crackerjack-loop` | `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan |
+| [`docs/plans/2026-08-20-mcp-deps-crackerjack-loop.md`](2026-08-20-mcp-deps-crackerjack-loop.md) | 2026-08-20 | `complete` | `implementation` | `mcp-deps-crackerjack-loop` | `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan |
 | [`docs/plans/2026-08-23-phase3-streaming-tar-plan.md`](2026-08-23-phase3-streaming-tar-plan.md) | 2026-08-23 | `active` | `implementation` | `phase3-streaming-tar-plan` | Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan |
 | [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `complete` | `implementation` | `claude-env-remediation` | Claude Environment Audit Remediation |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`](2026-08-25-bodai-tui-shell-surface-implementation.md) | 2026-08-25 | `active` | `implementation` | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface Implementation Plan |
@@ -166,12 +166,11 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `active` | `implementation` | `bodai-auth` | mcp-common Authentication Primitives Implementation Plan |
 | [`docs/plans/2026-09-07-worktree-cleanup.md`](2026-09-07-worktree-cleanup.md) | 2026-09-07 | `draft` | `implementation` | `worktree-management` | Bodai Worktree Cleanup Policy — Implementation Plan |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `complete` | `canonical` | `plugin-standardization` | Bodai Slash-Command TUI Discoverability Plan |
-| [`docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`](2026-09-10-changepoint-two-stage-warn-confirm.md) | 2026-09-10 | `active` | `implementation` | `changepoint-two-stage-warn-confirm` | Two-Stage Warn/Confirm Drift Detector Implementation Plan |
+| [`docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`](2026-09-10-changepoint-two-stage-warn-confirm.md) | 2026-09-10 | `complete` | `implementation` | `changepoint-two-stage-warn-confirm` | Two-Stage Warn/Confirm Drift Detector Implementation Plan |
 | [`docs/plans/2026-09-10-jot-capture.md`](2026-09-10-jot-capture.md) | 2026-09-10 | `active` | `implementation` | `jot-capture` | Jot Inbox: Capture Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-jot-drain.md`](2026-09-10-jot-drain.md) | 2026-09-10 | `complete` | `implementation` | `convergence-control-plane` | Jot Inbox: Drain Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-jot-inbox.md`](2026-09-10-jot-inbox.md) | 2026-09-10 | `active` | `implementation` | `jot-inbox` | Jot Inbox Implementation Plan |
-| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `active` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
-| [`docs/plans/2026-09-10-plan-index-dhara.md`](2026-09-10-plan-index-dhara.md) | 2026-09-10 | `active` | `implementation` | `followups-lifecycle` | Plan Index Dhara-Canonical Metadata Layer Implementation Plan |
+| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `partial` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `shipped` | `implementation` | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `complete` | `implementation` | `lifecycle` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/2026-09-12-jot-drain-polish.md`](2026-09-12-jot-drain-polish.md) | 2026-09-12 | `complete` | `implementation` | `convergence-control-plane` | Jot Drain Polish Implementation Plan |
@@ -196,9 +195,10 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-d.md`](2026-09-27-shared-bodai-substrate-phase-d.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase D: Embedding Consolidation — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e1.md`](2026-09-27-shared-bodai-substrate-phase-e1.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E1: Settings Substrate + Feed-State Methods — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
-| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-10-09-bodai-search-infrastructure-fix.md`](2026-10-09-bodai-search-infrastructure-fix.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP Search Infrastructure Fix — akosha / crackerjack / session-buddy |
 | [`docs/plans/2026-10-09-mcp-health-check-enrichment.md`](2026-10-09-mcp-health-check-enrichment.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP `/health` Enrichment — Fleet-Wide Feed Aggregation + 503 on Degraded |
+| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `partial` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -417,7 +417,7 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-07-29-ruff-cleanup-waves.md`](2026-07-29-ruff-cleanup-waves.md) | 2026-07-29 | `active` | `implementation` | `ruff-cleanup-waves` | Ruff Cleanup Wave-Plan (2026-07-29) |
 | [`docs/plans/2026-07-29-session-buddy-extension.md`](2026-07-29-session-buddy-extension.md) | 2026-07-29 | `draft` | `implementation` | `session-buddy-extension` | Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening) |
 | [`docs/plans/2026-08-03-crackerjack-c-wire-plan.md`](2026-08-03-crackerjack-c-wire-plan.md) | 2026-08-03 | `active` | `implementation` | `crackerjack-c-wire-plan` | Crackerjack C-WIRE Implementation Plan |
-| [`docs/plans/2026-08-04-d-lock.md`](2026-08-04-d-lock.md) | 2026-08-04 | `active` | `implementation` | `d-lock` | D-LOCK Implementation Plan |
+| [`docs/plans/2026-08-04-d-lock.md`](2026-08-04-d-lock.md) | 2026-08-04 | `shipped` | `implementation` | `d-lock` | D-LOCK Implementation Plan |
 | [`docs/plans/2026-08-10-auto-checkpoint-implementation-summary.md`](2026-08-10-auto-checkpoint-implementation-summary.md) | 2026-08-10 | `active` | `implementation` | `persistence` | Auto-Checkpoint Implementation — Summary |
 | [`docs/plans/2026-08-10-auto-checkpoint-safety-and-trigger.md`](2026-08-10-auto-checkpoint-safety-and-trigger.md) | 2026-08-10 | `active` | `implementation` | `persistence` | Auto-Checkpoint Safety + Auto-Trigger Implementation Plan |
 | [`docs/plans/2026-08-10-m-approval-log.md`](2026-08-10-m-approval-log.md) | 2026-08-10 | `active` | `implementation` | `m-approval-log` | M-APPROVAL-LOG Implementation Plan |
@@ -427,7 +427,7 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/plans/2026-08-19-mcp-plugin-poc-scope.md`](2026-08-19-mcp-plugin-poc-scope.md) | 2026-08-19 | `active` | `implementation` | `mcp-design` | 2-Repo Plugin POC Scope: graphics-mcp + css-mcp |
 | [`docs/plans/2026-08-20-mahavishnu-lifespan-health-bypass.md`](2026-08-20-mahavishnu-lifespan-health-bypass.md) | 2026-08-20 | `complete` | `canonical` | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass |
-| [`docs/plans/2026-08-20-mcp-deps-crackerjack-loop.md`](2026-08-20-mcp-deps-crackerjack-loop.md) | 2026-08-20 | `active` | `implementation` | `mcp-deps-crackerjack-loop` | `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan |
+| [`docs/plans/2026-08-20-mcp-deps-crackerjack-loop.md`](2026-08-20-mcp-deps-crackerjack-loop.md) | 2026-08-20 | `complete` | `implementation` | `mcp-deps-crackerjack-loop` | `*-mcp` Dep Refresh + Crackerjack Loop Implementation Plan |
 | [`docs/plans/2026-08-23-phase3-streaming-tar-plan.md`](2026-08-23-phase3-streaming-tar-plan.md) | 2026-08-23 | `active` | `implementation` | `phase3-streaming-tar-plan` | Phase 3 Streaming Tar.zst + Bodai 3.14 Migration Implementation Plan |
 | [`docs/plans/2026-08-24-claude-env-audit-remediation.md`](2026-08-24-claude-env-audit-remediation.md) | 2026-08-24 | `complete` | `implementation` | `claude-env-remediation` | Claude Environment Audit Remediation |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface-implementation.md`](2026-08-25-bodai-tui-shell-surface-implementation.md) | 2026-08-25 | `active` | `implementation` | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface Implementation Plan |
@@ -447,12 +447,11 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `active` | `implementation` | `bodai-auth` | mcp-common Authentication Primitives Implementation Plan |
 | [`docs/plans/2026-09-07-worktree-cleanup.md`](2026-09-07-worktree-cleanup.md) | 2026-09-07 | `draft` | `implementation` | `worktree-management` | Bodai Worktree Cleanup Policy — Implementation Plan |
 | [`docs/plans/2026-09-09-bodai-slash-command-tui-discoverability.md`](2026-09-09-bodai-slash-command-tui-discoverability.md) | 2026-09-09 | `complete` | `canonical` | `plugin-standardization` | Bodai Slash-Command TUI Discoverability Plan |
-| [`docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`](2026-09-10-changepoint-two-stage-warn-confirm.md) | 2026-09-10 | `active` | `implementation` | `changepoint-two-stage-warn-confirm` | Two-Stage Warn/Confirm Drift Detector Implementation Plan |
+| [`docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md`](2026-09-10-changepoint-two-stage-warn-confirm.md) | 2026-09-10 | `complete` | `implementation` | `changepoint-two-stage-warn-confirm` | Two-Stage Warn/Confirm Drift Detector Implementation Plan |
 | [`docs/plans/2026-09-10-jot-capture.md`](2026-09-10-jot-capture.md) | 2026-09-10 | `active` | `implementation` | `jot-capture` | Jot Inbox: Capture Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-jot-drain.md`](2026-09-10-jot-drain.md) | 2026-09-10 | `complete` | `implementation` | `convergence-control-plane` | Jot Inbox: Drain Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-jot-inbox.md`](2026-09-10-jot-inbox.md) | 2026-09-10 | `active` | `implementation` | `jot-inbox` | Jot Inbox Implementation Plan |
-| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `active` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
-| [`docs/plans/2026-09-10-plan-index-dhara.md`](2026-09-10-plan-index-dhara.md) | 2026-09-10 | `active` | `implementation` | `followups-lifecycle` | Plan Index Dhara-Canonical Metadata Layer Implementation Plan |
+| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `partial` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-10-settle-semantic-merge.md`](2026-09-10-settle-semantic-merge.md) | 2026-09-10 | `shipped` | `implementation` | `settle-semantic-merge` | Settle Semantic Merge — mergiraf opt-in + git-merge-tree diagnostics |
 | [`docs/plans/2026-09-12-finish-partial-implementations.md`](2026-09-12-finish-partial-implementations.md) | 2026-09-12 | `complete` | `implementation` | `lifecycle` | Plan: Finish Genuine Partial Implementations (revision 3, post-re-review) |
 | [`docs/plans/2026-09-12-jot-drain-polish.md`](2026-09-12-jot-drain-polish.md) | 2026-09-12 | `complete` | `implementation` | `convergence-control-plane` | Jot Drain Polish Implementation Plan |
@@ -477,9 +476,10 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-d.md`](2026-09-27-shared-bodai-substrate-phase-d.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase D: Embedding Consolidation — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e1.md`](2026-09-27-shared-bodai-substrate-phase-e1.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E1: Settings Substrate + Feed-State Methods — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
-| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-10-09-bodai-search-infrastructure-fix.md`](2026-10-09-bodai-search-infrastructure-fix.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP Search Infrastructure Fix — akosha / crackerjack / session-buddy |
 | [`docs/plans/2026-10-09-mcp-health-check-enrichment.md`](2026-10-09-mcp-health-check-enrichment.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP `/health` Enrichment — Fleet-Wide Feed Aggregation + 503 on Degraded |
+| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `partial` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -599,11 +599,12 @@ _Regenerated 2026-10-11 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 ## Lifecycle × Role Distribution
 
-| Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
+| Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 12 | 50 | 2 | 2 | 23 | **89** |
-| `implementation` | 146 | 69 | · | 44 | 63 | **322** |
+| `canonical` | 12 | 50 | 4 | 2 | 23 | **91** |
+| `implementation` | 148 | 57 | 2 | 46 | 67 | **320** |
 | `umbrella` | · | 2 | · | · | 2 | **4** |
 | `historical` | 1 | 4 | · | 4 | 124 | **133** |
 | `superseded` | · | · | · | · | 17 | **17** |
-| **Total** | **159** | **125** | **2** | **50** | **229** | **565** |
+| **Total** | **161** | **113** | **6** | **52** | **233** | **565** |
+

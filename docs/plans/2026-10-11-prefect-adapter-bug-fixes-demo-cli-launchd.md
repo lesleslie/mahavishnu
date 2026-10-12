@@ -25,11 +25,13 @@ If launchd misbehaves in C, A and B still ship cleanly.
 ## Critical files
 
 **Modify**
+
 - `mahavishnu/engines/prefect_adapter_impl.py` — 3 bug fixes (lines ~389, ~760-795, ~853)
 - `tests/unit/engines/test_prefect_adapter.py` — update 3 broken existing mocks at lines 415, 446, 480
 - `mahavishnu/_main_cli.py` — wire `demo_app` + `launchd_app` (Pattern A, near `_main_cli.py:1508-1524`)
 
 **Create**
+
 - `mahavishnu/cli/demo_cli.py` — module-level Typer `demo_app` with `tmux` (rebuilt from `55630b45`), `prefect` (new, full impl), 7 stubs (`agno`, `llamaindex`, `hatchet`, `pydantic_ai`, `crow`, `goose`, `mock`)
 - `mahavishnu/cli/launchd_cli.py` — module-level Typer `launchd_app` with `prefect` sub-command (install/uninstall/status)
 - `config/launchd/com.mcp.mahavishnu.prefect.plist` — in-repo template (mirrors `~/Library/LaunchAgents/com.mcp.mahavishnu.plist` **full** key set)
@@ -42,6 +44,7 @@ If launchd misbehaves in C, A and B still ship cleanly.
 - `docs/plans/2026-10-11-prefect-adapter-bug-fixes-demo-cli-launchd.md` — archive after execution
 
 **Cleanup** (gitignored per `crackerjack` canonical patterns, but find+delete for working tree hygiene):
+
 - `mahavishnu/cli/__pycache__/demo_cli.cpython-314.pyc` (stale)
 - `tests/integration/__pycache__/test_tmux_adapter_e2e.cpython-314-pytest-9.1.1.pyc` (stale)
 
@@ -52,6 +55,7 @@ If launchd misbehaves in C, A and B still ship cleanly.
 **Bug A** (`prefect_adapter_impl.py:853` in `PrefectAdapter.execute`):
 
 Replace:
+
 ```python
 state = await _invoke_client_method(
     client, "wait_for_flow_run", flow_run_id, timeout=self.config.timeout_seconds,
@@ -59,7 +63,9 @@ state = await _invoke_client_method(
 is_completed = await _maybe_await(state.is_completed())
 results = await _maybe_await(state.result()) if is_completed else []
 ```
+
 with:
+
 ```python
 # Module-level import at top of file:
 from prefect.flow_runs import wait_for_flow_run as _wait_for_flow_run
@@ -72,11 +78,13 @@ state = flow_run.state  # Optional[State], not the awaited value itself
 is_completed = await _maybe_await(state.is_completed()) if state else False
 results = await _maybe_await(state.result()) if is_completed else []
 ```
+
 The function signature from `prefect/flow_runs.py`: `async def wait_for_flow_run(flow_run_id, timeout=10800, poll_interval=None, client=None, log_states=False) -> FlowRun`. **It returns `FlowRun`, not `State`** — call `.state` on the result.
 
 **Bug B** (`prefect_adapter_impl.py:389` in `_flow_run_to_response`):
 
 Add helper and use it for both fields:
+
 ```python
 def _coerce_seconds(value: Any) -> float | None:
     if value is None:
@@ -87,7 +95,8 @@ def _coerce_seconds(value: Any) -> float | None:
         return float(value)
     return None  # strings fail closed, not silently coerced
 ```
-Apply at lines 389 (`total_run_time`) and 389-region (`estimated_run_time`). 
+
+Apply at lines 389 (`total_run_time`) and 389-region (`estimated_run_time`).
 **Side benefit**: clear the misleading `_map_prefect_exception(... PREFECT_API_ERROR)` mapping when Pydantic ValidationError fires — add a specific branch in `_map_prefect_exception` so future Pydantic-mismatch bugs surface as `PREFECT_VALIDATION_ERROR`, not `PREFECT_API_ERROR`.
 
 **Bug C + pre-existing teardown bug** (`prefect_adapter_impl.py:760-795`):
@@ -95,8 +104,8 @@ Apply at lines 389 (`total_run_time`) and 389-region (`estimated_run_time`).
 Two changes in `_get_client_context` + `_api_key_env`:
 
 1. Remove the `if self.config.api_key:` guard at line 760. **URL is independent of auth** — always swap `PREFECT_API_URL` inside the env-swap block.
-2. **Canonical form**: write `PREFECT_API_URL` with the `/api` suffix (e.g. `http://127.0.0.1:4200/api`). Update both `_api_key_env` line 785 *and* the new always-on swap to use this suffix consistently.
-3. **Fix the silent-corrupt teardown**: replace
+1. **Canonical form**: write `PREFECT_API_URL` with the `/api` suffix (e.g. `http://127.0.0.1:4200/api`). Update both `_api_key_env` line 785 *and* the new always-on swap to use this suffix consistently.
+1. **Fix the silent-corrupt teardown**: replace
    ```python
    if saved_api_url is not None:
        os.environ["PREFECT_API_URL"] = saved_api_url
@@ -139,9 +148,10 @@ demo_app = typer.Typer(help="...", invoke_without_command=True)
 ```
 
 **Three command types**:
+
 1. `@demo_app.command("tmux")` — rebuild `55630b45` source (precondition check + 50ms spawn + ACK + optional reap).
-2. `@demo_app.command("prefect")` — full impl using **`get_settings().prefect`** (not bare `PrefectConfig`, since only the former honors `MAHAVISHNU_PREFECT__*` env vars). Threads `work_pool` into `client.create_flow_run(flow=..., work_pool_name=settings.prefect.work_pool)`. Uses **`prefect.flow_runs.wait_for_flow_run`** for completion. Precondition probe with explicit `timeout=5.0`.
-3. `@demo_app.command("<engine>")` × 7 stubs — each 5 lines: docstring, `--why-stub` typer option that prints implementation cost, `typer.echo("not implemented — see plan dazzling-waddling-ullman")`, `raise typer.Exit(0)`. Stub bodies are 5 + `--why-stub` option.
+1. `@demo_app.command("prefect")` — full impl using **`get_settings().prefect`** (not bare `PrefectConfig`, since only the former honors `MAHAVISHNU_PREFECT__*` env vars). Threads `work_pool` into `client.create_flow_run(flow=..., work_pool_name=settings.prefect.work_pool)`. Uses **`prefect.flow_runs.wait_for_flow_run`** for completion. Precondition probe with explicit `timeout=5.0`.
+1. `@demo_app.command("<engine>")` × 7 stubs — each 5 lines: docstring, `--why-stub` typer option that prints implementation cost, `typer.echo("not implemented — see plan dazzling-waddling-ullman")`, `raise typer.Exit(0)`. Stub bodies are 5 + `--why-stub` option.
 
 **Reuses** (no invention): `from mahavishnu.core.config import get_settings`; `from mahavishnu.engines.prefect_adapter_impl import PrefectAdapter, process_repositories_flow`; `from prefect.flow_runs import wait_for_flow_run` (correct path).
 
@@ -166,6 +176,7 @@ launchd_app.add_typer(launchd_prefect_app, name="prefect")
 ```
 
 The 3 commands:
+
 - `install` — interpolate `~/.local/state/mcp/scripts/launch_with_healthcheck.sh` (verify the script exists; if not, instruct user to run `mahavishnu mcp install --healthcheck`), write plist to `~/Library/LaunchAgents/com.mcp.mahavishnu.prefect.plist`, run `launchctl load -w`, print `launchctl list | grep com.mcp.mahavishnu.prefect`.
 - `uninstall` — `launchctl bootout gui/$UID/com.mcp.mahavishnu.prefect`, remove plist, clean empty log files.
 - `status` — `launchctl list | grep com.mcp.mahavishnu.prefect` + httpx probe of `http://127.0.0.1:4200/api/health` with `timeout=5.0`.
@@ -230,7 +241,9 @@ Three greppable markers (the architecture reviewer's "anti-revert marker" sugges
 from .cli.demo_cli import demo_app
 app.add_typer(demo_app, name="demo")
 ```
+
 and
+
 ```python
 # === LAUNCHD SUB-COMMANDS (mahavishnu launchd <service>) ===
 # Mirror rollback_cli.py single-file precedent.
@@ -241,6 +254,7 @@ app.add_typer(launchd_app, name="launchd")
 Place next to the existing `jot_app`/`board_app` wiring block. **Mirror the markers** in the docstrings of `mahavishnu/cli/demo_cli.py` and `mahavishnu/cli/launchd_cli.py` so a refactor sees the wire-up from either side.
 
 **Meta-test** (`tests/unit/cli/test_cli_wireup_invariants.py`):
+
 ```python
 def test_demo_subcommands_wired():
     from mahavishnu._main_cli import app
@@ -269,10 +283,10 @@ def test_launchd_subcommands_wired():
 `.claude/decisions/2026-10-11-prefect-demo-cli-launchd.md` with 5 rules:
 
 1. **Prefect SDK 3.x adapter fixes** — link to `prefect.flow_runs.wait_for_flow_run`, `.state` unwrap, `_coerce_seconds` helper for SDK `timedelta`. Applies to every 3.x line.
-2. **Bug C is `_api_key_env`-scoped, not `__init__`** — env mutations in `_get_client_context`, restored on context exit.
-3. **launchd plists copy the full key set** — never cherry-pick; carry `ThrottleInterval`, `RunAtLoad`, `LimitLoadToSessionType`, `KeepAlive.Crashed=true`+`SuccessfulExit=false`. Test against `~/Library/LaunchAgents/com.mcp.mahavishnu.plist`.
-4. **Use `get_settings()`, not bare `BaseModel`** — `MAHAVISHNU_PREFECT__*` and similar env prefixes only fire through `MahavishnuSettings` (a `BaseSettings`); bare `PrefectConfig()` ignores them.
-5. **Revert-resistant CLI wire-up** — three markers (CLI docstring + `_main_cli.py` comment block + meta-test) all must move together. One absent → CI fails loudly.
+1. **Bug C is `_api_key_env`-scoped, not `__init__`** — env mutations in `_get_client_context`, restored on context exit.
+1. **launchd plists copy the full key set** — never cherry-pick; carry `ThrottleInterval`, `RunAtLoad`, `LimitLoadToSessionType`, `KeepAlive.Crashed=true`+`SuccessfulExit=false`. Test against `~/Library/LaunchAgents/com.mcp.mahavishnu.plist`.
+1. **Use `get_settings()`, not bare `BaseModel`** — `MAHAVISHNU_PREFECT__*` and similar env prefixes only fire through `MahavishnuSettings` (a `BaseSettings`); bare `PrefectConfig()` ignores them.
+1. **Revert-resistant CLI wire-up** — three markers (CLI docstring + `_main_cli.py` comment block + meta-test) all must move together. One absent → CI fails loudly.
 
 ### Dual-store memory captures
 
@@ -294,16 +308,16 @@ End-to-end checks before exit:
    pytest tests/unit/engines/test_prefect_adapter_impl.py tests/unit/engines/test_prefect_adapter.py -v
    pytest tests/unit/cli/test_demo_cli.py tests/unit/cli/test_launchd_cli.py tests/unit/cli/test_cli_wireup_invariants.py -v
    ```
-2. **Integration gated tests skip cleanly without server**:
+1. **Integration gated tests skip cleanly without server**:
    ```
    PREFECT_API_URL= pytest tests/integration/test_prefect_launchd_e2e.py -v
    ```
-3. **Live demo works against running server** (the env-var fix from Bug C must be live):
+1. **Live demo works against running server** (the env-var fix from Bug C must be live):
    ```
    PREFECT_API_URL=http://localhost:4200/api python -m mahavishnu.cli demo prefect --repos /Users/les/Projects/mahavishnu
    ```
    Expects: server probe → flow registered → flow run → state printed → View URL.
-4. **launchd round-trip**:
+1. **launchd round-trip**:
    ```
    mahavishnu launchd prefect --install     # opt-in
    launchctl list | grep com.mcp.mahavishnu.prefect   # expect <PID> running
@@ -311,21 +325,21 @@ End-to-end checks before exit:
    mahavishnu launchd prefect --status               # expect loaded + healthy
    mahavishnu launchd prefect --uninstall           # expect gone
    ```
-5. **Wire-up invariants**:
+1. **Wire-up invariants**:
    ```
    pytest tests/unit/cli/test_cli_wireup_invariants.py -v
    ```
-6. **Quality gate** (CRITICAL — never `-p`):
+1. **Quality gate** (CRITICAL — never `-p`):
    ```
    crackerjack run -v
    python scripts/audit_orphans.py    # 7 stubs must register, not appear as orphans
    ```
-7. **Memory stores** verified:
+1. **Memory stores** verified:
    ```
    ls /Users/les/.claude/projects/-Users-les-Projects-mahavishnu/memory/prefect-*
    mcp__session-buddy__quick_search("prefect 3.x SDK shape")
    ```
-8. **Plan archived**:
+1. **Plan archived**:
    ```
    ls docs/plans/2026-10-11-prefect-adapter-bug-fixes-demo-cli-launchd.md
    ```
@@ -335,4 +349,4 @@ End-to-end checks before exit:
 - Real implementations of the 7 stub demo commands (Phase D, per-substrate PRs).
 - `mahavishnu launchd <service>` framework for other engines — same pattern once any other service becomes always-on.
 - Auto-start `launchctl load -w` on machine boot — the install is opt-in per memory `feedback-macos-reboot-launchd-keepalive-cascade.md`.
-- Prefect Cloud mode (`workspace` + `api_key`); plist's `EnvironmentFile` plumbing supports it, but the demo prints a "not implemented — set MAHAVISHNU_PREFECT__WORKSPACE to enable" hint if detected.
+- Prefect Cloud mode (`workspace` + `api_key`); plist's `EnvironmentFile` plumbing supports it, but the demo prints a "not implemented — set MAHAVISHNU_PREFECT\_\_WORKSPACE to enable" hint if detected.

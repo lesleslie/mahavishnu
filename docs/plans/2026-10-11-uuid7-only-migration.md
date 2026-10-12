@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: canonical
 kind: plan
 date: 2026-10-11
-last_reviewed: 2026-10-11
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: uuid7-migration
 title: "UUID7-Only Migration — Eliminate ULID Across Bodai Core Components (Option B — Strict-UUID7 Offline Migration with Consolidation)"
@@ -356,7 +356,7 @@ the Phase 1 archive, and merged as a discrete PR.
 **Exit criteria:**
 - All 10 SQL files reviewable in one PR.
 - Dry-run against the archive confirms row count deltas match the
-  plan: `conversations` ends at 1,200; `reflections` ends at 1,485;
+  plan: `conversations` ends at 1,205; `reflections` ends at 1,485;
   every preserved table has UUID7 PKs.
 - Tests pass.
 - No references to `reflections_v2` or `default_reflections` survive
@@ -392,7 +392,7 @@ live `reflections.duckdb`; verify end state matches dry-run; restart.
      expected consolidated table list (24 tables: `conversations`,
      `reflections`, `causal_links`, ..., `usage_metrics_summary`).
    - `SELECT COUNT(*) FROM reflections;` returns ≥ 1,485.
-   - `SELECT COUNT(*) FROM conversations;` returns 1,200.
+   - `SELECT COUNT(*) FROM conversations;` returns 1,205.
    - `SELECT id FROM reflections LIMIT 5` shows UUID7 hex strings.
    - No remaining reference to `reflections_v2` or `default_reflections`.
 6. `rm -f /Users/les/.claude/data/sessions.duckdb*` (the duplicate
@@ -415,7 +415,7 @@ live `reflections.duckdb`; verify end state matches dry-run; restart.
 - Row counts match the plan.
 - New writes produce UUID7 PKs.
 - MCP servers respond 200.
-- Original data is preserved (1,485 reflections + 1,200 conversations
+- Original data is preserved (1,485 reflections + 1,205 conversations
   + dormant tables populated as before).
 - No legacy `default_reflections`, `default_conversations`,
   `reflections`, `reflections_v2`, `conversations` (old v0),
@@ -661,7 +661,7 @@ read/write paths and deletes the legacy ULID machinery.
         UUID7 PK format on every row; foreign-key integrity from
         `conversation_id` to `conversations.id`.
       - `tests/integration/test_conversations_merged.py` — confirms
-        1,200 distinct rows; UUID7 PK; legacy `conversations`
+        1,205 distinct rows; UUID7 PK; legacy `conversations`
         legacy v0 table no longer exists.
 12. Run `crackerjack run -v`.
 13. **Delete** `session_buddy/storage/migrations/V5__ulid_migration__up.sql`,
@@ -685,7 +685,7 @@ read/write paths and deletes the legacy ULID machinery.
 - `grep -rE "from ulid import|_dhara_substrate_compat|ulid_generator|generate_ulid|reflections_v2|default_reflections" session_buddy/` (excluding `docs/` and `migrations/` — those still have the legacy names) returns zero in **production** source code.
 - New reflections created via `mcp__session-buddy__store_reflection` round-trip with `id` being UUID7 hex only (no legacy column).
 - `duckdb ~/.claude/data/reflection.duckdb -c "SELECT COUNT(*) FROM reflections"` returns ≥ 1,485.
-- `duckdb ~/.claude/data/reflection.duckdb -c "SELECT COUNT(*) FROM conversations"` returns 1,200.
+- `duckdb ~/.claude/data/reflection.duckdb -c "SELECT COUNT(*) FROM conversations"` returns 1,205.
 - Pre-migration rows from the archive tarball still returnable through `mcp__session-buddy__quick_search` after the migration (history preserved).
 
 #### Integration Contract — Phase 5 session-buddy
@@ -842,7 +842,7 @@ is in flight on those tables.
 
 - [ ] Phase 1 archive manifest at `~/.local/state/bodai/db-archive/2026-10-11-uuid7-migration/MANIFEST.json`
 - [ ] **Phase 0** — session-buddy: write 10 SQL files under `session_buddy/migrations/2026_10_11_uuid7_consolidation/` (001–010 per Phase 0 task 2) plus matching integration tests under `tests/integration/test_uuid7_consolidation.py`; dry-run against the Phase 1 archive; PR review
-- [ ] **Phase 0.5** — session-buddy: stop relevant MCPs (session-buddy, akosha); execute the Phase 0 scripts against live `reflection.duckdb`; verify the consolidated 24-table list and `reflections` row count ≥ 1,485 / `conversations` row count = 1,200; restart
+- [ ] **Phase 0.5** — session-buddy: stop relevant MCPs (session-buddy, akosha); execute the Phase 0 scripts against live `reflection.duckdb`; verify the consolidated 24-table list and `reflections` row count ≥ 1,485 / `conversations` row count = 1,205; restart
 - [ ] oneiric — Phase 2: delete `oneiric/core/ulid.py`, `ulid_resolution.py`, `ulid_migration.py`, `ulid_collision.py`; create `oneiric/core/ids.py` (with `is_valid_id` accepting both UUID7 and 26-char ULID per REQ-012) and `oneiric/core/system_registry.py`
 - [ ] oneiric — Phase 2: delete ULID-related tests
 - [ ] crackerjack — Phase 3: delete `crackerjack/services/ulid_generator.py`; `V5__ulid_migration*`, `V6__ulid_contract*`; create `V5__uuid7_contract*`
@@ -1038,3 +1038,39 @@ independently.
 - Memory `feedback-worktree-update-ref-drops-parallel-commits.md` — worktree conventions.
 - CLAUDE.md § "Process Discipline" — wire-up contract + integration contract.
 - CLAUDE.md § "Plans / specs path preference" — `docs/plans/YYYY-MM-DD-…`.
+
+---
+
+## 11. Phase 0 Post-Mortem (commit `52e70f5d`, 2026-10-11)
+
+Phase 0 shipped on `main` (and `origin/main`) at commit `52e70f5d` after a 4-iteration chain test (001-007 PASS on a fresh DuckDB 1.5.6) and a 6-reviewer adversarial pass (B-step verdict: GO after 3 blockers fixed). The 8 known follow-ups below are non-blocking but should be addressed in the Phase 0.5 maintenance window work.
+
+### Known follow-ups (non-blocking)
+
+1. **`source_type` CHECK constraint lost in 007's rebuild.** `schema_v2.py:70-74` declares `source_type TEXT CHECK (source_type IS NULL OR source_type IN (...))`. DuckDB has no `ALTER TABLE ADD CONSTRAINT`, and 007's `CREATE TABLE conversations_new` omits the CHECK. After migration, any string is accepted for `source_type` — the rest of session-buddy's provenance contract is silently weakened. **Fix**: inline the CHECK clause into the new CREATE TABLE in 007.
+
+2. **`session_metadata` type drift in 007.** 007 declares `session_metadata TEXT`; `schema_v2.py:372` declares `JSON`. 0-row table today hides the bug; first writer after migration hits it. **Fix**: align to `JSON` in 007 (matches the schema_v2.py declaration).
+
+3. **No per-table `migration.<step>.rows_affected=<n>` log.** Plan §0 Integration Contract requires structured observability; the SQL files are silent. **Fix**: add `SELECT COUNT(*)` lines per rebuild, or delegate to the Phase 0.5 Python runner which is the documented owner.
+
+4. **`tests/integration/test_uuid7_consolidation.py` does not exist.** Plan §0 task 3 requires 4 named integration tests; only the ad-hoc chain test exercises the migration. **Fix**: add the file in a follow-up.
+
+5. **`scripts/test_database_status.py:82` still lists `access_log_v2`.** Sibling status script contradicts the vestigial-table story. **Fix**: drop `access_log_v2` from the expected-tables list (or rewrite the status check to use the `__uuid7_migration_done` marker).
+
+6. **Plan body row-count drift: `1,200` vs `1,205`.** Plan body line 358, 422-424, 845-846 still assert `conversations=1,205` after Phase 0. The script correctly produces `1,205` (935 v2 + 265 v0-unique + 5 default_conversations, per plan body line 273-276). **Fix**: update the validation matrix and exit-criteria lines to `1,205`.
+
+7. **001 category backfill uses case-sensitive `LIKE`.** Mixed-case legacy v0 content (e.g. `'Prefer'`) misclassifies to `facts`. **Fix**: use `LOWER(legacy.content) LIKE '%prefer%'` or `ILIKE`.
+
+8. **001 `default_conversations` sentinel has unused `fingerprint` column.** Harmless. **Fix**: drop the column from the sentinel CREATE TABLE.
+
+### Security review findings (post-commit, 2026-10-11)
+
+- **`control-regression` in `008_id_swap_dormant_active.sql`:** the explicit `PRAGMA foreign_keys = OFF` / `PRAGMA foreign_keys = ON` sandwich was removed in the DuckDB rewrite. FK safety is preserved via inlined `CREATE TABLE ... FOREIGN KEY` + ordered DROP, but the explicit toggle that operators can audit is gone. **Fix**: add a header comment block in 008 documenting the safety contract — pure documentation, no behavior change.
+
+- **`stale-identity-mapping` in `007_id_swap_load_bearing.sql`:** `conv_id_map` is populated with `uuid7()` (timestamp + random per call), so the mapping is not stable across re-runs. A second migration run would silently re-encode every row with new UUID7s, breaking any external consumer that pinned the prior IDs. **Fix**: switch to a deterministic UUID7 derivation (e.g. `uuid7(seed=hash(legacy_id))`); the deterministic UDF is properly a Phase 0.5 runner concern (the runner owns the UDF registry) — do not put the helper in the SQL file.
+
+### Process notes for Phase 0.5
+
+- The chain test that found 7 of the 8 known follow-ups used a *test seed* that was more permissive than the live archive. Always run the final chain test against a fixture that mirrors the **production** schema, not a hand-written minimum. The blocker-level finding (003's `conversation_id` reference) was only caught when an adversarial reviewer DESCRIBEd the live `reflections_v2` table — 24 columns, no `conversation_id`.
+- DuckDB 1.5.6 rejects `ALTER TABLE ADD COLUMN ... NOT NULL DEFAULT` at the parser. The CTAS rebuild pattern is the canonical DuckDB migration idiom; the entire 007 rewrite is the canonical example for future 5xx-style "swap all primary keys" migrations.
+- The `__uuid7_migration_done` marker is a forward-looking gate. The b-step patch tried to use it as a conditional in `fix_database_issues.py` but the marker is only created when the migration runs; the gate was dormant on a fresh DB. The final b-step patch removed the recreate entirely (don't recreate vestigial tables; the migration drops them).
