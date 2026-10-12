@@ -270,7 +270,7 @@ requirements:
 - [ ] `session_buddy/cli/base.py:start_server_handler` — insert `oneiric_report_runtime` calls (Task 3.1)
 - [ ] `session_buddy/core/runtime_facts.py` (new file) — adapter enumeration (Task 3.1)
 - [ ] `crackerjack/cli/` — verify MCP server boot path (Task 3.1 PREREQUISITE)
-- [ ] `tests/integration/test_three_component_parallel_boot.py` (new file) — concurrency preflight (Task 3.2)
+- [x] `tests/integration/test_three_component_parallel_boot.py` (new file) — concurrency preflight (Task 3.2) [oneiric ccc5525, 2026-10-12]
 - [ ] Per-component e2e test files (Task 3.3)
 
 ## 7. Validation Matrix
