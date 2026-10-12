@@ -71,7 +71,7 @@ def load_config() -> MahavishnuSettings:
         settings_obj = _oneiric_load(
             path=None,
             project_name="mahavishnu",
-            project_root=Path(__file__).resolve().parent.parent,
+            project_root=Path(__file__).resolve().parent.parent.parent,
         )
         merged = {
             k: v
