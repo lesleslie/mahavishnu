@@ -187,7 +187,7 @@ class CostOptimizer:
         Args:
             adapter: Adapter type
             task_type: Task being executed
-            execution_id: ULID identifier
+            execution_id: UUID7 identifier
             latency_ms: Execution duration
 
         Returns:

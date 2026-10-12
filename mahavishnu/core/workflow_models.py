@@ -1,13 +1,12 @@
-"""Workflow execution tracking with ULID identifiers.
+"""Workflow execution tracking with UUID7 identifiers.
 
 Provides models for tracking workflow executions and pool operations
-with globally unique ULID identifiers for cross-system correlation.
+with globally unique UUID7 identifiers for cross-system correlation.
 """
 
 from datetime import UTC, datetime
 
-from oneiric.core.ulid import generate as _generate_ulid
-from oneiric.core.ulid import is_ulid as _is_ulid
+from oneiric.core.ids import generate_id, is_valid_id
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -17,28 +16,36 @@ def _now_utc() -> datetime:
 
 
 def generate_config_id() -> str:
-    """Generate a new ULID for a config / workflow / pool execution record.
+    """Generate a new UUID7 for a config / workflow / pool execution record.
 
-    Delegates to :func:`oneiric.core.ulid.generate` (drop-in for the
-    previous ``mcp.generate`` per Phase 8 Task 6).
+    Delegates to :func:`oneiric.core.ids.generate_id` (Python 3.14 stdlib
+    ``uuid.uuid7`` wrapped for ecosystem use, per the cross-repo UUID7
+    plan Phase 2).
     """
-    return _generate_ulid()
+    return generate_id()
 
 
 def is_config_ulid(value: str) -> bool:
-    """Return True iff ``value`` is a syntactically valid ULID."""
-    return _is_ulid(value)
+    """Return True iff ``value`` is a syntactically valid ID.
+
+    Named for source compatibility with the previous ULID-era call
+    sites. The actual contract is :func:`oneiric.core.ids.is_valid_id`,
+    which accepts UUID7 hex (the new substrate) and 26-char Crockford
+    Base32 ULID (legacy) for the read-time migration window per
+    REQ-012.
+    """
+    return is_valid_id(value)
 
 
 class WorkflowExecution(BaseModel):
-    """Workflow execution tracked with ULID.
+    """Workflow execution tracked with UUID7.
 
     Provides globally unique identifier for workflow runs across
     the Mahavishnu orchestration system.
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id, description="ULID workflow execution identifier"
+        default_factory=generate_config_id, description="UUID7 workflow execution identifier"
     )
     workflow_name: str = Field(..., min_length=1, max_length=100, description="Workflow name")
     status: str = Field(..., description="Execution status (running, completed, failed, cancelled)")
@@ -50,9 +57,9 @@ class WorkflowExecution(BaseModel):
     @field_validator("execution_id")
     @classmethod
     def execution_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that execution_id is a valid ULID."""
+        """Validate that execution_id is a valid UUID7 (or legacy ULID)."""
         if not is_config_ulid(v):
-            raise ValueError(f"Invalid ULID format for execution_id: {v}")
+            raise ValueError(f"Invalid ID format for execution_id: {v}")
         return v
 
     def is_complete(self) -> bool:
@@ -68,14 +75,14 @@ class WorkflowExecution(BaseModel):
 
 
 class PoolExecution(BaseModel):
-    """Pool execution tracked with ULID.
+    """Pool execution tracked with UUID7.
 
     Provides globally unique identifier for pool operations across
     the Mahavishnu multi-pool orchestration system.
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id, description="ULID pool execution identifier"
+        default_factory=generate_config_id, description="UUID7 pool execution identifier"
     )
     pool_id: str = Field(
         ...,
@@ -93,9 +100,9 @@ class PoolExecution(BaseModel):
     @field_validator("execution_id")
     @classmethod
     def execution_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that execution_id is a valid ULID."""
+        """Validate that execution_id is a valid UUID7 (or legacy ULID)."""
         if not is_config_ulid(v):
-            raise ValueError(f"Invalid ULID format for execution_id: {v}")
+            raise ValueError(f"Invalid ID format for execution_id: {v}")
         return v
 
     def duration_seconds(self) -> float | None:
@@ -114,7 +121,7 @@ class WorkflowCheckpoint(BaseModel):
     """
 
     checkpoint_id: str = Field(
-        default_factory=generate_config_id, description="ULID checkpoint identifier"
+        default_factory=generate_config_id, description="UUID7 checkpoint identifier"
     )
     workflow_execution_id: str = Field(..., description="Parent workflow execution ID")
     stage_name: str = Field(..., min_length=1, max_length=100, description="Workflow stage name")
@@ -128,9 +135,9 @@ class WorkflowCheckpoint(BaseModel):
     @field_validator("checkpoint_id")
     @classmethod
     def checkpoint_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that checkpoint_id is a valid ULID."""
+        """Validate that checkpoint_id is a valid UUID7 (or legacy ULID)."""
         if not is_config_ulid(v):
-            raise ValueError(f"Invalid ULID format for checkpoint_id: {v}")
+            raise ValueError(f"Invalid ID format for checkpoint_id: {v}")
         return v
 
 

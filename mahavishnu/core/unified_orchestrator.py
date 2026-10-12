@@ -21,13 +21,13 @@ logger = structlog.get_logger()
 from mahavishnu.core.task_router import TaskRouter
 
 try:
-    from oneiric.core.ulid import generate_config_id
+    from oneiric.core.ids import generate_id as generate_config_id
 except ImportError:
 
     def generate_config_id() -> str:
-        import uuid
+        from uuid import uuid7
 
-        return uuid.uuid4().hex
+        return uuid7().hex
 
 
 from mahavishnu.core.errors import ConfigurationError
@@ -73,7 +73,7 @@ class UnifiedOrchestrator:
             metadata: Optional workflow metadata
 
         Returns:
-            workflow_id: ULID workflow identifier
+            workflow_id: UUID7 workflow identifier
 
         Raises:
             ConfigurationError: If workflow configuration is invalid
@@ -177,7 +177,7 @@ class UnifiedOrchestrator:
         """Get status of unified workflow.
 
         Args:
-            workflow_id: ULID workflow identifier
+            workflow_id: UUID7 workflow identifier
 
         Returns:
             Complete workflow state with all adapter statuses
@@ -196,7 +196,7 @@ class UnifiedOrchestrator:
         """Cancel running workflow.
 
         Args:
-            workflow_id: ULID workflow identifier
+            workflow_id: UUID7 workflow identifier
 
         Returns:
             True if cancellation successful

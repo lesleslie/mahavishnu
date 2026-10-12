@@ -19,13 +19,13 @@ from typing import Any, TypeVar, cast
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 try:
-    from oneiric.core.ulid import generate_config_id
+    from oneiric.core.ids import generate_id as generate_config_id
 except ImportError:
 
     def generate_config_id() -> str:
-        import uuid
+        from uuid import uuid7
 
-        return uuid.uuid4().hex
+        return uuid7().hex
 
 
 from mahavishnu.core.adapters.base import (
@@ -146,7 +146,7 @@ class AgentResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    execution_id: str = Field(description="ULID execution identifier")
+    execution_id: str = Field(description="UUID7 execution identifier")
     status: AgentStatus = Field(description="Execution status")
     output: str | None = Field(default=None, description="Agent output text")
     structured_output: dict[str, Any] | None = Field(
@@ -619,7 +619,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             model: Override model string
 
         Returns:
-            Agent ID (ULID)
+            Agent ID (UUID7)
 
         Raises:
             PydanticAIAdapterError: If not initialized, rate limit exceeded, or creation fails

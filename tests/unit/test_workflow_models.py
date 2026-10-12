@@ -2,6 +2,14 @@
 
 These tests are self-contained and do not rely on external projects like oneiric or mcp.
 Uses only the fallback generate_config_id and is_config_ulid from the module itself.
+
+Per the cross-repo UUID7-only migration plan (Phase 6, mahavishnu), the
+models now emit UUID7 hex (32 lowercase hex chars, RFC 9562 sec 5.7)
+via the oneiric.core.ids substrate. The legacy ``is_config_ulid`` name
+is preserved for source compatibility, but the underlying predicate
+``oneiric.core.ids.is_valid_id`` accepts both UUID7 (new) and 26-char
+Crockford Base32 ULID (legacy) for the read-time migration window
+(REQ-012).
 """
 
 from __future__ import annotations
@@ -29,10 +37,10 @@ class TestWorkflowExecutionDefaults:
     """Test WorkflowExecution model defaults."""
 
     def test_generates_ulid_by_default(self):
-        """execution_id is auto-generated as a valid ULID."""
+        """execution_id is auto-generated as a valid UUID7."""
         wf = WorkflowExecution(workflow_name="test", status="running")
         assert wf.execution_id is not None
-        assert len(wf.execution_id) == 26
+        assert len(wf.execution_id) == 32
         assert is_config_ulid(wf.execution_id)
 
     def test_status_field_required(self):
@@ -67,11 +75,17 @@ class TestWorkflowExecutionDefaults:
 
 
 class TestWorkflowExecutionULIDValidation:
-    """Test ULID validation on execution_id."""
+    """Test UUID7 validation on execution_id.
+
+    The validator is named after its ULID-era predecessor, but the
+    contract is now UUID7-only for new writes while still accepting
+    legacy 26-char ULIDs in `is_valid_id` for the read-time migration
+    window (REQ-012). New auto-generated IDs are always UUID7.
+    """
 
     def test_rejects_invalid_ulid_format(self):
-        """execution_id must be a valid ULID."""
-        with pytest.raises(ValidationError, match="Invalid ULID format"):
+        """execution_id must be a valid UUID7 (or legacy ULID)."""
+        with pytest.raises(ValidationError, match="Invalid ID format"):
             WorkflowExecution(
                 execution_id="not-a-valid-ulid",
                 workflow_name="test",
@@ -84,14 +98,19 @@ class TestWorkflowExecutionULIDValidation:
             WorkflowExecution(execution_id="abc123", workflow_name="test", status="running")
 
     def test_accepts_valid_ulid(self):
-        """Valid 26-char lowercase ULID is accepted."""
-        valid_ulid = generate_config_id()
+        """Valid 32-char UUID7 hex is accepted (the new substrate)."""
+        valid_id = generate_config_id()
         wf = WorkflowExecution(
-            execution_id=valid_ulid,
+            execution_id=valid_id,
             workflow_name="test",
             status="running",
         )
-        assert wf.execution_id == valid_ulid
+        assert wf.execution_id == valid_id
+
+    def test_accepts_legacy_ulid_for_read_window(self):
+        """Legacy 26-char ULID is accepted by is_valid_id (REQ-012)."""
+        legacy_ulid = "01kh85b0x6000a9vb7cgn42ed8"
+        assert is_config_ulid(legacy_ulid) is True
 
 
 class TestWorkflowExecutionMethods:
@@ -181,10 +200,10 @@ class TestPoolExecutionDefaults:
     """Test PoolExecution model defaults."""
 
     def test_generates_ulid_by_default(self):
-        """execution_id is auto-generated."""
+        """execution_id is auto-generated as a 32-char UUID7."""
         pe = PoolExecution(pool_id="local", operation="spawn", status="running")
         assert pe.execution_id is not None
-        assert len(pe.execution_id) == 26
+        assert len(pe.execution_id) == 32
 
     def test_worker_id_defaults_to_none(self):
         """worker_id is None when not assigned."""
@@ -216,8 +235,8 @@ class TestPoolExecutionValidation:
             PoolExecution(pool_id="local", status="running")
 
     def test_rejects_invalid_ulid_on_execution_id(self):
-        """execution_id must be valid ULID."""
-        with pytest.raises(ValidationError, match="Invalid ULID format"):
+        """execution_id must be valid UUID7 (or legacy ULID)."""
+        with pytest.raises(ValidationError, match="Invalid ID format"):
             PoolExecution(
                 execution_id="bad-ulid",
                 pool_id="local",
@@ -257,7 +276,7 @@ class TestWorkflowCheckpointDefaults:
     """Test WorkflowCheckpoint model defaults."""
 
     def test_generates_ulid_by_default(self):
-        """checkpoint_id is auto-generated."""
+        """checkpoint_id is auto-generated as a 32-char UUID7."""
         valid_workflow_id = generate_config_id()
         cp = WorkflowCheckpoint(
             workflow_execution_id=valid_workflow_id,
@@ -265,7 +284,7 @@ class TestWorkflowCheckpointDefaults:
             status="pending",
         )
         assert cp.checkpoint_id is not None
-        assert len(cp.checkpoint_id) == 26
+        assert len(cp.checkpoint_id) == 32
 
     def test_result_data_defaults_to_empty_dict(self):
         """result_data field defaults to empty dict."""
@@ -325,9 +344,9 @@ class TestWorkflowCheckpointValidation:
             )
 
     def test_rejects_invalid_ulid_on_checkpoint_id(self):
-        """checkpoint_id must be valid ULID."""
+        """checkpoint_id must be valid UUID7 (or legacy ULID)."""
         valid_workflow_id = generate_config_id()
-        with pytest.raises(ValidationError, match="Invalid ULID format"):
+        with pytest.raises(ValidationError, match="Invalid ID format"):
             WorkflowCheckpoint(
                 checkpoint_id="not-valid",
                 workflow_execution_id=valid_workflow_id,

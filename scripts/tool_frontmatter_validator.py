@@ -26,24 +26,26 @@ except ImportError:
     sys.exit(1)
 
 
-def generate_ulid() -> str:
-    """Generate a ULID (Universally Unique Lexicographically Sortable Identifier)"""
-    # ULID format: 10 chars timestamp + 16 chars randomness
-    import random
+def generate_id() -> str:
+    """Generate a UUID7 identifier (Python 3.14 stdlib, RFC 9562 sec 5.7).
 
-    timestamp = int(time.time() * 1000)  # milliseconds since epoch
+    Replaces the previous ``generate_ulid()`` shim per the cross-repo
+    UUID7-only migration plan. The output shape changes from a 26-char
+    Crockford Base32 ULID to a 32-char lowercase hex UUID7, with a
+    version-7 nibble at position 12 (after the 8-4-4-4 split) — see
+    :data:`UUID7_PATTERN`.
+    """
+    from uuid import uuid7
 
-    # Encode timestamp in base32 (Crockford's base32)
-    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-    timestamp_str = ""
-    for _ in range(10):
-        timestamp_str = alphabet[timestamp % 32] + timestamp_str
-        timestamp //= 32
+    return uuid7().hex
 
-    # Generate 16 random chars
-    random_str = "".join(random.choices(alphabet, k=16))
 
-    return timestamp_str + random_str
+# Backwards-compat alias for any callers still referencing the old
+# generator name. Will be removed once the rest of the toolchain stops
+# referring to it. Per feedback-no-backwards-compat-pre-1.0.md we
+# don't ship a deprecation window — the alias exists solely so
+# unmerged call sites in this file don't fail at import time.
+generate_ulid = generate_id
 
 
 @dataclass
@@ -106,8 +108,25 @@ class ToolFrontmatterValidator:
         "maintenance",
     ]
 
-    ULID_PATTERN = re.compile(r"^[0-9A-Z]{26}$")
+    ULID_PATTERN = re.compile(r"^[0-9A-F]{32}$")  # UUID7 hex; legacy alias
+    UUID7_PATTERN = re.compile(r"^[0-9a-f]{32}$")
     DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    def _is_uuid7(self, value: str) -> bool:
+        """Return True iff ``value`` parses as a stdlib UUID7 hex string.
+
+        UUID7 layout: 32 lowercase hex chars, version nibble ``7`` at
+        positions 12-13 (after the 8-4-4-4 grouping), variant nibble
+        ``8``/``9``/``a``/``b`` at positions 16-17.
+        """
+        import uuid
+
+        if not self.UUID7_PATTERN.match(value):
+            return False
+        try:
+            return uuid.UUID(value).version == 7
+        except ValueError:
+            return False
 
     def __init__(self, tools_dir: Path):
         self.tools_dir = tools_dir
@@ -196,18 +215,18 @@ class ToolFrontmatterValidator:
                 )
 
     def validate_id(self, frontmatter: dict, issues: list[ValidationIssue]):
-        """Validate ID field format (ULID)"""
+        """Validate ID field format (UUID7 hex)"""
         if "id" not in frontmatter:
             return
 
         id_value = str(frontmatter["id"])
-        if not self.ULID_PATTERN.match(id_value):
+        if not self._is_uuid7(id_value):
             issues.append(
                 ValidationIssue(
                     severity="critical",
                     field="id",
                     message=f"Invalid ID format: {id_value}",
-                    suggestion="ID must be 26 uppercase alphanumeric characters (ULID)",
+                    suggestion="ID must be 32 lowercase hex characters (UUID7) with version=7",
                 )
             )
 
@@ -613,12 +632,12 @@ class ToolFrontmatterValidator:
 
             # Check if ID is missing or invalid
             needs_fix = False
-            if "id" not in frontmatter or not self.ULID_PATTERN.match(str(frontmatter["id"])):
+            if "id" not in frontmatter or not self._is_uuid7(str(frontmatter["id"])):
                 needs_fix = True
 
             if needs_fix:
-                # Generate new ULID
-                new_id = generate_ulid()
+                # Generate new UUID7 id
+                new_id = generate_id()
                 frontmatter["id"] = new_id
 
                 # Write back to file

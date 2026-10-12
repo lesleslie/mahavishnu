@@ -4,7 +4,7 @@ Defines Pydantic models for collecting adapter performance
 data, success rates, costs, and execution metrics.
 
 Key Design:
-- ULID-based keys for atomicity
+- UUID7-based keys for atomicity
 - TTL for automatic cleanup
 - Aggregation for performance
 - Separation of raw records from computed stats
@@ -22,13 +22,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from mahavishnu.core.status import ExecutionStatus
 
 try:
-    from oneiric.core.ulid import generate_config_id
+    from oneiric.core.ids import generate_id as generate_config_id
 except ImportError:
 
     def generate_config_id() -> str:
-        import uuid
+        from uuid import uuid7
 
-        return uuid.uuid4().hex
+        return uuid7().hex
 
 
 class AdapterType(StrEnum):
@@ -53,12 +53,12 @@ class TaskType(StrEnum):
 class ExecutionRecord(BaseModel):
     """Single execution record with metrics.
 
-    Stored with ULID key: exec:{ulid}
+    Stored with UUID7 key: exec:{uuid7}
     TTL: 90 days
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id, description="ULID execution identifier"
+        default_factory=generate_config_id, description="UUID7 execution identifier"
     )
 
     adapter: AdapterType = Field(...)
@@ -97,7 +97,7 @@ class ExecutionRecord(BaseModel):
 class AdapterStats(BaseModel):
     """Aggregated adapter statistics.
 
-    Stored with ULID key: stats:adapter:{adapter_type}:{date}
+    Stored with UUID7 key: stats:adapter:{adapter_type}:{date}
     TTL: 30 days
     """
 
@@ -143,7 +143,7 @@ class AdapterStats(BaseModel):
 class TaskTypeStats(BaseModel):
     """Task-type specific routing performance.
 
-    Stored with ULID key: stats:task:{task_type}:{date}
+    Stored with UUID7 key: stats:task:{task_type}:{date}
     TTL: 7 days
     """
 
@@ -167,7 +167,7 @@ class TaskTypeStats(BaseModel):
 class CostTracking(BaseModel):
     """Cost tracking per execution.
 
-    Stored with ULID key: cost:execution:{ulid}
+    Stored with UUID7 key: cost:execution:{uuid7}
     TTL: 90 days
     """
 
@@ -191,12 +191,12 @@ class CostTracking(BaseModel):
 class RoutingDecision(BaseModel):
     """Routing decision record for analysis.
 
-    Stored with ULID key: route:{ulid}
+    Stored with UUID7 key: route:{uuid7}
     TTL: 365 days
     """
 
     decision_id: str = Field(
-        default_factory=generate_config_id, description="ULID for this routing decision"
+        default_factory=generate_config_id, description="UUID7 for this routing decision"
     )
 
     task_type: TaskType = Field(...)
@@ -226,12 +226,12 @@ class RoutingDecision(BaseModel):
 class ABTest(BaseModel):
     """A/B test experiment tracking.
 
-    Stored with ULID key: experiment:{ulid}
+    Stored with UUID7 key: experiment:{uuid7}
     TTL: 30 days
     """
 
     experiment_id: str = Field(
-        default_factory=generate_config_id, description="ULID for this experiment"
+        default_factory=generate_config_id, description="UUID7 for this experiment"
     )
 
     name: str = Field(...)

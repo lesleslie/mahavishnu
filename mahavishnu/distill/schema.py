@@ -12,7 +12,7 @@ WORKFLOW_RUN_STATUSES: frozenset[str] = frozenset({"completed", "failed", "cance
 
 DISTILLED_WORKFLOWS_DDL: str = f"""
 CREATE TABLE IF NOT EXISTS distilled_workflows (
-    id TEXT PRIMARY KEY, -- ULID
+    id TEXT PRIMARY KEY, -- UUID7 (32 lowercase hex chars; the distillation substrate)
     problem_pattern TEXT NOT NULL, -- "Python repos: code_sweep + ruff strict"
     suggested_dag_json TEXT NOT NULL, -- serialized _DagSchema (Phase B)
     python_module_path TEXT NOT NULL, -- "mahavishnu/workflows/distilled/{{id}}.py"

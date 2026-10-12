@@ -242,7 +242,7 @@ def test_generate_config_id_fallback_branch(monkeypatch: pytest.MonkeyPatch) -> 
     original_import = builtins.__import__
 
     def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "oneiric.core.ulid" or name.startswith("oneiric.core.ulid"):
+        if name == "oneiric.core.ids" or name.startswith("oneiric.core.ids"):
             raise ImportError("oneiric missing")
         return original_import(name, globals, locals, fromlist, level)
 

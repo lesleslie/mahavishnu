@@ -5,7 +5,7 @@ Provides ExecutionTracker class with async batch writes and sampling strategies.
 
 Design:
 - Storage-agnostic (works with RoutingMetricsPersistence for PostgreSQL)
-- ULID-based execution identifiers
+- UUID7-based execution identifiers
 - TTL-based automatic cleanup
 - Configurable sampling strategies
 
@@ -33,13 +33,13 @@ from mahavishnu.core.metrics_schema import (
 )
 
 try:
-    from oneiric.core.ulid import generate_config_id
+    from oneiric.core.ids import generate_id as generate_config_id
 except ImportError:
 
     def generate_config_id() -> str:
-        import uuid
+        from uuid import uuid7
 
-        return uuid.uuid4().hex
+        return uuid7().hex
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class ExecutionMetrics:
     """
 
     active_executions: dict[str, dict[str, Any]] = field(default_factory=dict)
-    """exec:{ulid} -> {start_ts, adapter, task_type, repos}"""
+    """exec:{uuid7} -> {start_ts, adapter, task_type, repos}"""
 
     completed_executions: list[ExecutionRecord] = field(default_factory=list)
     """Completed execution records awaiting batch write."""
@@ -108,7 +108,7 @@ class ExecutionTracker:
     """Tracks adapter execution metrics with async batch writes.
 
     Features:
-    - Record execution start/end with ULID tracking
+    - Record execution start/end with UUID7 tracking
     - Async batch writes to reduce storage overhead
     - Configurable sampling strategy
     - Automatic aggregation of statistics
@@ -192,7 +192,7 @@ class ExecutionTracker:
             repos: Repository paths involved
 
         Returns:
-            ULID execution identifier
+            UUID7 execution identifier
         """
         execution_id = generate_config_id()
 
@@ -233,7 +233,7 @@ class ExecutionTracker:
         """Record the completion of an execution.
 
         Args:
-            execution_id: ULID execution identifier
+            execution_id: UUID7 execution identifier
             success: Whether execution succeeded
             status: Final execution status
             latency_ms: Execution duration in milliseconds

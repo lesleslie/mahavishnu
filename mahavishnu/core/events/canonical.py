@@ -2,7 +2,7 @@
 
 Reserved Oneiric headers (per the approved spec):
 
-- ``event_id``: producer-generated UUID/ULID string.
+- ``event_id``: producer-generated UUID7 string.
 - ``source``: producing component name.
 - ``version``: semantic envelope/schema version.
 - ``timestamp``: UTC ISO-8601 string.

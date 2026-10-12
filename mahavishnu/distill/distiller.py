@@ -4,7 +4,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
-from ulid import ULID  # ty: ignore[unresolved-import]
+from oneiric.core.ids import generate_id
 
 from mahavishnu.distill.provenance import TRUSTED_SOURCE_TYPE, check_source_purity
 
@@ -199,7 +199,7 @@ def distill_workflows(
     if not candidates:
         return []
 
-    distill_run_id = str(ULID())
+    distill_run_id = generate_id()
     inserted_ids: list[str] = []
 
     for cand in candidates:
@@ -258,7 +258,7 @@ def distill_workflows(
             )
             continue
 
-        workflow_id = str(ULID())
+        workflow_id = generate_id()
         try:
             _insert_distilled_row(
                 conn,

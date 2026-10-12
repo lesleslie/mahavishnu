@@ -312,7 +312,7 @@ class TestGenerateConfigIdFallback:
         original_import = builtins.__import__
 
         def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "oneiric.core.ulid" or name.startswith("oneiric."):
+            if name == "oneiric.core.ids" or name.startswith("oneiric."):
                 raise ImportError("blocked for fallback test")
             return original_import(name, globals, locals, fromlist, level)
 

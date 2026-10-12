@@ -8,7 +8,7 @@ command line to script against.
 
 Commands:
     mahavishnu rollback bodai-crow --to-version <sha>
-    mahavishnu rollback distilled-workflow --id <ulid>
+    mahavishnu rollback distilled-workflow --id <uuid7>
 """
 
 from __future__ import annotations
@@ -34,10 +34,10 @@ def rollback_bodai_crow(to_version: str) -> None:
 
 
 def rollback_distilled_workflow(id: str) -> None:
-    """Roll back a distilled workflow to the version identified by ULID.
+    """Roll back a distilled workflow to the version identified by UUID7.
 
     Args:
-        id: ULID of the distilled workflow version to roll back to (Plan 5).
+        id: UUID7 of the distilled workflow version to roll back to (Plan 5).
     """
     # Stub: actual implementation lands in a follow-up.
     # Echo target so callers can confirm dispatch in shell scripts.
@@ -62,10 +62,10 @@ def distilled_workflow_cmd(
     id: str = typer.Option(
         ...,
         "--id",
-        help="ULID of the distilled workflow version to roll back to.",
+        help="UUID7 of the distilled workflow version to roll back to.",
     ),
 ) -> None:
-    """Roll back a distilled workflow to the version identified by ULID."""
+    """Roll back a distilled workflow to the version identified by UUID7."""
     rollback_distilled_workflow(id=id)
 
 
