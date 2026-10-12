@@ -2,7 +2,7 @@
 status: active
 role: implementation
 date: 2026-08-25
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-12
 owner: les
 topic: bodai-tui-shell-surface
 scope: bodai-tui-shell

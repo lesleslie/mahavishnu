@@ -1421,7 +1421,7 @@ status: active
 role: canonical
 kind: decision
 date: 2026-10-03
-last_reviewed: 2026-10-03
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: main-autopush
 ---
@@ -1493,7 +1493,7 @@ status: active
 role: canonical
 kind: decision
 date: 2026-10-03
-last_reviewed: 2026-10-03
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: trunk-based-agent-review
 ---

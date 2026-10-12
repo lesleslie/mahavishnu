@@ -2,7 +2,7 @@
 status: active
 role: implementation
 date: 2026-09-26
-last_reviewed: 2026-09-26
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: oneiric-runtime-config-registry
 kind: plan

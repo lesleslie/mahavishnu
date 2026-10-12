@@ -1,6 +1,6 @@
 ---
 date: 2026-07-26
-last_reviewed: 2026-07-26
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: worktree-autoremove
 status: draft
@@ -157,7 +157,7 @@ an explicit user-invoked CLI.
 status: active
 role: canonical
 date: 2026-07-26
-last_reviewed: 2026-07-26
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: worktree-autoremove
 ---

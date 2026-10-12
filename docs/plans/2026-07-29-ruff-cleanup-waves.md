@@ -3,7 +3,7 @@ status: active
 role: implementation
 kind: plan
 date: 2026-07-29
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-12
 superseded_by: null
 blocks_on: []
 topic: ruff-cleanup-waves

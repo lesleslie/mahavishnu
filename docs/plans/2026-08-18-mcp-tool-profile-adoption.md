@@ -3,7 +3,7 @@ status: active
 role: implementation
 kind: plan
 date: 2026-08-18
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-12
 superseded_by: null
 blocks_on: []
 topic: mcp-tool-profile-adoption

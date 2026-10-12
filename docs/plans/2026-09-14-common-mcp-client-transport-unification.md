@@ -3,7 +3,7 @@ status: active
 role: umbrella
 kind: plan
 date: 2026-09-14
-last_reviewed: 2026-09-14
+last_reviewed: 2026-10-12
 superseded_by: null
 topic: mcpserver-settings-convention
 revision: 2
