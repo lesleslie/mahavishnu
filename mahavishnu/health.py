@@ -126,11 +126,21 @@ def create_health_app(
 
         # Per-feed FeedSnapshot dicts: cast StatusValue → str,
         # ReasonCode → str so the response stays JSON-native.
+        # Plan 2 Phase E2 §6.5 — 4 canonical fields per feed
+        # (entities_count, last_updated_timestamp, cycles_total,
+        # errors_total) are surfaced from the aggregator snapshot so
+        # ``curl /health | jq .feed_states`` exposes the same shape
+        # mcp-backend-wiring-discipline.md §3 mandates for every
+        # registered tool's data feed.
         feed_states_json: dict[str, dict[str, object]] = {
             feed_name: {
                 "status": feed_snapshot["status"].value,
                 "healthy": feed_snapshot["healthy"],
                 "reason_codes": [rc.value for rc in feed_snapshot["reason_codes"]],
+                "entities_count": feed_snapshot["entities_count"],
+                "last_updated_timestamp": feed_snapshot["last_updated_timestamp"],
+                "cycles_total": feed_snapshot["cycles_total"],
+                "errors_total": feed_snapshot["errors_total"],
             }
             for feed_name, feed_snapshot in verdict.snapshot["checks"].items()
         }

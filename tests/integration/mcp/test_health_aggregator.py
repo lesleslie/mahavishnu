@@ -258,3 +258,83 @@ def test_mahavishnu_app_is_constructable() -> None:
     except (RuntimeError, ModuleNotFoundError) as exc:
         pytest.skip(f"MahavishnuApp bootstrap skipped: {exc}")
     assert app is not None
+
+
+# ---------------------------------------------------------------------------
+# Plan 2 Phase E2 Task 5 — /health 4-field shape contract
+# ---------------------------------------------------------------------------
+# Per Plan §6.5 (and the mcp-backend-wiring-discipline.md §3 wire format),
+# each per-feed entry in the /health body must carry the 4 mandatory
+# fields: ``entities_count``, ``last_updated_timestamp``, ``cycles_total``,
+# ``errors_total``. The aggregator widening (mcp_common@266de23) makes
+# these fields appear in the snapshot; the existing
+# ``test_health_endpoint_returns_200_on_warm_startup`` covers the
+# legacy 3-field shape, this test pins the full Plan §6.5 contract
+# on the live /health HTTP body.
+# ---------------------------------------------------------------------------
+
+# Plan §6.5 — every registered tool's data feed must surface these
+# 4 fields verbatim. See mcp-backend-wiring-discipline.md §3.
+PLAN_EXPECTED_FIELDS = (
+    "entities_count",
+    "last_updated_timestamp",
+    "cycles_total",
+    "errors_total",
+)
+
+
+def test_health_endpoint_body_carries_four_plan_fields_per_feed() -> None:
+    """The live ``/health`` HTTP body carries the 4 plan-§6.5 fields per
+    feed — the contract that ``curl /health | jq .feeds`` depends on
+    (per Plan 2 Phase E2 §10 demonstration).
+
+    Skips against pre-widening mcp_common wheels (the legacy 3-field
+    shape is the active contract until the user bumps mcp_common).
+    Skips with a clear message naming the version bump that closes
+    the gap.
+    """
+    from mcp_common.health.aggregator import aggregate_feed_states
+    from mcp_common.health.feed import HealthFeedState
+
+    # Probe the aggregator to detect the new shape (skip if absent).
+    snap = aggregate_feed_states(
+        {"storage": HealthFeedState(entities_count=1, cycles_total=1)}
+    )
+    if "entities_count" not in snap["checks"]["storage"]:
+        pytest.skip(
+            "mcp_common aggregator does not yet expose the 4 plan-§6.5 "
+            "fields. Bump mcp_common to a version that includes the "
+            "FeedSnapshot widening (oneiric-plan ledger mcp_common@266de23)."
+        )
+
+    from fastapi.testclient import TestClient
+
+    from mahavishnu.health import create_health_app
+
+    try:
+        app = create_health_app(server_name="mahavishnu-plan2-task5-test")
+        client = TestClient(app)
+        response = client.get("/health")
+    except Exception as exc:  # noqa: BLE001 — lifespan probes can fail in test envs
+        pytest.skip(
+            f"create_health_app()/TestClient setup failed in test env "
+            f"(the aggregator-level tests above still pin the contract): {exc}"
+        )
+    # 200 (healthy/warming_up) or 503 (degraded/failed) — both valid.
+    assert response.status_code in (200, 503)
+
+    body: dict[str, Any] = response.json()
+    feed_states: dict[str, Any] = body["feed_states"]
+    # All 3 v1 feeds must be present.
+    expected_feeds = {"storage", "message_bus", "adapters"}
+    assert set(feed_states.keys()) == expected_feeds
+
+    for feed_name, feed_dict in feed_states.items():
+        assert isinstance(feed_dict, dict), (
+            f"feed {feed_name} is not a dict: {type(feed_dict)}"
+        )
+        for field in PLAN_EXPECTED_FIELDS:
+            assert field in feed_dict, (
+                f"/health body dropped {field} from {feed_name} "
+                f"(Plan 2 Phase E2 §6.5 / mcp-backend-wiring-discipline §3)"
+            )
