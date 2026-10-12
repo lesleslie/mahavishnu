@@ -19,7 +19,7 @@ Quarantine rules for any ``*.py`` file directly under
 1. Filename MUST NOT match the pattern ``distilled_*.py``.
 2. First 50 lines MUST contain BOTH header comments:
    - ``# Approved by: <reviewer-id>``
-   - ``# Workflow-ID: <ulid>``
+   - ``# Workflow-ID: <uuid7>``
 
 A file under ``workflows/distilled/`` is allowed (the quarantine dir) and
 NOT subject to headers — it's not executable until ``mahavishnu workflow

@@ -25,14 +25,13 @@ def generate_config_id() -> str:
     return generate_id()
 
 
-def is_config_ulid(value: str) -> bool:
-    """Return True iff ``value`` is a syntactically valid ID.
+def is_uuid7_id(value: str) -> bool:
+    """Return True iff ``value`` is a syntactically valid UUID7 hex string.
 
-    Named for source compatibility with the previous ULID-era call
-    sites. The actual contract is :func:`oneiric.core.ids.is_valid_id`,
-    which accepts UUID7 hex (the new substrate) and 26-char Crockford
-    Base32 ULID (legacy) for the read-time migration window per
-    REQ-012.
+    This replaces the pre-2026-10-11 ``is_config_ulid`` alias. The
+    contract is :func:`oneiric.core.ids.is_valid_id` (UUID7 only; the
+    ULID read-time acceptance was removed in
+    ``docs/plans/2026-10-12-ulid-surface-elimination.md`` T1).
     """
     return is_valid_id(value)
 
@@ -56,9 +55,9 @@ class WorkflowExecution(BaseModel):
 
     @field_validator("execution_id")
     @classmethod
-    def execution_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that execution_id is a valid UUID7 (or legacy ULID)."""
-        if not is_config_ulid(v):
+    def execution_id_must_be_uuid7(cls, v: str) -> str:
+        """Validate that execution_id is a valid UUID7 hex string."""
+        if not is_uuid7_id(v):
             raise ValueError(f"Invalid ID format for execution_id: {v}")
         return v
 
@@ -99,9 +98,9 @@ class PoolExecution(BaseModel):
 
     @field_validator("execution_id")
     @classmethod
-    def execution_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that execution_id is a valid UUID7 (or legacy ULID)."""
-        if not is_config_ulid(v):
+    def execution_id_must_be_uuid7(cls, v: str) -> str:
+        """Validate that execution_id is a valid UUID7 hex string."""
+        if not is_uuid7_id(v):
             raise ValueError(f"Invalid ID format for execution_id: {v}")
         return v
 
@@ -134,9 +133,9 @@ class WorkflowCheckpoint(BaseModel):
 
     @field_validator("checkpoint_id")
     @classmethod
-    def checkpoint_id_must_be_ulid(cls, v: str) -> str:
-        """Validate that checkpoint_id is a valid UUID7 (or legacy ULID)."""
-        if not is_config_ulid(v):
+    def checkpoint_id_must_be_uuid7(cls, v: str) -> str:
+        """Validate that checkpoint_id is a valid UUID7 hex string."""
+        if not is_uuid7_id(v):
             raise ValueError(f"Invalid ID format for checkpoint_id: {v}")
         return v
 

@@ -29,9 +29,8 @@ except ImportError:
 def generate_id() -> str:
     """Generate a UUID7 identifier (Python 3.14 stdlib, RFC 9562 sec 5.7).
 
-    Replaces the previous ``generate_ulid()`` shim per the cross-repo
-    UUID7-only migration plan. The output shape changes from a 26-char
-    Crockford Base32 ULID to a 32-char lowercase hex UUID7, with a
+    Replaces the pre-2026-10-11 ``generate_ulid()`` shim. The output is
+    a 32-char lowercase hex UUID7 per RFC 9562 sec 5.7, with a
     version-7 nibble at position 12 (after the 8-4-4-4 split) — see
     :data:`UUID7_PATTERN`.
     """
@@ -43,9 +42,6 @@ def generate_id() -> str:
 # Backwards-compat alias for any callers still referencing the old
 # generator name. Will be removed once the rest of the toolchain stops
 # referring to it. Per feedback-no-backwards-compat-pre-1.0.md we
-# don't ship a deprecation window — the alias exists solely so
-# unmerged call sites in this file don't fail at import time.
-generate_ulid = generate_id
 
 
 @dataclass
@@ -108,7 +104,6 @@ class ToolFrontmatterValidator:
         "maintenance",
     ]
 
-    ULID_PATTERN = re.compile(r"^[0-9A-F]{32}$")  # UUID7 hex; legacy alias
     UUID7_PATTERN = re.compile(r"^[0-9a-f]{32}$")
     DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -617,7 +612,7 @@ class ToolFrontmatterValidator:
             print(f"... and {len(warning_results) - 10} more tools with warnings\n")
 
     def fix_missing_ids(self):
-        """Add ULIDs to tools missing IDs"""
+        """Add UUID7 ids to tools missing IDs"""
         print("Scanning for tools with missing or invalid IDs...\n")
 
         fixed_count = 0

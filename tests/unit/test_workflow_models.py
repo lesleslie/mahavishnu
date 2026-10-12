@@ -1,11 +1,11 @@
 """Unit tests for workflow models (WorkflowExecution, PoolExecution, WorkflowCheckpoint).
 
 These tests are self-contained and do not rely on external projects like oneiric or mcp.
-Uses only the fallback generate_config_id and is_config_ulid from the module itself.
+Uses only the fallback generate_config_id and is_uuid7_id from the module itself.
 
 Per the cross-repo UUID7-only migration plan (Phase 6, mahavishnu), the
 models now emit UUID7 hex (32 lowercase hex chars, RFC 9562 sec 5.7)
-via the oneiric.core.ids substrate. The legacy ``is_config_ulid`` name
+via the oneiric.core.ids substrate. The legacy ``is_uuid7_id`` name
 is preserved for source compatibility, but the underlying predicate
 ``oneiric.core.ids.is_valid_id`` accepts both UUID7 (new) and 26-char
 Crockford Base32 ULID (legacy) for the read-time migration window
@@ -25,7 +25,7 @@ from mahavishnu.core.workflow_models import (
     WorkflowCheckpoint,
     WorkflowExecution,
     generate_config_id,
-    is_config_ulid,
+    is_uuid7_id,
 )
 
 # ============================================================================
@@ -41,7 +41,7 @@ class TestWorkflowExecutionDefaults:
         wf = WorkflowExecution(workflow_name="test", status="running")
         assert wf.execution_id is not None
         assert len(wf.execution_id) == 32
-        assert is_config_ulid(wf.execution_id)
+        assert is_uuid7_id(wf.execution_id)
 
     def test_status_field_required(self):
         """status field is required (no default)."""
@@ -84,7 +84,7 @@ class TestWorkflowExecutionULIDValidation:
     """
 
     def test_rejects_invalid_ulid_format(self):
-        """execution_id must be a valid UUID7 (or legacy ULID)."""
+        """execution_id must be a valid UUID7 (UUID7 only; ULID read-time acceptance removed)."""
         with pytest.raises(ValidationError, match="Invalid ID format"):
             WorkflowExecution(
                 execution_id="not-a-valid-ulid",
@@ -110,7 +110,7 @@ class TestWorkflowExecutionULIDValidation:
     def test_accepts_legacy_ulid_for_read_window(self):
         """Legacy 26-char ULID is accepted by is_valid_id (REQ-012)."""
         legacy_ulid = "01kh85b0x6000a9vb7cgn42ed8"
-        assert is_config_ulid(legacy_ulid) is True
+        assert is_uuid7_id(legacy_ulid) is True
 
 
 class TestWorkflowExecutionMethods:
@@ -235,7 +235,7 @@ class TestPoolExecutionValidation:
             PoolExecution(pool_id="local", status="running")
 
     def test_rejects_invalid_ulid_on_execution_id(self):
-        """execution_id must be valid UUID7 (or legacy ULID)."""
+        """execution_id must be valid UUID7 (UUID7 only; ULID read-time acceptance removed)."""
         with pytest.raises(ValidationError, match="Invalid ID format"):
             PoolExecution(
                 execution_id="bad-ulid",
@@ -344,7 +344,7 @@ class TestWorkflowCheckpointValidation:
             )
 
     def test_rejects_invalid_ulid_on_checkpoint_id(self):
-        """checkpoint_id must be valid UUID7 (or legacy ULID)."""
+        """checkpoint_id must be valid UUID7 (UUID7 only; ULID read-time acceptance removed)."""
         valid_workflow_id = generate_config_id()
         with pytest.raises(ValidationError, match="Invalid ID format"):
             WorkflowCheckpoint(
@@ -472,7 +472,7 @@ class TestAllModelsWithCustomExecutionID:
 
 
 class TestIsConfigULID:
-    """Test the is_config_ulid validation function.
+    """Test the is_uuid7_id validation function.
 
     Note: The fallback implementation uses isalnum() which is case-insensitive,
     so mixed-case strings may return True depending on the implementation.
@@ -480,20 +480,20 @@ class TestIsConfigULID:
 
     def test_valid_ulid_returns_true(self):
         """Valid 26-char lowercase alnum returns True."""
-        assert is_config_ulid("01kh85b0x6000a9vb7cgn42ed8") is True
+        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed8") is True
 
     def test_rejects_short_strings(self):
         """Strings shorter than 26 return False."""
-        assert is_config_ulid("01kh85b0x6") is False
+        assert is_uuid7_id("01kh85b0x6") is False
 
     def test_rejects_long_strings(self):
         """Strings longer than 26 return False."""
-        assert is_config_ulid("01kh85b0x6000a9vb7cgn42ed8xxxx") is False
+        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed8xxxx") is False
 
     def test_rejects_strings_with_special_chars(self):
         """Non-alphanumeric characters return False."""
-        assert is_config_ulid("01kh85b0x6000a9vb7cgn42ed!") is False
+        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed!") is False
 
     def test_rejects_empty_string(self):
         """Empty string returns False."""
-        assert is_config_ulid("") is False
+        assert is_uuid7_id("") is False
