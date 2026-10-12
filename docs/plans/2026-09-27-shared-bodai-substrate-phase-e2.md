@@ -1,5 +1,5 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-27
