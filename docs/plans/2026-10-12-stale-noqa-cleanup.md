@@ -5,6 +5,13 @@ kind: plan
 date: 2026-10-12
 last_reviewed: 2026-10-12
 superseded_by: null
+# Hard dep: this plan needs RUF100 to be an active rule, which is
+# enabled by `2026-10-12-ruff-cleanup-post-regrowth.md` Phase 0
+# (the rule-family enablement in `pyproject.toml extend-select`).
+# Without that, `ruff check --select RUF100` returns 0 findings on
+# `main` and the `--fix` has nothing to do.
+blocks_on:
+  - docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md
 topic: stale-noqa-cleanup
 title: "Stale `# noqa` Marker Cleanup (RUF100, 2026-10-12)"
 
@@ -69,6 +76,47 @@ that marker carries a `<justification>` suffix, which we don't expect
 RUF100 to flag (RUF100 only flags markers whose rule is no longer
 firing).
 
+## Sequencing with companion plans
+
+**Prerequisite (hard dep):** `2026-10-12-ruff-cleanup-post-regrowth.md` Phase 0
+must land first. That phase enables the RUF family (and the 8 in-scope
+rule codes) in `pyproject.toml [tool.ruff.lint] extend-select`.
+Without that, RUF100 is not being checked on `main` and the `--fix`
+has nothing to delete — the reported "912 markers" baseline is
+aspirational. The post-Phase-0 actual baseline (run
+`ruff check ... --select RUF100 --statistics`) is what this plan works
+against. Update the "Current Findings" baseline in this plan with the
+post-Phase-0 actual count before running the fix.
+
+The recommended execution order is:
+
+1. `2026-10-12-ruff-cleanup-post-regrowth.md` **Phase 0** (rule enablement)
+   lands first. The 912 RUF100 count gets re-measured.
+2. `2026-10-12-ruff-cleanup-post-regrowth.md` **Phase 1 (BLE001)** lands
+   next. This adds justified `# noqa: BLE001 <reason>` markers on
+   boundary handlers that the BLE001 narrowing wants to keep.
+3. `2026-10-12-ruff-cleanup-post-regrowth.md` **Phases 2-8** land in
+   any order. None of them depend on RUF100.
+4. **This plan (RUF100)** lands last. RUF100 only deletes markers whose
+   rule is no longer firing. The just-added justified BLE001 markers
+   survive because the rule IS firing on them.
+
+If RUF100 lands before Phase 1, the existing unjustified BLE001
+markers get deleted (they're stale). Phase 1 then re-adds justified
+markers for the new boundary handlers, and a follow-up RUF100 sweep
+leaves them alone. Either order converges to the same end state; the
+recommended order minimizes the chance of two-PR churn on the same
+lines.
+
+## Ruff version pin
+
+`ruff check --fix --select RUF100` is stable across the active
+`ruff>=0.16.0` pin (per `pyproject.toml:124`). Local re-runs that
+drift across minor versions may see whitespace-handling changes in
+`--fix` output. The verification rejects any PR with unrelated
+whitespace churn (`git diff --stat` should show deletions-only on the
+RUF100 commit).
+
 ## Implementation Phases
 
 ### Phase 1 — Mechanical `--fix` and review
@@ -129,8 +177,11 @@ had not yet begun the post-regrowth-driven improvements).
 
 | Command | Expected | Evidence |
 |---------|----------|----------|
-| `ruff check … --select RUF100` | 0 findings | CI log |
-| `git diff --stat` of the PR | deletions-only | PR description |
+| `ruff --version` | `ruff 0.6.0` (the pinned version; per `requirements/lint-constraints.txt`) | shell |
+| `ruff check … --select RUF100` (read-only, before fix) | 912 findings (baseline; matches the snapshot in the Current Findings section) | shell |
+| `ruff check … --select RUF100 --fix` | runs to completion, no errors | shell |
+| `ruff check … --select RUF100` (after fix) | 0 findings | CI log |
+| `git diff --stat` of the PR | deletions-only (or near-only — whitespace churn from `--fix` is accepted) | PR description |
 | `pytest -m "not slow"` | green | CI log |
 | `crackerjack run -v` | gate green | CI log |
 

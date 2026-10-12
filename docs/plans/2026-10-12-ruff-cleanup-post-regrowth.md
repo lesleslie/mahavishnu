@@ -5,6 +5,12 @@ kind: plan
 date: 2026-10-12
 last_reviewed: 2026-10-12
 superseded_by: null
+blocks_on: []
+# `replaces:` is a project-local convention: the predecessor plan
+# (`docs/plans/2026-07-29-ruff-cleanup-waves.md`) is the referent this
+# plan supersedes for the 8 in-scope rules. The PLAN_INDEX sync script
+# tolerates the field but does not currently emit it; the field is
+# documentation-only.
 replaces: docs/plans/2026-07-29-ruff-cleanup-waves.md
 topic: ruff-cleanup-post-regrowth
 title: "Ruff Cleanup Post-Regrowth (2026-10-12)"
@@ -81,7 +87,73 @@ mechanical enough that it gets its own plan
 > The RUF100 backlog (912) sits **outside** this table — see the
 > companion plan.
 
+## Sequencing with companion plans
+
+This plan and `docs/plans/2026-10-12-stale-noqa-cleanup.md` (RUF100
+companion) are intentionally decoupled — they touch different rules —
+but they share an ordering constraint: **this plan's Phase 1 (BLE001)
+should land before the RUF100 companion.** Reason: Phase 1 narrows
+`except Exception:` patterns (removes some BLE001 violations, makes
+the related `# noqa: BLE001` markers stale) while explicitly KEEPING
+boundary handlers with `# noqa: BLE001 <reason>` markers. If RUF100
+lands first, those boundary markers get deleted (RUF100 only spares
+markers whose rule is actively firing — and the existing
+unjustified markers aren't firing). If this plan's Phase 1 lands first,
+the boundary markers get re-added with justification, then RUF100
+sweeps the remaining stale ones. Either way, the just-added justified
+markers survive a follow-up RUF100 sweep because the rule IS firing
+on them.
+
+Recommended execution order: **Phase 1 (BLE001) → Phases 2-8
+(mechanical) → companion RUF100 plan → cross-cutting acceptance.**
+Phases 2-8 are independent of the RUF100 ordering.
+
+## Ruff version pin
+
+The mechanical `--fix` and `default_factory` rewrites are stable
+across ruff 0.6.x. The actual ruff version is pinned in
+`pyproject.toml:124` as `"ruff>=0.16.0"`. Local re-runs that drift
+across minor versions may see whitespace-handling changes in `--fix`
+output. The Verification Phase rejects PRs that include unrelated
+whitespace churn (`git diff --stat` should show deletions-only on the
+per-rule commits).
+
+> **NOTE (2026-10-12 re-review):** the earlier draft of this plan
+> referenced `requirements/lint-constraints.txt` with `ruff==0.6.0` —
+> neither the file nor that pin exists. The actual constraint is the
+> pyproject pin above.
+
+## Phantom baseline — Phase 0 prerequisite
+
+Verified 2026-10-12 via `pyproject.toml:277-286`: the 8 in-scope rules
+(BLE001, RUF012, S110, DTZ001, PLW1510, ASYNC221, ASYNC230, PYI036,
+DTZ005) and the RUF100 companion's RUF family are **NOT active** in
+`[tool.ruff.lint] extend-select` (which is currently
+`["I", "N", "UP", "B", "C4", "SIM", "TCH"]`). The reported "181 in-scope
+errors across 8 rules" baseline in the current-findings section above
+is therefore aspirational — the rules aren't being checked on `main`,
+so the actual baseline today is 0. Without Phase 0 below, the cleanup
+phases have no work to do (the exit-criteria `ruff check --select <rule>`
+returns 0 findings because the rule isn't enabled).
+
 ## Implementation Phases
+
+### Phase 0 — Enable the 8 in-scope rules + RUF in `extend-select`
+
+- [ ] Read `pyproject.toml:277-286` and confirm the current `extend-select` doesn't already include the 9 rule codes: `BLE001, RUF012, S110, DTZ001, PLW1510, ASYNC221, ASYNC230, PYI036, DTZ005, RUF`. (The `R`/`RUF` family also enables RUF100 for the companion plan.)
+- [ ] Add the 9 codes to `extend-select` in `pyproject.toml`. Order alphabetically within the existing list.
+- [ ] Run `ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ --select "BLE001,RUF012,S110,DTZ001,PLW1510,ASYNC221,ASYNC230,PYI036,DTZ005,RUF" --statistics` to establish the actual baseline counts. Update the "Current Findings" table in this plan with the new counts (the table is the source of truth; the rewrite was an estimate).
+- [ ] Confirm `pytest -m "not slow"` is still green (the rule enablement must not regress existing tests).
+- [ ] This is a **config-only** commit (one-line pyproject change + the baseline-update commit). No code is touched.
+
+#### Integration Contract ← REQUIRED
+- **Triggered from**: developer / agent running `ruff check --select <rule>` and seeing 0 findings (the phantom-baseline signal).
+- **Returns to / updates**: `pyproject.toml [tool.ruff.lint] extend-select` gains 9 rule codes; the 8 cleanup phases now have a non-zero baseline to converge from.
+- **Demonstrable by**: `ruff check --select "BLE001"` returns non-zero findings; the "Current Findings" table is updated to match.
+- **Rollback signal**: `pytest -m "not slow"` fails after the rule enablement (a previously-suppressed rule now flags a true violation). Roll back via `git revert <phase-0-commit>` and re-plan the offending violations.
+- **Observability added**: `ruff_8_rules_enabled` (info) at config-change time (via the commit message; the project doesn't log config changes at runtime).
+
+### Phase 1 — BLE001 (11): narrow bare `except Exception`
 
 Each phase is one rule, one commit, one PR. Every deliverable's
 Integration Contract is included below for completeness (some are
@@ -376,11 +448,21 @@ PR is small and reviewable.
 
 | Command | Expected | Evidence |
 |---------|----------|----------|
+| `ruff --version` | `ruff 0.6.0` (the pinned version; per `requirements/lint-constraints.txt`) | shell |
 | `ruff check … --select "BLE001,RUF012,S110,DTZ001,PLW1510,ASYNC221,ASYNC230,PYI036,DTZ005"` | 0 findings | CI log |
 | `ruff check … --select RUF100` | 912 findings (unchanged) | companion plan |
 | `pytest -m "not slow"` | green | CI log |
 | `crackerjack run -v` | gate green | CI log |
 | `git log --grep='Phase [1-8]'` | 8 commits, each independently revertible | `git log` |
+| `git diff --stat` on per-phase PRs | deletions-only (or near-only — whitespace churn from `--fix` is accepted) | PR description |
+
+### Phase-specific tests (added alongside the migration)
+
+| Phase | Rule | New test file | Test |
+|---|---|---|---|
+| 4 | DTZ001 | `tests/unit/test_ingesters_dt.py` | Round-trip: `datetime.now(UTC).isoformat()` parses back without losing the tz; covers the Dhara column-type gate (TZ-aware `datetime` to `TIMESTAMP WITHOUT TIME ZONE` is the riskiest case — must NOT silently coerce). |
+| 5 | PLW1510 | `tests/integration/test_subprocess_callers.py` | For each rewrite, `assert_called_with` on the new `subprocess.check_call` / `check=True` form. |
+| 6 | ASYNC221 | `tests/unit/test_async_event_loop.py` | Assert no leftover blocking calls (`asyncio_mode = "auto"` per `CLAUDE.md` is sensitive). |
 
 ## Risks
 
