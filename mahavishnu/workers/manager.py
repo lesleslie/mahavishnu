@@ -135,6 +135,13 @@ class WorkerManager:
         max_concurrent: Maximum number of concurrent workers
         session_buddy_client: Optional Session-Buddy MCP client
         mcp_client: Optional MCP client for application workers
+        writable_root: Path | None = None
+            Default filesystem path the ShepherdBackendWorker
+            (the only supported worker_type since 2026-09-24) may write
+            into. Per-spawn overrides accepted by ``spawn_workers``.
+            Pool-level pools (PoolConfig.writable_root) flow through
+            to here via MahavishnuPool.__init__; if both are None the
+            shepherd constructor raises MHV-312 with a clear remediation.
         settings: Optional MahavishnuSettings used for capability evaluation
     """
 
@@ -322,7 +329,20 @@ class WorkerManager:
         worker_type: str,
         count: int,
         task_spec: dict[str, Any] | None = None,
+        writable_root: Path | None = None,
     ) -> list[str]:
+        """Spawn multiple workers of specified type.
+
+        Args:
+            worker_type: Type of worker ("terminal-qwen" [legacy], "terminal-claude", "terminal-codex", "container")
+            count: Number of workers to spawn
+            task_spec: Optional task specification for immediate execution
+            writable_root: Per-spawn override for the ShepherdBackendWorker's
+                ``writable_root`` kwarg. ``None`` falls back to
+                ``self.writable_root`` (set in __init__ from the pool
+                config). If both are ``None`` the shepherd constructor
+                raises MHV-312.
+        """
         """Spawn multiple workers of specified type.
 
         Args:
@@ -339,7 +359,10 @@ class WorkerManager:
         worker_ids = []
 
         for _ in range(count):
-            worker = self._create_worker(worker_type)
+            worker = self._create_worker(
+                worker_type,
+                writable_root=writable_root or self.writable_root,
+            )
             worker_id = await worker.start()
             self._workers[worker_id] = worker
             worker_ids.append(worker_id)

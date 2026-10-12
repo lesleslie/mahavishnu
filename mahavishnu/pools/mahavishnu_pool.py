@@ -82,11 +82,25 @@ class MahavishnuPool(BasePool):
         self.terminal_manager = terminal_manager
         self.session_buddy_client = session_buddy_client
 
+        # Resolve writable_root for ShepherdBackendWorker (the post-2026-09-24
+        # default worker substrate; see docs/decisions/2026-09-24-
+        # legacy-worker-deprecation.md). Falls back to a per-pool subdir
+        # of $XDG_DATA_HOME/mahavishnu/pools/ when the config doesn't
+        # specify one, so the spawn no longer raises MHV-312.
+        config_writable_root = getattr(config, 'writable_root', None)
+        if config_writable_root:
+            self.writable_root = Path(config_writable_root).resolve()
+        else:
+            from platformdirs import user_data_dir
+            base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
+            self.writable_root = (base / "pools" / config.name / "workspace").resolve()
+
         # Wrap existing WorkerManager
         self.worker_manager = WorkerManager(
             terminal_manager=terminal_manager,
             max_concurrent=config.max_workers,
             session_buddy_client=session_buddy_client,
+            writable_root=self.writable_root,
         )
 
         # Track task statistics for metrics
@@ -144,10 +158,13 @@ class MahavishnuPool(BasePool):
                 "Check logs for terminal manager initialization errors."
             )
 
-        # Spawn minimum workers
+        # Spawn minimum workers (writable_root is the ShepherdBackendWorker's
+        # required kwarg; we set it on WorkerManager.__init__ above, but pass
+        # per-call here so future per-spawn overrides are easy to add).
         worker_ids = await self.worker_manager.spawn_workers(
             worker_type=self.config.worker_type,
             count=self.config.min_workers,
+            writable_root=self.writable_root,
         )
 
         self._workers = {wid: f"worker_{wid}" for wid in worker_ids}
