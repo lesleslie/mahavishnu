@@ -69,9 +69,12 @@ Internal API: `FixOrchestrator.execute_fix()` — use only from canonical layers
 | Channel | Command |
 |---------|---------|
 | **CLI** | `mahavishnu adapter resolve --task-type <type> --capabilities <caps>` |
-| **MCP** | `adapter_resolve(task_type, required_capabilities)` |
+| **MCP** | `mcp__oneiric__list_adapters` (catalog) / `mcp__oneiric__get_adapter_health` (health) |
 
-Internal API: `HybridAdapterRegistry.resolve()` — use only from canonical layers.
+Internal API: `oneiric.core.resolution.Resolver.resolve()` — substrate-of-record since
+`2026-10-12-adapter-registry-consolidation-to-oneiric` (Phase 2). The 7
+`mcp__mahavishnu__adapter_*` MCP tools were removed; consumers migrated
+to `mcp__oneiric__*`.
 
 ### 7. Backup & Restore
 
@@ -96,7 +99,8 @@ Internal APIs: `BackupManager.create_backup()` / `restore_backup()`.
 | **CLI** | `mahavishnu mcp health` |
 | **MCP** | `get_health()` / `get_readiness()` / `health_check_all()` |
 
-Internal API: `HybridAdapterRegistry.check_all_health()` — use only from canonical layers.
+Internal API: `mcp__oneiric__get_adapter_health` (per-adapter health) — substrate-of-record
+since `2026-10-12-adapter-registry-consolidation-to-oneiric` (Phase 2).
 
 ### 10. Review & Auto-Fix (Self-Improvement)
 
@@ -150,9 +154,9 @@ to work — but direct usage outside the CLI/MCP layers is discouraged because:
 | `core/app.py` | `MahavishnuApp.execute_workflow_parallel()` | CLI: `workflow sweep` / MCP: `trigger_workflow` |
 | `core/fix_orchestrator.py` | `FixOrchestrator.execute_fix()` | CLI: `workflow fix` / MCP: `pool_execute` |
 | `core/dead_letter_queue.py` | `DeadLetterQueue.retry_task()` | CLI: `workflow heal` / MCP: `heal_workflows` |
-| `core/adapter_registry.py` | `HybridAdapterRegistry.resolve()` | CLI: `adapter resolve` / MCP: `adapter_resolve` |
-| `core/adapter_registry.py` | `HybridAdapterRegistry.list_adapters()` | CLI: `adapter list` / MCP: `adapter_list` |
-| `core/adapter_registry.py` | `HybridAdapterRegistry.check_all_health()` | CLI: `adapter health` / MCP: `adapter_health` |
+| `oneiric/core/resolution.py` | `Resolver.resolve()` | CLI: `adapter resolve` / MCP: `mcp__oneiric__list_adapters` |
+| `oneiric/core/resolution.py` | `Resolver.list_active("adapter")` | CLI: _(removed)_ / MCP: `mcp__oneiric__list_adapters` |
+| `oneiric/core/resolution.py` + `mahavishnu/core/health_integration.py` | `mcp__oneiric__get_adapter_health` | CLI: _(removed)_ / MCP: `mcp__oneiric__get_adapter_health` |
 | `core/backup_recovery.py` | `BackupManager.create_backup()` | CLI: `backup create` / MCP: `create_backup` |
 | `core/backup_recovery.py` | `BackupManager.restore_backup()` | CLI: `backup restore` / MCP: `restore_backup` |
 | `mcp/tools/self_improvement_tools.py` | `SelfImprovementTools.review_and_fix()` | CLI: `workflow review` / MCP: `review_and_fix` |

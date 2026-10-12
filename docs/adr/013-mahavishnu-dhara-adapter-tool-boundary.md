@@ -1,10 +1,10 @@
 ---
-status: active
+status: superseded
 role: canonical
 kind: decision
 date: 2026-07-16
-last_reviewed: 2026-09-09
-superseded_by: null
+last_reviewed: 2026-10-12
+superseded_by: 2026-10-12-adapter-registry-consolidation-to-oneiric
 blocks_on: []
 decision_date: 2026-06-03
 topic: adapter-tool-boundary

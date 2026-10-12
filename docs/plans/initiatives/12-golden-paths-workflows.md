@@ -1,10 +1,10 @@
 ---
-status: complete
+status: superseded
 role: historical
 topic: convergence-control-plane
 date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
+last_reviewed: 2026-10-12
+superseded_by: 2026-10-12-adapter-registry-consolidation-to-oneiric
 blocks_on: []
 title: "Initiative 12: Golden Paths for Top Workflows"
 

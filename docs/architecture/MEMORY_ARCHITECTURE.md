@@ -2,6 +2,19 @@
 
 > **Status**: Living document. Updated whenever the storage schema, MCP surface, tool-profile gating, or integration contracts change.
 > **Audience**: Bodai ecosystem contributors, Claude Code users, and downstream components (Session-Buddy, Akosha, Dhara, Crackerjack).
+>
+> **2026-10-12 migration note**: Mahavishnu's local `HybridAdapterRegistry` and its 3 satellite modules
+> (`adapter_discovery.py`, `adapter_persistence.py`, `adapter_registry_tools.py`) were
+> dropped in favor of Oneiric's substrate. The 7 `mcp__mahavishnu__adapter_*` MCP tools
+> (`adapter_list`, `adapter_resolve`, `adapter_metadata`, `adapter_health`,
+> `adapter_enable`, `adapter_discover`, `adapter_cache_invalidate`) are gone;
+> consumers use `mcp__oneiric__list_adapters`, `mcp__oneiric__get_adapter`,
+> `mcp__oneiric__get_adapter_health`. The remaining references to
+> `HybridAdapterRegistry` in the tables and examples below are pre-migration
+> historical context — see
+> `docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md` for the
+> new substrate. `mahavishnu adapter resolve` CLI still works (it routes
+> through `TaskRouter`); `mahavishnu adapter list|health` are removed.
 > **Source of truth**: `mahavishnu/core/paths.py` (XDG layout), `mahavishnu/mcp/tool_versions.py` (versioned tool registry), `mahavishnu/mcp/tools/profiles.py` (profile gating), `mahavishnu/pools/manager.py` (PoolManager + caller_kind quota), `mahavishnu/pools/peer_routing.py` (ADR-014 caller authorization), `mahavishnu/mcp/tools/pool_tools.py` (workflow-results persistence), and `mahavishnu/websocket/server.py` (broadcast channels).
 
 Mahavishnu is the **Orchestrator / control plane** of the Bodai ecosystem. It owns

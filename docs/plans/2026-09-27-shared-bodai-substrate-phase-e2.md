@@ -375,3 +375,41 @@ Phase E2 is complete when ALL of:
 - `feedback-bodai-localhost-no-auth.md` — auth short-circuit must be preserved
 - `.claude/decisions/wire-up-contract.md` — Integration Contract rules
 - `.claude/decisions/mcp-backend-wiring-discipline.md` — feed-state aggregation requirements
+
+## 11. Cross-Reference: Adapter Registry Consolidation
+
+This plan covers the **settings-substrate** migration. The **runtime adapter-registry** migration is a separate plan:
+
+- **`docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md`** —
+  drops Mahavishnu's local `HybridAdapterRegistry` in favor of
+  Oneiric's `Resolver` + `OneiricAdapterRegistry`. Engine adapters
+  register through the `oneiric.adapters` entry-point group. The 7
+  `mcp__mahavishnu__adapter_*` MCP tools are removed; consumers use
+  `mcp__oneiric__list_adapters` and friends.
+
+Both plans converge on the same meta-risk (§9 of E2): "**oneiric
+becomes a hard substrate dependency**". E2 is the settings layer;
+the new plan is the runtime layer. They are orthogonal in code
+(files, modules) but share the same substrate direction.
+
+## 12. Serialization Note
+
+Both this plan (Phase E2) and
+`docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md`
+(Phase 1) modify `pyproject.toml`:
+
+- **This plan (E2) Task 1-3** adds substrate config groups
+  (`MAHAVISHNU__SUBSTRATE__POOL__...`, etc.) to `pyproject.toml`.
+- **The new plan Phase 1** REPLACES the
+  `[project.entry-points."mahavishnu.adapters"]` block with
+  `[project.entry-points."oneiric.adapters"]` and fixes the long-broken
+  prefect/agno module targets.
+
+If both plans land concurrently on the same branch, there will be a
+`pyproject.toml` merge conflict.
+
+**Serialization rule**: `2026-10-12-adapter-registry-consolidation-to-oneiric.md`
+Phase 1 (entry-point group) lands BEFORE this plan's Task 1-3 (substrate
+config keys). Both plans land via "Direct merge to main, no PRs" per
+the pre-1.0 merge policy, so they ship independently in either order
+as long as the above ordering is observed.
