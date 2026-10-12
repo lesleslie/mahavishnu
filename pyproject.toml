@@ -99,9 +99,9 @@ dependencies = [
 [project.scripts]
 mahavishnu = "mahavishnu._main_cli:app"
 
-[project.entry-points."mahavishnu.adapters"]
-prefect = "mahavishnu.engines.prefect_adapter:prefect_adapter_entries"
-agno = "mahavishnu.engines.agno_adapter:agno_adapter_entries"
+[project.entry-points."oneiric.adapters"]
+prefect = "mahavishnu.engines.prefect_adapter_impl:prefect_adapter_entries"
+agno = "mahavishnu.engines.agno_adapter_impl:agno_adapter_entries"
 worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
 [dependency-groups]

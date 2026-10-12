@@ -715,3 +715,76 @@ class TestClientErrorPaths:
 
         result = await client.resolve_adapter("adapter", "storage", "nonexistent")
         assert result is None
+
+
+class TestPhase1EntryPointMigration:
+    """Phase 1 acceptance tests for the engine-adapter entry-point migration.
+
+    Verifies the 3 engine adapters (prefect, agno, worker) register through
+    the Oneiric ``oneiric.adapters`` entry-point group with the
+    ``AdapterMetadata`` shape, and that the old ``mahavishnu.adapters``
+    group is gone. See plan: ``docs/plans/2026-10-12-adapter-registry-
+    consolidation-to-oneiric.md`` Phase 1.
+    """
+
+    def test_oneiric_adapters_entry_point_group_has_three_entries(self) -> None:
+        """The ``oneiric.adapters`` group registers exactly 3 entries."""
+        from oneiric.plugins import iter_entry_points
+
+        eps = list(iter_entry_points("oneiric.adapters"))
+        names = {ep.name for ep in eps}
+        assert names == {"prefect", "agno", "worker"}, (
+            f"expected 3 engine adapters in oneiric.adapters, got {names}"
+        )
+
+    def test_mahavishnu_adapters_entry_point_group_is_empty(self) -> None:
+        """The old ``mahavishnu.adapters`` group is fully removed."""
+        from oneiric.plugins import iter_entry_points
+
+        eps = list(iter_entry_points("mahavishnu.adapters"))
+        assert eps == [], (
+            f"old mahavishnu.adapters group still has entries: "
+            f"{[ep.name for ep in eps]}"
+        )
+
+    def test_three_engine_adapters_registered_with_correct_priorities(self) -> None:
+        """prefect (90) > agno (85) > worker (75) — pinned 5-tuple ranking."""
+        from mahavishnu.engines.agno_adapter_impl import agno_adapter_entries
+        from mahavishnu.core.adapters.worker import worker_adapter_entries
+        from mahavishnu.engines.prefect_adapter_impl import prefect_adapter_entries
+        from oneiric.adapters.metadata import AdapterMetadata
+
+        priorities = {
+            md.provider: md.priority
+            for fn in (prefect_adapter_entries, agno_adapter_entries, worker_adapter_entries)
+            for md in fn()
+        }
+        assert priorities == {"prefect": 90, "agno": 85, "worker": 75}
+        # Strict ordering for Resolver._rank_candidate score
+        assert priorities["prefect"] > priorities["agno"] > priorities["worker"]
+
+    def test_engine_adapter_factory_paths_are_dotted_form(self) -> None:
+        """``AdapterMetadata.factory`` must be the dotted form
+        ``module.path.ClassName`` because Oneiric's ``_import_factory``
+        does ``rsplit(".", 1)``; the legacy colon form would fail.
+        """
+        from mahavishnu.engines.agno_adapter_impl import agno_adapter_entries
+        from mahavishnu.core.adapters.worker import worker_adapter_entries
+        from mahavishnu.engines.prefect_adapter_impl import prefect_adapter_entries
+        from oneiric.adapters.metadata import AdapterMetadata
+
+        for fn, name in (
+            (prefect_adapter_entries, "prefect"),
+            (agno_adapter_entries, "agno"),
+            (worker_adapter_entries, "worker"),
+        ):
+            md_list = fn()
+            assert isinstance(md_list, list) and len(md_list) == 1
+            md = md_list[0]
+            assert isinstance(md, AdapterMetadata)
+            assert md.factory and ":" not in md.factory, (
+                f"{name}: factory must not use colon, got {md.factory!r}"
+            )
+            assert md.factory and md.factory.count(".") >= 1, (
+                f"{name}: factory must be dotted form, got {md.factory!r}"
+            )

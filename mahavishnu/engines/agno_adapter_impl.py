@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 import httpx2 as httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from oneiric.adapters.metadata import AdapterMetadata
+
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..core.capabilities import (
     Capability,
@@ -1535,22 +1537,22 @@ __all__ = [
 # =============================================================================
 
 
-def agno_adapter_entries() -> list[dict[str, Any]]:
+def agno_adapter_entries() -> list[AdapterMetadata]:
     """Entry point for Agno adapter registration.
 
-    This function is called by the HybridAdapterRegistry during
-    discovery to register the Agno adapter.
-
-    Returns:
-        List of adapter metadata dictionaries
+    This function is called by Oneiric's plugin discovery
+    (``oneiric.adapters`` entry-point group) to register the Agno adapter.
+    The returned ``AdapterMetadata`` instances are consumed by
+    ``oneiric.plugins._normalize_candidates`` and turned into
+    ``Candidate`` records on the resolver.
     """
     return [
-        {
-            "category": "orchestration",
-            "provider": "agno",
-            "factory_path": "mahavishnu.engines.agno_adapter_impl:AgnoAdapter",
-            "description": "Agno multi-agent AI orchestration engine",
-            "capabilities": [
+        AdapterMetadata(
+            category="orchestration",
+            provider="agno",
+            factory="mahavishnu.engines.agno_adapter_impl.AgnoAdapter",
+            description="Agno multi-agent AI orchestration engine",
+            capabilities=[
                 "multi_agent",
                 "tool_use",
                 "team_coordination",
@@ -1558,7 +1560,6 @@ def agno_adapter_entries() -> list[dict[str, Any]]:
                 "native_tools",
                 "memory_management",
             ],
-            "priority": 85,
-            "domain": "orchestration",
-        }
+            priority=85,
+        )
     ]

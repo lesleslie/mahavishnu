@@ -80,6 +80,8 @@ from tenacity import (
     wait_exponential,
 )
 
+from oneiric.adapters.metadata import AdapterMetadata
+
 from ..core.adapters.base import (
     AdapterCapabilities,
     AdapterType,
@@ -2239,22 +2241,24 @@ __all__ = [
 # =============================================================================
 
 
-def prefect_adapter_entries() -> list[dict[str, Any]]:
+def prefect_adapter_entries() -> list[AdapterMetadata]:
     """Entry point for Prefect adapter registration.
 
-    This function is called by the HybridAdapterRegistry during
-    discovery to register the Prefect adapter.
-
-    Returns:
-        List of adapter metadata dictionaries
+    This function is called by Oneiric's plugin discovery
+    (``oneiric.adapters`` entry-point group) to register the Prefect
+    adapter. The returned ``AdapterMetadata`` instances are consumed by
+    ``oneiric.plugins._normalize_candidates`` and turned into
+    ``Candidate`` records on the resolver. ``domain`` is hard-coded to
+    ``"adapter"`` by ``AdapterMetadata.to_candidate()``; ``category``
+    becomes the ``key`` on the resulting ``Candidate``.
     """
     return [
-        {
-            "category": "orchestration",
-            "provider": "prefect",
-            "factory_path": "mahavishnu.engines.prefect_adapter_impl:PrefectAdapter",
-            "description": "Prefect 3.x workflow orchestration engine",
-            "capabilities": [
+        AdapterMetadata(
+            category="orchestration",
+            provider="prefect",
+            factory="mahavishnu.engines.prefect_adapter_impl.PrefectAdapter",
+            description="Prefect 3.x workflow orchestration engine",
+            capabilities=[
                 "deploy_flows",
                 "monitor_execution",
                 "schedule_workflows",
@@ -2262,7 +2266,6 @@ def prefect_adapter_entries() -> list[dict[str, Any]]:
                 "flow_run_management",
                 "work_pool_management",
             ],
-            "priority": 90,
-            "domain": "orchestration",
-        }
+            priority=90,
+        )
     ]

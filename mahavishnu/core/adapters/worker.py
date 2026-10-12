@@ -7,6 +7,8 @@ from typing import Any
 
 from ...workers.manager import WorkerManager
 from ...workers.registry import resolve_worker_type
+from oneiric.adapters.metadata import AdapterMetadata
+
 from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..capabilities import (
     Capability,
@@ -302,30 +304,29 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 # =============================================================================
 
 
-def worker_adapter_entries() -> list[dict[str, Any]]:
+def worker_adapter_entries() -> list[AdapterMetadata]:
     """Entry point for Worker adapter registration.
 
-    This function is called by the HybridAdapterRegistry during
-    discovery to register the Worker adapter.
-
-    Returns:
-        List of adapter metadata dictionaries
+    This function is called by Oneiric's plugin discovery
+    (``oneiric.adapters`` entry-point group) to register the Worker
+    adapter. The returned ``AdapterMetadata`` instances are consumed by
+    ``oneiric.plugins._normalize_candidates`` and turned into
+    ``Candidate`` records on the resolver.
     """
     return [
-        {
-            "category": "orchestration",
-            "provider": "worker",
-            "factory_path": "mahavishnu.core.adapters.worker:WorkerOrchestratorAdapter",
-            "description": "Worker-based task execution for AI workers",
-            "capabilities": [
+        AdapterMetadata(
+            category="orchestration",
+            provider="worker",
+            factory="mahavishnu.core.adapters.worker.WorkerOrchestratorAdapter",
+            description="Worker-based task execution for AI workers",
+            capabilities=[
                 "task_execution",
                 "worker_pool",
                 "parallel_execution",
                 "terminal_workers",
             ],
-            "priority": 75,
-            "domain": "orchestration",
-        }
+            priority=75,
+        )
     ]
 
 
