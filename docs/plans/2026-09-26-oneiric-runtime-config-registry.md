@@ -3,10 +3,11 @@ status: active
 role: implementation
 date: 2026-09-26
 last_reviewed: 2026-10-12
+last_revised_note: "Phase 2 corrected (v3) — list_adapters is at line 1225, not 1037-1084; SettingsWatcher.on_change does not exist; reconfigure trigger is oneiric.runtime.watchers.SelectionWatcher. Wire contract preservation rule added."
 superseded_by: null
 topic: oneiric-runtime-config-registry
 kind: plan
-title: "Oneiric Runtime Config Registry — Implementation Plan (v2)"
+title: "Oneiric Runtime Config Registry — Implementation Plan (v3)"
 
 ---
 
@@ -58,7 +59,7 @@ title: "Oneiric Runtime Config Registry — Implementation Plan (v2)"
 - **Oneiric's adapter registry** (`oneiric/mcp/adapter_registry.py`) stores `(domain, key, provider, version, factory_path, config, dependencies, capabilities, metadata, health_status, last_health_check)`. No runtime-facts field. 7 tools: `store_adapter`, `get_adapter`, `list_adapters`, `list_adapter_versions`, `validate_adapter`, `get_adapter_health`, `get_contract_info`.
 - **`_save()` non-symmetric serialization (R4 BLOCKER).** `AdapterRecord.to_dict()` (`adapter_registry.py:116`) and `_save()` (line 197-220) are not mirror images — `to_dict()` includes `schema_version: 1` while `_save()` silently drops it. Adding `runtime_facts` to both sides is REQUIRED; missing either breaks persistence.
 - **`_load()` constructor site (R4).** `AdapterRecord(...)` calls inside `_load()` (line 174-190) do not pass `runtime_facts`. New field defaults to `None` correctly via dataclass default, but explicit threading avoids future drift.
-- **Mahavishnu's `mcp__mahavishnu__list_adapters` (line 1037-1084 of `mahavishnu/mcp/server_core.py`)** is the reference shape for runtime facts.
+- **Mahavishnu's `mcp__mahavishnu__list_adapters` (defined at `mahavishnu/mcp/server_core.py:1225` inside `_register_tools()` which is at line 313, called from `FastMCPServer.__init__` at line 143)** is the reference shape for runtime facts. Returns the legacy `{adapters: {name: {enabled, health, type, features}}, count, available_names}` envelope.
 - **No other component has an equivalent tool.** Asymmetry confirmed 2026-09-26 via MCP tool listings.
 - **Auth posture:** `~/.oneiric/settings.yaml` has `auth.enabled: false`; loopback trusted per `feedback-bodai-localhost-no-auth` memory. Decorators threaded with `allow_anonymous=not auth_enabled` after the 2026-09-26 auth fix.
 - **Per-tool feed deferral comment at `server.py:359-364`** says "Per-tool HealthFeedState aggregation is DEFERRED to a follow-up." Phase 1.6 will partially roll this back for the new tool — update the comment in the same change (R4).
@@ -158,25 +159,39 @@ requirements:
 
 ---
 
-### Phase 2: Mahavishnu Wires Up Push on Boot + Reconfigure
+### Phase 2: Mahavishnu Wires Up Push on Boot + Reconfigure (v3 corrected)
 
 **Goal:** Mahavishnu contributes its 4 adapter runtime facts (prefect, llamaindex, agno, worker) on boot AND on subsequent adapter-reconfigure events. **Same builder used by both boot push and the existing inline `list_adapters` tool** (R2 single-source-of-truth).
 
+**v3 corrections** (verified 2026-10-12 against `mahavishnu/mcp/server_core.py` and `oneiric/runtime/watchers.py`):
+- `list_adapters` tool is defined at `mahavishnu/mcp/server_core.py:1225` (an `async def list_adapters() -> dict[str, Any]` inside `_register_tools()` at line 313, called from `FastMCPServer.__init__` at line 143). The previously-referenced line range 1037-1084 contains unrelated tool decorators.
+- `SettingsWatcher.on_change()` **does not exist** in this codebase. The actual reconfigure trigger is `oneiric.runtime.watchers.SelectionWatcher` (`/Users/les/Projects/oneiric/oneiric/runtime/watchers.py:29`, `poll_interval: float = 5.0`).
+- `_register_tools()` is called from `FastMCPServer.__init__` at line 143 (not line 109 as the v2 plan stated). `FastMCPServer.start()` lives at line 1473.
+- **Wire contract preservation rule** (added v3): the existing `list_adapters` MCP tool returns `{adapters: {name: {enabled, health, type, features}}, count, available_names}` per `mahavishnu/mcp/server_core.py:1225` docstring. Every existing caller (e.g. `get_capability_result`, dashboards) depends on this shape. `RuntimeFactsBuilder.build_all()` MUST preserve this shape for the `list_adapters` path. The Oneiric envelope `{success, registry, runtime, health}` is constructed INSIDE the Oneiric push path (`report_runtime_facts`) and never leaks to `list_adapters`.
+
 **Tasks:**
-- **Task 2.1 (R2 BLOCKING):** Move the body of the inline `list_adapters` tool (`mahavishnu/mcp/server_core.py:1037-1084`) into `mahavishnu/core/runtime_facts.py:RuntimeFactsBuilder.build_all()`. The inline tool becomes a one-line `return RuntimeFactsBuilder(self.app).build_all()`. Boot push (Task 2.2) calls the same builder.
-- **Task 2.2 (R1 reconfigure trigger):** Add `async def report_runtime_facts(self) -> None` to `MahavishnuApp`. Call from `mahavishnu/mcp/server_core.py:FastMCPServer.start()` after `_register_tools()` (line 109). Wire reconfigure trigger via `SettingsWatcher.on_change()` callback (existing) to call `report_runtime_facts()` whenever adapter YAML is reloaded. **Explicit hook enumeration** (R1): `settings.yaml` reload → `SettingsWatcher.on_change` → `report_runtime_facts`.
-- **Task 2.3:** E2E test `tests/integration/test_mahavishnu_pushes_runtime_to_oneiric.py` — spawn `MahavishnuApp`, wait for startup, query `oneiric_get_adapter_health` for each of 4 adapters, assert non-null runtime blocks with expected fields. Plus reconfigure-path assertion (R1): trigger `SettingsWatcher.on_change()` → assert `oneiric_get_adapter_health` reflects new facts within 30s.
-- **Task 2.4 (R5 circuit breaker):** Wrap the `oneiric_report_runtime` call in a circuit breaker (use existing `mahavishnu/core/circuit_breaker.py:CircuitBreaker` from `MahavishnuApp.__init__`). Push failure MUST NOT block boot; log + continue per R2 rollback signal.
+- **Task 2.1 (R2 BLOCKING, v3 corrected):** Move the body of the inline `list_adapters` tool (`mahavishnu/mcp/server_core.py:1225`, inside `_register_tools` which is defined at `mahavishnu/mcp/server_core.py:313`) into `mahavishnu/core/runtime_facts.py:RuntimeFactsBuilder.build_all()`. The inline tool becomes a one-line `return RuntimeFactsBuilder(self.app).build_all()`. `build_all()` MUST return the legacy `{adapters: {name: {enabled, health, type, features}}, count, available_names}` shape exactly as the v2 inline body did — not the Oneiric envelope. The Oneiric envelope is constructed separately inside `report_runtime_facts` (Task 2.2). Boot push (Task 2.2) calls `build_all()` to source the per-adapter facts and then shapes them for Oneiric.
+- **Task 2.2 (R1 reconfigure trigger, v3 corrected):** Add `async def report_runtime_facts(self) -> None` to `MahavishnuApp`. Two trigger paths:
+  - **Boot path:** call from `mahavishnu/mcp/server_core.py::FastMCPServer.start()` (line 1473) after the server begins serving. Alternative boot trigger: call from `__init__` at line 143 right after `_register_tools()` returns. Either is acceptable.
+  - **Reconfigure path:** subscribe to `oneiric.runtime.watchers.SelectionWatcher` (NOT `SettingsWatcher.on_change()` — that API does not exist). Mahavishnu does NOT import oneiric internals; it polls the Oneiric MCP HTTP endpoint `http://127.0.0.1:8681/mcp` via httpx (per the documented public-surface contract) on a configurable interval, OR instantiates `oneiric.runtime.watchers.SelectionWatcher` only if the plan opts into direct coupling. **Default:** httpx POST loop, because the public-surface contract forbids direct oneiric imports from Mahavishnu.
+  - Explicit hook enumeration (R1): `settings.yaml` reload in Oneiric → `SelectionWatcher.tick` → Oneiric's adapter_registry.json updated → Mahavishnu polls `/mcp` → sees the change → `report_runtime_facts()` pushes new facts.
+- **Task 2.3 (v3 corrected):** E2E test `tests/integration/test_mahavishnu_pushes_runtime_to_oneiric.py`. Constraints:
+  - Test 1 `test_mahavishnu_boot_pushes_runtime_to_oneiric`: spawn `MahavishnuApp`, wait for boot, query `oneiric_get_adapter_health` for each of 4 adapters, assert non-null `runtime` blocks with expected fields.
+  - Test 2 `test_mahavishnu_list_adapters_preserves_legacy_wire_shape`: spin up `MahavishnuApp` and call `list_adapters()` MCP tool, assert the response has the exact legacy keys `adapters`, `count`, `available_names` and that `adapters[*]` has the legacy sub-keys `enabled`, `health`, `type`, `features`. This pins the wire-contract preservation rule.
+  - Test 3 `test_mahavishnu_reconfigure_pushes_runtime_to_oneiric`: drive the Oneiric reconfigure tick (POST a synthetic change to Oneiric's MCP endpoint, or directly mutate the registry on disk); poll the Oneiric `runtime` block until one within 30s; the assertion compares `cycles_total` (a monotonic counter that Oneiric DOES set), not `generated_at_unix` (which the runtime_facts_builder does NOT set). Earlier draft used `generated_at_unix` — that comparison defaulted to 0==0, a no-op. v3 mandates `cycles_total`.
+  - All three tests skip cleanly when Oneiric MCP HTTP endpoint is unreachable.
+- **Task 2.4 (R5 circuit breaker, v3 line-precise):** Wrap the `oneiric_report_runtime` call in a circuit breaker. Use the existing `CircuitBreaker` (`mahavishnu/core/resilience.py:212`, async `call(func, *args, **kwargs)` API at line 282, raises `CircuitBreakerOpenError` on open state — MahavishnuError subclass with `ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE`). The breaker instance lives at `mahavishnu/core/app.py:273` per the v3 audit; reuse it. Push failure MUST NOT block boot — wrap the per-adapter call in `try/except Exception` so `CircuitBreakerOpenError` and any other exception are caught and logged, never raised to the caller.
 
 **Exit criteria:**
 - Mahavishnu boot + reconfigure complete without regression.
-- E2E test green for both boot path AND reconfigure path.
+- E2E test green for all three tests (boot push, list_adapters shape preservation, reconfigure push).
 - `grep -rn "RuntimeFactsBuilder" mahavishnu/` shows exactly two callers (`list_adapters` inline tool + `report_runtime_facts` boot hook). No third code path constructs the shape.
 - `audit_orphans.py` reports zero new symbols with zero callers.
+- `grep -rn "from oneiric\|import oneiric" mahavishnu/core/runtime_facts.py mahavishnu/core/app.py` returns zero direct-import hits (per the public-surface contract).
 
-#### Integration Contract (Phase 2)
-- **Triggered from:** `MahavishnuApp.startup()` completion + `SettingsWatcher.on_change()` callback (reconfigure). Circuit-breaker-wrapped per Task 2.4.
-- **Returns to / updates:** Oneiric registry (`~/.oneiric/adapter_registry.json`) — 4 entries updated with sanitized runtime facts blocks.
+#### Integration Contract (Phase 2, v3 corrected)
+- **Triggered from:** (a) `MahavishnuApp.startup()` completion + (b) `oneiric.runtime.watchers.SelectionWatcher` tick observed by Mahavishnu via httpx POST poll loop. Reconfigure side uses the public Oneiric MCP HTTP endpoint, NOT direct oneiric imports. Circuit-breaker-wrapped per Task 2.4.
+- **Returns to / updates:** Oneiric registry (`~/.oneiric/adapter_registry.json`) — 4 entries updated with sanitized runtime facts blocks. `list_adapters` MCP tool continues to return the legacy wire shape.
 - **Demonstrable by:**
   ```bash
   cd /Users/les/Projects/mahavishnu && uv run pytest tests/integration/test_mahavishnu_pushes_runtime_to_oneiric.py -v
@@ -245,7 +260,7 @@ requirements:
 - [ ] `mahavishnu/core/app.py::MahavishnuApp.report_runtime_facts()` — new async method + circuit breaker wrap (Tasks 2.2, 2.4)
 - [ ] `mahavishnu/mcp/server_core.py::list_adapters` — replace inline body with `RuntimeFactsBuilder(self.app).build_all()` call (Task 2.1)
 - [ ] `mahavishnu/mcp/server_core.py::FastMCPServer.start()` — call `report_runtime_facts()` after `_register_tools()` (Task 2.2)
-- [ ] Wire `SettingsWatcher.on_change()` → `report_runtime_facts()` (Task 2.2)
+- [ ] Wire Oneiric reconfigure trigger (via httpx POST poll loop on `oneiric.runtime.watchers.SelectionWatcher` ticks) → `report_runtime_facts()` (Task 2.2). Default transport: httpx loop on `http://127.0.0.1:8681/mcp` JSON-RPC; fallback only if the user explicitly approves direct oneiric import.
 - [ ] `tests/integration/test_mahavishnu_pushes_runtime_to_oneiric.py` (new file) — boot + reconfigure assertions (Task 2.3)
 
 ### Phase 3 (Akosha, Crackerjack, Session-Buddy)
@@ -284,7 +299,7 @@ requirements:
 | Oneiric down at component boot | Medium | Circuit breaker; push failure logged but doesn't block boot. Components remain operable. |
 | JSON read-modify-write bottleneck under multi-component boot | Medium | Phase 1 ships JSON for both catalog and runtime facts (per R4 storage trade-off); future phases may move runtime to Dhara (deferred). Per-component batched push minimizes lock-acquisition count. |
 | Crackerjack has no MCP server in boot path | Medium | Phase 3 prerequisite explicitly verifies; if absent, Phase 3 is N/A for Crackerjack — document and skip. |
-| Reconfigure staleness if hook misses an event | Low | `SettingsWatcher.on_change()` is the explicit hook (R1); e2e test pins the reconfigure path. |
+| Reconfigure staleness if poll loop misses a tick | Low | httpx POST loop on `oneiric.runtime.watchers.SelectionWatcher` ticks; e2e test pins the reconfigure path within 30s. |
 | Inter-process registry race | Low | Document as known limitation (single-process deployment). Dhara-backed multi-process is Non-Goal #4. |
 | Old entries with `runtime_facts` missing | Low | REQ-RCR-005 + JSON shape is naturally additive. `_load()` default is `None`. |
 
@@ -298,6 +313,25 @@ The plan is "done enough" when:
 - Zero secrets persisted to disk (verified by disk-stat or test fixture).
 
 **Scope pressure cut:** if forced, drop Phase 3 to a follow-up plan and ship Phase 1+2 alone. Phase 1 is the foundation; without it the cross-component value is zero.
+
+---
+
+## Phase 2 v3 Revision Log (post-correction 2026-10-12)
+
+A workflow execution on 2026-10-12 produced merge-blocking code:
+- The plan's reference to `mahavishnu/mcp/server_core.py:1037-1084` was wrong; those lines contain unrelated tool decorators. The actual `list_adapters` tool is at line 1225.
+- The plan's reference to `SettingsWatcher.on_change()` referenced an API that does not exist in the codebase.
+- The implementation that shipped against those wrong premises reformatted `list_adapters` to return the Oneiric envelope (`{success, registry, runtime, health}`), breaking the legacy `{adapters, count, available_names}` wire contract that downstream consumers (`get_capability_result`, dashboards) depend on.
+- The implementation also added a `runtime_facts_bridge.py` that imported `oneiric.core.config.LayerSettings` and `oneiric.runtime.watchers.SelectionWatcher` directly, violating the documented public-surface contract.
+
+v3 corrections (above, in Phase 2) address all four. The corrected wire-contract preservation rule keeps `list_adapters` returning the legacy envelope; `RuntimeFactsBuilder.build_all()` is the single source of truth for both the `list_adapters` path (legacy shape) and the `report_runtime_facts` Oneiric push path (Oneiric envelope, constructed inside the push). The reconfigure trigger uses the public Oneiric MCP HTTP endpoint via httpx POST, not direct oneiric imports.
+
+A re-execution after this revision should:
+1. Overwrite `mahavishnu/core/runtime_facts.py`, `mahavishnu/core/runtime_facts_bridge.py` (delete this if no longer needed), `tests/integration/test_mahavishnu_pushes_runtime_to_oneiric.py` with the corrected implementation.
+2. Revert `mahavishnu/mcp/server_core.py::list_adapters` to the legacy wire shape (preserving the existing return dict).
+3. Revert `mahavishnu/core/app.py` direct-import additions; use httpx POST instead.
+
+Reviewers from Phase 0 sign-off are NOT re-validating this v3 revision automatically — treat the wire-contract preservation rule (line 170) and the public-surface contract (line 190 exit criteria) as the new merge gates.
 
 ---
 

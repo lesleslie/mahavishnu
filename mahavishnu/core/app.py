@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 from asyncio import Semaphore
 import logging
+from time import time_ns
 from typing import TYPE_CHECKING, Any
 import uuid
 
@@ -217,6 +218,8 @@ class MahavishnuApp:
     budget_watchdog_stop: asyncio.Event | None
     budget_watchdog_store: Any
     budget_watchdog_metrics: Any
+    runtime_facts_lock: asyncio.Lock
+    runtime_facts_watcher: asyncio.Task | None
 
     @classmethod
     def load(cls) -> MahavishnuApp:
@@ -269,6 +272,12 @@ class MahavishnuApp:
         self.active_workflows: set[str] = set()
         self.workflow_queue: asyncio.Queue = asyncio.Queue()
 
+        # In-flight dedup lock for ``report_runtime_facts``. Concurrent
+        # pushes are dropped immediately so a reconfigure tick that
+        # arrives while a boot push is still in flight never overlaps.
+        self.runtime_facts_lock = asyncio.Lock()
+        self.runtime_facts_watcher = None
+
         # Initialize production features
         self.circuit_breaker = CircuitBreaker(
             threshold=self.config.resilience.circuit_breaker_threshold,
@@ -293,6 +302,142 @@ class MahavishnuApp:
             >>> await app.start_poller()  # Start polling
         """
         await _start_poller_helper(self)
+
+    async def start_runtime_facts_watcher(self) -> None:
+        """Phase 2 / Task 2.2 — install the Oneiric reconfigure trigger.
+
+        Uses an httpx POST poll loop (NOT Oneiric's ``SelectionWatcher``)
+        to detect layer-change ticks on the Oneiric MCP endpoint. On
+        each change, invokes :meth:`report_runtime_facts` which uses
+        ``self.runtime_facts_lock`` for in-flight de-dup (a push already
+        in flight causes the next call to be dropped).
+
+        The poll loop:
+        - Probes Oneiric reachability (5 s timeout); does NOT block boot
+          if the endpoint is unreachable.
+        - Polls every 5.0 seconds (default; matches the deleted
+          ``RUNTIME_FACTS_WATCHER_INTERVAL_SECONDS`` constant).
+        - Uses ``httpx.AsyncClient`` — no ``oneiric.*`` imports.
+        - Detects layer-change via ``cycles_total`` comparison (falls
+          back to response-text hash when the field is unavailable).
+        - On change, awaits ``self.report_runtime_facts()`` which is
+          gated by the in-flight dedup lock.
+
+        PUBLIC-SURFACE CONTRACT (v3 critical): this module does NOT
+        import anything from ``oneiric.*`` internals. The httpx POST
+        loop is the only allowed mechanism.
+        """
+        import os
+
+        import httpx
+
+        logger = logging.getLogger("mahavishnu.app.runtime_facts_watcher")
+        poll_interval_seconds = 5.0
+        watcher_name = "runtime-facts-watcher"
+
+        oneiric_url = os.environ.get(self.ONEIRIC_ENV_VAR, self.ONEIRIC_MCP_URL)
+
+        async def _poll_loop() -> None:
+            """Background poll loop: detect layer-change ticks on Oneiric.
+
+            Each tick POSTs ``tools/call oneiric_get_health`` to the
+            Oneiric MCP endpoint and compares ``cycles_total`` against
+            the previous tick. On change, awaits
+            ``self.report_runtime_facts()`` which uses the in-flight
+            lock to drop a tick if a previous push is still running.
+            """
+            last_signature: int | None = None
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    while True:
+                        signature: int | None = None
+                        try:
+                            response = await client.post(
+                                oneiric_url,
+                                json={
+                                    "jsonrpc": "2.0",
+                                    "id": "mahavishnu-poll",
+                                    "method": "tools/call",
+                                    "params": {
+                                        "name": "oneiric_get_health",
+                                        "arguments": {},
+                                    },
+                                },
+                            )
+                            response.raise_for_status()
+                            data = response.json()
+                            # Prefer cycles_total as the change indicator;
+                            # fall back to response-text hash when the JSON
+                            # shape is unexpected.
+                            if isinstance(data, dict) and "result" in data:
+                                result = data["result"]
+                                if (
+                                    isinstance(result, dict)
+                                    and "cycles_total" in result
+                                ):
+                                    signature = int(result["cycles_total"])
+                                else:
+                                    signature = hash(response.text)
+                            else:
+                                signature = hash(response.text)
+                        except Exception:  # noqa: BLE001 - tick is best-effort
+                            # On any failure, fall through to push so we
+                            # still attempt to refresh the Oneiric view.
+                            signature = None
+
+                        if signature != last_signature:
+                            last_signature = signature
+                            try:
+                                await self.report_runtime_facts()
+                            except Exception:  # noqa: BLE001
+                                logger.exception(
+                                    "runtime-facts reconfigure push failed"
+                                )
+
+                        await asyncio.sleep(poll_interval_seconds)
+            except asyncio.CancelledError:
+                logger.debug("runtime-facts poll loop cancelled")
+                raise
+            except Exception:  # noqa: BLE001 - poll loop must not crash silently
+                logger.exception(
+                    "runtime-facts poll loop crashed; reconfigure hook disabled"
+                )
+
+        # Probe Oneiric reachability first (do NOT block boot if unreachable)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                probe = await client.post(
+                    oneiric_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": "mahavishnu-probe",
+                        "method": "tools/call",
+                        "params": {
+                            "name": "oneiric_get_health",
+                            "arguments": {},
+                        },
+                    },
+                )
+                probe.raise_for_status()
+        except Exception as exc:  # noqa: BLE001 - probe failure must not block boot
+            logger.warning(
+                "runtime-facts watcher probe failed; reconfigure hook disabled: %s",
+                exc,
+            )
+            self.runtime_facts_watcher = None
+            return
+
+        # Start the poll loop as a background task
+        self.runtime_facts_watcher = asyncio.create_task(
+            _poll_loop(),
+            name=watcher_name,
+        )
+        logger.info(
+            "runtime-facts-watcher component=mahavishnu status=ok "
+            "name=%s poll_interval=%.1f",
+            watcher_name,
+            poll_interval_seconds,
+        )
 
     async def wait_for_dependencies(self) -> bool:
         """Wait for all configured dependencies to become healthy.
@@ -1166,3 +1311,158 @@ class MahavishnuApp:
             routing_strategy=routing_strategy,
             enable_fallback=enable_fallback,
         )
+
+    # Phase 2 / Task 2.3 — push per-adapter runtime facts to Oneiric.
+    ONEIRIC_MCP_URL = "http://127.0.0.1:8681/mcp"
+    ONEIRIC_ENV_VAR = "MAHAVISHNU__ONBOARDING__ONEIRIC_URL"
+    ONEIRIC_TIMEOUT_ENV_VAR = "MAHAVISHNU__ONBOARDING__ONEIRIC_TIMEOUT_SECONDS"
+    DEFAULT_PUSH_TIMEOUT_SECONDS = 5.0
+
+    async def report_runtime_facts(self) -> None:
+        """Push each registered adapter's runtime facts to Oneiric via JSON-RPC.
+
+        For each entry in ``self.adapters`` (engine adapters registered by
+        :meth:`_initialize_adapters`), build the per-adapter runtime block
+        via :class:`RuntimeFactsBuilder` (legacy wire shape), translate it
+        into the Oneiric envelope (constructed HERE, not in the builder),
+        and POST it to the Oneiric MCP endpoint at
+        ``MAHAVISHNU__ONBOARDING__ONEIRIC_URL`` (default
+        ``http://127.0.0.1:8681/mcp``).
+
+        In-flight de-dup: ``self.runtime_facts_lock`` is acquired before
+        the push loop. If a previous push is still running when this
+        method is called (e.g. a reconfigure tick from
+        :meth:`start_runtime_facts_watcher`'s poll loop arrives during
+        a boot push), the new call returns immediately without
+        overlapping. This is implemented as a single inline
+        ``asyncio.Lock`` on the app instance.
+
+        Each push is wrapped in ``self.circuit_breaker.call`` so a flaky
+        Oneiric instance trips the breaker per-adapter (one bad adapter
+        does not starve the others). Push failure MUST NOT block boot —
+        every ``except`` branch logs and continues, leaving
+        ``self.adapters`` (canonical) untouched.
+
+        Structured log line:
+        ``runtime-push component=mahavishnu adapter=<key> status=ok|fail``.
+        """
+        import os
+        import uuid
+        from time import time_ns
+        from typing import Any
+
+        import httpx
+
+        from .runtime_facts import RuntimeFactsBuilder
+
+        logger = logging.getLogger("mahavishnu.app.report_runtime_facts")
+
+        # In-flight de-dup: drop the call if a push is already running.
+        if self.runtime_facts_lock.locked():
+            logger.debug(
+                "runtime-facts: push already in flight, dropping concurrent call"
+            )
+            return
+        async with self.runtime_facts_lock:
+            oneiric_url = os.environ.get(
+                self.ONEIRIC_ENV_VAR, self.ONEIRIC_MCP_URL
+            )
+            try:
+                timeout_seconds = float(
+                    os.environ.get(
+                        self.ONEIRIC_TIMEOUT_ENV_VAR,
+                        str(self.DEFAULT_PUSH_TIMEOUT_SECONDS),
+                    )
+                )
+            except ValueError:
+                timeout_seconds = self.DEFAULT_PUSH_TIMEOUT_SECONDS
+
+            builder = RuntimeFactsBuilder(self)
+            legacy_facts = builder.build_all()
+
+            runtime_meta: dict[str, Any] = {
+                "generated_at_unix": time_ns() // 1_000_000_000,
+                "caller_component": "mahavishnu",
+                "phase": "plan1-phase2-task2",
+            }
+
+            async def _push(
+                key: str,
+                provider: str,
+                legacy_entry: dict[str, Any],
+                runtime_meta: dict[str, Any],
+            ) -> str:
+                """Single ``oneiric_report_runtime`` round-trip; raises on failure.
+
+                The Oneiric envelope (``success / registry / runtime``) is
+                constructed HERE, not in the builder, so the MCP
+                ``list_adapters`` payload stays binary-compatible with the
+                pre-Phase-2 wire shape.
+                """
+                runtime_facts: dict[str, Any] = {
+                    "enabled": legacy_entry.get("enabled", True),
+                    "features": legacy_entry.get("features", []),
+                    "type": legacy_entry.get("type", "engine"),
+                    "metadata": dict(runtime_meta),
+                    "source": "mahavishnu.adapters",
+                }
+                envelope: dict[str, Any] = {
+                    "success": True,
+                    "registry": {
+                        "adapters": [
+                            {
+                                "key": key,
+                                "provider": provider,
+                                "domain": "engine",
+                                "enabled": legacy_entry.get("enabled", True),
+                                "features": legacy_entry.get("features", []),
+                                "type": legacy_entry.get("type", "engine"),
+                            }
+                        ],
+                        "domain": "engine",
+                    },
+                    "runtime": runtime_meta,
+                }
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": str(uuid.uuid4()),
+                    "method": "tools/call",
+                    "params": {
+                        "name": "oneiric_report_runtime",
+                        "arguments": {
+                            "domain": "engine",
+                            "key": key,
+                            "provider": provider,
+                            "runtime_facts": runtime_facts,
+                            "caller_component": "mahavishnu",
+                            "envelope": envelope,
+                        },
+                    },
+                }
+                async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                    response = await client.post(oneiric_url, json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                if isinstance(data, dict) and "error" in data:
+                    raise RuntimeError(f"oneiric rpc error: {data['error']}")
+                return "ok"
+
+            legacy_adapters = legacy_facts.get("adapters") or {}
+            for key, legacy_entry in legacy_adapters.items():
+                provider = key  # adapter name = provider in this registry
+                try:
+                    await self.circuit_breaker.call(
+                        _push, key, provider, legacy_entry, runtime_meta
+                    )
+                    logger.info(
+                        "runtime-push component=mahavishnu adapter=%s status=ok",
+                        key,
+                    )
+                except Exception:  # noqa: BLE001 - push failure must not block boot
+                    logger.exception(
+                        "runtime-push component=mahavishnu adapter=%s status=fail",
+                        key,
+                    )
+                    continue
+
+            self._last_runtime_facts_push_unix = time_ns() // 1_000_000_000
