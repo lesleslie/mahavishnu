@@ -34,6 +34,43 @@ This plan collapses to a single substrate (UUID7) with no ULID surface.
 
 ## Tasks
 
+### T1.5. Redo the Phase 0.5 absorption into `reflections` (inserted because the original absorption never completed)
+
+**Discovered 2026-10-12 during Phase 8 cleanup.** The Phase 0.5 plan claimed
+`reflections` (1,485 rows: 253 v2 + 1,232 absorbed from default). The
+actual DB state on 2026-10-12 was:
+- `reflections`: **0 rows** (no `id` column — content-store only)
+- `reflections_v2`: 263 rows, all 26-char ULIDs
+- `default_reflections`: 1,232 rows, all 36-char UUIDs (with hyphens)
+
+The absorption step `INSERT INTO reflections SELECT ... FROM default_reflections`
+never ran, and the dual-write column was never added. Live reads of
+the 1,485 rows go through `reflections_v2` (old v2 schema).
+
+Steps:
+1. Add an `id` column to `reflections`:
+   ```sql
+   ALTER TABLE reflections ADD COLUMN id VARCHAR PRIMARY KEY;
+   ```
+   Per Phase 0.5 spec: id is the canonical UUID7 (32 hex).
+2. Migrate `reflections_v2` → `reflections`:
+   - 263 rows with 26-char ULID `id` → re-encode each to UUID7 via
+     `uuid7(seed=hashlib.sha256(legacy_id.encode()).digest()[:8])`
+     and INSERT into `reflections`.
+3. Migrate `default_reflections` → `reflections`:
+   - 1,232 rows with 36-char UUID (with hyphens) → normalize to
+     `uuid.replace("-", "").lower()`, validate as UUID7 (or the
+     closest valid UUID), and INSERT.
+4. Drop `reflections_v2` and `default_reflections`:
+   ```sql
+   DROP TABLE reflections_v2;
+   DROP TABLE default_reflections;
+   ```
+
+After T1.5 the table has a single `id` column of UUID7, the absorption
+the plan was supposed to deliver in Phase 0.5 is complete, and T2/T3
+(below) can proceed against a real `reflections` table.
+
 ### T1. Tighten `oneiric.core.ids.is_valid_id` to UUID7-only
 
 - Remove the ULID branch from `is_valid_id`. It should only accept the 32-hex UUID7 format with version=7 and variant=0b10.
@@ -41,30 +78,15 @@ This plan collapses to a single substrate (UUID7) with no ULID surface.
 - Update or remove the alias `is_valid_id_or_legacy_ulid` if it exists in any caller.
 - Update `oneiric.core.ids` docstring to remove the "read-time acceptance" claim.
 
-### T2. Migration: re-encode legacy ULID rows in `reflections` to UUID7
-
-For every row in `session_buddy`'s `~/.claude/data/reflection.duckdb`:
-`SELECT id, length(id)` — find rows where `length(id) == 26` (ULID).
-
-For each:
-- Compute the deterministic UUID7: `uuid7(seed=hashlib.sha256(legacy_id.encode()).digest()[:8])` (the recipe from the 2026-10-11 post-mortem).
-- UPDATE the row: `id = <new_uuid7>`, `uuid7_id = NULL` (no longer needed).
-
-The post-mortem in `docs/plans/2026-10-11-uuid7-only-migration.md §11` flagged
-"stale-identity-mapping" as the canonical reason for deterministic
-derivation: a re-run produces the same UUID7 for the same legacy_id,
-so any external consumer that pinned the prior ID is not silently
-re-keyed.
-
-After T2, the table has a single `id` column of UUID7. Drop `uuid7_id` in T3.
-
-### T3. Drop the dual-write `uuid7_id` column
+### T2. Drop the dual-write `uuid7_id` column (no-op if T1.5 already eliminated it)
 
 ```sql
 ALTER TABLE reflections DROP COLUMN uuid7_id;
 ```
 
-Same on the akosha warm stores and `outbox.duckdb` if they have the column.
+If the column exists on the akosha warm stores or `outbox.duckdb`, drop it there too. (After T1.5 completes the absorption, this is a no-op because no `uuid7_id` column was ever added.)
+
+### T3. Update session-buddy read paths to expect UUID7 only
 
 ### T4. Update session-buddy read paths to expect UUID7 only
 
@@ -102,8 +124,9 @@ After Phase 9, the first row should change to:
 
 ## Exit criteria
 
+- T1.5: `SELECT count(*) FROM reflections` is non-zero AND `DESCRIBE reflections` lists a `id` column of type `VARCHAR`. `reflections_v2` and `default_reflections` no longer exist (`SELECT name FROM sqlite_master WHERE type='table' AND name IN ('reflections_v2', 'default_reflections')` returns 0 rows).
 - T1: `is_valid_id` returns `False` for `"01ARZ3NDEKTS6PQRYF"` (legacy ULID).
-- T2: `SELECT count(*) FROM reflections WHERE length(id) == 26` returns `0`.
+- T2: `SELECT count(*) FROM reflections WHERE length(id) == 26` returns `0` (after T1.5: counts include the migrated rows; ULID-shape should be zero).
 - T3: `DESCRIBE reflections` no longer lists `uuid7_id`.
 - T4-T5: no `ulid|ULID` strings in `session_buddy/`, `akosha/` production source.
 - T6: the grep audit returns zero production matches.
