@@ -1,5 +1,5 @@
 ---
-status: draft
+status: shipped
 role: implementation
 kind: plan
 date: 2026-10-12
@@ -9,6 +9,26 @@ blocks_on: []
 topic: lifecycle
 title: "Plan Index Sync Script Hardening — Draft Repairs + Regex + Read-Full-File"
 ---
+
+# Shipped 2026-10-12
+
+All 3 Phases landed in 5 commits on `main`:
+
+1. `0ba1de35` — fix(docs/drafts): quote multiline unquoted values in akosha-eval-metric-sink frontmatter (Phase 1.2, REQ-IDX-001)
+2. `7d3c3db2` — fix(docs/drafts): quote multiline unquoted values in akosha-tool-call-feed-lifecycle frontmatter (Phase 1.3, REQ-IDX-001)
+3. `1686fe10` — fix(docs/drafts): quote multiline unquoted values in eval-methodology frontmatter (Phase 1.4, REQ-IDX-001)
+4. `5a33cae6` — fix(scripts/regenerate_plan_index): replace non-greedy regex with line-anchored parser (Phase 2, REQ-IDX-002)
+5. `aef9ac0f` — fix(scripts/regenerate_plan_index): read full file in _has_frontmatter (Phase 3, REQ-IDX-003)
+
+Plus a sibling-script follow-up:
+
+6. `8fa885d4` — fix(scripts/backfill_plan_spec_titles): replace non-greedy regex with line-anchored splitter (matches the Phase 2 hardening shape; not in the original 5-commit plan scope but addresses the same bug class).
+
+Validation matrix (from plan §8) at ship time:
+- `python scripts/regenerate_plan_index.py` exits 0 ✓
+- `git grep _FRONTMATTER_RE scripts/regenerate_plan_index.py` returns 0 hits ✓ (constant removed; sibling `backfill_plan_spec_titles.py` fixed in follow-up commit)
+- `pytest tests/unit/scripts_tests/test_regenerate_plan_index_frontmatter.py` — 5/5 pass ✓
+- Pre-existing failures in `tests/integration/regenerate_plan_index/test_orchestrator.py` (cron_core.discover_records) and `tests/unit/scripts_tests/test_audit_plan_index.py` (audit_plan_index.dhara_records) confirmed unrelated by stashing the changes and re-running.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: `superpowers:test-driven-development` — each Phase writes a failing test first. The 3 phases are independent; can be merged in any order, but commit separately per Phase to keep the diff readable.
 
