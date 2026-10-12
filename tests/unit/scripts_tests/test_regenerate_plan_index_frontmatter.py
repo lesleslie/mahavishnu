@@ -6,9 +6,9 @@ mis-parsed by ``yaml.safe_load`` because the non-greedy regex
 ``_FRONTMATTER_RE`` matched the first ``---`` line in the truncated
 4096-byte head as the frontmatter closer.
 
-Per plan ``docs/plans/2026-10-12-plan-index-sync-script-hardening.md``
-(REQ-IDX-001, REQ-IDX-004). The fix lives in 3 commits — one per
-broken draft — and ships before Phases 2 and 3 (regex + read-full-file).
+Per plan ``docs/plans/2026-10-12-plan-index-sync-script-hardening.md``.
+Phase 1 (REQ-IDX-001, REQ-IDX-004) ships the data fix; Phases 2 and 3
+(REQ-IDX-002/005, REQ-IDX-003/006) ship the script hardening.
 """
 from __future__ import annotations
 
@@ -57,4 +57,47 @@ def test_draft_frontmatter_parses(rel_path: str) -> None:
     for required in ("status", "role", "kind", "date", "title"):
         assert required in parsed, (
             f"{rel_path} missing required frontmatter key: {required!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — body `---` markers must not be mis-extracted as the closer.
+# Characterization test: passes on the current lazy-regex implementation
+# (because the lazy quantifier already picks the first closer) AND must
+# continue to pass after the refactor to a line-anchored parser. The
+# refactor itself is a robustness improvement, not a bug fix — but a
+# future regression to a GREEDY regex would surface here.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.req(["REQ-IDX-002", "REQ-IDX-005"])
+def test_extract_frontmatter_with_body_horizontal_rule_does_not_mis_extract() -> None:
+    """`extract_frontmatter` returns only the real frontmatter when the body
+    contains `---` markers (markdown horizontal rules)."""
+    from scripts.regenerate_plan_index import extract_frontmatter
+
+    text = (
+        "---\n"
+        "status: active\n"
+        "title: Test\n"
+        "---\n"
+        "\n"
+        "# Title\n"
+        "\n"
+        "Some body with a `---` in the middle.\n"
+        "\n"
+        "---\n"
+        "\n"
+        "More body.\n"
+    )
+    parsed = extract_frontmatter(text, yaml)
+    assert isinstance(parsed, dict), (
+        f"expected frontmatter dict, got {type(parsed).__name__}: {parsed!r}"
+    )
+    assert parsed.get("status") == "active"
+    assert parsed.get("title") == "Test"
+    # Body content must NOT be present in the parsed frontmatter.
+    for forbidden in ("More body", "Some body", "Title\n"):
+        assert forbidden not in parsed, (
+            f"body content {forbidden!r} leaked into frontmatter parse: {parsed!r}"
         )
