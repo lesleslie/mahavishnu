@@ -1,5 +1,5 @@
 ---
-status: partial
+status: shipped
 role: canonical
 kind: plan
 date: 2026-10-11

@@ -1,6 +1,7 @@
 # Phase 9: ULID Surface Elimination
 
-**Status:** active
+**Status:** shipped
+**Shipped:** 2026-10-12
 **Date:** 2026-10-12
 **Owner:** les
 **Role:** canonical
