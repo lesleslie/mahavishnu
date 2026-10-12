@@ -29,13 +29,38 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = (ROOT / "docs" / "plans", ROOT / "docs" / "specs")
 
-# Frontmatter boundary: `---` on its own line, opening AND closing.
-_FRONTMATTER_RE = re.compile(
-    r"\A(?P<open>---\s*\n)(?P<fm>.*?)(?P<sep>\n---\s*\n)(?P<body>.*)",
-    re.DOTALL,
-)
+# Frontmatter boundary detection is line-anchored (matches the
+# hardening in scripts/regenerate_plan_index.py — see REQ-IDX-002). The
+# previous regex used a non-greedy `.*?` over DOTALL which was correct
+# on well-formed files but fragile to body `---` content in the same
+# search window. The line-anchored splitter below finds the FIRST line
+# that is exactly `---` (modulo trailing whitespace) after the opener.
 _TITLE_RE = re.compile(r"^title\s*:\s*", re.MULTILINE)
 _H1_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
+
+
+def _split_frontmatter(text: str) -> tuple[str, str, str, str] | None:
+    """Return ``(open_line, frontmatter_text, sep_line, body)`` or None.
+
+    ``open_line`` is the leading ``---\\n`` (the opening fence + newline).
+    ``sep_line`` is the closing-fence line (with whatever trailing
+    newlines the original file had — usually just `\\n`). Both pieces
+    preserve the original whitespace so the rewrite below can
+    re-assemble the file verbatim except for the inserted ``title:``.
+    """
+    if not text:
+        return None
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return None
+    for i in range(1, len(lines)):
+        if lines[i].rstrip("\r\n") == "---":
+            open_line = lines[0]
+            frontmatter_text = "".join(lines[1:i])
+            sep_line = lines[i]
+            body = "".join(lines[i + 1:])
+            return open_line, frontmatter_text, sep_line, body
+    return None
 
 
 def _derive_title(body: str) -> str | None:
@@ -60,12 +85,10 @@ def _process(path: Path, dry_run: bool) -> str | None:
     text = path.read_text(encoding="utf-8")
     if _TITLE_RE.search(text):
         return None  # already has title — skip
-    m = _FRONTMATTER_RE.match(text)
-    if not m:
+    parts = _split_frontmatter(text)
+    if parts is None:
         return None  # no frontmatter — let cron rebuild skip silently
-    fm = m.group("fm")
-    sep = m.group("sep")
-    body = m.group("body")
+    open_line, fm, sep, body = parts
     title = _derive_title(body)
     if not title:
         return None
@@ -73,7 +96,7 @@ def _process(path: Path, dry_run: bool) -> str | None:
     # hash, leading quote, etc.) — safe default: always quote with double-quotes
     safe = title.replace("\\", "\\\\").replace('"', '\\"')
     new_fm = fm.rstrip("\n") + f'\ntitle: "{safe}"\n'
-    new_text = f"{m.group('open')}{new_fm}{sep}{body}"
+    new_text = f"{open_line}{new_fm}{sep}{body}"
     if dry_run:
         return title
     path.write_text(new_text, encoding="utf-8")

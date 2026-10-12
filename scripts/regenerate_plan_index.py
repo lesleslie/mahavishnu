@@ -142,10 +142,13 @@ DRAFTS_PREFIX = "docs/plans/drafts/"
 ARCHIVE_PARTS = ("archive", ".archive")
 BACKUP_SUFFIXES = (".backup", ".backup.json")
 
-# Frontmatter regex — captures the YAML block between the opening and
-# closing `---` fences. Anchored at start of file (DOTALL via the inner
-# pattern but \A prevents matches inside the body).
-_FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*(?:\n|$)", re.DOTALL)
+# Frontmatter discovery is line-anchored (see `extract_frontmatter`).
+# The previous regex used a non-greedy `.*?` quantifier over a
+# `re.DOTALL` match — correct on well-formed files, but fragile in
+# combination with the 4096-byte truncation in `_has_frontmatter`:
+# when the truncation cut off the real closer, the lazy quantifier
+# could match a body `---` line as the closer. The line-anchored
+# parser below avoids the regex entirely. See REQ-IDX-002.
 
 
 # ---------------------------------------------------------------------------
@@ -189,18 +192,35 @@ def _load_yaml_module() -> Any:
 
 def extract_frontmatter(text: str, yaml_module: Any) -> dict[str, Any] | None:
     """Return the parsed YAML mapping from `text`, or None when no
-    frontmatter block is present. Returns {} for an empty `---` block."""
-    match = _FRONTMATTER_RE.match(text)
-    if match is None:
+    frontmatter block is present. Returns {} for an empty `---` block.
+
+    The parser is line-anchored: it splits the text on newlines and
+    looks for the FIRST line equal to ``---`` (modulo trailing
+    whitespace) after the opening fence. Body content that happens
+    to contain ``---`` lines (markdown horizontal rules, fenced code
+    blocks) is NOT mistaken for the closer — the previous regex used
+    a non-greedy `.*?` quantifier over the full text, which depended
+    on the real closer being visible in the search window. With
+    line-by-line matching the search window is the whole file, so
+    the first real `---` is always found.
+    """
+    if not text:
         return None
-    raw = match.group(1)
-    parsed = yaml_module.safe_load(raw)
-    if parsed is None:
-        return {}
-    if not isinstance(parsed, dict):
-        # Not a mapping — treat as malformed so the entry is filtered later.
+    lines = text.splitlines()
+    if not lines or lines[0].rstrip() != "---":
         return None
-    return parsed
+    # Find the next line that is exactly `---` (closing fence).
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            frontmatter_text = "\n".join(lines[1:i])
+            try:
+                parsed = yaml_module.safe_load(frontmatter_text)
+            except yaml_module.YAMLError:
+                return None
+            if parsed is None:
+                return {}
+            return parsed if isinstance(parsed, dict) else None
+    return None  # No closing fence found.
 
 
 def _coerce_date(value: Any) -> str:
@@ -275,29 +295,21 @@ def discover_files(
 
 
 def _has_frontmatter(path: Path, yaml_module: Any) -> bool:
-    """Cheap check that the leading bytes of `path` look like a YAML
-    frontmatter block. Used during store discovery — a directory only
-    counts as a store if enough of its .md children actually carry
-    frontmatter (>= MIN_STORE_DOCS)."""
+    """Return True when `path` opens with a parseable YAML frontmatter
+    block. Used during store discovery — a directory only counts as a
+    store if enough of its .md children actually carry frontmatter
+    (>= MIN_STORE_DOCS).
+
+    Reads the full file (the previous 4096-byte truncation hid the
+    closing `---` for any plan with > 4 KiB of frontmatter; for a
+    corpus of ~200 plans averaging 5 KiB each, the extra I/O is
+    ~1 MB per `discover_stores` run, negligible).
+    """
     try:
-        with path.open("rb") as fh:
-            head = fh.read(4096)
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
-    if not head.startswith(b"---"):
-        return False
-    rest = head[3:]
-    # Trim optional leading whitespace / blank lines after the opener.
-    rest = rest.lstrip(b"\r\n").lstrip()
-    if not rest:
-        return False
-    # Reject the unlikely-but-legal case of a single `---` file with no
-    # closing fence within the first 4 KiB.
-    if b"\n---" not in rest and b"\r---" not in rest:
-        return False
-    try:
-        text = head.decode("utf-8", errors="replace")
-    except UnicodeDecodeError:
+    if not text.startswith("---"):
         return False
     return extract_frontmatter(text, yaml_module) is not None
 
