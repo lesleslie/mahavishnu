@@ -1,9 +1,9 @@
 ---
-status: active
+status: draft
 role: implementation
 kind: plan
 date: 2026-09-18
-last_reviewed: 2026-09-19
+last_reviewed: 2026-10-12
 superseded_by: null
 blocks_on: []
 topic: mcp-registrar

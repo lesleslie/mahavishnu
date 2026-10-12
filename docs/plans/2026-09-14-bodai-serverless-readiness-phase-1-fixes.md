@@ -1,9 +1,9 @@
 ---
-status: active
+status: draft
 role: implementation
 topic: serverless-readiness-precondition-fixes
 date: 2026-09-14
-last_reviewed: 2026-09-14
+last_reviewed: 2026-10-12
 superseded_by: null
 blocks_on:
   - docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md

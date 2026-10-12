@@ -39,7 +39,7 @@ logger = logging.getLogger("mahavishnu.acp.cli")
 app = typer.Typer(help="ACP server (stdio JSON-RPC 2.0) commands.")
 
 
-_DEFAULT_ADAPTER_NAME = "langgraph"
+_DEFAULT_ADAPTER_NAME = "prefect"
 
 
 class _MahavishnuAppAdapter:

@@ -1,10 +1,10 @@
 ---
-status: active
-role: implementation
+status: partial
+role: superseded
 kind: plan
 date: 2026-07-21
-last_reviewed: 2026-09-13
-superseded_by: null
+last_reviewed: 2026-10-12
+superseded_by: docs/plans/2026-08-29-worker-registry-capability-refactor.md
 blocks_on: []
 topic: worker-readiness
 title: "Worker Readiness Repair — Implementation Plan"

@@ -182,7 +182,7 @@ app.add_typer(workflows_app, name="workflow")
 @workflows_app.command("sweep")
 def workflow_sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter"),
+    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter"),
 ):
     """Run an AI code sweep across repositories matching a tag."""
     result = asyncio.run(_async_sweep(tag, adapter))
@@ -192,7 +192,7 @@ def workflow_sweep(
 @workflows_app.command("quality-check")
 def workflow_quality_check(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter"),
+    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter"),
     repos: list[str] | None = typer.Option(
         None, "--repo", "-r", help="Explicit repo list (overrides tag)"
     ),
@@ -665,7 +665,7 @@ async def _async_prefect_clear_schedule(deployment_id: str) -> dict:
 @app.command()
 def sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("langgraph", "--adapter", "-a", help="Orchestrator adapter to use"),
+    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter to use"),
 ):
     """
     Perform an AI sweep across repositories with a specific tag.

@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-10-12
 topic: shared-oneiric-substrate
 title: "Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan"
 
