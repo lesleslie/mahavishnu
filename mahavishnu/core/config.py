@@ -22,6 +22,7 @@ from typing import Any, Literal
 from oneiric.adapters.observability.settings import (
     OTelStorageSettings as _OneiricOTelStorageSettings,
 )
+from oneiric.core.substrate_settings import SubstrateSettings
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +34,78 @@ from ..terminal.config import TerminalSettings
 from .model_routing import TaskCategory
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Substrate mirror-field helpers (Plan 2 Phase E2)
+# ============================================================================
+#
+# Phase E1 (oneiric commit ``bde290e``) shipped ``OneiricSettings.substrate``
+# — a single ``BaseSettings`` container that every Bodai component binds
+# against. Env vars of the form
+# ``ONEIRIC__SUBSTRATE__<DOUBLE-UNDERSCORE-FIELD>`` resolve to
+# ``settings.substrate.<double-underscore-field>`` via the
+# ``_SubstrateEnvSource`` walk in ``oneiric.core._sources``.
+#
+# Phase E2 adopts that substrate for the four namespaces
+# ``pool / telemetry / retry / auth`` on the Mahavishnu side. Per the
+# atomic per-file rule (no half-state: never both local default AND
+# substrate), the three mirror fields on ``MahavishnuSettings`` below
+# (``pool_workers_per_instance``, ``retry_max_attempts``,
+# ``auth_enabled``) are sourced *exclusively* from the substrate env
+# var — no hardcoded local default is allowed to compete.
+#
+# The helpers below read the substrate env var directly from
+# ``os.environ`` and fall back to ``SubstrateSettings()``'s own
+# declared default. This avoids any recursive call into
+# ``oneiric.core.config.load_settings`` (which would deadlock during
+# ``MahavishnuSettings`` construction) while keeping the values
+# identical to what ``settings.substrate`` would return after
+# Oneiric's loader runs.
+#
+# Reference: ``docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md``
+# §2.3 (Mahavishnu scope) and §5.5 (warm/cold/embedding out of scope
+# for Mahavishnu).
+
+
+def _substrate_int(env_suffix: str, default: int) -> int:
+    """Read ``ONEIRIC__SUBSTRATE__<ENV_SUFFIX>`` as int, falling back to ``default``.
+
+    Args:
+        env_suffix: Suffix appended to ``ONEIRIC__SUBSTRATE__`` (e.g.
+            ``"POOL__WORKERS_PER_INSTANCE"``). Case-insensitive on read.
+        default: Value to return when the env var is unset or
+            unparseable. Matches ``SubstrateSettings``'s own default
+            for the corresponding field so the mirror cannot drift
+            from the substrate.
+    """
+    key = f"ONEIRIC__SUBSTRATE__{env_suffix}"
+    raw = os.environ.get(key)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _substrate_bool(env_suffix: str, default: bool) -> bool:
+    """Read ``ONEIRIC__SUBSTRATE__<ENV_SUFFIX>`` as bool, falling back to ``default``.
+
+    Accepts the same truthy/falsy spellings pydantic-settings would:
+    ``true/1/yes/on`` → ``True``; ``false/0/no/off`` → ``False``.
+    Unknown spellings return ``default``.
+    """
+    key = f"ONEIRIC__SUBSTRATE__{env_suffix}"
+    raw = os.environ.get(key)
+    if raw is None:
+        return default
+    lowered = raw.strip().lower()
+    if lowered in {"true", "1", "yes", "on"}:
+        return True
+    if lowered in {"false", "0", "no", "off"}:
+        return False
+    return default
 
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)
@@ -2769,6 +2842,68 @@ class MahavishnuSettings(BaseSettings):
         description="Maximum number of concurrent workflows (1-100)",
     )
 
+    # ===== Phase E2 substrate mirror fields (Plan 2) =====
+    #
+    # These three top-level fields are the canonical Phase E2 contract:
+    # every call site that needs the substrate's pool/retry/auth value
+    # reads it through ``settings.pool_workers_per_instance`` (etc.)
+    # rather than poking ``OneiricSettings.substrate`` directly. The
+    # defaults route *exclusively* through ``ONEIRIC__SUBSTRATE__<FIELD>``
+    # env vars (atomic per-file rule: never both local default AND
+    # substrate). The fallback default in each ``default_factory`` is
+    # the substrate's own declared default, so the mirror cannot drift
+    # from ``OneiricSettings.substrate`` if the env var is unset.
+    #
+    # Scope: pool / retry / auth only. Per spec §5.5, Mahavishnu does
+    # NOT host the warm/cold/embedding substrates, so there is no
+    # local config to migrate for those. Telemetry is also out of
+    # scope for this commit — the substrate's
+    # ``telemetry__sample_ratio`` is a float and Mahavishnu's
+    # ``AgnoAdapterConfig.telemetry_enabled`` is a boolean; a
+    # dedicated follow-up can introduce a ``telemetry_sample_ratio``
+    # mirror if a consumer materialises.
+    pool_workers_per_instance: int = Field(
+        default_factory=lambda: _substrate_int(
+            "POOL__WORKERS_PER_INSTANCE",
+            SubstrateSettings.model_fields["pool__workers_per_instance"].default,
+        ),
+        ge=1,
+        le=64,
+        description=(
+            "Worker count per substrate-touching instance. Mirrors "
+            "``OneiricSettings.substrate.pool__workers_per_instance``; "
+            "env override ``ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE``."
+        ),
+    )
+    retry_max_attempts: int = Field(
+        default_factory=lambda: _substrate_int(
+            "RETRY__MAX_ATTEMPTS",
+            SubstrateSettings.model_fields["retry__max_attempts"].default,
+        ),
+        ge=1,
+        le=20,
+        description=(
+            "Max retry attempts for substrate-backed operations. Mirrors "
+            "``OneiricSettings.substrate.retry__max_attempts``; env "
+            "override ``ONEIRIC__SUBSTRATE__RETRY__MAX_ATTEMPTS``."
+        ),
+    )
+    auth_enabled: bool = Field(
+        default_factory=lambda: _substrate_bool(
+            "AUTH__ENABLED",
+            SubstrateSettings.model_fields["auth__enabled"].default,
+        ),
+        description=(
+            "Enable the substrate auth gate. Mirrors "
+            "``OneiricSettings.substrate.auth__enabled``; env override "
+            "``ONEIRIC__SUBSTRATE__AUTH__ENABLED``. Short-circuit "
+            "preservation (per ``feedback-bodai-localhost-no-auth.md``): "
+            "when False, downstream auth decorators and middleware must "
+            "skip their checks; the substrate default of False keeps the "
+            "loopback-trusted path the Phase E1 escape hatch."
+        ),
+    )
+
     # Admin shell
     shell_enabled: bool = Field(
         default=True,
@@ -3281,6 +3416,18 @@ def reset_settings() -> None:
     global _settings_cache, _settings_cache_root
     _settings_cache = None
     _settings_cache_root = None
+
+
+# Phase E2 (Plan 2) substrate-adoption contract: tests and external
+# callers can reach the cached MahavishnuSettings via either name.
+# ``load_settings`` matches the substrate-spec test harness (see
+# ``tests/test_substrate_settings_via_oneiric.py``) and the
+# ``oneiric.core.config.load_settings`` precedent; ``get_settings``
+# is retained for backward compatibility with the pre-E2 call sites
+# in the Mahavishnu CLI, MCP server, and existing test suite. Both
+# names share the same module-level cache and the same parameter
+# contract (``project_root`` only).
+load_settings = get_settings
 
 
 # ============================================================================
