@@ -11,8 +11,10 @@ unblocks:
   - docs/proposals/2026-09-27-eval-fixture-proposal.md (metric_name convention must be locked before Phase 1 fixtures ship)
 activation_signal: Plan 2 eval suite ready to run nightly (≥7 days of mcp_tool_call traces captured)
 delivered:
-  - phase_1: commit f09035f (akosha local main, 2026-09-29) — REQ-MS-001 + REQ-MS-003 + REQ-MS-006. MCP write-side tool `akosha_add_eval_metric`, suffixed metric_name guard `is_eval_metric_name(name)`, `AddEvalMetricRequest` Pydantic schema. In-memory cache only; persistence is Phase 2.
-  - phase_2: commit d07c473 (akosha local main, 2026-09-29) — REQ-MS-002 + REQ-MS-004 + REQ-MS-005. TimeSeriesAnalytics SQLite write-through backing: `metric_points` table indexed by `metric_name`, PK `(metric_name, timestamp, system_id)`, DB path via `AKOSHA_METRICS_DB_PATH` (default `~/.akosha/state/metrics.db`). `__init__` opens connection + creates schema; soft-fail on write errors (try/except + record_counter, never raise). Observability: `analytics.metrics.sqlite_write_ms` histogram + `analytics.metrics.sqlite_write_failures` counter + open-failure counter. 38 passed / 0 failed (7 unit + 3 integration + 28 backwards-compat). Plan 2's REQ-EVAL-004 now has durable eval history.
+  - phase_1: >-
+      commit f09035f (akosha local main, 2026-09-29) — REQ-MS-001 + REQ-MS-003 + REQ-MS-006. MCP write-side tool `akosha_add_eval_metric`, suffixed metric_name guard `is_eval_metric_name(name)`, `AddEvalMetricRequest` Pydantic schema. In-memory cache only; persistence is Phase 2.
+  - phase_2: >-
+      commit d07c473 (akosha local main, 2026-09-29) — REQ-MS-002 + REQ-MS-004 + REQ-MS-005. TimeSeriesAnalytics SQLite write-through backing: `metric_points` table indexed by `metric_name`, PK `(metric_name, timestamp, system_id)`, DB path via `AKOSHA_METRICS_DB_PATH` (default `~/.akosha/state/metrics.db`). `__init__` opens connection + creates schema; soft-fail on write errors (try/except + record_counter, never raise). Observability: `analytics.metrics.sqlite_write_ms` histogram + `analytics.metrics.sqlite_write_failures` counter + open-failure counter. 38 passed / 0 failed (7 unit + 3 integration + 28 backwards-compat). Plan 2's REQ-EVAL-004 now has durable eval history.
 remaining:
   - phase_3: Plan 2 activation gate + Plan 2 promotion from `draft` to `active`. The Akosha-side blocker (`docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md` Phase 1+2) is now met; only Plan 2 itself remains.
 topic: akosha-eval-integration

@@ -123,25 +123,16 @@ class FastMCPServer:
         if self.app.config.terminal.enabled:
             self.terminal_manager = _init_terminal_manager_helper(self)
 
-            # Update pool_manager's terminal_manager reference if both exist.
-            # Phase 8 post-mortem (2026-10-12): the original
-            # ``hasattr(self.app, "pool_manager")`` check was always False in
-            # the MCP-server path because ``MahavishnuApp`` does not expose
-            # ``pool_manager`` as an attribute — the singleton lives in
-            # ``mahavishnu.factories._pool_manager`` and is reached via
-            # ``get_pool_manager()``. The old code therefore never updated
-            # the singleton, and ``mcp__mahavishnu__pool_bootstrap`` would
-            # later return ``terminal_manager_unavailable`` even though the
-            # terminal manager was alive (visible in
-            # ``self.terminal_manager``). The fix routes through the
-            # canonical singleton accessor.
-            if self.terminal_manager is not None:
-                from ..factories import get_pool_manager
-
-                pool_mgr = get_pool_manager()
-                if pool_mgr is not None:
-                    pool_mgr.terminal_manager = self.terminal_manager
-                    logger.info("Updated pool_manager terminal_manager reference")
+            # Update pool_manager's terminal_manager reference if both exist
+            # This is needed because pool_manager is initialized before terminal_manager
+            # in MahavishnuApp, so it gets None initially
+            if (
+                self.terminal_manager is not None
+                and hasattr(self.app, "pool_manager")
+                and self.app.pool_manager is not None
+            ):
+                self.app.pool_manager.terminal_manager = self.terminal_manager
+                logger.info("Updated pool_manager terminal_manager reference")
 
         # Register HTTP health endpoint for Claude Code health checks
         # (already registered earlier in __init__ to bypass runtime init —
