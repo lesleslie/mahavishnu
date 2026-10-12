@@ -308,6 +308,34 @@ Interactive shell commands:
 - `errors(n=10)` - Show recent errors
 - `%repos` - List repositories
 
+### 6. Live Monitor TUI
+
+```bash
+mahavishnu monitor watch
+```
+
+Opens a Textual TUI showing mahavishnu's pools and workers. Refreshes
+every 5 seconds; press `r` to refresh immediately and `q` to quit.
+
+When `textual` is not installed, the command falls back to a one-shot
+Rich status block (same data, no live refresh):
+
+```text
+📊 Mahavishnu System Status
+  workflows_active:   0
+  workflows_completed: 0
+  pools_active:       0
+  workers_running:    0
+  adapter_health:     unknown
+```
+
+The `monitor watch` surface is **mahavishnu-internal** (pools + workers).
+It complements `bodai dashboard`, which is the **cross-component
+aggregator** (every registered Bodai component). See the TUI contract
+decision doc at
+[`.claude/decisions/2026-08-25-bodai-tui-contract.md`](.claude/decisions/2026-08-25-bodai-tui-contract.md)
+for the per-component vs cross-component split.
+
 For more workflows, see the [Getting Started Guide](docs/GETTING_STARTED.md).
 
 ## Core Concepts

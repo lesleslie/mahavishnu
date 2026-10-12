@@ -218,7 +218,7 @@ git add mahavishnu/core/config.py mahavishnu/tests/test_substrate_settings_via_o
 git commit -m "refactor(mahavishnu): adopt OneiricSettings.substrate for pool/telemetry/retry/auth"
 ```
 
-### Task 4: Auth short-circuit preserved test
+### Task 4: Auth short-circuit preserved test [x] — mahavishnu 71b7f8c (2026-10-12)
 
 **Files:**
 - Create: `tests/integration/test_auth_short_circuit_preserved.py`
@@ -265,7 +265,7 @@ git add tests/integration/test_auth_short_circuit_preserved.py
 git commit -m "test: assert auth short-circuit preserved across substrate adoption"
 ```
 
-### Task 5: `/health` feed-state aggregation
+### Task 5: `/health` feed-state aggregation [partial] — oneiric a1d0657 (2026-10-12)
 
 **Files:**
 - Modify: `akosha/mcp/server.py`, `session_buddy/mcp/server.py`, `mahavishnu/mcp/server_core.py` (or wherever `/health` aggregates; **v5 correction** — actual `/health` aggregator lives in `mahavishnu/mcp/server_core.py` at lines 1129+, not `server.py`)
