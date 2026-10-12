@@ -265,7 +265,7 @@ git add tests/integration/test_auth_short_circuit_preserved.py
 git commit -m "test: assert auth short-circuit preserved across substrate adoption"
 ```
 
-### Task 5: `/health` feed-state aggregation [partial] — oneiric a1d0657 (2026-10-12)
+### Task 5: `/health` feed-state aggregation [x] — mcp_common 266de23 + oneiric d951f89 (2026-10-12)
 
 **Files:**
 - Modify: `akosha/mcp/server.py`, `session_buddy/mcp/server.py`, `mahavishnu/mcp/server_core.py` (or wherever `/health` aggregates; **v5 correction** — actual `/health` aggregator lives in `mahavishnu/mcp/server_core.py` at lines 1129+, not `server.py`)
