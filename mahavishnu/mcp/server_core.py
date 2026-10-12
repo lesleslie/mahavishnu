@@ -123,31 +123,16 @@ class FastMCPServer:
         if self.app.config.terminal.enabled:
             self.terminal_manager = _init_terminal_manager_helper(self)
 
-            # Wire the terminal manager into the app slot that the
-            # lifecycle's pool_manager bootstrap will read.
-            # Phase 8 post-mortem (2026-10-12): the original code tried
-            # ``self.app.pool_manager.terminal_manager = ...`` but at
-            # ``FastMCPServer.__init__`` time the ``app.pool_manager``
-            # slot is the class-annotation default (None) — the
-            # ``MahavishnuApp._init_pool_manager`` helper is called
-            # LATER from ``mahavishnu.mcp.lifecycle.start_server``
-            # (line 248) and that helper reads
-            # ``terminal_manager=app.terminal_manager`` directly. The
-            # original line never matched because
-            # ``app.pool_manager`` was the class-attribute default
-            # value (None under the ``Any`` annotation) and never a
-            # real ``PoolManager`` instance. The fix writes through
-            # the slot the bootstrap actually reads.
-            #
-            # Note: the project's ``oneiric`` logger hierarchy is at
-            # WARNING level at the root, so ``logger.info`` calls are
-            # filtered out by default. We use ``logger.warning`` here
-            # for visibility in production logs.
-            if self.terminal_manager is not None:
-                self.app.terminal_manager = self.terminal_manager
-                logger.warning(
-                    "Wired app.terminal_manager for downstream pool_manager init"
-                )
+            # Update pool_manager's terminal_manager reference if both exist
+            # This is needed because pool_manager is initialized before terminal_manager
+            # in MahavishnuApp, so it gets None initially
+            if (
+                self.terminal_manager is not None
+                and hasattr(self.app, "pool_manager")
+                and self.app.pool_manager is not None
+            ):
+                self.app.pool_manager.terminal_manager = self.terminal_manager
+                logger.info("Updated pool_manager terminal_manager reference")
 
         # Register HTTP health endpoint for Claude Code health checks
         # (already registered earlier in __init__ to bypass runtime init —
