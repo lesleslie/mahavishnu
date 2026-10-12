@@ -179,7 +179,7 @@ requirements:
     description: "Crackerjack job/error/hook/test history is regenerable from CI runs. No lazy migration; the wipe in Phase 8 recreates empty tables with the V5 UUID7 schema."
   - id: REQ-012
     title: "Substrate accepts ULID only for read-time lazy migration"
-    description: "`oneiric.core.ids.is_valid_id()` accepts both UUID7 and 26-char Crockford Base32 ULID strings for read-time validation; `is_uuid7()` is strict UUID7-only and is the canonical generator output check."
+    description: "`oneiric.core.ids.is_valid_id()` accepts UUID7 only (Phase 9 T1 collapsed is_valid_id to is_uuid7; the pre-2026-10-11 ULID read-time acceptance is removed); `is_uuid7()` is strict UUID7-only and is the canonical generator output check."
 ```</new_string>
 
 
@@ -483,7 +483,7 @@ dual-write migration (REQ-010, REQ-012).
 - `crackerjack run -v` passes.
 - `grep -rE "from oneiric.core.ulid|from oneiric.core.ulid_resolution|from oneiric.core.ulid_migration|from oneiric.core.ulid_collision" oneiric/` returns zero.
 - `python -c 'from oneiric.core.ids import generate_id; print(generate_id())' | xargs -I{} python -c 'import uuid; print(uuid.UUID("{}").version)'` prints `7`.
-- `python -c 'from oneiric.core.ids import is_valid_id; print(is_valid_id("01ARZ3NDEKTS6PQRYF"))'` prints `True` (ULID read-time acceptance works).
+- `python -c 'from oneiric.core.ids import is_valid_id; print(is_valid_id("01ARZ3NDEKTS6PQRYF"))'` prints `False` (ULID read-time acceptance removed; see Phase 9 T1).
 - `python -c 'from oneiric.core.ids import is_uuid7; print(is_uuid7("01ARZ3NDEKTS6PQRYF"))'` prints `False` (strict UUID7-only check rejects ULIDs).
 
 #### Integration Contract — Phase 2 substrate
@@ -843,7 +843,7 @@ is in flight on those tables.
 - [ ] Phase 1 archive manifest at `~/.local/state/bodai/db-archive/2026-10-11-uuid7-migration/MANIFEST.json`
 - [ ] **Phase 0** — session-buddy: write 10 SQL files under `session_buddy/migrations/2026_10_11_uuid7_consolidation/` (001–010 per Phase 0 task 2) plus matching integration tests under `tests/integration/test_uuid7_consolidation.py`; dry-run against the Phase 1 archive; PR review
 - [ ] **Phase 0.5** — session-buddy: stop relevant MCPs (session-buddy, akosha); execute the Phase 0 scripts against live `reflection.duckdb`; verify the consolidated 24-table list and `reflections` row count ≥ 1,485 / `conversations` row count = 1,205; restart
-- [ ] oneiric — Phase 2: delete `oneiric/core/ulid.py`, `ulid_resolution.py`, `ulid_migration.py`, `ulid_collision.py`; create `oneiric/core/ids.py` (with `is_valid_id` accepting both UUID7 and 26-char ULID per REQ-012) and `oneiric/core/system_registry.py`
+- [ ] oneiric — Phase 2: delete `oneiric/core/ulid.py`, `ulid_resolution.py`, `ulid_migration.py`, `ulid_collision.py`; create `oneiric/core/ids.py` (with `is_valid_id` accepting both UUID7 and 26-char ULID per REQ-012 — REMOVED in Phase 9 T1, see docs/plans/2026-10-12-ulid-surface-elimination.md) and `oneiric/core/system_registry.py`
 - [ ] oneiric — Phase 2: delete ULID-related tests
 - [ ] crackerjack — Phase 3: delete `crackerjack/services/ulid_generator.py`; `V5__ulid_migration*`, `V6__ulid_contract*`; create `V5__uuid7_contract*`
 - [ ] crackerjack — Phase 3: delete/rewrite `tests/{unit,services}/test_ulid_generator*`
@@ -876,7 +876,7 @@ is in flight on those tables.
 |---|---|---|
 | `python -c 'from uuid import uuid7; print(uuid7().hex)'` | 32 lowercase hex chars | any `venv/bin/python3.14` |
 | `python -c 'from oneiric.core.ids import generate_id; print(uuid.UUID(generate_id()).version)'` | `7` | oneiric venv, post-Phase 2 |
-| `python -c 'from oneiric.core.ids import is_valid_id; print(is_valid_id("01ARZ3NDEKTS6PQRYF"))'` | `True` (ULID read-time acceptance) | post-Phase 2 |
+| `python -c 'from oneiric.core.ids import is_valid_id; print(is_valid_id("01ARZ3NDEKTS6PQRYF"))'` | `False` (ULID rejected; Phase 9 T1 collapsed is_valid_id = is_uuid7) | post-Phase 9 |
 | `python -c 'from oneiric.core.ids import is_uuid7; print(is_uuid7("01ARZ3NDEKTS6PQRYF"))'` | `False` (strict UUID7-only check rejects ULID) | post-Phase 2 |
 | `grep -rE "ulid\|ULID\|druva\|dhara" {m,a,s,c,o,n}*/{core,services,adapters,mcp,storage,scripts,mahavishnu,akosha,session_buddy,crackerjack,oneiric} ` (scoped) | zero matches in production source | local shell |
 | `crackerjack run -v` per repo | passes; no `-p` ever | each repo's CI log |
