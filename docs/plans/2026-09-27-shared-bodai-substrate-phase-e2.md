@@ -91,7 +91,7 @@ requirements:
 
 ## 6. Implementation Tasks
 
-### Task 1: Akosha atomic config migration
+### Task 1: Akosha atomic config migration [x] — akosha 9c9ab67 (2026-10-12)
 
 **Files:**
 - Modify: `akosha/config.py` (atomic: delete local keys + adopt `OneiricSettings.substrate` references in single commit)
@@ -147,7 +147,7 @@ git add akosha/config.py akosha/tests/test_substrate_settings_via_oneiric.py
 git commit -m "refactor(akosha): adopt OneiricSettings.substrate for cross-component settings"
 ```
 
-### Task 2: SB atomic config migration
+### Task 2: SB atomic config migration [x] — session-buddy aeaa680 (2026-10-12)
 
 **Files:**
 - Modify: `session_buddy/settings.py`
@@ -179,7 +179,7 @@ git add session_buddy/settings.py session_buddy/tests/test_substrate_settings_vi
 git commit -m "refactor(session-buddy): adopt OneiricSettings.substrate for cross-component settings"
 ```
 
-### Task 3: Mahavishnu atomic config migration (pool/telemetry/retry/auth only)
+### Task 3: Mahavishnu atomic config migration (pool/telemetry/retry/auth only) [x] — mahavishnu 676a6d8 (2026-10-12)
 
 **Files:**
 - Modify: `mahavishnu/core/config.py`
