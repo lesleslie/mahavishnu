@@ -101,3 +101,43 @@ def test_extract_frontmatter_with_body_horizontal_rule_does_not_mis_extract() ->
         assert forbidden not in parsed, (
             f"body content {forbidden!r} leaked into frontmatter parse: {parsed!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — frontmatter > 4 KiB must parse correctly.
+# RED test: fails on the current 4096-byte truncation in `_has_frontmatter`
+# because the closing `---` falls outside the 4096-byte head. After the
+# read-full-file fix, the full text is fed to the parser and the close
+# is found.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.req(["REQ-IDX-003", "REQ-IDX-006"])
+def test_has_frontmatter_reads_full_file_for_large_frontmatter(tmp_path: Path) -> None:
+    """`_has_frontmatter` returns True for a plan with > 4 KiB of frontmatter
+    (current 4096-byte truncation would hide the closing `---`)."""
+    from scripts.regenerate_plan_index import _has_frontmatter
+
+    # Build a frontmatter block whose total size exceeds 4 KiB by padding
+    # a `description:` value with enough content. 6000 chars is comfortably
+    # above 4096.
+    long_value = "x" * 6000
+    text = (
+        "---\n"
+        f"description: {long_value}\n"
+        "status: active\n"
+        "title: Big\n"
+        "---\n"
+        "\n"
+        "# Body\n"
+    )
+    plan = tmp_path / "big-plan.md"
+    plan.write_text(text, encoding="utf-8")
+
+    # The file is > 4 KiB; confirm the test is meaningful.
+    assert plan.stat().st_size > 4096
+
+    assert _has_frontmatter(plan, yaml) is True, (
+        "_has_frontmatter returned False for a > 4 KiB frontmatter — "
+        "the 4096-byte pre-filter is hiding the closing `---`."
+    )

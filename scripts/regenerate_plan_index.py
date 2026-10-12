@@ -295,29 +295,21 @@ def discover_files(
 
 
 def _has_frontmatter(path: Path, yaml_module: Any) -> bool:
-    """Cheap check that the leading bytes of `path` look like a YAML
-    frontmatter block. Used during store discovery — a directory only
-    counts as a store if enough of its .md children actually carry
-    frontmatter (>= MIN_STORE_DOCS)."""
+    """Return True when `path` opens with a parseable YAML frontmatter
+    block. Used during store discovery — a directory only counts as a
+    store if enough of its .md children actually carry frontmatter
+    (>= MIN_STORE_DOCS).
+
+    Reads the full file (the previous 4096-byte truncation hid the
+    closing `---` for any plan with > 4 KiB of frontmatter; for a
+    corpus of ~200 plans averaging 5 KiB each, the extra I/O is
+    ~1 MB per `discover_stores` run, negligible).
+    """
     try:
-        with path.open("rb") as fh:
-            head = fh.read(4096)
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
-    if not head.startswith(b"---"):
-        return False
-    rest = head[3:]
-    # Trim optional leading whitespace / blank lines after the opener.
-    rest = rest.lstrip(b"\r\n").lstrip()
-    if not rest:
-        return False
-    # Reject the unlikely-but-legal case of a single `---` file with no
-    # closing fence within the first 4 KiB.
-    if b"\n---" not in rest and b"\r---" not in rest:
-        return False
-    try:
-        text = head.decode("utf-8", errors="replace")
-    except UnicodeDecodeError:
+    if not text.startswith("---"):
         return False
     return extract_frontmatter(text, yaml_module) is not None
 
