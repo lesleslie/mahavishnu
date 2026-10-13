@@ -129,26 +129,36 @@ def test_emit_flow_inner_dag_submits_with_wait_for() -> None:
     assert second_kwargs["wait_for"] == ["envelope-of-n0"]
 
 
-def test_emit_node_raises_not_implemented() -> None:
-    """emit_node is a Phase 4 stub; it must raise until dispatchers land."""
+def test_emit_node_raises_not_implemented_for_unknown_engine() -> None:
+    """emit_node raises NotImplementedError ONLY for engine_ids outside the dispatch table.
+
+    Plan 2026-10-12 (per-engine emit_node dispatch) replaces the prior
+    ``raise NotImplementedError`` stub with a dict-lookup keyed on
+    ``node.engine_id``. Unknown engines still raise — that is the
+    operator-facing signal that a new engine was added without a dispatcher.
+    """
+    import asyncio
     from unittest.mock import AsyncMock
 
     from mahavishnu.core.capabilities import DAGNode
 
     node = DAGNode(
         node_id="n0",
-        engine_id=EngineId("prefect"),
+        engine_id=EngineId("mystery-engine"),
         capability_id=CapabilityId("engine:durable-flow"),
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
     mcp = AsyncMock()
-    with pytest.raises(NotImplementedError):
-        # emit_node is async — drive it through asyncio.run for the sync test.
-        import asyncio
-        asyncio.run(emit_node(
-            node, trace_id=TraceId("0" * 32), mcp=mcp,
-        ))
+    with pytest.raises(NotImplementedError, match="not registered"):
+        asyncio.run(
+            emit_node(
+                node,
+                trace_id=TraceId("0" * 32),
+                mcp=mcp,
+                prompt="x",
+            )
+        )
 
 
 def test_emit_flow_default_prefect_factory_loads_prefect() -> None:

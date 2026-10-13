@@ -14,9 +14,11 @@ Three responsibilities:
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import random
 from types import ModuleType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from mahavishnu.core.capabilities import (
     Candidate,
@@ -26,16 +28,26 @@ from mahavishnu.core.capabilities import (
     DAGNode,
     EngineRegistration,
     ExecutionDAG,
+    EnvelopeId,
     SelectorStrategy,
     TraceId,
 )
+from mahavishnu.core.conductor_types import NodeHandle, NodeSpec
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from mahavishnu.core.capabilities import EnvelopeId
     from mahavishnu.core.mcp_adapter import MCPAdapter
+
+logger = logging.getLogger(__name__)
+
+
+# Dispatch-function signature: takes a frozen NodeSpec and returns the NodeHandle
+# the per-engine dispatcher produced. Populated at import time by
+# ``mahavishnu.engines.emit_node_dispatch.register()``.
+_EmitNodeFn = Callable[[NodeSpec, "MCPAdapter"], Awaitable[NodeHandle]]
+_EMIT_NODE_DISPATCH: dict[str, _EmitNodeFn] = {}
 
 
 def resolve(
@@ -154,15 +166,98 @@ async def emit_node(
     *,
     trace_id: TraceId,
     mcp: MCPAdapter,
+    prompt: str,
+    parent_envelope_ids: tuple[EnvelopeId, ...] = (),
+    repos: tuple[str, ...] = (),
 ) -> EnvelopeId:
     """Dispatch one node to its engine. Returns the produced envelope id.
 
-    Concrete dispatch lives in ``mahavishnu/engines/<engine>_dispatch.py`` —
-    this function is the routing layer that picks the right dispatcher.
-    The dispatchers are out of scope for the conductor refactor plan
-    (they land in Phase 4 alongside the WorkflowRuntime ABC).
+    Concrete dispatch lives in ``mahavishnu/engines/emit_node_dispatch.py`` —
+    this function is the routing layer that picks the right dispatcher
+    by looking up ``node.engine_id`` in ``_EMIT_NODE_DISPATCH``. If the
+    lookup misses (a new engine was added without a dispatcher), we raise
+    ``NotImplementedError`` with a distinctive message so production
+    alerts can grep for it.
     """
-    raise NotImplementedError("per-engine dispatch lands in Phase 4 — see plan §Open Questions")
+    spec = NodeSpec(
+        node_id=node.node_id,
+        engine_id=node.engine_id,
+        capability_id=node.capability_id,
+        trace_id=trace_id,
+        prompt=prompt,
+        parent_envelope_ids=parent_envelope_ids,
+        repos=repos,
+    )
+    dispatch = _EMIT_NODE_DISPATCH.get(node.engine_id)
+    if dispatch is None:
+        logger.warning(
+            "per-engine emit_node dispatch not registered for engine_id=%r",
+            node.engine_id,
+        )
+        raise NotImplementedError(
+            f"per-engine emit_node dispatch not registered for engine_id={node.engine_id!r}"
+        )
+    handle: NodeHandle = await dispatch(spec, mcp)
+    return handle.envelope_id
+
+
+async def _dispatch_dag_waves(
+    dag: ExecutionDAG,
+    *,
+    trace_id: TraceId,
+    mcp: MCPAdapter,
+    prompt_for_root: str,
+) -> dict[str, EnvelopeId]:
+    """Level-by-level dispatch across the DAG's ``DAGEdge`` topology.
+
+    The original conductor iterated ``for node in dag.nodes``, which
+    serialized independent branches. The level-by-level algorithm finds
+    the next wave as the set of nodes whose incoming edges all come from
+    already-completed nodes, then dispatches the wave concurrently via
+    ``asyncio.gather``. This is the only correct DAG semantics — a node
+    with multiple independent upstreams waits for ALL of them, not the
+    LAST one in iteration order.
+
+    For root nodes (no incoming edges) the prompt is ``prompt_for_root``;
+    for downstream nodes the prompt is synthesized from upstream
+    io_out (current placeholder: empty — downstream prompt synthesis
+    is documented as a follow-up that targets ``CapabilitySpec.io_in``;
+    see ``docs/plans/2026-10-12-per-engine-emit-node-dispatch.md``
+    Phase 5 Step 5.2).
+    """
+    by_id: dict[str, DAGNode] = {n.node_id: n for n in dag.nodes}
+    incoming: dict[str, list[str]] = {n.node_id: [] for n in dag.nodes}
+    for edge in dag.edges:
+        incoming[edge.to_node].append(edge.from_node)
+
+    envelope_ids: dict[str, EnvelopeId] = {}
+    remaining = set(by_id)
+    wave = [nid for nid, parents in incoming.items() if not parents]
+
+    while wave:
+        # Dispatch wave concurrently via asyncio.gather so independent branches
+        # actually run in parallel rather than sequentially.
+        handles = await asyncio.gather(
+            *(
+                emit_node(
+                    node=by_id[nid],
+                    trace_id=trace_id,
+                    mcp=mcp,
+                    prompt=(prompt_for_root if not incoming[nid] else ""),
+                    parent_envelope_ids=tuple(envelope_ids[p] for p in incoming[nid]),
+                )
+                for nid in wave
+            )
+        )
+        for nid, eid in zip(wave, handles, strict=True):
+            envelope_ids[nid] = eid
+            remaining.discard(nid)
+        wave = [
+            nid
+            for nid in remaining
+            if all(p in envelope_ids for p in incoming[nid])
+        ]
+    return envelope_ids
 
 
 def emit_flow(
