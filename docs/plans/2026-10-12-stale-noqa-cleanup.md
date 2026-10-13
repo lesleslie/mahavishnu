@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-12
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-13
 superseded_by: null
 # Hard dep: this plan needs RUF100 to be an active rule, which is
 # enabled by `2026-10-12-ruff-cleanup-post-regrowth.md` Phase 0
