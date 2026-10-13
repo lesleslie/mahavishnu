@@ -295,7 +295,7 @@ class PiPool(BasePool):
                 "error": None,
                 "duration": duration,
             }
-        except (PiRPCTimeout, PiProtocolError, Exception) as exc:  # noqa: BLE001
+        except (PiRPCTimeout, PiProtocolError, Exception) as exc:
             duration = time.monotonic() - start_time
             self._task_durations.append(duration)
             mapped = _map_rpc_error_to_pool_error(exc, method=_PI_EXECUTE_METHOD)
@@ -473,7 +473,7 @@ class PiPool(BasePool):
         if self._client is not None:
             try:
                 await self._client.stop()
-            except Exception as e:  # pragma: no cover - defensive  # noqa: BLE001
+            except Exception as e:  # pragma: no cover - defensive
                 logger.warning("error stopping pi client: %s", e)
             self._client = None
         self._status = PoolStatus.STOPPED

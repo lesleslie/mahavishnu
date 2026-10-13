@@ -194,7 +194,7 @@ async def find_merged_worktrees(
     if coordinator is not None:
         try:
             listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return []
         if not listed.get("success"):
             return []
@@ -318,7 +318,7 @@ class WorktreePruner:
             return WorktreePruneResult(candidate, False, None, "candidate changed since discovery")
         try:
             return await self._remove_with_escalation(candidate, force_reason, user_id)
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             return WorktreePruneResult(candidate, False, None, str(exc))
 
     @staticmethod

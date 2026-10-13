@@ -580,7 +580,7 @@ class PoolConfig(BaseModel):
         """
         try:
             from mahavishnu.pools._registry import list_pool_types
-        except Exception:  # noqa: BLE001 - boundary: registry is best-effort at config-load
+        except Exception:
             return v
         if v not in list_pool_types():
             raise ValueError(
@@ -1468,7 +1468,7 @@ class A2ACapabilitiesSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     streaming: bool = True
-    pushNotifications: bool = False  # noqa: N815
+    pushNotifications: bool = False
 
 
 class A2ACardSettings(BaseModel):

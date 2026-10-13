@@ -776,7 +776,7 @@ class EventEnvelopeConversionError(MahavishnuError):
         )
 
 
-class IdempotencyStoreUnavailable(MahavishnuError):  # noqa: N818
+class IdempotencyStoreUnavailable(MahavishnuError):
     """Idempotency store unreachable; fail-CLOSED behavior expected.
 
     Raised by C-6 idempotency layer when EventStore cannot be reached.
@@ -807,7 +807,7 @@ class IdempotencyStoreUnavailable(MahavishnuError):  # noqa: N818
         )
 
 
-class IdempotencyCircuitOpen(MahavishnuError):  # noqa: N818
+class IdempotencyCircuitOpen(MahavishnuError):
     """Raised by ``IdempotencyCircuitBreaker`` when the breaker is OPEN.
 
     Distinct from ``IdempotencyStoreUnavailable`` so callers can route
@@ -1169,7 +1169,7 @@ class WorkerUnavailableError(MahavishnuError):
         return base + f"Missing requirements: {', '.join(requirements)}\n"
 
 
-class ContainerDaemonUnavailable(MahavishnuError):  # noqa: N818
+class ContainerDaemonUnavailable(MahavishnuError):
     """Raised when a container runtime binary or daemon probe fails."""
 
     def __init__(self, *, runtime: str, error: str) -> None:
@@ -1180,7 +1180,7 @@ class ContainerDaemonUnavailable(MahavishnuError):  # noqa: N818
         )
 
 
-class AppleContainerUnsupported(MahavishnuError):  # noqa: N818
+class AppleContainerUnsupported(MahavishnuError):
     """Raised when the Apple ``container`` runtime cannot run on this host.
 
     Distinct from ContainerDaemonUnavailable by design: this error means
@@ -1911,7 +1911,7 @@ def _redact_sensitive_details(details: dict | None) -> dict | None:
     return redacted
 
 
-class PiUnavailable(MahavishnuError):  # noqa: N818
+class PiUnavailable(MahavishnuError):
     """Raised when the Pi coding-agent runtime cannot be reached.
 
     Covers:
@@ -1953,7 +1953,7 @@ class PiUnavailable(MahavishnuError):  # noqa: N818
         return f"[{self.error_code.value}] {self.message}"
 
 
-class PiRPCTimeout(MahavishnuError):  # noqa: N818
+class PiRPCTimeout(MahavishnuError):
     """Raised when a JSON-RPC request to the Pi subprocess times out.
 
     Distinct from the generic :class:`TimeoutError` because the Pi subprocess
@@ -2045,7 +2045,7 @@ class PiProtocolError(MahavishnuError):
 # ---------------------------------------------------------------------------
 
 
-class GooseUnavailable(MahavishnuError):  # noqa: N818
+class GooseUnavailable(MahavishnuError):
     """Raised when the ``goose serve`` HTTP backend cannot be reached.
 
     Covers:

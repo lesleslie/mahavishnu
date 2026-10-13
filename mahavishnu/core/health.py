@@ -529,7 +529,7 @@ class HealthChecker(HTTPXClientMixin):
 
             parsed = urlparse(url)
             return f"{parsed.hostname}:{parsed.port}" if parsed.port else str(parsed.hostname)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return url
 
 
@@ -1075,7 +1075,7 @@ def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
                 probe_ok=probe_ok,
                 stamp=_resolve_degraded_since(app),
             )
-    except Exception as exc:  # noqa: BLE001 — /health must never propagate
+    except Exception as exc:
         # C3: the function used to claim "catches all subprocess errors"
         # but the body didn't actually wrap the probe helpers, so any
         # ``TypeError``/``AttributeError`` (e.g. on a malformed binary

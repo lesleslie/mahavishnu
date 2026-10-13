@@ -189,7 +189,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
             import shutil
 
             return shutil.which(self._git_executable) is not None
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return False
 
     async def create_worktree(
@@ -818,7 +818,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            import zstandard  # noqa: F401
+            import zstandard
         except ImportError as exc:
             raise WorktreeError(
                 "zstandard dependency required for streaming tar.zst; "
@@ -993,7 +993,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 handle.storage_ref.path,
                 force=True,
             )
-        except Exception as exc:  # noqa: BLE001 — best-effort cleanup; logged + falls through
+        except Exception as exc:
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -1156,7 +1156,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._storage is not None:
             try:
                 storage_ok = await self._storage.health()
-            except Exception:  # noqa: BLE001 - boundary
+            except Exception:
                 storage_ok = False
             if not storage_ok:
                 report.healthy = False
@@ -1165,7 +1165,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._cache is not None:
             try:
                 cache_ok = await self._cache.health()
-            except Exception:  # noqa: BLE001 - boundary
+            except Exception:
                 cache_ok = False
             if not cache_ok:
                 report.healthy = False

@@ -16,7 +16,7 @@ The factory protocol: ``Callable[[config, mcp_client], TerminalAdapter]``. The
 ``config`` and ``mcp_client`` kwargs may be None for adapters that ignore them.
 """
 
-from collections.abc import Callable  # noqa: TC003 - used in runtime function signatures
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -132,7 +132,7 @@ register_adapter("tmux", _build_tmux_adapter)
 try:
     from .crow import CrowTerminalAdapter
 
-    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127
+    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # type: ignore[misc,assignment]
 
     def _build_crow_adapter(
         config: Any = None,
@@ -210,7 +210,7 @@ try:
 
     from .goose import GooseTerminalAdapter
 
-    GooseTerminalAdapter: type[TerminalAdapter] | None = GooseTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127
+    GooseTerminalAdapter: type[TerminalAdapter] | None = GooseTerminalAdapter  # type: ignore[misc,assignment]
 
     def _build_goose_adapter(
         config: Any = None,

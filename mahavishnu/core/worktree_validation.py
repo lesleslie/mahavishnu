@@ -142,7 +142,7 @@ class WorktreePathValidator:
             # Resolve to absolute path
             try:
                 resolved_path = path.resolve()
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 error = f"Path resolution failed: {e}"
                 logger.warning(f"Invalid path '{worktree_path}': {error}")
                 return False, error
@@ -171,7 +171,7 @@ class WorktreePathValidator:
             logger.debug(f"Path validation passed: {worktree_path}")
             return True, None
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             # Other exceptions are just invalid paths (not malicious)
             logger.warning(f"Path validation error for '{worktree_path}': {e}")
             return False, str(e)
@@ -223,7 +223,7 @@ class WorktreePathValidator:
                 result="denied",
                 error=error_message,
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             # Don't fail if audit logging fails
             logger.error(f"Failed to log security rejection to audit trail: {e}")
 
@@ -264,7 +264,7 @@ class WorktreePathValidator:
             path = Path(repository_path)
             try:
                 resolved_path = path.resolve()
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 error = f"Repository path resolution failed: {e}"
                 logger.warning(f"Invalid repository path '{repository_path}': {error}")
                 return False, error
@@ -276,7 +276,7 @@ class WorktreePathValidator:
             logger.debug(f"Repository path validation passed: {repository_path}")
             return True, None
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Repository path validation error: {e}")
             return False, str(e)
 

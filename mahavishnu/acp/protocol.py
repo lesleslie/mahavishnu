@@ -79,8 +79,8 @@ class AgentCapabilities(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    loadSession: bool = False  # noqa: N815 — ACP spec field name
-    mcpCapabilities: McpCapabilities = Field(default_factory=McpCapabilities)  # noqa: N815
+    loadSession: bool = False
+    mcpCapabilities: McpCapabilities = Field(default_factory=McpCapabilities)
 
 
 class ClientInfo(BaseModel):
@@ -97,9 +97,9 @@ class InitializeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    protocolVersion: Annotated[str, Field(max_length=PROTOCOL_VERSION_MAX)]  # noqa: N815
-    clientInfo: ClientInfo  # noqa: N815
-    agentCapabilities: AgentCapabilities | None = None  # noqa: N815
+    protocolVersion: Annotated[str, Field(max_length=PROTOCOL_VERSION_MAX)]
+    clientInfo: ClientInfo
+    agentCapabilities: AgentCapabilities | None = None
 
 
 class InitializeResponse(BaseModel):
@@ -107,8 +107,8 @@ class InitializeResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    protocolVersion: Annotated[str, Field(max_length=PROTOCOL_VERSION_MAX)]  # noqa: N815
-    agentCapabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)  # noqa: N815
+    protocolVersion: Annotated[str, Field(max_length=PROTOCOL_VERSION_MAX)]
+    agentCapabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)
 
 
 # === Authentication ===
@@ -125,7 +125,7 @@ class AuthenticateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    methodId: Literal["bearer"]  # noqa: N815
+    methodId: Literal["bearer"]
     token: str
 
 
@@ -152,7 +152,7 @@ class SessionNewResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionId: str = Field(  # noqa: N815
+    sessionId: str = Field(
         min_length=1,
         max_length=SESSION_ID_MAX,
     )
@@ -188,7 +188,7 @@ class SessionPromptRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
+    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
     content: list[SessionContent]
 
 
@@ -197,7 +197,7 @@ class SessionCancelRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
+    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
 
 
 # === Session update notifications (agent → client) ===
@@ -216,8 +216,8 @@ class AgentMessageChunk(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionUpdate: Literal["agent_message_chunk"] = "agent_message_chunk"  # noqa: N815
-    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
+    sessionUpdate: Literal["agent_message_chunk"] = "agent_message_chunk"
+    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
     content: TextContent
 
 
@@ -233,9 +233,9 @@ class ToolCallUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionUpdate: Literal["tool_call_update"] = "tool_call_update"  # noqa: N815
-    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
-    toolCallId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
+    sessionUpdate: Literal["tool_call_update"] = "tool_call_update"
+    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
+    toolCallId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
     status: ToolCallStatus
     title: str | None = None
     content: list[SessionContent] | None = None
@@ -252,8 +252,8 @@ class StatusUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sessionUpdate: Literal["status"] = "status"  # noqa: N815
-    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]  # noqa: N815
+    sessionUpdate: Literal["status"] = "status"
+    sessionId: Annotated[str, Field(min_length=1, max_length=SESSION_ID_MAX)]
     status: SessionStatus
 
 

@@ -330,7 +330,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
             return is_healthy
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Session-Buddy health check failed: {e}")
             return False
 

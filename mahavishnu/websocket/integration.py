@@ -151,7 +151,7 @@ async def start_websocket_server(
 
         return server
 
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         logger.error(f"Failed to start WebSocket server: {e}")
         return None
 
@@ -170,7 +170,7 @@ async def stop_websocket_server(
     try:
         await server.stop()
         logger.info("WebSocket server stopped")
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         logger.error(f"Error stopping WebSocket server: {e}")
 
 
@@ -247,7 +247,7 @@ async def broadcast_workflow_event(
 
         return True
 
-    except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+    except Exception as e:
         logger.error(f"Error broadcasting workflow event: {e}")
         return False
 
@@ -287,7 +287,7 @@ async def broadcast_pool_event(
 
         return True
 
-    except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+    except Exception as e:
         logger.error(f"Error broadcasting pool event: {e}")
         return False
 

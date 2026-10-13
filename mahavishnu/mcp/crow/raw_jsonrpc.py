@@ -182,7 +182,7 @@ class _RawJsonRpcClient:
                     fut.set_result(msg)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # noqa: BLE001 - background task boundary
+        except Exception as exc:
             logger.warning("crow-mcp reader loop crashed: %s", exc)
 
     async def _round_trip(self, request: dict[str, Any], timeout: float) -> dict[str, Any]:
@@ -254,7 +254,7 @@ class _RawJsonRpcClient:
             self._reader_task.cancel()
             try:
                 await asyncio.wait_for(asyncio.shield(self._reader_task), timeout=2.0)
-            except BaseException as exc:  # noqa: BLE001 - cleanup boundary
+            except BaseException as exc:
                 logger.debug("crow-mcp reader shutdown skipped: %s", exc)
         # Fail any still-pending futures.
         for fut in self._pending.values():
@@ -265,7 +265,7 @@ class _RawJsonRpcClient:
         if proc.stdin is not None:
             try:
                 proc.stdin.close()
-            except Exception as exc:  # noqa: BLE001 - cleanup boundary
+            except Exception as exc:
                 logger.debug("subprocess stdin close failed: %s", exc)
         # SIGKILL + reap.
         if proc.returncode is None:

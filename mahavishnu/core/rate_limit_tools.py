@@ -110,7 +110,7 @@ def rate_limit_tool(
             if key_func and kwargs:
                 try:
                     key = key_func(kwargs)
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception as e:
                     logger.warning(f"Failed to get rate limit key: {e}")
                     key = "default"
 

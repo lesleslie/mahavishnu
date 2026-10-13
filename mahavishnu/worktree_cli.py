@@ -367,7 +367,7 @@ def prune_merged_worktrees(
                     registry_lookup=registry_lookup,
                 )
                 candidates.extend(await found if inspect.isawaitable(found) else found)
-            except Exception as exc:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+            except Exception as exc:
                 if not json_output:
                     typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
 

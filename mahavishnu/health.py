@@ -321,7 +321,7 @@ def _check_database() -> bool:
 
         test_db = EncryptedSQLite(":memory:")
         return test_db is not None
-    except Exception:  # noqa: BLE001 - health probe: any failure means subsystem unavailable
+    except Exception:
         return False
 
 
@@ -334,7 +334,7 @@ def _check_message_bus() -> bool:
         # can be constructed.
         transport = InMemoryEventTransport()
         return transport is not None
-    except Exception:  # noqa: BLE001 - health probe: any failure means subsystem unavailable
+    except Exception:
         return False
 
 
@@ -354,7 +354,7 @@ def _check_adapters() -> bool:
         )
 
         return has_adapter
-    except Exception:  # noqa: BLE001 - health probe: any failure means subsystem unavailable
+    except Exception:
         return False
 
 

@@ -15,7 +15,7 @@ DEFAULT_WEEKLY_CAP: int = 100
 ENV_VAR: str = "MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP"
 
 
-class CostCeilingExceeded(Exception):  # noqa: N818 — plan-locked name
+class CostCeilingExceeded(Exception):
     def __init__(self, *, calls_made: int, ceiling: int) -> None:
         self.calls_made = int(calls_made)
         self.ceiling = int(ceiling)

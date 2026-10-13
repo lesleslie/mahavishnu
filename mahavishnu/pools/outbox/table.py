@@ -11,7 +11,7 @@ Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 from __future__ import annotations
 
 from datetime import (
-    datetime,  # noqa: TC003  # Pydantic v2 resolves forward refs at model_rebuild() time
+    datetime,  # Pydantic v2 resolves forward refs at model_rebuild() time
 )
 from typing import Literal
 

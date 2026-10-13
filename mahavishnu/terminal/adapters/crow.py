@@ -203,7 +203,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "crow_terminal_close",
                 {"session_id": session_id},
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning("crow-mcp: close_session failed (non-fatal): %s", e)
         finally:
             self._sessions.pop(session_id, None)

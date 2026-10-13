@@ -236,7 +236,7 @@ def _register_component_endpoint(
                 key,
                 mcp_url,
             )
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.warning(
                 "Phase 0: failed to register %s endpoint to MCP: %s",
                 component_name,
@@ -583,7 +583,7 @@ def _init_coordination_memory(app: Any) -> Any:
             SessionBuddyMemoryClient(app.config.pools.session_buddy_url),
             akosha_url=app.config.pools.akosha_url,
         )
-    except Exception:  # noqa: BLE001 - event handler; logs and continues
+    except Exception:
         return None
 
 
@@ -593,7 +593,7 @@ def _init_repository_messenger(app: Any) -> Any:
         from ..messaging.repository_messenger import RepositoryMessenger
 
         return RepositoryMessenger(app)
-    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception:
         return None
 
 
@@ -633,7 +633,7 @@ def _init_routing_metrics(app: Any) -> None:
             logger.info("Routing metrics disabled by configuration")
     except ImportError:
         logger.warning("Routing metrics module not available, skipping metrics initialization")
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.error("Failed to initialize routing metrics: %s", exc)
 
 
@@ -657,7 +657,7 @@ def _init_worktree_coordinator(app: Any) -> None:
         app.repository_manager = RepositoryManager(repos_path)
         app.coordination_manager = CoordinationManager(str(repos_path))
         logger.info("WorktreeCoordinator components initialized")
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.warning("Failed to initialize WorktreeCoordinator: %s", exc)
 
 
@@ -677,7 +677,7 @@ def _init_session_buddy_poller(app: Any) -> Any:
             app.config.session_buddy_polling.interval_seconds,
         )
         return poller
-    except Exception as exc:  # noqa: BLE001 - event handler; logs and continues
+    except Exception as exc:
         logger.warning("Failed to initialize Session-Buddy poller: %s", exc)
         return None
 
@@ -709,7 +709,7 @@ def set_app_context(app: Any) -> None:
                 # ``FakeLLM`` for ``agno.llm.LLM`` to verify wiring
                 # without instantiating Agno's abstract ``Model``).
                 try:
-                    from agno.llm import (  # ty: ignore[unresolved-import]  # noqa: N811  # upstream `LLM` is a class, not a constant
+                    from agno.llm import (  # ty: ignore[unresolved-import]  # upstream `LLM` is a class, not a constant
                         LLM as _AgnoModel,
                     )
                 except ImportError:
@@ -771,7 +771,7 @@ def init_terminal_manager(app: Any) -> Any:
         from ..mcp.bootstrap import init_terminal_manager as _mcp_init_terminal_manager
 
         return _mcp_init_terminal_manager(app)
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.warning("Failed to initialize terminal manager: %s", exc)
         return None
 
@@ -844,7 +844,7 @@ def init_memory_aggregator(app: Any) -> Any:
             app.config.pools.memory_sync_interval,
         )
         return memory_aggregator
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.warning("Failed to initialize memory aggregator: %s", exc)
         return None
 
@@ -867,7 +867,7 @@ def init_learning_pipeline(app: Any) -> Any:
             app.config.learning.max_evidence_per_cycle,
         )
         return pipeline
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.warning("Failed to initialize learning pipeline: %s", exc)
         return None
 
@@ -888,7 +888,7 @@ async def recover_workflow_state_from_mcp(app: Any) -> None:
                 recovered += 1
         if recovered:
             logger.info("Recovered %d in-flight workflows from MCP", recovered)
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.debug("MCP workflow recovery skipped: %s", exc)
 
 
@@ -903,5 +903,5 @@ async def recover_approvals_from_mcp(app: Any) -> None:
         restored = app.approval_manager.restore_from_mcp_entries(entries)
         if restored:
             logger.info("Recovered %d pending approvals from MCP", restored)
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         logger.debug("MCP approval recovery skipped: %s", exc)

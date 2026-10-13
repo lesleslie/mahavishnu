@@ -80,7 +80,7 @@ except ImportError:  # pragma: no cover — exercised only when opentelemetry ab
     OTEL_AVAILABLE = False
 
     class _NoopSpan:
-        def __enter__(self) -> _NoopSpan:  # noqa: PYI034 — mock class, no Self import needed
+        def __enter__(self) -> _NoopSpan:
             return self
 
         def __exit__(self, *args: object) -> None:
@@ -499,7 +499,7 @@ def _runtime_fallback(
         # the bootstrap (or a test fake). The default no-op keeps the
         # hot path branch-free for non-bootstrap importers.
         _mark_fallback_callback()
-    except Exception as exc:  # noqa: BLE001 — observability must never crash merge
+    except Exception as exc:
         logger.warning(
             "merge.semantic.fallback_observability_error: "
             "type=%s message=%s — fallback decision stands, "

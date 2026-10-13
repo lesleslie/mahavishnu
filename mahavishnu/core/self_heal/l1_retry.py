@@ -80,7 +80,7 @@ async def l1_retry[T](
     for attempt_index in range(1, max_attempts + 1):
         try:
             return await operation(*args, **kwargs)
-        except Exception as exc:  # noqa: BLE001 - intentional catch-all for retry
+        except Exception as exc:
             last_exc = exc
             if attempt_index >= max_attempts:
                 break

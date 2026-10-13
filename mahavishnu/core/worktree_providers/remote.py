@@ -619,7 +619,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            import zstandard  # noqa: F401
+            import zstandard
         except ImportError as exc:
             raise WorktreeError(
                 "zstandard dependency required for streaming tar.zst; "
@@ -871,7 +871,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             wt_path = get_worktree_path(handle.repo, handle.branch)
             if wt_path.exists():
                 await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
-        except Exception as exc:  # noqa: BLE001 — best-effort on-disk cleanup; logged + falls through to storage delete
+        except Exception as exc:
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -891,7 +891,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 result = delete(ref.key)
                 if asyncio.iscoroutine(result):
                     await result
-        except Exception as exc:  # noqa: BLE001 — boundary; surface + continue
+        except Exception as exc:
             logger.warning(
                 "remote-storage-delete-failed",
                 extra={
@@ -904,7 +904,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         # 2. Invalidate cache entries for this handle.
         try:
             count = await self._cache.invalidate_handle(handle.handle_id)
-        except Exception as exc:  # noqa: BLE001 — boundary; surface + continue
+        except Exception as exc:
             logger.warning(
                 "remote-cache-invalidate-failed",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -970,7 +970,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if asyncio.iscoroutine(result):
                     return bool(await result)
                 return bool(result)
-            except Exception as exc:  # noqa: BLE001 — boundary; return False
+            except Exception as exc:
                 logger.warning(
                     "remote-exists-check-failed",
                     extra={"key": ref.key, "error": str(exc)},
@@ -993,7 +993,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if callable(close):
                     close()
             return bool(first)
-        except Exception:  # noqa: BLE001 — boundary; return False
+        except Exception:
             return False
 
     async def lock(
@@ -1055,7 +1055,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 storage_ok = await storage_health
             else:
                 storage_ok = bool(storage_health)
-        except Exception:  # noqa: BLE001 — boundary
+        except Exception:
             storage_ok = False
         if not storage_ok:
             report.healthy = False
@@ -1063,7 +1063,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         try:
             cache_ok = await self._cache.health()
-        except Exception:  # noqa: BLE001 — boundary
+        except Exception:
             cache_ok = False
         if not cache_ok:
             report.healthy = False

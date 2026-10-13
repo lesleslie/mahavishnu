@@ -80,7 +80,7 @@ class AuthContextMiddleware(Middleware):
         try:
             extracted = await extract_auth_from_request(request_dict)
             user_id = extracted["user_id"]
-        except Exception:  # noqa: BLE001 - auth failures are non-fatal here
+        except Exception:
             user_id = None
 
         fastmcp_ctx: Context | None = getattr(context, "fastmcp_context", None)

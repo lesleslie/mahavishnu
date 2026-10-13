@@ -235,7 +235,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 worker_ids,
                 tasks,
             )
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to execute tasks: {e}")
             # Partial results may exist
             results = await worker_manager.collect_results(worker_ids)

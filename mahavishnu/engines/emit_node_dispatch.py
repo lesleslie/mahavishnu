@@ -107,7 +107,7 @@ async def _dispatch_with_envelope(
     repos_list = list(spec.repos)
     try:
         response = await adapter.execute(task=task, repos=repos_list)
-    except Exception as exc:  # noqa: BLE001 - boundary captures dispatch-time failures
+    except Exception as exc:
         envelope_id = _new_envelope_id()
         envelope = CapabilityEnvelope(
             envelope_id=envelope_id,

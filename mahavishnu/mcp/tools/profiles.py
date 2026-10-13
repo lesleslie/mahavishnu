@@ -337,6 +337,6 @@ def settings_yaml_loader() -> dict | None:
         tool_profile = getattr(get_settings(), "tool_profile", None)
         if tool_profile:
             return {"tool_profile": str(tool_profile)}
-    except Exception:  # noqa: BLE001 - YAML loader is best-effort
+    except Exception:
         return None
     return None

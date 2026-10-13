@@ -70,7 +70,7 @@ def _get_version() -> str:
         from importlib.metadata import version
 
         return version("mahavishnu")
-    except Exception:  # noqa: BLE001
+    except Exception:
         return "0.0.0"
 
 

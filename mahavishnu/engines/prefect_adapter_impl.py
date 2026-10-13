@@ -232,7 +232,7 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             "result": result,
             "task_id": task_spec.get("id", "unknown"),
         }
-    except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+    except Exception as e:
         return {
             "repo": repo_path,
             "status": "failed",
@@ -733,7 +733,7 @@ class PrefectAdapter(OrchestratorAdapter):
         if self._client_context is not None:
             try:
                 await self._client_context.__aexit__(None, None, None)
-            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+            except Exception as e:
                 logger.warning(f"Error closing Prefect client: {e}")
             finally:
                 self._client_context = None
@@ -743,7 +743,7 @@ class PrefectAdapter(OrchestratorAdapter):
             if callable(close_method):
                 try:
                     await close_method()
-                except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+                except Exception as e:
                     logger.warning(f"Error closing Prefect client session: {e}")
 
         self._client = None
@@ -763,7 +763,7 @@ class PrefectAdapter(OrchestratorAdapter):
         # at all, so fall back to a lightweight HTTP shim for lifecycle checks.
         try:
             client_factory = get_client()
-        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as exc:
             logger.warning(
                 "Falling back to lightweight Prefect client shim: %s",
                 exc,
@@ -937,7 +937,7 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             # Re-raise PrefectError without wrapping
             raise
-        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as exc:
             error = _map_prefect_exception(exc, "execute", self.config.api_url)
             logger.error(
                 "Prefect flow execution failed",
@@ -1023,7 +1023,7 @@ class PrefectAdapter(OrchestratorAdapter):
                     "api_url": self.config.api_url,
                 },
             }
-        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as exc:
             logger.warning(
                 "Prefect health check failed with unexpected error",
                 extra={"error": str(exc)},

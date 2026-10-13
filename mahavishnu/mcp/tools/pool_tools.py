@@ -7,14 +7,14 @@ import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from mcp_common.fastmcp import FastMCP  # noqa: TC002
+from mcp_common.fastmcp import FastMCP
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+except Exception:  # pragma: no cover - optional import for test patching
     MemoryAggregator = None
 
 try:
@@ -26,7 +26,7 @@ try:
     from mahavishnu.core.errors import RateLimitError
     from mahavishnu.pools.base import PoolConfig as RuntimePoolConfig
     from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+except Exception:  # pragma: no cover - optional import for test patching
     PoolSelector = None
     CallerKind = None
     RateLimitError = None
@@ -40,7 +40,7 @@ try:
     from mahavishnu.core.config import get_settings
     from mahavishnu.core.model_routing import TaskCategory, classify_task
     from mahavishnu.core.rate_limit import _estimate_retry
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+except Exception:  # pragma: no cover - optional import for test patching
     ConcurrencyGate = None
     TaskCategory = None
     classify_task = None
@@ -62,7 +62,7 @@ try:
         set_idempotency_breaker,
         set_idempotency_store,
     )
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+except Exception:  # pragma: no cover - optional import for test patching
     IdempotencyCircuitOpen = None
     IdempotencyStoreUnavailable = None
     TaskEventType = None
@@ -81,7 +81,7 @@ try:
     from mahavishnu.core.errors import WorktreeError, WorktreeLockedError
     from mahavishnu.core.worktree_manager import WorktreeInfo, WorktreeManager
     from mahavishnu.core.worktree_options import WorktreeOptions
-except Exception:  # pragma: no cover - optional import for test patching  # noqa: BLE001 - MCP boundary must preserve all operation failures
+except Exception:  # pragma: no cover - optional import for test patching
     WorktreeError = None
     WorktreeLockedError = None
     WorktreeInfo = None
@@ -174,7 +174,7 @@ async def _repo_has_git(repo_nickname: str) -> bool:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
-    except Exception:  # noqa: BLE001 - boundary: git is best-effort
+    except Exception:
         return False
     return proc.returncode == 0 and stdout.decode().strip() == "true"
 
@@ -305,7 +305,7 @@ def register_pool_tools(
         """List all active pools."""
         try:
             return await pool_manager.list_pools()  # type: ignore[no-any-return]
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to list pools: {e}")
             return []
 
@@ -445,7 +445,7 @@ def register_pool_tools(
                 max_workers=effective_max,
                 worker_type=worker_type,
             )
-        except Exception as exc:  # noqa: BLE001 - boundary: Pydantic validation can raise
+        except Exception as exc:
             return {"status": "failed", "error": f"invalid pool config: {exc}"}
 
         try:
@@ -501,7 +501,7 @@ def register_pool_tools(
                     "pools_active_before": pools_active_before,
                     "pools_active_after": pools_active_before,
                 }
-        except Exception as exc:  # noqa: BLE001 - boundary: health check failure is not fatal
+        except Exception as exc:
             logger.warning(
                 "pool_bootstrap: health check failed; attempting spawn anyway",
                 extra={"error": str(exc)},
@@ -607,7 +607,7 @@ def register_pool_tools(
         """Monitor pool status and metrics."""
         try:
             return await pool_manager.aggregate_results(pool_ids)  # type: ignore[no-any-return]
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to monitor pools: {e}")
             return {}
 
@@ -640,7 +640,7 @@ def register_pool_tools(
                 "status": "failed",
                 "error": "Pool does not support scaling (e.g., SessionBuddyPool is fixed at 3 workers)",
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to scale pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -660,7 +660,7 @@ def register_pool_tools(
                 "pool_id": pool_id,
                 "status": "closed",
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to close pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -681,7 +681,7 @@ def register_pool_tools(
                 "pools_closed": count,
                 "status": "all_closed",
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to close pools: {e}")
             return {
                 "pools_closed": 0,
@@ -694,7 +694,7 @@ def register_pool_tools(
         """Get health status of all pools."""
         try:
             return await pool_manager.health_check()  # type: ignore[no-any-return]
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to get health: {e}")
             return {
                 "status": "unhealthy",
@@ -720,7 +720,7 @@ def register_pool_tools(
             )
 
             return results
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to search memory: {e}")
             return []
 
@@ -787,7 +787,7 @@ def register_pool_tools(
         if coerce_caller_kind is not None:
             try:
                 coerced_kind = coerce_caller_kind(caller_kind)
-            except Exception:  # noqa: BLE001 - boundary: coerce is best-effort
+            except Exception:
                 coerced_kind = None
         else:
             coerced_kind = None
@@ -806,7 +806,7 @@ def register_pool_tools(
         if classify_task is not None:
             try:
                 task_category = classify_task(prompt)
-            except Exception:  # noqa: BLE001 - boundary: classify is best-effort
+            except Exception:
                 task_category = None
 
         gate = get_concurrency_gate()
@@ -948,7 +948,7 @@ def register_pool_tools(
                 if get_settings is not None:
                     try:
                         auto_spawn = get_settings().pools.auto_spawn
-                    except Exception:  # noqa: BLE001 - boundary: settings is best-effort
+                    except Exception:
                         auto_spawn = False  # fail-safe to existing default
                 else:
                     auto_spawn = False  # module-level import failed; fail-safe
@@ -1008,7 +1008,7 @@ def register_pool_tools(
                             worktree_id=worktree_info.worktree_id,
                             repo_path=worktree_repo_path,
                         )
-                    except Exception as exc:  # noqa: BLE001 - boundary cleanup is best-effort
+                    except Exception as exc:
                         logger.warning(
                             "worktree cleanup failed: %s",
                             exc,

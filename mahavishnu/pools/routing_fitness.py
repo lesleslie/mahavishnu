@@ -102,7 +102,7 @@ class RoutingFitnessReader:
         prefix = f"routing_fitness/{safe_task_class}/"
         try:
             entries = await self._mcp_state.list_prefix(prefix)
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.debug("Failed to list_prefix(%r) from MCP: %s", prefix, exc)
             return {}
 
@@ -115,7 +115,7 @@ class RoutingFitnessReader:
                 if selector:
                     try:
                         signals[selector] = FitnessSignal.from_dict(value)
-                    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                    except Exception as exc:
                         logger.debug("Failed to parse fitness signal at %r: %s", key, exc)
 
         return signals

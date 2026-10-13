@@ -86,7 +86,7 @@ class WorktreeProviderRegistry:
                     capabilities=["worktree", "v4"],
                     require_all=True,
                 )
-            except Exception as exc:  # noqa: BLE001 — best-effort resolver; logged + falls back to legacy health check
+            except Exception as exc:
                 # pragma: no cover - resolver faults
                 logger.warning(
                     "worktree-resolver-fault",
@@ -116,7 +116,7 @@ class WorktreeProviderRegistry:
                             if hasattr(p, "health") and await cast("Any", p).health():
                                 self._provider_health[p.provider_name()] = True
                                 return p
-                        except Exception:  # noqa: BLE001 — best-effort health probe; logged + falls through to legacy path
+                        except Exception:
                             logger.warning(
                                 "worktree-resolver-selected-unhealthy",
                                 extra={"provider": p.provider_name()},

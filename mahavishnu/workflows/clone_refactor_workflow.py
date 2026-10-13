@@ -189,7 +189,7 @@ async def write_canonical_symbol(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:  # noqa: BLE001 — SF-M7 partial-fill fallback
+        except Exception as meta_exc:
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -267,7 +267,7 @@ async def write_replacement_diff(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:  # noqa: BLE001 — SF-M7 partial-fill fallback
+        except Exception as meta_exc:
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -482,7 +482,7 @@ async def run_clone_refactor_dag(
                 )
             try:
                 return await write_replacement_diff(refactor_job_id, repo, diff)
-            except Exception as exc:  # noqa: BLE001 — REQ-CLONE-010 failure-path: convert unanticipated exception to typed RepoCommit
+            except Exception as exc:
                 return RepoCommit(
                     repo=repo,
                     sha=None,
@@ -543,7 +543,7 @@ async def run_clone_refactor_dag(
         # would otherwise replace the traceback).
         try:
             await release_cluster_claim(mcp_backend, cluster_id)
-        except Exception as release_exc:  # noqa: BLE001 — best-effort claim release; never shadow original exception per SF-B3
+        except Exception as release_exc:
             logger.warning(
                 "release_cluster_claim failed for cluster_id=%s (%s); continuing",
                 cluster_id,

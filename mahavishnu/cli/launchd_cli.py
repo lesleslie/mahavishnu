@@ -208,7 +208,7 @@ def status_prefect() -> None:
     try:
         resp = httpx.get(PREFECT_HEALTH_URL, timeout=5.0)
         typer.echo(f"Health probe  : HTTP {resp.status_code} — body={resp.text.strip()!r}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         typer.echo(f"Health probe  : failed — {exc}", err=True)
 
 

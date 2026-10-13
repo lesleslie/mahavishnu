@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 import logging
 from typing import Any
 
-from mcp_common.fastmcp import FastMCP  # noqa: TC002
+from mcp_common.fastmcp import FastMCP
 
 from mahavishnu.core.budget import BudgetRecord, BudgetSpec, BudgetStateMachine
 
@@ -69,7 +69,7 @@ async def budget_enforce_tool(
         existing_raw = await _budget_store.get(
             f"mahavishni://budgets/{workflow_id}.json"
         )
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must persist all failures
+    except Exception as exc:
         logger.warning("budget_enforce: read failed for %s: %s", workflow_id, exc)
         existing_raw = None
     sm = BudgetStateMachine(
@@ -91,7 +91,7 @@ async def budget_enforce_tool(
             f"mahavishni://budgets/{workflow_id}.json",
             sm.record.to_dict(),
         )
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must persist all failures
+    except Exception as exc:
         logger.warning("budget_enforce: persist failed for %s: %s", workflow_id, exc)
         return {
             "workflow_id": workflow_id,

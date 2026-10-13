@@ -114,7 +114,7 @@ class HatchetAdapterImpl(OrchestratorAdapter):
         if self._client is not None:
             try:
                 await self._client.close()
-            except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+            except Exception as exc:
                 logger.warning("Error closing Hatchet client: %s", exc)
             finally:
                 self._client = None
@@ -167,7 +167,7 @@ class HatchetAdapterImpl(OrchestratorAdapter):
                 "error": f"Hatchet workflow timed out after {timeout}s",
                 "output": "",
             }
-        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as exc:
             logger.error("Hatchet execute failed: %s", exc)
             return {"status": "error", "error": str(exc), "output": ""}
 
@@ -187,7 +187,7 @@ class HatchetAdapterImpl(OrchestratorAdapter):
                     "namespace": self._config.namespace,
                 },
             }
-        except Exception as exc:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as exc:
             return {
                 "status": "unhealthy",
                 "details": {"error": str(exc)},

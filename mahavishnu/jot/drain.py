@@ -489,7 +489,7 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
             events = parse_events(log_path())
             states = build_states(events, enrich=False).states
             current = resolve_handle(states, handle)
-        except Exception as exc:  # noqa: BLE001 - log path may be unreadable
+        except Exception as exc:
             log.error(
                 "JOT_AUTO_RETRY_FOLD_FAILED",
                 handle=handle,
@@ -633,7 +633,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
             workflow_id=workflow_id,
         )
         return
-    except Exception as exc:  # noqa: BLE001 - status fetch may raise; logged
+    except Exception as exc:
         log.error(
             "JOT_RECONCILE_STATUS_FAILED",
             handle=jot.short_id,
@@ -707,7 +707,7 @@ async def _background_reconciler_loop() -> None:
 
             events = parse_events(log_path())
             jots = build_states(events, enrich=False).states
-        except Exception as exc:  # noqa: BLE001 - log path may be unreadable
+        except Exception as exc:
             log.error(
                 "JOT_RECONCILER_FOLD_FAILED",
                 error=f"{type(exc).__name__}: {exc}",
@@ -718,7 +718,7 @@ async def _background_reconciler_loop() -> None:
                 continue
             try:
                 await _reconcile_if_in_flight(jot)
-            except Exception as exc:  # noqa: BLE001 - per-jot reconcile; logged
+            except Exception as exc:
                 log.error(
                     "JOT_RECONCLE_PER_JOT_FAILED",
                     handle=jot.short_id,
@@ -819,7 +819,7 @@ def drain_plan(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
+    except Exception as exc:
         log.error("JOT_DRAIN_PLAN_FOLD_FAILED", error=f"{type(exc).__name__}: {exc}")
         return DrainPlan(query=query, candidates=[], error=str(exc))
 
@@ -1075,7 +1075,7 @@ def _semantic_score(jot_text: str, ctx_text: str, embeddings: Any) -> float:
     global _last_surface_degraded
     try:
         emb = embeddings.embed([jot_text, ctx_text])
-    except TimeoutError, Exception:  # noqa: BLE001 - degraded embeddings path
+    except TimeoutError, Exception:
         _last_surface_degraded = True
         return 0.0
     # Defensive: OneiricEmbeddingsAdapter.embed is async; a sync caller
@@ -1155,7 +1155,7 @@ def surface_relevant(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:  # noqa: BLE001 - log path may be unreadable
+    except Exception as exc:
         log.warning(
             "JOT_SURFACE_FOLD_FAILED",
             error=f"{type(exc).__name__}: {exc}",

@@ -354,7 +354,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
         try:
             await websocket.send(WebSocketProtocol.encode(error))
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.debug(f"Failed to send rate limit error: {e}")
 
     async def _handle_request(self, websocket: Any, message: WebSocketMessage) -> None:
@@ -515,7 +515,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 }
             else:
                 return {"pool_id": pool_id, "status": "not_found"}
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Error getting pool status: {e}")
             return {"pool_id": pool_id, "status": "error", "error": str(e)}
 
@@ -537,7 +537,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
                 "stages_completed": 0,
                 "total_stages": 10,
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Error getting workflow status: {e}")
             return {"workflow_id": workflow_id, "status": "error", "error": str(e)}
 
@@ -1154,7 +1154,7 @@ async def broadcast_event(event_type: str, payload: dict[str, Any], *, room: str
         from mahavishnu.core.context import get_app_from_context
 
         app = get_app_from_context()
-    except Exception:  # noqa: BLE001 - defensive: context lookup is best-effort
+    except Exception:
         app = None
     server = getattr(app, "websocket_server", None) if app is not None else None
     if server is None:

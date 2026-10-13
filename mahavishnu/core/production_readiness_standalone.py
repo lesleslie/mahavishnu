@@ -186,7 +186,7 @@ class ProductionReadinessChecker:
                             # Exclude obvious placeholders/examples
                             if "example" not in content.lower() and "test" not in content.lower():
                                 issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception as e:
                     logger.debug("Pattern scan skipped: %s", e)
 
         if issues:
@@ -292,7 +292,7 @@ class ProductionReadinessChecker:
 
         # Check for structlog in dependencies
         try:
-            import structlog  # noqa: F401
+            import structlog
 
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"
@@ -422,7 +422,7 @@ class ProductionReadinessChecker:
             coverage_file = self.project_root / "coverage.xml"
             if coverage_file.exists():
                 try:
-                    import defusedxml.ElementTree as ET  # noqa: N817
+                    import defusedxml.ElementTree as ET
 
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()
@@ -460,7 +460,7 @@ class ProductionReadinessChecker:
             status = ReadinessStatus.WARN
             message = "pytest not available"
             details = None
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             status = ReadinessStatus.WARN
             message = f"Could not run tests: {e}"
             details = None

@@ -325,7 +325,7 @@ class ContentIngester:
                 ratio=savings["ratio"],
                 bits=self._compressor.bits,
             )
-        except Exception as e:  # noqa: BLE001 - optional compressor probe; estimation failure must not block ingestion
+        except Exception as e:
             self._log.warning("turboquant_estimate_failed", error=str(e))
             return None
 
@@ -772,7 +772,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:  # noqa: BLE001 - ingestion boundary: returns IngestionResult(success=False)
+        except Exception as e:
             self._log.error("ingestion_failed", url=url, error=str(e))
             return IngestionResult(
                 success=False,
@@ -881,7 +881,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:  # noqa: BLE001 - ingestion boundary: returns IngestionResult(success=False)
+        except Exception as e:
             self._log.error("file_ingestion_failed", file_path=str(file_path), error=str(e))
             return IngestionResult(
                 success=False,

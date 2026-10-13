@@ -322,7 +322,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                     combined.append(r)
             finally:
                 await akosha_client.aclose()
-        except Exception as exc:  # noqa: BLE001 - external service fan-out must not break the search response
+        except Exception as exc:
             logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
             sources.append(
                 {
@@ -380,7 +380,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                     combined.append(c)
             finally:
                 await sb_client.aclose()
-        except Exception as exc:  # noqa: BLE001 - external service fan-out must not break the search response
+        except Exception as exc:
             logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
             sources.append(
                 {
@@ -444,7 +444,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                         },
                     )
                     await server.broadcast_to_room(channel, msg)
-            except Exception as exc:  # noqa: BLE001 - websocket broadcast failure must not block the search result
+            except Exception as exc:
                 logger.warning("cross_repo_search: websocket broadcast failed: %s", exc)
 
         return result

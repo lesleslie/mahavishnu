@@ -11,7 +11,7 @@ primitive — see docs/specs/2026-08-04-d-lock-design.md.)
 
 from __future__ import annotations
 
-from collections.abc import Callable  # noqa: TC003 — type-only with __future__ annotations
+from collections.abc import Callable
 from datetime import UTC, datetime
 import errno
 import fcntl

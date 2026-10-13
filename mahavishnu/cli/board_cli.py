@@ -8,7 +8,7 @@ sanity-check a board without running the watcher daemon.
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
+from pathlib import Path
 
 from oneiric.core.logging import get_logger
 import typer

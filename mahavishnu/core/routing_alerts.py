@@ -177,7 +177,7 @@ class WebhookAlertHandler(AlertHandler):
                     self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
                 else:
                     self.logger.error(f"Failed to send alert: HTTP {response.status}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Webhook alert failed: {e}")
 
 
@@ -416,7 +416,7 @@ class RoutingAlertManager:
                     for handler in self.handlers:
                         try:
                             await handler.send_alert(alert)
-                        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+                        except Exception as e:
                             self.logger.error(f"Handler {handler.__class__.__name__} failed: {e}")
 
                 if all_alerts:

@@ -42,7 +42,7 @@ DEFAULT_CACHE_DIR = Path.home() / ".cache" / "mahavishnu"
 DEFAULT_USAGE_FILE = DEFAULT_CACHE_DIR / "llm_usage.json"
 
 
-class CostCeilingExceeded(Exception):  # noqa: N818 — public name pinned by audit H5 contract
+class CostCeilingExceeded(Exception):
     """Raised when a record_call would breach the weekly LLM cap.
 
     Carries the current count, the cap, and the remaining budget so the

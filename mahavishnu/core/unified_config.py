@@ -95,7 +95,7 @@ class UnifiedConfig:
             MahavishnuSettings()
         except ImportError:
             pass  # pydantic_settings not available — skip
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             # PydanticValidationError or similar
             from pydantic import ValidationError as PydanticValidationError
 

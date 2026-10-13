@@ -46,7 +46,7 @@ itself route to a pool.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable  # noqa: TC003 — used as runtime Callable type
+from collections.abc import Awaitable, Callable
 import logging
 from typing import Any, Protocol
 

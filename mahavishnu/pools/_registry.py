@@ -88,11 +88,11 @@ def canonicalize_pool_type(name: str) -> str:
 # ``mahavishnu.pools.__init__``.
 def _ensure_pool_registry_loaded() -> None:
     from . import (
-        gpu_handler_pool,  # noqa: F401  — registry side-effect
-        mahavishnu_pool,  # noqa: F401  — registry side-effect
-        pi_pool,  # noqa: F401  — registry side-effect (D1)
-        runpod_pool,  # noqa: F401  — registry side-effect
-        session_buddy_pool,  # noqa: F401  — registry side-effect
+        gpu_handler_pool,
+        mahavishnu_pool,
+        pi_pool,
+        runpod_pool,
+        session_buddy_pool,
     )
 
 

@@ -32,7 +32,7 @@ class _DefaultMonitorDataProvider:
 
             app = MahavishnuApp()
             metrics = await app.get_metrics()
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return []
         return [
             {
@@ -49,7 +49,7 @@ class _DefaultMonitorDataProvider:
 
             app = MahavishnuApp()
             metrics = await app.get_metrics()
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return []
         running = int(metrics.get("workers_running", 0) or 0)
         return [
@@ -110,7 +110,7 @@ if TUI_AVAILABLE:
                 try:
                     self._pool_data = await self._data_provider.get_pools()
                     self._worker_data = await self._data_provider.get_workers()
-                except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+                except Exception as e:
                     logger.debug("Data provider fetch skipped: %s", e)
             self._render_pools()
             self._render_workers()

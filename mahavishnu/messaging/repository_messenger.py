@@ -153,7 +153,7 @@ class RepositoryMessenger:
             for callback in self.subscribers[message.receiver_repo]:
                 try:
                     await callback(message)
-                except Exception as e:  # noqa: BLE001 - user-supplied callback; one failure must not stop delivery
+                except Exception as e:
                     self.logger.error(f"Error in subscriber callback: {e}")
 
         # Also notify wildcard subscribers (those interested in all messages)
@@ -161,7 +161,7 @@ class RepositoryMessenger:
             for callback in self.subscribers["*"]:
                 try:
                     await callback(message)
-                except Exception as e:  # noqa: BLE001 - user-supplied callback; one failure must not stop delivery
+                except Exception as e:
                     self.logger.error(f"Error in wildcard subscriber callback: {e}")
 
     async def _publish_canonical_event(self, message: RepositoryMessage) -> None:

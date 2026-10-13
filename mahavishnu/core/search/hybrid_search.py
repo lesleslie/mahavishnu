@@ -374,7 +374,7 @@ class HybridSearchEngine:
             if result.embeddings and len(result.embeddings) > 0:
                 return result.embeddings[0]
             return None
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(
                 "Failed to generate query embedding",
                 extra={"query": query[:100], "error": str(e)},

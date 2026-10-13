@@ -42,7 +42,7 @@ on exception).
 
 from __future__ import annotations
 
-from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
+from pathlib import Path
 import shutil
 from typing import Any
 import uuid
