@@ -32,6 +32,8 @@ from typing import TYPE_CHECKING, Any, cast
 _HEALTH_DB = Path(__file__).parent.parent.parent / "data" / "health.db"
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mahavishnu.core.adapters.base import OrchestratorAdapter
     from mahavishnu.core.routing_alerts import RoutingAlertManager
     from mahavishnu.core.routing_metrics import RoutingMetrics
@@ -259,7 +261,6 @@ class AdapterHealthMonitor:
             callers should use ``AdapterBridge.use()`` for hydration
             when they need a live instance.
         """
-        import inspect
 
         registry = self.registry
         candidates: list = []
@@ -267,7 +268,13 @@ class AdapterHealthMonitor:
             # Oneiric ``Resolver`` — emit all active Candidates per
             # orchestration domain.
             try:
-                candidates = list(registry.list_active("adapter"))
+                # ``registry`` is typed ``dict[str, OrchestratorAdapter] | Any``
+                # so ``registry.list_active`` is ``object`` to ``ty``. Annotate
+                # the local as ``Callable[[str], Any]`` to document the
+                # runtime signature; the type-ignore covers the cross-type
+                # assignment (proved safe by the surrounding ``hasattr``).
+                list_active: Callable[[str], Any] = registry.list_active  # ty: ignore[invalid-assignment]
+                candidates = list(list_active("adapter"))
             except Exception as exc:  # noqa: BLE001 - substrate boundary
                 logger.warning(f"Resolver list_active failed: {exc}")
                 return {}

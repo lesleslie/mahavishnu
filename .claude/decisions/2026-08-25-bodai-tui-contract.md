@@ -1,6 +1,6 @@
 ---
 status: active
-role: reference
+role: canonical
 date: 2026-08-25
 last_reviewed: 2026-10-12
 owner: les
@@ -39,7 +39,7 @@ The base class provides:
 * `_build_namespace()`, `_register_magics()`, `_get_banner()` hooks
   subclasses override to pre-load their component's domain objects.
 * The cross-shell UX standardization (uniform `--mode`, `--json`,
-  `--confirm` flags) is Plan B future; do not pre-empt it.
+  `--confirm` flags) is Plan B future; do not preempt it.
 
 `bodai shell` is the umbrella: it does NOT subclass AdminShell itself
 (it aggregates across components) — instead it uses IPython's own

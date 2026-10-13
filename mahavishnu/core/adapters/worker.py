@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from ...workers.manager import WorkerManager
-from ...workers.registry import resolve_worker_type
 from oneiric.adapters.metadata import AdapterMetadata
 
+from ...workers.manager import WorkerManager
+from ...workers.registry import resolve_worker_type
 from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..capabilities import (
     Capability,

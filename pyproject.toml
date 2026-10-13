@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.34.2"
+version = "0.35.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -84,8 +84,6 @@ dependencies = [
     "ty>=0.0.86",
     # Git operations
     "gitpython>=3.2.0",
-    # Async SQLite
-    "aiosqlite>=0.22.1",
     # Encryption
     "cryptography>=50.0.2",
     # Admin shell
@@ -121,6 +119,11 @@ dev = [
     "pytest-timeout>=2.4.0",
     "respx>=0.23.1",
     "freezegun>=1.5.5",
+    # Async SQLite — used only by tests/integration/test_migration_idempotency_key.py
+    # and SQLAlchemy URL strings in tests/integration/test_executions_cli.py and
+    # tests/unit/test_event_store_pending.py. Creosote flagged it as unused in
+    # the runtime venv; moved from [project] dependencies to dev.
+    "aiosqlite>=0.22.1",
     "ruff>=0.16.0",
     "pyright>=1.1.414",
     "pylint>=4.1.2",
@@ -614,6 +617,12 @@ exclude_deps = [
     # as unreferenced. Adding it here silences "Unused dependencies" without
     # the cost of restructuring the dep into a test-only group.
     "freezegun",
+    # aiosqlite: only used by tests/integration/test_migration_idempotency_key.py
+    # (and as a SQLAlchemy URL prefix in two other tests). Already moved from
+    # [project] dependencies to [dependency-groups] dev to keep runtime lean;
+    # this exclude silences creosote which reads dev sections by default but
+    # still scans only paths=["mahavishnu"].
+    "aiosqlite",
 ]
 
 [tool.refurb]

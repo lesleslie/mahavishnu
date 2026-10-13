@@ -519,9 +519,7 @@ class CapabilityRouter:
 
             required_caps_set = set(required_caps)
             matching_adapters = [
-                c
-                for c in candidates_iter
-                if required_caps_set.issubset(set(_cand_capabilities(c)))
+                c for c in candidates_iter if required_caps_set.issubset(set(_cand_capabilities(c)))
             ]
 
             if not matching_adapters:

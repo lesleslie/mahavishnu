@@ -1,10 +1,10 @@
 ---
-status: superseded
-role: canonical
+status: complete
+role: superseded
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-12
-superseded_by: 2026-10-12-adapter-registry-consolidation-to-oneiric
+superseded_by: docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md
 blocks_on: []
 decision_date: 2026-05-13
 topic: adapter-registry

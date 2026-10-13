@@ -75,7 +75,7 @@ def _substrate_int(env_suffix: str, default: int) -> int:
         env_suffix: Suffix appended to ``ONEIRIC__SUBSTRATE__`` (e.g.
             ``"POOL__WORKERS_PER_INSTANCE"``). Case-insensitive on read.
         default: Value to return when the env var is unset or
-            unparseable. Matches ``SubstrateSettings``'s own default
+            unparsable. Matches ``SubstrateSettings``'s own default
             for the corresponding field so the mirror cannot drift
             from the substrate.
     """
@@ -85,7 +85,7 @@ def _substrate_int(env_suffix: str, default: int) -> int:
         return default
     try:
         return int(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return default
 
 
@@ -106,6 +106,7 @@ def _substrate_bool(env_suffix: str, default: bool) -> bool:
     if lowered in {"false", "0", "no", "off"}:
         return False
     return default
+
 
 # ============================================================================
 # Agno Adapter Configuration (Phase 1)

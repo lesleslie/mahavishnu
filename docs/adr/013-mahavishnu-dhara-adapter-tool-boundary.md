@@ -1,10 +1,10 @@
 ---
-status: superseded
-role: canonical
+status: complete
+role: superseded
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-12
-superseded_by: 2026-10-12-adapter-registry-consolidation-to-oneiric
+superseded_by: docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md
 blocks_on: []
 decision_date: 2026-06-03
 topic: adapter-tool-boundary
@@ -168,8 +168,7 @@ If Option C is later adopted (remove):
 
 ## Amendment (2026-09-14)
 
-The serverless-readiness plan (`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`,
-status: active) extends the storage substrate with Oneiric
+The serverless-readiness plan (`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`, active status) extends the storage substrate with Oneiric
 adapter-based selection. ADR-013's "Option B keeps both surfaces,
 each answers a different question" framing is preserved, but the
 underlying persistence substrate assumed by Option B (Mahavishnu's

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, Mock
 
 from oneiric.adapters.metadata import AdapterMetadata
+
 from .adapters.base import OrchestratorAdapter
 
 if TYPE_CHECKING:

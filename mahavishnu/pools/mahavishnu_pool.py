@@ -15,6 +15,7 @@ not delegate to PoolManager.route_task" for the full rationale.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -87,11 +88,12 @@ class MahavishnuPool(BasePool):
         # legacy-worker-deprecation.md). Falls back to a per-pool subdir
         # of $XDG_DATA_HOME/mahavishnu/pools/ when the config doesn't
         # specify one, so the spawn no longer raises MHV-312.
-        config_writable_root = getattr(config, 'writable_root', None)
+        config_writable_root = getattr(config, "writable_root", None)
         if config_writable_root:
             self.writable_root = Path(config_writable_root).resolve()
         else:
             from platformdirs import user_data_dir
+
             base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
             self.writable_root = (base / "pools" / config.name / "workspace").resolve()
 

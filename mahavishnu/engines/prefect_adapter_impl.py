@@ -66,6 +66,7 @@ from unittest.mock import Mock
 
 import httpx2 as httpx
 from mcp_common.code_graph import CodeGraphAnalyzer, FunctionNode
+from oneiric.adapters.metadata import AdapterMetadata
 from prefect import flow, task
 from prefect.client.orchestration import get_client
 from prefect.exceptions import (
@@ -79,8 +80,6 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
-
-from oneiric.adapters.metadata import AdapterMetadata
 
 from ..core.adapters.base import (
     AdapterCapabilities,

@@ -145,9 +145,7 @@ class FastMCPServer:
             # for visibility in production logs.
             if self.terminal_manager is not None:
                 self.app.terminal_manager = self.terminal_manager
-                logger.warning(
-                    "Wired app.terminal_manager for downstream pool_manager init"
-                )
+                logger.warning("Wired app.terminal_manager for downstream pool_manager init")
 
         # Register HTTP health endpoint for Claude Code health checks
         # (already registered earlier in __init__ to bypass runtime init —

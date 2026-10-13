@@ -55,7 +55,7 @@ class RuntimeFactsBuilder:
     LEGACY_HEALTH_FIELD = "unknown"  # Placeholder for legacy wire shape.
     DEFAULT_ADAPTER_TYPE = "engine"
 
-    def __init__(self, app: "MahavishnuApp") -> None:
+    def __init__(self, app: MahavishnuApp) -> None:
         self._app = app
 
     def build_all(self) -> dict[str, Any]:
@@ -82,9 +82,7 @@ class RuntimeFactsBuilder:
             "available_names": available_names,
         }
 
-    def _build_entry(
-        self, key: str, adapter: "OrchestratorAdapter"
-    ) -> dict[str, Any]:
+    def _build_entry(self, key: str, adapter: OrchestratorAdapter) -> dict[str, Any]:
         """Translate one ``OrchestratorAdapter`` into the legacy catalog row.
 
         Reads only protocol attributes; missing attributes fall back to

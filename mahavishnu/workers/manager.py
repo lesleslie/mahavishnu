@@ -22,6 +22,8 @@ from .capabilities import (
 from .registry import WorkerConfig, get_worker_config, get_worker_entry
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from ..core.config import MahavishnuSettings
     from ..terminal.manager import TerminalManager
 
@@ -151,6 +153,7 @@ class WorkerManager:
         max_concurrent: int = 10,
         session_buddy_client: Any = None,
         mcp_client: Any = None,
+        writable_root: Path | None = None,
         *,
         settings: MahavishnuSettings | None = None,
     ) -> None:
@@ -161,12 +164,19 @@ class WorkerManager:
             max_concurrent: Maximum concurrent workers (1-100)
             session_buddy_client: Session-Buddy MCP client
             mcp_client: MCP client for application workers
+            writable_root: Default filesystem path the ShepherdBackendWorker
+                (the only supported worker_type since 2026-09-24) may write
+                into. Per-spawn overrides accepted by ``spawn_workers``.
+                Pool-level pools (PoolConfig.writable_root) flow through
+                to here via MahavishnuPool.__init__; if both are None the
+                shepherd constructor raises MHV-312 with a clear remediation.
             settings: Optional MahavishnuSettings for capability evaluation
         """
         self.terminal_manager = terminal_manager
         self.max_concurrent = max(1, min(max_concurrent, 100))
         self.session_buddy_client = session_buddy_client
         self.mcp_client = mcp_client
+        self.writable_root = writable_root
         self.settings = settings
         self._workers: dict[str, BaseWorker] = {}
         self._semaphore = asyncio.Semaphore(self.max_concurrent)

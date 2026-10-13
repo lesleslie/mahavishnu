@@ -29,9 +29,9 @@ This plan collapses to a single substrate (UUID7) with no ULID surface.
 ## Goals
 
 1. Single validation surface in `oneiric.core.ids` — `is_valid_id` accepts UUID7 only.
-2. Single column on each migrated table — drop the dual-write `uuid7_id` column.
-3. Single data format in every irreplaceable store — every legacy ULID row is rewritten to a deterministic UUID7.
-4. No call sites read the legacy format.
+1. Single column on each migrated table — drop the dual-write `uuid7_id` column.
+1. Single data format in every irreplaceable store — every legacy ULID row is rewritten to a deterministic UUID7.
+1. No call sites read the legacy format.
 
 ## Tasks
 
@@ -48,6 +48,7 @@ For every row in `session_buddy`'s `~/.claude/data/reflection.duckdb`:
 `SELECT id, length(id)` — find rows where `length(id) == 26` (ULID).
 
 For each:
+
 - Compute the deterministic UUID7: `uuid7(seed=hashlib.sha256(legacy_id.encode()).digest()[:8])` (the recipe from the 2026-10-11 post-mortem).
 - UPDATE the row: `id = <new_uuid7>`, `uuid7_id = NULL` (no longer needed).
 
@@ -99,6 +100,7 @@ The plan's validation matrix at §7 has these rows:
 > | `python -c 'from oneiric.core.ids import is_uuid7; print(is_uuid7("01ARZ3NDEKTS6PQRYF"))'` | `False` (strict UUID7-only check rejects ULID) | post-Phase 2 |
 
 After Phase 9, the first row should change to:
+
 > | `python -c 'from oneiric.core.ids import is_valid_id; print(is_valid_id("01ARZ3NDEKTS6PQRYF"))'` | `False` (ULID rejected) | post-Phase 9 |
 
 ## Exit criteria
@@ -115,8 +117,9 @@ After Phase 9, the first row should change to:
 The Phase 1 archive at `~/.local/state/bodai/db-archive/2026-10-11-uuid7-migration/`
 preserves the pre-Phase-9 state for all 6 repos' irreplaceable stores
 (including `reflection.duckdb`). To reverse Phase 9:
+
 1. `tar -xzf <archive-tarball> -C /` for the relevant DBs.
-2. Revert the `is_valid_id` patch.
-3. Revert the read-path code changes.
+1. Revert the `is_valid_id` patch.
+1. Revert the read-path code changes.
 
 The archive's SHA256SUMS were verified at Phase 8 step 1.

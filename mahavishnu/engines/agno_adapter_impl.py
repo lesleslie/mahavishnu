@@ -27,9 +27,8 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 import httpx2 as httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 from oneiric.adapters.metadata import AdapterMetadata
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..core.capabilities import (

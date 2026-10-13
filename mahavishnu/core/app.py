@@ -371,10 +371,7 @@ class MahavishnuApp:
                             # shape is unexpected.
                             if isinstance(data, dict) and "result" in data:
                                 result = data["result"]
-                                if (
-                                    isinstance(result, dict)
-                                    and "cycles_total" in result
-                                ):
+                                if isinstance(result, dict) and "cycles_total" in result:
                                     signature = int(result["cycles_total"])
                                 else:
                                     signature = hash(response.text)
@@ -389,19 +386,15 @@ class MahavishnuApp:
                             last_signature = signature
                             try:
                                 await self.report_runtime_facts()
-                            except Exception:  # noqa: BLE001
-                                logger.exception(
-                                    "runtime-facts reconfigure push failed"
-                                )
+                            except Exception:
+                                logger.exception("runtime-facts reconfigure push failed")
 
                         await asyncio.sleep(poll_interval_seconds)
             except asyncio.CancelledError:
                 logger.debug("runtime-facts poll loop cancelled")
                 raise
-            except Exception:  # noqa: BLE001 - poll loop must not crash silently
-                logger.exception(
-                    "runtime-facts poll loop crashed; reconfigure hook disabled"
-                )
+            except Exception:
+                logger.exception("runtime-facts poll loop crashed; reconfigure hook disabled")
 
         # Probe Oneiric reachability first (do NOT block boot if unreachable)
         try:
@@ -433,8 +426,7 @@ class MahavishnuApp:
             name=watcher_name,
         )
         logger.info(
-            "runtime-facts-watcher component=mahavishnu status=ok "
-            "name=%s poll_interval=%.1f",
+            "runtime-facts-watcher component=mahavishnu status=ok name=%s poll_interval=%.1f",
             watcher_name,
             poll_interval_seconds,
         )
@@ -1348,8 +1340,6 @@ class MahavishnuApp:
         """
         import os
         import uuid
-        from time import time_ns
-        from typing import Any
 
         import httpx
 
@@ -1359,14 +1349,10 @@ class MahavishnuApp:
 
         # In-flight de-dup: drop the call if a push is already running.
         if self.runtime_facts_lock.locked():
-            logger.debug(
-                "runtime-facts: push already in flight, dropping concurrent call"
-            )
+            logger.debug("runtime-facts: push already in flight, dropping concurrent call")
             return
         async with self.runtime_facts_lock:
-            oneiric_url = os.environ.get(
-                self.ONEIRIC_ENV_VAR, self.ONEIRIC_MCP_URL
-            )
+            oneiric_url = os.environ.get(self.ONEIRIC_ENV_VAR, self.ONEIRIC_MCP_URL)
             try:
                 timeout_seconds = float(
                     os.environ.get(
@@ -1458,7 +1444,7 @@ class MahavishnuApp:
                         "runtime-push component=mahavishnu adapter=%s status=ok",
                         key,
                     )
-                except Exception:  # noqa: BLE001 - push failure must not block boot
+                except Exception:
                     logger.exception(
                         "runtime-push component=mahavishnu adapter=%s status=fail",
                         key,

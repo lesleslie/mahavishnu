@@ -1,9 +1,9 @@
 ---
-status: superseded
-role: implementation
+status: complete
+role: superseded
 date: 2026-07-16
 last_reviewed: 2026-10-12
-superseded_by: 2026-10-12-adapter-registry-consolidation-to-oneiric
+superseded_by: docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md
 topic: observability
 title: "Mahavishnu Ecosystem Control Plane Update Plan"
 

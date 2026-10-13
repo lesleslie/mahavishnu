@@ -1,6 +1,6 @@
 # Plan Index
 
-_Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
+_Regenerated 2026-10-13 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 ### Docs: adr
 
@@ -17,11 +17,11 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/adr/006-simplify-storage-architecture.md`](../adr/006-simplify-storage-architecture.md) | 2026-07-16 | `complete` | `superseded` | `storage-consolidation` | ADR 006: Simplify Storage Architecture from 4-System to 2-System |
 | [`docs/adr/007-saga-coordinator-pattern.md`](../adr/007-saga-coordinator-pattern.md) | 2026-07-16 | `complete` | `superseded` | `saga-pattern` | ADR 007: Implement Saga Coordinator for Distributed Transactions |
 | [`docs/adr/008-zero-downtime-migration.md`](../adr/008-zero-downtime-migration.md) | 2026-07-16 | `complete` | `superseded` | `zero-downtime-migration` | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
-| [`docs/adr/009-hybrid-adapter-registry.md`](../adr/009-hybrid-adapter-registry.md) | 2026-07-16 | `superseded` | `canonical` | `adapter-registry` | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
+| [`docs/adr/009-hybrid-adapter-registry.md`](../adr/009-hybrid-adapter-registry.md) | 2026-07-16 | `complete` | `superseded` | `adapter-registry` | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
 | [`docs/adr/010-adapter-security.md`](../adr/010-adapter-security.md) | 2026-07-16 | `active` | `canonical` | `adapter-security` | ADR 010: Adapter Security Specification |
 | [`docs/adr/011-two-router-composition.md`](../adr/011-two-router-composition.md) | 2026-07-16 | `active` | `canonical` | `routing-composition` | ADR 011: Two-Router Composition |
 | [`docs/adr/012-learning-pipeline-runtime-owner.md`](../adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | `active` | `canonical` | `learning-pipeline` | ADR 012: Learning Pipeline Runtime Owner |
-| [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `superseded` | `canonical` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
+| [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `complete` | `superseded` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | `active` | `canonical` | `honcho-routing` | ADR 014: Honcho Peer-Model Routing Precedence |
 | [`docs/adr/015-multi-agent-review.md`](../adr/015-multi-agent-review.md) | 2026-08-23 | `complete` | `historical` | `storage-abstraction-review` | ADR 015 Multi-Agent Review — Findings |
 | [`docs/adr/015-worktree-and-cache-storage-v4.md`](../adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | `draft` | `canonical` | `storage-abstraction` | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
@@ -52,7 +52,7 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-04-16-bodai-agent-platform-master-spec.md`](2026-04-16-bodai-agent-platform-master-spec.md) | 2026-04-16 | `complete` | `canonical` | `mcp-design` | Bodai Agent Platform Master Spec |
 | [`docs/plans/2026-04-16-bodai-master-implementation-plan.md`](2026-04-16-bodai-master-implementation-plan.md) | 2026-04-16 | `complete` | `superseded` | `convergence-control-plane` | Bodai Master Implementation Plan |
 | [`docs/plans/2026-04-25-ecosystem-docs-canonicalization-plan.md`](2026-04-25-ecosystem-docs-canonicalization-plan.md) | 2026-07-16 | `complete` | `implementation` | `convergence-control-plane` | Ecosystem Docs Canonicalization Plan |
-| [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `superseded` | `implementation` | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
+| [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `complete` | `superseded` | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
 | [`docs/plans/2026-04-25-type-adapter-migration-plan.md`](2026-04-25-type-adapter-migration-plan.md) | 2026-04-25 | `shipped` | `historical` | `adapter-architecture` | Type Adapter Migration Plan |
 | [`docs/plans/2026-04-26-agent-skill-modernization.md`](2026-04-26-agent-skill-modernization.md) | 2026-07-16 | `shipped` | `implementation` | `agent-skill-modernization` | Agent & Skill Modernization Implementation Plan |
 | [`docs/plans/2026-04-26-code-indexing-integration.md`](2026-04-26-code-indexing-integration.md) | 2026-07-16 | `shipped` | `implementation` | `code-indexing-integration` | Code Indexing Integration Plan |
@@ -191,21 +191,21 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-c.md`](2026-09-27-shared-bodai-substrate-phase-c.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase C: Cold Consolidation (Akosha + SB) — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-d.md`](2026-09-27-shared-bodai-substrate-phase-d.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase D: Embedding Consolidation — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e1.md`](2026-09-27-shared-bodai-substrate-phase-e1.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E1: Settings Substrate + Feed-State Methods — Implementation Plan |
-| [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `active` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
+| [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `shipped` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-10-09-bodai-search-infrastructure-fix.md`](2026-10-09-bodai-search-infrastructure-fix.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP Search Infrastructure Fix — akosha / crackerjack / session-buddy |
 | [`docs/plans/2026-10-09-mcp-health-check-enrichment.md`](2026-10-09-mcp-health-check-enrichment.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP `/health` Enrichment — Fleet-Wide Feed Aggregation + 503 on Degraded |
-| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `partial` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
+| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `shipped` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
 | [`docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md`](2026-10-12-adapter-registry-consolidation-to-oneiric.md) | 2026-10-12 | `shipped` | `canonical` | `adapter-registry` | Adapter Registry Consolidation to Oneiric — Implementation Plan |
-| [`docs/plans/2026-10-12-crackerjack-c-wire-task6-async-durability.md`](2026-10-12-crackerjack-c-wire-task6-async-durability.md) | 2026-10-12 | `active` | `implementation` | `crackerjack-async-durability` | C-WIRE Task 6: C-ASYNC-DURABILITY — AsyncTaskManager substrate-agnostic lock consumer |
+| [`docs/plans/2026-10-12-crackerjack-c-wire-task6-async-durability.md`](2026-10-12-crackerjack-c-wire-task6-async-durability.md) | 2026-10-12 | `active` | `implementation` | `crackerjack-async-durability` | C-WIRE Task 6: C-ASYNC-DURABILITY — AsyncTaskManager SQLite-Backed Persistence |
 | [`docs/plans/2026-10-12-dhara-lock-delete.md`](2026-10-12-dhara-lock-delete.md) | 2026-10-12 | `active` | `canonical` | `dhara-lock-substrate-compat-rot` | Delete `dhara/dhara/lock/` — Substrate-Compat Shim Rot |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `draft` | `implementation` | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-per-engine-emit-node-dispatch.md`](2026-10-12-per-engine-emit-node-dispatch.md) | 2026-10-12 | `active` | `implementation` | `conductor-emit-node-dispatch` | Per-Engine `emit_node` Dispatch Tables for Conductor |
 | [`docs/plans/2026-10-12-plan-index-sync-script-hardening.md`](2026-10-12-plan-index-sync-script-hardening.md) | 2026-10-12 | `shipped` | `implementation` | `lifecycle` | Shipped 2026-10-12 |
-| [`docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md`](2026-10-12-pool-tools-debt-and-shepherd-registry.md) | 2026-10-12 | `active` | `implementation` | `pool-tools-debt-shepherd-registry` | Carve-out: pool_tools.py budget_enforce extract + shepherd worker_registry entry |
-| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `active` | `implementation` | `ruff-cleanup-post-regrowth` | Ruff Cleanup Post-Regrowth (2026-10-12) |
-| [`docs/plans/2026-10-12-stale-noqa-cleanup.md`](2026-10-12-stale-noqa-cleanup.md) | 2026-10-12 | `active` | `implementation` | `stale-noqa-cleanup` | Stale `# noqa` Marker Cleanup (RUF100, 2026-10-12) |
-| [`docs/plans/2026-10-12-tool-profile-ecosystem-doc.md`](2026-10-12-tool-profile-ecosystem-doc.md) | 2026-10-12 | `active` | `implementation` | `mcp-tool-profile-ecosystem-doc` | Generate `docs/ecosystem/MCP_TOOL_PROFILES.md` (W4 cross-cutting deliverable) |
+| [`docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md`](2026-10-12-pool-tools-debt-and-shepherd-registry.md) | 2026-10-12 | `active` | `implementation` | `pool-tools-budget-extract` | Extract `budget_enforce` from `pool_tools.py` to `budget_tools.py` |
+| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `active` | `implementation` | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
+| [`docs/plans/2026-10-12-stale-noqa-cleanup.md`](2026-10-12-stale-noqa-cleanup.md) | 2026-10-12 | `active` | `implementation` | `stale-noqa-cleanup` | Hard dep: this plan needs RUF100 to be an active rule, which is |
+| [`docs/plans/2026-10-12-tool-profile-ecosystem-doc.md`](2026-10-12-tool-profile-ecosystem-doc.md) | 2026-10-12 | `active` | `implementation` | `mcp-tool-profile-ecosystem-doc` | Generate `docs/ecosystem/MCP_TOOL_PROFILES.md` via `scripts/generate_tool_profiles_doc.py` |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -235,7 +235,7 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/initiatives/09-typed-event-envelope-governance.md`](initiatives/09-typed-event-envelope-governance.md) | 2026-07-16 | `complete` | `historical` | `adapter-tool-boundary` | Initiative 9: Typed Event Envelope + Governance |
 | [`docs/plans/initiatives/10-low-value-tool-retirement.md`](initiatives/10-low-value-tool-retirement.md) | 2026-07-16 | `complete` | `historical` | `convergence-control-plane` | Initiative 10: Low-Value Tool Retirement |
 | [`docs/plans/initiatives/11-cache-tiered-retrieval-defaults.md`](initiatives/11-cache-tiered-retrieval-defaults.md) | 2026-07-16 | `complete` | `historical` | `convergence-control-plane` | Initiative 11: Cache + Tiered Retrieval Defaults |
-| [`docs/plans/initiatives/12-golden-paths-workflows.md`](initiatives/12-golden-paths-workflows.md) | 2026-07-16 | `superseded` | `historical` | `convergence-control-plane` | Initiative 12: Golden Paths for Top Workflows |
+| [`docs/plans/initiatives/12-golden-paths-workflows.md`](initiatives/12-golden-paths-workflows.md) | 2026-07-16 | `complete` | `superseded` | `convergence-control-plane` | Initiative 12: Golden Paths for Top Workflows |
 | [`docs/plans/initiatives/13-dashboard-phase2-textual.md`](initiatives/13-dashboard-phase2-textual.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 13: Dashboard Phase 2 (Textual, Conditional) |
 | [`docs/plans/initiatives/14-dashboard-phase3-grafana-alignment.md`](initiatives/14-dashboard-phase3-grafana-alignment.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 14: Dashboard Phase 3 (Grafana Alignment) |
 | [`docs/plans/initiatives/15-content-quality-ml-enhancements.md`](initiatives/15-content-quality-ml-enhancements.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 15: Content Quality ML Enhancements |
@@ -339,7 +339,7 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-04-16-bodai-agent-platform-master-spec.md`](2026-04-16-bodai-agent-platform-master-spec.md) | 2026-04-16 | `complete` | `canonical` | `mcp-design` | Bodai Agent Platform Master Spec |
 | [`docs/plans/2026-04-16-bodai-master-implementation-plan.md`](2026-04-16-bodai-master-implementation-plan.md) | 2026-04-16 | `complete` | `superseded` | `convergence-control-plane` | Bodai Master Implementation Plan |
 | [`docs/plans/2026-04-25-ecosystem-docs-canonicalization-plan.md`](2026-04-25-ecosystem-docs-canonicalization-plan.md) | 2026-07-16 | `complete` | `implementation` | `convergence-control-plane` | Ecosystem Docs Canonicalization Plan |
-| [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `superseded` | `implementation` | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
+| [`docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`](2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) | 2026-07-16 | `complete` | `superseded` | `observability` | Mahavishnu Ecosystem Control Plane Update Plan |
 | [`docs/plans/2026-04-25-type-adapter-migration-plan.md`](2026-04-25-type-adapter-migration-plan.md) | 2026-04-25 | `shipped` | `historical` | `adapter-architecture` | Type Adapter Migration Plan |
 | [`docs/plans/2026-04-26-agent-skill-modernization.md`](2026-04-26-agent-skill-modernization.md) | 2026-07-16 | `shipped` | `implementation` | `agent-skill-modernization` | Agent & Skill Modernization Implementation Plan |
 | [`docs/plans/2026-04-26-code-indexing-integration.md`](2026-04-26-code-indexing-integration.md) | 2026-07-16 | `shipped` | `implementation` | `code-indexing-integration` | Code Indexing Integration Plan |
@@ -478,21 +478,21 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-c.md`](2026-09-27-shared-bodai-substrate-phase-c.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase C: Cold Consolidation (Akosha + SB) — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-d.md`](2026-09-27-shared-bodai-substrate-phase-d.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase D: Embedding Consolidation — Implementation Plan |
 | [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e1.md`](2026-09-27-shared-bodai-substrate-phase-e1.md) | 2026-09-27 | `draft` | `implementation` | `shared-oneiric-substrate` | Phase E1: Settings Substrate + Feed-State Methods — Implementation Plan |
-| [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `active` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
+| [`docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md`](2026-09-27-shared-bodai-substrate-phase-e2.md) | 2026-09-27 | `shipped` | `implementation` | `shared-oneiric-substrate` | Phase E2: Per-Component Adoption of Settings Substrate — Implementation Plan |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-10-09-bodai-search-infrastructure-fix.md`](2026-10-09-bodai-search-infrastructure-fix.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP Search Infrastructure Fix — akosha / crackerjack / session-buddy |
 | [`docs/plans/2026-10-09-mcp-health-check-enrichment.md`](2026-10-09-mcp-health-check-enrichment.md) | 2026-10-09 | `shipped` | `implementation` | `mcp-design` | Bodai MCP `/health` Enrichment — Fleet-Wide Feed Aggregation + 503 on Degraded |
-| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `partial` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
+| [`docs/plans/2026-10-11-uuid7-only-migration.md`](2026-10-11-uuid7-only-migration.md) | 2026-10-11 | `shipped` | `canonical` | `uuid7-migration` | UUID7-Only Migration — Eliminate ULID Across Bodai Core Components |
 | [`docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md`](2026-10-12-adapter-registry-consolidation-to-oneiric.md) | 2026-10-12 | `shipped` | `canonical` | `adapter-registry` | Adapter Registry Consolidation to Oneiric — Implementation Plan |
-| [`docs/plans/2026-10-12-crackerjack-c-wire-task6-async-durability.md`](2026-10-12-crackerjack-c-wire-task6-async-durability.md) | 2026-10-12 | `active` | `implementation` | `crackerjack-async-durability` | C-WIRE Task 6: C-ASYNC-DURABILITY — AsyncTaskManager substrate-agnostic lock consumer |
+| [`docs/plans/2026-10-12-crackerjack-c-wire-task6-async-durability.md`](2026-10-12-crackerjack-c-wire-task6-async-durability.md) | 2026-10-12 | `active` | `implementation` | `crackerjack-async-durability` | C-WIRE Task 6: C-ASYNC-DURABILITY — AsyncTaskManager SQLite-Backed Persistence |
 | [`docs/plans/2026-10-12-dhara-lock-delete.md`](2026-10-12-dhara-lock-delete.md) | 2026-10-12 | `active` | `canonical` | `dhara-lock-substrate-compat-rot` | Delete `dhara/dhara/lock/` — Substrate-Compat Shim Rot |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `draft` | `implementation` | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-per-engine-emit-node-dispatch.md`](2026-10-12-per-engine-emit-node-dispatch.md) | 2026-10-12 | `active` | `implementation` | `conductor-emit-node-dispatch` | Per-Engine `emit_node` Dispatch Tables for Conductor |
 | [`docs/plans/2026-10-12-plan-index-sync-script-hardening.md`](2026-10-12-plan-index-sync-script-hardening.md) | 2026-10-12 | `shipped` | `implementation` | `lifecycle` | Shipped 2026-10-12 |
-| [`docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md`](2026-10-12-pool-tools-debt-and-shepherd-registry.md) | 2026-10-12 | `active` | `implementation` | `pool-tools-debt-shepherd-registry` | Carve-out: pool_tools.py budget_enforce extract + shepherd worker_registry entry |
-| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `active` | `implementation` | `ruff-cleanup-post-regrowth` | Ruff Cleanup Post-Regrowth (2026-10-12) |
-| [`docs/plans/2026-10-12-stale-noqa-cleanup.md`](2026-10-12-stale-noqa-cleanup.md) | 2026-10-12 | `active` | `implementation` | `stale-noqa-cleanup` | Stale `# noqa` Marker Cleanup (RUF100, 2026-10-12) |
-| [`docs/plans/2026-10-12-tool-profile-ecosystem-doc.md`](2026-10-12-tool-profile-ecosystem-doc.md) | 2026-10-12 | `active` | `implementation` | `mcp-tool-profile-ecosystem-doc` | Generate `docs/ecosystem/MCP_TOOL_PROFILES.md` (W4 cross-cutting deliverable) |
+| [`docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md`](2026-10-12-pool-tools-debt-and-shepherd-registry.md) | 2026-10-12 | `active` | `implementation` | `pool-tools-budget-extract` | Extract `budget_enforce` from `pool_tools.py` to `budget_tools.py` |
+| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `active` | `implementation` | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
+| [`docs/plans/2026-10-12-stale-noqa-cleanup.md`](2026-10-12-stale-noqa-cleanup.md) | 2026-10-12 | `active` | `implementation` | `stale-noqa-cleanup` | Hard dep: this plan needs RUF100 to be an active rule, which is |
+| [`docs/plans/2026-10-12-tool-profile-ecosystem-doc.md`](2026-10-12-tool-profile-ecosystem-doc.md) | 2026-10-12 | `active` | `implementation` | `mcp-tool-profile-ecosystem-doc` | Generate `docs/ecosystem/MCP_TOOL_PROFILES.md` via `scripts/generate_tool_profiles_doc.py` |
 | [`docs/plans/IMPLEMENTATION_EXECUTION_STRATEGY.md`](IMPLEMENTATION_EXECUTION_STRATEGY.md) | 2026-04-02 | `complete` | `canonical` | `convergence-control-plane` | Implementation Execution Strategy |
 | [`docs/plans/PLAN_AUDIT_2026-09-12.md`](PLAN_AUDIT_2026-09-12.md) | 2026-09-12 | `active` | `implementation` | `followups-lifecycle` | Plan Audit — 2026-09-12 |
 | [`docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md`](PREFECT_ADAPTER_COMPLETION_PLAN.md) | 2026-07-16 | `complete` | `historical` | `adapter-architecture` | Prefect Adapter Completion Plan |
@@ -522,7 +522,7 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/initiatives/09-typed-event-envelope-governance.md`](initiatives/09-typed-event-envelope-governance.md) | 2026-07-16 | `complete` | `historical` | `adapter-tool-boundary` | Initiative 9: Typed Event Envelope + Governance |
 | [`docs/plans/initiatives/10-low-value-tool-retirement.md`](initiatives/10-low-value-tool-retirement.md) | 2026-07-16 | `complete` | `historical` | `convergence-control-plane` | Initiative 10: Low-Value Tool Retirement |
 | [`docs/plans/initiatives/11-cache-tiered-retrieval-defaults.md`](initiatives/11-cache-tiered-retrieval-defaults.md) | 2026-07-16 | `complete` | `historical` | `convergence-control-plane` | Initiative 11: Cache + Tiered Retrieval Defaults |
-| [`docs/plans/initiatives/12-golden-paths-workflows.md`](initiatives/12-golden-paths-workflows.md) | 2026-07-16 | `superseded` | `historical` | `convergence-control-plane` | Initiative 12: Golden Paths for Top Workflows |
+| [`docs/plans/initiatives/12-golden-paths-workflows.md`](initiatives/12-golden-paths-workflows.md) | 2026-07-16 | `complete` | `superseded` | `convergence-control-plane` | Initiative 12: Golden Paths for Top Workflows |
 | [`docs/plans/initiatives/13-dashboard-phase2-textual.md`](initiatives/13-dashboard-phase2-textual.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 13: Dashboard Phase 2 (Textual, Conditional) |
 | [`docs/plans/initiatives/14-dashboard-phase3-grafana-alignment.md`](initiatives/14-dashboard-phase3-grafana-alignment.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 14: Dashboard Phase 3 (Grafana Alignment) |
 | [`docs/plans/initiatives/15-content-quality-ml-enhancements.md`](initiatives/15-content-quality-ml-enhancements.md) | 2026-07-16 | `complete` | `historical` | `observability` | Initiative 15: Content Quality ML Enhancements |
@@ -541,7 +541,7 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
 | [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `mcp-routing` | Bodai MCP and agent routing pattern |
-| [`.claude/decisions/2026-08-25-bodai-tui-contract.md`](../../.claude/decisions/2026-08-25-bodai-tui-contract.md) | 2026-08-25 | `active` | `reference` | `bodai-tui-contract` | Bodai TUI Contract |
+| [`.claude/decisions/2026-08-25-bodai-tui-contract.md`](../../.claude/decisions/2026-08-25-bodai-tui-contract.md) | 2026-08-25 | `active` | `canonical` | `bodai-tui-contract` | Bodai TUI Contract |
 | [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `session-worktree-isolation` | Cross-repo fanout CWD isolation |
 | [`.claude/decisions/2026-09-26-mcp-launcher-migration.md`](../../.claude/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `complete` | `implementation` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
 | [`.claude/decisions/2026-10-03-main-branch-protection.md`](../../.claude/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | `active` | `canonical` | `main-branch-protection` | GitHub branch protection on `main` across the Bodai core-6 |
@@ -613,12 +613,11 @@ _Regenerated 2026-10-12 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 ## Lifecycle × Role Distribution
 
-| Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
+| Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 12 | 50 | 4 | 4 | 23 | **93** |
-| `implementation` | 151 | 35 | 4 | 70 | 67 | **327** |
+| `canonical` | 12 | 51 | 2 | 6 | 23 | **94** |
+| `implementation` | 151 | 33 | 4 | 72 | 67 | **327** |
 | `umbrella` | · | · | 2 | · | 2 | **4** |
 | `historical` | 1 | 4 | · | 4 | 122 | **131** |
-| `superseded` | · | · | · | · | 17 | **17** |
-| **Total** | **164** | **89** | **10** | **78** | **231** | **572** |
-
+| `superseded` | · | · | · | · | 23 | **23** |
+| **Total** | **164** | **88** | **8** | **82** | **237** | **579** |

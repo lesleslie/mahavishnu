@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-10-12
+
+### Added
+
+- adapters: Phase 2 — drop HybridAdapterRegistry, route through Oneiric
+- cli: `mahavishnu demo <engine|adapter>` framework — tmux + prefect + 7 stubs
+- cli: `mahavishnu launchd prefect` opt-in plist management
+- mahavishnu: Phase 2 — wire runtime facts push to Oneiric (Plan 1 v3)
+- mahavishnu: Surface canonical 4-field shape on /health body + integration test (Plan 2 Phase E2 Task 5)
+- mahavishnu: UUID7-only substrate (Phase 6 of cross-repo migration)
+- Phase 1 — re-wire engine adapters to Oneiric substrate
+
+### Changed
+
+- mahavishnu: Adopt OneiricSettings.substrate for pool/retry/telemetry/auth
+- UUID7-Only Migration (cross-plan coordination) [migration/2026-10-11-uuid7-only]
+
+### Fixed
+
+- config: Point oneiric settings loader at the repo root
+- docs/drafts: Quote multiline unquoted values in akosha-eval-metric-sink frontmatter (REQ-IDX-001)
+- docs/drafts: Quote multiline unquoted values in akosha-tool-call-feed-lifecycle frontmatter (REQ-IDX-001)
+- docs/drafts: Quote multiline unquoted values in eval-methodology frontmatter (REQ-IDX-001)
+- Import Any in demo_cli.py for ty strict mode
+- mahavishnu: Thread writable_root to ShepherdBackendWorker
+- mcp: Wire terminal_manager into app.terminal_manager (Phase 8 post-mortem)
+- mcp: Wire terminal_manager into app.terminal_manager (Phase 8 post-mortem)
+- mcp: Wire terminal_manager into pool_manager singleton (Phase 8 post-mortem)
+- prefect: Patch three adapter bugs surfaced by live 3.8.8 demo
+- scripts/backfill_plan_spec_titles: Replace non-greedy regex with line-anchored splitter
+- scripts/regenerate_plan_index: Read full file in _has_frontmatter (REQ-IDX-003)
+- scripts/regenerate_plan_index: Replace non-greedy regex with line-anchored parser (REQ-IDX-002)
+
+### Documentation
+
+- adapters: Phase 3 — doc cleanup after registry consolidation
+- Archive worker-readiness + 7 new follow-up plans + TUI decision doc
+- plans: Add 2026-10-12 Phase 9 ULID surface elimination plan
+- plans: Add T1.5 to Phase 9 (redo Phase 0.5 absorption)
+- plans: Mark Phase 3 Task 3.2 done (oneiric ccc5525)
+- plans: Mark Phase 9 ULID surface elimination and UUID7 migration as shipped
+- plans: Mark Phase E2 Tasks 1/2/3 done (akosha 9c9ab67, sb aeaa680, mahavishnu 676a6d8)
+- plans: Mark Plan 2 Phase E2 complete
+- plans: Mark Plan 2 Phase E2 shipped (was complete)
+- plans: Mark Plan 2 Phase E2 Task 5 complete
+- plans: Re-review cycle 2 — close 3 critical structural items + minor cleanups
+- plans: Update 2026-10-11 validation matrix to reflect Phase 9 T1
+- prefect-demo-launchd: Archive plan + recurring rules
+
+### Testing
+
+- health_integration: Mock MCP client in test_state_change_to_unhealthy
+- mahavishnu: Assert auth short-circuit preserved across substrate adoption (Plan 2 Phase E2 Task 4)
+
+### Internal
+
+- docs: Add plan-index-sync-script-hardening plan (2026-10-12)
+- docs: Cleanup working tree — UUID7 post-mortem + plan refresh
+- docs: Frontmatter sweep — refresh last_reviewed on 12 active plans
+- docs: Mark plan-index-sync-script-hardening as shipped (2026-10-12)
+- docs: Plan audit cleanup + langgraph CLI default fix
+- docs: Refresh 3 active plans + add Phase 1b test backfill (2026-10-12)
+- mahavishnu: Final ULID surface cleanup
+
 ## [0.34.2] - 2026-10-11
 
 ### Documentation

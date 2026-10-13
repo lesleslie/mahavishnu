@@ -58,7 +58,7 @@ def _split_frontmatter(text: str) -> tuple[str, str, str, str] | None:
             open_line = lines[0]
             frontmatter_text = "".join(lines[1:i])
             sep_line = lines[i]
-            body = "".join(lines[i + 1:])
+            body = "".join(lines[i + 1 :])
             return open_line, frontmatter_text, sep_line, body
     return None
 
