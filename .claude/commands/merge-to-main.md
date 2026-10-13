@@ -140,3 +140,7 @@ wherever `.review-state.json` left off.
 - Tests: `tests/unit/core/test_merge_to_main.py`
 - SessionEnd hook: `.claude/hooks/agent-merge-on-end.py`
 - Dev-log writer: `mahavishnu/core/dev_log.py`
+- Decision docs:
+  `.claude/decisions/2026-10-03-mainautopush.md` (auto-push exception),
+  `.claude/decisions/2026-10-13-prepushconsolidationgate.md`
+  (pre-push consolidation gate; further narrowing)
