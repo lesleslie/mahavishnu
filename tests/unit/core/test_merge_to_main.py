@@ -11,6 +11,7 @@ from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     _check_pending_commit_eligibility,
     _check_sibling_worktree_state,
+    _list_repo_worktrees,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
     EXIT_CRACKERJACK_FAILURE,
@@ -715,6 +716,54 @@ def test_consolidation_gate_lineage_check_fails_on_unauthorized_commit(
     )
     ineligible = _check_pending_commit_eligibility("origin/main")
     assert ineligible == ["def456"]
+
+
+def test_list_repo_worktrees_finds_siblings_excluding_self(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``_list_repo_worktrees`` returns siblings from the parent
+    directory (the repo dir under the worktree base), excluding the
+    cwd worktree itself.
+
+    Setup: ``<base>/<repo>/a`` + ``<base>/<repo>/b`` + ``<base>/<repo>/c``;
+    cwd is ``<base>/<repo>/b``. Expected: ``[a, c]``.
+    """
+    base = tmp_path / "worktrees"
+    repo_dir = base / "test-repo"
+    repo_dir.mkdir(parents=True)
+    (repo_dir / "a").mkdir()
+    (repo_dir / "b").mkdir()
+    (repo_dir / "c").mkdir()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.get_worktree_base_path",
+        lambda: base,
+    )
+    cwd = repo_dir / "b"
+    siblings = _list_repo_worktrees(cwd)
+    sibling_names = [s.name for s in siblings]
+    assert sibling_names == ["a", "c"]
+    assert cwd not in siblings
+
+
+def test_list_repo_worktrees_returns_empty_for_worktree_outside_base(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Worktrees NOT under the configured base return no siblings
+    (no false positives for fresh checkouts or non-Vishnu worktrees).
+    """
+    base = tmp_path / "worktrees"
+    base.mkdir()
+    # Worktree path is at tmp_path/foo, NOT under base/
+    cwd = tmp_path / "foo"
+    cwd.mkdir()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.get_worktree_base_path",
+        lambda: base,
+    )
+    siblings = _list_repo_worktrees(cwd)
+    assert siblings == []
 
 
 # Helper subprocess result class used by the consolidation-gate tests.

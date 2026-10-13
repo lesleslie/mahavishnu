@@ -379,21 +379,38 @@ def run_push(base_ref: str = "main") -> tuple[int, str]:
 def _list_repo_worktrees(worktree_root: Path) -> list[Path]:
     """List co-located worktrees for the current repo's worktree-base.
 
-    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`: the
-    worktree base is resolved by `get_worktree_base_path()` (env-var-aware
-    precedence per `~/.claude/CLAUDE.md` "Worktree location preference").
-    Returns the list of directory entries under
-    `<worktree-base>/<basename-of-cwd>/`. The cwd worktree itself is
-    included; the caller filters as needed via the four-state check.
+    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md` and
+    `~/.claude/CLAUDE.md` "Worktree location preference": Bodai repos
+    place their worktrees at
+    ``<worktree-base>/<basename-of-cwd>/<worktree-name>/``. So the
+    *parent* of the worktree path is the repo dir under the worktree
+    base; siblings of the current worktree live there. The cwd
+    worktree itself is excluded from the returned list.
 
     Public for testability via monkeypatch.
     """
     base = get_worktree_base_path()
-    repo_basename = worktree_root.name
-    co_located = base / repo_basename
-    if not co_located.exists():
+    repo_dir = worktree_root.parent
+    # Verify the parent is directly under the configured worktree base.
+    # If the worktree is elsewhere (e.g. fresh checkout), there are no
+    # co-located siblings to check.
+    if repo_dir.parent != base:
         return []
-    return sorted(p for p in co_located.iterdir() if p.is_dir())
+    try:
+        worktree_root_resolved = worktree_root.resolve()
+    except (OSError, RuntimeError):
+        worktree_root_resolved = worktree_root
+    siblings: list[Path] = []
+    for p in repo_dir.iterdir():
+        if not p.is_dir():
+            continue
+        try:
+            if p.resolve() == worktree_root_resolved:
+                continue
+        except (OSError, RuntimeError):
+            pass
+        siblings.append(p)
+    return sorted(siblings)
 
 
 def _check_sibling_worktree_state(
