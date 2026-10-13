@@ -596,25 +596,98 @@ def test_run_pipeline_consolidation_gate_runs_regardless_of_no_push(
 def test_consolidation_gate_sibling_worktree_check_passes_on_merged_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """State (a): sibling branch HEAD ancestor of local main → passes.
+    """State (a1): sibling branch HEAD ancestor of local main → passes.
 
     Verifies ``_check_sibling_worktree_state`` returns ``None`` when
     the sibling is listed in ``git worktree list --porcelain`` and
-    its branch HEAD is an ancestor of local main.
+    its branch HEAD is an ancestor of local main (regular merge or
+    fast-forward case).
     """
     sibling = tmp_path / "sibling-a"
     sibling.mkdir()
     worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-merged\n"
-    monkeypatch.setattr(
-        "subprocess.run",
-        lambda *a, **kw: _fake_subprocess(
-            returncode=0,
-            stdout="feat-merged" if "rev-parse" in (a[0] if a else []) else "",
-            branch_probe_rc=0,
-        ),
-    )
+
+    def fake_run(args, **kwargs):  # noqa: ARG001
+        if "merge-base" in args:
+            return _FakeProc(returncode=0, stdout="")  # ancestor → rc 0
+        if "rev-parse" in args:
+            return _FakeProc(returncode=0, stdout="feat-merged")
+        if "log" in args:
+            return _FakeProc(returncode=0, stdout="")  # no squash-merge commit
+        return _FakeProc(returncode=0, stdout="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
     result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
-    assert result is None, "merged sibling (state a) must pass the gate"
+    assert result is None, "merged sibling (state a1) must pass the gate"
+
+
+def test_consolidation_gate_sibling_worktree_check_passes_on_squash_merge(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """State (a2): squash-merge commit on local main with subject
+    ``merge: <branch> -> main`` → passes.
+
+    The branch HEAD is NOT an ancestor of local main (squash-merge
+    creates a new commit), but the squash-merge commit's subject
+    matches the canonical template, so the branch is "merged" via
+    the squash-merge convention.
+    """
+    sibling = tmp_path / "sibling-sq"
+    sibling.mkdir()
+    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-squash\n"
+
+    def fake_run(args, **kwargs):  # noqa: ARG001
+        if "merge-base" in args:
+            return _FakeProc(returncode=1, stdout="")  # NOT an ancestor
+        if "rev-parse" in args:
+            return _FakeProc(returncode=0, stdout="feat-squash")
+        if "log" in args:
+            # Local main has the squash-merge commit with matching subject
+            return _FakeProc(
+                returncode=0,
+                stdout="abc1234 merge: feat-squash -> main\ndef5678 other commit",
+            )
+        return _FakeProc(returncode=0, stdout="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is None, (
+        "squash-merged sibling (state a2 via commit subject match) must pass the gate"
+    )
+
+
+def test_consolidation_gate_sibling_worktree_check_holds_back_on_unrelated_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Negative case: branch not ancestor AND no matching squash-merge
+    commit → holds back.
+
+    Regression test for the squash-merge detection: even though the
+    new (a2) check recognizes squash-merge commits, it must NOT
+    treat an unrelated branch as merged just because a different
+    squash-merge commit is on local main.
+    """
+    sibling = tmp_path / "sibling-x"
+    sibling.mkdir()
+    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-unrelated\n"
+
+    def fake_run(args, **kwargs):  # noqa: ARG001
+        if "merge-base" in args:
+            return _FakeProc(returncode=1, stdout="")  # NOT an ancestor
+        if "rev-parse" in args:
+            return _FakeProc(returncode=0, stdout="feat-unrelated")
+        if "log" in args:
+            # Local main has a squash-merge for a DIFFERENT branch
+            return _FakeProc(
+                returncode=0,
+                stdout="abc1234 merge: feat-other -> main",
+            )
+        return _FakeProc(returncode=0, stdout="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is not None
+    assert "feat-unrelated" in result
 
 
 def test_consolidation_gate_sibling_worktree_check_fails_on_wip_branch(

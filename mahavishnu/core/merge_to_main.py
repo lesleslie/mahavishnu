@@ -454,7 +454,13 @@ def _check_sibling_worktree_state(
             if stages_completed:
                 return None  # (c) mid-review in progress
 
-    # State (a): branch HEAD ancestor of local main.
+    # State (a): branch HEAD is "merged" into local main.
+    # Two sub-checks:
+    #   (a1) branch HEAD is an ancestor of local main HEAD (regular
+    #        merge or fast-forward case)
+    #   (a2) local main has a commit with subject "merge: <branch> -> <base>"
+    #        (squash-merge case — the squash-merge creates a NEW commit,
+    #        so the branch tip is NOT an ancestor of local main)
     branch_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "-C", str(sibling_path), "rev-parse", "--abbrev-ref", "HEAD"],
         capture_output=True,
@@ -471,7 +477,20 @@ def _check_sibling_worktree_state(
         check=False,
     )
     if ancestor_result.returncode == 0:
-        return None  # (a) branch is ancestor of main
+        return None  # (a1) branch is ancestor of main
+
+    # (a2) Look for a squash-merge commit on local main whose subject
+    # matches the squash-merge template for this branch.
+    squash_subject = f"merge: {branch} -> {base}"
+    log_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "log", "--format=%s", base],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if log_result.returncode == 0 and squash_subject in log_result.stdout:
+        return None  # (a2) squash-merge commit exists on local main
+
     return f"sibling {sibling_path.name}: branch {branch!r} has unmerged commits"
 
 
