@@ -348,7 +348,12 @@ def register_capability_tools(
 
     @server.tool(
         name="execute_capability",
-        description="Plan and queue an ExecutionDAG (emits the envelopes — dispatch is Phase 4).",
+        description=(
+            "Plan an ExecutionDAG, dispatch each node via its engine in level-by-level waves, "
+            "and persist envelopes. Returns status='queued' with envelope_ids populated when "
+            "at least one engine satisfies each required capability; status='rejected' when no "
+            "engine satisfies a required capability (dispatch is then skipped)."
+        ),
     )
     @require_mcp_auth(
         rbac_manager=rbac_manager,

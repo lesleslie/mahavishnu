@@ -12,14 +12,15 @@ adapter and the require_mcp_auth decorator at the FastMCP boundary.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.capabilities import (
     CapabilityExecutionResult,
+    EnvelopeId,
     EngineRegistration,
     TraceId,
 )
-from mahavishnu.core.conductor import plan, resolve
+from mahavishnu.core.conductor import _dispatch_dag_waves, plan, resolve
 from mahavishnu.engines import load_engine_registrations
 from mahavishnu.mcp.tools.capability_tools import _worker_engine_registrations
 
@@ -69,7 +70,63 @@ async def execute_capability_for_test(
     return CapabilityExecutionResult(status="planned", trace_id=dag.trace_id, dag=dag)
 
 
+async def execute_capability_with_dispatch_for_test(
+    spec: CapabilitySpec,
+    settings: MahavishnuSettings,
+    *,
+    mcp: Any,
+    adapters: dict[str, Any] | None = None,
+) -> tuple[CapabilityExecutionResult, dict[str, EnvelopeId]]:
+    """Test-only entrypoint that exercises ``_dispatch_dag_waves``.
+
+    Returns ``(result, envelope_ids)``. ``result`` carries
+    ``status='queued'`` when at least one node was dispatched, otherwise
+    ``status='rejected'``. ``envelope_ids`` is the per-node mapping that
+    ``_dispatch_dag_waves`` produced.
+
+    The MCP-tool version of this surface in
+    ``mahavishnu/mcp/tools/capability_tools.py:execute_capability`` cannot
+    call this path yet because the production MCP adapter wiring site does
+    not exist; that is documented as a follow-up in plan
+    §"Required Code Changes" (Step 3.8 / Phase 5 Step 5.3).
+    """
+    from mahavishnu.engines import emit_node_dispatch
+
+    all_engines = _all_registrations_for_test(settings)
+    candidates = resolve(spec, all_engines)
+    tid = spec.trace_id or TraceId("0" * 32)
+    if not candidates:
+        return (
+            CapabilityExecutionResult(
+                status="rejected",
+                trace_id=tid,
+                error="no engine provides any required capability",
+            ),
+            {},
+        )
+    dag = plan(spec, candidates, trace_id=tid)
+
+    if adapters is not None:
+        emit_node_dispatch.register(adapters)
+    envelope_ids = await _dispatch_dag_waves(
+        dag,
+        trace_id=tid,
+        mcp=mcp,  # type: ignore[arg-type]
+        prompt_for_root=spec.prompt,
+    )
+    return (
+        CapabilityExecutionResult(
+            status="queued",
+            trace_id=dag.trace_id,
+            dag=dag,
+            error=None,
+        ),
+        envelope_ids,
+    )
+
+
 __all__ = [
     "_all_registrations_for_test",
     "execute_capability_for_test",
+    "execute_capability_with_dispatch_for_test",
 ]
