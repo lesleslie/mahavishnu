@@ -9,6 +9,8 @@ import pytest
 
 from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
+    _check_pending_commit_eligibility,
+    _check_sibling_worktree_state,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
     EXIT_CRACKERJACK_FAILURE,
@@ -298,6 +300,21 @@ def _stub_helpers_for_pipeline(
         "mahavishnu.core.merge_to_main._run_cleanup",
         lambda *args, **kwargs: (0, ""),
     )
+    # Stage 4.5 — pre-push consolidation gate (per new decision doc).
+    # Default: gate passes (clears), no held-back siblings, no
+    # ineligible commits. Tests that exercise the gate override these.
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_consolidation_gate",
+        lambda *args, **kwargs: (True, [], []),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._write_held_back_log",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._write_sticky_failure_marker",
+        lambda *args, **kwargs: None,
+    )
 
 
 def test_run_pipeline_proceeds_when_review_three_pass(
@@ -429,3 +446,296 @@ def test_run_pipeline_crackerjack_failure_blocks_merge(
     rc = run_pipeline(tmp_path, branch="feat-test", base="main")
     assert rc == EXIT_CRACKERJACK_FAILURE
     assert squash_called == [], "stage 4 must not run after crackerjack failure"
+
+
+# ── run_pipeline: stage 4.5 pre-push consolidation gate ────────────────
+# Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`.
+
+
+def test_run_pipeline_proceeds_when_consolidation_gate_passes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Gate clears → stage 5 push runs → EXIT_OK.
+
+    Stub: gate returns ``(True, [], [])`` — no held-back siblings, no
+    ineligible commits. Pipeline continues to push + cleanup; final
+    return is ``EXIT_OK``.
+    """
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": ""},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": ""},
+            {"agent": "performance-review-specialist", "decision": "pass", "note": ""},
+        ],
+    )
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_OK
+
+
+def test_run_pipeline_holds_back_when_consolidation_gate_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Gate holds back → push NOT invoked → stage 6 cleanup NOT invoked
+    → pipeline returns EXIT_OK (held back is not a failure).
+
+    The held-back path writes the dev-log entry via
+    ``_write_held_back_log`` and the sticky-failure marker via
+    ``_write_sticky_failure_marker``; both are verified by recorder.
+    """
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": ""},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": ""},
+            {"agent": "performance-review-specialist", "decision": "pass", "note": ""},
+        ],
+    )
+    held_back_siblings = ["sibling .worktrees/repo/b: branch 'feat-wip' has unmerged commits"]
+    ineligible_commits = ["deadbeef0000"]
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_consolidation_gate",
+        lambda *a, **kw: (False, held_back_siblings, ineligible_commits),
+    )
+    log_writes: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._write_held_back_log",
+        lambda *a, **kw: log_writes.append({"args": a, "kwargs": kw}),
+    )
+    sticky_writes: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._write_sticky_failure_marker",
+        lambda *a, **kw: sticky_writes.append({"args": a, "kwargs": kw}),
+    )
+
+    push_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_push",
+        lambda *a, **kw: (push_called.append(True) or 0, ""),
+    )
+    cleanup_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_cleanup",
+        lambda *a, **kw: (cleanup_called.append(True) or 0, ""),
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_OK, "held back returns EXIT_OK (squash-merge succeeded locally)"
+    assert push_called == [], "stage 5 push must not run after gate hold-back"
+    assert cleanup_called == [], "stage 6 cleanup must not run after gate hold-back"
+    assert len(log_writes) == 1, "dev-log entry must be written on hold-back"
+    assert len(sticky_writes) == 1, "sticky-failure marker must be written on hold-back"
+
+
+def test_run_pipeline_consolidation_gate_bypassed_via_no_consolidation_gate_flag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``no_consolidation_gate=True`` → gate NOT invoked → push runs.
+
+    Per the decision doc: ``/merge-to-main --no-consolidation-gate`` is
+    the operator escape hatch (e.g., emergency hotfix). The gate
+    function must not be called when this flag is set.
+    """
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": ""},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": ""},
+            {"agent": "performance-review-specialist", "decision": "pass", "note": ""},
+        ],
+    )
+    gate_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_consolidation_gate",
+        lambda *a, **kw: (gate_called.append(True) or True, [], []),
+    )
+
+    rc = run_pipeline(
+        tmp_path, branch="feat-test", base="main", no_consolidation_gate=True,
+    )
+    assert rc == EXIT_OK
+    assert gate_called == [], "gate must not run when no_consolidation_gate=True"
+
+
+def test_run_pipeline_consolidation_gate_runs_regardless_of_no_push(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``no_push=True`` → gate STILL runs (the gate is independent of
+    the push step).
+
+    Per the decision doc: the gate is a pre-push check that evaluates
+    co-located worktrees and pending commits. Whether the user opts
+    to push does not change whether the gate should evaluate. If the
+    gate holds back with ``no_push=True``, the pipeline still returns
+    EXIT_OK (the held-back state is recorded but push was not going
+    to fire anyway).
+    """
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": ""},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": ""},
+            {"agent": "performance-review-specialist", "decision": "pass", "note": ""},
+        ],
+    )
+    gate_called: list[bool] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_consolidation_gate",
+        lambda *a, **kw: (gate_called.append(True) or True, [], []),
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main", no_push=True)
+    assert rc == EXIT_OK
+    assert gate_called == [True], (
+        "gate is a pre-push check independent of push; it evaluates "
+        "regardless of --no-push"
+    )
+
+
+def test_consolidation_gate_sibling_worktree_check_passes_on_merged_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """State (a): sibling branch HEAD ancestor of local main → passes.
+
+    Verifies ``_check_sibling_worktree_state`` returns ``None`` when
+    the sibling is listed in ``git worktree list --porcelain`` and
+    its branch HEAD is an ancestor of local main.
+    """
+    sibling = tmp_path / "sibling-a"
+    sibling.mkdir()
+    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-merged\n"
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **kw: _fake_subprocess(
+            returncode=0,
+            stdout="feat-merged" if "rev-parse" in (a[0] if a else []) else "",
+            branch_probe_rc=0,
+        ),
+    )
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is None, "merged sibling (state a) must pass the gate"
+
+
+def test_consolidation_gate_sibling_worktree_check_fails_on_wip_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """State (no-match): sibling branch HEAD NOT ancestor of main →
+    holds back.
+
+    Verifies ``_check_sibling_worktree_state`` returns a reason
+    string when the sibling has unmerged WIP.
+    """
+    sibling = tmp_path / "sibling-wip"
+    sibling.mkdir()
+    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-wip\n"
+
+    def fake_run(args, **kwargs):  # noqa: ARG001
+        if "rev-parse" in args:
+            return _FakeProc(returncode=0, stdout="feat-wip")
+        if "merge-base" in args:
+            return _FakeProc(returncode=1, stdout="")
+        return _FakeProc(returncode=0, stdout="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is not None
+    assert "feat-wip" in result
+
+
+def test_consolidation_gate_sibling_worktree_check_passes_on_sticky_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """State (d): sibling has ``.review-state.json`` with
+    ``stage_failed`` non-null → passes (explicitly abandoned).
+    """
+    sibling = tmp_path / "sibling-d"
+    sibling.mkdir()
+    state_path = sibling / ".review-state.json"
+    state_path.write_text(
+        '{"schema_version": 1, "stage_failed": "user_abandoned"}',
+    )
+    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-x\n"
+
+    # rev-parse / merge-base would fail (WIP), but state (d) short-circuits
+    # before they run. So no subprocess mocking needed.
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is None
+
+
+def test_consolidation_gate_sibling_worktree_check_passes_on_no_worktree_entry(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """State (b): sibling appears in ``<worktree-base>/<basename>/`` but
+    NOT in ``git worktree list --porcelain`` → passes (pruned).
+    """
+    sibling = tmp_path / "sibling-b"
+    sibling.mkdir()
+    # Worktree list is empty (sibling was pruned from git but the
+    # directory still exists on disk — the gate tolerates this).
+    worktree_list_output = ""
+    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    assert result is None
+
+
+def test_consolidation_gate_lineage_check_passes_on_squash_merge_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pending commit with subject ``merge: <branch> -> <base>``
+    (squash-merge template from ``run_squash_merge``) → eligible.
+
+    Verifies the (α) eligibility-check accepts the squash-merge
+    shape produced by stage 4.
+    """
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **kw: _FakeProc(
+            returncode=0,
+            stdout="abc123|merge: feat-x -> main\ndef456|merge: feat-y -> main",
+        ),
+    )
+    ineligible = _check_pending_commit_eligibility("origin/main")
+    assert ineligible == []
+
+
+def test_consolidation_gate_lineage_check_fails_on_unauthorized_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pending commit with subject NOT matching squash template →
+    ineligible (held back unless ``--no-consolidation-gate``).
+
+    For v1: any commit whose subject does not start with
+    ``merge: `` is ineligible.
+    """
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **kw: _FakeProc(
+            returncode=0,
+            stdout="abc123|merge: feat-x -> main\ndef456|wip: typo\n",
+        ),
+    )
+    ineligible = _check_pending_commit_eligibility("origin/main")
+    assert ineligible == ["def456"]
+
+
+# Helper subprocess result class used by the consolidation-gate tests.
+class _FakeProc:
+    def __init__(
+        self,
+        returncode: int = 0,
+        stdout: str = "",
+        stderr: str = "",
+    ) -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _fake_subprocess(
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+    branch_probe_rc: int = 0,
+) -> _FakeProc:
+    """Returns a single _FakeProc; tests that need branching
+    behavior should define their own fake_run instead."""
+    return _FakeProc(returncode=returncode, stdout=stdout, stderr=stderr)

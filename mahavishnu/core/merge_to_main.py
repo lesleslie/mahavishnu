@@ -17,10 +17,13 @@ import random
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+from .paths import get_worktree_base_path
 
 REVIEW_STATE_SCHEMA_VERSION: int = 1
 REVIEW_STATE_FILENAME: str = ".review-state.json"
@@ -373,6 +376,247 @@ def run_push(base_ref: str = "main") -> tuple[int, str]:
     return (push_result.returncode, push_result.stderr)
 
 
+def _list_repo_worktrees(worktree_root: Path) -> list[Path]:
+    """List co-located worktrees for the current repo's worktree-base.
+
+    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`: the
+    worktree base is resolved by `get_worktree_base_path()` (env-var-aware
+    precedence per `~/.claude/CLAUDE.md` "Worktree location preference").
+    Returns the list of directory entries under
+    `<worktree-base>/<basename-of-cwd>/`. The cwd worktree itself is
+    included; the caller filters as needed via the four-state check.
+
+    Public for testability via monkeypatch.
+    """
+    base = get_worktree_base_path()
+    repo_basename = worktree_root.name
+    co_located = base / repo_basename
+    if not co_located.exists():
+        return []
+    return sorted(p for p in co_located.iterdir() if p.is_dir())
+
+
+def _check_sibling_worktree_state(
+    worktree_root: Path,
+    sibling_path: Path,
+    base: str,
+    worktree_list_output: str,
+) -> str | None:
+    """Check if a sibling worktree is in one of the four acceptable states.
+
+    Returns ``None`` if the sibling passes (merge / pruned / mid-review /
+    abandoned); returns a reason string if the sibling holds back the push.
+
+    The ``worktree_list_output`` parameter is the cached stdout of
+    ``git worktree list --porcelain`` — passed in so the caller can share
+    one subprocess invocation across all siblings.
+    """
+    try:
+        if sibling_path.resolve() == worktree_root.resolve():
+            return None  # self, skip
+    except (OSError, RuntimeError):
+        pass
+
+    # State (b): pruned — not in `git worktree list --porcelain` output.
+    # The porcelain output lists paths; the sibling is "live" iff its
+    # resolved path appears in the output.
+    if str(sibling_path.resolve()) not in worktree_list_output:
+        return None
+
+    # State (c) / (d): `.review-state.json` mid-review or sticky-failed.
+    state_path = sibling_path / ".review-state.json"
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            data = None
+        if isinstance(data, dict):
+            if data.get("stage_failed") is not None:
+                return None  # (d) explicitly abandoned
+            stages_completed = data.get("stages_completed") or []
+            if stages_completed:
+                return None  # (c) mid-review in progress
+
+    # State (a): branch HEAD ancestor of local main.
+    branch_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "-C", str(sibling_path), "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if branch_result.returncode != 0 or not branch_result.stdout.strip():
+        return f"sibling {sibling_path.name}: cannot determine branch HEAD"
+    branch = branch_result.stdout.strip()
+    ancestor_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "merge-base", "--is-ancestor", branch, base],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if ancestor_result.returncode == 0:
+        return None  # (a) branch is ancestor of main
+    return f"sibling {sibling_path.name}: branch {branch!r} has unmerged commits"
+
+
+def _check_pending_commit_eligibility(base: str) -> list[str]:
+    """Check the pending-commit eligibility per the gate's check (2).
+
+    For v1: accepts commits whose subject matches the squash-merge
+    template ``merge: <branch> -> <base>`` (eligibility check α).
+    Checks (β) fast-forward replay and (γ) authorized version bump are
+    documented in the decision doc but not enforced in v1 to keep the
+    eligibility check simple — operators use `--no-consolidation-gate`
+    for the rare non-squash case.
+
+    Returns the list of ineligible commit SHAs (empty list = all eligible).
+    """
+    log_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "log", "--format=%H|%s", f"{base}..HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if log_result.returncode != 0:
+        return []  # git failure — assume eligible (don't block on git error)
+    ineligible: list[str] = []
+    for line in log_result.stdout.splitlines():
+        if "|" not in line:
+            continue
+        sha, subject = line.split("|", 1)
+        if subject.startswith("merge: ") and " -> " in subject:
+            continue  # (α) squash-merge commit
+        ineligible.append(sha)
+    return ineligible
+
+
+def _run_consolidation_gate(
+    worktree_root: Path,
+    base: str,
+) -> tuple[bool, list[str], list[str]]:
+    """Pre-push consolidation gate.
+
+    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`:
+    checks (1) co-located worktrees for unmerged WIP and (2) pending
+    commit eligibility. Returns ``(gate_clear, held_back_sibling_reasons,
+    ineligible_commit_shas)``. ``gate_clear=True`` means push is
+    authorized; ``gate_clear=False`` means the push is held back (the
+    caller writes the held-back dev-log entry and sticky-failure marker).
+    """
+    held_back_siblings: list[str] = []
+
+    # Cache `git worktree list --porcelain` output once per gate run.
+    wt_list_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "worktree", "list", "--porcelain"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    worktree_list_output = wt_list_result.stdout if wt_list_result.returncode == 0 else ""
+
+    for sibling in _list_repo_worktrees(worktree_root):
+        reason = _check_sibling_worktree_state(
+            worktree_root, sibling, base, worktree_list_output,
+        )
+        if reason is not None:
+            held_back_siblings.append(reason)
+
+    ineligible = _check_pending_commit_eligibility(base)
+
+    return (
+        not held_back_siblings and not ineligible,
+        held_back_siblings,
+        ineligible,
+    )
+
+
+def _write_held_back_log(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    held_back_siblings: list[str],
+    ineligible_commits: list[str],
+) -> None:
+    """Write the dev-log entry for a held-back gate (best-effort).
+
+    Per the new decision doc: ``push.result: "error:consolidation_gate_held_back"``
+    reuses the parent's existing ``error:<message>`` enum value (no new
+    enum value added). Local file is canonical; session-buddy mirror is
+    best-effort (existing `dev_log.write_entry()` behavior).
+    """
+    try:
+        from .dev_log import write_entry
+    except ImportError:
+        return  # dev_log not available; skip silently
+    metadata: dict[str, Any] = {
+        "date": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+        "branch": branch,
+        "push": {
+            "result": "error:consolidation_gate_held_back",
+            "remote": "origin",
+            "branch": "main",
+        },
+        "base": base,
+    }
+    if held_back_siblings:
+        metadata["held_back_sibling_worktrees"] = held_back_siblings
+    if ineligible_commits:
+        metadata["held_back_pending_commits"] = ineligible_commits
+    body = (
+        f"# merge-to-main held back by pre-push consolidation gate\n\n"
+        f"Branch: {branch}\n"
+        f"Base: {base}\n"
+        f"Held-back sibling worktrees: {len(held_back_siblings)}\n"
+        f"Ineligible pending commits: {len(ineligible_commits)}\n\n"
+        f"Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. "
+        f"Stage 6 cleanup was skipped; `.review-state.json` carries the "
+        f"sticky-failure marker (`stage_failed: "
+        f"'stage_5_push_held_back_by_consolidation_gate'`).\n"
+    )
+    write_entry(metadata, body, mirror_to_session_buddy=True)
+
+
+def _write_sticky_failure_marker(
+    worktree_root: Path,
+    branch: str,
+    held_back_siblings: list[str],
+    ineligible_commits: list[str],
+) -> None:
+    """Write the sticky-failure marker for a held-back gate.
+
+    Per the decision doc: the current worktree's `.review-state.json`
+    gets ``stage_failed: "stage_5_push_held_back_by_consolidation_gate"``
+    and ``stages_completed`` is appended with
+    ``stage_5_consolidation_gate_held_back``. Subsequent
+    `agent-merge-on-end.py` invocations see ``is_sticky_failed() == True``
+    and skip the pipeline until the user resolves.
+
+    Best-effort: if `.review-state.json` doesn't exist (fresh
+    worktree, never reviewed), this is a no-op — the gate's held-back
+    state is still recorded in the dev log.
+    """
+    state_path = worktree_root / ".review-state.json"
+    if not state_path.exists():
+        return
+    try:
+        state = json.loads(state_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+    if not isinstance(state, dict):
+        return
+    state["stage_failed"] = "stage_5_push_held_back_by_consolidation_gate"
+    completed = state.get("stages_completed") or []
+    if "stage_5_consolidation_gate_held_back" not in completed:
+        completed.append("stage_5_consolidation_gate_held_back")
+    state["stages_completed"] = completed
+    state["held_back_sibling_worktrees"] = held_back_siblings
+    state["held_back_pending_commits"] = ineligible_commits
+    state["current_stage"] = "stage_5_push_held_back"
+    try:
+        state_path.write_text(json.dumps(state, indent=2, sort_keys=True))
+    except OSError:
+        pass  # best-effort; dev log still captures the state
+
+
 def _default_dispatcher(agent: str, prompt: str) -> str:
     """Default stage-2 dispatcher.
 
@@ -464,6 +708,7 @@ def run_pipeline(
     no_push: bool = False,
     no_cleanup: bool = False,
     base: str | None = None,
+    no_consolidation_gate: bool = False,
 ) -> int:
     """End-to-end merge-to-main pipeline (spec §4.4 stages 2-6).
 
@@ -520,6 +765,30 @@ def run_pipeline(
     if squash_rc != 0:
         return squash_rc  # EXIT_REBASE_CONFLICT typically
 
+    # Stage 4.5 — pre-push consolidation gate (per new decision doc).
+    # Held back = sticky-failure marker, stage 6 skipped, EXIT_OK.
+    held_back = False
+    if not no_consolidation_gate:
+        gate_clear, held_back_siblings, ineligible_commits = _run_consolidation_gate(
+            worktree_root, base,
+        )
+        if not gate_clear:
+            held_back = True
+            _write_held_back_log(
+                worktree_root, branch, base, held_back_siblings, ineligible_commits,
+            )
+            _write_sticky_failure_marker(
+                worktree_root, branch, held_back_siblings, ineligible_commits,
+            )
+            print(
+                f"[merge_to_main] push held back: pre-push consolidation gate "
+                f"(siblings={len(held_back_siblings)}, "
+                f"ineligible={len(ineligible_commits)}); "
+                f"see dev-log entry and .review-state.json for details",
+                file=sys.stderr,
+            )
+            return EXIT_OK
+
     # Stage 5 — auto-push (skippable via --no-push; spec §4.6).
     if not no_push:
         push_rc, _push_stderr = run_push("main")
@@ -527,7 +796,10 @@ def run_pipeline(
             return EXIT_PUSH_DIVERGENCE
 
     # Stage 6 — cleanup (skippable via --no-cleanup; spec REQ-012).
-    if not no_cleanup:
+    # ALSO skipped when the consolidation gate held back (stage 4.5):
+    # the branch and worktree must remain until the push lands; otherwise
+    # the squash-commit gets orphaned.
+    if not no_cleanup and not held_back:
         cleanup_rc, _cleanup_stderr = _run_cleanup(worktree_root)
         if cleanup_rc != 0:
             return EXIT_CLEANUP_FAILURE
@@ -572,6 +844,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="skip stage 5 (default: push to origin/main)",
     )
     parser.add_argument(
+        "--no-consolidation-gate",
+        action="store_true",
+        help=(
+            "skip stage 4.5 pre-push consolidation gate (default: gate "
+            "runs between squash-merge and push; held back writes a "
+            "sticky-failure marker and skips stage 6)"
+        ),
+    )
+    parser.add_argument(
         "--no-cleanup",
         action="store_true",
         help="skip stage 6 (default: prune the merged worktree)",
@@ -603,6 +884,7 @@ def main() -> int:
         no_push=args.no_push,
         no_cleanup=args.no_cleanup,
         base=args.base,
+        no_consolidation_gate=args.no_consolidation_gate,
     )
 
 

@@ -943,9 +943,12 @@ plans and specs do not land under `docs/superpowers/`. See
 
 The `/merge-to-main` slash command, the `agent-merge-on-end.py` SessionEnd
 hook, and the `mahavishnu.core.merge_to_main` orchestration module all
-live in this repo. Other 5 core repos (akosha, session-buddy, crackerjack,
-oneiric, mcp-common) inherit the convention without per-repo edits —
-their workers run inside mahavishnu's orchestration.
+live in this repo. The pre-push consolidation gate (stage 4.5) also
+lives here — see
+`.claude/decisions/2026-10-13-prepushconsolidationgate.md`. Other 5
+core repos (akosha, session-buddy, crackerjack, oneiric, mcp-common)
+inherit the convention without per-repo edits — their workers run
+inside mahavishnu's orchestration.
 
 See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.

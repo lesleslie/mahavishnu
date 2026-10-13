@@ -71,6 +71,15 @@ canonical exception. Spec §4.6 is a summary of this doc.
    non-`main` branches) remain user-controlled per
    `feedback-bodai-push-is-user-controlled` and are NOT covered by this
    decision.
+8. **Pre-push consolidation gate.** Stage 5 push is further held back
+   until co-located worktrees are consolidated (merged, pruned,
+   mid-review, or explicitly abandoned) and pending commits are
+   squash-merge-shaped. See
+   `.claude/decisions/2026-10-13-prepushconsolidationgate.md` — the
+   decision doc that adds this precondition. The env-var opt-out
+   (rule 6) does NOT bypass the consolidation gate (it runs inside
+   the pipeline); per-invocation bypass uses
+   `/merge-to-main --no-consolidation-gate`.
 
 ## Threat model
 
@@ -90,6 +99,12 @@ canonical exception. Spec §4.6 is a summary of this doc.
 - **Amends (by cross-link, NOT inline amendment):**
   `feedback-bodai-push-is-user-controlled` — the default rule this exception
   narrows.
+- **Further narrowing (cross-link, NOT inline amendment):**
+  `.claude/decisions/2026-10-13-prepushconsolidationgate.md` — adds the
+  pre-push consolidation gate (rule 8 above). When co-located worktrees
+  have unmerged WIP or pending commits are not squash-merge-shaped,
+  stage 5 push is held back (sticky-failure marker, stage 6 skipped,
+  EXIT_OK returned).
 - **Spec source:** `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
   §4.6 (push rule summary) and §REQ-007 (deliverable verification).
 - **Implementation:**

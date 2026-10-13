@@ -1877,3 +1877,90 @@ All names referenced in tests match definitions in modules.
 - `MAHAVISHNU_AUTO_MERGE=1` environment export noted as co-delivered; this plan's Task 3.1 just consumes the env var.
 - `crackerjack run -v` pin via `CRACKERJACK_INVOCATION` constant + assertion test.
 - Session-buddy dual-store as best-effort with stderr log on failure (Task 1.2).
+
+---
+
+## Amendment (2026-10-13): Pre-push Consolidation Gate
+
+This amendment adds a new sub-stage 4.5 between squash-merge and auto-push
+in `mahavishnu/core/merge_to_main.py::run_pipeline()`. Stage 5 push is held
+back when co-located worktrees have unmerged WIP or pending commits are
+not squash-merge-shaped. Authoritative spec:
+[`.claude/decisions/2026-10-13-prepushconsolidationgate.md`](../.claude/decisions/2026-10-13-prepushconsolidationgate.md).
+
+### Task Group 2 amendment (orchestration module)
+
+**Implements:** `.claude/decisions/2026-10-13-prepushconsolidationgate.md` Decision rule.
+
+**Files (changes from the original Task Group 2):**
+
+- Modify: `mahavishnu/core/merge_to_main.py::run_pipeline()` — insert
+  gate between squash-merge (line 521 in current file) and the
+  `if not no_push:` block (line 524). Add `_run_consolidation_gate()`
+  helper. Stage 6 (cleanup) is conditionally skipped when the gate
+  holds back. New keyword argument `no_consolidation_gate: bool = False`.
+- Modify: `tests/unit/core/test_merge_to_main.py` — add 10 new tests
+  for gate pass / hold-back / lineage / co-located worktree /
+  sticky-failure / `--no-consolidation-gate` bypass.
+- No new files in Task Group 2.
+
+### Task Group 4 amendment (governance)
+
+**Implements:** Decision doc + memory cross-link updates.
+
+**Files (additional to the original Task Group 4):**
+
+- Create: `.claude/decisions/2026-10-13-prepushconsolidationgate.md`
+  (canonical on-disk name; matches `2026-10-03-mainautopush.md`
+  no-hyphen convention).
+- Modify: `.claude/decisions/2026-10-03-mainautopush.md` — add rule 8
+  referencing the new decision doc.
+- Modify: `.claude/decisions/2026-10-03-trunk-based-agent-review.md` —
+  add stage 4.5 row referencing the gate.
+- Modify: `.claude/decisions/2026-10-03-main-branch-protection.md` —
+  add cross-link to the new decision.
+- Modify: `.claude/decisions/README.md` — add new decision entry.
+- Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-push-is-user-controlled.md` —
+  add 2026-10-13 cross-reference note.
+- Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md` —
+  add Pre-push consolidation gate section.
+- Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow-followups.md` —
+  add Tier 2 follow-up for `.review-state.json` hardening.
+- Modify: `~/.claude/CLAUDE.md` — update Dev workflow section.
+- Modify: `~/Projects/mahavishnu/CLAUDE.md` — note gate in Tool
+  Preferences block.
+- Modify: `.claude/commands/merge-to-main.md` — document the
+  `--no-consolidation-gate` flag.
+- Modify: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` —
+  §4.6, §Failure Modes, §Requirements. (Done in the same PR as
+  this plan amendment.)
+- Dual-store: every CC memory edit is also mirrored to
+  `mcp__session-buddy__store_reflection` per
+  `feedback-memories-must-be-dual-stored`.
+
+### New REQ-014 (gate semantics)
+
+Documented in the spec via §4.6 push-rule update + §Failure Modes row.
+Plan-level summary:
+
+| ID | Requirement | Verifiable by |
+|---|---|---|
+| **REQ-015** (gate, formerly REQ-014 line was corrupt-state) | Pre-push consolidation gate in `merge_to_main.run_pipeline()` between squash-merge and push; holds back when co-located worktrees have unmerged WIP or pending commits are not squash-merge-shaped; sticky-failure marker on `.review-state.json`; stage 6 (cleanup) skipped; `EXIT_OK` returned | `pytest tests/unit/core/test_merge_to_main.py` — new test cases; manual smoke test against a real worktree |
+| **REQ-016** (override flag) | `/merge-to-main --no-consolidation-gate` bypasses the gate while still running the push stage; `--no-push` continues to bypass both gate and push | CLI smoke test |
+
+### Verification
+
+Beyond the per-task tests, the smoke flow:
+
+1. Two worktrees of the same repo (`/Users/les/.local/state/mahavishnu/worktrees/<repo>/a` + `b`).
+2. Worker A squash-merges its branch into local `main`. Gate enumerates worktrees; sees B with unmerged WIP. Holds back. stderr surfaces. `EXIT_OK`. `.review-state.json` has the sticky marker.
+3. Stage 6 (cleanup) is skipped — branch + worktree remain.
+5. Worker B squash-merges its branch into local `main`. The pipeline in B re-evaluates the gate; A's branch is now ancestor of local `main`; gate passes; push fires; both A's and B's commits ship.
+
+### Self-Review (amendment-specific)
+
+- All four 4 reviews (completeness, architecture, wording, domain) signed off on the wording. See
+  `feedback-bodai-merge-workflow-followups` for the open Tier 2 follow-up (`.review-state.json` hardening).
+- Cross-link pattern matches `mainautopush.md`'s own amendment of `feedback-bodai-push-is-user-controlled`: new file + cross-link, no inline amendment.
+- EXIT_OK choice honored per user decision; sticky-failure plumbing added per architecture review so it does not become a silent-deferred-push failure mode.
+- `MAHAVISHNU_AUTO_MERGE=0` opt-out clarified: it skips the entire pipeline; the gate does NOT bypass the env-var (which is the correct behavior per the architecture review).

@@ -1,6 +1,6 @@
 title: Merge To Main
 owner: Operations Enablement Guild
-last_reviewed: 2026-10-03
+last_reviewed: 2026-10-13
 risk: high
 status: active
 id: 01K6EEXD5RD0SRFRY8NA5PZX17
@@ -25,7 +25,7 @@ ______________________________________________________________________
 
 ## /merge-to-main
 
-**Trunk-based agent-review merge cycle — REVIEW → GATE → SQUASH → PUSH → CLEANUP.**
+**Trunk-based agent-review merge cycle — REVIEW → GATE → SQUASH → CONSOLIDATION GATE → PUSH → CLEANUP.**
 
 This slash command orchestrates the per-worktree merge cycle for the trunk-based
 agent-review workflow (per spec §4.1). The shared orchestration logic lives in
@@ -51,7 +51,7 @@ in-session surface and fires regardless of model.
 ## Usage
 
 ```
-/merge-to-main [--branch <name>] [--review <mode>] [--no-push] [--no-cleanup] [--from <base>]
+/merge-to-main [--branch <name>] [--review <mode>] [--no-push] [--no-cleanup] [--no-consolidation-gate] [--from <base>]
 ```
 
 ### Arguments (all optional)
@@ -61,6 +61,10 @@ in-session surface and fires regardless of model.
   `none` (user responsibility; explicit user opt-in required)
 - `--no-push` — skip stage 5 (default: push to `origin/main`)
 - `--no-cleanup` — skip stage 6 (default: prune the merged worktree)
+- `--no-consolidation-gate` — skip stage 4.5 pre-push consolidation gate
+  (default: gate runs between squash-merge and push; held back =
+  sticky-failure marker, stage 6 skipped, EXIT_OK). See
+  `.claude/decisions/2026-10-13-prepushconsolidationgate.md`.
 - `--from <base>` — override rebase base (default: `origin/main` if remote
   exists, else `main`)
 
@@ -68,7 +72,7 @@ in-session surface and fires regardless of model.
 
 | Code | Meaning |
 |------|---------|
-| `0` | Full success — review passed, gate passed, squash-merged, pushed, cleanup complete |
+| `0` | Full success — review passed, gate passed, squash-merged, pushed, cleanup complete; **or** the pre-push consolidation gate held back the push (stage 6 skipped, sticky-failure marker written; operators differentiate by reading the dev-log entry's `push.result` field) |
 | `1` | Review failure — at least one ensemble verdict was `block`; merge aborted |
 | `2` | Crackerjack failure — `crackerjack run -v` exited non-zero; merge aborted |
 | `3` | Rebase conflict — `git rebase <base>` failed; user must resolve |
@@ -81,7 +85,7 @@ fail-loud signal that the local `main` is no longer a fast-forward of
 
 ## What it does
 
-The shared Python module orchestrates the 5-stage per-worktree cycle:
+The shared Python module orchestrates the 6-stage per-worktree cycle:
 
 1. **Stage 2 — Ensemble review** (skippable via `--review quick` / `--review none`).
    Dispatches 3 agents (domain specialist + code-quality specialist +
@@ -93,10 +97,18 @@ The shared Python module orchestrates the 5-stage per-worktree cycle:
    REQ-013). Any non-zero exit blocks the merge with exit code 2.
 1. **Stage 4 — Squash-merge**. The worktree's branch is never pushed;
    only the squashed result lands on `main`.
+1. **Stage 4.5 — Pre-push consolidation gate** (skippable via
+   `--no-consolidation-gate`). Per
+   `.claude/decisions/2026-10-13-prepushconsolidationgate.md`: checks
+   co-located worktrees for unmerged WIP and pending commits for
+   squash-merge eligibility. Held back = sticky-failure marker on
+   `.review-state.json`, stage 6 skipped, pipeline returns `EXIT_OK`.
 1. **Stage 5 — Auto-push** (skippable via `--no-push`). `git push origin main`,
-   only on `main`, only after a successful squash-merge in stages 2–4.
-1. **Stage 6 — Cleanup** (skippable via `--no-cleanup`). Routes through the
-   existing `prune-merged` classifier to remove the ephemeral worktree.
+   only on `main`, only after a successful squash-merge in stages 2–4
+   and a clear gate in stage 4.5.
+1. **Stage 6 — Cleanup** (skippable via `--no-cleanup`, AND skipped
+   automatically when stage 4.5 held back). Routes through the existing
+   `prune-merged` classifier to remove the ephemeral worktree.
 
 **Idempotent and resumeable:** if a `.review-state.json` exists at the
 worktree root, the module resumes from the current stage (schema version 1,
@@ -117,7 +129,9 @@ wherever `.review-state.json` left off.
 
 - `MAHAVISHNU_AUTO_MERGE=0` — explicit opt-out. The SessionEnd hook no-ops
   and the user must invoke `/merge-to-main` (or `Skill(skill="merge-to-main")`)
-  manually. The slash command itself always runs regardless.
+  manually. The slash command itself always runs regardless. Note: this
+  env var skips the **entire pipeline**; it does NOT bypass the
+  consolidation gate (which runs inside the pipeline).
 
 ## See also
 

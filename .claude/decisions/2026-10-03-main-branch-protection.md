@@ -116,6 +116,10 @@ from `git reflog` in <5 minutes.
     agent-side rule about when pushes happen.
   - `2026-10-03-mainautopush.md` (sibling decision) — the narrow
     exception that auto-pushes `main` after stages 1–4.
+  - `2026-10-13-prepushconsolidationgate.md` (sibling decision) —
+    the further narrowing on the auto-push: pre-push gate that
+    holds back stage 5 when co-located worktrees have unmerged WIP
+    or pending commits are not squash-merge-shaped.
   - `bodai-pre-1.0-merge-policy.md` (CC memory) — direct-merge-to-`main`,
     no-PR policy that constrains this rule (no required reviews, no
     required status checks yet).

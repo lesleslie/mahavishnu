@@ -51,6 +51,7 @@ Stage summary (per spec §Workflow):
 | 2. Review | AI ensemble | 2 specialists + 1 random generalist; iterate on `needs_adjustment` | `block` from any agent blocks; else 2/3 `pass` proceeds |
 | 3. Quality gate | AI worker | `crackerjack run -v` | non-zero exit blocks merge |
 | 4. Squash-merge | AI worker | `git rebase <base>` → re-verify base SHA → `git merge --squash <branch>` → semantic `git commit` | Rebase clean; pre-merge `git status` clean |
+| 4.5. Consolidation gate | AI worker | check co-located worktrees + pending-commit eligibility (per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`) | Held back = write sticky-failure marker, skip stage 6, defer push (EXIT_OK); re-evaluates on next SessionEnd in any co-located worktree |
 | 5. Auto-push | AI worker | `git push origin main` | Non-fast-forward fails loudly; never force-pushes |
 | 6. Cleanup | AI worker | `mahavishnu worktree prune-merged --one-off <path>` + `git branch -d <ephemeral>` | Classifier returns `merged` |
 | 7. Publish | Human | `crackerjack run -p <level>` + version bump + tag + `git push origin --tags` | `feedback-bodai-push-is-user-controlled` still applies for tag + version bump |
@@ -69,6 +70,12 @@ Stage summary (per spec §Workflow):
   exception that allows stage 5 to push `origin/main` after a
   successful squash-merge; cross-linked (not amended inline) from
   `feedback-bodai-push-is-user-controlled`.
+- **Further narrowing (pre-push consolidation gate):**
+  `.claude/decisions/2026-10-13-prepushconsolidationgate.md` — adds
+  stage 4.5 between squash-merge and auto-push. Holds back stage 5
+  push when co-located worktrees have unmerged WIP or pending
+  commits are not squash-merge-shaped. Held back = sticky-failure
+  marker + stage 6 skipped + EXIT_OK.
 - **Memory (forward ref, ships with Task 4.4):**
   `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md`
   — the workflow contract surfaced for CLAUDE.md readers and

@@ -242,6 +242,8 @@ Detection logic: `git diff --name-only <base>...HEAD` filtered by the regex `^.*
 
 **Auto-push scope:** `git push origin main`, only on `main`, only after a successful squash-merge in stages 1–4, only by the Python module invoked from the SessionEnd hook or the `/merge-to-main` slash command.
 
+**Pre-push consolidation gate (new, 2026-10-13 amendment):** Stage 5 push is *further* held back when co-located worktrees have unmerged WIP or pending commits are not squash-merge-shaped. Held back = sticky-failure marker on `.review-state.json` (`stage_failed: "stage_5_push_held_back_by_consolidation_gate"`) + stage 6 (cleanup) skipped + pipeline returns `EXIT_OK`. The gate runs in `mahavishnu/core/merge_to_main.py::run_pipeline()` between squash-merge and push. Authoritative spec: `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. Operator override: `/merge-to-main --no-consolidation-gate` (bypass flag; runs push without gate check).
+
 **What is NOT auto-pushed:**
 
 - Ephemeral branches (`fix-ty-errors`, `agent-<short>`, etc.)
@@ -265,6 +267,7 @@ Detection logic: `git diff --name-only <base>...HEAD` filtered by the regex `^.*
 | Mode | Detection | Handling |
 |---|---|---|
 | **Remote `main` has diverged** | `git push` returns non-fast-forward | Module fails loudly via stderr; user rebase + retry. No force-push. |
+| **Sibling worktree has unmerged WIP** (pre-push consolidation gate holds back) | `git log origin/main..main` followed + co-located-worktree enumeration finds a worktree whose branch HEAD is not an ancestor of local `main`, not pruned, not mid-review, and not explicitly abandoned | Stage 5 deferred. `.review-state.json` gets `stage_failed: "stage_5_push_held_back_by_consolidation_gate"`. Stage 6 (cleanup) is skipped. stderr surfaces the held-back worktree paths. Pipeline returns `EXIT_OK`. The hook's `is_sticky_failed()` skips the pipeline on the next SessionEnd in this worktree until the user resolves. See `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. |
 | **`<base>` moved during rebase** | SHA comparison fails against `.review-state.json` pre-rebase SHA | Abort squash; rebase again on the new base; re-verify. |
 | **Concurrent merges** (two sessions both squash into local `main`, both push) | git's ref lock on merge; second push hits FF check and fails | First succeeds; second surfaces divergence via stderr. User resolves manually. No data loss. |
 | **No remote configured** | `git remote` returns empty | Push is a no-op; module logs `push.result: "no_remote"` and exits 0. |
