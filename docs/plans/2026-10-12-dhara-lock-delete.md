@@ -34,12 +34,28 @@ The lock module itself contains **1 Protocol** (`DharaLock` at `dhara/dhara/lock
 - [ ] Run from each sibling repo root: `akosha/`, `session-buddy/`, `crackerjack/`, `mcp-common/`, `oneiric/` — all should return 0 hits.
 - [ ] Run from `dhara/` repo: `rg -ln 'DharaLock' dhara/ --type py` — should only show the module itself.
 - [ ] If any consumer is found, STOP and revise the plan to migrate them to `mahavishnu.core._lock_sentinel.Lock` first.
+- [ ] **Special case — `medium-mcp`**: it imports `from dhara.lock.in_memory import InMemoryDharaLock` at `medium-mcp/medium_mcp/dhara/client.py:7` (used at :29/:47/:70) for budget-counter atomicity in the `DharaClient`. `medium-mcp` is a `*-mcp` repo (per `feedback-no-bodai-mentions-in-mcp-repos`) but the import is real. Scope this Phase 1 rg to Bodai-core repos (`mahavishnu/`, `akosha/`, `session-buddy/`, `crackerjack/`, `mcp-common/`, `oneiric/`, `dhara/`) — the `medium-mcp` consumer is addressed by the separate `2026-10-13-medium-mcp-migrate-off-dhara.md` plan, not by Phase 1. Phase 1.5 below sequences the dependency.
 
 #### Integration Contract ← REQUIRED
 - **Triggered from**: developer / agent confirming no consumers before deleting the module.
 - **Returns to / updates**: nothing persisted; a documented consumer inventory (a list of paths with `DharaLock` references and what each does).
 - **Demonstrable by**: the `rg` commands return the expected counts; a paste of the output to the commit message is sufficient evidence.
 - **Rollback signal**: not applicable — Phase 1 is read-only.
+- **Observability added**: none.
+
+## Phase 1.5 — Wait for `medium-mcp` migration to land (cross-repo sequencing gate)
+
+This plan **must not** delete `dhara/dhara/lock/` until the `medium-mcp` consumer is migrated off. The medium-mcp migration is a separate plan (`2026-10-13-medium-mcp-migrate-off-dhara.md`, lives in `/Users/les/Projects/medium-mcp/docs/plans/`) that replaces the `InMemoryDharaLock` import with a substrate-agnostic in-process lock primitive (~30-line `medium_mcp/utils/in_process_lock.py` mirroring `mahavishnu.core._lock_sentinel.Lock`'s shape).
+
+- [ ] Confirm the medium-mcp migration plan exists: `test -f /Users/les/Projects/medium-mcp/docs/plans/2026-10-13-medium-mcp-migrate-off-dhara.md`.
+- [ ] Confirm the migration has landed: `rg -n 'from dhara.lock\|import dhara.lock' /Users/les/Projects/medium-mcp/ --type py` should return 0 hits after the migration.
+- [ ] **No `blocks_on:` frontmatter dep** on the medium-mcp migration — Phase 1.5 is a sequencing note, not a hard dep, because the medium-mcp migration can land in any order before Phase 1 here.
+
+#### Integration Contract ← REQUIRED
+- **Triggered from**: developer / agent checking the sequencing gate before Phase 2 (the `git rm`).
+- **Returns to / updates**: nothing persisted; the medium-mcp consumer is migrated off Dhara before this plan deletes the Dhara substrate.
+- **Demonstrable by**: `rg -n 'from dhara.lock\|import dhara.lock' /Users/les/Projects/medium-mcp/ --type py` returns 0 hits.
+- **Rollback signal**: medium-mcp migration breaks tests (`pytest medium-mcp/` fails) — the migration must be reworked before Phase 2 here proceeds.
 - **Observability added**: none.
 
 ## Phase 2 — Delete the module
