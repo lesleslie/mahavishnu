@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: implementation
 kind: plan
 date: 2026-10-12
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 # `replaces:` is a project-local convention: the predecessor plan
