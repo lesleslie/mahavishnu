@@ -14,7 +14,7 @@ title: "Extract budget_enforce from pool_tools.py to budget_tools.py (Stage 3b u
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Unblock `2026-08-29-worker-registry-capability-refactor.md` Stage 3b (delete legacy `pool_tools.py` + `worker_tools.py`) by extracting the `budget_enforce` orchestrator from `pool_tools.py:732-800` into a new `budget_tools.py` MCP tool module. The original draft of this plan also proposed adding a `shepherd` entry to `worker_registry:`, but that registration is a **category error** — `WorkerEntry` (mahavishnu/core/config.py:1697) is a terminal-worker schema, and `ShepherdBackendWorker` is an OS-level syscall-jail backend that `WorkerManager._create_isolated_worker` (manager.py:81-83) already special-cases via constructor kwargs, not via the registry. The shepherd-registration half of the original plan is dropped; only the `budget_enforce` extract remains.
+**Goal:** Unblock `2026-08-29-worker-registry-capability-refactor.md` Stage 3b (delete legacy `pool_tools.py` + `worker_tools.py`) by extracting the `budget_enforce` orchestrator from `pool_tools.py:733-800` into a new `budget_tools.py` MCP tool module. The original draft of this plan also proposed adding a `shepherd` entry to `worker_registry:`, but that registration is a **category error** — `WorkerEntry` (mahavishnu/core/config.py:1698-1734) is a terminal-worker schema, and `ShepherdBackendWorker` is an OS-level syscall-jail backend that `WorkerManager._create_isolated_worker` (manager.py:85-99) already special-cases via constructor kwargs, not via the registry. The shepherd-registration half of the original plan is dropped; only the `budget_enforce` extract remains.
 
 **Architecture:** The extraction is a single-task move. The `budget_enforce` function is a closure inside `register_pool_tools(mcp, pool_manager, ...)` that captures `budget_store` and `pool_manager` from the enclosing scope. The new `budget_tools.py` will host the same logic at module scope with explicit dependency injection via the registrar signature (`register_budget_tools(mcp_app, *, budget_store, pool_manager)`). The function is registered through the crackerjack-style nested group registrar pattern.
 
@@ -38,7 +38,7 @@ The original draft proposed adding a `shepherd:` entry to `worker_registry:` mir
 
 1. **`WorkerEntry` schema mismatch** — `WorkerEntry` (mahavishnu/core/config.py:1697-1733) has fields `worker_type`, `command_argv`, `completion_markers`, `provides`, `runtime_kind`, etc. None of `domain`/`key`/`provider`/`factory_path`/`config`/`dependencies`/`capabilities`/`metadata`. `model_config = ConfigDict(extra="forbid")` means a stray field is rejected.
 2. **Shepherd is OS-jail, not terminal** — `ShepherdBackendWorker` (shepherd_backend.py) is an OS-level syscall-jail backend with constructor kwargs `writable_root=`, `workspace_cwd=`, `placement=`, `default_timeout=`, `session_buddy_client=` — none of which are `WorkerEntry` fields. The `command_argv` + `completion_markers` shape (the only existing schema) is for interactive shells.
-3. **Already handled at manager level** — `_create_isolated_worker` (manager.py:81-83) already special-cases `worker_type == "shepherd"` with explicit kwargs from the caller. The registry is bypassed entirely for shepherd.
+3. **Already handled at manager level** — `_create_isolated_worker` (manager.py:85-99) already special-cases `worker_type == "shepherd"` with explicit kwargs from the caller. The registry is bypassed entirely for shepherd.
 
 The shepherd-backend story does not need a `worker_registry:` entry; the manager hard-codes the dispatch. If a registry-based shepherd registration ever lands, it will need a new `WorkerEntry` schema field (e.g. `factory_kwargs: dict[str, Any]`) AND a registry-driven loader, which is a separate cross-cutting schema change — out of scope for a "Stage 3b unblocker."
 
@@ -46,8 +46,8 @@ The shepherd-backend story does not need a `worker_registry:` entry; the manager
 
 ### Phase 1.1 — Inventory the surface
 
-- [ ] Read `mahavishnu/mcp/tools/pool_tools.py:732-800` to confirm the `budget_enforce` function signature, its dependencies (`BudgetSpec`, `BudgetRecord`, `BudgetStateMachine` from `mahavishnu.core.budget`), the `budget_store` and `pool_manager` captured from the enclosing scope, and any MCP-tool registration glue
-- [ ] `rg -n "budget_enforce" mahavishnu/ --type py` to find all call sites — expected: `pool_tools.py:732` only, plus any tests
+- [ ] Read `mahavishnu/mcp/tools/pool_tools.py:733-800` to confirm the `budget_enforce` function signature, its dependencies (`BudgetSpec`, `BudgetRecord`, `BudgetStateMachine` from `mahavishnu.core.budget`), the `budget_store` and `pool_manager` captured from the enclosing scope, and any MCP-tool registration glue (line 732 is the `@mcp.tool()` decorator; the function body starts at 733)
+- [ ] `rg -n "^async def budget_enforce" mahavishnu/ --type py` to find the function definition only (the loose `budget_enforce` pattern also matches docstring references in `mahavishnu/core/budget.py:7` and `mahavishnu/core/app.py:483`, and in tests — neither are call sites) — expected: `pool_tools.py:733` only
 - [ ] `rg -n "from mahavishnu.core.budget import" mahavishnu/mcp/tools/` to confirm the current import path
 
 #### Integration Contract ← REQUIRED
@@ -169,8 +169,8 @@ If Phase 2 verification fails:
 - `docs/plans/2026-08-29-worker-registry-capability-refactor.md` (active) — Stage 3b unblocks after this lands (for the `pool_tools.py` side; the worker-registry plan's other Stage 3b prerequisites are separate)
 - `mahavishnu/mcp/tools/pool_tools.py:732-800` — the `budget_enforce` source to extract
 - `mahavishnu/core/budget.py` — the `BudgetSpec`/`BudgetRecord`/`BudgetStateMachine` primitives
-- `mahavishnu/workers/shepherd_backend.py` — referenced for **why the shepherd registration was dropped**; the dispatch lives in `WorkerManager._create_isolated_worker` (manager.py:81-83), not in the registry
-- `mahavishnu/core/config.py:1697` — the actual `WorkerEntry` Pydantic schema (terminal-style fields only; shepherd is OS-jail and doesn't fit)
+- `mahavishnu/workers/shepherd_backend.py` — referenced for **why the shepherd registration was dropped**; the dispatch lives in `WorkerManager._create_isolated_worker` (manager.py:85-99), not in the registry
+- `mahavishnu/core/config.py:1698-1734` — the actual `WorkerEntry` Pydantic schema (terminal-style fields only; shepherd is OS-jail and doesn't fit)
 - `crackerjack/mcp/tools/execution_tools.py:10` — the crackerjack-style nested group registrar pattern this plan mirrors
 - `feedback-bodai-push-is-user-controlled.md` — push policy
 - `feedback-no-claude-code-coauthor-attribution.md` — commit message policy

@@ -26,14 +26,19 @@ title: "Stale `# noqa` Marker Cleanup (RUF100, 2026-10-12)"
 ## Why this plan exists
 
 RUF100 ("unused-noqa") went from **239 markers (2026-07-29)** to
-**912 markers (2026-10-12)** because new code added `# noqa` markers
-that have since become stale — the rule violation they suppressed was
-either fixed upstream or never applied to that line. The
-`2026-10-12-ruff-cleanup-post-regrowth.md` plan covers the 8 active
-rules but explicitly defers RUF100 to this companion plan: RUF100 is
-mechanical (one `--fix` pass deletes the stale markers) but its blast
-radius (912 lines across the 6 packages) is large enough to deserve a
-separate commit and review surface.
+**305 markers (2026-10-13, re-measured)** because new code added
+`# noqa` markers that have since become stale — the rule violation
+they suppressed was either fixed upstream or never applied to that
+line. The original 2026-10-12 snapshot claimed 912; the 2026-10-13
+re-measurement via `cd /Users/les/Projects && /Users/les/Projects/mahavishnu/.venv/bin/ruff check ... --select RUF100 --statistics`
+shows 305 (the 912 figure was an estimate that overcounted by 3x,
+likely because the snapshot was taken before recent merges like
+`OneiricSettings.substrate` adoption that reduced the marker count).
+The `2026-10-12-ruff-cleanup-post-regrowth.md` plan covers the 8
+active rules but explicitly defers RUF100 to this companion plan:
+RUF100 is mechanical (one `--fix` pass deletes the stale markers) but
+its blast radius (305 lines across the 6 packages) is large enough
+to deserve a separate commit and review surface.
 
 The companion plan's separation also ensures that, if `ruff
 check --fix --select RUF100` produces any unexpected output, the
@@ -42,7 +47,7 @@ diff.
 
 ## Goal
 
-1. Reduce RUF100 findings from **912 → 0** with `ruff check
+1. Reduce RUF100 findings from **305 → 0** with `ruff check
    --select RUF100 --fix`.
 2. Verify Crackerjack gate stays green.
 
@@ -64,7 +69,7 @@ diff.
 ```bash
 ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ \
   --select RUF100 --statistics
-# → 912 findings, 6 packages, scattered across roughly 200 files
+# → 305 findings (2026-10-13 re-measurement), 6 packages, scattered across roughly 200 files
 ```
 
 The markers are scattered evenly — no single file has more than ~40
@@ -178,7 +183,7 @@ had not yet begun the post-regrowth-driven improvements).
 | Command | Expected | Evidence |
 |---------|----------|----------|
 | `ruff --version` | `ruff 0.6.0` (the pinned version; per `requirements/lint-constraints.txt`) | shell |
-| `ruff check … --select RUF100` (read-only, before fix) | 912 findings (baseline; matches the snapshot in the Current Findings section) | shell |
+| `ruff check … --select RUF100` (read-only, before fix) | 305 findings (2026-10-13 baseline) | shell |
 | `ruff check … --select RUF100 --fix` | runs to completion, no errors | shell |
 | `ruff check … --select RUF100` (after fix) | 0 findings | CI log |
 | `git diff --stat` of the PR | deletions-only (or near-only — whitespace churn from `--fix` is accepted) | PR description |

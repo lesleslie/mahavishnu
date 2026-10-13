@@ -44,9 +44,9 @@ title: "Promote Bodai-maintained *-mcp servers to active adopters (cmux-mcp + ch
 
 ## Phase 1 — Verify the per-repo wiring shape
 
-- [ ] Read `/Users/les/Projects/graphics-mcp/graphics_mcp/mcp/tools/profiles.py` (a confirmed Tier-B adopter with `apply_tool_profile` wired) and capture the exact shape: env-var name, REGISTRATION_MAP keys, STANDARD/FULL/MINIMAL_REGISTRATIONS lists.
-- [ ] Read `/Users/les/Projects/cmux-mcp/cmux_mcp/mcp/tools/profiles.py` (the file may not exist yet — confirm) and the parent `cmux_mcp/server.py` to see how the server starts up.
-- [ ] Read `/Users/les/Projects/chat-bridge-mcp/chat_bridge_mcp/mcp/tools/profiles.py` (the file may not exist yet) and the parent startup.
+- [ ] Read `/Users/les/Projects/graphics-mcp/graphics_mcp/tools/profiles.py` (note: the file lives at `graphics_mcp/tools/profiles.py`, NOT `graphics_mcp/mcp/tools/profiles.py` — verified 2026-10-13). Capture the exact shape: env-var name, REGISTRATION_MAP keys, STANDARD/FULL/MINIMAL_REGISTRATIONS lists. The `apply_graphics_tool_profile` async helper at line 99-119 is the proven async pattern (the sync `apply_tool_profile` at `mcp_common/tools/dispatch.py:269` raises `RuntimeError` from any `async def` startup — the async path uses `_apply_tool_profile` at line 353).
+- [ ] Read `/Users/les/Projects/cmux-mcp/cmux_mcp/tools/profiles.py` (the file does not exist yet — confirm) and the parent `cmux_mcp/server.py` to see how the server starts up. The `startup()` is `async def` (verified); the wiring must use the async helper.
+- [ ] Read `/Users/les/Projects/chat-bridge-mcp/chat_bridge_mcp/tools/profiles.py` (the file does not exist yet) and the parent startup. Same async requirement.
 
 #### Integration Contract ← REQUIRED
 - **Triggered from**: developer / agent reading the existing Tier-B pattern before wiring the missing ones.
@@ -57,14 +57,14 @@ title: "Promote Bodai-maintained *-mcp servers to active adopters (cmux-mcp + ch
 
 ## Phase 2 — Wire `apply_tool_profile` in `cmux-mcp`
 
-- [ ] Create `cmux-mcp/cmux_mcp/mcp/tools/profiles.py` (if it doesn't exist) with the Tier-B shape:
-  - Env var: `CMUX_MCP_TOOL_PROFILE` (default `full`).
+- [ ] Create `cmux-mcp/cmux_mcp/tools/profiles.py` (note: `tools/`, NOT `mcp/tools/` — mirror the verified Tier-B path) with the Tier-B shape:
+  - Env var: `CMUX_TOOL_PROFILE` (default `full`) — the established convention is `<REPO>_TOOL_PROFILE` (NO `_MCP` suffix); verified across mahavishnu (`MAHAVISHNU_TOOL_PROFILE`), akosha (`AKOSHA_TOOL_PROFILE`), session-buddy (`SESSION_BUDDY_TOOL_PROFILE`), graphics-mcp (`GRAPHICS_TOOL_PROFILE`). There is zero precedent for the `_MCP` suffix in the Bodai fleet.
   - `MINIMAL_REGISTRATIONS` / `STANDARD_REGISTRATIONS` / `FULL_REGISTRATIONS` lists per the Tier-B pattern.
   - `REGISTRATION_MAP` (W0 helper) keyed by string registrar-name → lambda trampoline.
   - `CRACKERJACK_MANDATORY_GROUPS` (a list, possibly empty) per the Tier-B pattern.
-- [ ] Edit `cmux-mcp/cmux_mcp/server.py` (or equivalent) to call `apply_tool_profile(mcp_app, profile=os.environ.get("CMUX_MCP_TOOL_PROFILE", "full"))` at server startup. Mirror how `graphics-mcp` does this.
-- [ ] Add `CMUX_MCP_TOOL_PROFILE` to `cmux-mcp/README.md` env-var section (and `.envrc` if applicable).
-- [ ] Add a smoke test in `cmux-mcp/tests/` that asserts `apply_tool_profile` is called at startup (mirror the `tests/unit/test_wiring.py::test_apply_tool_profile_called` pattern in crackerjack).
+- [ ] Edit `cmux-mcp/cmux_mcp/server.py` (or equivalent) to call **`await _apply_tool_profile(server, profile_env_var="CMUX_TOOL_PROFILE", registrations=..., registration_map=..., register_all_fn=...)`** at server startup. **The async helper is `_apply_tool_profile` at `mcp_common/tools/dispatch.py:353`, NOT the sync `apply_tool_profile` at line 269** — the sync wrapper raises `RuntimeError` from any `async def` startup (per graphics-mcp's own docstring at `graphics_mcp/tools/profiles.py:99-101`). Mirror the proven graphics-mcp async pattern at `graphics_mcp/tools/profiles.py:109-119`.
+- [ ] Add `CMUX_TOOL_PROFILE` to `cmux-mcp/README.md` env-var section (and `.envrc` if applicable).
+- [ ] Add a smoke test in `cmux-mcp/tests/test_wiring.py` that asserts `_apply_tool_profile` is called at startup. The proven AST-walk pattern is at **`mahavishnu/tests/unit/test_wiring.py:12::test_server_core_calls_apply_tool_profile`** (verified 2026-10-13) — `crackerjack/tests/unit/test_wiring.py::test_apply_tool_profile_called` does NOT exist; mirror the mahavishnu test, not the crackerjack one.
 - [ ] Run `crackerjack run -v` (or `pytest cmux-mcp/ -v --no-cov` at minimum).
 
 #### Integration Contract ← REQUIRED
@@ -76,10 +76,10 @@ title: "Promote Bodai-maintained *-mcp servers to active adopters (cmux-mcp + ch
 
 ## Phase 3 — Wire `apply_tool_profile` in `chat-bridge-mcp`
 
-- [ ] Create `chat-bridge-mcp/chat_bridge_mcp/mcp/tools/profiles.py` with the same shape as Phase 2 (env var `CHAT_BRIDGE_MCP_TOOL_PROFILE` default `full`).
-- [ ] Edit `chat-bridge-mcp/chat_bridge_mcp/server.py` to call `apply_tool_profile` at startup.
-- [ ] Add `CHAT_BRIDGE_MCP_TOOL_PROFILE` to the README and `.envrc`.
-- [ ] Add a smoke test in `chat-bridge-mcp/tests/`.
+- [ ] Create `chat-bridge-mcp/chat_bridge_mcp/tools/profiles.py` (note: `tools/`, NOT `mcp/tools/`) with the same shape as Phase 2 (env var `CHAT_BRIDGE_TOOL_PROFILE` default `full`).
+- [ ] Edit `chat-bridge-mcp/chat_bridge_mcp/server.py` to call **`await _apply_tool_profile(server, profile_env_var="CHAT_BRIDGE_TOOL_PROFILE", ...)`** at startup (same async pattern as Phase 2).
+- [ ] Add `CHAT_BRIDGE_TOOL_PROFILE` to the README and `.envrc`.
+- [ ] Add a smoke test in `chat-bridge-mcp/tests/test_wiring.py` (mirror the `mahavishnu/tests/unit/test_wiring.py:12` pattern).
 - [ ] Run `crackerjack run -v` (or `pytest chat-bridge-mcp/ -v --no-cov` at minimum).
 
 #### Integration Contract ← REQUIRED
@@ -92,14 +92,18 @@ title: "Promote Bodai-maintained *-mcp servers to active adopters (cmux-mcp + ch
 ## Phase 4 — Cross-ecosystem doc update (in the tool-profile-ecosystem-doc plan)
 
 - [ ] **Not in this plan.** The cross-ecosystem doc update lives in the companion `2026-10-12-tool-profile-ecosystem-doc.md` plan (Phase 1 inventory + Phase 4 cross-link). After this plan's Phases 2 and 3 land, the inventory count grows from 19 → 21 (the 2 newly-wired repos). The companion plan's `scripts/generate_tool_profiles_doc.py` re-reads the inventory on every run, so the doc regenerates automatically.
-- [ ] **Tier classification update for the doc:** `cmux-mcp` and `chat-bridge-mcp` move from Tier-C (excluded — no `apply_tool_profile`) to a new "Bodai-maintained `*-mcp`" subcategory. The cross-link policy extends: Tier-A and "Bodai-maintained" both link to the cross-ecosystem doc; Tier-B (third-party MCP) does not, per `feedback-no-bodai-mentions-in-mcp-repos`.
+- [ ] **Concrete Phase 4 instructions for the companion plan (`2026-10-12-tool-profile-ecosystem-doc.md`):**
+  - Remove `cmux-mcp` and `chat-bridge-mcp` from the Tier-C list at line 50.
+  - Add a new "Bodai-maintained `*-mcp`" subcategory line.
+  - Bump `Total: 19 active adopter repos.` → `Total: 21 active adopter repos.`.
+- [ ] **Tier classification update for the doc:** `cmux-mcp` and `chat-bridge-mcp` move from Tier-C (excluded — no `apply_tool_profile`) to the new "Bodai-maintained `*-mcp`" subcategory. The cross-link policy extends: Tier-A and "Bodai-maintained" both link to the cross-ecosystem doc; Tier-B (third-party MCP) does not, per `feedback-no-bodai-mentions-in-mcp-repos`.
 - [ ] The companion plan's Phase 1 step "verify 19 adopter count" needs to be updated to "verify 21 adopter count" — a one-line frontmatter or body-text edit in the companion plan. **This plan does NOT make that edit; the user does it after the 2 per-repo wirings land.**
 
 ## Phase 5 — Per-repo commits
 
 - [ ] Two commits, one per repo, on each repo's `main`:
-  - cmux-mcp: `feat(cmux-mcp): wire apply_tool_profile (CMUX_MCP_TOOL_PROFILE env var)`
-  - chat-bridge-mcp: `feat(chat-bridge-mcp): wire apply_tool_profile (CHAT_BRIDGE_MCP_TOOL_PROFILE env var)`
+  - cmux-mcp: `feat(cmux-mcp): wire apply_tool_profile (CMUX_TOOL_PROFILE env var)`
+  - chat-bridge-mcp: `feat(chat-bridge-mcp): wire apply_tool_profile (CHAT_BRIDGE_TOOL_PROFILE env var)`
 - [ ] For each commit: `git -c user.email="les@wedgwoodwebworks.com"` per `git-author-email-correct-domain.md`.
 - [ ] Do NOT add `Co-Authored-By` trailer (per `feedback-no-claude-code-coauthor-attribution.md`).
 - [ ] Do NOT push (per `feedback-bodai-push-is-user-controlled.md`).
@@ -124,8 +128,10 @@ If Phase 2 or 3 fails: revert the per-repo commit. If Phase 4 (doc update) fails
 
 - `docs/plans/2026-10-12-tool-profile-ecosystem-doc.md` (active) — the companion plan that generates the cross-ecosystem doc
 - `feedback-no-bodai-mentions-in-mcp-repos.md` — the rule that distinguishes Tier-A / Tier-B / "Bodai-maintained `*-mcp`" subcategories
-- `mcp-common/mcp_common/tools/dispatch.py:269` — the `apply_tool_profile` helper
-- `graphics-mcp/graphics_mcp/mcp/tools/profiles.py` — the Tier-B pattern to mirror
+- `mcp-common/mcp_common/tools/dispatch.py:269` — the sync `apply_tool_profile` helper (wrong helper for async startup; do NOT use from `async def`)
+- `mcp-common/mcp_common/tools/dispatch.py:353` — the async `_apply_tool_profile` helper (the correct entry point for `async def startup()`; the graphics-mcp async path uses this)
+- `graphics-mcp/graphics_mcp/tools/profiles.py` — the Tier-B pattern to mirror (note: `tools/`, NOT `mcp/tools/`)
+- `mahavishnu/tests/unit/test_wiring.py:12` — the proven `test_server_core_calls_apply_tool_profile` test pattern (mirror, not the non-existent `crackerjack/tests/unit/test_wiring.py::test_apply_tool_profile_called`)
 - `cmux-mcp/cmux_mcp/server.py` — the cmux-mcp server startup to edit
 - `chat-bridge-mcp/chat_bridge_mcp/server.py` — the chat-bridge-mcp server startup to edit
 - `feedback-bodai-push-is-user-controlled.md` — push policy
