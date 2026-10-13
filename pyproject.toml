@@ -286,6 +286,15 @@ extend-select = [
     "C4",
     "SIM",
     "TCH",
+    "ASYNC221",
+    "ASYNC230",
+    "BLE001",
+    "DTZ001",
+    "DTZ005",
+    "PLW1510",
+    "PYI036",
+    "RUF012",
+    "S110",
 ]
 ignore = [
     "B904",
