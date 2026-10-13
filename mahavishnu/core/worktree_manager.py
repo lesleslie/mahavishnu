@@ -378,7 +378,7 @@ class WorktreeManager:
                     )
 
                 await asyncio.to_thread(_git_worktree_remove)
-        except Exception as exc:  # noqa: BLE001 - boundary keeps calling code alive
+        except Exception as exc:
             logger.warning("Failed to git-worktree-remove %s: %s", worktree_id, exc)
         finally:
             self._registry.pop(worktree_id, None)

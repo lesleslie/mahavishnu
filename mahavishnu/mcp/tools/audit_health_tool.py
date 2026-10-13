@@ -210,7 +210,7 @@ async def audit_one_repo(
             "error": f"{type(exc).__name__}: {exc}",
             "silent_degraded": False,
         }
-    except Exception as exc:  # noqa: BLE001 - audit boundary absorbs all errors
+    except Exception as exc:
         return {
             "repo": name,
             "host": host,
@@ -229,7 +229,7 @@ async def audit_one_repo(
     if content_type.startswith("application/json"):
         try:
             payload = response.json()
-        except Exception:  # noqa: BLE001 - opaque body, audit proceeds
+        except Exception:
             payload = None
         if isinstance(payload, dict):
             # Prefer canonical_status (Phase 1.1 addition) when present;

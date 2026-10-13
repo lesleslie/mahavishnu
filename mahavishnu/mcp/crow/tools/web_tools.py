@@ -102,7 +102,7 @@ def _extract_text(html: str) -> str:
     try:
         parser.feed(html)
         parser.close()
-    except Exception:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except Exception:
         # Best-effort: fall back to a stripped raw string.
         return re.sub(r"<[^>]+>", "", html)
     text = "".join(parser._chunks)
@@ -204,7 +204,7 @@ async def web_fetch_batch(
                     error=None,
                     duration_ms=result["duration_ms"],
                 )
-            except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception as exc:
                 return BatchItem(
                     url=u,
                     final_url=None,

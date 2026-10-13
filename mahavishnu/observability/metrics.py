@@ -49,7 +49,7 @@ import logging
 from typing import TYPE_CHECKING, Final
 
 from opentelemetry import metrics
-from opentelemetry.metrics import (  # noqa: TC002 — Counter/Histogram used as module-level variable annotations (deferred by __future__ annotations) + as counter_fn/counter_holder factories
+from opentelemetry.metrics import (
     Counter,
     Histogram,
 )

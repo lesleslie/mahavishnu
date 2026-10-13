@@ -590,7 +590,7 @@ class ErrorRecoveryManager:
                 "attempts": 1,
                 "execution_time": execution_time,
             }
-        except Exception as error:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as error:
             execution_time = time.time() - start_time
             error_category = await self.classify_error(error)
 
@@ -699,7 +699,7 @@ class ErrorRecoveryManager:
                 )
 
                 return {"success": True, "result": result, "attempts": attempt, "recovered": True}
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 last_exception = e
                 self.logger.warning(
                     f"Attempt {attempt}/{max_attempts} failed for workflow {workflow_id}: {e}"
@@ -751,7 +751,7 @@ class ErrorRecoveryManager:
             )
 
             return {"success": True, "result": result, "attempts": 1, "recovered": True}
-        except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+        except Exception as e:
             self.logger.error(f"Fallback function failed for workflow {workflow_id}: {e}")
 
             # Log failed fallback
@@ -909,7 +909,7 @@ class ErrorRecoveryManager:
             # Also check for workflows that have been stuck for too long
             await self._check_stuck_workflows()
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error in workflow monitoring: {e}")
 
     async def _heal_workflow(self, workflow_id: str, workflow_state: dict[str, Any]) -> bool:
@@ -962,7 +962,7 @@ class ErrorRecoveryManager:
                 self.logger.warning(f"Failed to heal workflow {workflow_id}: {result.get('error')}")
                 return False
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error healing workflow {workflow_id}: {e}")
             return False
 
@@ -1000,7 +1000,7 @@ class ErrorRecoveryManager:
                         # If we can't parse the date, skip this workflow
                         continue
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error checking for stuck workflows: {e}")
 
     async def get_recovery_metrics(self) -> dict[str, Any]:
@@ -1067,7 +1067,7 @@ class ResiliencePatterns:
                         break  # Shutdown signaled
                     except TimeoutError:
                         pass  # Normal timeout, continue loop
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception as e:
                     self.app.logger.error(f"Error in monitoring loop: {e}")
                     # Wait a bit before retrying (with shutdown check)
                     try:

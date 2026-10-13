@@ -86,7 +86,7 @@ def register_session_buddy_tools(
                 "status": "success",
                 "result": work_item.model_dump(mode="json"),
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to index code graph: {e}"}
 
     @server.tool()
@@ -110,7 +110,7 @@ def register_session_buddy_tools(
             result = await integration.get_function_context(project_path, function_name)
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to get function context: {e}"}
 
     @server.tool()
@@ -135,7 +135,7 @@ def register_session_buddy_tools(
             result = await integration.get_related_code(project_path, file_path)
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to find related code: {e}"}
 
     @server.tool()
@@ -158,7 +158,7 @@ def register_session_buddy_tools(
             result = await integration.index_documentation(project_path)
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to index documentation: {e}"}
 
     @server.tool()
@@ -180,7 +180,7 @@ def register_session_buddy_tools(
             result = await integration.search_documentation(query)
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to search documentation: {e}"}
 
     @server.tool()
@@ -219,7 +219,7 @@ def register_session_buddy_tools(
             )
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to send project message: {e}"}
 
     @server.tool()
@@ -240,7 +240,7 @@ def register_session_buddy_tools(
             result = await integration.list_project_messages(project)
 
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Failed to list project messages: {e}"}
 
     @server.tool()
@@ -304,7 +304,7 @@ def register_session_buddy_tools(
         try:
             result = await mcp_client.call_tool(_CHANNEL_SESSION_TOOL, payload)
             return {"status": "success", "event_id": payload["event_id"], "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {
                 "status": "error",
                 "error": f"Session-Buddy call failed: {e}",
@@ -349,7 +349,7 @@ def register_session_buddy_tools(
         try:
             result = await mcp_client.call_tool(_CHANNEL_QUERY_TOOL, query)
             return {"status": "success", "result": result}
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "error": f"Session-Buddy query failed: {e}"}
 
     print("✅ Registered 9 Session Buddy integration tools with MCP server (with authorization)")

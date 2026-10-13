@@ -325,7 +325,7 @@ class ExecutionTracker:
                     # Fallback for legacy interface
                     await asyncio.sleep(0.001)
                     written = len(records)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error(f"PostgreSQL write failed: {e}")
                 return {"status": "error", "error": str(e), "written": 0}
         else:

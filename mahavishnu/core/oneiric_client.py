@@ -289,7 +289,7 @@ class MCPAdapterRegistryClient:
         except ConnectionError:
             await self._circuit_breaker.record_failure(adapter_id)
             raise
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             await self._circuit_breaker.record_failure(adapter_id)
             return None
 
@@ -316,7 +316,7 @@ class MCPAdapterRegistryClient:
             else:
                 await self._circuit_breaker.record_failure(adapter_id)
             return healthy
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             await self._circuit_breaker.record_failure(adapter_id)
             return False
 
@@ -362,7 +362,7 @@ class MCPAdapterRegistryClient:
                 "cache_entries": len(self._cache),
                 "contract": contract,
             }
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             return {
                 "status": "unhealthy",
                 "connected": False,

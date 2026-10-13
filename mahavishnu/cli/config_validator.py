@@ -62,7 +62,7 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
 
     if not isinstance(data, dict):
         # ValueError is retained for the loader's tested invalid-content contract.
-        raise ValueError(f"Configuration file must contain a mapping: {path}")  # noqa: TRY004
+        raise ValueError(f"Configuration file must contain a mapping: {path}")
 
     return data
 
@@ -310,7 +310,7 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
             else:
                 settings = _load_settings_from_dir(config_dir)
                 runtime_settings_source = str(config_dir)
-        except Exception as exc:  # pragma: no cover - defensive, exercised via CLI error paths  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:  # pragma: no cover - defensive, exercised via CLI error paths
             runtime_validations.append(
                 ValidationResult(
                     valid=False,

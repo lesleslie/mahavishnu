@@ -545,7 +545,7 @@ class DatabaseMigrator:
             # PostgreSQL count
             try:
                 pg_count = await self._postgres.fetchval(f"SELECT COUNT(*) FROM {table}")  # ty: ignore[unresolved-attribute]
-            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:
                 pg_count = 0  # Table might not exist yet
 
             result["tables"][table] = {

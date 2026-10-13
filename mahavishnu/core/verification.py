@@ -97,7 +97,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
 
         backend = MCPStateBackend(base_url=mcp_url)
         return VerificationStore(mcp=backend)
-    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception:
         logger.warning("build_default_store: MCP unavailable, persistence disabled")
         return None
 
@@ -459,7 +459,7 @@ def _parse_refuter_response(raw: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
         # ValueError is part of this parser's contract and is handled by its callers.
-        raise ValueError("response is not a JSON object")  # noqa: TRY004
+        raise ValueError("response is not a JSON object")
     if "verdict" not in data:
         raise ValueError("response missing 'verdict' field")
     return data
@@ -614,7 +614,7 @@ class VerificationStore:
                     "persisted_at": payload["persisted_at"],
                 },
             )
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.warning(
                 "verification.persist_failure proposal_id=%s error=%s",
                 result.proposal_id,

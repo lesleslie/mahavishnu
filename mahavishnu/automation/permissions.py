@@ -99,7 +99,7 @@ class PermissionChecker:
             # PyObjC not available, assume permissions are granted
             # This allows the code to run in test environments
             return True
-        except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception:
             return False
 
     def check_screen_recording(self) -> bool:
@@ -134,7 +134,7 @@ class PermissionChecker:
         except ImportError:
             # Quartz not available, assume permissions are granted
             return True
-        except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception:
             return False
 
     def get_accessibility_status(self) -> PermissionStatus:
@@ -220,7 +220,7 @@ class PermissionChecker:
             return AXIsProcessTrustedWithOptions(options)  # type: ignore[no-any-return]
         except ImportError:
             return True
-        except Exception:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception:
             return False
 
     def to_dict(self) -> dict:

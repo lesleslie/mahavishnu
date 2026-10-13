@@ -162,7 +162,7 @@ class AdapterManager:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -563,7 +563,7 @@ class CapabilityRouter:
                     "resolution_time_ms": resolution_time_ms,
                 }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Capability routing failed: {e}")
             return {
                 "success": False,
@@ -707,7 +707,7 @@ class TaskRouter:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -905,7 +905,7 @@ class TaskRouter:
             except RetryExhaustedError as exc:
                 total_attempts += exc.attempts
                 last_error = exc.last_exception if exc.last_exception is not None else exc
-            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as exc:
                 last_error = exc
 
             self.adapter_registry.record_execution(adapter_type, success=False)
@@ -968,7 +968,7 @@ class TaskRouter:
                 "adapter_type": adapter_enum.value,
                 "status": "available_but_no_health_check",
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             return {
                 "adapter_type": adapter_enum.value,
                 "status": "error",

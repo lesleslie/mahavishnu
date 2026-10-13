@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path  # noqa: TC003 - needed at runtime: typer eval's string annotations
+from pathlib import Path
 
 import typer
 
@@ -212,7 +212,7 @@ def trigger_test_alert(
         raise typer.Exit(code=0)
     except typer.Exit:
         raise  # Propagate typer exits directly
-    except Exception as e:  # noqa: BLE001 - test fixture cleanup
+    except Exception as e:
         typer.echo(f"❌ Failed to create test alert: {e}")
         raise typer.Exit(code=1) from None
 
@@ -247,7 +247,7 @@ def _print_rich_dashboard() -> None:
     try:
         app_instance = MahavishnuApp()
         metrics = asyncio.run(app_instance.get_metrics())
-    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as e:
         formatter.format_dict({"error": str(e)}, title="Monitor Error")
         return
 

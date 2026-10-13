@@ -269,7 +269,7 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
         return
     try:
         await publish_task_event_raw(event_type, payload)
-    except Exception as exc:  # noqa: BLE001 - publisher is best-effort
+    except Exception as exc:
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 
 

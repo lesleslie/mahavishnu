@@ -74,7 +74,7 @@ def report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
 def safe_report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
     try:
         return report_run(conn, run)
-    except Exception as exc:  # noqa: BLE001 — telemetry is best-effort
+    except Exception as exc:
         logger.warning(
             "mahavishnu.distill.reporter: telemetry failed; workflow run NOT blocked",
             extra={

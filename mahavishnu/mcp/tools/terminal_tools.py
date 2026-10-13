@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from mcp_common.fastmcp import FastMCP  # noqa: TC002
+from mcp_common.fastmcp import FastMCP
 from pydantic import Field, StringConstraints
 
 from ...observability.worker_metrics import WorkerMetrics
 from ...terminal.adapters.tmux import TmuxTerminalAdapter
-from ...terminal.manager import TerminalManager  # noqa: TC001
+from ...terminal.manager import TerminalManager
 
 # SECURITY: Define validation constraints for MCP tool inputs.
 # SessionID allows ``.`` in addition to the conservative alphanumeric+``-``+``_``
@@ -260,7 +260,7 @@ def register_terminal_tools(
                 "new_adapter": adapter_name,
                 "migrate_sessions": migrate_sessions,
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             return {"status": "error", "message": f"Failed to switch adapter: {e}"}
 
     @mcp.tool()

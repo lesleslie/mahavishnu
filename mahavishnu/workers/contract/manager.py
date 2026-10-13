@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from . import tmux_adapter as tmux
 from .record import DurableWorkerRecord, TmuxTarget
 from .state import WorkerLifecycleState, can_transition
-from .store import WorkerRecordStore  # noqa: TC001  (used as runtime value in __init__)
+from .store import WorkerRecordStore
 from .tmux_adapter import (
     TmuxAdapterError,
     capture_pane,

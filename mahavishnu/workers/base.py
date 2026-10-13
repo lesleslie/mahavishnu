@@ -227,7 +227,7 @@ class BaseWorker(ABC):
                 "worker_type": self.worker_type,
                 "details": {},
             }
-        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as e:
             return {
                 "healthy": False,
                 "status": "unknown",

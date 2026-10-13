@@ -22,11 +22,11 @@ from ._registry import get_pool_factory, list_pool_types
 # These imports trigger the pool-type registration side effect in each module
 # (register_pool_type at module load). The dispatch itself uses the registry
 # (get_pool_factory) rather than these classes directly — see spawn_pool.
-from .mahavishnu_pool import MahavishnuPool  # noqa: F401  — registry side-effect
+from .mahavishnu_pool import MahavishnuPool
 from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
-from .runpod_pool import RunPodPool  # noqa: F401  — registry side-effect
-from .session_buddy_pool import SessionBuddyPool  # noqa: F401  — registry side-effect
+from .runpod_pool import RunPodPool
+from .session_buddy_pool import SessionBuddyPool
 
 if TYPE_CHECKING:
     from .base import BasePool
@@ -243,7 +243,7 @@ class PoolManager:
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
             )
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.debug("Failed to persist pool state for %s: %s", pool_id, exc)
 
     async def _persist_routing_decision(
@@ -289,7 +289,7 @@ class PoolManager:
                 record,
                 timestamp=datetime.now(UTC),
             )
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             logger.debug("Failed to persist routing decision for %s: %s", pool_id, exc)
 
     def _refresh_pool_worker_metrics(self) -> None:
@@ -346,7 +346,7 @@ class PoolManager:
             pools_cfg = get_settings().pools
             requested = pools_cfg.auto_spawn_type
             valid_types = list_pool_types()
-        except Exception as exc:  # noqa: BLE001 - boundary: settings is best-effort
+        except Exception as exc:
             logger.warning(
                 "auto_spawn defaults: settings unavailable, using safe fallback",
                 extra={"error": str(exc)},
@@ -902,7 +902,7 @@ class PoolManager:
             return None
         try:
             wait = buffer.fitted_model.safe_expected_wait_time()
-        except Exception:  # noqa: BLE001 - boundary handler
+        except Exception:
             return None
         if wait == float("inf") or wait < 0.0 or not math.isfinite(wait):
             return None
@@ -1025,7 +1025,7 @@ class PoolManager:
                     pools_cfg, "queueing_warmup_min_seconds", 600.0
                 ),
             }
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {"queueing_enabled": False}
 
     def get_pool_queue_depths(self) -> dict[str, float]:
@@ -1116,7 +1116,7 @@ class PoolManager:
                         return override
                     except ValueError:
                         pass  # Unknown selector string — keep current selector
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.debug("MCP selector override skipped: %s", e)
         return selector
 

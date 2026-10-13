@@ -255,7 +255,7 @@ class Database:
             logger.info("Disconnecting from database")
             try:
                 await self._pool.close()
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning(f"Error closing database pool: {e}")
             finally:
                 self._pool = None
@@ -284,7 +284,7 @@ class Database:
                 async with asyncio.timeout(5.0):
                     result = await self._pool.fetchval("SELECT 1")
                     health["query_test"] = result == 1
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 health["query_test"] = False
                 health["error"] = str(e)
 

@@ -182,7 +182,7 @@ class EmbeddingConfig(BaseModel):
         ]:
             try:
                 config = config.load_from_file(yaml_file)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.debug("Config file skipped: %s", e)
 
         # Override with environment variables

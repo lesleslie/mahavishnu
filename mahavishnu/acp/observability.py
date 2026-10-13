@@ -18,7 +18,7 @@ sets up an in-memory exporter and asserts on the captured spans.
 
 from __future__ import annotations
 
-from collections.abc import Generator  # noqa: TC003 — used as the return type of the contextmanager
+from collections.abc import Generator
 from contextlib import contextmanager
 import logging
 import time
@@ -54,7 +54,7 @@ def get_session_tracer() -> Any:
         return None
     try:
         return trace.get_tracer("mahavishnu.acp.session")
-    except Exception:  # noqa: BLE001 — best-effort init; missing provider is expected
+    except Exception:
         # Provider not configured or other init issue — treat as no-op.
         return None
 
@@ -76,7 +76,7 @@ def is_otel_active() -> bool:
         from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
 
         return isinstance(provider, TracerProvider)
-    except Exception:  # noqa: BLE001 — best-effort OTel provider detection, raise would break the dispatcher's main flow on telemetry misconfiguration
+    except Exception:
         return False
 
 
@@ -119,7 +119,7 @@ def session_span(
             for k, v in (attributes or {}).items():
                 try:
                     span.set_attribute(k, v)
-                except Exception:  # noqa: BLE001, S110 — non-string attrs are skipped silently; raising would break the dispatcher's main flow on telemetry misconfiguration
+                except Exception:
                     pass
             try:
                 yield state
@@ -131,7 +131,7 @@ def session_span(
                 if state["status"] == "error":
                     try:
                         span.set_status(Status(StatusCode.ERROR))  # type: ignore[arg-type]
-                    except Exception:  # noqa: BLE001, S110 — best-effort error status reporting; raising would mask the original error
+                    except Exception:
                         pass
                 logger.info(
                     "acp.session_completed session_id=%s stop_reason=%s duration_ms=%.1f",

@@ -312,7 +312,7 @@ class JSONRPCStdioClient:
         if self._writer is not None and not self._writer.is_closing():
             try:
                 self._writer.close()
-            except Exception as e:  # noqa: BLE001 - defensive cleanup
+            except Exception as e:
                 self._logger.debug("error closing writer: %s", e)
         # Subprocess termination.
         if self._process is not None and self._process.returncode is None:
@@ -522,7 +522,7 @@ class JSONRPCStdioClient:
             # Normal teardown.
             return
         except Exception as e:  # pragma: no cover - defensive
-            self._logger.exception("unexpected error in read loop: %s", e)  # noqa: TRY401
+            self._logger.exception("unexpected error in read loop: %s", e)
             self._fail_pending_requests(
                 PiProtocolError(f"read loop crashed: {e}", frame_excerpt=str(e))
             )

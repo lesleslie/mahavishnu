@@ -489,7 +489,7 @@ async def _ensure_consumer_group(
             id="$",
             mkstream=True,
         )
-    except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception as exc:
         if "BUSYGROUP" in str(exc):
             _logger.debug(
                 "bodai.subscriber: consumer group already exists",
@@ -627,10 +627,10 @@ async def _close_redis_client(client: Any) -> None:
     """Close the redis client via ``aclose`` then ``close`` (best-effort)."""
     try:
         await client.aclose()
-    except Exception:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+    except Exception:
         try:
             await client.close()
-        except Exception as e:  # noqa: BLE001 - CLI entrypoint; converts unhandled errors to exit
+        except Exception as e:
             _logger.debug("Client close error: %s", e)
 
 

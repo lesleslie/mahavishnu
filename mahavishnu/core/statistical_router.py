@@ -380,7 +380,7 @@ class StatisticalRouter:
                     f"{pref.adapters[0].value if pref.adapters else 'none'} "
                     f"({pref.confidence.value})"
                 )
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error(f"Failed to calculate preference for {task_type.value}: {e}")
 
         # Clear cache after recalculation

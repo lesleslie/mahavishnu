@@ -414,7 +414,7 @@ async def finalize_workflow_execution(
                 finished_at=finished_at,
                 metadata={"adapter": adapter_name, "task_type": task_type},
             )
-        except Exception as outcome_err:  # noqa: BLE001 - substrate failures must never propagate
+        except Exception as outcome_err:
             logger.warning(
                 "record_workflow_outcome_failed",
                 extra={
@@ -519,7 +519,7 @@ async def execute_workflow_parallel(
             errors=errors,
             checkpoint_id=checkpoint_id,
         )
-    except Exception as exc:  # noqa: BLE001 - boundary handler; re-raise depends on substituted error handler
+    except Exception as exc:
         # handle_workflow_execution_error normally re-raises after recording
         # the failure. If a caller substitutes an error handler that
         # swallows the exception (returning None), return None so callers
@@ -570,7 +570,7 @@ async def execute_workflow_with_fallback(
                 "repo_results": result,
                 "errors": [],
             }
-        except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as exc:
             errors.append((adapter_name.value, str(exc)))
             logger.warning("Adapter %s failed: %s", adapter_name.value, exc)
             continue

@@ -191,7 +191,7 @@ async def detect_until_dry(
         for finding in iter_findings:
             try:
                 key = dedup_key(finding)
-            except Exception as exc:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as exc:
                 dedup_error = exc
                 break
             if key not in seen_keys:

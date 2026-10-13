@@ -140,7 +140,7 @@ class SessionBuddyIntegration:
                 "classes_extracted": len(code_context["classes"]),
                 "imports_extracted": len(code_context["imports"]),
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error integrating code graph: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -160,7 +160,7 @@ class SessionBuddyIntegration:
                 "related_files": related_files,
                 "count": len(related_files),
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error getting related code: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -175,7 +175,7 @@ class SessionBuddyIntegration:
             context = await analyzer.get_function_context(function_name)
 
             return {"status": "success", "function_name": function_name, "context": context}
-        except Exception as e:  # noqa: BLE001 - event handler; logs and continues
+        except Exception as e:
             self.logger.error(f"Error getting function context: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -209,7 +209,7 @@ class SessionBuddyIntegration:
                 "documentation_items": len(documentation),
                 "indexed": False,  # dead stub removed; push is in core.code_index.indexer
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error indexing documentation: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -238,7 +238,7 @@ class SessionBuddyIntegration:
                     return docstring  # type: ignore[no-any-return]
 
             return None
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:
             return None
 
     async def search_documentation(self, query: str) -> dict[str, Any]:
@@ -251,7 +251,7 @@ class SessionBuddyIntegration:
             # This would normally be a call to Session Buddy's search API
             # For now, return an empty result
             return {"status": "success", "query": query, "results": [], "count": 0}
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error searching documentation: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -287,7 +287,7 @@ class SessionBuddyIntegration:
                 "message_id": project_message.id,  # ty: ignore[unresolved-attribute]
                 "sent": True,
             }
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error sending project message: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -299,7 +299,7 @@ class SessionBuddyIntegration:
             self.logger.info(f"Listing messages for project: {project}")
 
             return {"status": "success", "project": project, "messages": [], "count": 0}
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self.logger.error(f"Error listing project messages: {e}")
             return {"status": "error", "error": str(e)}
 
@@ -355,5 +355,5 @@ class SessionBuddyManager:
                 results["documentation_search"] = doc_search
 
             return {"status": "success", "enhanced_context": results, "repo_path": repo_path}
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             return {"status": "error", "error": str(e)}

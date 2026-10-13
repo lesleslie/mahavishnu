@@ -80,7 +80,7 @@ def _safe_publish_git_event(event: str) -> None:
     """
     try:
         _publish_git_event(event)
-    except Exception:  # noqa: BLE001 - fire-and-forget boundary
+    except Exception:
         # Operator-facing signal: log to stderr so git surfaces it as
         # "Hook output" but does NOT block on it (git cares only about
         # the action's exit code).

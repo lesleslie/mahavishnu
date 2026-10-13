@@ -36,7 +36,7 @@ from __future__ import annotations
 from functools import cache
 
 from opentelemetry import metrics
-from opentelemetry.metrics import (  # noqa: TC002 — used as runtime return annotations
+from opentelemetry.metrics import (
     Counter,
     Histogram,
 )

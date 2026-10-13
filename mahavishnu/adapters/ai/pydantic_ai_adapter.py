@@ -306,7 +306,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         # Check if pydantic-ai is available
         try:
-            import pydantic_ai  # noqa: F401
+            import pydantic_ai
 
             self._pydantic_ai_available = True
         except ImportError:
@@ -540,7 +540,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
             except PydanticAIAdapterError:
                 raise
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -744,7 +744,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -863,7 +863,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             except TimeoutError:
                 logger.error("MCP server %s cleanup timed out", name)
                 failed_servers.append(name)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning("Error closing MCP server %s: %s", name, e)
                 failed_servers.append(name)
 
@@ -899,7 +899,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 self._mcp_servers[tool_config.name] = server
                 logger.info("Initialized MCP server: %s", tool_config.name)
 
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning(
                     "Failed to initialize MCP server %s: %s",
                     tool_config.name,
@@ -1017,7 +1017,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:  # noqa: BLE001 - executor boundary; logs and re-raises or returns
+            except Exception as e:
                 last_error = e
                 logger.warning(
                     "Model %s failed: %s",

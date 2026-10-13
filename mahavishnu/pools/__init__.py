@@ -161,11 +161,11 @@ def _load_all_pool_types() -> None:
     make the registry available to early-bootstrap callers (CLI, MCP bootstrap).
     """
     from . import (
-        gpu_handler_pool,  # noqa: F401  — registry side-effect
-        mahavishnu_pool,  # noqa: F401  — registry side-effect
-        pi_pool,  # noqa: F401  — registry side-effect (D1)
-        runpod_pool,  # noqa: F401  — registry side-effect
-        session_buddy_pool,  # noqa: F401  — registry side-effect
+        gpu_handler_pool,
+        mahavishnu_pool,
+        pi_pool,
+        runpod_pool,
+        session_buddy_pool,
     )
 
 

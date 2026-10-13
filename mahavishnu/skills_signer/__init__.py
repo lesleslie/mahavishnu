@@ -77,7 +77,7 @@ from mahavishnu.skills_signer.manifest import (
 from mahavishnu.skills_signer.sign import SignedPayload, SkillsSigner
 from mahavishnu.skills_signer.verify import verify_signature
 
-__all__ = [  # noqa: RUF022  # grouped with section comments; alphabetical sort would split them
+__all__ = [  # grouped with section comments; alphabetical sort would split them
     # Canonicalization
     "canonical_payload_for_signing",
     "canonicalize_payload",

@@ -191,7 +191,7 @@ class SelfImprovementTools:
                         },
                     )
                     issues_created += 1
-            except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+            except Exception as e:
                 logger.warning(f"Failed to create issue for finding {finding.get('id')}: {e}")
 
         result["issues_created"] = issues_created
@@ -268,7 +268,7 @@ class SelfImprovementTools:
                 "expires_at": request_dict.get("expires_at"),
                 "options": request_dict.get("options", []),
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Failed to create approval request: {e}")
             return {
                 "error": str(e),
@@ -352,7 +352,7 @@ class SelfImprovementTools:
                 "error": error_msg,
                 "approved": False,
             }
-        except Exception as e:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+        except Exception as e:
             logger.error(f"Unexpected error responding to approval: {e}")
             return {
                 "error": f"Request {approval_id} not found or expired",

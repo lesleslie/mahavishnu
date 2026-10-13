@@ -11,7 +11,7 @@ import mcp_common
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
-from ..terminal.adapters.base import TerminalAdapter  # noqa: TC001  (runtime return annotation)
+from ..terminal.adapters.base import TerminalAdapter
 from ..terminal.adapters.mock import MockTerminalAdapter
 from ..terminal.manager import TerminalManager
 
@@ -108,7 +108,7 @@ def _build_crow_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
                 getattr(config, "crow_http_host", "127.0.0.1"),
                 getattr(config, "crow_http_port", 8693),
             )
-        except Exception as exc:  # noqa: BLE001 - MCP boundary must stay alive
+        except Exception as exc:
             logger.warning(
                 "Failed to construct crow MCP client (%s); falling back to mock "
                 "adapter. Pools will NOT execute real work. Verify the bodai-crow "
@@ -164,7 +164,7 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
 
     try:
         return factory(config=config, mcp_client=mcp_client)
-    except ConfigurationError:  # noqa: TRY203 - re-raise marker
+    except ConfigurationError:
         # Crow-disabled falls through to mock; let other errors propagate.
         # The Crow factory handles crow_enabled internally; it returns Mock
         # when disabled. So this except branch is for genuine configuration
@@ -185,7 +185,7 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
             config.max_concurrent_sessions,
         )
         return manager
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except Exception as exc:
         logger.error("Failed to initialize terminal manager: %s", exc)
         return None
 
@@ -501,7 +501,7 @@ def _try_build_durable_worker_manager() -> Any:
             publisher=publisher,
             socket_dir=pathlib.Path.home() / ".mahavishnu" / "tmux",
         )
-    except Exception as exc:  # noqa: BLE001 - MCP boundary must preserve all operation failures
+    except Exception as exc:
         logger.warning("Failed to build durable worker manager: %s", exc)
         return None
 
@@ -579,7 +579,7 @@ def _register_otel_block(server: FastMCPServer) -> None:
 
     try:
         akosha_spec = importlib.util.find_spec("akosha.storage")
-    except Exception as exc:  # noqa: BLE001 - defensive: any import-time error
+    except Exception as exc:
         logger.warning("Skipping OTel tool registration: akosha import failed: %s", exc)
         return
 
@@ -592,7 +592,7 @@ def _register_otel_block(server: FastMCPServer) -> None:
 
         register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered 4 OTel trace management tools with MCP server")
-    except Exception as exc:  # noqa: BLE001 - defensive
+    except Exception as exc:
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)
 
 
@@ -672,7 +672,7 @@ def _register_openhands_block(server: FastMCPServer) -> None:
 
         server.server.mount(openhands_mcp, "openhands")
         logger.info("Registered 4 OpenHands integration tools with MCP server")
-    except Exception as exc:  # noqa: BLE001 - defensive: service may be unavailable
+    except Exception as exc:
         logger.warning("OpenHands tools not available: %s", exc)
 
 
@@ -701,14 +701,14 @@ def _register_capability_block(server: FastMCPServer) -> None:
     try:
         mcp_url = resolve_mcp_url(server.app.config)
         mcp = MCPClient(base_url=mcp_url, timeout=10.0)
-    except Exception as exc:  # noqa: BLE001 - boundary: substrate may be unconfigured
+    except Exception as exc:
         logger.warning("Skipping get_capability_result registration: %s", exc)
         return
 
     try:
         register_get_capability_result(server.server, mcp=mcp)
         logger.info("Registered get_capability_result tool with MCP server")
-    except Exception as exc:  # noqa: BLE001 - boundary: MCP may be offline
+    except Exception as exc:
         logger.warning("Skipping get_capability_result registration after MCP init: %s", exc)
 
 
@@ -812,7 +812,7 @@ def _register_a2a_routes_block(server: FastMCPServer) -> None:
         logger.info(
             "Mounted A2A server routes (/.well-known/agent.json, /tasks/send, /tasks/sendSubscribe)"
         )
-    except Exception as exc:  # noqa: BLE001 - defensive: A2A may be unavailable
+    except Exception as exc:
         logger.warning("A2A server routes not mounted: %s", exc)
 
 
@@ -1164,7 +1164,7 @@ def _register_otel_tools(server: FastMCPServer) -> None:
 
     try:
         akosha_spec = importlib.util.find_spec("akosha.storage")
-    except Exception as exc:  # noqa: BLE001 - defensive
+    except Exception as exc:
         logger.warning("Skipping OTel tool registration: akosha import failed: %s", exc)
         return
     if akosha_spec is None:
@@ -1175,7 +1175,7 @@ def _register_otel_tools(server: FastMCPServer) -> None:
 
         register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
         logger.info("Registered 4 OTel trace management tools with MCP server")
-    except Exception as exc:  # noqa: BLE001 - defensive
+    except Exception as exc:
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)
 
 
@@ -1249,7 +1249,7 @@ def _register_openhands_tools(server: FastMCPServer) -> None:
 
         server.server.mount(openhands_mcp, "openhands")
         logger.info("Registered 4 OpenHands integration tools with MCP server")
-    except Exception as exc:  # noqa: BLE001 - defensive
+    except Exception as exc:
         logger.warning("OpenHands tools not available: %s", exc)
 
 

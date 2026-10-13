@@ -150,7 +150,7 @@ class WorktreeCoordinator:
                     repo_path = Path(repo.path).resolve()
                     allowed_worktree_roots.append(repo_path / ".worktrees")
                     allowed_worktree_roots.append(repo_path / ".claude" / "worktrees")
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 # If the repo catalog is briefly unavailable, fall back
                 # to the base allow-list rather than failing to construct
                 # the coordinator. Per-repo subdirs are added on the next
@@ -575,7 +575,7 @@ class WorktreeCoordinator:
                         provider = await self.provider_registry.get_available_provider()
                         result = await provider.list_worktrees(repository_path=Path(repo.path))
                         all_worktrees.extend(result.get("worktrees", []))
-                    except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                    except Exception as e:
                         logger.warning(f"Failed to list worktrees for {repo.nickname}: {e}")
                         continue
 
@@ -704,7 +704,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["status", "--porcelain"])
             return bool(result.strip())
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Failed to check uncommitted changes: {e}")
             return False
 
@@ -738,7 +738,7 @@ class WorktreeCoordinator:
             content = git_file.read_text().strip()
             return content.startswith("gitdir:")
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Failed to verify worktree: {e}")
             return False
 
@@ -747,7 +747,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(repo_path, ["branch", "--list", branch])
             return bool(result.strip())
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Failed to check branch existence: {e}")
             return False
 
@@ -756,7 +756,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["branch", "--show-current"])
             return result.strip()
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Failed to get worktree branch: {e}")
             return "unknown"
 

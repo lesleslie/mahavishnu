@@ -155,7 +155,7 @@ class RunPodPool(BasePool):
                 "duration": duration,
             }
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             self._tasks_failed += 1
             duration = time.time() - start_time
             logger.error("RunPod task failed: %s", e)

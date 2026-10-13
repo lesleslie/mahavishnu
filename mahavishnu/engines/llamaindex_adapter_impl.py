@@ -423,7 +423,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             )
             self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
-        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as e:
             logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
                 from turbovec.integrations.llamaindex import (  # ty: ignore[unresolved-import]
@@ -501,7 +501,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             else:
                 self._init_fallback_instrumentation()
 
-        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as e:
             print(f"Warning: Failed to initialize OpenTelemetry instrumentation: {e}")
             self._init_fallback_instrumentation()
 
@@ -801,7 +801,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "task_id": task_params.get("id", "unknown"),
                 }
 
-            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+            except Exception as e:
                 error_msg = f"Ingestion failed: {e}"
 
                 # Record error in span
@@ -1062,7 +1062,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "task_id": task_params.get("id", "unknown"),
                 }
 
-            except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+            except Exception as e:
                 error_msg = f"Query failed: {e}"
 
                 # Record error in span
@@ -1248,7 +1248,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
             return {"status": "healthy", "details": health_details}
 
-        except Exception as e:  # noqa: BLE001 - boundary preserves structured backend failure handling
+        except Exception as e:
             return {"status": "unhealthy", "details": {"error": str(e), "configured": True}}
 
 

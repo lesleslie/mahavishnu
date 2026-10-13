@@ -8,12 +8,12 @@
 
 from __future__ import annotations
 
-import datetime as dt  # noqa: TC003  (needed at runtime by Pydantic v2)
+import datetime as dt
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .state import WorkerLifecycleState  # noqa: TC001  (needed at runtime by Pydantic v2)
+from .state import WorkerLifecycleState
 
 
 class TmuxTarget(BaseModel):

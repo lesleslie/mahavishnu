@@ -275,7 +275,7 @@ class AdapterHealthMonitor:
                 # assignment (proved safe by the surrounding ``hasattr``).
                 list_active: Callable[[str], Any] = registry.list_active  # ty: ignore[invalid-assignment]
                 candidates = list(list_active("adapter"))
-            except Exception as exc:  # noqa: BLE001 - substrate boundary
+            except Exception as exc:
                 logger.warning(f"Resolver list_active failed: {exc}")
                 return {}
         elif isinstance(registry, dict):
@@ -296,7 +296,7 @@ class AdapterHealthMonitor:
                 continue
             try:
                 instance = factory()
-            except Exception as exc:  # noqa: BLE001 - diagnostic
+            except Exception as exc:
                 logger.debug(f"adapter-instantiation-error provider={provider}: {exc}")
                 continue
             adapters[provider] = instance
@@ -315,7 +315,7 @@ class AdapterHealthMonitor:
             try:
                 health = await self.check_adapter_health(adapter_name)
                 results[adapter_name] = health
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.error(f"Failed to check health for {adapter_name}: {e}")
                 results[adapter_name] = {
                     "status": "error",
@@ -387,7 +387,7 @@ class AdapterHealthMonitor:
 
             return health
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Health check failed for {adapter_name}: {e}")
 
             error_health: dict[str, Any] = {
@@ -487,7 +487,7 @@ class AdapterHealthMonitor:
                 server="mahavishnu",
                 adapter=adapter_name,
             ).set(value)
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.debug(f"Failed to update health gauge for {adapter_name}: {e}")
 
     async def _broadcast_health_change(
@@ -523,7 +523,7 @@ class AdapterHealthMonitor:
                 )
                 await self.websocket_server.broadcast_to_room("global", event)
                 logger.debug(f"Broadcast health change for {adapter_name}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.warning(f"Failed to broadcast health change: {e}")
 
     async def _trigger_health_alert(
@@ -567,11 +567,11 @@ class AdapterHealthMonitor:
             for handler in self.alert_manager.handlers:
                 try:
                     await handler.send_alert(alert)
-                except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+                except Exception as e:
                     logger.error(f"Alert handler {handler.__class__.__name__} failed: {e}")
 
             logger.info(f"Triggered health alert for {adapter_name}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to trigger health alert: {e}")
 
     async def _update_router_preferences(
@@ -595,7 +595,7 @@ class AdapterHealthMonitor:
                 # This will deprioritize unhealthy adapters
                 router._preferences.clear()
                 logger.info(f"Cleared StatisticalRouter cache due to {adapter_name} health change")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.debug(f"Failed to update router preferences: {e}")
 
     async def _persist_health_state(
@@ -645,9 +645,9 @@ class AdapterHealthMonitor:
                 conn.commit()
                 conn.close()
                 logger.debug(f"Persisted health state for {adapter_name} to SQLite")
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.debug(f"Failed to persist health state to SQLite: {e}")
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.debug(f"Failed to persist health state: {e}")
 
     async def start_periodic_checks(self, interval: int | None = None) -> None:

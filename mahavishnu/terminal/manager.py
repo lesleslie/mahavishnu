@@ -143,7 +143,7 @@ class TerminalManager:
         if migrate_sessions:
             try:
                 await self._migrate_sessions(old_adapter, new_adapter)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning(f"Session migration failed: {e}")
                 logger.info("Continuing with adapter switch (existing sessions orphaned)")
 
@@ -156,7 +156,7 @@ class TerminalManager:
         if self._session_migration_callback:
             try:
                 await self._session_migration_callback(old_adapter_name, new_adapter_name)
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning(f"Migration callback failed: {e}")
 
     async def _migrate_sessions(
@@ -202,7 +202,7 @@ class TerminalManager:
                 )
                 logger.info(f"Migrated session {session_id} → {new_session_id}")
 
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:
                 logger.warning(f"Failed to migrate session {session_id}: {e}")
 
         logger.info("Session migration complete")

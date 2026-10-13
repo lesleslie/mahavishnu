@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 _CACHE_DEPS_AVAILABLE: bool
 _CACHE_DEPS_ERROR: str | None
 try:
-    import coredis  # noqa: F401  - oneiric lazy-imports this transitively
+    import coredis
 
     _CACHE_DEPS_AVAILABLE = True
     _CACHE_DEPS_ERROR = None
@@ -416,7 +416,7 @@ def handle_pool_bootstrap(env: CanonicalEnvelope) -> int:
             "pool_bootstrap event observed",
             extra={"harness": env.harness, "session_id": env.session_id},
         )
-    except Exception as exc:  # noqa: BLE001 - boundary: SessionStart must never block
+    except Exception as exc:
         # Use stderr (not logger) to avoid a logging failure cascading
         # into another try/except. SessionStart must always return 0.
         import sys

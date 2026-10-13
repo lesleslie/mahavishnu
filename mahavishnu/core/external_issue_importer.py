@@ -380,7 +380,7 @@ class ExternalIssueImporter:
 
             return created_task.id
 
-        except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception as e:
             logger.error(f"Failed to import issue {issue.external_id}: {e}")
             return None
 

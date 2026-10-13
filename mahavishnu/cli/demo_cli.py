@@ -129,7 +129,7 @@ async def _best_effort_reap(adapter, session_ids: list[str]) -> None:
     for sid in session_ids:
         try:
             await adapter.close_session(sid)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             typer.echo(f"  reap failed for {sid}: {exc}")
 
 
@@ -258,7 +258,7 @@ def _check_prefect_preconditions(
 
     try:
         settings = settings_getter()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         failures.append(f"could not load settings: {exc}")
         return failures
 
@@ -272,7 +272,7 @@ def _check_prefect_preconditions(
         resp = http_probe(health_url, timeout=timeout)
         if resp.status_code != 200:
             failures.append(f"Prefect server returned HTTP {resp.status_code} at {health_url}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         failures.append(f"Prefect server unreachable at {health_url}: {exc}")
 
     work_pool = getattr(prefect_cfg, "work_pool", None)
