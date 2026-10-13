@@ -1127,6 +1127,26 @@ def _register_pool_tools(server: FastMCPServer) -> None:
     logger.info("Registered 10 pool management tools with MCP server")
 
 
+def _register_budget_tools(server: FastMCPServer) -> None:
+    """Register the ``mahavishnu_budget_enforce`` tool.
+
+    The budget tool is intentionally independent of ``pools_enabled``:
+    it can be invoked against any Mahavishnu workflow run, regardless
+    of whether the pool subsystem is wired. When no ``BudgetStore`` is
+    configured on the app (the default), the tool returns
+    ``{"status": "unconfigured"}`` rather than raising — see
+    ``mahavishnu.mcp.tools.budget_tools`` for the contract.
+
+    Extracted from ``pool_tools.py`` as part of the Stage 3b
+    unblocker — see ``docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md``.
+    """
+    from ..mcp.tools.budget_tools import register_budget_tools
+
+    budget_store = getattr(server.app, "budget_store", None)
+    register_budget_tools(server.server, budget_store=budget_store)
+    logger.info("Registered mahavishnu_budget_enforce tool with MCP server")
+
+
 def _register_worker_contract_tools(server: FastMCPServer) -> None:
     """Register the durable-worker contract tool group (defensive fallback)."""
     from ..mcp.tools.worker_contract_tools import register_worker_contract_tools

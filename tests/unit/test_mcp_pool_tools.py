@@ -403,21 +403,29 @@ class TestPoolToolRegistration:
 
         register_pool_tools(mock_mcp, mock_pool_manager)
 
-        # Verify all 9 tools were registered
+        # Verify all 10 pool tools were registered. ``budget_enforce``
+        # was extracted to :mod:`mahavishnu.mcp.tools.budget_tools` as part
+        # of the Stage 3b unblocker — see
+        # ``docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md``.
         expected_tools = [
             "pool_list",
+            "pool_spawn",
+            "pool_bootstrap",
             "pool_monitor",
             "pool_scale",
             "pool_close",
             "pool_close_all",
             "pool_health",
             "pool_search_memory",
-            "budget_enforce",
             "pool_route_execute",
         ]
 
         for tool in expected_tools:
             assert tool in registered_tools, f"Tool {tool} was not registered"
+
+        assert "budget_enforce" not in registered_tools, (
+            "budget_enforce must live in budget_tools, not pool_tools"
+        )
 
 
 def _capture_pool_route_execute(mock_pool_manager):

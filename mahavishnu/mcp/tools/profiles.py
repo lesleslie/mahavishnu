@@ -34,6 +34,7 @@ from mcp_common.tools import ToolProfile
 from ..bootstrap import (
     _register_agents_tools,
     _register_audit_health_tools,
+    _register_budget_tools,
     _register_capability_tools,
     _register_clone_tools,
     _register_dispatch_specialist_tools,
@@ -99,6 +100,10 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     "_register_session_buddy_tools",
     "_register_openhands_tools",
     "_register_primitive_tools",
+    # Extracted from pool_tools.py at Stage 3b unblocker; lives alongside
+    # the other STANDARD-tier management surfaces so the watchdog is
+    # reachable whenever pools are.
+    "_register_budget_tools",
     # Ecosystem publish-URL tool — sibling-surface for crackerjack's
     # layered publish-URL resolution. Read-only, no auth gate; lets
     # crackerjack learn its publish target without a settings/local.yaml
@@ -238,6 +243,11 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Extracted from pool_tools.py at Stage 3b unblocker. Registrar
+    # resolves ``budget_store`` from ``server.app`` inside bootstrap.py
+    # (consistent with how ``_register_pool_tools`` resolves its
+    # ``pool_manager``); the lambda trampoline stays simple.
+    "_register_budget_tools": lambda s: _register_budget_tools(s._mhv_server),  # type: ignore[attr-defined]
     # FULL-tier groups.
     "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(s._mhv_server),  # type: ignore[attr-defined]
