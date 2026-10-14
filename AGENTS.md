@@ -1,5 +1,12 @@
 # Repository Guidelines
 
+## Decisions
+
+Repo-local decisions and policy live in [`docs/decisions/`](docs/decisions/README.md).
+Add a new file there when a non-trivial choice needs to be recorded for future
+contributors. Architectural choices that affect system structure belong in
+[`docs/adr/`](docs/adr/) instead.
+
 ## Project Structure & Module Organization
 
 - `mahavishnu/` contains the application package: core orchestration logic in `core/`, MCP server code in `mcp/`, WebSocket support in `websocket/`, content ingestion in `ingestion/`, and CLI entrypoints in `cli.py`.
