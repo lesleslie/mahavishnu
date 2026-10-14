@@ -56,7 +56,7 @@ title: "Bodai Math Initiatives — Tier 1 Implementation Plan (v3)"
 > **v3 changelog** (2026-09-10): patched after 3-agent verification pass addressing BLOCKERs and CRITICAL findings. Verification findings cross-referenced against actual codebase files (`scripts/audit_requirements.py:76-92`, `_ALLOWED_LABEL_KEYS` at `mahavishnu/observability/metrics.py:74`, `mahavishnu/core/routing_metrics.py:164`, `mahavishnu/pools/fitness_analyzer.py:31` for `_MAX_BUFFER_SIZE`, etc.). Substantive changes from v2:
 > 1. Frontmatter `requirements:` block added — `scripts/audit_requirements.py` reads frontmatter only; body-block REQs were invisible to the audit. (BLOCKER fix)
 > 2. Top-level `Makefile` added with `tier2-eligibility` target — repo had no top-level Makefile. (BLOCKER fix)
-> 3. `docs/runbooks/mahavishnu-drift-detection.md` added for OTel `runbook_url` attribute. (BLOCKER fix)
+> 3. `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` added for OTel `runbook_url` attribute. (BLOCKER fix)
 > 4. Phase 6 default `threshold: 5.0` → `8.0`; `slack: 0.5` → `0.25`. Now achieves ARL₀ ≥ 10,000 at two-sided CUSUM (v2 default achieved ARL₀ ≈ 465, violating §1 success criterion). (CRITICAL fix)
 > 5. §11 Decision Rule p95 bound split: `25% on Poisson; 50% on bursty/hyperexponential` (was a single looser bound that dropped the Poisson criterion).
 > 6. Phase 7 zero-FP-in-1-week gate added (`assert d['cusum_fp_per_10080_quiet_samples'] == 0`). (was orphan — §1 success metric, no Phase demonstrated it)
@@ -112,7 +112,7 @@ When this plan ships, the Mahavishnu orchestrator has two math-informed signals 
     fire; the integration layer emits `mahavishnu.observability.drift_warning`
     at this point and increments the `mahavishnu.observability.drift_warning_total`
     Prometheus counter. Operator-visible but not page-worthy — see
-    `docs/runbooks/mahavishnu-drift-detection.md` for the operator
+    `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` for the operator
     response when this signal fires.
   - **§7 FP gate**: confirmed alerts ≤ 2 per 10,080 quiet samples (1 week
     at 1-min cadence). Measured on the confirmed-alert stream — a
@@ -492,13 +492,13 @@ document the math and its assumptions; produce the validation report.
   - Hyperexponential service-time workload (documents where M/M/c breaks)
 - Add programmatic gate: `pytest tests/integration/pools/test_queueing_routing.py --benchmark-json=bench.json && python -c "import json; d = json.load(open('bench.json')); assert d['p95_error'] < 0.25; assert d['median_error'] < 0.10"` — the doc reports the same numbers but the gate is mechanical
 - Per-shift-size decomposition for bursty and hyperexponential workloads: error budget per CV² tier, so reviewers see where the model genuinely degrades
-- Add `docs/pools/queueing_routing.md` explaining the math, the assumptions, and how to interpret the validation report
+- Add `docs/pools/QUEUEING_ROUTING.md` explaining the math, the assumptions, and how to interpret the validation report
 - Add `docs/audits/2026-09-10-queueing-validation.md` with the actual numbers
 - Add `python scripts/audit_orphans.py` to the validation step (run after every phase per `docs/decisions/wire-up-contract.md`, not only at promotion)
 
 #### Integration Contract — Phase 3 deliverable
 - **Triggered from**: `pytest tests/integration/pools/test_queueing_routing.py --benchmark-json=bench.json` runs the validation harness. `python scripts/audit_orphans.py` checks for orphaned symbols.
-- **Returns to / updates**: `docs/pools/queueing_routing.md` (explanatory) + `docs/audits/2026-09-10-queueing-validation.md` (numbers); `htmlcov/index.html` coverage report; `bench.json` benchmark artifact.
+- **Returns to / updates**: `docs/pools/QUEUEING_ROUTING.md` (explanatory) + `docs/audits/2026-09-10-queueing-validation.md` (numbers); `htmlcov/index.html` coverage report; `bench.json` benchmark artifact.
 - **Demonstrable by**: a reviewer can read the audit doc and see median error < 25% on Poisson, p95 < 50% across all three workload patterns, with the per-shift-size table showing where the model degrades. The programmatic gate (`python -c "...assert..."` from above) passes.
 - **Rollback signal**: validation failure → Phase 4 promotion blocked; Phase 2's opt-in default stays `false`.
 - **Observability added**: validation report and benchmark artifact are the only outputs. Runtime observability is unchanged from Phase 2.
@@ -619,11 +619,11 @@ pre-existing one — see §4.2).
   - Sliding window over the same `MetricSampler`-fed queue (default 1-hour window)
   - Z-score pointwise flag at 3σ
   - Method-level marker `# req: REQ-006` on `_evaluate_3sigma` (matches §5.1 mapping)
-- Create `docs/runbooks/mahavishnu-drift-detection.md` with the on-call procedure:
+- Create `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` with the on-call procedure:
   - What to check first (current `metric_samples` value vs baseline), how to verify it's not a transient, when to silence vs escalate
   - **Cross-repo gap-period guidance** (until Phase D wires Mahavishnu drift detection into Akosha): when `mahavishnu.observability.drift_detected` fires, also check `mcp__akosha__akosha_detect_anomalies` results on the same metric class; the runbook names the order — Mahavishnu for sub-5-minute signal, Akosha for 5–30 minute ecosystem-wide correlation, upstream investigation for 30+ minute. This is the practical answer to the two-control-plane gap during Phase 8's first 6–8 weeks of operation.
   - **Post-restart re-warmup window**: after any Mahavishnu restart, treat the next 24 hours as re-warmup; do not act on drift detection signals during this window. CUSUM warmup state is per-process; a restart at hour 47 of a 72-hour slow drift will reset to baseline and likely miss the drift entirely.
-  - The OTel span attribute `runbook_url` references this file's deployed URL (e.g., `https://docs.mahavishnu.internal/runbooks/mahavishnu-drift-detection.html` once published; pre-publish, the relative path `docs/runbooks/mahavishnu-drift-detection.md` is the contract)
+  - The OTel span attribute `runbook_url` references this file's deployed URL (e.g., `https://docs.mahavishnu.internal/runbooks/mahavishnu-drift-detection.html` once published; pre-publish, the relative path `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` is the contract)
 - When `changepoint.reference_detector == "three_sigma"`, both detectors run in parallel; both log when they detect. When `"none"`, only the change-point detector runs
 - This phase adds new observability signals; it does NOT replace anything (because there was nothing to replace — see §4.2)
 - Single-metric gate: only `changepoint.target_metric` is monitored at a time. Multi-metric support is a follow-on (not in this plan)
@@ -653,13 +653,13 @@ metric streams.
   - `cusum_fp_per_10080_quiet_samples`: 1-week FP assertion (10,080 samples = 1 week at 1-min cadence); gate threshold ≤ 2 per validation run (the statistical reality: with ARL₀ ≈ 10,000, expected FP count over 10,080 samples is ~1.008, so a strict `== 0` gate would fail ~63% of the time on a correctly-tuned detector)
   - `three_sigma_miss_rate_at_0.5_sigma`: fraction of 0.5-σ shifts the 3-sigma reference misses (≥ 0.95 confirms the reference is unsuitable for slow drift)
 - Three-way comparison report (CUSUM vs Page-Hinkley vs 3-sigma)
-- Add `docs/observability/changepoint_validation.md` with the report
+- Add `docs/observability/CHANGEPOINT_VALIDATION.md` with the report
 - Add `docs/audits/2026-09-10-changepoint-validation.md` with the actual numbers
 - Run `python scripts/audit_orphans.py`
 
 #### Integration Contract — Phase 7 deliverable
 - **Triggered from**: `pytest tests/integration/observability/test_changepoint_benchmark.py -v --benchmark-json=bench.json` runs the synthetic benchmark.
-- **Returns to / updates**: `docs/observability/changepoint_validation.md` (explanatory) + `docs/audits/2026-09-10-changepoint-validation.md` (numbers); `bench.json` benchmark artifact.
+- **Returns to / updates**: `docs/observability/CHANGEPOINT_VALIDATION.md` (explanatory) + `docs/audits/2026-09-10-changepoint-validation.md` (numbers); `bench.json` benchmark artifact.
 - **Demonstrable by**: the report shows CUSUM and Page-Hinkley catch 0.5-σ shifts in median ≤ 30 samples (p95 ≤ 100) while the new 3-sigma reference misses the same shifts. Programmatic gate passes.
 - **Rollback signal**: validation failure → Phase 8 promotion blocked.
 - **Observability added**: validation report is the artifact. Runtime observability is unchanged.
@@ -832,9 +832,9 @@ scripts/
   feature_eligibility.py
 
 docs/
-  pools/queueing_routing.md
-  observability/changepoint_validation.md
-  runbooks/mahavishnu-drift-detection.md           # Phase 6 OTel runbook_url target
+  pools/QUEUEING_ROUTING.md
+  observability/CHANGEPOINT_VALIDATION.md
+  runbooks/MAHAVISHNU_DRIFT_DETECTION.md           # Phase 6 OTel runbook_url target
   audits/2026-09-10-queueing-validation.md
   audits/2026-09-10-changepoint-validation.md
   audits/2026-09-10-math-spec-review.md

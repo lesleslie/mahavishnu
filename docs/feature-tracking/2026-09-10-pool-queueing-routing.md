@@ -160,7 +160,7 @@ hyperbolic embeddings, multi-metric drift) are tracked under
 * Library: `mahavishnu/pools/queueing/`
 * Integration: `mahavishnu/pools/queueing/scorer.py`
 * Validation: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
-* Library docs: [`docs/pools/queueing_routing.md`](../pools/queueing_routing.md)
+* Library docs: [`docs/pools/QUEUEING_ROUTING.md`](../pools/QUEUEING_ROUTING.md)
 
 ## Session-Buddy
 

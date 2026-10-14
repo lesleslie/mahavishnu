@@ -622,11 +622,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Reconcile AgnoMemoryConfig default — True (was: d3f396d0)
 - mahavishnu: Register telemetry middleware AFTER enrichment middleware
 - mahavishnu: Remove ASCII duplicates and one block from GETTING_STARTED.md
-- mahavishnu: Remove broken image ref from embedding-architecture.md:495
+- mahavishnu: Remove broken image ref from EMBEDDING_ARCHITECTURE.md:495
 - mahavishnu: Remove decorative diagram blocks from ADR-005 (3 removals)
 - mahavishnu: Remove decorative diagram blocks from VISUAL_GUIDE (13 removals)
 - mahavishnu: Remove decorative diagram blocks from WORKFLOW_DIAGRAMS (2 removals)
-- mahavishnu: Remove embedding-architecture.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
+- mahavishnu: Remove EMBEDDING_ARCHITECTURE.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
 - mahavishnu: Repair YAML frontmatter in 49 tool files
 - mahavishnu: Replace AgentDB/Ollama with Dhara/FastEmbed in ADR-005
 - mahavishnu: Replace EmbeddingService with oneiric hybrid chain
@@ -968,7 +968,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Replace mcpretentious/iTerm2 with tmux/mock in mcp-server doc
 - mahavishnu: Replace quality_evaluator/pool.py/iterm2/mcpretentious in 4 small docs
 - mahavishnu: Retire stale bodai-event-queue.json references (Phase 12a task 7)
-- mahavishnu: Rewrite backends.md as live-adapter stub (mcpretentious removed)
+- mahavishnu: Rewrite BACKENDS.md as live-adapter stub (mcpretentious removed)
 - mahavishnu: Round-5 revisions — fix 12 review blockers across 12 plans
 - mahavishnu: Round-5 Tier 4 deliverables — 5 runbooks + 3 SLOs + 2 audit workflows
 - mahavishnu: Round-6 Tier 1 corrections — fix runtime bugs in 6 plans
@@ -2885,7 +2885,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MHV error codes 209–223** for streaming-specific failures (`MHV-209` `TEMP_CREATE_FAILED`, `MHV-210` `TEMP_WRITE_FAILED`, `MHV-211` `PATH_TRAVERSAL`, `MHV-212` `MALFORMED`, `MHV-213` `LEGACY_PHASE2`, `MHV-220` `STORAGE_KEY_TOO_LONG`, `MHV-221` `STOPGAP_TOO_LARGE`, `MHV-222` `NOT_FOUND`, `MHV-223` `CODEC_UNAVAILABLE`)
 - **Oneiric `compression-zstd` PEP 735 group** for the `zstandard` streaming codec
 - **SHA-256 streaming verification** via `verify_sha256_streaming` (no full-blob in memory) plus `streaming_op_total{op,backend,success}` OTel counter and `streaming_op_duration_seconds{op,backend}` histogram
-- **Operator runbook** `docs/runbooks/streaming-tar-rollout.md` and **migration script** `scripts/migrate_to_streaming_tar.py` plus error-severity runbook `docs/runbooks/coordinator-error-severity.md`
+- **Operator runbook** `docs/runbooks/STREAMING_TAR_ROLLOUT.md` and **migration script** `scripts/migrate_to_streaming_tar.py` plus error-severity runbook `docs/runbooks/COORDINATOR_ERROR_SEVERITY.md`
 
 ### Changed
 
@@ -3001,11 +3001,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - mahavishnu: Add peer_affinity to routing decision tree
 - mahavishnu: Remove ASCII duplicates and one block from GETTING_STARTED.md
-- mahavishnu: Remove broken image ref from embedding-architecture.md:495
+- mahavishnu: Remove broken image ref from EMBEDDING_ARCHITECTURE.md:495
 - mahavishnu: Remove decorative diagram blocks from ADR-005 (3 removals)
 - mahavishnu: Remove decorative diagram blocks from VISUAL_GUIDE (13 removals)
 - mahavishnu: Remove decorative diagram blocks from WORKFLOW_DIAGRAMS (2 removals)
-- mahavishnu: Remove embedding-architecture.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
+- mahavishnu: Remove EMBEDDING_ARCHITECTURE.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
 - mahavishnu: Replace AgentDB/Ollama with Dhara/FastEmbed in ADR-005
 - mahavishnu: Replace iTerm2/MCPretentious adapters in canonical arch diagram
 - mahavishnu: Replace OpenSearch DLQ with JSON + Dhara KV in VISUAL_GUIDE
@@ -3031,7 +3031,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Replace mcpretentious/iTerm2 references with tmux/mock/crow adapters
 - mahavishnu: Replace mcpretentious/iTerm2 with tmux/mock in mcp-server doc
 - mahavishnu: Replace quality_evaluator/pool.py/iterm2/mcpretentious in 4 small docs
-- mahavishnu: Rewrite backends.md as live-adapter stub (mcpretentious removed)
+- mahavishnu: Rewrite BACKENDS.md as live-adapter stub (mcpretentious removed)
 - plans: Add bodai-conformance plan + spec to canonical PLAN_INDEX.md
 - Refine P0 audit fixes for tool-count, profile wording, and CLI inventory
 
@@ -3555,7 +3555,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - spec: V3 bodai-crow — rapidfuzz vendor strategy, oneiric httpx2 scope
 - spec: V4 bodai-crow — httpx2 tier taxonomy in §9
 - spec: V5 bodai-crow — review-pass fixes
-- terminal: Add trailing newline to backends.md
+- terminal: Add trailing newline to BACKENDS.md
 - terminal: Document built-in PTY backends
 - terminal: Document dual-spawn mcpretentious at boot
 

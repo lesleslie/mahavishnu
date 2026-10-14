@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: implementation
 date: 2026-07-26
-last_reviewed: 2026-07-27
+last_reviewed: 2026-10-13
 spec: ../specs/2026-07-26-shared-frontmatter-validator-design.md
 topic: shared-frontmatter-validator
 title: "Shared Frontmatter Validator Implementation Plan"

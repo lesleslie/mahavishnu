@@ -2,7 +2,7 @@
 
 LIMITATION: per-process scope. With N workers, the effective limit is
 N x spec.concurrency_limit across N workers in N separate processes.
-Documented in ``docs/runbooks/concurrency-limit-storm.md``.
+Documented in ``docs/runbooks/CONCURRENCY_LIMIT_STORM.md``.
 
 Fix path: replace with a Redis / Dhara-backed shared counter when
 cross-pool guarantees are required. Out of scope for C-9.

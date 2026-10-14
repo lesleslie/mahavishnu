@@ -1,9 +1,9 @@
 ---
-status: draft
+status: partial
 role: canonical
 kind: spec
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-10-13
 topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team

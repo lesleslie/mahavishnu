@@ -47,7 +47,7 @@ The three lenses are non-overlapping with round-1's coverage AND with each other
 | V7 | Phase 6 default `threshold: 5.0` achieves ARL₀ ≈ 465 (per CUSUM standard tables), but §1 commits to ARL₀ ≥ 10,000. The shipped default would violate the documented success criterion. | 2 (CRITICAL #1) | `threshold: 8.0`, `slack: 0.25` (achieves ARL₀ ≈ 10,000 at two-sided CUSUM per Brook & Evans 1972). |
 | V8 | §11 Decision Rule p95 bound (`< 50%`) was a single looser bound; §1 specifies both `±25% on Poisson` and `±50% on bursty`. The Decision Rule dropped the stricter Poisson criterion. | 2 (CRITICAL #2) | §11 Decision Rule split: `< 25% on Poisson; < 50% on bursty/hyperexponential`. |
 | V9 | "Zero false positives in 1 week of synthetic quiet operation" is a §1 success metric with no Phase that demonstrates it. | 2 (CRITICAL #4) | Phase 7 programmatic gate adds `assert d['cusum_fp_per_10080_quiet_samples'] == 0`. |
-| V10 | OTel span attribute `runbook_url` is defined in Phase 6 but no runbook file path is specified anywhere — on-call has nothing to click. | 3 (BLOCKER) | `docs/runbooks/mahavishnu-drift-detection.md` added to §8 New files; Phase 6 task includes creating it. |
+| V10 | OTel span attribute `runbook_url` is defined in Phase 6 but no runbook file path is specified anywhere — on-call has nothing to click. | 3 (BLOCKER) | `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` added to §8 New files; Phase 6 task includes creating it. |
 | V11 | No top-level Makefile exists; `make tier2-eligibility` CI gate has no target. | 3 (BLOCKER, verified by `ls`) | Top-level `Makefile` added to §8 New files with `tier2-eligibility` target. |
 
 ### 2.2 Divergent findings
@@ -80,7 +80,7 @@ The verification round surfaced 3 BLOCKERs, 7 CRITICAL findings, 5 HIGH findings
 |---|---|---|---|
 | Frontmatter `requirements:` block | absent | added with all 9 REQ IDs | 1, 3 |
 | Top-level `Makefile` | absent | `Makefile` added with `tier2-eligibility` target | 3 |
-| Runbook file | absent | `docs/runbooks/mahavishnu-drift-detection.md` | 3 |
+| Runbook file | absent | `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` | 3 |
 | Phase 6 default `threshold` | `5.0` (ARL₀ ≈ 465) | `8.0` (ARL₀ ≈ 10,000) | 2 |
 | Phase 6 default `slack` | `0.5` | `0.25` (allows 0.5-σ shift detection) | 2 |
 | Phase 6 default `target_metric` | `workflow_duration_p99` | `pool_queue_depth` (Q3 resolved) | 2 |
@@ -177,7 +177,7 @@ CRITICAL items the v3 patch addressed:
 
 **Verbatim on the queue cap**: *"Spec says 'queue cap 100' — actually is `_MAX_BUFFER_SIZE = 1000` at `fitness_analyzer.py:31`. A future contributor following the §7 instructions would wire the wrong cap value. This is a copy-paste risk."*
 
-**Verbatim on the verdict**: *"Three BLOCKERS prevent implementation... With the three BLOCKERS fixed (move `requirements:` to frontmatter, create a top-level Makefile target or switch to a `.github/workflows/` cron, and add `docs/runbooks/mahavishnu-drift-detection.md` to the Phase 6 docs list), the spec becomes implementable as **YES-WITH-NITS**."*
+**Verbatim on the verdict**: *"Three BLOCKERS prevent implementation... With the three BLOCKERS fixed (move `requirements:` to frontmatter, create a top-level Makefile target or switch to a `.github/workflows/` cron, and add `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` to the Phase 6 docs list), the spec becomes implementable as **YES-WITH-NITS**."*
 
 **v3 impact**: All 3 BLOCKERS addressed. 6 of 8 CONCERNS addressed in v3 (path corrections, queue cap, HotRecord, Phase 9 contract, severity classifier, staged rollout playbook). Two CONCERNS not addressed in v3: bench.json keys (deferred to integration test implementation) and `PoolConfig` disambiguation (the spec is consistent with `core/config.py` Pydantic version per existing precedent; the `pools/base.py` dataclass version is for runtime metrics, not config).
 

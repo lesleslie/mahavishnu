@@ -29,7 +29,7 @@ Current status (as of 2026-06-26):
   - LaunchAgent template
 - `../launchd/ai.bifrost.redis-stack.plist`
   - LaunchAgent template for the dedicated Redis Stack cache backend
-- `../../docs/bifrost-reactivation-runbook.md`
+- `../../docs/BIFROST_REACTIVATION_RUNBOOK.md`
   - reactivation and validation steps for bringing the gateway back later
 
 ## Current Bootstrap Mode
@@ -237,4 +237,4 @@ Restart Claude Code after toggling for the change to take effect.
 - if the launchd job fails to start with `spawnSync .../bifrost-http-0 EACCES`, the npm package's native binary landed without an execute bit.
   Run `chmod +x ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` for the affected version, then re-run `scripts/bifrost-ctl start`.
 - if the launchd job still fails to start after the chmod (with `Unknown system error -88` from `spawnSync`), macOS Gatekeeper is rejecting the unsigned native binary.
-  Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `scripts/bifrost-ctl start`. See `docs/bifrost-reactivation-runbook.md` for details.
+  Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `scripts/bifrost-ctl start`. See `docs/BIFROST_REACTIVATION_RUNBOOK.md` for details.

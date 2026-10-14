@@ -59,10 +59,10 @@ The endpoint sanitizes via `DataSanitizeAction` and forwards via `safe_publish`.
 
 ## Runbooks
 
-- [docs/runbooks/ecosystem-intake.md](../runbooks/ecosystem-intake.md) — ecosystem-intake scenarios
-- [docs/runbooks/on_call_handbook.md](../runbooks/on_call_handbook.md) — escalation procedures
+- [docs/runbooks/ECOSYSTEM_INTAKE.md](../runbooks/ECOSYSTEM_INTAKE.md) — ecosystem-intake scenarios
+- [docs/runbooks/ON_CALL_HANDBOOK.md](../runbooks/ON_CALL_HANDBOOK.md) — escalation procedures
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-10-ecosystem-intake.md](../plans/2026-09-26-impl-C-10-ecosystem-intake.md)
+- [docs/plans/2026-09-26-impl-C-10-ECOSYSTEM_INTAKE.md](../plans/2026-09-26-impl-C-10-ECOSYSTEM_INTAKE.md)
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md)

@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-10-13
 topic: shared-oneiric-substrate
 title: "Phase E1: Settings Substrate + Feed-State Methods — Implementation Plan"
 

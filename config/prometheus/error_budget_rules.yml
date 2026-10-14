@@ -3,7 +3,7 @@
 # These rules monitor error budget consumption and trigger alerts
 # when budget levels fall below defined thresholds.
 #
-# See: docs/runbooks/error_budget_enforcement.md
+# See: docs/runbooks/ERROR_BUDGET_ENFORCEMENT.md
 
 groups:
   - name: error_budget_availability

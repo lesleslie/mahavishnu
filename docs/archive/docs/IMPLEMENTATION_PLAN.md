@@ -191,7 +191,7 @@ response = query_engine.query("test")
 
 **New Files to Create:**
 
-1. **`docs/deployment-architecture.md`**
+1. **`docs/DEPLOYMENT_ARCHITECTURE.md`**
    - [ ] Production deployment platform (Docker/K8s/AWS decision)
    - [ ] Infrastructure-as-code approach (Terraform/Helm/CloudFormation)
    - [ ] Cluster sizing (CPU, RAM, disk for OpenSearch)
@@ -230,7 +230,7 @@ response = query_engine.query("test")
 
 **Status:** ⏳ Not Started (REQUIRED BY QA LEAD)
 
-**New File:** `docs/testing-strategy.md`
+**New File:** `docs/TESTING_STRATEGY.md`
 
 **Deliverables:**
 - [ ] Test categories (unit, integration, e2e, property-based)
@@ -1366,12 +1366,12 @@ brew services start opensearch-dashboards
 - [ ] `mahavishnu/messaging/repository_messenger.py` - NEW
 - [ ] `mahavishnu/mcp/tools/messaging_tools.py` - NEW
 - [ ] `mahavishnu/mcp/server_core.py` - MODIFY (workflow state, RBAC)
-- [ ] `docs/deployment-architecture.md` - NEW
+- [ ] `docs/DEPLOYMENT_ARCHITECTURE.md` - NEW
 - [ ] `docs/opensearch-operations.md` - NEW
 - [ ] `docs/monitoring-implementation.md` - NEW
 - [ ] `docs/backup-disaster-recovery.md` - NEW
 - [ ] `docs/scalability-capacity-planning.md` - NEW
-- [ ] `docs/testing-strategy.md` - NEW
+- [ ] `docs/TESTING_STRATEGY.md` - NEW
 - [ ] `tests/integration/test_prefect_adapter.py` - NEW
 - [ ] `tests/integration/test_agno_adapter.py` - NEW
 - [ ] `tests/integration/test_workflow_state.py` - NEW

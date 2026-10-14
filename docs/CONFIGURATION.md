@@ -99,7 +99,7 @@ State file path: XDG state dir (default `~/.local/state/mahavishnu/session-workt
 
 CLI cleanup: `mahavishnu worktree prune-abandoned --older-than-days 7` removes abandoned registry entries older than 7 days (the registry entry only — the git worktree itself stays until `mahavishnu worktree remove` is run explicitly).
 
-For the full design rationale and tradeoffs, see `docs/followups/2026-07-16-session-worktree-isolation.md` and `docs/decisions/session-worktree-defaults.md`.
+For the full design rationale and tradeoffs, see `docs/followups/2026-07-16-session-WORKTREE_ISOLATION.md` and `.claude/decisions/session-worktree-defaults.md`.
 
 ## Other Configuration Files
 

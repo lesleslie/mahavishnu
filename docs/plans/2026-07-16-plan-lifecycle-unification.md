@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: shipped
+role: historical
 topic: convergence-control-plane
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Plan Lifecycle Unification — Frontmatter Standardization Across Documentation Stores"
@@ -36,7 +36,7 @@ The original draft left `topic` free-form and deferred normalization to P7. Afte
 - **Unknown topics**: accepted, but the validator emits a `--strict` warning so the maintainer can decide whether to expand the vocabulary or normalize the value.
 - **Curated seed list** (initial 10, expand in P0 Step 1 as needed):
   `mcp-design`, `storage-consolidation`, `adapter-architecture`, `terminal`, `routing-composition`, `learning-pipeline`, `observability`, `auth`, `convergence-control-plane`, `worktree-management`.
-- The vocabulary file lives next to the schema doc: `docs/schemas/topic-vocabulary-v1.md`. Editing it is a normal doc change requiring no plan amendment.
+- The vocabulary file lives next to the schema doc: `docs/schemas/TOPIC_VOCABULARY_V1.md`. Editing it is a normal doc change requiring no plan amendment.
 
 ### Adjustment B — Two-pass per store for migration-ordering coupling
 
@@ -83,7 +83,7 @@ The File Map covers all 178 in-scope files. Counts reflect Phase deliverables; c
 | `docs/adr/007-saga-coordinator-pattern.md` | Accepted | active | canonical | saga-pattern |
 | `docs/adr/008-zero-downtime-migration.md` | Accepted | active | canonical | zero-downtime-migration |
 | `docs/adr/009-hybrid-adapter-registry.md` | Accepted | active | canonical | adapter-registry |
-| `docs/adr/010-adapter-security.md` | Accepted | active | canonical | adapter-security |
+| `docs/adr/010-adapter-SECURITY.md` | Accepted | active | canonical | adapter-security |
 | `docs/adr/011-two-router-composition.md` | accepted | active | canonical | routing-composition |
 | `docs/adr/012-learning-pipeline-runtime-owner.md` | Accepted | active | canonical | learning-pipeline |
 | `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` | Proposed | draft | canonical | adapter-tool-boundary |
@@ -326,7 +326,7 @@ The lighter decision schema omits `superseded_by` and `blocks_on`. All decisions
 
 | Action | Path | Change |
 |---|---|---|
-| Create | `docs/schemas/document-frontmatter-v1.md` | Schema definition with five lifecycle values, five role values, full and lite schemas, ISO date rules, blocks_on link rules, legacy mapping table |
+| Create | `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` | Schema definition with five lifecycle values, five role values, full and lite schemas, ISO date rules, blocks_on link rules, legacy mapping table |
 | Create | `scripts/validate_document_frontmatter.py` | Python validator scanning the six stores; reject unknown values, broken links, conflicting inline markers |
 | Create | `tests/unit/test_document_frontmatter.py` | Unit tests for the validator (valid metadata, missing keys, legacy-value rejection, broken links, exclusions) |
 | Regenerate | `docs/plans/PLAN_INDEX.md` | Generated from frontmatter; excluded from per-document frontmatter requirement |
@@ -352,7 +352,7 @@ The phases are sequenced top-down: contract → ADRs → plans → specs → sup
 
 **Files:**
 
-- Create: `docs/schemas/document-frontmatter-v1.md`
+- Create: `docs/schemas/DOCUMENT_FRONTMATTER_V1.md`
 
 - Create: `scripts/validate_document_frontmatter.py`
 
@@ -360,7 +360,7 @@ The phases are sequenced top-down: contract → ADRs → plans → specs → sup
 
 - Modify: `docs/plans/TEMPLATE.md`
 
-- [ ] **Step 1: Author `docs/schemas/document-frontmatter-v1.md`**
+- [ ] **Step 1: Author `docs/schemas/DOCUMENT_FRONTMATTER_V1.md`**
 
 The schema doc lists five lifecycle values (`draft`, `active`, `partial`, `shipped`, `complete`), five role values (`canonical`, `implementation`, `umbrella`, `historical`, `superseded`), the full schema fields (`status`, `role`, `date`, `last_reviewed`, `superseded_by`, `blocks_on`, `topic`, `decision_date`), and the lite decision schema (omit `superseded_by`, `blocks_on`). Include the legacy mapping table:
 
@@ -412,7 +412,7 @@ Expected: report every existing nonstandard status string with its proposed norm
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/schemas/document-frontmatter-v1.md docs/plans/TEMPLATE.md scripts/validate_document_frontmatter.py tests/unit/test_document_frontmatter.py
+git add docs/schemas/DOCUMENT_FRONTMATTER_V1.md docs/plans/TEMPLATE.md scripts/validate_document_frontmatter.py tests/unit/test_document_frontmatter.py
 git commit -m "feat: frontmatter v1 schema, validator, and unit tests (Phase P0)"
 ```
 
@@ -637,7 +637,7 @@ git commit -m "feat: regenerate PLAN_INDEX from frontmatter; strict inline-marke
 
 Run the dry-run validator against `dhara/docs/adr/**`, `dhara/docs/plans/**`, `dhara/docs/followups/**`, `dhara/docs/decisions/**`, and the equivalents in akosha, session-buddy, crackerjack, oneiric. Publish per-repo counts (in-scope files, missing metadata count, unresolved link count) before editing.
 
-- [ ] **Step 2: Reuse `docs/schemas/document-frontmatter-v1.md` and the same validator**
+- [ ] **Step 2: Reuse `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` and the same validator**
 
 Do not introduce per-repo schema variants. If a sibling repo uses a status string not in the v1 vocabulary, surface it as a v1 schema amendment first, then apply migration.
 
@@ -759,6 +759,6 @@ Clean — every step either modifies an existing file or describes a concrete de
 
 ### Open Questions
 
-- **Topic vocabulary source of truth.** Where should the controlled topic list live? Currently proposed as a section of `docs/schemas/document-frontmatter-v1.md`. Acceptable to defer until first cross-repo audit (P7) reveals actual divergences.
+- **Topic vocabulary source of truth.** Where should the controlled topic list live? Currently proposed as a section of `docs/schemas/DOCUMENT_FRONTMATTER_V1.md`. Acceptable to defer until first cross-repo audit (P7) reveals actual divergences.
 - **Cross-repo `superseded_by` representation.** `ext:` identifier scheme is proposed but not yet enforced. P7 should commit to one of: identifier-registry, path-prefix-by-repo, or no-cross-repo-supersession. **Decision:** keep it gated on P7 inventory; do not invent convention until first need arises.
 - **Decision README regeneration cadence.** Re-deriving `docs/decisions/README.md` from frontmatter is mechanical; should it run on every CI commit (continuous) or only when a decision file changes (event-driven)? **Decision:** event-driven; the decision README's CI gate runs `validate_document_frontmatter.py docs/decisions/ --regenerate-readme`.

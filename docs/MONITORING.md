@@ -142,7 +142,7 @@ When OpenObserve ships to production, register it as a Prometheus datasource in 
 
 ## Operational runbooks
 
-(Each service should have a runbook at `docs/runbooks/<service>.md`. Currently the Mahavishnu repo has `docs/runbooks/crow-mcp-server.md` and a planned `docs/runbooks/bodai-crow-server.md`. Other services need runbooks when they reach the production-promotion phase.)
+(Each service should have a runbook at `docs/runbooks/<service>.md`. Currently the Mahavishnu repo has `docs/runbooks/CROW_MCP_SERVER.md` and a planned `docs/runbooks/BODAI_CROW_SERVER.md`. Other services need runbooks when they reach the production-promotion phase.)
 
 ## How to update
 
@@ -157,7 +157,7 @@ When adding a new service or health surface:
 ## Cross-references
 
 - `THIRD_PARTY_NOTICES.md` — adopted projects with license + posture
-- `docs/superpowers/eval/2026-06-22-bodai-ecosystem-candidates.md` — source evaluation
+- `followups/2026-06-22-bodai-ecosystem-candidates.md` — source evaluation
 - `.claude/plans/update-the-report-with-rippling-matsumoto.md` — implementation plans
 - `mahavishnu/engines/prefect_adapter_impl.py` — workflow observability hooks
 - `mahavishnu/websocket/server.py` — workflow event broadcasting

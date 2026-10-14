@@ -420,13 +420,13 @@ def _entry_from_file(abs_path: Path, rel: str, store: str, yaml_module: Any) -> 
 # Rendering — fixed (static) sections
 # ---------------------------------------------------------------------------
 
-# Status legend copied verbatim from docs/schemas/document-frontmatter-v1.md
+# Status legend copied verbatim from docs/schemas/DOCUMENT_FRONTMATTER_V1.md
 # (Vocabulary — Lifecycle + Vocabulary — Role).
 STATUS_LEGEND = """\
 ## Status Legend
 
 The vocabulary is defined canonically in
-[`docs/schemas/document-frontmatter-v1.md`](../schemas/document-frontmatter-v1.md)
+[`docs/schemas/DOCUMENT_FRONTMATTER_V1.md`](../schemas/DOCUMENT_FRONTMATTER_V1.md)
 and reproduced here for index readability.
 
 - **Lifecycle (`status`)** — five values:
@@ -473,7 +473,7 @@ def _authority_matrix(
 | Concern | Authority |
 |---|---|
 | Plan navigation and current ownership | `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |
-| Frontmatter vocabulary and migration contract | `docs/schemas/document-frontmatter-v1.md` |
+| Frontmatter vocabulary and migration contract | `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` |
 | Cross-repo LLM provider defaults and Bifrost routing | `docs/plans/2026-05-10-minimax27-provider-migration.md` |
 | Legacy backlog item details | `docs/plans/2026-05-07-mahavishnu-master-backlog.md` |
 | Bodai control-plane convergence C0–C7 | `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` |
@@ -501,11 +501,11 @@ def _authority_matrix(
         "| Plan navigation and current ownership "
         "| `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |"
     )
-    canonical_schema = repo_root / "docs" / "schemas" / "document-frontmatter-v1.md"
+    canonical_schema = repo_root / "docs" / "schemas" / "DOCUMENT_FRONTMATTER_V1.md"
     if canonical_schema.is_file():
         rows.append(
             "| Frontmatter vocabulary and migration contract "
-            "| `docs/schemas/document-frontmatter-v1.md` |"
+            "| `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` |"
         )
     else:
         rows.append(
@@ -779,7 +779,7 @@ def _render_index(
     purpose_subject = "Mahavishnu/Bodai plans" if is_mahavishnu else f"{repo_name} plans"
     topic_value = "convergence-control-plane" if is_mahavishnu else "plan-registry"
     blocks_on_value: str | None = (
-        "docs/schemas/document-frontmatter-v1.md" if is_mahavishnu else None
+        "docs/schemas/DOCUMENT_FRONTMATTER_V1.md" if is_mahavishnu else None
     )
 
     sections: list[str] = []

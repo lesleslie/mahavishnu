@@ -18,7 +18,7 @@ Start here when reviewing or implementing work. Do not assume a root-level docum
 ### Architecture And Decisions
 
 - [Architecture](./architecture/ARCHITECTURE.md)
-- [Deployment Architecture](./deployment-architecture.md)
+- [Deployment Architecture](./DEPLOYMENT_ARCHITECTURE.md)
 - [MCP Server Architecture](./MCP_SERVER_ARCHITECTURE.md)
 - [ADR Directory](./adr/)
 - [Specs](./specs/)
@@ -41,17 +41,17 @@ Start here when reviewing or implementing work. Do not assume a root-level docum
 - [Content Ingestion Guide](./CONTENT_INGESTION_GUIDE.md)
 - [Integration Guide](./integration/INTEGRATION_GUIDE.md)
 - [Integrations](./integrations/)
-- [Testing Strategy](./testing-strategy.md)
+- [Testing Strategy](./TESTING_STRATEGY.md)
 - [Testing Docs](./testing/)
 
 ### Observability
 
-- [Telemetry](./telemetry.md)
-- [OTLP Architecture](./OTLP_ARCHITECTURE.md)
-- [OTLP Troubleshooting](./OTLP_TROUBLESHOOTING.md)
-- [Native OTEL Architecture](./NATIVE_OTEL_ARCHITECTURE.md)
-- [Grafana Docs](./grafana/)
-- [SRE Docs](./sre/)
+- [Telemetry Index](./integrations/observability/TELEMETRY.md)
+- [OTLP Architecture](./integrations/observability/OTLP_ARCHITECTURE.md)
+- [OTLP Troubleshooting](./integrations/observability/OTLP_TROUBLESHOOTING.md)
+- [Native OTEL Architecture](./integrations/observability/NATIVE_OTEL_ARCHITECTURE.md)
+- [OTel Ingester Implementation](./integrations/observability/OTEL_INGESTER_IMPLEMENTATION.md)
+- [Grafana Dashboards](./grafana/)
 
 ## Historical And Non-Authoritative Material
 

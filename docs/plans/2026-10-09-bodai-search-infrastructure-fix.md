@@ -636,8 +636,8 @@ This is a **separate plan** to be written after this plan ships. It is tracked h
 - `docs/plans/TEMPLATE.md` — plan structure this plan mirrors.
 - `docs/plans/2026-10-03-trunk-based-agent-review.md` — merge workflow spec.
 - `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` — merge workflow design.
-- `docs/schemas/document-frontmatter-v1.md` — frontmatter schema this plan's YAML follows.
-- `docs/schemas/topic-vocabulary-v1.md` — topic vocabulary.
+- `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` — frontmatter schema this plan's YAML follows.
+- `docs/schemas/TOPIC_VOCABULARY_V1.md` — topic vocabulary.
 - `~/.claude/CLAUDE.md` — worktree location convention (`~/.local/state/mahavishnu/worktrees/<basename>/`).
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/mcp-surface-health-illusion.md` — why this fix matters.
 - `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/bodai-tool-naming-gap-2026-09-09.md` — picker-filter prefix-match convention (resolution: REQ-008, sequenced Claude Code TUI PR).

@@ -112,8 +112,8 @@ ______________________________________________________________________
 
 **Evidence:**
 
-- `/Users/les/Projects/mahavishnu/docs/deployment-architecture.md` exists
-- `/Users/les/Projects/mahavishnu/docs/testing-strategy.md` exists
+- `/Users/les/Projects/mahavishnu/docs/DEPLOYMENT_ARCHITECTURE.md` exists
+- `/Users/les/Projects/mahavishnu/docs/TESTING_STRATEGY.md` exists
 
 **Status:** ✅ **PASS** - Documentation templates created
 
@@ -407,8 +407,8 @@ ______________________________________________________________________
 **Evidence:**
 
 - `PRODUCTION_READINESS.md` (176 lines)
-- `deployment-architecture.md`
-- `testing-strategy.md`
+- `DEPLOYMENT_ARCHITECTURE.md`
+- `TESTING_STRATEGY.md`
 - Inline code documentation
 
 **Status:** ✅ **PASS**

@@ -1,8 +1,8 @@
 ---
-status: complete
+status: shipped
 role: implementation
 date: 2026-08-23
-last_reviewed: '2026-09-12'
+last_reviewed: '2026-10-13'
 superseded_by: null
 topic: oneiric-action-kit-promotion
 title: "Oneiric Action-Kit Promotion Implementation Plan"
@@ -217,7 +217,7 @@ Read `mahavishnu/docs/decisions/bodai-observability-pattern.md` (lines 1-9) and 
 status: active
 role: canonical
 date: 2026-XX-XX
-last_reviewed: 2026-XX-XX
+last_reviewed: 2026-10-13
 topic: oneiric-action-kit-promotion
 ---
 ```
@@ -233,7 +233,7 @@ Use the exact structure from spec §5.1:
 status: active
 role: canonical
 date: 2026-08-23
-last_reviewed: 2026-08-23
+last_reviewed: 2026-10-13
 topic: oneiric-action-kit-promotion
 ---
 

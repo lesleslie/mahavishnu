@@ -69,14 +69,14 @@ The following alerts MUST fire to PagerDuty / Slack:
 
 ## Runbooks
 
-- [docs/runbooks/worktree-isolation.md](../runbooks/worktree-isolation.md) — worktree-isolation scenarios
-- [docs/runbooks/concurrency-limit-storm.md](../runbooks/concurrency-limit-storm.md) — concurrency-limit scenarios
-- [docs/runbooks/markdown-watcher.md](../runbooks/markdown-watcher.md) — markdown-watcher scenarios
-- [docs/runbooks/on_call_handbook.md](../runbooks/on_call_handbook.md) — escalation procedures
+- [docs/runbooks/WORKTREE_ISOLATION.md](../runbooks/WORKTREE_ISOLATION.md) — worktree-isolation scenarios
+- [docs/runbooks/CONCURRENCY_LIMIT_STORM.md](../runbooks/CONCURRENCY_LIMIT_STORM.md) — concurrency-limit scenarios
+- [docs/runbooks/MARKDOWN_WATCHER.md](../runbooks/MARKDOWN_WATCHER.md) — markdown-watcher scenarios
+- [docs/runbooks/ON_CALL_HANDBOOK.md](../runbooks/ON_CALL_HANDBOOK.md) — escalation procedures
 
 ## Related
 
 - [docs/plans/2026-09-26-impl-C-6-pool-route-execute-idempotency.md](../plans/2026-09-26-impl-C-6-pool-route-execute-idempotency.md)
-- [docs/plans/2026-09-26-impl-C-8-worktree-isolation.md](../plans/2026-09-26-impl-C-8-worktree-isolation.md)
+- [docs/plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md](../plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md)
 - [docs/plans/2026-09-26-impl-C-9-concurrency-limits.md](../plans/2026-09-26-impl-C-9-concurrency-limits.md)
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md)

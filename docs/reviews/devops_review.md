@@ -156,7 +156,7 @@ ______________________________________________________________________
 **Action:** Create comprehensive deployment architecture document addressing:
 
 ```yaml
-# /Users/les/Projects/mahavishnu/docs/deployment-architecture.md
+# /Users/les/Projects/mahavishnu/docs/DEPLOYMENT_ARCHITECTURE.md
 production_deployment:
   option_a: "Docker Compose (small-scale production)"
     pros: ["Simple", "Low operational overhead", "Good for <10 repos"]
@@ -512,7 +512,7 @@ ______________________________________________________________________
 
 ### Phase 0 Additions (Week 1-2.5)
 
-- [ ] **Create deployment architecture document** (`/docs/deployment-architecture.md`)
+- [ ] **Create deployment architecture document** (`/docs/DEPLOYMENT_ARCHITECTURE.md`)
 
   - Define production deployment platform (Docker/Kubernetes/AWS)
   - Specify infrastructure-as-code approach

@@ -1,3 +1,14 @@
+---
+date: 2026-09-26
+title: "C-13: crackerjack review-pr skill (WP-7 — separate repo, separate plan)"
+topic: impl-c-13-crackerjack-review-pr
+status: draft
+role: implementation
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # C-13: crackerjack review-pr skill (WP-7 — separate repo, separate plan)
 
 **REQ-NNN:** (none — C-13 ships without a formal REQ-NNN ID; it's an Akosha-pattern-triggered skill in a separate repo)

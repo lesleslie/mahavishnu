@@ -1022,12 +1022,12 @@ The spec at `docs/specs/2026-08-31-flowscape-design.md` was authored in a brains
 
 #### Task 6b-PyPI.2: Bundle LEGAL + SECURITY + GDPR posture (moved from Phase 7)
 **Files:**
-- Create: `SECURITY.md`, `LEGAL.md`, `docs/legal/gdpr-posture.md`
+- Create: `SECURITY.md`, `LEGAL.md`, `docs/legal/GDPR_POSTURE.md`
 
 **Steps:**
 - [ ] Author `SECURITY.md` with threat model + reporting.
 - [ ] Author `LEGAL.md` with per-jurisdiction disclaimers.
-- [ ] Author `docs/legal/gdpr-posture.md` per spec.
+- [ ] Author `docs/legal/GDPR_POSTURE.md` per spec.
 - [ ] Configure py2app to bundle them in `Flowscape.app/Contents/Resources/`.
 - [ ] Commit "feat(dist): SECURITY.md + LEGAL.md + GDPR posture in bundle".
 

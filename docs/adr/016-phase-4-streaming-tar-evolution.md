@@ -154,7 +154,7 @@ If Phase 3 7-day monitoring surfaces any of:
 ## References
 
 - `BODAI_UPGRADE_WATCH.md` (this repo, root) — 3.15 readiness tracker
-- `docs/runbooks/streaming-tar-rollout.md` — Phase 3 operator runbook (template for Phase 4)
-- `docs/runbooks/coordinator-error-severity.md` — MHV-200..223 severity table
+- `docs/runbooks/STREAMING_TAR_ROLLOUT.md` — Phase 3 operator runbook (template for Phase 4)
+- `docs/runbooks/COORDINATOR_ERROR_SEVERITY.md` — MHV-200..223 severity table
 - `docs/adr/015-worktree-and-cache-storage-v4.md` — Phase 3 design
 - `docs/plans/2026-08-23-phase3-streaming-tar-plan.md` — Phase 3 plan (template for Phase 4 plan when 3.15.0 GA approaches)

@@ -92,7 +92,7 @@ logger = logging.getLogger(__name__)
 
 
 # Module-level singleton gate (per-process scope documented in
-# ``docs/runbooks/concurrency-limit-storm.md``). Test suites that want
+# ``docs/runbooks/CONCURRENCY_LIMIT_STORM.md``). Test suites that want
 # isolation call ``set_concurrency_gate()`` to swap this out.
 _concurrency_gate: ConcurrencyGate | None = (
     ConcurrencyGate(get_settings().concurrency_limits)

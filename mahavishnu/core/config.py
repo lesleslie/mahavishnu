@@ -686,7 +686,7 @@ class ChangepointConfig(BaseModel):
             "For raw counts like 'pool_queue_depth' operators MUST set this "
             "to the steady-state value (e.g. 4.0 for a typical workload) or "
             "the detector will accumulate on baseline traffic and fire "
-            "within ~30 samples. See docs/runbooks/mahavishnu-drift-detection.md."
+            "within ~30 samples. See docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md."
         ),
     )
     target_mean_auto: bool = Field(
@@ -1429,7 +1429,7 @@ class ObservabilityConfig(BaseModel):
             "Override the absolute URL emitted on the "
             "mahavishnu.observability.drift_detected OTel span as "
             "the runbook_url attribute. Default is the repo-relative "
-            "path 'docs/runbooks/mahavishnu-drift-detection.md' (works "
+            "path 'docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md' (works "
             "for offline / local-only deployments). Set to an absolute "
             "https:// URL in production so on-call operators can follow "
             "the link from a trace viewer at 3 a.m. Env var override: "
@@ -2598,7 +2598,7 @@ class ConcurrencyLimitsSettings(BaseModel):
 
     Per round-4 security finding: this gate is per-process.
     With N workers, effective limit is N x spec.limit.
-    Documented in ``docs/runbooks/concurrency-limit-storm.md``.
+    Documented in ``docs/runbooks/CONCURRENCY_LIMIT_STORM.md``.
     """
 
     model_config = ConfigDict(extra="forbid")

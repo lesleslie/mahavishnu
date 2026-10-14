@@ -115,7 +115,7 @@ ______________________________________________________________________
 
 ### Security Documentation
 
-- [x] Security runbook (`docs/runbooks/security.md`)
+- [x] Security runbook (`docs/runbooks/SECURITY.md`)
 - [x] Updated SECURITY_CHECKLIST.md with Task Orchestration components
 
 ______________________________________________________________________

@@ -1,3 +1,14 @@
+---
+date: 2026-09-25
+title: "Fix `SessionBuddyPool` MCP Contract — v2 (Pivot: session-buddy wrappers)"
+topic: session-buddy-pool-mcp-contract-v2
+status: active
+role: implementation
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # Fix `SessionBuddyPool` MCP Contract — v2 (Pivot: session-buddy wrappers)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

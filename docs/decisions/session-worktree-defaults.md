@@ -13,7 +13,7 @@ topic: session-worktree-defaults
 ## Context
 
 The per-session worktree isolation feature
-(`docs/followups/2026-07-16-session-worktree-isolation.md`) is **opt-in**
+(`docs/followups/2026-07-16-session-WORKTREE_ISOLATION.md`) is **opt-in**
 via `MAHAVISHNU_AUTO_WORKTREE=1`. This decision records why the default
 is off, the security rationale, and the threat model the feature is
 designed against.
@@ -125,7 +125,7 @@ recommended posture.
 
 ## Cross-references
 
-- Pickup followup: `docs/followups/2026-07-16-session-worktree-isolation.md`
+- Pickup followup: `docs/followups/2026-07-16-session-WORKTREE_ISOLATION.md`
 - 4-lens plan: `/Users/les/.claude/plans/cheerful-marinating-fountain.md`
 - Phase 1 commit: `5a7e001c` (registry + CLI)
 - Phase 2 commit: `ccec4357` (hook + settings wiring)

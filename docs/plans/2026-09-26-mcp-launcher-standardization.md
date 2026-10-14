@@ -135,7 +135,7 @@ requirements:
   - id: REQ-011
     title: "Migration cookbook exists at docs/mcp/launcher-cookbook.md with 4 worked examples (oneiric, vishnu, ak, cj)"
   - id: REQ-012
-    title: "Per-server tracker exists at docs/mcp/server-migration-tracker.md with one row per of the 20 standalone MCP servers"
+    title: "Per-server tracker exists at docs/mcp/SERVER_MIGRATION_TRACKER.md with one row per of the 20 standalone MCP servers"
   - id: REQ-013
     title: "Backwards Compatibility Test Matrix enumerates per Core component: public CLI commands + launchd plist ProgramArguments + smoke test command. Phase 4 blocked until matrix is green"
   - id: REQ-014
@@ -304,7 +304,7 @@ requirements:
 
 #### Integration Contract ← Phase 3
 - **Triggered from**: this plan (reads `BODAI_REPO_REGISTRY.md` + `settings/ecosystem.yaml`).
-- **Returns to / updates**: `docs/mcp/server-migration-tracker.md` in mahavishnu (new file) — a table with one row per audited repo.
+- **Returns to / updates**: `docs/mcp/SERVER_MIGRATION_TRACKER.md` in mahavishnu (new file) — a table with one row per audited repo.
 - **Demonstrable by**: the tracker exists, has rows for all 5 Core + mcp-common + 20 standalone MCP servers + splashstand special case, each row has: `repo`, `current_entry_point`, `migration_status` (`todo` / `in-progress` / `done` / `out-of-scope`), `migrated_at_commit` (when applicable), `notes`.
 - **Rollback signal**: N/A (audit, not deployment).
 - **Observability added**: future incidents can grep the tracker to find per-repo migration status.
@@ -316,7 +316,7 @@ requirements:
   - Output: a markdown table the tracker consumes.
   - Verify: script runs in <5s; output has correct row count.
 
-- [ ] **Task 3.2: Create tracker `docs/mcp/server-migration-tracker.md`**
+- [ ] **Task 3.2: Create tracker `docs/mcp/SERVER_MIGRATION_TRACKER.md`**
   - Initial population:
     - **Core 5 (migrate in Phase 4a/4b)**: vishnu (Phase 4a), cj (Phase 4a), ak (Phase 4b), sb (Phase 4b discovery subtask first), oneiric (Phase 2 proof done)
     - **mcp-common (foundation, Phase 1)**: launcher module
@@ -326,7 +326,7 @@ requirements:
 
 - [ ] **Task 3.3: Commit tracker + audit script**
   ```bash
-  git add scripts/audit_mcp_launchers.py docs/mcp/server-migration-tracker.md
+  git add scripts/audit_mcp_launchers.py docs/mcp/SERVER_MIGRATION_TRACKER.md
   git commit -m "chore(audit): per-repo MCP launcher action items (REQ-012, REQ-015)"
   ```
   Tracker lives in `mahavishnu/docs/mcp/` (not mcp-common) — mahavishnu is the planning/coordination hub per the Bodai hierarchy.
@@ -391,7 +391,7 @@ requirements:
 
 ### Phase 5a: Server migration tracker (non-cuttable)
 
-- [ ] **Task 5a.1: Initialize `mahavishnu/docs/mcp/server-migration-tracker.md`**
+- [ ] **Task 5a.1: Initialize `mahavishnu/docs/mcp/SERVER_MIGRATION_TRACKER.md`**
   - Already created in Phase 3 Task 3.2. Phase 5a maintains it.
   - Each per-server commit in Phase 5b updates one row.
 
@@ -466,7 +466,7 @@ mahavishnu/
 ├── scripts/
 │   └── audit_mcp_launchers.py           [CREATE] one-shot detection script
 ├── docs/mcp/
-│   ├── server-migration-tracker.md      [CREATE] per-repo status (REQ-012, REQ-015)
+│   ├── SERVER_MIGRATION_TRACKER.md      [CREATE] per-repo status (REQ-012, REQ-015)
 │   └── launcher-backcompat-matrix.md    [CREATE] Backward Compatibility Test Matrix (REQ-013)
 ```
 
@@ -482,7 +482,7 @@ mahavishnu/
 | `oneiric mcp start --foreground` (post-Phase 2c) | boots cleanly, logs "WorkflowTaskProcessor wired" | manual smoke |
 | `kill -TERM <pid>` of any migrated server | exits 0 within `timeout_graceful_shutdown` + 5s | signal-handling smoke (REQ-014) |
 | Live-akosha smoke after each Phase 2 commit | `curl /health` on 8682 still returns 200 | ak vendored-path regression check |
-| `python scripts/audit_mcp_launchers.py` (post-Phase 3) | emits table with rows for all 5 Core + mcp-common + 20 standalone MCP + splashstand | `docs/mcp/server-migration-tracker.md` |
+| `python scripts/audit_mcp_launchers.py` (post-Phase 3) | emits table with rows for all 5 Core + mcp-common + 20 standalone MCP + splashstand | `docs/mcp/SERVER_MIGRATION_TRACKER.md` |
 | `crackerjack run` (after mcp-common commit) | passes; mcp-common is a transitive dep | CI run |
 | Backward Compatibility Test Matrix (post-Phase 4a/4b) | per-component CLI + plist + smoke test green | `mahavishnu/docs/mcp/launcher-backcompat-matrix.md` |
 
@@ -512,7 +512,7 @@ mahavishnu/
 This plan is **done enough** when:
 1. `mcp-common` has `server/launcher.py` with tests passing (`mcp-common` v0.28.0, **user-bumped**).
 2. **All 5 Core components** show `"launcher": "mcp_common.server.launcher@0.1.0"` in their `/health` bodies (Phases 2 + 4a + 4b complete).
-3. The tracker `docs/mcp/server-migration-tracker.md` exists with all 26 rows (5 Core + mcp-common + 20 standalone).
+3. The tracker `docs/mcp/SERVER_MIGRATION_TRACKER.md` exists with all 26 rows (5 Core + mcp-common + 20 standalone).
 4. The Backward Compatibility Test Matrix is green for all 5 Core components.
 5. The vendored `oneiric.cli.mcp.mcp_start` bug is fixed at source (Phase 2c merged).
 

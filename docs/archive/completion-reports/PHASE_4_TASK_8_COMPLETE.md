@@ -41,7 +41,7 @@ Created comprehensive production deployment guide, automated deployment scripts,
 - Deployment commands
 
 **Option C: Kubernetes** (For large-scale):
-- Referenced to separate kubernetes/deployment.md
+- Referenced to separate kubernetes/DEPLOYMENT.md
 - Manifests and deployment procedures
 
 #### Environment Configuration

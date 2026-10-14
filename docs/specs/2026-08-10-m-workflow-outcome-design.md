@@ -1,8 +1,8 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 date: 2026-08-10
-last_reviewed: 2026-08-10
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 topic: m-workflow-outcome

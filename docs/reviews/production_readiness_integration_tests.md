@@ -462,8 +462,8 @@ ______________________________________________________________________
 **Present:**
 
 - `/Users/les/Projects/mahavishnu/docs/PRODUCTION_READINESS.md` (4.5KB)
-- `/Users/les/Projects/mahavishnu/docs/deployment-architecture.md` (1.4KB)
-- `/Users/les/Projects/mahavishnu/docs/testing-strategy.md` (1.9KB)
+- `/Users/les/Projects/mahavishnu/docs/DEPLOYMENT_ARCHITECTURE.md` (1.4KB)
+- `/Users/les/Projects/mahavishnu/docs/TESTING_STRATEGY.md` (1.9KB)
 
 **Content Analysis:**
 
@@ -474,14 +474,14 @@ ______________________________________________________________________
    - No runbooks or troubleshooting
    - Missing: API documentation, operations guide
 
-1. **deployment-architecture.md**
+1. **DEPLOYMENT_ARCHITECTURE.md**
 
    - Infrastructure outline only
    - No actual deployment manifests
    - No Helm charts or Terraform modules
    - No service mesh configuration
 
-1. **testing-strategy.md**
+1. **TESTING_STRATEGY.md**
 
    - Test categories defined
    - No actual test execution results

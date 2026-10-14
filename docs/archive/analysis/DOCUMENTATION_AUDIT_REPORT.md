@@ -491,7 +491,7 @@ docs/
 │   ├── integration.md                 # Developer guide (renamed)
 │   ├── api/                           # New: API documentation
 │   │   ├── database.md                # LearningDatabase API
-│   │   ├── telemetry.md               # TelemetryCapture API
+│   │   ├── TELEMETRY.md               # TelemetryCapture API
 │   │   ├── feedback.md                # FeedbackCapturer API
 │   │   └── router.md                  # SONARouter API
 │   ├── database/                      # New: Database documentation

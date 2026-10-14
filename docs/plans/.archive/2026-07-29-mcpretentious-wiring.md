@@ -1,8 +1,8 @@
 ---
-status: complete
+status: shipped
 role: historical
 date: 2026-07-29
-last_reviewed: 2026-08-29
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: mcpretentious-runtime-wiring
 title: "Mcpretentious Runtime Wiring Implementation Plan"
@@ -47,7 +47,7 @@ title: "Mcpretentious Runtime Wiring Implementation Plan"
 - `.mcp.json` lists 17 servers; no `mcpretentious` entry exists.
 - `~/Library/LaunchAgents/` contains only `com.mcp.mahavishnu.plist` (plus a backup). It runs `scripts/launch_mcp_with_secrets.py` on port 8680. No `mcpretentious` plist exists.
 - `~/.local/state/mcp/scripts/launch_with_healthcheck.sh` is the existing healthcheck wrapper; it accepts `<health-url> [--timeout SECONDS] -- <command> [args...]`, polls every 0.5s, and exits non-zero on timeout so `KeepAlive.Crashed=true` triggers a restart.
-- `docs/TERMINAL_MANAGEMENT.md:468-471` documents the entrypoint as `uvx --from mcpretentious mcpretentious`; `docs/terminal/backends.md:12-31` documents `npx mcpretentious`. The user chose `uvx` for this plan.
+- `docs/TERMINAL_MANAGEMENT.md:468-471` documents the entrypoint as `uvx --from mcpretentious mcpretentious`; `docs/terminal/BACKENDS.md:12-31` documents `npx mcpretentious`. The user chose `uvx` for this plan.
 - `mahavishnu/terminal/mcp_client.py:321` and `mahavishnu/terminal/adapters/mcpretentious.py:93` both consume the `terminal_id` key from the `mcpretentious-open` response. The contract is documented and unchanged.
 
 ## 5. Implementation Phases

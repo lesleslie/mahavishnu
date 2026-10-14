@@ -4,7 +4,7 @@ role: superseded
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-12
-superseded_by: docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md
+superseded_by: docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md
 blocks_on: []
 decision_date: 2026-06-03
 topic: adapter-tool-boundary

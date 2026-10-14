@@ -423,7 +423,7 @@ in the current environment.
 
 Worker selection policy:
 
-- See [Worker Classification Policy](docs/policies/worker-classification-policy.md) for the rule set that decides terminal vs gateway vs external reference.
+- See [Worker Classification Policy](docs/policies/WORKER_CLASSIFICATION_POLICY.md) for the rule set that decides terminal vs gateway vs external reference.
 
 ### Routing Notes
 
@@ -733,8 +733,8 @@ mahavishnu/
 
 ### LLM Gateway Docs
 
-- **[LLM Inventory](docs/llm-inventory.md)** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
-- **[Bifrost Reactivation Runbook](docs/bifrost-reactivation-runbook.md)** - How to bring the dormant local gateway back later
+- **[LLM Inventory](docs/LLM_INVENTORY.md)** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
+- **[Bifrost Reactivation Runbook](docs/BIFROST_REACTIVATION_RUNBOOK.md)** - How to bring the dormant local gateway back later
 - **[Bifrost Gateway Plan](docs/plans/2026-04-08-bifrost-gateway-plan.md)** - Implementation history, milestones, and paused cutover status
 
 ## Contributing

@@ -70,7 +70,7 @@ the most accurate topology.
 
 ### 3. Same diagram mirrored 2-4× within the same repo
 
-- **mahavishnu**: `embedding-architecture.md` content re-rendered in `README.md`, `diagrams/README.md`, `EMBEDDINGS_SETUP_GUIDE.md` (5+ duplicates each)
+- **mahavishnu**: `EMBEDDING_ARCHITECTURE.md` content re-rendered in `README.md`, `diagrams/README.md`, `EMBEDDINGS_SETUP_GUIDE.md` (5+ duplicates each)
 - **oneiric**: 4-tier precedence flow in `RESOLUTION_LAYER_SPEC.md:27`, `VISUAL_GUIDE.md:104`, `NEW_ARCH_SPEC.md:122` (3 copies)
 - **oneiric**: lifecycle state machine in `VISUAL_GUIDE.md:215` and `NEW_ARCH_SPEC.md:228` (2 copies, names don't match)
 - **session-buddy**: user-session lifecycle in `README.md:279`, `README.md:328`, `QUICK_START.md:149`, archived DOCS_CONSOLIDATION_PLAN.md:364 (4 copies)

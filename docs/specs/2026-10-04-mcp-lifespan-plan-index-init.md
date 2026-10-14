@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 topic: mcp
 date: 2026-10-04
-last_reviewed: 2026-10-04
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "MCP Server Lifespan Refactor — Move Post-Start Init Out of lifecycle.start_server"

@@ -97,7 +97,7 @@ title: "DLQ Fail-Closed Wiring + Observability (Full #3)"
 
 - Add `mahavishnu_dlq_fallback_total` Counter (labels: `outcome=persisted|in_memory|rejected`), registered on the same Prometheus registry the `metrics_cli` / observability surface exports; increment in the enqueue/persist branches.
 - Add `tests/integration/core/test_dead_letter_queue_failover.py`: OpenSearch-down + flag off → task in memory + `outcome="in_memory"` increment; flag on → raises + `outcome="rejected"` increment.
-- Add `docs/runbooks/dead-letter-queue.md`: what the metric means, how to enable fail-closed, how to diagnose an activated fallback.
+- Add `docs/runbooks/DEAD_LETTER_QUEUE.md`: what the metric means, how to enable fail-closed, how to diagnose an activated fallback.
 
 **Exit criteria:** metric appears on the `/metrics` scrape after a forced fallback; integration test passes; runbook committed.
 
@@ -119,7 +119,7 @@ title: "DLQ Fail-Closed Wiring + Observability (Full #3)"
 - [ ] `tests/unit/core/test_dlq_integration.py` — new (propagation).
 - [ ] `tests/unit/core/test_dead_letter_queue_fail_closed.py` — extend (runtime write).
 - [ ] `tests/integration/core/test_dead_letter_queue_failover.py` — new.
-- [ ] `docs/runbooks/dead-letter-queue.md` — new.
+- [ ] `docs/runbooks/DEAD_LETTER_QUEUE.md` — new.
 - [ ] `docs/followups/2026-06-29-dlq-silent-fallback.md` — flip Status to Resolved (with cited tests) and `git mv` to `.archive/`; update `docs/followups/README.md`.
 
 ## 7. Validation Matrix

@@ -1,8 +1,8 @@
 ---
 role: canonical
 topic: jot-inbox
-status: draft
-last_reviewed: 2026-09-09
+status: partial
+last_reviewed: 2026-10-13
 date: 2026-09-09
 title: "Jot — zero-turn quick-capture inbox"
 

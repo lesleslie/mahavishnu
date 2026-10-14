@@ -709,13 +709,13 @@ ______________________________________________________________________
 
 **Files:**
 
-- Create: `docs/terminal/backends.md`
+- Create: `docs/terminal/BACKENDS.md`
 
-**Purpose:** Operators need to know what backends are available, what their prerequisites are, and how to switch. The spec says these belong in `docs/terminal/backends.md`; this task writes that file.
+**Purpose:** Operators need to know what backends are available, what their prerequisites are, and how to switch. The spec says these belong in `docs/terminal/BACKENDS.md`; this task writes that file.
 
 - [ ] **Step 1: Create the doc file**
 
-Create `docs/terminal/backends.md`:
+Create `docs/terminal/BACKENDS.md`:
 
 ````markdown
 # PTY Toolserver Backends
@@ -798,7 +798,7 @@ Read it back to make sure the table is well-formed and the examples are accurate
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add docs/terminal/backends.md
+git add docs/terminal/BACKENDS.md
 git commit -m "docs(terminal): document built-in PTY backends
 
 Covers the two built-ins (mcpretentious, pty_mcp_python), how to switch

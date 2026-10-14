@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 topic: dev-workflow
 date: 2026-10-03
-last_reviewed: 2026-10-03
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Agent-Reviewed Trunk-Based Development"

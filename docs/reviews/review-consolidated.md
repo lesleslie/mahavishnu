@@ -52,7 +52,7 @@ ______________________________________________________________________
 - **Label/score consistency validation** (lines 245-259) is a nice addition — catches data quality issues
 - **Minor issue**: `main()` returns `None` (line 510) instead of `int` — inconsistent with rank-tools.py pattern
 
-### `docs/policies/cache-policy.md` — Rating: 4/5
+### `docs/policies/CACHE_POLICY.md` — Rating: 4/5
 
 **Tier model is sensible**: L1 (memory) → L2 (SQLite) → L3 (Redis) is standard and appropriate.
 
@@ -80,7 +80,7 @@ ______________________________________________________________________
 - ✅ Actionable next steps (I10-2, I10-3)
 - ⚠️ No date on the generated timestamp (just "2026-04-05", no time)
 
-### `docs/policies/cache-policy.md` — Rating: 4/5
+### `docs/policies/CACHE_POLICY.md` — Rating: 4/5
 
 - ✅ Well-structured tier model
 - ✅ Tables are properly formatted
@@ -89,14 +89,14 @@ ______________________________________________________________________
 - ⚠️ Line number references not verified (see Review 4)
 - ⚠️ "Known gaps" section could benefit from priority/severity ratings
 
-### `docs/ml/content-quality-eval-rubric.md` — Rating: 4/5
+### `docs/ml/CONTENT_QUALITY_EVAL_RUBRIC.md` — Rating: 4/5
 
 - ✅ 5 dimensions well-defined with 1-5 scales
 - ✅ Examples for each level
 - ✅ Inter-annotator guidance included
 - ⚠️ Could benefit from anchor examples (real content scored at each level)
 
-### `docs/ml/content-quality-dataset-spec.md` — Rating: 4/5
+### `docs/ml/CONTENT_QUALITY_DATASET_SPEC.md` — Rating: 4/5
 
 - ✅ Schema clearly defined with types
 - ✅ Collection strategy documented

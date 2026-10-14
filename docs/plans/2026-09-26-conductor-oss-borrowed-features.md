@@ -1,3 +1,36 @@
+---
+date: 2026-09-26
+title: "Plan: Wire-up PRs — Borrowed Features from Conductor OSS / conductross.com"
+topic: conductor-oss-borrowed-features
+status: complete
+role: umbrella
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
+
+## Sub-plan shipped status
+
+12 sub-plan documents reference this umbrella. 11 are shipped/archived,
+1 is still draft and stays in active:
+
+| Sub-plan | Status | Location |
+|----------|--------|----------|
+| C-1 (config models prep) | shipped | `docs/plans/.archive/2026-09-26-impl-C-1-config-models-prep.md` |
+| C-2 (T-0 test scaffolding) | shipped | `docs/plans/.archive/2026-09-26-impl-C-2-test-scaffolding.md` |
+| C-3 (event-history persistence) | shipped | `docs/plans/.archive/2026-09-26-impl-C-3-event-history-persistence.md` |
+| C-4 (schema reconciliation) | shipped | `docs/plans/.archive/2026-09-26-impl-C-4-schema-reconciliation.md` |
+| C-5 (EventBridgePublisher helper) | shipped | `docs/plans/.archive/2026-09-26-impl-C-5-eventbridge-publisher.md` |
+| C-6 (pool_route_execute idempotency) | shipped | `docs/plans/.archive/2026-09-26-impl-C-6-pool-route-execute-idempotency.md` |
+| ~~C-7 (webhook nonce sweeper)~~ | DROPPED | n/a (per niche filter; REQ-009 removed) |
+| C-8 (worktree isolation) | shipped | `docs/plans/.archive/2026-09-26-impl-C-8-worktree-isolation.md` |
+| C-9 (concurrency limit) | shipped | `docs/plans/.archive/2026-09-26-impl-C-9-concurrency-limits.md` |
+| C-10 (radically simplified ecosystem intake) | shipped | `docs/plans/.archive/2026-09-26-impl-C-10-ecosystem-intake.md` |
+| C-11 (markdown board watcher, scoped to jot files) | shipped | `docs/plans/.archive/2026-09-26-impl-C-11-markdown-board-watcher.md` |
+| C-12 (executions show CLI) | shipped | `docs/plans/.archive/2026-09-26-impl-C-12-executions-cli.md` |
+| C-13 (crackerjack review-pr skill, in Crackerjack repo) | draft (active) | `docs/plans/2026-09-26-impl-C-13-crackerjack-review-pr.md` |
+
 # Plan: Wire-up PRs — Borrowed Features from Conductor OSS / conductross.com
 
 **Date:** 2026-09-26
@@ -604,7 +637,7 @@ class ConcurrencyGate:
     """Per-TaskCategory concurrency counter.
 
     LIMITATION: per-process scope. With N workers, effective limit is
-    N × spec.concurrency_limit. Documented in docs/runbooks/concurrency-limit-storm.md.
+    N × spec.concurrency_limit. Documented in docs/runbooks/CONCURRENCY_LIMIT_STORM.md.
     Fix path: replace with Redis/Dhara-backed shared counter when cross-pool
     guarantees are required.
     """
@@ -736,7 +769,7 @@ async def ecosystem_intake(source_name: str, request: Request) -> JSONResponse:
 
 **Companion CLI:** `mahavishnu ecosystem list [--json]` — shows allowlist source names. No register/rotate/test/dlq.
 
-**Runbook:** `docs/runbooks/ecosystem-intake.md` (3 scenarios).
+**Runbook:** `docs/runbooks/ECOSYSTEM_INTAKE.md` (3 scenarios).
 
 **SLO:** `ecosystem_intake_total{source, result}`, `ecosystem_intake_sanitize_duration_seconds_bucket`. Critical: `ecosystem_intake_total{result="error"} rate > 0.05/s for 5m` → Slack.
 
@@ -931,20 +964,20 @@ ______________________________________________________________________
 
 ### Runbooks (per-wire-up deliverables)
 
-Every wire-up must ship a runbook in `docs/runbooks/` following the Symptoms/Diagnosis/Recovery/Verification/Postmortem format from `docs/runbooks/on_call_handbook.md`:
+Every wire-up must ship a runbook in `docs/runbooks/` following the Symptoms/Diagnosis/Recovery/Verification/Postmortem format from `docs/runbooks/ON_CALL_HANDBOOK.md`:
 
-- `docs/runbooks/worktree-isolation.md` (C-8): 3 scenarios — worktree_conflict envelope, idempotency store unavailable, worktree leak detection
-- `docs/runbooks/concurrency-limit-storm.md` (C-9): 2 scenarios — rate_limited envelope flood, atomicity drift tick, **per-process limitation** warning
-- `docs/runbooks/ecosystem-intake.md` (C-10): 3 scenarios — source not in allowlist, payload too large, `safe_publish` returns False
-- `docs/runbooks/markdown-watcher.md` (C-11): 4 scenarios — `markdown_board_watcher_up=0`, restarts_total climbing, cards stuck in ready, sidecar drift
-- `docs/runbooks/executions-cli.md` (C-12): 1 scenario — `--watch` loses WebSocket for 5 retries
+- `docs/runbooks/WORKTREE_ISOLATION.md` (C-8): 3 scenarios — worktree_conflict envelope, idempotency store unavailable, worktree leak detection
+- `docs/runbooks/CONCURRENCY_LIMIT_STORM.md` (C-9): 2 scenarios — rate_limited envelope flood, atomicity drift tick, **per-process limitation** warning
+- `docs/runbooks/ECOSYSTEM_INTAKE.md` (C-10): 3 scenarios — source not in allowlist, payload too large, `safe_publish` returns False
+- `docs/runbooks/MARKDOWN_WATCHER.md` (C-11): 4 scenarios — `markdown_board_watcher_up=0`, restarts_total climbing, cards stuck in ready, sidecar drift
+- `docs/runbooks/EXECUTIONS_CLI.md` (C-12): 1 scenario — `--watch` loses WebSocket for 5 retries
 
 ### SLO / alerting docs
 
 Per `docs/slos/_TEMPLATE.md`, every feature needs an SLO doc with burn-rate alert + page-after field:
 
 - `docs/slos/2026-09-26-wireup-pool-dispatch.md` (C-6 + C-8 + C-9)
-- `docs/slos/2026-09-26-wireup-ecosystem-intake.md` (C-10)
+- `docs/slos/2026-09-26-wireup-ECOSYSTEM_INTAKE.md` (C-10)
 - `docs/slos/2026-09-26-wireup-markdown-board.md` (C-11)
 
 Critical alerts (round-3 + round-4 ops gap-fix):
@@ -968,7 +1001,7 @@ Critical alerts (round-3 + round-4 ops gap-fix):
 Per round-3 DX reviewer, every wire-up must formally own its docs:
 
 - `docs/features/markdown-board.md` (C-11) — 30-second demo, why-this-matters, what-this-replaces
-- `docs/security/ecosystem-intake.md` (C-10) — sanitization rules, allowlist extension procedure, fail-503 switch
+- `docs/security/ECOSYSTEM_INTAKE.md` (C-10) — sanitization rules, allowlist extension procedure, fail-503 switch
 - `docs/ops/jot-watcher.md` (C-11) — launchd plist + systemd unit snippets
 - `docs/cli/executions-show.schema.json` (C-12) — JSON output schema
 - Update `docs/CLI_REFERENCE.md` — every new command

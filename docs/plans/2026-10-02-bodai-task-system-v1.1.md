@@ -1,3 +1,14 @@
+---
+date: 2026-10-02
+title: "Bodai Task System v1.1 Implementation Plan"
+topic: bodai-task-system-v1-1
+status: active
+role: implementation
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # Bodai Task System v1.1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

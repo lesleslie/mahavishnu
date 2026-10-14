@@ -36,8 +36,8 @@ same in-process Python module. **One source of truth.**
 
 ## Non-Goals
 
-- Consolidating `docs/schemas/document-frontmatter-v1.md` or
-  `topic-vocabulary-v1.md` (still seed-copied; tracked separately).
+- Consolidating `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` or
+  `TOPIC_VOCABULARY_V1.md` (still seed-copied; tracked separately).
 - Consolidating `scripts/regenerate_plan_index.py` (still seed-copied;
   tracked separately).
 - Adding a new docs-group command. The existing `crackerjack docs validate`
@@ -397,7 +397,7 @@ copies.
 
 ## Related work
 
-- `docs/schemas/document-frontmatter-v1.md` — currently seed-copied.
+- `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` — currently seed-copied.
   Could be packaged as `crackerjack.schemas.v1` in a follow-up.
 - `scripts/regenerate_plan_index.py` — currently seed-copied. Could be
   `crackerjack docs regenerate-plan-index` in a follow-up.

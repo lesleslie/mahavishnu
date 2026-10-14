@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: terminal-grid
 title: "Terminal Grid Orchestration Implementation Plan"

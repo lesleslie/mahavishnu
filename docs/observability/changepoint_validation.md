@@ -62,7 +62,7 @@ When `changepoint.enabled: true` and the detector fires:
 - When the 3-σ reference also fires (default), an independent
   `three_sigma_anomaly` log line is emitted.
 
-The runbook at `docs/runbooks/mahavishnu-drift-detection.md` walks
+The runbook at `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` walks
 operators through triage, with the cross-repo gap-period guidance
 for Phase D (the Akosha wiring) and the post-restart re-warmup
 window.
@@ -98,7 +98,7 @@ MAHAVISHNU_CHANGEPOINT__ENABLED=false
 
 - Tier 1 plan §1, §6 Phase 5-8: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 - Validation report: [`docs/audits/2026-09-10-changepoint-validation.md`](../audits/2026-09-10-changepoint-validation.md)
-- Runbook: [`docs/runbooks/mahavishnu-drift-detection.md`](../runbooks/mahavishnu-drift-detection.md)
+- Runbook: [`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../feature-tracking/) (added in Phase 8)
 - Library code: `mahavishnu/observability/changepoint/`
 - Sampler code: `mahavishnu/observability/sampler.py`

@@ -825,7 +825,7 @@ done
 - [ ] **Step 2: Write the followup**
 
 Create `docs/followups/2026-09-06-sibling-repos-yaml-audit.md` with frontmatter
-matching `docs/schemas/document-frontmatter-v1.md`:
+matching `docs/schemas/DOCUMENT_FRONTMATTER_V1.md`:
 
 ```markdown
 ---

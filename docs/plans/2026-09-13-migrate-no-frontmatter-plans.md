@@ -16,7 +16,7 @@ title: "Migrate 39 No-Frontmatter Plans to Schema v1.1"
 
 Every `.md` file in the four plan stores (`docs/plans/`, `docs/plans/`,
 `docs/specs/`, `docs/followups/`) carries a parseable `---\n...\n---`
-YAML frontmatter matching `docs/schemas/document-frontmatter-v1.md`. As a
+YAML frontmatter matching `docs/schemas/DOCUMENT_FRONTMATTER_V1.md`. As a
 result, `scripts/regenerate_plan_index.py` lists them all in `docs/plans/PLAN_INDEX.md`.
 
 **Success signal**: `uv run python scripts/regenerate_plan_index.py` runs
@@ -171,7 +171,7 @@ requirements:
   - `**Author:** <name>` or `Author: <name>`
   - The H1 title (becomes the title in PLAN_INDEX, already inferable)
 * Applies heuristic status mapping per the schema's legacy table
-  (`docs/schemas/document-frontmatter-v1.md` § Legacy Mapping):
+  (`docs/schemas/DOCUMENT_FRONTMATTER_V1.md` § Legacy Mapping):
   - `Accepted` / `Approved` / `In progress` / `active` → `status: active`
   - `Proposed` / `Draft` / `brainstormed` / `DEFERRED` → `status: draft`
   - `Complete` / `completed` / `Delivered` → `status: complete` (or
@@ -190,7 +190,7 @@ requirements:
 
 **Tasks:**
 
-1. Read `docs/schemas/document-frontmatter-v1.md` to confirm the
+1. Read `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` to confirm the
    vocabulary.
 2. Skeleton `migrate_frontmatter.py` with `migrate_file(path) ->
    (status, message)`.
@@ -314,7 +314,7 @@ The migration is considered "done enough" when:
 
 ## References
 
-* `docs/schemas/document-frontmatter-v1.md` — schema definition.
+* `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` — schema definition.
 * `docs/plans/TEMPLATE.md` — plan template.
 * `docs/followups/README.md` — the verified-state index that this
   migration's per-file status decisions must remain consistent with.

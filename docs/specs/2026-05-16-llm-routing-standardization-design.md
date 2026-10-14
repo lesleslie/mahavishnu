@@ -4,7 +4,7 @@ role: superseded
 topic: routing-composition
 date: 2026-07-16
 last_reviewed: '2026-09-14'
-superseded_by: 'docs/plans/2026-05-10-minimax27-provider-migration.md'
+superseded_by: 'docs/plans/.archive/2026-05-10-minimax27-provider-migration.md'
 blocks_on: []
 title: "LLM Routing Standardization — Design Spec"
 
@@ -402,7 +402,7 @@ When ready to activate:
 
 1. Add audio/video CEL route rules to `config/bifrost/config.template.json`
 1. Re-enable image route rule (already drafted, currently disabled)
-1. Restore LaunchAgent via `docs/bifrost-reactivation-runbook.md`
+1. Restore LaunchAgent via `docs/BIFROST_REACTIVATION_RUNBOOK.md`
 1. Set `BIFROST_BASE_URL=http://127.0.0.1:8471` in local environment
 1. Verify Redis Stack (port 6379) TTL enforcement and confirm no secrets are used as cache keys
 

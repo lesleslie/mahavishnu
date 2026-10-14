@@ -1,3 +1,12 @@
+---
+date: 2026-10-11
+status: active
+role: implementation
+topic: prefect-adapter-bug-fixes-cli
+last_reviewed: 2026-10-11
+superseded_by: null
+---
+
 # Plan: Fix 3 Prefect adapter bugs + `mahavishnu demo prefect` + `mahavishnu launchd prefect`
 
 ## Context

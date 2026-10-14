@@ -36,7 +36,7 @@ ______________________________________________________________________
 - **Lens:** ops-UX (Round-6 re-review)
 - **Location:** `mahavishnu/core/observability.py:935-940` (warning) vs `:753-762` (detected)
 - **Defect:** A chained warn→confirm sequence produces `detector="cusum"` on the warning span (warn detector's class name) but `detector="two_stage"` on the confirmed span (pipeline name). Both are individually correct, but a 3 a.m. operator following `tmp.traces.find({ detector = "two_stage" })` will see confirmed alerts and lose the link to the matching warning.
-- **Proposed fix:** Add a sentence to `docs/runbooks/mahavishnu-drift-detection.md` between lines 19–25 explaining the dual-attribute convention: "When `detector == "two_stage"` on a confirmed alert, the corresponding warning carries `detector == "cusum"` (or `"page_hinkley"`) because each signal names its own underlying detector class. To correlate, match `samples_since_warning` on the confirmed span to the warning span's timestamp."
+- **Proposed fix:** Add a sentence to `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` between lines 19–25 explaining the dual-attribute convention: "When `detector == "two_stage"` on a confirmed alert, the corresponding warning carries `detector == "cusum"` (or `"page_hinkley"`) because each signal names its own underlying detector class. To correlate, match `samples_since_warning` on the confirmed span to the warning span's timestamp."
 - **Acceptance:** Runbook has a paragraph between the `samples_since_warning` and `confirm_detector` lines explaining the dual-attribute convention; no code change required.
 
 ______________________________________________________________________
@@ -80,7 +80,7 @@ ______________________________________________________________________
 
 - **Severity:** LOW
 - **Lens:** ops-UX (Round-5 original; parked before Round-6)
-- **Location:** `docs/runbooks/mahavishnu-drift-detection.md:103-105`
+- **Location:** `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md:103-105`
 - **Defect:** Runbook names `mahavishnu.observability.drift_warning_total` as a metric to monitor but provides no concrete "if your rate is > X / 10,080, the warn threshold is too sensitive" heuristic. The validation report cites "~30 per 10,080" as the design point at production defaults.
 - **Proposed fix:** Add a sentence: "~30 warnings per 10,080 is the design point at `warn_threshold=8.0` on stationary Gaussian noise; sustained rates > 2× that on stationary traffic suggest a mis-tuned warn threshold or non-stationary input."
 - **Acceptance:** Runbook has the design-point rate plus the >2× heuristic for operators.

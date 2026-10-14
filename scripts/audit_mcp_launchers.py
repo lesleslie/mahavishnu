@@ -4,7 +4,7 @@
 Walks ``BODAI_REPO_REGISTRY.md`` (repo inventory) and
 ``settings/ecosystem.yaml`` (mcp: classification) and emits a markdown table
 classifying each included repo's MCP launch path. Drives Phase 3 Task 3.2
-(``docs/mcp/server-migration-tracker.md``).
+(``docs/mcp/SERVER_MIGRATION_TRACKER.md``).
 
 Why this exists:
     Phase 3 of ``docs/plans/2026-09-26-mcp-launcher-standardization.md``

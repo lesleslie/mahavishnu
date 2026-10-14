@@ -110,7 +110,7 @@ flip `two_stage` without hand-editing untracked `settings/local.yaml`.
 - Add `changepoint.detector: "two_stage"` to `settings/mahavishnu.yaml.example`
   (the tracked template file), with a comment block explaining the four
   settings the operator can change.
-- Update `docs/runbooks/mahavishnu-drift-detection.md` (the existing
+- Update `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (the existing
   runbook; the plan's earlier draft cited a non-existent
   `docs/runbooks/changepoint.md`) with an explicit two-stage opt-in
   section, citing the merge-tree/perf numbers from
@@ -146,7 +146,7 @@ flip `two_stage` without hand-editing untracked `settings/local.yaml`.
   reads the setting and instantiates `TwoStageDetector`.
 - **Returns to / updates**: `docs/feature-tracking/2026-09-10-observability-changepoint.md`
   (`status: adopted`); `settings/mahavishnu.yaml.example` (new opt-in row);
-  `docs/runbooks/mahavishnu-drift-detection.md` (new opt-in section);
+  `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (new opt-in section);
   `mahavishnu/core/observability.py` (2 × `span_attributes` dict updates
   adding `changepoint.detector` key).
 - **Demonstrable by**: with `MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage`,

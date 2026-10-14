@@ -1,10 +1,10 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: superseded
 kind: plan
 date: 2026-07-16
-last_reviewed: 2026-09-13
-superseded_by: null
+last_reviewed: 2026-10-13
+superseded_by: docs/specs/2026-07-15-constellation-tui-design.md
 blocks_on: []
 topic: tui
 title: "Bodai TUI: Claude Code-Style Terminal Application"

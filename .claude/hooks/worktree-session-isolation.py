@@ -33,7 +33,7 @@ Failure isolation: every code path returns 0. Errors are logged to
 stderr (visible in Claude Code's hook output panel). Never raises.
 
 Reference: plan ``/Users/les/.claude/plans/cheerful-marinating-fountain.md``
-            and followup ``docs/followups/2026-07-16-session-worktree-isolation.md``.
+            and followup ``docs/followups/2026-07-16-session-WORKTREE_ISOLATION.md``.
 """
 from __future__ import annotations
 

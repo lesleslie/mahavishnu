@@ -35,16 +35,16 @@ Phase 0 has been successfully completed with all critical security and SRE funda
 
 | Task | Status | Evidence |
 |------|--------|----------|
-| Error budget enforcement policy | ✅ | `docs/runbooks/error_budget_enforcement.md` |
-| Database migration rollback triggers | ✅ | `docs/runbooks/deployment.md` |
+| Error budget enforcement policy | ✅ | `docs/runbooks/ERROR_BUDGET_ENFORCEMENT.md` |
+| Database migration rollback triggers | ✅ | `docs/runbooks/DEPLOYMENT.md` |
 | Prometheus alerting rules | ✅ | `config/prometheus/error_budget_rules.yml` |
 
 ### Week 7-8: SRE Fundamentals (Part 2)
 
 | Task | Status | Evidence |
 |------|--------|----------|
-| Disaster recovery procedures | ✅ | `docs/runbooks/disaster_recovery.md` |
-| On-call procedures | ✅ | `docs/runbooks/on_call_handbook.md` |
+| Disaster recovery procedures | ✅ | `docs/runbooks/DISASTER_RECOVERY.md` |
+| On-call procedures | ✅ | `docs/runbooks/ON_CALL_HANDBOOK.md` |
 | Load testing baseline | ✅ | `mahavishnu/testing/load_test.py` |
 | Incident simulation | ✅ | `mahavishnu/testing/incident_simulation.py` |
 
@@ -121,9 +121,9 @@ Steps Completed: 5/5
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `docs/runbooks/error_budget_enforcement.md` | 300 | Error budget policy |
-| `docs/runbooks/deployment.md` (updated) | 350 | Rollback triggers |
-| `docs/runbooks/disaster_recovery.md` (updated) | 350 | DR testing schedule |
+| `docs/runbooks/ERROR_BUDGET_ENFORCEMENT.md` | 300 | Error budget policy |
+| `docs/runbooks/DEPLOYMENT.md` (updated) | 350 | Rollback triggers |
+| `docs/runbooks/DISASTER_RECOVERY.md` (updated) | 350 | DR testing schedule |
 | `config/prometheus/error_budget_rules.yml` | 200 | Alerting rules |
 
 > Note: the legacy GitHub Actions security workflow referenced above was later removed. Current enforcement uses Crackerjack and repository-local validation commands.

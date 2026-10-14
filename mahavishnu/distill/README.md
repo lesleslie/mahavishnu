@@ -70,5 +70,5 @@ directly by `ReviewerIdentity.from_env()` — env wins.
 
 ## Runbooks
 
-- `docs/runbooks/distill-reviewer-identity.md` (H6)
-- `docs/runbooks/distill-source-provenance.md` (H4)
+- `docs/runbooks/DISTILL_REVIEWER_IDENTITY.md` (H6)
+- `docs/runbooks/DISTILL_SOURCE_PROVENANCE.md` (H4)

@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: implementation
 topic: lifecycle
 date: 2026-07-16
-last_reviewed: 2026-07-17
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan"
@@ -26,7 +26,7 @@ title: "Frontmatter Validator Wiring + P7 Cross-Repo Implementation Plan"
 - Subprocess: always go through `crackerjack.services.secure_subprocess.run`. No bare `subprocess` imports.
 - Commit per task, with subject `feat:` / `fix:` / `test:` / `docs:`.
 - No pre-commit hook (per user direction).
-- Frontmatter vocabulary: see `docs/schemas/document-frontmatter-v1.md` and `docs/schemas/topic-vocabulary-v1.md` (single source of truth in Mahavishnu).
+- Frontmatter vocabulary: see `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` and `docs/schemas/TOPIC_VOCABULARY_V1.md` (single source of truth in Mahavishnu).
 - Crackerjack Python entry point: `crackerjack` (configured in `pyproject.toml`). Repo root: `/Users/les/Projects/crackerjack`.
 - Mahavishnu repo root: `/Users/les/Projects/mahavishnu`.
 
@@ -51,14 +51,14 @@ ______________________________________________________________________
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `docs/schemas/document-frontmatter-v1.md` | extend | Add "Crackerjack surface" subsection |
+| `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` | extend | Add "Crackerjack surface" subsection |
 
 ### Cross-repo (Phase 2)
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `session-buddy/docs/schemas/document-frontmatter-v1.md` | new (copy) | Per-repo schema reference |
-| `session-buddy/docs/schemas/topic-vocabulary-v1.md` | new (copy) | Per-repo vocab reference |
+| `session-buddy/docs/schemas/DOCUMENT_FRONTMATTER_V1.md` | new (copy) | Per-repo schema reference |
+| `session-buddy/docs/schemas/TOPIC_VOCABULARY_V1.md` | new (copy) | Per-repo vocab reference |
 | `session-buddy/scripts/validate_document_frontmatter.py` | new (copy) | Per-repo validator |
 | `session-buddy/scripts/regenerate_plan_index.py` | new (copy) | Per-repo index regenerator |
 | `session-buddy/docs/plans/PLAN_INDEX.md` | generated | First regeneration |
@@ -807,15 +807,15 @@ ______________________________________________________________________
 
 **Files:**
 
-- Modify: `mahavishnu/docs/schemas/document-frontmatter-v1.md` (append "Crackerjack surface" subsection)
+- Modify: `mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md` (append "Crackerjack surface" subsection)
 
 - [ ] **Step 1: Read current schema doc**
 
-Run: `wc -l /Users/les/Projects/mahavishnu/docs/schemas/document-frontmatter-v1.md`
+Run: `wc -l /Users/les/Projects/mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md`
 
 - [ ] **Step 2: Append the new subsection**
 
-Append to the end of `mahavishnu/docs/schemas/document-frontmatter-v1.md`:
+Append to the end of `mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md`:
 
 ```markdown
 
@@ -838,14 +838,14 @@ for full integration details.
 
 - [ ] **Step 3: Re-run validator against this file to confirm zero errors**
 
-Run: `cd /Users/les/Projects/mahavishnu && uv run python scripts/validate_document_frontmatter.py --allow-nonstandard docs/schemas/document-frontmatter-v1.md`
+Run: `cd /Users/les/Projects/mahavishnu && uv run python scripts/validate_document_frontmatter.py --allow-nonstandard docs/schemas/DOCUMENT_FRONTMATTER_V1.md`
 Expected: clean (no errors, no warnings).
 
 - [ ] **Step 4: Commit**
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add docs/schemas/document-frontmatter-v1.md
+git add docs/schemas/DOCUMENT_FRONTMATTER_V1.md
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(schemas): reference crackerjack integration surface"
 ```
 
@@ -897,8 +897,8 @@ Phase 2 has two waves: **P7.A** (session-buddy template) and
 - Copy into `session-buddy/`:
   - `mahavishnu/scripts/validate_document_frontmatter.py` → `session-buddy/scripts/`
   - `mahavishnu/scripts/regenerate_plan_index.py` → `session-buddy/scripts/`
-  - `mahavishnu/docs/schemas/document-frontmatter-v1.md` → `session-buddy/docs/schemas/`
-  - `mahavishnu/docs/schemas/topic-vocabulary-v1.md` → `session-buddy/docs/schemas/`
+  - `mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md` → `session-buddy/docs/schemas/`
+  - `mahavishnu/docs/schemas/TOPIC_VOCABULARY_V1.md` → `session-buddy/docs/schemas/`
 - Create: `session-buddy/docs/plans/2026-07-16-p7-cross-repo-playbook.md`
 - Modify: all `session-buddy/` docs across 6 stores (frontmatter prepend)
 - Generated: `session-buddy/docs/plans/PLAN_INDEX.md`
@@ -927,8 +927,8 @@ cd /Users/les/Projects
 mkdir -p session-buddy/scripts session-buddy/docs/schemas
 cp mahavishnu/scripts/validate_document_frontmatter.py session-buddy/scripts/
 cp mahavishnu/scripts/regenerate_plan_index.py session-buddy/scripts/
-cp mahavishnu/docs/schemas/document-frontmatter-v1.md session-buddy/docs/schemas/
-cp mahavishnu/docs/schemas/topic-vocabulary-v1.md session-buddy/docs/schemas/
+cp mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md session-buddy/docs/schemas/
+cp mahavishnu/docs/schemas/TOPIC_VOCABULARY_V1.md session-buddy/docs/schemas/
 ```
 
 - [ ] **Step 3: Run the validator in `--dry-run` mode against session-buddy**

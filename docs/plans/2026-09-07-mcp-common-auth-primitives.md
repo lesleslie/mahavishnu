@@ -3295,16 +3295,16 @@ cd /Users/les/Projects/<sibling> && git add scapy_mcp/server.py tests/integratio
 
 ______________________________________________________________________
 
-### Task 15: Update gdpr-posture.md §10 with auth section
+### Task 15: Update GDPR_POSTURE.md §10 with auth section
 
 **Files:**
 
-- Modify: `/Users/les/Projects/mahavishnu/docs/legal/gdpr-posture.md`
+- Modify: `/Users/les/Projects/mahavishnu/docs/legal/GDPR_POSTURE.md`
 
-- [ ] **Step 15.1: Read the current gdpr-posture.md to find §10**
+- [ ] **Step 15.1: Read the current GDPR_POSTURE.md to find §10**
 
 ```bash
-cat /Users/les/Projects/mahavishnu/docs/legal/gdpr-posture.md | head -200
+cat /Users/les/Projects/mahavishnu/docs/legal/GDPR_POSTURE.md | head -200
 ```
 
 Look for the section that discusses mcp-common auth or technical measures. If §10 doesn't exist, add it.
@@ -3343,7 +3343,7 @@ set `auth.enabled: true` and configure at least one provider in
 - [ ] **Step 15.3: Commit**
 
 ```bash
-cd /Users/les/Projects/mahavishnu && git add docs/legal/gdpr-posture.md && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "docs(gdpr): §10 — describe auth posture and Article 32 alignment"
+cd /Users/les/Projects/mahavishnu && git add docs/legal/GDPR_POSTURE.md && git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "docs(gdpr): §10 — describe auth posture and Article 32 alignment"
 ```
 
 ______________________________________________________________________
@@ -3494,10 +3494,10 @@ Per the wire-up contract (`docs/decisions/wire-up-contract.md`), every phase del
 
 - **Triggered from:** Phase 1 + Phase 2 completion.
 - **Returns to / updates:**
-  - `docs/legal/gdpr-posture.md` §10 — auth posture, Article 32 alignment.
+  - `docs/legal/GDPR_POSTURE.md` §10 — auth posture, Article 32 alignment.
   - `docs/adr/0016-scapy-mcp-integration.md` — close the "mcp-common authentication primitives" v4+ deferred item.
   - `docs/adr/0016-multi-agent-review.md` — annotate cross-cutting findings closed.
-- **Demonstrable by:** `git grep "AuthHealth" docs/legal/gdpr-posture.md` returns hits; `git grep "mcp-common authentication primitives" docs/adr/` no longer has open-deferred mentions.
+- **Demonstrable by:** `git grep "AuthHealth" docs/legal/GDPR_POSTURE.md` returns hits; `git grep "mcp-common authentication primitives" docs/adr/` no longer has open-deferred mentions.
 - **Rollback signal:** ADR ambiguity discovered post-commit (revert + amend).
 - **Observability added:** None (docs only).
 

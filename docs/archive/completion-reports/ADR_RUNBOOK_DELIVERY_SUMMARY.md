@@ -29,7 +29,7 @@ Created 4 new ADRs documenting key architectural decisions:
 **File Locations**:
 - `/Users/les/Projects/mahavishnu/docs/adr/006-duckdb-learning-database.md`
 - `/Users/les/Projects/mahavishnu/docs/adr/007-vector-embeddings-semantic-search.md`
-- `/Users/les/Projects/mahavishnu/docs/adr/008-graceful-degradation-telemetry.md`
+- `/Users/les/Projects/mahavishnu/docs/adr/008-graceful-degradation-TELEMETRY.md`
 - `/Users/les/Projects/mahavishnu/docs/adr/009-90-day-retention-policy.md`
 
 **ADR Structure**:
@@ -285,7 +285,7 @@ Successfully delivered comprehensive ADRs and operational runbooks for the ORB L
 ### Architecture Decision Records
 - `/Users/les/Projects/mahavishnu/docs/adr/006-duckdb-learning-database.md` (6.3KB)
 - `/Users/les/Projects/mahavishnu/docs/adr/007-vector-embeddings-semantic-search.md` (7.9KB)
-- `/Users/les/Projects/mahavishnu/docs/adr/008-graceful-degradation-telemetry.md` (9.1KB)
+- `/Users/les/Projects/mahavishnu/docs/adr/008-graceful-degradation-TELEMETRY.md` (9.1KB)
 - `/Users/les/Projects/mahavishnu/docs/adr/009-90-day-retention-policy.md` (9.1KB)
 - `/Users/les/Projects/mahavishnu/docs/adr/README.md` (3.7KB)
 

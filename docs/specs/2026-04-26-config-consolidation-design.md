@@ -1,10 +1,10 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: superseded
 topic: oneiric-config
 date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
+last_reviewed: 2026-10-13
+superseded_by: docs/specs/2026-09-27-shared-bodai-substrate-design.md
 blocks_on: []
 title: "Config Consolidation: Mahavishnu as Self-Contained Dev Environment"
 

@@ -232,7 +232,7 @@ Create comprehensive configuration documentation:
    - Protocol specifications
    - Security architecture
 
-2. **Deployment Guides** (`docs/guides/deployment.md`)
+2. **Deployment Guides** (`docs/guides/DEPLOYMENT.md`)
    - Local development setup
    - Docker deployment
    - Kubernetes deployment

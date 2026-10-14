@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 topic: convergence-control-plane
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Completion Report Schema v1 — Design"

@@ -1,9 +1,9 @@
 ---
 date: 2026-07-25
-last_reviewed: 2026-07-25
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: mcp-common-http-health-route-helper
-status: draft
+status: complete
 role: implementation
 title: "mcp-common `register_http_health_route` Helper — Implementation Plan"
 

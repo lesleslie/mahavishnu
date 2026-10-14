@@ -843,7 +843,7 @@ ______________________________________________________________________
 
 ### ❌ **Gap 7.1: No Comprehensive Audit Trail Defined**
 
-**Current State**: Document mentions "audit logging" in existing security.md but doesn't define:
+**Current State**: Document mentions "audit logging" in existing SECURITY.md but doesn't define:
 
 - What events to log
 - Log format/structure
@@ -1065,7 +1065,7 @@ security:
 
 ### 8.4 Dependency Scanning ✅
 
-**Positive**: Document mentions `pip-audit` in security.md.
+**Positive**: Document mentions `pip-audit` in SECURITY.md.
 
 **Recommendation**: Add to CI/CD pipeline:
 

@@ -15,7 +15,7 @@ title: "Two-Stage Warn/Confirm Drift Detector Implementation Plan"
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Resolve the §1 (latency ≤ 30 samples on 0.5σ shift) / §7 (≤ 2 fires per 10,080 quiet samples) trade-off documented in `docs/runbooks/mahavishnu-drift-detection.md` and `docs/audits/2026-09-10-changepoint-validation.md` by adding a `TwoStageDetector` that runs a fast low-threshold warning detector in parallel with a slow high-threshold confirm detector. Operators see a "warning" event quickly and an "alert" only when the warning is corroborated — separating the §1 latency gate (measured on warnings) from the §7 FP gate (measured on confirmed alerts).
+**Goal:** Resolve the §1 (latency ≤ 30 samples on 0.5σ shift) / §7 (≤ 2 fires per 10,080 quiet samples) trade-off documented in `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` and `docs/audits/2026-09-10-changepoint-validation.md` by adding a `TwoStageDetector` that runs a fast low-threshold warning detector in parallel with a slow high-threshold confirm detector. Operators see a "warning" event quickly and an "alert" only when the warning is corroborated — separating the §1 latency gate (measured on warnings) from the §7 FP gate (measured on confirmed alerts).
 
 **Architecture:** Two CUSUMs (or CUSUM + Page-Hinkley) wrapped in a 3-state state machine (`idle` → `warning_pending` → `confirmed` → `idle`). The warn detector fires fast (~28-sample latency on 0.5σ, low h=8.0); the confirm detector fires rarely (high h=14.0). A "warning" emits `mahavishnu.observability.drift_warning` (operator-visible but soft). A "confirmed" emits `mahavishnu.observability.drift_detected` (operator-actionable, page-worthy). The §1 latency gate is checked on warnings; the §7 FP gate is checked on confirmed alerts. This is the canonical SIEM warn/confirm pattern and reuses the existing `CUSUMDetector`, `PageHinkleyDetector`, `MetricSampler`, and `ObservabilityManager` infrastructure.
 
@@ -73,7 +73,7 @@ tests/integration/observability/
 
 docs/
   plans/2026-09-10-bodai-math-initiatives-tier1.md  ← Task 4: MODIFY — §1 + §7 wording (warn/confirm split)
-  runbooks/mahavishnu-drift-detection.md            ← Task 5: MODIFY — replace "§1 latency vs §7 FP gate trade-off" section with "Two-stage warn/confirm semantics"
+  runbooks/MAHAVISHNU_DRIFT_DETECTION.md            ← Task 5: MODIFY — replace "§1 latency vs §7 FP gate trade-off" section with "Two-stage warn/confirm semantics"
   audits/2026-09-10-changepoint-validation.md       ← Task 6: MODIFY — Status header + Results section + Calibration caveat
   feature-tracking/2026-09-10-observability-changepoint.md  ← Task 6: MODIFY — rollout playbook notes two_stage as the promoted default post-validation
 ```
@@ -1280,11 +1280,11 @@ ______________________________________________________________________
 
 **Files:**
 
-- Modify: `docs/runbooks/mahavishnu-drift-detection.md:75-94` (replace the "§1 latency vs §7 FP gate trade-off" section)
+- Modify: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md:75-94` (replace the "§1 latency vs §7 FP gate trade-off" section)
 
 - [ ] **Step 5.1: Replace the §1/§7 trade-off section**
 
-In `docs/runbooks/mahavishnu-drift-detection.md`, replace the existing `### §1 latency vs §7 FP gate trade-off` section (lines 75-94) with:
+In `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`, replace the existing `### §1 latency vs §7 FP gate trade-off` section (lines 75-94) with:
 
 ```markdown
 ### Two-stage warn/confirm semantics (RECOMMENDED for production)
@@ -1342,7 +1342,7 @@ two-stage mode supersedes this for production use.
 - [ ] **Step 5.2: Commit**
 
 ```bash
-git add docs/runbooks/mahavishnu-drift-detection.md
+git add docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md
 git commit -m "docs(runbook): document two-stage warn/confirm semantics; resolve §1/§7 trade-off"
 ```
 
@@ -1524,7 +1524,7 @@ Wait for the result.
 Agent: `observability-incident-lead` (or `documentation-specialist`)
 
 Prompt: "Review the two-stage change-point runbook and validation
-report updates at `docs/runbooks/mahavishnu-drift-detection.md`
+report updates at `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`
 and `docs/audits/2026-09-10-changepoint-validation.md` from the
 operator's perspective. Specifically: (1) is the difference
 between a 'warning' and a 'confirmed alert' clear enough that
@@ -1546,7 +1546,7 @@ Agent: `critical-audit-specialist` (or `documentation-review-specialist`)
 
 Prompt: "Review the documentation updates in
 `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`,
-`docs/runbooks/mahavishnu-drift-detection.md`, and
+`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`, and
 `docs/audits/2026-09-10-changepoint-validation.md` for honesty
 and consistency. Specifically: (1) do all three docs agree on
 the empirical numbers (warning median ~28 samples, confirmed

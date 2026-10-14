@@ -226,7 +226,7 @@ docker-compose logs -f
 
 ### Option C: Kubernetes (For large-scale deployments)
 
-See `kubernetes/deployment.md` for detailed Kubernetes manifests and deployment procedures.
+See `kubernetes/DEPLOYMENT.md` for detailed Kubernetes manifests and deployment procedures.
 
 ______________________________________________________________________
 

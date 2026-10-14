@@ -6,7 +6,7 @@
 
 - `scripts/rank-tools.py` (130 lines)
 - `scripts/eval-content-quality.py` (544 lines)
-- `docs/policies/cache-policy.md` (160 lines)
+- `docs/policies/CACHE_POLICY.md` (160 lines)
 - `docs/reports/tool-ranking-report.md` (82 lines)
 
 **Scope**: Scoring formulas & weight choices, heuristic validity, cache tier model & TTL recommendations, data-conclusion alignment, project-pattern fit, design smells.
@@ -87,7 +87,7 @@ All five scoring functions (`score_readability`, `score_depth`, `score_completen
 
 ______________________________________________________________________
 
-### 3. `docs/policies/cache-policy.md` — ★★★★☆ (4/5)
+### 3. `docs/policies/CACHE_POLICY.md` — ★★★★☆ (4/5)
 
 **Tier Model**
 
@@ -178,7 +178,7 @@ ______________________________________________________________________
 | # | Smell | Severity | Location |
 |---|-------|----------|----------|
 | D-1 | Stale report with wrong conclusions driving potentially harmful architectural decisions | **High** | `tool-ranking-report.md` |
-| D-2 | Factual error in cache policy (pool search TTL) leading to redundant recommendation | **Medium** | `cache-policy.md` |
+| D-2 | Factual error in cache policy (pool search TTL) leading to redundant recommendation | **Medium** | `CACHE_POLICY.md` |
 | D-3 | Regex-based heuristics instead of AST for code analysis — overcounts across the board | **Medium** | `rank-tools.py` |
 | D-4 | 544-line file where the core logic (scoring) is entirely stubs | **Medium** | `eval-content-quality.py` |
 | D-5 | No automated pipeline to keep report in sync with script output | **Low** | Tool ranking workflow |
@@ -191,7 +191,7 @@ ______________________________________________________________________
 |-------------|:------:|---------|
 | `scripts/rank-tools.py` | ★★★☆☆ | Reasonable approach, heuristics need AST migration, weights overweight raw tool count |
 | `scripts/eval-content-quality.py` | ★★★☆☆ | Well-structured scaffold with strong validation; scoring is all stubs, automated comparison is misleading |
-| `docs/policies/cache-policy.md` | ★★★★☆ | Accurate tier model, good gap analysis, one factual error on pool search TTL |
+| `docs/policies/CACHE_POLICY.md` | ★★★★☆ | Accurate tier model, good gap analysis, one factual error on pool search TTL |
 | `docs/reports/tool-ranking-report.md` | ★★☆☆☆ | **Stale data invalidates core conclusions. Must be regenerated.** |
 
 **Overall: ★★★☆☆ (3/5) — Acceptable foundation, needs targeted fixes before driving decisions.**

@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 # Environment overrides for the bundled crow HTTP server endpoint. These match
 # the conventional ``MAHAVISHNU_CROW_HTTP_HOST`` / ``MAHAVISHNU_CROW_HTTP_PORT``
-# names referenced in docs/runbooks/crow-adapter-mcp-client.md.
+# names referenced in docs/runbooks/CROW_ADAPTER_MCP_CLIENT.md.
 # Port 8693 — reserved in docs/CLAUDE.md portmap for bodai-crow HTTP.
 # (Previously 8675; that port is occupied by Prefect's local uvicorn.)
 _DEFAULT_CROW_HTTP_HOST = "127.0.0.1"

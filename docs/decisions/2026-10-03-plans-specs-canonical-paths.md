@@ -41,10 +41,10 @@ The combined picture: 110 + 64 plans/specs at `docs/superpowers/`, 100 +
 - `docs/plans/.archive/`, `docs/specs/.archive/` — superseded versions
   (preserved, never deleted; same archive lifecycle as
   `docs/followups/.archive/` per `followups-lifecycle.md`)
-- `docs/superpowers/eval/` is the only legitimate exception: legacy
-  eval reports that are neither plans nor specs. Stays in place.
-- `docs/superpowers/{plans,specs}/` is deprecated. New plans and specs
-  do not land there.
+- `docs/superpowers/{plans,specs,eval}/` is deprecated. The lone legacy
+  eval report (`2026-06-22-bodai-ecosystem-candidates.md`) was
+  relocated to `docs/followups/2026-06-22-bodai-ecosystem-candidates.md`
+  on 2026-10-13; the `docs/superpowers/` tree is now empty fleet-wide.
 
 The override hook is the CLAUDE.md preference, exactly as the skills
 document it:
@@ -90,8 +90,10 @@ filename overlap between the two sources).
 docs/superpowers/specs/ to v1 schema"* are historical records of what
 happened at that commit, not pointers to current state.
 
-`docs/MONITORING.md:160` still points at `docs/superpowers/eval/...`
-because `eval/` is the deliberate exception.
+`docs/MONITORING.md:160` previously pointed at `docs/superpowers/eval/...`
+when `eval/` was the deliberate exception; updated to point at
+`docs/followups/2026-06-22-bodai-ecosystem-candidates.md` after the
+2026-10-13 eval relocation.
 
 ## Fleet rollout
 

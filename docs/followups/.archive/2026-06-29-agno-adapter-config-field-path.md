@@ -192,7 +192,7 @@ Risks of fixing inline:
    - `test_get_agno_config_falls_back_when_agno_missing` — backwards-compat path with old-style config
    - `test_get_agno_config_handles_llmconfig_provider_for_backcompat` — if step 3 chose "add provider to LLMConfig", confirm the fallback still works
 
-1. **Update `docs/runbooks/agno-adapter-initialization.md`** with the corrected field path so operators don't keep setting `agno.llm.provider` and wondering why it's ignored.
+1. **Update `docs/runbooks/AGNO_ADAPTER_INITIALIZATION.md`** with the corrected field path so operators don't keep setting `agno.llm.provider` and wondering why it's ignored.
 
 ## References
 

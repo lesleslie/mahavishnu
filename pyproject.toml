@@ -698,7 +698,7 @@ nav = [
     "adapters/prefect.md",
     "adapters/agno.md",
     "mcp-server.md",
-    "security.md",
+    "SECURITY.md",
     "production.md",
     "api-reference.md",
     "troubleshooting.md",

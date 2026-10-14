@@ -44,7 +44,7 @@ ______________________________________________________________________
 | `mahavishnu/workers/debug_monitor.py` | Modify | Deprecate-in-place |
 | `settings/mahavishnu.yaml` | Modify | `adapter_preference: crow`, `fallback_on_probe_failure: false`, health check |
 | `.mcp.json` | Modify | Add crow-mcp HTTP entry |
-| `docs/runbooks/crow-mcp-server.md` | Create | Operator runbook |
+| `docs/runbooks/CROW_MCP_SERVER.md` | Create | Operator runbook |
 | `tests/unit/terminal/test_crow_adapter.py` | Create | 4 unit test scenarios |
 | `tests/unit/workers/test_crow_worker.py` | Create | CrowWorker unit tests |
 
@@ -713,7 +713,7 @@ ______________________________________________________________________
 
 - Modify: `.mcp.json`
 
-- Create: `docs/runbooks/crow-mcp-server.md`
+- Create: `docs/runbooks/CROW_MCP_SERVER.md`
 
 - Modify: `mahavishnu/workers/debug_monitor.py`
 
@@ -773,7 +773,7 @@ raise NotImplementedError(
 mkdir -p /Users/les/Projects/mahavishnu/docs/runbooks
 ```
 
-Create `docs/runbooks/crow-mcp-server.md`:
+Create `docs/runbooks/CROW_MCP_SERVER.md`:
 
 ````markdown
 # crow-mcp HTTP Server Runbook
@@ -849,7 +849,7 @@ Expected: prints `crow` and `False`. If `fallback_on_probe_failure` is not yet a
 
 ```bash
 git add settings/mahavishnu.yaml .mcp.json mahavishnu/workers/debug_monitor.py \
-        docs/runbooks/crow-mcp-server.md
+        docs/runbooks/CROW_MCP_SERVER.md
 git commit -m "feat(config): activate crow adapter; add crow-mcp .mcp.json + runbook; deprecate DebugMonitorWorker"
 ```
 

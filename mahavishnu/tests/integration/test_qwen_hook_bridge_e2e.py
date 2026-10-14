@@ -1,7 +1,7 @@
 """E2E suite for the Qwen Code hook bridges (Phase 12b task 4).
 
 The 11 Qwen-only bridges live at ``~/.qwen/hooks/<event>`` (operator-side,
-not version-controlled — see ``docs/runbooks/qwen-hook-setup.md``).
+not version-controlled — see ``docs/runbooks/QWEN_HOOK_SETUP.md``).
 This suite runs each bridge as a subprocess to verify it invokes
 ``mahavishnu.bodai_hook_bridge.handle()`` correctly.
 
@@ -74,7 +74,7 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
     bridge_path = BRIDGE_DIR / event_name
     if not bridge_path.exists():
         pytest.skip(
-            f"Qwen bridge {bridge_path} not installed (see docs/runbooks/qwen-hook-setup.md)"
+            f"Qwen bridge {bridge_path} not installed (see docs/runbooks/QWEN_HOOK_SETUP.md)"
         )
     payload = {
         "hook_event_name": event_name,
@@ -112,14 +112,14 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
 
 
 def test_qwen_bridge_module_documents_runbook_reference() -> None:
-    """Sanity check: the runbook ``docs/runbooks/qwen-hook-setup.md``
+    """Sanity check: the runbook ``docs/runbooks/QWEN_HOOK_SETUP.md``
     exists and points operators at the bridge files.
 
     Without the runbook, operators have no in-repo instructions for
     installing the Qwen bridges. This test pins the runbook's
     existence so it doesn't get silently deleted in a docs cleanup.
     """
-    runbook = REPO_ROOT / "docs" / "runbooks" / "qwen-hook-setup.md"
+    runbook = REPO_ROOT / "docs" / "runbooks" / "QWEN_HOOK_SETUP.md"
     assert runbook.is_file(), f"Qwen bridge runbook missing: {runbook}. See Phase 12b task 2."
     contents = runbook.read_text(encoding="utf-8")
     # Pin the operator-script reference so the runbook stays useful.

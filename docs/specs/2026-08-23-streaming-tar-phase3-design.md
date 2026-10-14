@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-08-23
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 topic: streaming-tar-phase3

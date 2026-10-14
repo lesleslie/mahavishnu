@@ -13,7 +13,7 @@ Metrics exposed:
 
 The counter is the single source of truth for "DLQ is OK" vs
 "DLQ is silently dropping" — see
-``docs/runbooks/dead-letter-queue.md`` for the operational procedure.
+``docs/runbooks/DEAD_LETTER_QUEUE.md`` for the operational procedure.
 """
 
 from __future__ import annotations

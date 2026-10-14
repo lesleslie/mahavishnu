@@ -1,9 +1,9 @@
 ---
 date: 2026-07-26
-last_reviewed: 2026-07-26
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: session-buddy-worktree-tools
-status: draft
+status: complete
 role: implementation
 title: "Session-Buddy MCP worktree tools — Implementation Plan"
 

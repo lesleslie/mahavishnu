@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-09-25
-last_reviewed: 2026-09-25
+last_reviewed: 2026-10-13
 topic: clone-refactor-wireup
 revision: v4
 plan_status: ready-for-execution

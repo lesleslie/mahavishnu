@@ -200,7 +200,7 @@ Cloudflare R2):
 | MHV-223 | `WORKTREE_BUNDLE_CODEC_UNAVAILABLE` | `storage_io` | `zstandard` not installed |
 
 Severity routing for these codes lives in
-`docs/runbooks/coordinator-error-severity.md`.
+`docs/runbooks/COORDINATOR_ERROR_SEVERITY.md`.
 
 ## Testing Notes
 
@@ -227,7 +227,7 @@ Severity routing for these codes lives in
 - `oneiric.adapters.storage.local` / `oneiric.adapters.storage.s3` /
   `oneiric.adapters.storage.gcs` / `oneiric.adapters.storage.azure`
   — backend adapters with `save_stream` / `load_stream`
-- `docs/runbooks/streaming-tar-rollout.md` — operator runbook
-- `docs/runbooks/coordinator-error-severity.md` — error severity table
+- `docs/runbooks/STREAMING_TAR_ROLLOUT.md` — operator runbook
+- `docs/runbooks/COORDINATOR_ERROR_SEVERITY.md` — error severity table
 - `docs/adr/015-worktree-and-cache-storage-v4.md` — architecture
   decision record

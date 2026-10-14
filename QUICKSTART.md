@@ -119,12 +119,12 @@ ______________________________________________________________________
     │   ├── devops_review.md      # DevOps Engineer detailed review
     │   └── security_review.md    # Security Specialist detailed review
     └── [create during Phase 0]
-        ├── deployment-architecture.md
+        ├── DEPLOYMENT_ARCHITECTURE.md
         ├── opensearch-operations.md
         ├── monitoring-implementation.md
         ├── backup-disaster-recovery.md
         ├── scalability-capacity-planning.md
-        └── testing-strategy.md
+        └── TESTING_STRATEGY.md
 ```
 
 ______________________________________________________________________

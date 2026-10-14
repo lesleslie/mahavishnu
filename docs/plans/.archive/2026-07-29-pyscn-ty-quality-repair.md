@@ -1,8 +1,8 @@
 ---
-status: complete
+status: shipped
 role: implementation
 date: 2026-07-29
-last_reviewed: '2026-09-12'
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: quality-gate-repair
 title: "Pyscn and Ty Quality Gate Repair Implementation Plan"

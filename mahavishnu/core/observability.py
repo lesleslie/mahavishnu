@@ -641,7 +641,7 @@ class ObservabilityManager:
         # the operator's explicit value (default 0.0 — only valid for
         # normalized metrics; raw counts like pool_queue_depth need an
         # explicit per-deployment value). See the changepoint config
-        # docstring and docs/runbooks/mahavishnu-drift-detection.md.
+        # docstring and docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md.
         target_mean = explicit_target
         if use_auto:
             try:
@@ -844,7 +844,7 @@ class ObservabilityManager:
         Defaults to the repo-relative path (kept for offline /
         local-only deployments).
         """
-        default = "docs/runbooks/mahavishnu-drift-detection.md"
+        default = "docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md"
         try:
             cfg = getattr(self.config, "observability", None)
             override = getattr(cfg, "drift_runbook_url", None)
@@ -1082,7 +1082,7 @@ class ObservabilityManager:
         # Resolve the runbook URL the same way as the drift_detected path
         # so the warning span advertises the operator-handling doc.
         def _resolve_runbook_url() -> str:
-            default = "docs/runbooks/mahavishnu-drift-detection.md"
+            default = "docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md"
             try:
                 cfg = getattr(self.config, "observability", None)
                 override = getattr(cfg, "drift_runbook_url", None)

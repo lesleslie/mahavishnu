@@ -39,7 +39,7 @@ losing this thread's context.
     - `tests/unit/core/test_dlq_metrics.py` — 5 tests
     - `tests/unit/core/test_dlq_integration.py` — 3 tests (config propagation)
     - `tests/integration/core/test_dead_letter_queue_failover.py` — 2 tests
-    - `docs/runbooks/dead-letter-queue.md` — operator runbook
+    - `docs/runbooks/DEAD_LETTER_QUEUE.md` — operator runbook
     - `docs/followups/README.md` — index + lifecycle policy
     - `docs/plans/2026-07-16-dlq-fail-closed-wiring.md` — approved plan
     - `docs/decisions/followups-lifecycle.md` — lifecycle policy

@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: implementation
 date: 2026-07-29
-last_reviewed: 2026-07-29
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: session-buddy-extension
 title: "Session-Buddy Extension Implementation Plan (Mahavishnu seam hardening)"

@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-09-26
-last_reviewed: 2026-09-26
+last_reviewed: 2026-10-13
 topic: pyscn-complexity-reduction
 revision: v1
 plan_status: ready-for-execution

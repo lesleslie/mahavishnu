@@ -1,13 +1,13 @@
 ---
-status: draft
+status: partial
 role: implementation
 topic: serverless-readiness-and-substitution
 date: 2026-09-14
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on:
-  - docs/plans/REVIEW_serverless.md
-  - docs/plans/2026-07-26-mahavishnu-acp-server.md  # REQ-HARNESS-ACP-INTEGRATION validates through the active ACP server plan
+  - docs/plans/.archive/REVIEW_serverless.md
+  - docs/plans/.archive/2026-07-26-mahavishnu-acp-server.md  # REQ-HARNESS-ACP-INTEGRATION validates through the active ACP server plan
 related:
   - docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
   - docs/plans/dhara-outstanding-items-plan.md

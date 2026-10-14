@@ -159,7 +159,7 @@ class WebhookAuthenticator:
 - [ ] Old webhook test: Webhook older than 5 minutes rejected
 - [ ] Invalid signature test: Bad signature rejected
 
-**Documentation**: `docs/runbooks/webhook-security.md`
+**Documentation**: `docs/runbooks/webhook-SECURITY.md`
 
 ---
 
@@ -1087,7 +1087,7 @@ groups:
 - [ ] Test rollback procedures in staging
 
 **Files**:
-- `docs/runbooks/deployment.md` (new file)
+- `docs/runbooks/DEPLOYMENT.md` (new file)
 - `docs/runbooks/rollback.md` (new file)
 - `docs/runbooks/database-migration.md` (new file)
 
@@ -1546,7 +1546,7 @@ export default function () {
 2. **SRE**:
    - `docs/sre/TASK_ORCHESTRATION_SLOS.md` (updated)
    - `docs/sre/ERROR_BUDGET_POLICY.md`
-   - `docs/runbooks/deployment.md`
+   - `docs/runbooks/DEPLOYMENT.md`
    - `docs/runbooks/rollback.md`
    - `docs/runbooks/database-migration.md`
    - `docs/runbooks/disaster-recovery.md`

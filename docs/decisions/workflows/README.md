@@ -1,8 +1,9 @@
 ---
 status: active
 role: canonical
+kind: reference
 date: 2026-10-11
-last_reviewed: 2026-10-11
+last_reviewed: 2026-10-13
 topic: lifecycle
 ---
 

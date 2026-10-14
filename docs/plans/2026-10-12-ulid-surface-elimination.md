@@ -1,3 +1,14 @@
+---
+date: 2026-10-12
+title: "Phase 9: ULID Surface Elimination"
+topic: ulid-surface-elimination
+status: shipped
+role: canonical
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # Phase 9: ULID Surface Elimination
 
 **Status:** shipped

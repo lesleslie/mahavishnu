@@ -37,7 +37,7 @@ Welcome to the Mahavishnu documentation. Mahavishnu is a multi-engine orchestrat
   - [Prefect Adapter](adapters/prefect.md) - Stub implementation
   - [Agno Adapter](adapters/agno.md) - Stub implementation
 - [MCP Server](mcp-server.md)
-- [Security](security.md)
+- [Security](SECURITY.md)
 - [Production Deployment](production.md)
 - [API Reference](api-reference.md)
 - [Troubleshooting](troubleshooting.md)

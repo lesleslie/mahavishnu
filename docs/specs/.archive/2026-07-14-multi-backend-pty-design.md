@@ -238,7 +238,7 @@ Gated by `MCPRETENTIOUS_INTEGRATION=1` env var. Skipped in fast CI.
 - Run `mahavishnu mcp start` — confirm wrapper logs "Using mcpretentious adapter" and subprocess PID
 - Run a pool task — confirm completion
 - Switch to `adapter_preference: "pty_mcp_python"` and confirm it switches
-- Document both backends in `docs/terminal/backends.md` with logs
+- Document both backends in `docs/terminal/BACKENDS.md` with logs
 
 ## Implementation order
 
@@ -248,7 +248,7 @@ Gated by `MCPRETENTIOUS_INTEGRATION=1` env var. Skipped in fast CI.
 1. Add `tests/unit/terminal/test_backends.py`
 1. Update `tests/unit/terminal/mcp_client.py` to add the regression test
 1. Add `tests/integration/terminal/test_mcpretentious_smoke.py` (gated)
-1. Update `docs/terminal/backends.md` with both backends documented
+1. Update `docs/terminal/BACKENDS.md` with both backends documented
 1. Manual smoke test on a real machine
 
 Each step is independently mergeable. Steps 1-3 are the core fix; steps 4-8 are quality and documentation.

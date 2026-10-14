@@ -3,7 +3,7 @@
 **Date**: 2026-02-03
 **Purpose**: Set up FastEmbed (production) and Ollama (development) for embeddings
 
-**📊 Visual Aids Available**: See [diagrams/embedding-architecture.md](diagrams/embedding-architecture.md) for comprehensive system diagrams.
+**📊 Visual Aids Available**: See [diagrams/EMBEDDING_ARCHITECTURE.md](diagrams/EMBEDDING_ARCHITECTURE.md) for comprehensive system diagrams.
 
 ______________________________________________________________________
 
@@ -11,11 +11,11 @@ ______________________________________________________________________
 
 ### Architecture at a Glance
 
-See `diagrams/embedding-architecture.md` for the canonical architecture diagram.
+See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical architecture diagram.
 
 ### Provider Selection Decision Tree
 
-See `diagrams/embedding-architecture.md` for the canonical provider selection diagram.
+See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical provider selection diagram.
 
 ______________________________________________________________________
 
@@ -103,7 +103,7 @@ ______________________________________________________________________
 
 Mahavishnu uses a **layered configuration loading** pattern (Oneiric):
 
-See `diagrams/embedding-architecture.md` for the canonical layered-config diagram.
+See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical layered-config diagram.
 
 **Priority Order** (higher overrides lower):
 
@@ -243,7 +243,7 @@ ______________________________________________________________________
 
 ### Model Dimensions & Quality Visualization
 
-See `diagrams/embedding-architecture.md` for the canonical model dimension chart.
+See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical model dimension chart.
 
 **� Dimension Guide:**
 
@@ -319,7 +319,7 @@ ______________________________________________________________________
 
 ### Visual Performance Comparison
 
-See `diagrams/embedding-architecture.md` for the canonical benchmark chart.
+See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical benchmark chart.
 
 **📊 Key Insights:**
 

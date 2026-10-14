@@ -281,7 +281,7 @@ fallback path). Document the fallback in the service docstring.
    Crackerjack docs being clean, OR ship without gating and fix
    warnings in a follow-up.
 1. Tag a Crackerjack release (current: 0.68.4 → 0.69.0 minor bump).
-1. Update `mahavishnu/docs/schemas/document-frontmatter-v1.md` to
+1. Update `mahavishnu/docs/schemas/DOCUMENT_FRONTMATTER_V1.md` to
    reference the new Crackerjack surface (1-line addition).
 
 ## Out of scope

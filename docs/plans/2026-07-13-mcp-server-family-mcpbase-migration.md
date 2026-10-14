@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: mcpbase-migration
 title: "MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration"

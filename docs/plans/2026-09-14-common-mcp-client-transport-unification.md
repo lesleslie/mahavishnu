@@ -4,7 +4,7 @@ role: umbrella
 kind: plan
 date: 2026-09-14
 last_reviewed: 2026-10-12
-superseded_by: docs/plans/2026-10-09-mcp-health-check-enrichment.md
+superseded_by: docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
 topic: mcpserver-settings-convention
 revision: 2
 title: "CommonMCPClient Transport Unification Across Bodai (v2)"
@@ -590,7 +590,7 @@ wrapper relies on 200).
    emits `WARNING: HEALTH_FEED_HALFLIFE_SECONDS=0; time-bounded
    semantics disabled` at startup; emits OTel event
    `health.aggregate.decay_disabled`; documented in
-   `docs/runbooks/health_reason_codes.md`.
+   `docs/runbooks/HEALTH_REASON_CODES.md`.
 
 #### Phase 4 Integration Contract
 
@@ -626,7 +626,7 @@ REQ-006, REQ-007, REQ-008.)
 - `health.feed.errors_within_window{repo, feed}` gauge.
 - Structured log line `health.aggregate.complete` with
   `healthy` and `degraded` keys.
-- New runbook: `docs/runbooks/health_reason_codes.md` —
+- New runbook: `docs/runbooks/HEALTH_REASON_CODES.md` —
   one section per `ReasonCode` enum value, mapping to operator
   action (monitor 60s, no restart) vs. escalation.
 
@@ -807,7 +807,7 @@ Plan is "done enough" when:
    `reason_codes == ["warming_up_empty_feed"]`, captured in
    `docs/announcements/2026-09-14-mcp-transport-unification.md`
    with before/after transcripts.
-5. `docs/runbooks/health_reason_codes.md` is merged and linked
+5. `docs/runbooks/HEALTH_REASON_CODES.md` is merged and linked
    from the new alert annotations in
    `mahavishnu/config/alerts/akosha_feed_degradation.yml`.
 6. `git grep -n /mcp/tools/call dhara/` returns zero hits — the
@@ -827,8 +827,8 @@ Plan is **not** "done" when:
 ## 10. References
 
 - `docs/plans/TEMPLATE.md` — plan template this document follows.
-- `docs/decisions/wire-up-contract.md` — Integration Contract policy.
-- `docs/schemas/document-frontmatter-v1.md` — frontmatter schema.
+- `.claude/decisions/wire-up-contract.md` — Integration Contract policy.
+- `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` — frontmatter schema.
 - `bodai-pre-1.0-merge-policy.md` — direct-to-main merge rule.
 - `feedback-bodai-push-is-user-controlled.md` — never push
   without explicit user approval.
@@ -898,12 +898,12 @@ ReasonCode = (
 )
 ```
 
-Action mapping lives in `docs/runbooks/health_reason_codes.md` —
+Action mapping lives in `docs/runbooks/HEALTH_REASON_CODES.md` —
 **delivered as part of Phase 4**, not a follow-up.
 
 ### 11.3 Runbook (delivered with Phase 4)
 
-`docs/runbooks/health_reason_codes.md` per-reason sections with:
+`docs/runbooks/HEALTH_REASON_CODES.md` per-reason sections with:
 - `/health` signal the operator sees
 - What it does NOT mean (so they don't restart)
 - Action to take
@@ -922,7 +922,7 @@ Linked from new PromQL alert `runbook` annotations.
     severity: warning
   annotations:
     summary: "Feed {{ $labels.feed }} in {{ $labels.repo }} has >5 errors in window"
-    runbook: docs/runbooks/health_reason_codes.md#recent_error_in_window
+    runbook: docs/runbooks/HEALTH_REASON_CODES.md#recent_error_in_window
 
 - alert: BodaiFeedDecayDisabled
   expr: mcp_common_health_halflife_seconds{repo=~".*"} == 0
@@ -931,7 +931,7 @@ Linked from new PromQL alert `runbook` annotations.
     severity: critical
   annotations:
     summary: "{{ $labels.repo }} has HEALTH_FEED_HALFLIFE_SECONDS=0"
-    runbook: docs/runbooks/health_reason_codes.md#manual-override
+    runbook: docs/runbooks/HEALTH_REASON_CODES.md#manual-override
 ```
 
 ### 11.5 Phase 1 hardening: `first_unhealthy_at`

@@ -87,7 +87,7 @@ tests/integration/mcp/
 
 docker-compose.crow.yml
 settings/searxng/settings.yml
-docs/runbooks/bodai-crow-server.md
+docs/runbooks/BODAI_CROW_SERVER.md
 ```
 
 **Modified files:**
@@ -97,7 +97,7 @@ mahavishnu/terminal/manager.py          # add crow case to create()
 mahavishnu/mcp/tools/terminal_tools.py # add crow case to terminal_switch_adapter
 pyproject.toml                          # add deps, swap httpx → httpx2
 .mcp.json                               # add bodai-crow HTTP entry
-docs/runbooks/crow-mcp-server.md        # add note pointing to bodai-crow-server.md
+docs/runbooks/CROW_MCP_SERVER.md        # add note pointing to BODAI_CROW_SERVER.md
 ```
 
 **Note:** `mahavishnu/terminal/adapters/crow.py` already exists and is complete — do NOT modify it.
@@ -2215,9 +2215,9 @@ ______________________________________________________________________
 
 - Modify: `.mcp.json` (add `bodai-crow` HTTP entry)
 
-- Create: `docs/runbooks/bodai-crow-server.md`
+- Create: `docs/runbooks/BODAI_CROW_SERVER.md`
 
-- Modify: `docs/runbooks/crow-mcp-server.md` (add cross-reference note)
+- Modify: `docs/runbooks/CROW_MCP_SERVER.md` (add cross-reference note)
 
 - [ ] **Step 1: Create integration test scaffolding**
 
@@ -2323,7 +2323,7 @@ Open `.mcp.json` and add inside the `mcpServers` object:
 
 The existing `"crow": {"command": "crow-mcp"}` entry is **retained** — Claude Code continues using it for its own terminal sessions.
 
-- [ ] **Step 3: Create `docs/runbooks/bodai-crow-server.md`**
+- [ ] **Step 3: Create `docs/runbooks/BODAI_CROW_SERVER.md`**
 
 Create the file with at minimum these sections:
 
@@ -2364,12 +2364,12 @@ MCP namespaces them: `mcp__crow__read` vs `mcp__bodai-crow__read`.
 bodai-crow returns structured TypedDicts; crow-mcp returns plain strings — not interchangeable.
 ```
 
-- [ ] **Step 4: Add cross-reference to `docs/runbooks/crow-mcp-server.md`**
+- [ ] **Step 4: Add cross-reference to `docs/runbooks/CROW_MCP_SERVER.md`**
 
-Add at the top of `docs/runbooks/crow-mcp-server.md`:
+Add at the top of `docs/runbooks/CROW_MCP_SERVER.md`:
 
 ```markdown
-> **See also:** [Bodai Crow HTTP MCP Server](bodai-crow-server.md) — the HTTP transport
+> **See also:** [Bodai Crow HTTP MCP Server](BODAI_CROW_SERVER.md) — the HTTP transport
 > version of this server for pool workers, CLI, and ACP agents.
 ```
 
@@ -2393,7 +2393,7 @@ Expected: all unit tests PASSED, no regressions in existing tests.
 
 ```bash
 git add tests/integration/mcp/ .mcp.json \
-        docs/runbooks/bodai-crow-server.md docs/runbooks/crow-mcp-server.md \
+        docs/runbooks/BODAI_CROW_SERVER.md docs/runbooks/CROW_MCP_SERVER.md \
         docker-compose.crow.yml settings/searxng/
 git commit -m "feat(crow): Task 11 — integration tests, .mcp.json, runbooks"
 ```

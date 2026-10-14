@@ -1,3 +1,14 @@
+---
+date: 2026-09-14
+title: "Dhara MCP Decomposition — Implementation Plan"
+topic: dhara-mcp-decomposition
+status: partial
+role: implementation
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # Dhara MCP Decomposition — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -1253,7 +1264,7 @@ Run: `cat ~/.qwen/settings.json | python -m json.tool | head -50`
 
 - [ ] **Step 4: Commit (operator-side)**
 
-`~/.qwen/settings.json` is user-global; not version-controlled. Document the canonical template in `docs/runbooks/qwen-hook-setup.md` so the operator can reproduce it.
+`~/.qwen/settings.json` is user-global; not version-controlled. Document the canonical template in `docs/runbooks/QWEN_HOOK_SETUP.md` so the operator can reproduce it.
 
 #### Task 4: Add `tests/integration/test_qwen_hook_bridge_e2e.py`
 
@@ -1315,7 +1326,7 @@ git add mahavishnu/tests/integration/test_qwen_hook_bridge_e2e.py
 git commit -m "test(mahavishnu): Qwen bridge e2e suite (Phase 12b task 4)
 
 Tests skip when Qwen bridges are not installed; pass when operator has
-followed docs/runbooks/qwen-hook-setup.md to install them.
+followed docs/runbooks/QWEN_HOOK_SETUP.md to install them.
 
 Refs: docs/specs/2026-09-14-dhara-mcp-decomposition-design.md §5 Phase 12b task 4
 

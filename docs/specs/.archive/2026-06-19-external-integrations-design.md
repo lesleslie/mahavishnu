@@ -101,7 +101,7 @@ its lifecycle. Operators start it via:
 cd /path/to/crow && uv run python -m crow_mcp --transport http --host 127.0.0.1 --port 8675
 ```
 
-A runbook lives at `docs/runbooks/crow-mcp-server.md` (see §8 new files). Consider
+A runbook lives at `docs/runbooks/CROW_MCP_SERVER.md` (see §8 new files). Consider
 adding a launchd plist alongside the existing Bifrost plist pattern.
 
 **`.mcp.json` entry:**
@@ -744,7 +744,7 @@ ______________________________________________________________________
 - `mahavishnu/tui/fallback.py` — plain-text render functions
 - `mahavishnu/tui/widgets.py` — reusable Textual widgets
 - `mahavishnu/tui/monitor_app.py` — MonitorApp Textual application
-- `docs/runbooks/crow-mcp-server.md` — operator runbook for crow-mcp HTTP server
+- `docs/runbooks/CROW_MCP_SERVER.md` — operator runbook for crow-mcp HTTP server
 - `tests/unit/workers/test_openhands_worker.py`
 - `tests/unit/workers/test_crow_worker.py`
 - `tests/unit/terminal/test_crow_adapter.py`

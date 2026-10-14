@@ -78,7 +78,7 @@ docs/
 │   ├── 005-memory-architecture.md            (existing)
 │   ├── 006-duckdb-learning-database.md       ✨ NEW
 │   ├── 007-vector-embeddings-semantic-search.md ✨ NEW
-│   ├── 008-graceful-degradation-telemetry.md ✨ NEW
+│   ├── 008-graceful-degradation-TELEMETRY.md ✨ NEW
 │   ├── 009-90-day-retention-policy.md        ✨ NEW
 │   └── README.md                             ✨ NEW
 │

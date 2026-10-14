@@ -206,7 +206,7 @@ Each repo:
 - Defines `PROFILE_REGISTRATIONS` with 3 meaningful buckets (real design work — implementer must audit existing tools)
 - Defines `registration_map: dict[str, Callable]` mapping each group name to its register function
 - Calls `apply_tool_profile()` in main entrypoint
-- Adds `docs/decisions/tool-profile-rationale.md` (per existing `docs/decisions/` topic-as-filename convention; e.g., `removed-scripts.md`, `bodai-observability-pattern.md`) documenting the bucket rationale
+- Adds `.claude/decisions/TOOL_PROFILE_RATIONALE.md` (per existing `.claude/decisions/` topic-as-filename convention; e.g., `removed-scripts.md`, `bodai-observability-pattern.md`) documenting the bucket rationale
 - Adds `tests/unit/test_tool_profile.py` + `tests/integration/test_profile_gating.py`
 
 **Per-repo mapping rationale (sketch — finalized in implementation):**
@@ -216,7 +216,7 @@ Each repo:
 
 ### 5. Tier-B adoption (graphics-mcp, langsmith-mcp, synxis-crs-mcp, unifi-mcp, W3)
 
-Same shape as W2b but smaller mapping (1–2 buckets). Each repo adds `docs/decisions/tool-profile-rationale.md` if the bucket split is non-trivial (4 of 4 Tier-B repos qualify per audit).
+Same shape as W2b but smaller mapping (1–2 buckets). Each repo adds `.claude/decisions/TOOL_PROFILE_RATIONALE.md` if the bucket split is non-trivial (4 of 4 Tier-B repos qualify per audit).
 
 ### 6. Tier-A adoption (10 repos in W4)
 
@@ -234,8 +234,8 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 | **W0** | `mcp-common` | Add `apply_tool_profile()` helper + `ALL_TOOLS` sentinel + tests; pin `mcp<2` | Helper API design (soft review gate) | — |
 | **W1** | mahavishnu, session-buddy, akosha, dhara | Replace explicit wiring with helper call + `registration_map` lambdas | Helper can't reproduce existing behavior | W0 |
 | **W2a** | **crackerjack** | Helper + retrofit + `discovery_fn` override + AST-based `TOOL_REGISTRY` deletion | Crackerjack deletion risks (178 lines, custom shape) | W1 |
-| **W2b** | mailgun-mcp, opera-cloud-mcp, spline-mcp | Helper + 3-tier mapping + `tool-profile-rationale.md` + tests | Real design work (mapping) | W2a |
-| **W3** | graphics-mcp, langsmith-mcp, synxis-crs-mcp, unifi-mcp | Helper + 2-tier mapping + `tool-profile-rationale.md` + tests | Mild | W2b |
+| **W2b** | mailgun-mcp, opera-cloud-mcp, spline-mcp | Helper + 3-tier mapping + `TOOL_PROFILE_RATIONALE.md` + tests | Real design work (mapping) | W2a |
+| **W3** | graphics-mcp, langsmith-mcp, synxis-crs-mcp, unifi-mcp | Helper + 2-tier mapping + `TOOL_PROFILE_RATIONALE.md` + tests | Mild | W2b |
 | **W4** | css-mcp, excalidraw-mcp, neo4j-mcp, penpot-api-mcp, porkbun-dns-mcp, porkbun-domain-mcp, raindropio-mcp, synxis-pms-mcp, fastblocks, splashstand | Helper only (decorator-mode refactor first if applicable) | Trivial | W2b |
 
 **W1 as dog food:** If `apply_tool_profile()` can't reproduce any of the 4 existing patterns, the helper is wrong. W1 is the discovery phase. **W2a/W2b start only after W1 lands** — the helper must be proven.
@@ -265,7 +265,7 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - **Triggered from:** `CRACKERJACK_TOOL_PROFILE` env var (new).
 - **Returns to / updates:** Tool registration set per profile. Golden fixtures + per-tier integration test.
 - **Demonstrable by:** AST-based deletion validated via `python -c "import ast; ast.parse(open('crackerjack/mcp/tools/discover_tools.py').read())"` (file must NOT exist after W2a). Then `pytest crackerjack/tests/test_mcp_server.py -k profile` passes for all 3 profile levels.
-- **Rollback signal:** Unset env var → FULL profile (default). `docs/decisions/tool-profile-rationale.md` documents rationale so a future maintainer knows what to undo.
+- **Rollback signal:** Unset env var → FULL profile (default). `.claude/decisions/TOOL_PROFILE_RATIONALE.md` documents rationale so a future maintainer knows what to undo.
 - **Observability added:** Crackerjack CLAUDE.md updated with profile env var + discovery pattern. `MEMORY_ARCHITECTURE.md` annotated with the literal text: "**Resolved 2026-08-18:** `CRACKERJACK_TOOL_PROFILE` is now implemented in `crackerjack/mcp/tools/profiles.py`. See `2026-08-18-mcp-tool-profile-adoption-design` for context."
 - **Pre-deletion grep:** `git grep -l TOOL_REGISTRY` must return empty (excluding the spec file) before merge.
 
@@ -274,8 +274,8 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - **Triggered from:** `{SERVER}_TOOL_PROFILE` env var. Document in each repo's `CLAUDE.md` "Tool Profile System" subsection.
 - **Returns to / updates:** Tool registration set per profile. Golden fixtures + per-tier integration test.
 - **Demonstrable by:** `pytest tests/integration/test_profile_gating.py -k minimal` passes (asserts `MANDATORY_TOOLS ⊆ registered` + only MANDATORY non-`discover_tools` present), `-k standard` passes (asserts expected STANDARD set), `-k full` passes (asserts FULL set covers everything).
-- **Rollback signal:** Unset env var → FULL profile (default). `tool-profile-rationale.md` documents bucket rationale.
-- **Observability added:** Each repo's CLAUDE.md updated with profile env var + discovery pattern. `docs/decisions/tool-profile-rationale.md` per repo.
+- **Rollback signal:** Unset env var → FULL profile (default). `TOOL_PROFILE_RATIONALE.md` documents bucket rationale.
+- **Observability added:** Each repo's CLAUDE.md updated with profile env var + discovery pattern. `.claude/decisions/TOOL_PROFILE_RATIONALE.md` per repo.
 
 ### W3 — Tier-B adoption
 
@@ -283,7 +283,7 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - **Returns to / updates:** Tool registration set per profile.
 - **Demonstrable by:** Same pytest matrix as W2b, smaller expected sets.
 - **Rollback signal:** Unset env var → FULL profile.
-- **Observability added:** CLAUDE.md update + `docs/decisions/tool-profile-rationale.md` per repo.
+- **Observability added:** CLAUDE.md update + `.claude/decisions/TOOL_PROFILE_RATIONALE.md` per repo.
 
 ### W4 — Tier-A adoption
 
@@ -291,7 +291,7 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - **Returns to / updates:** Tool registration set per profile.
 - **Demonstrable by:** `pytest tests/unit/test_tool_profile.py` with the assertion `MANDATORY_TOOLS ⊆ registered` at all 3 profile levels (NOT just tool counts). Decorator-mode refactor validated by `register_all_fn` callable existing and tested.
 - **Rollback signal:** Unset env var → FULL profile.
-- **Observability added:** CLAUDE.md update only (no `tool-profile-rationale.md` — trivial mapping).
+- **Observability added:** CLAUDE.md update only (no `TOOL_PROFILE_RATIONALE.md` — trivial mapping).
 
 ## Cross-Cutting Concerns
 
@@ -302,7 +302,7 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 
 ### Documentation (uniform)
 - Each repo's `CLAUDE.md` adds "Tool Profile System" subsection: env var name, profile levels, default, discovery pattern
-- Each Tier-B/C repo adds `docs/decisions/tool-profile-rationale.md` documenting MINIMAL/STANDARD/FULL rationale (matches existing `docs/decisions/` topic-as-filename convention; NOT a `WHY_*.md` prefix deviation)
+- Each Tier-B/C repo adds `.claude/decisions/TOOL_PROFILE_RATIONALE.md` documenting MINIMAL/STANDARD/FULL rationale (matches existing `.claude/decisions/` topic-as-filename convention; NOT a `WHY_*.md` prefix deviation)
 - One ecosystem-level `docs/ecosystem/MCP_TOOL_PROFILES.md` explaining the cross-cutting pattern + linking each repo's profile config. **Generated from `mcp.list_tools()` programmatically** (memory: `docs-audit-mcp-tool-hallucination`) rather than hand-maintained.
 
 ### Observability (uniform)
@@ -363,5 +363,5 @@ Trivial `PROFILE_REGISTRATIONS`: MINIMAL = `MANDATORY_TOOLS`, STANDARD/FULL = `A
 - `crackerjack/mcp/tools/discover_tools.py` — TO-BE-DELETED in W2a (178 lines incl. `TOOL_REGISTRY` + `DEFERRED_TOOLS` + `register_discover_tools`)
 - `crackerjack/docs/architecture/MEMORY_ARCHITECTURE.md` — annotated as resolved in W2a with the literal text provided above
 - `docs/specs/2026-08-12-bodai-ecosystem-consistency-design.md` — sibling spec
-- `docs/decisions/removed-scripts.md`, `bodai-observability-pattern.md` — pattern for `tool-profile-rationale.md` per-repo decision files
+- `.claude/decisions/removed-scripts.md`, `bodai-observability-pattern.md` — pattern for `TOOL_PROFILE_RATIONALE.md` per-repo decision files
 - `mcp-common` `pyproject.toml` — pin `mcp<2` per `minimax-coding-plan-mcp-v2-conflict` memory

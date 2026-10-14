@@ -1,9 +1,9 @@
 ---
 date: 2026-07-26
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-13
 superseded_by: null
 topic: worktree-autoremove
-status: draft
+status: shipped
 role: implementation
 ---
 

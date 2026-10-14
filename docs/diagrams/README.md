@@ -9,7 +9,7 @@ ______________________________________________________________________
 
 ### System Architecture at a Glance
 
-(See [embedding-architecture.md](embedding-architecture.md) for the full canonical diagram.)
+(See [EMBEDDING_ARCHITECTURE.md](EMBEDDING_ARCHITECTURE.md) for the full canonical diagram.)
 
 ______________________________________________________________________
 
@@ -17,7 +17,7 @@ ______________________________________________________________________
 
 ### 1. Architecture Diagrams
 
-**Location**: [embedding-architecture.md](embedding-architecture.md)
+**Location**: [EMBEDDING_ARCHITECTURE.md](EMBEDDING_ARCHITECTURE.md)
 
 | Diagram | Description | Use When |
 |---------|-------------|----------|
@@ -102,11 +102,11 @@ ______________________________________________________________________
 
 ### Speed Comparison (Intel Mac x86_64)
 
-See `embedding-architecture.md` for the canonical benchmark chart.
+See `EMBEDDING_ARCHITECTURE.md` for the canonical benchmark chart.
 
 ### Quality vs Speed Trade-off
 
-See `embedding-architecture.md` for the canonical trade-off chart.
+See `EMBEDDING_ARCHITECTURE.md` for the canonical trade-off chart.
 
 ______________________________________________________________________
 
@@ -229,10 +229,10 @@ ______________________________________________________________________
 npm install -g @mermaid-js/mermaid-cli
 
 # Render diagram to PNG
-mmdc -i docs/diagrams/embedding-architecture.md -o output.png
+mmdc -i docs/diagrams/EMBEDDING_ARCHITECTURE.md -o output.png
 
 # Render diagram to SVG
-mmdc -i docs/diagrams/embedding-architecture.md -o output.svg
+mmdc -i docs/diagrams/EMBEDDING_ARCHITECTURE.md -o output.svg
 ```
 
 ______________________________________________________________________
@@ -241,7 +241,7 @@ ______________________________________________________________________
 
 | Resource | Link |
 |----------|------|
-| **Main Architecture Diagrams** | [embedding-architecture.md](embedding-architecture.md) |
+| **Main Architecture Diagrams** | [EMBEDDING_ARCHITECTURE.md](EMBEDDING_ARCHITECTURE.md) |
 | **Setup Guide** | [../EMBEDDINGS_SETUP_GUIDE.md](../EMBEDDINGS_SETUP_GUIDE.md) |
 | **Migration Guide** | [../SENTENCE_TRANSFORMERS_ALTERNATIVES.md](../SENTENCE_TRANSFORMERS_ALTERNATIVES.md) |
 | **Configuration Reference** | [../../settings/embeddings.yaml](../../settings/embeddings.yaml) |

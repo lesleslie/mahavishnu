@@ -1,9 +1,9 @@
 ---
-status: draft
+status: partial
 role: implementation
 topic: dhara-substrate-implementation
 date: 2026-09-14
-last_reviewed: 2026-09-14
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on:
   - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md

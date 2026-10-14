@@ -1,3 +1,14 @@
+---
+date: 2026-09-21
+title: "jinja2-custom-delimiters 1.0.4 Update Implementation Plan"
+topic: jinja2-custom-delimiters-update
+status: active
+role: implementation
+kind: plan
+last_reviewed: 2026-10-13
+superseded_by: null
+blocks_on: []
+---
 # jinja2-custom-delimiters 1.0.4 Update Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 topic: oneiric-config
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Splashstand ACB → Oneiric Migration Design"

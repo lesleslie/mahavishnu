@@ -214,7 +214,7 @@ class TestChangepointConfig:
         """target_mean defaults to 0.0; valid only for normalized metrics.
 
         Raw-count metrics like pool_queue_depth require operators to
-        set an explicit baseline. See docs/runbooks/mahavishnu-drift-detection.md.
+        set an explicit baseline. See docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md.
         """
         from mahavishnu.core.config import ChangepointConfig
 

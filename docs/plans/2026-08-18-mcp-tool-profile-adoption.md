@@ -59,10 +59,10 @@ ______________________________________________________________________
 | `/Users/les/Projects/mcp-common/tests/integration/test_profile_dispatch.py` | Integration test using a real FastMCP 3.4.7 server fixture |
 | `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/profiles.py` | Crackerjack's `PROFILE_REGISTRATIONS` |
 | `/Users/les/Projects/crackerjack/crackerjack/mcp/tools/discover_query.py` | Crackerjack's `discovery_fn` override (preserves query filter) |
-| `/Users/les/Projects/crackerjack/docs/decisions/tool-profile-rationale.md` | Crackerjack's profile mapping rationale |
+| `/Users/les/Projects/crackerjack/.claude/decisions/TOOL_PROFILE_RATIONALE.md` | Crackerjack's profile mapping rationale |
 | Per-repo: `<pkg>/mcp/tools/profiles.py` (15 new files) | Each repo's `PROFILE_REGISTRATIONS` |
 | Per-repo: `tests/unit/test_tool_profile.py` (17 new files) | Per-repo tests |
-| Per-repo: `docs/decisions/tool-profile-rationale.md` (7 files for Tier-B/C) | Mapping rationale |
+| Per-repo: `.claude/decisions/TOOL_PROFILE_RATIONALE.md` (7 files for Tier-B/C) | Mapping rationale |
 
 ### Modified Files
 
@@ -950,7 +950,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/crackerjack/tests/unit/test_discover_tools_deletion.py`
 
-- Create: `/Users/les/Projects/crackerjack/docs/decisions/tool-profile-rationale.md`
+- Create: `/Users/les/Projects/crackerjack/.claude/decisions/TOOL_PROFILE_RATIONALE.md`
 
 - Modify: `/Users/les/Projects/crackerjack/docs/architecture/MEMORY_ARCHITECTURE.md`
 
@@ -1245,7 +1245,7 @@ Find the section referencing missing `CRACKERJACK_TOOL_PROFILE`. Replace with:
 **Resolved 2026-08-18:** `CRACKERJACK_TOOL_PROFILE` is now implemented in `crackerjack/mcp/tools/profiles.py`. See `2026-08-18-mcp-tool-profile-adoption-design` for context.
 ```
 
-- [ ] **Step 11: Create `docs/decisions/tool-profile-rationale.md`**
+- [ ] **Step 11: Create `.claude/decisions/TOOL_PROFILE_RATIONALE.md`**
 
 Document:
 
@@ -1297,7 +1297,7 @@ ______________________________________________________________________
 
 - Create: `/Users/les/Projects/mailgun-mcp/tests/unit/test_tool_profile.py`
 
-- Create: `/Users/les/Projects/mailgun-mcp/docs/decisions/tool-profile-rationale.md`
+- Create: `/Users/les/Projects/mailgun-mcp/.claude/decisions/TOOL_PROFILE_RATIONALE.md`
 
 - [ ] **Step 1: Audit existing `@mcp.tool()` decorators + refactor to register functions**
 
@@ -1483,11 +1483,11 @@ Add (corrected env var name):
 mailgun-mcp uses the shared `apply_tool_profile()` helper from `mcp-common`.
 
 - Env var: `MAILGUN_TOOL_PROFILE` (values: `minimal` / `standard` / `full`; default `full`)
-- See `docs/decisions/tool-profile-rationale.md` for bucket mapping.
+- See `.claude/decisions/TOOL_PROFILE_RATIONALE.md` for bucket mapping.
 - `discover_tools()` meta-tool returns current profile + registered tool count.
 ```
 
-- [ ] **Step 10: Write `docs/decisions/tool-profile-rationale.md`**
+- [ ] **Step 10: Write `.claude/decisions/TOOL_PROFILE_RATIONALE.md`**
 
 Document the 3-tier mapping rationale.
 
@@ -1570,7 +1570,7 @@ Per-repo specifics:
 1. Create `profiles.py` with 2-tier mapping (smaller than Tier-C's 3-tier)
 1. Wire `apply_tool_profile()` in main entrypoint
 1. Update CLAUDE.md "Tool Profile System" subsection
-1. Write `docs/decisions/tool-profile-rationale.md`
+1. Write `.claude/decisions/TOOL_PROFILE_RATIONALE.md`
 1. Commit + ff-merge
 
 All commits MUST include `-c user.email=les@wedgwoodwebworks.com`.

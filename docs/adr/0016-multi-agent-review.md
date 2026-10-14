@@ -66,7 +66,7 @@ The plan's "100ms is comfortably below the 100ms tick interval" (plan line 96) i
 
 The ADR's posture distinction ("exposure vs. dependency") is the wrong framework. Under GDPR Articles 4(7)-(8), scapy-mcp is a **processor** regardless of locality — the localhost-vs-internet distinction is irrelevant. The ADR also misses that the heuristic event metadata itself is personal data per Article 4(1) + Recital 30 (BeaconingDetail and PortScanDetail correlate to identifiable peers).
 
-**Resolution (deferred to v2):** Reframe posture as controller/processor relationship; create `docs/legal/gdpr-posture.md` (does not exist); commit to a fresh consent gate when user flips `scapy_mcp_enabled = true`; Article 35 DPIA scope decision.
+**Resolution (deferred to v2):** Reframe posture as controller/processor relationship; create `docs/legal/GDPR_POSTURE.md` (does not exist); commit to a fresh consent gate when user flips `scapy_mcp_enabled = true`; Article 35 DPIA scope decision.
 
 ### CB-4: Two phantom APIs inherited from spec (L3 B4, B5)
 
@@ -122,7 +122,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 - **L4 B2**: Default-off posture doesn't satisfy Article 5(1)(c) data minimization
 - **L4 B3**: Heuristic metadata is personal data; no-payload guarantee doesn't strip identity/behavior
 - **L4 B4**: Posture distinction collapses when both happen on same machine under same user account
-- **L4 B5**: `docs/legal/gdpr-posture.md` does not exist
+- **L4 B5**: `docs/legal/GDPR_POSTURE.md` does not exist
 
 ---
 
@@ -157,7 +157,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 Four BLOCKERs are deferred to a v2 revision of ADR 0016:
 
 - **CB-2** (timeout math) — needs architecture decision: batch per-tick OR document snapshot-blocking
-- **CB-3** (GDPR reframe) — needs `docs/legal/gdpr-posture.md` + controller/processor reframing + Article 35 DPIA decision
+- **CB-3** (GDPR reframe) — needs `docs/legal/GDPR_POSTURE.md` + controller/processor reframing + Article 35 DPIA decision
 - **CB-4** (phantom APIs) — needs spec edits (separate from ADR; ADR inherits the fix)
 - **CB-5** (phantom proto types) — needs proto edits (separate from ADR; ADR inherits the fix)
 
@@ -180,7 +180,7 @@ The v2 revision of ADR 0016 should address in order:
 7. **L3 B1 + B2 + B3 + L6 B3** — realign `EnrichmentRegistry` to CaptureSource ABC pattern; route timeout through Oneiric `TimeoutSettings`
 8. **CB-4** — spec edits to replace phantom APIs (separate spec revision)
 9. **CB-5** — proto edits to define `GraphEdge` and `HeuristicEvent` (separate proto revision)
-10. **CB-3 + L4 B5** — `docs/legal/gdpr-posture.md` + GDPR reframe (separate legal-document work; pre-1.0 internal scope limits urgency)
+10. **CB-3 + L4 B5** — `docs/legal/GDPR_POSTURE.md` + GDPR reframe (separate legal-document work; pre-1.0 internal scope limits urgency)
 
 Items 1-2 are immediate. Items 3-7 are ADR body edits. Items 8-9 are spec/proto companion work. Item 10 is a separate legal-document track.
 

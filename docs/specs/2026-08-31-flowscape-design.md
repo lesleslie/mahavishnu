@@ -1181,7 +1181,7 @@ ______________________________________________________________________
 
 ### GDPR posture (deliverable)
 
-Even though the architecture is local-only, ship `docs/legal/gdpr-posture.md` documenting:
+Even though the architecture is local-only, ship `docs/legal/GDPR_POSTURE.md` documenting:
 
 - Personal data processed: IPs, MACs, OUIs, host fingerprints (all derived from network observation).
 - Lawful basis: Art. 6(1)(f) legitimate interests of the operator.
@@ -1250,7 +1250,7 @@ These are explicitly out of scope for v1; included here so future specs can pick
 `mcp.enabled` flips from `false` to `true` only after:
 
 1. `docs/adr/0007-mcp-activation.md` is marked `decided` with sign-off date and rationale.
-2. `docs/legal/gdpr-posture.md` is updated with MCP-specific DPIA (Art. 35).
+2. `docs/legal/GDPR_POSTURE.md` is updated with MCP-specific DPIA (Art. 35).
 3. `CONTRIBUTING.md` is updated with the MCP tool surface scope.
 
 This gate covers **server-mode only** — Flowscape *serving* an MCP surface. It does NOT cover client-mode scapy-mcp enrichment (Flowscape *calling* an external MCP server), which has a different posture and is v1 in scope behind `enrichment.scapy_mcp_enabled = false` default. See ADR 0016 for the posture distinction.
@@ -1373,7 +1373,7 @@ These map to spec phases; the `writing-plans` skill will produce a detailed plan
     - Menu bar items
     - Error UX (the 22-row table)
     - Test coverage to 89%
-    - `docs/legal/gdpr-posture.md`
+    - `docs/legal/GDPR_POSTURE.md`
     - README, USER_GUIDE
 
 **v1 ships after Phase 7.** Realistic v1 timeline: 14-20 weeks for one experienced developer; 6 months for one without prior Swift/Metal/libpcap experience.

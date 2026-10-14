@@ -80,7 +80,7 @@ sample from the `MetricSampler`).
   in parallel; default config)
 * New Dhara table `mahavishnu.observability.metric_samples` (when
   Phase D follow-on lands; for now the sampler is in-process only)
-* Runbook: `docs/runbooks/mahavishnu-drift-detection.md` (operators
+* Runbook: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (operators
   cross-reference this when `drift_detected` fires)
 
 ## End-to-end check
@@ -167,7 +167,7 @@ who have customized `changepoint.detector: "cusum"` in
 `settings/local.yaml` for backwards compat should re-evaluate
 within the [Phase 8 promotion migration window](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
 (typically two weeks of `two_stage` operation in their
-environment; see also the [runbook's two-stage migration section](../runbooks/mahavishnu-drift-detection.md))
+environment; see also the [runbook's two-stage migration section](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md))
 — the two-stage mode emits BOTH `drift_warning` (soft) and
 `drift_detected` (hard) signals, so existing alerts on
 `drift_detected` continue to work without changes.
@@ -203,9 +203,9 @@ Round-6 were dispatched as three parallel SDD implementer batches
 (Batch A: `mahavishnu/core/observability.py`; Batch B: `mahavishnu/observability/changepoint/two_stage.py` + its test file; Batch C: three docs files). 10 clean per-item commits landed. LOW-3 intentionally skipped per the followups doc's "Document but don't change" status. 116 tests pass post-knockout (115 baseline + 1 new boundary test from LOW-8). None of the LOW items changed observable behavior; all are parity, dedup, doc, or test-coverage polish.
 
 - `3578991b` — LOW-1: `mahavishnu/core/observability.py` (+3 −1). Add `severity=warning` sentinel and `samples=%d` to `_on_drift_warning`'s log format for parity with `_on_drift_detected`.
-- `1e7f82ab` — LOW-2: `docs/runbooks/mahavishnu-drift-detection.md` (+5). Document the dual-attribute convention (warn span carries the warn detector's class name; confirm span carries `detector="two_stage"`); correlate via `samples_since_warning` on the confirmed span.
+- `1e7f82ab` — LOW-2: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (+5). Document the dual-attribute convention (warn span carries the warn detector's class name; confirm span carries `detector="two_stage"`); correlate via `samples_since_warning` on the confirmed span.
 - `f6c96b67` — LOW-4: `docs/plans/2026-09-10-changepoint-two-stage-warn-confirm.md` (+1637). Correct Status-line test count from "108 tests collected across 4 files" to "115 tests collected across 8 .py files". This is the plan file's first tracked commit (was untracked scratch from prior session).
-- `c8b73d3a` — LOW-5: `docs/runbooks/mahavishnu-drift-detection.md` (+5 −1). Add `~30/10,080` design-point + `>2×` heuristic for `mahavishnu.observability.drift_warning_total` on stationary Gaussian noise.
+- `c8b73d3a` — LOW-5: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (+5 −1). Add `~30/10,080` design-point + `>2×` heuristic for `mahavishnu.observability.drift_warning_total` on stationary Gaussian noise.
 - `4cf5b4c7` — LOW-6: this file (+5 −3). Cross-link `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md §6 Phase 8` and the runbook's two-stage migration section as the migration window.
 - `378844e0` — LOW-7: `mahavishnu/observability/changepoint/two_stage.py` (+7). Module docstring state diagram now documents the `warning_pending → warning_pending` re-fire transition that updates `_last_warning_result` and resets the warn detector.
 - `1aadb297` — LOW-8: `tests/unit/observability/test_changepoint_two_stage.py` (+78). Add `test_confirm_fires_on_boundary_sample` pinning the `<= N` inclusive-boundary semantics on the exact `confirm_window_samples`-th sample after a warn.
@@ -249,9 +249,9 @@ plan, NOT a rollback of this feature.
 * Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) §6 Phase 8
 * Library: `mahavishnu/observability/changepoint/`
 * Sampler: `mahavishnu/observability/sampler.py`
-* Runbook: [`docs/runbooks/mahavishnu-drift-detection.md`](../runbooks/mahavishnu-drift-detection.md)
+* Runbook: [`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
 * Validation: [`docs/audits/2026-09-10-changepoint-validation.md`](../audits/2026-09-10-changepoint-validation.md)
-* Library docs: [`docs/observability/changepoint_validation.md`](../observability/changepoint_validation.md)
+* Library docs: [`docs/observability/CHANGEPOINT_VALIDATION.md`](../observability/CHANGEPOINT_VALIDATION.md)
 
 ## Session-Buddy
 

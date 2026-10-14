@@ -69,8 +69,8 @@ State sidecar consistency:
 
 ## Runbooks
 
-- [docs/runbooks/markdown-watcher.md](../runbooks/markdown-watcher.md) — markdown-watcher scenarios
-- [docs/runbooks/on_call_handbook.md](../runbooks/on_call_handbook.md) — escalation procedures
+- [docs/runbooks/MARKDOWN_WATCHER.md](../runbooks/MARKDOWN_WATCHER.md) — markdown-watcher scenarios
+- [docs/runbooks/ON_CALL_HANDBOOK.md](../runbooks/ON_CALL_HANDBOOK.md) — escalation procedures
 
 ## Related
 

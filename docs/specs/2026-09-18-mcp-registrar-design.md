@@ -27,7 +27,7 @@ and Claude Code-only. The 2026-08-24 audit
 (`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`)
 established per-project scoping and a secrets-in-shell-env rule, but
 no provision exists for non-Claude harnesses. Qwen Code is now
-shipping with its own MCP loader (see `docs/runbooks/qwen-hook-setup.md`
+shipping with its own MCP loader (see `docs/runbooks/QWEN_HOOK_SETUP.md`
 for the parallel hook bridge) and a manual `.qwen/settings.json`
 write today.
 
@@ -522,7 +522,7 @@ via context7):**
 The emitter is **not** a `_emit_qwen(servers) -> dict` function —
 that shape would let a naive implementation clobber the operator's
 existing `~/.qwen/settings.json` (erasing the 19-entry `hooks`
-block installed by `docs/runbooks/qwen-hook-setup.md`, the
+block installed by `docs/runbooks/QWEN_HOOK_SETUP.md`, the
 `$version` field, the `permissions.allow` list, and any other
 operator-curated top-level key).
 
@@ -853,7 +853,7 @@ Phased to avoid breaking the existing `.mcp.json` workflow:
   *opposite* (bridge: harness → canonical; registrar: canonical
   → harness); the shared property is "no daemon, no long-lived
   process, pure transform-on-(read|write)".
-- `docs/runbooks/qwen-hook-setup.md` — sibling runbook for Qwen
+- `docs/runbooks/QWEN_HOOK_SETUP.md` — sibling runbook for Qwen
   hooks; same operator-side / gitignored pattern applies to the
   Qwen MCP config.
 - Qwen Code MCP docs (verified 2026-09-18 via context7):

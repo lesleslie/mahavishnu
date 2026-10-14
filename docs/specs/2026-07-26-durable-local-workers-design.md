@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 kind: plan
 date: 2026-07-26
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 topic: durable-local-workers

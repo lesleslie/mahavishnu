@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: historical
 topic: mcp-design
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-13
 superseded_by: null
 blocks_on: []
 title: "Bodai Crow MCP Server — Design Spec"
@@ -927,8 +927,8 @@ tests/
 
 docs/
   runbooks/
-    bodai-crow-server.md        # new runbook for HTTP server
-    crow-mcp-server.md          # retained for Claude Code stdio usage
+    BODAI_CROW_SERVER.md        # new runbook for HTTP server
+    CROW_MCP_SERVER.md          # retained for Claude Code stdio usage
   docker-compose.crow.yml
   settings/searxng/settings.yml
 ```
@@ -1254,8 +1254,8 @@ ______________________________________________________________________
 
 ## 13. Open Questions
 
-1. **Runbook split** *(resolved)*: Keep `crow-mcp-server.md` for Claude Code stdio usage. Add
-   `bodai-crow-server.md` for the HTTP server. Both are needed.
+1. **Runbook split** *(resolved)*: Keep `CROW_MCP_SERVER.md` for Claude Code stdio usage. Add
+   `BODAI_CROW_SERVER.md` for the HTTP server. Both are needed.
 
 1. **crow-mcp `edit` import stability** *(resolved)*: Vendor the 466-line cascade into
    `vendor/editor.py` (see §5.4). rapidfuzz replaces the pure Python `levenshtein()` in levels

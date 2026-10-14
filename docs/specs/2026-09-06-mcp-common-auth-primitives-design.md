@@ -1,8 +1,8 @@
 ---
 title: mcp-common Authentication Primitives — Design Spec
 date: 2026-09-06
-last_reviewed: 2026-09-06
-status: draft
+last_reviewed: 2026-10-13
+status: partial
 role: implementation
 topic: bodai-auth
 author: brainstormed 2026-09-06
@@ -13,8 +13,8 @@ blocks:
 supersedes: null
 related:
   - ../../adr/0016-scapy-mcp-integration.md (scapy-mcp client-mode enrichment posture)
-  - ../../legal/gdpr-posture.md (Article 32 monitoring requires AuthHealth surface)
-  - ../../../docs/decisions/mcp-backend-wiring-discipline.md (wiring discipline §3 mandates feed observability shape)
+  - ../../legal/GDPR_POSTURE.md (Article 32 monitoring requires AuthHealth surface)
+  - ../../../.claude/decisions/mcp-backend-wiring-discipline.md (wiring discipline §3 mandates feed observability shape)
 target_repo: mcp-common
 scope_note: |
   Single-phase design — no Phase 1/Phase 2 split, no backward-compat kwarg bridge. The package
@@ -44,7 +44,7 @@ What's missing is real integration: token transport is convention-only (`__auth_
 kwarg), no FastMCP middleware exists, no settings integration, no `/health` observability
 surface, no identity-provider abstraction for human/IdP authentication.
 
-The wiring discipline (`docs/decisions/mcp-backend-wiring-discipline.md` §3) requires
+The wiring discipline (`.claude/decisions/mcp-backend-wiring-discipline.md` §3) requires
 every Bodai MCP server to surface feed observability on `/health`. Without an `AuthHealth`
 surface, the auth layer is "alive but unverifiable" — exactly the failure mode the policy
 was written to prevent.
@@ -93,7 +93,7 @@ break is cheaper than a migration release.
   internal hops.
 - **Wire sibling servers** (scapy-mcp, archive-org-mcp, medium-mcp) to construct
   `BearerTokenMiddleware` in their lifespan and surface auth state in `/health`.
-- **Update `gdpr-posture.md` §10** with the auth section.
+- **Update `GDPR_POSTURE.md` §10** with the auth section.
 - **Re-review ADR 0016 v3** against the new posture; close the "mcp-common auth primitives"
   deferred item. **Requires a parallel reviewer (architecture-council or
   mcp-integration-expert) before the status bump lands.**
@@ -531,7 +531,7 @@ This is a single-phase implementation. No Phase 1 / Phase 2 split; all work land
     the middleware is constructed and `/health` envelope includes auth state.
 14. **Write the internal auth doc** at `mcp_common/docs/auth-design.md` (rationale,
     examples, migration notes from the old package shape).
-15. **Update `gdpr-posture.md` §10** with the auth section.
+15. **Update `GDPR_POSTURE.md` §10** with the auth section.
 16. **Re-review ADR 0016 v3** against the new posture; close the "mcp-common auth primitives"
     deferred item.
 
@@ -598,9 +598,9 @@ This is a single-phase implementation. No Phase 1 / Phase 2 split; all work land
 
 - `docs/adr/0016-scapy-mcp-integration.md` — this spec closes the v4+ deferred item
   "mcp-common authentication primitives"; unblocks remote-host scapy-mcp.
-- `docs/legal/gdpr-posture.md` §10 — `AuthHealth` surface satisfies Article 32 monitoring
+- `docs/legal/GDPR_POSTURE.md` §10 — `AuthHealth` surface satisfies Article 32 monitoring
   requirements for any production deployment.
-- `docs/decisions/mcp-backend-wiring-discipline.md` §3 — feed observability shape
+- `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed observability shape
   (`entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`) is the
   model `AuthHealth` implements.
 - `mcp_common/auth/exceptions.py` — existing exception hierarchy is reused; new addition

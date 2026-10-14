@@ -12,7 +12,7 @@ topic: merge-semantic-duration-instrumentation
 # Followup — `merge.semantic.duration_ms` OTel histogram
 
 **Date:** 2026-09-14
-**Originating plan:** `docs/plans/2026-09-12-finish-partial-implementations.md` (Phase 5 OTel counter liveness check)
+**Originating plan:** `docs/plans/.archive/2026-09-12-finish-partial-implementations.md` (Phase 5 OTel counter liveness check)
 **Status:** COMPLETE (2026-09-14). Histogram registered + sample-recording thread instrumented for all three entry points: SEMANTIC (`mergiraf`), LINE (`merge_three_way` post-mergiraf fallback), and `_merge_three_way_sync_internal` (CLI-only sync shim). 65 settle tests pass including 4 new histogram-recording tests.
 
 ## What shipped

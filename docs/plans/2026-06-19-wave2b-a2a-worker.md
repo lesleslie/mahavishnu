@@ -1,9 +1,9 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: superseded
 date: 2026-07-16
-last_reviewed: 2026-07-16
-superseded_by: null
+last_reviewed: 2026-10-13
+superseded_by: docs/decisions/2026-09-24-legacy-worker-deprecation.md
 topic: wave2b-a2a-worker
 title: "Wave 2b: A2A Worker & Server Implementation Plan"
 

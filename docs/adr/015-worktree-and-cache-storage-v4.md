@@ -1,9 +1,9 @@
 ---
-status: draft
+status: complete
 role: canonical
 kind: decision
 date: 2026-08-23
-last_reviewed: 2026-08-23
+last_reviewed: 2026-10-13
 supersedes: ["015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2", "015-worktree-and-cache-storage-v3"]
 blocks_on: []
 decision_date: null
