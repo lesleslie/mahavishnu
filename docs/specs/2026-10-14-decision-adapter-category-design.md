@@ -13,17 +13,10 @@ the full contract at registration time and `use()` time.
 ## Goal
 
 Add a `decision/` adapter category to the Oneiric substrate so the Mahavishnu
-<<<<<<< Updated upstream
 orchestrator can route through calibrated, typed decision classifiers
 (TypeSafe Jev, vLLM Semantic Router Decision 3.0, and BGE Reranker v2-m3 via
 HuggingFace TEI) without forking either the substrate or the orchestrator.
 Land three concrete adapters in Phase 0.
-=======
-orchestrator can route through calibrated, typed decision classifiers (Jev
-System One and BGE Reranker v2-m3 via HuggingFace TEI) without forking
-either the substrate or the orchestrator. Land two concrete adapters in
-Phase 0; add Cohere Rerank v4 in Phase 2 if needed.
->>>>>>> Stashed changes
 
 ## Architecture
 
@@ -32,18 +25,11 @@ oneiric/oneiric/adapters/decision/          ← substrate (Phase 0 PR to Oneiric
 ├── __init__.py
 ├── types.py            # PointwiseRequest/Response, RankRequest/Response, Question/Answer
 ├── _base.py            # DecisionBaseSettings (Pydantic) + DecisionBase[SettingsT] (typed base)
-<<<<<<< Updated upstream
 ├── jev.py              # JevAdapter(DecisionBase[JevSettings]) — closed hosted pointwise
 ├── decision_3.py       # Decision3Adapter(DecisionBase[Decision3Settings]) — open-source multimodal
 └── bge_tei_rerank.py   # BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]) — relevance ranker
 
 oneiric/oneiric/adapters/bootstrap.py      ← 6-line addition: 3 imports + 3 metadata entries
-=======
-├── jev.py              # JevAdapter(DecisionBase[JevSettings]) — pointwise Noul/Choice/Score
-└── bge_tei_rerank.py   # BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]) — relevance ranker
-
-oneiric/oneiric/adapters/bootstrap.py      ← 4-line addition: 2 imports + 2 metadata entries
->>>>>>> Stashed changes
 
 mahavishnu/decision/router.py              ← thin passthrough to AdapterBridge.use("decision", ...)
 mahavishnu/cli/decision_cli.py             ← `mahavishnu decision decide` + `mahavishnu decision rank`
@@ -57,32 +43,20 @@ mahavishnu/adapters/pgvector_adapter.py    ← DELETION (Phase 0): route through
 `DecisionBase[SettingsT]` is the typed base for the category, mirroring
 `VectorBase[T]`, `LLMBase`, `EmbeddingBase`. It carries the
 substrate-conformant `__init__`, default `init`/`health`/`cleanup`, and
-<<<<<<< Updated upstream
 declares the two category-specific abstract methods. All three concrete
 adapters subclass it.
-=======
-declares the two category-specific abstract methods. Both concrete adapters
-subclass it.
->>>>>>> Stashed changes
 
 ## Tech stack
 
 - **Oneiric substrate** (Python 3.14, Pydantic v2, pydantic_settings,
   `typing.Protocol`, `typing.ClassVar`, `typing.Generic`)
 - **PEP 735 `[dependency-groups].typesafe`** for the Jev SDK (lazy import)
-<<<<<<< Updated upstream
 - **`httpx2`** for the BGE/TEI and Decision 3.0 adapters (already a Oneiric
   baseline)
 - **vLLM Semantic Router** in Engine mode for Decision 3.0 serving
 - **Mahavishnu** (Python 3.14, `typer` for CLI, `FastMCP` for tools)
 - **No new transports, no new runtimes.** All three concrete adapters are
   HTTP-in.
-=======
-- **`httpx2`** for the BGE/TEI adapter (already a Oneiric baseline)
-- **Mahavishnu** (Python 3.14, `typer` for CLI, `FastMCP` for tools)
-- **No new transports, no new runtimes.** The decision category is HTTP-in
-  for all three concrete adapters.
->>>>>>> Stashed changes
 
 ## Substrate design
 
@@ -90,7 +64,6 @@ subclass it.
 
 ```python
 from __future__ import annotations
-<<<<<<< Updated upstream
 
 from typing import Annotated, Literal, Union
 
@@ -99,38 +72,24 @@ from pydantic_settings import SettingsConfigDict
 
 
 # ---- Pointwise (Jev / Decision 3.0 style) ----
-=======
-from typing import Annotated, Literal, Union
-from pydantic import BaseModel, Field
-
-# ---- Pointwise (Jev-style) ----
->>>>>>> Stashed changes
 
 class NoulQuestion(BaseModel):
     type: Literal["noul"] = "noul"
     name: str
     instructions: str
 
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 class ChoiceQuestion(BaseModel):
     type: Literal["choice"] = "choice"
     name: str
     instructions: str
-<<<<<<< Updated upstream
     options: dict[str, str] = Field(..., description="option_name -> option description")
 
-=======
-    options: dict[str, str]    # option_name -> option description
->>>>>>> Stashed changes
 
 class ScoreQuestion(BaseModel):
     type: Literal["score"] = "score"
     name: str
     instructions: str
-<<<<<<< Updated upstream
     levels: list[str] = Field(..., min_length=2, description="Ordered low-to-high levels.")
 
 
@@ -151,26 +110,12 @@ class PointwiseRequest(BaseModel):
         default_factory=list,
         description="Decision 3.0 only. Multimodal context (paths, URLs, or frame arrays). Ignored by Jev.",
     )
-=======
-    levels: list[str] = Field(..., min_length=2)
-
-Question = Annotated[Union[NoulQuestion, ChoiceQuestion, ScoreQuestion], Field(discriminator="type")]
-
-
-class PointwiseRequest(BaseModel):
-    state: str
-    questions: list[Question] = Field(..., min_length=1)
->>>>>>> Stashed changes
 
 
 class Answer(BaseModel):
     name: str
     type: Literal["noul", "choice", "score"]
-<<<<<<< Updated upstream
     value: float | str = Field(..., description="Typed value per question type.")
-=======
-    value: float | str
->>>>>>> Stashed changes
     probability: float | None = None
     confidence: float | None = None
     rationale: str | None = None
@@ -201,7 +146,6 @@ class RankResponse(BaseModel):
     results: list[RankedDocument]
     model: str
     usage: dict | None = None
-<<<<<<< Updated upstream
 
 
 # ---- Settings base + per-adapter settings ----
@@ -273,22 +217,12 @@ The discriminated union on `Question.type` makes the substrate Pydantic-validate
 the right shape per question at the adapter boundary. The `images`/`videos`
 fields on `PointwiseRequest` are optional and ignored by Jev, so the
 extension is one-way additive.
-=======
-```
-
-The discriminated union on `Question.type` makes the substrate Pydantic-validate
-the right shape per question at the adapter boundary. No manual type-switching
-inside the adapter.
->>>>>>> Stashed changes
 
 ### `decision/_base.py` — typed settings + typed adapter base
 
 ```python
 from __future__ import annotations
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 from abc import abstractmethod
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -309,11 +243,7 @@ class DecisionBaseSettings(BaseModel):
     api_key_env: str = Field(...)
     timeout_seconds: float = Field(default=30.0, gt=0)
     max_retries: int = Field(default=0, ge=0)
-<<<<<<< Updated upstream
     caller_namespace: str = Field(default="public")
-=======
-    caller_namespace: str = Field(default="public", description="Per REQ-OSUB-B-004.")
->>>>>>> Stashed changes
     cross_namespace_grant: bool = Field(default=False)
 
     @property
@@ -325,12 +255,8 @@ class DecisionBaseSettings(BaseModel):
 
 class DecisionBase(BaseModel, Generic[SettingsT]):
     """Typed base for decision adapters. Mirrors VectorBase[T] / LLMBase."""
-<<<<<<< Updated upstream
 
     metadata: ClassVar[AdapterMetadata]   # concrete subclasses override
-=======
-    metadata: ClassVar[AdapterMetadata]    # concrete subclasses override
->>>>>>> Stashed changes
 
     def __init__(self, settings: SettingsT) -> None:
         self._settings = settings
@@ -340,24 +266,16 @@ class DecisionBase(BaseModel, Generic[SettingsT]):
 
     @abstractmethod
     async def decide(self, request: PointwiseRequest) -> PointwiseResponse: ...
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
     @abstractmethod
     async def rank(self, request: RankRequest) -> RankResponse: ...
 
     async def init(self) -> None:
         self._cycles += 1
-<<<<<<< Updated upstream
 
     async def cleanup(self) -> None:
         self._client = None
 
-=======
-    async def cleanup(self) -> None:
-        self._client = None
->>>>>>> Stashed changes
     async def health(self) -> bool:
         if self._client is None:
             return False
@@ -366,7 +284,6 @@ class DecisionBase(BaseModel, Generic[SettingsT]):
                 state="health probe",
                 questions=[NoulQuestion(name="ok", instructions="the service is reachable")]))
             return True
-<<<<<<< Updated upstream
         except Exception:                                # noqa: BLE001
             return False
 
@@ -380,24 +297,6 @@ __all__ = ["DecisionBase", "DecisionBaseSettings"]
 ### `decision/jev.py` — concrete adapter (closed hosted)
 
 ```python
-=======
-        except Exception:                            # noqa: BLE001 — health must never raise
-            return False
-    def has_capability(self, capability: str) -> bool:
-        return capability in self.metadata.capabilities
-```
-
-### `decision/jev.py` — concrete adapter
-
-```python
-class JevSettings(DecisionBaseSettings):
-    model_config = SettingsConfigDict(env_prefix="ONEIRIC_", extra="forbid")
-    model: str = Field(default="jev-latest")
-    api_key_env: str = Field(default="TYPESAFE_API_KEY")
-    base_url: str = Field(default="https://api.typesafe.ai")
-
-
->>>>>>> Stashed changes
 class JevAdapter(DecisionBase[JevSettings]):
     metadata: ClassVar[AdapterMetadata] = AdapterMetadata(
         category="decision",
@@ -410,7 +309,6 @@ class JevAdapter(DecisionBase[JevSettings]):
         requires_secrets=True,
         settings_model=JevSettings,
     )
-<<<<<<< Updated upstream
     # decide() and rank() implementations — see plan for full TDD step-by-step
 ```
 
@@ -440,35 +338,6 @@ class Decision3Adapter(DecisionBase[Decision3Settings]):
 ### `decision/bge_tei_rerank.py` — concrete adapter (open-source ranker)
 
 ```python
-=======
-
-    async def decide(self, request: PointwiseRequest) -> PointwiseResponse: ...
-    async def rank(self, request: RankRequest) -> RankResponse:
-        raise NotImplementedError("Jev has no rank primitive. Use BgeTeiRerankAdapter.")
-
-    async def init(self) -> None:
-        from typesafe_sdk import AsyncTypeSafeClient
-        api_key = self._settings.api_key
-        if api_key is None:
-            raise RuntimeError(f"{self._settings.api_key_env!r} not set in environment")
-        self._client = AsyncTypeSafeClient(
-            api_key=api_key.get_secret_value(),
-            base_url=self._settings.base_url or "https://api.typesafe.ai",
-        )
-        await super().init()
-```
-
-### `decision/bge_tei_rerank.py` — concrete adapter
-
-```python
-class BgeTeiSettings(DecisionBaseSettings):
-    model_config = SettingsConfigDict(env_prefix="ONEIRIC_", extra="forbid")
-    model: str = Field(default="BAAI/bge-reranker-v2-m3")
-    base_url: str = Field(default="http://localhost:8081")
-    api_key_env: str = Field(default="HF_TOKEN")     # optional, for HF Inference Endpoints
-
-
->>>>>>> Stashed changes
 class BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]):
     metadata: ClassVar[AdapterMetadata] = AdapterMetadata(
         category="decision",
@@ -478,62 +347,30 @@ class BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]):
         stack_level=30, priority=370,
         source=CandidateSource.LOCAL_PKG,
         owner="Decision Substrate",
-<<<<<<< Updated upstream
         requires_secrets=False,
         settings_model=BgeTeiSettings,
     )
     # rank() translates RankRequest -> POST /rerank -> RankResponse
     # decide() raises NotImplementedError
-=======
-        requires_secrets=False,                       # TEI is auth-less when self-hosted
-        settings_model=BgeTeiSettings,
-    )
-
-    async def rank(self, request: RankRequest) -> RankResponse: ...
-    async def decide(self, request: PointwiseRequest) -> PointwiseResponse:
-        raise NotImplementedError("BGE Reranker is rank-only. Use JevAdapter.")
-
-    async def init(self) -> None:
-        headers = {}
-        api_key = self._settings.api_key
-        if api_key is not None:
-            headers["Authorization"] = f"Bearer {api_key.get_secret_value()}"
-        self._client = httpx.AsyncClient(
-            base_url=self._settings.base_url,
-            headers=headers,
-            timeout=self._settings.timeout_seconds,
-        )
-        await super().init()
->>>>>>> Stashed changes
 ```
 
 ### Bootstrap patch
 
 ```python
 # oneiric/adapters/bootstrap.py — additions only
-<<<<<<< Updated upstream
 from .decision import BgeTeiRerankAdapter, Decision3Adapter, JevAdapter
-=======
-from .decision import JevAdapter, BgeTeiRerankAdapter
->>>>>>> Stashed changes
 
 def builtin_adapter_metadata() -> list[AdapterMetadata]:
     return [
         # ... existing 50+ entries unchanged ...
-<<<<<<< Updated upstream
         BgeTeiRerankAdapter.metadata,
         Decision3Adapter.metadata,
         JevAdapter.metadata,
-=======
-        JevAdapter.metadata,
-        BgeTeiRerankAdapter.metadata,
->>>>>>> Stashed changes
     ]
 ```
 
 ## Capability taxonomy
 
-<<<<<<< Updated upstream
 | Capability | Jev | Decision 3.0 | BGE/TEI |
 |---|---|---|---|
 | `noul` (pointwise yes/no) | ✓ | ✓ | — |
@@ -547,20 +384,6 @@ def builtin_adapter_metadata() -> list[AdapterMetadata]:
 | `open_source` | — | ✓ | ✓ |
 
 `AdapterBridge.use("decision", capabilities=["noul"])` → Jev. `AdapterBridge.use("decision", capabilities=["rank", "self_hostable"])` → BGE/TEI. `AdapterBridge.use("decision", capabilities=["noul", "multimodal"])` → Decision 3.0.
-=======
-| Capability | Jev | BGE/TEI |
-|---|---|---|
-| `noul` (pointwise yes/no) | ✓ | — |
-| `choice` (pointwise option) | ✓ | — |
-| `score` (pointwise graded) | ✓ | — |
-| `rank` (relevance) | — | ✓ |
-| `calibrated_probability` | ✓ | — |
-| `multilingual` | ✓ | ✓ (model-dependent) |
-| `self_hostable` | — | ✓ |
-| `open_source` | — | ✓ |
-
-`AdapterBridge.use("decision", capabilities=["noul"])` → Jev. `AdapterBridge.use("decision", capabilities=["rank", "self_hostable"])` → BGE/TEI. No ambiguity in the 2-adapter regime.
->>>>>>> Stashed changes
 
 ## Mahavishnu wire-up
 
@@ -571,7 +394,6 @@ class DecisionRouter:
     def __init__(self, bridge: AdapterBridge) -> None:
         self._bridge = bridge
 
-<<<<<<< Updated upstream
     async def resolve_decision(self, *, capabilities: list[str]) -> DecisionBase:
         handle = await self._bridge.use(
             "decision", capabilities=capabilities, require_all=True,
@@ -585,11 +407,6 @@ class DecisionRouter:
     async def rank(self, request: RankRequest, *, capabilities: list[str]) -> RankResponse:
         adapter = await self.resolve_decision(capabilities=capabilities)
         return await adapter.rank(request)
-=======
-    async def resolve_decision(self, *, capabilities: list[str]) -> DecisionAdapter:
-        handle = await self._bridge.use("decision", capabilities=capabilities, require_all=True)
-        return handle.instance
->>>>>>> Stashed changes
 ```
 
 ### `mahavishnu/cli/decision_cli.py` — Pattern A
@@ -627,25 +444,18 @@ is verified as unused by grep.
 
 - **Cohere Rerank v4** — closed hosted ranker. Will fit the same `rank()`
   shape as BGE/TEI. Future PR adds `oneiric/adapters/decision/cohere_rerank.py`
-<<<<<<< Updated upstream
   and a fourth entry in `builtin_adapter_metadata()`.
-=======
-  and a third entry in `builtin_adapter_metadata()`.
->>>>>>> Stashed changes
 - **OpenAI `omni-moderation-latest`** — categorical content classifier. Different
   question-type taxonomy (`category: str` instead of Noul/Choice/Score). Would
   warrant a `CategoricalQuestion` Pydantic variant.
 - **Self-hosted Jina v3.5** — newer model from Jina. Same wire shape as
   Jina v2 / BGE / Cohere. Drop-in for BGE/TEI if operators want a different
   model with the same TEI-style API.
-<<<<<<< Updated upstream
 - **Qwen3 Reranker** — strong open-source ranker, but uses generative
   yes/no logit scoring (not sequence classification). Different wire shape
   than BGE/TEI. Needs a custom transport (vLLM with the Qwen3ForSequenceClassification
   override, or a sentence-transformers wrapper). Not in Phase 0; pick up as
   Phase 2 if/when the substrate gets a `rank_via_logits()` abstraction.
-=======
->>>>>>> Stashed changes
 
 ## Phase 1 gating (live routing in `mcp__mahavishnu__pool_route_execute`)
 
@@ -662,18 +472,12 @@ disagreement test**, not a flipped selector. Specifically:
    deprecation windows — if Phase 1 fails, the adapter stays at Phase 0
    (shadow mode) or gets removed entirely.
 
-<<<<<<< Updated upstream
 The same gating applies to Decision 3.0 (in shadow mode alongside Jev) and
 to BGE/TEI (in shadow mode alongside any existing relevance-based routing).
 
 ## Cross-component surface
 
 - **Oneiric**: substrate PR (this is the primary implementation)
-=======
-## Cross-component surface
-
-- `Oneiric`: substrate PR (this is the primary implementation)
->>>>>>> Stashed changes
 - **Mahavishnu**: thin `decision/router.py` + CLI + MCP tool + `task_router.py`
   selector
 - **Akosha**: trace severity classification candidate (Phase 2, not Phase 0)
@@ -692,7 +496,6 @@ their workers run inside Mahavishnu's orchestration. They can consume
    the Jev adapter becomes a dead branch. Mitigation: the substrate's
    `AdapterBridge` is the abstraction layer; swapping the implementation
    under the `typesafe_jev` provider is a config change, not a code change.
-<<<<<<< Updated upstream
    Decision 3.0 is the open-source fallback for the same primitives.
 2. **vLLM Semantic Router is on the `--channel dev` channel** — not yet
    a stable release. Decision 3.0 production deployment is gated on
@@ -708,12 +511,6 @@ their workers run inside Mahavishnu's orchestration. They can consume
    HNSW indexing that Oneiric's `PgvectorAdapter` also has. The fork deletion
    is safe because Oneiric's class supports HNSW per the verified source.
 5. **Substrate-federation rot.** Per `feedback-substrate-compat-shim-rot.md`,
-=======
-2. **HNSW extension migration.** Mahavishnu's `pgvector_adapter.py` carries
-   HNSW indexing that Oneiric's `PgvectorAdapter` also has. The fork deletion
-   is safe because Oneiric's class supports HNSW per the verified source.
-3. **Substrate-federation rot.** Per `feedback-substrate-compat-shim-rot.md`,
->>>>>>> Stashed changes
    direct substrate extension can rot when Oneiric's surface evolves. The
    `DecisionBase[SettingsT]` typed base is intentionally narrow (two
    abstract methods) to keep the surface stable.
@@ -733,7 +530,6 @@ their workers run inside Mahavishnu's orchestration. They can consume
 - `feedback-no-backwards-compat-pre-1.0.md` (memory) — no deprecation windows
 - `feedback-substrate-compat-shim-rot.md` (memory) — substrate extension rot pattern
 - `feedback-mcp-test-must-assert-aggregator-verdict.md` (memory) — assert aggregator verdict, not slot population
-<<<<<<< Updated upstream
 - `feedback-keep-plan-files-tracked.md` (memory) — `git add docs/plans/*.md` first; **learned the hard way this session**
 - [TypeSafe AI blog](https://typesafe.ai/blog/introducing-system-one-models-and-jev) — Jev API contract
 - [TechCrunch — A new kind of AI model from a ChatGPT inventor is thrilling developers](https://techcrunch.com/2026/09/18/a-new-kind-of-ai-model-from-a-chatgpt-inventor-is-thrilling-developers) — TypeSafe founders, $40M seed
@@ -741,9 +537,5 @@ their workers run inside Mahavishnu's orchestration. They can consume
 - [vllm-sr/d3-flash model card](https://huggingface.co/vllm-sr/d3-flash) — Decision 3.0 flagship, multimodal
 - [🔮Decision 3.0 collection](https://huggingface.co/collections/vllm-sr/decision-30) — full model family
 - [vllm-project/vllm-metal](https://github.com/vllm-project/vllm-metal) — Apple Silicon serving plugin
-=======
-- [TypeSafe AI blog](https://typesafe.ai/blog/introducing-system-one-models-and-jev) — Jev API contract
-- [TechCrunch — A new kind of AI model from a ChatGPT inventor is thrilling developers](https://techcrunch.com/2026/09/18/a-new-kind-of-ai-model-from-a-chatgpt-inventor-is-thrilling-developers) — TypeSafe founders, $40M seed
->>>>>>> Stashed changes
 - [HuggingFace — BAAI/bge-reranker-base](https://huggingface.co/BAAI/bge-reranker-base) — BGE model card
 - [Spheron — TEI on GPU Cloud](https://www.spheron.network/blog/self-host-embedding-reranker-tei-gpu-cloud) — TEI deployment
