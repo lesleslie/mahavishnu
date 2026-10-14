@@ -150,13 +150,6 @@ oneiric.yaml
 # ============================================================================
 .archive/
 tests/archived/
-# Sibling-of-parent archive dirs (`docs/<topic>/.archive/`,
-# `docs/.archive/`, `.claude/decisions/.archive/`, etc.) hold
-# resolved/superseded content that must remain reviewable from a clean
-# checkout. Default-ignored by `.archive/` above; the general
-# `!.archive/` exception re-tracks them all.
-!.archive/
-!.archive/**
 
 # ============================================================================
 # Documentation — image assets
