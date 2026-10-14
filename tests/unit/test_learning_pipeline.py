@@ -25,6 +25,7 @@ from mahavishnu.core.skill_governance import (
     SkillDraft,
     SkillPromotionState,
 )
+from mahavishnu.core.skill_registry import SkillRegistry
 from mahavishnu.core.skill_security import sanitize_skill_body
 from mahavishnu.core.skill_synthesizer import SkillSynthesizer
 
@@ -463,6 +464,42 @@ class TestLearningPipelineService:
     def test_duration_ms_when_not_completed(self):
         result = PipelineCycleResult()
         assert result.duration_ms == 0.0
+
+    def test_evidence_store_accessor_returns_internal_store(self):
+        """The MCP read-only tools reach the evidence store via this accessor.
+
+        Guards against accidental re-binding of the private attribute:
+        any caller that wants the live store (e.g. ``list_evidence``)
+        must go through ``service.evidence_store`` so the public
+        contract is stable.
+        """
+        config = LearningConfig(enabled=True)
+        svc = LearningPipelineService(config=config)
+        assert isinstance(svc.evidence_store, EvidenceStore)
+        assert svc.evidence_store is svc.evidence_store  # idempotent property
+
+    def test_skill_registry_accessor_owns_in_memory_state(self):
+        """The pipeline owns the registry so MCP tools see the same state.
+
+        ``list_pending_drafts`` / ``get_promotion_history`` read from
+        this registry; any future internal promotion path writes to it.
+        Co-location keeps the in-memory state single-source.
+        """
+        config = LearningConfig(enabled=True)
+        svc = LearningPipelineService(config=config)
+        assert isinstance(svc.skill_registry, SkillRegistry)
+        assert svc.skill_registry is svc.skill_registry  # idempotent property
+
+    def test_skill_registry_is_fresh_per_service_instance(self):
+        """Each ``LearningPipelineService`` owns its own registry.
+
+        Two service instances must not share registry state — a
+        cross-instance draft from a previous test would leak into the
+        read-only MCP tools and confuse operators.
+        """
+        svc_a = LearningPipelineService(config=LearningConfig(enabled=True))
+        svc_b = LearningPipelineService(config=LearningConfig(enabled=True))
+        assert svc_a.skill_registry is not svc_b.skill_registry
 
 
 class TestLearningConfig:

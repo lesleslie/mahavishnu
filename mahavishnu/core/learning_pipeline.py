@@ -19,6 +19,7 @@ from mahavishnu.core.evidence_collector import EvidenceCollector
 from mahavishnu.core.evidence_retriever import EvidenceRetriever
 from mahavishnu.core.evidence_store import EvidenceStore
 from mahavishnu.core.review_gate import ReviewGate
+from mahavishnu.core.skill_registry import SkillRegistry
 from mahavishnu.core.skill_synthesizer import SkillSynthesizer
 
 if TYPE_CHECKING:
@@ -83,6 +84,7 @@ class LearningPipelineService:
             max_drafts_per_cycle=config.max_drafts_per_cycle,
         )
         self._review_gate = ReviewGate()
+        self._skill_registry = SkillRegistry()
 
         self._task: asyncio.Task[Any] | None = None
         self._shutdown = asyncio.Event()
@@ -105,6 +107,24 @@ class LearningPipelineService:
     @property
     def last_result(self) -> PipelineCycleResult | None:
         return self._last_result
+
+    @property
+    def evidence_store(self) -> EvidenceStore:
+        """Read-only accessor for the evidence store (used by MCP tools)."""
+        return self._store
+
+    @property
+    def skill_registry(self) -> SkillRegistry:
+        """Read-only accessor for the in-memory skill governance registry.
+
+        The pipeline owns this registry so the read-only MCP tools
+        (``list_pending_drafts`` / ``get_promotion_history``) and any
+        future internal promotion call share the same in-memory state.
+        Activation still requires an explicit human approval; the pipeline
+        never auto-promotes (see ``LearningConfig.enabled`` and the
+        review-gated contract documented in ADR 012).
+        """
+        return self._skill_registry
 
     async def start(self) -> None:
         if self._task is not None and not self._task.done():

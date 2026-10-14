@@ -213,6 +213,49 @@ def _register_skills_signer_tools(server: FastMCPServer) -> None:
     logger.info("Registered skill_tools (mahavishnu_list_skills + mahavishnu_get_skill)")
 
 
+def _register_learning_pipeline_tools(server: FastMCPServer) -> None:
+    """Register the 5 read-only learning-pipeline MCP tools.
+
+    Wires ``get_pipeline_status`` / ``list_evidence`` /
+    ``trigger_synthesis`` / ``list_pending_drafts`` /
+    ``get_promotion_history`` against the live service instances on
+    ``MahavishnuApp``. The service is constructed by
+    ``init_learning_pipeline`` in ``mahavishnu.core.bootstrap`` only
+    when ``config.learning.enabled`` is true; when disabled, all three
+    dependencies resolve to ``None`` and the tools report
+    ``{"available": False, ...}`` per their existing fallbacks.
+
+    Activation is intentionally NOT exposed via MCP. The pipeline is
+    review-gated by design (ADR 012) — drafts stay in DRAFT state until
+    a human approves them through the SkillPromotionPolicy.
+
+    See ``mahavishnu.mcp.tools.learning_pipeline_tools`` for the
+    per-tool contracts and ``core.learning_pipeline.LearningPipelineService``
+    for the lifecycle.
+    """
+    from ..mcp.tools.learning_pipeline_tools import register_learning_tools
+
+    pipeline = getattr(server.app, "_learning_pipeline", None)
+    evidence_store = pipeline.evidence_store if pipeline is not None else None
+    skill_registry = pipeline.skill_registry if pipeline is not None else None
+    rbac_manager = getattr(server.app, "rbac_manager", None)
+
+    register_learning_tools(
+        server.server,
+        pipeline_service=pipeline,
+        evidence_store=evidence_store,
+        skill_registry=skill_registry,
+        rbac_manager=rbac_manager,
+    )
+    if pipeline is None:
+        logger.info(
+            "Registered learning pipeline tools (no-op: learning.enabled=false); "
+            'tools return {"available": False, ...} until the pipeline is enabled'
+        )
+    else:
+        logger.info("Registered 5 read-only learning pipeline tools with MCP server")
+
+
 def _register_agents_tools(server: FastMCPServer) -> None:
     """Phase 3 — register the agents tools group.
 
@@ -917,6 +960,10 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     _register_skills_signer_tools(server)
     _register_agents_tools(server)
     _register_dispatch_specialist_tools(server)
+    # Phase 1B learning pipeline — five read-only tools. See
+    # _register_learning_pipeline_tools for the dependency contract; the
+    # tools register against None dependencies when learning.enabled=false.
+    _register_learning_pipeline_tools(server)
     # _register_jot_tools is idempotent per profiles.py:228-231 — repeated
     # calls re-bind the 14 wrappers harmlessly. Pass the inner FastMCP
     # server (``server.server``) since ``register(mcp)`` calls
