@@ -1897,7 +1897,7 @@ This amendment adds a new sub-stage 4.5 between squash-merge and auto-push
 in `mahavishnu/core/merge_to_main.py::run_pipeline()`. Stage 5 push is held
 back when co-located worktrees have unmerged WIP or pending commits are
 not squash-merge-shaped. Authoritative spec:
-[`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../docs/decisions/2026-10-13-prepushconsolidationgate.md).
+[`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../decisions/2026-10-13-prepushconsolidationgate.md).
 
 ### Task Group 2 amendment (orchestration module)
 

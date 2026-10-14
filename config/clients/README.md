@@ -311,6 +311,6 @@ docker network inspect otlp-test-network
 
 ## Next Steps
 
-- See [OTLP Setup Guide](../../docs/OTLP_SETUP_GUIDE.md) for comprehensive documentation
+- See [OTLP Setup Guide](../../docs/integrations/observability/OTLP_SETUP_GUIDE.md) for comprehensive documentation
 - Check the main [otel-collector-config.yaml](../otel-collector-config.yaml) for the canonical collector configuration
 - Review [OpenTelemetry Documentation](https://opentelemetry.io/docs/) for more information

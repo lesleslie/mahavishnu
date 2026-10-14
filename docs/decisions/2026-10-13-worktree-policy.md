@@ -191,7 +191,7 @@ cron, or other unattended invocation. The amended rule is recorded in
   (`WorktreeHandle`, `RemoteWorktreeProvider`, `Principal`)
 - v4 followup for automated cleanup (draft, not yet permitted):
   `.claude/decisions/worktree-autoremove-v4-followup.md`
-- **See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
+- **See also**: [worktree-cleanup-policy.md](../../.claude/decisions/.archive/worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
 
 ---
 
@@ -297,4 +297,4 @@ a **new** decision must be written that:
 
 ---
 
-**See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
+**See also**: [worktree-cleanup-policy.md](../../.claude/decisions/.archive/worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
