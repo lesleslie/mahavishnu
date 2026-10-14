@@ -150,25 +150,13 @@ oneiric.yaml
 # ============================================================================
 .archive/
 tests/archived/
-# Exception: docs/followups/.archive/ is intentionally version-controlled.
-# Resolved follow-up notes are archived there (never deleted) and must
-# survive a clean checkout. See docs/followups/README.md for the lifecycle.
-!docs/followups/.archive/
-!docs/followups/.archive/**
-!docs/plans/.archive/
-!docs/plans/.archive/**
-!docs/specs/.archive/
-!docs/specs/.archive/**
-# Exception: .claude/decisions/.archive/ follows the same sibling-of-parent
-# convention (see .claude/decisions/README.md) and must survive a clean
-# checkout. Resolved/superseded decision docs are archived there.
-!.claude/decisions/.archive/
-!.claude/decisions/.archive/**
-# Exception: docs/decisions/.archive/ is the new sibling-of-parent archive
-# path after the docs/decisions/ migration (see chore: move .claude/decisions/
-# to docs/decisions/). Future archive additions will land here.
-!docs/decisions/.archive/
-!docs/decisions/.archive/**
+# Sibling-of-parent archive dirs (`docs/<topic>/.archive/`,
+# `docs/.archive/`, `.claude/decisions/.archive/`, etc.) hold
+# resolved/superseded content that must remain reviewable from a clean
+# checkout. Default-ignored by `.archive/` above; the general
+# `!.archive/` exception re-tracks them all.
+!.archive/
+!.archive/**
 
 # ============================================================================
 # Documentation — image assets
