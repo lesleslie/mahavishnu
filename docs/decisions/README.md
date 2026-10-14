@@ -2,7 +2,7 @@
 status: active
 role: canonical
 date: 2026-07-26
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-14
 topic: decision-index
 ---
 # `docs/decisions/` index
@@ -23,6 +23,7 @@ the topic, the third is the most recent state.
 | `2026-10-03-main-branch-protection.md` | GitHub branch protection on `main` across all 6 Bodai core repos: blocks force-push + branch deletion, leaves admin direct-push intact, no PR/CI requirements yet (pre-1.0). Future CI addition is an amendment, not an inline change. | Active. |
 | `2026-10-03-plans-specs-canonical-paths.md` | Plans → `docs/plans/`, specs → `docs/specs/`. Both skills (`writing-plans`, `brainstorming`) document the CLAUDE.md preference override hook. `.superpowers/` blanket-gitignored via crackerjack template; fleet rollout is operator-driven via `crackerjack gitignore sync`. | Active. |
 | `2026-10-13-prepushconsolidationgate.md` | Further narrowing of the auto-push exception: pre-push gate that holds back stage 5 push when co-located worktrees have unmerged WIP or pending commits are not squash-merge-shaped. Held back = sticky-failure marker + stage 6 skipped + EXIT_OK. | Active. |
+| `2026-10-14-bypass-gate-parallel-sessions.md` | Tightens the `--no-consolidation-gate` operator escape hatch with a parallel-session pre-condition: before invocation, `git stash list` is checked for path overlaps with the target commit; any overlap = bypass REFUSED. Recorded from the 2026-10-14 `fd9b61ed` → `b11c72ed` incident (1.5K lines of conflict markers landed on `main`). | Active. |
 | `2026-10-03-mainautopush.md` | Narrow exception to `feedback-bodai-push-is-user-controlled`: `git push origin main` permitted only after stages 1–4 of the trunk-based workflow, only by the Python module + SessionEnd hook + slash command. | Active. |
 | `2026-10-03-trunk-based-agent-review.md` | Trunk-based agent-review workflow contract: worktree → branch → ensemble review → `crackerjack run -v` gate → squash-merge to `main` → optional auto-push. | Active. |
 | `sdd-bundling-defensive-pattern.md` | In multi-task SDD plans, downstream tasks MUST use `git add <specific-paths>` (never `git add .`) when an upstream task left staged files; detect dirty trees before each commit; the SDD controller audits for unexpected files. Captured from `def3eb7a` in `2026-09-10-jot-drain` execution. | Active. |
