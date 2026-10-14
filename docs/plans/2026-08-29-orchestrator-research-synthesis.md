@@ -418,7 +418,7 @@ Phases 3, 4, 5 are sequenced by impact: budget enforcement (Phase 3) → Shepher
   - `scripts/audit_orphans.py` (orphan gate)
   - `docs/feature-tracking/` (12 prior tracking files)
   - `docs/plans/TEMPLATE.md` (plan template)
-  - `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` (frontmatter contract)
+  - `docs/schemas/document-frontmatter-v1.md` (frontmatter contract)
 - Memory citations: `agent-fix-verification.md`, `ty-small-fix-ghost-revert.md`, `drift-bundling-recovery.md`, `plumbing-commit-leaves-staged-revert.md`, `session-buddy-auto-checkpoint-bundling.md`, `pool-dispatch-async-default.md`, `mahavishnu-dispatch-prompt-mangling.md`, `docs-audit-*` series
 - Commit reference (NOT a spec file — does not exist as a path): `efd9d705` capability-driven worker registry. Verify commit exists in `git log` before Phase 4 references it as `blocks_on`.
 

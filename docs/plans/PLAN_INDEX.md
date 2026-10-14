@@ -5,7 +5,7 @@ date: 2026-10-14
 last_reviewed: 2026-10-14
 superseded_by: null
 blocks_on:
-  - docs/schemas/DOCUMENT_FRONTMATTER_V1.md
+  - docs/schemas/document-frontmatter-v1.md
 topic: convergence-control-plane
 ---
 
@@ -20,7 +20,7 @@ Use this file as the first stop before reviewing plan work. Older plans remain u
 ## Status Legend
 
 The vocabulary is defined canonically in
-[`docs/schemas/DOCUMENT_FRONTMATTER_V1.md`](../schemas/DOCUMENT_FRONTMATTER_V1.md)
+[`docs/schemas/document-frontmatter-v1.md`](../schemas/document-frontmatter-v1.md)
 and reproduced here for index readability.
 
 - **Lifecycle (`status`)** — five values:
@@ -43,7 +43,7 @@ and reproduced here for index readability.
 | Concern | Authority |
 |---|---|
 | Plan navigation and current ownership | `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |
-| Frontmatter vocabulary and migration contract | `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` |
+| Frontmatter vocabulary and migration contract | `docs/schemas/document-frontmatter-v1.md` |
 | Cross-repo LLM provider defaults and Bifrost routing | `docs/plans/2026-05-10-minimax27-provider-migration.md` |
 | Legacy backlog item details | `docs/plans/2026-05-07-mahavishnu-master-backlog.md` |
 | Bodai control-plane convergence C0–C7 | `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` |

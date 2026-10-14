@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Migrate no-frontmatter plans to schema v1.1.
 
-Per docs/schemas/DOCUMENT_FRONTMATTER_V1.md, every .md file in the four
+Per docs/schemas/document-frontmatter-v1.md, every .md file in the four
 plan stores (docs/plans/, docs/plans/, docs/specs/,
 docs/followups/) must carry a parseable ---\\n...\\n--- YAML frontmatter
 block. As of 2026-09-13, 38 such files are missing it.

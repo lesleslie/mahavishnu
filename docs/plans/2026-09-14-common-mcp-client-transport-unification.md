@@ -828,7 +828,7 @@ Plan is **not** "done" when:
 
 - `docs/plans/TEMPLATE.md` — plan template this document follows.
 - `.claude/decisions/wire-up-contract.md` — Integration Contract policy.
-- `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` — frontmatter schema.
+- `docs/schemas/document-frontmatter-v1.md` — frontmatter schema.
 - `bodai-pre-1.0-merge-policy.md` — direct-to-main merge rule.
 - `feedback-bodai-push-is-user-controlled.md` — never push
   without explicit user approval.

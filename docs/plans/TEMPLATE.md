@@ -16,7 +16,7 @@ title: "Plan Template — Integration-Contract Required"
 > apps and workflows. This template makes wiring a first-class plan section.
 > A plan is not "done" until every deliverable has an Integration Contract
 > block, even if that block says "no wiring required (rationale: …)".
-> _See `docs/schemas/DOCUMENT_FRONTMATTER_V1.md` for the schema definition._
+> _See `docs/schemas/document-frontmatter-v1.md` for the schema definition._
 
 ## 1. Outcome
 
