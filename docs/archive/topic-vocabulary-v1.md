@@ -1,1 +1,0 @@
-../schemas/topic-vocabulary-v1.md
