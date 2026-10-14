@@ -1092,9 +1092,9 @@ ______________________________________________________________________
 | File | Location |
 |---|---|
 | Plan (this file) | `docs/plans/tensorzero-gateway-plan.md` |
-| Security review | `docs/plans/reviews/security-review.md` |
-| Ops review | `docs/plans/reviews/ops-review.md` |
-| Config review | `docs/plans/reviews/config-review.md` |
+| Security review | `docs/plans/../reviews/security-review.md` |
+| Ops review | `docs/plans/../reviews/ops-review.md` |
+| Config review | `docs/plans/../reviews/config-review.md` |
 | Gateway config | `~/.config/tensorzero/tensorzero.toml` |
 | LaunchAgent plist | `~/Library/LaunchAgents/com.tensorzero.gateway.plist` |
 | Gateway logs | `~/.local/state/tensorzero/logs/gateway.log` |

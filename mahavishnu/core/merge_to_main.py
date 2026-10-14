@@ -10,6 +10,7 @@ Implements: REQ-004, REQ-009, REQ-013, REQ-014
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import fcntl
 import json
 from pathlib import Path
@@ -17,7 +18,6 @@ import random
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -398,7 +398,7 @@ def _list_repo_worktrees(worktree_root: Path) -> list[Path]:
         return []
     try:
         worktree_root_resolved = worktree_root.resolve()
-    except (OSError, RuntimeError):
+    except OSError, RuntimeError:
         worktree_root_resolved = worktree_root
     siblings: list[Path] = []
     for p in repo_dir.iterdir():
@@ -407,7 +407,7 @@ def _list_repo_worktrees(worktree_root: Path) -> list[Path]:
         try:
             if p.resolve() == worktree_root_resolved:
                 continue
-        except (OSError, RuntimeError):
+        except OSError, RuntimeError:
             pass
         siblings.append(p)
     return sorted(siblings)
@@ -431,7 +431,7 @@ def _check_sibling_worktree_state(
     try:
         if sibling_path.resolve() == worktree_root.resolve():
             return None  # self, skip
-    except (OSError, RuntimeError):
+    except OSError, RuntimeError:
         pass
 
     # State (b): pruned — not in `git worktree list --porcelain` output.
@@ -445,7 +445,7 @@ def _check_sibling_worktree_state(
     if state_path.exists():
         try:
             data = json.loads(state_path.read_text())
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             data = None
         if isinstance(data, dict):
             if data.get("stage_failed") is not None:
@@ -551,7 +551,10 @@ def _run_consolidation_gate(
 
     for sibling in _list_repo_worktrees(worktree_root):
         reason = _check_sibling_worktree_state(
-            worktree_root, sibling, base, worktree_list_output,
+            worktree_root,
+            sibling,
+            base,
+            worktree_list_output,
         )
         if reason is not None:
             held_back_siblings.append(reason)
@@ -584,7 +587,7 @@ def _write_held_back_log(
     except ImportError:
         return  # dev_log not available; skip silently
     metadata: dict[str, Any] = {
-        "date": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
+        "date": datetime.now(tz=UTC).strftime("%Y-%m-%d"),
         "branch": branch,
         "push": {
             "result": "error:consolidation_gate_held_back",
@@ -635,7 +638,7 @@ def _write_sticky_failure_marker(
         return
     try:
         state = json.loads(state_path.read_text())
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return
     if not isinstance(state, dict):
         return
@@ -818,15 +821,23 @@ def run_pipeline(
     held_back = False
     if not no_consolidation_gate:
         gate_clear, held_back_siblings, ineligible_commits = _run_consolidation_gate(
-            worktree_root, base,
+            worktree_root,
+            base,
         )
         if not gate_clear:
             held_back = True
             _write_held_back_log(
-                worktree_root, branch, base, held_back_siblings, ineligible_commits,
+                worktree_root,
+                branch,
+                base,
+                held_back_siblings,
+                ineligible_commits,
             )
             _write_sticky_failure_marker(
-                worktree_root, branch, held_back_siblings, ineligible_commits,
+                worktree_root,
+                branch,
+                held_back_siblings,
+                ineligible_commits,
             )
             print(
                 f"[merge_to_main] push held back: pre-push consolidation gate "

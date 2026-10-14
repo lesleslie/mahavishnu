@@ -3487,7 +3487,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.34.2"
+version = "0.35.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },

@@ -97,5 +97,5 @@ If new credential-like fields are added to a payload, **add them to the `mask_fi
 ## Related
 
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md) — niche filter (external systems publish to Akosha, not Mahavishnu)
-- [docs/plans/2026-09-26-impl-C-10-ECOSYSTEM_INTAKE.md](../plans/2026-09-26-impl-C-10-ECOSYSTEM_INTAKE.md) — implementation plan
-- [docs/slos/2026-09-26-wireup-ECOSYSTEM_INTAKE.md](../slos/2026-09-26-wireup-ECOSYSTEM_INTAKE.md) — SLO targets
+- [docs/plans/2026-09-26-impl-C-10-ecosystem-intake.md](../plans/.archive/2026-09-26-impl-C-10-ecosystem-intake.md) — implementation plan
+- [docs/slos/2026-09-26-wireup-ecosystem-intake.md](../slos/2026-09-26-wireup-ecosystem-intake.md) — SLO targets

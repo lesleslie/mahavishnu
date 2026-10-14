@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mcp: Wire terminal_manager into pool_manager singleton (Phase 8 post-mortem)
 - prefect: Patch three adapter bugs surfaced by live 3.8.8 demo
 - scripts/backfill_plan_spec_titles: Replace non-greedy regex with line-anchored splitter
-- scripts/regenerate_plan_index: Read full file in _has_frontmatter (REQ-IDX-003)
+- scripts/regenerate_plan_index: Read full file in \_has_frontmatter (REQ-IDX-003)
 - scripts/regenerate_plan_index: Replace non-greedy regex with line-anchored parser (REQ-IDX-002)
 
 ### Documentation

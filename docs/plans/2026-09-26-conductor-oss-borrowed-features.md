@@ -977,7 +977,7 @@ Every wire-up must ship a runbook in `docs/runbooks/` following the Symptoms/Dia
 Per `docs/slos/_TEMPLATE.md`, every feature needs an SLO doc with burn-rate alert + page-after field:
 
 - `docs/slos/2026-09-26-wireup-pool-dispatch.md` (C-6 + C-8 + C-9)
-- `docs/slos/2026-09-26-wireup-ECOSYSTEM_INTAKE.md` (C-10)
+- `docs/slos/2026-09-26-wireup-ecosystem-intake.md` (C-10)
 - `docs/slos/2026-09-26-wireup-markdown-board.md` (C-11)
 
 Critical alerts (round-3 + round-4 ops gap-fix):

@@ -120,9 +120,7 @@ def find_profiles_py(repo_path: Path) -> Path | None:
     return None
 
 
-_ENV_VAR_KW_RE = re.compile(
-    r"""profile_env_var\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']"""
-)
+_ENV_VAR_KW_RE = re.compile(r"""profile_env_var\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']""")
 _ENV_VAR_DEFAULT_RE = re.compile(
     r"""def\s+get_active_profile\s*\(\s*env_var:\s*str\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']"""
 )
@@ -292,9 +290,7 @@ def render_doc(
     out.append("")
     bodai_count = len(bodai_maint)
     if bodai_count:
-        out.append(
-            f"## Bodai-maintained `*-mcp` ({bodai_count} repos as of {today})"
-        )
+        out.append(f"## Bodai-maintained `*-mcp` ({bodai_count} repos as of {today})")
         out.append("")
         out.append(
             "Bodai-managed `*-mcp` servers that wire `apply_tool_profile`. "
@@ -306,9 +302,7 @@ def render_doc(
         out.append("| Repo | Env var | Default | Groups |")
         out.append("|---|---|---|---|")
         for repo, _, env_var, default, groups_repr in bodai_maint:
-            out.append(
-                f"| `{repo}` | `{env_var}` | `{default}` | {groups_repr} |"
-            )
+            out.append(f"| `{repo}` | `{env_var}` | `{default}` | {groups_repr} |")
         out.append("")
     out.append(f"## Tier-C MCP servers ({len(tier_c)} repos — NOT wired)")
     out.append("")
@@ -377,10 +371,7 @@ def render_doc(
         "2. Add the group to `STANDARD_REGISTRATIONS` or "
         "`FULL_REGISTRATIONS` in the repo's `profiles.py`."
     )
-    out.append(
-        "3. Re-run `python scripts/generate_tool_profiles_doc.py` to "
-        "refresh this file."
-    )
+    out.append("3. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.")
     out.append("")
     out.append("## How to add a new Bodai-maintained `*-mcp`")
     out.append("")
@@ -389,12 +380,9 @@ def render_doc(
         "context) from the new repo's `server.py` startup path."
     )
     out.append(
-        "2. Move the repo entry from Tier-C to "
-        "`Bodai-maintained \\`-mcp\\`` in `REPO_LIST`."
+        "2. Move the repo entry from Tier-C to `Bodai-maintained \\`-mcp\\`` in `REPO_LIST`."
     )
-    out.append(
-        "3. Re-run `python scripts/generate_tool_profiles_doc.py`."
-    )
+    out.append("3. Re-run `python scripts/generate_tool_profiles_doc.py`.")
     out.append("")
     return "\n".join(out) + "\n"
 
@@ -427,13 +415,9 @@ def main(argv: list[str] | None = None) -> int:
         if profile_path is None:
             if tier in {"tier-a", "tier-b", "bodai-maintained"}:
                 # Missing source — should not happen for known adopters.
-                adopter_rows.append(
-                    (repo_name, tier, "?", "—", "profiles.py not found")
-                )
+                adopter_rows.append((repo_name, tier, "?", "—", "profiles.py not found"))
             else:
-                tier_c_rows.append(
-                    (repo_name, "profiles.py not found", "?", "", "")
-                )
+                tier_c_rows.append((repo_name, "profiles.py not found", "?", "", ""))
             continue
         try:
             text = profile_path.read_text(encoding="utf-8")
@@ -445,17 +429,11 @@ def main(argv: list[str] | None = None) -> int:
         minimal = extract_groups(text, "MINIMAL_REGISTRATIONS")
         standard = extract_groups(text, "STANDARD_REGISTRATIONS")
         full = extract_groups(text, "FULL_REGISTRATIONS")
-        groups_repr = (
-            ", ".join(full)
-            if full
-            else f"{len(minimal)}/{len(standard)}/{len(full)}"
-        )
+        groups_repr = ", ".join(full) if full else f"{len(minimal)}/{len(standard)}/{len(full)}"
         if tier in {"tier-a", "tier-b", "bodai-maintained"}:
             if tier == "tier-a":
                 tier_a_groups[repo_name] = full
-            adopter_rows.append(
-                (repo_name, tier, env_var, default, groups_repr)
-            )
+            adopter_rows.append((repo_name, tier, env_var, default, groups_repr))
         else:
             status = "not wired" if not has_apply_tool_profile(text) else "wired"
             tier_c_rows.append((repo_name, status, env_var, default, groups_repr))
@@ -463,10 +441,7 @@ def main(argv: list[str] | None = None) -> int:
     args.output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = render_doc(adopter_rows, tier_c_rows, tier_a_groups)
     args.output_path.write_text(doc, encoding="utf-8")
-    print(
-        f"wrote {args.output_path} "
-        f"({len(adopter_rows)} adopters, {len(tier_c_rows)} Tier-C)"
-    )
+    print(f"wrote {args.output_path} ({len(adopter_rows)} adopters, {len(tier_c_rows)} Tier-C)")
     return 0
 
 

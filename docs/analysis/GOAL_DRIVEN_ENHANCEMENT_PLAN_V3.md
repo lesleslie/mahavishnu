@@ -681,7 +681,7 @@ class TestTeamParseCommand:
 
 #### User Guide
 
-**File:** `docs/GOAL_DRIVEN_TEAMS.md`
+**File:** `docs/.archive/GOAL_DRIVEN_TEAMS.md`
 
 ````markdown
 # Goal-Driven Teams

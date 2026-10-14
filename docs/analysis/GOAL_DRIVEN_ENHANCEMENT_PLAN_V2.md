@@ -1256,7 +1256,7 @@ ______________________________________________________________________
 
 Create/update:
 
-1. `docs/GOAL_DRIVEN_TEAMS.md` - User guide
+1. `docs/.archive/GOAL_DRIVEN_TEAMS.md` - User guide
 1. `docs/MCP_TOOLS_SPECIFICATION.md` - Add team_from_goal docs
 1. `README.md` - Add CLI examples
 

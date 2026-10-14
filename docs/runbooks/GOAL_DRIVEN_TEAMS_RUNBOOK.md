@@ -1285,7 +1285,7 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- [Goal-Driven Teams User Guide](/docs/GOAL_DRIVEN_TEAMS.md)
+- [Goal-Driven Teams User Guide](/docs/.archive/GOAL_DRIVEN_TEAMS.md)
 - Agno Adapter Documentation
 - [MCP Tools Specification](/docs/MCP_TOOLS_SPECIFICATION.md)
 - Architecture Overview

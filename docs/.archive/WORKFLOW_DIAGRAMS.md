@@ -567,7 +567,7 @@ These workflow diagrams cover the most common operational procedures in Mahavish
 - **Error Recovery**: Circuit breaker and DLQ patterns
 - **MCP Tools**: Tool execution flow
 
-For more detailed architecture diagrams, see [VISUAL_GUIDE.md](VISUAL_GUIDE.md).
+For more detailed architecture diagrams, see [VISUAL_GUIDE.md](../VISUAL_GUIDE.md).
 
 ______________________________________________________________________
 
@@ -575,6 +575,6 @@ ______________________________________________________________________
 **Last Updated**: 2026-02-03
 **Related Documentation**:
 
-- [VISUAL_GUIDE.md](VISUAL_GUIDE.md) - Comprehensive architecture diagrams
-- [GETTING_STARTED.md](GETTING_STARTED.md) - Setup and configuration
-- [MCP_TOOLS_REFERENCE.md](MCP_TOOLS_REFERENCE.md) - Complete MCP tool documentation
+- [VISUAL_GUIDE.md](../VISUAL_GUIDE.md) - Comprehensive architecture diagrams
+- [GETTING_STARTED.md](../GETTING_STARTED.md) - Setup and configuration
+- [MCP_TOOLS_REFERENCE.md](../MCP_TOOLS_REFERENCE.md) - Complete MCP tool documentation

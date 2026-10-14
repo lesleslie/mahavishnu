@@ -14,12 +14,12 @@ title: "Bodai Master Implementation Plan"
 **Status:** Phase 0 complete (10/10); Phase 1A complete (6/6 acceptance criteria); Phase 1B complete (37 tests passing); CP0–CP7 all shipped (2026-04-30) — I0–I3 fully satisfied by control plane delivery <!-- legacy status: Phase 0..CP7 shipped — see YAML frontmatter -->
 **Date:** 2026-04-16
 **Last reviewed:** 2026-04-30
-**Source:** [Bodai Agent Platform Master Spec](./2026-04-16-bodai-agent-platform-master-spec.md)
+**Source:** [Bodai Agent Platform Master Spec](../2026-04-16-bodai-agent-platform-master-spec.md)
 
 **Companion documents:**
 
-- Master spec: [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
-- Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+- Master spec: [2026-04-16-bodai-agent-platform-master-spec.md](../2026-04-16-bodai-agent-platform-master-spec.md)
+- Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](../2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
 
 **Phase registry (cross-plan reference):**
 

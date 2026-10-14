@@ -177,6 +177,6 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- **Initiative plan**: `docs/plans/initiatives/12-golden-paths-workflows.md`
+- **Initiative plan**: `docs/plans/../initiatives/12-golden-paths-workflows.md`
 - **Baseline metrics**: `docs/reports/top-10-workflows-baseline.md`
 - **Deprecation guide**: `docs/reports/deprecation-migration.md`

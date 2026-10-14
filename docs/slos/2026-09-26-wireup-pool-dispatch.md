@@ -76,7 +76,7 @@ The following alerts MUST fire to PagerDuty / Slack:
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-6-pool-route-execute-idempotency.md](../plans/2026-09-26-impl-C-6-pool-route-execute-idempotency.md)
-- [docs/plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md](../plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md)
-- [docs/plans/2026-09-26-impl-C-9-concurrency-limits.md](../plans/2026-09-26-impl-C-9-concurrency-limits.md)
+- [docs/plans/2026-09-26-impl-C-6-pool-route-execute-idempotency.md](../plans/.archive/2026-09-26-impl-C-6-pool-route-execute-idempotency.md)
+- [docs/plans/2026-09-26-impl-C-8-worktree-isolation.md](../plans/.archive/2026-09-26-impl-C-8-worktree-isolation.md)
+- [docs/plans/2026-09-26-impl-C-9-concurrency-limits.md](../plans/.archive/2026-09-26-impl-C-9-concurrency-limits.md)
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md)

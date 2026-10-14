@@ -81,9 +81,9 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md) | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md` | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md` | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md` | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
 
 ### Architecture Decision Records (`docs/adr/`)
 
@@ -106,7 +106,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/adr/007-saga-coordinator-pattern.md`](../../docs/adr/007-saga-coordinator-pattern.md) | 2026-07-16 | `complete` | `superseded` | `decision` | `saga-pattern` | ADR 007: Implement Saga Coordinator for Distributed Transactions |
 | [`docs/adr/008-zero-downtime-migration.md`](../../docs/adr/008-zero-downtime-migration.md) | 2026-07-16 | `complete` | `superseded` | `decision` | `zero-downtime-migration` | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
 | [`docs/adr/009-hybrid-adapter-registry.md`](../../docs/adr/009-hybrid-adapter-registry.md) | 2026-07-16 | `complete` | `superseded` | `decision` | `adapter-registry` | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
-| [`docs/adr/010-adapter-security.md`](../../docs/adr/010-adapter-security.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-security` | ADR 010: Adapter Security Specification |
+| [`docs/adr/010-adapter-SECURITY.md`](../../docs/adr/010-adapter-SECURITY.md) | 2026-07-16 | `active` | `canonical` | `decision` | `adapter-security` | ADR 010: Adapter Security Specification |
 | [`docs/adr/011-two-router-composition.md`](../../docs/adr/011-two-router-composition.md) | 2026-07-16 | `active` | `canonical` | `decision` | `routing-composition` | ADR 011: Two-Router Composition |
 | [`docs/adr/012-learning-pipeline-runtime-owner.md`](../../docs/adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | `active` | `canonical` | `decision` | `learning-pipeline` | ADR 012: Learning Pipeline Runtime Owner |
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `complete` | `superseded` | `decision` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
@@ -583,7 +583,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/007-saga-coordinator-pattern.md`](../../docs/adr/007-saga-coordinator-pattern.md) | 2026-07-16 | ADR 007: Implement Saga Coordinator for Distributed Transactions |
 | [`docs/adr/008-zero-downtime-migration.md`](../../docs/adr/008-zero-downtime-migration.md) | 2026-07-16 | ADR 008: Zero-Downtime SQLite to PostgreSQL Migration |
 | [`docs/adr/009-hybrid-adapter-registry.md`](../../docs/adr/009-hybrid-adapter-registry.md) | 2026-07-16 | ADR 009: Hybrid Adapter Registry with Dynamic Discovery |
-| [`docs/adr/010-adapter-security.md`](../../docs/adr/010-adapter-security.md) | 2026-07-16 | ADR 010: Adapter Security Specification |
+| [`docs/adr/010-adapter-SECURITY.md`](../../docs/adr/010-adapter-SECURITY.md) | 2026-07-16 | ADR 010: Adapter Security Specification |
 | [`docs/adr/011-two-router-composition.md`](../../docs/adr/011-two-router-composition.md) | 2026-07-16 | ADR 011: Two-Router Composition |
 | [`docs/adr/012-learning-pipeline-runtime-owner.md`](../../docs/adr/012-learning-pipeline-runtime-owner.md) | 2026-07-16 | ADR 012: Learning Pipeline Runtime Owner |
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../../docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |

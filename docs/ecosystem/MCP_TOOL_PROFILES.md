@@ -12,7 +12,7 @@ The four core Bodai components. Each repo's `profiles.py` docstring links to thi
 
 | Repo | Env var | Default | Groups |
 |---|---|---|---|
-| `mahavishnu` | `MAHAVISHNU_TOOL_PROFILE` | `FULL` | _register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools, _register_search_tools, _register_plan_tools, jot_list, jot_show, jot_add, jot_edit, jot_done, jot_reopen, jot_vitals, jot_search, jot_drain, jot_dispatch, jot_defer, jot_delete, jot_retry, jot_resurface |
+| `mahavishnu` | `MAHAVISHNU_TOOL_PROFILE` | `FULL` | \_register_otel_tools, \_register_self_improvement_tools, \_register_clone_tools, \_register_goal_team_tools, \_register_treesitter_tools, \_register_pycharm_tools, \_register_search_tools, \_register_plan_tools, jot_list, jot_show, jot_add, jot_edit, jot_done, jot_reopen, jot_vitals, jot_search, jot_drain, jot_dispatch, jot_defer, jot_delete, jot_retry, jot_resurface |
 | `akosha` | `AKOSHA_TOOL_PROFILE` | `FULL` | register_session_buddy_tools, register_pycharm_tools, register_otel_query_tools, register_fitness_tools, register_eventbridge_tools, register_cross_repo_tools, register_ecosystem_skills |
 | `session-buddy` | `SESSION_BUDDY_TOOL_PROFILE` | `FULL` | 3/15/0 |
 | `crackerjack` | `?` | `FULL` | eventbridge_tools, language_tools, monitoring_tools, otel_tools, progress_tools, proactive_tools, pycharm_tools, semantic_tools |
@@ -50,7 +50,7 @@ Bodai-managed `*-mcp` servers that wire `apply_tool_profile`. These follow the T
 
 ## Tier-C MCP servers (3 repos — NOT wired)
 
-`profiles.py` exists on disk but `apply_tool_profile` wiring is not yet verified. Excluded from the 21-adopter count. Re-run this script after Plan 9 (or the equivalent) wires the missing calls — Tier-C repos move to `Bodai-maintained \`-mcp\`` once `apply_tool_profile` is callable from their `server.py` startup.
+`profiles.py` exists on disk but `apply_tool_profile` wiring is not yet verified. Excluded from the 21-adopter count. Re-run this script after Plan 9 (or the equivalent) wires the missing calls — Tier-C repos move to `Bodai-maintained \`-mcp\``once`apply_tool_profile`is callable from their`server.py\` startup.
 
 | Repo | Status |
 |---|---|
@@ -78,12 +78,11 @@ The Tier-A repos expose the conventional 3-tier model (`MINIMAL` / `STANDARD` / 
 ## How to add a new tool to a profile
 
 1. Add the tool to the appropriate group in `<repo>/<package>/mcp/tools/<group>.py` (Tier-A) or `<repo>/<package>/tools/<group>.py` (Tier-B + Bodai-maintained).
-2. Add the group to `STANDARD_REGISTRATIONS` or `FULL_REGISTRATIONS` in the repo's `profiles.py`.
-3. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.
+1. Add the group to `STANDARD_REGISTRATIONS` or `FULL_REGISTRATIONS` in the repo's `profiles.py`.
+1. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.
 
 ## How to add a new Bodai-maintained `*-mcp`
 
 1. Wire `_apply_tool_profile` (or `apply_tool_profile` in a sync context) from the new repo's `server.py` startup path.
-2. Move the repo entry from Tier-C to `Bodai-maintained \`-mcp\`` in `REPO_LIST`.
-3. Re-run `python scripts/generate_tool_profiles_doc.py`.
-
+1. Move the repo entry from Tier-C to `Bodai-maintained \`-mcp\``in`REPO_LIST\`.
+1. Re-run `python scripts/generate_tool_profiles_doc.py`.

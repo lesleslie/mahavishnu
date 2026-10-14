@@ -608,7 +608,7 @@ ______________________________________________________________________
 
 - Saga Pattern: https://microservices.io/patterns/data/saga.html
 - Architecture Reviewer Report (2026-02-18): Score 4.2/5.0, identified missing saga coordinator as P0
-- Master Plan v3.0: `/docs/TASK_ORCHESTRATION_MASTER_PLAN_V3.md`
+- Master Plan v3.0: `/docs/plans/.archive/2026-02-18-task-orchestration.md`
 
 ______________________________________________________________________
 

@@ -66,9 +66,7 @@ async def budget_enforce_tool(
         declared_by=declared_by,
     )
     try:
-        existing_raw = await _budget_store.get(
-            f"mahavishni://budgets/{workflow_id}.json"
-        )
+        existing_raw = await _budget_store.get(f"mahavishni://budgets/{workflow_id}.json")
     except Exception as exc:
         logger.warning("budget_enforce: read failed for %s: %s", workflow_id, exc)
         existing_raw = None
