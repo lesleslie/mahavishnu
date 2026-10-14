@@ -46,7 +46,11 @@ Start here when reviewing or implementing work. Do not assume a root-level docum
 
 ### Observability
 
-- [Telemetry Index](./integrations/observability/TELEMETRY.md)
+<<<<<<< HEAD
+<- [Telemetry Index](./integrations/observability/TELEMETRY.md)
+=======
+- [Telemetry Index](./integrations/observability/telemetry.md)
+>>>>>>> 529e4729 (docs(pre-1.0): consolidate OTel/OTLP docs into integrations/observability/)
 - [OTLP Architecture](./integrations/observability/OTLP_ARCHITECTURE.md)
 - [OTLP Troubleshooting](./integrations/observability/OTLP_TROUBLESHOOTING.md)
 - [Native OTEL Architecture](./integrations/observability/NATIVE_OTEL_ARCHITECTURE.md)
