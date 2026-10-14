@@ -52,9 +52,12 @@ class TestSessionBuddyGetMcpClient:
         mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
         mock_instance.__aexit__ = AsyncMock(return_value=None)
 
-        mock_module = ModuleType("mcp_client")
-        mock_module.MCPClient = mock_cls
-        with patch.dict("sys.modules", {"mcp_client": mock_module}):
+        # Patch the substrate module that the lazy import actually resolves.
+        # The provider does ``from fastmcp import Client as MCPClient``, so
+        # we inject a synthetic ``fastmcp`` module exposing a ``Client`` class.
+        mock_module = ModuleType("fastmcp")
+        mock_module.Client = mock_cls
+        with patch.dict("sys.modules", {"fastmcp": mock_module}):
             client = await provider._get_mcp_client()
 
         assert client is mock_instance
@@ -72,8 +75,10 @@ class TestSessionBuddyGetMcpClient:
     async def test_import_error_raises_creation_error(self):
         provider = SessionBuddyWorktreeProvider()
 
+        # Setting a module to None in sys.modules makes the import raise
+        # ImportError — this simulates the substrate being uninstalled.
         with (
-            patch.dict("sys.modules", {"mcp_client": None}),
+            patch.dict("sys.modules", {"fastmcp": None}),
             pytest.raises(
                 WorktreeCreationError,
                 match="MCP client not installed",
@@ -86,16 +91,44 @@ class TestSessionBuddyGetMcpClient:
 
         mock_cls = MagicMock(side_effect=Exception("connection refused"))
 
-        mock_module = ModuleType("mcp_client")
-        mock_module.MCPClient = mock_cls
+        mock_module = ModuleType("fastmcp")
+        mock_module.Client = mock_cls
         with (
-            patch.dict("sys.modules", {"mcp_client": mock_module}),
+            patch.dict("sys.modules", {"fastmcp": mock_module}),
             pytest.raises(
                 WorktreeCreationError,
                 match="Failed to connect",
             ),
         ):
             await provider._get_mcp_client()
+
+    async def test_fastmcp_client_is_wired(self):
+        """Regression: the lazy import resolves to fastmcp.Client.
+
+        Prior to 2026-10-14 the import was ``from mcp_client import MCPClient``,
+        a module that does not exist in any Bodai venv — every call into
+        ``_get_mcp_client`` raised ``WorktreeCreationError("MCP client not
+        installed")`` before reaching the network. This test asserts the
+        substrate is the real ``fastmcp.Client`` class, not a re-imported
+        alias of something that doesn't exist.
+        """
+        import fastmcp
+
+        provider = SessionBuddyWorktreeProvider()
+        mock_instance = AsyncMock()
+        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+        mock_instance.__aexit__ = AsyncMock(return_value=None)
+
+        real_cls = MagicMock(wraps=fastmcp.Client, return_value=mock_instance)
+
+        mock_module = ModuleType("fastmcp")
+        mock_module.Client = real_cls
+        with patch.dict("sys.modules", {"fastmcp": mock_module}):
+            client = await provider._get_mcp_client()
+
+        # The provider must invoke the Client class, not some other symbol.
+        real_cls.assert_called_once_with("http://localhost:8678/mcp")
+        assert client is mock_instance
 
 
 class TestSessionBuddyCreateWorktree:

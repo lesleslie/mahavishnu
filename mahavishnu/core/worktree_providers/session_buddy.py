@@ -87,11 +87,11 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             MCP client instance
         """
         if self._mcp_client is None:
-            # Import MCP client lazily (only when needed)
+            # Import MCP client lazily (only when needed). Session-Buddy speaks
+            # the FastMCP wire protocol, so the substrate is ``fastmcp.Client`` —
+            # the local ``MCPClient`` alias preserves the call sites that follow.
             try:
-                # ty: ignore[unresolved-import] — lazy import for optional
-                # mcp_client package; ImportError handled below.
-                from mcp_client import MCPClient  # type: ignore[import-not-found]
+                from fastmcp import Client as MCPClient
 
                 self._mcp_client = MCPClient(self.session_buddy_url)
                 await self._mcp_client.__aenter__()

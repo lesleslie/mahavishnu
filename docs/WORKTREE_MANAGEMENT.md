@@ -353,7 +353,7 @@ Mahavishnu exposes worktree management via MCP tools for AI agent integration:
 ### Example MCP Client Usage
 
 ```python
-from mcp_client import MCPClient
+from fastmcp import Client as MCPClient
 
 client = MCPClient("http://localhost:8680/mcp")
 
@@ -580,7 +580,7 @@ mgr.create_worktree("/path/to/repo", "/path/to/worktree", "main")
 mahavishnu worktree create repo main
 
 # Or via MCP
-from mcp_client import MCPClient
+from fastmcp import Client as MCPClient
 client = MCPClient("http://localhost:8680/mcp")
 await client.call_tool(
     "worktree_manage",
