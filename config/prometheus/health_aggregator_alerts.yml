@@ -52,7 +52,7 @@ groups:
             non-2xx for at least 2 minutes. Per plan §5 Phase 4 contract,
             200 = healthy/warming_up, 503 = degraded/failed.
             Check the per-feed status + reason_codes in /health body.
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"
 
       - alert: BodaiMCPServerHealthDegraded
         expr: |
@@ -69,7 +69,7 @@ groups:
             503 for 5+ minutes. The aggregator's worst-case status is
             degraded or failed. Read the JSON body's ``checks`` map for
             per-feed verdicts and reason_codes.
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"
 
       # ------------------------------------------------------------------
       # /health body-level alerts (forward-looking — needs OTel wiring)
@@ -98,7 +98,7 @@ groups:
             has accumulated errors within the halflife window
             (default 300s). The aggregator escalates this to DEGRADED.
             Read the producer's stderr log for the most recent traceback.
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md#error_within_halflife"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#error_within_halflife"
 
       - alert: BodaiFeedNeverPopulated
         expr: |
@@ -119,7 +119,7 @@ groups:
             but the very first cycle raised an exception (cycles_total=0).
             Common root causes: pgvector misconfigured, embedding service
             unreachable, upstream API down.
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md#feed_never_populated"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#feed_never_populated"
 
       - alert: BodaiFeedFailedIngesterNotRunning
         expr: |
@@ -139,7 +139,7 @@ groups:
             The producer task is not alive. Check the lifespan logs
             for whether the producer was intentionally skipped
             (``AKOSHA_SKIP_*=1``) or whether it died unexpectedly.
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md#ingester_not_running"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md#ingester_not_running"
 
       # ------------------------------------------------------------------
       # Decay-disable escape hatch (silent decode)
@@ -168,4 +168,4 @@ groups:
             This is an operator escape hatch for incident triage — if
             the upstream issue is resolved, restart the server without
             the flag (or with ``HEALTH_FEED_HALFLIFE_SECONDS=300``).
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/health_reason_codes.md"

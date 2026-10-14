@@ -123,7 +123,7 @@ INCIDENT_SCENARIOS: dict[str, IncidentScenario] = {
             "Error budget burning at 2x normal rate",
         ],
         affected_components=["Task API", "NLP Parser"],
-        runbook_reference="docs/runbooks/ON_CALL_HANDBOOK.md#common-alerts",
+        runbook_reference="docs/runbooks/on_call_handbook.md#common-alerts",
         expected_mitigation_time_minutes=30,
         steps=[
             {
@@ -162,7 +162,7 @@ INCIDENT_SCENARIOS: dict[str, IncidentScenario] = {
             "Grafana showing latency spike",
         ],
         affected_components=["Task API", "PostgreSQL", "Redis Cache"],
-        runbook_reference="docs/runbooks/ON_CALL_HANDBOOK.md#performance-degradation",
+        runbook_reference="docs/runbooks/on_call_handbook.md#performance-degradation",
         expected_mitigation_time_minutes=20,
         steps=[
             {
@@ -241,7 +241,7 @@ INCIDENT_SCENARIOS: dict[str, IncidentScenario] = {
             "Customer reports of complete inability to use service",
         ],
         affected_components=["All Services", "Database", "Cache"],
-        runbook_reference="docs/runbooks/DISASTER_RECOVERY.md",
+        runbook_reference="docs/runbooks/disaster_recovery.md",
         expected_mitigation_time_minutes=60,
         steps=[
             {
