@@ -159,6 +159,16 @@ tests/archived/
 !docs/plans/.archive/**
 !docs/specs/.archive/
 !docs/specs/.archive/**
+# Exception: .claude/decisions/.archive/ follows the same sibling-of-parent
+# convention (see .claude/decisions/README.md) and must survive a clean
+# checkout. Resolved/superseded decision docs are archived there.
+!.claude/decisions/.archive/
+!.claude/decisions/.archive/**
+# Exception: docs/decisions/.archive/ is the new sibling-of-parent archive
+# path after the docs/decisions/ migration (see chore: move .claude/decisions/
+# to docs/decisions/). Future archive additions will land here.
+!docs/decisions/.archive/
+!docs/decisions/.archive/**
 
 # ============================================================================
 # Documentation — image assets
