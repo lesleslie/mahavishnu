@@ -138,7 +138,7 @@ If both gates passed and no config changes were required, no commit needed. (The
 - `MCPStateBackendError(key: str, reason: str, *, log_context: dict | None = None)` — exported but `try_put_with_log_context` does NOT raise it (it logs and returns False). The class exists for callers that want to raise explicitly.
 - `MCPStateBackendUnavailable(key: str, reason: str)` — defined here per TD-m9 (architectural consistency with `MCPStateBackendError`); re-exported from `clone_claims.py`
 
-**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+**Integration Contract** (per `docs/decisions/wire-up-contract.md`):
 - **Triggered from**: `clone_refactor_workflow.py` (writes via `dag_key()`, `cluster_key()`, `in_flight_key()`); `clone_refactor_status` reads via `dag_key()`; per-step writes via `try_put_with_log_context` (REQ-CLONE-014)
 - **Returns to / updates**: MCP key strings (no state mutation by the constructors); substrate writes via `try_put_with_log_context` with structured-log fallback
 - **Demonstrable by**: `pytest tests/unit/test_mcp_state_backend.py` — every existing test continues to pass; new tests assert `dag_key("abc") == "workflow/v1/abc"`, `cluster_key("cluster-1") == "cluster/v1/cluster-1"`, `in_flight_key("cluster-1") == "cluster/v1/cluster-1/in_flight"`, `try_put_with_log_context(...)` returns False + emits the expected log line when the substrate is unavailable, `list_prefix` returns `list[tuple[str, dict]]` (CR-B2 + CR-m6)
@@ -612,7 +612,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - `release_cluster_claim(mcp_backend: MCPStateBackend, cluster_id: str) -> None` — deletes the sentinel
 - `MCPStateBackendUnavailable(key: str, reason: str)` — TD-m9: actually defined in `state_backends/mcp.py` (architectural consistency with peer `MCPStateBackendError`); re-exported here
 
-**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+**Integration Contract** (per `docs/decisions/wire-up-contract.md`):
 - **Triggered from**: `clone_tools.py::CloneTools.clone_refactor_group` calls `cluster_state_claim` after `verify_proposal` succeeds; `@flow` body in `clone_refactor_workflow.py` calls `release_cluster_claim` in finally
 - **Returns to / updates**: `cluster/v1/{cluster_id}/in_flight` MCP key (claim sentinel); raises `ConcurrentDAGError` on conflict, `MCPStateBackendUnavailable` on circuit-open
 - **Demonstrable by**: `pytest tests/unit/clone/test_clone_claims.py` — 5 tests covering first-claim, idempotent re-claim, different-job-id rejection, in-process serialization, release semantics
@@ -928,7 +928,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - `diff_files(repo_path: Path) -> tuple[str, ...]` — files modified by last apply
 - `is_working_tree_clean(repo_path: Path) -> bool` — `git status --porcelain` empty
 
-**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+**Integration Contract** (per `docs/decisions/wire-up-contract.md`):
 - **Triggered from**: DAG step functions in `clone_refactor_workflow.py` (`write_canonical_symbol`, `write_replacement_diff`)
 - **Returns to / updates**: nothing (pure side-effect wrapper; `git_commit` returns the SHA via stdout)
 - **Demonstrable by**: `pytest tests/unit/workflows/test_git_ops.py` — 8 tests covering apply/conflict, commit/returns-sha, transient/permanent/timeout classification, stash push/pop semantics, plain-stash-not-keep-index verification
@@ -1512,7 +1512,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - `_dataclass_to_dict(obj)` — TD-m8: uses `dataclasses.asdict()` for frozen dataclass serialization
 - `commit_message(refactor_job_id, target_repo, extracted_symbol)` — string formatter (REQ-CLONE-012)
 
-**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+**Integration Contract** (per `docs/decisions/wire-up-contract.md`):
 - **Triggered from**: `mcp__mahavishnu__clone_refactor_group` (in `clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds and `cluster_claim` succeeds (REQ-CLONE-009)
 - **Returns to / updates**: `workflow/v1/{refactor_job_id}` MCP key (via `MCPStateBackend.dag_key()`), `workflow/v1/{refactor_job_id}/steps/{step_name}` per-step outcomes (REQ-CLONE-010), `cluster/v1/{cluster_id}` per-cluster consumer-progress, `cluster/v1/{cluster_id}/in_flight` claim sentinel; all wrapped in try/except with structured-log fallback on substrate failure (REQ-CLONE-014)
 - **Demonstrable by**: `pytest tests/unit/clone/test_clone_refactor_workflow.py` — 9 tests covering happy path, target-write failure, mixed consumer success/failure, no-auto-revert, REJECT-blocked-DAG, best-effort substrate writes, unhandled-exception terminal state, per-step state durability, commit-message convention
@@ -2467,7 +2467,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
   - Release claim on terminal state
 - `CloneTools.clone_refactor_status(limit=10) -> list[tuple[str, dict[str, Any]]]` — reads from `workflow/v1/*` via `mcp_backend.list_prefix("workflow/v1/")` (was `clone-handled/*`); sorts by UUID7 lexicographically (newest first)
 
-**Integration Contract** (per `.claude/decisions/wire-up-contract.md`):
+**Integration Contract** (per `docs/decisions/wire-up-contract.md`):
 - **Triggered from**: MCP client invokes `mcp__mahavishnu__clone_refactor_group`; `clone_refactor_status` continues to be invoked by operators
 - **Returns to / updates**: returns `{refactor_job_id, status: queued, decision, verification}` to MCP client; `MCPStateBackend.put("workflow/v1/{id}", ...)` records initial state; raises `ValueError` (invalid_cluster_id, 400), `ConcurrentDAGError` (409), `MCPStateBackendUnavailable` (503), or `asyncio.CancelledError` (499)
 - **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py` — 8 tests covering happy path, UUID7 format, REJECT blocks DAG, concurrent dedup, MCPStateBackendUnavailable, cancellation marks terminal, plus the `git_repo` fixture reuse
@@ -3227,7 +3227,7 @@ Plan complete and saved to `docs/plans/2026-09-25-clone-refactor-wireup.md`. Six
   - **CR-M1** — Tasks 3-6 tests had no `@pytest.mark.req` markers; added markers on test classes per REQ.
   - **CR-M2** — Added Step 4.5 to Task 6: settings-threading grep per `feedback-cli-flag-consumer-wiring.md` (hard gate).
   - **CR-M3** — Task 2 Step 8 audit-orphans expected-output was wrong (Tasks 5/6 callers don't exist yet); updated to acknowledge orphans are expected at Task 2 commit point.
-  - **CR-M4** — Plan lacked its own Integration Contract blocks per `.claude/decisions/wire-up-contract.md`; added 5-line Integration Contract blocks to Tasks 2, 3, 4, 5, 6.
+  - **CR-M4** — Plan lacked its own Integration Contract blocks per `docs/decisions/wire-up-contract.md`; added 5-line Integration Contract blocks to Tasks 2, 3, 4, 5, 6.
   - **CR-m1** — `_record_failure` metrics-sink failure was logged at DEBUG; promoted to WARNING per CLAUDE.md style ("operators running at INFO must see this").
   - **CR-m6** — Added `TestListPrefixReturnShape` test to capture `list_prefix` return type BEFORE Task 6 depends on it.
 
@@ -3244,7 +3244,7 @@ Plan complete and saved to `docs/plans/2026-09-25-clone-refactor-wireup.md`. Six
   - **CA-B1** — Task 3 Step 4 inserted duplicate `get()`/`delete()` stubs for `MCPStateBackend` using wrong `MCPClient` API signatures; verified real methods already exist, removed the broken Step 4 entirely.
   - **CA-B2** — Task 6 Change F called `mcp_backend.list_prefix(prefix, limit=N)` with non-existent `limit` parameter; fixed to `list_prefix(prefix)[:limit]` (Python-side slice).
   - **CA-B3** — Task 6 Step 1 e2e file had `# pass #` skeletons for 3 test classes; replaced with real test code covering all 8 spec Layer 3 scenarios.
-  - **CA-M1** — Added Integration Contract blocks per `.claude/decisions/wire-up-contract.md` (cited inline; spec §6.x carries the contract).
+  - **CA-M1** — Added Integration Contract blocks per `docs/decisions/wire-up-contract.md` (cited inline; spec §6.x carries the contract).
   - **CA-M2** — Task 1 Step 3 audit-orphans referenced symbols from Task 2; moved to Task 2 Step 7 (after edits exist).
   - **CA-M3** — `test_target_write_fails_no_consumer_writes` chmod'd to 0o000 (no-op for uid 0) and mocked `detect_cluster_members`; fixed to mock `write_canonical_symbol` so the failure path is actually exercised.
   - **CA-m1** — Added explanatory comment on `retry_if_exception_type` + Prefect `retry_condition_fn` interaction.

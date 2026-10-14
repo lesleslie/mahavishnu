@@ -91,6 +91,6 @@ contradict `ecosystem_status.services.akosha`).
 - `mahavishnu/mcp/tools/ecosystem_health_tools.py` — `ecosystem_status`
 - `mahavishnu/metrics_cli.py` — `bodai`, `verification`, `dispatch`
 - `mahavishnu/core/state_backends/dhara.py` — Dhara read path
-- `.claude/decisions/bodai-observability-pattern.md` — single
+- `docs/decisions/bodai-observability-pattern.md` — single
   subscriber, single bus (related: do not build parallel observability
   surfaces)

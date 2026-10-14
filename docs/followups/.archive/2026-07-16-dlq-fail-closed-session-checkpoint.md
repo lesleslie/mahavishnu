@@ -22,7 +22,7 @@ losing this thread's context.
 ## Checkpoint Notes
 
 - **Decision**: Exhaustive audit of all 8 `docs/followups/` files + adopt
-  the `.claude/decisions/` lifecycle convention in `docs/followups/`
+  the `docs/decisions/` lifecycle convention in `docs/followups/`
   (README index + `.archive/` on completion) + execute the **Full #3**
   DLQ fix end-to-end (Phases 1+2+3) per the approved plan
   `docs/plans/2026-07-16-dlq-fail-closed-wiring.md`.
@@ -31,7 +31,7 @@ losing this thread's context.
   genuinely broken (flag inert, runtime write-failure still swallowed),
   #4 was moot (residual only in deprecated `workflow_state.py`).
   The lifecycle ask was to make `docs/followups/` consistent with
-  `.claude/decisions/` so the two follow-up stores share an index +
+  `docs/decisions/` so the two follow-up stores share an index +
   archive rule.
 - **Files changed** (all staged, none committed):
   - **New**:
@@ -42,7 +42,7 @@ losing this thread's context.
     - `docs/runbooks/dead-letter-queue.md` — operator runbook
     - `docs/followups/README.md` — index + lifecycle policy
     - `docs/plans/2026-07-16-dlq-fail-closed-wiring.md` — approved plan
-    - `.claude/decisions/followups-lifecycle.md` — lifecycle policy
+    - `docs/decisions/followups-lifecycle.md` — lifecycle policy
     - `~/.mahavishnu/fallback-queue/dlq-fail-closed-2026-07-16.json` — replay marker
   - **Modified**:
     - `mahavishnu/core/config.py` — `DLQConfig.max_size` added (fixes `dlq_max_size` misread)
@@ -52,8 +52,8 @@ losing this thread's context.
     - `tests/unit/core/test_dead_letter_queue_fail_closed.py` — 2 new (runtime write-failure)
     - `docs/followups/2026-06-29-dlq-silent-fallback.md` — Status: Resolved (cited tests)
     - `docs/followups/2026-06-29-opensearch-diverged-flags.md` — Status: Resolved for live paths
-    - `.claude/decisions/README.md` — new row for followups-lifecycle
-    - `.claude/decisions/test-matrix-review-followups.md` — false "no follow-ups dir" claim corrected
+    - `docs/decisions/README.md` — new row for followups-lifecycle
+    - `docs/decisions/test-matrix-review-followups.md` — false "no follow-ups dir" claim corrected
     - `.gitignore` — scoped negation for `docs/followups/.archive/`
   - **Renamed** (rename `R` preserved):
     - `docs/followups/2026-06-29-dlq-silent-fallback.md` → `docs/followups/.archive/2026-06-29-dlq-silent-fallback.md`

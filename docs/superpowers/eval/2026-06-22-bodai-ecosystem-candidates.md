@@ -185,7 +185,7 @@ ______________________________________________________________________
 **Recommended next step** (more conservative than full Akosha integration):
 
 - **Half-day prototype**: write `scripts/eval/graphify_mcp_inventory.py` that runs `graphify .` against the Mahavishnu repo, emits markdown listing every MCP server declared in `.mcp.json`/`pyproject.toml [tool.mcp]`, plus every non-code artifact (PDFs, images) under `docs/`.
-- **If the report surfaces anything new** (MCP servers or docs Bodai doesn't already know about): promote to one-file ingester at `mahavishnu/ingesters/mcp_inventory.py`. Otherwise decline entirely and note in `.claude/decisions/`: *"Graphify evaluated 2026-06-22; declined because Session-Buddy code-graph tools + existing ingesters cover Bodai's actual needs, and the multimodal/MCP-config gap is small enough to fill in-tree."*
+- **If the report surfaces anything new** (MCP servers or docs Bodai doesn't already know about): promote to one-file ingester at `mahavishnu/ingesters/mcp_inventory.py`. Otherwise decline entirely and note in `docs/decisions/`: *"Graphify evaluated 2026-06-22; declined because Session-Buddy code-graph tools + existing ingesters cover Bodai's actual needs, and the multimodal/MCP-config gap is small enough to fill in-tree."*
 
 ______________________________________________________________________
 
@@ -256,7 +256,7 @@ ______________________________________________________________________
 - This report committed to `docs/superpowers/eval/2026-06-22-bodai-ecosystem-candidates.md`.
 - If OpenObserve POC proceeds, draft `docs/plans/openobserve-poc.md` with storage cost comparison + lock-in assessment.
 - If PageIndex spike proceeds, draft `docs/specs/pageindex-integration.md` (schema, MCP tool contract, cost model, non-goals).
-- If Emdash bridge proceeds, capture decision in `docs/adr/` (architecture-level — affects pool strategy) and `.claude/decisions/` (operational patterns from Emdash worth borrowing).
+- If Emdash bridge proceeds, capture decision in `docs/adr/` (architecture-level — affects pool strategy) and `docs/decisions/` (operational patterns from Emdash worth borrowing).
 - If Keystone is declined after pilot, write `docs/decisions/rejected-keystone.md` so the next person doesn't repeat the experiment.
 
 ______________________________________________________________________
@@ -270,7 +270,7 @@ ______________________________________________________________________
 | Emdash borrow (Path B) | `mahavishnu repo diff` + `pr create` land with tests; `docs/CLI_REFERENCE.md` updated | Mahavishnu CLI engineer |
 | PageIndex adoption | Spike cost \<$0.50/doc; latency p95 \<15s; tree quality acceptable | Mahavishnu ingest engineer |
 | Graphify narrow prototype | MCP-config inventory surfaces something new in 4 hours of effort | Mahavishnu engineer |
-| Keystone read-side pilot | Overlap count, ambient-load delta, dashboard utility score in `.claude/decisions/` | Any Bodai engineer |
+| Keystone read-side pilot | Overlap count, ambient-load delta, dashboard utility score in `docs/decisions/` | Any Bodai engineer |
 
 ______________________________________________________________________
 

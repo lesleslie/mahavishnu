@@ -17,7 +17,7 @@ phase_state: "phase-1-shipped; phase-2-not-started; phase-3-not-started; phase-4
 >
 > Phase 2 (oneiric vendored CLI bug fixes at `oneiric/oneiric/cli/mcp.py` — REQ-009 processor wiring + REQ-010 `transport="http"`), Phase 3 (audit script + tracker), Phase 4a (vishnu + crackerjack migration), Phase 4b (ak + sb discovery + migration), Phase 5a (tracker CI wiring), Phase 5b (per-standalone-server migration) all **NOT STARTED**.
 >
-> Phase 4a Task 4a.1 (vishnu migration) is in **design-complete / implementation-pending** state — see `.claude/decisions/2026-09-26-mcp-launcher-migration.md` for the design sketch. The sketch includes a `_RunAsyncAdapter` class to bridge `FastMCPServer.start()` (sync constructor, exposes `start(host, port)` + internal `server.server.run_http_async(...)`) to the launcher's duck-typed `run_async(transport="http", host=, port=, uvicorn_config=)` contract — the cookbook Example 2's `build_mahavishnu_mcp_app` import name does NOT exist and must NOT be used by the implementer.
+> Phase 4a Task 4a.1 (vishnu migration) is in **design-complete / implementation-pending** state — see `docs/decisions/2026-09-26-mcp-launcher-migration.md` for the design sketch. The sketch includes a `_RunAsyncAdapter` class to bridge `FastMCPServer.start()` (sync constructor, exposes `start(host, port)` + internal `server.server.run_http_async(...)`) to the launcher's duck-typed `run_async(transport="http", host=, port=, uvicorn_config=)` contract — the cookbook Example 2's `build_mahavishnu_mcp_app` import name does NOT exist and must NOT be used by the implementer.
 >
 > Phase 5b is the most cuttable per the plan's own Decision Rule §9. Phases 1–4b are non-cuttable; the foundation deliverable has shipped.
 >
@@ -31,7 +31,7 @@ phase_state: "phase-1-shipped; phase-2-not-started; phase-3-not-started; phase-4
 
 **Tech Stack:** Python 3.14+, **FastMCP >=4.0.3** (fleet-standard per `BODAI_REPO_REGISTRY.md`), `mcp-common` 0.27.0 (this plan introduces 0.28.0 — bump is **user-owned**, not implementer-owned, per `feedback-mcp-common-version-bump-is-user.md`), Oneiric >=0.21 (for `LayerSettings`/`WorkflowBridge`), `httpx2` (transitive), `uv` for venv management.
 
-**Spec:** This document; cross-references `BODAI_REPO_REGISTRY.md`, `settings/ecosystem.yaml`, `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`.
+**Spec:** This document; cross-references `BODAI_REPO_REGISTRY.md`, `settings/ecosystem.yaml`, `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`.
 
 **Reference investigation:** 2026-09-26 session + multi-agent plan review (architecture-council + feature-dev:code-explorer, 2026-09-26 03:39Z). Findings captured in §4 below.
 
@@ -368,7 +368,7 @@ requirements:
 
 - [ ] **Task 4b.1: Discovery subtask for ak (akosha)**
   - Investigate `akosha/cli.py:_start_server` mode dispatch. Determine whether `launch(build_server=...)` closure handles mode selection or whether mode needs to be a launcher kwarg.
-  - **Discovery deliverable**: 1-page note (`akosha/.claude/decisions/2026-XX-XX-launcher-mode-dispatch.md`) describing the closure shape + any kwargs the launcher must accept. Block migration until note is committed.
+  - **Discovery deliverable**: 1-page note (`akosha/docs/decisions/2026-XX-XX-launcher-mode-dispatch.md`) describing the closure shape + any kwargs the launcher must accept. Block migration until note is committed.
 
 - [ ] **Task 4b.2: Backward Compatibility Test Matrix (REQ-013)**
   - Per Core component: enumerate (a) public CLI commands + args, (b) launchd plist `ProgramArguments`, (c) smoke test command.
@@ -380,7 +380,7 @@ requirements:
 
 - [ ] **Task 4b.4: Discovery subtask for sb (session-buddy)**
   - Investigate `python -m session_buddy server start --force` plob subcommand. Determine whether `session_buddy server start --force` is equivalent to `launch(build_server=session_buddy.create_app(...))` or whether the `server` subcommand does additional lifecycle work (signal handling, pid file management, --force semantics).
-  - **Discovery deliverable**: 1-page note (`session-buddy/.claude/decisions/2026-XX-XX-launcher-server-subcommand.md`). Block migration.
+  - **Discovery deliverable**: 1-page note (`session-buddy/docs/decisions/2026-XX-XX-launcher-server-subcommand.md`). Block migration.
 
 - [ ] **Task 4b.5: Migrate sb (session-buddy)**
   - Apply discovery findings. Either: (a) replace `session_buddy server start` body with launcher call, preserving `--force` semantics; or (b) keep plob subcommand as-is if it does non-launcher work (signal handlers, etc.).

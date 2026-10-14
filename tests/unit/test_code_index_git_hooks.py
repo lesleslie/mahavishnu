@@ -118,7 +118,7 @@ class TestHookContent:
     def test_pre_commit_invokes_secret_audit(self) -> None:
         """pre-commit hook guards against hardcoded *_KEY/*_TOKEN/*_SECRET.
 
-        Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+        Enforces docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
         The script path is guarded with -f so repos without the audit
         script can still install without breaking. The audit's exit code
         must be propagated via `|| exit 1` so a violation blocks the

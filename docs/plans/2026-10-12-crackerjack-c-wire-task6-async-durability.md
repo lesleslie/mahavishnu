@@ -193,7 +193,7 @@ title: "C-WIRE Task 6: C-ASYNC-DURABILITY — AsyncTaskManager SQLite-backed per
 - [ ] `tests/integration/mcp/test_async_task_result_store.py`:
   - `test_result_store_returns_envelope_on_hit` — register a row via the live `AsyncTaskManager`, call `mcp__crackerjack__result_store(task_id=...)`, assert `{"found": true, "task": {...}}`.
   - `test_result_store_returns_envelope_on_miss` — call `result_store` with an unknown `task_id`, assert `{"found": false, "task_id": "..."}`.
-- [ ] **Per `.claude/decisions/mcp-backend-wiring-discipline.md`**, add `tests/integration/test_async_task_result_store_e2e.py`: spin up the crackerjack MCP server, wait for warmup, call `mcp__crackerjack__result_store`, assert non-empty response. This is the per-tool e2e smoke test the discipline requires.
+- [ ] **Per `docs/decisions/mcp-backend-wiring-discipline.md`**, add `tests/integration/test_async_task_result_store_e2e.py`: spin up the crackerjack MCP server, wait for warmup, call `mcp__crackerjack__result_store`, assert non-empty response. This is the per-tool e2e smoke test the discipline requires.
 - [ ] **Cross-restart durability test** (per the original plan's goal): in `tests/integration/mcp/test_async_task_persistence.py`, register a task via `AsyncTaskStore` at one db_path, drop the in-memory store object, instantiate a new `AsyncTaskStore` at the same path, call `get(task_id)` and assert the record survives. This is the load-bearing assertion for the "durable across process restart" claim.
 - [ ] Run `pytest tests/unit/mcp/test_async_task_persistence.py tests/unit/mcp/test_reap_zombies.py tests/integration/mcp/test_async_task_result_store.py tests/integration/test_async_task_result_store_e2e.py -v --tb=short` — all tests green.
 
@@ -250,7 +250,7 @@ If Phase 7 verification fails, rollback is `git revert <commit-hash>`. SQLite is
 - `settings/crackerjack.yaml` — the `async_task:` YAML block
 - `crackerjack/mcp/tools/execution_tools.py:10` — the nested group registrar pattern this plan mirrors
 - `crackerjack/mcp/tools/profiles.py` — the `REGISTRATION_MAP` + profile lists this plan adds `async_task_tools` to
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — the per-tool e2e smoke test required by the project
+- `docs/decisions/mcp-backend-wiring-discipline.md` — the per-tool e2e smoke test required by the project
 - `feedback-bodai-push-is-user-controlled.md` — push policy
 - `feedback-no-claude-code-coauthor-attribution.md` — commit message policy
 - `git-author-email-correct-domain.md` — author email policy

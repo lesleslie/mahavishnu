@@ -250,7 +250,7 @@ No silent fallbacks anywhere. A loud failure with a clear message is better than
 
 ## Integration Contracts
 
-Per `.claude/decisions/wire-up-contract.md`, every deliverable carries an Integration Contract. The three deliverables each get one.
+Per `docs/decisions/wire-up-contract.md`, every deliverable carries an Integration Contract. The three deliverables each get one.
 
 ### Deliverable 1: Surface 1 — `statusLine` extension
 
@@ -337,7 +337,7 @@ Each step is independently mergeable. Steps 1, 2, 3 are independent scripts that
 
 ## References
 
-- `.claude/decisions/wire-up-contract.md` — Integration Contract policy
+- `docs/decisions/wire-up-contract.md` — Integration Contract policy
 - `docs/plans/TEMPLATE.md` — implementation plan template (next phase)
 - `docs/feature-tracking/TEMPLATE.md` — feature-state tracker (`built → wired → adopted`)
 - `mahavishnu/websocket/server.py:559` — `broadcast_workflow_stage_completed`

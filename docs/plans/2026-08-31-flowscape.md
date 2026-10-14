@@ -1145,7 +1145,7 @@ The spec at `docs/specs/2026-08-31-flowscape-design.md` was authored in a brains
 
 #### Task 7b.2: MCP deferred decision note (server-mode only)
 **Files:**
-- Create: `.claude/decisions/mcp-activation-deferred.md`
+- Create: `docs/decisions/mcp-activation-deferred.md`
 
 **Steps:**
 - [ ] Write 5-line "deferred decision" note: **server-mode** MCP activation (Flowscape *serving* an MCP surface) requires ADR 0007 + DPIA + CONTRIBUTING update; `mcp.enabled` stays `false`; no UI affordance to flip it; revisit when legal review starts. **Client-mode scapy-mcp enrichment is a separate posture** (ADR 0016), unblocked for v1, and shipped behind `enrichment.scapy_mcp_enabled = false` default.

@@ -11,7 +11,7 @@ audience: operators
 removing worktrees whose changes are already represented on the repository's
 main branch. SessionEnd and cron automation are deferred and are not installed
 or permitted by the current policy amendment
-(`.claude/decisions/worktree-autoremove-policy.md`).
+(`docs/decisions/worktree-autoremove-policy.md`).
 
 This command is **the only** way to remove worktrees through Mahavishnu. It
 classifies candidates using multi-signal merge detection, requires a clean
@@ -355,8 +355,8 @@ believe it is actually merged, open an issue with the full output.
 
 ## Cross-references
 
-- **Policy**: `.claude/decisions/worktree-autoremove-policy.md`
-- **Original rule**: `.claude/decisions/session-worktree-defaults.md` Rule 2
+- **Policy**: `docs/decisions/worktree-autoremove-policy.md`
+- **Original rule**: `docs/decisions/session-worktree-defaults.md` Rule 2
 - **Plan**: `docs/plans/2026-07-26-worktree-autoremove.md`
 - **Core module**: `mahavishnu/core/worktree_prune_merged.py`
 - **CLI**: `mahavishnu/worktree_cli.py` (`prune-merged_worktrees`)

@@ -706,8 +706,8 @@ If any of these fail, do not declare Phase 1 done. The wire-up contract is the b
 
 - `docs/plans/TEMPLATE.md` — the plan format this file follows.
 - `docs/plans/2026-05-10-minimax27-provider-migration.md` — example of a completed Mahavishnu plan.
-- `.claude/decisions/wire-up-contract.md` — the integration contract discipline.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — MCP-specific companion rule (subprocess + warmup, 4-signal feed contract).
+- `docs/decisions/wire-up-contract.md` — the integration contract discipline.
+- `docs/decisions/mcp-backend-wiring-discipline.md` — MCP-specific companion rule (subprocess + warmup, 4-signal feed contract).
 - `mahavishnu/core/adapter_discovery.py` — the in-repo oneiric integration pattern this plan follows.
 - `mahavishnu/pools/base.py:84, 156` — `BasePool` (not `PoolBase`); `scale(target_worker_count) -> None` abstract signature.
 - `mahavishnu/pools/manager.py:355-359` — pool factory invocation shape (`factory(config, *, terminal_manager, session_buddy_client)`).

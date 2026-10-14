@@ -456,7 +456,7 @@ ______________________________________________________________________
 - **MCP server shape (post-migration):** the new
   `workflow_get_outcome(workflow_id)` MCP tool must satisfy the
   4-signal feed contract per
-  `.claude/decisions/mcp-backend-wiring-discipline.md` §3:
+  `docs/decisions/mcp-backend-wiring-discipline.md` §3:
   `feed.entities_count`, `feed.last_updated_timestamp`,
   `feed.errors_total`, `cycles_total`. Task 4's
   `pytest.skip("Replace with the actual Dhara fixture once located")`

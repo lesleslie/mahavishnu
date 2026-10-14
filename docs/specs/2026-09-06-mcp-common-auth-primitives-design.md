@@ -14,7 +14,7 @@ supersedes: null
 related:
   - ../../adr/0016-scapy-mcp-integration.md (scapy-mcp client-mode enrichment posture)
   - ../../legal/gdpr-posture.md (Article 32 monitoring requires AuthHealth surface)
-  - ../../../.claude/decisions/mcp-backend-wiring-discipline.md (wiring discipline §3 mandates feed observability shape)
+  - ../../../docs/decisions/mcp-backend-wiring-discipline.md (wiring discipline §3 mandates feed observability shape)
 target_repo: mcp-common
 scope_note: |
   Single-phase design — no Phase 1/Phase 2 split, no backward-compat kwarg bridge. The package
@@ -44,7 +44,7 @@ What's missing is real integration: token transport is convention-only (`__auth_
 kwarg), no FastMCP middleware exists, no settings integration, no `/health` observability
 surface, no identity-provider abstraction for human/IdP authentication.
 
-The wiring discipline (`.claude/decisions/mcp-backend-wiring-discipline.md` §3) requires
+The wiring discipline (`docs/decisions/mcp-backend-wiring-discipline.md` §3) requires
 every Bodai MCP server to surface feed observability on `/health`. Without an `AuthHealth`
 surface, the auth layer is "alive but unverifiable" — exactly the failure mode the policy
 was written to prevent.
@@ -600,7 +600,7 @@ This is a single-phase implementation. No Phase 1 / Phase 2 split; all work land
   "mcp-common authentication primitives"; unblocks remote-host scapy-mcp.
 - `docs/legal/gdpr-posture.md` §10 — `AuthHealth` surface satisfies Article 32 monitoring
   requirements for any production deployment.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed observability shape
+- `docs/decisions/mcp-backend-wiring-discipline.md` §3 — feed observability shape
   (`entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`) is the
   model `AuthHealth` implements.
 - `mcp_common/auth/exceptions.py` — existing exception hierarchy is reused; new addition

@@ -8,7 +8,7 @@ topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
-related: docs/decisions/oneiric-substrate-extraction.md; .claude/decisions/wire-up-contract.md; .claude/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
+related: docs/decisions/oneiric-substrate-extraction.md; docs/decisions/wire-up-contract.md; docs/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
 title: "Shared Oneiric Substrate - Design v5"
 
 ---
@@ -722,8 +722,8 @@ If any step fails, stop. Don't proceed to the next phase until the current phase
 - **No `Co-Authored-By` trailer** (`feedback-no-claude-code-coauthor-attribution.md`).
 - **Author email** `les@wedgwoodwebworks.com` (`git-author-email-correct-domain.md`).
 - **Auth short-circuit preserved** across substrate adoption. `auth.enabled: false` on any consumer MUST continue to short-circuit both middleware AND decorator gates per `feedback-bodai-localhost-no-auth.md`. Phase E2 explicitly carries `auth__enabled` and `auth__loopback_trusted` through `OneiricSettings.substrate`.
-- **Wire-up contract per `.claude/decisions/wire-up-contract.md`** — every phase has an Integration Contract block (Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added). Verified at plan-promotion time per the `tests/test_plan_citations.py` CI guard.
-- **MCP backend wiring discipline per `.claude/decisions/mcp-backend-wiring-discipline.md`** — every substrate adapter exposes `get_feed_state() -> {entities_count, last_updated_timestamp, errors_total, cycles_total}`; component `/health` aggregates.
+- **Wire-up contract per `docs/decisions/wire-up-contract.md`** — every phase has an Integration Contract block (Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added). Verified at plan-promotion time per the `tests/test_plan_citations.py` CI guard.
+- **MCP backend wiring discipline per `docs/decisions/mcp-backend-wiring-discipline.md`** — every substrate adapter exposes `get_feed_state() -> {entities_count, last_updated_timestamp, errors_total, cycles_total}`; component `/health` aggregates.
 - **Cross-component imports show dependency direction** — REQ entries that touch shared state include one-line dependency diagram. Akosha → Mahavishnu imports (inverted case) forbidden except via MCP/HTTP.
 
 ## 13. Critical files
@@ -809,8 +809,8 @@ If any step fails, stop. Don't proceed to the next phase until the current phase
 - `bodai-pre-1.0-merge-policy.md` — direct merge to main, no PRs.
 - `feedback-bodai-localhost-no-auth.md` — `auth.enabled:false` short-circuits all gates.
 - `feedback-no-bodai-mentions-in-mcp-repos.md` — `*-mcp` repos are NOT ecosystem members.
-- `.claude/decisions/wire-up-contract.md` — Integration Contract blocks per phase.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — `get_feed_state()` per adapter.
+- `docs/decisions/wire-up-contract.md` — Integration Contract blocks per phase.
+- `docs/decisions/mcp-backend-wiring-discipline.md` — `get_feed_state()` per adapter.
 - `oneiric/adapters/vector/hot_store.py:40` — `class HotStore(Protocol)` (ADR 017).
 - `oneiric/core/config.py:246` — `class OneiricSettings(BaseModel)` (canonical settings class).
 - `akosha/config.py:71-78` — `HotStorageConfig` migration note (2026-09-27).

@@ -1,6 +1,6 @@
 """Identify and remove merged worktrees across the configured repos.
 
-Companion to .claude/decisions/worktree-autoremove-policy.md. The
+Companion to docs/decisions/worktree-autoremove-policy.md. The
 ``WorktreePruner`` here is the *engine*; the CLI in ``worktree_cli.py``
 is the *trigger*.
 

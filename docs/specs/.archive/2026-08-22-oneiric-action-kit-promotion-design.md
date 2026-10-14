@@ -67,7 +67,7 @@ There is no enforcement today. There is no discoverability either.
 ## 4. Architecture
 
 Three-layer split, mirroring the existing
-`mahavishnu/.claude/decisions/bodai-observability-pattern.md` pattern:
+`mahavishnu/docs/decisions/bodai-observability-pattern.md` pattern:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -78,7 +78,7 @@ Three-layer split, mirroring the existing
                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Decision + runtime: MAHAVISHNU                                      │
-│    mahavishnu/.claude/decisions/promote-oneiric-action-kits.md       │
+│    mahavishnu/docs/decisions/promote-oneiric-action-kits.md       │
 │      → the WHY (use kits first; what "kit-shaped code" looks like)   │
 │    mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md   │
 │      → the WHEN (auto-trigger skill; runtime discovery)              │
@@ -105,12 +105,12 @@ Three jobs, three owners:
 
 ## 5. Components
 
-### 5.1 Decision doc — `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`
+### 5.1 Decision doc — `mahavishnu/docs/decisions/promote-oneiric-action-kits.md`
 
-Matches the existing pattern in `mahavishnu/.claude/decisions/`
+Matches the existing pattern in `mahavishnu/docs/decisions/`
 (see `bodai-observability-pattern.md` for the closest analog).
 **Use this exact frontmatter** (matches every other file in
-`mahavishnu/.claude/decisions/`):
+`mahavishnu/docs/decisions/`):
 
 ```markdown
 ---
@@ -241,7 +241,7 @@ Before writing common primitives (HMAC, token gen, schema validation,
 retries, redaction, HTTP probing, serialization, compression, hashing,
 data transforms), check `oneiric.actions` — catalog lives at
 `oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
-`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+`mahavishnu/docs/decisions/promote-oneiric-action-kits.md`.
 ```
 
 ## 6. Catalog Entry Template
@@ -307,7 +307,7 @@ Four waves; each wave is one or more PRs per repo. The catalog file
 1. Write `oneiric/docs/action-kits.md` — 17 kit entries, alphabetical
    by `metadata.key`. **Commit and push this to the oneiric repo** as a
    docs-only PR (separate from mahavishnu's PRs).
-2. Write `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`
+2. Write `mahavishnu/docs/decisions/promote-oneiric-action-kits.md`
    using the frontmatter and template in §5.1.
 3. Write `mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`
    using the header-style frontmatter and template in §5.2.
@@ -414,7 +414,7 @@ Nothing breaks if any one is removed; readers opt in independently.
 
 - W3 deliverables across 5 repos (mailgun-mcp, akosha, session-buddy,
   dhara, mahavishnu) — already merged to origin/main
-- `mahavishnu/.claude/decisions/bodai-observability-pattern.md` —
+- `mahavishnu/docs/decisions/bodai-observability-pattern.md` —
   template analog
 - `mahavishnu/docs/adr/001-use-oneiric.md` — pre-existing oneiric
   promotion for config + logging (this design extends it to action

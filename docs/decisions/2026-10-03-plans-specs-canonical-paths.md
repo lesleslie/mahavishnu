@@ -131,7 +131,7 @@ The plan/spec migration is opt-in per repo because:
   friendly).
 - **Sibling decision**: `2026-10-03-main-branch-protection.md` (also
   recent cleanup of repo-wide governance).
-- **Archive lifecycle model**: `.claude/decisions/followups-lifecycle.md`
+- **Archive lifecycle model**: `docs/decisions/followups-lifecycle.md`
   — `docs/plans/.archive/` and `docs/specs/.archive/` follow the same
   never-delete convention as `docs/followups/.archive/`.
 

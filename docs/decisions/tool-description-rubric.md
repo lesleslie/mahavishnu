@@ -172,6 +172,6 @@ not per-tool compliance. Per-tool compliance is a code-review concern.
 - `docs/plans/2026-09-26-tool-surface-quality.md` — Phase 2 source plan.
 - `docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md` —
   follow-on plan that depends on Task 2.3 actually landing.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — sibling
+- `docs/decisions/mcp-backend-wiring-discipline.md` — sibling
   decision covering the wire-up side of the same surface.
 - `tests/unit/test_tool_description_rubric.py` — structural validator.

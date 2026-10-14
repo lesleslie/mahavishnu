@@ -25,7 +25,7 @@ title: "Two-Stage Warn/Confirm Drift Detector Implementation Plan"
 
 ## Global Constraints
 
-These apply to **every** task. Values copied verbatim from CLAUDE.md, the parent spec, and `.claude/decisions/`.
+These apply to **every** task. Values copied verbatim from CLAUDE.md, the parent spec, and `docs/decisions/`.
 
 - `from __future__ import annotations` first non-comment line of every source file (CLAUDE.md convention).
 - Ruff: line-length 100, function args ≤ 10, branches ≤ 15, returns ≤ 6, statements ≤ 55 (CLAUDE.md hard limits).
@@ -1571,7 +1571,7 @@ Collect the 4 agents' findings. If any agent reported CRITICAL or HIGH:
 
 If only MEDIUM/LOW remain, document them as follow-up items in
 `docs/followups/2026-09-10-changepoint-two-stage-polish.md` per
-`.claude/decisions/followups-lifecycle.md` and proceed to ship.
+`docs/decisions/followups-lifecycle.md` and proceed to ship.
 
 - [ ] **Step 7.6: Run the crackerjack gate**
 

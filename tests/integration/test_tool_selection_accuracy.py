@@ -4,7 +4,7 @@ REQ-TSQ-011 from ``docs/plans/2026-09-26-tool-surface-quality.md``.
 
 Verifies the top-10 most-called tools (per ``scripts/audit_top_tool_calls.py``)
 have descriptions that satisfy the 6-criterion rubric from
-``.claude/decisions/tool-description-rubric.md`` AND that a fixed task
+``docs/decisions/tool-description-rubric.md`` AND that a fixed task
 suite of representative queries would be routed to the correct tool by
 an LLM picking from those descriptions.
 
@@ -221,7 +221,7 @@ def inspect_cleandoc(text: str) -> str:
 
 # ---------------------------------------------------------------------------
 # Rubric criterion checkers — one per criterion from
-# .claude/decisions/tool-description-rubric.md. Each returns
+# docs/decisions/tool-description-rubric.md. Each returns
 # (passed: bool, detail: str) so a regression test can pinpoint which
 # criterion failed.
 # ---------------------------------------------------------------------------

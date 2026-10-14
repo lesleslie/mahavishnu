@@ -22,7 +22,7 @@ fixed (`2026-06-29-dlq-silent-fallback.md`,
 `2026-06-29-opensearch-diverged-flags.md`) — demonstrating that an unverified
 status line is a claim, not a guarantee.
 
-This adopts the convention already used by `.claude/decisions/` (a README
+This adopts the convention already used by `docs/decisions/` (a README
 index plus archive-on-completion), so the two follow-up stores are
 consistent.
 

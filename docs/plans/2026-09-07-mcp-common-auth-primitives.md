@@ -3448,7 +3448,7 @@ ______________________________________________________________________
 
 ## Integration Contract (per phase)
 
-Per the wire-up contract (`.claude/decisions/wire-up-contract.md`), every phase deliverable must carry an Integration Contract block. **B12 fix.**
+Per the wire-up contract (`docs/decisions/wire-up-contract.md`), every phase deliverable must carry an Integration Contract block. **B12 fix.**
 
 ### Phase 1: mcp-common vertical slice (Tasks 1-13, 8a lands before 6)
 

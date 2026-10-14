@@ -24,7 +24,7 @@ For repo-local editing rules, layout, and validation entry points, see AGENTS.md
 
 ## Decisions
 
-Repo-local decisions and policy live in `.claude/decisions/`. Use this
+Repo-local decisions and policy live in `docs/decisions/`. Use this
 directory when a non-trivial choice needs to be recorded for future
 contributors — typically a policy that future code, frontmatter, or
 docs must respect.
@@ -51,7 +51,7 @@ operate within the current build*.
 `## Decision rule`, `## Status`) is enough; full ADR-style structure
 is not required. See `removed-scripts.md` for an example.
 
-**Index:** `.claude/decisions/README.md` lists the current files.
+**Index:** `docs/decisions/README.md` lists the current files.
 
 ## Principles
 

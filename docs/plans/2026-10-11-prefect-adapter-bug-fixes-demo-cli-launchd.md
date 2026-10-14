@@ -40,7 +40,7 @@ If launchd misbehaves in C, A and B still ship cleanly.
 - `tests/unit/cli/test_launchd_cli.py` — install/uninstall/status unit tests (mock `launchctl`)
 - `tests/integration/test_prefect_launchd_e2e.py` — gated by `requires_prefect`
 - `tests/unit/cli/test_cli_wireup_invariants.py` — meta-test asserting `demo_app` and `launchd_app` are registered in `_main_cli`
-- `.claude/decisions/2026-10-11-prefect-demo-cli-launchd.md` — 5 recurring rules
+- `docs/decisions/2026-10-11-prefect-demo-cli-launchd.md` — 5 recurring rules
 - `docs/plans/2026-10-11-prefect-adapter-bug-fixes-demo-cli-launchd.md` — archive after execution
 
 **Cleanup** (gitignored per `crackerjack` canonical patterns, but find+delete for working tree hygiene):
@@ -280,7 +280,7 @@ def test_launchd_subcommands_wired():
 
 ### Decision capture
 
-`.claude/decisions/2026-10-11-prefect-demo-cli-launchd.md` with 5 rules:
+`docs/decisions/2026-10-11-prefect-demo-cli-launchd.md` with 5 rules:
 
 1. **Prefect SDK 3.x adapter fixes** — link to `prefect.flow_runs.wait_for_flow_run`, `.state` unwrap, `_coerce_seconds` helper for SDK `timedelta`. Applies to every 3.x line.
 1. **Bug C is `_api_key_env`-scoped, not `__init__`** — env mutations in `_get_client_context`, restored on context exit.

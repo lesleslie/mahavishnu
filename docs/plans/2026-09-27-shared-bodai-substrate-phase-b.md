@@ -30,7 +30,7 @@ Verbatim from spec §12:
 - **No `git push`** for bodai without explicit approval (`feedback-bodai-push-is-user-controlled.md`).
 - **No version bumps** in any Bodai `pyproject.toml` — user does.
 - **No `Co-Authored-By` trailer**.
-- **Wire-up contract** per `.claude/decisions/wire-up-contract.md`.
+- **Wire-up contract** per `docs/decisions/wire-up-contract.md`.
 
 ## 1. Outcome
 
@@ -421,4 +421,4 @@ Phase B is complete when ALL of:
 - `oneiric/adapters/vector/pgvector.py` — PgvectorAdapter
 - `akosha/storage/pgvector_warm_store.py:150` — Akosha's pre-existing pgvector integration
 - `akosha/dev/docker-compose.yml` — local pgvector stack for tests
-- `.claude/decisions/wire-up-contract.md` — Integration Contract rules
+- `docs/decisions/wire-up-contract.md` — Integration Contract rules

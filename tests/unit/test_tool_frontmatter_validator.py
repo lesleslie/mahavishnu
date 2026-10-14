@@ -2,7 +2,7 @@
 
 These tests pin two pre-existing bugs in the validator that were
 discovered during the T3.3 review (see
-``.claude/decisions/technical-debt-roadmap.md``):
+``docs/decisions/technical-debt-roadmap.md``):
 
 1. ``parse_frontmatter`` only accepted the ``---`` delimiter, but the
    repo's tool files use a 70-underscore delimiter. The validator was

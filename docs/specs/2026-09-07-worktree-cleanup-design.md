@@ -21,17 +21,17 @@ blocks_on: []
 blocks: []
 supersedes: null
 related:
-  - "../../.claude/decisions/session-worktree-defaults.md (Rule 2: never auto-remove)"
-  - "../../.claude/decisions/worktree-autoremove-policy.md (Rule 2 amendment: prune-merged CLI; Rule 4: --force-reason for dirty merged)"
-  - "../../.claude/decisions/worktree-autoremove-v4-followup.md (deferred automation; not a permission grant)"
-  - "../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md (cross-repo fanout + manual cleanup of /tmp/<branch>)"
-  - "../../.claude/decisions/wire-up-contract.md (Integration Contract template; one contract per artifact)"
-  - "../../.claude/decisions/removed-scripts.md (drift-bundling risk: do NOT duplicate prune-merged classifier)"
-  - "../../.claude/decisions/bodai-pre-1.0-merge-policy.md (Bodai components merge directly to main pre-1.0)"
+  - "../../docs/decisions/session-worktree-defaults.md (Rule 2: never auto-remove)"
+  - "../../docs/decisions/worktree-autoremove-policy.md (Rule 2 amendment: prune-merged CLI; Rule 4: --force-reason for dirty merged)"
+  - "../../docs/decisions/worktree-autoremove-v4-followup.md (deferred automation; not a permission grant)"
+  - "../../docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md (cross-repo fanout + manual cleanup of /tmp/<branch>)"
+  - "../../docs/decisions/wire-up-contract.md (Integration Contract template; one contract per artifact)"
+  - "../../docs/decisions/removed-scripts.md (drift-bundling risk: do NOT duplicate prune-merged classifier)"
+  - "../../docs/decisions/bodai-pre-1.0-merge-policy.md (Bodai components merge directly to main pre-1.0)"
   - "../../adr/ (no ADR specific to worktrees; rules live in decisions/)"
 target_repo: mahavishnu
 scope_note: |
-  Three artifacts: (a) `.claude/decisions/worktree-cleanup-policy.md` codifying the 2026-09-07
+  Three artifacts: (a) `docs/decisions/worktree-cleanup-policy.md` codifying the 2026-09-07
   sweep findings (tier rubric, salvage procedure, lock + live-PID semantics, agent-dispatch reap
   rule, cross-repo plan-orphan rule); (b) `mahavishnu worktree scan` CLI subcommand that loads
   `settings/ecosystem.yaml` via the existing bootstrap resolver, classifies each worktree, and
@@ -89,7 +89,7 @@ in the new decision doc).
 ## Goals
 
 1. **Codify the 2026-09-07 sweep's findings** as a sibling decision doc
-   (`.claude/decisions/worktree-cleanup-policy.md`) covering: tier rubric (with explicit
+   (`docs/decisions/worktree-cleanup-policy.md`) covering: tier rubric (with explicit
    boundary inclusivity), salvage procedure (with path-safety rules), lock + live-PID
    semantics (`-f -f` requirement + PID-reuse identity check), agent-dispatch reap rule,
    cross-repo plan-orphan rule.
@@ -134,7 +134,7 @@ Three artifacts land in `/Users/les/Projects/mahavishnu/`:
 
 ```
 mahavishnu/
-├── .claude/decisions/
+├── docs/decisions/
 │   └── worktree-cleanup-policy.md          # NEW (sibling to worktree-autoremove-policy.md)
 ├── mahavishnu/
 │   ├── worktree_cli.py                     # EXTENDS (adds `scan` subcommand)
@@ -183,7 +183,7 @@ or `_validate_path`.
 
 ## Design
 
-### Decision doc: `.claude/decisions/worktree-cleanup-policy.md`
+### Decision doc: `docs/decisions/worktree-cleanup-policy.md`
 
 Same shape as `worktree-autoremove-policy.md`. Body sections:
 
@@ -446,7 +446,7 @@ Bash-friendly Python wrapper that calls the CLI. Keeps the skill body thin.
 - **Observability added**: OTel counter `mahavishnu_worktree_scan_total{format,exit_code}`
   + histogram `mahavishnu_worktree_scan_duration_seconds{repo_count_bucket}`.
 
-## Integration Contract — `.claude/decisions/worktree-cleanup-policy.md`
+## Integration Contract — `docs/decisions/worktree-cleanup-policy.md`
 
 - **Triggered from**: any code or doc that references the tier rubric, salvage procedure,
   or lock + live-PID semantics. The decision doc is the canonical source of truth.
@@ -523,11 +523,11 @@ Ship the three artifacts as separate commits in this order:
 3. `feat(skills): add bodai-worktree-cleanup` — the skill wrapper + `cli_scan.py`.
    Land third. Pure wiring; no logic.
 
-Per `.claude/decisions/bodai-pre-1.0-merge-policy.md`, all three commits land directly
+Per `docs/decisions/bodai-pre-1.0-merge-policy.md`, all three commits land directly
 to main. No PR. Squash is forbidden because each commit's `tests/` change pins that
 commit's contract.
 
-Per `.claude/decisions/wire-up-contract.md`: this spec is the canonical Integration
+Per `docs/decisions/wire-up-contract.md`: this spec is the canonical Integration
 Contract for all three artifacts (CLI, decision doc, skill). Each artifact's contract
 block above satisfies the wire-up contract.
 

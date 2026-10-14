@@ -148,7 +148,7 @@ ______________________________________________________________________
 
 ## References
 
-- `.claude/decisions/wire-up-contract.md` — the policy this template
+- `docs/decisions/wire-up-contract.md` — the policy this template
   implements.
 - `docs/feature-tracking/TEMPLATE.md` — feature-state template that
   tracks each wiring's lifecycle (`built` → `wired` → `adopted`).

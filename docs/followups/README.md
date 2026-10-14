@@ -100,8 +100,8 @@ it's in.
   code is only partially fixed. That gap is exactly why the verified-state
   column exists and why `Resolved` claims should cite a runnable test.
 
-### Relationship to `.claude/decisions/`
+### Relationship to `docs/decisions/`
 
-This directory follows the same conventions as `.claude/decisions/`
+This directory follows the same conventions as `docs/decisions/`
 (a README index plus archive-on-completion into `.archive/`, never delete).
-The policy is recorded at `.claude/decisions/followups-lifecycle.md`.
+The policy is recorded at `docs/decisions/followups-lifecycle.md`.

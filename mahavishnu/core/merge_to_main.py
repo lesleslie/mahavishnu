@@ -338,7 +338,7 @@ def run_squash_merge(
 def run_push(base_ref: str = "main") -> tuple[int, str]:
     """Stage 5: ``git push origin <base_ref>`` (the ONLY auto-push entry point).
 
-    Per decision doc ``.claude/decisions/2026-10-03-mainautopush.md`` and
+    Per decision doc ``docs/decisions/2026-10-03-mainautopush.md`` and
     spec §4.6: this helper is the only place in the repo where
     ``git push origin main`` is invoked without explicit user opt-in.
     The command is hard-coded with no flags — no force-push, no
@@ -379,7 +379,7 @@ def run_push(base_ref: str = "main") -> tuple[int, str]:
 def _list_repo_worktrees(worktree_root: Path) -> list[Path]:
     """List co-located worktrees for the current repo's worktree-base.
 
-    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md` and
+    Per `docs/decisions/2026-10-13-prepushconsolidationgate.md` and
     `~/.claude/CLAUDE.md` "Worktree location preference": Bodai repos
     place their worktrees at
     ``<worktree-base>/<basename-of-cwd>/<worktree-name>/``. So the
@@ -531,7 +531,7 @@ def _run_consolidation_gate(
 ) -> tuple[bool, list[str], list[str]]:
     """Pre-push consolidation gate.
 
-    Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`:
+    Per `docs/decisions/2026-10-13-prepushconsolidationgate.md`:
     checks (1) co-located worktrees for unmerged WIP and (2) pending
     commit eligibility. Returns ``(gate_clear, held_back_sibling_reasons,
     ineligible_commit_shas)``. ``gate_clear=True`` means push is
@@ -603,7 +603,7 @@ def _write_held_back_log(
         f"Base: {base}\n"
         f"Held-back sibling worktrees: {len(held_back_siblings)}\n"
         f"Ineligible pending commits: {len(ineligible_commits)}\n\n"
-        f"Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. "
+        f"Per `docs/decisions/2026-10-13-prepushconsolidationgate.md`. "
         f"Stage 6 cleanup was skipped; `.review-state.json` carries the "
         f"sticky-failure marker (`stage_failed: "
         f"'stage_5_push_held_back_by_consolidation_gate'`).\n"

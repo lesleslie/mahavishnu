@@ -274,7 +274,7 @@ requirements:
 - [ ] Modify: `mahavishnu/mcp/tools/capability_tools.py:357-411` — call `_dispatch_dag_waves` after `plan()`, flip `status="planned"` → `"queued"`, surface `envelope_ids`.
 - [ ] Create: `tests/unit/core/test_conductor_dispatch.py` — 7 tests (five engines + unsupported fallback + level-by-level wave dispatch).
 - [ ] Modify: `tests/integration/conductor/test_end_to_end_dag.py` — add `test_execute_capability_runs_two_node_dag`.
-- [ ] Modify: `docs/plans/PLAN_INDEX.md` — add the new plan row (per `.claude/decisions/plan-index-sync-script.md`).
+- [ ] Modify: `docs/plans/PLAN_INDEX.md` — add the new plan row (per `docs/decisions/plan-index-sync-script.md`).
 
 ## 7. Validation Matrix
 

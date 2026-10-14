@@ -61,7 +61,7 @@ This work lives in `/Users/les/Projects/session-buddy/` (Phase 0.4
 per `BODAI_REPO_REGISTRY.md`), not in mahavishnu. The followup file
 itself lives here in mahavishnu because (a) mahavishnu is where the
 affected plans live, and (b) the followups lifecycle policy
-(`.claude/decisions/followups-lifecycle.md`) treats mahavishnu's
+(`docs/decisions/followups-lifecycle.md`) treats mahavishnu's
 `docs/followups/` as the cross-Bodai canonical index.
 
 ## Blocks
@@ -94,7 +94,7 @@ This followup closes to `complete` when:
   `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/session-buddy-checkpoint-hooks-fire-during-subagent-sessions.md`
 - Resolution target: when both blocking plans close to `complete`,
   move this followup to `docs/followups/.archive/` per the
-  followups lifecycle policy at `.claude/decisions/followups-lifecycle.md`.
+  followups lifecycle policy at `docs/decisions/followups-lifecycle.md`.
 
 ## Resolution (2026-09-19)
 

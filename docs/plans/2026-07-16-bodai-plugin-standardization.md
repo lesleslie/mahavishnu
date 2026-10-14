@@ -12,7 +12,7 @@ title: "Bodai Plugin Standardization Implementation Plan"
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Goal:** Convert 5 Bodai MCP servers (`mahavishnu`, `session-buddy`, `crackerjack`, `akosha`, `dhara`) to Claude Code plugins, distributed via a new `bodai-plugins` marketplace repo. Replace existing slash commands with namespaced `<server>:<command>` form. Give workflows a documented lifecycle.
-> **Architecture:** Five self-contained plugins (one per MCP server) + `bodai-plugins` marketplace repo with a Typer CLI scaffold tool (`init`, `validate --fix`) + paired decision files in `.claude/decisions/workflows/` for lifecycle tracking. Two-phase migration per repo: **Phase A** adds plugin manifest + namespaced commands alongside old flat commands (safe, additive); **Phase B** deletes old commands + updates `.mcp.json` to point at plugin's MCP server entry (destructive).
+> **Architecture:** Five self-contained plugins (one per MCP server) + `bodai-plugins` marketplace repo with a Typer CLI scaffold tool (`init`, `validate --fix`) + paired decision files in `docs/decisions/workflows/` for lifecycle tracking. Two-phase migration per repo: **Phase A** adds plugin manifest + namespaced commands alongside old flat commands (safe, additive); **Phase B** deletes old commands + updates `.mcp.json` to point at plugin's MCP server entry (destructive).
 > **Tech Stack:** Python 3.13, Typer, Claude Code plugin format (`plugin.json` + `commands/`), Claude Code marketplace format (`marketplace.json`).
 
 ## Global Constraints
@@ -23,7 +23,7 @@ title: "Bodai Plugin Standardization Implementation Plan"
 - **Plugin layout** (per server repo): `<repo>/.claude-plugin/plugin.json` + `<repo>/commands/<server>-<command>.md` + `<repo>/.mcp.json`.
 - **Marketplace layout** (`bodai-plugins` repo): `bodai-plugins/.claude-plugin/marketplace.json` + `bodai-plugins/bodai_plugins/{cli.py,scripts/init_bodai_plugin.py,scripts/validate_bodai_plugin.py}` + `bodai-plugins/tests/` + `bodai-plugins/pyproject.toml`.
 - **Workflow decision files** use `YYYY-MM-DD-<name>.md` pattern, paired with the `.js` workflow in `.claude/workflows/`. Status header is `## Status: Active | Superseded | Archived`.
-- **Lifecycle rules**: Active workflows are kept in `.claude/workflows/`; Superseded/Archived workflows move to `.claude/workflows/.archive/` and get a paired decision file in `.claude/decisions/workflows/`.
+- **Lifecycle rules**: Active workflows are kept in `.claude/workflows/`; Superseded/Archived workflows move to `.claude/workflows/.archive/` and get a paired decision file in `docs/decisions/workflows/`.
 - **Cross-repo merge policy** (per `bodai-pre-1.0-merge-policy.md`): branch + squash/ff-merge into `main` of each repo. No PR review gates.
 - **TDD discipline**: each task writes the failing test first, then the minimal implementation, then commits.
 - **Frequent commits**: one commit per task minimum, atomic diff per commit.
@@ -1454,8 +1454,8 @@ ______________________________________________________________________
 
 **Files:**
 
-- Create: `/Users/les/Projects/mahavishnu/.claude/decisions/workflows/README.md`
-- Create: `/Users/les/Projects/mahavishnu/.claude/decisions/workflows/TEMPLATE.md`
+- Create: `/Users/les/Projects/mahavishnu/docs/decisions/workflows/README.md`
+- Create: `/Users/les/Projects/mahavishnu/docs/decisions/workflows/TEMPLATE.md`
 
 **Step 1: Write the README**
 
@@ -1505,7 +1505,7 @@ When to use this workflow. What triggers it. What it produces.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add .claude/decisions/workflows/
+git add docs/decisions/workflows/
 git commit -m "docs(decisions): add workflow decision README and template"
 ```
 
@@ -1518,7 +1518,7 @@ ______________________________________________________________________
 For each `.js` file in `/Users/les/Projects/mahavishnu/.claude/workflows/`:
 
 1. Note the wave's purpose from the header comment.
-1. Create `.claude/decisions/workflows/YYYY-MM-DD-<wave-name>.md` with `## Status: Active` and a 1-paragraph decision rule explaining when to re-run it.
+1. Create `docs/decisions/workflows/YYYY-MM-DD-<wave-name>.md` with `## Status: Active` and a 1-paragraph decision rule explaining when to re-run it.
 
 Reference for the wave workflows to pair (created in earlier work):
 
@@ -1557,7 +1557,7 @@ Commit:
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add .claude/decisions/workflows/
+git add docs/decisions/workflows/
 git commit -m "docs(workflows): pair existing wave workflows with decision files"
 ```
 
@@ -1746,7 +1746,7 @@ The user noted `docs/followups/` is being changed to follow the same lifecycle a
 ```markdown
 # Followups
 
-Time-bounded follow-up items. Pair with `.claude/decisions/` lifecycle.
+Time-bounded follow-up items. Pair with `docs/decisions/` lifecycle.
 
 Status: **Open** | **Resolved** | **Archived**.
 

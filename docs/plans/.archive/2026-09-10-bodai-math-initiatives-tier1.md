@@ -327,7 +327,7 @@ author doesn't re-derive this from scratch.
 
 Phase 9 implements these triggers as a CI-checkable script
 (`scripts/feature_eligibility.py`) and adds `docs/followups/` entries
-per `.claude/decisions/followups-lifecycle.md`.
+per `docs/decisions/followups-lifecycle.md`.
 
 ## 5. Requirements
 
@@ -494,7 +494,7 @@ document the math and its assumptions; produce the validation report.
 - Per-shift-size decomposition for bursty and hyperexponential workloads: error budget per CV² tier, so reviewers see where the model genuinely degrades
 - Add `docs/pools/queueing_routing.md` explaining the math, the assumptions, and how to interpret the validation report
 - Add `docs/audits/2026-09-10-queueing-validation.md` with the actual numbers
-- Add `python scripts/audit_orphans.py` to the validation step (run after every phase per `.claude/decisions/wire-up-contract.md`, not only at promotion)
+- Add `python scripts/audit_orphans.py` to the validation step (run after every phase per `docs/decisions/wire-up-contract.md`, not only at promotion)
 
 #### Integration Contract — Phase 3 deliverable
 - **Triggered from**: `pytest tests/integration/pools/test_queueing_routing.py --benchmark-json=bench.json` runs the validation harness. `python scripts/audit_orphans.py` checks for orphaned symbols.
@@ -709,7 +709,7 @@ and Phase D (cross-repo Akosha wiring) move from deferred to active.
     - `2`: internal error (MCP endpoint unreachable, malformed response, file system error reading feature-tracking frontmatter).
   - **CLI flags**: `--json` for machine-readable output (one JSON object with `triggers: [...]` and `summary: {...}`); `--dry-run` to skip exit code (always exit 0).
 - Wire into CI: `make tier2-eligibility` target that runs the script on a monthly schedule and fails the build if any trigger fires without a follow-on plan
-- Add `docs/followups/2026-09-10-tier2-optimal-transport.md`, `docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`, `docs/followups/2026-09-10-tier2-phase-d-cross-repo.md` per `.claude/decisions/followups-lifecycle.md`
+- Add `docs/followups/2026-09-10-tier2-optimal-transport.md`, `docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`, `docs/followups/2026-09-10-tier2-phase-d-cross-repo.md` per `docs/decisions/followups-lifecycle.md`
 - Add `docs/feature-tracking/2026-09-10-tier2-math-deferred.md` tracking all three in `deferred` state
 - Update `docs/plans/PLAN_INDEX.md` for this spec's row to `status: shipped` once all required phases land
 
@@ -965,7 +965,7 @@ meta-plan in commit `671611ff`).
    cadence.
 5. **Should `scripts/audit_orphans.py` run after every phase, or only
    at promotion?** My recommendation is every phase per
-   `.claude/decisions/wire-up-contract.md`; v1 only ran it at
+   `docs/decisions/wire-up-contract.md`; v1 only ran it at
    promotion.
 6. **Should the `mahavishnu.observability.metric_samples` Dhara table
    also be exposed via a new `metrics:*` WebSocket channel?** My
@@ -985,13 +985,13 @@ meta-plan in commit `671611ff`).
   this plan follows.
 - `docs/specs/2026-09-09-jot-read-design.md` — recent
   example of a spec-style document in this repo.
-- `.claude/decisions/wire-up-contract.md` — the policy that drives
+- `docs/decisions/wire-up-contract.md` — the policy that drives
   the Integration Contract requirement.
-- `.claude/decisions/followups-lifecycle.md` — the policy Phase 9
+- `docs/decisions/followups-lifecycle.md` — the policy Phase 9
   follows for `docs/followups/` entries.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — referenced
+- `docs/decisions/mcp-backend-wiring-discipline.md` — referenced
   for audit cadence.
-- `.claude/decisions/bodai-observability-pattern.md` — referenced for
+- `docs/decisions/bodai-observability-pattern.md` — referenced for
   cross-component drift detection patterns.
 - `docs/feature-tracking/TEMPLATE.md` — feature-state template.
 - `settings/mahavishnu.yaml` — current pool and observability settings.

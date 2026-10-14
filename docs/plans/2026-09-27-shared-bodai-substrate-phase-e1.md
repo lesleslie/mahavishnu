@@ -30,8 +30,8 @@ Verbatim from spec §12:
 - **No `git push`** for bodai without explicit approval.
 - **No version bumps** in any Bodai `pyproject.toml` — user does.
 - **No `Co-Authored-By` trailer**.
-- **Wire-up contract** per `.claude/decisions/wire-up-contract.md`.
-- **MCP backend wiring discipline** per `.claude/decisions/mcp-backend-wiring-discipline.md` §3.
+- **Wire-up contract** per `docs/decisions/wire-up-contract.md`.
+- **MCP backend wiring discipline** per `docs/decisions/mcp-backend-wiring-discipline.md` §3.
 
 ## 1. Outcome
 
@@ -386,5 +386,5 @@ Phase E1 is complete when ALL of:
 - `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.5 — Phase E1 contract
 - `oneiric/core/config.py:246` — `OneiricSettings` canonical
 - `oneiric/core/config.py:678-745` — `_env_overrides` mechanism
-- `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability requirements
-- `.claude/decisions/wire-up-contract.md` — Integration Contract rules
+- `docs/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability requirements
+- `docs/decisions/wire-up-contract.md` — Integration Contract rules

@@ -325,7 +325,7 @@ ______________________________________________________________________
   cross-plan patch table.
 - **MCP server shape (post-migration):** the new `webhook_replay(webhook_id)`
   MCP tool must satisfy the 4-signal feed contract per
-  `.claude/decisions/mcp-backend-wiring-discipline.md` §3:
+  `docs/decisions/mcp-backend-wiring-discipline.md` §3:
   `feed.entities_count`, `feed.last_updated_timestamp`,
   `feed.errors_total`, `cycles_total`. Tool description must follow
   `tool-description-rubric.md` (the bare name `webhook_replay` is

@@ -162,7 +162,7 @@ is the contract they implement.
 - `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` — amended
   2026-09-14 to note the Oneiric layer between Mahavishnu and Dhara.
 - `oneiric/adapters/` — adapter inventory (54 built-ins).
-- `.claude/decisions/wire-up-contract.md` — integration contract
+- `docs/decisions/wire-up-contract.md` — integration contract
   rules this ADR enforces.
 - `docs/ops/state-sync.md` — vendor-CLI sync pattern.
 - `docs/ops/eventbridge-wal.md` — Redis Streams WAL operator doc.

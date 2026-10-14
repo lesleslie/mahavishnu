@@ -18,15 +18,15 @@ own PR with its own review.
 ## Why this file lives here
 
 The follow-up tracker
-(`.claude/decisions/test-matrix-review-followups.md`) is for items
+(`docs/decisions/test-matrix-review-followups.md`) is for items
 *discovered during a specific review*. This file is for items
 discovered *along the way* while fixing those — they belong with the
 project's repo-local decisions because they have a multi-PR horizon
 and benefit from a coordinated approach.
 
 If the count of these files grows past ~5, consider promoting the
-structure to `.claude/decisions/roadmap/*.md` and an
-`.claude/decisions/roadmap/README.md` index. Today there is one file,
+structure to `docs/decisions/roadmap/*.md` and an
+`docs/decisions/roadmap/README.md` index. Today there is one file,
 and the parent README indexes it.
 
 ## How to pick this up

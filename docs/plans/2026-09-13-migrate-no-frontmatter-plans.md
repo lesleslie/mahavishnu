@@ -50,7 +50,7 @@ on a clean checkout produces an identical `PLAN_INDEX.md` byte-for-byte.
 * **Not** rewriting prose bodies. The migration is frontmatter-only.
 * **Not** addressing `.md` files outside the four plan stores
   (`.claude/agents/`, `docs/adr/`, `docs/papers/`, etc. are out of
-  scope; `.claude/decisions/` already has `kind: decision` from the
+  scope; `docs/decisions/` already has `kind: decision` from the
   earlier kind-tag commit).
 * **Not** introducing a new frontmatter field beyond what the v1.1
   schema already documents. Stay within the existing vocabulary.

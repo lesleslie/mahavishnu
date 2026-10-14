@@ -84,7 +84,7 @@ reviewer fanout. Reviewers flagged these as structural, not cosmetic.
    cross-component import.
 
 3. **Governance doc amendments are co-delivered, not follow-up.**
-   If a REQ changes a decision in `.claude/decisions/` or
+   If a REQ changes a decision in `docs/decisions/` or
    `docs/adr/`, the amendment is part of the REQ's exit criteria.
    The plan must include the inline diff for the amendment and the
    amendment lands in the same commit as the REQ implementation.

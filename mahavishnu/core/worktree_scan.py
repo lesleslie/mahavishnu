@@ -1,7 +1,7 @@
 """Worktree scan: classifier + scan driver (3-pass pipeline) + report formatters.
 
 Spec: docs/specs/2026-09-07-worktree-cleanup-design.md
-Decision: .claude/decisions/worktree-cleanup-policy.md
+Decision: docs/decisions/worktree-cleanup-policy.md
 """
 
 from __future__ import annotations

@@ -279,7 +279,7 @@ Eight parallel reviewer subagents were dispatched 2026-09-14 covering: Oneiric, 
 | # | Pattern | Reviewers who flagged | What it looks like |
 |---|---|---|---|
 | 1 | **File:line citation drift** | Akosha, Mahavishnu, Oneiric, DevOps | The plan cites specific paths/line numbers (`bootstrap.py:411-458`, `mahavishnu.yaml:604-607`, `dhara/file.py:81-90`, `dhara/dhara/mcp/server_core.py:141-148`) that don't match the current source. Some file paths don't exist (Dhara refactored to `dhara/lock/*.py`), others point at the wrong line, others cite wrong repo (Crackerjack paths in Mahavishnu REQs) |
-| 2 | **Governance doc gaps** | Architecture Council, Broad | Plan claims to supersede/amend `.claude/decisions/wire-up-contract.md`, `docs/adr/013-*`, and `docs/adr/014-*` but **does not show the diffs** or propose the new ADR 017 (Oneiric as shared substrate). Reviewers reading the plan can't tell if the amendments are real or aspirational |
+| 2 | **Governance doc gaps** | Architecture Council, Broad | Plan claims to supersede/amend `docs/decisions/wire-up-contract.md`, `docs/adr/013-*`, and `docs/adr/014-*` but **does not show the diffs** or propose the new ADR 017 (Oneiric as shared substrate). Reviewers reading the plan can't tell if the amendments are real or aspirational |
 | 3 | **Wire-up-vs-production drift** | Broad, Observability, Claude Environment | The codebase has well-architected code + tests + docs for features that never reach production. `schedule_put` fire-and-forget, `broadcast_settle_transition` never called, `aggregate_metrics`/`emit_anomaly` dead code, `current_tmux` falls through to managed mode. This is a *class* of bug, not individual bugs — fixing one without the others leaves the class intact |
 
 **Why these are structural, not cosmetic:** Each pattern is invisible to a casual reader. Pattern 1 looks like a typo. Pattern 2 looks like a missing reference. Pattern 3 looks like one-off cleanup work. **None of them can be fixed by editing one or two REQs.** Pattern 1 requires a pre-flight grep + verify pass over every file:line citation. Pattern 2 requires amendment files for each governance doc with inline diffs. Pattern 3 requires an audit posture (not just cleanup) — see the audit scripts in Phase 9.
@@ -301,7 +301,7 @@ Eight parallel reviewer subagents were dispatched 2026-09-14 covering: Oneiric, 
 | # | Finding | Action |
 |---|---|---|
 | H1 | §1-§9 vs Revisions contradiction | Banner added to §1 marking it HISTORICAL — DO NOT READ FOR IMPLEMENTATION. Canonical content is Revisions + §5-§10 |
-| H2 | Wire-up-contract.md amendment not shown | Inline diff added below; cross-link to `.claude/decisions/wire-up-contract.md` with proposed changes |
+| H2 | Wire-up-contract.md amendment not shown | Inline diff added below; cross-link to `docs/decisions/wire-up-contract.md` with proposed changes |
 | H3 | ADR 013 conflict; missing ADR 017 | Amendment note for ADR 013 added; new ADR 017 stub (Oneiric as shared persistence substrate) added |
 | H4 | Dhara fcntl claim stale (file doesn't exist) | REQ-DHARA-LOCKS citation updated to `dhara/lock/{protocol,in_memory,sql,postgres}.py` |
 | H5 | Deployment guide not updated for SeaweedFS | Cross-link from Rev-7 to `docs/architecture/deploy/` added |
@@ -936,7 +936,7 @@ Before starting Phase 1, verify:
 
 This plan touches three governance docs. The amendments below are the canonical content to merge into each. Reviewers flagged H2 and H3 because the plan didn't include them.
 
-### C.1 — Amendment to `.claude/decisions/wire-up-contract.md`
+### C.1 — Amendment to `docs/decisions/wire-up-contract.md`
 
 Add the following clause under "Integration contract — additional requirements":
 
@@ -954,7 +954,7 @@ Add the following clause under "Integration contract — additional requirements
 +    an arrow diagram. Akosha → Mahavishnu imports (the inverted case)
 +    are forbidden except via MCP/HTTP. Phase 6 verification step.
 + 3. **Governance doc amendments** are part of the REQ delivery, not
-+    follow-up work. If a REQ changes a decision in `.claude/decisions/`
++    follow-up work. If a REQ changes a decision in `docs/decisions/`
 +    or `docs/adr/`, the amendment is co-delivered.
 ```
 
@@ -1091,7 +1091,7 @@ with both components.
   (status: active) — implements this ADR through Phase 5 (Mahavishnu),
   Phase 4 (Dhara), Phase 6 (Akosha strip + schema consolidation).
 - `oneiric/adapters/` — adapter inventory (54 built-ins).
-- `.claude/decisions/wire-up-contract.md` — integration contract
+- `docs/decisions/wire-up-contract.md` — integration contract
   rules this ADR enforces.
 ```
 

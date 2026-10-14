@@ -84,7 +84,7 @@ const t6a1 = await agent(
     "- The subscriber is the Mahavishnu-side consumer of Oneiric EventBridge (the unified event spine from Convergence Plan C1b)",
     "- It consumes EventEnvelope objects and persists them to ~/.mahavishnu/bodai-event-queue.json (atomic write, cap at 100 entries, oldest dropped first)",
     "- Phase 5's mahavishnu-activity-stream.py is the WebSocket-based transition state; this is the EventBridge-based steady state",
-    "- Reference: .claude/decisions/bodai-observability-pattern.md",
+    "- Reference: docs/decisions/bodai-observability-pattern.md",
     "",
     "Public API:",
     "",

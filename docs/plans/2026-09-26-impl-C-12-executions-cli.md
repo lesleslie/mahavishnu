@@ -381,7 +381,7 @@ class TestExecutionsWatch:
 
 ### 4. `tests/e2e/test_executions_show_e2e.py` — new file (~80 LoC)
 
-Per `.claude/decisions/mcp-backend-wiring-discipline.md`, e2e smoke test:
+Per `docs/decisions/mcp-backend-wiring-discipline.md`, e2e smoke test:
 
 ```python
 """E2E smoke test for mahavishnu executions CLI.

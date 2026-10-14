@@ -68,7 +68,7 @@ contribution workflow below.
 | `config-consolidation` | Config Consolidation: Mahavishnu as Self-Contained Dev Environment |
 | `constellation-tui` | Constellation TUI Implementation Plan |
 | `crow-mcp-client` | Crow Adapter `mcp_client=None` Wiring — Bootstrap Followup |
-| `decision-index` | Index of `.claude/decisions/` (repo-local decisions and follow-up trackers). |
+| `decision-index` | Index of `docs/decisions/` (repo-local decisions and follow-up trackers). |
 | `dhara-crackerjack-bug-fixes` | Dhara-Crackerjack Critical Bug Fixes Implementation Plan |
 | `dhara-key-prefixes` | Dhara key prefixes for ultracode integration — isolated top-level prefixes per persistence domain. |
 | `dhara-serverless` | Dhara Serverless Implementation Plan |
@@ -87,7 +87,7 @@ contribution workflow below.
 | `mcp-common-http-health-route-helper` | mcp-common `register_http_health_route` Helper |
 | `mcp-deps-crackerjack-loop` | `*-mcp` dep refresh + crackerjack loop — refresh `oneiric`/`mcp-common` in `*-mcp` repos via `crackerjack run -p minor`; one-line annotated-tag patch in `publish_manager.py`. |
 | `mcp-lifespan-startup-ordering` | Mahavishnu MCP `/health` Lifespan Bypass — `/health` must respond before lifespan startup completes (regression test for ordering). |
-| `mcp-routing` | Bodai MCP routing pattern — secrets in shell env, MCP config in per-project `.mcp.json`, agents scoped to project, plugins preferred over bare URL (see `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`). |
+| `mcp-routing` | Bodai MCP routing pattern — secrets in shell env, MCP config in per-project `.mcp.json`, agents scoped to project, plugins preferred over bare URL (see `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`). |
 | `mcp-stub-activation` | MCP stub activation — turning PyPI name-reservation scaffolds (`archive-org-mcp`, `medium-mcp`, `scapy-mcp`) into working servers, plus the `ecosystem.yaml` registry consolidation that makes registration verifiable. |
 | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Across Bodai Ecosystem — tiered dynamic tool loading in `*-mcp` repos (`full`/`standard`/`minimal`). |
 | `mcpbase-migration` | MCP Server Family: MCPBaseSettings → OneiricMCPConfig Migration |
@@ -191,10 +191,10 @@ contribution workflow below.
 | `workers-manager-dead-dispatch-removal` | Removal of the dead `dispatch_to_pool` path on the legacy `WorkerManager` (post-2026-09-24 worker deprecation); routing now lives entirely under `mahavishnu/pools/`. |
 | `mcp-launcher-migration` | Migration of MCP launchers (the `scripts/launch_mcp.py`-style shell wrappers) to the OneiricMCPConfig + per-server `mcp_server_settings.py` convention, eliminating hand-rolled launcher scripts. |
 | `main-branch-protection` | Trunk-based dev main-branch protection rules — no force-push, no direct commits pre-1.0, squash-merge only, agent-review required, two-eyes review for `release/` bumps. |
-| `mainautopush` | Auto-push from local `main` → `origin/main` after squash-merge — governed by `.claude/decisions/2026-10-03-mainautopush.md` and the `MAHAVISHNU_AUTO_MERGE` env var (default `1` in `~/.zshenv`). |
+| `mainautopush` | Auto-push from local `main` → `origin/main` after squash-merge — governed by `docs/decisions/2026-10-03-mainautopush.md` and the `MAHAVISHNU_AUTO_MERGE` env var (default `1` in `~/.zshenv`). |
 | `trunk-based-agent-review` | Trunk-based agent-review workflow (spec §4.4) — worker creates a worktree, runs 2 specialist + 1 generalist ensemble review, crackerjack gates the merge, squash-merge to local `main`, auto-push to `origin/main`. |
 | `slash-commands-multi-call-only` | Slash-command policy: commands that fan out to multiple tool calls (vs single-call shortcuts like `/vishnu`) must be invoked explicitly by the user — never auto-dispatched by the harness. |
-| `deployability-discipline` | Deployability discipline (`.claude/decisions/wire-up-contract.md`) — every plan/feature delivery answers the wiring question before "done"; `audit_orphans.py` must be clean; integration-contract block on every plan phase. |
+| `deployability-discipline` | Deployability discipline (`docs/decisions/wire-up-contract.md`) — every plan/feature delivery answers the wiring question before "done"; `audit_orphans.py` must be clean; integration-contract block on every plan phase. |
 | `sdd-bundling-defensive-pattern` | SDD (Spec-Driven Development) bundling defensive pattern — guard against code subagents + dirty working tree producing drift-bundled commits; uses `git reset --soft BASE` + targeted add (per memory `drift-bundling-recovery.md`). |
 | `cli-deprecation-drift` | CLI deprecation drift — historical CLI flags/commands/subcommands that were removed but still referenced in docs, tests, settings, or release notes (per memory `docs-audit-removed-but-referenced.md`). |
 | `bodai-cli-audit` | Bodai CLI surface audit — Core 7 repos' CLI inventory + per-repo MD summaries + cross-checks (per `docs/audit-inventory/` and the Bodai CLI audit Phase 0/1 plan). |

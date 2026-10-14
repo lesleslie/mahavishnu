@@ -3477,7 +3477,7 @@ Replace the existing `PRE_COMMIT_CONTENT` block (lines 32-51) with:
 PRE_COMMIT_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
-# Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+# Enforces docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
     python3 scripts/audit_no_secrets_in_mcp.py || exit 1
 fi
@@ -3565,7 +3565,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 # tests/integration/test_mcp_harness_smoke.py
 """End-to-end smoke: sync + load + shape verification.
 
-Per spec \u00a7Testing strategy \u00a7E2E smoke + .claude/decisions/wire-up-contract.md
+Per spec \u00a7Testing strategy \u00a7E2E smoke + docs/decisions/wire-up-contract.md
 \u00a71: every registered tool must have a working data feed.
 """
 
@@ -3691,7 +3691,7 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "test(mcp-registrar): end-t
 
 Per docs/specs/2026-09-18-mcp-registrar-design.md
 \u00a7Testing strategy \u00a7E2E smoke and
-.claude/decisions/wire-up-contract.md \u00a71 (every registered tool
+docs/decisions/wire-up-contract.md \u00a71 (every registered tool
 must have a working data feed). Asserts the envelope is
 JSON-parseable for downstream observability.
 
@@ -3731,7 +3731,7 @@ mahavishnu mcp sync --help       # sync subcommand present
 ## Phase 2 — Opt-in migration (operator-driven)
 
 For each project (`mahavishnu`, `fastblocks`, `splashstand` per
-`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` §2's
+`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` §2's
 table):
 
 ```bash
@@ -3783,7 +3783,7 @@ downstream tooling for per-side `wrote`/`unchanged`/`skipped` fields.
 
 - Spec: `docs/specs/2026-09-18-mcp-registrar-design.md`
 - Plan: `docs/plans/2026-09-18-mcp-registrar-implementation.md`
-- Decision: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`
+- Decision: `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`
 - Runbook (sibling): `docs/runbooks/qwen-hook-setup.md`
 
 ## Updating the golden-file fixtures
@@ -3843,7 +3843,7 @@ These items are explicitly **not** part of this plan and are tracked as future w
 
 | Item | Why deferred | Where tracked |
 |---|---|---|
-| Cross-component `/health` feed aggregation for the registrar (`feeds.registrar.{state, last_sync_timestamp, errors_total, cycles_total}`) | Needs code-level investigation of `MahavishnuApp.health_endpoint` and the existing feed state shape; not blocked by this plan's tests | spec §Out of scope; `.claude/decisions/mcp-backend-wiring-discipline.md` §1 |
+| Cross-component `/health` feed aggregation for the registrar (`feeds.registrar.{state, last_sync_timestamp, errors_total, cycles_total}`) | Needs code-level investigation of `MahavishnuApp.health_endpoint` and the existing feed state shape; not blocked by this plan's tests | spec §Out of scope; `docs/decisions/mcp-backend-wiring-discipline.md` §1 |
 | MCP tool registration of `mahavishnu mcp sync` (as `mcp__mahavishnu__mcp_sync`) | Depends on `MAHAVISHNU_TOOL_PROFILE` policy; tool would be a write operation gated behind `confirm=True` and defaulting to `--dry-run` | spec §Out of scope |
 | Plugin-governance amendment to decision rule 4 (plugin manifests derive their server list from `mcp-servers.yaml`) | Separate refactor; the canonical YAML schema carries a forward-compat `plugin: optional[str]` field but does not resolve it | spec §Non-goals |
 | SSE / `streamable-http` transport support in the canonical schema | Bodai doesn't ship SSE-backed servers in 2026-09; widen `Literal["http", "stdio"]` if/when Bodai ships one | spec §Non-goals |
@@ -3879,7 +3879,7 @@ For audit purposes: every section of the spec maps to one or more tasks in this 
 
 ## Rollout Phases — Integration Contract Blocks
 
-Per `.claude/decisions/wire-up-contract.md`, each rollout phase carries an Integration Contract block.
+Per `docs/decisions/wire-up-contract.md`, each rollout phase carries an Integration Contract block.
 
 ### Phase 1 — Library + CLI, no enforcement (Tasks 1-8)
 
@@ -3916,7 +3916,7 @@ After writing this plan, I checked it against the spec's checklist:
 1. **Spec coverage:** Every spec section has at least one task — see the Coverage Matrix above.
 2. **Placeholder scan:** No "TBD", "TODO", "implement later", "fill in details", "add appropriate error handling", "similar to Task N", or other placeholders. All code blocks are concrete. The deferred-items section explicitly marks out-of-scope items rather than leaving them as gaps.
 3. **Type consistency:** All function signatures use the same names across tasks. `Registrar(project_root, qwen_settings_path)` is consistent in Tasks 4-5 and the CLI commands in Tasks 7-8. `SyncEnvelope` fields (`wrote`/`unchanged`/`skipped`/`errors`/`audit`/`diff_summary`) match between the Pydantic model definition in Task 3 and the consumers in Tasks 4-5. `merge_qwen_settings(existing, mcp_block)` signature is consistent across Tasks 3, 4, and the test names. `atomic_write_json(path, data, *, cross_fs_fallback)` is consistent in Tasks 3 and 4.
-4. **Test coverage:** Each task has its own test file or extends an existing one. Integration tests (Tasks 8, 9, 10) gate the cross-component wiring per `.claude/decisions/mcp-backend-wiring-discipline.md`.
+4. **Test coverage:** Each task has its own test file or extends an existing one. Integration tests (Tasks 8, 9, 10) gate the cross-component wiring per `docs/decisions/mcp-backend-wiring-discipline.md`.
 
 One issue surfaced and fixed inline during self-review:
 

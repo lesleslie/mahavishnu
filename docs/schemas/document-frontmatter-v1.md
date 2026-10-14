@@ -6,7 +6,7 @@
 
 ## Goal
 
-This schema unifies the eight ad-hoc status conventions currently scattered across Mahavishnu's six documentation stores — `.claude/decisions/`, `docs/followups/`, `docs/adr/`, `docs/specs/`, `docs/plans/`, and `docs/plans/` — into a single YAML frontmatter contract. After migration, agents greping for `status:` reach one source of truth, `PLAN_INDEX.md` is regenerated mechanically, and `superseded_by` / `blocks_on` are machine-readable rather than buried in prose. The contract covers 178 in-scope files and is intentionally small: eight keys plus a two-enum vocabulary.
+This schema unifies the eight ad-hoc status conventions currently scattered across Mahavishnu's six documentation stores — `docs/decisions/`, `docs/followups/`, `docs/adr/`, `docs/specs/`, `docs/plans/`, and `docs/plans/` — into a single YAML frontmatter contract. After migration, agents greping for `status:` reach one source of truth, `PLAN_INDEX.md` is regenerated mechanically, and `superseded_by` / `blocks_on` are machine-readable rather than buried in prose. The contract covers 178 in-scope files and is intentionally small: eight keys plus a two-enum vocabulary.
 
 ## Vocabulary — Lifecycle
 
@@ -71,7 +71,7 @@ id: 014-honcho-peer-model-routing-precedence
 
 ## Lite Schema
 
-Applied to `.claude/decisions/` only. Decisions are not chained — a decision is either current or it is not. The lite schema is the full schema minus `superseded_by` and `blocks_on`.
+Applied to `docs/decisions/` only. Decisions are not chained — a decision is either current or it is not. The lite schema is the full schema minus `superseded_by` and `blocks_on`.
 
 ```yaml
 status: active
@@ -81,7 +81,7 @@ last_reviewed: 2026-07-16
 topic: decision-index
 ```
 
-Eight keys total: `status`, `role`, `date`, `last_reviewed`, `topic`, plus `decision_date` and `id` where applicable (the `id` row from the full schema remains optional in lite context). The two chaining fields are dropped because `.claude/decisions/` files do not point at successors and are not gated on external prerequisites.
+Eight keys total: `status`, `role`, `date`, `last_reviewed`, `topic`, plus `decision_date` and `id` where applicable (the `id` row from the full schema remains optional in lite context). The two chaining fields are dropped because `docs/decisions/` files do not point at successors and are not gated on external prerequisites.
 
 ## Legacy Mapping
 
@@ -130,7 +130,7 @@ uv run python scripts/regenerate_plan_index.py --json-summary # emit per-store c
 
 Discovery rules (mirrors the validator's exclusion list):
 
-- Default stores: `docs/adr/`, `docs/plans/`, `docs/specs/`, `docs/plans/`, `.claude/decisions/`, `docs/followups/`.
+- Default stores: `docs/adr/`, `docs/plans/`, `docs/specs/`, `docs/plans/`, `docs/decisions/`, `docs/followups/`.
 - Always excluded: `docs/plans/PLAN_INDEX.md` (self-skip), `docs/plans/drafts/`, any `*.archive*` or `*.backup*` subdirectory or suffix.
 - Output is rendered with a fixed frontmatter block, the Status Legend, an Authority Matrix, a Review Entry Points block, one registry table per store (sorted by `date` DESC), and a Lifecycle × Role distribution table at the bottom.
 - Files without valid frontmatter are silently skipped — they are the validator's job, not the indexer's.
@@ -149,7 +149,7 @@ Two open questions were resolved before migration began. Both are binding for Ph
 - [`docs/schemas/topic-vocabulary-v1.md`](./topic-vocabulary-v1.md) — controlled topic list (seed + amendment rule).
 - `docs/plans/2026-07-16-plan-lifecycle-unification.md` — the source plan defining the migration phases and integration contract.
 - [`docs/plans/PLAN_INDEX.md`](../plans/PLAN_INDEX.md) — the index regenerated from frontmatter in Phase P6.
-- [`.claude/decisions/README.md`](../../.claude/decisions/README.md) — the decision index; Status column re-derived from per-decision frontmatter in Phase P5.
+- [`docs/decisions/README.md`](../../docs/decisions/README.md) — the decision index; Status column re-derived from per-decision frontmatter in Phase P5.
 
 ## Change History
 

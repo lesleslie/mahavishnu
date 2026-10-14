@@ -138,5 +138,5 @@ your equivalent).
 
 - Plan: `docs/plans/2026-10-09-mcp-health-check-enrichment.md`
 - Spec (canonical aggregator): `mcp-common/mcp_common/health/aggregator.py:33-46`
-- Discipline: `.claude/decisions/mcp-backend-wiring-discipline.md`
+- Discipline: `docs/decisions/mcp-backend-wiring-discipline.md`
 - Akosha pilot (precedent): commit `cd4733b` on akosha

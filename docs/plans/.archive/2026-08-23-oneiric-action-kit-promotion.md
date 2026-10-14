@@ -12,7 +12,7 @@ title: "Oneiric Action-Kit Promotion Implementation Plan"
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Goal:** Establish discovery-first promotion infrastructure for oneiric action kits across the bodai ecosystem: a canonical catalog in oneiric, a decision doc + auto-trigger skill in mahavishnu, and one-line breadcrumbs in every other bodai repo.
-> **Architecture:** Three-layer split. oneiric owns the catalog (`oneiric/docs/action-kits.md` — source of truth for kit semantics). mahavishnu owns the decision (`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`) and the runtime surface (`mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`). Every other bodai repo carries a one-line breadcrumb pointing at the canonical paths.
+> **Architecture:** Three-layer split. oneiric owns the catalog (`oneiric/docs/action-kits.md` — source of truth for kit semantics). mahavishnu owns the decision (`mahavishnu/docs/decisions/promote-oneiric-action-kits.md`) and the runtime surface (`mahavishnu/.claude/skills/oneiric-action-kit-awareness/SKILL.md`). Every other bodai repo carries a one-line breadcrumb pointing at the canonical paths.
 > **Tech Stack:** Markdown + YAML frontmatter; oneiric action-kit Python API (existing).
 > **Spec:** `docs/specs/2026-08-22-oneiric-action-kit-promotion-design.md`
 > **Working directories:**
@@ -55,7 +55,7 @@ ______________________________________________________________________
 - **Git author email:** `les@wedgwoodwebworks.com` (NOT `.local`). Every `git commit` invocation must set this explicitly via `-c user.email=...`.
 - **Pre-1.0 Bodai merge policy:** every bodai repo merges directly to `main` (no PRs, no review gates). This plan produces separate commits per repo; each commit lands via the repo's normal flow.
 - **Frontmatter format:**
-  - Decision doc (`promote-oneiric-action-kits.md`) uses YAML frontmatter matching every other file in `mahavishnu/.claude/decisions/` (status, role, date, last_reviewed, topic).
+  - Decision doc (`promote-oneiric-action-kits.md`) uses YAML frontmatter matching every other file in `mahavishnu/docs/decisions/` (status, role, date, last_reviewed, topic).
   - Skill (`SKILL.md`) uses **header-style** frontmatter (`## name: <slug> description: "..."`) to match the active convention in `mahavishnu/.claude/skills/` (e.g., `mahavishnu/SKILL.md`, `bodai-status/SKILL.md`). The archived YAML format is NOT used.
 - **Skill description size:** keep the skill frontmatter `description:` under ~300 chars where possible; the aggregate skill-description budget is bounded.
 - **Symbolic references only:** neither the breadcrumb text nor the skill body bakes absolute filesystem paths. References to the catalog use `oneiric/docs/action-kits.md` (relative to the oneiric project). The skill gracefully degrades when the catalog can't be located.
@@ -202,7 +202,7 @@ ______________________________________________________________________
 ## Task 2: Author the decision doc
 
 **Files:**
-- Create: `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md` (NEW — uses mahavishnu worktree `worktree-w4-promote-oneiric-kits`)
+- Create: `mahavishnu/docs/decisions/promote-oneiric-action-kits.md` (NEW — uses mahavishnu worktree `worktree-w4-promote-oneiric-kits`)
 
 **Consumes:** the canonical catalog from Task 1 (linked, not duplicated).
 
@@ -210,7 +210,7 @@ ______________________________________________________________________
 
 - [ ] **Step 1: Confirm the canonical frontmatter shape**
 
-Read `mahavishnu/.claude/decisions/bodai-observability-pattern.md` (lines 1-9) and confirm the YAML frontmatter shape:
+Read `mahavishnu/docs/decisions/bodai-observability-pattern.md` (lines 1-9) and confirm the YAML frontmatter shape:
 
 ```
 ---
@@ -224,7 +224,7 @@ topic: oneiric-action-kit-promotion
 
 Use today's date (`date: 2026-08-23`).
 
-- [ ] **Step 2: Write `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`**
+- [ ] **Step 2: Write `mahavishnu/docs/decisions/promote-oneiric-action-kits.md`**
 
 Use the exact structure from spec §5.1:
 
@@ -289,20 +289,20 @@ code.
 
 Run:
 ```bash
-head -8 /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits/.claude/decisions/promote-oneiric-action-kits.md
+head -8 /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits/docs/decisions/promote-oneiric-action-kits.md
 ```
 Expected: the YAML frontmatter block, with `status: active`, `role: canonical`, `topic: oneiric-action-kit-promotion`.
 
 Run:
 ```bash
-ls /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits/.claude/decisions/promote-oneiric-action-kits.md
+ls /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits/docs/decisions/promote-oneiric-action-kits.md
 ```
 Expected: file exists.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git -C /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits add .claude/decisions/promote-oneiric-action-kits.md
+git -C /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits add docs/decisions/promote-oneiric-action-kits.md
 git -C /Users/les/Projects/mahavishnu/.claude/worktrees/w4-promote-oneiric-kits -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m "chore(decisions): promote oneiric action kits via discovery hint"
 ```
 
@@ -452,7 +452,7 @@ Before writing common primitives (HMAC, token gen, schema validation,
 retries, redaction, HTTP probing, serialization, compression, hashing,
 data transforms), check `oneiric.actions` — catalog lives at
 `oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
-`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+`mahavishnu/docs/decisions/promote-oneiric-action-kits.md`.
 ```
 
 - [ ] **Step 1: Add breadcrumb to mahavishnu's CLAUDE.md**
@@ -560,7 +560,7 @@ Before writing common primitives (HMAC, token gen, schema validation,
 retries, redaction, HTTP probing, serialization, compression, hashing,
 data transforms), check `oneiric.actions` — catalog lives at
 `oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
-`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+`mahavishnu/docs/decisions/promote-oneiric-action-kits.md`.
 
 Steps:
 1. Read <FILE>.md to find an insertion point.
@@ -602,7 +602,7 @@ Print a table of:
 | Repo | File modified | Commit SHA | Branch | Status |
 |---|---|---|---|---|
 | oneiric | docs/action-kits.md | (from Task 1) | main | merged |
-| mahavishnu | .claude/decisions/, .claude/skills/, CLAUDE.md | (from Tasks 2/3/5) | worktree-w4-promote-oneiric-kits → main | merged |
+| mahavishnu | docs/decisions/, .claude/skills/, CLAUDE.md | (from Tasks 2/3/5) | worktree-w4-promote-oneiric-kits → main | merged |
 | akosha | CLAUDE.md | (per-repo) | (per-repo branch) | (PR status) |
 | ... | ... | ... | ... | ... |
 
@@ -619,7 +619,7 @@ revertible (spec §9). The implementer can roll back by:
 | Piece | File(s) | Rollback action |
 |---|---|---|
 | Catalog | `oneiric/docs/action-kits.md` | `git -C /Users/les/Projects/oneiric revert <catalog-commit-sha>` (or delete the file) |
-| Decision doc | `mahavishnu/.claude/decisions/promote-oneiric-action-kits.md` | Delete the file (no other code depends on it) |
+| Decision doc | `mahavishnu/docs/decisions/promote-oneiric-action-kits.md` | Delete the file (no other code depends on it) |
 | Skill | `mahavishnu/.claude/skills/oneiric-action-kit-awareness/` | Rename folder to `oneiric-action-kit-awareness.disabled/` (auto-trigger stops) |
 | Mahavishnu breadcrumb | `mahavishnu/CLAUDE.md` | Revert the Wave 2 commit |
 | Oneiric breadcrumb | `oneiric/CLAUDE.md` | Revert the Wave 2 commit |

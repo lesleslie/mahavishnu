@@ -25,12 +25,12 @@ The Bodai ecosystem ships five MCP servers — `mahavishnu`, `akosha`, `crackerj
 - **None of the five Bodai MCP repos ship as Claude Code plugins.** Crackerjack has a `crackerjack/slash_commands/` directory of Markdown files (not a plugin manifest); the other four have neither.
 - **Slash commands are inconsistently named.** Mahavishnu exposes unprefixed `/vishnu-status` and `/bodai-status`; crackerjack's would be `/crackerjack:status` if the slash_commands directory were ever picked up; session-buddy's commands live in mahavishnu's `.claude/commands/` and call `mcp__session-buddy__*` tools but have no `session-buddy:` prefix.
 - **Nine wave `.js` workflow scripts** sit at `mahavishnu/.claude/workflows/` with no lifecycle policy. They are auto-registered as slash commands and remain runnable indefinitely even after their referenced state is gone.
-- **`.claude/decisions/` has a documented lifecycle** (Active / Superseded / Archived tracked in the README index), but `.claude/workflows/` does not. `docs/followups/` is being migrated to match `.claude/decisions/`.
+- **`docs/decisions/` has a documented lifecycle** (Active / Superseded / Archived tracked in the README index), but `.claude/workflows/` does not. `docs/followups/` is being migrated to match `docs/decisions/`.
   The user's stated goals:
 
 1. All five Bodai MCP servers ship as Claude Code plugins for consistency and (eventual) cross-harness distribution.
 1. Slash commands are namespaced: `/mahavishnu:status`, `/akosha:search`, `/dhara:adapter-list`, `/session-buddy:checkpoint`, `/crackerjack:status`. Exception: cross-component commands keep the `bodai:` namespace.
-1. Workflows follow the same lifecycle as `.claude/decisions/`.
+1. Workflows follow the same lifecycle as `docs/decisions/`.
 1. Hard cutover: no aliases, no dual registration.
 
 ## Approach (chosen)
@@ -41,7 +41,7 @@ The Bodai ecosystem ships five MCP servers — `mahavishnu`, `akosha`, `crackerj
 - A new `bodai-plugins` repo holds only a thin marketplace manifest (`.claude-plugin/marketplace.json`) indexing the five plugin repos by git URL. No Python runtime here except for the scaffold CLI.
 - A scaffold tool — `bodai-plugins` Typer CLI wrapping `scripts/init_bodai_plugin.py` — generates the canonical plugin layout in any target directory. The same tool's `validate` subcommand enforces schema and consistency.
 - Pilot migration on `mahavishnu` first, then the other four in priority order.
-- Wave workflows move to `.claude/workflows/.archive/` (Superseded) or stay in `.claude/workflows/` (Active), with paired `.claude/decisions/workflows/YYYY-MM-DD-<name>.md` lifecycle files.
+- Wave workflows move to `.claude/workflows/.archive/` (Superseded) or stay in `.claude/workflows/` (Active), with paired `docs/decisions/workflows/YYYY-MM-DD-<name>.md` lifecycle files.
   This approach encodes consistency in code (the scaffold), avoids the Anthropic review gate (self-hosted marketplace), and survives future plugin additions (fastblocks, splashstand, etc. drop in trivially).
 
 ## Repository Layout
@@ -267,7 +267,7 @@ Exception: cross-component commands keep the `bodai:` namespace (`/bodai:status`
 
 ## Workflow Lifecycle
 
-Each wave `.js` file gets a paired `.md` decision file under `.claude/decisions/workflows/`. The decision file is the canonical lifecycle record; the `.js` is the executable artifact.
+Each wave `.js` file gets a paired `.md` decision file under `docs/decisions/workflows/`. The decision file is the canonical lifecycle record; the `.js` is the executable artifact.
 **Decision file schema:**
 
 ```markdown
@@ -302,9 +302,9 @@ Each wave `.js` file gets a paired `.md` decision file under `.claude/decisions/
 | `Superseded` | `.claude/workflows/.archive/` | no | A newer wave replaces this one |
 | `Archived` | `.claude/workflows/.archive/` | no | Work is done and merged; kept for audit trail only |
 
-`.claude/decisions/README.md` gets a new section `## Workflows` listing every decision file with its Status. CI guard lives at `mahavishnu/scripts/audit_workflow_lifecycle.py` (since mahavishnu currently owns all wave workflows; if other plugin repos later gain waves, they each get their own audit script), run from `mahavishnu/.github/workflows/audit-workflows.yml`. It checks:
+`docs/decisions/README.md` gets a new section `## Workflows` listing every decision file with its Status. CI guard lives at `mahavishnu/scripts/audit_workflow_lifecycle.py` (since mahavishnu currently owns all wave workflows; if other plugin repos later gain waves, they each get their own audit script), run from `mahavishnu/.github/workflows/audit-workflows.yml`. It checks:
 
-1. Every `.claude/workflows/*.js` (excluding `.archive/`) has a paired `.md` in `.claude/decisions/workflows/` with `Status: Active`.
+1. Every `.claude/workflows/*.js` (excluding `.archive/`) has a paired `.md` in `docs/decisions/workflows/` with `Status: Active`.
 1. Every `.claude/workflows/.archive/*.js` has a paired `.md` with `Status: Superseded` or `Archived`.
 1. The decisions README's `## Workflows` table is in sync with the actual files.
 
@@ -345,10 +345,10 @@ Repeat Phase 2 steps 2.1–2.8 for each, in priority order: `session-buddy`, `cr
 | Step | What | Deliverable |
 |---|---|---|
 | 4.1 | Inventory existing `.claude/workflows/*.js` (9 files) | inventory |
-| 4.2 | For each wave `.js`, write a paired `.claude/decisions/workflows/YYYY-MM-DD-<name>.md` with status, what-it-does, outcome | decision files |
+| 4.2 | For each wave `.js`, write a paired `docs/decisions/workflows/YYYY-MM-DD-<name>.md` with status, what-it-does, outcome | decision files |
 | 4.3 | Move executed waves (`crackerjack-coverage-fanout*.js`, `crackerjack-cleanup-wave7.js`) to `.claude/workflows/.archive/` with `Status: Superseded` | archived |
 | 4.4 | Evaluate `mahavishnu-coverage-fanout-wave-2026-06-12*.js` case-by-case before deciding Active vs. archived | per-file decision |
-| 4.5 | Add `## Workflows` section to `.claude/decisions/README.md` with status table | index updated |
+| 4.5 | Add `## Workflows` section to `docs/decisions/README.md` with status table | index updated |
 | 4.6 | Write `scripts/audit_workflow_lifecycle.py` and the CI workflow that runs it | audit + CI |
 
 ### Phase 5: Publish + announce

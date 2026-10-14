@@ -60,7 +60,7 @@ The seven domain specialists each had a specific question about the spec; the tw
 | Position | Agent | Reasoning |
 |---|---|---|
 | FOR | 3 (`mcp-integration-expert`) | Shared library in `oneiric` is the cleanest mechanism; ~2 days; preserves seer/orchestrator separation. |
-| FOR | 6 (`architecture-council`) | Phase B5 contract definition in this plan prevents "second control plane" violation of `.claude/decisions/bodai-observability-pattern.md`. |
+| FOR | 6 (`architecture-council`) | Phase B5 contract definition in this plan prevents "second control plane" violation of `docs/decisions/bodai-observability-pattern.md`. |
 | FOR | 8 (`observability-incident-lead`) | Operators need Akosha's cross-system correlation; Mahavishnu incidents usually upstream-caused. |
 | AGAINST | 1 (`mahavishnu-specialist`) | Cost (~3-5 days), risk (high blast radius across two repos), and cleaner as a follow-on. |
 | AGAINST | 2 (`akosha-specialist`) | Live Akosha access: pytrendy already in the slot. Adding CUSUM/PH is third algorithm, not gap-filler. "Replace 3-sigma" framing was wrong. Recommend Tier 1 stays single-repo + §11 stub naming pytrendy. |
@@ -73,7 +73,7 @@ The seven domain specialists each had a specific question about the spec; the tw
 - §5.4.5 broken reference in v1 — Phase C pointed at a nonexistent section. (Agent 4) — **fixed**: thresholds inlined in Phase 9.
 - A3/B3 mislabeled as integration phases when they're documentation-only — (Agent 4) — **fixed**: marked explicitly.
 - REQ-006 (3-sigma baseline availability) was wrongly attributed to B4 (Phase 8) when it belongs to B2 (Phase 6) — (Agent 4) — **fixed**.
-- `audit_orphans.py` should run every phase per `.claude/decisions/wire-up-contract.md`, not only at promotion — (Agent 5) — **fixed**.
+- `audit_orphans.py` should run every phase per `docs/decisions/wire-up-contract.md`, not only at promotion — (Agent 5) — **fixed**.
 - Requirements YAML frontmatter in v1 was in the body section, not the frontmatter — `audit_requirements.py` would not pick it up — (Agent 6) — **fixed**: REQ block stays in §5 with a §5.1 mapping table; frontmatter references it.
 - Phase C's integration contract was weak (rollback `N/A`, observability "the eligibility script output is the only artifact") — (Agent 6) — **fixed**: Phase 9 explicitly marked docs-only + read-only script.
 
@@ -225,7 +225,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 2. **Missing `requirements:` YAML frontmatter block** — v1 put REQs in body §4.5; `audit_requirements.py` won't pick them up. Fix: move to frontmatter, leave body as documentation.
 3. **Phase labels diverge from convention** — TEMPLATE.md says "Phase 1, Phase 2, ..."; v1 used A1..A4.
 4. **Phase C integration contract is weak** (rollback `N/A`, observability "the eligibility script output").
-5. **Soft violation: orchestrator/seer separation**. Mahavishnu running CUSUM on its own metric stream + emitting `drift_detected` events for *the same metric classes Akosha classifies* establishes a second anomaly-detection surface — exactly the pattern `.claude/decisions/bodai-observability-pattern.md` Non-Goal #1 explicitly forbids.
+5. **Soft violation: orchestrator/seer separation**. Mahavishnu running CUSUM on its own metric stream + emitting `drift_detected` events for *the same metric classes Akosha classifies* establishes a second anomaly-detection surface — exactly the pattern `docs/decisions/bodai-observability-pattern.md` Non-Goal #1 explicitly forbids.
 6. Inconsistent anomaly detection is the strongest concern.
 7. Deferral language understates cost.
 8. Data-volume justification is one-sided.
@@ -308,10 +308,10 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 
 - [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) — the v2 spec this review drove
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
-- `.claude/decisions/wire-up-contract.md` — policy the Integration Contract block requirement implements
-- `.claude/decisions/bodai-observability-pattern.md` — second-control-plane prohibition cited by architecture-council
-- `.claude/decisions/followups-lifecycle.md` — Phase 9 followups convention
-- `.claude/decisions/promote-oneiric-action-kits.md` — cited by mcp-integration-expert as oneiric sub-package precedent
+- `docs/decisions/wire-up-contract.md` — policy the Integration Contract block requirement implements
+- `docs/decisions/bodai-observability-pattern.md` — second-control-plane prohibition cited by architecture-council
+- `docs/decisions/followups-lifecycle.md` — Phase 9 followups convention
+- `docs/decisions/promote-oneiric-action-kits.md` — cited by mcp-integration-expert as oneiric sub-package precedent
 - Akosha (separate repo): `akosha.processing.analytics._metrics_cache`, `akosha_detect_anomalies` (Z-score), `akosha_analyze_changepoints` (pytrendy, segmented regression)
 - Kingman, G. F. C. (1961). The single server queue in heavy traffic. *Proc. Cambridge Philos. Soc.* 57, 902–904.
 - Page, E. S. (1954). Continuous inspection schemes. *Biometrika* 41(1/2), 141–154.

@@ -333,7 +333,7 @@ The `monitor watch` surface is **mahavishnu-internal** (pools + workers).
 It complements `bodai dashboard`, which is the **cross-component
 aggregator** (every registered Bodai component). See the TUI contract
 decision doc at
-[`.claude/decisions/2026-08-25-bodai-tui-contract.md`](.claude/decisions/2026-08-25-bodai-tui-contract.md)
+[`docs/decisions/2026-08-25-bodai-tui-contract.md`](docs/decisions/2026-08-25-bodai-tui-contract.md)
 for the per-component vs cross-component split.
 
 For more workflows, see the [Getting Started Guide](docs/GETTING_STARTED.md).

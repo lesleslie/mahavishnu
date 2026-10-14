@@ -74,8 +74,8 @@ Five BLOCKERs from the 6-agent review of ADR 0016 must close before state transi
 - ADR: `docs/adr/0016-scapy-mcp-integration.md` (companion review at `docs/adr/0016-multi-agent-review.md`)
 - Sibling plans: `docs/plans/2026-09-06-scapy-mcp.md`, `docs/plans/2026-09-06-registry-manifest-migration.md`, `docs/plans/2026-09-06-port-bodai-reconciliation.md`
 - Precedent: `docs/adr/0015-multi-agent-review.md` (multi-agent review pattern)
-- Policy: `.claude/decisions/wire-up-contract.md` (built/wired/adopted states)
-- Policy: `.claude/decisions/mcp-backend-wiring-discipline.md` (§3 feed observability requirements)
+- Policy: `docs/decisions/wire-up-contract.md` (built/wired/adopted states)
+- Policy: `docs/decisions/mcp-backend-wiring-discipline.md` (§3 feed observability requirements)
 
 ## How to save to Session-Buddy
 

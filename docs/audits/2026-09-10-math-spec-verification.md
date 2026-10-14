@@ -199,7 +199,7 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 - [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md) — the v3 spec this verification drove
 - [`docs/audits/2026-09-10-math-spec-review.md`](2026-09-10-math-spec-review.md) — the round-1 (9-agent) review that drove v1→v2
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
-- `.claude/decisions/wire-up-contract.md` — Integration Contract policy
+- `docs/decisions/wire-up-contract.md` — Integration Contract policy
 - `scripts/audit_requirements.py:76-92` — `parse_frontmatter` function (verified reads frontmatter only)
 - `mahavishnu/observability/metrics.py:74` — `_ALLOWED_LABEL_KEYS` `Final[frozenset[str]]` (verified closed)
 - `mahavishnu/pools/fitness_analyzer.py:31` — `_MAX_BUFFER_SIZE = 1000` (verified)

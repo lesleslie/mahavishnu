@@ -64,7 +64,7 @@ in-session surface and fires regardless of model.
 - `--no-consolidation-gate` — skip stage 4.5 pre-push consolidation gate
   (default: gate runs between squash-merge and push; held back =
   sticky-failure marker, stage 6 skipped, EXIT_OK). See
-  `.claude/decisions/2026-10-13-prepushconsolidationgate.md`.
+  `docs/decisions/2026-10-13-prepushconsolidationgate.md`.
 - `--from <base>` — override rebase base (default: `origin/main` if remote
   exists, else `main`)
 
@@ -99,7 +99,7 @@ The shared Python module orchestrates the 6-stage per-worktree cycle:
    only the squashed result lands on `main`.
 1. **Stage 4.5 — Pre-push consolidation gate** (skippable via
    `--no-consolidation-gate`). Per
-   `.claude/decisions/2026-10-13-prepushconsolidationgate.md`: checks
+   `docs/decisions/2026-10-13-prepushconsolidationgate.md`: checks
    co-located worktrees for unmerged WIP and pending commits for
    squash-merge eligibility. Held back = sticky-failure marker on
    `.review-state.json`, stage 6 skipped, pipeline returns `EXIT_OK`.
@@ -141,6 +141,6 @@ wherever `.review-state.json` left off.
 - SessionEnd hook: `.claude/hooks/agent-merge-on-end.py`
 - Dev-log writer: `mahavishnu/core/dev_log.py`
 - Decision docs:
-  `.claude/decisions/2026-10-03-mainautopush.md` (auto-push exception),
-  `.claude/decisions/2026-10-13-prepushconsolidationgate.md`
+  `docs/decisions/2026-10-03-mainautopush.md` (auto-push exception),
+  `docs/decisions/2026-10-13-prepushconsolidationgate.md`
   (pre-push consolidation gate; further narrowing)

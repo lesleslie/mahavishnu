@@ -129,11 +129,11 @@ all reported as orphan-free by `audit_orphans.py`. Exit code remains 1
 because the repo-wide scan finds unrelated orphans in
 `tests/unit/workers/`, `tests/unit/workflow/`, etc. — those are outside
 this tracker's named-symbol scope and tracked separately per
-`.claude/decisions/wire-up-contract.md`.
+`docs/decisions/wire-up-contract.md`.
 
 ## References
 
-- Wire-up contract: `.claude/decisions/wire-up-contract.md`
+- Wire-up contract: `docs/decisions/wire-up-contract.md`
 - Audit script: `scripts/audit_orphans.py` (see `collect_references`,
   `find_registrations`)
 - Settle module overview: `mahavishnu/settle/__init__.py`,

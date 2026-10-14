@@ -2,7 +2,7 @@
 """Audit .mcp.json files for hardcoded secret-shaped env values.
 
 Enforces the architectural rule from
-.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1:
+docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1:
 
     Any environment variable whose name ends in KEY, TOKEN, SECRET,
     PASSWORD, or otherwise names a credential MUST come from the

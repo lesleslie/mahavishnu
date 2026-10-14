@@ -32,7 +32,7 @@ mahavishnu index repo --trigger git-event "$(pwd)" &
 PRE_COMMIT_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
-# Enforces .claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+# Enforces docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
     python3 scripts/audit_no_secrets_in_mcp.py || exit 1
 fi

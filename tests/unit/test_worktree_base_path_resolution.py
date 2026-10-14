@@ -47,7 +47,7 @@ EXEMPT_PATHS = {
     # Config doc; the env-var default IS the literal string.
     "docs/CONFIGURATION.md",
     # Decisions that document the historical drift; out of scope.
-    ".claude/decisions/session-worktree-defaults.md",
+    "docs/decisions/session-worktree-defaults.md",
     # Worktree-management guide uses literal `~/worktrees` paths
     # throughout CLI examples; rewriting the whole document is out of
     # scope for this fix (the canonical helper still owns resolution).

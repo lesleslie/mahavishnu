@@ -687,7 +687,7 @@ inbox" and is **tracked as a separate commit and PR**, not bundled into the
 inbox delivery. If that work does not land in the same release, the wiring-
 discipline claim above must be removed from this spec rather than left
 unbacked — an unbacked compliance claim is worse than an acknowledged gap
-(see `.claude/decisions/mcp-surface-health-illusion.md`).
+(see `docs/decisions/mcp-surface-health-illusion.md`).
 
 ## Testing strategy
 

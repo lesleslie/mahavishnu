@@ -12,7 +12,7 @@ title: "Agent-Reviewed Trunk-Based Development"
 
 # Agent-Reviewed Trunk-Based Development
 
-## **Goal:** A dev workflow for Bodai where AI workers create short-lived worktrees, an AI ensemble reviews, `crackerjack run -v` gates the merge, and `main` auto-pushes to `origin/main` — eliminating GitHub PRs and the dead-branch litter they create. **Architecture:** A `merge-to-main` slash command orchestrates the per-worktree cycle; a SessionEnd hook auto-runs the same cycle when the worker is done; a new `.claude/decisions/2026-10-03-main-autopush.md` documents the auto-push rule as a governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`. **Tech Stack:** Python 3.14 (target per `CLAUDE.md`), existing `mahavishnu` orchestrator, existing `crackerjack` quality tool, existing `session-buddy` checkpoint + reflection store for audit-log mirror, existing `.claude/hooks/` SessionEnd contract, no new MCP server.
+## **Goal:** A dev workflow for Bodai where AI workers create short-lived worktrees, an AI ensemble reviews, `crackerjack run -v` gates the merge, and `main` auto-pushes to `origin/main` — eliminating GitHub PRs and the dead-branch litter they create. **Architecture:** A `merge-to-main` slash command orchestrates the per-worktree cycle; a SessionEnd hook auto-runs the same cycle when the worker is done; a new `docs/decisions/2026-10-03-main-autopush.md` documents the auto-push rule as a governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`. **Tech Stack:** Python 3.14 (target per `CLAUDE.md`), existing `mahavishnu` orchestrator, existing `crackerjack` quality tool, existing `session-buddy` checkpoint + reflection store for audit-log mirror, existing `.claude/hooks/` SessionEnd contract, no new MCP server.
 
 ## Context
 
@@ -31,7 +31,7 @@ This spec replaces the PR-shaped gate with an AI-ensemble-shaped gate that lives
 1. **Ephemeral branches by construction.** A branch exists only for the lifetime of its worktree; deleted with it. Eliminates the 25-dead-branches class of litter by construction.
 2. **AI-ensemble review at the merge boundary.** Three agents review the diff: two specialized for the task domain, one drawn at random from a small generalist pool. If the verdict is "needs adjustment," the worker iterates; the ensemble re-reviews.
 3. **`crackerjack run -v` as the merge gate.** Existing quality tool, existing operator standard (`crackerjack-cli-run-subcommand` memory). Fail-closed. `crackerjack run -v` (NOT `-p` — the publish stage must never fire on the merge path).
-4. **Auto-push `main` to `origin/main` after a successful squash-merge.** Mechanical backup. Lives in `.claude/decisions/2026-10-03-main-autopush.md` (governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`).
+4. **Auto-push `main` to `origin/main` after a successful squash-merge.** Mechanical backup. Lives in `docs/decisions/2026-10-03-main-autopush.md` (governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`).
 5. **Audit trail.** Every merged piece of work writes a local audit file at the path resolved by `get_dev_log_path()` (a new helper mirroring `get_audit_path()` in `mahavishnu/core/paths.py`). Each entry is also reflected into `session-buddy` via `mcp__session-buddy__store_reflection` for cross-tool queryability (dual-store rule).
 6. **Cross-session continuity.** If a session ends mid-cycle, the next session reads `.review-state.json` from the worktree root and resumes from the current stage. Schema is JSON; idempotency is enforced by stage markers.
 
@@ -238,11 +238,11 @@ Detection logic: `git diff --name-only <base>...HEAD` filtered by the regex `^.*
 
 ### 4.6 Push rule
 
-**Documented in:** `.claude/decisions/2026-10-03-main-autopush.md` (governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`). The decision doc is the source of truth; this section is a summary.
+**Documented in:** `docs/decisions/2026-10-03-main-autopush.md` (governance amendment superseding the relevant clause of `feedback-bodai-push-is-user-controlled`). The decision doc is the source of truth; this section is a summary.
 
 **Auto-push scope:** `git push origin main`, only on `main`, only after a successful squash-merge in stages 1–4, only by the Python module invoked from the SessionEnd hook or the `/merge-to-main` slash command.
 
-**Pre-push consolidation gate (new, 2026-10-13 amendment):** Stage 5 push is *further* held back when co-located worktrees have unmerged WIP or pending commits are not squash-merge-shaped. Held back = sticky-failure marker on `.review-state.json` (`stage_failed: "stage_5_push_held_back_by_consolidation_gate"`) + stage 6 (cleanup) skipped + pipeline returns `EXIT_OK`. The gate runs in `mahavishnu/core/merge_to_main.py::run_pipeline()` between squash-merge and push. Authoritative spec: `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. Operator override: `/merge-to-main --no-consolidation-gate` (bypass flag; runs push without gate check).
+**Pre-push consolidation gate (new, 2026-10-13 amendment):** Stage 5 push is *further* held back when co-located worktrees have unmerged WIP or pending commits are not squash-merge-shaped. Held back = sticky-failure marker on `.review-state.json` (`stage_failed: "stage_5_push_held_back_by_consolidation_gate"`) + stage 6 (cleanup) skipped + pipeline returns `EXIT_OK`. The gate runs in `mahavishnu/core/merge_to_main.py::run_pipeline()` between squash-merge and push. Authoritative spec: `docs/decisions/2026-10-13-prepushconsolidationgate.md`. Operator override: `/merge-to-main --no-consolidation-gate` (bypass flag; runs push without gate check).
 
 **What is NOT auto-pushed:**
 
@@ -267,7 +267,7 @@ Detection logic: `git diff --name-only <base>...HEAD` filtered by the regex `^.*
 | Mode | Detection | Handling |
 |---|---|---|
 | **Remote `main` has diverged** | `git push` returns non-fast-forward | Module fails loudly via stderr; user rebase + retry. No force-push. |
-| **Sibling worktree has unmerged WIP** (pre-push consolidation gate holds back) | `git log origin/main..main` followed + co-located-worktree enumeration finds a worktree whose branch HEAD is not an ancestor of local `main`, not pruned, not mid-review, and not explicitly abandoned | Stage 5 deferred. `.review-state.json` gets `stage_failed: "stage_5_push_held_back_by_consolidation_gate"`. Stage 6 (cleanup) is skipped. stderr surfaces the held-back worktree paths. Pipeline returns `EXIT_OK`. The hook's `is_sticky_failed()` skips the pipeline on the next SessionEnd in this worktree until the user resolves. See `.claude/decisions/2026-10-13-prepushconsolidationgate.md`. |
+| **Sibling worktree has unmerged WIP** (pre-push consolidation gate holds back) | `git log origin/main..main` followed + co-located-worktree enumeration finds a worktree whose branch HEAD is not an ancestor of local `main`, not pruned, not mid-review, and not explicitly abandoned | Stage 5 deferred. `.review-state.json` gets `stage_failed: "stage_5_push_held_back_by_consolidation_gate"`. Stage 6 (cleanup) is skipped. stderr surfaces the held-back worktree paths. Pipeline returns `EXIT_OK`. The hook's `is_sticky_failed()` skips the pipeline on the next SessionEnd in this worktree until the user resolves. See `docs/decisions/2026-10-13-prepushconsolidationgate.md`. |
 | **`<base>` moved during rebase** | SHA comparison fails against `.review-state.json` pre-rebase SHA | Abort squash; rebase again on the new base; re-verify. |
 | **Concurrent merges** (two sessions both squash into local `main`, both push) | git's ref lock on merge; second push hits FF check and fails | First succeeds; second surfaces divergence via stderr. User resolves manually. No data loss. |
 | **No remote configured** | `git remote` returns empty | Push is a no-op; module logs `push.result: "no_remote"` and exits 0. |
@@ -294,8 +294,8 @@ Per the repo's audit-script requirement, every plan-time deliverable maps to a `
 | **REQ-004** | `.claude/commands/merge-to-main.md` exists with required frontmatter + body that calls `mahavishnu.core.merge_to_main` | `python scripts/agent_metadata_audit.py` + `python scripts/tool_frontmatter_validator.py` |
 | **REQ-005** | `.claude/hooks/agent-merge-on-end.py` exists and fires at SessionEnd per the existing `_hook_io.py` contract | Manual test: end a session in a worktree, observe the hook runs |
 | **REQ-006** | `.claude/settings.json` wires the new hook into the SessionEnd array, **appended after the existing `worktree-session-isolation.py` entry** (the existing hook runs first, this new hook runs second) | `cat .claude/settings.json | jq '.hooks.SessionEnd'` shows the new entry at position ≥ 1 of the array |
-| **REQ-007** | `.claude/decisions/2026-10-03-main-autopush.md` exists and supersedes the relevant clause of `feedback-bodai-push-is-user-controlled` | Cross-link check |
-| **REQ-008** | `.claude/decisions/2026-10-03-trunk-based-agent-review.md` exists | File exists |
+| **REQ-007** | `docs/decisions/2026-10-03-main-autopush.md` exists and supersedes the relevant clause of `feedback-bodai-push-is-user-controlled` | Cross-link check |
+| **REQ-008** | `docs/decisions/2026-10-03-trunk-based-agent-review.md` exists | File exists |
 | **REQ-009** | Session-buddy dual-store: every audit entry has a `session_buddy_reflection_id` field | `git log --oneline origin/main..main` for-each entry |
 | **REQ-010** | `MAHAVISHNU_AUTO_MERGE` default is 1 (on) per user choice | Source inspection + `~/.zshenv` has explicit `export MAHAVISHNU_AUTO_MERGE=1` |
 | **REQ-011** | Pre-deploy gate: every merge commit on `main` has a corresponding audit log entry | `audit_orphans.py` extension (new script); CI smoke runs it |
@@ -305,7 +305,7 @@ Per the repo's audit-script requirement, every plan-time deliverable maps to a `
 
 ## Integration Contract
 
-Per `.claude/decisions/wire-up-contract.md`, every deliverable has the following block. One block per deliverable.
+Per `docs/decisions/wire-up-contract.md`, every deliverable has the following block. One block per deliverable.
 
 ### Deliverable: `mahavishnu/core/dev_log.py` (audit-log writer)
 
@@ -339,15 +339,15 @@ Per `.claude/decisions/wire-up-contract.md`, every deliverable has the following
 - **Rollback signal:** Exit codes per the Python module (1=review, 2=crackerjack, 3=rebase, 4=push, 5=cleanup); user reads the code and resolves.
 - **Observability added:** None (the underlying Python module's events cover this).
 
-### Deliverable: `.claude/decisions/2026-10-03-main-autopush.md` (governance amendment)
+### Deliverable: `docs/decisions/2026-10-03-main-autopush.md` (governance amendment)
 
 - **Triggered from:** This spec's creation; co-delivered with REQ-007.
 - **Returns to / updates:** Documents the auto-push rule with cross-links to `feedback-bodai-push-is-user-controlled` (the rule it amends).
-- **Demonstrable by:** `cat .claude/decisions/2026-10-03-main-autopush.md` shows the rule, the scope, the deviation rationale, and the cross-link.
+- **Demonstrable by:** `cat docs/decisions/2026-10-03-main-autopush.md` shows the rule, the scope, the deviation rationale, and the cross-link.
 - **Rollback signal:** The decision doc can be superseded by a later decision (`superseded_by:` field).
 - **Observability added:** The audit log's `push.result` field is the runtime observable for whether the auto-push succeeded; Akosha can detect divergence over time.
 
-### Deliverable: `.claude/decisions/2026-10-03-trunk-based-agent-review.md` (workflow doc)
+### Deliverable: `docs/decisions/2026-10-03-trunk-based-agent-review.md` (workflow doc)
 
 - **Triggered from:** This spec's creation; co-delivered with REQ-008.
 - **Returns to / updates:** Documents the workflow for future readers in this repo.
@@ -369,7 +369,7 @@ Per `.claude/decisions/wire-up-contract.md`, every deliverable has the following
 
 **Update `feedback-bodai-push-is-user-controlled`** to add a **cross-link** (NOT an inline exception) pointing to the new decision doc:
 
-> **Cross-reference (2026-10-03)**: The exception for `origin/main` after a successful squash-merge lives in `.claude/decisions/2026-10-03-main-autopush.md`. All other push types (tags, force-push, non-origin remotes) remain user-controlled per this memory.
+> **Cross-reference (2026-10-03)**: The exception for `origin/main` after a successful squash-merge lives in `docs/decisions/2026-10-03-main-autopush.md`. All other push types (tags, force-push, non-origin remotes) remain user-controlled per this memory.
 
 **Create new memory `feedback-bodai-merge-workflow.md`** capturing the workflow contract (which CLAUDE.md readers can use to know what the slash command and SessionEnd hook do). Dual-store: also `mcp__session-buddy__store_reflection(content=..., tags=["feedback", "merge-workflow"])`.
 
@@ -383,9 +383,9 @@ Per `.claude/decisions/wire-up-contract.md`, every deliverable has the following
 
 ### Decisions
 
-**Create `.claude/decisions/2026-10-03-main-autopush.md`** (REQ-007). Contents: rule, scope, deviation rationale, cross-link to `feedback-bodai-push-is-user-controlled`, threat model (divergence, accidental force-push, replay).
+**Create `docs/decisions/2026-10-03-main-autopush.md`** (REQ-007). Contents: rule, scope, deviation rationale, cross-link to `feedback-bodai-push-is-user-controlled`, threat model (divergence, accidental force-push, replay).
 
-**Create `.claude/decisions/2026-10-03-trunk-based-agent-review.md`** (REQ-008). Contents: workflow steps, links to this spec, links to the components.
+**Create `docs/decisions/2026-10-03-trunk-based-agent-review.md`** (REQ-008). Contents: workflow steps, links to this spec, links to the components.
 
 ## Verification
 
@@ -449,10 +449,10 @@ Each plan is independently testable with a single Integration Contract deliverab
 ## Cross-references
 
 - `docs/specs/2026-09-29-task-system-design.md` — the Task system uses ephemeral branches for `auto-coordinate`-linked work; this spec is compatible.
-- `.claude/decisions/worktree-cleanup-policy.md` — tier rubric and `LOCKED-live`/`LOCKED-orphan` semantics used by stage 6 cleanup.
-- `.claude/decisions/worktree-autoremove-policy.md` — Rule 5 (SessionEnd automation prohibition); the spec's default `MAHAVISHNU_AUTO_MERGE=1` deviates from the spirit of this rule. **The new governance decision** `.claude/decisions/2026-10-03-main-autopush.md` documents the deviation.
-- `.claude/decisions/wire-up-contract.md` — Integration Contract requirement (per deliverable).
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — applies to SessionEnd hook if it touches MCP.
+- `docs/decisions/worktree-cleanup-policy.md` — tier rubric and `LOCKED-live`/`LOCKED-orphan` semantics used by stage 6 cleanup.
+- `docs/decisions/worktree-autoremove-policy.md` — Rule 5 (SessionEnd automation prohibition); the spec's default `MAHAVISHNU_AUTO_MERGE=1` deviates from the spirit of this rule. **The new governance decision** `docs/decisions/2026-10-03-main-autopush.md` documents the deviation.
+- `docs/decisions/wire-up-contract.md` — Integration Contract requirement (per deliverable).
+- `docs/decisions/mcp-backend-wiring-discipline.md` — applies to SessionEnd hook if it touches MCP.
 - `feedback-bodai-push-is-user-controlled` — the rule being cross-linked (NOT amended inline).
 - `feedback-worktree-update-ref-drops-parallel-commits` — stage-4's rebase-before-merge + SHA-reverify is the inverse of this anti-pattern.
 - `feedback-bodai-atomic-commit-recurring-fixes` — squash-merge aligns with this rule (one logical commit per piece of work).

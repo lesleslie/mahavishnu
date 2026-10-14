@@ -30,7 +30,7 @@ Verbatim from spec §12:
 - **No `git push`** for bodai without explicit approval.
 - **No version bumps** — user does.
 - **No `Co-Authored-By` trailer**.
-- **Wire-up contract** per `.claude/decisions/wire-up-contract.md`.
+- **Wire-up contract** per `docs/decisions/wire-up-contract.md`.
 
 ## 1. Outcome
 

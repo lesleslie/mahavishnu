@@ -34,7 +34,7 @@ def _refuse_symlink_target(path: Path) -> None:
     We accept that residual risk because the true mitigation
     (parent-directory locking) is not portable across all POSIX
     variants. See threat model in
-    ``.claude/decisions/session-worktree-defaults.md``.
+    ``docs/decisions/session-worktree-defaults.md``.
     """
     flags = os.O_RDONLY
     if hasattr(os, "O_NOFOLLOW"):

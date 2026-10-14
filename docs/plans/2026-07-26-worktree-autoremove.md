@@ -75,7 +75,7 @@ The automation design is retained only in the final **DEFERRED** appendix.
 ## Context
 
 The canonical policy in
-`.claude/decisions/session-worktree-defaults.md` Rule 2 currently says:
+`docs/decisions/session-worktree-defaults.md` Rule 2 currently says:
 
 > Never auto-removes worktrees. SessionEnd marks the entry `abandoned` in the
 > registry but does NOT delete the git worktree.
@@ -123,8 +123,8 @@ Do not claim that every removal has a backup.
 
 | Path | Change | Purpose |
 |---|---|---|
-| `.claude/decisions/worktree-autoremove-policy.md` | Create | Explicitly amend Rule 2 for user-invoked CLI only. |
-| `.claude/decisions/README.md` | Edit | Index the new canonical decision. |
+| `docs/decisions/worktree-autoremove-policy.md` | Create | Explicitly amend Rule 2 for user-invoked CLI only. |
+| `docs/decisions/README.md` | Edit | Index the new canonical decision. |
 | `mahavishnu/core/worktree_prune_merged.py` | Create | Candidate model, fail-closed classifiers, finder, and pruner. |
 | `mahavishnu/core/worktree_audit.py` | Edit | Add sweep-level `worktree_prune_merged_*` events required by the manual audit check. |
 | `mahavishnu/worktree_cli.py` | Edit | Add the Typer subcommand and repository nickname threading. |
@@ -145,8 +145,8 @@ an explicit user-invoked CLI.
 
 **Files:**
 
-- Create: `.claude/decisions/worktree-autoremove-policy.md`
-- Edit: `.claude/decisions/README.md`
+- Create: `docs/decisions/worktree-autoremove-policy.md`
+- Edit: `docs/decisions/README.md`
 
 ### Task 1.1: Write the explicit Rule 2 amendment
 
@@ -212,13 +212,13 @@ following exception:
 
 ## Cross-references
 
-- Original rule: `.claude/decisions/session-worktree-defaults.md` Rule 2
+- Original rule: `docs/decisions/session-worktree-defaults.md` Rule 2
 - Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
 - Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 ```
 
-- [ ] **Step 2: Add the decision to `.claude/decisions/README.md`**
+- [ ] **Step 2: Add the decision to `docs/decisions/README.md`**
 
 Add one newest-first table row:
 
@@ -235,14 +235,14 @@ exception, and nowhere says the original Rule 2 is merely "preserved".
 - [ ] **Step 4: Commit Wave 1**
 
 ```bash
-git add .claude/decisions/worktree-autoremove-policy.md .claude/decisions/README.md
+git add docs/decisions/worktree-autoremove-policy.md docs/decisions/README.md
 git commit -m "docs(decisions): permit explicit prune-merged CLI"
 ```
 
 **Integration Contract (Wave 1):**
 
 - **Triggered from:** the Wave 3 CLI docstring links to this decision.
-- **Returns to / updates:** canonical policy under `.claude/decisions/`.
+- **Returns to / updates:** canonical policy under `docs/decisions/`.
 - **Demonstrable by:** a text search finds the explicit Rule 2 amendment and
   the prohibition on SessionEnd/cron automation.
 - **Rollback signal:** any implementation trigger other than direct CLI user
@@ -1421,7 +1421,7 @@ the feature-tracking state to `wired`.
 
 ## Policy
 
-`.claude/decisions/worktree-autoremove-policy.md` explicitly amends
+`docs/decisions/worktree-autoremove-policy.md` explicitly amends
 `session-worktree-defaults.md` Rule 2 for this user-invoked CLI. It does not
 permit SessionEnd or cron automation.
 ```
@@ -1475,7 +1475,7 @@ deferred:
     unattended execution.
 related:
   plan: docs/plans/2026-07-26-worktree-autoremove.md
-  policy: .claude/decisions/worktree-autoremove-policy.md
+  policy: docs/decisions/worktree-autoremove-policy.md
   user_docs: docs/WORKTREE_AUTOREMOVE.md
 ```
 

@@ -28,7 +28,7 @@ Decoding priority per Redis-stream message:
 Phase 5's ``.claude/hooks/mahavishnu-activity-stream.py`` was the
 WebSocket-based transition state (Mahavishnu-only) and is also retired.
 See ``docs/plans/2026-07-11-phase-6-bodai-observability.md`` and
-``.claude/decisions/bodai-observability-pattern.md`` for the operational
+``docs/decisions/bodai-observability-pattern.md`` for the operational
 pattern this module implements.
 """
 

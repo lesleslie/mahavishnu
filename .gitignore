@@ -313,7 +313,7 @@ cron/jobs.json
 # the brainstorm visual-companion's mockup HTML + server-state JSON.
 # Plans and specs live at `docs/plans/` and `docs/specs/` instead — they
 # are committed under their canonical paths, never under `.superpowers/`.
-# See `.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`.
+# See `docs/decisions/2026-10-03-plans-specs-canonical-paths.md`.
 .superpowers/
 
 .superprofits/

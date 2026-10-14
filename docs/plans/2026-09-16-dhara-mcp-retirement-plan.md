@@ -404,8 +404,8 @@ The follow-on plan (rewriting the 21 `mcp__dhara__*` MCP tools per the design sp
 
 ## References
 
-- `.claude/decisions/wire-up-contract.md` — Integration-Contract policy
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — wire-up discipline for any new MCP-server surface introduced by this plan (not applicable: this plan retires an MCP-server dep, not creates one)
+- `docs/decisions/wire-up-contract.md` — Integration-Contract policy
+- `docs/decisions/mcp-backend-wiring-discipline.md` — wire-up discipline for any new MCP-server surface introduced by this plan (not applicable: this plan retires an MCP-server dep, not creates one)
 - `docs/schemas/document-frontmatter-v1.md` — frontmatter schema
 - `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` — design source (read for context; not directly implemented by this plan)
 - `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — sibling plan; cross-check for naming/port collisions

@@ -277,7 +277,7 @@ requirements:
 | R-D | Tmux worker panes survive MCP process restarts; the startup guard runs once per process, so a long-lived tmux pane in a stale `merge_driver_required=True` env keeps using the old probe until relaunch (R4 #D) | Medium for tmux-heavy deployments | Document in Phase 4 Observability: tmux panes must relaunch to pick up new `merge_driver_required` setting. Mitigation scope: out of plan; tracked for follow-up if operator reports it. Alternative: re-probe per worker launch instead of per process — considered but rejected as cost > value for v1 |
 | R-E | Operator override `merge_driver_default: "line"` causes silent behavior change | Low (it's the default) | Loud `WARNING` on default override; `/health` shows actual strategy used by last run |
 | R-F | Dhara payload schema migration breaks legacy records (Phase 3) | Low | `from_dict` tolerates missing fields already at lines 148, 152, 216, 293 of `state_machine.py` |
-| R-G | `MAHAVISHNU_MERGE_DRIVER_DEFAULT` env var name collides with future env conventions | Low | Reserved prefix per `.claude/decisions/`; documented in `docs/CONFIGURATION.md` |
+| R-G | `MAHAVISHNU_MERGE_DRIVER_DEFAULT` env var name collides with future env conventions | Low | Reserved prefix per `docs/decisions/`; documented in `docs/CONFIGURATION.md` |
 | R-H | Runtime fallback to `LINE` fires silently if `/health` aggregate doesn't surface it (R3 #3) | High without `degraded_since`; Low with mitigation | `merge_driver.degraded_since` ISO timestamp set on `/health` whenever `merge.fallback_total` > 0 since last healthy; OTel counter `merge.fallback_total` exposed for alerting |
 | R-I | `merge_three_way_sync` left as dead code if not deprecated (R1 #1) | Medium without deprecation; Low with mitigation | Phase 1 renames to `_merge_three_way_sync_internal` + `DeprecationWarning`; removed from `__all__` |
 | R-J | Consumer `try/except` in `worker_contract_tools.py` doesn't catch `MergeDriverUnavailableError`, exception escapes as uncaught error (R3 #1) | High without extension; Low with mitigation | Phase 2 explicitly extends catch chain at lines 672-707 with `except MergeDriverUnavailableError → HTTP 500 + ErrorCode.MERGE_DRIVER_UNAVAILABLE` |
@@ -307,7 +307,7 @@ The Akosha search fallback ("No websocket invocations indexed yet") observed dur
 | Plan | Relationship |
 |---|---|
 | `docs/plans/2026-05-10-minimax27-provider-migration.md` | **Precedent for deprecation cycle.** MiniMax plan kept `zai` as a non-default fallback for one release cycle before flipping to `MiniMax-M3` as default. Phase 4 follows the same pattern: mergiraf ships as opt-in (default stays `"line"`) for one release, then follow-up plan `2026-09-10-settle-semantic-merge-default-flip.md` flips default after telemetry gate |
-| `.claude/decisions/wire-up-contract.md` | **Template policy.** Every phase's Integration Contract follows the Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added structure mandated by this decision |
+| `docs/decisions/wire-up-contract.md` | **Template policy.** Every phase's Integration Contract follows the Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added structure mandated by this decision |
 | `docs/plans/2026-08-31-bodai-mcp-plist-stale-cli-subcommand.md` | **Cross-ecosystem precedent for operator-trust erosion.** launchd plist refactor broke CLI subcommand — silent 30s timeout. Reinforces R-K's argument that flipping defaults without operator comms erodes trust. Cited as the cautionary tale for the deprecation cycle in §9 Decision Rule #6 |
 | `docs/plans/mahavishnu-phase3-plan-defect-phase2-foundation.md` | **Precedent for orphan-detection gate.** Phase 3 streaming-tar assumed `storage_io.py`/`cache.py` existed; none did. Reinforces §9 Decision Rule #3: `audit_orphans.py` must run before declaring features complete |
 | Follow-up: `docs/plans/2026-09-10-settle-semantic-merge-default-flip.md` | **Created after Phase 4 ships + 30 days telemetry.** Flips `merge_driver_default` to `"mergiraf"` with operator comms and explicit rollback via `merge_driver_default: "line"` override |
@@ -345,7 +345,7 @@ Implementation progress against the plan's REQ-SM-001..REQ-SM-009 and phase deli
 - `mahavishnu/settle/state_machine.py` — pure-function transition table.
 - `mahavishnu/settle/persistence.py` — Dhara persistence layer.
 - `mahavishnu/mcp/tools/worker_contract_tools.py:673` — sole consumer.
-- `.claude/decisions/wire-up-contract.md` — policy this plan fulfills.
+- `docs/decisions/wire-up-contract.md` — policy this plan fulfills.
 - `docs/plans/TEMPLATE.md` — plan template.
 - Session-Buddy reflection stored 2026-09-10, tags `merge-driver`, `mergiraf`, `decision` — recovery anchor for "have we ever decided to use mergiraf?" archaeology queries.
 

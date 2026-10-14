@@ -67,7 +67,7 @@ These decisions were resolved during brainstorming and are not revisitable durin
 | Execution mode | Spec + plan artifacts only; execute in a future session | User wants durability over speed this round |
 | Production-revert authority | Reconciler change (item 2) requires adversarial tests first | Restore `asyncio.create_task` only after tests prove observability without `await` |
 | `_validate_ctx` tightening | Reject **unknown** keys per op (whitelist), not constrain values | Existing Literal/Int/Bool/Str checks already constrain values |
-| Bundle-defensive note location | `.claude/decisions/sdd-bundling-defensive-pattern.md` | Repo-local decision file (per CLAUDE.md); not architectural, so not `docs/adr/` |
+| Bundle-defensive note location | `docs/decisions/sdd-bundling-defensive-pattern.md` | Repo-local decision file (per CLAUDE.md); not architectural, so not `docs/adr/` |
 | Spec-lock format for item 5 | Table in parent spec §3.3.4 mapping `dispatch_state → suggested_action` (single input dimension; `deleted` is filtered upstream by `_is_drain_eligible`, NOT by `_propose_action`) | Locks current heuristic as policy without changing behavior |
 
 ## 3. The Six Polish Items
@@ -147,14 +147,14 @@ Alternative patterns (module-level set; patched fake) were considered and reject
 
 ### Item 4: SDD bundling-pattern defensive note
 
-**Motivation.** During the parent plan's execution, Task 19's implementer committed `def3eb7a3346708d393225e5e04f8e92e7c3927f` with `git add .`-style bundling, accidentally landing Task 17's staged-but-uncommitted files (3 hook wrappers + `.claude/settings.json` + `capture_hook` + integration tests). Final state was correct (no harm done, no extra files), but the next SDD run on this repo is at risk of repeating the pattern. The lesson needs to be recorded in `.claude/decisions/` (per CLAUDE.md's "repo-local decisions" rule, NOT `docs/adr/` which is for architectural choices).
+**Motivation.** During the parent plan's execution, Task 19's implementer committed `def3eb7a3346708d393225e5e04f8e92e7c3927f` with `git add .`-style bundling, accidentally landing Task 17's staged-but-uncommitted files (3 hook wrappers + `.claude/settings.json` + `capture_hook` + integration tests). Final state was correct (no harm done, no extra files), but the next SDD run on this repo is at risk of repeating the pattern. The lesson needs to be recorded in `docs/decisions/` (per CLAUDE.md's "repo-local decisions" rule, NOT `docs/adr/` which is for architectural choices).
 
 **Change scope.**
 
 | File | Change |
 |---|---|
-| `.claude/decisions/sdd-bundling-defensive-pattern.md` | NEW. One short note (per the `removed-scripts.md` template shape in `.claude/decisions/README.md`): **Context** (Task 19's bundling incident, commit hash, files affected), **Decision rule** ("downstream SDD tasks must use `git add <specific-paths>` not `git add .` whenever the working tree is dirty with staged-but-uncommitted work from an upstream task"), **Status** (active) |
-| `.claude/decisions/README.md` | Add the new file to the index list (one-line entry, alphabetical insertion) |
+| `docs/decisions/sdd-bundling-defensive-pattern.md` | NEW. One short note (per the `removed-scripts.md` template shape in `docs/decisions/README.md`): **Context** (Task 19's bundling incident, commit hash, files affected), **Decision rule** ("downstream SDD tasks must use `git add <specific-paths>` not `git add .` whenever the working tree is dirty with staged-but-uncommitted work from an upstream task"), **Status** (active) |
+| `docs/decisions/README.md` | Add the new file to the index list (one-line entry, alphabetical insertion) |
 
 **Content draft for the decision file** (final wording in the plan's brief):
 
@@ -302,10 +302,10 @@ All polish items use existing imports. No `pyproject.toml` changes.
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | 2 |
 | `docs/specs/2026-09-10-jot-drain-design.md` | 1, 2, 5 |
 | `docs/MCP_TOOLS_SPECIFICATION.md` | 6 |
-| `.claude/decisions/sdd-bundling-defensive-pattern.md` | 4 (NEW) |
-| `.claude/decisions/README.md` | 4 (index entry) |
+| `docs/decisions/sdd-bundling-defensive-pattern.md` | 4 (NEW) |
+| `docs/decisions/README.md` | 4 (index entry) |
 
-11 files touched. 2 NEW: `tests/integration/jot/test_drain_slash_command.py` (item 1) and `.claude/decisions/sdd-bundling-defensive-pattern.md` (item 4). The 9 others are modifications or spec updates.
+11 files touched. 2 NEW: `tests/integration/jot/test_drain_slash_command.py` (item 1) and `docs/decisions/sdd-bundling-defensive-pattern.md` (item 4). The 9 others are modifications or spec updates.
 
 ### 4.5 Commit hygiene (carried from parent plan)
 
@@ -332,7 +332,7 @@ The polish set is complete when ALL of the following hold:
 1. `/jot drain` slash command is documented in `mahavishnu/commands/jot.md` with the contract in §3 item 1.
 1. `drain.py` reconciler uses `asyncio.create_task(_auto_retry_after(...))` (fire-and-forget), NOT `await`. Adversarial tests prove the retry still runs.
 1. `_validate_ctx` rejects unknown ctx keys per op. New tests cover this. All existing tests still pass.
-1. `.claude/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
+1. `docs/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
 1. Parent spec §3.3.4 documents the `_propose_action` policy table with `reason` strings copied verbatim from drain.py lines 710-713 (not paraphrased).
 1. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
 1. drain.py coverage is ≥ 89% (project-wide pytest gate per `pyproject.toml` / CLAUDE.md).

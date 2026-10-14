@@ -9,7 +9,7 @@ topic: test-matrix-followups
 
 One-line summary: tracks the medium- and low-severity items from the recent
 multi-agent review of `scripts/test_matrix.py` and the surrounding
-`.claude/decisions/`, `.claude/agents/`, and `.claude/commands/...` files. These
+`docs/decisions/`, `.claude/agents/`, and `.claude/commands/...` files. These
 items were intentionally **not** fixed in the original PR; this file is the
 pickup list for future work.
 
@@ -18,8 +18,8 @@ pickup list for future work.
 The repo has a dated code/architecture follow-up directory at
 `docs/followups/` (with its own `README.md` index and `.archive/` rule), but
 no lightweight tracker for deferred *review* findings like these (no
-`docs/todos/`, no `.claude/decisions/pending/`, no root `TODO.md`).
-`.claude/decisions/` is the closest existing convention for those: it is the
+`docs/todos/`, no `docs/decisions/pending/`, no root `TODO.md`).
+`docs/decisions/` is the closest existing convention for those: it is the
 repo-local store for decisions and policy, and `removed-scripts.md`
 already lives there. We use the same directory rather than introduce a
 new one, with a filename that makes the file's role as a *follow-up
@@ -27,8 +27,8 @@ tracker* explicit (`test-matrix-review-followups.md`, not
 `test-matrix-decision.md`).
 
 If a future contributor adds 5+ more deferred-item files, consider
-promoting this directory layout to `.claude/decisions/pending/*.md` and
-an `.claude/decisions/README.md` index. (See LOW #8 in Group 2.)
+promoting this directory layout to `docs/decisions/pending/*.md` and
+an `docs/decisions/README.md` index. (See LOW #8 in Group 2.)
 
 ## How to pick this up
 
@@ -285,8 +285,8 @@ All 13 smoke tests pass after the fix.
 
 **Status: RESOLVED (committed; 2 files rewritten + 1 new index file)**
 
-Docs-level changes in `.claude/decisions/removed-scripts.md`,
-`.claude/CLAUDE.md`, and the new `.claude/decisions/README.md`. These
+Docs-level changes in `docs/decisions/removed-scripts.md`,
+`.claude/CLAUDE.md`, and the new `docs/decisions/README.md`. These
 are content-quality issues, not code correctness — none of them break
 a build, but each one is the kind of imprecision that will mislead a
 future contributor. Resolutions are noted per-item at the end of the
@@ -295,7 +295,7 @@ group.
 ### M7 — `privacy_matrix.py` removal reason is awkwardly phrased
 
 - **Severity**: MEDIUM
-- **Location**: `.claude/decisions/removed-scripts.md:15`
+- **Location**: `docs/decisions/removed-scripts.md:15`
 - **Effort**: XS
 - **Why it matters**: The current text ("Would imply regulatory authority
   a script cannot have") is technically correct but reads like legal
@@ -312,7 +312,7 @@ group.
 ### M8 — `release_checklist.py` reason hand-waves "adequately"
 
 - **Severity**: MEDIUM
-- **Location**: `.claude/decisions/removed-scripts.md:14`
+- **Location**: `docs/decisions/removed-scripts.md:14`
 - **Effort**: XS
 - **Why it matters**: "The LLM produces release checklists adequately
   at runtime" is a justification that will be challenged every time
@@ -327,7 +327,7 @@ group.
 ### M9 — Self-dating counts in the opening
 
 - **Severity**: MEDIUM
-- **Location**: `.claude/decisions/removed-scripts.md:3, 7`
+- **Location**: `docs/decisions/removed-scripts.md:3, 7`
 - **Effort**: XS
 - **Why it matters**: "Six scripts were previously referenced... Five
   are staying removed; one is being implemented" will rot the moment a
@@ -342,7 +342,7 @@ group.
 ### M10 (docs) — "Defer" rows lack a "Revisit when" trigger
 
 - **Severity**: MEDIUM
-- **Location**: `.claude/decisions/removed-scripts.md:13-17`
+- **Location**: `docs/decisions/removed-scripts.md:13-17`
 - **Effort**: S
 - **Why it matters**: Three scripts are marked "Defer" with no criterion
   for un-deferring. A future contributor who wants to revisit one has
@@ -360,7 +360,7 @@ group.
 - **Effort**: S
 - **Why it matters**: The current section is a single line pointing at
   the directory. A new contributor won't know when to add a decision
-  file, what the difference is between `.claude/decisions/` and
+  file, what the difference is between `docs/decisions/` and
   `docs/adr/`, or what the expected file shape is.
 - **Suggested fix**: Expand to mirror the style of the `## Validation`
   section above it. Cover: when to add a file (a non-trivial choice
@@ -368,22 +368,22 @@ group.
   between this directory and `docs/adr/`, and a one-line template
   (e.g. "## Decision / ## Context / ## Decision rule").
 
-### LOW #8 (docs) — `.claude/decisions/` lacks an index
+### LOW #8 (docs) — `docs/decisions/` lacks an index
 
 - **Severity**: LOW
-- **Location**: `.claude/decisions/` (no `README.md` present)
+- **Location**: `docs/decisions/` (no `README.md` present)
 - **Effort**: XS
 - **Why it matters**: With one file today this is fine. With five the
   directory becomes a junk drawer. A `README.md` index listing
   decision files (one line each) keeps the directory navigable.
-- **Suggested fix**: Add `.claude/decisions/README.md` listing each
+- **Suggested fix**: Add `docs/decisions/README.md` listing each
   file with a one-line summary, sorted newest-first. When a new file
   is added, add a row to the index.
 
 ### LOW #9 (docs) — Decision rule ambiguous about empty `required_scripts: []`
 
 - **Severity**: LOW
-- **Location**: `.claude/decisions/removed-scripts.md:29-34`
+- **Location**: `docs/decisions/removed-scripts.md:29-34`
 - **Effort**: XS
 - **Why it matters**: The rule is stated as "Do not add speculative
   `required_scripts:` entries". A reader could reasonably interpret an
@@ -403,7 +403,7 @@ group.
 | M9 | Replaced the "Six scripts were previously referenced... Five are staying removed" tally with a policy-focused description. | `removed-scripts.md` opening |
 | M10 (docs) | Added a "Revisit when" column to the table. Each defer-row now has a concrete trigger. | `removed-scripts.md` table |
 | LOW #7 (docs) | Expanded the `## Decisions` section in `CLAUDE.md` to cover: when to add a file, when to use `docs/adr/` instead, expected file shape, index pointer. | `.claude/CLAUDE.md` |
-| LOW #8 (docs) | Created `.claude/decisions/README.md` as a 2-row index. Sorted newest-first. | new file: `.claude/decisions/README.md` |
+| LOW #8 (docs) | Created `docs/decisions/README.md` as a 2-row index. Sorted newest-first. | new file: `docs/decisions/README.md` |
 | LOW #9 (docs) | Added a clarifying sentence to the Decision rule: empty list is acceptable; only non-empty lists pointing at uncommitted scripts are forbidden. | `removed-scripts.md` Decision rule |
 
 The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
@@ -522,7 +522,7 @@ The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
 
 > **Verification (2026-09-06):** All 4 groups confirmed RESOLVED in
 > current code. The file is a historical record of the test-matrix
-> review work; it remains in `.claude/decisions/` because there is
+> review work; it remains in `docs/decisions/` because there is
 > no `.archive/` convention for decisions (unlike `docs/followups/`
 > which has `.archive/` per the lifecycle policy). Per-item resolution
 > tables at the end of each group cite the post-resolution line
@@ -537,7 +537,7 @@ The pre-existing `tool_frontmatter_validator.py` ZeroDivisionError on
   Group 1 section.
 - **Group 2**: RESOLVED (7/7 items). Doc-only changes: rewrote
   `removed-scripts.md`, expanded `CLAUDE.md` Decisions section, new
-  `.claude/decisions/README.md` index. See the "Group 2 resolution
+  `docs/decisions/README.md` index. See the "Group 2 resolution
   notes" table.
 - **Group 3**: RESOLVED (4/4 items). Fixed M5/M6 agent labels,
   deleted stray troubleshooting content from `quality-validation.md`,

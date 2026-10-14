@@ -5,7 +5,7 @@ date: 2026-07-26
 last_reviewed: 2026-09-13
 topic: decision-index
 ---
-# `.claude/decisions/` index
+# `docs/decisions/` index
 
 One-line summary: the directory holds repo-local decisions and
 follow-up trackers. This file is the index — update it when adding

@@ -74,7 +74,7 @@ narrative. They should not duplicate.
    `Workflow({script: parallel()})` for CWD-leak reasons — that
    is an observability/routing improvement, not a leak fix. The
    leak is in Claude Code's dispatch, not Mahavishnu's. Mixing
-   them creates drift-bundling (per `.claude/decisions/removed-scripts.md`).
+   them creates drift-bundling (per `docs/decisions/removed-scripts.md`).
 6. **Layer 4 (PreToolUse hook + auto-trigger skill) was
    considered and DEFERRED.** The hook's false-positive risk for
    legitimate in-repo fanouts, AST-parsing fragility on the
@@ -93,15 +93,15 @@ narrative. They should not duplicate.
   `task-brief` write artifacts to the calling shell's CWD). Same
   root cause (CWD-inheritance); mitigation is `cd <repo> && bash
   <script>` before any SDD dispatch.
-- `.claude/decisions/session-worktree-defaults.md` — opt-in
+- `docs/decisions/session-worktree-defaults.md` — opt-in
   per-session worktree isolation (`MAHAVISHNU_AUTO_WORKTREE=1`).
   Complementary, not duplicative: this decision is the rule for
   when isolation IS active but a fanout is still needed.
-- `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` §2
+- `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` §2
   — same CWD-inheritance mechanism explains per-project
   `.mcp.json` scoping; the fanout CWD problem is the agent-
   dispatch analogue.
-- `.claude/decisions/worktree-autoremove-policy.md` — narrow Rule 2
+- `docs/decisions/worktree-autoremove-policy.md` — narrow Rule 2
   amendment permitting explicitly invoked `worktree prune-merged`.
   Hooks and cron remain prohibited; cleanup of the
   `$XDG_RUNTIME_DIR/...` or `/tmp/<branch>` worktrees created under

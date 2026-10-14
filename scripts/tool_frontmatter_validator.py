@@ -395,7 +395,7 @@ class ToolFrontmatterValidator:
     ) -> None:
         """Enforce the ``required_scripts:`` policy.
 
-        Per ``.claude/decisions/removed-scripts.md``:
+        Per ``docs/decisions/removed-scripts.md``:
         "A ``required_scripts:`` entry pointing at a non-existent file
         is a bug, not a TODO." This method materialises the policy by
         resolving each entry relative to the project root and asserting
@@ -458,7 +458,7 @@ class ToolFrontmatterValidator:
                         message=(f"required_scripts entry points at non-existent file: {entry}"),
                         suggestion=(
                             "Either commit the script at this path or remove "
-                            "the entry (per .claude/decisions/removed-scripts.md)"
+                            "the entry (per docs/decisions/removed-scripts.md)"
                         ),
                     )
                 )

@@ -86,7 +86,7 @@ running alongside the existing `bodai-activity-subscriber` hook.
   section with effect descriptions.
 - `docs/CLI_REFERENCE.md` — adds a worktree-management section
   including the new `list-sessions` and `prune-abandoned` examples.
-- `.claude/decisions/session-worktree-defaults.md` — decision record
+- `docs/decisions/session-worktree-defaults.md` — decision record
   for opt-in default + threat model.
 
 ### Discovery hint (Phase 4, 2026-07-17)
@@ -115,7 +115,7 @@ hint). Cost on the default-off path: ~5-50ms (one git rev-parse +
 path walk + stat).
 
 This is the discoverability middle ground recommended in
-`.claude/decisions/session-worktree-defaults.md`. Default-off
+`docs/decisions/session-worktree-defaults.md`. Default-off
 preserves the consent contract; the hint surfaces the feature to
 users in multi-session setups who didn't know to look for it.
 
@@ -135,7 +135,7 @@ Three reasons, in order of weight:
 1. **Escape hatch.** Default-on with a kill-switch is more error-prone
    than default-off with an explicit opt-in.
 
-Full threat model: see `.claude/decisions/session-worktree-defaults.md`.
+Full threat model: see `docs/decisions/session-worktree-defaults.md`.
 
 ## Manual smoke (run on the project's own repo)
 
@@ -175,7 +175,7 @@ mahavishnu worktree remove mahavishnu ~/worktrees/agent-XXXXXXXX
 ## Cross-references
 
 - 4-lens plan: `/Users/les/.claude/plans/cheerful-marinating-fountain.md`
-- Decision record: `.claude/decisions/session-worktree-defaults.md`
+- Decision record: `docs/decisions/session-worktree-defaults.md`
 - Pickup context: `docs/followups/.archive/2026-07-16-multi-session-mcp-contention.md`
 - Multi-agent review: 4 parallel reviews (architecture, security,
   Claude Code integration, test quality), 2026-07-20

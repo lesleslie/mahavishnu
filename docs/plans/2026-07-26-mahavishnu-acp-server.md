@@ -945,7 +945,7 @@ Filed as separate plans or issues when this plan ships:
 - TUI feature tracker (the consumer of this plan):
   `docs/feature-tracking/tui.md`
 - Plan template: `docs/plans/TEMPLATE.md`
-- Wire-up contract: `.claude/decisions/wire-up-contract.md`
+- Wire-up contract: `docs/decisions/wire-up-contract.md`
 - Prior Toad/ACP deferrals (4, not 5):
   - `docs/plans/2026-06-19-track3-toad-tui.md` (draft)
   - `docs/specs/2026-06-19-external-integrations-design.md:324-380` (Toad ACP deferred)

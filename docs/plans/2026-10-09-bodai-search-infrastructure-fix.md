@@ -17,7 +17,7 @@ topic: mcp-design
 (a) advertised tool names match the actual server-registered names (no more `No such tool available` for the prompt-header names), and
 (b) empty/missing indices do not crash or silently return `[]`; the tools return a structured `{"status": "ok" | "degraded", "results": [...]}` envelope that callers can branch on. Concretely: a probe call that should obviously return data (`mcp__akosha__search_code_patterns(pattern="def test_", file_pattern="*.py")` or `mcp__session-buddy__quick_search(query="python")`) must return a populated result list or an explicit `degraded` envelope, never an `[]` and never an internal-error traceback.
 
-**Architecture:** Three independent merge cycles (one per repo) — the project uses ephemeral branches + squash-merge to local `main` + auto-push (per `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4), no GitHub PR step. Each phase ships in its own worktree at `~/.local/state/mahavishnu/worktrees/<repo>/`. Per `feedback-bodai-push-is-user-controlled.md`, `git push origin main` is governed by `.claude/decisions/2026-10-03-mainautopush.md` — that decision is **mahavishnu-scoped**; the three target repos retain user-controlled push until they adopt the same decision. No shared release, no version bump — the 0.22.x / 0.30.x / 0.27.x lines of akosha / session-buddy / crackerjack each pick up the fix on their own cadence.
+**Architecture:** Three independent merge cycles (one per repo) — the project uses ephemeral branches + squash-merge to local `main` + auto-push (per `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` §4), no GitHub PR step. Each phase ships in its own worktree at `~/.local/state/mahavishnu/worktrees/<repo>/`. Per `feedback-bodai-push-is-user-controlled.md`, `git push origin main` is governed by `docs/decisions/2026-10-03-mainautopush.md` — that decision is **mahavishnu-scoped**; the three target repos retain user-controlled push until they adopt the same decision. No shared release, no version bump — the 0.22.x / 0.30.x / 0.27.x lines of akosha / session-buddy / crackerjack each pick up the fix on their own cadence.
 
 **Tech Stack:** Python 3.14, FastMCP 2.x (`@mcp.tool(name=...)` and `@app.tool(name=...)` decorators), per-repo existing index modules:
 - **Akosha** — `akosha.search` index (semantic + code-graph); handlers in `akosha/mcp/tools/{pycharm_tools,code_graph_tools,akosha_tools,...}.py`.
@@ -62,7 +62,7 @@ Concrete success metric: every probe call above either populates results or retu
 7. **Wire the auto-merge SessionEnd hook** into the 3 target repos' `.claude/settings.json` so merge cycles can complete from sessions in those worktrees. Includes copying the hook scripts from `mahavishnu/.claude/hooks/` to each target repo's `.claude/hooks/`. (REQ-010)
 8. **Each fix ships with a regression test** that fails on the current code, passes on the fix, and asserts on the wire-shape envelope (not the in-process return value). (REQ-007, REQ-012)
 9. **No `.mcp.json` in any of the 4 Bodai repos references the pre-rename `akosha_*` tool names** after the rename. (REQ-011)
-10. **Per-repo push governance cross-link in each target repo's `CLAUDE.md`** — each repo's CLAUDE.md points to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md` and states the repo retains user-controlled push until the user replicates the decision locally. (REQ-013)
+10. **Per-repo push governance cross-link in each target repo's `CLAUDE.md`** — each repo's CLAUDE.md points to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md` and states the repo retains user-controlled push until the user replicates the decision locally. (REQ-013)
 
 ## 3. Non-Goals
 
@@ -191,7 +191,7 @@ requirements:
   - id: REQ-012
     title: "Regression tests assert on the wire-shape envelope via FastMCP `Client` with `InMemoryTransport`, parsing `result.content[0].text` via a local helper, and checking `assert not result.isError` separately — not the in-process return value"
   - id: REQ-013
-    title: "Per-repo push governance cross-link in each target repo's CLAUDE.md, pointing to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md` and stating the repo retains user-controlled push until the user replicates the decision locally"
+    title: "Per-repo push governance cross-link in each target repo's CLAUDE.md, pointing to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md` and stating the repo retains user-controlled push until the user replicates the decision locally"
 ```
 
 ### 4.6 Recon observations
@@ -263,7 +263,7 @@ One possible shared cause is a single reindex / migration step that left the thr
   - **1.7a Copy hook scripts.** `cp mahavishnu/.claude/hooks/agent-merge-on-end.py akosha/.claude/hooks/` and `cp mahavishnu/.claude/hooks/worktree-session-isolation.py akosha/.claude/hooks/` and `cp mahavishnu/.claude/hooks/_hook_io.py akosha/.claude/hooks/` (if `_hook_io.py` exists as a shared helper). Verify the scripts run from the mahavishnu venv (the `python3` path in the script must point to `mahavishnu/.venv/bin/python3`, since `mahavishnu.core.merge_to_main` is only on the mahavishnu venv's PYTHONPATH).
   - **1.7b Configure the venv path.** Edit the `python3` invocation in each copied script (e.g., `#!/usr/bin/env python3` → `#!/usr/bin/env <absolute-path-to-mahavishnu-venv-bin-python3>`) OR add the mahavishnu venv's site-packages to `PYTHONPATH` in the script's shebang line. Document the choice in a code comment.
   - **1.7c Wire the SessionEnd array.** Add both `worktree-session-isolation` and `agent-merge-on-end` entries to `akosha/.claude/settings.json` SessionEnd array, mirroring the order at `mahavishnu/.claude/settings.json:18-37`.
-- **1.8 Push governance cross-link (REQ-013).** Add a one-liner to `akosha/CLAUDE.md` linking to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md` and stating that akosha retains user-controlled push until the user replicates the decision doc locally.
+- **1.8 Push governance cross-link (REQ-013).** Add a one-liner to `akosha/CLAUDE.md` linking to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md` and stating that akosha retains user-controlled push until the user replicates the decision doc locally.
 
 **Exit criteria:**
 - `mcp__akosha__search_code_patterns(pattern="def test_", file_pattern="*.py")` returns without error and without the `'list' object has no attribute 'values'` traceback.
@@ -323,7 +323,7 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 #### Integration Contract — Phase 1.8 (push governance cross-link, REQ-013)
 - **Triggered from**: a user reading `akosha/CLAUDE.md` (governance documentation).
-- **Returns to / updates**: `akosha/CLAUDE.md` gains a one-line cross-link to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md` and a statement that akosha retains user-controlled push.
+- **Returns to / updates**: `akosha/CLAUDE.md` gains a one-line cross-link to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md` and a statement that akosha retains user-controlled push.
 - **Demonstrable by**: `grep '2026-10-03-mainautopush' akosha/CLAUDE.md` returns ≥1 hit.
 - **Rollback signal**: grep returns 0 (cross-link removed).
 - **Observability added**: none (documentation-only).
@@ -386,7 +386,7 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 #### Integration Contract — Phase 2.6 (push governance cross-link, REQ-013)
 - **Triggered from**: a user reading `crackerjack/CLAUDE.md` (governance documentation).
-- **Returns to / updates**: `crackerjack/CLAUDE.md` gains a one-line cross-link to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md`.
+- **Returns to / updates**: `crackerjack/CLAUDE.md` gains a one-line cross-link to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md`.
 - **Demonstrable by**: `grep '2026-10-03-mainautopush' crackerjack/CLAUDE.md` returns ≥1 hit.
 - **Rollback signal**: grep returns 0.
 - **Observability added**: none (documentation-only).
@@ -448,7 +448,7 @@ One possible shared cause is a single reindex / migration step that left the thr
 
 #### Integration Contract — Phase 3.6 (push governance cross-link, REQ-013)
 - **Triggered from**: a user reading `session-buddy/CLAUDE.md` (governance documentation).
-- **Returns to / updates**: `session-buddy/CLAUDE.md` gains a one-line cross-link to `mahavishnu/.claude/decisions/2026-10-03-mainautopush.md`.
+- **Returns to / updates**: `session-buddy/CLAUDE.md` gains a one-line cross-link to `mahavishnu/docs/decisions/2026-10-03-mainautopush.md`.
 - **Demonstrable by**: `grep '2026-10-03-mainautopush' session-buddy/CLAUDE.md` returns ≥1 hit.
 - **Rollback signal**: grep returns 0.
 - **Observability added**: none (documentation-only).
@@ -622,17 +622,17 @@ This is a **separate plan** to be written after this plan ships. It is tracked h
 
 **Owners:** per-server MCP maintainers (one PR per server).
 
-**Policy basis:** `.claude/decisions/mcp-backend-wiring-discipline.md` (referenced in mahavishnu's CLAUDE.md) — "every Bodai MCP server's `/health` must aggregate per-feed state and return 503 on degraded."
+**Policy basis:** `docs/decisions/mcp-backend-wiring-discipline.md` (referenced in mahavishnu's CLAUDE.md) — "every Bodai MCP server's `/health` must aggregate per-feed state and return 503 on degraded."
 
 **Status when this plan ships:** not yet written. To be filed at `mahavishnu/docs/plans/2026-10-XX-mcp-health-check-enrichment.md` after this plan's three merge cycles land.
 
-**Cross-link durability:** when the followup is written, add a one-line cross-link from `.claude/decisions/mcp-backend-wiring-discipline.md` to the followup plan's path. Also add forward-references in each target repo's CLAUDE.md so a future per-server `/health` audit discovers it.
+**Cross-link durability:** when the followup is written, add a one-line cross-link from `docs/decisions/mcp-backend-wiring-discipline.md` to the followup plan's path. Also add forward-references in each target repo's CLAUDE.md so a future per-server `/health` audit discovers it.
 
 ## References
 
-- `.claude/decisions/wire-up-contract.md` — Integration Contract policy this plan follows.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — referenced for §10.
-- `.claude/decisions/2026-10-03-mainautopush.md` — mahavishnu-scoped auto-push governance (referenced in §8).
+- `docs/decisions/wire-up-contract.md` — Integration Contract policy this plan follows.
+- `docs/decisions/mcp-backend-wiring-discipline.md` — referenced for §10.
+- `docs/decisions/2026-10-03-mainautopush.md` — mahavishnu-scoped auto-push governance (referenced in §8).
 - `docs/plans/TEMPLATE.md` — plan structure this plan mirrors.
 - `docs/plans/2026-10-03-trunk-based-agent-review.md` — merge workflow spec.
 - `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md` — merge workflow design.

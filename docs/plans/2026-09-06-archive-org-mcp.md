@@ -2817,7 +2817,7 @@ Create `archive_org_mcp/models/feed.py`:
 ```python
 """Per-tool feed state.
 
-Required by .claude/decisions/mcp-backend-wiring-discipline.md: every registered
+Required by docs/decisions/mcp-backend-wiring-discipline.md: every registered
 tool must expose feed.entities_count, feed.last_updated_timestamp,
 feed.errors_total, and cycles_total, and /readyz must return 503 when a required
 feed is degraded.

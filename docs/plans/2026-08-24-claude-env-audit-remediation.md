@@ -46,7 +46,7 @@ matches across `/Users/les/Projects/`.
 5. Enforce secret rule: `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD` env values
    belong in shell env (via `.zshrc`, direnv, 1Password CLI), never in
    `.mcp.json`.
-6. Document per-project MCP/agent scoping rule in `.claude/decisions/`.
+6. Document per-project MCP/agent scoping rule in `docs/decisions/`.
 7. Update `BODAI_REPO_REGISTRY.md` with per-project MCP server assignment.
 
 ## 3. Non-Goals
@@ -55,7 +55,7 @@ matches across `/Users/les/Projects/`.
   structural fact that each `*-mcp` repo is already standalone makes
   plugins the right long-term shape, but the work is non-trivial (requires
   Bodai marketplace registration). Deferred; tracked in
-  `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md#future-work`.
+  `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md#future-work`.
 - **Removing the 196 dead MCP tool descriptions from `.mcp.json`** — until
   those servers are running or migrated to plugins, descriptions still
   load at session start. This plan reduces noise by deleting from
@@ -119,10 +119,10 @@ drift/decay items across 5 domains. Top 5 by impact:
 **Goal:** Capture the architectural decisions so future work doesn't re-derive.
 
 **Tasks:**
-- 2.1 — Create `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`
+- 2.1 — Create `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`
   capturing: secrets in shell env; MCP config in per-project `.mcp.json`;
   agents scoped to project; plugins preferred over bare URL.
-- 2.2 — Update `.claude/decisions/README.md` index to include the new file.
+- 2.2 — Update `docs/decisions/README.md` index to include the new file.
 - 2.3 — Append per-project MCP/agent assignment table to
   `BODAI_REPO_REGISTRY.md`.
 
@@ -132,11 +132,11 @@ drift/decay items across 5 domains. Top 5 by impact:
   server registration request.
 - **Returns to / updates**: decisions README index gains 1 entry;
   BODAI_REPO_REGISTRY gains per-project scoping section.
-- **Demonstrable by**: `cat .claude/decisions/README.md` lists the new
+- **Demonstrable by**: `cat docs/decisions/README.md` lists the new
   decision in sorted-newest-first order; `grep -c 'Per-project MCP' BODAI_REPO_REGISTRY.md`
   returns ≥1.
 - **Rollback signal**: decision conflicts with current code; revert by
-  archiving decision file to `.claude/decisions/.archive/`.
+  archiving decision file to `docs/decisions/.archive/`.
 - **Observability added**: `last_reviewed:` frontmatter on decision
   files; review-cycle reminder via existing decisions README convention.
 
@@ -196,7 +196,7 @@ CLAUDE.md to reference local + global agent paths.
 
 **Tasks:**
 - 5.1 — Decide per-server: plugin or delete? See
-  `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md#plugin-migration-matrix`.
+  `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md#plugin-migration-matrix`.
 - 5.2 — Delete entries confirmed not needed (e.g. `pycharm` if not used).
 - 5.3 — Convert remaining to Claude Code plugins with per-project
   enablement in `enabledPlugins`.
@@ -217,8 +217,8 @@ CLAUDE.md to reference local + global agent paths.
 
 - [ ] `/Users/les/Projects/mahavishnu/scripts/audit_no_secrets_in_mcp.py` (NEW)
 - [ ] `/Users/les/Projects/splashstand/.mcp.json` (modify — remove token literal)
-- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (NEW)
-- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/README.md` (modify — add 1 row)
+- [ ] `/Users/les/Projects/mahavishnu/docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (NEW)
+- [ ] `/Users/les/Projects/mahavishnu/docs/decisions/README.md` (modify — add 1 row)
 - [ ] `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md` (modify — append scoping section)
 - [ ] `/Users/les/Projects/mahavishnu/.claude/agents/web-components-specialist.md` (DELETE)
 - [ ] `/Users/les/Projects/mahavishnu/.claude/agents/pwa-specialist.md` (DELETE)
@@ -246,7 +246,7 @@ This plan is **done enough** when:
 1. `python scripts/audit_no_secrets_in_mcp.py` exits 0 against current state.
 2. `ls /Users/les/Projects/fastblocks/.claude/agents/` shows 5 moved agents.
 3. `grep -c '______________________________________________________________________' /Users/les/Projects/mahavishnu/.claude/skills/**/SKILL.md` returns 0.
-4. Both `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` and `BODAI_REPO_REGISTRY.md` per-project scoping section are present.
+4. Both `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` and `BODAI_REPO_REGISTRY.md` per-project scoping section are present.
 
 If scope pressure forces a cut: defer Phase 4-5 (frontmatter fix + MCP plugin
 migration) and ship Phases 1-3. Those three phases alone recover ~80% of
@@ -292,7 +292,7 @@ overhead) recoverable through remediation.
 | Phase | What | Status | Evidence |
 |---|---|---|---|
 | 1 | `scripts/audit_no_secrets_in_mcp.py` + splashstand token fix | Likely shipped; verify by running script | Plan's Decision Rule §9 #1 |
-| 2 | `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` + `BODAI_REPO_REGISTRY.md` scoping section | Likely shipped; verify by file existence | Decision file referenced in session memory |
+| 2 | `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` + `BODAI_REPO_REGISTRY.md` scoping section | Likely shipped; verify by file existence | Decision file referenced in session memory |
 | 3 | 5 fastblocks-stack agents moved `mahavishnu/.claude/agents/` to `fastblocks/.claude/agents/` | DONE 2026-08-25 | Plan §2 Goal 4 explicit "DONE" marker |
 | 4 | 47 skill/command frontmatter fix | Partial; covered by doc-frontmatter-cleanup wave 2026-09-07 | Independent workstream landed |
 | 5 | MCP plugin migration | DEFERRED per Non-Goals | Out of scope; bare MCP URLs became the pattern |

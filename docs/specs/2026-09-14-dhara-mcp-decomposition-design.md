@@ -282,7 +282,7 @@ Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_st
 
 Without these primitives, Phase 1 task 8's e2e test ("/health returns 200 with 7 healthy feeds on warm startup") cannot construct feeds with non-zero `cycles_total` and read per-feed signals.
 
-**Per-tool feed commitment:** Each of the 7 adapter_registry tools registers a `HealthFeedState` (in mcp-common parlance, the equivalent of oneiric's legacy `ComponentHealth`) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` per `.claude/decisions/mcp-backend-wiring-discipline.md`. The aggregator increments these counters on every tool invocation.
+**Per-tool feed commitment:** Each of the 7 adapter_registry tools registers a `HealthFeedState` (in mcp-common parlance, the equivalent of oneiric's legacy `ComponentHealth`) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` per `docs/decisions/mcp-backend-wiring-discipline.md`. The aggregator increments these counters on every tool invocation.
 
 **Tool profile gating (Phase 1):** Wire via `mcp_common.tools.dispatch.apply_tool_profile(profile_env_var="ONEIRIC_TOOL_PROFILE")` with explicit group definitions:
 
@@ -319,7 +319,7 @@ The aggregator's `aggregate_feed_states` returns a `HealthSnapshot` whose top-le
 
 **Audit logging scope.** `mcp_common/auth/audit.py:18-45` defines `AuthAuditEvent` as **auth-only** (token verification, RBAC checks, denial events). It does NOT capture MCP tool invocations. Phase 1 task 4 commits to extending `mcp_common.auth.audit.AuditLogger` with a `tool_invocation` event shape (fields: `tool.name`, `caller_id`, `arguments` redacted per auth-standards spec, `timestamp`, **`outcome` (success|failure|blocked), `caller_session_id`** for OTel/hook-bus correlation, `error_class` when failure). Wire tools emit `tool_invocation` audit events on every invocation; read-only tools emit them at `INFO` level, write tools (`store_adapter`, `validate_adapter`) emit at `WARN` level. Phase 2 closes out the audit story alongside the auth consolidation.
 
-**Audit cross-correlation.** `caller_session_id` joins audit records to (a) the OTel trace span for the same call (via `session_id` field), (b) the `hook_bridge_feed` canonical envelope's `session_id` (Phase 12), and (c) the Session-Buddy session log. Without these three fields, audit becomes a write-only ledger; with them, audit is an investigation surface for incident response. Per `.claude/decisions/mcp-backend-wiring-discipline.md`, audit records are a mandatory wire-up substrate for incident playbooks. Phase 2 closes out the audit story alongside the auth consolidation.
+**Audit cross-correlation.** `caller_session_id` joins audit records to (a) the OTel trace span for the same call (via `session_id` field), (b) the `hook_bridge_feed` canonical envelope's `session_id` (Phase 12), and (c) the Session-Buddy session log. Without these three fields, audit becomes a write-only ledger; with them, audit is an investigation surface for incident response. Per `docs/decisions/mcp-backend-wiring-discipline.md`, audit records are a mandatory wire-up substrate for incident playbooks. Phase 2 closes out the audit story alongside the auth consolidation.
 
 **Bus publish error tracking.** Phase 12's `bodai_hook_bridge._publish()` is **not fire-and-forget** in the silent-no-op sense — failure modes (Redis Streams unreachable, adapter missing) **increment `hook_bridge_feed.errors_total`** before swallowing. The feed exposes `feed.entities_count`, `feed.cycles_total`, `feed.errors_total`, AND `feed.publish_failures_total` — the latter is a sub-counter of `errors_total` reserved for publish-side failures. Silent no-op is a wiring-discipline violation per `mcp-backend-wiring-discipline.md` ("a process being alive is not the same as a process being functional"). The bridge remains non-blocking on the hot path; tracking failures is observational, not blocking.
 
@@ -505,14 +505,14 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Pre-flight gate (Phase 1 task #0):** Enumerate every `mcp__dhara__*` reference across the Bodai ecosystem. The 86 hits found by `grep -rn "mcp__dhara__" /Users/les/Projects/` span:
 - `.claude/agents/oneiric-specialist.md:17` (1 hit)
 - `.claude/worktrees/agent-*/docs/adr/013-...md` (5 hits in worktree copies — non-canonical, ignored)
-- `mahavishnu/.claude/decisions/test-matrix-review-followups.md` (archival, fine)
+- `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine)
 - `mahavishnu/core/skill_mcp_validator.py:62` (1 hit)
 - `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088)
 - All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
 
 **Tasks:**
 
-0. **Enumerate all 86 `mcp__dhara__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/.claude/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
+0. **Enumerate all 86 `mcp__dhara__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
 
 1. Create `oneiric/mcp/server_core.py` with `OneiricMCPServer` class following Dhara's `run_http_async` pattern (NOT the broken `MCPServerCLIFactory._start_server()` loop — see §4.6 for the pattern).
 
@@ -532,7 +532,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 8. Add `tests/integration/test_<tool>_e2e.py` for each of the 7 tools (per wire-up contract). Each test asserts the tool emits an OTel span and updates the per-feed counters.
 
-9. Add consumer-side e2e tests asserting (a) `/health` returns 200 with all feeds `healthy` on warm startup, (b) returns 503 when any feed reports `degraded`/`failed` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `.claude/decisions/mcp-backend-wiring-discipline.md`, (d) `update_health_metrics` emits the four `health_feed_status`/`health_feed_errors_within_window`/`mcp_common_health_halflife_seconds`/`mcp_common_health_aggregate_duration_ms` metrics on each `/health` call (this is what makes the Plan §11.4 PromQL alerts fire live). The contract surface is pinned by `mcp-common/tests/unit/health/test_aggregator.py` + `test_feed.py` + `test_metrics.py` (66 tests, mcp-common v0.26.4); reference consumer implementations are `session-buddy/session_buddy/server_optimized.py:316-407` (full wiring including `update_health_metrics` with try/ImportError fallback) and `akosha/akosha/mcp/server.py:764-949`.
+9. Add consumer-side e2e tests asserting (a) `/health` returns 200 with all feeds `healthy` on warm startup, (b) returns 503 when any feed reports `degraded`/`failed` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `docs/decisions/mcp-backend-wiring-discipline.md`, (d) `update_health_metrics` emits the four `health_feed_status`/`health_feed_errors_within_window`/`mcp_common_health_halflife_seconds`/`mcp_common_health_aggregate_duration_ms` metrics on each `/health` call (this is what makes the Plan §11.4 PromQL alerts fire live). The contract surface is pinned by `mcp-common/tests/unit/health/test_aggregator.py` + `test_feed.py` + `test_metrics.py` (66 tests, mcp-common v0.26.4); reference consumer implementations are `session-buddy/session_buddy/server_optimized.py:316-407` (full wiring including `update_health_metrics` with try/ImportError fallback) and `akosha/akosha/mcp/server.py:764-949`.
 
 10. Update `mahavishnu/tests/fixtures/full/tool_names.json` to remove the strings `"adapter_list"` and `"adapter_metadata"` (Mahavishnu's parallel fixture — currently has these as golden-fixture strings).
 
@@ -573,7 +573,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 - **Returns to / updates:** The Oneiric adapter registry store (backed by Dhara's `AsyncAdapterRegistry` for now; future: Oneiric's own persistence layer per ADR-017).
 - **Demonstrable by:** `pytest tests/integration/test_<tool>_e2e.py` (7 files, one per tool) returns exit 0; `oneiric mcp health` returns 200 with 7 healthy feeds; `python scripts/audit_orphans.py --days 14` reports zero new orphans from the Oneiric MCP surface.
 - **Rollback signal:** 503 on `/health`, or 0 `entities_count` on any feed after startup, or any e2e test failure.
-- **Observability added:** OTel span `oneiric.mcp.tool.<name>` with attribute `tool.name`, `tool.duration_ms`. Per-feed signals at `/health`: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` for each of the 7 tools (per `.claude/decisions/mcp-backend-wiring-discipline.md`).
+- **Observability added:** OTel span `oneiric.mcp.tool.<name>` with attribute `tool.name`, `tool.duration_ms`. Per-feed signals at `/health`: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` for each of the 7 tools (per `docs/decisions/mcp-backend-wiring-discipline.md`).
 
 ### Phase 1.5 — Wrapper consolidation → mcp-common (Layer 1)
 
@@ -601,7 +601,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Mahavishnu / AkoSHA / Session-Buddy / Crackerjack changes (in each wrapper-category commit):**
 - Delete the local wrapper file(s); replace with `from mcp_common.<module> import ...; mount(server)`.
 - Update test fixtures (`tests/fixtures/{minimal,standard,full}/tool_names.json`) to reflect the new registration source.
-- Update `.claude/decisions/mcp-backend-wiring-discipline.md` to cite `mcp-common` as the canonical home.
+- Update `docs/decisions/mcp-backend-wiring-discipline.md` to cite `mcp-common` as the canonical home.
 
 **Integration contract:**
 - **Triggered from:** each component's `mcp/server_core.py` startup calls the consolidated `mount(server)` helper before registering component-specific tools.
@@ -623,7 +623,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Tasks (documentation only — no code change in Phase 2 itself):**
 
 1. Update `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — mark Dhara's row in the "per-service status" table as Done (no separate code migration was needed; the spec's pre-existing mcp_common adoption covered all four remaining services).
-2. Update `.claude/decisions/mcp-backend-wiring-discipline.md` if it cited Dhara's auth (verify).
+2. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it cited Dhara's auth (verify).
 3. Verify by grep: `grep -r "from dhara.mcp.auth" /Users/les/Projects/` returns nothing (already enforced by Phase 1 + Phase 8 deletion, but record the verification step).
 
 **Phase 8 owns the actual deletion** (not Phase 2). Phase 2 just closes the audit trail on the auth-standardization spec.
@@ -843,7 +843,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 1. Port `dhara/mcp/substrate_routes.py` (531 LOC) to `oneiric/http/routes/substrate.py`.
 2. Register with Oneiric's HTTP server. Add `oneiric http start|stop|status` subcommand (analog to `oneiric mcp start|stop|status`).
-3. Update `.claude/decisions/mcp-backend-wiring-discipline.md` if it referenced these routes as Dhara's.
+3. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it referenced these routes as Dhara's.
 4. Add per-route health aggregator: each HTTP route registers a `HealthFeedState` (mcp-common parlance) with `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. `/health` returns 503 if any route is degraded.
 5. Add integration test: `pytest oneiric/tests/integration/test_substrate_routes_e2e.py` — `curl http://localhost:<port>/substrate/settings` returns 200 with non-empty payload; same for `/substrate/context` and `/substrate/progress`.
 
@@ -1231,8 +1231,8 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 - `docs/specs/2026-05-24-dhara-serverless-design.md` — Phase 4 of the active plan (Dhara re-architecture) still applies; this spec decomposes the MCP surface.
 - `docs/ZODB_COMPARISON.md` (in Dhara repo) — documents Dhara's lineage from Durus; informs "Dhara stays the engine" decision.
 - `dhara/NOTICE` — CNRI/Durus attribution preserved under BSD-3-Clause.
-- `.claude/decisions/wire-up-contract.md` — Integration Contract pattern used in every phase.
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — per-feed health aggregator pattern for new MCP servers.
+- `docs/decisions/wire-up-contract.md` — Integration Contract pattern used in every phase.
+- `docs/decisions/mcp-backend-wiring-discipline.md` — per-feed health aggregator pattern for new MCP servers.
 - `oneiric/core/cli.py` — `MCPServerBase` + `MCPServerCLIFactory` primitives used to build the Oneiric MCP server.
 - `mcp-common/mcp_common/health/` — canonical home for per-feed state, aggregator, Prometheus metrics emission (v0.26.4, commit 7acdcfb). Per ADR 017 substrate ownership, health primitives live here so no cross-component mcp-common consumer reaches back into oneiric. The on-disk `oneiric/runtime/mcp_health.py` is now **legacy** (no longer extended; the `HealthMonitor` class it contains is unused by any consumer post-Phase 4).
 - `mcp_common/auth/*` — 14 files, 1,570 LOC; canonical auth surface.

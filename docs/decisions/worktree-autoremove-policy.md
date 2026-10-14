@@ -34,7 +34,7 @@ branch.
 
 This decision permits one user-invoked CLI. It does not permit SessionEnd,
 cron, or other unattended invocation. The amended rule is recorded in
-`.claude/decisions/session-worktree-defaults.md` § Decision rule, item 2.
+`docs/decisions/session-worktree-defaults.md` § Decision rule, item 2.
 
 ## Decision rule
 
@@ -64,12 +64,12 @@ cron, or other unattended invocation. The amended rule is recorded in
 
 ## Cross-references
 
-- Original rule: `.claude/decisions/session-worktree-defaults.md` Rule 2
+- Original rule: `docs/decisions/session-worktree-defaults.md` Rule 2
 - Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
 - Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 - v4 worktree types: `docs/adr/015-worktree-and-cache-storage-v2.md` §13
   (`WorktreeHandle`, `RemoteWorktreeProvider`, `Principal`)
 - v4 followup for automated cleanup (draft, not yet permitted):
-  `.claude/decisions/worktree-autoremove-v4-followup.md`
+  `docs/decisions/worktree-autoremove-v4-followup.md`
 - **See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)

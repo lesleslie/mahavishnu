@@ -281,7 +281,7 @@ ______________________________________________________________________
 
 **Goal:** Bias Claude Code (and any ultracode subagents it spawns) toward Mahavishnu workers for non-trivial work, while preserving local tools for trivial cases. Three deliverables: (a) a `## Tool Preferences` section in `CLAUDE.md`, (b) revised MCP tool descriptions that explicitly name use cases, (c) a `mahavishnu-orchestrator` subagent and a `/vishnu` skill for explicit delegation.
 
-**Tool-preference policy** (new — added per architecture-council C3): tool-selection steering lives in two places only — `MAHAVISHNU_TOOL_PROFILE` (in `mahavishnu/mcp/tools/profiles.py`) for tools-to-expose, and `CLAUDE.md` `## Tool Preferences` for tools-to-prefer. Docstrings narrate use cases; they do not market. This policy is recorded in `.claude/decisions/mahavishnu-tool-preference-policy.md` (Task 4.8) and referenced from CLAUDE.md.
+**Tool-preference policy** (new — added per architecture-council C3): tool-selection steering lives in two places only — `MAHAVISHNU_TOOL_PROFILE` (in `mahavishnu/mcp/tools/profiles.py`) for tools-to-expose, and `CLAUDE.md` `## Tool Preferences` for tools-to-prefer. Docstrings narrate use cases; they do not market. This policy is recorded in `docs/decisions/mahavishnu-tool-preference-policy.md` (Task 4.8) and referenced from CLAUDE.md.
 
 **Tasks:**
 
@@ -299,7 +299,7 @@ ______________________________________________________________________
 
 - **Task 4.7:** Add a "Choosing between /vishnu and mahavishnu-orchestrator" note to the `## Tool Preferences` section (one paragraph): `/vishnu` is a shortcut that steers tool selection without forcing tool isolation; `mahavishnu-orchestrator` is forced delegation with strict tool restrictions. Both route through Mahavishnu; the difference is who picks the tools.
 
-- **Task 4.8:** Create `.claude/decisions/mahavishnu-tool-preference-policy.md` per architecture-council C3. The decision rule: "Tool-selection steering lives in two places only — `MAHAVISHNU_TOOL_PROFILE` for tools-to-expose, CLAUDE.md `## Tool Preferences` for tools-to-prefer. Docstrings narrate use cases; they do not market." This is an operational rule (per `.claude/decisions/README.md` classification), not an ADR (no structural decision). Reference from CLAUDE.md's `## Tool Preferences` section.
+- **Task 4.8:** Create `docs/decisions/mahavishnu-tool-preference-policy.md` per architecture-council C3. The decision rule: "Tool-selection steering lives in two places only — `MAHAVISHNU_TOOL_PROFILE` for tools-to-expose, CLAUDE.md `## Tool Preferences` for tools-to-prefer. Docstrings narrate use cases; they do not market." This is an operational rule (per `docs/decisions/README.md` classification), not an ADR (no structural decision). Reference from CLAUDE.md's `## Tool Preferences` section.
 
 - **Task 4.9:** Curate the `mahavishnu-orchestrator.md` `tools:` frontmatter to a small set of essentials (3-4 tools) per architecture-council L1. The 10-tool enumeration drifts when Mahavishnu tools are added or renamed. Suggested essentials: `mcp__mahavishnu__pool_route_execute`, `mcp__mahavishnu__dispatch_to_pool`, `mcp__mahavishnu__discover_tools`, `Read` (read-only context). Verify the reduced set against `scripts/agent_metadata_audit.py`.
 
@@ -515,7 +515,7 @@ ______________________________________________________________________
 - [ ] Modify `mahavishnu/mcp/tools/self_improvement_tools.py:463-511` (~30 lines diff)
 - [x] Add `get_verification_result` to `mahavishnu/mcp/tools/clone_tools.py` (~25 lines) — (verified done 2026-07-15, present at lines 233 and 366)
 - [ ] Add OTel instrumentation in `mahavishnu/core/observability.py` (verification.execute span with `outcome=unavailable` attribute; verification.infrastructure_failure_total counter; verification.persist_failure_total counter)
-- [ ] Add `.claude/decisions/dhara-key-prefixes-2026-07-11.md`
+- [ ] Add `docs/decisions/dhara-key-prefixes-2026-07-11.md`
 
 ### Phase 2
 
@@ -548,9 +548,9 @@ ______________________________________________________________________
 - [ ] Create `docs/feature-tracking/2026-07-11-loop-until-dry.md`
 - [ ] Create `docs/feature-tracking/2026-07-11-dispatch-to-pool.md`
 - [ ] Create `docs/feature-tracking/2026-07-11-ultracode-tier2-parking-lot.md` (Tier 2 ideas)
-- [ ] Create `.claude/decisions/dhara-key-prefixes-2026-07-11.md` (architecture-council H2) — operational rule for `verification/{pid}/` and `workflow-results/{wid}/` additive Dhara namespaces.
-- [x] Create `.claude/decisions/mahavishnu-tool-preference-policy.md` (architecture-council C3 / Phase 4 Task 4.8) — operational rule for tool-selection steering locations. — (verified done 2026-07-15; CLAUDE.md "Tool Preferences" section also present)
-- [ ] Create `.claude/decisions/component-health-cli-gap.md` (architecture-council H3) — feature-tracking-style decision recording the Akosha/Session-Buddy/Dhara health CLI gap and the follow-up plan reference.
+- [ ] Create `docs/decisions/dhara-key-prefixes-2026-07-11.md` (architecture-council H2) — operational rule for `verification/{pid}/` and `workflow-results/{wid}/` additive Dhara namespaces.
+- [x] Create `docs/decisions/mahavishnu-tool-preference-policy.md` (architecture-council C3 / Phase 4 Task 4.8) — operational rule for tool-selection steering locations. — (verified done 2026-07-15; CLAUDE.md "Tool Preferences" section also present)
+- [ ] Create `docs/decisions/component-health-cli-gap.md` (architecture-council H3) — feature-tracking-style decision recording the Akosha/Session-Buddy/Dhara health CLI gap and the follow-up plan reference.
 - [ ] Add `verification_alert_threshold` to `settings/mahavishnu.yaml`
 - [ ] Add `verification_unavailable_threshold` to `settings/mahavishnu.yaml` (silent-failure H1)
 - [ ] Add `verification_enabled: bool = False` feature flag to `settings/mahavishnu.yaml` (Phase 1 default-off; operators opt in per environment)
@@ -650,7 +650,7 @@ ______________________________________________________________________
 | Integration test for `dispatch_to_pool` requires Dhara stub maintenance | Low | Stub lives at `tests/integration/_fixtures/dhara_stub.py`. Standard pattern (used elsewhere in the test suite). Low maintenance burden. |
 | WebSocket subscriber hook is noisy in conversation | Medium | The hook emits one-line summaries per matching event. If users find this annoying, the hook can be disabled via `.claude/settings.json` (a flag in the hook config). The `events_emitted_total` metric surfaces the volume. |
 | WebSocket connection fails (port 8690 unreachable) at session start | Medium | The hook should handle this gracefully — log a warning at session start, fall back to "no event streaming" mode. Slash command still works via CLI. |
-| Phase 6 deferred — components without health surfaces (Akosha, Session-Buddy, Dhara) remain gaps | Medium | Recorded as `.claude/decisions/component-health-cli-gap.md`. Promote to follow-up plan when EventBridge handler for activity events lands. |
+| Phase 6 deferred — components without health surfaces (Akosha, Session-Buddy, Dhara) remain gaps | Medium | Recorded as `docs/decisions/component-health-cli-gap.md`. Promote to follow-up plan when EventBridge handler for activity events lands. |
 
 ## 9. Decision Rule
 
@@ -662,7 +662,7 @@ This plan is "done enough" when:
 1. `mahavishnu mcp call clone_refactor_group ...` from a Claude Code session produces a response that *the human reviewer can act on* — i.e., they can see refuter disagreement (including `Consensus.UNAVAILABLE` when infra fails), not just a yes/no verdict.
 1. `CLAUDE.md`, `MCP_TOOLS_SPECIFICATION.md`, `CLI_REFERENCE.md`, `ROUTING_GUIDE.md`, `CONFIGURATION.md` (or Oneiric equivalent), and the release notes are updated to reflect the new tools, settings, and behavior.
 1. The architecture diagram renders correctly via Mermaid (visual artifact available for review). `verify_proposal` is drawn in its own subgraph outside the MCP layer.
-1. `.claude/decisions/dhara-key-prefixes-2026-07-11.md`, `mahavishnu-tool-preference-policy.md`, and `component-health-cli-gap.md` exist and are referenced from CLAUDE.md / the plan.
+1. `docs/decisions/dhara-key-prefixes-2026-07-11.md`, `mahavishnu-tool-preference-policy.md`, and `component-health-cli-gap.md` exist and are referenced from CLAUDE.md / the plan.
 1. `/vishnu-status` slash command and the Mahavishnu-only WebSocket subscriber are wired and tested end-to-end (Phase 6 deferred).
 
 If scope pressure forces a cut, drop Phase 2 first (lowest ROI). Phase 4 is high-leverage but cheap (mostly docstring edits + one subagent/skill definition); keep it. Phase 1 and Phase 3 are higher leverage and lower risk. The architecture diagram and doc updates are cheap; cut them last.
@@ -675,16 +675,16 @@ ______________________________________________________________________
 - `docs/plans/2026-02-20-self-improvement-design.md` — original self-improvement design.
 - `docs/feature-tracking/TEMPLATE.md` — feature-state template for tracking deliverables.
 - `scripts/audit_orphans.py` — orphan-detection gate.
-- `.claude/decisions/wire-up-contract.md` — the policy this plan implements.
+- `docs/decisions/wire-up-contract.md` — the policy this plan implements.
 - `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md` — Dhara state schema.
 - ADR-014 — caller-side authorization for pool selection (already implemented as `caller_pool_allowlist`).
 - ADR M-NEW-5 — cross-repo extractions are PROPOSE_APPROVE (this plan adds a pre-gate, doesn't change the approval path).
 - `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` — Convergence Plan C1b (EventBridge) is the reason Phase 6's multi-WebSocket subscriber was deferred.
 - `docs/plans/2026-05-09-unified-event-bus-spec.md` — canonical replacement for raw WebSocket consumption.
 - `mahavishnu/core/errors.py:662` — existing `RateLimitError` (MHV-006); this plan reuses it instead of introducing a parallel `RateLimited`.
-- `.claude/decisions/dhara-key-prefixes-2026-07-11.md` — operational rule for `verification/{pid}/` and `workflow-results/{wid}/`.
-- `.claude/decisions/mahavishnu-tool-preference-policy.md` — operational rule for tool-selection steering locations.
-- `.claude/decisions/component-health-cli-gap.md` — feature-tracking-style decision for Akosha/Session-Buddy/Dhara health CLI gap.
+- `docs/decisions/dhara-key-prefixes-2026-07-11.md` — operational rule for `verification/{pid}/` and `workflow-results/{wid}/`.
+- `docs/decisions/mahavishnu-tool-preference-policy.md` — operational rule for tool-selection steering locations.
+- `docs/decisions/component-health-cli-gap.md` — feature-tracking-style decision for Akosha/Session-Buddy/Dhara health CLI gap.
 
 ## Re-Review Status (2026-09-14) — closed
 
@@ -697,7 +697,7 @@ ______________________________________________________________________
 | Phase 1 | Diverse-refuter adversarial verification gate (`mahavishnu/core/verification.py`) | Partial absorption | `verification.py` module exists with Pydantic models; wiring into `clone_refactor_group` (Task 1.3) and `self_improvement_generate` (Task 1.4) absorbed into 2026-08-10-m-* plans (`m-approval-log`, `m-workflow-outcome`). Re-review Status block (line ~12) confirms the module shipped. |
 | Phase 2 | Opt-in loop-until-dry for pattern detection (`mahavishnu/core/loop_helpers.py`) | DONE | `loop_helpers.py` exists; `detect_until_dry` helper used by `clone_detect_ecosystem` and `get_cross_project_patterns` (per `mcp__mahavishnu__clone_detect_ecosystem` tool description). |
 | Phase 3 | MCP bridge completion for ultracode subagents (`dispatch_to_pool`, `CallerKind`, quota) | Partial absorption | `dispatch_to_pool` MCP tool exists with `caller_kind`, `parent_session_id`, `async_callback`, quota enforcement (per `mahavishnu/pools/manager.py:460-512`). Tests absorbed into the same 2026-08-10-m-* wave. |
-| Phase 4 | Claude Code tool-preference wiring (`## Tool Preferences` in CLAUDE.md, `mahavishnu-orchestrator` subagent, `/vishnu` skill) | DONE | `## Tool Preferences` section exists in `/Users/les/Projects/mahavishnu/CLAUDE.md`. `.claude/decisions/mahavishnu-tool-preference-policy.md` exists. `mahavishnu-orchestrator` agent and `/vishnu` skill exist (per `mahavishnu-specialist` ecosystem). |
+| Phase 4 | Claude Code tool-preference wiring (`## Tool Preferences` in CLAUDE.md, `mahavishnu-orchestrator` subagent, `/vishnu` skill) | DONE | `## Tool Preferences` section exists in `/Users/les/Projects/mahavishnu/CLAUDE.md`. `docs/decisions/mahavishnu-tool-preference-policy.md` exists. `mahavishnu-orchestrator` agent and `/vishnu` skill exist (per `mahavishnu-specialist` ecosystem). |
 | Phase 5 | Worker activity surfacing (`.claude/hooks/mahavishnu-activity-stream.py`, `/vishnu-status` slash) | DONE | `.claude/hooks/mahavishnu-activity-stream.py` referenced in CLAUDE.md § "Worker activity visibility". Slash commands registered. |
 | Phase 6 | Bodai-wide observability surfacing | DEFERRED | Plan §6 explicitly defers Phase 6 to a follow-up plan that consumes Oneiric EventBridge handlers. Not a regression — the deferral was authored. |
 

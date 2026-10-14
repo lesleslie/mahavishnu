@@ -14,7 +14,7 @@ This script:
 Default mode is DRY-RUN. Pass --apply to write.
 Idempotent: files already parseable as YAML are reported unchanged.
 
-See .claude/decisions/ (to be added) for rationale and history.
+See docs/decisions/ (to be added) for rationale and history.
 """
 
 from __future__ import annotations

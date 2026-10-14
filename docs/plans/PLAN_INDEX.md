@@ -45,14 +45,14 @@ The table below is auto-generated from the stores discovered in this repository.
 |---|---|
 | Plan navigation and current ownership | `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |
 | Frontmatter vocabulary and migration contract | `docs/schemas/document-frontmatter-v1.md` |
-| Discovered stores | `.claude/decisions/` `.claude/decisions/workflows/` `.claude/worktree-snapshots/cleanup-v2-plan-finalization/` `docs/adr/` `docs/audits/` `docs/decisions/` `docs/feature-tracking/` `docs/followups/` `docs/plans/` `docs/plans/drafts/` `docs/plans/initiatives/` `docs/plans/reviews/` `docs/specs/` `mahavishnu/mcp/agents/` `mahavishnu/mcp/skills_catalog/` |
+| Discovered stores | `docs/decisions/` `docs/decisions/workflows/` `.claude/worktree-snapshots/cleanup-v2-plan-finalization/` `docs/adr/` `docs/audits/` `docs/decisions/` `docs/feature-tracking/` `docs/followups/` `docs/plans/` `docs/plans/drafts/` `docs/plans/initiatives/` `docs/plans/reviews/` `docs/specs/` `mahavishnu/mcp/agents/` `mahavishnu/mcp/skills_catalog/` |
 
 ### Discovered stores by lifecycle status
 
 | Store | Path | Total | `draft` | `active` | `partial` | `shipped` | `complete` | `unknown` |
 |---|---|---|---|---|---|---|---|---|
-| Repo-local Decisions | `.claude/decisions/` | 32 | 1 | 28 | 0 | 0 | 3 | 0 |
-| Workflows | `.claude/decisions/workflows/` | 2 | 0 | 2 | 0 | 0 | 0 | 0 |
+| Repo-local Decisions | `docs/decisions/` | 32 | 1 | 28 | 0 | 0 | 3 | 0 |
+| Workflows | `docs/decisions/workflows/` | 2 | 0 | 2 | 0 | 0 | 0 | 0 |
 | Cleanup V2 Plan Finalization | `.claude/worktree-snapshots/cleanup-v2-plan-finalization/` | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Architecture Decision Records | `docs/adr/` | 22 | 4 | 9 | 0 | 0 | 9 | 0 |
 | Audits | `docs/audits/` | 2 | 0 | 0 | 0 | 0 | 2 | 0 |
@@ -92,49 +92,49 @@ Last regenerated: 2026-10-13.
 
 One table per store. Entries are sorted by `date` DESC, with ties broken by path ASC. Files without valid frontmatter are excluded; run `uv run crackerjack docs validate --allow-nonstandard` to surface them.
 
-### Repo-local Decisions (`.claude/decisions/`)
+### Repo-local Decisions (`docs/decisions/`)
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/decisions/2026-10-13-prepushconsolidationgate.md`](../../.claude/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | `active` | `canonical` | `decision` | `prepush-consolidation-gate` | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
-| [`.claude/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../.claude/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | `active` | `canonical` | `decision` | `slash-commands-multi-call-only` | Slash Commands Are for Multi-Call Workflows Only |
-| [`.claude/decisions/2026-10-03-main-branch-protection.md`](../../.claude/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | `active` | `canonical` | `decision` | `main-branch-protection` | GitHub branch protection on `main` across the Bodai core-6 |
-| [`.claude/decisions/2026-10-03-mainautopush.md`](../../.claude/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | `active` | `canonical` | `decision` | `mainautopush` | Main auto-push — narrow exception to user-controlled push |
-| [`.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`](../../.claude/decisions/2026-10-03-plans-specs-canonical-paths.md) | 2026-10-03 | `active` | `canonical` | `decision` | `plans-specs-canonical-paths` | Plans and specs canonical paths (`docs/plans/`, `docs/specs/`) |
-| [`.claude/decisions/2026-10-03-trunk-based-agent-review.md`](../../.claude/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | `active` | `canonical` | `decision` | `trunk-based-agent-review` | Trunk-Based Agent-Reviewed Dev Workflow |
-| [`.claude/decisions/tool-description-rubric.md`](../../.claude/decisions/tool-description-rubric.md) | 2026-09-27 | `active` | `canonical` | `decision` | `mcp-tool-design` | MCP Tool Description Rubric |
-| [`.claude/decisions/2026-09-26-mcp-launcher-migration.md`](../../.claude/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `complete` | `implementation` | `migration-design` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
-| [`.claude/decisions/deployability-discipline.md`](../../.claude/decisions/deployability-discipline.md) | 2026-09-26 | `active` | `canonical` |  | `deployability-discipline` | deployability discipline |
-| [`.claude/decisions/sdd-bundling-defensive-pattern.md`](../../.claude/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | `active` | `canonical` | `decision` | `sdd-bundling-defensive-pattern` | SDD Bundling Defensive Pattern |
-| [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | `active` | `canonical` | `decision` | `worktree-management` | Worktree Cleanup Policy |
-| [`.claude/decisions/mcp-backend-wiring-discipline.md`](../../.claude/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` | `decision` | `bodai-mcp-surface-standardization` | MCP Backend Wiring Discipline |
-| [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `decision` | `session-worktree-isolation` | Cross-repo fanout CWD isolation |
-| [`.claude/decisions/2026-08-25-bodai-tui-contract.md`](../../.claude/decisions/2026-08-25-bodai-tui-contract.md) | 2026-08-25 | `active` | `canonical` |  | `bodai-tui-contract` | Bodai TUI Contract |
-| [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `decision` | `mcp-routing` | Bodai MCP and agent routing pattern |
-| [`.claude/decisions/promote-oneiric-action-kits.md`](../../.claude/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | `active` | `canonical` | `decision` | `oneiric-action-kit-promotion` | Promote Oneiric Action Kits Across Bodai |
-| [`.claude/decisions/worktree-autoremove-v4-followup.md`](../../.claude/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | `draft` | `canonical` | `decision` | `worktree-autoremove-v4-followup` | Worktree auto-remove v4 follow-up — deferred |
-| [`.claude/decisions/README.md`](../../.claude/decisions/README.md) | 2026-07-26 | `active` | `canonical` |  | `decision-index` | `.claude/decisions/` index |
-| [`.claude/decisions/ty-ignore-codes.md`](../../.claude/decisions/ty-ignore-codes.md) | 2026-07-26 | `active` | `canonical` | `decision` | `ty-ignore-codes` | `ty: ignore[...]` policy for `*-mcp` |
-| [`.claude/decisions/worktree-autoremove-policy.md`](../../.claude/decisions/worktree-autoremove-policy.md) | 2026-07-26 | `active` | `canonical` | `decision` | `worktree-autoremove` | Worktree prune-merged — explicit CLI exception |
-| [`.claude/decisions/session-worktree-defaults.md`](../../.claude/decisions/session-worktree-defaults.md) | 2026-07-17 | `active` | `canonical` | `decision` | `session-worktree-defaults` | Per-session worktree isolation — defaults & safety |
-| [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `agent-curation` | agent curation strategy |
-| [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | `active` | `canonical` | `decision` | `bodai-observability` | Bodai Observability Pattern — One Subscriber, One Bus |
-| [`.claude/decisions/component-health-cli-gap.md`](../../.claude/decisions/component-health-cli-gap.md) | 2026-07-16 | `active` | `canonical` | `decision` | `component-health` | Component-Health CLI Gap |
-| [`.claude/decisions/dhara-key-prefixes-2026-07-15.md`](../../.claude/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | `active` | `canonical` | `decision` | `dhara-key-prefixes` | Dhara Key Prefixes for Ultracode Integration |
-| [`.claude/decisions/followups-lifecycle.md`](../../.claude/decisions/followups-lifecycle.md) | 2026-07-16 | `active` | `canonical` | `decision` | `followups-lifecycle` | `docs/followups/` lifecycle |
-| [`.claude/decisions/mahavishnu-tool-preference-policy.md`](../../.claude/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `tool-preference` | Mahavishnu Tool Preference Policy |
-| [`.claude/decisions/removed-scripts.md`](../../.claude/decisions/removed-scripts.md) | 2026-07-16 | `active` | `canonical` | `decision` | `removed-scripts` | Removed Scripts — `required_scripts:` policy |
-| [`.claude/decisions/skill-vs-agent-strategy.md`](../../.claude/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `skill-vs-agent` | skill vs agent strategy |
-| [`.claude/decisions/technical-debt-roadmap.md`](../../.claude/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` | `decision` | `technical-debt` | Technical Debt Roadmap |
-| [`.claude/decisions/test-matrix-review-followups.md`](../../.claude/decisions/test-matrix-review-followups.md) | 2026-07-16 | `complete` | `implementation` |  | `test-matrix-followups` | Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review |
-| [`.claude/decisions/wire-up-contract.md`](../../.claude/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` | `decision` | `wire-up-contract` | Wire-up contract |
+| [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | `active` | `canonical` | `decision` | `prepush-consolidation-gate` | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
+| [`docs/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../docs/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | `active` | `canonical` | `decision` | `slash-commands-multi-call-only` | Slash Commands Are for Multi-Call Workflows Only |
+| [`docs/decisions/2026-10-03-main-branch-protection.md`](../../docs/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | `active` | `canonical` | `decision` | `main-branch-protection` | GitHub branch protection on `main` across the Bodai core-6 |
+| [`docs/decisions/2026-10-03-mainautopush.md`](../../docs/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | `active` | `canonical` | `decision` | `mainautopush` | Main auto-push — narrow exception to user-controlled push |
+| [`docs/decisions/2026-10-03-plans-specs-canonical-paths.md`](../../docs/decisions/2026-10-03-plans-specs-canonical-paths.md) | 2026-10-03 | `active` | `canonical` | `decision` | `plans-specs-canonical-paths` | Plans and specs canonical paths (`docs/plans/`, `docs/specs/`) |
+| [`docs/decisions/2026-10-03-trunk-based-agent-review.md`](../../docs/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | `active` | `canonical` | `decision` | `trunk-based-agent-review` | Trunk-Based Agent-Reviewed Dev Workflow |
+| [`docs/decisions/tool-description-rubric.md`](../../docs/decisions/tool-description-rubric.md) | 2026-09-27 | `active` | `canonical` | `decision` | `mcp-tool-design` | MCP Tool Description Rubric |
+| [`docs/decisions/2026-09-26-mcp-launcher-migration.md`](../../docs/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `complete` | `implementation` | `migration-design` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
+| [`docs/decisions/deployability-discipline.md`](../../docs/decisions/deployability-discipline.md) | 2026-09-26 | `active` | `canonical` |  | `deployability-discipline` | deployability discipline |
+| [`docs/decisions/sdd-bundling-defensive-pattern.md`](../../docs/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | `active` | `canonical` | `decision` | `sdd-bundling-defensive-pattern` | SDD Bundling Defensive Pattern |
+| [`docs/decisions/worktree-cleanup-policy.md`](../../docs/decisions/worktree-cleanup-policy.md) | 2026-09-07 | `active` | `canonical` | `decision` | `worktree-management` | Worktree Cleanup Policy |
+| [`docs/decisions/mcp-backend-wiring-discipline.md`](../../docs/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` | `decision` | `bodai-mcp-surface-standardization` | MCP Backend Wiring Discipline |
+| [`docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `decision` | `session-worktree-isolation` | Cross-repo fanout CWD isolation |
+| [`docs/decisions/2026-08-25-bodai-tui-contract.md`](../../docs/decisions/2026-08-25-bodai-tui-contract.md) | 2026-08-25 | `active` | `canonical` |  | `bodai-tui-contract` | Bodai TUI Contract |
+| [`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `decision` | `mcp-routing` | Bodai MCP and agent routing pattern |
+| [`docs/decisions/promote-oneiric-action-kits.md`](../../docs/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | `active` | `canonical` | `decision` | `oneiric-action-kit-promotion` | Promote Oneiric Action Kits Across Bodai |
+| [`docs/decisions/worktree-autoremove-v4-followup.md`](../../docs/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | `draft` | `canonical` | `decision` | `worktree-autoremove-v4-followup` | Worktree auto-remove v4 follow-up — deferred |
+| [`docs/decisions/README.md`](../../docs/decisions/README.md) | 2026-07-26 | `active` | `canonical` |  | `decision-index` | `docs/decisions/` index |
+| [`docs/decisions/ty-ignore-codes.md`](../../docs/decisions/ty-ignore-codes.md) | 2026-07-26 | `active` | `canonical` | `decision` | `ty-ignore-codes` | `ty: ignore[...]` policy for `*-mcp` |
+| [`docs/decisions/worktree-autoremove-policy.md`](../../docs/decisions/worktree-autoremove-policy.md) | 2026-07-26 | `active` | `canonical` | `decision` | `worktree-autoremove` | Worktree prune-merged — explicit CLI exception |
+| [`docs/decisions/session-worktree-defaults.md`](../../docs/decisions/session-worktree-defaults.md) | 2026-07-17 | `active` | `canonical` | `decision` | `session-worktree-defaults` | Per-session worktree isolation — defaults & safety |
+| [`docs/decisions/agent-curation-strategy.md`](../../docs/decisions/agent-curation-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `agent-curation` | agent curation strategy |
+| [`docs/decisions/bodai-observability-pattern.md`](../../docs/decisions/bodai-observability-pattern.md) | 2026-07-16 | `active` | `canonical` | `decision` | `bodai-observability` | Bodai Observability Pattern — One Subscriber, One Bus |
+| [`docs/decisions/component-health-cli-gap.md`](../../docs/decisions/component-health-cli-gap.md) | 2026-07-16 | `active` | `canonical` | `decision` | `component-health` | Component-Health CLI Gap |
+| [`docs/decisions/dhara-key-prefixes-2026-07-15.md`](../../docs/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | `active` | `canonical` | `decision` | `dhara-key-prefixes` | Dhara Key Prefixes for Ultracode Integration |
+| [`docs/decisions/followups-lifecycle.md`](../../docs/decisions/followups-lifecycle.md) | 2026-07-16 | `active` | `canonical` | `decision` | `followups-lifecycle` | `docs/followups/` lifecycle |
+| [`docs/decisions/mahavishnu-tool-preference-policy.md`](../../docs/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `tool-preference` | Mahavishnu Tool Preference Policy |
+| [`docs/decisions/removed-scripts.md`](../../docs/decisions/removed-scripts.md) | 2026-07-16 | `active` | `canonical` | `decision` | `removed-scripts` | Removed Scripts — `required_scripts:` policy |
+| [`docs/decisions/skill-vs-agent-strategy.md`](../../docs/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | `active` | `canonical` | `decision` | `skill-vs-agent` | skill vs agent strategy |
+| [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` | `decision` | `technical-debt` | Technical Debt Roadmap |
+| [`docs/decisions/test-matrix-review-followups.md`](../../docs/decisions/test-matrix-review-followups.md) | 2026-07-16 | `complete` | `implementation` |  | `test-matrix-followups` | Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review |
+| [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` | `decision` | `wire-up-contract` | Wire-up contract |
 
-### Workflows (`.claude/decisions/workflows/`)
+### Workflows (`docs/decisions/workflows/`)
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/decisions/workflows/README.md`](../../.claude/decisions/workflows/README.md) | 2026-10-11 | `active` | `canonical` | `reference` | `lifecycle` | Workflow decisions |
-| [`.claude/decisions/workflows/TEMPLATE.md`](../../.claude/decisions/workflows/TEMPLATE.md) | 2026-07-21 | `active` | `canonical` | `template` | `lifecycle` | YYYY-MM-DD-<name> — workflow decision |
+| [`docs/decisions/workflows/README.md`](../../docs/decisions/workflows/README.md) | 2026-10-11 | `active` | `canonical` | `reference` | `lifecycle` | Workflow decisions |
+| [`docs/decisions/workflows/TEMPLATE.md`](../../docs/decisions/workflows/TEMPLATE.md) | 2026-07-21 | `active` | `canonical` | `template` | `lifecycle` | YYYY-MM-DD-<name> — workflow decision |
 
 ### Cleanup V2 Plan Finalization (`.claude/worktree-snapshots/cleanup-v2-plan-finalization/`)
 
@@ -469,7 +469,7 @@ Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.
 
 | Path | Date | Title |
 |---|---|---|
-| [`.claude/decisions/workflows/TEMPLATE.md`](../../.claude/decisions/workflows/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — workflow decision |
+| [`docs/decisions/workflows/TEMPLATE.md`](../../docs/decisions/workflows/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — workflow decision |
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — followup |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | Plan Template — Integration-Contract Required |
 
@@ -479,7 +479,7 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 
 | Path | Date | Title |
 |---|---|---|
-| [`.claude/decisions/workflows/README.md`](../../.claude/decisions/workflows/README.md) | 2026-10-11 | Workflow decisions |
+| [`docs/decisions/workflows/README.md`](../../docs/decisions/workflows/README.md) | 2026-10-11 | Workflow decisions |
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
 
@@ -493,45 +493,45 @@ Reports on past work (e.g., plan-audit documents). The audit itself is not a wor
 
 ### `decision` (49 entries)
 
-Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `.claude/decisions/`.
+Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
-| [`.claude/decisions/2026-10-13-prepushconsolidationgate.md`](../../.claude/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
-| [`.claude/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../.claude/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | Slash Commands Are for Multi-Call Workflows Only |
-| [`.claude/decisions/2026-10-03-main-branch-protection.md`](../../.claude/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | GitHub branch protection on `main` across the Bodai core-6 |
-| [`.claude/decisions/2026-10-03-mainautopush.md`](../../.claude/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | Main auto-push — narrow exception to user-controlled push |
-| [`.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`](../../.claude/decisions/2026-10-03-plans-specs-canonical-paths.md) | 2026-10-03 | Plans and specs canonical paths (`docs/plans/`, `docs/specs/`) |
-| [`.claude/decisions/2026-10-03-trunk-based-agent-review.md`](../../.claude/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | Trunk-Based Agent-Reviewed Dev Workflow |
-| [`.claude/decisions/tool-description-rubric.md`](../../.claude/decisions/tool-description-rubric.md) | 2026-09-27 | MCP Tool Description Rubric |
+| [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
+| [`docs/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../docs/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | Slash Commands Are for Multi-Call Workflows Only |
+| [`docs/decisions/2026-10-03-main-branch-protection.md`](../../docs/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | GitHub branch protection on `main` across the Bodai core-6 |
+| [`docs/decisions/2026-10-03-mainautopush.md`](../../docs/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | Main auto-push — narrow exception to user-controlled push |
+| [`docs/decisions/2026-10-03-plans-specs-canonical-paths.md`](../../docs/decisions/2026-10-03-plans-specs-canonical-paths.md) | 2026-10-03 | Plans and specs canonical paths (`docs/plans/`, `docs/specs/`) |
+| [`docs/decisions/2026-10-03-trunk-based-agent-review.md`](../../docs/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | Trunk-Based Agent-Reviewed Dev Workflow |
+| [`docs/decisions/tool-description-rubric.md`](../../docs/decisions/tool-description-rubric.md) | 2026-09-27 | MCP Tool Description Rubric |
 | [`docs/adr/0001-mahavishnu-niche.md`](../../docs/adr/0001-mahavishnu-niche.md) | 2026-09-26 | ADR 0001: Mahavishnu's Niche — LLM Control Plane + Repo Orchestrator |
-| [`.claude/decisions/sdd-bundling-defensive-pattern.md`](../../.claude/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | SDD Bundling Defensive Pattern |
+| [`docs/decisions/sdd-bundling-defensive-pattern.md`](../../docs/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | SDD Bundling Defensive Pattern |
 | [`docs/adr/018-gateway-pattern-evaluation.md`](../../docs/adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
 | [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | ADR 017: Oneiric as the shared persistence substrate for Bodai |
-| [`.claude/decisions/worktree-cleanup-policy.md`](../../.claude/decisions/worktree-cleanup-policy.md) | 2026-09-07 | Worktree Cleanup Policy |
+| [`docs/decisions/worktree-cleanup-policy.md`](../../docs/decisions/worktree-cleanup-policy.md) | 2026-09-07 | Worktree Cleanup Policy |
 | [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | ADR 0016 Multi-Agent Review — Findings |
 | [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
-| [`.claude/decisions/mcp-backend-wiring-discipline.md`](../../.claude/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | MCP Backend Wiring Discipline |
-| [`.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | Cross-repo fanout CWD isolation |
-| [`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | Bodai MCP and agent routing pattern |
-| [`.claude/decisions/promote-oneiric-action-kits.md`](../../.claude/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | Promote Oneiric Action Kits Across Bodai |
-| [`.claude/decisions/worktree-autoremove-v4-followup.md`](../../.claude/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | Worktree auto-remove v4 follow-up — deferred |
+| [`docs/decisions/mcp-backend-wiring-discipline.md`](../../docs/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | MCP Backend Wiring Discipline |
+| [`docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | Cross-repo fanout CWD isolation |
+| [`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | Bodai MCP and agent routing pattern |
+| [`docs/decisions/promote-oneiric-action-kits.md`](../../docs/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | Promote Oneiric Action Kits Across Bodai |
+| [`docs/decisions/worktree-autoremove-v4-followup.md`](../../docs/decisions/worktree-autoremove-v4-followup.md) | 2026-08-23 | Worktree auto-remove v4 follow-up — deferred |
 | [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | ADR 015 Multi-Agent Review — Findings |
 | [`docs/adr/015-worktree-and-cache-storage-v4.md`](../../docs/adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
 | [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../../docs/adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
-| [`.claude/decisions/ty-ignore-codes.md`](../../.claude/decisions/ty-ignore-codes.md) | 2026-07-26 | `ty: ignore[...]` policy for `*-mcp` |
-| [`.claude/decisions/worktree-autoremove-policy.md`](../../.claude/decisions/worktree-autoremove-policy.md) | 2026-07-26 | Worktree prune-merged — explicit CLI exception |
-| [`.claude/decisions/session-worktree-defaults.md`](../../.claude/decisions/session-worktree-defaults.md) | 2026-07-17 | Per-session worktree isolation — defaults & safety |
-| [`.claude/decisions/agent-curation-strategy.md`](../../.claude/decisions/agent-curation-strategy.md) | 2026-07-16 | agent curation strategy |
-| [`.claude/decisions/bodai-observability-pattern.md`](../../.claude/decisions/bodai-observability-pattern.md) | 2026-07-16 | Bodai Observability Pattern — One Subscriber, One Bus |
-| [`.claude/decisions/component-health-cli-gap.md`](../../.claude/decisions/component-health-cli-gap.md) | 2026-07-16 | Component-Health CLI Gap |
-| [`.claude/decisions/dhara-key-prefixes-2026-07-15.md`](../../.claude/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | Dhara Key Prefixes for Ultracode Integration |
-| [`.claude/decisions/followups-lifecycle.md`](../../.claude/decisions/followups-lifecycle.md) | 2026-07-16 | `docs/followups/` lifecycle |
-| [`.claude/decisions/mahavishnu-tool-preference-policy.md`](../../.claude/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | Mahavishnu Tool Preference Policy |
-| [`.claude/decisions/removed-scripts.md`](../../.claude/decisions/removed-scripts.md) | 2026-07-16 | Removed Scripts — `required_scripts:` policy |
-| [`.claude/decisions/skill-vs-agent-strategy.md`](../../.claude/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | skill vs agent strategy |
-| [`.claude/decisions/technical-debt-roadmap.md`](../../.claude/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
-| [`.claude/decisions/wire-up-contract.md`](../../.claude/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
+| [`docs/decisions/ty-ignore-codes.md`](../../docs/decisions/ty-ignore-codes.md) | 2026-07-26 | `ty: ignore[...]` policy for `*-mcp` |
+| [`docs/decisions/worktree-autoremove-policy.md`](../../docs/decisions/worktree-autoremove-policy.md) | 2026-07-26 | Worktree prune-merged — explicit CLI exception |
+| [`docs/decisions/session-worktree-defaults.md`](../../docs/decisions/session-worktree-defaults.md) | 2026-07-17 | Per-session worktree isolation — defaults & safety |
+| [`docs/decisions/agent-curation-strategy.md`](../../docs/decisions/agent-curation-strategy.md) | 2026-07-16 | agent curation strategy |
+| [`docs/decisions/bodai-observability-pattern.md`](../../docs/decisions/bodai-observability-pattern.md) | 2026-07-16 | Bodai Observability Pattern — One Subscriber, One Bus |
+| [`docs/decisions/component-health-cli-gap.md`](../../docs/decisions/component-health-cli-gap.md) | 2026-07-16 | Component-Health CLI Gap |
+| [`docs/decisions/dhara-key-prefixes-2026-07-15.md`](../../docs/decisions/dhara-key-prefixes-2026-07-15.md) | 2026-07-16 | Dhara Key Prefixes for Ultracode Integration |
+| [`docs/decisions/followups-lifecycle.md`](../../docs/decisions/followups-lifecycle.md) | 2026-07-16 | `docs/followups/` lifecycle |
+| [`docs/decisions/mahavishnu-tool-preference-policy.md`](../../docs/decisions/mahavishnu-tool-preference-policy.md) | 2026-07-16 | Mahavishnu Tool Preference Policy |
+| [`docs/decisions/removed-scripts.md`](../../docs/decisions/removed-scripts.md) | 2026-07-16 | Removed Scripts — `required_scripts:` policy |
+| [`docs/decisions/skill-vs-agent-strategy.md`](../../docs/decisions/skill-vs-agent-strategy.md) | 2026-07-16 | skill vs agent strategy |
+| [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
+| [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 | [`docs/adr/001-use-oneiric.md`](../../docs/adr/001-use-oneiric.md) | 2026-07-16 | ADR 001: Use Oneiric for Configuration and Logging |
 | [`docs/adr/002-mcp-first-design.md`](../../docs/adr/002-mcp-first-design.md) | 2026-07-16 | ADR 002: MCP-First Design with FastMCP + mcp-common |
 | [`docs/adr/003-error-handling-strategy.md`](../../docs/adr/003-error-handling-strategy.md) | 2026-07-16 | ADR 003: Error Handling and Resilience Strategy |

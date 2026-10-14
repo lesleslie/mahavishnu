@@ -277,7 +277,7 @@ tracking entry for every feature in `docs/feature-tracking/`.
 ### R10. Add Integration Contract blocks per CLAUDE.md
 
 CLAUDE.md "Process Discipline" cites
-`.claude/decisions/wire-up-contract.md` and requires every plan
+`docs/decisions/wire-up-contract.md` and requires every plan
 deliverable to include an Integration Contract block:
 `Triggered from`, `Returns to / updates`, `Demonstrable by`,
 `Rollback signal`, `Observability added`.

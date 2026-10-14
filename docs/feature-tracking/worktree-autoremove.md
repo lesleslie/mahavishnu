@@ -6,7 +6,7 @@ last_reviewed: 2026-07-27
 owner: mahavishnu
 role: canonical
 plan: docs/plans/2026-07-26-worktree-autoremove.md
-policy: .claude/decisions/worktree-autoremove-policy.md
+policy: docs/decisions/worktree-autoremove-policy.md
 user_docs: docs/WORKTREE_AUTOREMOVE.md
 ---
 
@@ -25,7 +25,7 @@ branches are detected as merged by the multi-signal classifier.
 - New audit events: `worktree_prune_merged_attempt`,
   `worktree_prune_merged_success`, `worktree_prune_merged_partial`,
   `worktree_prune_merged_failure`
-- New policy: `.claude/decisions/worktree-autoremove-policy.md` (explicit
+- New policy: `docs/decisions/worktree-autoremove-policy.md` (explicit
   Rule 2 amendment)
 - New tests: 15 unit tests in `tests/unit/test_worktree_prune_merged.py`
 

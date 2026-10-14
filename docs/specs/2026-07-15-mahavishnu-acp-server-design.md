@@ -233,7 +233,7 @@ No silent fallbacks. Each error path emits a structured log line and a structure
 
 ## Integration Contracts
 
-Per `.claude/decisions/wire-up-contract.md`, every deliverable carries an Integration Contract. Three deliverables (server core, event synthesis, CLI surface) each get one.
+Per `docs/decisions/wire-up-contract.md`, every deliverable carries an Integration Contract. Three deliverables (server core, event synthesis, CLI surface) each get one.
 
 ### Deliverable 1: ACP server core (`mahavishnu/acp/server.py` + `protocol.py`)
 
@@ -317,7 +317,7 @@ Each step is independently mergeable. Steps 1-3 can be developed in parallel (th
 
 ## References
 
--.claude/decisions/wire-up-contract.md — Integration Contract policy (target file removed; see `.claude/decisions/README.md` for current decisions)
+-docs/decisions/wire-up-contract.md — Integration Contract policy (target file removed; see `docs/decisions/README.md` for current decisions)
 - docs/plans/TEMPLATE.md — implementation plan template (target file removed; see writing-plans skill header for current template)
 - [docs/feature-tracking/TEMPLATE.md](../feature-tracking/TEMPLATE.md) — feature-state tracker (`built → wired → adopted`)
 - ACP official: [agentclientprotocol.com](https://agentclientprotocol.com/) (governance: [Zed + JetBrains](https://agentclientprotocol.com/community/governance); ecosystem: [clients + agents](https://web.archive.org/web/*/https://agentclientprotocol.com/ecosystem); MCP-over-ACP RFD: [rfds/mcp-over-acp](https://agentclientprotocol.com/rfds/mcp-over-acp))

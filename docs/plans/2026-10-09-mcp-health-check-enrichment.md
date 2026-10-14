@@ -16,7 +16,7 @@ topic: mcp-design
 >
 > **Origin of this plan:** §10 of `docs/plans/2026-10-09-bodai-search-infrastructure-fix.md` flagged health-check enrichment as out-of-scope for that plan (separate code path, separate ownership, separate policy concerns under `mcp-backend-wiring-discipline.md`). The akosha Phase 4 work landed as `cd4733b` on akosha local main on 2026-10-09 (the count→work→sleep reorder + the mcp_tool_call_feed health routing fix) — that's the pilot for the fleet-wide pattern. The remaining 4 Bodai core repos need the same treatment, plus the canonical `/health` aggregator and the 503-on-degraded contract.
 >
-> **Architectural constraints (from `.claude/decisions/mcp-backend-wiring-discipline.md`):**
+> **Architectural constraints (from `docs/decisions/mcp-backend-wiring-discipline.md`):**
 > - Every Bodai MCP server's `/health` must aggregate per-feed state and return 503 on degraded
 > - Every registered tool must have a working data feed (`feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total`)
 > - Every tool registration requires `tests/integration/test_<tool>_e2e.py` asserting non-empty results

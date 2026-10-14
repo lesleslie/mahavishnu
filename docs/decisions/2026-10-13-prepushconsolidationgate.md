@@ -15,7 +15,7 @@ topic: prepush-consolidation-gate
 `feedback-bodai-push-is-user-controlled` (CC memory) holds that `git push` is
 user-controlled for every Bodai ecosystem repo. The exception for
 `git push origin main` after a successful squash-merge lives in
-`.claude/decisions/2026-10-03-mainautopush.md`. This decision adds a
+`docs/decisions/2026-10-03-mainautopush.md`. This decision adds a
 **further** narrowing: in addition to stages 1–4 succeeding, the auto-push
 is held back until co-located worktrees are consolidated (merged, pruned,
 mid-review, or explicitly abandoned). This prevents a class of failure the
@@ -204,18 +204,18 @@ The user can resolve a held-back push by any of:
   - `feedback-bodai-merge-workflow-followups` (CC memory) — the
     workflow contract this decision is one part of.
 - **Sibling decision (push governance):**
-  `.claude/decisions/2026-10-03-mainautopush.md` (REQ-007) — the
+  `docs/decisions/2026-10-03-mainautopush.md` (REQ-007) — the
   exception that allows stage 5 to push `origin/main`; this
   decision adds a pre-push *condition* to that exception. The threat
   model re-mitigates `2026-10-03-mainautopush.md` rows 3, 4, 5, 6,
   and 7.
 - **Sibling decision (workflow doc):**
-  `.claude/decisions/2026-10-03-trunk-based-agent-review.md` — the
+  `docs/decisions/2026-10-03-trunk-based-agent-review.md` — the
   7-stage workflow this gate slots into; the gate is a new sub-step
   between stage 4 (squash-merge) and stage 5 (auto-push). Stage 6
   (cleanup) is conditionally skipped when the gate holds back.
 - **Sibling decision (branch protection):**
-  `.claude/decisions/2026-10-03-main-branch-protection.md` — the
+  `docs/decisions/2026-10-03-main-branch-protection.md` — the
   GitHub-side hardening; the gate complements it with a local-side
   pre-push check.
 - **Spec source:**

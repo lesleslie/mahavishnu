@@ -80,7 +80,7 @@ Concrete signal:
    hides real import errors and prints the misleading "not yet
    implemented" message.
 5. **Document the "Bodai TUI contract"** in
-   `.claude/decisions/2026-08-25-bodai-tui-contract.md` describing
+   `docs/decisions/2026-08-25-bodai-tui-contract.md` describing
    the `AdminShell` reuse pattern, the bodai-TUI-as-aggregator
    pattern, and the per-component-vs-cross-component TUI split.
 6. **Cross-shell UX standardization** (future phase): align flag
@@ -221,11 +221,11 @@ and removes the defensive try/except.
 - [ ] `/Users/les/Projects/bodai/tests/test_shell.py` (NEW)
 - [ ] `/Users/les/Projects/bodai/tests/test_dashboard.py` (NEW)
 - [ ] `/Users/les/Projects/mahavishnu/tests/cli/test_monitor_tui.py` (NEW)
-- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-tui-contract.md`
+- [ ] `/Users/les/Projects/mahavishnu/docs/decisions/2026-08-25-bodai-tui-contract.md`
   (NEW — documents the AdminShell reuse pattern, the
   bodai-TUI-as-aggregator pattern, and the per-component vs
   cross-component split. **Also add a row to
-  `.claude/decisions/README.md` index**)
+  `docs/decisions/README.md` index**)
 - [ ] `/Users/les/Projects/bodai/README.md` (modify — document
   `bodai shell` and `bodai dashboard`)
 - [ ] `/Users/les/Projects/mahavishnu/README.md` (modify — document
@@ -245,8 +245,8 @@ This plan is **done enough** when:
    manual smoke test
 7. The defensive `try/except ImportError` is removed from
    `bodai/cli.py` for both `shell` and `dashboard`
-8. `.claude/decisions/2026-08-25-bodai-tui-contract.md` is committed
-   AND indexed in `.claude/decisions/README.md`
+8. `docs/decisions/2026-08-25-bodai-tui-contract.md` is committed
+   AND indexed in `docs/decisions/README.md`
 
 ## 8. Risks
 
@@ -264,7 +264,7 @@ This plan is **done enough** when:
   Phase B-1 depends on Plan A's Phase 5 (BodaiCLIBase foundation +
   `monitoring_cli.py` consolidation complete).
 - **Decision doc** (NEW, Phase B-1 deliverable):
-  `.claude/decisions/2026-08-25-bodai-tui-contract.md`
+  `docs/decisions/2026-08-25-bodai-tui-contract.md`
 - **AdminShell base class**: `oneiric/oneiric/shell/core.py::AdminShell`
   (already provides `IPython.terminal.embed.InteractiveShellEmbed`
   construction; subclasses override `_build_namespace`,

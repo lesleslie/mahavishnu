@@ -465,7 +465,7 @@ def validate(
     json_output: bool = typer.Option(False, "--json", help="Emit JSON instead of human-readable."),
     pkg_path: Path = typer.Option(Path.cwd(), "--path", help="Repo root."),
 ) -> None:
-    """Validate YAML frontmatter on docs/, .claude/decisions/, etc."""
+    """Validate YAML frontmatter on docs/, docs/decisions/, etc."""
     validator = FrontmatterValidator(pkg_path=pkg_path)
     try:
         result = validator.validate(
@@ -914,8 +914,8 @@ Phase 2 has two waves: **P7.A** (session-buddy template) and
 Run from `/Users/les/Projects/session-buddy`:
 
 ```bash
-find docs/ .claude/decisions/ -name "*.md" -not -path "*/.archive/*" -not -path "*/drafts/*" 2>/dev/null | wc -l
-find docs/ .claude/decisions/ -name "*.md" -not -path "*/.archive/*" -not -path "*/drafts/*" 2>/dev/null | head -50
+find docs/ docs/decisions/ -name "*.md" -not -path "*/.archive/*" -not -path "*/drafts/*" 2>/dev/null | wc -l
+find docs/ docs/decisions/ -name "*.md" -not -path "*/.archive/*" -not -path "*/drafts/*" 2>/dev/null | head -50
 ```
 
 Capture the count and the 6-store breakdown (analogous to what Wave A produced for Mahavishnu).
@@ -938,7 +938,7 @@ Expected: validator reports per-file issues (missing frontmatter, etc.). This is
 
 - [ ] **Step 4: Apply frontmatter across session-buddy's 6 stores (Pass 1)**
 
-Reuse the Wave A pattern from Mahavishnu: for each of `docs/adr/`, `docs/plans/`, `docs/specs/`, `docs/plans/`, `.claude/decisions/`, `docs/followups/`, prepend YAML frontmatter using the same template (`PLAN_FM_TEMPLATE` from `mahavishnu/scripts/_orphan_sweep_C1_2.py`). Status/role/topic assignments follow the same playbook as Mahavishnu. Use `crackerjack docs validate` to verify each store is clean.
+Reuse the Wave A pattern from Mahavishnu: for each of `docs/adr/`, `docs/plans/`, `docs/specs/`, `docs/plans/`, `docs/decisions/`, `docs/followups/`, prepend YAML frontmatter using the same template (`PLAN_FM_TEMPLATE` from `mahavishnu/scripts/_orphan_sweep_C1_2.py`). Status/role/topic assignments follow the same playbook as Mahavishnu. Use `crackerjack docs validate` to verify each store is clean.
 
 - [ ] **Step 5: Run post-P5 link sweep**
 
@@ -978,7 +978,7 @@ topic: lifecycle
 
 ```bash
 cd /Users/les/Projects/session-buddy
-git add scripts/ docs/schemas/ docs/plans/PLAN_INDEX.md docs/plans/2026-07-16-p7-cross-repo-playbook.md docs/adr/ docs/plans/ docs/specs/ docs/plans/ .claude/decisions/ docs/followups/
+git add scripts/ docs/schemas/ docs/plans/PLAN_INDEX.md docs/plans/2026-07-16-p7-cross-repo-playbook.md docs/adr/ docs/plans/ docs/specs/ docs/plans/ docs/decisions/ docs/followups/
 git -c user.email=les@wedgwoodwebworks.com -c user.name=lesleslie commit -m "docs(session-buddy): apply plan-lifecycle-unification playbook (P7.A template)"
 ```
 

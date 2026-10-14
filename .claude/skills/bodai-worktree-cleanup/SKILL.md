@@ -20,7 +20,7 @@ operator can decide what to remove — the skill itself does NOT auto-remove.
   caches, or logs. Not in scope for the worktree scanner.
 - **Cross-repo cleanup of `/tmp/<branch>` from `Workflow({script: parallel()})`
   fanouts** — use the recipe in
-  `.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`.
+  `docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`.
 - **Branch cleanup** — use `commit-commands:clean_gone`. It handles
   `[gone]` branches only; worktrees are a separate axis.
 
@@ -66,7 +66,7 @@ or `python.*mahavishnu` — PID recycling is real).
 - **The skill does NOT auto-remove anything.** The CLI is scan-and-report
   only. Removal is always an explicit operator action.
 - For full automation (SessionEnd hooks, cron), see
-  `.claude/decisions/worktree-autoremove-v4-followup.md` — currently
+  `docs/decisions/worktree-autoremove-v4-followup.md` — currently
   deferred, gated on `RemoteWorktreeProvider` production-ready.
 - **Do NOT use session-buddy's `remove_worktree` MCP tool for locked
   worktrees** (per memory `session-buddy-mcp-remove-worktree-bugs`). Use
@@ -85,7 +85,7 @@ or `python.*mahavishnu` — PID recycling is real).
 
 ## Spec
 
-- Canonical rules: `.claude/decisions/worktree-cleanup-policy.md`
+- Canonical rules: `docs/decisions/worktree-cleanup-policy.md`
 - Tier rubric and lock + live-PID semantics: same doc, § Decision rule
   and § Lock + live-PID semantics
 - Origin plan: `docs/plans/2026-09-07-worktree-cleanup.md`

@@ -21,7 +21,7 @@ phase_2:
   status: shipped
   shipped:
     - task_2_1: "3215d824 feat(mahavishnu): top-N MCP tool audit script (Phase 2 Task 2.1) — scripts/audit_top_tool_calls.py + 15 tests + DELETE empty stub scripts/audit_mcp_tools.py"
-    - task_2_2: "f5903d6c feat(mahavishnu): tool description rubric + structural validator (Phase 2 Task 2.2) — .claude/decisions/tool-description-rubric.md + 18 tests"
+    - task_2_2: "f5903d6c feat(mahavishnu): tool description rubric + structural validator (Phase 2 Task 2.2) — docs/decisions/tool-description-rubric.md + 18 tests"
     - task_2_3: "top-10 tool docstring rewrites against 6-criterion rubric in mahavishnu/mcp/server_core.py (uncommitted 2026-09-28; awaiting user split into 10 atomic commits per plan validation matrix)"
     - task_2_4: "tests/integration/test_tool_selection_accuracy.py (uncommitted 2026-09-28; structural + keyword-coverage proxy for LLM-as-judge, opt-in LLM judge gate) — 33 passed, 1 skipped (LLM judge gate) at rubric 33.3% → 100% (+66.7 pp delta)"
     - task_2_5: "PLAN_INDEX frontmatter `phase_2.status` flipped `partial → shipped` on 2026-09-28 (this edit); `last_reviewed` updated to today's date"
@@ -122,19 +122,19 @@ requirements:
     cites: "mahavishnu/core/config.py:1307"
   - id: REQ-TSQ-008
     title: "HealthFeedState('mcp_tool_call') wired into _resolve_feeds + /health aggregator"
-    cites: ".claude/decisions/mcp-backend-wiring-discipline.md (full document)"
+    cites: "docs/decisions/mcp-backend-wiring-discipline.md (full document)"
   - id: REQ-TSQ-009
     title: "Top-10 enumeration script reads Akosha traces; output is sorted desc + idempotent"
     cites: "mahavishnu/mcp/tools/otel_tools.py:307"
   - id: REQ-TSQ-010
     title: "Description rubric has 6 criteria including no-internal-disclosure; structurally validated"
-    cites: ".claude/decisions/README.md (decision-record format)"
+    cites: "docs/decisions/README.md (decision-record format)"
   - id: REQ-TSQ-011
     title: "Fixed task suite of >=5 representative tasks; LLM judge pinned to model + seed=0 + tolerance band"
     cites: "mahavishnu/mcp/server_core.py:19-23 (Prometheus surface; not used here, citation for telemetry context)"
   - id: REQ-TSQ-012
     title: "audit_orphans.py runs in <60s, exits non-zero on violations, emits structured output (verified at Phase 1 exit)"
-    cites: "scripts/audit_orphans.py (existence + runnability); .claude/decisions/wire-up-contract.md §4"
+    cites: "scripts/audit_orphans.py (existence + runnability); docs/decisions/wire-up-contract.md §4"
 ```
 
 ## 5. Implementation Phases
@@ -149,7 +149,7 @@ requirements:
 - **Task 1.2:** Add local subclass `mahavishnu/mcp/tool_call_middleware.py::ToolCallEnrichmentMiddleware(FastMCPOpenTelemetryMiddleware)` that overrides `on_message(context, call_next)`, gates on `context.method == "tools/call"`, reads `_classify_tool_result(status)` from `mahavishnu/mcp/server_core.py:220` for outcome, reads the existing Prometheus timer in `_wrap_tool_handler` (`server_core.py:164-200`) for duration_ms, and calls `enrich_tool_call_span`. Wire into the FastMCP middleware list inside `_register_telemetry_middleware` (`mahavishnu/mcp/server_core.py:84`), NOT into `mcp_common`.
 - **Task 1.3 (REQ-TSQ-003, INTER-REPO):** Edit `akosha/processing/fitness_analyzer.py:166` — append `"mcp_tool_call"` to the hardcoded `task_classes` list. **This is a mandatory Akosha-side edit.** Coordinate with Akosha maintainer; ships as paired commits on each repo main (Mahavishnu commit 67095d98; Akosha commit on its main).
 - **Task 1.4 (REQ-TSQ-007):** Add `observability.tool_enrichment_enabled: bool = False` to `mahavishnu/core/config.py` (around line 1307 alongside `tracing_enabled`). Gate the enricher on `tool_enrichment_enabled` independently of `tracing_enabled`. Phase 2's `audit_top_tool_calls.py` needs enrichment on even when OTel tracing is off.
-- **Task 1.5 (REQ-TSQ-008):** Wire `HealthFeedState("mcp_tool_call")` into the existing feed aggregator per `.claude/decisions/mcp-backend-wiring-discipline.md` §1 + §3. Four signals required: `entities_count` (trace rows), `last_updated_timestamp`, `errors_total` (failed OTel exports), `cycles_total` (analyzer cycles that queried this feed). `/health` returns 503 if `errors_total > threshold`.
+- **Task 1.5 (REQ-TSQ-008):** Wire `HealthFeedState("mcp_tool_call")` into the existing feed aggregator per `docs/decisions/mcp-backend-wiring-discipline.md` §1 + §3. Four signals required: `entities_count` (trace rows), `last_updated_timestamp`, `errors_total` (failed OTel exports), `cycles_total` (analyzer cycles that queried this feed). `/health` returns 503 if `errors_total > threshold`.
 - **Task 1.6 (REQ-TSQ-012):** Verify `scripts/audit_orphans.py` runs in <60s on the current repo, exits non-zero on violations, emits structured output with `file:line + description`. Record the actual numbers in the Phase 1 exit-criteria evidence.
 - **Task 1.7:** Add `tests/integration/test_tool_call_telemetry_e2e.py` — start `FastMCPServer`, invoke a tool via the in-process FastMCP client, assert:
   - `mcp__akosha__query_local_traces(system_id="mahavishnu", task_class="mcp_tool_call", limit=5)` returns non-empty result (per `mcp-backend-wiring-discipline.md` §2 / §4 — non-empty-results assertion).
@@ -193,7 +193,7 @@ requirements:
 **Tasks:**
 
 - **Task 2.1 (REQ-TSQ-009):** DELETE the empty stub `scripts/audit_mcp_tools.py`. ADD `scripts/audit_top_tool_calls.py` — reads Akosha traces via `mcp__akosha__query_local_traces(system_id="mahavishnu", task_class="mcp_tool_call", limit=200)`, groups by `selector`, ranks by call count desc, outputs the sorted list. Idempotent. Asserted by `tests/unit/test_audit_top_tool_calls.py` — exits 0, sorted desc, idempotent across runs.
-- **Task 2.2 (REQ-TSQ-010):** Add `mahavishnu/.claude/decisions/tool-description-rubric.md` with **6 criteria**:
+- **Task 2.2 (REQ-TSQ-010):** Add `mahavishnu/docs/decisions/tool-description-rubric.md` with **6 criteria**:
   1. When *not* to use (negative cases).
   2. Common failure modes.
   3. Return shape hint (string / structured / empty-when-no-data).
@@ -217,7 +217,7 @@ requirements:
 #### Integration Contract (Phase 2)
 
 - **Triggered from:** Manual invocation of `scripts/audit_top_tool_calls.py` (one-shot analysis); `tests/integration/test_tool_selection_accuracy.py` runs in CI on every PR that touches `mahavishnu/mcp/tools/`.
-- **Returns to / updates:** Updated `description=` strings on 10 `@mcp.tool()` decorators under `mahavishnu/mcp/tools/`. New decision file at `mahavishnu/.claude/decisions/tool-description-rubric.md`. New `tests/integration/test_tool_selection_accuracy.py`, `tests/unit/test_audit_top_tool_calls.py`, `tests/unit/test_tool_description_rubric.py`.
+- **Returns to / updates:** Updated `description=` strings on 10 `@mcp.tool()` decorators under `mahavishnu/mcp/tools/`. New decision file at `mahavishnu/docs/decisions/tool-description-rubric.md`. New `tests/integration/test_tool_selection_accuracy.py`, `tests/unit/test_audit_top_tool_calls.py`, `tests/unit/test_tool_description_rubric.py`.
 - **Demonstrable by:**
   ```bash
   cd /Users/les/Projects/mahavishnu && uv run python scripts/audit_top_tool_calls.py
@@ -249,7 +249,7 @@ requirements:
 - [ ] DELETE `scripts/audit_mcp_tools.py` (empty stub) (Task 2.1)
 - [ ] `scripts/audit_top_tool_calls.py` (new) — top-N enumeration (Task 2.1)
 - [ ] `tests/unit/test_audit_top_tool_calls.py` (new) — idempotence + sort-order (Task 2.1)
-- [ ] `mahavishnu/.claude/decisions/tool-description-rubric.md` (new) — 6-criterion rubric (Task 2.2)
+- [ ] `mahavishnu/docs/decisions/tool-description-rubric.md` (new) — 6-criterion rubric (Task 2.2)
 - [ ] `tests/unit/test_tool_description_rubric.py` (new) — structural validator (Task 2.2)
 - [ ] `mahavishnu/mcp/tools/<group>.py` × 10 — `description=` rewrites, one commit per tool (Task 2.3)
 - [ ] `tests/integration/test_tool_selection_accuracy.py` (new) — before/after measurement with tolerance band (Task 2.4)

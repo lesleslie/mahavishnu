@@ -18,7 +18,7 @@ title: "Plan Lifecycle Unification — Frontmatter Standardization Across Docume
 **Status:** <!-- legacy status: draft — moved to YAML frontmatter -->
 **Role:** <!-- legacy role: implementation — moved to YAML frontmatter -->
 
-**Goal:** Replace the eight ad-hoc status conventions currently scattered across `.claude/decisions/`, `docs/followups/`, `docs/adr/`, `docs/specs/`, `docs/plans/`, and `docs/plans/` with a single YAML frontmatter contract — five lifecycle values, five role values, and a small set of metadata fields — then mechanically validate the 178 in-scope files in Mahavishnu so PLAN_INDEX.md, the decision README, and discovery tools can read one source of truth.
+**Goal:** Replace the eight ad-hoc status conventions currently scattered across `docs/decisions/`, `docs/followups/`, `docs/adr/`, `docs/specs/`, `docs/plans/`, and `docs/plans/` with a single YAML frontmatter contract — five lifecycle values, five role values, and a small set of metadata fields — then mechanically validate the 178 in-scope files in Mahavishnu so PLAN_INDEX.md, the decision README, and discovery tools can read one source of truth.
 
 **Architecture:** Two coordinated work tracks. Track A defines the contract (schema doc, validator, dry-run audit). Track B applies frontmatter to the 178 inventoried files in store-by-store waves (P1 ADRs → P2 plans → P3 superpowers specs → P4 superpowers plans → P5 decisions/followups), then regenerates PLAN_INDEX.md from frontmatter in P6. No new tooling; existing YAML/grep is enough. P7 cross-repository expansion is gated on each repo first producing its own inventory.
 
@@ -291,23 +291,23 @@ The File Map covers all 178 in-scope files. Counts reflect Phase deliverables; c
 | `docs/plans/2026-07-14-multi-backend-pty.md` | (no frontmatter) | draft | implementation | multi-backend-pty |
 | `docs/plans/2026-07-15-constellation-tui.md` | (no frontmatter) | draft | implementation | constellation-tui |
 
-### Store: .claude/decisions/ (11 files, Phase P5 — lighter schema)
+### Store: docs/decisions/ (11 files, Phase P5 — lighter schema)
 
 The lighter decision schema omits `superseded_by` and `blocks_on`. All decisions receive `status`, `role`, `date`, `last_reviewed`, `topic`.
 
 | Path | Current Status | Proposed Status | Proposed Role | Topic |
 |---|---|---|---|---|
-| `.claude/decisions/README.md` | (Status column) | active | canonical | decision-index |
-| `.claude/decisions/agent-curation-strategy.md` | (no frontmatter) | active | canonical | agent-curation |
-| `.claude/decisions/bodai-observability-pattern.md` | (no frontmatter) | active | canonical | bodai-observability |
-| `.claude/decisions/component-health-cli-gap.md` | (no frontmatter) | active | canonical | component-health |
-| `.claude/decisions/dhara-key-prefixes-2026-07-15.md` | (no frontmatter) | active | canonical | dhara-key-prefixes |
-| `.claude/decisions/mahavishnu-tool-preference-policy.md` | (no frontmatter) | active | canonical | tool-preference |
-| `.claude/decisions/removed-scripts.md` | (no frontmatter) | active | canonical | removed-scripts |
-| `.claude/decisions/skill-vs-agent-strategy.md` | (no frontmatter) | active | canonical | skill-vs-agent |
-| `.claude/decisions/technical-debt-roadmap.md` | 4/5 RESOLVED | active | implementation | technical-debt |
-| `.claude/decisions/test-matrix-review-followups.md` | (no frontmatter) | active | implementation | test-matrix-followups |
-| `.claude/decisions/wire-up-contract.md` | (no frontmatter) | active | canonical | wire-up-contract |
+| `docs/decisions/README.md` | (Status column) | active | canonical | decision-index |
+| `docs/decisions/agent-curation-strategy.md` | (no frontmatter) | active | canonical | agent-curation |
+| `docs/decisions/bodai-observability-pattern.md` | (no frontmatter) | active | canonical | bodai-observability |
+| `docs/decisions/component-health-cli-gap.md` | (no frontmatter) | active | canonical | component-health |
+| `docs/decisions/dhara-key-prefixes-2026-07-15.md` | (no frontmatter) | active | canonical | dhara-key-prefixes |
+| `docs/decisions/mahavishnu-tool-preference-policy.md` | (no frontmatter) | active | canonical | tool-preference |
+| `docs/decisions/removed-scripts.md` | (no frontmatter) | active | canonical | removed-scripts |
+| `docs/decisions/skill-vs-agent-strategy.md` | (no frontmatter) | active | canonical | skill-vs-agent |
+| `docs/decisions/technical-debt-roadmap.md` | 4/5 RESOLVED | active | implementation | technical-debt |
+| `docs/decisions/test-matrix-review-followups.md` | (no frontmatter) | active | implementation | test-matrix-followups |
+| `docs/decisions/wire-up-contract.md` | (no frontmatter) | active | canonical | wire-up-contract |
 
 ### Store: docs/followups/ (8 files, Phase P5 — full schema)
 
@@ -564,11 +564,11 @@ git commit -m "docs(superpowers-plans): normalize 47 plans to unified frontmatte
 
 **Goal:** Apply the lite schema to decisions and the full schema to followups.
 
-**Files:** 11 files under `.claude/decisions/`; 8 files under `docs/followups/`.
+**Files:** 11 files under `docs/decisions/`; 8 files under `docs/followups/`.
 
 - [ ] **Step 1: Apply lite schema to 11 decisions**
 
-Each `.claude/decisions/*.md` receives the lite frontmatter (`status`, `role`, `date`, `last_reviewed`, `topic`). `.claude/decisions/technical-debt-roadmap.md` and `test-matrix-review-followups.md` receive `role: implementation`; the remaining 9 receive `role: canonical`. The decision `README.md` becomes the canonical decision index.
+Each `docs/decisions/*.md` receives the lite frontmatter (`status`, `role`, `date`, `last_reviewed`, `topic`). `docs/decisions/technical-debt-roadmap.md` and `test-matrix-review-followups.md` receive `role: implementation`; the remaining 9 receive `role: canonical`. The decision `README.md` becomes the canonical decision index.
 
 - [ ] **Step 2: Apply full schema to 8 followups**
 
@@ -576,12 +576,12 @@ Each `docs/followups/*.md` receives the full schema. The five Resolved followups
 
 - [ ] **Step 3: Re-derive the decision README's Status column**
 
-Regenerate `.claude/decisions/README.md`'s Status column from each decision's frontmatter. No body content changes; only the column values are mechanically updated.
+Regenerate `docs/decisions/README.md`'s Status column from each decision's frontmatter. No body content changes; only the column values are mechanically updated.
 
 - [ ] **Step 4: Run validator**
 
 ```bash
-uv run python scripts/validate_document_frontmatter.py .claude/decisions/ docs/followups/
+uv run python scripts/validate_document_frontmatter.py docs/decisions/ docs/followups/
 ```
 
 Expected: 19 files pass.
@@ -589,7 +589,7 @@ Expected: 19 files pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .claude/decisions/ docs/followups/
+git add docs/decisions/ docs/followups/
 git commit -m "docs(decisions+followups): normalize 19 files to unified frontmatter"
 ```
 
@@ -635,7 +635,7 @@ git commit -m "feat: regenerate PLAN_INDEX from frontmatter; strict inline-marke
 
 - [ ] **Step 1: Inventory each sibling repo**
 
-Run the dry-run validator against `dhara/docs/adr/**`, `dhara/docs/plans/**`, `dhara/docs/followups/**`, `dhara/.claude/decisions/**`, and the equivalents in akosha, session-buddy, crackerjack, oneiric. Publish per-repo counts (in-scope files, missing metadata count, unresolved link count) before editing.
+Run the dry-run validator against `dhara/docs/adr/**`, `dhara/docs/plans/**`, `dhara/docs/followups/**`, `dhara/docs/decisions/**`, and the equivalents in akosha, session-buddy, crackerjack, oneiric. Publish per-repo counts (in-scope files, missing metadata count, unresolved link count) before editing.
 
 - [ ] **Step 2: Reuse `docs/schemas/document-frontmatter-v1.md` and the same validator**
 
@@ -654,7 +654,7 @@ ______________________________________________________________________
 - **Returns to / updates:**
 
   - `docs/plans/PLAN_INDEX.md` — regenerated from frontmatter in P6; sole source of truth for plan index
-  - `.claude/decisions/README.md` — Status column re-derived from per-decision frontmatter in P5
+  - `docs/decisions/README.md` — Status column re-derived from per-decision frontmatter in P5
   - `scripts/validate_document_frontmatter.py` — invoked by CI on every PR; rejects unknown values, broken links, conflicting inline markers
 
 - **Demonstrable by:**
@@ -666,7 +666,7 @@ ______________________________________________________________________
   Expected exit code 0; 178 in-scope files validated; 0 errors.
 
   ```bash
-  grep -L '^status:' docs/plans/*.md docs/plans/*.md docs/specs/*.md docs/adr/*.md .claude/decisions/*.md docs/followups/*.md
+  grep -L '^status:' docs/plans/*.md docs/plans/*.md docs/specs/*.md docs/adr/*.md docs/decisions/*.md docs/followups/*.md
   ```
 
   Expected: empty output (every in-scope file carries a `status:` line).
@@ -687,11 +687,11 @@ uv run python scripts/validate_document_frontmatter.py
 # Expected: "178 files validated, 0 errors, 0 warnings"
 
 # 2. Every in-scope file carries frontmatter
-grep -L '^status:' docs/plans/*.md docs/plans/*.md docs/specs/*.md docs/adr/*.md .claude/decisions/*.md docs/followups/*.md
+grep -L '^status:' docs/plans/*.md docs/plans/*.md docs/specs/*.md docs/adr/*.md docs/decisions/*.md docs/followups/*.md
 # Expected: empty output
 
 # 3. No legacy status strings remain
-grep -rE '^\*\*Status\*\*: (Accepted|Approved|Proposed|Draft|Resolved)' docs/adr/ docs/plans/ docs/specs/ docs/followups/ .claude/decisions/ 2>/dev/null | grep -v '<!-- legacy'
+grep -rE '^\*\*Status\*\*: (Accepted|Approved|Proposed|Draft|Resolved)' docs/adr/ docs/plans/ docs/specs/ docs/followups/ docs/decisions/ 2>/dev/null | grep -v '<!-- legacy'
 # Expected: empty output
 
 # 4. All superseded_by targets resolve
@@ -761,4 +761,4 @@ Clean — every step either modifies an existing file or describes a concrete de
 
 - **Topic vocabulary source of truth.** Where should the controlled topic list live? Currently proposed as a section of `docs/schemas/document-frontmatter-v1.md`. Acceptable to defer until first cross-repo audit (P7) reveals actual divergences.
 - **Cross-repo `superseded_by` representation.** `ext:` identifier scheme is proposed but not yet enforced. P7 should commit to one of: identifier-registry, path-prefix-by-repo, or no-cross-repo-supersession. **Decision:** keep it gated on P7 inventory; do not invent convention until first need arises.
-- **Decision README regeneration cadence.** Re-deriving `.claude/decisions/README.md` from frontmatter is mechanical; should it run on every CI commit (continuous) or only when a decision file changes (event-driven)? **Decision:** event-driven; the decision README's CI gate runs `validate_document_frontmatter.py .claude/decisions/ --regenerate-readme`.
+- **Decision README regeneration cadence.** Re-deriving `docs/decisions/README.md` from frontmatter is mechanical; should it run on every CI commit (continuous) or only when a decision file changes (event-driven)? **Decision:** event-driven; the decision README's CI gate runs `validate_document_frontmatter.py docs/decisions/ --regenerate-readme`.

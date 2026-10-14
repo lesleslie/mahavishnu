@@ -40,12 +40,12 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 1. Land EventBridge publishers for Akosha and Crackerjack activity events (one adapter per component, adapting existing WebSocket broadcasts).
 1. Add `/bodai-status` slash command + `bodai-status` auto-trigger skill + companion to `/vishnu-status`.
 1. Add a `mahavishnu metrics bodai` CLI that surfaces event-bridge health, subscriber state, and per-component event rates.
-1. Document the canonical envelope in `.claude/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
+1. Document the canonical envelope in `docs/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
 
 ## 3. Non-Goals
 
 1. **Not implementing the EventBridge envelope itself.** Convergence Plan C2 owns that. Phase 6 reads whatever C2 publishes; if C2's envelope changes, this plan is amended.
-1. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `.claude/decisions/bodai-observability-pattern.md`.
+1. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `docs/decisions/bodai-observability-pattern.md`.
 1. **Not changing Dhara or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. Dhara/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
 1. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
 1. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
@@ -156,7 +156,7 @@ ______________________________________________________________________
 **Exit criteria:**
 
 - `/bodai-status` from Claude Code prints a per-component activity table without leaving the session
-- `grep -rn 'ws://localhost:869[026]' .claude/hooks/` returns zero hits — all per-component WebSocket subscribers are gone (the rule from `.claude/decisions/bodai-observability-pattern.md`)
+- `grep -rn 'ws://localhost:869[026]' .claude/hooks/` returns zero hits — all per-component WebSocket subscribers are gone (the rule from `docs/decisions/bodai-observability-pattern.md`)
 - Tool frontmatter validator passes for both new files
 
 #### Integration Contract — Phase 6.3
@@ -208,7 +208,7 @@ ______________________________________________________________________
 
 ### Phase 6.5: `mahavishnu metrics bodai` CLI + Documentation
 
-**Goal:** Surface Phase 6 health, event rates, and per-component breakdown via the existing `mahavishnu metrics` CLI. Document the pattern in `docs/ROUTING_GUIDE.md` and `.claude/decisions/bodai-observability-pattern.md`.
+**Goal:** Surface Phase 6 health, event rates, and per-component breakdown via the existing `mahavishnu metrics` CLI. Document the pattern in `docs/ROUTING_GUIDE.md` and `docs/decisions/bodai-observability-pattern.md`.
 
 **Tasks:**
 
@@ -222,7 +222,7 @@ ______________________________________________________________________
 
 - **Task 6.5.2:** Update `docs/ROUTING_GUIDE.md` to add a "Bodai Observability — Implementation" subsection under the existing "Bodai Observability — Component Survey" table. Reference the hook paths, the subscriber entry point, and how to disable per-component publishers.
 
-- **Task 6.5.3:** Update `.claude/decisions/bodai-observability-pattern.md` with the actual envelope shape landed by C2 (replace the "TBD" forward reference in the decision rule). Update the table of Bodai event examples with concrete payloads.
+- **Task 6.5.3:** Update `docs/decisions/bodai-observability-pattern.md` with the actual envelope shape landed by C2 (replace the "TBD" forward reference in the decision rule). Update the table of Bodai event examples with concrete payloads.
 
 - **Task 6.5.4:** Add `mahavishnu metrics bodai --scope 7d --component akosha` filter so operators can drill into one component.
 
@@ -260,7 +260,7 @@ Phase 6.5 (CLI + docs)                       ─── depends on 6.4 (commands 
 
 ### 5.2 Architecture Diagram
 
-See `.claude/decisions/bodai-observability-pattern.md` for the
+See `docs/decisions/bodai-observability-pattern.md` for the
 canonical diagram and the single-source-of-truth rules. The pattern
 is: components publish to EventBridge → single subscriber reads →
 PostToolUse drains → conversation sees `[component] summary`.
@@ -285,7 +285,7 @@ ______________________________________________________________________
 | EventBridge outage causes subscriber to drop events | Subscriber is non-blocking and never raises; drop counts surface via `mahavishnu.bodai.subscriber_restarts_total`; alert on rate |
 | Phase 5 hook's deletion breaks `/vishnu-status` (which depends on the same hook file) | Phase 6.4 lands a Bodai-wide hook that subsumes the Phase 5 hook's responsibilities; `/vishnu-status` switches to reading the Bodai queue and filtering by `component=mahavishnu` |
 | Akosha and Crackerjack CI doesn't run Phase 6 publisher tests | Add a CI workflow in each repo that runs the publisher tests against a Redis service container |
-| Operators don't know Phase 5 hook is being replaced | `.claude/decisions/bodai-observability-pattern.md` documents the transition explicitly with the deleted/added file paths |
+| Operators don't know Phase 5 hook is being replaced | `docs/decisions/bodai-observability-pattern.md` documents the transition explicitly with the deleted/added file paths |
 
 ## 8. Pre-C2 Path (Fallback)
 
@@ -311,7 +311,7 @@ C2 status from the plan's Status field.
 
 - `docs/plans/2026-07-11-ultracode-integration-wiring.md` §5 Phase 6 (deferred content)
 - `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` Non-Goal #1 + §3.2 (Redis Streams transport)
-- `.claude/decisions/bodai-observability-pattern.md` (operational rule)
+- `docs/decisions/bodai-observability-pattern.md` (operational rule)
 - `docs/ROUTING_GUIDE.md` §Bodai Observability — Component Survey (gap classification)
 - `.claude/hooks/mahavishnu-activity-stream.py` (Phase 5 transition state, to be deleted)
 - `docs/feature-tracking/2026-07-11-*` entries for Phases 1-5 (apply the same `{built, wired, adopted}` state machine to Phase 6 tasks)

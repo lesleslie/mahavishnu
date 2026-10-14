@@ -471,7 +471,7 @@ Three external surfaces:
 
 For inline visibility from inside this Claude session, the `.claude/hooks/mahavishnu-activity-stream.py` hook surfaces a compact stream of worker events directly in the conversation so you can correlate them with the work you dispatched.
 
-See `.claude/decisions/mahavishnu-tool-preference-policy.md` for the full operational rule on where tool-selection steering may live.
+See `docs/decisions/mahavishnu-tool-preference-policy.md` for the full operational rule on where tool-selection steering may live.
 
 ### Missing built-in tools in MiniMax-modeled sessions
 
@@ -704,13 +704,13 @@ question explicitly before the work is considered done.
   contains a dedicated **Wiring** phase between Design and Validate —
   follow it for every non-trivial delivery.
 
-The full policy lives in `.claude/decisions/wire-up-contract.md`. The
+The full policy lives in `docs/decisions/wire-up-contract.md`. The
 canonical template lives in `docs/plans/TEMPLATE.md`.
 
 ### MCP backend wiring discipline (Bodai-wide)
 
 `wire-up-contract.md` enforces integration at plan-time. The companion
-runtime rule is `.claude/decisions/mcp-backend-wiring-discipline.md`:
+runtime rule is `docs/decisions/mcp-backend-wiring-discipline.md`:
 every Bodai MCP server's `/health` must aggregate per-feed state and
 return 503 on degraded; every registered tool must have a working data
 feed (`feed.entities_count`, `feed.last_updated_timestamp`,
@@ -914,7 +914,7 @@ Before writing common primitives (HMAC, token gen, schema validation,
 retries, redaction, HTTP probing, serialization, compression, hashing,
 data transforms), check `oneiric.actions` — catalog lives at
 `oneiric/docs/action-kits.md` in the oneiric project. Discovery hint:
-`mahavishnu/.claude/decisions/promote-oneiric-action-kits.md`.
+`mahavishnu/docs/decisions/promote-oneiric-action-kits.md`.
 
 # Worktree location preference (per-repo)
 
@@ -937,7 +937,7 @@ canonical homes:
 
 `docs/superpowers/` only holds `eval/` here (legacy, unrelated). New
 plans and specs do not land under `docs/superpowers/`. See
-`.claude/decisions/2026-10-03-plans-specs-canonical-paths.md`.
+`docs/decisions/2026-10-03-plans-specs-canonical-paths.md`.
 
 # Merge workflow
 
@@ -945,10 +945,10 @@ The `/merge-to-main` slash command, the `agent-merge-on-end.py` SessionEnd
 hook, and the `mahavishnu.core.merge_to_main` orchestration module all
 live in this repo. The pre-push consolidation gate (stage 4.5) also
 lives here — see
-`.claude/decisions/2026-10-13-prepushconsolidationgate.md`. Other 5
+`docs/decisions/2026-10-13-prepushconsolidationgate.md`. Other 5
 core repos (akosha, session-buddy, crackerjack, oneiric, mcp-common)
 inherit the convention without per-repo edits — their workers run
 inside mahavishnu's orchestration.
 
 See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
-and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.
+and `docs/decisions/2026-10-03-trunk-based-agent-review.md`.

@@ -317,7 +317,7 @@ def build_footer() -> str:
     return """## Per-project MCP server and agent scoping
 
 > Established 2026-08-24 per the post-audit architectural decision
-> `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`. Update
+> `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`. Update
 > this table whenever a project gains or loses MCP servers.
 
 _(Hand-maintained. Not generated. See `settings/ecosystem.yaml` (gitignored

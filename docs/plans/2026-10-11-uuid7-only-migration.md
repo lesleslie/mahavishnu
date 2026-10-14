@@ -44,7 +44,7 @@ title: "UUID7-Only Migration — Eliminate ULID Across Bodai Core Components (Op
 > word `memory` in their content stores (only `reflection_access_log` is
 > preserved, and that's an event log — a different concept from
 > MEMORY.md or the renamed content tables).
-> _See `.claude/decisions/wire-up-contract.md` for the wiring rules this
+> _See `docs/decisions/wire-up-contract.md` for the wiring rules this
 > plan follows._
 
 ## 1. Outcome
@@ -974,7 +974,7 @@ phases A–E2). Specifically:
 |---|---|---|---|
 | 1 | `2026-10-03-eval-adapter-phase1.md` | active | Add UUID7 generation to the new `runs` / `case_results` / `scores` PKs. Default `id TEXT` should be UUID7 hex generated **in the app layer** (`from uuid import uuid7; uuid7().hex` in the writer). Do NOT use `gen_random_uuid7()::TEXT` as a SQL default — oneiric has no `extensions/` or `sql/` directory and ships no such UDF. (If/when the eval DB is migrated to PG, swap to `pgcrypto.gen_random_bytes(16)` + a wrapper, but that's out of scope here.) |
 | 2 | `2026-08-04-d-lock.md` | active | Migration 0003 `substrate_locks.id` should be UUID7 hex. App-layer generation only (no oneiric UDF). `lock_key` and `owner_token` follow the same rule. |
-| 3 | `2026-08-10-m-approval-log.md` | active | Repoint `from dhara.schema.approval_log import ApprovalLog` → oneiric substrate. Local path `approval-history/{approval_id}/` → explicit `LocalStorageAdapter.save(key, data: bytes)` (or cloud equivalent per substrate config); `approval_id` is UUID7. The plan must also call out the 4-signal feed contract (`feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total`) for the new `list_approval_history` MCP tool, per `.claude/decisions/mcp-backend-wiring-discipline.md` §3. |
+| 3 | `2026-08-10-m-approval-log.md` | active | Repoint `from dhara.schema.approval_log import ApprovalLog` → oneiric substrate. Local path `approval-history/{approval_id}/` → explicit `LocalStorageAdapter.save(key, data: bytes)` (or cloud equivalent per substrate config); `approval_id` is UUID7. The plan must also call out the 4-signal feed contract (`feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total`) for the new `list_approval_history` MCP tool, per `docs/decisions/mcp-backend-wiring-discipline.md` §3. |
 | 4 | `2026-08-10-m-workflow-outcome.md` | active | Same: repoint substrate, serverless-safe storage, UUID7 `workflow_id`. 4-signal feed contract required for the new `workflow_get_outcome(workflow_id)` MCP tool. The plan's Task 4 `pytest.skip("Replace with the actual Dhara fixture once located")` placeholder must be replaced with a real aggregator-verdict test (`tests/integration/test_workflow_tools_e2e.py` asserting real HTTP `/health` verdict), per `feedback-mcp-test-must-assert-aggregator-verdict`. |
 | 5 | `2026-08-10-m-webhook-durable.md` | active | Same: repoint `WebhookIngress` to oneiric substrate, serverless path, UUID7 `webhook_id`. **The `audit_record` emission side-effect (Dhara's D-AUDIT subscriber) needs a migration path forward** — oneiric has no equivalent audit-on-write adapter; the patch's `## Coordination notes` section already flags this TBD. **Resolution required before merge:** the webhook surface needs an OTel span `webhook.ingress.record_written` (with `audit_record=true` attribute) so the audit feed is observable through the existing OTel → Akosha path. The actual `audit_record` event emission is the responsibility of the m-webhook-durable plan's own PR (out of scope for this worktree). |
 | 6 | `2026-09-10-jot-capture.md` | active | Add a "Serverless scope" section pinning jot to **local-only v1** (host filesystem). Justification: jot is a per-user quick-capture scratchpad with a 30-day retention per `2026-09-10-jot-inbox.md`; the cloud-repointing scope is bigger than this migration and should land separately if desired. **Serverless disable mechanism:** the `jot-session-start.py` SessionStart hook in `.claude/settings.json` MUST become a no-op (or be removed) in serverless deploys because `~/.claude/jot/` doesn't exist. Document this; the existing implementation in `mahavishnu/hooks/jot_capture.py` already falls back to `errors.log` + passthrough on `PermissionError`, but the SessionStart hook (which surfaces jots via `mcp__mahavishnu__jot_resurface`) needs the same fallback or removal. |
@@ -1027,7 +1027,7 @@ independently.
 
 ## References
 
-- `.claude/decisions/wire-up-contract.md` — Integration Contract policy.
+- `docs/decisions/wire-up-contract.md` — Integration Contract policy.
 - `docs/plans/TEMPLATE.md` — plan shape this document follows.
 - `docs/feature-tracking/TEMPLATE.md` — feature-state lifecycle.
 - Memory `feedback-no-backwards-compat-pre-1.0.md` — replace-not-extend.

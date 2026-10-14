@@ -33,8 +33,8 @@ Verbatim from spec §12:
 - **No `Co-Authored-By` trailer**.
 - **Author email** `les@wedgwoodwebworks.com`.
 - **Auth short-circuit preserved** across substrate adoption. `auth.enabled: false` on any consumer MUST continue to short-circuit both middleware AND decorator gates per `feedback-bodai-localhost-no-auth.md`. Phase E2 explicitly carries `auth__enabled` and `auth__loopback_trusted` through `OneiricSettings.substrate`.
-- **Wire-up contract** per `.claude/decisions/wire-up-contract.md`.
-- **MCP backend wiring discipline** per `.claude/decisions/mcp-backend-wiring-discipline.md`.
+- **Wire-up contract** per `docs/decisions/wire-up-contract.md`.
+- **MCP backend wiring discipline** per `docs/decisions/mcp-backend-wiring-discipline.md`.
 
 ## 1. Outcome
 
@@ -373,8 +373,8 @@ Phase E2 is complete when ALL of:
 - `oneiric/core/config.py:246` — canonical settings class
 - `oneiric/core/substrate_settings.py` — `SubstrateSettings` (added in Phase E1)
 - `feedback-bodai-localhost-no-auth.md` — auth short-circuit must be preserved
-- `.claude/decisions/wire-up-contract.md` — Integration Contract rules
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — feed-state aggregation requirements
+- `docs/decisions/wire-up-contract.md` — Integration Contract rules
+- `docs/decisions/mcp-backend-wiring-discipline.md` — feed-state aggregation requirements
 
 ## 11. Cross-Reference: Adapter Registry Consolidation
 

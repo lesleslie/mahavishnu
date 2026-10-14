@@ -11,7 +11,7 @@ related:
   - docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
   - docs/adr/017-oneiric-shared-persistence-substrate.md
   - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md
-  - .claude/decisions/wire-up-contract.md
+  - docs/decisions/wire-up-contract.md
 title: "Phase-1 Precondition Fixes — Serverless-Readiness Plan"
 
 ---
@@ -233,17 +233,17 @@ enforcement check belongs to Phase 5's exit criteria.
 
 ### REQ-FIX-B-004: Audit invariant tolerance tightening
 
-**File:** `.claude/decisions/wire-up-contract.md` (Integration contract — additional requirements section)
+**File:** `docs/decisions/wire-up-contract.md` (Integration contract — additional requirements section)
 
 **Problem:** C.1's invariant is "file path resolves + line number is within 5 lines." A 4-line edit passes as no-drift. Surgical citations should be 0-2 lines; 5 masks the exact class of bug Rev-9 flagged.
 
 **Fix:** Change "within 5 lines" → "within 2 lines for surgical citations, 5 lines only for `class`/`function` boundaries where the boundary line can shift". Update the example accordingly.
 
-**Demonstrable by:** `grep -A 2 "within 2 lines" .claude/decisions/wire-up-contract.md` returns the new text.
+**Demonstrable by:** `grep -A 2 "within 2 lines" docs/decisions/wire-up-contract.md` returns the new text.
 
 **Integration Contract:**
 - **Triggered from:** Reviewer finding F.2.1
-- **Returns to / updates:** `.claude/decisions/wire-up-contract.md`
+- **Returns to / updates:** `docs/decisions/wire-up-contract.md`
 - **Rollback signal:** N/A
 - **Observability added:** N/A
 
@@ -467,7 +467,7 @@ of parent plan Phase 9.
 |---|---|---|
 | `grep -c "REQ-ONEIRIC-MIRROR" docs/plans/2026-09-14-...md` in §5 task list | 0 | shell exit code 0, no output |
 | `grep -c "2026-04-02-storage-consolidation" docs/adr/013-*.md` | ≥1 | shell |
-| `grep "within 2 lines" .claude/decisions/wire-up-contract.md` | ≥1 | shell |
+| `grep "within 2 lines" docs/decisions/wire-up-contract.md` | ≥1 | shell |
 | `grep "Phase 4\|Phase 8" docs/plans/2026-09-14-...md \| grep -A 4 "Never cut"` | Lists all 4 phases | shell |
 | `grep -A 10 "Decision Rule" docs/plans/2026-09-14-...md \| grep -c "Severity"` | 3 (severity rows) | shell |
 | `grep -A 20 "Phase 8 deliverable" docs/plans/2026-09-14-...md \| grep -c "lifecycle\|startup ordering\|graceful shutdown"` | ≥3 | shell |
@@ -516,7 +516,7 @@ The 8 deferred items from parent plan Appendix F are NOT in this plan's scope:
 - Parent plan Appendix F: 22 deferred findings (this plan addresses 14)
 - ADR 017: `docs/adr/017-oneiric-shared-persistence-substrate.md` (citation drift fixed by REQ-FIX-A-002)
 - ADR 013: `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` (cross-ref added by REQ-FIX-A-003)
-- Wire-up contract: `.claude/decisions/wire-up-contract.md` (invariant tightened by REQ-FIX-B-004)
+- Wire-up contract: `docs/decisions/wire-up-contract.md` (invariant tightened by REQ-FIX-B-004)
 
 ## Appendix B — Pre-flight checklist
 

@@ -13,10 +13,10 @@ title: "Bodai Worktree Cleanup Policy — Implementation Plan"
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Codify the 2026-09-07 worktree-sweep findings into a sibling decision doc, build a `mahavishnu worktree scan` CLI that walks `settings/ecosystem.yaml` and emits a tier-grouped report (text or JSON), and ship a thin skill wrapper around the CLI. Three commits land directly to main per `.claude/decisions/bodai-pre-1.0-merge-policy.md`.
+**Goal:** Codify the 2026-09-07 worktree-sweep findings into a sibling decision doc, build a `mahavishnu worktree scan` CLI that walks `settings/ecosystem.yaml` and emits a tier-grouped report (text or JSON), and ship a thin skill wrapper around the CLI. Three commits land directly to main per `docs/decisions/bodai-pre-1.0-merge-policy.md`.
 
 **Architecture:** Three artifacts in `mahavishnu/`:
-- `.claude/decisions/worktree-cleanup-policy.md` — the canonical rules (tier rubric, salvage, lock + live-PID, agent-dispatch reap, cross-repo plan-orphan)
+- `docs/decisions/worktree-cleanup-policy.md` — the canonical rules (tier rubric, salvage, lock + live-PID, agent-dispatch reap, cross-repo plan-orphan)
 - `mahavishnu worktree scan` — new subcommand on the existing `mahavishnu worktree` CLI. Reuses `classify_merge_status()` from `worktree_prune_merged.py` and the existing path/validator utilities from `paths.py`, `validators.py`, `worktree_validation.py`, `bootstrap.py`
 - `.claude/skills/bodai-worktree-cleanup/SKILL.md` — thin wrapper skill triggering on worktree-context phrases only
 
@@ -38,7 +38,7 @@ Every task's requirements implicitly include these:
 - **Lock file parser**: fixed regex `^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$`. No `eval`, `exec`, `shell`. Invalid format → `pid_liveness = "none"` + `notes: ["unparsable lock format"]`.
 - **Tier X exclusive enumeration**: Tier X entries are reported EXCLUSIVELY in `tier_x_cross_repo_orphan` and DO NOT appear under Tier A or any other tier.
 - **Process safety**: `git worktree remove --force` does NOT bypass locks. Use `git worktree remove --force -f -f` (or `git worktree unlock` first) only after verifying the lock's PID is dead via `ps -p <pid>` + `ps -p <pid> -o command=` (PID reuse validation).
-- **Branch policy**: per `.claude/decisions/bodai-pre-1.0-merge-policy.md`, all three commits land directly to main. No PR. Squash forbidden.
+- **Branch policy**: per `docs/decisions/bodai-pre-1.0-merge-policy.md`, all three commits land directly to main. No PR. Squash forbidden.
 - **Back-link requirement**: Commit 1 adds "See also: worktree-cleanup-policy.md" to each of the 5 existing decision docs.
 
 ---
@@ -47,12 +47,12 @@ Every task's requirements implicitly include these:
 
 | File | Responsibility |
 |------|---------------|
-| `.claude/decisions/worktree-cleanup-policy.md` | NEW. Tier rubric, salvage, lock + live-PID semantics, agent-dispatch reap rule, cross-repo plan-orphan rule, negative rules |
-| `.claude/decisions/session-worktree-defaults.md` | MODIFY. Add "See also: worktree-cleanup-policy.md" back-link |
-| `.claude/decisions/worktree-autoremove-policy.md` | MODIFY. Add back-link |
-| `.claude/decisions/worktree-autoremove-v4-followup.md` | MODIFY. Add back-link |
-| `.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md` | MODIFY. Add back-link |
-| `.claude/decisions/mahavishnu-tool-preference-policy.md` | MODIFY. Add back-link (it relates via cross-reference even if not worktree-specific) |
+| `docs/decisions/worktree-cleanup-policy.md` | NEW. Tier rubric, salvage, lock + live-PID semantics, agent-dispatch reap rule, cross-repo plan-orphan rule, negative rules |
+| `docs/decisions/session-worktree-defaults.md` | MODIFY. Add "See also: worktree-cleanup-policy.md" back-link |
+| `docs/decisions/worktree-autoremove-policy.md` | MODIFY. Add back-link |
+| `docs/decisions/worktree-autoremove-v4-followup.md` | MODIFY. Add back-link |
+| `docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md` | MODIFY. Add back-link |
+| `docs/decisions/mahavishnu-tool-preference-policy.md` | MODIFY. Add back-link (it relates via cross-reference even if not worktree-specific) |
 | `mahavishnu/worktree_cli.py` | MODIFY. Add `scan` subcommand via `@worktree_app.command('scan')` |
 | `mahavishnu/core/worktree_scan.py` | NEW. Classifier, scan driver (3-pass pipeline), text/JSON formatters, `_run_git_scanned` + `_run_ps` helpers, `safe_worktree_name()` helper |
 | `tests/unit/test_worktree_scan.py` | NEW. Unit tests for classifier + helpers |
@@ -77,7 +77,7 @@ Decision doc only — no code change. Per spec Decision Rule § 1.
 ## Task 1.1: Create decision doc skeleton + frontmatter
 
 **Files:**
-- Create: `.claude/decisions/worktree-cleanup-policy.md`
+- Create: `docs/decisions/worktree-cleanup-policy.md`
 
 - [ ] **Step 1: Create the file with frontmatter + § Context**
 
@@ -112,7 +112,7 @@ This doc is **additive**. The five existing decisions stay intact. Cross-referen
 - [ ] **Step 2: Verify the file renders correctly**
 
 ```bash
-head -30 .claude/decisions/worktree-cleanup-policy.md
+head -30 docs/decisions/worktree-cleanup-policy.md
 ```
 
 Expected: frontmatter + § Context + the placeholder comment.
@@ -120,7 +120,7 @@ Expected: frontmatter + § Context + the placeholder comment.
 ## Task 1.2: Add § Decision rule (tier rubric)
 
 **Files:**
-- Modify: `.claude/decisions/worktree-cleanup-policy.md` (append after § Why this decision)
+- Modify: `docs/decisions/worktree-cleanup-policy.md` (append after § Why this decision)
 
 - [ ] **Step 1: Append the tier rubric table**
 
@@ -162,7 +162,7 @@ A guard test (`tests/unit/test_worktree_scan.py::TestPlanOrphanPatternsSync`) as
 - [ ] **Step 2: Verify the file is well-formed markdown**
 
 ```bash
-grep -c "^##" .claude/decisions/worktree-cleanup-policy.md
+grep -c "^##" docs/decisions/worktree-cleanup-policy.md
 ```
 
 Expected: at least 4 (Context, Why this decision, Decision rule, Boundary inclusivity, Plan-orphan patterns).
@@ -170,7 +170,7 @@ Expected: at least 4 (Context, Why this decision, Decision rule, Boundary inclus
 ## Task 1.3: Add § Salvage procedure + § Lock + live-PID semantics
 
 **Files:**
-- Modify: `.claude/decisions/worktree-cleanup-policy.md`
+- Modify: `docs/decisions/worktree-cleanup-policy.md`
 
 - [ ] **Step 1: Append § Salvage procedure**
 
@@ -198,7 +198,7 @@ The new `mahavishnu/core/worktree_scan.py::safe_worktree_name()` enforces the ch
 - [ ] **Step 3: Verify both sections present**
 
 ```bash
-grep -c "^##" .claude/decisions/worktree-cleanup-policy.md
+grep -c "^##" docs/decisions/worktree-cleanup-policy.md
 ```
 
 Expected: at least 6 sections.
@@ -206,7 +206,7 @@ Expected: at least 6 sections.
 ## Task 1.4: Add § Agent-dispatch reap + § Cross-repo plan-orphan + § Negative rules
 
 **Files:**
-- Modify: `.claude/decisions/worktree-cleanup-policy.md`
+- Modify: `docs/decisions/worktree-cleanup-policy.md`
 
 - [ ] **Step 1: Append the three rules sections**
 
@@ -240,7 +240,7 @@ What NOT to do:
 - [ ] **Step 2: Verify negative rules are present**
 
 ```bash
-grep -c "^- \*\*Don't" .claude/decisions/worktree-cleanup-policy.md
+grep -c "^- \*\*Don't" docs/decisions/worktree-cleanup-policy.md
 ```
 
 Expected: at least 8.
@@ -248,12 +248,12 @@ Expected: at least 8.
 ## Task 1.5: Add § Cross-references + back-links to 5 existing decisions
 
 **Files:**
-- Modify: `.claude/decisions/worktree-cleanup-policy.md`
-- Modify: `.claude/decisions/session-worktree-defaults.md`
-- Modify: `.claude/decisions/worktree-autoremove-policy.md`
-- Modify: `.claude/decisions/worktree-autoremove-v4-followup.md`
-- Modify: `.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`
-- Modify: `.claude/decisions/mahavishnu-tool-preference-policy.md`
+- Modify: `docs/decisions/worktree-cleanup-policy.md`
+- Modify: `docs/decisions/session-worktree-defaults.md`
+- Modify: `docs/decisions/worktree-autoremove-policy.md`
+- Modify: `docs/decisions/worktree-autoremove-v4-followup.md`
+- Modify: `docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`
+- Modify: `docs/decisions/mahavishnu-tool-preference-policy.md`
 
 - [ ] **Step 1: Append § Cross-references to the new doc**
 
@@ -301,7 +301,7 @@ Same template (note this one is unrelated but cross-referenced).
 - [ ] **Step 7: Verify all 5 back-links present**
 
 ```bash
-grep -l "worktree-cleanup-policy.md" .claude/decisions/session-worktree-defaults.md .claude/decisions/worktree-autoremove-policy.md .claude/decisions/worktree-autoremove-v4-followup.md .claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md .claude/decisions/mahavishnu-tool-preference-policy.md | wc -l
+grep -l "worktree-cleanup-policy.md" docs/decisions/session-worktree-defaults.md docs/decisions/worktree-autoremove-policy.md docs/decisions/worktree-autoremove-v4-followup.md docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md docs/decisions/mahavishnu-tool-preference-policy.md | wc -l
 ```
 
 Expected: `5`.
@@ -311,7 +311,7 @@ Expected: `5`.
 - [ ] **Step 1: Stage and commit**
 
 ```bash
-git add .claude/decisions/worktree-cleanup-policy.md .claude/decisions/session-worktree-defaults.md .claude/decisions/worktree-autoremove-policy.md .claude/decisions/worktree-autoremove-v4-followup.md .claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md .claude/decisions/mahavishnu-tool-preference-policy.md
+git add docs/decisions/worktree-cleanup-policy.md docs/decisions/session-worktree-defaults.md docs/decisions/worktree-autoremove-policy.md docs/decisions/worktree-autoremove-v4-followup.md docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md docs/decisions/mahavishnu-tool-preference-policy.md
 git commit -m "feat(decisions): add worktree-cleanup-policy + back-links
 
 Codifies the 2026-09-07 sweep findings: tier rubric (A-merged,
@@ -1739,7 +1739,7 @@ from pathlib import Path
 import pytest
 
 
-DECISION_DOC = Path(".claude/decisions/worktree-cleanup-policy.md")
+DECISION_DOC = Path("docs/decisions/worktree-cleanup-policy.md")
 
 
 @pytest.fixture
@@ -1857,7 +1857,7 @@ allowed-tools: Bash, Read
 
 - Generic "low on disk space" (likely Docker images, build artifacts, or logs)
 - Cross-repo cleanup of `/tmp/<branch>` from `Workflow({script: parallel()})` fanouts — use the
-  recipe in `.claude/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`
+  recipe in `docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`
 - Branch cleanup — use the `commit-commands:clean_gone` skill (it handles `[gone]` branches
   only, not worktrees)
 
@@ -1890,7 +1890,7 @@ the operator verifies the PID is dead (`ps -p <pid> -o command=`).
 
 - The skill does NOT auto-remove anything. The CLI is scan-and-report only.
 - For full automation (SessionEnd hooks, cron, etc.), see
-  `.claude/decisions/worktree-autoremove-v4-followup.md` — currently deferred, gated on
+  `docs/decisions/worktree-autoremove-v4-followup.md` — currently deferred, gated on
   `RemoteWorktreeProvider` production-ready.
 - Do NOT use session-buddy's `remove_worktree` MCP tool for locked worktrees (per memory
   `session-buddy-mcp-remove-worktree-bugs`). Use `git worktree remove` directly.
@@ -1903,7 +1903,7 @@ the operator verifies the PID is dead (`ps -p <pid> -o command=`).
 
 ## Spec
 
-`.claude/decisions/worktree-cleanup-policy.md` — the canonical rules
+`docs/decisions/worktree-cleanup-policy.md` — the canonical rules
 ```
 
 - [ ] **Step 2: Verify the skill file renders correctly**

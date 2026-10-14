@@ -31,7 +31,7 @@ blocks_on:
 - **No new PyPI packages**: conformance lives in existing crackerjack + mahavishnu.
 - **`yaml.safe_load` mandate**: never `yaml.load`; RCE risk.
 - **`audit_orphans.py` before declaring any phase complete** (CLAUDE.md "Process Discipline").
-- **Wire-up contract**: each phase deliverable documents Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added (per `.claude/decisions/wire-up-contract.md`).
+- **Wire-up contract**: each phase deliverable documents Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added (per `docs/decisions/wire-up-contract.md`).
 - **YAML regex escape semantics**: in `bodai-doc-rules.yaml`, use `\\d` (double backslash) so `yaml.safe_load` decodes to `\d`. The Python equivalent is `r"\d"` in raw strings or `"\\d"` in regular strings.
 - **`BodaiComponentMCPClient` is async-only with explicit session lifecycle**: there is NO `component_name=` constructor kwarg (use `base_url=`); there are NO `__aenter__`/`__aexit__` methods. Callers must `await client._ensure_session()` and `await client.aclose()` explicitly.
 - **`crackerjack` CLI registration**: `_safe_add_typer(main_app, module_path: str, attr_name: str, command_name: str)` — 4-arg, string-imports the module.

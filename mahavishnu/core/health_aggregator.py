@@ -28,7 +28,7 @@ Mahavishnu exposes 3 feeds in v1:
 * ``adapters`` — adapter settings loaded + at least one enabled
   (legacy probe from ``mahavishnu/health.py:_check_adapters``).
 
-Per ``.claude/decisions/mcp-backend-wiring-discipline.md``, every
+Per ``docs/decisions/mcp-backend-wiring-discipline.md``, every
 registered tool must have a working data feed. The /health aggregator
 is the roll-up surface; the per-tool feeds are out of scope for
 this commit (registered in their respective ``ComponentHealth``

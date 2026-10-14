@@ -1,4 +1,4 @@
-"""Structural validator for ``.claude/decisions/tool-description-rubric.md``.
+"""Structural validator for ``docs/decisions/tool-description-rubric.md``.
 
 REQ-TSQ-010 from ``docs/plans/2026-09-26-tool-surface-quality.md`` Task 2.2:
 the rubric decision file MUST exist and MUST contain six named sections,
@@ -55,7 +55,7 @@ def test_rubric_file_exists() -> None:
     """Phase 2 Task 2.2 acceptance criterion #1: file exists."""
     assert RUBRIC_PATH.exists(), (
         f"rubric missing at {RUBRIC_PATH}; "
-        f"create it under .claude/decisions/ with the 6-criterion structure"
+        f"create it under docs/decisions/ with the 6-criterion structure"
     )
 
 

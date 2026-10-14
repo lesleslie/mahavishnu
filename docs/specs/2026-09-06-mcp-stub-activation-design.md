@@ -379,7 +379,7 @@ sufficient.
 
 ### 5.5 Health — two routes, because the shared helper cannot return 503
 
-`.claude/decisions/mcp-backend-wiring-discipline.md` requires `/health` to return 503
+`docs/decisions/mcp-backend-wiring-discipline.md` requires `/health` to return 503
 when degraded. `register_http_health_route` **always returns 200** (finding 4.10). These
 conflict, and modifying the shared helper is a non-goal.
 
@@ -551,7 +551,7 @@ cost table means the three `search_` tools collectively.
   `sorted-query-hash` is a SHA-256 of canonically-sorted params. Coalescing uses the
   same key.
 - Dhara namespace: `medium_mcp`, an isolated top-level prefix per
-  `.claude/decisions/dhara-key-prefixes-2026-07-15.md`. **Provisioning:** the namespace
+  `docs/decisions/dhara-key-prefixes-2026-07-15.md`. **Provisioning:** the namespace
   is created on first write via Dhara's `put`; no migration or schema step is required.
   Startup performs one `get` against a sentinel key to confirm reachability — this is the
   probe that drives `dhara_required` below.
@@ -645,7 +645,7 @@ the policy was incoherent. The rule now distinguishes fetch, cache, and return:
 5. Akosha embedding and Dhara long-term persistence beyond the content cache require
    `allow_content_export=True` in settings, default `False`, independent of the per-call
    flag.
-6. Recorded as `.claude/decisions/medium-content-policy.md`, structured as: context (the
+6. Recorded as `docs/decisions/medium-content-policy.md`, structured as: context (the
    mediumapi.com restriction verbatim), rules 1-5 above, and the enforcement point for
    each.
 
@@ -834,7 +834,7 @@ flag so a full-suite run cannot consume the monthly budget.
 controllable and flow toward an LLM. Every tool returning third-party content wraps it in
 an explicit data envelope with a delimiter, marks it `untrusted: true`, and strips no
 content (stripping creates false confidence). The threat is documented in
-`.claude/decisions/medium-content-policy.md`: retrieved content is data, never
+`docs/decisions/medium-content-policy.md`: retrieved content is data, never
 instructions. This is defence-in-depth, not a solved problem — which is a further reason
 `transmit_enabled` defaults to `False` and sits behind the `full` profile.
 
@@ -1019,8 +1019,8 @@ ______________________________________________________________________
 ## References
 
 - `docs/plans/TEMPLATE.md` — Integration Contract structure
-- `.claude/decisions/wire-up-contract.md` — plan-time integration policy
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — runtime feed-state policy
+- `docs/decisions/wire-up-contract.md` — plan-time integration policy
+- `docs/decisions/mcp-backend-wiring-discipline.md` — runtime feed-state policy
 - `docs/specs/2026-08-31-flowscape-design.md` — per-module coverage gates,
   BPF privilege constraint
 - `raindropio-mcp/raindropio_mcp/server.py` — profile dispatch, health routes,

@@ -493,7 +493,7 @@ def _maybe_print_discovery_hint(cwd: str, mode: str) -> None:
     ``MAHAVISHNU_AUTO_WORKTREE`` to any value (truthy to enable, falsy
     to disable without seeing the hint).
 
-    Reference: ``.claude/decisions/session-worktree-defaults.md``.
+    Reference: ``docs/decisions/session-worktree-defaults.md``.
     """
     if mode != "session-start":
         return

@@ -8,7 +8,7 @@ topic: clone-refactor-wireup
 revision: v4
 owner: platform-team
 scope: clone-refactor-group wire-up + dispatch-to-pool env-failure
-related: docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md; docs/decisions/2026-09-25-langgraph-as-engine-adapter.md; .claude/decisions/wire-up-contract.md; docs/plans/TEMPLATE.md
+related: docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md; docs/decisions/2026-09-25-langgraph-as-engine-adapter.md; docs/decisions/wire-up-contract.md; docs/plans/TEMPLATE.md
 title: "Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design"
 
 ---
@@ -863,7 +863,7 @@ These survive process crashes between phases — `clone_refactor_status` returns
 
 ### Test parity
 
-Per `.claude/decisions/mcp-backend-wiring-discipline.md`: "every tool registration requires `tests/integration/test_<tool>_e2e.py` asserting non-empty results."
+Per `docs/decisions/mcp-backend-wiring-discipline.md`: "every tool registration requires `tests/integration/test_<tool>_e2e.py` asserting non-empty results."
 
 This plan produces all three layers; `audit_orphans.py` should show zero new symbols with zero callers after the rewrite.
 
@@ -957,8 +957,8 @@ This design is "done enough" when:
 
 ## 14. References
 
-- `.claude/decisions/wire-up-contract.md` — integration contract requirement
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — e2e test requirement for new MCP surfaces
+- `docs/decisions/wire-up-contract.md` — integration contract requirement
+- `docs/decisions/mcp-backend-wiring-discipline.md` — e2e test requirement for new MCP surfaces
 - `docs/plans/TEMPLATE.md` — plan template with Integration Contract blocks
 - `docs/decisions/2026-09-25-langgraph-as-engine-adapter.md` — LangGraph spike verdict (deferred)
 - `docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md` — §10 audit context

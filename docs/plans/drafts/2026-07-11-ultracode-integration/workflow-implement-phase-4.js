@@ -11,7 +11,7 @@
 //   - CLAUDE.md (around line 335: insert ## Tool Preferences after ## MCP Server Tools section)
 //   - mahavishnu/mcp/tools/pool_tools.py (pool_route_execute at ~line 363 after Phase 3, pool_execute at ~line 114, dispatch_to_pool)
 //   - mahavishnu/mcp/server_core.py:324 (trigger_workflow)
-//   - .claude/decisions/README.md (operational decision file shape)
+//   - docs/decisions/README.md (operational decision file shape)
 //   - scripts/agent_metadata_audit.py (validates subagent frontmatter)
 //   - scripts/tool_frontmatter_validator.py (validates skill frontmatter)
 //
@@ -336,17 +336,17 @@ phase('T4.8 + validation');
 const [t48, validation] = await parallel([
   () => agent(
     [
-      "Implement Task 4.8 of the Mahavishnu integration plan: create .claude/decisions/mahavishnu-tool-preference-policy.md.",
+      "Implement Task 4.8 of the Mahavishnu integration plan: create docs/decisions/mahavishnu-tool-preference-policy.md.",
       "",
       "Plan: /Users/les/Projects/mahavishnu/docs/plans/2026-07-11-ultracode-integration-wiring.md - section 5 Phase 4, Task 4.8.",
       "",
       "Files to read first:",
-      "- /Users/les/Projects/mahavishnu/.claude/decisions/README.md (operational decision file shape)",
-      "- /Users/les/Projects/mahavishnu/.claude/decisions/removed-scripts.md (existing example for format reference)",
+      "- /Users/les/Projects/mahavishnu/docs/decisions/README.md (operational decision file shape)",
+      "- /Users/les/Projects/mahavishnu/docs/decisions/removed-scripts.md (existing example for format reference)",
       "",
-      "Step 1: Create the file /Users/les/Projects/mahavishnu/.claude/decisions/mahavishnu-tool-preference-policy.md.",
+      "Step 1: Create the file /Users/les/Projects/mahavishnu/docs/decisions/mahavishnu-tool-preference-policy.md.",
       "",
-      "Step 2: Per .claude/decisions/README.md classification, this is an operational rule (NOT an ADR). Use the short header format:",
+      "Step 2: Per docs/decisions/README.md classification, this is an operational rule (NOT an ADR). Use the short header format:",
       "- ## Context (why this rule exists)",
       "- ## Decision rule (the rule itself)",
       "- ## Status (current state)",
@@ -359,7 +359,7 @@ const [t48, validation] = await parallel([
       "",
       "Step 5: Status section should be 'Active' (the rule applies now).",
       "",
-      "Step 6: Verify the file is referenced from CLAUDE.md. Find the '## Tool Preferences' section and add a brief mention at the bottom: 'See .claude/decisions/mahavishnu-tool-preference-policy.md for the full operational rule.'",
+      "Step 6: Verify the file is referenced from CLAUDE.md. Find the '## Tool Preferences' section and add a brief mention at the bottom: 'See docs/decisions/mahavishnu-tool-preference-policy.md for the full operational rule.'",
       "",
       "Style:",
       "- Match the existing operational-decision files' tone",
@@ -380,7 +380,7 @@ const [t48, validation] = await parallel([
       "- /Users/les/Projects/mahavishnu/mahavishnu/mcp/server_core.py (revised docstring on trigger_workflow)",
       "- /Users/les/Projects/mahavishnu/.claude/agents/mahavishnu-orchestrator.md (new subagent)",
       "- /Users/les/Projects/mahavishnu/.claude/skills/vishnu/SKILL.md (new skill)",
-      "- /Users/les/Projects/mahavishnu/.claude/decisions/mahavishnu-tool-preference-policy.md (new operational decision)",
+      "- /Users/les/Projects/mahavishnu/docs/decisions/mahavishnu-tool-preference-policy.md (new operational decision)",
       "",
       "Validation steps:",
       "1. uv run python scripts/agent_metadata_audit.py - must pass",

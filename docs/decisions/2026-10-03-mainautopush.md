@@ -75,7 +75,7 @@ canonical exception. Spec §4.6 is a summary of this doc.
    until co-located worktrees are consolidated (merged, pruned,
    mid-review, or explicitly abandoned) and pending commits are
    squash-merge-shaped. See
-   `.claude/decisions/2026-10-13-prepushconsolidationgate.md` — the
+   `docs/decisions/2026-10-13-prepushconsolidationgate.md` — the
    decision doc that adds this precondition. The env-var opt-out
    (rule 6) does NOT bypass the consolidation gate (it runs inside
    the pipeline); per-invocation bypass uses
@@ -100,7 +100,7 @@ canonical exception. Spec §4.6 is a summary of this doc.
   `feedback-bodai-push-is-user-controlled` — the default rule this exception
   narrows.
 - **Further narrowing (cross-link, NOT inline amendment):**
-  `.claude/decisions/2026-10-13-prepushconsolidationgate.md` — adds the
+  `docs/decisions/2026-10-13-prepushconsolidationgate.md` — adds the
   pre-push consolidation gate (rule 8 above). When co-located worktrees
   have unmerged WIP or pending commits are not squash-merge-shaped,
   stage 5 push is held back (sticky-failure marker, stage 6 skipped,
@@ -116,7 +116,7 @@ canonical exception. Spec §4.6 is a summary of this doc.
   `push.result: ok | diverged | error:<message> | no_remote`. Akosha picks
   up via the existing `dev_log.entry_written` event.
 - **Sibling decision (workflow doc):**
-  `.claude/decisions/2026-10-03-trunk-based-agent-review.md` (REQ-008) —
+  `docs/decisions/2026-10-03-trunk-based-agent-review.md` (REQ-008) —
   the workflow that owns this push rule.
 - **Related memory (future, Task 4.4):**
   `feedback-bodai-merge-workflow.md` — the workflow contract this decision

@@ -15,8 +15,8 @@
 These apply to every Phase 12 task. The spec is the source of truth (re-read §4.8, §4.9, §4.13, §6, §7 first; they bind).
 
 1. **Hard cutover** (user decision 2026-09-14): no deprecation window, no dual-write states.
-1. **Wire-up contract** (per `.claude/decisions/wire-up-contract.md`): every deliverable includes Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added.
-1. **Per-feed observability** (per `.claude/decisions/mcp-backend-wiring-discipline.md` + spec §4.8): every MCP tool registers a `ComponentHealth` feed; `/health` returns 503 if any feed is `UNHEALTHY`.
+1. **Wire-up contract** (per `docs/decisions/wire-up-contract.md`): every deliverable includes Triggered-from / Returns-to / Demonstrable-by / Rollback-signal / Observability-added.
+1. **Per-feed observability** (per `docs/decisions/mcp-backend-wiring-discipline.md` + spec §4.8): every MCP tool registers a `ComponentHealth` feed; `/health` returns 503 if any feed is `UNHEALTHY`.
 1. **OTel span per tool** (spec §4.8): wrap each tool body in `@observed_tool_span(server_name, tool_name)`.
 1. **No cross-component direct imports** (ADR 017): cross-component state goes through Oneiric adapters or MCP/HTTP.
 1. **User-controlled publish** (per `feedback-mcp-common-version-bump-is-user`): never bump versions yourself.

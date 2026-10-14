@@ -479,7 +479,7 @@ PR is small and reviewable.
 |------|------------|------------|
 | ASYNC221 phase too large (>1000-line PR) | High | Split into 2-3 commits per hot-spot; subagent inventory first |
 | PLW1510 re-classification churn | Med | Phase 5 lays down the (a)/(b) rubric; reuse from Phase 1 |
-| `# noqa` justifications rot on future readers | Med | Convention block in `.claude/decisions/noqa-justification-rules.md` (deferred) |
+| `# noqa` justifications rot on future readers | Med | Convention block in `docs/decisions/noqa-justification-rules.md` (deferred) |
 | Deterministic-derivation tests for DTZ round-trip missing | Low | Phase 4 lands the tests alongside the migration |
 
 ## References

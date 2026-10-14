@@ -136,5 +136,5 @@ recommended posture.
 - Phase 5d commit: `3ee593d` (CLI tests)
 - Phase 5e commit: `ffe4397` (registry edge cases + corrupt-shape fix)
 - Phase 6 commit: `2a6082f` (json_state_store SoT consolidation)
-- Plan-template lifecycle: `.claude/decisions/wire-up-contract.md`
+- Plan-template lifecycle: `docs/decisions/wire-up-contract.md`
 - **See also**: [worktree-cleanup-policy.md](./worktree-cleanup-policy.md) — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)

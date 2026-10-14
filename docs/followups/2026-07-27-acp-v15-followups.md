@@ -179,7 +179,7 @@ A v1.5 release closes this followup by:
 - Moving this file to `docs/followups/.archive/` per the
   followups lifecycle policy at
   `docs/followups/README.md` § "Closing and archiving" and
-  `.claude/decisions/followups-lifecycle.md`
+  `docs/decisions/followups-lifecycle.md`
 - Updating `docs/followups/README.md` to remove the row and
   add the archive entry
 
@@ -193,4 +193,4 @@ A v1.5 release closes this followup by:
 - License reconciliation (v1.5.6): see the **Resolved Items** section above
 - Followups lifecycle policy:
   `docs/followups/README.md` § "Lifecycle" and
-  `.claude/decisions/followups-lifecycle.md`
+  `docs/decisions/followups-lifecycle.md`

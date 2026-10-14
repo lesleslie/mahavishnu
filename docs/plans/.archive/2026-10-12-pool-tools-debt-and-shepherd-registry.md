@@ -116,7 +116,7 @@ The shepherd-backend story does not need a `worker_registry:` entry; the manager
   - `test_budget_enforce_tool_handles_invalid_spec` — call with a malformed `BudgetSpec` (e.g. empty `workflow_id`) and assert the tool returns an error envelope, not a Python exception
   - `test_budget_enforce_tool_persists_via_envelopes` — verify the `CapabilityEnvelope` is written to the substrate (the existing persistence mechanism for the M-* plans via `mcp.put` + `EnvelopeAddress`)
 - [ ] Run `pytest tests/unit/mcp/tools/test_budget_tools.py -v --no-cov` and confirm 3/3 pass
-- [ ] Per the project's MCP wiring discipline (`.claude/decisions/mcp-backend-wiring-discipline.md`), also add `tests/integration/test_budget_enforce_e2e.py`: spin up the server, wait for warmup, call `mcp__mahavishnu__budget_enforce`, assert non-empty response.
+- [ ] Per the project's MCP wiring discipline (`docs/decisions/mcp-backend-wiring-discipline.md`), also add `tests/integration/test_budget_enforce_e2e.py`: spin up the server, wait for warmup, call `mcp__mahavishnu__budget_enforce`, assert non-empty response.
 
 #### Integration Contract ← REQUIRED
 - **Triggered from**: `pytest tests/unit/mcp/tools/test_budget_tools.py -v` (developer local + CI).

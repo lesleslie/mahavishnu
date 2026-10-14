@@ -845,7 +845,7 @@ ______________________________________________________________________
 
 **Critical correction (round-4):** the click-vs-typer note cites `mahavishnu/_main_cli.py:164-165` (package ROOT), NOT `mahavishnu/cli/_main_cli.py:164-165` (which doesn't exist). **Plus**, the original spec's "renamed from `mahavishnu debug`" rationale is vacuous — `mahavishnu debug` doesn't exist anywhere in the codebase. Drop that line.
 
-**File scope:** `mahavishnu/cli/executions_cli.py` (new, ~150-200 LoC), `tests/integration/test_executions_cli.py`, `tests/e2e/test_executions_show_e2e.py` (per `.claude/decisions/mcp-backend-wiring-discipline.md`).
+**File scope:** `mahavishnu/cli/executions_cli.py` (new, ~150-200 LoC), `tests/integration/test_executions_cli.py`, `tests/e2e/test_executions_show_e2e.py` (per `docs/decisions/mcp-backend-wiring-discipline.md`).
 
 **Sketch (corrected):**
 

@@ -111,7 +111,7 @@ Handle stdio transport (where `get_http_headers()` returns `None`) explicitly �
 ### B12. Wire-up contract §1 violation — no Integration Contract blocks
 **Reviewers:** critical-audit-specialist (B1)
 **Plan lines:** All 17 tasks
-**Issue:** `.claude/decisions/wire-up-contract.md` requires every phase deliverable to carry an Integration Contract block (Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added). The plan defines 4 implicit phases but none have these blocks.
+**Issue:** `docs/decisions/wire-up-contract.md` requires every phase deliverable to carry an Integration Contract block (Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added). The plan defines 4 implicit phases but none have these blocks.
 **Fix:** Add explicit Integration Contract blocks to each phase. See the comprehensive-audit agent's report for suggested content.
 
 ## Cross-cutting IMPORTANT findings (deduplicated)

@@ -46,7 +46,7 @@ related:
 | Task | Spec item | Files touched | Risk |
 |---|---|---|---|
 | 1 | Item 1 — `/jot drain` slash command | `mahavishnu/commands/jot.md`, parent spec §3.5, `tests/integration/jot/test_drain_slash_command.py` (NEW) | Low |
-| 2 | Item 4 — SDD bundling defensive note | `.claude/decisions/sdd-bundling-defensive-pattern.md` (NEW), `.claude/decisions/README.md` | Low |
+| 2 | Item 4 — SDD bundling defensive note | `docs/decisions/sdd-bundling-defensive-pattern.md` (NEW), `docs/decisions/README.md` | Low |
 | 3 | Item 3 — `_validate_ctx` unknown-key rejection (whitelist) | `mahavishnu/jot/drain.py`, `tests/unit/jot/test_drain.py` | Medium (BLOCKER-class) |
 | 4 | Item 5 — `_propose_action` spec-lock | `docs/specs/2026-09-10-jot-drain-design.md`, `mahavishnu/jot/drain.py:706` | Low |
 | 5 | Item 6 — `action_proposals` docstring + MCP spec sync | `mahavishnu/jot/drain.py:244`, `:636`, `docs/MCP_TOOLS_SPECIFICATION.md` | Low |
@@ -205,17 +205,17 @@ git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only te
 ### Task 2: SDD bundling-pattern defensive note (spec item 4)
 
 **Files:**
-- Create: `.claude/decisions/sdd-bundling-defensive-pattern.md`
-- Modify: `.claude/decisions/README.md` (add the new file to the index list)
+- Create: `docs/decisions/sdd-bundling-defensive-pattern.md`
+- Modify: `docs/decisions/README.md` (add the new file to the index list)
 
 **Interfaces:**
-- Consumes: existing `.claude/decisions/removed-scripts.md` format (per CLAUDE.md "decisions are not full ADR-style documents — short header is enough")
+- Consumes: existing `docs/decisions/removed-scripts.md` format (per CLAUDE.md "decisions are not full ADR-style documents — short header is enough")
 - Produces: a one-file defensive note + index entry that future SDD runs read before committing
 
-- [ ] **Step 1: Read the existing `.claude/decisions/README.md` to learn the index format**
+- [ ] **Step 1: Read the existing `docs/decisions/README.md` to learn the index format**
 
 ```bash
-cat .claude/decisions/README.md
+cat docs/decisions/README.md
 ```
 
 Confirm entries are one-line, alphabetical-ish. Match the existing format.
@@ -223,12 +223,12 @@ Confirm entries are one-line, alphabetical-ish. Match the existing format.
 - [ ] **Step 2: Read `removed-scripts.md` for the file shape**
 
 ```bash
-cat .claude/decisions/removed-scripts.md
+cat docs/decisions/removed-scripts.md
 ```
 
 Use its shape (short `## Context` / `## Decision rule` / `## Status` headers).
 
-- [ ] **Step 3: Create `.claude/decisions/sdd-bundling-defensive-pattern.md`**
+- [ ] **Step 3: Create `docs/decisions/sdd-bundling-defensive-pattern.md`**
 
 ```markdown
 # SDD Bundling Defensive Pattern
@@ -263,7 +263,7 @@ work:
 Active. First rule for any new SDD plan run on this repo.
 ```
 
-- [ ] **Step 4: Update `.claude/decisions/README.md` to add the index entry**
+- [ ] **Step 4: Update `docs/decisions/README.md` to add the index entry**
 
 Add a new line to the index list (alphabetically: `sdd-` comes after `removed-` and before `session-`):
 
@@ -276,16 +276,16 @@ Add a new line to the index list (alphabetically: `sdd-` comes after `removed-` 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add -N .claude/decisions/sdd-bundling-defensive-pattern.md
-git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only .claude/decisions/sdd-bundling-defensive-pattern.md .claude/decisions/README.md --no-verify -m "docs(decisions): record SDD bundling defensive pattern (polish item 4)
+git add -N docs/decisions/sdd-bundling-defensive-pattern.md
+git -c user.email="les@wedgwoodwebworks.com" -c user.name="les" commit --only docs/decisions/sdd-bundling-defensive-pattern.md docs/decisions/README.md --no-verify -m "docs(decisions): record SDD bundling defensive pattern (polish item 4)
 
-Adds .claude/decisions/sdd-bundling-defensive-pattern.md and indexes
+Adds docs/decisions/sdd-bundling-defensive-pattern.md and indexes
 it. Records the bundling incident from parent plan Task 19 (commit
 def3eb7a, which inadvertently bundled Task 17's staged files) and
 locks the rule: downstream SDD tasks MUST use
 \`git add <specific-paths>\`, never \`git add .\`.
 
-Per CLAUDE.md, repo-local decisions live in .claude/decisions/ (not
+Per CLAUDE.md, repo-local decisions live in docs/decisions/ (not
 docs/adr/, which is for architectural choices).
 
 Ref: spec 2026-09-12-jot-drain-polish-design.md item 4."
@@ -1144,7 +1144,7 @@ Expected: 420 tests pass; drain.py coverage ≥ 89%.
 1. `/jot drain` slash command documented → Task 1 ✓
 2. Reconciler uses `asyncio.create_task`, NOT `await` → Task 6 ✓
 3. `_validate_ctx` rejects unknown keys → Task 3 ✓
-4. `.claude/decisions/sdd-bundling-defensive-pattern.md` exists and indexed → Task 2 ✓
+4. `docs/decisions/sdd-bundling-defensive-pattern.md` exists and indexed → Task 2 ✓
 5. Parent spec §3.3.4 documents `_propose_action` policy with reasons verbatim → Task 4 ✓
 6. `DrainPlan.action_proposals` + `ActionProposalDict` + `MCP_TOOLS_SPECIFICATION.md` → Task 5 ✓
 7. drain.py coverage ≥ 89% → Task 7 ✓

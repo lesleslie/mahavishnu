@@ -32,7 +32,7 @@ Verbatim from spec §12:
 - **No version bumps** in any Bodai `pyproject.toml` — user does (`feedback-mcp-common-version-bump-is-user.md`).
 - **No `Co-Authored-By` trailer** (`feedback-no-claude-code-coauthor-attribution.md`).
 - **Author email** `les@wedgwoodwebworks.com` (`git-author-email-correct-domain.md`).
-- **Wire-up contract** per `.claude/decisions/wire-up-contract.md` — every deliverable has Integration Contract block.
+- **Wire-up contract** per `docs/decisions/wire-up-contract.md` — every deliverable has Integration Contract block.
 
 ## 1. Outcome
 
@@ -445,8 +445,8 @@ Phase A is complete when ALL of:
 
 - `docs/specs/2026-09-27-shared-bodai-substrate-design.md` §6.1 — Phase A contract
 - `oneiric/adapters/cache/memory.py:29` — MemoryCacheAdapter
-- `.claude/decisions/wire-up-contract.md` — Integration Contract rules
-- `.claude/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability
+- `docs/decisions/wire-up-contract.md` — Integration Contract rules
+- `docs/decisions/mcp-backend-wiring-discipline.md` §3 — feed-state observability
 
 ## Revision history
 

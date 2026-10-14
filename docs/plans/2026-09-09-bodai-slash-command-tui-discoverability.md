@@ -53,7 +53,7 @@ session during a routine check.
    versioned Bodai marketplace plugin so the surface is reproducible on
    any machine, not just the maintainer's.
 5. Preserve backward compatibility for every skill/command name referenced
-   in any `CLAUDE.md`, `MEMORY.md`, or `.claude/decisions/` entry.
+   in any `CLAUDE.md`, `MEMORY.md`, or `docs/decisions/` entry.
 
 ## 3. Non-Goals
 
@@ -102,7 +102,7 @@ mcp__RedisMCPServer__*`). There is no automatic `mcp__<server>__<tool>` ↔
 `mahavishnu`, `mahavishnu-status`, `bodai-status` exist in BOTH
 `~/.claude/skills/` (user-global) AND `/Users/les/Projects/mahavishnu/.claude/skills/`
 (project-local). Neither location is documented as canonical. This is
-wiring-not-enforced per the `.claude/decisions/wire-up-contract.md` rule.
+wiring-not-enforced per the `docs/decisions/wire-up-contract.md` rule.
 
 ### 4.5 The mycelium pattern is the proven model
 
@@ -145,7 +145,7 @@ requirements:
 
 **Tasks:**
 1. Write a one-page naming convention doc to
-   `/Users/les/.claude/decisions/bodai-slash-naming.md` documenting the
+   `/Users/les/docs/decisions/bodai-slash-naming.md` documenting the
    `<component>-<verb>-<noun>` rule with worked examples.
 2. Add `vishnu` → `mahavishnu` redirect as a thin skill at
    `~/.claude/skills/vishnu/SKILL.md` (just one paragraph, no logic).
@@ -386,7 +386,7 @@ marketplace plugin so the surface is reproducible on any machine.
 ├── commands/                               # moved from ~/.claude/commands/
 └── skills/                                 # moved from ~/.claude/skills/
 
-~/.claude/decisions/bodai-slash-naming.md    # NEW — Phase 1
+~/docs/decisions/bodai-slash-naming.md    # NEW — Phase 1
 
 tests/unit/test_skill_naming.py             # NEW — Phase 3
 tests/manual/test_slash_command_picker.sh   # NEW — Phase 2

@@ -131,7 +131,7 @@ STORE_LABELS: dict[str, str] = {
     "docs/adr/": "Architecture Decision Records (`docs/adr/`)",
     "docs/plans/": "Plans & Specifications (`docs/plans/`)",
     "docs/specs/": "Superpowers Specs (`docs/specs/`)",
-    ".claude/decisions/": "Repo-local Decisions (`.claude/decisions/`)",
+    "docs/decisions/": "Repo-local Decisions (`docs/decisions/`)",
     "docs/followups/": "Follow-up Notes (`docs/followups/`)",
 }
 
@@ -370,7 +370,7 @@ def _label_for_store(store_rel: str) -> str:
     name = store_rel.rstrip("/").rsplit("/", 1)[-1]
     # Title-case the leaf segment for display ("implementation-plans" ->
     # "Implementation Plans"), but keep dotted names verbatim so
-    # `.claude/decisions/` renders as "Claude Decisions" not ".Claude
+    # `docs/decisions/` renders as "Claude Decisions" not ".Claude
     # Decisions".
     display = name.lstrip(".")
     titled = display.replace("-", " ").replace("_", " ").title()
@@ -478,7 +478,7 @@ def _authority_matrix(
 | Legacy backlog item details | `docs/plans/2026-05-07-mahavishnu-master-backlog.md` |
 | Bodai control-plane convergence C0–C7 | `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` |
 | Bodai-wide observability surface | `docs/plans/2026-07-11-phase-6-bodai-observability.md` |
-| Repo-local decisions index | `.claude/decisions/README.md` |
+| Repo-local decisions index | `docs/decisions/README.md` |
 | Follow-up tracker index | `docs/followups/README.md` |
 | Source plan defining this index | `docs/plans/2026-07-16-plan-lifecycle-unification.md` |
 """
@@ -698,7 +698,7 @@ _KIND_DESCRIPTIONS: dict[str, str] = {
     "template": "Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.",
     "reference": "Index pages or reference docs (README files). Permanent fixtures; never a work item.",
     "audit": "Reports on past work (e.g., plan-audit documents). The audit itself is not a work item.",
-    "decision": "Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `.claude/decisions/`.",
+    "decision": "Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.",
 }
 
 

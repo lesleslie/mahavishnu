@@ -3998,7 +3998,7 @@ git -c user.email=les@wedgwoodwebworks.com commit -m "docs(medium-mcp): correct 
 
 - [ ] **Step 1: Write the content-policy decision record**
 
-Create `.claude/decisions/medium-content-policy.md` capturing the corrected content policy verbatim from spec §6.2 rules 1-5 (context, rules, enforcement point per rule).
+Create `docs/decisions/medium-content-policy.md` capturing the corrected content policy verbatim from spec §6.2 rules 1-5 (context, rules, enforcement point per rule).
 
 - [ ] **Step 2: Ratchet coverage floor**
 

@@ -31,7 +31,7 @@ The validator lives in `mahavishnu/scripts/validate_document_frontmatter.py`
 (~750 lines, 21 pytest tests passing). It supports:
 
 - `--strict`, `--allow-nonstandard`, `--validate-links`, `--json` modes.
-- A `LITE` schema for `.claude/decisions/` (no `superseded_by` / `blocks_on`).
+- A `LITE` schema for `docs/decisions/` (no `superseded_by` / `blocks_on`).
 - Per-store exclusions (`.archive/`, `docs/plans/drafts/`, `PLAN_INDEX.md`).
 
 Crackerjack (`/Users/les/Projects/crackerjack`) currently exposes:
@@ -128,7 +128,7 @@ def validate(
     json_output: bool = typer.Option(False, "--json", help="Emit JSON instead of human-readable."),
     pkg_path: Path = typer.Option(Path.cwd(), "--path", help="Repo root."),
 ) -> None:
-    """Validate YAML frontmatter on docs/, .claude/decisions/, etc."""
+    """Validate YAML frontmatter on docs/, docs/decisions/, etc."""
     ...
 ```
 

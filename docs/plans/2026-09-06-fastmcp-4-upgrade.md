@@ -281,5 +281,5 @@ policy (`bodai-pre-1.0-merge-policy.md`), no PRs were opened.
 - FastMCP 3 → 4 migration prompt:
   https://gofastmcp.com/getting-started/upgrading/from-fastmcp-3
 - Bodai repo registry: `BODAI_REPO_REGISTRY.md`
-- Wire-up contract: `.claude/decisions/wire-up-contract.md`
+- Wire-up contract: `docs/decisions/wire-up-contract.md`
 - Memory `uv-sync-upgrade-minimizes-version` — re-resolution gotcha when bumping

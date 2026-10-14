@@ -13,7 +13,7 @@ the alerts in ``config/prometheus/health_aggregator_alerts.yml``;
 this module only adds a server-specific view for operators
 who want a flat ``mahavishnu_*`` namespace.
 
-Design constraints (per ``.claude/decisions/mcp-backend-wiring-discipline.md``):
+Design constraints (per ``docs/decisions/mcp-backend-wiring-discipline.md``):
 
 * The per-server registry is **private** (not the prometheus_client
   global) so multi-process / multi-registry deployments don't

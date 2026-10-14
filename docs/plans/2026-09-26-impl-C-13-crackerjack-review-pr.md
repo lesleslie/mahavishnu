@@ -466,7 +466,7 @@ class TestDurableQueue:
 
 ### 8. `crackerjack/tests/e2e/test_review_pr_e2e.py` — new file (~100 LoC)
 
-Per `.claude/decisions/mcp-backend-wiring-discipline.md`, e2e smoke test:
+Per `docs/decisions/mcp-backend-wiring-discipline.md`, e2e smoke test:
 
 ```python
 """E2E smoke test for review_pr skill against a real GitHub test repo.

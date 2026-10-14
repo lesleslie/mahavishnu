@@ -31,7 +31,7 @@ Step 2 blocks trying to connect to a port that's listening on nothing. The launc
 
 ### Why this bug was latent
 
-The previous `scripts/launch_mcp.py` had a `_RunAsyncAdapter` shim that bypassed `lifecycle.start_server` entirely — it called `server.server.run_http_async(...)` directly on the inner FastMCP. That bypass was added on 2026-09-26 (see `.claude/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1) because `lifecycle.start_server` hardcoded `uvicorn_config={"timeout_graceful_shutdown": 30}` and ignored launcher-passed kwargs.
+The previous `scripts/launch_mcp.py` had a `_RunAsyncAdapter` shim that bypassed `lifecycle.start_server` entirely — it called `server.server.run_http_async(...)` directly on the inner FastMCP. That bypass was added on 2026-09-26 (see `docs/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1) because `lifecycle.start_server` hardcoded `uvicorn_config={"timeout_graceful_shutdown": 30}` and ignored launcher-passed kwargs.
 
 The bypass was deliberate. But it also meant **the broken code path in `lifecycle.start_server` was never exercised in production** for the entire ~3-week life of the migration. Unit tests in `tests/unit/test_mcp_lifecycle.py` use `monkeypatch` to mock `PROFILE_REGISTRATIONS`, `_register_profile_tools_helper`, `TaskOrphanSweeper`, and the plan_index setup — so they too never saw the dep. The 5 pre-existing test failures in `tests/unit/test_mcp_server_core.py::TestLifecycle` and `tests/unit/test_mcp_server.py::TestServerLifecycle` (verified failing on `main` via `git stash` round-trip on 2026-10-03) trace to the same root cause: those tests mock `run_http_async` but don't mock the plan_index init, so `MCPKvClient` makes a real HTTP call to the not-yet-bound server.
 
@@ -322,7 +322,7 @@ After this spec lands (and source changes are in place), these 7 should go green
 
 ### 5. Decision doc — out of scope, follow-up commit
 
-`.claude/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1 explains the `_RunAsyncAdapter` bypass. After C1 lands, that bypass goes away. Add `superseded_by: 2026-10-04-c1-launcher-cleanup` (or the actual merge SHA) to the decision frontmatter, and add a one-paragraph "Status" block pointing at the new code. Out of scope for this spec — do it in the C1 PR.
+`docs/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1 explains the `_RunAsyncAdapter` bypass. After C1 lands, that bypass goes away. Add `superseded_by: 2026-10-04-c1-launcher-cleanup` (or the actual merge SHA) to the decision frontmatter, and add a one-paragraph "Status" block pointing at the new code. Out of scope for this spec — do it in the C1 PR.
 
 ## Migration Path
 
@@ -365,7 +365,7 @@ The implementation PR is done when:
 ## Related Work
 
 - `feedback-mahavishnu-c1-plan-index-circular-dep.md` — memory file with full diagnostic of the bug. Read first.
-- `.claude/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1 — explains the bypass that hid the bug. Becomes stale after C1 lands.
+- `docs/decisions/2026-09-26-mcp-launcher-migration.md` Trap #1 — explains the bypass that hid the bug. Becomes stale after C1 lands.
 - `docs/specs/2026-09-29-task-system-design.md` — example of the spec format used in this repo.
 - `mahavishnu/mcp/backend-wiring-discipline.md` — the 4-signal contract this spec satisfies.
 - `feedback-oneiric-mcp-health-feed-warmup.md` — adjacent memory: oneiric has a similar "feed warm at startup" pattern that works because oneiric doesn't have the lifecycle dep.

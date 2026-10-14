@@ -24,7 +24,7 @@ title: "Mahavishnu MCP Registrar"
 
 `.mcp.json` files in the Bodai ecosystem are currently hand-edited
 and Claude Code-only. The 2026-08-24 audit
-(`.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md`)
+(`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`)
 established per-project scoping and a secrets-in-shell-env rule, but
 no provision exists for non-Claude harnesses. Qwen Code is now
 shipping with its own MCP loader (see `docs/runbooks/qwen-hook-setup.md`
@@ -840,7 +840,7 @@ Phased to avoid breaking the existing `.mcp.json` workflow:
 
 ## Cross-references
 
-- `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` — the
+- `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` — the
   rules this spec respects (secrets in shell env, per-project
   `.mcp.json`).
 - `scripts/audit_no_secrets_in_mcp.py` — the audit logic this spec
@@ -865,9 +865,9 @@ Phased to avoid breaking the existing `.mcp.json` workflow:
 - `mahavishnu/cli/index_cli.py:76` — the
   `add_<x>_commands(app)` pattern this spec mirrors for
   `add_mcp_commands`.
-- `.claude/decisions/wire-up-contract.md` — Integration Contract
+- `docs/decisions/wire-up-contract.md` — Integration Contract
   block per rollout phase (deferred to writing-plans).
-- `.claude/decisions/mcp-backend-wiring-discipline.md` — `/health`
+- `docs/decisions/mcp-backend-wiring-discipline.md` — `/health`
   feed aggregation for the registrar (deferred to writing-plans).
 
 ## Revision history

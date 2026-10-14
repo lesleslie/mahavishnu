@@ -1513,13 +1513,13 @@ ______________________________________________________________________
 
 **Files:**
 
-- Create: `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-cli-contract.md`
+- Create: `/Users/les/Projects/mahavishnu/docs/decisions/2026-08-25-bodai-cli-contract.md`
 
-- Modify: `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`
+- Modify: `/Users/les/Projects/mahavishnu/docs/decisions/README.md`
 
 - [ ] **Step 1: Write the decision doc**
 
-Create `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-cli-contract.md`:
+Create `/Users/les/Projects/mahavishnu/docs/decisions/2026-08-25-bodai-cli-contract.md`:
 
 ````markdown
 ---
@@ -1575,7 +1575,7 @@ No vacuous implementations. Per-repo CI tests assert at least 1 check returned.
 
 - [ ] **Step 2: Add row to decisions index**
 
-Append to `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`:
+Append to `/Users/les/Projects/mahavishnu/docs/decisions/README.md`:
 ```markdown
 | `2026-08-25-bodai-cli-contract.md` | Bodai CLI contract (BodaiCLIBase, ExitCode, bodai.apps entry-points) | active |
 ````
@@ -1584,7 +1584,7 @@ Append to `/Users/les/Projects/mahavishnu/.claude/decisions/README.md`:
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add .claude/decisions/2026-08-25-bodai-cli-contract.md .claude/decisions/README.md
+git add docs/decisions/2026-08-25-bodai-cli-contract.md docs/decisions/README.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(mahavishnu): add Bodai CLI contract decision + index entry"
 ```
 
@@ -1943,7 +1943,7 @@ ______________________________________________________________________
 
 **Files:**
 
-- Create: `/Users/les/Projects/mahavishnu/.claude/decisions/bodai-cli-staleness-cadence.md`
+- Create: `/Users/les/Projects/mahavishnu/docs/decisions/bodai-cli-staleness-cadence.md`
 
 - [ ] **Step 1: Write the cadence doc**
 
@@ -1998,7 +1998,7 @@ If `--check-stale` exits non-zero:
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add .claude/decisions/bodai-cli-staleness-cadence.md
+git add docs/decisions/bodai-cli-staleness-cadence.md
 git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(mahavishnu): quarterly staleness cadence"
 ````
 
@@ -2007,7 +2007,7 @@ git -c user.name=les -c user.email=les@wedgwoodwebworks.com commit -m "docs(maha
 Document the launchd plist in the cadence doc; user installs manually:
 
 ```bash
-cp /Users/les/Projects/mahavishnu/.claude/decisions/bodai-cli-staleness-cadence.md /tmp/cadence-doc  # reference only
+cp /Users/les/Projects/mahavishnu/docs/decisions/bodai-cli-staleness-cadence.md /tmp/cadence-doc  # reference only
 cat > ~/Library/LaunchAgents/com.bodai.staleness-audit.plist <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -52,7 +52,7 @@ This document captures the findings of the **6-agent multi-agent review** of `00
 
 ### CB-1: Default-off posture violates `wire-up-contract.md` (L6 B2)
 
-The contract defines three states — `built`, `wired`, `adopted` — and requires a `Demonstrable by` check (CLAUDE.md / `.claude/decisions/wire-up-contract.md`). With `enrichment.scapy_mcp_enabled = false` default, no production code path exercises the hook, so the feature is `built, not wired`.
+The contract defines three states — `built`, `wired`, `adopted` — and requires a `Demonstrable by` check (CLAUDE.md / `docs/decisions/wire-up-contract.md`). With `enrichment.scapy_mcp_enabled = false` default, no production code path exercises the hook, so the feature is `built, not wired`.
 
 **Resolution:** File `docs/feature-tracking/scapy-mcp-enrichment.md` declaring `state: built-not-wired` with a planned adoption date. (See companion file referenced from ADR 0016 §"Review history".)
 
@@ -93,7 +93,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 ### Architecture (L1, L3, L6)
 
 - **L1 B1**: No feed-state observability signals (entities_count, last_updated_timestamp, errors_total, cycles_total)
-- **L1 B4**: Wiring discipline policy scope is server-only; consumer-side aggregation needs `.claude/decisions/` amendment
+- **L1 B4**: Wiring discipline policy scope is server-only; consumer-side aggregation needs `docs/decisions/` amendment
 - **L3 B1**: `EnrichmentRegistry.default()` classmethod diverges from CaptureSource name-driven lookup pattern
 - **L3 B2**: `EnrichmentHook` declared as Protocol (line 50) and ABC (line 57) — self-contradiction
 - **L3 B3**: `enrichment_timeout_ms = 100` bypasses Oneiric's `TimeoutSettings` + `WorkflowRetrySettings` primitives
@@ -191,8 +191,8 @@ Items 1-2 are immediate. Items 3-7 are ADR body edits. Items 8-9 are spec/proto 
 - ADR under review: `/Users/les/Projects/mahavishnu/docs/adr/0016-scapy-mcp-integration.md` (v1, proposed → complete with deferred revision note)
 - Feature-tracking built-not-wired notice: `/Users/les/Projects/mahavishnu/docs/feature-tracking/scapy-mcp-enrichment.md`
 - Precedent review: `/Users/les/Projects/mahavishnu/docs/adr/0015-multi-agent-review.md`
-- Policy referenced: `/Users/les/Projects/mahavishnu/.claude/decisions/mcp-backend-wiring-discipline.md`
-- Policy referenced: `/Users/les/Projects/mahavishnu/.claude/decisions/wire-up-contract.md`
+- Policy referenced: `/Users/les/Projects/mahavishnu/docs/decisions/mcp-backend-wiring-discipline.md`
+- Policy referenced: `/Users/les/Projects/mahavishnu/docs/decisions/wire-up-contract.md`
 
 ---
 

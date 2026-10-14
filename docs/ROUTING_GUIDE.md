@@ -70,7 +70,7 @@ See `docs/plans/2026-05-10-minimax27-provider-migration.md` for task-to-model ro
 Claude Code's "observe Bodai" surface (Phase 6 of the ultracode
 integration wiring plan) reads from Oneiric EventBridge — not from
 per-component WebSockets. See
-`.claude/decisions/bodai-observability-pattern.md` for the full rule.
+`docs/decisions/bodai-observability-pattern.md` for the full rule.
 
 The table below classifies each component's existing observability
 surface and tells you whether Phase 6 will consume it directly,

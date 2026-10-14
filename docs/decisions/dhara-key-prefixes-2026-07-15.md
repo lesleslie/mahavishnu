@@ -81,5 +81,5 @@ the Phase 4 work and has no reader yet.
 - `mahavishnu/core/dhara_adapter.py` — `DharaClient.call_tool`
 - `mahavishnu/metrics_cli.py` — `VERIFICATION_KEY_PREFIX`,
   `ROUTING_DECISIONS_KEY_PREFIX`, the two subcommands
-- `.claude/decisions/bodai-observability-pattern.md` — single-source-of-truth
+- `docs/decisions/bodai-observability-pattern.md` — single-source-of-truth
   for Dhara as the ecosystem state layer

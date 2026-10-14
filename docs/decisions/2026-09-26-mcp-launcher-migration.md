@@ -109,7 +109,7 @@ Bridge: the launcher duck-types on `run_async(transport="http", host=, port=,
 uvicorn_config=)`. FastMCPServer exposes `start(host, port)` and the inner
 FastMCP exposes `run_http_async(...)` — neither matches. The _RunAsyncAdapter
 below wraps FastMCPServer so the launcher can drive it. See
-.claude/decisions/2026-09-26-mcp-launcher-migration.md §4 trap #1.
+docs/decisions/2026-09-26-mcp-launcher-migration.md §4 trap #1.
 """
 from __future__ import annotations
 
@@ -411,7 +411,7 @@ git -c user.email=les@wedgwoodwebworks.com -c user.name=les \
   REQ-007 timeout_graceful_shutdown=30 holds).
 - Patch register_health_endpoint to emit 'launcher' field per REQ-005.
 - Plist path update is operator-side (~/Library/LaunchAgents/com.mcp.mahavishnu.plist)
-  and documented in .claude/decisions/2026-09-26-mcp-launcher-migration.md §3.C."
+  and documented in docs/decisions/2026-09-26-mcp-launcher-migration.md §3.C."
 ```
 
 Plist path update (operator-side, not in the commit):

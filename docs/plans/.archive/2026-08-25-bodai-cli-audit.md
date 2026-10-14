@@ -79,12 +79,12 @@ Concrete signal:
    REPL using `oneiric.shell.AdminShell`) and `bodai dashboard` (Textual
    TUI over `bodai.core.health.check_all`).
 7. **Document the new "Bodai CLI contract"** in
-   `.claude/decisions/2026-08-25-bodai-cli-contract.md` so future components
+   `docs/decisions/2026-08-25-bodai-cli-contract.md` so future components
    know how to register. **Also add the new decision doc to
-   `.claude/decisions/README.md` index** (the wire-up-contract policy
+   `docs/decisions/README.md` index** (the wire-up-contract policy
    forbids "documented but not indexed" drift).
 8. **Pre-1.0 merge policy**: per Bodai pre-1.0 convention
-   (`.claude/decisions/worktree-autoremove-policy.md`,
+   (`docs/decisions/worktree-autoremove-policy.md`,
    MEMORY.md `bodai-pre-1.0-merge-policy`), Bodai components merge
    **directly to main** with no PRs. The 6 per-repo commits in Phase
    5.1, the **6** CLI-bearing-repo conversion commits in Phase 4.3
@@ -542,8 +542,8 @@ deprecated/obsoleted":
   ```
   Guards against vacuous implementations.
 - 4.5 — Document the "Bodai CLI contract" in
-  `.claude/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
-  row to `.claude/decisions/README.md` index** (the wire-up-contract
+  `docs/decisions/2026-08-25-bodai-cli-contract.md`. **Also add a
+  row to `docs/decisions/README.md` index** (the wire-up-contract
   policy forbids unindexed decisions; matches the
   `2026-08-24-bodai-mcp-routing-pattern.md` precedent).
 
@@ -746,7 +746,7 @@ staleness re-audit cadence.
   registered sub-CLIs.
 - 7.3 — Update `BODAI_REPO_REGISTRY.md` with per-repo CLI surface
   summary (entry point + command count + BodaiCLIBase adoption).
-- 7.4 — Update `.claude/decisions/2026-08-25-bodai-cli-contract.md`
+- 7.4 — Update `docs/decisions/2026-08-25-bodai-cli-contract.md`
   `last_reviewed:` field.
 - 7.5 — **Quarterly staleness re-audit cadence** (per user
   requirement that commands be audited for obsolescence): add a
@@ -762,7 +762,7 @@ staleness re-audit cadence.
 - **Triggered from**: Phase 6 completed.
 - **Returns to / updates**: 1 commit in mahavishnu for the registry
   update; the decision doc gets a `last_reviewed` bump; a
-  `.claude/decisions/bodai-cli-staleness-cadence.md` note captures the
+  `docs/decisions/bodai-cli-staleness-cadence.md` note captures the
   quarterly re-audit mechanism.
 - **Demonstrable by**:
   - `BODAI_REPO_REGISTRY.md` carries the per-repo CLI surface summary.
@@ -799,8 +799,8 @@ staleness re-audit cadence.
 - [ ] `/Users/les/Projects/mahavishnu/mahavishnu/_main_cli.py` (consider rename to `main_cli.py` for non-underscored entry-point path)
 - [ ] `/Users/les/Projects/bodai/bodai/cli.py` (modify — Phase 6 verification: confirm `bodai shell` / `bodai dashboard` work end-to-end; remove defensive try/except)
 - [ ] `/Users/les/Projects/bodai/tests/test_umbrella.py` (NEW — verify `_discover_apps` composes via mock entry-points)
-- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/2026-08-25-bodai-cli-contract.md` (NEW)
-- [ ] `/Users/les/Projects/mahavishnu/.claude/decisions/README.md` (modify — add row for the new decision per wire-up-contract policy)
+- [ ] `/Users/les/Projects/mahavishnu/docs/decisions/2026-08-25-bodai-cli-contract.md` (NEW)
+- [ ] `/Users/les/Projects/mahavishnu/docs/decisions/README.md` (modify — add row for the new decision per wire-up-contract policy)
 - [ ] `/Users/les/Projects/mahavishnu/BODAI_REPO_REGISTRY.md` (modify — add per-repo CLI surface summary column)
 - [ ] `/Users/les/Projects/bodai/README.md` (modify — document `bodai akosha shell` etc.)
 - [ ] `/Users/les/Projects/dhara/README.md` (modify — clarify `dhara admin` vs `dhara db client`)
@@ -848,13 +848,13 @@ tracked as future work in the decision doc.
 
 ## 10. Cross-references
 
-- **Decision doc**: `.claude/decisions/2026-08-25-bodai-cli-contract.md`
+- **Decision doc**: `docs/decisions/2026-08-25-bodai-cli-contract.md`
   (NEW, written in Phase 4.5; **also add a row to
-  `.claude/decisions/README.md` index** per wire-up-contract policy)
+  `docs/decisions/README.md` index** per wire-up-contract policy)
 - **Research baseline**: `docs/audit-inventory/2026-08-25-research-findings.md`
   (NEW — moves §11's research data out of the spec body. Phase 1
   inventory supersedes it. Link here when created in Phase 1)
-- **Companion decision**: `.claude/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (env audit decisions)
+- **Companion decision**: `docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md` (env audit decisions)
 - **`BODAI_REPO_REGISTRY.md`** — per-repo CLI surface summary (Phase 7.3)
 - **`oneiric.shell` package** — `AdminShell` base class for admin shells
 - **`mcp_common.cli.MCPServerCLIFactory`** — lifecycle handler source

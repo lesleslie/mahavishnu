@@ -4,7 +4,7 @@
 
 **Goal:** Implement the agent-reviewed trunk-based dev workflow: ephemeral worktrees, AI ensemble review, `crackerjack run -v` gate, squash-merge, auto-push `main` to `origin/main`, governed cleanup via `mahavishnu worktree prune-merged` — replacing GitHub-PR-shaped review for AI-driven solo dev.
 
-**Architecture:** Four sequential task groups (matches spec §"Plans Derived From This Spec"): (1) **Foundation** — `dev_log.py` writer + `paths.py` helper; (2) **Orchestration** — `merge_to_main.py` module + slash command; (3) **Hook** — `agent-merge-on-end.py` SessionEnd hook + `settings.json` wiring; (4) **Governance** — new decision docs, memory cross-link, CLAUDE.md updates, `audit_devlog.py` CI gate. The auto-push rule lives in a new `.claude/decisions/2026-10-03-mainautopush.md` (cross-link, NOT inline amendment). `MAHAVISHNU_AUTO_MERGE=1` per user choice (deviation from `MAHAVISHNU_AUTO_WORKTREE` opt-in convention; rationale in spec §4.2). `~/.zshenv` already exports `MAHAVISHNU_AUTO_MERGE=1` from prior session work.
+**Architecture:** Four sequential task groups (matches spec §"Plans Derived From This Spec"): (1) **Foundation** — `dev_log.py` writer + `paths.py` helper; (2) **Orchestration** — `merge_to_main.py` module + slash command; (3) **Hook** — `agent-merge-on-end.py` SessionEnd hook + `settings.json` wiring; (4) **Governance** — new decision docs, memory cross-link, CLAUDE.md updates, `audit_devlog.py` CI gate. The auto-push rule lives in a new `docs/decisions/2026-10-03-mainautopush.md` (cross-link, NOT inline amendment). `MAHAVISHNU_AUTO_MERGE=1` per user choice (deviation from `MAHAVISHNU_AUTO_WORKTREE` opt-in convention; rationale in spec §4.2). `~/.zshenv` already exports `MAHAVISHNU_AUTO_MERGE=1` from prior session work.
 
 **Tech Stack:** Python 3.14, existing `mahavishnu` orchestrator, existing `crackerjack` quality tool, existing `session-buddy` `store_reflection` MCP, existing `.claude/hooks/` SessionEnd contract (mirrors `worktree-session-isolation.py`), `platformdirs` for XDG paths, no new MCP server.
 
@@ -47,8 +47,8 @@ Carried from spec §"Goals & Non-Goals", §"Components", and project conventions
 | `mahavishnu/core/merge_to_main.py` | Orchestration module: stages 2-6, verdict parsing, `.review-state.json`, exit codes 0-5 |
 | `.claude/hooks/agent-merge-on-end.py` | SessionEnd hook (parallel sibling of `worktree-session-isolation.py`) |
 | `.claude/commands/merge-to-main.md` | Slash command entry point (frontmatter + body) |
-| `.claude/decisions/2026-10-03-mainautopush.md` | Auto-push governance (REQ-007) |
-| `.claude/decisions/2026-10-03-trunk-based-agent-review.md` | Workflow doc (REQ-008) |
+| `docs/decisions/2026-10-03-mainautopush.md` | Auto-push governance (REQ-007) |
+| `docs/decisions/2026-10-03-trunk-based-agent-review.md` | Workflow doc (REQ-008) |
 | `scripts/audit_devlog.py` | CI gate for REQ-011 (every merge commit on `main` has audit entry) |
 | `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md` | New CC memory |
 | `tests/unit/core/test_paths_dev_log.py` | paths.py helper tests (REQ-002) |
@@ -1400,8 +1400,8 @@ ______________________________________________________________________
 
 **Files:**
 
-- Create: `.claude/decisions/2026-10-03-mainautopush.md`
-- Create: `.claude/decisions/2026-10-03-trunk-based-agent-review.md`
+- Create: `docs/decisions/2026-10-03-mainautopush.md`
+- Create: `docs/decisions/2026-10-03-trunk-based-agent-review.md`
 - Create: `scripts/audit_devlog.py`
 - Create: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md`
 - Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-push-is-user-controlled.md`
@@ -1409,11 +1409,11 @@ ______________________________________________________________________
 - Modify: `~/.claude/CLAUDE.md`
 - Modify: `~/Projects/mahavishnu/CLAUDE.md`
 
-### Task 4.1: Create `.claude/decisions/2026-10-03-mainautopush.md`
+### Task 4.1: Create `docs/decisions/2026-10-03-mainautopush.md`
 
 - [ ] **Step 1: Write the decision doc**
 
-Create `.claude/decisions/2026-10-03-mainautopush.md`:
+Create `docs/decisions/2026-10-03-mainautopush.md`:
 
 ```markdown
 ---
@@ -1471,7 +1471,7 @@ All other push types remain user-controlled per
 
 ```bash
 cd ~/Projects/mahavishnu && \
-  git add .claude/decisions/2026-10-03-mainautopush.md && \
+  git add docs/decisions/2026-10-03-mainautopush.md && \
   git commit -m "docs(mahavishnu): main-autopush governance decision (REQ-007)
 
 Per spec §4.6 + user choice. Cross-link (NOT inline amendment) to
@@ -1481,11 +1481,11 @@ only after successful squash-merge in merge-to-main.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-### Task 4.2: Create `.claude/decisions/2026-10-03-trunk-based-agent-review.md`
+### Task 4.2: Create `docs/decisions/2026-10-03-trunk-based-agent-review.md`
 
 - [ ] **Step 1: Write the workflow doc**
 
-Create `.claude/decisions/2026-10-03-trunk-based-agent-review.md`:
+Create `docs/decisions/2026-10-03-trunk-based-agent-review.md`:
 
 ```markdown
 ---
@@ -1521,7 +1521,7 @@ exported in `~/.zshenv`). To disable auto-merge at SessionEnd, set
 ## Cross-references
 
 - Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
-- Auto-push governance: `.claude/decisions/2026-10-03-mainautopush.md`
+- Auto-push governance: `docs/decisions/2026-10-03-mainautopush.md`
 - Memory: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md`
 - Implementation: `mahavishnu/core/merge_to_main.py`, `.claude/hooks/agent-merge-on-end.py`, `.claude/commands/merge-to-main.md`
 ```
@@ -1530,7 +1530,7 @@ exported in `~/.zshenv`). To disable auto-merge at SessionEnd, set
 
 ```bash
 cd ~/Projects/mahavishnu && \
-  git add .claude/decisions/2026-10-03-trunk-based-agent-review.md && \
+  git add docs/decisions/2026-10-03-trunk-based-agent-review.md && \
   git commit -m "docs(mahavishnu): trunk-based-agent-review workflow doc (REQ-008)
 
 Per spec §Plans Derived. Cross-links to mainautopush decision, spec,
@@ -1551,7 +1551,7 @@ Append to `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bod
 ## Cross-reference (2026-10-03)
 
 The exception for `origin/main` after a successful squash-merge lives in
-`.claude/decisions/2026-10-03-mainautopush.md`. All other push types
+`docs/decisions/2026-10-03-mainautopush.md`. All other push types
 (tags, ephemeral branches, force-push, non-`origin` remotes) remain
 user-controlled per this memory.
 ```
@@ -1596,7 +1596,7 @@ ensemble review + `crackerjack run -v` gate + squash-merge + auto-push
 
 ## Auto-push rule
 
-Per `.claude/decisions/2026-10-03-mainautopush.md`: `git push origin main`
+Per `docs/decisions/2026-10-03-mainautopush.md`: `git push origin main`
 is the ONLY auto-pushed thing. NEVER ephemeral branches, NEVER force-push,
 NEVER non-`origin` remotes. On divergence, the hook surfaces via stderr;
 user resolves manually.
@@ -1610,7 +1610,7 @@ auto-publish.
 ## Reference
 
 - Spec: `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
-- Decisions: `.claude/decisions/2026-10-03-mainautopush.md`, `.claude/decisions/2026-10-03-trunk-based-agent-review.md`
+- Decisions: `docs/decisions/2026-10-03-mainautopush.md`, `docs/decisions/2026-10-03-trunk-based-agent-review.md`
 - Plan: `docs/plans/2026-10-03-trunk-based-agent-review.md`
 ```
 
@@ -1652,7 +1652,7 @@ the canonical flow is the **trunk-based agent-review workflow**:
   (2 specialized agents + 1 random generalist per spec §4.4).
 - `crackerjack run -v` gates the merge (NEVER `-p`).
 - Squash-merge to local `main`, then auto-push `main` → `origin/main`
-  (governed by `.claude/decisions/2026-10-03-mainautopush.md`).
+  (governed by `docs/decisions/2026-10-03-mainautopush.md`).
 - Cleanup via `mahavishnu worktree prune-merged`; the ephemeral branch
   is deleted with the worktree.
 
@@ -1662,7 +1662,7 @@ disable auto-merge at SessionEnd, set `MAHAVISHNU_AUTO_MERGE=0`.
 For full design and implementation contracts, see:
 - Spec: `~/Projects/mahavishnu/docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 - Plan: `~/Projects/mahavishnu/docs/plans/2026-10-03-trunk-based-agent-review.md`
-- Decisions: `~/.claude/decisions/2026-10-03-mainautopush.md` and `2026-10-03-trunk-based-agent-review.md`
+- Decisions: `~/docs/decisions/2026-10-03-mainautopush.md` and `2026-10-03-trunk-based-agent-review.md`
 ```
 
 ### Task 4.6: Update `~/Projects/mahavishnu/CLAUDE.md`
@@ -1682,7 +1682,7 @@ oneiric, mcp-common) inherit the convention without per-repo edits —
 their workers run inside mahavishnu's orchestration.
 
 See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
-and `.claude/decisions/2026-10-03-trunk-based-agent-review.md`.
+and `docs/decisions/2026-10-03-trunk-based-agent-review.md`.
 ```
 
 ### Task 4.7: Create `scripts/audit_devlog.py` (CI gate for REQ-011)
@@ -1886,11 +1886,11 @@ This amendment adds a new sub-stage 4.5 between squash-merge and auto-push
 in `mahavishnu/core/merge_to_main.py::run_pipeline()`. Stage 5 push is held
 back when co-located worktrees have unmerged WIP or pending commits are
 not squash-merge-shaped. Authoritative spec:
-[`.claude/decisions/2026-10-13-prepushconsolidationgate.md`](../.claude/decisions/2026-10-13-prepushconsolidationgate.md).
+[`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../docs/decisions/2026-10-13-prepushconsolidationgate.md).
 
 ### Task Group 2 amendment (orchestration module)
 
-**Implements:** `.claude/decisions/2026-10-13-prepushconsolidationgate.md` Decision rule.
+**Implements:** `docs/decisions/2026-10-13-prepushconsolidationgate.md` Decision rule.
 
 **Files (changes from the original Task Group 2):**
 
@@ -1910,16 +1910,16 @@ not squash-merge-shaped. Authoritative spec:
 
 **Files (additional to the original Task Group 4):**
 
-- Create: `.claude/decisions/2026-10-13-prepushconsolidationgate.md`
+- Create: `docs/decisions/2026-10-13-prepushconsolidationgate.md`
   (canonical on-disk name; matches `2026-10-03-mainautopush.md`
   no-hyphen convention).
-- Modify: `.claude/decisions/2026-10-03-mainautopush.md` — add rule 8
+- Modify: `docs/decisions/2026-10-03-mainautopush.md` — add rule 8
   referencing the new decision doc.
-- Modify: `.claude/decisions/2026-10-03-trunk-based-agent-review.md` —
+- Modify: `docs/decisions/2026-10-03-trunk-based-agent-review.md` —
   add stage 4.5 row referencing the gate.
-- Modify: `.claude/decisions/2026-10-03-main-branch-protection.md` —
+- Modify: `docs/decisions/2026-10-03-main-branch-protection.md` —
   add cross-link to the new decision.
-- Modify: `.claude/decisions/README.md` — add new decision entry.
+- Modify: `docs/decisions/README.md` — add new decision entry.
 - Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-push-is-user-controlled.md` —
   add 2026-10-13 cross-reference note.
 - Modify: `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md` —

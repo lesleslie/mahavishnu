@@ -1,4 +1,4 @@
-"""Sync tests for `.claude/decisions/worktree-cleanup-policy.md`.
+"""Sync tests for `docs/decisions/worktree-cleanup-policy.md`.
 
 These tests guard doc/code parity so that the decision doc stays the canonical
 exposition of the worktree cleanup policy. If the Tier literal, the

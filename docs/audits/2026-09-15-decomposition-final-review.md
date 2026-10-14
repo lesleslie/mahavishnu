@@ -180,11 +180,11 @@ Conducted following PATH A to verify the spec's assumptions about existing infra
 - **Fix path:** Phase 1.5 plan update — either commit to `mcp_common/health/__init__.py` + a new `mcp_common/health/tools.py` (stays inside package), OR clarify why the separate `mcp_common.health_tools` module exists.
 - **Owner:** Phase 1.5.
 
-**W11 [LOW] — `mcp-backend-wiring-discipline.md` is at `mahavishnu/.claude/decisions/` not `~/.claude/decisions/`.**
+**W11 [LOW] — `mcp-backend-wiring-discipline.md` is at `mahavishnu/docs/decisions/` not `~/docs/decisions/`.**
 
-- Spec §4.8 (paraphrased) and observability review report referenced `~/.claude/decisions/mcp-backend-wiring-discipline.md`. Verified: file exists at `/Users/les/Projects/mahavishnu/.claude/decisions/mcp-backend-wiring-discipline.md` (10,248 bytes; Sep 13). Doesn't exist at `~/.claude/decisions/mcp-backend-wiring-discipline.md`.
+- Spec §4.8 (paraphrased) and observability review report referenced `~/docs/decisions/mcp-backend-wiring-discipline.md`. Verified: file exists at `/Users/les/Projects/mahavishnu/docs/decisions/mcp-backend-wiring-discipline.md` (10,248 bytes; Sep 13). Doesn't exist at `~/docs/decisions/mcp-backend-wiring-discipline.md`.
 - **Impact:** Doc-string references in spec/plan to the wiring-discipline file as the canonical contract for /health 503, per-feed signals, etc., point at the wrong path. The contract is the same; the path is just wrong.
-- **Fix path:** Update spec/plan to reference the correct path. Or (better) copy the file to `~/.claude/decisions/` since the spec cites it as a project-spanning rule, not mahavishnu-specific.
+- **Fix path:** Update spec/plan to reference the correct path. Or (better) copy the file to `~/docs/decisions/` since the spec cites it as a project-spanning rule, not mahavishnu-specific.
 - **Owner:** Small text fixes in spec/plan.
 
 **W12 [LOW] — `oneiric/adapters/cache/persistent_kv.py` does NOT exist (Phase 6 net-new).**

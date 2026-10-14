@@ -527,8 +527,8 @@ If Option C's wrapper consolidation introduces regressions:
 - `docs/specs/2026-04-27-bodai-auth-standardization-design.md`
   — auth consolidation that gives Option B its "single auth surface"
   benefit (Option C retains per-component auth secrets).
-- `.claude/decisions/wire-up-contract.md` and
-  `.claude/decisions/mcp-backend-wiring-discipline.md` —
+- `docs/decisions/wire-up-contract.md` and
+  `docs/decisions/mcp-backend-wiring-discipline.md` —
   integration / failure-isolation rules that motivate Option C's
   preservation of independent processes.
 - `mcp_common.tools.dispatch.register_local_namespace` and

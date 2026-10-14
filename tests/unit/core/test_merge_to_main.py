@@ -450,7 +450,7 @@ def test_run_pipeline_crackerjack_failure_blocks_merge(
 
 
 # ── run_pipeline: stage 4.5 pre-push consolidation gate ────────────────
-# Per `.claude/decisions/2026-10-13-prepushconsolidationgate.md`.
+# Per `docs/decisions/2026-10-13-prepushconsolidationgate.md`.
 
 
 def test_run_pipeline_proceeds_when_consolidation_gate_passes(
