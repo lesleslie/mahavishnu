@@ -169,7 +169,7 @@ Persistence is a thin wrapper at `mahavishnu/settle/persistence.py`
 that writes the record to Dhara (`settle/v1/{run_ref}`) with a
 local dead-letter fallback (`~/.mahavishnu/settle-dead-letter/`).
 This is the same pattern as
-`docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` —
+`docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` —
 best-effort persistence with a recoverable local mirror.
 
 The 3-way merge is a thin wrapper around `git merge-file` in
@@ -214,7 +214,7 @@ avoid hard-coding primitives to a single engine).
   `MahavishnuWebSocketServer._can_subscribe_to_channel`).
 - New persistence substrate: `settle/v1/{run_ref}` in Dhara with
   dead-letter fallback to `~/.mahavishnu/settle-dead-letter/`.
-- New WebSocket consumer contract: `docs/WEBSOCKET_CONSUMER_GUIDE.md`.
+- New WebSocket consumer contract: `docs/websocket/WEBSOCKET_CONSUMER_GUIDE.md`.
 - New property-based tests: `tests/unit/mcp/test_settle_state_machine.py`.
 - New integration tests: `tests/integration/test_settle_e2e.py`.
 

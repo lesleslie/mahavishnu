@@ -1070,6 +1070,6 @@ ______________________________________________________________________
 
 - **Setup Guide:** `docs/NATIVE_OTEL_SETUP_GUIDE.md`
 - **Architecture:** `docs/NATIVE_OTEL_ARCHITECTURE.md`
-- **MCP Tools:** `docs/MCP_TOOLS_SPECIFICATION.md`
+- **MCP Tools:** `docs/mcp/MCP_TOOLS_SPECIFICATION.md`
 - **DuckDB:** https://duckdb.org/docs/
 - **sentence-transformers:** https://www.sbert.net/

@@ -9,7 +9,7 @@ blocks_on: []
 blocks_resolved:
   - docs/plans/2026-08-29-worker-registry-capability-refactor.md  # shipped in v0.19.0 (commit bb51c537)
 phase_0_status: refactor-solved  # see §5 Phase 0 update 2026-08-29; bug structurally impossible in v0.19.0's new tool pair
-patch_doc_status: historical  # docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md — pattern reference only
+patch_doc_status: historical  # docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md — pattern reference only
 topic: routing-composition
 requirements:
   - id: REQ-ORC-001
@@ -110,7 +110,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 
 ### Phase 0: Verify v0.19.0's new tool pair resolves the `workflow_result: not_found` contract violation
 
-**Goal:** Confirm that v0.19.0's worker-registry refactor (commit `bb51c537` / `30ebc0f3`) eliminated the silent-no-op + not_found bug pattern, and restart the running MCP server so the new tools are exposed. The dead-letter fallback pattern from `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` is kept as a *reference pattern* for future regressions of this shape — not a code patch to apply.
+**Goal:** Confirm that v0.19.0's worker-registry refactor (commit `bb51c537` / `30ebc0f3`) eliminated the silent-no-op + not_found bug pattern, and restart the running MCP server so the new tools are exposed. The dead-letter fallback pattern from `docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` is kept as a *reference pattern* for future regressions of this shape — not a code patch to apply.
 
 **Why this Phase pivoted:** As of v0.19.0:
 - `dispatch_to_pool` and `workflow_result` are **deleted** (commit `30ebc0f3` "chore(mcp): remove deprecated pool/worker/dispatch tools (3b.3)"). The bug-path code no longer exists on `main`.
@@ -136,7 +136,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 - **Triggered from:** MCP server startup (port 8680); test suite invoking `execute_capability` + `get_capability_result`.
 - **Returns to / updates:** Tool registry on the running MCP server. Dhara envelope store at `akosha://envelopes/{trace_id}/*.json`.
 - **Demonstrable by:** `pytest tests/integration/test_capability_result.py -v` exits 0 after dispatch + read-back. `mahavishnu mcp call execute_capability '{"requires":["CODE_GENERATION"],"prompt":"ping"}'` returns a `trace_id`; subsequent `mahavishnu mcp call get_capability_result '{"trace_id":"<id>"}'` reads back.
-- **Rollback signal:** If `get_capability_result` returns `pending` instead of raising when Dhara is disabled, that means the silent-no-op pattern regressed. Apply the dead-letter fallback from `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` to the new code path (port the pattern, do not copy verbatim).
+- **Rollback signal:** If `get_capability_result` returns `pending` instead of raising when Dhara is disabled, that means the silent-no-op pattern regressed. Apply the dead-letter fallback from `docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` to the new code path (port the pattern, do not copy verbatim).
 - **Observability added:** OTel span `capability.execute` and `capability.result`. Counter `capability.result.not_found_count` (target: 0 in 24h post-restart).
 
 ### Phase 0.5: Keystone observation window (60 days)
@@ -198,7 +198,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 3. `[Mahavishnu]` Add `worker_settle(run_ref, action)` MCP tool to the same file. Actions: `select | apply | release | discard`. (v1's `settle_run` renamed to `worker_settle` for prefix-by-subsystem consistency with `pool_route_execute`.)
 4. `[Mahavishnu]` For `apply`: shell out to `git merge-file` (not a hand-rolled algorithm). Use git's existing 3-way merge; conflict returns a structured error.
 5. `[Mahavishnu]` Update `mahavishnu/websocket/server.py:_can_subscribe_to_channel` (line 451) to allow `settle:` and `run:` channels for `worker:read` permission.
-6. `[Mahavishnu]` Document canonical idempotency contract in `docs/WEBSOCKET_CONSUMER_GUIDE.md`: consumers must be idempotent on `phase=completed`; handle out-of-order delivery; reconnect via `since_offset`.
+6. `[Mahavishnu]` Document canonical idempotency contract in `docs/websocket/WEBSOCKET_CONSUMER_GUIDE.md`: consumers must be idempotent on `phase=completed`; handle out-of-order delivery; reconnect via `since_offset`.
 7. `[Tests]` Unit tests for state machine transitions (proposed → selected → applied / released / discarded). Property-based test asserting no illegal transition is reachable and all terminal states are absorbing.
 8. `[Tests]` Integration test: dispatch worker, observe `proposed` state, run `worker_settle --action apply`, confirm 3-way merge succeeds.
 
@@ -318,7 +318,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 ### Phase 2 (this repo: Mahavishnu)
 - [ ] `mahavishnu/mcp/tools/worker_contract_tools.py` — add `worker_run_with_settle` and `worker_settle`
 - [ ] `mahavishnu/websocket/server.py:451` — extend allowlist with `settle:` and `run:` channels
-- [ ] `docs/WEBSOCKET_CONSUMER_GUIDE.md` (new) — canonical idempotency contract
+- [ ] `docs/websocket/WEBSOCKET_CONSUMER_GUIDE.md` (new) — canonical idempotency contract
 - [ ] `docs/decisions/2026-XX-XX-settle-vs-langgraph.md` (new)
 - [ ] `tests/unit/test_settle_state_machine.py` (new) + property-based tests
 - [ ] `tests/integration/test_settle_e2e.py` (new)
@@ -375,7 +375,7 @@ Shepherd is per-workspace. Prime Agent is per-session. Keystone is explicitly pe
 | Cross-repo PRs (Akosha, Session-Buddy, Dhara) get out of sync with Mahavishnu PR | Medium | Phase 1 lands in dependency order: Akosha + Session-Buddy + Dhara first; Mahavishnu last. |
 | `worker_settle` settle actions get rubber-stamped (same-session click, no real review) | High | v1's mitigation was weak. v2 requires out-of-band human approval (different process / different session). Settle state machine records `approver_session_id`; same-session approvals rejected. |
 | Budget watchdog races across replicas | Medium | Lease-based leader election per cycle; only one watchdog active at a time. |
-| `worker_settle --action apply` crashes mid-merge | Medium | Use `git merge-file` (atomic per file). If the shell-out crashes, the partial merge state is recoverable via `git status`. Document recovery in `docs/SHEPHERD_BACKEND.md` and `docs/WEBSOCKET_CONSUMER_GUIDE.md`. |
+| `worker_settle --action apply` crashes mid-merge | Medium | Use `git merge-file` (atomic per file). If the shell-out crashes, the partial merge state is recoverable via `git status`. Document recovery in `docs/SHEPHERD_BACKEND.md` and `docs/websocket/WEBSOCKET_CONSUMER_GUIDE.md`. |
 | Dhara unavailability during budget check or settle operation | Medium | Fail-open for read-only paths (skip cycle, WARN log); fail-closed for write paths (return `503` to caller). |
 | Seccomp/Sandbox unavailability in dev environments | Low | Worker startup fails with clear error; not silently degraded. |
 | Shepherd `pip install shepherd-ai` breaks on Python 3.14 (CLAUDE.md pins 3.14) | Low | Verify install on local venv before committing. Fallback: file issue upstream; don't fork. |
@@ -407,7 +407,7 @@ Phases 3, 4, 5 are sequenced by impact: budget enforcement (Phase 3) → Shepher
   - `mahavishnu/mcp/tools/capability_tools.py:347` (`execute_capability` — Phase 0 read point)
   - `mahavishnu/mcp/tools/get_capability_result_tool.py:21` (`get_capability_result` — Phase 0 write point)
   - `mahavishnu/core/envelopes.py:64` (`list_envelopes` — Dhara envelope reader)
-  - `docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` (historical pattern reference; bug path no longer exists)
+  - `docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` (historical pattern reference; bug path no longer exists)
   - `mahavishnu/mcp/tools/worker_contract_tools.py:33` (existing `_durable_manager` pattern)
   - `mahavishnu/workers/apple_container.py` (existing isolated worker)
   - `mahavishnu/workers/e2b_sandbox.py` (existing isolated worker)

@@ -210,7 +210,6 @@ contribution workflow below.
 | `skill-agent-distribution-via-mcp` | Skill/agent distribution via MCP — using the MCP registrar as the canonical distribution channel for skills and agents (post-A2A review per `docs/plans/.archive/2026-09-09-bodai-skill-agent-distribution.md`). |
 | `terminal-adapter-goose` | Goose terminal adapter — Block's `goose` HTTP backend (the D3 terminal adapter; port 8694 per `docs/CLAUDE.md` portmap). |
 
-
 | `bodai-ecosystem-candidates` | Bodai Ecosystem Candidate Evaluation — 20 candidates → 5 deep-dives from the eval report (archived as `followups/.archive/2026-06-22-bodai-ecosystem-candidates.md`). |
 | `bodai-maintained-mcp-promotion` | Sequencing note: this plan is independent of the 2026-10-12 substrate consolidation (per `plans/2026-10-13-bodai-maintained-mcp-promotion.md`). |
 | `bodai-tui-contract` | Bodai TUI contract — AdminShell subclass pattern, monitor --tui flag, shell polish integration points (per `decisions/2026-08-25-bodai-tui-contract.md`). |

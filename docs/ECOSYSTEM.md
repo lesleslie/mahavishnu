@@ -223,7 +223,7 @@ or `mahavishnu ecosystem list`.
 | Catalog | Authoritative source | Count |
 |---------|---------------------|-------|
 | Bodai repositories | [`BODAI_REPO_REGISTRY.md`](../BODAI_REPO_REGISTRY.md) | 34 active (sources: `settings/ecosystem.yaml` + `settings/registry_metadata.yaml`) |
-| MCP tools (registered) | [`docs/MCP_TOOLS_REFERENCE.md`](MCP_TOOLS_REFERENCE.md) and [`docs/MCP_TOOLS_SPECIFICATION.md`](MCP_TOOLS_SPECIFICATION.md) | 197 (170 decorated + 27 inline core) |
+| MCP tools (registered) | [`mcp/MCP_TOOLS_REFERENCE.md`](mcp/MCP_TOOLS_REFERENCE.md) and [`mcp/MCP_TOOLS_SPECIFICATION.md`](mcp/MCP_TOOLS_SPECIFICATION.md) | 197 (170 decorated + 27 inline core) |
 | MCP tool profiles | [`mahavishnu/mcp/tools/profiles.py`](../mahavishnu/mcp/tools/profiles.py) | 19 profile-gated groups |
 | Claude Code agents | `.claude/agents/*.md` (active; `.archive/` excluded) | 48 active |
 | Claude Code skills | `.claude/skills/<name>/SKILL.md` | 19 active |

@@ -834,7 +834,7 @@ ______________________________________________________________________
 
 ## Related Documentation
 
-- [Incident Response Runbook](INCIDENT_RESPONSE_RUNBOOK.md)
+- [Incident Response Runbook](./incident-response/INCIDENT_RESPONSE_RUNBOOK.md)
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)
 - Monitoring & Alerting
 

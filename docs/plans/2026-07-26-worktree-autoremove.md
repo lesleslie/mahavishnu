@@ -130,7 +130,7 @@ Do not claim that every removal has a backup.
 | `mahavishnu/worktree_cli.py` | Edit | Add the Typer subcommand and repository nickname threading. |
 | `tests/unit/test_worktree_prune_merged.py` | Create | Ten core tests plus five CLI tests. |
 | `tests/integration/test_worktree_autoprune_hook.py` | Delete if present | Hook is outside active scope. |
-| `docs/WORKTREE_AUTOREMOVE.md` | Create | CLI-only operator guide and manual testing sequence. |
+| `docs/worktree/WORKTREE_AUTOREMOVE.md` | Create | CLI-only operator guide and manual testing sequence. |
 | `docs/feature-tracking/worktree-autoremove.yaml` | Create | Track CLI built/wired state and automation deferral. |
 
 No active task modifies `.claude/settings.json`, `settings/mahavishnu.yaml`,
@@ -188,7 +188,7 @@ following exception:
 
 1. `mahavishnu worktree prune-merged` may remove only candidates classified
    exactly as `merged` by the multi-signal classifier documented in
-   `docs/WORKTREE_AUTOREMOVE.md`.
+   `docs/worktree/WORKTREE_AUTOREMOVE.md`.
 2. `not_merged` and `undetermined` candidates are never removed.
 3. The default scope is merged worktrees whose dirty status is exactly
    `clean`.
@@ -214,7 +214,7 @@ following exception:
 
 - Original rule: `docs/decisions/session-worktree-defaults.md` Rule 2
 - Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
-- Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
+- Operator guide: `docs/worktree/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 ```
 
@@ -1285,13 +1285,13 @@ considered.
 
 **Files:**
 
-- Create: `docs/WORKTREE_AUTOREMOVE.md`
+- Create: `docs/worktree/WORKTREE_AUTOREMOVE.md`
 - Create: `docs/feature-tracking/worktree-autoremove.yaml`
 - Delete if present: `tests/integration/test_worktree_autoprune_hook.py`
 
 ### Task 4.1: Write the CLI-only operator guide
 
-- [ ] **Step 1: Create `docs/WORKTREE_AUTOREMOVE.md`**
+- [ ] **Step 1: Create `docs/worktree/WORKTREE_AUTOREMOVE.md`**
 
 ```markdown
 ---
@@ -1547,7 +1547,7 @@ git commit -m "docs(worktree): document and validate prune-merged CLI"
 
 **Integration Contract (Wave 4):**
 
-- **Triggered from:** an operator follows `docs/WORKTREE_AUTOREMOVE.md`.
+- **Triggered from:** an operator follows `docs/worktree/WORKTREE_AUTOREMOVE.md`.
 - **Returns to / updates:** worktree filesystem, audit log, optional dirty
   backup directory, and feature-tracking state.
 - **Demonstrable by:** 15 unit tests pass and the six manual phases show correct

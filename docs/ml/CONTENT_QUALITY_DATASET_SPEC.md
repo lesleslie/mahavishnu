@@ -251,4 +251,4 @@ ______________________________________________________________________
 | Eval script | `scripts/eval-content-quality.py` | Validates and summarizes dataset |
 | Quality evaluator | `mahavishnu/ingesters/quality_evaluator.py` | Code that will consume this dataset |
 | Content ingester | `mahavishnu/ingesters/content_ingester.py` | Source of content to label |
-| Manual guide | `docs/CONTENT_QUALITY_EVALUATION.md` | Pre-existing evaluation guidance |
+| Manual guide | `docs/ingestion/CONTENT_QUALITY_EVALUATION.md` | Pre-existing evaluation guidance |

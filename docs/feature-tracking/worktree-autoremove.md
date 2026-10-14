@@ -43,7 +43,7 @@ branches are detected as merged by the multi-signal classifier.
 
 ## Adopted (NOT YET)
 
-- Operator manual testing required (see `docs/WORKTREE_AUTOREMOVE.md` 6-phase
+- Operator manual testing required (see `docs/worktree/WORKTREE_AUTOREMOVE.md` 6-phase
   guide)
 - The 19 merged-clean worktrees across 8 repos (per 2026-07-26 audit) are
   pending cleanup

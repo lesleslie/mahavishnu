@@ -53,7 +53,7 @@ mahavishnu mcp-serve
 - `resume_workflow`: Resume workflow from checkpoint
 - `delete_checkpoint`: Delete workflow checkpoint
 
-See [MCP_TOOLS_SPECIFICATION.md](../MCP_TOOLS_SPECIFICATION.md) for complete tool specifications including parameters, returns, and error handling.
+See [MCP_TOOLS_SPECIFICATION.md](../mcp/MCP_TOOLS_SPECIFICATION.md) for complete tool specifications including parameters, returns, and error handling.
 
 ## Configuration
 

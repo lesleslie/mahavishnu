@@ -181,7 +181,7 @@ the plan parking lot.
   (mirrors `SessionBuddyPool`/`RunPodPool`). Rewriting to call
   `pool_manager.route_task` would create circular dependency + double
   quota enforcement. Rationale documented in
-  `docs/POOL_ARCHITECTURE.md` "Why pool types wrap substrates" + module
+  `docs/pools/POOL_ARCHITECTURE.md` "Why pool types wrap substrates" + module
   docstring. **No code changes required.**
 - **`workers/cloud_worker.py` retirement** (Plan §10 #3): after Phase
   3b, routing logic lives in `core/model_routing.py`. The cloud

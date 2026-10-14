@@ -16,7 +16,7 @@ automated content quality classifiers used in the Mahavishnu ingestion pipeline.
 |-----------|----------|-------|
 | `QualityMetric` enum | `mahavishnu/ingesters/quality_evaluator.py` | Defines 4 of 5 dimensions (missing *depth*) |
 | `QualityEvaluator` class | `mahavishnu/ingesters/quality_evaluator.py` | Stub — always returns 1.0 |
-| Manual checklist | `docs/CONTENT_QUALITY_EVALUATION.md` | 0–100 holistic score, relevance/uniqueness/quality/freshness/retrievability |
+| Manual checklist | `docs/ingestion/CONTENT_QUALITY_EVALUATION.md` | 0–100 holistic score, relevance/uniqueness/quality/freshness/retrievability |
 | `ContentIngester` | `mahavishnu/ingesters/content_ingester.py` | Fetch → chunk → embed → store pipeline |
 
 This rubric refines the existing framework into a **per-dimension 1–5 scale** suitable

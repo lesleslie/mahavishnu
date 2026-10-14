@@ -64,7 +64,7 @@ For legacy callers:
 - Replaced Apple-container / E2B-sandbox calls: use
   `worker_type="shepherd"` with an explicit `writable_root` kwarg.
 - Dispatch via `mahavishnu/pools/` for any new orchestrated workload.
-  See `docs/POOL_ARCHITECTURE.md` and `mahavishnu/mcp/tools/pool_tools.py`.
+  See `docs/pools/POOL_ARCHITECTURE.md` and `mahavishnu/mcp/tools/pool_tools.py`.
 
 ## Consequences
 
@@ -109,4 +109,4 @@ back to this file.
 - `mahavishnu/workers/shepherd_backend.py` — surviving isolated backend
 - `docs/CLAUDE.md` (root project's index) — line 726 update in Phase 4.5b
 - `docs/architecture/MEMORY_ARCHITECTURE.md` — references pool tools; unaffected
-- `docs/POOL_ARCHITECTURE.md` — documents the canonical orchestration layer
+- `docs/pools/POOL_ARCHITECTURE.md` — documents the canonical orchestration layer

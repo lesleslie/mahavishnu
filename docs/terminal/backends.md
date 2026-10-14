@@ -48,6 +48,6 @@ This is a code change (one new module), not a config change.
 ## See also
 
 - `docs/TERMINAL_MANAGEMENT.md` — end-to-end terminal management guide.
-- `docs/POOL_REFERENCE.md` — multi-pool orchestration, including the
+- `docs/pools/POOL_REFERENCE.md` — multi-pool orchestration, including the
   cross-server pool layer that lives alongside the local terminal
   adapter layer.

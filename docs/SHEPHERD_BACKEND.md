@@ -113,7 +113,7 @@ re-implemented:
 This is a deliberate decision — Dhara mirrors the substrate's
 durable record rather than storing a parallel settlement stream.
 See
-[`docs/WEBSOCKET_CONSUMER_GUIDE.md`](WEBSOCKET_CONSUMER_GUIDE.md) for
+[`websocket/WEBSOCKET_CONSUMER_GUIDE.md`](websocket/WEBSOCKET_CONSUMER_GUIDE.md) for
 the canonical settle contract.
 
 ## Failure modes
@@ -238,4 +238,4 @@ kernel-side ruleset.
   backend.)_
 - Capability-driven registry — `mahavishnu/core/config.py`,
   `mahavishnu/workers/capabilities/`.
-- Phase 2 settle MCP tools — `docs/WEBSOCKET_CONSUMER_GUIDE.md`.
+- Phase 2 settle MCP tools — `websocket/WEBSOCKET_CONSUMER_GUIDE.md`.

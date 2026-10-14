@@ -377,7 +377,7 @@ Planned features for future versions:
 
 - Architecture - System architecture overview
 - [Configuration](../README.md#configuration) - Configuration system
-- [MCP Tools](../docs/MCP_TOOLS_SPECIFICATION.md) - MCP tool API
+- [MCP Tools](../docs/mcp/MCP_TOOLS_SPECIFICATION.md) - MCP tool API
 - [Terminal Management](../docs/TERMINAL_MANAGEMENT.md) - Terminal features
 
 ## Contributing

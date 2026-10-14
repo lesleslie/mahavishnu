@@ -92,7 +92,7 @@ Mahavishnu's `adapter_list` and `adapter_metadata` become thin pass-throughs tha
 
 ### Option B — Document the boundary, keep both
 
-Keep both tools but write the boundary into `docs/MCP_TOOLS_SPECIFICATION.md` and the tool docstrings:
+Keep both tools but write the boundary into `docs/mcp/MCP_TOOLS_SPECIFICATION.md` and the tool docstrings:
 
 - **Mahavishnu's `adapter_list` / `adapter_metadata`** = orchestration-time queries against the live in-process registry. Use when you need the orchestrator's current view (which adapters are hydrated, which are healthy *right now*, capability-based filtering for routing decisions).
 
@@ -132,7 +132,7 @@ Rationale:
 If Option B is adopted:
 
 - Update `mahavishnu/mcp/tools/adapter_registry_tools.py` docstrings for `adapter_list` and `adapter_metadata` to state explicitly: "Orchestration-time view of the live in-process registry. For the durable registry record, use `mcp__dhara__list_adapters` / `mcp__dhara__get_adapter`."
-- Add a "Boundary with Dhara" subsection to `docs/MCP_TOOLS_SPECIFICATION.md` (or wherever the adapter MCP tools are documented).
+- Add a "Boundary with Dhara" subsection to `docs/mcp/MCP_TOOLS_SPECIFICATION.md` (or wherever the adapter MCP tools are documented).
 - Add a one-line note to `.claude/agents/oneiric-specialist.md` clarifying that `mcp__dhara__*` is for catalog/state queries — for "what's actually running in this Mahavishnu process right now", call the Mahavishnu side.
 - No code changes to the tool implementations.
 - No version bump in `tool_versions.py`.

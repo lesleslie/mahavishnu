@@ -230,7 +230,7 @@ callers can resolve it without an extra id field. Implementation:
 
 ### Item 6: `DrainPlan.action_proposals` docstring + JSON-schema sync
 
-**Motivation.** Task 19 restored `action_proposals` on `DrainPlan` per parent spec §3.3, but the field's runtime shape (`list[ActionProposalDict]`) and per-element schema (`ActionProposalDict` with `handle: str`, `suggested_action: Literal[...]`, `reason: str`) are only documented by the `TypedDict` declarations (drain.py line 244). A user reading the `DrainPlan` surface (e.g. from the MCP tool spec at `docs/MCP_TOOLS_SPECIFICATION.md` or the rendered `mahavishnu jot drain --help`) cannot see what `action_proposals` contains without reading the implementation.
+**Motivation.** Task 19 restored `action_proposals` on `DrainPlan` per parent spec §3.3, but the field's runtime shape (`list[ActionProposalDict]`) and per-element schema (`ActionProposalDict` with `handle: str`, `suggested_action: Literal[...]`, `reason: str`) are only documented by the `TypedDict` declarations (drain.py line 244). A user reading the `DrainPlan` surface (e.g. from the MCP tool spec at `docs/mcp/MCP_TOOLS_SPECIFICATION.md` or the rendered `mahavishnu jot drain --help`) cannot see what `action_proposals` contains without reading the implementation.
 
 **Change scope.**
 
@@ -238,7 +238,7 @@ callers can resolve it without an extra id field. Implementation:
 |---|---|
 | `mahavishnu/jot/drain.py` line 636 (the field declaration) | Add a field-level docstring on `DrainPlan.action_proposals` documenting: (a) the 1:1 correspondence with `candidates` (same length, same order), (b) the element shape via `ActionProposalDict`, (c) the policy source (spec §3.3.4 from item 5), (d) a 1-line JSON-schema-style snippet. **Note:** the existing class-level docstring at `drain.py` lines 620-631 (which documents the `error` field) stays intact — only the field-level docstring is added at line 636 |
 | `mahavishnu/jot/drain.py` line 244 (`ActionProposalDict`) | Add a 4-line docstring: "Suggested action for one drain candidate. See spec §3.3.4 for policy. Locked — behavior change requires brainstorming re-open." |
-| `docs/MCP_TOOLS_SPECIFICATION.md` | Add a 6-line section under the `jot_drain` MCP tool entry documenting the `action_proposals` field shape (handle / suggested_action / reason) |
+| `docs/mcp/MCP_TOOLS_SPECIFICATION.md` | Add a 6-line section under the `jot_drain` MCP tool entry documenting the `action_proposals` field shape (handle / suggested_action / reason) |
 
 **Docstring draft** (final wording in the plan's brief):
 
@@ -301,7 +301,7 @@ All polish items use existing imports. No `pyproject.toml` changes.
 | `tests/integration/jot/test_drain_slash_command.py` | 1 (NEW, item 1 — slash-command frontmatter test) |
 | `tests/integration/jot/test_drain_auto_retry_e2e.py` | 2 |
 | `docs/specs/2026-09-10-jot-drain-design.md` | 1, 2, 5 |
-| `docs/MCP_TOOLS_SPECIFICATION.md` | 6 |
+| `docs/mcp/MCP_TOOLS_SPECIFICATION.md` | 6 |
 | `docs/decisions/sdd-bundling-defensive-pattern.md` | 4 (NEW) |
 | `docs/decisions/README.md` | 4 (index entry) |
 
@@ -334,7 +334,7 @@ The polish set is complete when ALL of the following hold:
 1. `_validate_ctx` rejects unknown ctx keys per op. New tests cover this. All existing tests still pass.
 1. `docs/decisions/sdd-bundling-defensive-pattern.md` exists and is indexed.
 1. Parent spec §3.3.4 documents the `_propose_action` policy table with `reason` strings copied verbatim from drain.py lines 710-713 (not paraphrased).
-1. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
+1. `DrainPlan.action_proposals` field has a full docstring at line 636 + `ActionProposalDict` has a docstring at line 244 + `mcp/MCP_TOOLS_SPECIFICATION.md` documents the field. The existing class-level docstring at drain.py lines 620-631 is preserved.
 1. drain.py coverage is ≥ 89% (project-wide pytest gate per `pyproject.toml` / CLAUDE.md).
 1. All 413 pre-polish tests still pass (with 9 rewritten-in-place in item 2) + 7 net-new tests (1 + 2 + 4) = **420 tests pass**.
 1. `crackerjack run` does not regress (per Bodai pre-1.0 direct-to-main policy; `crackerjack` is informational, not blocking).

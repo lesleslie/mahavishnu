@@ -500,4 +500,4 @@ Planned features for future releases:
 
 ## See Also
 
-- [MCP Tools Specification](./MCP_TOOLS_SPECIFICATION.md)
+- [MCP Tools Specification](./mcp/MCP_TOOLS_SPECIFICATION.md)

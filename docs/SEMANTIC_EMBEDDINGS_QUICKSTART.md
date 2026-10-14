@@ -107,4 +107,4 @@ python scripts/init_learning_db.py --db-path data/learning.db
 
 - `scripts/init_learning_db.py` - Database initialization
 - `scripts/generate_ollama_embeddings.py` - Embedding generation
-- `docs/archive/completion-reports/SEMANTIC_EMBEDDINGS_COMPLETE.md` - Full documentation
+- ~~`docs/archive/completion-reports/SEMANTIC_EMBEDDINGS_COMPLETE.md` - Full documentation~~ (target removed in 2026-10-14 archive consolidation; see `EMBEDDINGS_SETUP_GUIDE.md` for the current canonical reference)

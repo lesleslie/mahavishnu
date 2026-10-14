@@ -40,7 +40,7 @@ title: "Shared Frontmatter Validator Move — Implementation Plan"
 The five most likely failure modes that no task's tests exercise but a reasonable person would expect:
 
 1. **Duplicate `docs/plans/` in `DEFAULT_STORES`** — should not appear; `docs/initiatives/` is the canonical home post-archive-pass. Task 1 fixes this; the test for the fix should also confirm no duplicate after the change.
-2. **Hardcoded `docs/archive/topic-vocabulary-v1.md` path** — should be overridable via `--vocab-path`. Task 2 ports the Tier 1 fix; the test must assert that pointing at a missing path under `--vocab-path` exits 2 with `VocabFileNotFoundError` named in stderr.
+2. **Hardcoded `docs/schemas/TOPIC_VOCABULARY_V1.md` path** (was `docs/archive/topic-vocabulary-v1.md` before the 2026-10-14 archive consolidation) — should be overridable via `--vocab-path`. Task 2 ports the Tier 1 fix; the test must assert that pointing at a missing path under `--vocab-path` exits 2 with `VocabFileNotFoundError` named in stderr.
 3. **`crackerjack docs validate` not actually wired** — even though `FrontmatterValidator(pkg_path=...)` is in the CLI, the wrapper may not call the new in-process module. Task 3 smoke-tests the full CLI invocation end-to-end.
 4. **Consumer repos' `uv sync --upgrade crackerjack` doesn't propagate** — the crackerjack bump is user-controlled; consumers must re-sync to pick it up. Task 5 documents the consumer-side smoke test; the actual upgrade is the user's call.
 5. **mcp-common's seed-copied file re-introduces drift** — the `mcp-common/scripts/validate_document_frontmatter.py` deletion in Task 4 is the loop-closer. If it's not done, future fixes land in both places again.

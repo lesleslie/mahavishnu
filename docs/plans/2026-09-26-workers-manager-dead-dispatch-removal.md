@@ -65,7 +65,7 @@ After this plan ships:
 The cleanest design is to **delete the entire `elif`-chain dispatch** in the second factory and have `WorkerManager.create_worker` route *every* request through `_create_isolated_worker`. This means:
 
 - A `WorkerManager` instantiation can only produce `ShepherdBackendWorker`.
-- Non-isolated workloads go through pools, not through `WorkerManager` — that's already the documented posture (`docs/POOL_ARCHITECTURE.md` §2, just landed in commit `688aeece`).
+- Non-isolated workloads go through pools, not through `WorkerManager` — that's already the documented posture (`docs/pools/POOL_ARCHITECTURE.md` §2, just landed in commit `688aeece`).
 
 ### What this means for callers
 

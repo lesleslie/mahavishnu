@@ -328,7 +328,7 @@ ______________________________________________________________________
 - **#4** OpenObserve docker POC (Tier 2, S 2-3d, run as service) — validates Parquet/S3 retention lever.
 - **#5** `mode: keyword` for `quick_search` (Tier 3, ~1 line, reimplement) — zero-embedding-cost fallback; default stays `"semantic"` for backward compat.
 - **#6** Tier 2 spikes in sequence: Graphify 4h → Maxun 30-min pre-check + 1.5d → OpenObserve 2-3d → PageIndex 2d → Keystone pilot 1d → Emdash bridge 1-2w. All hard-gated with decision memos. Nothing graduates without written decision.
-- **#7** Backlog / Tier 3 (`mahavishnu ingest issue`, `mahavishnu workflow wait --for-ci`, 31-provider detection refactor, `POOL_ARCHITECTURE.md` doc). Ship after Tier 1 lands.
+- **#7** Backlog / Tier 3 (`mahavishnu ingest issue`, `mahavishnu workflow wait --for-ci`, 31-provider detection refactor, `pools/POOL_ARCHITECTURE.md` doc). Ship after Tier 1 lands.
 
 ______________________________________________________________________
 
@@ -363,7 +363,7 @@ Per-action fields: **description**, **effort** (S/M/L), **probability** of succe
 01. **`mahavishnu ingest issue --from <tracker>`** — Effort: M. Probability: 80%. Owner: ingesters. Blockers: token env vars. Tier: 3.
 01. **`mahavishnu workflow wait --for-ci`** — Effort: M. Probability: 80%. Owner: integrations/ci. Blockers: Item 13 lands first. Tier: 3.
 01. **31-provider worker-registry refactor** — Effort: S. Probability: 90%. Owner: workers/registry. Blockers: none. Tier: 3.
-01. **`POOL_ARCHITECTURE.md` doc** — Effort: S. Probability: 95%. Owner: docs. Blockers: none. Tier: 3.
+01. **`pools/POOL_ARCHITECTURE.md` doc** — Effort: S. Probability: 95%. Owner: docs. Blockers: none. Tier: 3.
 01. **`docs/MONITORING.md`** — Effort: M (1-2h). Probability: 95%. Owner: docs. Blockers: identifies new health surfaces. Tier: 3.
 01. **`THIRD_PARTY_NOTICES.md` at both repos** — Effort: XS (30m). Probability: 95%. Owner: docs. Blockers: AGPL posture verification. Tier: 3.
 

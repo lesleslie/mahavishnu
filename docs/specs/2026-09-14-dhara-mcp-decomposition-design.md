@@ -344,7 +344,7 @@ Phase 8 task 20 creates a top-level `dhara/MIGRATION.md` (not a buried spec sect
    - **PyPI classifier**: add `Development Status :: 7 - Inactive` is wrong (Dhara is active); instead add `Topic :: Software Development :: Libraries :: Python Modules` and a project URL pointing at the migration guide.
 4. **Per-consumer migration instructions** — for each of the 21 tools, link the new tool's path, the import change, and a one-line code snippet showing old → new.
 
-Phase 9 task 3 (`docs/MCP_TOOLS_SPECIFICATION.md`) adds a top-of-file breadcrumb: "**Notice: 21 `mcp__dhara__*` tools removed in v1.0.0; see [MIGRATION.md](https://github.com/lesleslie/dhara/blob/v1.0.0/MIGRATION.md).**"
+Phase 9 task 3 (`docs/mcp/MCP_TOOLS_SPECIFICATION.md`) adds a top-of-file breadcrumb: "**Notice: 21 `mcp__dhara__*` tools removed in v1.0.0; see [MIGRATION.md](https://github.com/lesleslie/dhara/blob/v1.0.0/MIGRATION.md).**"
 
 ### 4.10 Historical Dhara state retention
 
@@ -818,7 +818,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 **Tasks:**
 
 1. **Wrap `kv_time_series` as Oneiric cache adapter:** port `dhara/mcp/kv_timeseries.py` (443 LOC) to `oneiric/adapters/cache/persistent_kv.py`. Register with `AdapterMetadata(category="cache", provider="persistent_kv", ...)`. Add entry-point to Oneiric's resolver. **Delete** the Dhara `dhara/mcp/kv_timeseries.py` file (no MCP tool to leave behind).
-2. **Drop `sql_proxy`:** delete `dhara/mcp/tools/sql_proxy.py`. No replacement. Document the removal in `docs/MCP_TOOLS_SPECIFICATION.md` with rationale.
+2. **Drop `sql_proxy`:** delete `dhara/mcp/tools/sql_proxy.py`. No replacement. Document the removal in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` with rationale.
 3. **Drop `dhara_aggregate_patterns`** along with the other kv_time_series tools (no MCP destination; the Oneiric cache adapter doesn't expose aggregate_patterns as an MCP tool — only via the resolver).
 4. Add integration tests:
    - `oneiric/tests/integration/test_persistent_kv_adapter_e2e.py` — assert `oneiric.adapters.cache.persistent_kv.put/get/list_prefix` work end-to-end via the resolver.
@@ -850,7 +850,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 **Hard cutover:**
 
 - Dhara's `substrate_routes.py` deleted with Phase 8.
-- Any external caller of the old Dhara HTTP API (`http://localhost:8683/substrate/*`) is broken. **Mitigation:** document the URL change in `docs/MCP_TOOLS_SPECIFICATION.md`; no backward compat.
+- Any external caller of the old Dhara HTTP API (`http://localhost:8683/substrate/*`) is broken. **Mitigation:** document the URL change in `docs/mcp/MCP_TOOLS_SPECIFICATION.md`; no backward compat.
 
 **Integration contract:**
 
@@ -901,7 +901,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 18. **Add `mahavishnu mcp ecosystem health`** Typer sub-command (observability MEDIUM #4): fans out to all 4 `/health` endpoints, returns aggregate response, surface-level aggregate status. Demonstrable by `mahavishnu mcp ecosystem health` returning a structured response with per-server status and aggregate.
 19. **Implement `dhara migrate kv-timeseries`** CLI (data-retention MEDIUM #4 / §4.10): bulk-write historical KV/time-series records from Dhara's on-disk file to the Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`. Run once during Dhara uninstall, before upgrading to v1.0.0. Documents the migration in `dhara/MIGRATION.md` "Before upgrading" section.
 20. **Create `dhara/MIGRATION.md`** (data-retention HIGH #2 / §4.9): top-level migration guide with old-name → new-name mapping table, hard-cutover date, notification channels (email `nas-dhara@arctrix.com`, GitHub Discussions pinned issue, PyPI long-description lead), per-consumer migration instructions.
-21. **Update `docs/MCP_TOOLS_SPECIFICATION.md`** (data-retention HIGH #2): add a top-of-file breadcrumb pointing to `dhara/MIGRATION.md`, and a new section 28 "Migration Guide — Hard Cutover 2026-09-14" with the old-name → new-name mapping (or directly lift from §4.2 + §8 of this spec).
+21. **Update `docs/mcp/MCP_TOOLS_SPECIFICATION.md`** (data-retention HIGH #2): add a top-of-file breadcrumb pointing to `dhara/MIGRATION.md`, and a new section 28 "Migration Guide — Hard Cutover 2026-09-14" with the old-name → new-name mapping (or directly lift from §4.2 + §8 of this spec).
 
 **Tests to update (post-deletion):**
 
@@ -1080,7 +1080,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Risk:** Code in Mahavishnu, agents, or external repos that calls `mcp__dhara__*` tools fails immediately at the commit boundary. No deprecation window by user decision 2026-09-14.
 
-**Mitigation:** Phase 1 task #0 enumerates every `mcp__dhara__*` reference across the Bodai ecosystem (86 hits found by grep). Each consumer is updated in the same commit as the tool's deletion. External consumers (outside Bodai) are documented in `docs/MCP_TOOLS_SPECIFICATION.md` migration guide (§6). 86 hits is a tractable number; verified grep scope at Phase 1 start.
+**Mitigation:** Phase 1 task #0 enumerates every `mcp__dhara__*` reference across the Bodai ecosystem (86 hits found by grep). Each consumer is updated in the same commit as the tool's deletion. External consumers (outside Bodai) are documented in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` migration guide (§6). 86 hits is a tractable number; verified grep scope at Phase 1 start.
 
 ### R2 — Phase 4 (Crackerjack skill signing) requires Crackerjack to grow
 

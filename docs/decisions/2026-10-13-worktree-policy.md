@@ -159,7 +159,7 @@ cron, or other unattended invocation. The amended rule is recorded in
 
 1. `mahavishnu worktree prune-merged` may remove only candidates classified
    exactly as `merged` by the multi-signal classifier documented in
-   `docs/WORKTREE_AUTOREMOVE.md`.
+   `docs/worktree/WORKTREE_AUTOREMOVE.md`.
 2. `not_merged` and `undetermined` candidates are never removed.
 3. The default scope is merged worktrees whose dirty status is exactly
    `clean`.
@@ -185,7 +185,7 @@ cron, or other unattended invocation. The amended rule is recorded in
 
 - Original rule: `.claude/decisions/session-worktree-defaults.md` Rule 2
 - Plan: `docs/plans/2026-07-26-worktree-autoremove.md`
-- Operator guide: `docs/WORKTREE_AUTOREMOVE.md`
+- Operator guide: `docs/worktree/WORKTREE_AUTOREMOVE.md`
 - CLI: `mahavishnu worktree prune-merged`
 - v4 worktree types: `docs/adr/015-worktree-and-cache-storage-v2.md` §13
   (`WorktreeHandle`, `RemoteWorktreeProvider`, `Principal`)

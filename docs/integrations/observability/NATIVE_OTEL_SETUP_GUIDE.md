@@ -980,7 +980,7 @@ ______________________________________________________________________
 ## Additional Resources
 
 - **Architecture Deep Dive:** `docs/NATIVE_OTEL_ARCHITECTURE.md`
-- **MCP Tools Spec:** `docs/MCP_TOOLS_SPECIFICATION.md`
+- **MCP Tools Spec:** `docs/mcp/MCP_TOOLS_SPECIFICATION.md`
 - **Akosha Documentation:** [Akosha GitHub](https://github.com/yourusername/akosha)
 - **DuckDB Documentation:** https://duckdb.org/docs/
 - **sentence-transformers:** https://www.sbert.net/
