@@ -1,5 +1,7 @@
 # CLI Reference
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 Quick reference for Mahavishnu CLI commands. Every command listed below is
 verified against `mahavishnu/_main_cli.py` and the per-subsystem CLI source
 under `mahavishnu/` and `mahavishnu/cli/`.
@@ -205,9 +207,9 @@ mahavishnu metrics engines [--source auto|postgres|prometheus] [--dsn <url>]
                           [--metrics-url <url>] [--days N] [--output table|json]
 mahavishnu metrics bodai [--scope 24h|7d|all] [--component mahavishnu|akosha|crackerjack]
                         [--queue-path <p>] [--state-path <p>] [--queue-cap 100]
-mahavishnu metrics verification [--since 24h|7d|30m|all] [--dhara-url <url>]
+mahavishnu metrics verification [--since 24h|7d|30m|all]
                                [--output table|json]
-mahavishnu metrics dispatch [--since 24h|7d|30m|all] [--dhara-url <url>]
+mahavishnu metrics dispatch [--since 24h|7d|30m|all]
                            [--output table|json]
 ```
 

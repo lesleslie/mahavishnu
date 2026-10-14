@@ -1,5 +1,7 @@
 # Mahavishnu Monitoring Guide
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 This document covers the health surfaces of all running services in the Mahavishnu / Bodai ecosystem, including newly adopted Tier 2 services.
 
 **Last updated:** 2026-06-23
@@ -24,7 +26,6 @@ This doc fills the gap: when those services are added, operators know which endp
 |---|---|---|---|
 | Mahavishnu | 8680 | `/health` (via `mcp__mahavishnu__get_health`) | Mahavishnu |
 | Akosha | 8682 | `/health` (via `mcp__akosha__get_liveness`) | Akosha |
-| Dhara | 8683 | `/health` (via `mcp__dhara__get_liveness`) | Dhara |
 | Session-Buddy | 8678 | `/health` (via `mcp__session-buddy__get_liveness`) | Session-Buddy |
 | Crackerjack | 8676 | `/health` (via `mcp__crackerjack__get_liveness`) | Crackerjack |
 | Bodai Crow (HTTP MCP) | 8693 | `/health` (planned; not yet live) | Mahavishnu |
@@ -54,15 +55,15 @@ This doc fills the gap: when those services are added, operators know which endp
 ### Cross-service dependencies
 
 ```
-Mahavishnu (8680) → Akosha (8682)   [pattern detection queries]
-                → Dhara (8683)     [persistent state writes]
-                → Session-Buddy (8678)  [memory writes]
-                → Crackerjack (8676)   [quality gate checks]
+Mahavishnu (8680) → Akosha (8682)         [pattern detection queries]
+                → Oneiric                 [persistent state writes]
+                → Session-Buddy (8678)    [memory writes]
+                → Crackerjack (8676)     [quality gate checks]
 
-Dhara (8683) → Postgres / Redis   [via storage adapters]
-            → S3 / MinIO          [object storage for adapters]
+Oneiric → Postgres / Redis   [via storage adapters]
+       → S3 / MinIO          [object storage for adapters]
 
-Akosha (8682) → Dhara (8683)      [reads time-series]
+Akosha (8682) → Oneiric               [reads time-series]
               → Session-Buddy (8678)  [reads memory]
 
 OpenObserve (5080) ← OTel exporter  [from all Bodai services]
@@ -71,19 +72,18 @@ OpenObserve (5080) ← OTel exporter  [from all Bodai services]
 
 ### Cascade failure scenarios
 
-- **Dhara down**: Mahavishnu writes fail → workflows can't persist state → Akosha reads fail → pattern detection stalls. Critical-path service.
+- **Oneiric persistence down**: Mahavishnu writes fail → workflows can't persist state → Akosha reads fail → pattern detection stalls. Critical-path service. *(Dhara was decommissioned 2026-09-20; its role moved into Oneiric.)*
 - **Session-Buddy down**: Memory writes fail → distillation can't accumulate evidence → `distilled_skills` and `distilled_workflows` tables empty.
 - **Akosha down**: Pattern detection stalls but other services continue. Read-only dependency for most flows.
 
 ## Per-service health check recipes
 
-### Mahavishnu / Akosha / Dhara / Session-Buddy / Crackerjack / Bodai Crow
+### Mahavishnu / Akosha / Session-Buddy / Crackerjack / Bodai Crow
 
 ```bash
 # Liveness probe
 curl -fsS http://localhost:8680/health
 curl -fsS http://localhost:8682/health
-curl -fsS http://localhost:8683/health
 curl -fsS http://localhost:8678/health
 curl -fsS http://localhost:8676/health
 curl -fsS http://localhost:8693/health  # Bodai Crow (when live)
@@ -91,7 +91,6 @@ curl -fsS http://localhost:8693/health  # Bodai Crow (when live)
 # Via MCP tool
 mcp__mahavishnu__get_health
 mcp__akosha__get_liveness
-mcp__dhara__get_liveness
 mcp__session-buddy__get_liveness
 mcp__crackerjack__get_liveness
 ```
@@ -134,8 +133,8 @@ When OpenObserve ships to production, register it as a Prometheus datasource in 
 
 | Alert | Condition | Severity |
 |---|---|---|
-| `BodaiServiceDown` | Any of {8680, 8682, 8683, 8678, 8676} `/health` returns non-200 for >2 minutes | Critical |
-| `DharaWriteBacklog` | `dhara_dirty_oids` table > 10,000 rows | High |
+| `BodaiServiceDown` | Any of {8680, 8682, 8678, 8676} `/health` returns non-200 for >2 minutes | Critical |
+| ~~`DharaWriteBacklog`~~ | ~~`dhara_dirty_oids` table > 10,000 rows~~ | *Retired 2026-09-20 — Dhara decommissioned* |
 | `OpenObserveDiskUsage` | `/data` partition > 80% full | Medium |
 | `SessionBuddyMemoryGrowth` | `conversations_v2` row count > 10M | Medium |
 | `PoolWorkerQueue` | Any pool's worker queue > 50% of max_workers | Medium |

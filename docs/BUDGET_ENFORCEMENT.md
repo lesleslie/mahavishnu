@@ -1,5 +1,7 @@
 # Budget Enforcement (Phase 3, v2 plan)
 
+> **Note**: This document describes the **v1 design** in which the budget watchdog used **Dhara for soft leases and persistent state**. Dhara was **decommissioned 2026-09-20**; the runtime now uses **Oneiric** for the same substrate role (see [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md)). The **design rationale below is preserved as historical context** — the *why* of the per-run/per-turn split is unchanged, but the substrate name has moved from Dhara to Oneiric. The watchdog code (`mahavishnu/core/budget_watchdog.py`) no longer references Dhara.
+
 **One line:** Mahavishnu enforces per-workflow budget shapes (tokens,
 turns, wallclock) on `pool_route_execute` runs by polling a control-plane
 state machine once a minute. Per-turn budget checks stay in-process inside

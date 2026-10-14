@@ -1,5 +1,7 @@
 # Adaptive Routing System
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 Mahavishnu implements intelligent adaptive routing with statistical learning and cost optimization.
 
 ## Routing Components
@@ -82,7 +84,7 @@ Convergence Plan §4 ownership rules.
 | **Mahavishnu** | 8680 | `ws://localhost:8690` — workflow/pool/worker/global channels | Phase 6A subscriber + 6.2c publisher shipped (commit b7072f6 + Phase 6 close). |
 | **Akosha** | 8682 | `akosha/websocket/server.py:431` — metrics channel | Phase 6B slash command reads queue; publisher is cross-repo work (6.2a, not started). |
 | **Crackerjack** | 8676 | `crackerjack/websocket/server.py:266-281` — test_started/completed | Phase 6B slash command reads queue; publisher is cross-repo work (6.2b, not started). |
-| **Dhara** | 8683 | REST/pull-only (no WebSocket) | Intentional per Convergence Plan §4 — do not duplicate. (unchanged) |
+| ~~**Dhara**~~ | ~~8683~~ | *Removed 2026-09-20* | Dhara was decommissioned; the substrate's role is now handled by Oneiric. |
 | **Session-Buddy** | 8678 | Slack/Signal/terminal events via `event_models.py` | Intentional per Convergence Plan §4 — no general surface exists. (unchanged) |
 
 **Pre-Phase 6 transition state (today):** Claude Code subscribes to

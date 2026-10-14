@@ -1,5 +1,7 @@
 # Configuration Reference
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 Configuration uses Oneiric layered loading: defaults → `settings/mahavishnu.yaml` → `settings/local.yaml` → environment variables (`MAHAVISHNU_*`). For nested settings, the environment separator is `__` (for example, `MAHAVISHNU_POOLS__ENABLED`). The examples below use verified configuration field names; nested YAML fields mirror Pydantic models for typed blocks, while the WebSocket integration explicitly reads the documented flat keys.
 
 ## Main Configuration File
@@ -406,10 +408,10 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 
 ### `oneiric_mcp.*` and `adapter_registry.*`
 
-**`oneiric_mcp`** (Dhara adapter discovery compatibility block):
+**`oneiric_mcp`**:
 
-- `enabled` — `bool`, default `False`; enables discovery through Dhara.
-- `base_url` — `str`, default `http://localhost:8683/mcp`; Dhara MCP URL.
+- `enabled` — `bool`, default `False`; enables Oneiric MCP adapter discovery.
+- `base_url` — `str`, default `http://localhost:8683/mcp`; Oneiric MCP URL.
 - `timeout_sec` — `int`, default `30`; request timeout.
 - `cache_ttl_sec` — `int`, default `300`; adapter cache lifetime.
 - `token` — `str | null`, default `None`; optional bearer token.
@@ -453,7 +455,7 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 - `retry_base_delay_seconds` / `retry_max_delay_seconds` — `float`, defaults `1.0` / `16.0`; exponential-backoff bounds.
 - `dependencies` — `dict[str, DependencyConfig]`, default `{}`; service dependency map.
 
-Each dependency has `host: str` (`localhost`), `port: int` (`8080`), `required: bool` (`True`), `timeout_seconds: int` (`30`), and `use_tls: bool` (`False`). The committed YAML registers Session-Buddy, Akosha, Dhara, Crackerjack, and Crow MCP with their service-specific ports and required flags.
+Each dependency has `host: str` (`localhost`), `port: int` (`8080`), `required: bool` (`True`), `timeout_seconds: int` (`30`), and `use_tls: bool` (`False`). The committed YAML registers Session-Buddy, Akosha, Crackerjack, and Crow MCP with their service-specific ports and required flags. (Dhara was decommissioned 2026-09-20; its role is now handled by Oneiric.)
 
 ### `persistence.*`, `verification.*`, `caller_quota.*`, and `feature_flags.*`
 
@@ -497,7 +499,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `default_endpoint_name` — `str`, default `mahavishnu-worker`; endpoint name.
 - `default_dependencies` — `list[str]`, default `torch`, `transformers`; endpoint dependencies.
 
-### `terminal.*`, `eventbridge.*`, and `dhara_state.*`
+### `terminal.*` and `eventbridge.*`
 
 **`terminal`**:
 
@@ -521,11 +523,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `endpoint` — `str`, default `""`; optional external ingestion URL.
 - `dry_run` — `bool`, default `True`; logs envelopes without transmitting them.
 
-**`dhara_state`**:
-
-- `enabled` — `bool`, default `True`; enables durable state persistence.
-- `flush_interval_seconds` — `int`, default `60`; periodic routing-buffer flush interval.
-- `max_routing_buffer_age_seconds` — `int`, default `3600`; retained routing-decision age.
+*(Removed 2026-10-14: `dhara_state.*` config block was deleted when Dhara was decommissioned 2026-09-20. Durability is now provided by Oneiric.)
 
 ### `integrations.*`, `learning.*`, and `distill.*`
 

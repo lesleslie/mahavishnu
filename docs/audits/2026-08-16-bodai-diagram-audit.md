@@ -82,8 +82,8 @@ re-edited without removing the visual guide copies. The visual guide is now the 
 
 ### 4. Self-contradicting diagrams
 
-- **mahavishnu** `WORKFLOW_DIAGRAMS.md:488` says "49 Total" tools; actual is 174+.
-- **mahavishnu** `WORKFLOW_DIAGRAMS.md:211` says "9 total" repos; actual is 7.
+- **mahavishnu** `WORKFLOW_DIAGRAMS.md:488` (file archived 2026-10-14 to docs/.archive/) says "49 Total" tools; actual is 174+.
+- **mahavishnu** `WORKFLOW_DIAGRAMS.md:211` (file archived 2026-10-14 to docs/.archive/) says "9 total" repos; actual is 7.
 - **akosha**: `README.md:391-400` lists "25 tools" in the FULL profile; CAPTION says "Cross-System Semantic Search" but BULLETS describe "Core Memory Aggregation".
 - **crackerjack**: `skills-ecosystem-mermaid.md` claims Dhara DB-backed storage; `oneiric-skills-integration.mmd` (same diagram concept) claims local JSON storage. Both are wrong (the code path is gone).
 - **crackerjack**: `MEMORY_ARCHITECTURE.md:79` ER diagram references 5 SQLite files that no longer exist.
@@ -113,7 +113,7 @@ but never re-validated against the live `CREATE TABLE` statements.
 
 ### 7. CLI surface diagrams that lag reality
 
-- **mahavishnu** `WORKFLOW_DIAGRAMS.md:133` — routing decision tree missing `peer_affinity` (added in ADR-014 May 2026).
+- **mahavishnu** `WORKFLOW_DIAGRAMS.md:133` (file archived 2026-10-14 to docs/.archive/) — routing decision tree missing `peer_affinity` (added in ADR-014 May 2026).
 - **oneiric** `VISUAL_GUIDE.md:1047-1071` — CLI diagram shows `pause/drain` as one node; actual CLI has them as separate commands, plus 9 more (`swap`, `manifest`, `secrets`, `event`, `workflow`, `shell`, `action-invoke`, `plugins`, `remote-status`, `supervisor-info`).
 - **oneiric** `VISUAL_GUIDE.md:415` — class diagram has wrong method signatures (`use(key) Handle` vs. actual `async use(key, *, provider, capabilities, require_all, force_reload)`).
 

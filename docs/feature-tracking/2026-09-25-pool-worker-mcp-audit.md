@@ -51,7 +51,7 @@ callers documented in:
 - `CLAUDE.md:384` (recommended entry point with `async_callback=True`)
 - `docs/architecture/MEMORY_ARCHITECTURE.md` (multiple integration contracts)
 - `docs/feature-tracking/2026-07-11-dispatch-to-pool.md` (original tracker)
-- `docs/WORKFLOW_DIAGRAMS.md:471`
+- `docs/WORKFLOW_DIAGRAMS.md:471` (file archived 2026-10-14 to docs/.archive/)
 
 The async path (with `async_callback=True`) was **verified failed** on
 2026-08-23 in this environment (memory `pool-dispatch-async-default.md`):

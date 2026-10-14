@@ -1,5 +1,7 @@
 # MCP Server Tool Specification
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](../plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 ## Overview
 
 Mahavishnu's MCP server exposes **197 tools** split across two layers:
@@ -899,7 +901,7 @@ _5 tool(s)_
 
 **Source:** `mahavishnu/mcp/tools/get_capability_result_tool.py:28`
 
-**Description:** Read back persisted envelopes for a trace_id from Dhara.
+**Description:** Read back persisted envelopes for a trace_id (persistence: Oneiric; Dhara retired 2026-09-20).
 
 ### 15. Clone Detection & Refactor
 
@@ -1023,7 +1025,7 @@ _7 tool(s)_
 
 **Source:** `mahavishnu/mcp/tools/self_improvement_tools.py:763`
 
-**Description:** Query Dhara for accumulated fix-failure records and surface patterns.
+**Description:** Query persistence for accumulated fix-failure records and surface patterns (Oneiric; Dhara retired 2026-09-20).
 
 #### `self_improvement_generate`
 

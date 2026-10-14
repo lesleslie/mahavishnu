@@ -32,7 +32,7 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
    - Dead letter queue flow
    - Quality metrics timeline
 
-1. **[Workflow Diagrams](.archive/WORKFLOW_DIAGRAMS.md)** - Step-by-step operational procedures
+1. **~~Workflow Diagrams~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))** - Step-by-step operational procedures
 
    - Quick start setup flow
    - Pool spawn and execute sequences
@@ -55,10 +55,10 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
 
 ### 💡 **How to Use These Visuals**
 
-- **New to Mahavishnu?** Start with the [Quick Start Workflow](.archive/WORKFLOW_DIAGRAMS.md#1-quick-start-workflow)
+- **New to Mahavishnu?** Start with the ~~Quick Start Workflow~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 - **Understanding architecture?** See [Overall Architecture](VISUAL_GUIDE.md#1-overall-architecture)
-- **Setting up pools?** Follow [Pool Spawn and Execute](.archive/WORKFLOW_DIAGRAMS.md#2-pool-spawn-and-execute)
-- **Troubleshooting?** Check [Error Recovery](.archive/WORKFLOW_DIAGRAMS.md#6-error-recovery)
+- **Setting up pools?** Follow ~~Pool Spawn and Execute~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+- **Troubleshooting?** Check ~~Error Recovery~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 - **Curious about performance?** View [Performance Optimizations](VISUAL_GUIDE.md#6-performance-optimizations)
 
 ______________________________________________________________________

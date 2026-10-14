@@ -1,5 +1,7 @@
 # MCP Tools Reference
 
+> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](../plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+
 Quick lookup for all **197 Mahavishnu MCP tools** organized by category. Each entry shows the tool name, one-line description, and source location. For full signatures, parameters, return values, and usage examples, see [`MCP_TOOLS_SPECIFICATION.md`](MCP_TOOLS_SPECIFICATION.md).
 
 **Composition**: 27 inline core tools (always loaded, in `mahavishnu/mcp/server_core.py`) + 170 decorated/profile-gated tools across 26 modules under `mahavishnu/mcp/tools/`.
@@ -918,7 +920,7 @@ Plan the DAG and return a CapabilityExecutionResult.
 
 **Source:** `get_capability_result_tool.py:28`
 
-Read back persisted envelopes for a trace_id from Dhara.
+Read back persisted envelopes for a trace_id (persistence: Oneiric; Dhara retired 2026-09-20).
 
 ______________________________________________________________________
 
@@ -1042,7 +1044,7 @@ Get all pending approval requests.
 
 **Source:** `self_improvement_tools.py:763`
 
-Query Dhara for accumulated fix-failure records and surface patterns.
+Query persistence for accumulated fix-failure records and surface patterns (Oneiric; Dhara retired 2026-09-20).
 
 ### `self_improvement_generate` ✅
 
