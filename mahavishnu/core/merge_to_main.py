@@ -745,6 +745,7 @@ def run_pipeline(
     no_cleanup: bool = False,
     base: str | None = None,
     no_consolidation_gate: bool = False,
+    no_crackerjack: bool = False,
 ) -> int:
     """End-to-end merge-to-main pipeline (spec §4.4 stages 2-6).
 
@@ -792,9 +793,20 @@ def run_pipeline(
             return EXIT_REVIEW_FAILURE
 
     # Stage 3 — crackerjack gate (REQ-013).
-    gate_rc, _gate_stderr = run_crackerjack_gate(worktree_root)
-    if gate_rc != 0:
-        return EXIT_CRACKERJACK_FAILURE
+    if no_crackerjack:
+        # Explicit operator opt-out (fail-loud bypass per
+        # `feedback-bodai-push-is-user-controlled`). Logged here, not
+        # silently — the dev-log entry captures the bypass.
+        print(
+            "[merge_to_main] --no-crackerjack set: skipping stage 3 "
+            "crackerjack gate (operator-approved bypass; per "
+            "docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md)",
+            file=sys.stderr,
+        )
+    else:
+        gate_rc, _gate_stderr = run_crackerjack_gate(worktree_root)
+        if gate_rc != 0:
+            return EXIT_CRACKERJACK_FAILURE
 
     # Stage 4 — squash-merge (spec §4.5).
     squash_rc, _squash_stderr = run_squash_merge(worktree_root, base, branch)
@@ -894,6 +906,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="skip stage 6 (default: prune the merged worktree)",
     )
     parser.add_argument(
+        "--no-crackerjack",
+        action="store_true",
+        help=(
+            "skip stage 3 crackerjack gate (operator-approved bypass; "
+            "logged in dev-log per docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md)"
+        ),
+    )
+    parser.add_argument(
         "--from",
         dest="base",
         default=None,
@@ -921,6 +941,7 @@ def main() -> int:
         no_cleanup=args.no_cleanup,
         base=args.base,
         no_consolidation_gate=args.no_consolidation_gate,
+        no_crackerjack=args.no_crackerjack,
     )
 
 
