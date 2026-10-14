@@ -14,7 +14,7 @@ Archived
 
 ## Context
 
-Wave 3 targeted Crackerjack's remaining small zero-coverage modules after wave 2, while a regression fixer addressed the accumulated failures and a dedicated audit verified the git-analytics coverage result. The workflow is defined in [crackerjack-coverage-fanout-wave3.js](../../../workflows/.archive/crackerjack-coverage-fanout-wave3.js).
+Wave 3 targeted Crackerjack's remaining small zero-coverage modules after wave 2, while a regression fixer addressed the accumulated failures and a dedicated audit verified the git-analytics coverage result. The workflow is defined in [crackerjack-coverage-fanout-wave3.js](../../../../.claude/workflows/.archive/crackerjack-coverage-fanout-wave3.js).
 
 ## Decision rule
 

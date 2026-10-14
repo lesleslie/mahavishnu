@@ -14,7 +14,7 @@ Archived
 
 ## Context
 
-The original Crackerjack coverage fan-out was created to lift a 6% baseline by assigning parallel test writers to independent, high-leverage zero-coverage modules. The workflow is defined in [crackerjack-coverage-fanout.js](../../../workflows/.archive/crackerjack-coverage-fanout.js).
+The original Crackerjack coverage fan-out was created to lift a 6% baseline by assigning parallel test writers to independent, high-leverage zero-coverage modules. The workflow is defined in [crackerjack-coverage-fanout.js](../../../../.claude/workflows/.archive/crackerjack-coverage-fanout.js).
 
 ## Decision rule
 

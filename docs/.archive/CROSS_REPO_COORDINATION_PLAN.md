@@ -594,9 +594,9 @@ coordination:
 
 ## References
 
-- [ADR 001: Use Oneiric](./adr/001-use-oneiric.md) - Configuration patterns
-- [ADR 002: MCP-First Design](./adr/002-mcp-first-design.md) - MCP architecture
-- [ADR 004: Adapter Architecture](./adr/004-adapter-architecture.md) - Multi-adapter patterns
-- [ADR 005: Unified Memory Architecture](./adr/005-memory-architecture.md) - Memory integration
-- [ECOSYSTEM.md](./ECOSYSTEM.md) - Ecosystem catalog
-- [POOL_ARCHITECTURE.md](./POOL_ARCHITECTURE.md) - Pool management
+- [ADR 001: Use Oneiric](../adr/001-use-oneiric.md) - Configuration patterns
+- [ADR 002: MCP-First Design](../adr/002-mcp-first-design.md) - MCP architecture
+- [ADR 004: Adapter Architecture](../adr/004-adapter-architecture.md) - Multi-adapter patterns
+- [ADR 005: Unified Memory Architecture](../adr/005-memory-architecture.md) - Memory integration
+- [ECOSYSTEM.md](../ECOSYSTEM.md) - Ecosystem catalog
+- [POOL_ARCHITECTURE.md](../POOL_ARCHITECTURE.md) - Pool management
