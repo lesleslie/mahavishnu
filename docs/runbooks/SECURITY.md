@@ -331,5 +331,5 @@ ______________________________________________________________________
 ## Related Documentation
 
 - SECURITY_CHECKLIST.md - Security implementation checklist
-- [TASK_ORCHESTRATION_MASTER_PLAN_V3.md](../TASK_ORCHESTRATION_MASTER_PLAN_V3.md) - Master plan
+- [plans/.archive/2026-02-18-task-orchestration.md](../plans/.archive/2026-02-18-task-orchestration.md) - Master plan
 - [PHASE_0_ACTION_PLAN.md](../archive/implementation-plans/PHASE_0_ACTION_PLAN.md) - Phase 0 implementation details

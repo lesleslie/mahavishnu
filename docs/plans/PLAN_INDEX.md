@@ -81,9 +81,9 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md) | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md` | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md` | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md``.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md` | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
 
 ### Architecture Decision Records (`docs/adr/`)
 

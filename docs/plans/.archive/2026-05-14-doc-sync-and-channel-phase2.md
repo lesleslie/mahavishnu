@@ -67,7 +67,7 @@ Find this block (around line 83):
 ```
 ### Remaining Work Execution Order
 
-- Plan: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
+- Plan: [2026-05-11-remaining-work-execution-order.md](../2026-05-11-remaining-work-execution-order.md)
 - Status: `active`, `implementation`
 - Use for: the prioritized queue for the remaining convergence, terminal, and cleanup work after inventory reconciliation.
 - Current implementation note: tracks only tasks still open as of 2026-05-11; completed and historical plans are omitted.
@@ -78,7 +78,7 @@ Replace with:
 ```
 ### Remaining Work Execution Order
 
-- Plan: [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
+- Plan: [2026-05-11-remaining-work-execution-order.md](../2026-05-11-remaining-work-execution-order.md)
 - Status: `complete`, `historical`
 - Use for: historical record of the post-convergence execution queue. All tasks (T1 TerminalWorkerProtocol, T4 TerminalAIWorker shim, C6a Crackerjack contracts, C6b complexity reduction, C7 docs cleanup) are complete as of 2026-05-13.
 ```
@@ -90,7 +90,7 @@ Find this block (around line 98):
 ```
 ### Terminal Worker Unification
 
-- Plan: [2026-05-10-terminal-worker-unification-plan.md](./2026-05-10-terminal-worker-unification-plan.md)
+- Plan: [2026-05-10-terminal-worker-unification-plan.md](../2026-05-10-terminal-worker-unification-plan.md)
 - Status: `active`, `implementation`
 - Use for: collapsing provider-specific branching in terminal-based AI workers behind a shared provider-neutral protocol while preserving current defaults and optional non-default support until the shared contract is fully covered.
 - Current implementation note: this is a separate refactor track from the MiniMax migration. T0, T2, and T3 are complete; the remaining work is shared-protocol extraction and legacy-branch retirement. It should consume the existing `generic_shell.py` path, reduce special cases in `terminal.py`, and keep `terminal-*` workers registry-driven rather than provider-default driven.
@@ -101,7 +101,7 @@ Replace with:
 ```
 ### Terminal Worker Unification
 
-- Plan: [2026-05-10-terminal-worker-unification-plan.md](./2026-05-10-terminal-worker-unification-plan.md)
+- Plan: [2026-05-10-terminal-worker-unification-plan.md](../2026-05-10-terminal-worker-unification-plan.md)
 - Status: `complete`, `historical`
 - Use for: historical record of the terminal worker unification. All phases T0–T4 complete as of 2026-05-13. `TerminalWorkerProtocol` lives in `workers/protocol.py`; `TerminalAIWorker` is a 65-line shim over `GenericShellWorker`.
 ```
@@ -113,7 +113,7 @@ Find this block (around line 229):
 ```
 ### Hatchet Integration
 
-- Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
+- Backlog: [2026-05-07-mahavishnu-master-backlog.md](../2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
 - Status: `active`, `implementation` — P7 (rate-limiting pattern) and P8 (approval durable wait) are plan-only; P10 (HatchetAdapter) requires spec first
 - Hatchet is an MIT-licensed durable task queue on Postgres (<20ms start, per-key rate limiting, WaitForEvent). P7 and P8 are pattern borrows (no SDK dependency). P10 adds `hatchet-sdk` and a full `OrchestratorAdapter` implementation gated on `adapters.hatchet: true`.
 - Use for: P7/P8 implementation details are inline in the backlog. P10 spec file path: `docs/plans/2026-05-07-hatchet-adapter-spec.md` (to be written).
@@ -125,7 +125,7 @@ Replace with:
 ### Hatchet Integration
 
 - Plan: [docs/plans/2026-05-08-hatchet-adapter.md](../superpowers/plans/2026-05-08-hatchet-adapter.md)
-- Backlog: [2026-05-07-mahavishnu-master-backlog.md](./2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
+- Backlog: [2026-05-07-mahavishnu-master-backlog.md](../2026-05-07-mahavishnu-master-backlog.md) — Priorities 7, 8, 10
 - Status: `complete`, `historical`
 - Use for: historical record. P7 (sliding-window rate limiter in `task_router.py`), P8 (durable approval persistence to Dhara), and P10 (`HatchetAdapterImpl` in `mahavishnu/engines/hatchet_adapter_impl.py` with `WaitForEvent` approval bridge) are all delivered as of 2026-05-08.
 ```

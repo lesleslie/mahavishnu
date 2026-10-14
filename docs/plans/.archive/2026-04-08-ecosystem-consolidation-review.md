@@ -54,7 +54,7 @@ The ecosystem can be simplified by enforcing one canonical path per concern:
 The repo already contains roadmap items that point in this direction, especially:
 
 - `docs/plans/2026-04-04-ecosystem-execution-board.md`
-- `docs/plans/initiatives/10-low-value-tool-retirement.md`
+- `docs/plans/../initiatives/10-low-value-tool-retirement.md`
 - `docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md`
 - `docs/FEATURE_ROADMAP_NEXT_STEPS.md`
 

@@ -15,10 +15,11 @@ Three responsibilities:
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import logging
 import random
 from types import ModuleType
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from mahavishnu.core.capabilities import (
     Candidate,
@@ -27,8 +28,8 @@ from mahavishnu.core.capabilities import (
     DAGEdge,
     DAGNode,
     EngineRegistration,
-    ExecutionDAG,
     EnvelopeId,
+    ExecutionDAG,
     SelectorStrategy,
     TraceId,
 )
@@ -252,11 +253,7 @@ async def _dispatch_dag_waves(
         for nid, eid in zip(wave, handles, strict=True):
             envelope_ids[nid] = eid
             remaining.discard(nid)
-        wave = [
-            nid
-            for nid in remaining
-            if all(p in envelope_ids for p in incoming[nid])
-        ]
+        wave = [nid for nid in remaining if all(p in envelope_ids for p in incoming[nid])]
     return envelope_ids
 
 

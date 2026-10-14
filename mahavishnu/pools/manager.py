@@ -22,11 +22,8 @@ from ._registry import get_pool_factory, list_pool_types
 # These imports trigger the pool-type registration side effect in each module
 # (register_pool_type at module load). The dispatch itself uses the registry
 # (get_pool_factory) rather than these classes directly — see spawn_pool.
-from .mahavishnu_pool import MahavishnuPool
 from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
-from .runpod_pool import RunPodPool
-from .session_buddy_pool import SessionBuddyPool
 
 if TYPE_CHECKING:
     from .base import BasePool

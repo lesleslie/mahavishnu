@@ -87,13 +87,7 @@ def canonicalize_pool_type(name: str) -> str:
 # import error propagates to the caller at the same place it would from
 # ``mahavishnu.pools.__init__``.
 def _ensure_pool_registry_loaded() -> None:
-    from . import (
-        gpu_handler_pool,
-        mahavishnu_pool,
-        pi_pool,
-        runpod_pool,
-        session_buddy_pool,
-    )
+    pass
 
 
 _ensure_pool_registry_loaded()

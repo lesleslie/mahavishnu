@@ -1889,7 +1889,7 @@ All names referenced in tests match definitions in modules.
 - `crackerjack run -v` pin via `CRACKERJACK_INVOCATION` constant + assertion test.
 - Session-buddy dual-store as best-effort with stderr log on failure (Task 1.2).
 
----
+______________________________________________________________________
 
 ## Amendment (2026-10-13): Pre-push Consolidation Gate
 
@@ -1964,9 +1964,9 @@ Plan-level summary:
 Beyond the per-task tests, the smoke flow:
 
 1. Two worktrees of the same repo (`/Users/les/.local/state/mahavishnu/worktrees/<repo>/a` + `b`).
-2. Worker A squash-merges its branch into local `main`. Gate enumerates worktrees; sees B with unmerged WIP. Holds back. stderr surfaces. `EXIT_OK`. `.review-state.json` has the sticky marker.
-3. Stage 6 (cleanup) is skipped — branch + worktree remain.
-5. Worker B squash-merges its branch into local `main`. The pipeline in B re-evaluates the gate; A's branch is now ancestor of local `main`; gate passes; push fires; both A's and B's commits ship.
+1. Worker A squash-merges its branch into local `main`. Gate enumerates worktrees; sees B with unmerged WIP. Holds back. stderr surfaces. `EXIT_OK`. `.review-state.json` has the sticky marker.
+1. Stage 6 (cleanup) is skipped — branch + worktree remain.
+1. Worker B squash-merges its branch into local `main`. The pipeline in B re-evaluates the gate; A's branch is now ancestor of local `main`; gate passes; push fires; both A's and B's commits ship.
 
 ### Self-Review (amendment-specific)
 

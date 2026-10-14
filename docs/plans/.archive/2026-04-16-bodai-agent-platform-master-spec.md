@@ -18,8 +18,8 @@ title: "Bodai Agent Platform Master Spec"
 
 **Companion documents:**
 
-- Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-- Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
+- Implementation plan: [2026-04-16-bodai-master-implementation-plan.md](../2026-04-16-bodai-master-implementation-plan.md)
+- Control plane update: [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](../2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
 
 **Phase registry (cross-plan reference):**
 
@@ -642,4 +642,4 @@ The `OrchestratorAdapter` base interface must be strengthened:
 
 ## 13. Implementation Plan
 
-The operational follow-up to this spec is [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md).
+The operational follow-up to this spec is [2026-04-16-bodai-master-implementation-plan.md](../2026-04-16-bodai-master-implementation-plan.md).

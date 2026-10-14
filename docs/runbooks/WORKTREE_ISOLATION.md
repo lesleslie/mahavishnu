@@ -135,6 +135,6 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 ## Related
 
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md) — niche filter that motivated the worktree REPLACEMENT
-- [docs/plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md](../plans/2026-09-26-impl-C-8-WORKTREE_ISOLATION.md) — implementation plan
+- [docs/plans/2026-09-26-impl-C-8-worktree-isolation.md](../plans/.archive/2026-09-26-impl-C-8-worktree-isolation.md) — implementation plan
 - [docs/slos/2026-09-26-wireup-pool-dispatch.md](../slos/2026-09-26-wireup-pool-dispatch.md) — SLO targets
 - `docs/runbooks/ON_CALL_HANDBOOK.md` — escalation procedures

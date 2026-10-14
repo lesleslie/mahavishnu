@@ -34,7 +34,7 @@ rg -n "register_worktree_tools|worktree_tools|create_ecosystem_worktree|remove_e
 - `docs/reports/deprecation-migration.md`
 - `docs/reviews/review-2-architecture.md`
 - `docs/reports/tool-ranking-report.md`
-- `docs/plans/initiatives/10-low-value-tool-retirement.md`
+- `docs/plans/../initiatives/10-low-value-tool-retirement.md`
 
 ### Non-target references
 

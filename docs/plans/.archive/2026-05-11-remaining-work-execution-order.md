@@ -28,8 +28,8 @@ title: "Remaining Work Execution Order"
 
 | Order | Track | Task | Source plan | Status | Dependency / note |
 |---|---|---|---|---|---|
-| 1 | T1 | Terminal worker shared protocol extraction | [terminal-unification](./2026-05-10-terminal-worker-unification-plan.md) | completed | `TerminalWorkerProtocol` (typing.Protocol, @runtime_checkable) created in `workers/protocol.py` and exported from `workers/__init__.py`. |
-| 2 | T4 | Terminal legacy branch retirement | [terminal-unification](./2026-05-10-terminal-worker-unification-plan.md) | completed | `TerminalAIWorker` collapsed to a 65-line shim over `GenericShellWorker`; private impl methods removed; tests updated; 104 tests pass, lint clean. |
+| 1 | T1 | Terminal worker shared protocol extraction | [terminal-unification](../2026-05-10-terminal-worker-unification-plan.md) | completed | `TerminalWorkerProtocol` (typing.Protocol, @runtime_checkable) created in `workers/protocol.py` and exported from `workers/__init__.py`. |
+| 2 | T4 | Terminal legacy branch retirement | [terminal-unification](../2026-05-10-terminal-worker-unification-plan.md) | completed | `TerminalAIWorker` collapsed to a 65-line shim over `GenericShellWorker`; private impl methods removed; tests updated; 104 tests pass, lint clean. |
 
 ## Already Resolved
 

@@ -97,22 +97,22 @@ open http://localhost:3000   # Grafana
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| [`config/otel-collector-config.yaml`](../config/otel-collector-config.yaml) | Production OTel collector config | 380 |
-| [`config/prometheus.yml`](../config/prometheus.yml) | Prometheus scraping config | 30 |
+| [`config/otel-collector-config.yaml`](../../../config/otel-collector-config.yaml) | Production OTel collector config | 380 |
+| [`config/prometheus.yml`](../../../config/prometheus.yml) | Prometheus scraping config | 30 |
 
 ### Grafana Configuration
 
 | File | Purpose |
 |------|---------|
-| [`config/grafana/datasources/datasources.yml`](../config/grafana/datasources/datasources.yml) | Prometheus + Jaeger datasources |
-| [`config/grafana/dashboards/dashboards.yml`](../config/grafana/dashboards/dashboards.yml) | Dashboard provisioning |
-| [`config/grafana/dashboards/otlp-overview-dashboard.json`](../config/grafana/dashboards/otlp-overview-dashboard.json) | Pre-built dashboard |
+| [`config/grafana/datasources/datasources.yml`](../../../config/grafana/datasources/datasources.yml) | Prometheus + Jaeger datasources |
+| [`config/grafana/dashboards/dashboards.yml`](../../../config/grafana/dashboards/dashboards.yml) | Dashboard provisioning |
+| [`config/grafana/dashboards/otlp-overview-dashboard.json`](../../../config/grafana/dashboards/otlp-overview-dashboard.json) | Pre-built dashboard |
 
 ## Client Examples
 
 ### Python Client
 
-**File:** [`config/clients/python-otlp-client.py`](../config/clients/python-otlp-client.py) (450 lines)
+**File:** [`config/clients/python-otlp-client.py`](../../../config/clients/python-otlp-client.py) (450 lines)
 
 Complete Python OTLP client with:
 
@@ -138,11 +138,11 @@ python python-otlp-client.py --endpoint http://localhost:4321 --source qwen --ai
 
 | File | Purpose |
 |------|---------|
-| [`config/clients/docker-compose.otlp.yml`](../config/clients/docker-compose.otlp.yml) | Standalone OTel test stack |
-| [`config/clients/quickstart.sh`](../config/clients/quickstart.sh) | Automated testing script |
-| [`config/clients/Makefile`](../config/clients/Makefile) | Convenience commands |
-| [`config/clients/diagnose.sh`](../config/clients/diagnose.sh) | System health check |
-| [`config/clients/README.md`](../config/clients/README.md) | Client examples guide |
+| [`config/clients/docker-compose.otlp.yml`](../../../config/clients/docker-compose.otlp.yml) | Standalone OTel test stack |
+| [`config/clients/quickstart.sh`](../../../config/clients/quickstart.sh) | Automated testing script |
+| [`config/clients/Makefile`](../../../config/clients/Makefile) | Convenience commands |
+| [`config/clients/diagnose.sh`](../../../config/clients/diagnose.sh) | System health check |
+| [`config/clients/README.md`](../../../config/clients/README.md) | Client examples guide |
 
 ## Port Reference
 

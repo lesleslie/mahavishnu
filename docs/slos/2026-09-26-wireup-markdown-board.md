@@ -74,5 +74,5 @@ State sidecar consistency:
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-11-markdown-board-watcher.md](../plans/2026-09-26-impl-C-11-markdown-board-watcher.md)
+- [docs/plans/2026-09-26-impl-C-11-markdown-board-watcher.md](../plans/.archive/2026-09-26-impl-C-11-markdown-board-watcher.md)
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md)

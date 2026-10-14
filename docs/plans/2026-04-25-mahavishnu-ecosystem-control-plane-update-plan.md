@@ -87,9 +87,9 @@ Existing plan/docs coverage:
 
 - `docs/plans/2026-02-27-health-check-system-design.md`
 - `docs/plans/2026-02-27-health-check-implementation-plan.md`
-- `docs/plans/initiatives/01-health-contract-and-command.md`
-- `docs/plans/initiatives/04-mcp-utility-tools.md`
-- `docs/plans/initiatives/05-ecosystem-contract-tests.md`
+- `docs/plans/../initiatives/01-health-contract-and-command.md`
+- `docs/plans/../initiatives/04-mcp-utility-tools.md`
+- `docs/plans/../initiatives/05-ecosystem-contract-tests.md`
 
 ### 2.2 Existing Adapter and Capability Surfaces
 
@@ -158,7 +158,7 @@ Implemented TUI shell:
 
 Plan status mismatch to resolve:
 
-- `docs/plans/initiatives/13-dashboard-phase2-textual.md` says Textual dashboard phase 2 is complete.
+- `docs/plans/../initiatives/13-dashboard-phase2-textual.md` says Textual dashboard phase 2 is complete.
 - `docs/plans/2026-04-04-ecosystem-execution-board.md` still has Initiative 13 unchecked.
 - `mahavishnu/tui/app.py` is implemented as a shell, but the planned live data requirement is not actually met because fetchers return placeholder data.
 
@@ -508,7 +508,7 @@ Goal: make existing docs reflect actual implementation state and reduce tool sur
 
 Tasks:
 
-- Update `docs/plans/initiatives/13-dashboard-phase2-textual.md` to distinguish "TUI shell complete" from "live data dashboard complete".
+- Update `docs/plans/../initiatives/13-dashboard-phase2-textual.md` to distinguish "TUI shell complete" from "live data dashboard complete".
 - Update `docs/plans/2026-04-04-ecosystem-execution-board.md` Initiative 13 status or add a note explaining the mismatch.
 - Add this plan to `docs/plans/PLAN_INDEX.md` if that index is still maintained.
 - **Tool consolidation audit (new):** Audit the MCP tool surface for redundancy. Specific targets:

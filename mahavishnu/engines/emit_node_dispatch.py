@@ -18,16 +18,15 @@ because the ``ai`` PEP 735 dependency group is optional
 
 from __future__ import annotations
 
-import logging
-import uuid
 from datetime import UTC, datetime
+import logging
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from mahavishnu.core.adapters.base import OrchestratorAdapter
 from mahavishnu.core.capabilities import (
     CapabilityEnvelope,
     EnvelopeId,
-    TraceId,
 )
 from mahavishnu.core.conductor import _EMIT_NODE_DISPATCH
 from mahavishnu.core.conductor_types import NodeHandle, NodeSpec
@@ -245,9 +244,7 @@ async def emit_hatchet_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     # Strip the "engine:" prefix from the capability id so the engine receives
     # the bare workflow name (matches the Hatchet engine's existing convention).
     workflow_name = (
-        spec.capability_id.split(":", 1)[1]
-        if ":" in spec.capability_id
-        else "agent-loop"
+        spec.capability_id.split(":", 1)[1] if ":" in spec.capability_id else "agent-loop"
     )
     task = {
         "prompt": spec.prompt,
@@ -269,7 +266,9 @@ async def emit_pydanticai_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     ``status="failed"`` envelope so the failure is observable via Dhara list.
     """
     try:
-        from mahavishnu.adapters.ai.pydantic_ai_adapter import PydanticAIAdapter  # type: ignore[import-not-found]
+        from mahavishnu.adapters.ai.pydantic_ai_adapter import (
+            PydanticAIAdapter,  # type: ignore[import-not-found]
+        )
     except ImportError as exc:
         envelope = _build_envelope(
             spec,
@@ -350,7 +349,7 @@ __all__ = [
     "emit_agno_node",
     "emit_hatchet_node",
     "emit_llamaindex_node",
-    "emit_pydanticai_node",
     "emit_prefect_node",
+    "emit_pydanticai_node",
     "register",
 ]

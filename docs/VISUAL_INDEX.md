@@ -11,7 +11,7 @@ ______________________________________________________________________
 | Guide | Description | Diagrams | Link |
 |-------|-------------|----------|------|
 | **Visual Guide** | Master reference for all architecture and system diagrams | 50+ | [VISUAL_GUIDE.md](VISUAL_GUIDE.md) |
-| **Workflow Diagrams** | Step-by-step operational procedures | 15+ | [WORKFLOW_DIAGRAMS.md](WORKFLOW_DIAGRAMS.md) |
+| **Workflow Diagrams** | Step-by-step operational procedures | 15+ | [WORKFLOW_DIAGRAMS.md](.archive/WORKFLOW_DIAGRAMS.md) |
 | **Architecture** | High-level system architecture | 1 | ARCHITECTURE.md |
 
 ______________________________________________________________________
@@ -114,13 +114,13 @@ ______________________________________________________________________
 
 ### For New Users
 
-**Start Here**: 👉 [Quick Start Workflow](WORKFLOW_DIAGRAMS.md#1-quick-start-workflow)
+**Start Here**: 👉 [Quick Start Workflow](.archive/WORKFLOW_DIAGRAMS.md#1-quick-start-workflow)
 
 **Then**:
 
 1. [Overall Architecture](VISUAL_GUIDE.md#1-overall-architecture) - Understand the big picture
-1. [Pool Spawn and Execute](WORKFLOW_DIAGRAMS.md#2-pool-spawn-and-execute) - Learn to use pools
-1. [Repository Sweep](WORKFLOW_DIAGRAMS.md#3-repository-sweep) - Execute workflows across repos
+1. [Pool Spawn and Execute](.archive/WORKFLOW_DIAGRAMS.md#2-pool-spawn-and-execute) - Learn to use pools
+1. [Repository Sweep](.archive/WORKFLOW_DIAGRAMS.md#3-repository-sweep) - Execute workflows across repos
 
 ### For Developers
 
@@ -134,21 +134,21 @@ ______________________________________________________________________
 **Understanding Performance**:
 
 1. [Performance Optimizations](VISUAL_GUIDE.md#6-performance-optimizations)
-1. [Memory Search](WORKFLOW_DIAGRAMS.md#4-memory-search)
-1. [Quality Control Pipeline](WORKFLOW_DIAGRAMS.md#5-quality-control-pipeline)
+1. [Memory Search](.archive/WORKFLOW_DIAGRAMS.md#4-memory-search)
+1. [Quality Control Pipeline](.archive/WORKFLOW_DIAGRAMS.md#5-quality-control-pipeline)
 
 ### For Operations Teams
 
 **Daily Operations**:
 
-1. [Pool Spawn and Execute](WORKFLOW_DIAGRAMS.md#2-pool-spawn-and-execute)
-1. [Error Recovery](WORKFLOW_DIAGRAMS.md#6-error-recovery)
+1. [Pool Spawn and Execute](.archive/WORKFLOW_DIAGRAMS.md#2-pool-spawn-and-execute)
+1. [Error Recovery](.archive/WORKFLOW_DIAGRAMS.md#6-error-recovery)
 1. [Dead Letter Queue](VISUAL_GUIDE.md#10-dead-letter-queue)
 
 **Monitoring**:
 
 1. [Quality Metrics Timeline](VISUAL_GUIDE.md#11-quality-metrics-timeline)
-1. [Circuit Breaker Pattern](WORKFLOW_DIAGRAMS.md#6-error-recovery)
+1. [Circuit Breaker Pattern](.archive/WORKFLOW_DIAGRAMS.md#6-error-recovery)
 1. [Testing Architecture](VISUAL_GUIDE.md#8-testing-architecture)
 
 ### For Security Teams
@@ -228,11 +228,11 @@ ______________________________________________________________________
 
 1. **I need to perform a specific task**
 
-   - → Go to [Workflow Diagrams](WORKFLOW_DIAGRAMS.md)
+   - → Go to [Workflow Diagrams](.archive/WORKFLOW_DIAGRAMS.md)
 
 1. **I'm troubleshooting an issue**
 
-   - → Go to [Error Recovery](WORKFLOW_DIAGRAMS.md#6-error-recovery)
+   - → Go to [Error Recovery](.archive/WORKFLOW_DIAGRAMS.md#6-error-recovery)
 
 1. **I want to understand performance**
 
@@ -284,7 +284,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-**Quick Start**: 👉 [Visual Guide](VISUAL_GUIDE.md) | [Workflow Diagrams](WORKFLOW_DIAGRAMS.md)
+**Quick Start**: 👉 [Visual Guide](VISUAL_GUIDE.md) | [Workflow Diagrams](.archive/WORKFLOW_DIAGRAMS.md)
 
 **Document Version**: 1.0
 **Last Updated**: 2026-02-03

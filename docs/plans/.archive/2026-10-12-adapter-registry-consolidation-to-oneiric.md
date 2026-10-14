@@ -287,7 +287,7 @@ serialization is documented.
   merge conflicts.
 - Add `superseded_by` to
   `docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`
-  and `docs/plans/initiatives/12-golden-paths-workflows.md`.
+  and `docs/plans/../initiatives/12-golden-paths-workflows.md`.
 - Rewrite `docs/reports/golden-paths-guide.md` lines 74, 99, 153-155
   (5 references) to point at `MCPAdapterRegistryClient` and
   `Resolver`.
@@ -331,7 +331,7 @@ serialization is documented.
 - `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` (Dhara surface gone, Option C)
 - `docs/plans/2026-09-27-shared-bodai-substrate-phase-e2.md` (§11 cross-ref + serialization note)
 - `docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md` (superseded_by)
-- `docs/plans/initiatives/12-golden-paths-workflows.md` (superseded_by)
+- `docs/plans/../initiatives/12-golden-paths-workflows.md` (superseded_by)
 - `docs/reports/golden-paths-guide.md` (5 references)
 - `docs/architecture/MEMORY_ARCHITECTURE.md` (chain section)
 
