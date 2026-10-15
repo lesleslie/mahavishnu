@@ -207,10 +207,17 @@ def test_crackerjack_invocation_pinned_to_run_v() -> None:
     assert "-p" not in CRACKERJACK_INVOCATION
 
 
-def test_run_crackerjack_gate_invokes_run_v_with_exitcode_zero(
+def test_run_crackerjack_gate_invokes_run_v_with_fast_flag(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """REQ-013: subprocess runs `crackerjack run -v --exitcode 0` in worktree.
+    """REQ-013: subprocess runs ``crackerjack run -v -f`` in worktree.
+
+    The merge gate uses the ``-f`` (fast hooks only) flag so the gate
+    finishes in seconds rather than the ~5 minutes the comprehensive
+    suite takes; the comprehensive suite is still expected to pass
+    via the SessionEnd hook's pre-merge check (or CI), not on the
+    merge path itself. The publish stage (``-p``) is still
+    forbidden — see ``test_crackerjack_invocation_omits_publish_flag``.
 
     Monkeypatches ``subprocess.run`` so the test does not actually
     invoke crackerjack (operator-driven; would require a full venv +
@@ -235,8 +242,8 @@ def test_run_crackerjack_gate_invokes_run_v_with_exitcode_zero(
 
     assert rc == 0
     assert stderr == ""
-    # Exact subprocess call per spec REQ-013: `crackerjack run -v --exitcode 0`.
-    assert captured["cmd"] == ["crackerjack", "run", "-v", "--exitcode", "0"]
+    # Exact subprocess call per spec REQ-013: ``crackerjack run -v -f``.
+    assert captured["cmd"] == ["crackerjack", "run", "-v", "-f"]
     assert captured["kwargs"]["cwd"] == tmp_path
     assert captured["kwargs"]["capture_output"] is True
     assert captured["kwargs"]["text"] is True

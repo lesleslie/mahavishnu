@@ -50,9 +50,14 @@ EXIT_CLEANUP_FAILURE = 5
 # Pinned crackerjack invocation for the merge gate (spec REQ-013).
 # The trailing space separates the verb from any appended flags; the
 # CI-guard test in tests/unit/core/test_merge_to_main.py asserts this
-# starts with "crackerjack run -v " and never contains "-p". The
-# publish stage (`-p`) must never fire on the merge path.
-CRACKERJACK_INVOCATION: str = "crackerjack run -v "
+# starts with "crackerjack run -v -f " and never contains "-p". The
+# publish stage (`-p`) must never fire on the merge path. The
+# ``-f`` flag (fast hooks only) was added so the merge gate runs in
+# seconds rather than the ~5 minutes the comprehensive suite takes;
+# the comprehensive suite is still expected to pass via the
+# SessionEnd hook's pre-merge check (or CI), not on the merge path
+# itself.
+CRACKERJACK_INVOCATION: str = "crackerjack run -v -f "
 
 
 def write_review_state(worktree_root: Path, state: dict[str, Any]) -> None:
