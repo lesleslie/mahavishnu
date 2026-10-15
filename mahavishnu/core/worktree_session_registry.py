@@ -42,9 +42,8 @@ on exception).
 
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
 
 from mahavishnu.core.json_state_store import (
@@ -54,6 +53,9 @@ from mahavishnu.core.json_state_store import (
     utcnow_iso,
 )
 from mahavishnu.core.paths import get_state_path
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SUPPORTED_SCHEMA_VERSION = 1
 

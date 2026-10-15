@@ -818,7 +818,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            import zstandard
+            import zstandard  # noqa: F401
         except ImportError as exc:
             raise WorktreeError(
                 "zstandard dependency required for streaming tar.zst; "

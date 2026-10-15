@@ -18,11 +18,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-from typing import Any
-
-from mcp_common.fastmcp import FastMCP
+from typing import TYPE_CHECKING, Any
 
 from mahavishnu.core.budget import BudgetRecord, BudgetSpec, BudgetStateMachine
+
+if TYPE_CHECKING:
+    from mcp_common.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
 
@@ -23,6 +23,9 @@ from mahavishnu.jot.cli import (
     cmd_show,
     cmd_vitals,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 app = typer.Typer(help="Jot inbox: quick-capture scratchpad for humans and AI agents.")
 

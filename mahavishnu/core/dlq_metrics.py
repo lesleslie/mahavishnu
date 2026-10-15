@@ -35,7 +35,7 @@ _dlq_metrics: DLQMetrics | None = None
 def _ensure_prometheus_available() -> bool:
     """Check if prometheus_client is available."""
     try:
-        import prometheus_client
+        import prometheus_client  # noqa: F401
 
         return True
     except ImportError:

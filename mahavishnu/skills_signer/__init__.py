@@ -78,33 +78,33 @@ from mahavishnu.skills_signer.sign import SignedPayload, SkillsSigner
 from mahavishnu.skills_signer.verify import verify_signature
 
 __all__ = [  # grouped with section comments; alphabetical sort would split them
-    # Canonicalization
-    "canonical_payload_for_signing",
-    "canonicalize_payload",
-    # Exceptions
-    "InvalidManifestAlgorithmError",
-    "MalformedManifestError",
-    "SkillsSignerError",
-    "UnknownKeyIdError",
     # Constants
     "KEY_ID_BYTES",
     "SIGNATURE_FIELDS_TO_STRIP",
     "SUPPORTED_ALGORITHM",
+    # Exceptions
+    "InvalidManifestAlgorithmError",
     # Key types and operations
     "Keypair",
-    "generate_keypair",
-    "load_or_create_keypair",
-    "public_key_from_bytes",
+    "MalformedManifestError",
     # Manifest types and operations
     "PubkeyManifest",
     "PubkeyManifestEntry",
-    "build_pubkey_manifest",
-    "manifest_entry_from_dict",
-    "manifest_from_dict",
-    "merge_manifests",
     # Signer
     "SignedPayload",
     "SkillsSigner",
+    "SkillsSignerError",
+    "UnknownKeyIdError",
+    "build_pubkey_manifest",
+    # Canonicalization
+    "canonical_payload_for_signing",
+    "canonicalize_payload",
+    "generate_keypair",
+    "load_or_create_keypair",
+    "manifest_entry_from_dict",
+    "manifest_from_dict",
+    "merge_manifests",
+    "public_key_from_bytes",
     # Verification
     "verify_signature",
 ]

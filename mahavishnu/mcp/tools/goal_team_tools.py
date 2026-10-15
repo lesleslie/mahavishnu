@@ -13,9 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import time
-from typing import Any, cast
-
-from mcp_common.fastmcp import FastMCP
+from typing import TYPE_CHECKING, Any, cast
 
 from mahavishnu.core import team_learning
 from mahavishnu.core.context import (
@@ -32,6 +30,9 @@ from mahavishnu.core.errors import (
 )
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.core.goal_team_metrics import get_goal_team_metrics
+
+if TYPE_CHECKING:
+    from mcp_common.fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 

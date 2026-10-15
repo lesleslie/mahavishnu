@@ -160,7 +160,7 @@ def _load_all_pool_types() -> None:
     itself imports each pool module. By calling this at package init time we
     make the registry available to early-bootstrap callers (CLI, MCP bootstrap).
     """
-    from . import (
+    from . import (  # noqa: F401
         gpu_handler_pool,
         mahavishnu_pool,
         pi_pool,

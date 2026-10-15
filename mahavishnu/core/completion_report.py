@@ -28,13 +28,15 @@ Notes:
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import StrEnum
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
 
 
 class CompletionStatus(StrEnum):

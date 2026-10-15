@@ -46,9 +46,11 @@ itself route to a pool.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 import logging
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 

@@ -23,7 +23,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 import uuid
 
-from mahavishnu.core.adapters.base import OrchestratorAdapter
 from mahavishnu.core.capabilities import (
     CapabilityEnvelope,
     EnvelopeId,
@@ -33,6 +32,7 @@ from mahavishnu.core.conductor_types import NodeHandle, NodeSpec
 from mahavishnu.core.envelopes import write_envelope
 
 if TYPE_CHECKING:
+    from mahavishnu.core.adapters.base import OrchestratorAdapter
     from mahavishnu.core.mcp_adapter import MCPAdapter
 
 logger = logging.getLogger(__name__)

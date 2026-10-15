@@ -292,7 +292,7 @@ class ProductionReadinessChecker:
 
         # Check for structlog in dependencies
         try:
-            import structlog
+            import structlog  # noqa: F401
 
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"

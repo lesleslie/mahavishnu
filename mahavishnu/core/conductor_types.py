@@ -16,14 +16,17 @@ on.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, ConfigDict
 
-from mahavishnu.core.capabilities import (
-    CapabilityId,
-    EngineId,
-    EnvelopeId,
-    TraceId,
-)
+if TYPE_CHECKING:
+    from mahavishnu.core.capabilities import (
+        CapabilityId,
+        EngineId,
+        EnvelopeId,
+        TraceId,
+    )
 
 _FROZEN_FORBID = ConfigDict(frozen=True, extra="forbid")
 

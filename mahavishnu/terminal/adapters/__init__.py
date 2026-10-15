@@ -16,10 +16,11 @@ The factory protocol: ``Callable[[config, mcp_client], TerminalAdapter]``. The
 ``config`` and ``mcp_client`` kwargs may be None for adapters that ignore them.
 """
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .base import TerminalAdapter
 
 # Registry: adapter name -> factory that produces an instance. The factory

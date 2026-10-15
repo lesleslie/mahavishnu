@@ -306,7 +306,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         # Check if pydantic-ai is available
         try:
-            import pydantic_ai
+            import pydantic_ai  # noqa: F401
 
             self._pydantic_ai_available = True
         except ImportError:

@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 _CACHE_DEPS_AVAILABLE: bool
 _CACHE_DEPS_ERROR: str | None
 try:
-    import coredis
+    import coredis  # noqa: F401
 
     _CACHE_DEPS_AVAILABLE = True
     _CACHE_DEPS_ERROR = None

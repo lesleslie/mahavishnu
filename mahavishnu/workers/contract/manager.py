@@ -5,12 +5,11 @@ import datetime as dt
 import pathlib
 import secrets
 import time
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from . import tmux_adapter as tmux
 from .record import DurableWorkerRecord, TmuxTarget
 from .state import WorkerLifecycleState, can_transition
-from .store import WorkerRecordStore
 from .tmux_adapter import (
     TmuxAdapterError,
     capture_pane,
@@ -19,6 +18,9 @@ from .tmux_adapter import (
     pane_alive,
     send_keys,
 )
+
+if TYPE_CHECKING:
+    from .store import WorkerRecordStore
 
 
 class EventPublisher(Protocol):

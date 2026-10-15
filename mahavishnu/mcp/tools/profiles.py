@@ -45,7 +45,6 @@ from ..bootstrap import (
     _register_goal_team_tools,
     _register_health_tools,
     _register_kv_tools,
-    _register_learning_pipeline_tools,
     _register_openhands_tools,
     _register_otel_tools,
     _register_plan_tools,
@@ -123,14 +122,6 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_treesitter_tools",
     "_register_pycharm_tools",
     "_register_search_tools",
-    # Phase 1B learning pipeline (ADR 012). Five read-only tools
-    # (get_pipeline_status / list_evidence / trigger_synthesis /
-    # list_pending_drafts / get_promotion_history). FULL-tier because
-    # the tools query Session-Buddy / Akosha live; STANDARD/MINIMAL
-    # environments that lack those backends would only see the
-    # {"available": False, ...} fallbacks. Mirrors where the rest of
-    # the analytics/observability surfaces live.
-    "_register_learning_pipeline_tools",
     # Plan index tools (5 tools; Task 12). Delegates to the W0 helper via
     # ``_register_plan_tools`` which constructs a MCP-backed store from
     # ``MahavishnuApp`` and binds all five ``plan_*`` tools in one call.
@@ -265,11 +256,6 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
-    # Phase 1B learning pipeline — see _register_learning_pipeline_tools
-    # in ``bootstrap.py``. FULL-tier; the registrar resolves the live
-    # service instances from ``server.app._learning_pipeline`` and
-    # tolerates ``learning.enabled=false`` by passing None dependencies.
-    "_register_learning_pipeline_tools": lambda s: _register_learning_pipeline_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Plan index tools (Task 12). ``_register_plan_tools`` resolves the
     # MCP client from ``MahavishnuApp`` and registers the five
     # ``plan_*`` tools in one call. The store is constructed fresh per

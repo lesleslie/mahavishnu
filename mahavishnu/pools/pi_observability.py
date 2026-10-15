@@ -34,12 +34,15 @@ which lets the module-level meter proxy pick up whichever
 from __future__ import annotations
 
 from functools import cache
+from typing import TYPE_CHECKING
 
 from opentelemetry import metrics
-from opentelemetry.metrics import (
-    Counter,
-    Histogram,
-)
+
+if TYPE_CHECKING:
+    from opentelemetry.metrics import (
+        Counter,
+        Histogram,
+    )
 
 
 @cache

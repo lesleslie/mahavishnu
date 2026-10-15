@@ -11,7 +11,6 @@ primitive — see docs/specs/2026-08-04-d-lock-design.md.)
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import UTC, datetime
 import errno
 import fcntl
@@ -19,7 +18,10 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _refuse_symlink_target(path: Path) -> None:

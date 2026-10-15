@@ -7,10 +7,10 @@ import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from mcp_common.fastmcp import FastMCP
-
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from mcp_common.fastmcp import FastMCP
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator

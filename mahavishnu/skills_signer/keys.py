@@ -20,14 +20,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-    Ed25519PrivateKey,  # runtime value in generate_keypair()
-    Ed25519PublicKey,  # runtime arg in _derive_key_id()
-)
+
+if TYPE_CHECKING:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+        Ed25519PrivateKey,  # runtime value in generate_keypair()
+        Ed25519PublicKey,  # runtime arg in _derive_key_id()
+    )
 
 # Number of bytes of the SHA-256 hash used as the key_id. 8 bytes =
 # 16 hex chars. A collision-resistant 64-bit identifier is sufficient

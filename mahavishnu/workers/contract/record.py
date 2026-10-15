@@ -8,12 +8,14 @@
 
 from __future__ import annotations
 
-import datetime as dt
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .state import WorkerLifecycleState
+if TYPE_CHECKING:
+    import datetime as dt
+
+    from .state import WorkerLifecycleState
 
 
 class TmuxTarget(BaseModel):

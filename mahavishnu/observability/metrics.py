@@ -49,13 +49,14 @@ import logging
 from typing import TYPE_CHECKING, Final
 
 from opentelemetry import metrics
-from opentelemetry.metrics import (
-    Counter,
-    Histogram,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from opentelemetry.metrics import (
+        Counter,
+        Histogram,
+    )
 
 logger = logging.getLogger(__name__)
 

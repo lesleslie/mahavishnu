@@ -18,11 +18,13 @@ sets up an in-memory exporter and asserts on the captured spans.
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from contextlib import contextmanager
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 logger = logging.getLogger("mahavishnu.acp.observability")
 

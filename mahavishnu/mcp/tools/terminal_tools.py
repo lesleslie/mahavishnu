@@ -7,14 +7,17 @@ capture output from terminal sessions.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
-from mcp_common.fastmcp import FastMCP
 from pydantic import Field, StringConstraints
 
 from ...observability.worker_metrics import WorkerMetrics
 from ...terminal.adapters.tmux import TmuxTerminalAdapter
-from ...terminal.manager import TerminalManager
+
+if TYPE_CHECKING:
+    from mcp_common.fastmcp import FastMCP
+
+    from ...terminal.manager import TerminalManager
 
 # SECURITY: Define validation constraints for MCP tool inputs.
 # SessionID allows ``.`` in addition to the conservative alphanumeric+``-``+``_``

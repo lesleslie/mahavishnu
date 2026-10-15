@@ -71,7 +71,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
     def is_available() -> bool:
         """Check if PyAutoGUI is available."""
         try:
-            import pyautogui  # ty: ignore[unresolved-import]
+            import pyautogui  # ty: ignore[unresolved-import]  # noqa: F401  # noqa: F401
 
             return True
         except ImportError:
@@ -86,7 +86,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
         """Get or import pyautogui module."""
         if self._pyautogui is None:
             try:
-                import pyautogui  # ty: ignore[unresolved-import]
+                import pyautogui  # ty: ignore[unresolved-import]  # noqa: F401
 
                 self._pyautogui = pyautogui
 

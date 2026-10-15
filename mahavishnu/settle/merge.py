@@ -33,7 +33,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 import warnings
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ except ImportError:  # pragma: no cover — exercised only when opentelemetry ab
     OTEL_AVAILABLE = False
 
     class _NoopSpan:
-        def __enter__(self) -> _NoopSpan:
+        def __enter__(self) -> Self:
             return self
 
         def __exit__(self, *args: object) -> None:
