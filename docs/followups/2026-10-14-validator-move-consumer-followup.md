@@ -6,7 +6,7 @@ date: 2026-10-14
 last_reviewed: 2026-10-14
 superseded_by: null
 blocks_on: []
-topic: shared-frontmatter-validator-move-consumer-followup
+topic: shared-frontmatter-validator
 ---
 
 # Followup — Consumer-repo followup for the frontmatter-validator move

@@ -3,7 +3,7 @@ status: complete
 role: superseded
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md
+superseded_by: docs/plans/.archive/2026-05-23-bodai-routing-feedback-loop-v4.md
 topic: routing-composition
 title: "Bodai Ecosystem Feedback Loop — Routing Intelligence via OTel"
 
