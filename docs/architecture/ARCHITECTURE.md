@@ -683,8 +683,8 @@ ______________________________________________________________________
 - **CLAUDE.md**: Development guidelines for Claude Code
 - **REMAINING_TASKS.md**: Detailed task breakdown
 - **docs/adr/**: Architecture Decision Records
-- **docs/MCP_TOOLS_SPECIFICATION.md**: MCP tool API documentation
-- **[Implementation Summary](../archive/completion-reports/IMPLEMENTATION_SUMMARY.md)**: Modernization notes
+- **docs/mcp/MCP_TOOLS_SPECIFICATION.md**: MCP tool API documentation
+- **Implementation Summary (archived 2026-10-14 — see git history for the original)**: Modernization notes
 
 ______________________________________________________________________
 

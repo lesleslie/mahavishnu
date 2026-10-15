@@ -35,7 +35,7 @@ Verified on 2026-06-23 against `/Users/les/Projects/mahavishnu`:
 | `beautifulsoup4` in `pyproject.toml` runtime deps (line 68) | `"beautifulsoup4>=4.14.3"` |
 | `beautifulsoup4` in `pyproject.toml` dev/test group (line 345) | `"beautifulsoup4"` |
 | `CLAUDE.md:401` | "Webpages (via BeautifulSoup HTTP fetching)" — **stale** |
-| `docs/DATA_INGESTION.md:11` | "Webpages (via BeautifulSoup HTTP fetching)" — **stale** |
+| `docs/ingestion/DATA_INGESTION.md:11` | "Webpages (via BeautifulSoup HTTP fetching)" — **stale** |
 | `docs/CONTENT_INGESTION_GUIDE.md:25` | `uv pip install pypdf ebooklib beautifulsoup4` — **stale** |
 | Actual webpage ingestion in `content_ingester.py` | Delegates to `_web_reader_url` MCP server (default `http://localhost:8699/mcp`) — no local HTML parsing |
 | `selectolax` anywhere in this repo | Not present (correct — it belongs to bodai-crow-server per spec) |
@@ -99,7 +99,7 @@ ______________________________________________________________________
 
 - Modify: `CLAUDE.md:401`
 
-- Modify: `docs/DATA_INGESTION.md:11`
+- Modify: `docs/ingestion/DATA_INGESTION.md:11`
 
 - Modify: `docs/CONTENT_INGESTION_GUIDE.md:25`
 
@@ -151,9 +151,9 @@ to:
 
 Context (lines 399–403) confirms this is the "Supported Content Types" list under the `ContentIngester` section; the new wording matches the actual implementation in `content_ingester.py:175`.
 
-- [ ] **Step 4: Fix `docs/DATA_INGESTION.md:11` — same wording fix**
+- [ ] **Step 4: Fix `docs/ingestion/DATA_INGESTION.md:11` — same wording fix**
 
-In `/Users/les/Projects/mahavishnu/docs/DATA_INGESTION.md`, change line 11 from `- Webpages (via BeautifulSoup HTTP fetching)` to `- Webpages (delegated to \`web_reader\` MCP server on port 8699)\`.
+In `/Users/les/Projects/mahavishnu/docs/ingestion/DATA_INGESTION.md`, change line 11 from `- Webpages (via BeautifulSoup HTTP fetching)` to `- Webpages (delegated to \`web_reader\` MCP server on port 8699)\`.
 
 - [ ] **Step 5: Fix `docs/CONTENT_INGESTION_GUIDE.md:25` — drop bs4 from install command**
 
@@ -186,7 +186,7 @@ If `uv lock` complains about bs4 being a constraint mismatch, **stop** — Task 
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add pyproject.toml uv.lock CLAUDE.md docs/DATA_INGESTION.md docs/CONTENT_INGESTION_GUIDE.md
+git add pyproject.toml uv.lock CLAUDE.md docs/ingestion/DATA_INGESTION.md docs/CONTENT_INGESTION_GUIDE.md
 git commit -m "chore(deps): remove unused beautifulsoup4 dependency
 
 bs4 was declared but never imported anywhere in mahavishnu/, tests/, or
@@ -197,7 +197,7 @@ This commit:
 - Drops 'beautifulsoup4>=4.14.3' from runtime deps (pyproject.toml:68)
 - Drops 'beautifulsoup4' from the dev/test group (pyproject.toml:345)
 - Fixes three stale doc references that claimed BeautifulSoup was the
-  webpage fetcher (CLAUDE.md:401, docs/DATA_INGESTION.md:11,
+  webpage fetcher (CLAUDE.md:401, docs/ingestion/DATA_INGESTION.md:11,
   docs/CONTENT_INGESTION_GUIDE.md:25)
 
 When the bodai-crow-server MCP (port 8675) ships per

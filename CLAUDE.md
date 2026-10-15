@@ -119,8 +119,8 @@ For detailed information, see:
 - **[CLI Reference](docs/CLI_REFERENCE.md)** — All CLI commands organized by subsystem
 - **[Routing Guide](docs/ROUTING_GUIDE.md)** — Adaptive routing, metrics, alerting, Grafana setup
 - **[Repository Roles](docs/REPOSITORY_ROLES.md)** — Role taxonomy and metadata
-- **[Pool Reference](docs/POOL_REFERENCE.md)** — Pool types, configuration, usage patterns
-- **[Data Ingestion](docs/DATA_INGESTION.md)** — Content and OpenTelemetry trace ingestion
+- **[Pool Reference](docs/pools/POOL_REFERENCE.md)** — Pool types, configuration, usage patterns
+- **[Data Ingestion](docs/ingestion/DATA_INGESTION.md)** — Content and OpenTelemetry trace ingestion
 - **[Configuration](docs/CONFIGURATION.md)** — Config files, environment variables, LLM routing
 - **[File Reference](docs/FILE_REFERENCE.md)** — Core app, MCP, pools, workers, CLI, ingesters
 
@@ -133,7 +133,7 @@ Mahavishnu supports a **multi-pool orchestration architecture** that enables hor
 **MahavishnuPool** (Direct Management):
 
 - Wraps existing WorkerManager for local worker execution. Pool type is a
-  leaf substrate wrapper — see `docs/POOL_ARCHITECTURE.md` "Why pool types
+  leaf substrate wrapper — see `docs/pools/POOL_ARCHITECTURE.md` "Why pool types
   wrap substrates, not delegate to PoolManager.route_task" for the design
   rationale. Do not rewrite to call `pool_manager.route_task` from inside
   the pool.
@@ -271,9 +271,9 @@ results = await aggregator.cross_pool_search("API implementation", pool_mgr)
 
 ### Documentation
 
-- [Pool Architecture](docs/POOL_ARCHITECTURE.md) - Complete architecture guide
-- [Migration Guide](docs/POOL_MIGRATION.md) - From WorkerManager to pools
-- [MCP Tools Spec](docs/MCP_TOOLS_SPECIFICATION.md) - Pool MCP tool reference
+- [Pool Architecture](docs/pools/POOL_ARCHITECTURE.md) - Complete architecture guide
+- [Migration Guide](docs/pools/POOL_MIGRATION.md) - From WorkerManager to pools
+- [MCP Tools Spec](docs/mcp/MCP_TOOLS_SPECIFICATION.md) - Pool MCP tool reference
 - Implementation Progress - Implementation status
 
 ## Configuration Files
@@ -366,7 +366,7 @@ See `docs/adr/` for full Architecture Decision Records:
 
 ## MCP Server Tools
 
-All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators. See `docs/MCP_TOOLS_SPECIFICATION.md` for complete tool specifications including parameters, returns, and error handling.
+All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators. See `docs/mcp/MCP_TOOLS_SPECIFICATION.md` for complete tool specifications including parameters, returns, and error handling.
 
 ### Tool Profile System
 

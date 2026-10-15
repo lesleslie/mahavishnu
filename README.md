@@ -101,18 +101,18 @@ human approval under the governance policy.
 Operators can inspect and trigger the pipeline through the learning MCP tools:
 `get_pipeline_status`, `list_evidence`, `trigger_synthesis`,
 `list_pending_drafts`, and `get_promotion_history`. The TUI also exposes a
-skill-draft review screen. See the [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
+skill-draft review screen. See the [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md)
 for the tool contracts.
 
 ## Quick Links
 
 - [Getting Started Guide](docs/GETTING_STARTED.md)
 - [CLI Reference](docs/CLI_REFERENCE.md)
-- [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)
+- [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md)
 - [Architecture Documentation](docs/architecture/ARCHITECTURE.md)
 - [Visual Guide](docs/VISUAL_GUIDE.md)
 - [Workflow Diagrams](docs/.archive/WORKFLOW_DIAGRAMS.md)
-- [Pool Architecture](docs/POOL_ARCHITECTURE.md)
+- [Pool Architecture](docs/pools/POOL_ARCHITECTURE.md)
 - [Goal-Driven Teams](docs/.archive/GOAL_DRIVEN_TEAMS.md)
 - [Admin Shell Guide](docs/ADMIN_SHELL.md)
 
@@ -511,7 +511,7 @@ See **[Goal-Driven Teams Documentation](docs/.archive/GOAL_DRIVEN_TEAMS.md)** fo
 
 ## MCP Tools
 
-Mahavishnu's MCP server exposes **173 tools** (146 profile-gated + 27 inline core) across 35 tool modules (see `MAHAVISHNU_TOOL_PROFILE` for gating). The detailed inventory is maintained in the [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md).
+Mahavishnu's MCP server exposes **173 tools** (146 profile-gated + 27 inline core) across 35 tool modules (see `MAHAVISHNU_TOOL_PROFILE` for gating). The detailed inventory is maintained in the [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md).
 
 ### Pool Management (10 tools)
 
@@ -580,7 +580,7 @@ Mahavishnu's MCP server exposes **173 tools** (146 profile-gated + 27 inline cor
 - `send_project_message` - Send project message
 - `list_project_messages` - List project messages
 
-See [MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md) for complete documentation with examples.
+See [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md) for complete documentation with examples.
 
 ## Configuration
 
@@ -721,13 +721,13 @@ mahavishnu/
 ## Documentation
 
 - **[Getting Started](docs/GETTING_STARTED.md)** - Installation and first steps
-- **[MCP Tools Reference](docs/MCP_TOOLS_REFERENCE.md)** - Complete API documentation
+- **[MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md)** - Complete API documentation
 - **[Architecture](docs/architecture/ARCHITECTURE.md)** - System architecture and evolution
-- **[Pool Architecture](docs/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
+- **[Pool Architecture](docs/pools/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
 - **[Goal-Driven Teams](docs/.archive/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging
 - **[Deployment Guide](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Deployment checklist and operational notes
-- **[MCP Tools Specification](docs/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
+- **[MCP Tools Specification](docs/mcp/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
 - **[Codex + Claude Routing Playbook](docs/integrations/CODEX_CLAUDE_ENGINE_ROUTING_PLAYBOOK.md)** - Configure agents to use Mahavishnu engines and multi-repo orchestration consistently
 - **Security Checklist** - Security guidelines
 
@@ -735,7 +735,7 @@ mahavishnu/
 
 - **[LLM Inventory](docs/.archive/LLM_INVENTORY.md)** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
 - **[Bifrost Reactivation Runbook](docs/.archive/BIFROST_REACTIVATION_RUNBOOK.md)** - How to bring the dormant local gateway back later
-- **[Bifrost Gateway Plan](docs/plans/2026-04-08-bifrost-gateway-plan.md)** - Implementation history, milestones, and paused cutover status
+- **Bifrost Gateway Plan (archived 2026-10-14 — see git history for the original)** - Implementation history, milestones, and paused cutover status
 
 ## Contributing
 

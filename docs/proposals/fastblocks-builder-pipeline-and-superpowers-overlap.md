@@ -104,7 +104,7 @@ User prompt
 
 The clearest alignment is with the master platform spec:
 
-- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+- docs/plans/.archive/2026-04-16-bodai-agent-platform-master-spec.md
 
 That document already argues for a layered system:
 
@@ -291,7 +291,7 @@ The cleanest next step is:
 
 ## Most Relevant Existing Docs
 
-- docs/plans/2026-04-16-bodai-agent-platform-master-spec.md
+- docs/plans/.archive/2026-04-16-bodai-agent-platform-master-spec.md
 - docs/specs/2026-04-26-pattern-learning-scaffolding-design.md
 - docs/specs/2026-04-26-code-indexing-integration-design.md
 - docs/specs/2026-04-26-agent-skill-modernization-design.md

@@ -54,7 +54,7 @@ Provide live read-only ecosystem diagnostics in a unified Textual dashboard.
   - DashboardApp with TabbedContent (4 tabs), key bindings (1-4 for tab switching, q for quit)
   - CLI: `mahavishnu dashboard` command registered in \_main_cli.py
   - Tests: tests/unit/test_tui_dashboard.py (14 tests, all passing)
-- 2026-04-25: Status corrected from `complete` to `partial`. The Textual shell exists, but current fetchers still return placeholder data. Live read-only data wiring should follow `docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`.
+- 2026-04-25: Status corrected from `complete` to `partial`. The Textual shell exists, but current fetchers still return placeholder data. Live read-only data wiring should follow `docs/plans/.archive/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md`.
 - 2026-04-26: I13-4 complete — replaced all placeholder data with live read-only collection:
   - `EcosystemStatusService._collect_services()` now health-checks configured ecosystem services (Session-Buddy, Akosha, Dhara) via HTTP GET using httpx
   - `EcosystemStatusService._collect_adapters()` wired to accept adapter dict, calls `get_health()` on each

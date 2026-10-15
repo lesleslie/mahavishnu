@@ -745,4 +745,4 @@ logging.getLogger('mahavishnu.core.oneiric_client').setLevel(logging.DEBUG)
 - Oneiric MCP: `/Users/les/Projects/oneiric-mcp`
 - Integration Design: `./ONEIRIC_MCP_INTEGRATION.md` (this file)
 - Example Workflows: `/Users/les/Projects/mahavishnu/examples/`
-- MCP Tools Reference: `/Users/les/Projects/mahavishnu/docs/MCP_TOOLS_REFERENCE.md`
+- MCP Tools Reference: `/Users/les/Projects/mahavishnu/docs/mcp/MCP_TOOLS_REFERENCE.md`

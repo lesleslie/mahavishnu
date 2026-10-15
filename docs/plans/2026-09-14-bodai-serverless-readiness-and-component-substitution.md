@@ -11,8 +11,8 @@ blocks_on:
 related:
   - docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md
   - docs/plans/dhara-outstanding-items-plan.md
-  - docs/plans/2026-04-16-bodai-master-implementation-plan.md
-  - docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
+  - docs/plans/.archive/2026-04-16-bodai-master-implementation-plan.md
+  - docs/plans/.archive/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md
   - docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md  # 14 precondition REQs
 review_summary:
   reviewers_dispatched: 8
