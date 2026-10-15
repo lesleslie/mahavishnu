@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 try:
-    from oneiric.core.logging import get_logger  # noqa: N813
+    from oneiric.core.logging import get_logger
 except ImportError:
     # Fallback so the `mahavishnu` CLI can start from any CWD (e.g. the
     # post-commit hook in any Bodai repo). The oneiric peer-directory

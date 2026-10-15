@@ -422,7 +422,7 @@ class ProductionReadinessChecker:
             coverage_file = self.project_root / "coverage.xml"
             if coverage_file.exists():
                 try:
-                    import defusedxml.ElementTree as ET
+                    import defusedxml.ElementTree as ET  # noqa: N817  # ET is the stdlib convention for ElementTree
 
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()

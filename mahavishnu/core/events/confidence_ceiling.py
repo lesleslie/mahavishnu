@@ -32,7 +32,7 @@ from copy import deepcopy
 import os
 
 try:
-    from oneiric.core.logging import get_logger  # noqa: N813
+    from oneiric.core.logging import get_logger
 except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed

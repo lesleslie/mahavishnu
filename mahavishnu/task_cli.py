@@ -598,7 +598,7 @@ def generate_completion_script(shell: str = "bash") -> str:
     Returns:
         Completion script content
     """
-    if shell == "bash":
+    if shell == "bash":  # noqa: SIM116  # multi-line bash script literals read more clearly as a sequential if/elif chain than a dict-of-strings
         return """
 # Bash completion for mahavishnu
 _mahavishnu_completion() {

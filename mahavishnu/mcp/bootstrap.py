@@ -162,14 +162,7 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
         )
         return MockTerminalAdapter()
 
-    try:
-        return factory(config=config, mcp_client=mcp_client)
-    except ConfigurationError:
-        # Crow-disabled falls through to mock; let other errors propagate.
-        # The Crow factory handles crow_enabled internally; it returns Mock
-        # when disabled. So this except branch is for genuine configuration
-        # errors (e.g. crow_enabled but no mcp_client).
-        raise
+    return factory(config=config, mcp_client=mcp_client)  # ConfigurationError propagates naturally
 
 
 def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:

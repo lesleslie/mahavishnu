@@ -522,7 +522,7 @@ class JSONRPCStdioClient:
             # Normal teardown.
             return
         except Exception as e:  # pragma: no cover - defensive
-            self._logger.exception("unexpected error in read loop: %s", e)
+            self._logger.exception("unexpected error in read loop", exc_info=e)
             self._fail_pending_requests(
                 PiProtocolError(f"read loop crashed: {e}", frame_excerpt=str(e))
             )

@@ -710,7 +710,7 @@ def set_app_context(app: Any) -> None:
                 # without instantiating Agno's abstract ``Model``).
                 try:
                     from agno.llm import (  # ty: ignore[unresolved-import]  # upstream `LLM` is a class, not a constant
-                        LLM as _AgnoModel,
+                        LLM as _AgnoModel,  # noqa: N811  # rename avoids name collision with the LLM constant
                     )
                 except ImportError:
                     try:
