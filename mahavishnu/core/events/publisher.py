@@ -14,13 +14,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 try:
-    from oneiric.core.logging import get_logger
+    from oneiric.core.logging import get_logger  # noqa: N813
 except ImportError:
     # Fallback so the `mahavishnu` CLI can start from any CWD (e.g. the
     # post-commit hook in any Bodai repo). The oneiric peer-directory
     # resolution only works when CWD is /Users/les/Projects/mahavishnu.
     # See `core/events/__init__.py` module docstring for the contract.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # noqa: N813  # type: ignore[assignment]
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
 
@@ -32,7 +32,7 @@ _publisher: EventBridgePublisher | None = None
 # C-2 wire-up scaffolding uses this to capture envelopes per-test. Production
 # code never reads it; the real singleton lives in ``_publisher``.
 _capture_singleton: list[Any] = []
-logger = get_logger(__name__)
+logger = get_logger  # noqa: N813(__name__)
 
 
 def set_publisher(publisher: EventBridgePublisher | None) -> None:

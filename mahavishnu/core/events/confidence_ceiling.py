@@ -32,14 +32,14 @@ from copy import deepcopy
 import os
 
 try:
-    from oneiric.core.logging import get_logger
+    from oneiric.core.logging import get_logger  # noqa: N813
 except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # noqa: N813  # type: ignore[assignment]
 
-logger = get_logger(__name__)
+logger = get_logger  # noqa: N813(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants (spec article scaled to 0-100)

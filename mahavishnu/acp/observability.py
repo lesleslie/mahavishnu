@@ -18,7 +18,7 @@ sets up an in-memory exporter and asserts on the captured spans.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 import logging
 import time
 from typing import TYPE_CHECKING, Any
@@ -119,10 +119,8 @@ def session_span(
         with tracer.start_as_current_span("mahavishnu.acp.session") as span:
             span.set_attribute("session.id", session_id)
             for k, v in (attributes or {}).items():
-                try:
+                with suppress(Exception):  # OTel SDK rejects invalid attr values; defensive pass
                     span.set_attribute(k, v)
-                except Exception:
-                    pass
             try:
                 yield state
             finally:
@@ -131,10 +129,8 @@ def session_span(
                 span.set_attribute("session.duration_ms", duration_ms)
                 span.set_attribute("session.status", state["status"])
                 if state["status"] == "error":
-                    try:
+                    with suppress(Exception):  # OTel Status construction can fail on version skew; defensive pass
                         span.set_status(Status(StatusCode.ERROR))  # type: ignore[arg-type]
-                    except Exception:
-                        pass
                 logger.info(
                     "acp.session_completed session_id=%s stop_reason=%s duration_ms=%.1f",
                     session_id,

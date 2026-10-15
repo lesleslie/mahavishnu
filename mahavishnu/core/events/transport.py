@@ -7,12 +7,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 try:
-    from oneiric.core.logging import get_logger
+    from oneiric.core.logging import get_logger  # noqa: N813
 except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # noqa: N813  # type: ignore[assignment]
 
 try:
     from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 else:
     PubSubCallback = Any
 
-_logger = get_logger("mahavishnu.event_transport")
+_logger = get_logger  # noqa: N813("mahavishnu.event_transport")
 
 
 @runtime_checkable

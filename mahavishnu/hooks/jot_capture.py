@@ -24,6 +24,7 @@ Fixes applied (per pre-implementation review):
 
 from __future__ import annotations
 
+from contextlib import suppress
 import json
 import os
 from pathlib import Path
@@ -173,28 +174,27 @@ def _log_error(op: str, exc: BaseException, ctx: dict[str, Any], jot_dir_path: P
             jot_dir() couldn't be created. If None, we try to resolve it again;
             if that also fails, we silently drop.
     """
-    try:
+    if jot_dir_path is None:
+        with suppress(Exception):
+            jot_dir_path = jot_dir()
         if jot_dir_path is None:
-            try:
-                jot_dir_path = jot_dir()
-            except Exception:
-                return  # Cannot resolve dir — silently drop.
+            return  # Cannot resolve dir — silently drop.
 
-        errors_log = errors_log_path()
+    errors_log = errors_log_path()
+    with suppress(Exception):
         _rotate_errors_log(errors_log)
 
-        record = {
-            "ts_ms": int(time.time() * 1000),
-            "hook": "jot_capture",
-            "op": op,
-            "err": f"{type(exc).__name__}: {exc}".replace("\n", " "),
-            "traceback": traceback.format_exception(type(exc), exc, exc.__traceback__),
-            "ctx": ctx,
-        }
-        line = json.dumps(record, separators=(",", ":"), ensure_ascii=False) + "\n"
+    record = {
+        "ts_ms": int(time.time() * 1000),
+        "hook": "jot_capture",
+        "op": op,
+        "err": f"{type(exc).__name__}: {exc}".replace("\n", " "),
+        "traceback": traceback.format_exception(type(exc), exc, exc.__traceback__),
+        "ctx": ctx,
+    }
+    line = json.dumps(record, separators=(",", ":"), ensure_ascii=False) + "\n"
+    with suppress(Exception):  # errors-log sink itself failing — nothing to escalate
         _write_errors_line(errors_log, line)
-    except Exception:
-        pass
 
 
 # ---------------------------------------------------------------------------

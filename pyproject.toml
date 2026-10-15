@@ -373,6 +373,37 @@ force-sort-within-sections = true
 # Available/Error naming convention is ratified for the rest of the
 # substrate layer and the per-file carve-out becomes redundant.
 "mahavishnu/core/state_backends/mcp.py" = ["S110", "N818"]
+# Same substrate-condition naming convention as mcp.py above:
+# ``*Unavailable`` / ``*Unsupported`` / ``*CircuitOpen`` /
+# ``*RPCTimeout`` / ``*Exceeded`` distinguish transient substrate
+# states from deterministic fault peers. ``errors.py`` is the central
+# exception catalog for the entire mahavishnu substrate; renaming
+# these would touch every caller (``idempotency.py``,
+# ``json_rpc_stdio.py``, ``pools/pi_pool.py``, ``terminal/``) and
+# could mask the substrate/fault distinction operators rely on.
+# Override is removable once a substrate/fault naming convention is
+# ratified for the full ecosystem.
+"mahavishnu/core/errors.py" = ["N818"]
+"mahavishnu/distill/llm_usage.py" = ["N818"]
+"mahavishnu/distill/synthesizer.py" = ["N818"]
+# A2A / ACP protocol implementations. Class-scope field names MUST
+# remain camelCase because they mirror the external JSON-RPC contract
+# spec (https://google-a2a.github.io/A2A/, MCP Client/Server 2025-06-18).
+# Renaming to snake_case would break wire-format interop with any
+# upstream/downstream service that speaks the same protocol.
+"mahavishnu/a2a/**/*.py" = ["N815"]
+"mahavishnu/acp/**/*.py" = ["N815"]
+# UserPromptSubmit hook for the Mahavishnu jot inbox. This hook
+# executes as part of Claude Code's CLI invocation — if it raises,
+# the user's CLI session crashes. Broad ``except Exception`` is the
+# correct contract here: every failure is logged to errors.log (with
+# ``suppress(Exception)`` around the sink itself) and converted to
+# passthrough (exit 0). See ``Failure policy`` in the module docstring.
+"mahavishnu/hooks/jot_capture.py" = ["BLE001"]
+# core/config.py carries a single ``pushNotifications`` Pydantic field
+# mirroring the same A2A protocol schema. Same justification as the
+# a2a/ and acp/ carve-outs above.
+"mahavishnu/core/config.py" = ["N815"]
 # Skill scripts under .claude/skills/tools/ use ``typer.Option(...)`` in
 # default args, which is the documented idiom for Typer and produces
 # B008. These aren't production code paths.

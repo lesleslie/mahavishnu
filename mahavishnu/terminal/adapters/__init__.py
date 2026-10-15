@@ -133,7 +133,7 @@ register_adapter("tmux", _build_tmux_adapter)
 try:
     from .crow import CrowTerminalAdapter
 
-    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # type: ignore[misc,assignment]
+    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127
 
     def _build_crow_adapter(
         config: Any = None,
@@ -211,7 +211,7 @@ try:
 
     from .goose import GooseTerminalAdapter
 
-    GooseTerminalAdapter: type[TerminalAdapter] | None = GooseTerminalAdapter  # type: ignore[misc,assignment]
+    GooseTerminalAdapter: type[TerminalAdapter] | None = GooseTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127
 
     def _build_goose_adapter(
         config: Any = None,
