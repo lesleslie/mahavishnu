@@ -19,7 +19,8 @@ from .capabilities import (
     evaluate_worker_capabilities,
     invalidate_capability,
 )
-from .registry import WorkerConfig, get_worker_config, get_worker_entry
+from .registry import RuntimeKind, WorkerConfig, get_worker_config, get_worker_entry
+from .shell_backend import ShellWorker
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,19 +100,31 @@ def _create_isolated_worker(
             session_buddy_client=session_buddy_client,
         )
 
-    # Every other worker_type is unsupported after the legacy-surface purge.
-    # Per .claude/plans/nifty-gliding-stallman.md v3 Phase 4: callers
-    # using a retired worker_type get a clear ValueError pointing at the
-    # migration ADR.
+    # Every other worker_type is unsupported by the isolated-worker
+    # factory. The dispatch in ``WorkerManager._create_worker``
+    # routes RuntimeKind.SHELL workers to ``ShellWorker`` (see
+    # ``shell_backend.py``) and RuntimeKind.NONE workers to their
+    # dedicated constructors; reaching this branch means the
+    # dispatch didn't recognize ``worker_type``'s runtime_kind.
+    # Per docs/decisions/2026-09-24-legacy-worker-deprecation.md,
+    # the isolated-worker surface only supports ``shepherd`` (the
+    # OS-level syscall-jail). The legacy Apple-container and
+    # E2B-sandbox backends were retired; the AI assistant CLI
+    # workers (terminal-claude / terminal-qwen / terminal-codex)
+    # were never isolated workers in the first place.
     supported = sorted(WORKER_SUPPORTED_TYPES)
     raise ValueError(
-        f"worker_type={worker_type!r} is no longer supported. "
-        f"The legacy isolated-worker surface has been retired — see "
-        f"docs/decisions/2026-09-24-legacy-worker-deprecation.md. "
-        f"For new isolated workloads use worker_type='shepherd'. "
-        f"For non-isolated workloads use mahavishnu/pools/ "
-        f"({type(supported).__name__}({supported}) is informational; "
-        f"see the registry for the canonical list)."
+        f"worker_type={worker_type!r} is not an isolated worker type. "
+        f"WorkerManager._create_worker routes by WorkerConfig.runtime_kind: "
+        f"RuntimeKind.SHELL -> ShellWorker (mahavishnu/workers/shell_backend.py); "
+        f"RuntimeKind.APPLE_CONTAINER / E2B -> retired (per ADR "
+        f"docs/decisions/2026-09-24-legacy-worker-deprecation.md); "
+        f"the only surviving isolated worker is 'shepherd' "
+        f"({type(supported).__name__}({supported})). "
+        f"If you reached this branch, the dispatch's runtime_kind check "
+        f"missed this worker — add the appropriate branch to "
+        f"WorkerManager._create_worker or check the Worker's "
+        f"WorkerConfig.runtime_kind in the registry."
     )
 
 
@@ -384,25 +397,45 @@ class WorkerManager:
     def _create_worker(self, worker_type: str, **kwargs: Any) -> BaseWorker:
         """Factory method for worker creation.
 
-        After Plan v3 Phase 4.5b (legacy-worker-deprecation), every
-        dispatch flows through :func:`_create_isolated_worker` — the
-        single function that already knows how to fail loud on retired
-        worker_types via a clear ``ValueError``. ``worker_type ==
-        "shepherd"`` is the only supported type; ``ShepherdBackendWorker``
-        is returned for it. See
-        ``docs/decisions/2026-09-24-legacy-worker-deprecation.md``.
+        Dispatches by :class:`WorkerConfig.runtime_kind` (per
+        ``mahavishnu/workers/registry.py``):
+
+        - ``RuntimeKind.SHELL`` (terminal-claude / terminal-qwen /
+          terminal-codex) → :class:`ShellWorker` — runs the registered
+          shell command in a terminal session via the shared
+          :class:`TerminalManager`. The Bifrost Phase D env-injection
+          (OPENAI_BASE_URL / ANTHROPIC_BASE_URL based on the
+          configured ``bifrost.routing`` flags) happens inside the
+          terminal manager's ``launch_sessions``.
+        - Anything else (isolated workers) →
+          :func:`_create_isolated_worker_from_config` →
+          :func:`_create_isolated_worker`, which only accepts
+          ``shepherd`` per the 2026-09-24 deprecation decision.
+
+        The previous implementation routed *every* worker_type
+        through the isolated-worker factory; that broke the
+        Bifrost Phase D SHELL path (the AI assistant CLI workers
+        were never isolated workers in the first place — they're
+        shell-out to a CLI binary the operator already controls).
+        This dispatch restores the missing path.
 
         Args:
             worker_type: Type of worker to create (must be in
                 ``mahavishnu.workers.registry.WORKER_REGISTRY``).
-            **kwargs: Additional parameters for worker (e.g., host for SSH).
+            **kwargs: Additional parameters for worker. For
+                ``RuntimeKind.SHELL``, ``writable_root`` is
+                ignored (SHELL workers use a terminal session, not a
+                filesystem sandbox). For ``RuntimeKind.SHEPHERD``
+                (the surviving isolated worker), ``writable_root``
+                is required and the constructor raises if absent.
 
         Returns:
             Configured worker instance.
 
         Raises:
-            ValueError: If ``worker_type`` is unknown or no longer
-                supported (retired legacy surface).
+            ValueError: If ``worker_type`` is unknown or its
+                ``runtime_kind`` doesn't match a supported dispatch
+                branch.
             MahavishnuError: If ``required_env`` from the new registry is
                 missing from the process environment.
         """
@@ -422,11 +455,16 @@ class WorkerManager:
         # error before any terminal/shell machinery runs.
         self._validate_required_tool(worker_type)
 
-        # Single dispatch: _create_isolated_worker handles every worker_type
-        # uniformly — returns ShepherdBackendWorker for "shepherd" and
-        # raises ValueError with a pointer to the migration ADR for every
-        # retired legacy type (apple-container, e2b-sandbox, container,
-        # terminal-crow, gateway-openclaw, openhands, a2a, application-*).
+        # Dispatch by runtime_kind. SHELL workers go to ShellWorker;
+        # everything else falls through to the isolated-worker factory
+        # (which only accepts "shepherd" per the 2026-09-24 deprecation
+        # decision and raises a clear ValueError for everything else).
+        if config.runtime_kind == RuntimeKind.SHELL:
+            return ShellWorker(
+                config=config,
+                terminal_manager=self.terminal_manager,
+                session_buddy_client=self.session_buddy_client,
+            )
         return self._create_isolated_worker_from_config(config, kwargs)
 
     def _create_isolated_worker_from_config(

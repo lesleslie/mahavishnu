@@ -182,7 +182,18 @@ class TestCreateIsolatedWorkerFromConfigContract:
         retired_type: str,
         category: WorkerCategory,
     ) -> None:
-        """ValueError must name (a) the retirement, (b) shepherd, (c) the ADR."""
+        """ValueError must name (a) the dispatch path, (b) shepherd, (c) the ADR.
+
+        The error message was reworded when the SHELL path was
+        restored: instead of "legacy isolated-worker surface has
+        been retired" (overreaching — the ADR only retired
+        apple-container / e2b-sandbox; terminal-claude/qwen/codex
+        were never isolated workers), the message now says
+        "is not an isolated worker type" and points at the
+        runtime_kind dispatch path. The contract is that the
+        message still names shepherd (the surviving isolated
+        worker) and the ADR file (for migration context).
+        """
         config = WorkerConfig(
             name=retired_type,
             worker_type=retired_type,
@@ -196,7 +207,8 @@ class TestCreateIsolatedWorkerFromConfigContract:
             manager._create_isolated_worker_from_config(config, {})
 
         msg = str(exc_info.value)
-        assert "legacy isolated-worker surface has been retired" in msg, msg
+        assert "is not an isolated worker type" in msg, msg
+        assert "runtime_kind" in msg, msg
         assert "shepherd" in msg, msg
         assert "2026-09-24-legacy-worker-deprecation.md" in msg, msg
 
