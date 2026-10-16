@@ -8,16 +8,13 @@ sanity-check a board without running the watcher daemon.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from oneiric.core.logging import get_logger
 import typer
 
 from mahavishnu.core.errors import MahavishnuError, MarkdownParseError
 from mahavishnu.jot.markdown_parser import parse_board
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 logger = get_logger(__name__)
 board_app = typer.Typer(
