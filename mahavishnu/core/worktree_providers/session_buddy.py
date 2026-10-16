@@ -82,6 +82,8 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         self.session_buddy_url = session_buddy_url
         self._mcp_client = None
         self._is_healthy: bool = True
+        self._last_health: bool | None = None
+        self._health_checked_at: float | None = None
 
         logger.debug(f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})")
 
@@ -327,38 +329,151 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                 details={"repository_path": str(repository_path)},
             ) from e
 
+    # Workaround for session-buddy's race between /health and tool
+    # registration: the wrapper marks the server healthy once
+    # /health returns 200, but tools/list is still in flight.
+    # Until the upstream fix lands (sync profile dispatch at
+    # startup), this short cache lets the registry see the
+    # server as 'unhealthy' for a moment so the LocalWorktree
+    # Provider transparently takes over. See
+    # docs/decisions/session-buddy-worktree-registration-race.md
+    # (to be written) for the full diagnosis.
+    _HEALTH_CACHE_TTL_S = 10.0
+
     def health_check(self) -> bool:
-        """Check if Session-Buddy MCP is available.
+        """Check if Session-Buddy MCP is available AND the worktree
+        tools are actually registered.
 
         Returns:
-            True if Session-Buddy MCP server is reachable
+            True only if the server is reachable AND
+            ``list_worktrees`` is in the registered tools list.
+            Mere TCP reachability is not enough -- the server can
+            respond on its port while still mid-startup (the
+            wrapper's 60s health-check timeout fires before the
+            FULL profile dispatch finishes registering tools).
         """
+        import time as _time
+
+        # Short-circuit on cached result
+        now = _time.monotonic()
+        if (
+            self._health_checked_at is not None
+            and (now - self._health_checked_at) < self._HEALTH_CACHE_TTL_S
+        ):
+            return self._last_health
+
         try:
             import socket
-
-            # Parse URL to get host and port
             from urllib.parse import urlparse
 
             parsed = urlparse(self.session_buddy_url)
             host = parsed.hostname or "localhost"
             port = parsed.port or 8678
 
-            # Try to connect with timeout
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)  # 1 second timeout
+            sock.settimeout(1)
             result = sock.connect_ex((host, port))
             sock.close()
 
-            is_healthy = result == 0
+            if result != 0:
+                logger.warning(f"Session-Buddy MCP server unreachable: {host}:{port}")
+                self._last_health = False
+                self._health_checked_at = now
+                return False
+
+            # Port is open. Now verify the tool is actually
+            # registered -- bare TCP reachability is not enough
+            # (see docstring). Single-shot tools/list probe via
+            # stdlib urllib; parse the SSE-wrapped response.
+            is_healthy = self._probe_list_worktrees_registered(host, port)
 
             if not is_healthy:
-                logger.warning(f"Session-Buddy MCP server unreachable: {host}:{port}")
+                logger.warning(
+                    "Session-Buddy MCP is up but 'list_worktrees' is "
+                    "not registered yet; reporting unhealthy so the "
+                    "registry picks the local provider"
+                )
 
+            self._last_health = is_healthy
+            self._health_checked_at = now
             return is_healthy
 
         except Exception as e:  # health probe — exception means unreachable, return False  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Session-Buddy health check failed: {e}")
+            self._last_health = False
+            self._health_checked_at = now
             return False
+
+    def _probe_list_worktrees_registered(self, host: str, port: int) -> bool:
+        """One-shot MCP initialize + tools/list probe to verify
+        ``list_worktrees`` is in the registered tools. Returns
+        False on any error (timeout, parse failure, missing tool).
+        """
+        import json
+        import urllib.request
+
+        base = f"http://{host}:{port}/mcp"
+        # 1. initialize (gets us a session id)
+        init_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "mahavishnu-healthcheck", "version": "0"},
+                },
+            }
+        ).encode()
+        req = urllib.request.Request(
+            base,
+            data=init_body,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=2) as resp:  # nosec B310 — stdlib HTTP for health probe to localhost  # noqa: S310
+            session_id = resp.headers.get("mcp-session-id", "")
+            raw = resp.read().decode("utf-8", errors="replace")
+
+        if not session_id:
+            return False
+
+        # 2. tools/list with the session id
+        list_body = json.dumps(
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+        ).encode()
+        req2 = urllib.request.Request(
+            base,
+            data=list_body,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+                "mcp-session-id": session_id,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req2, timeout=2) as resp2:  # nosec B310 — localhost health probe  # noqa: S310
+            raw2 = resp2.read().decode("utf-8", errors="replace")
+
+        # The server returns SSE; the JSON payload is on a 'data: '
+        # line. Find it and parse.
+        for line in raw2.splitlines():
+            stripped = line.removeprefix("data: ").strip()
+            if not stripped or not stripped.startswith("{"):
+                continue
+            try:
+                payload = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            tools = payload.get("result", {}).get("tools", [])
+            if any(t.get("name") == "list_worktrees" for t in tools):
+                return True
+            return False
+        return False
 
     def provider_name(self) -> str:
         """Get the name of this provider.
