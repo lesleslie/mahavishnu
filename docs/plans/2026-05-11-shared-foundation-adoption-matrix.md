@@ -3,7 +3,7 @@ status: draft
 role: canonical
 date: 2026-07-16
 last_reviewed: 2026-10-15
-superseded_by: 2026-05-11-bodai-deletion-adoption-ledger.md
+superseded_by: null
 topic: convergence-control-plane
 title: "Shared Foundation Adoption Matrix"
 
