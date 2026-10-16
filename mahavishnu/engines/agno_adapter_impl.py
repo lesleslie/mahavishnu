@@ -252,10 +252,6 @@ class LLMProviderFactory:
         """
         from agno.models.anthropic import Claude
 
-        from mahavishnu.llm_gateway.client import (
-            ProtocolFamily,
-        )
-
         api_key = self._get_api_key("ANTHROPIC_API_KEY", self.config.api_key_env)
         # Note: Claude (Anthropic) does not accept base_url= directly; the SDK
         # default is https://api.anthropic.com. Bifrost routing for Anthropic

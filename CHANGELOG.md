@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-10-16
+
+### Added
+
+- cli: Status + reap subcommands, POOL_REFERENCE, spawn allowlist followup
+- mahavishnu/hooks: Mirror session-buddy and oneiric agents
+- mahavishnu/terminal: Default TerminalSettings.enabled to true
+- mahavishnu/workers: Restore SHELL dispatch path + reword error
+- mahavishnu: Bifrost gateway wiring — Phases A/B/D/E/F/G + 5 follow-ups
+- mahavishnu: Implement live demo llamaindex (replace stub)
+- settings: Track bifrost.route_qwen_code: true in mahavishnu.yaml
+
+### Changed
+
+- Add drop-ollama-favor-llama-server (draft)
+- Apply 3-lens review corrections to v1.5 spec + v1.2 plan (Phase G)
+- Bifrost: Implementation plan off spec v1.3
+- Bifrost: V1.4 - 3-correction post-plan-review amendment (2026-10-16)
+- Canonical .claude/ policy + coverage/complexipy tooling
+- Correct drop-ollama plan after multi-subagent review
+- Final-pass corrections (spec v1.4 polish + plan v1.1 re-applied + active)
+- mahavishnu: Use mcp_common agents_tools factory
+- PLAN_INDEX: Register bifrost-gateway-wiring plan (status: active)
+- Promote drop-ollama-favor-llama-server to active
+- Re-apply v1.4/v1.1 corrections + add v1.5/v1.2 (Phase G: local llama-server provider)
+- Un-track per-repo .claude/ files
+- Un-track per-repo .claude/ files + add missing patterns
+
+### Fixed
+
+- agno-demo: Four wire-up fixes for the A→B→D demo path
+- Anchor Oneiric loader at repo root + per-subconfig key filter
+- core: Refactor @lru_cache instance methods to manual dict caches (B019)
+- docs: Followup status 'open' -> 'active' (vocabulary compliance)
+- docs: Remap 3 near-duplicate topic slugs to seed vocabulary
+- hooks: YAML injection + SSRF guards in bodai-agent-mirror
+- lint: Apply ruff auto-fix to mechanical style errors (Category 2)
+- lint: Apply ruff auto-fix to source files deferred from Category 2
+- lint: Close 13 BLE001 errors in CLI files via documented-contract noqas (Category 1)
+- lint: Close 19 F821 undefined-name errors across 9 files (Category 1)
+- lint: Close 8 BLE001/S110 errors via documented-contract noqas (Category 1)
+- lint: Close comprehensive-hook failures across ty, semgrep, lychee
+- lint: Re-apply BLE001/TRY004 noqas with RUF100 self-pin
+- lint: Restore `as exc:` binding and move Callable under TYPE_CHECKING
+- lint: Sort imports under TYPE_CHECKING blocks (I001 followup)
+- lint: Suppress TRY004 on validator's documented ValueError contract
+- lint: Use full semgrep check_id in # nosemgrep: suppressions
+- mahavishnu/cli: Do FastMCP handshake in pool_spawn dispatch
+- mahavishnu/docs: Point topic-vocabulary references at oneiric package source
+- mahavishnu/llamaindex: Auto-discover llama-server model + /v1 base_url
+- mahavishnu/mcp: Init_terminal_manager accesses server.config.terminal
+- mahavishnu/workers/contract: Import WorkerLifecycleState at runtime
+- mahavishnu/workers: ShellWorker implements status + get_progress
+- mahavishnu: Bump cycles_total on init so /health reports HEALTHY
+- mahavishnu: Drop ollama in favor of llama_server for local LLM/embeddings
+- merge-to-main: Capture and restore main_checkout dirty tree around squash-merge
+- Restore docs/schemas/topic-vocabulary-v1.md from oneiric canonical
+- scripts: Verify_qwen_bifrost_gate.sh — 'pool health' has no --output flag
+- shepherd: Unblock pool_bootstrap with a robust default writable_root
+- tests: Migrate dead Dhara symbol references to MCP (Category 1)
+- tests: Rename FakeDharaState back to FakeMCPState
+- worktree: Make SessionBuddy provider health check verify tool registration
+
+### Documentation
+
+- decisions: Clarify docs/.archive is gitignored (cj publish gate)
+- decisions: Mark 5 of 6 repos landed in archive-dir-canonical table (oneiric/akosha/session-buddy/mcp-common/crackerjack)
+- plans: Drop broken [text](file.md) template refs in ble001 draft
+- plans: Ship and archive 2026-10-15-archive-dir-canonical (5/6 repos landed, mahavishnu deferred to operator)
+
+### Testing
+
+- mahavishnu: Promote Qwen gate xfail to real pass
+
+### Internal
+
+- Adopt parallel agent's FastMCP wire-protocol fixes
+- agents: Rebuild 27 truncated descriptions, fix 14 double-comma artifacts
+- agents: Trim fabricated specifics in 13 descriptions
+- Bare-routing descriptions on 16 stub agents
+- gitignore: Untrack docs/plans/.archive + strengthen .archive pattern
+- mahavishnu: Drop redundant topic-vocabulary-v1.md
+- Regenerate PLAN_INDEX.md via plan_index_sync (git-aware)
+
 ## [0.35.1] - 2026-10-15
 
 ### Added
