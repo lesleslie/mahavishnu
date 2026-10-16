@@ -17,7 +17,7 @@ from enum import StrEnum
 import logging
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from oneiric.adapters.observability.settings import (
     OTelStorageSettings as _OneiricOTelStorageSettings,
@@ -3316,7 +3316,7 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
         from oneiric.core.config import load_settings as _oneiric_load
 
         anchor = (
-            Path(project_root).resolve() if project_root else Path(__file__).resolve().parent.parent
+            Path(project_root).resolve() if project_root else Path(__file__).resolve().parents[2]
         )
         merged: dict = {}
         try:
@@ -3335,6 +3335,21 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
                 for k, v in extras.items()
                 if k in MahavishnuSettings.model_fields and v is not None
             }
+
+            # Per-subconfig key filter: drop keys not declared on the
+            # target Pydantic model. The outer `k in MahavishnuSettings
+            # .model_fields` filter only checks the top-level field is
+            # declared; sub-configs use `extra="forbid"`, so a stray
+            # key in the operator's `local.yaml` (or a future-dated
+            # key in the committed `settings/mahavishnu.yaml`) would
+            # otherwise raise ValidationError on `MahavishnuSettings(
+            # **merged)` and crash every CLI command at startup. The
+            # filter fails soft: unknown sub-keys are dropped, known
+            # keys still take effect.
+            for k in list(merged.keys()):
+                if k in MahavishnuSettings.model_fields:
+                    annotation = MahavishnuSettings.model_fields[k].annotation
+                    merged[k] = _filter_subconfig_keys(merged[k], annotation)
 
             # Apply MAHAVISHNU_* env vars as a final overlay so they win
             # over Oneiric-loaded values where they collide. This
@@ -3426,6 +3441,50 @@ def _merge_env_overlay(merged: dict[str, Any], env_overlay: dict[str, Any]) -> N
             merged[key] = {**existing, **env_value}
         else:
             merged[key] = env_value
+
+
+def _resolve_pydantic_model_cls(annotation: Any) -> type[BaseModel] | None:
+    """Resolve a Pydantic ``BaseModel`` subclass from a (possibly Optional) annotation.
+
+    Handles ``Optional[X]`` and PEP 604 ``X | None`` (both surface as
+    parameterized generics via ``typing.get_args``). Returns ``None`` if
+    the annotation is not a Pydantic model — used by
+    :func:`_filter_subconfig_keys` to decide whether the sub-dict is
+    worth filtering at all.
+    """
+    if annotation is None:
+        return None
+    try:
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            return annotation
+    except TypeError:
+        pass
+    args = get_args(annotation)
+    if args:
+        for arg in args:
+            cls = _resolve_pydantic_model_cls(arg)
+            if cls is not None:
+                return cls
+    return None
+
+
+def _filter_subconfig_keys(value: Any, annotation: Any) -> Any:
+    """Drop dict keys that the target Pydantic sub-config does not declare.
+
+    Defensive against operator ``local.yaml`` drift: a stray key
+    triggers ``extra="forbid"`` on the sub-config and crashes the
+    whole ``MahavishnuSettings(**merged)`` call. We strip it here so
+    the loader fails soft (operator's unknown key is dropped, known
+    keys still take effect). Returns the value unchanged for
+    non-dict inputs and non-Pydantic annotations.
+    """
+    if not isinstance(value, dict):
+        return value
+    model_cls = _resolve_pydantic_model_cls(annotation)
+    if model_cls is None:
+        return value
+    declared = set(model_cls.model_fields.keys())
+    return {k: v for k, v in value.items() if k in declared}
 
 
 def set_settings(settings: MahavishnuSettings) -> None:
