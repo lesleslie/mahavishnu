@@ -14,8 +14,16 @@ class TerminalSettings(BaseModel):
     """
 
     enabled: bool = Field(
-        default=False,
-        description="Enable terminal management features",
+        default=True,
+        description=(
+            "Enable terminal management features. The spawn path "
+            "(pool_spawn, terminal manager) requires this; disabling "
+            "it makes pool spawn fail with 'terminal_manager is not "
+            "available'. Default ``True`` because ``adapter_preference`` "
+            "defaults to ``mock`` — the manager has no real side effects "
+            "unless an operator explicitly opts in to a real adapter "
+            "(tmux, crow, goose)."
+        ),
     )
     default_columns: int = Field(
         default=120,
