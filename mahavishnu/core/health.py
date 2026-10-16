@@ -24,7 +24,7 @@ from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
 from oneiric.core.logging import get_logger
 from opentelemetry import trace as _otel_trace
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mahavishnu.core.config import DependencyConfig, HealthConfig, MahavishnuSettings
 from mahavishnu.core.errors import ErrorCode, MahavishnuError
@@ -73,6 +73,53 @@ class DependencyStatus(BaseModel):
     )
     error: str | None = Field(default=None, description="Error message if unhealthy")
     last_check: datetime | None = Field(default=None, description="Timestamp of last health check")
+
+
+class BifrostHealth(BaseModel):
+    """Typed sub-model for the bifrost sub-shape on HealthResponse.
+
+    Pydantic v2 forbids dotted field names; this sub-model is the
+    required shape for ``health.bifrost.{config,reachable,
+    local_provider_reachable}`` in the JSON response.
+
+    The fields are populated by ``aggregate_mahavishnu_health()``
+    (called from the ``/health`` route per the docstring at line
+    109 above). Phase G adds ``local_provider_reachable``; Phase E
+    adds ``config`` and ``reachable``.
+
+    Req: REQ-005, REQ-007.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    config: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "BifrostConfig.to_public_dict() projection. Excludes the "
+            "auth_env field name to avoid leaking the env-var name."
+        ),
+    )
+    reachable: bool = Field(
+        default=False,
+        description=(
+            "Bifrost gateway reachability from _probe_bifrost_state() "
+            "(httpx.get on bifrost.base_url + '/health', 2s timeout). "
+            "False means the gateway is down; the cloud tier "
+            "LLM callers will fail loud per spec §1 goal 3."
+        ),
+    )
+    local_provider_reachable: bool = Field(
+        default=False,
+        description=(
+            "Phase G: local llama-server reachability from "
+            "_probe_local_provider_state() (httpx.get on "
+            "bifrost.local_provider_url + '/health', 2s timeout). "
+            "False means the local model is down; the route falls "
+            "back to cloud per the Bifrost routing rules. Not a "
+            "critical-outage condition (the cloud tier still works); "
+            "operator-visible but not page-able."
+        ),
+    )
 
 
 class HealthResponse(BaseModel):
@@ -174,6 +221,22 @@ class HealthResponse(BaseModel):
             "Canonical ``HealthSnapshot.reason_codes`` (worst-feed's "
             "deduped ``ReasonCode`` strings). Set when the route "
             "delegates to the aggregator."
+        ),
+    )
+    # Bifrost gateway health sub-shape (Phase E + Phase G).
+    # Pydantic v2 forbids dotted field names; the ``bifrost`` sub-shape
+    # is a typed ``BifrostHealth`` sub-model (declared above).
+    # Mounted with default_factory so the field is never None and
+    # legacy consumers see an empty BifrostHealth (config=None,
+    # reachable=False, local_provider_reachable=False) before the
+    # aggregator populates it.
+    bifrost: BifrostHealth = Field(
+        default_factory=BifrostHealth,
+        description=(
+            "Bifrost LLM-gateway health: config projection + cloud "
+            "reachability boolean + local llama-server reachability "
+            "boolean. Pydantic v2 forbids dotted field names; the "
+            "sub-shape is a typed BifrostHealth sub-model."
         ),
     )
 
@@ -1214,3 +1277,79 @@ def _probe_mergiraf_grammars(binary: str) -> GrammarProbeResult:
         probe_ok=True,
         error=None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase G: Bifrost LLM-gateway health probes
+# ---------------------------------------------------------------------------
+#
+# These two helpers power the ``/health.bifrost.{reachable,
+# local_provider_reachable}`` boolean fields on ``HealthResponse``.
+# Both are sync (cheap HTTP GET with a 2-second timeout); the
+# orchestrator's /health hot path runs them in a single probe per
+# request, never in a thread. On any failure they return ``False``
+# so a misconfigured bifrost / dead llama-server never tears down
+# the /health route itself.
+#
+# The two functions are intentionally tiny — there is no auth, no
+# retry, no OTel span. Auth is omitted because the bifrost /health
+# endpoint is documented as unauthenticated in the v1.5 Bifrost
+# spec §3.4. Retries are omitted because /health is polled every
+# 10-30 s by platform probes; a transient blip is self-healing on
+# the next scrape. The OTel span is deferred to the Phase G wrap-up
+# commit (after the local_provider e2e test exercises the path).
+
+
+def _probe_bifrost_state(settings: MahavishnuSettings) -> bool:
+    """Probe the Bifrost gateway's ``/health`` endpoint.
+
+    Returns ``True`` when the gateway returns HTTP 200, ``False`` on
+    any other status code, any connection / timeout error, or any
+    other exception. Never raises.
+
+    Per spec §1 goal 3, ``False`` means the cloud tier LLM callers
+    will fail loud; operators see this on the /health route.
+    """
+    try:
+        url = settings.bifrost.base_url.rstrip("/") + "/health"
+        response = httpx.get(url, timeout=2)
+    except (
+        Exception
+    ):  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return False
+    return response.status_code == 200
+
+
+def _probe_local_provider_state(settings: MahavishnuSettings) -> bool:
+    """Probe the local llama-server's ``/health`` endpoint.
+
+    Short-circuits to ``False`` when ``local_provider_enabled`` is
+    False — the runtime kill-switch means the local provider is
+    bypassed, so a probe would only produce false-negative noise
+    (the operator chose to ignore the local tier). Otherwise
+    returns ``True`` on HTTP 200, ``False`` on any other outcome.
+
+    Never raises.
+    """
+    if not settings.bifrost.local_provider_enabled:
+        return False
+    try:
+        url = settings.bifrost.local_provider_url.rstrip("/") + "/health"
+        response = httpx.get(url, timeout=2)
+    except (
+        Exception
+    ):  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return False
+    return response.status_code == 200
+
+
+# Re-export the per-feed aggregator so callers (and the verify
+# checks in this Phase G step) can ``from mahavishnu.core.health
+# import aggregate_mahavishnu_health``. The function lives in
+# ``health_aggregator.py`` (Phase 4 mcp-common wiring) and is
+# the canonical entry point for both the HTTP /health route and
+# the MCP ``get_health`` tool. The Bifrost sub-shape is populated
+# there — see ``health_aggregator.aggregate_mahavishnu_health``.
+from mahavishnu.core.health_aggregator import (
+    aggregate_mahavishnu_health as aggregate_mahavishnu_health,
+)

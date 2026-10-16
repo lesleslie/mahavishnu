@@ -90,7 +90,7 @@
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
-        "description": "Keep low-priority background work on MiniMax's faster text model.",
+        "description": "Prefer local llama-server (qwen3-8b-q4_k_m) for low-priority background work; fall back to MiniMax-M3 when unreachable. Phase G.",
         "enabled": true,
         "fallbacks": [
           "minimax-openai/MiniMax-M3"
@@ -101,8 +101,27 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M3",
-            "provider": "minimax-openai",
+            "model": "qwen3-8b-q4_k_m",
+            "provider": "llama-server",
+            "weight": 1
+          }
+        ]
+      },
+      {
+        "cel_expression": "headers[\"x-bf-task\"] == \"classify\" || headers[\"x-bf-route\"] == \"classify\" || headers[\"x-bf-task\"] == \"extract\" || headers[\"x-bf-route\"] == \"extract\"",
+        "description": "Prefer local llama-server (qwen3-8b-q4_k_m) for cheap classification and extraction tasks; fall back to MiniMax-M3 when unreachable. Phase G.",
+        "enabled": true,
+        "fallbacks": [
+          "minimax-openai/MiniMax-M3"
+        ],
+        "id": "route-classify",
+        "name": "Classify / Extract Tasks",
+        "priority": 60,
+        "scope": "global",
+        "targets": [
+          {
+            "model": "qwen3-8b-q4_k_m",
+            "provider": "llama-server",
             "weight": 1
           }
         ]
@@ -147,6 +166,32 @@
       ],
       "network_config": {
         "base_url": "https://api.minimax.io"
+      }
+    },
+    "llama-server": {
+      "custom_provider_config": {
+        "allowed_requests": {
+          "chat_completion": true,
+          "chat_completion_stream": true
+        },
+        "base_provider_type": "openai",
+        "request_path_overrides": {
+          "chat_completion": "/v1/chat/completions",
+          "chat_completion_stream": "/v1/chat/completions"
+        }
+      },
+      "keys": [
+        {
+          "models": [
+            "qwen3-8b-q4_k_m"
+          ],
+          "name": "llama-server-local",
+          "value": "env.LLAMA_SERVER_API_KEY",
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "http://127.0.0.1:8081"
       }
     },
     "minimax-openai": {

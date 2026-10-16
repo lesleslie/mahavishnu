@@ -1328,6 +1328,171 @@ def show_bodai_events(
         console.print(format_bodai_summary(envelope), markup=False)
 
 
+# Phase A (v1.5 Bifrost spec §5.7) — ``mahavishnu metrics bifrost`` subcommand.
+# Reads from the per-server CollectorRegistry (the canonical
+# ``mahavishnu.observability.prometheus_metrics.get_bifrost_metrics_registry``)
+# and renders the four bifrost series introduced by the v1.5 spec:
+#   - mahavishnu_bifrost_dispatch_total{outcome, provider, route_class}
+#   - mahavishnu_bifrost_dispatch_latency_seconds{provider, route_class}
+#   - mahavishnu_bifrost_dispatch_failures_total{provider, reason}
+#   - mahavishnu_bifrost_local_dispatch_total{outcome, provider, route_class}
+# (Phase G, REQ-007). Zero series is acceptable pre-Phase B; once
+# the Agno adapter's _bifrost_dispatch_heartbeat starts emitting
+# (Phase B deliverable) the counters populate.
+@metrics_app.command("bifrost")
+def bifrost_metrics(
+    source: str = typer.Option(
+        "auto",
+        "--source",
+        help="Metrics source: 'auto' (default), 'prom' (Prometheus registry), or 'otel' (reserved).",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--output",
+        help="Output format: table or json.",
+    ),
+    provider: str = typer.Option(
+        "all",
+        "--provider",
+        help="Filter by provider: 'all' (default), 'minimax', 'anthropic', 'llama-server'.",
+    ),
+) -> None:
+    """Show Bifrost gateway dispatch metrics from the per-server registry.
+
+    Reads the 4 bifrost series from
+    ``prometheus_metrics.get_bifrost_metrics_registry()`` and renders
+    them as a table (default) or JSON. The ``--provider`` filter
+    matches the ``provider`` label on each series.
+
+    Precedence for the source: ``--source`` flag, otherwise 'auto'
+    (which uses the per-server CollectorRegistry in-process — the
+    OTel source is reserved for a future release).
+
+    Examples:
+        mahavishnu metrics bifrost
+        mahavishnu metrics bifrost --output json
+        mahavishnu metrics bifrost --provider llama-server
+    """
+    if source not in {"auto", "prom", "otel"}:
+        console.print(f"[red]unsupported --source: {source!r}[/red]")
+        raise typer.Exit(2)
+    if output_format not in {"table", "json"}:
+        console.print(f"[red]unsupported --output: {output_format!r}[/red]")
+        raise typer.Exit(2)
+
+    from prometheus_client import generate_latest
+
+    from mahavishnu.observability.prometheus_metrics import (
+        get_bifrost_metrics_registry,
+    )
+
+    registry = get_bifrost_metrics_registry()
+    text = generate_latest(registry).decode()
+    series = _parse_bifrost_prometheus_text(
+        text,
+        provider_filter=None if provider == "all" else provider,
+    )
+
+    if output_format == "json":
+        console.print(json.dumps(series, indent=2, sort_keys=True))
+    else:
+        _render_bifrost_table(series)
+
+
+def _parse_bifrost_prometheus_text(
+    text: str,
+    *,
+    provider_filter: str | None,
+) -> list[dict[str, object]]:
+    """Parse the per-server Bifrost Prom text and return a row list.
+
+    Each row is a dict with keys: ``series``, ``labels`` (parsed
+    label set), ``value`` (numeric), and ``timestamp`` (when present).
+    The ``provider_filter`` (if set) restricts to lines whose
+    ``provider=`` label matches.
+    """
+    import re
+
+    rows: list[dict[str, object]] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Match "<series>{<labels>} <value>" or "<series> <value>".
+        match = re.match(
+            r"^(?P<series>[a-zA-Z_][a-zA-Z0-9_]*)"
+            r"(?:\{(?P<labels>[^}]*)\})?\s+"
+            r"(?P<value>-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)"
+            r"(?:\s+(?P<ts>\d+))?$",
+            line,
+        )
+        if not match:
+            continue
+        series_name = match.group("series")
+        if not series_name.startswith("mahavishnu_bifrost"):
+            continue
+        labels_raw = match.group("labels") or ""
+        # Parse ``key="value"`` (Prometheus text-format escapes values
+        # with double quotes; label values may also include commas and
+        # equals inside the quotes, but ``split(",")`` is safe here
+        # because the regex ``[^}]*`` already matched the bounded
+        # braces correctly).
+        labels: dict[str, str] = {}
+        for pair in (p.strip() for p in labels_raw.split(",")):
+            if "=" not in pair:
+                continue
+            key, value = pair.split("=", 1)
+            key = key.strip()
+            value = value.strip()
+            if value.startswith('"') and value.endswith('"') and len(value) >= 2:
+                value = value[1:-1]
+            labels[key] = value
+        if provider_filter is not None and labels.get("provider") != provider_filter:
+            continue
+        try:
+            value = float(match.group("value"))
+        except TypeError, ValueError:
+            continue
+        row: dict[str, object] = {
+            "series": series_name,
+            "labels": labels,
+            "value": value,
+        }
+        if match.group("ts") is not None:
+            row["timestamp"] = int(match.group("ts"))
+        rows.append(row)
+    return rows
+
+
+def _render_bifrost_table(rows: list[dict[str, object]]) -> None:
+    """Render the bifrost series as a Rich table grouped by series."""
+    if not rows:
+        console.print("[yellow]No bifrost series in the per-server registry.[/yellow]")
+        return
+
+    by_series: dict[str, list[dict[str, object]]] = {}
+    for row in rows:
+        by_series.setdefault(str(row["series"]), []).append(row)
+
+    for series_name in sorted(by_series):
+        console.print(f"\n[bold cyan]{series_name}[/bold cyan]")
+        table = Table(show_header=True, header_style="bold magenta")
+        # Pull the union of label keys for this series.
+        label_keys: list[str] = []
+        for r in by_series[series_name]:
+            for k in r["labels"]:
+                if k not in label_keys:
+                    label_keys.append(k)
+        for k in label_keys:
+            table.add_column(k)
+        table.add_column("value", justify="right")
+        for r in by_series[series_name]:
+            row = [str(r["labels"].get(k, "")) for k in label_keys]
+            row.append(str(r["value"]))
+            table.add_row(*row)
+        console.print(table)
+
+
 def add_metrics_commands(app: typer.Typer) -> None:
     """Add metrics commands to the Mahavishnu CLI app.
 

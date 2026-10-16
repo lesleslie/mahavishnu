@@ -851,6 +851,144 @@ class PiPoolSettings(BaseModel):
         return self
 
 
+class BifrostConfig(BaseModel):
+    """First-class Bifrost gateway settings (Phase A + Phase G).
+
+    Mounted as the top-level ``bifrost`` sibling on
+    :class:`MahavishnuSettings` (see the v1.5 Bifrost spec §5.1 and
+    plan §5 Phase A for the field rationale; the three Phase G
+    ``local_provider_*`` fields are added by Phase G).
+
+    Env var override pattern: ``MAHAVISHNU_BIFROST__<FIELD>``.
+
+    When ``enabled`` is True, the surviving mahavishnu LLM surface
+    (Agno adapter, PROVIDER_PROBES) routes the cloud tier through
+    the gateway at ``base_url``. Local fallback tiers
+    (``llama_server``, ``ollama``) stay direct — the Phase G
+    ``local_provider_*`` fields wire llama-server as a *Bifrost*
+    target (routing rules prefer it for cheap/background/classify),
+    not a direct fallback.
+
+    AI-CLI worker opt-in flags control env injection at spawn time:
+
+    - ``route_claude_code``: when True, the Mahavishnu-spawned
+      ``terminal-claude`` worker inherits
+      ``ANTHROPIC_BASE_URL=<anthropic_base_url>`` so the Claude Code
+      CLI itself routes through Bifrost's Anthropic-compatible
+      endpoint.
+    - ``route_qwen_code``: when True, the ``terminal-qwen`` worker
+      inherits the env var named by ``qwen_env_var`` (default
+      ``OPENAI_BASE_URL`` — Qwen's OpenAI-compatible transport;
+      subject to Phase D verification) pointing at
+      ``<base_url>`` so Qwen CLI routes through Bifrost's
+      OpenAI-compatible provider.
+
+    Req: REQ-001 (Phase A), REQ-007 (Phase G).
+    """
+
+    model_config = ConfigDict(extra="forbid")  # crackerjack hard-limit
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Bifrost gateway routing for mahavishnu LLM callers",
+    )
+    base_url: str = Field(
+        default="http://127.0.0.1:8471",
+        description="Bifrost gateway base URL",
+    )
+    anthropic_base_url: str = Field(
+        default="http://127.0.0.1:8471/anthropic",
+        description="Bifrost Anthropic-compatible base URL",
+    )
+    caller_id: str = Field(
+        default="mahavishnu",
+        description="Caller identity sent in the BifrostGatewayRequest envelope",
+    )
+    cache_mode: Literal["off", "direct", "semantic"] = Field(
+        default="off",
+        description=(
+            "Bifrost cache mode; see BifrostGatewayRequest. Mirrors the "
+            "ChangepointConfig.detector (config.py:622) Literal[...] "
+            "precedent for the Form-field default + description wrap."
+        ),
+    )
+    cache_ttl_seconds: int = Field(
+        default=300,
+        description="Bifrost cache TTL in seconds",
+    )
+    request_timeout_seconds: int = Field(
+        default=30,
+        description="Per-request HTTP timeout for Bifrost dispatch",
+    )
+    # AI-CLI worker opt-in flags (default false; each independent).
+    route_claude_code: bool = Field(
+        default=False,
+        description=("Inject ANTHROPIC_BASE_URL into terminal-claude workers when bifrost.enabled"),
+    )
+    route_qwen_code: bool = Field(
+        default=False,
+        description=("Inject qwen_env_var into terminal-qwen workers when bifrost.enabled"),
+    )
+    # Env var name that the Qwen CLI reads for a custom
+    # OpenAI-compatible base URL. Verified in Phase D; default is the
+    # OpenAI-compatible convention. Override here when the actual
+    # vendor CLI uses a different name (e.g. ``QWEN_BASE_URL`` or
+    # ``DASHSCOPE_API_BASE``).
+    qwen_env_var: str = Field(
+        default="OPENAI_BASE_URL",
+        description=(
+            "Env var name that the Qwen CLI reads for a custom OpenAI-compatible base URL"
+        ),
+    )
+    # Optional bearer token for the gateway. Empty = no auth header.
+    # Sourced from BIFROST_API_KEY env var if set; not stored in
+    # settings.
+    auth_env: str = Field(
+        default="BIFROST_API_KEY",
+        description=(
+            "Env var name carrying the optional Bifrost bearer token "
+            "(omitted from /health.bifrost.config to avoid leaking "
+            "the env-var name)"
+        ),
+    )
+    # Phase G (v1.5 Bifrost spec): local llama-server provider.
+    # When ``local_provider_enabled`` is True, the Bifrost config
+    # registers llama-server as a provider and the
+    # ``route-background`` and ``route-classify`` routing rules
+    # prefer it. The e2e test
+    # (``test_bifrost_local_provider_e2e.py::test_llama_server_health_endpoint``)
+    # gates on ``curl http://127.0.0.1:8081/health`` returning 200.
+    # Operators who don't want local inference can set this False
+    # and the e2e test passes with a documented local-unreachable
+    # expectation. The ``local_provider_model`` field is documentation
+    # only — the Bifrost routing rules hardcode the model literal in
+    # the operator-managed `config/bifrost/config.template.json`; the
+    # field documents which model in the provider-keys list this
+    # deployment is configured for.
+    local_provider_enabled: bool = Field(
+        default=True,
+        description=(
+            "Enable local llama-server as a Bifrost target for "
+            "cheap/background/classify tasks. Runtime kill-switch — "
+            "set False to bypass the local provider without removing "
+            "the plist or the provider block."
+        ),
+    )
+    local_provider_url: str = Field(
+        default="http://127.0.0.1:8081",
+        description="llama-server base URL (Bifrost-side)",
+    )
+    local_provider_model: str = Field(
+        default="qwen3-8b-q4_k_m",
+        description=(
+            "Documentation: identifies which model in the Bifrost "
+            "keys.models list this deployment is configured for. Does "
+            "NOT drive routing rules — the rules hardcode the model "
+            "literal in config/bifrost/config.template.json."
+        ),
+    )
+
+
 class HNSWIndexConfig(BaseModel):
     """HNSW index configuration for high-performance vector search.
 
@@ -3159,6 +3297,26 @@ class MahavishnuSettings(BaseSettings):
     goal_teams: GoalTeamsConfig = Field(
         default_factory=GoalTeamsConfig,
         description="Goal-Driven Teams configuration",
+    )
+
+    # Bifrost LLM gateway settings (Phase A + Phase G).
+    # v1.5 spec §5.1: first-class settings mount, with Field(default=...,
+    # description=...) per the ChangepointConfig.detector (config.py:622)
+    # precedent. When enabled is True, the surviving mahavishnu LLM
+    # surface (Agno adapter, PROVIDER_PROBES) routes the cloud tier
+    # through the gateway at base_url. The Phase G
+    # ``local_provider_*`` fields wire llama-server as a Bifrost
+    # target for cheap/background/classify tasks. Cloud fallback
+    # ordering is governed by the Bifrost routing rules in
+    # config/bifrost/config.template.json.
+    # Req: REQ-001, REQ-007.
+    bifrost: BifrostConfig = Field(
+        default_factory=BifrostConfig,
+        description=(
+            "Bifrost LLM-gateway wiring (Phase 5.1) and AI-CLI worker "
+            "opt-in (Phase 5.5), plus local llama-server provider "
+            "(Phase G)."
+        ),
     )
 
     # Engine enablement (Task 2.7.1) — list of engine_ids to omit from

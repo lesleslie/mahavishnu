@@ -8,14 +8,64 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any
 import warnings
 
+# ``gateway_api_base`` and ``ProtocolFamily`` are both used at
+# runtime by ``_resolve_worker_env`` (the former as a function
+# call, the latter as an enum value: ``ProtocolFamily.OPENAI``),
+# so they need to be real imports even with ``from __future__
+# import annotations`` (which only stringifies annotations, not
+# runtime use). ``BifrostConfig`` is annotation-only and stays
+# under TYPE_CHECKING.
+from mahavishnu.llm_gateway.client import ProtocolFamily, gateway_api_base
+
 from .config import TerminalSettings
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from mahavishnu.core.config import BifrostConfig
+
     from .adapters.base import TerminalAdapter
 
 logger = getLogger(__name__)
+
+
+def _resolve_worker_env(
+    worker_type: str,
+    bifrost: BifrostConfig | None,
+) -> dict[str, str]:
+    """Build the per-worker env-var dict for Bifrost-wired CLI workers.
+
+    Phase D (REQ-004) wiring:
+    - When ``bifrost.enabled`` is False, return an empty dict (the
+      cloud tier is bypassed; local CLI workers see no env override).
+    - For ``terminal-claude`` workers with ``bifrost.route_claude_code``:
+      inject ``ANTHROPIC_BASE_URL=<bifrost.anthropic_base_url>`` so the
+      Claude Code CLI itself routes through Bifrost's Anthropic-
+      compatible endpoint at :8471/anthropic.
+    - For ``terminal-qwen`` workers with ``bifrost.route_qwen_code``:
+      inject the env var named by ``bifrost.qwen_env_var`` (default
+      ``OPENAI_BASE_URL``) pointing at the Bifrost OpenAI-compatible
+      provider at :8471/v1. Phase D ships with ``route_qwen_code:
+      false`` by default until the verification gate
+      (``test_qwen_actual_dispatch_emits_caller_id``) passes end-
+      to-end — see the plan §5 Phase D.
+
+    Returns a plain dict suitable for the
+    ``create_session(env=...)`` chain through the tmux adapter.
+    """
+    if bifrost is None or not bifrost.enabled:
+        return {}
+
+    env: dict[str, str] = {}
+    if worker_type == "terminal-claude" and bifrost.route_claude_code:
+        env["ANTHROPIC_BASE_URL"] = bifrost.anthropic_base_url
+    elif worker_type == "terminal-qwen" and bifrost.route_qwen_code:
+        # Lazy import to avoid pulling the LLM gateway into the
+        # terminal module's import chain when Bifrost is disabled.
+        env[bifrost.qwen_env_var] = gateway_api_base(
+            ProtocolFamily.OPENAI, base_url=bifrost.base_url
+        )
+    return env
 
 
 # Spec §9.4 (Phase B): the durable-worker contract emits canonical
@@ -89,15 +139,24 @@ class TerminalManager:
         self,
         adapter: TerminalAdapter,
         config: TerminalSettings | None = None,
+        bifrost: BifrostConfig | None = None,
     ) -> None:
         """Initialize terminal manager.
 
         Args:
             adapter: Terminal adapter backend
             config: Optional terminal settings
+            bifrost: Optional BifrostConfig (Phase D). When present
+                and ``enabled``, the per-worker env-injection in
+                ``launch_sessions`` consults
+                ``route_claude_code`` / ``route_qwen_code``. When
+                None, the manager behaves as a pure passthrough
+                (no env override) — pre-Phase-D callers continue
+                to work.
         """
         self.adapter = adapter
         self.config = config or TerminalSettings()
+        self.bifrost = bifrost
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent_sessions)
         self._batch_size = 5  # Process 5 sessions at a time
         self._adapter_history: list[dict[str, Any]] = []
@@ -105,7 +164,8 @@ class TerminalManager:
 
         logger.info(
             f"Initialized TerminalManager with {self.adapter.adapter_name} adapter "
-            f"(max_concurrent={self.config.max_concurrent_sessions})"
+            f"(max_concurrent={self.config.max_concurrent_sessions}"
+            f"{', bifrost=enabled' if bifrost and bifrost.enabled else ''})"
         )
 
     async def switch_adapter(
@@ -243,17 +303,29 @@ class TerminalManager:
         count: int = 1,
         columns: int = 80,
         rows: int = 24,
+        *,
+        worker_type: str = "terminal-claude",
     ) -> list[str]:
         """Launch multiple terminal sessions concurrently.
 
         Uses semaphore to limit concurrent launches and prevent
         resource exhaustion.
 
+        Phase D (REQ-004): the per-worker env dict is built via
+        :func:`_resolve_worker_env` and forwarded to the adapter
+        so spawned panes inherit the Bifrost env override (when
+        ``bifrost.enabled`` and the route flag is set). The
+        ``worker_type`` parameter selects which opt-in flag is
+        consulted.
+
         Args:
             command: Command to run in each terminal
             count: Number of sessions to launch
             columns: Terminal width in characters
             rows: Terminal height in lines
+            worker_type: Worker backend name (default
+                'terminal-claude'; 'terminal-qwen' selects the
+                Qwen CLI's env-var opt-in)
 
         Returns:
             List of session IDs
@@ -262,12 +334,22 @@ class TerminalManager:
             TerminalError: If session launch fails
         """
 
+        env = _resolve_worker_env(worker_type, self.bifrost)
+        if env:
+            logger.info(
+                "Per-spawn Bifrost env injection: worker_type=%s env_keys=%s",
+                worker_type,
+                sorted(env.keys()),
+            )
+
         async def launch_one() -> str:
             async with self._semaphore:
                 return await self.adapter.launch_session(
                     command,
                     columns,
                     rows,
+                    worker_type=worker_type,
+                    env=env,
                 )
 
         try:

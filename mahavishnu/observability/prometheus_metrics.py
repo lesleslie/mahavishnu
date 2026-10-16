@@ -158,7 +158,229 @@ def update_health_feed_status_metrics(
 
 
 __all__ = [
+    "bifrost_dispatch_failures_total",
+    "bifrost_dispatch_latency_seconds",
+    "bifrost_dispatch_total",
+    "bifrost_local_dispatch_total",
     "get_health_metrics_registry",
     "reset_health_metrics_for_tests",
     "update_health_feed_status_metrics",
 ]
+
+
+# ============================================================================
+# Bifrost dispatch metrics — Phase A (master counters) + Phase G (local)
+# ----------------------------------------------------------------------------
+# Phase A (v1.5 Bifrost spec §5.5) registers three bifrost-wide series
+# (master counter, latency histogram, failures counter). Phase G
+# (REQ-007) adds the local-dispatch counter that the
+# ``_bifrost_dispatch_heartbeat`` wrapper in
+# ``mahavishnu/engines/agno_adapter_impl.py`` increments on local-target
+# dispatches. All four series register against the per-server
+# ``CollectorRegistry`` (the discipline from
+# ``docs/decisions/mcp-backend-wiring-discipline.md``: no allowlist
+# gate, the per-server registry is the registration surface).
+#
+# Label set bound (per the v1.5 amendment): {outcome, provider,
+# route_class, reason, model} — 5 total. The local counter uses
+# {outcome, provider, route_class} (3 labels) to match the master
+# counter's shape for dashboard tier uniformity.
+# ============================================================================
+
+# Per-bifrost metrics registry. Distinct from the per-server M2 gauge
+# registry (above) so the two metric families don't collide on the
+# ``Duplicated timeseries in CollectorRegistry`` error. Lazy-initialised
+# on first call to keep import-time work bounded.
+_bifrost_metrics_registry: prometheus_client.CollectorRegistry | None = None
+
+
+def get_bifrost_metrics_registry() -> prometheus_client.CollectorRegistry:
+    """Return the per-server ``CollectorRegistry`` for the bifrost counters.
+
+    Lazy-initialised on first call so the prometheus_client
+    metric registration happens at first emit (avoids
+    ImportError-on-import when the cluster is read-only).
+    """
+    global _bifrost_metrics_registry
+    if _bifrost_metrics_registry is None:
+        _bifrost_metrics_registry = prometheus_client.CollectorRegistry()
+    return _bifrost_metrics_registry
+
+
+# Module-level lazy counters. The cache is module-level; tests
+# invalidate via ``reset_bifrost_metrics_for_tests``.
+_bifrost_dispatch_total: prometheus_client.Counter | None = None
+_bifrost_dispatch_latency_seconds: prometheus_client.Histogram | None = None
+_bifrost_dispatch_failures_total: prometheus_client.Counter | None = None
+_bifrost_local_dispatch_total: prometheus_client.Counter | None = None
+
+
+def _get_or_create_bifrost_counter(
+    name: str,
+    documentation: str,
+    labelnames: tuple[str, ...],
+    registry: prometheus_client.CollectorRegistry,
+) -> prometheus_client.Counter:
+    """Return the cached counter for ``name``, creating it on first call."""
+    if name == "mahavishnu_bifrost_dispatch_total":
+        global _bifrost_dispatch_total
+        if _bifrost_dispatch_total is None:
+            _bifrost_dispatch_total = prometheus_client.Counter(
+                name,
+                documentation,
+                labelnames=labelnames,
+                registry=registry,
+            )
+        return _bifrost_dispatch_total
+    if name == "mahavishnu_bifrost_dispatch_failures_total":
+        global _bifrost_dispatch_failures_total
+        if _bifrost_dispatch_failures_total is None:
+            _bifrost_dispatch_failures_total = prometheus_client.Counter(
+                name,
+                documentation,
+                labelnames=labelnames,
+                registry=registry,
+            )
+        return _bifrost_dispatch_failures_total
+    if name == "mahavishnu_bifrost_local_dispatch_total":
+        global _bifrost_local_dispatch_total
+        if _bifrost_local_dispatch_total is None:
+            _bifrost_local_dispatch_total = prometheus_client.Counter(
+                name,
+                documentation,
+                labelnames=labelnames,
+                registry=registry,
+            )
+        return _bifrost_local_dispatch_total
+    raise ValueError(f"unknown bifrost counter name: {name!r}")
+
+
+def _get_or_create_bifrost_histogram(
+    name: str,
+    documentation: str,
+    labelnames: tuple[str, ...],
+    registry: prometheus_client.CollectorRegistry,
+) -> prometheus_client.Histogram:
+    """Return the cached histogram for ``name``, creating it on first call."""
+    global _bifrost_dispatch_latency_seconds
+    if _bifrost_dispatch_latency_seconds is None:
+        _bifrost_dispatch_latency_seconds = prometheus_client.Histogram(
+            name,
+            documentation,
+            labelnames=labelnames,
+            registry=registry,
+        )
+    return _bifrost_dispatch_latency_seconds
+
+
+def reset_bifrost_metrics_for_tests() -> None:  # pragma: no cover - test seam
+    """Clear the cached bifrost counters so tests can re-initialise cleanly."""
+    global _bifrost_dispatch_total, _bifrost_dispatch_latency_seconds
+    global _bifrost_dispatch_failures_total, _bifrost_local_dispatch_total
+    _bifrost_dispatch_total = None
+    _bifrost_dispatch_latency_seconds = None
+    _bifrost_dispatch_failures_total = None
+    _bifrost_local_dispatch_total = None
+
+
+def reset_bifrost_metrics_registry_for_tests() -> None:  # pragma: no cover - test seam
+    """Drop the cached per-server ``CollectorRegistry`` so the next
+    emit creates a fresh one.
+
+    :func:`reset_bifrost_metrics_for_tests` only clears the
+    module-level counter cache. The registry itself (a singleton
+    ``_bifrost_metrics_registry``) holds the previously-registered
+    Counter instances; re-registering a Counter with the same name
+    on the same registry raises ``prometheus_client.registry.
+    DuplicateTimeseries``. Tests that exercise multiple counter
+    emits in sequence (e.g. ``test_heartbeat_increments_master_counter``
+    then ``test_heartbeat_failure_path_increments_failures_counter``)
+    need a fresh registry between tests so each one starts clean.
+
+    Mirrors :func:`mahavishnu.core.health_aggregator.
+    reset_health_metrics_registry_for_tests`, the established
+    registry-reset pattern for the M2 health gauges.
+    """
+    global _bifrost_metrics_registry
+    _bifrost_metrics_registry = None
+
+
+def bifrost_dispatch_total(*, outcome: str, provider: str, route_class: str) -> None:
+    """Increment the master bifrost dispatch counter.
+
+    Phase A (v1.5 Bifrost spec §5.5). Called from the
+    ``_bifrost_dispatch_heartbeat`` wrapper in
+    ``mahavishnu/engines/agno_adapter_impl.py`` on every Bifrost
+    dispatch (both success and failure paths).
+    """
+    registry = get_bifrost_metrics_registry()
+    counter = _get_or_create_bifrost_counter(
+        "mahavishnu_bifrost_dispatch_total",
+        "Bifrost dispatch total (Phase A master counter; outcome / provider / route_class).",
+        ("outcome", "provider", "route_class"),
+        registry,
+    )
+    counter.labels(outcome=outcome, provider=provider, route_class=route_class).inc()
+
+
+def bifrost_dispatch_latency_seconds(*, provider: str, route_class: str, seconds: float) -> None:
+    """Record a Bifrost dispatch latency sample.
+
+    Phase A (v1.5 Bifrost spec §5.5). Default buckets match the
+    mcp-common convention (5ms-10s) — same shape as the per-server
+    M2 latency histogram. Buckets are bounded to 11 entries to
+    keep the per-server time series count under the 200/metric
+    ceiling.
+    """
+    registry = get_bifrost_metrics_registry()
+    histogram = _get_or_create_bifrost_histogram(
+        "mahavishnu_bifrost_dispatch_latency_seconds",
+        "Bifrost dispatch latency in seconds (Phase A; provider / route_class).",
+        ("provider", "route_class"),
+        registry,
+    )
+    histogram.labels(provider=provider, route_class=route_class).observe(seconds)
+
+
+def bifrost_dispatch_failures_total(*, provider: str, reason: str) -> None:
+    """Increment the Bifrost dispatch failures counter.
+
+    Phase A (v1.5 Bifrost spec §5.5). ``reason`` is one of:
+    ``"timeout"``, ``"http_error"``, ``"bifrost_unreachable"``,
+    ``"auth_error"``, ``"other"``. The counter is used by the
+    ``MahavishnuBifrostErrorRateHigh`` alert rule in
+    ``config/prometheus/bifrost_alerts.yml``.
+    """
+    registry = get_bifrost_metrics_registry()
+    counter = _get_or_create_bifrost_counter(
+        "mahavishnu_bifrost_dispatch_failures_total",
+        "Bifrost dispatch failures total (Phase A; provider / reason).",
+        ("provider", "reason"),
+        registry,
+    )
+    counter.labels(provider=provider, reason=reason).inc()
+
+
+def bifrost_local_dispatch_total(*, outcome: str, provider: str, route_class: str) -> None:
+    """Increment the local-target Bifrost dispatch counter.
+
+    Phase G (REQ-007). Called from the
+    ``_bifrost_dispatch_heartbeat`` wrapper in
+    ``mahavishnu/engines/agno_adapter_impl.py`` when the
+    dispatch's resolved base_url matches
+    ``settings.bifrost.local_provider_url`` (i.e. the
+    llama-server target). The label set is normalized to match
+    the master counter (``outcome, provider, route_class``) so
+    dashboards and alert rules can group by either counter
+    interchangeably. The local counter is registered even when
+    ``bifrost.local_provider_enabled: false`` (so dashboards
+    don't 404); it is simply not incremented in that case.
+    """
+    registry = get_bifrost_metrics_registry()
+    counter = _get_or_create_bifrost_counter(
+        "mahavishnu_bifrost_local_dispatch_total",
+        "Bifrost local-target dispatch total (Phase G; outcome / provider / route_class).",
+        ("outcome", "provider", "route_class"),
+        registry,
+    )
+    counter.labels(outcome=outcome, provider=provider, route_class=route_class).inc()

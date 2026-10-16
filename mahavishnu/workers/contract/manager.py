@@ -132,6 +132,7 @@ class DurableWorkerManager:
         worker_id: str | None = None,
         window_name: str = "main",
         max_wait_ms: int = 30_000,
+        env: dict[str, str] | None = None,
     ) -> SpawnResult:
         # Spec §6: emit STARTING before tmux creation so launch_worker
         # can return the in-flight state. F11/F19.
@@ -152,11 +153,16 @@ class DurableWorkerManager:
         self._publish("worker.spawned", starting)
         self._publish("worker.status_changed", starting)
         # Bounded tmux creation + initial command launch.
+        # The env dict (Phase D, REQ-004) injects per-worker env
+        # vars via tmux set-environment; see _resolve_worker_env
+        # in mahavishnu/terminal/manager.py for the Bifrost-specific
+        # builder.
         info = create_session(
             socket=socket,
             session=session,
             window_name=window_name,
             command=command,
+            env=env,
         )
         target = TmuxTarget(
             socket=info.socket,

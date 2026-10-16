@@ -44,6 +44,32 @@ llm:
   model: qwen3.5  # Embedding model for llama-server
   base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
+# Bifrost LLM gateway (Phase A scaffolding + Phase G local provider).
+# Schema is defined by ``mahavishnu.core.config.BifrostConfig`` (BaseModel,
+# ConfigDict(extra="forbid")). Env var override pattern:
+# ``MAHAVISHNU_BIFROST__<FIELD>`` (e.g. ``MAHAVISHNU_BIFROST__ENABLED=true``).
+# Block is intentionally commented-out below so the BifrostConfig
+# ``default_factory`` owns the values at runtime; uncomment to override.
+# Spec: docs/specs/2026-10-15-bifrost-gateway-wiring-design.md v1.5
+# Plan: docs/plans/2026-10-15-bifrost-gateway-wiring.md §5 Phase A + Phase G
+# bifrost:
+#   enabled: false  # Enable Bifrost gateway routing for mahavishnu LLM callers
+#   base_url: http://127.0.0.1:8471  # Bifrost gateway base URL
+#   anthropic_base_url: http://127.0.0.1:8471/anthropic  # Anthropic-compatible endpoint
+#   caller_id: mahavishnu  # Caller identity in BifrostGatewayRequest
+#   cache_mode: off  # off, direct, semantic
+#   cache_ttl_seconds: 300  # Bifrost cache TTL in seconds
+#   request_timeout_seconds: 30  # Per-request HTTP timeout for Bifrost dispatch
+#   # AI-CLI worker opt-in flags (each independent; default off)
+#   route_claude_code: false  # Inject ANTHROPIC_BASE_URL into terminal-claude workers
+#   route_qwen_code: false  # Inject qwen_env_var into terminal-qwen workers
+#   qwen_env_var: OPENAI_BASE_URL  # Env var Qwen CLI reads for custom base URL
+#   auth_env: BIFROST_API_KEY  # Env var carrying the optional Bifrost bearer token
+#   # Phase G fields — see plan §5 Phase G
+#   local_provider_enabled: true  # Runtime kill-switch: bypass llama-server without removing the plist or provider block
+#   local_provider_url: http://127.0.0.1:8081  # llama-server base URL (Bifrost-side)
+#   local_provider_model: qwen3-8b-q4_k_m  # Documentation; routing rules hardcode the model literal in config/bifrost/config.template.json
+
 # OpenSearch configuration for vector storage and observability
 opensearch:
   endpoint: https://localhost:9200  # HTTPS endpoint for security

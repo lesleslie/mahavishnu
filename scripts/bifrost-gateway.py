@@ -81,6 +81,38 @@ def find_cached_bifrost_bin() -> Path | None:
     return matches[-1] if matches else None
 
 
+def _wrap_with_line_buffering(cmd: list[str]) -> list[str]:
+    """Wrap ``cmd`` with ``stdbuf -oL -eL`` if stdbuf is on PATH.
+
+    Node defaults to block-buffered stdout/stderr when the stream is
+    not a TTY (the bifrost.log / bifrost.err files redirected via
+    ``Popen``). Block-buffering means writes batch up to ~4 KB
+    before flushing, which can delay ``bifrost.log`` emission by
+    seconds under low-throughput workloads.
+
+    The e2e test_agno_dispatch_emits_caller_id test reads
+    bifrost.log expecting near-real-time line emission. The
+    documented 15-second window is the CI tolerance for the
+    unmitigated case; with ``stdbuf -oL -eL`` line-buffering the
+    delay drops to <1s in practice.
+
+    If stdbuf is not on PATH (macOS without coreutils installed —
+    install via ``brew install coreutils`` to get ``gstdbuf``), we
+    log a warning and return the bare command. The e2e test still
+    works (within the 15s window) — the warning is operator-facing
+    guidance, not a hard failure.
+    """
+    if shutil.which("stdbuf") is None:
+        print(
+            "bifrost-gateway: stdbuf not on PATH; Node block-buffering "
+            "may delay bifrost.log emission. Install coreutils "
+            "(macOS: 'brew install coreutils') for line-buffered output.",
+            file=sys.stderr,
+        )
+        return cmd
+    return ["stdbuf", "-oL", "-eL", *cmd]
+
+
 def launch_bifrost() -> subprocess.Popen[bytes]:
     """Spawn the Bifrost Node binary as a supervised subprocess."""
     APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -113,6 +145,11 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
         cmd: list[str] = ["node", str(cached), *bifrost_args]
     else:
         cmd = ["npx", "-y", "@maximhq/bifrost", *bifrost_args]
+
+    # Wrap with stdbuf for line-buffered output (per the e2e test's
+    # near-real-time bifrost.log expectation). Falls back to bare
+    # command + warning when stdbuf is unavailable on the host.
+    cmd = _wrap_with_line_buffering(cmd)
 
     # The kernel dup's the FD into the child at exec time, so closing the
     # Python handles after Popen returns is safe; the child still owns the FD

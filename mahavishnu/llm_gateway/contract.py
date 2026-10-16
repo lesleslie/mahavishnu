@@ -28,6 +28,15 @@ class RouteClass(StrEnum):
     IMAGE = "image"
     HIGH_THROUGHPUT = "high_throughput"
     CHEAP = "cheap"
+    # Phase G (v1.5 Bifrost spec): new route classes for the local
+    # llama-server provider. CLASSIFY routes cheap classification /
+    # extraction tasks to the local model first; EXTRACT is the
+    # narrower "extract structured data from text" task class.
+    # Without these, the Bifrost route-classify rule is structurally
+    # dead code (the contract's route_headers only emits values from
+    # this enum, so the rule's CEL would never match).
+    CLASSIFY = "classify"
+    EXTRACT = "extract"
 
 
 class CacheMode(StrEnum):
@@ -52,6 +61,14 @@ _TASK_LABEL_MAP: Final[dict[str, RouteClass]] = {
     "highthroughput": RouteClass.HIGH_THROUGHPUT,
     "high_throughput": RouteClass.HIGH_THROUGHPUT,
     "cheap": RouteClass.CHEAP,
+    # Phase G (v1.5 Bifrost spec): route-label aliases for the new
+    # CLASSIFY / EXTRACT route classes. Both the underscored form
+    # (`classify`, `extract`) and common variants are accepted so
+    # callers can use either convention.
+    "classify": RouteClass.CLASSIFY,
+    "classification": RouteClass.CLASSIFY,
+    "extract": RouteClass.EXTRACT,
+    "extraction": RouteClass.EXTRACT,
 }
 
 _REQUEST_TYPE_MAP: Final[dict[str, RouteClass]] = {

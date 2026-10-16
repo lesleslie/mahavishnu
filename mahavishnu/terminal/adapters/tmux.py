@@ -11,6 +11,12 @@ if TYPE_CHECKING:
 class TmuxTerminalAdapter(TerminalAdapter):
     """Bridge terminal operations to the durable worker manager."""
 
+    # Default worker_type for the singular launch_session kwargs
+    # (preserved from the pre-Phase-D hardcoded "terminal-claude"
+    # at the original line 31). The plural launch_sessions defaults
+    # to the same value.
+    _DEFAULT_WORKER_TYPE: str = "terminal-claude"
+
     def __init__(self, manager: DurableWorkerManager) -> None:
         self._manager = manager
 
@@ -24,19 +30,60 @@ class TmuxTerminalAdapter(TerminalAdapter):
         command: str,
         columns: int = 80,
         rows: int = 24,
+        *,
+        worker_type: str = _DEFAULT_WORKER_TYPE,
+        backend: str = "claude_tui",
+        env: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> str:
-        """Launch one durable Claude terminal worker."""
+        """Launch one durable Claude terminal worker.
+
+        Phase D (REQ-004) extends the signature with explicit
+        ``worker_type`` and ``env`` kwargs. The Bifrost-specific
+        env-injection happens upstream in
+        ``TerminalManager._resolve_worker_env`` and the
+        resulting dict is forwarded here. ``backend`` is also
+        explicit so non-Claude workers can be spawned in the
+        future (e.g. terminal-qwen, terminal-goose).
+        """
         result = self._manager.spawn(
-            worker_type="terminal-claude",
-            backend="claude_tui",
+            worker_type=worker_type,
+            backend=backend,
             command=[command],
+            env=env,
         )
         return result.worker_id
 
-    async def launch_sessions(self, command: str, count: int) -> list[str]:
-        """Launch multiple durable Claude terminal workers."""
-        return [await self.launch_session(command) for _ in range(count)]
+    async def launch_sessions(
+        self,
+        command: str,
+        count: int = 1,
+        columns: int = 80,
+        rows: int = 24,
+        *,
+        worker_type: str = _DEFAULT_WORKER_TYPE,
+        env: dict[str, str] | None = None,
+    ) -> list[str]:
+        """Launch multiple durable Claude terminal workers.
+
+        Phase D (REQ-004) threads ``worker_type`` and ``env`` into
+        the per-iteration ``launch_session`` so the plural
+        contract does not lose information at the adapter
+        boundary. Without this update, the v1.3 spec's
+        ``TerminalManager.launch_sessions(worker_type=..., env=env)``
+        would fail because the plural method only accepted
+        ``(command, count)``.
+        """
+        return [
+            await self.launch_session(
+                command,
+                columns=columns,
+                rows=rows,
+                worker_type=worker_type,
+                env=env,
+            )
+            for _ in range(count)
+        ]
 
     async def send_command(self, session_id: str, command: str) -> None:
         """Send a command to a durable worker session."""

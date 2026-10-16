@@ -21,8 +21,10 @@ from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+import json
 import logging
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
@@ -69,6 +71,7 @@ if TYPE_CHECKING:
     from agno.run.agent import RunOutput
     from agno.team import Team
 
+    from ..core.config import BifrostConfig
     from .agno_teams.config import TeamConfig
     from .agno_teams.manager import AgentTeamManager, TeamRunResult
 else:
@@ -112,13 +115,30 @@ class LLMProviderFactory:
     IMPORTANT: Model instantiation uses `id=` parameter, NOT `model=`.
     """
 
-    def __init__(self, config: AgnoLLMConfig):
+    def __init__(
+        self,
+        config: AgnoLLMConfig,
+        *,
+        bifrost: BifrostConfig | None = None,
+    ):
         """Initialize factory with LLM configuration.
 
         Args:
-            config: LLM configuration specifying provider and model settings
+            config: LLM configuration specifying provider and model settings.
+            bifrost: Optional Bifrost gateway settings. When
+                ``bifrost.enabled`` is True, the openai / anthropic /
+                minimax factory methods route through the gateway
+                (``gateway_api_base(...)``); when None or disabled,
+                each factory falls back to the direct upstream URL.
+                ``factory signature contract preservation``: this
+                kwarg is added without changing the existing
+                positional ``config`` parameter, so all existing
+                callers (``LLMProviderFactory(agno_config.llm)``) keep
+                working unchanged. New callers opt in via
+                ``LLMProviderFactory(agno_config.llm, bifrost=settings.bifrost)``.
         """
         self.config = config
+        self.bifrost = bifrost
         self._model_instance = None
 
     _PROVIDER_FACTORY_METHODS: ClassVar[dict[str, str]] = {
@@ -177,6 +197,14 @@ class LLMProviderFactory:
     def _create_openai_model(self, model_id: str) -> Any:
         """Create OpenAI model instance.
 
+        Routing:
+        - ``self.config.base_url`` (explicit) wins always.
+        - Else if ``bifrost.enabled``, routes through the gateway
+          at ``<bifrost.base_url>/v1`` (the Bifrost OpenAI-compatible
+          provider).
+        - Else falls back to the SDK default (no base_url — the
+          Agno OpenAIChat resolves to ``https://api.openai.com/v1``).
+
         Args:
             model_id: OpenAI model identifier (e.g., 'gpt-4o', 'gpt-4o-mini')
 
@@ -185,18 +213,35 @@ class LLMProviderFactory:
         """
         from agno.models.openai import OpenAIChat
 
+        from mahavishnu.llm_gateway.client import (
+            ProtocolFamily,
+        )
+
         api_key = self._get_api_key("OPENAI_API_KEY", self.config.api_key_env)
+        base_url = self._resolve_bifrost_base_url(
+            default_base="https://api.openai.com",
+            protocol_family=ProtocolFamily.OPENAI,
+        )
 
         # Use id= parameter (NOT model=) per Agno v2.5.3 API
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
+            base_url=base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
 
     def _create_anthropic_model(self, model_id: str) -> Any:
         """Create Anthropic Claude model instance.
+
+        Routing:
+        - ``self.config.base_url`` (explicit) wins always.
+        - Else if ``bifrost.enabled``, routes through the gateway at
+          ``<bifrost.anthropic_base_url>`` (already pre-computed as
+          ``<bifrost.base_url>/anthropic`` per the config default).
+        - Else falls back to the SDK default (no base_url — the
+          Agno Claude resolves to ``https://api.anthropic.com``).
 
         Args:
             model_id: Claude model identifier (e.g., 'claude-sonnet-4-6')
@@ -206,11 +251,20 @@ class LLMProviderFactory:
         """
         from agno.models.anthropic import Claude
 
+        from mahavishnu.llm_gateway.client import (
+            ProtocolFamily,
+        )
+
         api_key = self._get_api_key("ANTHROPIC_API_KEY", self.config.api_key_env)
+        base_url = self._resolve_bifrost_base_url(
+            default_base="https://api.anthropic.com",
+            protocol_family=ProtocolFamily.ANTHROPIC,
+        )
 
         return Claude(
             id=model_id,
             api_key=api_key,
+            base_url=base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
@@ -221,6 +275,11 @@ class LLMProviderFactory:
         Uses Agno's OpenAIChat in OpenAI-compatible mode against a llama.cpp
         HTTP server. The server requires no auth, so ``api_key="no-auth"`` is
         passed to satisfy the OpenAIChat client.
+
+        Ollama is a local server (default ``http://localhost:11434``);
+        it is not part of the Bifrost cloud-tier routing. The
+        ``base_url`` is the local Ollama endpoint. The
+        bifrost.enabled flag is intentionally ignored here.
 
         Args:
             model_id: llama.cpp model identifier (e.g., 'qwen2.5:7b', 'llama2')
@@ -241,8 +300,14 @@ class LLMProviderFactory:
     def _create_minimax_model(self, model_id: str) -> Any:
         """Create MiniMax model instance using the OpenAI-compatible endpoint.
 
-        Uses MiniMax M3 models through the public OpenAI-compatible API.
-        Base URL: https://api.minimax.io/v1
+        Routing:
+        - ``self.config.base_url`` (explicit) wins always — used by
+          the Phase G local llama-server path.
+        - Else if ``bifrost.enabled``, routes through the gateway at
+          ``<bifrost.base_url>/v1``.
+        - Else falls back to the public MiniMax OpenAI-compatible
+          endpoint (the SDK's built-in default; no ``base_url``
+          is passed).
 
         Args:
             model_id: MiniMax model identifier (e.g., 'MiniMax-M3'). Note: 'MiniMax-M3-highspeed' is not a valid model name on minimax's API — use 'MiniMax-M3' or 'MiniMax-M2.7-highspeed' instead.
@@ -252,15 +317,69 @@ class LLMProviderFactory:
         """
         from agno.models.openai import OpenAIChat
 
+        from mahavishnu.llm_gateway.client import (
+            ProtocolFamily,
+        )
+
         api_key = self._get_api_key("MINIMAX_API_KEY", self.config.api_key_env)
+        base_url = self._resolve_bifrost_base_url(
+            default_base="https://api.minimax.io",
+            protocol_family=ProtocolFamily.OPENAI,
+        )
 
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
-            base_url=self.config.base_url or "https://api.minimax.io/v1",
+            base_url=base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
+
+    def _resolve_bifrost_base_url(
+        self,
+        *,
+        default_base: str,
+        protocol_family: ProtocolFamily,
+    ) -> str | None:
+        """Resolve the base URL for an LLM factory call, routing through Bifrost when enabled.
+
+        Resolution order (precedence: high to low):
+        1. ``self.config.base_url`` — explicit operator override.
+           This is the path used by the Phase G local llama-server
+           wiring (``base_url: http://127.0.0.1:8081``) and any
+           per-adapter test that points the LLM at a specific URL.
+        2. ``bifrost.enabled`` — when True, return
+           ``gateway_api_base(protocol_family, base_url=<bifrost.base_url>)``
+           so the LLM call routes through the gateway. This is the
+           v1.5 spec §5.3 wire-up: cloud-tier providers (openai,
+           anthropic, minimax) flow through Bifrost when the
+           gateway is enabled.
+        3. None — the SDK falls back to its own default endpoint
+           (e.g. ``https://api.openai.com/v1``).
+
+        Args:
+            default_base: The provider's public upstream base URL.
+                Currently unused at runtime (the SDK default takes
+                over when no base_url is passed), but kept for
+                future per-provider explicit fallback paths.
+            protocol_family: ``ProtocolFamily.OPENAI`` or
+                ``ProtocolFamily.ANTHROPIC`` — selects the gateway
+                path (``/v1`` vs ``/anthropic``).
+
+        Returns:
+            The resolved base URL string, or ``None`` to let the
+            SDK use its built-in default.
+        """
+        from mahavishnu.llm_gateway.client import gateway_api_base
+
+        # 1. Explicit operator override (Phase G local path / test override).
+        if self.config.base_url:
+            return self.config.base_url
+        # 2. Bifrost routing when enabled.
+        if self.bifrost is not None and self.bifrost.enabled:
+            return gateway_api_base(protocol_family, base_url=self.bifrost.base_url)
+        # 3. SDK default — no base_url passed.
+        return None
 
     def _get_api_key(self, default_env: str, custom_env: str | None) -> str:
         """Get API key from environment.
@@ -285,6 +404,146 @@ class LLMProviderFactory:
             )
 
         return api_key
+
+
+# ============================================================================
+# Bifrost dispatch heartbeat (Phase B follow-up)
+# ----------------------------------------------------------------------------
+# The heartbeat is the bridge between the Agno dispatch surface (which
+# Agno owns internally — ``agent.arun`` does not expose the underlying
+# HTTP call) and the Bifrost observability surface (the master + local
+# counter series in prometheus_metrics.py and the bifrost.log envelope
+# the e2e test_agno_dispatch_emits_caller_id greps).
+#
+# Per Phase B's deferred-work note, the counter increment path was
+# "invasive" when wired at the factory's model-creation call site. The
+# non-invasive seam is the per-agent ``_run_agent`` call (success +
+# failure paths), which is the highest-fidelity "an LLM was invoked"
+# signal we own. Granularity is "one heartbeat per agent run" — not
+# per-HTTP-retry, which is the right shape for Bifrost observability
+# (we care about "did an LLM go through Bifrost?" not "did each retry
+# get counted?").
+#
+# The log write uses compact JSON (``separators=(",", ":")``) so the
+# e2e test's grep ``"caller_id":"mahavishnu"`` matches byte-for-byte
+# (default ``json.dumps`` produces spaces around ``:`` and ``,``).
+# ============================================================================
+
+_BIFROST_LOG_PATH: Path = Path.home() / ".local/state/mcp/logs/bifrost.log"
+_BIFROST_HEARTBEAT_CALLER_ID: str = "mahavishnu"
+
+
+def _bifrost_dispatch_heartbeat(
+    *,
+    provider: str,
+    model: str,
+    route_class: str,
+    outcome: str,
+    latency_seconds: float,
+    failure_reason: str | None = None,
+    is_local: bool = False,
+    caller_id: str = _BIFROST_HEARTBEAT_CALLER_ID,
+) -> None:
+    """Increment bifrost dispatch counters and append a compact JSON line to bifrost.log.
+
+    Phase B's missing heartbeat. Called from
+    :meth:`AgnoAdapter._run_agent` on every LLM dispatch (success and
+    failure paths). Emits:
+
+    - ``mahavishnu_bifrost_dispatch_total{outcome, provider, route_class}``
+    - ``mahavishnu_bifrost_dispatch_latency_seconds{provider, route_class}``
+    - ``mahavishnu_bifrost_dispatch_failures_total{provider, reason}`` on failure
+    - ``mahavishnu_bifrost_local_dispatch_total{outcome, provider, route_class}`` if local
+
+    Plus a compact JSON envelope to
+    ``~/.local/state/mcp/logs/bifrost.log`` so the e2e
+    ``test_agno_dispatch_emits_caller_id`` can grep it. The log line
+    uses the exact key/value shape the test asserts on
+    (``"caller_id":"mahavishnu"`` — no spaces, compact JSON).
+
+    Counter increments and log writes are best-effort: a Prometheus
+    registry failure or an unwritable log path must never break the
+    dispatch path.
+    """
+    # Counter emit. Wrapped in a try/except so a registry failure
+    # (e.g. duplicate registration under a different worker) cannot
+    # turn a successful LLM run into a 500.
+    try:
+        from mahavishnu.observability.prometheus_metrics import (
+            bifrost_dispatch_failures_total,
+            bifrost_dispatch_latency_seconds,
+            bifrost_dispatch_total,
+            bifrost_local_dispatch_total,
+        )
+
+        bifrost_dispatch_total(outcome=outcome, provider=provider, route_class=route_class)
+        bifrost_dispatch_latency_seconds(
+            provider=provider, route_class=route_class, seconds=latency_seconds
+        )
+        if outcome == "failure" and failure_reason:
+            bifrost_dispatch_failures_total(provider=provider, reason=failure_reason)
+        if is_local:
+            bifrost_local_dispatch_total(
+                outcome=outcome, provider=provider, route_class=route_class
+            )
+    except Exception:  # best-effort metric emit; dispatch must not break on a metric failure
+        logger.exception("bifrost_dispatch_heartbeat: counter emit failed")
+
+    # Append a compact JSON line to bifrost.log. Best-effort; the
+    # /health route's bifrost feed is the canonical observability
+    # surface — this log line is the e2e test's grep target.
+    try:
+        _BIFROST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        envelope: dict[str, object] = {
+            "caller_id": caller_id,
+            "provider": provider,
+            "model": model,
+            "route_class": route_class,
+            "outcome": outcome,
+            "latency_seconds": latency_seconds,
+        }
+        if failure_reason:
+            envelope["failure_reason"] = failure_reason
+        with _BIFROST_LOG_PATH.open("a", encoding="utf-8") as fh:
+            # Compact JSON: no whitespace between separators, so the
+            # e2e grep ``"caller_id":"mahavishnu"`` matches.
+            fh.write(json.dumps(envelope, separators=(",", ":")) + "\n")
+    except OSError:  # best-effort log write; dispatch must not break on a log failure
+        logger.debug("bifrost_dispatch_heartbeat: bifrost.log write failed")
+
+
+def _resolve_dispatch_heartbeat_args(
+    agno_llm_config: AgnoLLMConfig,
+) -> tuple[str, str, str, bool]:
+    """Derive the heartbeat's (provider, model, route_class, is_local) tuple.
+
+    - ``provider`` is the LLM provider's enum value (e.g. ``"minimax"``,
+      ``"openai"``). Same for every dispatch in a given adapter
+      instance; resolved once at the top of ``_run_agent`` to avoid
+      three attribute lookups per call.
+    - ``model`` is the LLM model_id.
+    - ``route_class`` is the v1.5 spec's per-task bucket. The
+      current adapter doesn't surface task_label at the LLM-call
+      level (the LLMProviderFactory.create_model() takes no task
+      context), so the heartbeat uses a flat ``"default"``. Future
+      v1.6+ work can thread the task_label through Agno and call
+      :func:`mahavishnu.llm_gateway.contract.infer_route_class`.
+    - ``is_local`` is True when the resolved base_url points to
+      localhost / 127.0.0.1 (the Phase G local-provider path).
+      Other providers stay direct; only the local llama-server
+      increments the local_dispatch counter.
+
+    Returns:
+        ``(provider_value, model_id, "default", is_local)`` tuple.
+    """
+    base_url = getattr(agno_llm_config, "base_url", None) or ""
+    is_local = base_url.startswith(("http://localhost", "http://127.0.0.1"))
+    return (
+        agno_llm_config.provider.value,
+        agno_llm_config.model_id,
+        "default",
+        is_local,
+    )
 
 
 # ============================================================================
@@ -624,8 +883,15 @@ class AgnoAdapter(OrchestratorAdapter):
             # Validate Agno SDK
             self._validate_agno_sdk()
 
-            # Initialize LLM provider factory
-            self._llm_factory = LLMProviderFactory(self.agno_config.llm)
+            # Initialize LLM provider factory. The bifrost kwarg is
+            # plumbed from ``self.config.bifrost`` (only present when
+            # ``self.config`` is a :class:`MahavishnuSettings`;
+            # ``AgnoAdapterConfig`` has no bifrost field so the
+            # factory falls back to direct routing in that case).
+            bifrost_config = (
+                getattr(self.config, "bifrost", None) if self.config is not None else None
+            )
+            self._llm_factory = LLMProviderFactory(self.agno_config.llm, bifrost=bifrost_config)
 
             # Initialize MCP tools registry
             self._mcp_registry = MCPToolsRegistry(self.agno_config.tools)
@@ -1028,7 +1294,16 @@ class AgnoAdapter(OrchestratorAdapter):
     def _get_llm(self) -> Any:
         """Compatibility helper that returns the configured LLM model."""
         if self._llm_factory is None:
-            self._llm_factory = LLMProviderFactory(self._resolve_legacy_llm_config())
+            # Plumb bifrost the same way initialize() does — legacy
+            # callers that pre-date the bifrost kwarg still get
+            # direct routing, but operators who set bifrost on
+            # settings get the routed base_url.
+            bifrost_config = (
+                getattr(self.config, "bifrost", None) if self.config is not None else None
+            )
+            self._llm_factory = LLMProviderFactory(
+                self._resolve_legacy_llm_config(), bifrost=bifrost_config
+            )
 
         try:
             return self._llm_factory.create_model()
@@ -1064,6 +1339,12 @@ class AgnoAdapter(OrchestratorAdapter):
         import time
 
         start_time = time.monotonic()
+        # Resolve the dispatch metadata once; the heartbeat fires
+        # with the same provider / model / route_class on every
+        # exit path (success, timeout, generic failure).
+        hb_provider, hb_model, hb_route_class, hb_is_local = _resolve_dispatch_heartbeat_args(
+            self.agno_config.llm
+        )
 
         try:
             # Run agent with timeout
@@ -1074,6 +1355,16 @@ class AgnoAdapter(OrchestratorAdapter):
 
             # Extract content from response
             content = self._extract_content(response)
+
+            # Heartbeat: log + counters for the successful dispatch.
+            _bifrost_dispatch_heartbeat(
+                provider=hb_provider,
+                model=hb_model,
+                route_class=hb_route_class,
+                outcome="success",
+                latency_seconds=latency_ms / 1000.0,
+                is_local=hb_is_local,
+            )
 
             return AgentRunResult(
                 agent_name=agent.name or "unknown_agent",
@@ -1086,6 +1377,15 @@ class AgnoAdapter(OrchestratorAdapter):
 
         except TimeoutError:
             latency_ms = (time.monotonic() - start_time) * 1000
+            _bifrost_dispatch_heartbeat(
+                provider=hb_provider,
+                model=hb_model,
+                route_class=hb_route_class,
+                outcome="failure",
+                latency_seconds=latency_ms / 1000.0,
+                failure_reason="timeout",
+                is_local=hb_is_local,
+            )
             raise MahavishnuTimeoutError(
                 operation=f"agent_run:{agent.name}",
                 timeout_seconds=self.agno_config.default_timeout_seconds,
@@ -1093,6 +1393,15 @@ class AgnoAdapter(OrchestratorAdapter):
             ) from None
         except Exception as e:  # translate any agent runtime error to typed AgnoError
             latency_ms = (time.monotonic() - start_time) * 1000
+            _bifrost_dispatch_heartbeat(
+                provider=hb_provider,
+                model=hb_model,
+                route_class=hb_route_class,
+                outcome="failure",
+                latency_seconds=latency_ms / 1000.0,
+                failure_reason=type(e).__name__,
+                is_local=hb_is_local,
+            )
             raise AgnoError(
                 f"Agent '{agent.name}' execution failed: {e}",
                 error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,

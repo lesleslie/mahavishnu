@@ -68,10 +68,7 @@ Example:
 
 ## Client Opt-In
 
-In-repo callers can opt into Bifrost for OpenAI-compatible traffic by setting either:
-
-- `BIFROST_BASE_URL=http://127.0.0.1:8471`
-- `MAHAVISHNU_LLM_GATEWAY_BASE_URL=http://127.0.0.1:8471`
+In-repo callers opt into Bifrost via `settings/mahavishnu.yaml → bifrost.enabled: true` (the canonical first-class mount on `MahavishnuSettings`). The pre-1.0 env-var path is deleted per `feedback-no-backwards-compat-pre-1.0.md`; `MAHAVISHNU_BIFROST__enabled` (nested delimiter `__`) overrides `local.yaml` per the Oneiric loader precedence.
 
 Current in-repo wiring:
 

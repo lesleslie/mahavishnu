@@ -5,12 +5,16 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx2 as httpx
 
 from ._safe import safe_error_for_user
 from ._states import WorkerCheck
+
+if TYPE_CHECKING:
+    from mahavishnu.core.config import MahavishnuSettings
 
 
 def _check_endpoint_scheme(endpoint: str, *, has_secret: bool) -> str | None:
@@ -123,6 +127,34 @@ PROBES = {
     "auth_presence": _probe_auth_presence,
     "provider_request": _probe_provider_request,
 }
+
+
+def resolve_probe_endpoint(
+    provider: str,
+    settings: MahavishnuSettings | None = None,
+) -> str:
+    """Resolve the provider probe endpoint, routing through Bifrost when enabled.
+
+    Per the v1.5 Bifrost spec §5.3 + plan §5 Phase B (REQ-003):
+    when ``settings.bifrost.enabled and provider == "minimax"``, the
+    probe goes to ``<bifrost.base_url>/v1/models`` (the Bifrost
+    gateway's OpenAI-compatible /v1/models endpoint). Otherwise
+    the literal ``PROVIDER_PROBES[provider][1]`` is returned (so
+    the probe dictionary stays stable for tests and operator
+    inspection).
+
+    The provider set is the four in ``PROVIDER_PROBES``: ``minimax``,
+    ``anthropic``, ``openai``, ``qwen``. For non-minimax providers
+    the helper is a passthrough regardless of the bifrost flag
+    (per the v1.5 amendment — only the cloud-tier MinMax path is
+    routed through Bifrost; the other providers stay direct).
+    """
+    if settings is not None and getattr(settings, "bifrost", None) is not None:
+        bifrost = settings.bifrost
+        if bifrost.enabled and provider == "minimax":
+            return bifrost.base_url.rstrip("/") + "/v1/models"
+    return PROVIDER_PROBES[provider][1]
+
 
 PROVIDER_PROBES = {
     "minimax": ("MINIMAX_API_KEY", "https://api.minimax.io/v1/models"),

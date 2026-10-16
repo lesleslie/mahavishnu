@@ -485,14 +485,56 @@ def add_config_validation_commands(app: typer.Typer) -> None:
             report = await run_validation(config_dir=config_dir, full=full)
 
             if json_output:
+                # Phase A (v1.5 Bifrost spec §5.1): include the bifrost
+                # schema dump in the JSON output as a sibling key.
+                # ``auth_env`` is excluded to avoid leaking the env-var
+                # name (per the plan's hard-rule for /health).
+                report["bifrost_schema"] = _bifrost_schema_dump()
                 typer.echo(json.dumps(report, indent=2, default=str))
             else:
                 _print_validation_report(report)
+                _print_bifrost_schema()
 
             if not report["valid"]:
                 raise typer.Exit(code=1)
 
         asyncio.run(_validate())
+
+
+def _bifrost_schema_dump() -> dict[str, object]:
+    """Return the BifrostConfig projected to its public shape.
+
+    Excludes ``auth_env`` to avoid leaking the env-var name (per
+    the plan's hard-rule for /health.bifrost.config — see the
+    v1.5 spec §5.5 / plan §5 Phase E).
+    """
+    try:
+        from mahavishnu.core.config import MahavishnuSettings
+    except ImportError:
+        return {"_error": "MahavishnuSettings not importable"}
+    try:
+        settings = MahavishnuSettings()
+    except (
+        Exception
+    ) as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return {"_error": f"settings load failed: {exc}"}
+    return settings.bifrost.model_dump(exclude={"auth_env"})
+
+
+def _print_bifrost_schema() -> None:
+    """Render the bifrost: block as a YAML-style key/value dump.
+
+    Phase A (v1.5 Bifrost spec §5.1) deliverable for
+    ``mahavishnu config validate``: the operator sees the resolved
+    bifrost settings (14 fields, with ``auth_env`` redacted).
+    """
+    typer.echo("\nBifrost settings (settings.bifrost, auth_env redacted):")
+    schema = _bifrost_schema_dump()
+    if "_error" in schema:
+        typer.echo(f"  [warn] {schema['_error']}")
+        return
+    for key, value in schema.items():
+        typer.echo(f"  {key}: {value}")
 
 
 @dataclass(slots=True)

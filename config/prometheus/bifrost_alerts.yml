@@ -1,0 +1,100 @@
+# Prometheus Alerting Rules for the Bifrost LLM Gateway
+#
+# Two alerts:
+#   1. MahavishnuBifrostErrorRateHigh        — Phase E: any Bifrost dispatch
+#      (overall error rate over 50% for 1m).
+#   2. MahavishnuBifrostLocalErrorRateHigh   — Phase G: error rate scoped to
+#      the local llama-server target only (operator opt-in via
+#      settings/mahavishnu.yaml: bifrost.local_provider_enabled: true).
+#
+# Source metrics:
+#   - ``mahavishnu_bifrost_dispatch_total`` and
+#     ``mahavishnu_bifrost_dispatch_failures_total`` are the bifrost-wide
+#     counters incremented by ``_bifrost_dispatch_heartbeat`` in
+#     ``mahavishnu/engines/agno_adapter_impl.py``.
+#   - ``mahavishnu_bifrost_local_dispatch_total{outcome, ...}`` is the
+#     Phase G counter registered in
+#     ``mahavishnu/observability/prometheus_metrics.py`` and incremented
+#     on local-target dispatches (both success and failure paths).
+#
+# Usage:
+#   Add to prometheus.yml's rule_files list alongside alerting_rules.yml
+#   and health_aggregator_alerts.yml:
+#     rule_files:
+#       - "alerting_rules.yml"
+#       - "health_aggregator_alerts.yml"
+#       - "bifrost_alerts.yml"
+#
+# Runbook: docs/runbooks/HEALTH_REASON_CODES.md — every alert annotation
+# includes a ``runbook_url`` so operators triage via canonical reason
+# codes.
+#
+# NOTE on the failure-rate math: both alerts divide
+# ``sum(rate(<counter>{outcome="failure"}[1m]))`` by
+# ``sum(rate(<counter>[1m]))``. The ratio's Prometheus behavior on a
+# zero-total series is "no data" (the alert is silent) rather than 0/0
+# — so a Bifrost gateway with no traffic never pages.
+
+groups:
+  - name: mahavishnu-bifrost
+    interval: 30s
+    rules:
+
+      # ------------------------------------------------------------------
+      # Phase E — bifrost-wide error rate
+      # ------------------------------------------------------------------
+
+      - alert: MahavishnuBifrostErrorRateHigh
+        expr: |
+          sum(rate(mahavishnu_bifrost_dispatch_failures_total[1m]))
+            /
+          sum(rate(mahavishnu_bifrost_dispatch_total[1m]))
+            > 0.5
+        for: 1m
+        labels:
+          severity: critical
+          component: bifrost
+          phase: E
+        annotations:
+          summary: "Bifrost dispatch error rate > 50% for 1m+"
+          description: |
+            The Bifrost LLM gateway dispatch error rate has exceeded
+            50% for at least 1 minute across all providers/routes.
+            This is the Phase E operator-visible signal: every
+            bifrost-routed call (cloud or local) is failing.
+            Check ``/health.bifrost`` on the Mahavishnu server for
+            the upstream reachability verdict and the per-feed
+            ``status`` / ``reason_codes`` in ``/health`` body.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md#bifrost_dispatch_error_rate_high"
+
+      # ------------------------------------------------------------------
+      # Phase G — local llama-server target error rate (provider-scoped)
+      # ------------------------------------------------------------------
+
+      - alert: MahavishnuBifrostLocalErrorRateHigh
+        expr: |
+          sum(rate(mahavishnu_bifrost_local_dispatch_total{outcome="failure"}[1m]))
+            /
+          sum(rate(mahavishnu_bifrost_local_dispatch_total[1m]))
+            > 0.5
+        for: 1m
+        labels:
+          severity: warning
+          component: bifrost
+          phase: G
+        annotations:
+          summary: "Local llama-server dispatch error rate > 50% for 1m+"
+          description: |
+            The local llama-server target has been failing more than
+            50% of dispatches over the last 1 minute. Traffic IS
+            falling back to the cloud (``minimax-openai/MiniMax-M3``
+            via the ``route-background`` / ``route-classify``
+            fallbacks), so this is warning-level — not page-level.
+            Likely root causes: the launchd plist is in crash-loop,
+            the GGUF model file is missing/corrupt, or
+            ``bifrost.local_provider_enabled`` has been toggled
+            ``false`` (the counter is not incremented when disabled,
+            so this alert only fires on enabled-and-failing traffic).
+            Check ``/health.bifrost.local_provider_reachable`` and
+            the ``~/Library/Logs/llama-server.err.log`` log.
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md#bifrost_local_dispatch_error_rate_high"

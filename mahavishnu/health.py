@@ -166,6 +166,17 @@ def create_health_app(
             canonical_status=verdict.worst_status.value,
             canonical_checks=feed_states_json,
             canonical_reason_codes=reason_codes_json,
+            # Phase E (v1.5 Bifrost spec §5.5 / plan §5 Phase E):
+            # populate the bifrost sub-shape. The settings are
+            # loaded once per request; the probe helpers run in a
+            # thread pool (asyncio.to_thread) so the event loop is
+            # NOT blocked by the sync ``httpx.get`` calls — a
+            # concurrent /health spam cannot starve the event loop
+            # via slow bifrost / dead llama-server probes.
+            # ``auth_env`` is excluded from the public config dump
+            # to avoid leaking the env-var name (per the plan's
+            # hard-rule for /health.bifrost.config).
+            bifrost=await asyncio.to_thread(_build_bifrost_health_block),
         )
 
         # FastAPI's response_model validates the body but discards
@@ -420,3 +431,78 @@ async def run_health_server(
 
 if __name__ == "__main__":
     asyncio.run(run_health_server())
+
+
+# ============================================================================
+# Phase E (v1.5 Bifrost spec §5.5 / plan §5 Phase E) — bifrost sub-shape
+# ----------------------------------------------------------------------------
+# The /health response carries a typed ``BifrostHealth`` sub-shape
+# (config, reachable, local_provider_reachable) on the
+# ``HealthResponse`` body. The aggregator's
+# ``aggregate_mahishnu_health`` returns the canonical
+# ``HealthSnapshot`` envelope (mcp-common shape); the bifrost
+# sub-shape is a server-specific extension (per the M2 polish
+# precedent: server-convenience fields layered on top of the
+# canonical snapshot).
+# ============================================================================
+
+
+def _build_bifrost_health_block() -> Any:
+    """Return a populated ``BifrostHealth`` instance for the /health response.
+
+    Reads the current ``MahavishnuSettings`` and runs the two
+    probe helpers (``_probe_bifrost_state``,
+    ``_probe_local_provider_state``) to populate the reachability
+    booleans. The ``auth_env`` field is excluded from the public
+    config dump (per the plan's hard-rule for /health.bifrost.config:
+    don't leak the env-var name).
+
+    Returns:
+        ``BifrostHealth`` instance (defined in
+        ``mahavishnu.core.health``). On any error during settings
+        load (rare; only if the Oneiric loader fails), returns an
+        empty ``BifrostHealth`` with ``config=None`` so the
+        /health endpoint still returns 200 (the canonical
+        envelope reports the failure on the appropriate feed).
+    """
+    from .core.health import BifrostHealth
+
+    try:
+        from mahavishnu.core.config import MahavishnuSettings
+
+        settings = MahavishnuSettings()
+    except ImportError, AttributeError, ValueError, TypeError:
+        # Fail-closed on configuration load failure: log at ERROR
+        # (not WARNING) and re-raise so the /health route returns
+        # 500. The previous broad-catch + warning-log path silently
+        # returned an empty BifrostHealth (reachable=False,
+        # config=None) which is operationally indistinguishable from
+        # a degraded Bifrost — operators couldn't tell the
+        # difference between "config not loadable" and "Bifrost
+        # is down". The re-raise surfaces the failure mode.
+        logger.exception("BifrostHealth build: settings load failed (fail-closed)")
+        raise
+
+    try:
+        from mahavishnu.core.health import (
+            _probe_bifrost_state,
+            _probe_local_provider_state,
+        )
+
+        reachable = _probe_bifrost_state(settings)
+        local_provider_reachable = _probe_local_provider_state(settings)
+        config = settings.bifrost.model_dump(exclude={"auth_env"})
+    except ImportError, AttributeError:
+        # Same fail-closed posture for probe-helper import /
+        # settings attribute access. The probes themselves catch
+        # their own httpx errors and return False — that's the
+        # fail-closed path for transient network errors. This
+        # except only fires on configuration / import problems.
+        logger.exception("BifrostHealth build: probe-helper setup failed (fail-closed)")
+        raise
+
+    return BifrostHealth(
+        config=config,
+        reachable=reachable,
+        local_provider_reachable=local_provider_reachable,
+    )

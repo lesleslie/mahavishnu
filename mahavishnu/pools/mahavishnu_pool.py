@@ -107,6 +107,7 @@ class MahavishnuPool(BasePool):
             ]
             try:
                 from platformdirs import user_data_dir
+
                 base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
                 candidates.append(base / "pools" / config.name / "workspace")
             except Exception:
@@ -120,7 +121,7 @@ class MahavishnuPool(BasePool):
                     if candidate.resolve().exists():
                         chosen = candidate.resolve()
                         break
-                except (OSError, PermissionError):
+                except OSError, PermissionError:
                     continue
             if chosen is None:
                 # Last-resort: use the first candidate and let the worker's

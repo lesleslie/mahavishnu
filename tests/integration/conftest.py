@@ -14,13 +14,24 @@ integration test. The Redis client is a narrow, optional dependency
 that should NOT cost an import for the 200+ tests that don't touch
 Redis. Keeping it in its own conftest file scopes the import to the
 few tests that opt in via the ``redis_client`` parameter.
+
+Phase G (v1.5 Bifrost spec): the ``bifrost_reachable`` and
+``llama_server_reachable`` fixtures are the operator-side skip
+guards promised by the plan's §5 Phase E (Bifrost) and §5 Phase G
+(llama-server) risks. They run ``lsof -nP -iTCP:<port> -sTCP:LISTEN``
+to probe port reachability and ``pytest.skip(...)`` when the service
+is not running locally. e2e tests opt in via the fixture parameter;
+the skip is silent (not a failure) per the plan's risk-mitigation
+language.
 """
 
 from __future__ import annotations
 
 import asyncio
-import socket
 from collections.abc import Iterator
+import shutil
+import socket
+import subprocess
 
 import pytest
 
@@ -37,6 +48,70 @@ def _redis_reachable(host: str = "127.0.0.1", port: int = 6379) -> bool:
             return True
     except OSError:
         return False
+
+
+def _port_listening(port: int) -> bool:
+    """Return ``True`` when ``lsof`` reports a LISTEN on the given port.
+
+    Uses ``lsof -nP -iTCP:<port> -sTCP:LISTEN`` (the project's
+    pre-flight convention for the Bifrost / llama-server risk
+    mitigations). Falls back to a TCP-connect probe when ``lsof`` is
+    not on PATH (e.g. minimal CI containers) so the skip-fixture is
+    still useful in lean environments.
+    """
+    if shutil.which("lsof"):
+        try:
+            result = subprocess.run(
+                ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+                capture_output=True,
+                timeout=2,
+                check=False,
+            )
+            # lsof returns 0 with a header line + at least one match
+            # when something is listening. Empty stdout (header only)
+            # means nothing is listening.
+            return bool(result.stdout.strip().splitlines()[1:])
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    # Fallback: cheap TCP connect probe.
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
+@pytest.fixture(scope="session")
+def bifrost_reachable() -> bool:
+    """Session-scoped guard: True when Bifrost is listening on :8471.
+
+    e2e tests that depend on the Bifrost gateway being up should
+    take this fixture; the fixture skips the test (rather than
+    fails) when the gateway is not running locally. The skip
+    reason follows the project convention ``pytest.skip(reason)``
+    so the operator-visible skip message names the missing service.
+    """
+    if not _port_listening(8471):
+        pytest.skip("Bifrost gateway not reachable on 127.0.0.1:8471")
+    return True
+
+
+@pytest.fixture(scope="session")
+def llama_server_reachable() -> bool:
+    """Session-scoped guard: True when llama-server is listening on :8081.
+
+    Phase G: the local llama-server e2e tests (background routing,
+    classify routing, health sub-shape) depend on the launchd plist
+    actually running the process. This fixture skips when the
+    process is absent. Per the plan §5 Phase G exit criteria, the
+    e2e test ``test_llama_server_health_endpoint`` IS the gate
+    that catches a future plist regression; this fixture is the
+    general-purpose skip-guard for the other 5 e2e tests in
+    ``test_bifrost_local_provider_e2e.py``.
+    """
+    if not _port_listening(8081):
+        pytest.skip("llama-server not reachable on 127.0.0.1:8081")
+    return True
 
 
 @pytest.fixture(scope="session")

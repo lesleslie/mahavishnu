@@ -4,11 +4,12 @@ import dataclasses
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 # Session and socket identifiers must be path-safe. tmux names that
 # contain whitespace, `:`, shell metacharacters, or newlines can be
@@ -87,6 +88,7 @@ def create_session(
     session: str,
     window_name: str,
     command: Sequence[str],
+    env: Mapping[str, str] | None = None,
 ) -> TmuxSessionInfo:
     """Create a new detached tmux session and exec ``command`` in its first pane.
 
@@ -94,6 +96,13 @@ def create_session(
     directly without a shell round-trip. Pre-quoting / shlex.join is FORBIDDEN
     here — see commit msg of fix: shlex.join was producing doubly-quoted output
     that zsh could not parse.
+
+    The optional ``env`` mapping injects env vars into the session via
+    ``tmux set-environment -t <session> KEY VAL`` (NOT ``tmux new-session
+    -e KEY=VAL``, which does NOT propagate to spawned panes — see the v1.3
+    spec wiring chain correction). Each KEY/VAL is checked: keys must match
+    the project's safe-name policy (alphanumeric + underscore), and values
+    are passed through ``shlex.quote`` for shell safety.
     """
     _validate_socket_path(socket)
     _validate_session_name(session)
@@ -144,6 +153,24 @@ def create_session(
             os.chmod(socket, 0o600)
         except PermissionError as e:
             raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
+
+    # Inject env vars via tmux set-environment — per-pane propagation,
+    # unlike `new-session -e` which does NOT propagate. Each entry is
+    # validated against the safe-name policy (alphanumeric + underscore
+    # only) before being passed to tmux.
+    if env:
+        for key, value in env.items():
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                raise TmuxAdapterError(f"refusing to inject unsafe env-var name: {key!r}")
+            quoted_value = shlex.quote(str(value))
+            _run(
+                socket,
+                "set-environment",
+                "-t",
+                session_name,
+                key,
+                quoted_value,
+            )
 
     return TmuxSessionInfo(
         socket=socket,
