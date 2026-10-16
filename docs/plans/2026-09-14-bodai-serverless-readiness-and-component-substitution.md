@@ -460,10 +460,8 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 | REQ-DOCS-004 | CLAUDE.md "current_tmux reuses caller's session via TMUX env var" reflects reality | Phase 2 |
 | REQ-DOCS-005 | CLAUDE.md MultiAuth providers list corrected (no "Qwen free service") | Phase 2 |
 | REQ-DOCS-006 | Crackerjack description in CLAUDE.md reflects deterministic fixers | Phase 2 |
-| REQ-ONEIRIC-MIRROR | `storage.mirror` adapter added (wraps LocalStorageAdapter + S3StorageAdapter/GCS/AzureBlob, mirror_strategy: none/write_through/best_effort/write_behind) | Phase 3 |
 | REQ-ONEIRIC-LIBSQL | `database.libsql` adapter added (PEP 735 group `database-turso`; lazy import of `libsql`; Turso embedded replica support) | Phase 3 |
 | REQ-ONEIRIC-NEON | `database.postgres` extended (or new `neon` provider) with `read_replica_dsn`, `branch_dsn`, `read_strategy: primary/prefer_replica/always_replica` | Phase 3 |
-| REQ-ONEIRIC-REPLICATOR | Replication worker abstraction added (background task, precedent: `OTelStorageAdapter._flush_buffer_periodically` at `observability/otel.py:72`); concrete `LocalToS3Replicator`, `LocalToTursoReplicator`, `LocalToNeonReplicator` | Phase 3 |
 | REQ-ONEIRIC-CACHE-SNAPSHOT | `cache.snapshot` adapter added (wraps `MemoryCacheAdapter`, hydrates from file on `init()`) | Phase 3 |
 | REQ-ONEIRIC-KITS | Adopt at least: `http.fetch`, `compression.encode`, `security.signature`, `serialization.encode`, `data.sanitize`, `workflow.audit` (only `compression.stream` is currently adopted in Mahavishnu) | Phase 3 |
 | REQ-DHARA-LOCKS | Replace `fcntl.LOCK_EX` blocking locks with non-blocking or advisory locks (or remove entirely). Dhara refactored to `dhara/lock/{protocol,in_memory,sql,postgres}.py`; only `FD_CLOEXEC` fcntl reference remains (unrelated). Citation corrected 2026-09-14. | Phase 4 |
@@ -547,7 +545,7 @@ Phase 3 of this plan adds 6 new Oneiric adapters to fill this gap.
 
 **Goal:** The local-to-cloud sync pattern the user described exists as reusable Oneiric adapters; every Bodai state path can route through them.
 
-**Tasks:** REQ-ONEIRIC-MIRROR, REQ-ONEIRIC-LIBSQL, REQ-ONEIRIC-NEON, REQ-ONEIRIC-REPLICATOR, REQ-ONEIRIC-CACHE-SNAPSHOT, REQ-ONEIRIC-KITS.
+**Tasks:** REQ-ONEIRIC-LIBSQL, REQ-ONEIRIC-NEON, REQ-ONEIRIC-CACHE-SNAPSHOT, REQ-ONEIRIC-KITS.
 
 **Exit criteria:** All 6 new adapters exist in `oneiric/adapters/` with capability metadata; at least one Bodai component uses each new adapter in production.
 

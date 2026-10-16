@@ -123,7 +123,7 @@ class AutomationManager:
 
         Args:
             config: Automation configuration. If None, uses defaults.
-            preferred_backend: Preferred backend name ("auto", "pyxa", "atomac", "pyautogui").
+            preferred_backend: Preferred backend name ("auto", "native_macos", "pyautogui").
         """
         self.config = config or AutomationConfig()
         self.preferred_backend = preferred_backend

@@ -63,10 +63,12 @@ reviewer fanout. Reviewers flagged these as structural, not cosmetic.
 1. **Exact file:line citations are verified at plan-promotion time.**
    Every `REQ-XXX-NNN` entry that references code must cite a path
    and line number. The audit invariant is: "the file path resolves
-   AND the cited symbol is within 5 lines of the cited position."
-   Drift past 5 lines is a plan-doc bug; fix the plan, not the code
-   (unless the cited code has legitimately moved, in which case
-   update both atomically).
+   AND the cited symbol is within 2 lines of the cited position
+   (for surgical citations of inline references), or within 5 lines
+   only at class/function boundaries where 2 lines is impractical."
+   Drift past the applicable bound is a plan-doc bug; fix the plan,
+   not the code (unless the cited code has legitimately moved, in
+   which case update both atomically).
 
    **CI guard test** (added Phase 9 of the serverless-readiness
    plan): `pytest tests/test_plan_citations.py` greps every active
