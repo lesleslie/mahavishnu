@@ -52,8 +52,8 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) | 2026-10-04 | `complete` | `superseded` | `session-buddy-lifespan-publisher-inline` | Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `draft` | `implementation` | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
+| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
-| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan (off spec v1.4) |
 | [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
@@ -72,7 +72,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `partial` | `implementation` | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
 | [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `partial` | `canonical` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
 | [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `partial` | `canonical` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
-| [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `draft` | `canonical` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.3 |
+| [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `active` | `canonical` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.5 |
 
 ### Docs: plans
 
@@ -97,8 +97,8 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) | 2026-10-04 | `complete` | `superseded` | `session-buddy-lifespan-publisher-inline` | Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `draft` | `implementation` | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
+| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
-| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan (off spec v1.4) |
 | [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
@@ -150,9 +150,10 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 | Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 8 | 12 | 3 | · | 11 | **34** |
-| `implementation` | 13 | 11 | 14 | 2 | 2 | **42** |
+| `canonical` | 7 | 13 | 3 | · | 11 | **34** |
+| `implementation` | 13 | 15 | 14 | 2 | 2 | **46** |
 | `umbrella` | · | 4 | 2 | · | · | **6** |
 | `historical` | · | 4 | · | · | 16 | **20** |
 | `superseded` | · | · | · | · | 7 | **7** |
-| **Total** | **21** | **31** | **19** | **2** | **36** | **109** |
+| **Total** | **20** | **36** | **19** | **2** | **36** | **113** |
+
