@@ -130,5 +130,32 @@ class ShellWorker(BaseWorker):
                 )
         self._status = WorkerStatus.STOPPED
 
+    async def status(self) -> WorkerStatus:
+        """Return the worker's current status.
+
+        SHELL workers are long-lived sessions; the status field
+        is the source of truth (set by ``start()`` and ``stop()``).
+        A future iteration could poll the terminal manager for
+        session liveness, but for the gate's purpose the cached
+        status is sufficient.
+        """
+        return self._status
+
+    async def get_progress(self) -> dict[str, Any]:
+        """Return a minimal progress snapshot.
+
+        The Qwen gate's pass criterion is the bifrost.log
+        caller_id line, not progress metrics. This method
+        returns the cached status + session_id so any future
+        progress-aware caller (e.g. a CLI ``worker status``
+        command) can see at least the worker_type and session_id.
+        """
+        return {
+            "status": self._status.value,
+            "session_id": self._session_id,
+            "worker_type": self.worker_type,
+            "output_preview": "",
+        }
+
 
 __all__ = ["ShellWorker"]
