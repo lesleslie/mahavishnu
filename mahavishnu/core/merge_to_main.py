@@ -242,6 +242,43 @@ def run_crackerjack_gate(worktree_root: Path) -> tuple[int, str]:
     return (result.returncode, result.stderr)
 
 
+def _find_main_checkout_path(worktree_root: Path) -> Path | None:
+    """Locate the main checkout in the same git repo as ``worktree_root``.
+
+    Uses ``git worktree list --porcelain`` to enumerate every worktree
+    in the shared git repository. Returns the path of the worktree
+    whose branch is ``refs/heads/main`` — i.e., where ``main`` is
+    checked out as a real branch (not detached). Returns ``None`` if
+    no worktree has ``main`` checked out (bare repo, detached main,
+    or no main branch at all).
+
+    The squash-merge commit must land in a real ``main`` checkout:
+    a detached HEAD on ``origin/main`` would lose the commit on
+    ``git gc`` (and the auto-cleanup prunes the worktree anyway).
+    """
+    list_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=worktree_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if list_result.returncode != 0:
+        return None
+
+    # Porcelain format: blocks separated by blank lines. Each block
+    # starts with ``worktree <path>`` and may include ``branch <ref>``
+    # (or ``detached``). The block whose branch is refs/heads/main is
+    # the main checkout.
+    candidate: Path | None = None
+    for line in list_result.stdout.splitlines():
+        if line.startswith("worktree "):
+            candidate = Path(line.split(" ", 1)[1])
+        elif line.startswith("branch refs/heads/main") and candidate is not None:
+            return candidate
+    return None
+
+
 def run_squash_merge(
     worktree_root: Path,
     base: str,
@@ -257,20 +294,26 @@ def run_squash_merge(
        <base>`` against the ``pre_rebase_base_sha`` stored in
        ``.review-state.json``). If it moved, the squash result would
        not be a fast-forward of the new base — abort.
-    3. ``git checkout <base>`` (switch the worktree onto the base
-       branch in preparation for the squash).
-    4. ``git merge --squash <branch>`` (stages changes, does NOT auto-commit).
-    5. Semantic commit (``merge: <branch> → <base>``).
+    3. ``git checkout <base>`` in the main checkout (NOT the worktree)
+       so the commit lands on local ``main``. The worktree has the
+       ephemeral branch; the main checkout has the real ``main``
+       ref. This used to fail: ``git checkout origin/main`` in the
+       worktree is a detached HEAD, so the squash commit was a
+       floating ref GC'd on cleanup.
+    4. ``git merge --squash <branch>`` in the main checkout (stages
+       changes, does NOT auto-commit).
+    5. Semantic commit (``merge: <branch> → <base>``) in the main
+       checkout.
 
     Returns ``(returncode, stderr)`` verbatim. The call site maps any
     non-zero returncode to ``EXIT_REBASE_CONFLICT = 3``. The rebase
     step is the most likely failure point; the squash-merge step is
     a no-op after a clean rebase.
 
-    Implementation note: the checkout happens in the worktree (not
-    the main checkout) because the SessionEnd hook always supplies
-    ``worktree_root`` as ``cwd``. The worktree is the only place
-    where the ephemeral branch exists.
+    The pre-rebase work (steps 1-2) stays in the worktree because
+    the ephemeral branch only exists there. Stages 3-5 relocate to
+    the main checkout so the squash-merge lands on the real
+    ``main`` branch.
     """
     # Step 1: rebase the branch onto the latest base.
     rebase_result = subprocess.run(  # nosec B603 — argv-list, no shell
@@ -306,10 +349,23 @@ def run_squash_merge(
                 ),
             )
 
-    # Step 3: switch the worktree onto the base branch.
+    # Step 2.5: locate the main checkout so the squash-merge lands
+    # on the real ``main`` branch (not a detached HEAD on
+    # ``origin/main`` inside the worktree).
+    main_checkout = _find_main_checkout_path(worktree_root)
+    if main_checkout is None:
+        return (
+            EXIT_REBASE_CONFLICT,
+            (
+                "no worktree with branch refs/heads/main found; "
+                "cannot land squash-merge on local main"
+            ),
+        )
+
+    # Step 3: switch the main checkout onto the base branch.
     checkout_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "checkout", base],
-        cwd=worktree_root,
+        cwd=main_checkout,
         capture_output=True,
         text=True,
         check=False,
@@ -320,7 +376,7 @@ def run_squash_merge(
     # Step 4: stage the squash-merge (does NOT auto-commit).
     squash_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "merge", "--squash", branch],
-        cwd=worktree_root,
+        cwd=main_checkout,
         capture_output=True,
         text=True,
         check=False,
@@ -332,7 +388,7 @@ def run_squash_merge(
     subject = f"merge: {branch} -> {base}"
     commit_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "commit", "-m", subject],
-        cwd=worktree_root,
+        cwd=main_checkout,
         capture_output=True,
         text=True,
         check=False,

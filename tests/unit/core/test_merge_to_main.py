@@ -11,6 +11,7 @@ from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     _check_pending_commit_eligibility,
     _check_sibling_worktree_state,
+    _find_main_checkout_path,
     _list_repo_worktrees,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
@@ -24,6 +25,7 @@ from mahavishnu.core.merge_to_main import (
     run_crackerjack_gate,
     run_pipeline,
     run_review,
+    run_squash_merge,
     write_review_state,
 )
 
@@ -844,6 +846,161 @@ def test_list_repo_worktrees_returns_empty_for_worktree_outside_base(
     )
     siblings = _list_repo_worktrees(cwd)
     assert siblings == []
+
+
+# ── run_squash_merge: lands on local main, not detached HEAD ─────────────
+# The historical implementation did ``git checkout <base>`` (default
+# ``origin/main``) inside the worktree. That detached HEAD, so the
+# squash-merge commit landed on a floating detached ref that got
+# garbage-collected on cleanup. The fix relocates the squash-merge
+# to the main checkout, where ``main`` is checked out as a real branch.
+
+
+def test_run_squash_merge_lands_commit_on_main_checkout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Stages 3-5 (checkout, merge --squash, commit) run in main checkout.
+
+    Without this, ``run_squash_merge`` does everything in
+    ``worktree_root``. With ``base=origin/main`` (the default), the
+    worktree's ``git checkout origin/main`` is a detached HEAD — the
+    squash commit lands there and is GC'd on cleanup. The pipeline
+    returns exit 0 but main is never updated.
+    """
+    worktree = tmp_path / "worktree"
+    main_checkout = tmp_path / "main"
+    worktree.mkdir()
+    main_checkout.mkdir()
+
+    # Pre-rebase SHA re-verification is skipped by leaving the state
+    # file empty (read_review_state returns None → no SHA check).
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.read_review_state",
+        lambda *a, **kw: {},
+    )
+
+    # Capture every subprocess.run invocation so we can assert cwd.
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        calls.append((cmd, kwargs))
+        return _FakeProc(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    # Tell the production code where the real main checkout is.
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda worktree_root: main_checkout,
+    )
+
+    rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
+
+    assert rc == 0
+
+    # Index the calls by argv for easy lookup.
+    by_argv: dict[tuple[str, ...], dict[str, object]] = {}
+    for cmd, kwargs in calls:
+        by_argv[tuple(cmd)] = kwargs
+
+    # The rebase (step 1) still happens in the worktree.
+    rebase = by_argv.get(("git", "rebase", "origin/main"))
+    assert rebase is not None, "rebase step missing"
+    assert rebase["cwd"] == worktree
+
+    # The checkout (step 3) now happens in the main checkout.
+    checkout = by_argv.get(("git", "checkout", "origin/main"))
+    assert checkout is not None, "checkout step missing"
+    assert checkout["cwd"] == main_checkout, (
+        f"checkout must run in main checkout, got cwd={checkout['cwd']!r}"
+    )
+
+    # The squash-merge (step 4) and commit (step 5) also run there.
+    squash = by_argv.get(("git", "merge", "--squash", "feature-x"))
+    assert squash is not None, "merge --squash step missing"
+    assert squash["cwd"] == main_checkout, (
+        f"merge --squash must run in main checkout, got cwd={squash['cwd']!r}"
+    )
+
+    # Commit argv is ``["git", "commit", "-m", "merge: feature-x -> origin/main"]``
+    commit_calls = [
+        (cmd, kw) for cmd, kw in calls
+        if len(cmd) >= 2 and cmd[0] == "git" and cmd[1] == "commit"
+    ]
+    assert len(commit_calls) == 1, (
+        f"expected exactly one commit call, got {len(commit_calls)}: "
+        f"{[c[0] for c in commit_calls]}"
+    )
+    assert commit_calls[0][1]["cwd"] == main_checkout, (
+        f"commit must run in main checkout, got cwd={commit_calls[0][1]['cwd']!r}"
+    )
+
+
+def test_find_main_checkout_path_returns_none_when_no_main_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No worktree has ``main`` checked out → return None.
+
+    Squash-merge can only land where a real ``main`` branch is
+    checked out. A bare repo, a repo where main is detached, or a
+    repo with no main at all returns None and the pipeline surfaces
+    EXIT_REBASE_CONFLICT.
+    """
+    worktree = tmp_path / "worktree"
+    worktree.mkdir()
+
+    # Simulate `git worktree list --porcelain` output with no main branch.
+    porcelain = (
+        f"worktree {tmp_path / 'worktree'}\n"
+        "HEAD abc123\n"
+        "detached\n"
+        f"worktree {tmp_path / 'other'}\n"
+        "HEAD def456\n"
+        "branch refs/heads/feature\n"
+    )
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        return _FakeProc(returncode=0, stdout=porcelain, stderr="")
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    result = _find_main_checkout_path(worktree)
+    assert result is None
+
+
+def test_find_main_checkout_path_returns_main_checkout_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Finds the worktree whose branch is ``refs/heads/main``."""
+    worktree = tmp_path / "worktree"
+    main_path = tmp_path / "main"
+    other_path = tmp_path / "other"
+
+    porcelain = (
+        f"worktree {main_path}\n"
+        "HEAD aaa111\n"
+        "branch refs/heads/main\n"
+        f"worktree {other_path}\n"
+        "HEAD bbb222\n"
+        "branch refs/heads/feature\n"
+        f"worktree {worktree}\n"
+        "HEAD ccc333\n"
+        "branch refs/heads/fix/squash-merge-local-main\n"
+    )
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        return _FakeProc(returncode=0, stdout=porcelain, stderr="")
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    result = _find_main_checkout_path(worktree)
+    assert result == main_path
 
 
 # Helper subprocess result class used by the consolidation-gate tests.
