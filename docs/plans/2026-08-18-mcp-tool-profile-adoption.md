@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-08-18
 last_reviewed: 2026-10-12
-superseded_by: 2026-10-15-mcp-server-fleet-modernization.md
+superseded_by: docs/plans/2026-10-15-mcp-server-fleet-modernization.md
 blocks_on: []
 topic: mcp-tool-profile-adoption
 title: "MCP Tool Profile Adoption Implementation Plan"

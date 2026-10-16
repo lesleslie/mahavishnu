@@ -1,10 +1,10 @@
 ---
 date: 2026-10-04
-status: superseded
-role: implementation
+status: complete
+role: superseded
 topic: session-buddy-lifespan-publisher-inline
 last_reviewed: 2026-10-15
-superseded_by: 2026-10-15-session-buddy-wrapper-cleanup.md
+superseded_by: docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md
 ---
 
 # Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup

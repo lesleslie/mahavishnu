@@ -6,7 +6,7 @@ date: 2026-09-06
 last_reviewed: 2026-09-07
 reviewed_by: "i10-parallel-reviewer (architecture-council lens) 2026-09-07"
 superseded_by: null
-blocks_on: ["docs/specs/2026-08-31-flowscape-design.md"]
+blocks_on: []
 decision_date: 2026-09-06
 topic: mcp-enrichment-posture
 rev: 4

@@ -3,7 +3,7 @@ status: draft
 role: implementation
 date: 2026-05-09
 last_reviewed: 2026-10-15
-superseded_by: ../../decisions/2026-10-15-unified-event-bus-wrapper.md
+superseded_by: docs/decisions/2026-10-15-unified-event-bus-wrapper.md
 topic: observability
 title: "Bodai Unified Event Bus — Standardization Plan"
 
