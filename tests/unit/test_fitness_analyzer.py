@@ -48,7 +48,7 @@ class FakeCircuitBreaker:
 
 
 @dataclass
-class FakeDharaState:
+class FakeMCPState:
     """Simple async key-value store for analyzer tests."""
 
     should_fail: bool = False
@@ -192,7 +192,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_analyze_and_persist_collects_and_flushes_signals(self, monkeypatch):
-        mcp_state = FakeDharaState()
+        mcp_state = FakeMCPState()
         analyzer = FitnessAnalyzer(
             mcp_state=mcp_state,
             component_endpoints=[("component-a", "http://one")],
@@ -299,7 +299,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_writes_to_mcp_and_clears_buffer(self):
-        mcp_state = FakeDharaState()
+        mcp_state = FakeMCPState()
         analyzer = FitnessAnalyzer(mcp_state=mcp_state)
         analyzer._buffer.append(
             _BufferEntry(
@@ -330,7 +330,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_returns_immediately_when_empty(self):
-        analyzer = FitnessAnalyzer(mcp_state=FakeDharaState())
+        analyzer = FitnessAnalyzer(mcp_state=FakeMCPState())
 
         await analyzer._flush_buffer()
 
@@ -339,7 +339,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_uses_circuit_breaker(self):
-        mcp_state = FakeDharaState()
+        mcp_state = FakeMCPState()
         breaker = FakeCircuitBreaker()
         analyzer = FitnessAnalyzer(mcp_state=mcp_state, circuit_breaker=breaker)
         analyzer._buffer.append(
@@ -357,7 +357,7 @@ class TestFitnessAnalyzer:
 
     @pytest.mark.asyncio
     async def test_flush_buffer_drops_after_dlq_threshold(self):
-        mcp_state = FakeDharaState(should_fail=True)
+        mcp_state = FakeMCPState(should_fail=True)
         analyzer = FitnessAnalyzer(mcp_state=mcp_state)
         analyzer._buffer.append(
             _BufferEntry(
@@ -384,7 +384,7 @@ class TestFitnessAnalyzer:
     @pytest.mark.asyncio
     async def test_analyze_and_persist_returns_when_no_traces_collected(self, monkeypatch):
         analyzer = FitnessAnalyzer(
-            mcp_state=FakeDharaState(),
+            mcp_state=FakeMCPState(),
             component_endpoints=[("component-a", "http://one")],
         )
 
