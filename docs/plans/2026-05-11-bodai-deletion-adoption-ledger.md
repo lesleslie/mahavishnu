@@ -18,6 +18,10 @@ title: "Bodai Deletion And Adoption Ledger"
 
 This is the seed ledger for C6a. Rows are intentionally explicit about audit inputs and disposition criteria so later deletion batches can be executed without re-deriving ownership.
 
+## Companion Artifact
+
+See [`2026-05-11-shared-foundation-adoption-matrix.md`](2026-05-11-shared-foundation-adoption-matrix.md) for the adoption-boundary reference (event roles, WebSocket boundaries, migration-task template). The matrix is companion to this ledger — both track the C6a convergence-control-plane initiative, but per-repo row status should be edited here in the ledger.
+
 ## Entry Format
 
 Each row should capture:
