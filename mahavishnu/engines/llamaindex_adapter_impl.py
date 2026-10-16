@@ -389,9 +389,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 import json
                 import urllib.request
 
-                with urllib.request.urlopen(
-                    f"{llama_server_url.rstrip('/')}/v1/models", timeout=5  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-                ) as resp:
+                with (
+                    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+                    urllib.request.urlopen(
+                        f"{llama_server_url.rstrip('/')}/v1/models",
+                        timeout=5,
+                    ) as resp
+                ):
                     payload = json.loads(resp.read().decode("utf-8"))
                 models = payload.get("data") or []
                 if models and isinstance(models[0], dict) and models[0].get("id"):
