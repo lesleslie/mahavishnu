@@ -41,7 +41,7 @@ Start here when reviewing or implementing work. Do not assume a root-level docum
 - [Content Ingestion Guide](./ingestion/CONTENT_INGESTION_GUIDE.md)
 - [Integration Guide](./integration/INTEGRATION_GUIDE.md)
 - [Integrations](./integrations/)
-- [Testing Strategy](./TESTING_STRATEGY.md)
+- [Testing Strategy](./testing/TEST_COVERAGE_QUICK_START.md)
 - [Testing Docs](./testing/)
 
 ### Observability

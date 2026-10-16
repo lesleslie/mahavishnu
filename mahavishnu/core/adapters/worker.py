@@ -213,7 +213,9 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 count=count,
             )
             logger.info(f"Spawned {len(worker_ids)} workers: {', '.join(worker_ids)}")
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # Worker spawn logs and re-raises so the caller can surface the orchestrator error
             logger.error(f"Failed to spawn workers: {e}")
             raise
 
@@ -235,7 +237,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 worker_ids,
                 tasks,
             )
-        except Exception as e:
+        except Exception as e:  # Batch execution logs and recovers any partial results before returning  # noqa: BLE001
             logger.error(f"Failed to execute tasks: {e}")
             # Partial results may exist
             results = await worker_manager.collect_results(worker_ids)

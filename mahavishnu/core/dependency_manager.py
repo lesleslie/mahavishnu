@@ -110,7 +110,7 @@ class DependencyEventEmitter:
         for handler in self._handlers[event_data.event_type]:
             try:
                 handler(event_data)
-            except Exception as e:
+            except Exception as e:  # utility event handler dispatcher — broad catch isolates handler failures so one bad handler does not block others  # noqa: BLE001
                 logger.error(f"Error in event handler for {event_data.event_type}: {e}")
 
     def clear_handlers(self) -> None:

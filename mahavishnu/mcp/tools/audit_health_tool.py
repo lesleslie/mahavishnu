@@ -210,7 +210,7 @@ async def audit_one_repo(
             "error": f"{type(exc).__name__}: {exc}",
             "silent_degraded": False,
         }
-    except Exception as exc:
+    except Exception as exc:  # non-httpx transport error (DNS, connection-refused); surface as a partial-fleet row, never raise  # noqa: BLE001
         return {
             "repo": name,
             "host": host,
@@ -229,7 +229,7 @@ async def audit_one_repo(
     if content_type.startswith("application/json"):
         try:
             payload = response.json()
-        except Exception:
+        except Exception:  # body is not valid JSON; treat as no status (silent-degraded stays False)  # noqa: BLE001
             payload = None
         if isinstance(payload, dict):
             # Prefer canonical_status (Phase 1.1 addition) when present;

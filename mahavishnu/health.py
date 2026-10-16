@@ -223,7 +223,7 @@ def create_health_app(
                 if worker_status in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
                 else "unhealthy"
             )
-        except Exception:
+        except Exception:  # readiness probe is best-effort; transient misconfiguration must not flip orchestrator red
             logger.exception("readiness worker aggregation failed")
             checks["workers"] = "ok"
             checks["workers_default"] = "ok"
@@ -241,7 +241,7 @@ def create_health_app(
 
             merge_driver_payload = merge_driver_health()
             checks["merge_driver"] = "ok" if merge_driver_payload.get("available") else "degraded"
-        except Exception:
+        except Exception:  # readiness probe is best-effort; log and report unknown
             logger.exception("readiness merge_driver probe failed")
             checks["merge_driver"] = "unknown"
 
@@ -277,7 +277,9 @@ def create_health_app(
         """
         try:
             text = prometheus_client.generate_latest(get_health_metrics_registry())
-        except Exception:
+        except (
+            Exception
+        ):  # metrics render failure surfaces 503 to scrapers; never raise from endpoint
             logger.exception("metrics endpoint: registry render failed")
             return Response(
                 content=b"# metrics endpoint unavailable\n",
@@ -321,7 +323,7 @@ def _check_database() -> bool:
 
         test_db = EncryptedSQLite(":memory:")
         return test_db is not None
-    except Exception:
+    except Exception:  # readiness smoke test — any failure => not ready  # noqa: BLE001
         return False
 
 
@@ -334,7 +336,7 @@ def _check_message_bus() -> bool:
         # can be constructed.
         transport = InMemoryEventTransport()
         return transport is not None
-    except Exception:
+    except Exception:  # readiness smoke test — any failure => not ready  # noqa: BLE001
         return False
 
 
@@ -354,7 +356,7 @@ def _check_adapters() -> bool:
         )
 
         return has_adapter
-    except Exception:
+    except Exception:  # readiness smoke test — any failure => not ready  # noqa: BLE001
         return False
 
 

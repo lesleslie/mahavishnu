@@ -484,4 +484,4 @@ After ingesting content:
 1. **Create embeddings** for your own documents
 1. **Query knowledge** with natural language
 
-See [MCP_TOOLS_SPECIFICATION.md](mcp/MCP_TOOLS_SPECIFICATION.md) for complete tool reference.
+See [MCP_TOOLS_SPECIFICATION.md](../mcp/MCP_TOOLS_SPECIFICATION.md) for complete tool reference.

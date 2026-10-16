@@ -446,7 +446,7 @@ async def _mcp_trigger_workflow(
             params=params,
         )
         return result
-    except Exception as exc:
+    except Exception as exc:  # background task — broad catch is the documented contract
         raise JotDispatchError(
             f"{type(exc).__name__}: {exc}",
             error_id="ERROR_JOT_TRIGGER_WORKFLOW_FAILED",
@@ -460,7 +460,7 @@ async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
 
         result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
         return result
-    except Exception as exc:
+    except Exception as exc:  # background task — broad catch is the documented contract
         raise JotDispatchError(
             f"{type(exc).__name__}: {exc}",
             error_id="ERROR_JOT_RECONCILE_STATUS",
@@ -489,7 +489,7 @@ async def _auto_retry_after(handle: str, backoff_s: int) -> None:
             events = parse_events(log_path())
             states = build_states(events, enrich=False).states
             current = resolve_handle(states, handle)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.error(
                 "JOT_AUTO_RETRY_FOLD_FAILED",
                 handle=handle,
@@ -633,7 +633,7 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
             workflow_id=workflow_id,
         )
         return
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.error(
             "JOT_RECONCILE_STATUS_FAILED",
             handle=jot.short_id,
@@ -707,7 +707,7 @@ async def _background_reconciler_loop() -> None:
 
             events = parse_events(log_path())
             jots = build_states(events, enrich=False).states
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.error(
                 "JOT_RECONCILER_FOLD_FAILED",
                 error=f"{type(exc).__name__}: {exc}",
@@ -718,7 +718,7 @@ async def _background_reconciler_loop() -> None:
                 continue
             try:
                 await _reconcile_if_in_flight(jot)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 log.error(
                     "JOT_RECONCLE_PER_JOT_FAILED",
                     handle=jot.short_id,
@@ -819,7 +819,7 @@ def drain_plan(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.error("JOT_DRAIN_PLAN_FOLD_FAILED", error=f"{type(exc).__name__}: {exc}")
         return DrainPlan(query=query, candidates=[], error=str(exc))
 
@@ -1075,7 +1075,10 @@ def _semantic_score(jot_text: str, ctx_text: str, embeddings: Any) -> float:
     global _last_surface_degraded
     try:
         emb = embeddings.embed([jot_text, ctx_text])
-    except TimeoutError, Exception:
+    except (
+        TimeoutError,
+        Exception,
+    ):  # best-effort embeddings probe — broad catch marks surface degraded and returns 0.0
         _last_surface_degraded = True
         return 0.0
     # Defensive: OneiricEmbeddingsAdapter.embed is async; a sync caller
@@ -1155,7 +1158,7 @@ def surface_relevant(
     try:
         events = parse_events(log_path())
         states = build_states(events, enrich=False).states
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning(
             "JOT_SURFACE_FOLD_FAILED",
             error=f"{type(exc).__name__}: {exc}",

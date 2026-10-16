@@ -51,7 +51,7 @@ async def _fetch_tools(server: FastMCP) -> list[Any]:
     """
     try:
         tools = await server.list_tools()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return []
     return list(tools)
 

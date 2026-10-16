@@ -106,7 +106,7 @@ async def release_cluster_claim(
     sentinel_key = mcp_backend.in_flight_key(cluster_id)
     try:
         await mcp_backend.delete(sentinel_key)
-    except Exception as exc:
+    except Exception as exc:  # best-effort MCP state cleanup — broad catch isolates transient backend failures from release path  # noqa: BLE001
         logger.warning(
             "release_cluster_claim: delete failed for %s (%s); continuing",
             sentinel_key,

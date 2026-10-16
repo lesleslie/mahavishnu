@@ -349,7 +349,7 @@ class HybridSearchEngine:
 
             return filtered_results
 
-        except Exception as e:
+        except Exception as e:  # search wrapper — broad catch logs any error and returns empty list so caller sees no results rather than exception
             logger.exception(
                 "Hybrid search failed",
                 extra={
@@ -374,7 +374,7 @@ class HybridSearchEngine:
             if result.embeddings and len(result.embeddings) > 0:
                 return result.embeddings[0]
             return None
-        except Exception as e:
+        except Exception as e:  # embedding service failure — broad catch to fall back to lexical-only search (per design contract)  # noqa: BLE001
             logger.warning(
                 "Failed to generate query embedding",
                 extra={"query": query[:100], "error": str(e)},
@@ -636,7 +636,7 @@ class HybridSearchEngine:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # indexing wrapper — broad catch logs any DB/embedding failure so caller knows the document was not indexed
             logger.exception(
                 "Failed to index document",
                 extra={
@@ -680,7 +680,7 @@ class HybridSearchEngine:
 
                 return deleted  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except Exception as e:  # delete wrapper — broad catch re-raises typed exception with full diagnostic context (DB/embedding repos can fail independently)
             logger.exception(
                 "Failed to delete document",
                 extra={"doc_id": str(doc_id), "error": str(e)},

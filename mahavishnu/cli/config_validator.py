@@ -62,7 +62,9 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
 
     if not isinstance(data, dict):
         # ValueError is retained for the loader's tested invalid-content contract.
-        raise ValueError(f"Configuration file must contain a mapping: {path}")  # noqa: TRY004  # ValueError is part of the parser's tested contract
+        raise ValueError(
+            f"Configuration file must contain a mapping: {path}"
+        )  # ValueError is part of the parser's tested contract
 
     return data
 
@@ -310,7 +312,7 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
             else:
                 settings = _load_settings_from_dir(config_dir)
                 runtime_settings_source = str(config_dir)
-        except Exception as exc:  # pragma: no cover - defensive, exercised via CLI error paths
+        except Exception as exc:  # noqa: BLE001
             runtime_validations.append(
                 ValidationResult(
                     valid=False,
@@ -457,7 +459,7 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
             try:
                 report = UnifiedConfig.validate(settings_dir=config_dir)
-            except Exception as exc:
+            except Exception as exc:  # CLI entry point — broad catch is the documented contract
                 typer.echo(f"[ERROR] Validation failed to run: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
 

@@ -150,7 +150,7 @@ class WorktreeCoordinator:
                     repo_path = Path(repo.path).resolve()
                     allowed_worktree_roots.append(repo_path / ".worktrees")
                     allowed_worktree_roots.append(repo_path / ".claude" / "worktrees")
-            except Exception as e:
+            except Exception as e:  # worktree coordination — broad catch falls back to the base allow-list when the repo catalog is briefly unavailable  # noqa: BLE001
                 # If the repo catalog is briefly unavailable, fall back
                 # to the base allow-list rather than failing to construct
                 # the coordinator. Per-repo subdirs are added on the next
@@ -270,7 +270,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree created successfully: {worktree_path}")
             return result
 
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch logs the failure to the audit logger before re-raising
             # Log failure
             self.audit_logger.log_creation_failure(
                 user_id=user_id,
@@ -378,7 +378,7 @@ class WorktreeCoordinator:
             logger.info(f"Worktree removed successfully: {worktree_path}")
             return result
 
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch logs the failure to the audit logger before re-raising
             self.audit_logger.log_removal_failure(
                 user_id=user_id,
                 repo_nickname=repo_nickname,
@@ -444,7 +444,7 @@ class WorktreeCoordinator:
                     user_id=user_id,
                 )
                 logger.info(f"Backup created before force removal: {backup_path}")
-            except Exception as e:
+            except Exception as e:  # worktree coordination — broad catch logs full traceback when backup fails before force removal
                 logger.exception("Failed to create backup")
                 return (
                     {
@@ -575,7 +575,7 @@ class WorktreeCoordinator:
                         provider = await self.provider_registry.get_available_provider()
                         result = await provider.list_worktrees(repository_path=Path(repo.path))
                         all_worktrees.extend(result.get("worktrees", []))
-                    except Exception as e:
+                    except Exception as e:  # worktree coordination — broad catch logs the per-repo failure and continues the loop  # noqa: BLE001
                         logger.warning(f"Failed to list worktrees for {repo.nickname}: {e}")
                         continue
 
@@ -585,7 +585,9 @@ class WorktreeCoordinator:
                     "total_count": len(all_worktrees),
                 }
 
-        except Exception:
+        except (
+            Exception
+        ):  # worktree coordination — broad catch logs full traceback before re-raising the failure
             logger.exception("Failed to list worktrees")
             raise
 
@@ -646,7 +648,9 @@ class WorktreeCoordinator:
                 "pruned_count": pruned_count,
             }
 
-        except Exception:
+        except (
+            Exception
+        ):  # worktree coordination — broad catch logs full traceback before re-raising the failure
             logger.exception("Failed to prune worktrees")
             raise
 
@@ -704,7 +708,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["status", "--porcelain"])
             return bool(result.strip())
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch wraps git status subprocess failures into False  # noqa: BLE001
             logger.warning(f"Failed to check uncommitted changes: {e}")
             return False
 
@@ -738,7 +742,7 @@ class WorktreeCoordinator:
             content = git_file.read_text().strip()
             return content.startswith("gitdir:")
 
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch wraps worktree file read failures into False  # noqa: BLE001
             logger.warning(f"Failed to verify worktree: {e}")
             return False
 
@@ -747,7 +751,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(repo_path, ["branch", "--list", branch])
             return bool(result.strip())
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch wraps git branch subprocess failures into False  # noqa: BLE001
             logger.warning(f"Failed to check branch existence: {e}")
             return False
 
@@ -756,7 +760,7 @@ class WorktreeCoordinator:
         try:
             result = await self._execute_git_command(worktree_path, ["branch", "--show-current"])
             return result.strip()
-        except Exception as e:
+        except Exception as e:  # worktree coordination — broad catch wraps git branch subprocess failures into "unknown"  # noqa: BLE001
             logger.warning(f"Failed to get worktree branch: {e}")
             return "unknown"
 

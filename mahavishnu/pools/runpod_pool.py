@@ -70,7 +70,7 @@ class RunPodPool(BasePool):
                 self._endpoint_name,
                 self._gpu_type,
             )
-        except Exception as e:
+        except Exception as e:  # Background task — pool startup wraps every underlying failure as FAILED status before re-raising for the caller
             self._status = PoolStatus.FAILED
             logger.error("RunPodPool failed to start: %s", e)
             raise
@@ -155,7 +155,7 @@ class RunPodPool(BasePool):
                 "duration": duration,
             }
 
-        except Exception as e:
+        except Exception as e:  # Background task — pool task execution converts every failure into a structured failed-result envelope  # noqa: BLE001
             self._tasks_failed += 1
             duration = time.time() - start_time
             logger.error("RunPod task failed: %s", e)

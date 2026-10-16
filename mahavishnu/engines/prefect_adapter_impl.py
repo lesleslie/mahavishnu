@@ -232,7 +232,7 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             "result": result,
             "task_id": task_spec.get("id", "unknown"),
         }
-    except Exception as e:
+    except Exception as e:  # Prefect task wrapper — broad catch to return structured failure result  # noqa: BLE001
         return {
             "repo": repo_path,
             "status": "failed",
@@ -711,7 +711,9 @@ class PrefectAdapter(OrchestratorAdapter):
                 extra={"api_url": api_url},
             )
 
-        except Exception as exc:
+        except (
+            Exception
+        ) as exc:  # adapter init — broad catch to map any error to typed PrefectError then re-raise
             error = _map_prefect_exception(exc, "initialize", api_url)
             logger.error(
                 "Failed to initialize PrefectAdapter",
@@ -733,7 +735,7 @@ class PrefectAdapter(OrchestratorAdapter):
         if self._client_context is not None:
             try:
                 await self._client_context.__aexit__(None, None, None)
-            except Exception as e:
+            except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # noqa: BLE001
                 logger.warning(f"Error closing Prefect client: {e}")
             finally:
                 self._client_context = None
@@ -743,7 +745,7 @@ class PrefectAdapter(OrchestratorAdapter):
             if callable(close_method):
                 try:
                     await close_method()
-                except Exception as e:
+                except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # noqa: BLE001
                     logger.warning(f"Error closing Prefect client session: {e}")
 
         self._client = None
@@ -763,7 +765,7 @@ class PrefectAdapter(OrchestratorAdapter):
         # at all, so fall back to a lightweight HTTP shim for lifecycle checks.
         try:
             client_factory = get_client()
-        except Exception as exc:
+        except Exception as exc:  # client factory fallback — broad catch to log shim warning and use lightweight shim  # noqa: BLE001
             logger.warning(
                 "Falling back to lightweight Prefect client shim: %s",
                 exc,
@@ -937,7 +939,7 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             # Re-raise PrefectError without wrapping
             raise
-        except Exception as exc:
+        except Exception as exc:  # flow execute — broad catch to map any error to structured failure result (PrefectError already handled above)  # noqa: BLE001
             error = _map_prefect_exception(exc, "execute", self.config.api_url)
             logger.error(
                 "Prefect flow execution failed",
@@ -1023,7 +1025,7 @@ class PrefectAdapter(OrchestratorAdapter):
                     "api_url": self.config.api_url,
                 },
             }
-        except Exception as exc:
+        except Exception as exc:  # health check — broad catch to report any error as unhealthy
             logger.warning(
                 "Prefect health check failed with unexpected error",
                 extra={"error": str(exc)},
@@ -1153,7 +1155,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url
             )
@@ -1401,7 +1403,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"update_deployment({deployment_id})", self.config.api_url
             )
@@ -1449,7 +1451,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"delete_deployment({deployment_id})", self.config.api_url
             )
@@ -1491,7 +1493,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"get_deployment({deployment_id})", self.config.api_url
             )
@@ -1542,7 +1544,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc,
                 f"get_deployment_by_name({flow_name}/{deployment_name})",
@@ -1616,7 +1618,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(exc, "list_deployments", self.config.api_url)
             logger.error(
                 "Failed to list deployments",
@@ -1686,7 +1688,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"trigger_flow_run({deployment_id})", self.config.api_url
             )
@@ -1727,7 +1729,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(exc, f"get_flow_run({flow_run_id})", self.config.api_url)
             logger.error(
                 "Failed to get flow run",
@@ -1799,7 +1801,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(exc, "list_flow_runs", self.config.api_url)
             logger.error(
                 "Failed to list flow runs",
@@ -1848,7 +1850,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"cancel_flow_run({flow_run_id})", self.config.api_url
             )
@@ -1892,7 +1894,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # work pool CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(exc, "list_work_pools", self.config.api_url)
             logger.error(
                 "Failed to list work pools",
@@ -1929,7 +1931,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # work pool CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc, f"get_work_pool({work_pool_name})", self.config.api_url
             )
@@ -2021,7 +2023,7 @@ class PrefectAdapter(OrchestratorAdapter):
 
         except PrefectError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # deployment schedule CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
                 exc,
                 f"clear_deployment_schedule({deployment_id})",

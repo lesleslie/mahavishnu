@@ -458,7 +458,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 principal=principal.name,
             )
             return handle
-        except Exception:
+        except (
+            Exception
+        ):  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
             record_worktree_op(
                 backend=backend_kind,
                 op="create",
@@ -569,7 +571,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 path=target,
                 worktree_id=handle.handle_id,
             )
-        except Exception:
+        except (
+            Exception
+        ):  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
             self._record_fetch_outcome(start, backend_kind, success=False, handle=handle)
             raise
 
@@ -619,7 +623,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            import zstandard  # noqa: F401
+            import zstandard
         except ImportError as exc:
             raise WorktreeError(
                 "zstandard dependency required for streaming tar.zst; "
@@ -650,7 +654,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         try:
             return self._storage.load_stream(storage_key)  # type: ignore[union-attr, return-value]
-        except Exception as exc:
+        except Exception as exc:  # storage adapter error → map to typed WorktreeError regardless of underlying cause
             raise WorktreeError(
                 f"Storage key not found: {storage_key}",
                 error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
@@ -666,7 +670,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         try:
             return chunk_reader_callable()
-        except Exception as exc:
+        except Exception as exc:  # storage adapter error → map to typed WorktreeError regardless of underlying cause
             raise WorktreeError(
                 f"Storage key not found: {storage_key}",
                 error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
@@ -871,7 +875,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             wt_path = get_worktree_path(handle.repo, handle.branch)
             if wt_path.exists():
                 await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
-        except Exception as exc:
+        except Exception as exc:  # best-effort on-disk cleanup — broad catch to log and continue with remote delete  # noqa: BLE001
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -891,7 +895,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 result = delete(ref.key)
                 if asyncio.iscoroutine(result):
                     await result
-        except Exception as exc:
+        except Exception as exc:  # best-effort remote storage delete — broad catch to log and proceed to cache invalidation  # noqa: BLE001
             logger.warning(
                 "remote-storage-delete-failed",
                 extra={
@@ -904,7 +908,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         # 2. Invalidate cache entries for this handle.
         try:
             count = await self._cache.invalidate_handle(handle.handle_id)
-        except Exception as exc:
+        except Exception as exc:  # best-effort cache invalidation — broad catch to log and treat as 0 invalidations  # noqa: BLE001
             logger.warning(
                 "remote-cache-invalidate-failed",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -970,7 +974,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if asyncio.iscoroutine(result):
                     return bool(await result)
                 return bool(result)
-            except Exception as exc:
+            except Exception as exc:  # best-effort exists probe — broad catch to treat failure as not-exists  # noqa: BLE001
                 logger.warning(
                     "remote-exists-check-failed",
                     extra={"key": ref.key, "error": str(exc)},
@@ -993,7 +997,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if callable(close):
                     close()
             return bool(first)
-        except Exception:
+        except Exception:  # best-effort existence probe fallback — broad catch to return False on any error  # noqa: BLE001
             return False
 
     async def lock(
@@ -1055,7 +1059,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 storage_ok = await storage_health
             else:
                 storage_ok = bool(storage_health)
-        except Exception:
+        except Exception:  # health probe — broad catch to mark storage unhealthy on any error
             storage_ok = False
         if not storage_ok:
             report.healthy = False
@@ -1063,7 +1067,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         try:
             cache_ok = await self._cache.health()
-        except Exception:
+        except Exception:  # health probe — broad catch to mark cache unhealthy on any error
             cache_ok = False
         if not cache_ok:
             report.healthy = False

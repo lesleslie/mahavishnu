@@ -167,7 +167,7 @@ class LLMProviderFactory:
             return self._model_instance
         except (AgnoError, ConfigurationError):  # fmt: skip
             raise
-        except Exception as e:
+        except Exception as e:  # translate any factory/network error to typed AgnoError
             raise AgnoError(
                 f"Failed to create LLM model: {e}",
                 error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
@@ -340,7 +340,7 @@ class MCPToolsRegistry:
                 f"transport={self.config.mcp_transport}"
             )
 
-        except Exception as e:
+        except Exception as e:  # MCP tools are optional — degrade silently  # noqa: BLE001
             logger.warning(f"Failed to initialize MCP tools: {e}")
             # Don't raise - MCP tools are optional
             self._initialized = True
@@ -664,7 +664,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"native_tools={len(self.get_available_tools())}"
             )
 
-        except Exception as e:
+        except Exception as e:  # translate any factory error to typed AgnoError at init boundary
             logger.error(f"Failed to initialize AgnoAdapter: {e}")
             raise AgnoError(
                 f"AgnoAdapter initialization failed: {e}",
@@ -939,7 +939,7 @@ class AgnoAdapter(OrchestratorAdapter):
             logger.debug(f"Created agent: name={name}, role={role}, tools={len(tools)}")
             return agent
 
-        except Exception as e:
+        except Exception as e:  # translate any factory/IO error to typed AgnoError
             raise AgnoError(
                 f"Failed to create agent '{name}': {e}",
                 error_code=ErrorCode.AGNO_AGENT_NOT_FOUND,
@@ -1092,7 +1092,7 @@ class AgnoAdapter(OrchestratorAdapter):
                 timeout_seconds=self.agno_config.default_timeout_seconds,
                 details={"agent_name": agent.name, "latency_ms": latency_ms},
             ) from None
-        except Exception as e:
+        except Exception as e:  # translate any agent runtime error to typed AgnoError
             latency_ms = (time.monotonic() - start_time) * 1000
             raise AgnoError(
                 f"Agent '{agent.name}' execution failed: {e}",
@@ -1203,7 +1203,7 @@ class AgnoAdapter(OrchestratorAdapter):
                     "error_code": e.error_code.value,
                     "task_id": task.get("id", "unknown"),
                 }
-            except Exception as e:
+            except Exception as e:  # per-repo failure is recorded, not raised; aggregate continues
                 logger.exception(f"Unexpected error processing repo {repo}")
                 return {
                     "repo": repo,
@@ -1410,7 +1410,7 @@ Use available tools to complete the task and provide a summary."""
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-        except Exception as e:
+        except Exception as e:  # CLI/MCP entry point — translate any error to typed AgnoError
             logger.exception("Agno execution failed")
             raise AgnoError(
                 f"Agno execution failed: {e}",
@@ -1453,7 +1453,7 @@ Use available tools to complete the task and provide a summary."""
             if self._llm_factory:
                 # Just check if factory is configured, don't create model
                 health_details["llm_configured"] = True
-        except Exception as e:
+        except Exception as e:  # health probe — degrade, don't fail  # noqa: BLE001
             return {
                 "status": "degraded",
                 "details": {**health_details, "llm_error": str(e)},
@@ -1502,7 +1502,7 @@ Use available tools to complete the task and provide a summary."""
             if callable(close_method):
                 try:
                     await close_method()
-                except Exception as e:
+                except Exception as e:  # shutdown cleanup — best-effort, never fatal
                     logger.warning(f"Error closing Agno client session: {e}")
         self._client = None
 

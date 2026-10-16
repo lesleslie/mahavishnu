@@ -179,7 +179,7 @@ class EncryptedSQLite:
             logger.debug("Database decrypted successfully")
             return True
 
-        except Exception as e:
+        except Exception as e:  # Storage helper translates any failure into EncryptionKeyError
             logger.error(f"Decryption failed: {e}")
             # Re-raise to signal decryption failure to caller
             raise EncryptionKeyError(
@@ -217,7 +217,7 @@ class EncryptedSQLite:
             logger.debug("Database encrypted successfully")
             return True
 
-        except Exception as e:
+        except Exception as e:  # Storage helper logs and returns False for any encryption failure
             logger.error(f"Encryption failed: {e}")
             return False
 
@@ -679,6 +679,6 @@ async def verify_encrypted_database(
         await db.close()
         return is_valid
 
-    except Exception as e:
+    except Exception as e:  # Verification helper swallows any error and reports invalid
         logger.error(f"Encrypted database verification failed: {e}")
         return False

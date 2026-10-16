@@ -80,7 +80,7 @@ def _safe_publish_git_event(event: str) -> None:
     """
     try:
         _publish_git_event(event)
-    except Exception:
+    except Exception:  # CLI entry point — fire-and-forget bridge publish must never alter the action's authoritative git-hook exit code  # noqa: BLE001
         # Operator-facing signal: log to stderr so git surfaces it as
         # "Hook output" but does NOT block on it (git cares only about
         # the action's exit code).

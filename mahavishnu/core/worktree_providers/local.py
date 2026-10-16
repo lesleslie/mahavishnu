@@ -189,7 +189,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
             import shutil
 
             return shutil.which(self._git_executable) is not None
-        except Exception:
+        except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
             return False
 
     async def create_worktree(
@@ -250,7 +250,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             logger.error(f"DirectGit create failed: {e}")
             raise
 
@@ -307,7 +307,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             logger.error(f"DirectGit remove failed: {e}")
             raise
 
@@ -373,7 +373,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 "provider": self.provider_name(),
             }
 
-        except Exception as e:
+        except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             logger.error(f"DirectGit list failed: {e}")
             raise
 
@@ -541,7 +541,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             await self._register_handle_with_mcp(handle, principal)
             self._record_create_metric(start, principal, success=True)
             return handle
-        except Exception:
+        except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             self._record_create_metric(start, principal, success=False)
             raise
 
@@ -741,7 +741,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             await self._populate_cache_after_success(cache_key, target)
             self._record_fetch_outcome(start, success=True, handle=handle)
             return LocalWorktreeRef(path=target, worktree_id=handle.handle_id)
-        except Exception:
+        except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             self._record_fetch_outcome(start, success=False, handle=handle)
             raise
 
@@ -818,7 +818,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            import zstandard  # noqa: F401
+            import zstandard
         except ImportError as exc:
             raise WorktreeError(
                 "zstandard dependency required for streaming tar.zst; "
@@ -860,7 +860,7 @@ class LocalWorktreeProvider(WorktreeProvider):
             # ``_storage.load_stream`` as a method reference rather
             # than a bound call without the cast.
             return cast("Iterator[bytes]", self._storage.load_stream(storage_key))
-        except Exception as exc:
+        except Exception as exc:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
             raise WorktreeError(
                 f"Storage key not found: {storage_key}",
                 error_code=ErrorCode.WORKTREE_BUNDLE_NOT_FOUND,
@@ -993,7 +993,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 handle.storage_ref.path,
                 force=True,
             )
-        except Exception as exc:
+        except Exception as exc:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -1156,7 +1156,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._storage is not None:
             try:
                 storage_ok = await self._storage.health()
-            except Exception:
+            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
                 storage_ok = False
             if not storage_ok:
                 report.healthy = False
@@ -1165,7 +1165,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._cache is not None:
             try:
                 cache_ok = await self._cache.health()
-            except Exception:
+            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
                 cache_ok = False
             if not cache_ok:
                 report.healthy = False
@@ -1222,7 +1222,7 @@ async def _create_worktree_via_git(
             "branch": branch,
             "provider": "LocalWorktreeProvider",
         }
-    except Exception as e:
+    except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
         raise WorktreeCreationError(f"git worktree add failed: {e}") from e
 
 
@@ -1254,7 +1254,7 @@ async def _remove_worktree_via_git(
             "removed_path": str(worktree_path),
             "provider": "LocalWorktreeProvider",
         }
-    except Exception as e:
+    except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
         raise WorktreeOperationError(f"git worktree remove failed: {e}") from e
 
 
@@ -1302,5 +1302,5 @@ async def _list_worktrees_via_git(
             "worktrees": worktrees,
             "provider": "LocalWorktreeProvider",
         }
-    except Exception as e:
+    except Exception as e:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller
         raise WorktreeOperationError(f"git worktree list failed: {e}") from e

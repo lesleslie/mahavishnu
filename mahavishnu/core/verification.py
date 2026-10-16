@@ -97,7 +97,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
 
         backend = MCPStateBackend(base_url=mcp_url)
         return VerificationStore(mcp=backend)
-    except Exception:
+    except Exception:  # MCP backend may be unavailable at boot; degrade gracefully per documented contract  # noqa: BLE001
         logger.warning("build_default_store: MCP unavailable, persistence disabled")
         return None
 
@@ -372,7 +372,7 @@ async def _run_refuter(strategy: RefuterStrategy, proposal: Proposal) -> Refuter
             latency_seconds=latency,
             error=RefuterErrorKind.RATE_LIMITED,
         )
-    except Exception as exc:
+    except Exception as exc:  # contract: _run_refuter NEVER raises; capture any unexpected error as ABSTAIN/LLM_ERROR
         latency = time.monotonic() - start
         logger.exception("refuter %s failed unexpectedly", strategy.name)
         return RefuterVerdict(
@@ -459,7 +459,9 @@ def _parse_refuter_response(raw: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
         # ValueError is part of this parser's contract and is handled by its callers.
-        raise ValueError("response is not a JSON object")  # noqa: TRY004  # ValueError is part of the parser's tested contract
+        raise ValueError(
+            "response is not a JSON object"
+        )  # ValueError is part of the parser's tested contract
     if "verdict" not in data:
         raise ValueError("response missing 'verdict' field")
     return data
@@ -614,7 +616,7 @@ class VerificationStore:
                     "persisted_at": payload["persisted_at"],
                 },
             )
-        except Exception as exc:
+        except Exception as exc:  # MCP write may fail any library error; encode as persisted=False with dead-letter fallback  # noqa: BLE001
             logger.warning(
                 "verification.persist_failure proposal_id=%s error=%s",
                 result.proposal_id,
@@ -649,7 +651,9 @@ class VerificationStore:
                     indent=2,
                 )
             )
-        except Exception:
+        except (
+            Exception
+        ):  # _dead_letter contract: NEVER raises; log and swallow any filesystem error
             logger.exception(
                 "verification.dead_letter_failed proposal_id=%s",
                 result.proposal_id,
@@ -664,7 +668,9 @@ class VerificationStore:
             return None
         try:
             data = await self.mcp.get(self._result_key(proposal_id))
-        except Exception:
+        except (
+            Exception
+        ):  # MCP get may fail any library error; return None to signal no result available
             logger.exception("verification.get_failed proposal_id=%s", proposal_id)
             return None
         if not data:
@@ -674,7 +680,7 @@ class VerificationStore:
         data.pop("persisted_at", None)
         try:
             return VerificationResult.model_validate(data)
-        except Exception:
+        except Exception:  # stored payload may not validate (schema drift); log and return None to keep callers unblocked
             logger.exception(
                 "verification.get_invalid_payload proposal_id=%s",
                 proposal_id,

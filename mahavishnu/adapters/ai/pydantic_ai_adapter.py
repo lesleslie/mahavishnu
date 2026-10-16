@@ -306,7 +306,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         # Check if pydantic-ai is available
         try:
-            import pydantic_ai  # noqa: F401
+            import pydantic_ai
 
             self._pydantic_ai_available = True
         except ImportError:
@@ -486,7 +486,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
             except AdapterInitializationError:
                 raise
-            except Exception as e:
+            except Exception as e:  # Adapter init wraps every underlying failure as AdapterInitializationError after cleanup
                 # Cleanup any partially initialized resources
                 await self._cleanup_mcp_servers()
                 raise AdapterInitializationError(
@@ -540,7 +540,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
             except PydanticAIAdapterError:
                 raise
-            except Exception as e:
+            except Exception as e:  # Adapter execute converts every underlying failure into a FAILED AgentResult with sanitized message  # noqa: BLE001
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -671,7 +671,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             logger.info("Created agent '%s' with ID: %s", name, agent_id)
             return agent_id  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # Adapter create_agent wraps every failure as a typed PydanticAIAdapterError
             raise PydanticAIAdapterError(
                 f"Failed to create agent: {self._sanitize_error_message(e)}",
                 code=ErrorCode.INTERNAL_ERROR,
@@ -744,7 +746,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:
+            except Exception as e:  # Adapter execute_agent converts every underlying failure into a FAILED AgentResult  # noqa: BLE001
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -863,7 +865,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             except TimeoutError:
                 logger.error("MCP server %s cleanup timed out", name)
                 failed_servers.append(name)
-            except Exception as e:
+            except Exception as e:  # Adapter cleanup_mcp_servers keeps going when a single server close fails  # noqa: BLE001
                 logger.warning("Error closing MCP server %s: %s", name, e)
                 failed_servers.append(name)
 
@@ -899,7 +901,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 self._mcp_servers[tool_config.name] = server
                 logger.info("Initialized MCP server: %s", tool_config.name)
 
-            except Exception as e:
+            except Exception as e:  # Adapter MCP init keeps going when one server fails — record failure and continue  # noqa: BLE001
                 logger.warning(
                     "Failed to initialize MCP server %s: %s",
                     tool_config.name,
@@ -1017,7 +1019,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:
+            except Exception as e:  # Adapter fallback loop catches every per-model failure and continues to the next model  # noqa: BLE001
                 last_error = e
                 logger.warning(
                     "Model %s failed: %s",

@@ -129,7 +129,7 @@ async def _best_effort_reap(adapter, session_ids: list[str]) -> None:
     for sid in session_ids:
         try:
             await adapter.close_session(sid)
-        except Exception as exc:
+        except Exception as exc:  # CLI entry point — reap failures must never break the calling exception path  # noqa: BLE001
             typer.echo(f"  reap failed for {sid}: {exc}")
 
 
@@ -171,7 +171,9 @@ async def _run_tmux_demo(
         for sid in session_ids:
             output = await adapter.capture_output(sid)
             typer.echo(f"[{sid}]\n{output}")
-    except Exception:
+    except (
+        Exception
+    ):  # CLI entry point — demo flow must reap orphan panes on any failure before re-raising
         await _best_effort_reap(adapter, session_ids)
         raise
 
@@ -258,7 +260,7 @@ def _check_prefect_preconditions(
 
     try:
         settings = settings_getter()
-    except Exception as exc:
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure, not a stack trace  # noqa: BLE001
         failures.append(f"could not load settings: {exc}")
         return failures
 
@@ -272,7 +274,7 @@ def _check_prefect_preconditions(
         resp = http_probe(health_url, timeout=timeout)
         if resp.status_code != 200:
             failures.append(f"Prefect server returned HTTP {resp.status_code} at {health_url}")
-    except Exception as exc:
+    except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure, not a stack trace  # noqa: BLE001
         failures.append(f"Prefect server unreachable at {health_url}: {exc}")
 
     work_pool = getattr(prefect_cfg, "work_pool", None)

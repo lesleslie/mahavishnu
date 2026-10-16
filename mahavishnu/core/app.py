@@ -58,7 +58,7 @@ def _log_budget_watchdog_done(task: asyncio.Task) -> None:
     """Log the outcome of a budget-watchdog asyncio task (mostly for shutdown)."""
     try:
         exc = task.exception()
-    except asyncio.CancelledError, Exception:
+    except asyncio.CancelledError, Exception:  # noqa: BLE001
         exc = None
     if exc is not None:
         logger.warning("budget.watchdog exited with error: %s", exc)
@@ -377,7 +377,7 @@ class MahavishnuApp:
                                     signature = hash(response.text)
                             else:
                                 signature = hash(response.text)
-                        except Exception:
+                        except Exception:  # noqa: BLE001
                             # On any failure, fall through to push so we
                             # still attempt to refresh the Oneiric view.
                             signature = None
@@ -386,14 +386,16 @@ class MahavishnuApp:
                             last_signature = signature
                             try:
                                 await self.report_runtime_facts()
-                            except Exception:
+                            except (
+                                Exception
+                            ):  # background task — broad catch is the documented contract
                                 logger.exception("runtime-facts reconfigure push failed")
 
                         await asyncio.sleep(poll_interval_seconds)
             except asyncio.CancelledError:
                 logger.debug("runtime-facts poll loop cancelled")
                 raise
-            except Exception:
+            except Exception:  # background task — broad catch is the documented contract
                 logger.exception("runtime-facts poll loop crashed; reconfigure hook disabled")
 
         # Probe Oneiric reachability first (do NOT block boot if unreachable)
@@ -412,7 +414,7 @@ class MahavishnuApp:
                     },
                 )
                 probe.raise_for_status()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "runtime-facts watcher probe failed; reconfigure hook disabled: %s",
                 exc,
@@ -503,7 +505,7 @@ class MahavishnuApp:
         if mcp_client is not None and hasattr(mcp_client, "call_tool"):
             try:
                 store = MCPBudgetStore(mcp_client)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "budget.watchdog: failed to build MCPBudgetStore: %s",
                     exc,
@@ -564,11 +566,11 @@ class MahavishnuApp:
                 await task
             except asyncio.CancelledError:
                 logger.debug("budget.watchdog: shutdown acknowledged")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("budget.watchdog: shutdown error: %s", exc)
         except asyncio.CancelledError:
             logger.debug("budget.watchdog: stop cancelled before drain")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("budget.watchdog: unexpected shutdown error: %s", exc)
         self.budget_watchdog_task = None
         self.budget_watchdog_stop = None
@@ -938,7 +940,7 @@ class MahavishnuApp:
 
             result = await adapter.execute(task, validated_repos)
             return result
-        except Exception as e:
+        except Exception as e:  # background task — broad catch is the documented contract
             # Record error in observability if enabled
             if self.observability:
                 error_counter = self.observability.create_error_counter()
@@ -1444,7 +1446,7 @@ class MahavishnuApp:
                         "runtime-push component=mahavishnu adapter=%s status=ok",
                         key,
                     )
-                except Exception:
+                except Exception:  # background task — broad catch is the documented contract
                     logger.exception(
                         "runtime-push component=mahavishnu adapter=%s status=fail",
                         key,

@@ -3,7 +3,7 @@
 **Date:** 2026-04-25
 **Source:** `settings/ecosystem.yaml`
 **Scope:** Active Bodai ecosystem repos only.
-**Related Plan:** [../plans/2026-04-25-ecosystem-docs-canonicalization-plan.md](../plans/2026-04-25-ecosystem-docs-canonicalization-plan.md)
+**Related Plan:** archived — see [`../plans/PLAN_INDEX.md`](../plans/PLAN_INDEX.md) (the 2026-04-25 canonicalization plan was moved to `docs/plans/.archive/`; `PLAN_INDEX.md` is the live authority for cross-repo docs cleanup).
 
 ## Summary
 

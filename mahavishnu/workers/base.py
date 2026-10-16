@@ -227,7 +227,7 @@ class BaseWorker(ABC):
                 "worker_type": self.worker_type,
                 "details": {},
             }
-        except Exception as e:
+        except Exception as e:  # health check soft-fails to unhealthy with the raw error message
             return {
                 "healthy": False,
                 "status": "unknown",

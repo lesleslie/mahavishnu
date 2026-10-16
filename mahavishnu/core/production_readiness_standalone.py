@@ -186,7 +186,7 @@ class ProductionReadinessChecker:
                             # Exclude obvious placeholders/examples
                             if "example" not in content.lower() and "test" not in content.lower():
                                 issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
-                except Exception as e:
+                except Exception as e:  # per-file pattern scan can fail on read/decode; skip file and continue  # noqa: BLE001
                     logger.debug("Pattern scan skipped: %s", e)
 
         if issues:
@@ -292,7 +292,7 @@ class ProductionReadinessChecker:
 
         # Check for structlog in dependencies
         try:
-            import structlog  # noqa: F401
+            import structlog
 
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"
@@ -422,7 +422,7 @@ class ProductionReadinessChecker:
             coverage_file = self.project_root / "coverage.xml"
             if coverage_file.exists():
                 try:
-                    import defusedxml.ElementTree as ET  # noqa: N817  # ET is the stdlib convention for ElementTree
+                    import defusedxml.ElementTree as ET  # ET is the stdlib convention for ElementTree
 
                     tree = ET.parse(coverage_file)
                     root = tree.getroot()
@@ -460,7 +460,7 @@ class ProductionReadinessChecker:
             status = ReadinessStatus.WARN
             message = "pytest not available"
             details = None
-        except Exception as e:
+        except Exception as e:  # pytest subprocess can fail on any error; map to WARN and continue checklist  # noqa: BLE001
             status = ReadinessStatus.WARN
             message = f"Could not run tests: {e}"
             details = None

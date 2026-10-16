@@ -322,7 +322,7 @@ class WorkerManager:
                 worker_id = await worker.start(prompt=prompt)
                 self._workers[worker_id] = worker
                 worker_ids.append(worker_id)
-        except Exception:
+        except Exception:  # Background task — worker dispatch rollback must catch every failure to drain partially-spawned workers
             for wid in worker_ids:
                 await self.close_worker(wid)
             invalidate_capability(worker_type)
@@ -531,7 +531,7 @@ class WorkerManager:
                     f"({result.duration_seconds:.2f}s)"
                 )
                 return result
-            except Exception as e:
+            except Exception as e:  # Background task — worker execution converts every failure into a FAILED WorkerResult with metrics update  # noqa: BLE001
                 logger.error(f"Worker {worker_id} failed: {e}")
                 failure_result = WorkerResult(
                     worker_id=worker_id,
@@ -612,7 +612,7 @@ class WorkerManager:
                 try:
                     status = await worker.status()
                     statuses[wid] = status
-                except Exception as e:
+                except Exception as e:  # Background task — monitor loop must keep going when a single worker probe fails  # noqa: BLE001
                     logger.warning(f"Failed to get status for {wid}: {e}")
                     statuses[wid] = WorkerStatus.FAILED
 
@@ -654,7 +654,7 @@ class WorkerManager:
                         duration_seconds=progress.get("duration_seconds", 0),
                         metadata=progress,
                     )
-                except Exception as e:
+                except Exception as e:  # Background task — result collector keeps going when a single worker fetch fails  # noqa: BLE001
                     logger.error(f"Failed to collect result from {wid}: {e}")
                     results[wid] = WorkerResult(
                         worker_id=wid,
@@ -679,7 +679,7 @@ class WorkerManager:
             try:
                 await worker.stop()
                 logger.info(f"Closed worker {worker_id}")
-            except Exception as e:
+            except Exception as e:  # Background task — close failures must not break the calling cleanup path  # noqa: BLE001
                 logger.error(f"Failed to close worker {worker_id}: {e}")
             finally:
                 self._workers.pop(worker_id, None)
@@ -710,7 +710,7 @@ class WorkerManager:
                         "status": status.value,
                     }
                 )
-            except Exception:
+            except Exception:  # Background task — list snapshot keeps going when a single worker status probe fails  # noqa: BLE001
                 workers_info.append(
                     {
                         "worker_id": wid,

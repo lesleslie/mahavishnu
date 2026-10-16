@@ -129,7 +129,9 @@ def session_span(
                 span.set_attribute("session.duration_ms", duration_ms)
                 span.set_attribute("session.status", state["status"])
                 if state["status"] == "error":
-                    with suppress(Exception):  # OTel Status construction can fail on version skew; defensive pass
+                    with suppress(
+                        Exception
+                    ):  # OTel Status construction can fail on version skew; defensive pass
                         span.set_status(Status(StatusCode.ERROR))  # type: ignore[arg-type]
                 logger.info(
                     "acp.session_completed session_id=%s stop_reason=%s duration_ms=%.1f",

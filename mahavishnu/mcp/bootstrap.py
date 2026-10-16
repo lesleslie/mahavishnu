@@ -132,7 +132,6 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
 
     The iTerm2 deprecation warning is preserved for backward compatibility.
     """
-    from ..core.errors import ConfigurationError
     from ..terminal.adapters import get_adapter_factory, list_adapter_names
 
     preference = config.adapter_preference.lower()

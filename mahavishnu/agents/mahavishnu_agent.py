@@ -241,7 +241,9 @@ class MahavishnuAgent:
                 results=result,
             )
 
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # Agent tool entry point translates any sweep failure into a typed SweepReposResult
             logger.exception("sweep_repos failed for tag=%s", request.tag)
             return SweepReposResult(
                 tag=request.tag,
@@ -305,7 +307,7 @@ class MahavishnuAgent:
                 results=result,
             )
 
-        except Exception as e:
+        except Exception as e:  # Agent tool entry point translates any routing failure into a typed RouteTaskResult
             logger.exception("route_task failed for intent=%s", request.intent[:50])
             return RouteTaskResult(
                 intent=request.intent,
@@ -343,7 +345,7 @@ class MahavishnuAgent:
                 active_workers=active_workers,
             )
 
-        except Exception as e:
+        except Exception as e:  # Agent tool entry point translates any pool-status failure into a typed PoolStatusResult  # noqa: BLE001
             logger.warning("get_pool_status failed: %s", e)
             return PoolStatusResult(error=str(e))
 
@@ -381,7 +383,7 @@ class MahavishnuAgent:
                 adapter_scores={a.value: s for a, s in scores.items()},
             )
 
-        except Exception as e:
+        except Exception as e:  # Agent tool entry point translates any routing-info failure into a typed RoutingInfoResult  # noqa: BLE001
             logger.warning("get_routing_info failed: %s", e)
             return RoutingInfoResult(
                 task_type=task_type,

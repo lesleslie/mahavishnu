@@ -75,7 +75,7 @@ class MCPKvClient:
             return None
         try:
             envelope = await self._client.call_tool("mahavishnu_kv_get", {"key": key})
-        except Exception:
+        except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # noqa: BLE001
             return None
         if not isinstance(envelope, dict):
             return None
@@ -96,7 +96,7 @@ class MCPKvClient:
             await self._client.call_tool(
                 "mahavishnu_kv_put", {"key": key, "value": value, "ttl": ttl}
             )
-        except Exception:
+        except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # noqa: BLE001
             return
 
     async def list_prefix(self, prefix: str) -> list[tuple[str, str]]:
@@ -104,7 +104,7 @@ class MCPKvClient:
             return []
         try:
             envelope = await self._client.call_tool("mahavishnu_kv_list", {"prefix": prefix})
-        except Exception:
+        except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # noqa: BLE001
             return []
         if not isinstance(envelope, dict):
             return []
@@ -137,7 +137,7 @@ class MCPKvClient:
             return
         try:
             await self._client.call_tool("mahavishnu_kv_delete", {"key": key})
-        except Exception:
+        except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # noqa: BLE001
             return
 
     async def aclose(self) -> None:

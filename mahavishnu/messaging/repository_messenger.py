@@ -142,7 +142,7 @@ class RepositoryMessenger:
             )
 
             return message
-        except Exception as e:
+        except Exception as e:  # send_message may hit transport/serialization errors; log and re-raise for caller to handle
             self.logger.error(f"Error sending message: {e}")
             raise
 
@@ -153,7 +153,7 @@ class RepositoryMessenger:
             for callback in self.subscribers[message.receiver_repo]:
                 try:
                     await callback(message)
-                except Exception as e:
+                except Exception as e:  # subscriber callbacks are user code; one bad subscriber must not block the rest  # noqa: BLE001
                     self.logger.error(f"Error in subscriber callback: {e}")
 
         # Also notify wildcard subscribers (those interested in all messages)
@@ -161,7 +161,7 @@ class RepositoryMessenger:
             for callback in self.subscribers["*"]:
                 try:
                     await callback(message)
-                except Exception as e:
+                except Exception as e:  # subscriber callbacks are user code; one bad subscriber must not block the rest  # noqa: BLE001
                     self.logger.error(f"Error in wildcard subscriber callback: {e}")
 
     async def _publish_canonical_event(self, message: RepositoryMessage) -> None:
@@ -253,7 +253,7 @@ class RepositoryMessenger:
                 f"Broadcast message from {sender_repo} to {len(sent_messages)} repositories"
             )
             return sent_messages
-        except Exception as e:
+        except Exception as e:  # broadcast may hit transport/serialization errors across many receivers; log and re-raise
             self.logger.error(f"Error broadcasting message: {e}")
             raise
 
@@ -354,7 +354,7 @@ class RepositoryMessengerManager:
                 "messages_sent": len(messages),
                 "changes_notified": len(changes),
             }
-        except Exception as e:
+        except Exception as e:  # change-notification transport can raise any error; report as structured failure to caller
             self.logger.exception("Error processing repository changes")
             return {"status": "error", "error": str(e)}
 
@@ -396,7 +396,7 @@ class RepositoryMessengerManager:
                 "workflow_id": workflow_id,
                 "workflow_status": status,
             }
-        except Exception as e:
+        except Exception as e:  # workflow status transport can raise any error; report as structured failure to caller
             self.logger.exception("Error notifying workflow status")
             return {"status": "error", "error": str(e)}
 
@@ -429,6 +429,6 @@ class RepositoryMessengerManager:
                 "alert_type": alert_type,
                 "severity": severity,
             }
-        except Exception as e:
+        except Exception as e:  # quality-alert transport can raise any error; report as structured failure to caller
             self.logger.exception("Error sending quality alert")
             return {"status": "error", "error": str(e)}

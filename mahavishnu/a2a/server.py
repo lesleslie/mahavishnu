@@ -70,7 +70,7 @@ def _get_version() -> str:
         from importlib.metadata import version
 
         return version("mahavishnu")
-    except Exception:
+    except Exception:  # Utility — package metadata lookup falls back to "0.0.0" when distribution metadata is missing or unparsable  # noqa: BLE001
         return "0.0.0"
 
 
@@ -156,7 +156,7 @@ def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
         try:
             result = await execute_fn({"prompt": prompt})
             return JSONResponse(_result_to_a2a(task_id, result))
-        except Exception:
+        except Exception:  # HTTP handler — every task failure surfaces as a structured A2A failed response, never a stack trace
             logger.exception("A2A /tasks/send handler error")
             return JSONResponse(_error_to_a2a(task_id, "Task execution failed"))
 
@@ -180,7 +180,7 @@ def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # t
                 await queue.put(
                     _sse_event(task_id, "failed", final=True, error="Task execution timed out")
                 )
-            except Exception:
+            except Exception:  # HTTP handler — every task failure surfaces as a structured A2A failed SSE event, never breaks the event stream
                 logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(
                     _sse_event(task_id, "failed", final=True, error="Task execution failed")

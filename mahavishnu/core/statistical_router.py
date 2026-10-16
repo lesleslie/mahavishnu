@@ -380,7 +380,7 @@ class StatisticalRouter:
                     f"{pref.adapters[0].value if pref.adapters else 'none'} "
                     f"({pref.confidence.value})"
                 )
-            except Exception as e:
+            except Exception as e:  # per-task-type preference calc can fail on missing metrics; log and continue  # noqa: BLE001
                 logger.error(f"Failed to calculate preference for {task_type.value}: {e}")
 
         # Clear cache after recalculation
@@ -609,7 +609,7 @@ class StatisticalRouter:
             except asyncio.CancelledError:
                 logger.info("Recalculation loop cancelled")
                 break
-            except Exception:
+            except Exception:  # background task — broad catch is the documented contract
                 logger.exception("Recalculation error")
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes

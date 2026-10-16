@@ -210,7 +210,7 @@ async def record_progress_snapshot(
     snap = recorder.record(step=step, percent=percent, message=message, ts=ts)
     try:
         await _persister(snap)
-    except Exception as exc:  # substrate is observational, not blocking
+    except Exception as exc:  # substrate is observational, not blocking  # noqa: BLE001
         logger.warning(
             "progress snapshot substrate persister failed",
             extra={

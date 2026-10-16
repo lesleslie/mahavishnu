@@ -263,7 +263,7 @@ def register_terminal_tools(
                 "new_adapter": adapter_name,
                 "migrate_sessions": migrate_sessions,
             }
-        except Exception as e:
+        except Exception as e:  # MCP tool error handler — adapter switch failures surface as a structured error envelope, not a stack trace  # noqa: BLE001
             return {"status": "error", "message": f"Failed to switch adapter: {e}"}
 
     @mcp.tool()

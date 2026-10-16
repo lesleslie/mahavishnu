@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # module-level import fallback for test patching  # noqa: BLE001
     MemoryAggregator = None
 
 try:
@@ -26,7 +26,7 @@ try:
     from mahavishnu.core.errors import RateLimitError
     from mahavishnu.pools.base import PoolConfig as RuntimePoolConfig
     from mahavishnu.pools.manager import CallerKind, PoolSelector, coerce_caller_kind
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # noqa: BLE001
     PoolSelector = None
     CallerKind = None
     RateLimitError = None
@@ -40,7 +40,7 @@ try:
     from mahavishnu.core.config import get_settings
     from mahavishnu.core.model_routing import TaskCategory, classify_task
     from mahavishnu.core.rate_limit import _estimate_retry
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # noqa: BLE001
     ConcurrencyGate = None
     TaskCategory = None
     classify_task = None
@@ -62,7 +62,7 @@ try:
         set_idempotency_breaker,
         set_idempotency_store,
     )
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # noqa: BLE001
     IdempotencyCircuitOpen = None
     IdempotencyStoreUnavailable = None
     TaskEventType = None
@@ -81,7 +81,7 @@ try:
     from mahavishnu.core.errors import WorktreeError, WorktreeLockedError
     from mahavishnu.core.worktree_manager import WorktreeInfo, WorktreeManager
     from mahavishnu.core.worktree_options import WorktreeOptions
-except Exception:  # pragma: no cover - optional import for test patching
+except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # noqa: BLE001
     WorktreeError = None
     WorktreeLockedError = None
     WorktreeInfo = None
@@ -174,7 +174,7 @@ async def _repo_has_git(repo_nickname: str) -> bool:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
-    except Exception:
+    except Exception:  # subprocess probing helper — broad catch to return False on any failure
         return False
     return proc.returncode == 0 and stdout.decode().strip() == "true"
 
@@ -305,7 +305,7 @@ def register_pool_tools(
         """List all active pools."""
         try:
             return await pool_manager.list_pools()  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to list pools: {e}")
             return []
 
@@ -445,12 +445,12 @@ def register_pool_tools(
                 max_workers=effective_max,
                 worker_type=worker_type,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {"status": "failed", "error": f"invalid pool config: {exc}"}
 
         try:
             pool_id = await pool_manager.spawn_pool(canonical, pool_config)  # type: ignore[union-attr]
-        except Exception as exc:
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"})
             return {"status": "failed", "error": f"spawn failed: {exc}"}
 
@@ -501,7 +501,7 @@ def register_pool_tools(
                     "pools_active_before": pools_active_before,
                     "pools_active_after": pools_active_before,
                 }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "pool_bootstrap: health check failed; attempting spawn anyway",
                 extra={"error": str(exc)},
@@ -574,7 +574,7 @@ def register_pool_tools(
                 worker_type=worker_type,
             )
             pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)  # type: ignore[union-attr]
-        except Exception as exc:
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "pool_bootstrap: spawn failed",
                 extra={"error_id": "POOL_BOOTSTRAP_SPAWN_FAILED"},
@@ -607,7 +607,7 @@ def register_pool_tools(
         """Monitor pool status and metrics."""
         try:
             return await pool_manager.aggregate_results(pool_ids)  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to monitor pools: {e}")
             return {}
 
@@ -640,7 +640,7 @@ def register_pool_tools(
                 "status": "failed",
                 "error": "Pool does not support scaling (e.g., SessionBuddyPool is fixed at 3 workers)",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to scale pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -660,7 +660,7 @@ def register_pool_tools(
                 "pool_id": pool_id,
                 "status": "closed",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to close pool: {e}")
             return {
                 "pool_id": pool_id,
@@ -681,7 +681,7 @@ def register_pool_tools(
                 "pools_closed": count,
                 "status": "all_closed",
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to close pools: {e}")
             return {
                 "pools_closed": 0,
@@ -694,7 +694,7 @@ def register_pool_tools(
         """Get health status of all pools."""
         try:
             return await pool_manager.health_check()  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to get health: {e}")
             return {
                 "status": "unhealthy",
@@ -720,7 +720,7 @@ def register_pool_tools(
             )
 
             return results
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to search memory: {e}")
             return []
 
@@ -787,7 +787,7 @@ def register_pool_tools(
         if coerce_caller_kind is not None:
             try:
                 coerced_kind = coerce_caller_kind(caller_kind)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 coerced_kind = None
         else:
             coerced_kind = None
@@ -806,7 +806,7 @@ def register_pool_tools(
         if classify_task is not None:
             try:
                 task_category = classify_task(prompt)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 task_category = None
 
         gate = get_concurrency_gate()
@@ -926,7 +926,9 @@ def register_pool_tools(
                             ttl_seconds=(worktree.ttl_seconds if worktree is not None else 86_400),
                         )
                         worktree_repo_path = repo_path
-                    except Exception as exc:
+                    except (
+                        Exception
+                    ) as exc:  # MCP tool error handler — broad catch is the documented contract
                         if WorktreeLockedError is not None and isinstance(exc, WorktreeLockedError):
                             logger.exception(
                                 "worktree lock conflict",
@@ -948,7 +950,7 @@ def register_pool_tools(
                 if get_settings is not None:
                     try:
                         auto_spawn = get_settings().pools.auto_spawn
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         auto_spawn = False  # fail-safe to existing default
                 else:
                     auto_spawn = False  # module-level import failed; fail-safe
@@ -991,7 +993,9 @@ def register_pool_tools(
                             "merge": worktree_info.merge,
                             "files_touched": list(worktree_info.files_touched),
                         }
-                    except Exception as exc:
+                    except (
+                        Exception
+                    ) as exc:  # MCP tool error handler — broad catch is the documented contract
                         logger.exception(
                             "worktree completion failed",
                             extra={"error_id": "WORKTREE_COMPLETION_FAILED"},
@@ -1008,7 +1012,7 @@ def register_pool_tools(
                             worktree_id=worktree_info.worktree_id,
                             repo_path=worktree_repo_path,
                         )
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001
                         logger.warning(
                             "worktree cleanup failed: %s",
                             exc,
@@ -1033,7 +1037,7 @@ def register_pool_tools(
                     )
 
             return result
-        except Exception as exc:
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
             # If idempotency is wired, mark the record FAILED so a future
             # retry does not return stale PENDING. Best-effort — a DB
             # hiccup here must not mask the original dispatch error.

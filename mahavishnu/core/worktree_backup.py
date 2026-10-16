@@ -126,7 +126,7 @@ class WorktreeBackupManager:
             logger.info(f"Backup created successfully: {backup_path}")
             return backup_path
 
-        except Exception as e:
+        except Exception as e:  # Background task — backup creation wraps every underlying IO failure as an OSError for the caller
             logger.exception("Failed to create backup")
             raise OSError(f"Backup creation failed: {e}") from e
 
@@ -246,7 +246,7 @@ class WorktreeBackupManager:
                 },
                 result="success",
             )
-        except Exception as e:
+        except Exception as e:  # Background task — audit-log failures must never block the backup that just succeeded  # noqa: BLE001
             logger.error(f"Failed to log backup to audit trail: {e}")
 
     async def restore_from_backup(
@@ -286,7 +286,7 @@ class WorktreeBackupManager:
                 "backup_path": str(backup_path),
             }
 
-        except Exception as e:
+        except Exception as e:  # Background task — backup restore wraps every underlying IO failure as an OSError for the caller
             logger.exception("Failed to restore from backup")
             raise OSError(f"Backup restoration failed: {e}") from e
 
@@ -340,7 +340,7 @@ class WorktreeBackupManager:
             logger.info(f"Cleaned up {removed_count} old backups")
             return removed_count
 
-        except Exception:
+        except Exception:  # Background task — cleanup failures degrade to "removed 0 backups" and are logged for operator inspection
             logger.exception("Backup cleanup failed")
             return 0
 
@@ -383,6 +383,6 @@ class WorktreeBackupManager:
 
             return backups
 
-        except Exception:
+        except Exception:  # Background task — listing failures degrade to an empty list and are logged for operator inspection
             logger.exception("Failed to list backups")
             return []

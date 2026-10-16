@@ -20,16 +20,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519
-
-if TYPE_CHECKING:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-        Ed25519PrivateKey,  # runtime value in generate_keypair()
-        Ed25519PublicKey,  # runtime arg in _derive_key_id()
-    )
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 # Number of bytes of the SHA-256 hash used as the key_id. 8 bytes =
 # 16 hex chars. A collision-resistant 64-bit identifier is sufficient
@@ -64,7 +61,7 @@ def generate_keypair() -> Keypair:
     Returns:
         A :class:`Keypair` ready for signing.
     """
-    private_key = ed25519.Ed25519PrivateKey.generate()
+    private_key = Ed25519PrivateKey.generate()
     public_key = private_key.public_key()
     return Keypair(
         key_id=_derive_key_id(public_key),
@@ -87,7 +84,7 @@ def public_key_from_bytes(raw: bytes) -> Ed25519PublicKey:
     """
     if len(raw) != 32:
         raise ValueError(f"ed25519 public key must be exactly 32 bytes; got {len(raw)}")
-    return ed25519.Ed25519PublicKey.from_public_bytes(raw)
+    return Ed25519PublicKey.from_public_bytes(raw)
 
 
 def _derive_key_id(public_key: Ed25519PublicKey) -> str:
@@ -138,7 +135,7 @@ def load_or_create_keypair(path: Path) -> Keypair:
     if path.exists():
         raw = path.read_bytes()
         loaded = serialization.load_pem_private_key(raw, password=None)
-        if not isinstance(loaded, ed25519.Ed25519PrivateKey):
+        if not isinstance(loaded, Ed25519PrivateKey):
             raise ValueError(
                 f"key at {path} is not an ed25519 private key (got {type(loaded).__name__})"
             )

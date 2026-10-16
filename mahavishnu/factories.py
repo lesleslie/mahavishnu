@@ -176,7 +176,7 @@ def _wire_eventbridge_publisher(server: MahavishnuWebSocketServer) -> None:
             set_publisher(None)
             server.set_eventbridge_publisher(None)
             logger.debug("EventBridge publisher not wired (opt-out or runtime unavailable)")
-    except Exception as exc:
+    except Exception as exc:  # EventBridge is opt-in feature; server runs without publisher
         logger.warning(
             "EventBridge wiring failed (%s); continuing without publisher",
             exc,
@@ -205,7 +205,7 @@ def _resolve_bridge_from_env(settings: Any) -> Any | None:
 
         factory = getattr(importlib.import_module(module_name), attr)
         return factory(settings)
-    except Exception:
+    except Exception:  # opt-in factory hook — invalid env var implies no bridge configured
         return None
 
 

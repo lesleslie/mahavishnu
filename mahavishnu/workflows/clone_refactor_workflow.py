@@ -189,7 +189,7 @@ async def write_canonical_symbol(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:
+        except Exception as meta_exc:  # metadata is best-effort; commit already landed
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -267,7 +267,7 @@ async def write_replacement_diff(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:
+        except Exception as meta_exc:  # metadata is best-effort; commit already landed
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -482,7 +482,7 @@ async def run_clone_refactor_dag(
                 )
             try:
                 return await write_replacement_diff(refactor_job_id, repo, diff)
-            except Exception as exc:
+            except Exception as exc:  # per-consumer failure is recorded, not raised  # noqa: BLE001
                 return RepoCommit(
                     repo=repo,
                     sha=None,
@@ -532,7 +532,7 @@ async def run_clone_refactor_dag(
         # REQ-CLONE-016: cancellation must persist terminal "cancelled" before re-raising
         await _write_terminal_cancelled(mcp_backend, refactor_job_id)
         raise
-    except Exception as exc:
+    except Exception as exc:  # background task — DAG terminal-state write then re-raise
         # REQ-CLONE-010: unhandled exception path. Record transitions to "failed".
         await _write_terminal_failed(mcp_backend, refactor_job_id, exc)
         raise
@@ -543,7 +543,7 @@ async def run_clone_refactor_dag(
         # would otherwise replace the traceback).
         try:
             await release_cluster_claim(mcp_backend, cluster_id)
-        except Exception as release_exc:
+        except Exception as release_exc:  # release is best-effort; original DAG exception wins
             logger.warning(
                 "release_cluster_claim failed for cluster_id=%s (%s); continuing",
                 cluster_id,

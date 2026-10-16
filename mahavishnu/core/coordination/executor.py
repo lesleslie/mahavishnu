@@ -138,7 +138,9 @@ class CoordinationExecutor:
                                     "actual_hours": round(actual_hours, 2),
                                 },
                             )
-                        except Exception:
+                        except (
+                            Exception
+                        ):  # memory persistence is best-effort; todo state already updated
                             logger.debug(
                                 "Skipping todo completion memory event for %s",
                                 todo_id,
@@ -157,7 +159,7 @@ class CoordinationExecutor:
                 "end_time": end_time.isoformat(),
             }
 
-        except Exception as e:
+        except Exception as e:  # todo execution — translate any failure to blocked + error dict
             # Update todo to blocked if execution failed
             self._update_todo_status(todo_id, "blocked")
 
@@ -287,7 +289,7 @@ class CoordinationExecutor:
             )
             return result  # type: ignore[no-any-return]
 
-        except Exception as e:
+        except Exception as e:  # pool dispatch — any failure surfaces as error dict, never raise
             return {
                 "success": False,
                 "error": str(e),

@@ -580,7 +580,7 @@ class PoolConfig(BaseModel):
         """
         try:
             from mahavishnu.pools._registry import list_pool_types
-        except Exception:
+        except Exception:  # Config validator — registry import failures fall through to "accept the value", letting the call site surface a real error  # noqa: BLE001
             return v
         if v not in list_pool_types():
             raise ValueError(
@@ -3325,7 +3325,7 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
             # is set in the env.
             env_overlay = _mahavishnu_env_overlay()
             _merge_env_overlay(merged, env_overlay)
-        except Exception:
+        except Exception:  # Settings loader — oneiric-loader failures fall back to env-only construction so the factory never raises purely on a missing loader
             # Oneiric unavailable (early import, test setup without the
             # dependency, etc.) — fall back to defaults + env-var-only
             # construction so the factory never raises purely on a

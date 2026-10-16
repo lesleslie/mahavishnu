@@ -174,7 +174,7 @@ async def detect_until_dry(
             exception = exc
             logger.exception("detect_until_dry: timeout on iteration %d", iterations)
             break
-        except Exception as exc:
+        except Exception as exc:  # background task — loop boundary records error and stops
             stopped_reason = "error"
             error = f"scan_fn raised on iteration {iterations}: {type(exc).__name__}: {exc}"
             exception = exc
@@ -191,7 +191,7 @@ async def detect_until_dry(
         for finding in iter_findings:
             try:
                 key = dedup_key(finding)
-            except Exception as exc:
+            except Exception as exc:  # per-finding dedup_key may raise per project shape; record and break  # noqa: BLE001
                 dedup_error = exc
                 break
             if key not in seen_keys:

@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 _CACHE_DEPS_AVAILABLE: bool
 _CACHE_DEPS_ERROR: str | None
 try:
-    import coredis  # noqa: F401
+    import coredis
 
     _CACHE_DEPS_AVAILABLE = True
     _CACHE_DEPS_ERROR = None
@@ -324,7 +324,7 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
             else queued_publisher()
         )
         _drive(_init_and_publish())
-    except Exception as exc:
+    except Exception as exc:  # hook bridge — publish failures are observed, not propagated
         if type(exc) in _PUBLISH_LOGGED_EXC_TYPES:
             # Identical failure mode already logged this process — keep
             # the hook log legible by demoting subsequent identical
@@ -416,7 +416,7 @@ def handle_pool_bootstrap(env: CanonicalEnvelope) -> int:
             "pool_bootstrap event observed",
             extra={"harness": env.harness, "session_id": env.session_id},
         )
-    except Exception as exc:
+    except Exception as exc:  # hook bridge — SessionStart must always return 0  # noqa: BLE001
         # Use stderr (not logger) to avoid a logging failure cascading
         # into another try/except. SessionStart must always return 0.
         import sys
@@ -663,7 +663,7 @@ def handle(
             last_result = handler(env)
             if last_result != 0:
                 break  # First non-zero short-circuits (e.g. approval deny)
-        except Exception:
+        except Exception:  # hook bridge — per-handler failure does not abort the chain
             logger.exception(
                 "event handler failed",
                 extra={

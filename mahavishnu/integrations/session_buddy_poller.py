@@ -218,7 +218,7 @@ class SessionBuddyPoller:
                 except asyncio.CancelledError:
                     self.logger.info("Polling loop cancelled")
                     break
-                except Exception as e:
+                except Exception as e:  # background task — broad catch is the documented contract
                     self.logger.exception("Error in polling loop")
                     self._record_error(f"Polling loop error: {e}")
                     # Continue running despite errors
@@ -278,7 +278,7 @@ class SessionBuddyPoller:
                 # Reset consecutive failures on success
                 self._consecutive_failures = 0
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 error_msg = f"Failed to poll {tool_name}: {e}"
                 self.logger.warning(error_msg)
                 results["errors"].append(error_msg)
@@ -349,7 +349,9 @@ class SessionBuddyPoller:
             result = await self._mcp.call_tool(tool_name, payload)
             if not isinstance(result, dict):
                 # ValueError is handled below as the invalid-response contract.
-                raise ValueError(f"Invalid response type: {type(result)}")  # noqa: TRY004  # ValueError is the documented invalid-response contract
+                raise ValueError(
+                    f"Invalid response type: {type(result)}"
+                )  # ValueError is the documented invalid-response contract
             return result
 
         try:
@@ -583,7 +585,7 @@ class SessionBuddyPoller:
 
                 self.logger.debug(f"Recorded OTel metric: {metric_name} = {value}")
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self.logger.warning(f"Failed to record metric {metric.get('name')}: {e}")
 
     def _record_error(self, error_message: str) -> None:
@@ -608,7 +610,7 @@ class SessionBuddyPoller:
                     description="Total polling errors",
                 )
                 error_counter.add(1, {"source": "session_buddy_poller"})
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.debug("Metric recording skipped: %s", e)
 
     async def _open_circuit_breaker(self) -> None:

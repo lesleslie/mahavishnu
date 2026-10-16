@@ -110,7 +110,9 @@ class CrowTerminalAdapter(TerminalAdapter):
             }
             logger.debug("crow-mcp session launched: %s", session_id)
             return session_id
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
             raise TerminalError(
                 message=f"crow-mcp: failed to launch session: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -138,7 +140,9 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "crow_terminal_exec",
                 {"session_id": session_id, "command": command},
             )
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
             raise TerminalError(
                 message=f"crow-mcp: failed to send command: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -177,7 +181,9 @@ class CrowTerminalAdapter(TerminalAdapter):
                 params,
             )
             return _extract_output(result)
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
             raise TerminalError(
                 message=f"crow-mcp: failed to capture output: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -203,7 +209,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "crow_terminal_close",
                 {"session_id": session_id},
             )
-        except Exception as e:
+        except Exception as e:  # best-effort terminal cleanup — broad catch so local session-tracking dict is always popped even if remote close fails  # noqa: BLE001
             logger.warning("crow-mcp: close_session failed (non-fatal): %s", e)
         finally:
             self._sessions.pop(session_id, None)

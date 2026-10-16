@@ -224,7 +224,7 @@ class Database:
                     f"Database connection failed: {e}",
                     details={"error": str(e)},
                 ) from e
-            except Exception as e:
+            except Exception as e:  # last-resort handler after TimeoutError + PostgresError; any other error is unexpected and typed as DatabaseError
                 self._status = DatabaseStatus.ERROR
                 raise DatabaseError(
                     f"Unexpected database error: {e}",
@@ -255,7 +255,7 @@ class Database:
             logger.info("Disconnecting from database")
             try:
                 await self._pool.close()
-            except Exception as e:
+            except Exception as e:  # pool close is best-effort during shutdown; log and continue
                 logger.warning(f"Error closing database pool: {e}")
             finally:
                 self._pool = None
@@ -284,7 +284,7 @@ class Database:
                 async with asyncio.timeout(5.0):
                     result = await self._pool.fetchval("SELECT 1")
                     health["query_test"] = result == 1
-            except Exception as e:
+            except Exception as e:  # health-check query probe may fail any library error; record as query_test=False  # noqa: BLE001
                 health["query_test"] = False
                 health["error"] = str(e)
 

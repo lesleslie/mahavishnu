@@ -312,7 +312,7 @@ class JSONRPCStdioClient:
         if self._writer is not None and not self._writer.is_closing():
             try:
                 self._writer.close()
-            except Exception as e:
+            except Exception as e:  # Background task — writer-close errors during teardown are best-effort and must not block the stop() path  # noqa: BLE001
                 self._logger.debug("error closing writer: %s", e)
         # Subprocess termination.
         if self._process is not None and self._process.returncode is None:
@@ -521,7 +521,7 @@ class JSONRPCStdioClient:
         except asyncio.CancelledError:
             # Normal teardown.
             return
-        except Exception as e:  # pragma: no cover - defensive
+        except Exception as e:  # Background task — read-loop crashes must fail pending requests and surface as a protocol error, not crash the client  # pragma: no cover - defensive
             self._logger.exception("unexpected error in read loop", exc_info=e)
             self._fail_pending_requests(
                 PiProtocolError(f"read loop crashed: {e}", frame_excerpt=str(e))
@@ -682,7 +682,7 @@ class JSONRPCStdioClient:
         if self._on_protocol_error is not None:
             try:
                 self._on_protocol_error(err)
-            except Exception:  # pragma: no cover - defensive
+            except Exception:  # Background task — caller-supplied on_protocol_error callback must never crash the read-loop protocol pipeline  # pragma: no cover - defensive
                 self._logger.exception("on_protocol_error callback raised")
 
     def _allocate_id(self) -> int:

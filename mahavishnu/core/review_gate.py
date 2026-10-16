@@ -249,7 +249,7 @@ class ReviewGate:
         # We do NOT keep a runtime dependency -- if the import fails we
         # simply mark Crackerjack as unavailable.
         try:
-            import crackerjack  # noqa: F401
+            import crackerjack
 
             self._crackerjack_available = True
         except ImportError:

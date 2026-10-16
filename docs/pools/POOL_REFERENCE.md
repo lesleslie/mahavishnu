@@ -51,7 +51,7 @@ pool_websocket_port: 8691
 
 - [Pool Architecture](POOL_ARCHITECTURE.md) — Complete design guide
 - [Pool Migration](POOL_MIGRATION.md) — From WorkerManager to pools
-- [MCP Tools Spec](mcp/MCP_TOOLS_SPECIFICATION.md) — Pool MCP tool reference
+- [MCP Tools Spec](../mcp/MCP_TOOLS_SPECIFICATION.md) — Pool MCP tool reference
 
 ## Usage
 

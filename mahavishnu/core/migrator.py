@@ -255,7 +255,9 @@ class DatabaseMigrator:
             self._current_phase = MigrationPhase.COMPLETED
             self.metrics.phase = MigrationPhase.COMPLETED
 
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # migration coordinator — any failure triggers rollback + typed DatabaseError
             logger.error(f"Migration failed: {e}")
             self.metrics.rollback_triggered = True
             self.metrics.rollback_reason = str(e)
@@ -298,7 +300,9 @@ class DatabaseMigrator:
                 logger.info(f"Phase {phase.value} active for {duration_seconds}s")
                 await asyncio.sleep(duration_seconds)
 
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # phase-level error handler — log and re-raise so coordinator can rollback
             logger.error(f"Phase {phase.value} failed: {e}")
             raise
 
@@ -545,7 +549,7 @@ class DatabaseMigrator:
             # PostgreSQL count
             try:
                 pg_count = await self._postgres.fetchval(f"SELECT COUNT(*) FROM {table}")  # ty: ignore[unresolved-attribute]
-            except Exception:
+            except Exception:  # table may not exist in PostgreSQL yet; record 0 and let the mismatch counter flag it  # noqa: BLE001
                 pg_count = 0  # Table might not exist yet
 
             result["tables"][table] = {

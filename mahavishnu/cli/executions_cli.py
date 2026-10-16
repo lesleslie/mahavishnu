@@ -307,7 +307,7 @@ async def _watch_new_events(
                 consecutive_failures = 0
         except KeyboardInterrupt, SystemExit:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             consecutive_failures += 1
             logger.warning(
                 "watch poll failed",

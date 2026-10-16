@@ -269,7 +269,7 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
         return
     try:
         await publish_task_event_raw(event_type, payload)
-    except Exception as exc:
+    except Exception as exc:  # best-effort event publish — broad catch so a fire-and-forget audit event never blocks the caller  # noqa: BLE001
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 
 
@@ -443,7 +443,7 @@ def register_tasks_handoff_tools(
         # ---- Step 1: lookup ----
         try:
             task = await get_task(task_id=task_id)
-        except Exception as exc:
+        except Exception as exc:  # session-buddy lookup — broad catch re-raises typed TaskNotFoundError regardless of underlying session-buddy exception
             raise TaskNotFoundError(task_id, details={"cause": type(exc).__name__}) from exc
 
         # Content must be dispatch-safe (mirrors session-buddy's sanitizer).
@@ -474,7 +474,7 @@ def register_tasks_handoff_tools(
                     pool_selector=dispatch_selector,
                     timeout=float(dispatch_timeout) if dispatch_timeout is not None else None,
                 )
-            except Exception:
+            except Exception:  # step-2 dispatch failure — broad catch to emit orphan marker then re-raise as typed HandoffError
                 # Step 2 dispatch failure — no workflow exists, so emit
                 # an orphan with workflow_id="" so the v1.1 sweeper can
                 # tell step-2 from step-3 failures (Fix Round 1 #4).
@@ -505,7 +505,7 @@ def register_tasks_handoff_tools(
                     task_id=task_id,
                     metadata={"workflow_id": workflow_id},
                 )
-            except Exception:
+            except Exception:  # step-3 back-link failure — broad catch to emit orphan marker then re-raise (workflow is alive, just task not updated)
                 # Workflow is running, task not updated → orphan
                 # with the canonical step-3 reason (Fix Round 1 #4).
                 _publish_task_handoff_orphan(
@@ -545,7 +545,7 @@ def register_tasks_handoff_tools(
         except WorkflowNotReturnedError:
             # Already typed — never emitted an orphan. Re-raise as-is.
             raise
-        except Exception:
+        except Exception:  # MCP tool error handler — broad catch tags unexpected failure as orphan (workflow_id unknown) then re-raises
             # Catch-all for anything the inner branches didn't tag. If
             # step 2 returned a workflow_id but the failure happened
             # AFTER (e.g. step 3 fault OR a downstream consumer error),

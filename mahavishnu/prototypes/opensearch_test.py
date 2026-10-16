@@ -65,7 +65,7 @@ async def test_opensearch_connection():
 
         return True
 
-    except Exception as e:
+    except Exception as e:  # prototype smoke test prints any error and returns False; never raises
         print(f"❌ OpenSearch prototype failed: {e}")
         print("\n💡 To fix:")
         print("   1. Install OpenSearch: brew install opensearch")

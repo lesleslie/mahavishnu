@@ -216,7 +216,7 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
                         details={"task_id": str(data.task_id)},
                     )
                 return self._row_to_model(row)
-        except Exception as e:
+        except Exception as e:  # translate any DB/driver error into RepositoryError  # noqa: BLE001
             raise self._handle_error("record_event", e, {"task_id": str(data.task_id)})
 
     async def get_events_for_task(
@@ -230,7 +230,7 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
             async with self.connection() as conn:
                 rows = await conn.fetch(_SELECT_BY_TASK, task_id, limit, offset)
                 return [self._row_to_model(row) for row in rows]
-        except Exception as e:
+        except Exception as e:  # translate any DB/driver error into RepositoryError  # noqa: BLE001
             raise self._handle_error("get_events_for_task", e, {"task_id": str(task_id)})
 
     async def get_events_for_run(self, task_id: UUID, run_id: UUID) -> list[TaskEventRead]:
@@ -239,7 +239,7 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
             async with self.connection() as conn:
                 rows = await conn.fetch(_SELECT_BY_TASK_AND_RUN, task_id, run_id)
                 return [self._row_to_model(row) for row in rows]
-        except Exception as e:
+        except Exception as e:  # translate any DB/driver error into RepositoryError  # noqa: BLE001
             raise self._handle_error(
                 "get_events_for_run", e, {"task_id": str(task_id), "run_id": str(run_id)}
             )
@@ -255,7 +255,7 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
             async with self.connection() as conn:
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_model(row) for row in rows]
-        except Exception as e:
+        except Exception as e:  # translate any DB/driver error into RepositoryError  # noqa: BLE001
             raise self._handle_error("list_events", e, {"filters": filters.model_dump()})
 
     def _row_to_model(self, row: Any) -> TaskEventRead:

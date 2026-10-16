@@ -86,7 +86,7 @@ class WorktreeProviderRegistry:
                     capabilities=["worktree", "v4"],
                     require_all=True,
                 )
-            except Exception as exc:
+            except Exception as exc:  # Resolver fallback path logs any resolver fault and continues with legacy selection  # noqa: BLE001
                 # pragma: no cover - resolver faults
                 logger.warning(
                     "worktree-resolver-fault",
@@ -116,7 +116,7 @@ class WorktreeProviderRegistry:
                             if hasattr(p, "health") and await cast("Any", p).health():
                                 self._provider_health[p.provider_name()] = True
                                 return p
-                        except Exception:
+                        except Exception:  # Provider health probe logs and skips on any failure
                             logger.warning(
                                 "worktree-resolver-selected-unhealthy",
                                 extra={"provider": p.provider_name()},
@@ -141,7 +141,9 @@ class WorktreeProviderRegistry:
                 logger.debug(f"Using provider: {provider_name}")
                 return provider
 
-            except Exception as e:
+            except (
+                Exception
+            ) as e:  # Provider health check logs and falls through to next provider on any failure
                 logger.warning(
                     f"Provider {provider_name} health check failed: {e}",
                     exc_info=True,
@@ -213,7 +215,9 @@ class WorktreeProviderRegistry:
                         else:
                             logger.debug(f"Provider {provider_name} is healthy")
 
-                    except Exception:
+                    except (
+                        Exception
+                    ):  # Health check reports failure for any exception and continues
                         logger.exception(
                             "Health check failed",
                             extra={"provider": provider_name},
@@ -223,6 +227,6 @@ class WorktreeProviderRegistry:
             except asyncio.CancelledError:
                 logger.info("Provider health check loop cancelled")
                 break
-            except Exception:
+            except Exception:  # background task — broad catch is the documented contract
                 logger.exception("Error in health check loop")
                 # Continue loop despite errors

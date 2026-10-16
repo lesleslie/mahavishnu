@@ -92,7 +92,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             # Convert to dict for JSON serialization
             return [result.model_dump() for result in results]
 
-        except Exception as e:
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "hybrid_search tool failed",
                 extra={
@@ -142,7 +142,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "index_document tool failed",
                 extra={
@@ -179,7 +179,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "delete_document tool failed",
                 extra={"doc_id": doc_id, "error": str(e)},
@@ -207,7 +207,7 @@ def register_search_tools(mcp: FastMCP) -> None:
 
             return [result.model_dump() for result in results]
 
-        except Exception as e:
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "search_by_repository tool failed",
                 extra={
@@ -322,7 +322,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                     combined.append(r)
             finally:
                 await akosha_client.aclose()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
             sources.append(
                 {
@@ -380,7 +380,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                     combined.append(c)
             finally:
                 await sb_client.aclose()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
             sources.append(
                 {
@@ -444,7 +444,7 @@ def register_search_tools(mcp: FastMCP) -> None:
                         },
                     )
                     await server.broadcast_to_room(channel, msg)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("cross_repo_search: websocket broadcast failed: %s", exc)
 
         return result

@@ -261,7 +261,7 @@ class TaskEventEmitter:
             if subscription.should_receive(event):
                 try:
                     subscription.callback(event)
-                except Exception as e:
+                except Exception as e:  # background task — broad catch is the documented contract; one bad callback must not stop the rest  # noqa: BLE001
                     logger.error(f"Error in event callback for {subscription.subscription_id}: {e}")
         self._publish_canonical_event(event)
 

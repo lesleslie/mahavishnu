@@ -281,7 +281,7 @@ class ContentIngester:
             self._initialized = True
             self._log.info("content_ingester_initialized")
 
-        except Exception as e:
+        except Exception as e:  # Initialization wraps any backing-service failure into a RuntimeError so callers see a stable type
             self._log.error("initialization_failed", error=str(e))
             raise RuntimeError(f"Failed to initialize ContentIngester: {e}") from e
 
@@ -325,7 +325,7 @@ class ContentIngester:
                 ratio=savings["ratio"],
                 bits=self._compressor.bits,
             )
-        except Exception as e:
+        except Exception as e:  # Compression estimation logs and returns None so ingestion can proceed without compression metrics  # noqa: BLE001
             self._log.warning("turboquant_estimate_failed", error=str(e))
             return None
 
@@ -521,7 +521,7 @@ class ContentIngester:
                 "metadata": metadata,
             }
 
-        except Exception as e:
+        except Exception as e:  # URL fetch wraps any fetcher/parser failure into a RuntimeError so callers see a stable error type
             self._log.error("fetch_failed", url=url, error=str(e))
             raise RuntimeError(f"Failed to fetch URL {url}: {e}") from e
 
@@ -772,7 +772,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # Top-level ingestion wraps any failure into an IngestionResult rather than propagating  # noqa: BLE001
             self._log.error("ingestion_failed", url=url, error=str(e))
             return IngestionResult(
                 success=False,
@@ -881,7 +881,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:
+        except Exception as e:  # File ingestion wraps any failure into an IngestionResult rather than propagating  # noqa: BLE001
             self._log.error("file_ingestion_failed", file_path=str(file_path), error=str(e))
             return IngestionResult(
                 success=False,

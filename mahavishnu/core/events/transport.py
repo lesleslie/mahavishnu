@@ -12,7 +12,7 @@ except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # noqa: N813  # type: ignore[assignment]
+    from logging import getLogger as get_logger  # type: ignore[assignment]
 
 try:
     from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
@@ -79,7 +79,7 @@ class CompositeEventEnvelopeHandler:
             app = get_app_from_context()
             if app is not None and hasattr(app, "record_event_activity"):
                 app.record_event_activity(envelope)
-        except Exception as e:
+        except Exception as e:  # best-effort activity telemetry — broad catch so missing context never breaks publish  # noqa: BLE001
             _logger.debug("Event activity skipped: %s", e)
         results: list[Any] = []
         for handler in self.handlers:
@@ -218,7 +218,7 @@ class RetryingEventEnvelopeHandler:
         for attempt in range(1, attempts + 1):
             try:
                 return await self.handler.handle(envelope)
-            except Exception as exc:
+            except Exception as exc:  # retry-loop wrapper — broad catch records failure and either retries or escalates to dead-letter  # noqa: BLE001
                 last_error = exc
                 if attempt < attempts and self.retry_delay_seconds > 0:
                     delay = self.retry_delay_seconds * (2 ** (attempt - 1))

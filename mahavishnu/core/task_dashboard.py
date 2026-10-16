@@ -325,7 +325,7 @@ class TaskDashboard:
         try:
             tasks = await self.task_store.list()
             self.task_list.set_tasks(tasks)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to load tasks: {e}")
             self.task_list.set_tasks([])
 

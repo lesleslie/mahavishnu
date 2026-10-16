@@ -86,7 +86,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
         """Get or import pyautogui module."""
         if self._pyautogui is None:
             try:
-                import pyautogui  # ty: ignore[unresolved-import]  # noqa: F401
+                import pyautogui  # ty: ignore[unresolved-import]
 
                 self._pyautogui = pyautogui
 

@@ -81,7 +81,7 @@ def _selectolax_extract(html: str, selector: str) -> str:
     """
     try:
         tree = _SelectolaxParser(html)
-    except Exception:
+    except Exception:  # Utility — any HTML parse failure degrades to "no matches", letting the next extraction tier try  # noqa: BLE001
         return ""
     matches = tree.css(selector)
     if not matches:
@@ -168,7 +168,7 @@ def _stdlib_fallback(html: str) -> str:
     try:
         parser.feed(html)
         parser.close()
-    except Exception:
+    except Exception:  # Utility — stdlib fallback degrades to a stripped raw string on pathological HTML instead of raising  # noqa: BLE001
         return re.sub(r"<[^>]+>", "", html)
     text = "".join(parser._chunks)
     text = _WS_RE.sub(" ", text)
@@ -243,7 +243,7 @@ async def web_extract(
     t0 = time.perf_counter()
     try:
         resp = await client.get(url, headers={"Accept": "text/html,*/*"})
-    except Exception as exc:
+    except Exception as exc:  # MCP tool error handler — HTTP fetch failures are surfaced as a structured ExtractResult with the captured error  # noqa: BLE001
         return ExtractResult(
             url=url,
             content="",

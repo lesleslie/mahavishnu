@@ -227,7 +227,7 @@ class WorktreeManager:
             stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
             logger.error("Failed to create worktree for task %s: %s", task_id, stderr)
             raise WorktreeError(f"Failed to create worktree: {stderr}") from exc
-        except Exception as exc:
+        except Exception as exc:  # worktree creation can fail on any git/OS error; wrap into domain-specific WorktreeError
             logger.exception("Failed to create worktree for task %s", task_id)
             raise WorktreeError(f"Failed to create worktree: {exc}") from exc
 
@@ -378,7 +378,7 @@ class WorktreeManager:
                     )
 
                 await asyncio.to_thread(_git_worktree_remove)
-        except Exception as exc:
+        except Exception as exc:  # cleanup must not raise; log and continue so registry cleanup still happens  # noqa: BLE001
             logger.warning("Failed to git-worktree-remove %s: %s", worktree_id, exc)
         finally:
             self._registry.pop(worktree_id, None)

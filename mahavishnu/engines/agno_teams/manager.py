@@ -193,7 +193,7 @@ class AgentTeamManager:
 
             return team_id
 
-        except Exception as e:
+        except Exception as e:  # Team creation wraps any team-build error in a typed AgnoError so callers get the project's exception hierarchy
             logger.error(f"Failed to create team '{config.name}': {e}")
             raise AgnoError(
                 f"Failed to create team: {e}",
@@ -236,7 +236,7 @@ class AgentTeamManager:
 
         except AgnoError:
             raise
-        except Exception as e:
+        except Exception as e:  # YAML config loader wraps any parse/validation failure in a typed AgnoError so callers get the project's exception hierarchy
             logger.error(f"Failed to load team config from {yaml_path}: {e}")
             raise AgnoError(
                 f"Failed to load team config: {e}",
@@ -330,7 +330,7 @@ class AgentTeamManager:
             self._run_history[team_id].append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # Team run wraps any execution failure in a TeamRunResult rather than propagating  # noqa: BLE001
             latency_ms = (time.monotonic() - start_time) * 1000
             logger.error(f"Team run failed: team={config.name}, error={e}")
 

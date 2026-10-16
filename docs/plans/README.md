@@ -18,34 +18,18 @@ This directory contains active and historical planning documents for Mahavishnu 
 
 1. Current plan map, implementation priority, and supersession notes:
    - [PLAN_INDEX.md](./PLAN_INDEX.md)
-1. Current prioritized execution queue for remaining work:
-   - [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md)
-1. Current Agno/Textual TUI and Bodai platform architecture:
-   - [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md)
-1. Current Agno/Textual TUI and Bodai platform implementation plan:
-   - [2026-04-16-bodai-master-implementation-plan.md](./2026-04-16-bodai-master-implementation-plan.md)
-1. Current ecosystem-health/control-plane implementation plan:
-   - [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md)
-1. Current ecosystem docs cleanup plan:
-   - [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md)
-1. Current type adapter migration plan:
-   - [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md)
+1. **Authority for topic-specific plans**: see `PLAN_INDEX.md` (it lists the current spec/implementation plan for each concern, including Agno/TUI architecture, ecosystem health, docs canonicalization, and type-adapter migration). The historical plans formerly linked from this README (2026-04-16 master spec/impl, 2026-04-25 ecosystem update / docs canonicalization / type-adapter migration, 2026-05-11 remaining-work queue) are now under `docs/plans/.archive/` and tracked from `PLAN_INDEX.md`.
 
 ## Plan Categories
 
 - `20YY-MM-DD-*.md`: dated architecture, review, or implementation plans.
 - `initiatives/`: work-package plans from the 2026-04-04 ecosystem execution board.
 - `reviews/`: focused review notes and audit findings.
-- `archive/`: older implementation plans and completion reports.
+- `.archive/` (untracked): older implementation plans and completion reports moved out of the active tree per the 2026-10-14 untrack.
 
 ## Current Authority
 
-- Use [PLAN_INDEX.md](./PLAN_INDEX.md) as the source of truth for which plans are active, canonical, superseded, or historical.
-- Use [2026-05-11-remaining-work-execution-order.md](./2026-05-11-remaining-work-execution-order.md) as the prioritized queue for the remaining open implementation tasks.
-- Use [2026-04-16-bodai-agent-platform-master-spec.md](./2026-04-16-bodai-agent-platform-master-spec.md) for Agno/Textual TUI boundaries.
-- Use [2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md](./2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.md) for ecosystem health, capability discovery, dashboard live-data wiring, and status normalization.
-- Use [2026-04-25-ecosystem-docs-canonicalization-plan.md](./2026-04-25-ecosystem-docs-canonicalization-plan.md) for cross-repo docs cleanup and drift prevention.
-- Use [2026-04-25-type-adapter-migration-plan.md](./2026-04-25-type-adapter-migration-plan.md) for `ty`, `pyrefly`, and `zuban` adapter refresh and AI-fix routing updates.
+- Use [PLAN_INDEX.md](./PLAN_INDEX.md) as the single source of truth for which plans are active, canonical, superseded, or historical. It enumerates the current spec/implementation plan for each concern (Agno/TUI boundaries, ecosystem health, docs canonicalization, type-adapter migration, etc.) — do not duplicate that mapping here.
 
 ## Maintenance Rules
 

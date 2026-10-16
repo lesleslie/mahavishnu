@@ -173,6 +173,6 @@ When adding new tests:
 
 ## References
 
-- [WebSocket Deployment Guide](/docs/WEBSOCKET_DEPLOYMENT.md)
-- [MCP Tools Specification](/docs/MCP_TOOLS_SPECIFICATION.md)
+- [WebSocket Deployment Guide](/docs/websocket/WEBSOCKET_DEPLOYMENT.md)
+- [MCP Tools Specification](/docs/mcp/MCP_TOOLS_SPECIFICATION.md)
 - [Production Deployment Guide](/docs/PRODUCTION_DEPLOYMENT_GUIDE.md)

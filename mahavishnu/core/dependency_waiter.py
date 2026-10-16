@@ -66,7 +66,7 @@ async def wait_for_dependencies(app: Any) -> bool:
             if not report.valid:
                 for err in report.get_errors():
                     logger.warning("Config issue [%s]: %s", err.path, err.message)
-        except Exception as e:
+        except Exception as e:  # unified_config may be unimported (oneiric dep missing); skip silently per optional-config contract  # noqa: BLE001
             logger.debug("Config validation skipped: %s", e)
 
     return result.success

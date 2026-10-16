@@ -418,7 +418,7 @@ async def _cleanup_principal_index(client: Any, handle_id: str) -> int:
             "DELETE FROM mahavishnu_worktree_registry_idx_principal WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:
+    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # noqa: BLE001
         logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={
@@ -438,7 +438,7 @@ async def _cleanup_repo_index(client: Any, handle_id: str) -> int:
             "DELETE FROM mahavishnu_worktree_registry_idx_repo WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:
+    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # noqa: BLE001
         logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={

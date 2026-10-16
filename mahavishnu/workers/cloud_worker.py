@@ -233,7 +233,7 @@ class CloudWorker(BaseWorker):
         if self._status != WorkerStatus.RUNNING:
             try:
                 await self.start()
-            except Exception as e:
+            except Exception as e:  # worker start may fail at any credential/network step
                 logger.error("Cloud worker failed to start: %s", e)
                 return WorkerResult(
                     worker_id=self._worker_id,
@@ -287,7 +287,7 @@ class CloudWorker(BaseWorker):
                     from mahavishnu.core.routing_metrics import get_routing_metrics
 
                     get_routing_metrics().record_rate_limit_rejected(model_for_rate)
-                except Exception as e:
+                except Exception as e:  # metrics are best-effort; do not fail request on metric error  # noqa: BLE001
                     logger.debug("Rate limit metric skipped: %s", e)
                 return WorkerResult(
                     worker_id=self._worker_id,
@@ -342,7 +342,7 @@ class CloudWorker(BaseWorker):
 
             return worker_result
 
-        except Exception as e:
+        except Exception as e:  # chain.execute may raise any provider/HTTP/timeout failure
             duration = time.time() - start_time
             logger.error("Cloud task failed (all providers exhausted): %s", e)
             return WorkerResult(
@@ -390,7 +390,7 @@ class CloudWorker(BaseWorker):
                 provider_health[provider.name] = await asyncio.wait_for(
                     provider.health_check(), timeout=5.0
                 )
-            except Exception:
+            except Exception:  # per-provider probe failed — treat as unhealthy for that provider only  # noqa: BLE001
                 provider_health[provider.name] = False
 
         any_healthy = any(provider_health.values())
@@ -432,7 +432,7 @@ class CloudWorker(BaseWorker):
                 },
             )
             logger.debug("Stored result in Session-Buddy: %s", self._worker_id)
-        except Exception as e:
+        except Exception as e:  # storage is best-effort; task result still returned to caller
             logger.warning("Failed to store result in Session-Buddy: %s", e)
 
 

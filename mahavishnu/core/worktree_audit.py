@@ -160,7 +160,7 @@ class WorktreeAuditLogger:
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception as e:  # best-effort audit logging — broad catch so logging failure never breaks parent worktree operation  # noqa: BLE001
             # Don't fail if audit logging fails
             logger.error(f"Failed to write to audit log: {e}")
 

@@ -130,7 +130,7 @@ def discover_workflows(repo_root: Path) -> list[dict[str, Any]]:
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
-        except Exception as e:
+        except Exception as e:  # discovery is best-effort enumeration — broad catch skips broken modules and lets publish-time QC flag them  # noqa: BLE001
             # Module failed to import. Skip silently — publish-time QC will
             # surface this. We deliberately do not raise: discovery is
             # best-effort enumeration, not a gate.

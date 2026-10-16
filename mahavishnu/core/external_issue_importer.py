@@ -380,7 +380,7 @@ class ExternalIssueImporter:
 
             return created_task.id
 
-        except Exception as e:
+        except Exception as e:  # Single-issue importer returns None on failure so the batch can continue with remaining issues  # noqa: BLE001
             logger.error(f"Failed to import issue {issue.external_id}: {e}")
             return None
 

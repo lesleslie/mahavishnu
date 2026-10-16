@@ -523,7 +523,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `endpoint` — `str`, default `""`; optional external ingestion URL.
 - `dry_run` — `bool`, default `True`; logs envelopes without transmitting them.
 
-*(Removed 2026-10-14: `dhara_state.*` config block was deleted when Dhara was decommissioned 2026-09-20. Durability is now provided by Oneiric.)
+\*(Removed 2026-10-14: `dhara_state.*` config block was deleted when Dhara was decommissioned 2026-09-20. Durability is now provided by Oneiric.)
 
 ### `integrations.*`, `learning.*`, and `distill.*`
 

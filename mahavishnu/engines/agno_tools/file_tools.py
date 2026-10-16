@@ -135,7 +135,7 @@ def _get_allowed_base_dirs() -> list[Path]:
                 ]
             )
             return list(dict.fromkeys(allowed))
-    except Exception:
+    except Exception:  # settings/config load can fail at import time; fall back to defaults
         logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
 
     return [p.resolve() for p in DEFAULT_ALLOWED_BASE_DIRS]
@@ -288,7 +288,9 @@ def _validate_path(path: str) -> Path:
     except AgnoError:
         # Re-raise our security errors
         raise
-    except Exception as e:
+    except (
+        Exception
+    ) as e:  # path validation can raise any OS/Path error; wrap into domain-specific AgnoError
         # Wrap other exceptions
         raise AgnoError(
             "Invalid path provided",
@@ -536,7 +538,7 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
                         extra={"match": str(match)},
                     )
                     continue
-            except Exception as e:
+            except Exception as e:  # per-result path validation; skip and continue on any error
                 logger.warning(f"Could not validate search result path: {e}")
                 continue
 

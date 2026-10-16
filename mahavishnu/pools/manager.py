@@ -240,7 +240,7 @@ class PoolManager:
                     "updated_at": datetime.now(UTC).isoformat(),
                 },
             )
-        except Exception as exc:
+        except Exception as exc:  # persistence is best-effort observability, never blocks routing
             logger.debug("Failed to persist pool state for %s: %s", pool_id, exc)
 
     async def _persist_routing_decision(
@@ -286,7 +286,7 @@ class PoolManager:
                 record,
                 timestamp=datetime.now(UTC),
             )
-        except Exception as exc:
+        except Exception as exc:  # persistence is best-effort observability, never blocks routing
             logger.debug("Failed to persist routing decision for %s: %s", pool_id, exc)
 
     def _refresh_pool_worker_metrics(self) -> None:
@@ -343,7 +343,7 @@ class PoolManager:
             pools_cfg = get_settings().pools
             requested = pools_cfg.auto_spawn_type
             valid_types = list_pool_types()
-        except Exception as exc:
+        except Exception as exc:  # settings may not be wired; safe fallback per documented contract  # noqa: BLE001
             logger.warning(
                 "auto_spawn defaults: settings unavailable, using safe fallback",
                 extra={"error": str(exc)},
@@ -455,7 +455,7 @@ class PoolManager:
 
             return pool_id
 
-        except Exception as e:
+        except Exception as e:  # CLI/MCP entry point — broad catch is the documented contract
             logger.error(f"Failed to spawn pool: {e}")
             raise
 
@@ -899,7 +899,7 @@ class PoolManager:
             return None
         try:
             wait = buffer.fitted_model.safe_expected_wait_time()
-        except Exception:
+        except Exception:  # boundary handler — missing prediction beats routing failure
             return None
         if wait == float("inf") or wait < 0.0 or not math.isfinite(wait):
             return None
@@ -1022,7 +1022,7 @@ class PoolManager:
                     pools_cfg, "queueing_warmup_min_seconds", 600.0
                 ),
             }
-        except Exception:
+        except Exception:  # settings may not be wired; queueing disabled is the safe default
             return {"queueing_enabled": False}
 
     def get_pool_queue_depths(self) -> dict[str, float]:
@@ -1113,7 +1113,7 @@ class PoolManager:
                         return override
                     except ValueError:
                         pass  # Unknown selector string — keep current selector
-        except Exception as e:
+        except Exception as e:  # MCP fitness probe is advisory; failures keep current selector
             logger.debug("MCP selector override skipped: %s", e)
         return selector
 

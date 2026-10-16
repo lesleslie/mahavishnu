@@ -110,7 +110,7 @@ def rate_limit_tool(
             if key_func and kwargs:
                 try:
                     key = key_func(kwargs)
-                except Exception as e:
+                except Exception as e:  # Rate-limit key extraction logs any callback error and falls back to default key  # noqa: BLE001
                     logger.warning(f"Failed to get rate limit key: {e}")
                     key = "default"
 
@@ -148,7 +148,7 @@ def rate_limit_tool(
             try:
                 result = await func(*args, **kwargs)
                 return result
-            except Exception as e:
+            except Exception as e:  # Rate-limit decorator logs the wrapped tool's failure before re-raising so observability sees the source
                 # Log error but don't wrap it
                 logger.error(f"Error in rate-limited tool {tool_name}: {e}")
                 raise

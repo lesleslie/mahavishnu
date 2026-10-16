@@ -367,7 +367,7 @@ class CrossRepoAggregator:
             repos = self.repo_manager.list_repos()
             for repo in repos:
                 repo_to_role[repo.name] = getattr(repo, "role", "unknown")
-        except Exception as e:
+        except Exception as e:  # repo listing can fail on registry/IO errors; log and treat roles as unknown  # noqa: BLE001
             logger.warning(f"Could not get repo roles: {e}")
 
         result: dict[str, list[Task]] = defaultdict(list)

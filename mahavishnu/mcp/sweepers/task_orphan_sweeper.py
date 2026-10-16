@@ -132,7 +132,7 @@ class TaskOrphanSweeper:
             return
         try:
             await self._adapter.init()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "task_orphan_sweeper: init failed (degraded to no-op): %s",
                 exc,
@@ -141,7 +141,7 @@ class TaskOrphanSweeper:
     async def cleanup(self) -> None:
         try:
             await self._adapter.cleanup()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("task_orphan_sweeper: cleanup failed: %s", exc)
 
     async def health(self) -> bool:
@@ -242,7 +242,7 @@ class TaskOrphanSweeper:
             # Reset the failure streak on any successful read — even one
             # that returns zero entries.
             self._consecutive_read_failures = 0
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.errors_total += 1
             self._consecutive_read_failures += 1
             logger.warning(
@@ -267,7 +267,7 @@ class TaskOrphanSweeper:
                     outcome = await self._recover_orphan(entry)
                     span.set_attribute("outcome", outcome)
                     results.append((entry, outcome))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 self.errors_total += 1
                 # Emit a failed-outcome span so the failure is observable
                 # in the same trace tree as a successful sibling would be.

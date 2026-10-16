@@ -95,7 +95,7 @@ class UnifiedConfig:
             MahavishnuSettings()
         except ImportError:
             pass  # pydantic_settings not available — skip
-        except Exception as exc:
+        except Exception as exc:  # Config validator translates any pydantic validation failure into structured per-field error reports  # noqa: BLE001
             # PydanticValidationError or similar
             from pydantic import ValidationError as PydanticValidationError
 

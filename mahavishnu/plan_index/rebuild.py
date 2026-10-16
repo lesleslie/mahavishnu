@@ -101,7 +101,7 @@ class PlanIndexRebuilder:
                 normalized_record = replace(record, repo=normalized)
                 await store.upsert(normalized_record)
                 success += 1
-            except Exception:
+            except Exception:  # Per-record upsert records the error and continues with the next plan so the rebuild can complete  # noqa: BLE001
                 errors.append(
                     {
                         "path_hash": path_hash,

@@ -80,14 +80,14 @@ class AuthContextMiddleware(Middleware):
         try:
             extracted = await extract_auth_from_request(request_dict)
             user_id = extracted["user_id"]
-        except Exception:
+        except Exception:  # noqa: BLE001
             user_id = None
 
         fastmcp_ctx: Context | None = getattr(context, "fastmcp_context", None)
         if fastmcp_ctx is not None:
             try:
                 await fastmcp_ctx.set_state(USER_ID_STATE_KEY, user_id)
-            except Exception:
+            except Exception:  # MCP tool error handler — broad catch is the documented contract
                 logger.debug(
                     "AuthContextMiddleware: failed to persist user_id to Context state",
                     exc_info=True,

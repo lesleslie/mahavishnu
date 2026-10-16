@@ -262,7 +262,7 @@ class FixOrchestrator:
                     },
                 )
             return checkpoint_id  # type: ignore[no-any-return]
-        except Exception as exc:
+        except Exception as exc:  # Checkpoint recording logs and degrades gracefully so the fix flow can still proceed  # noqa: BLE001
             trace.append(f"Session checkpoint degraded: {exc}")
             return None
 
@@ -284,7 +284,7 @@ class FixOrchestrator:
                 )
             )
             trace.append("Coordination memory recorded execution start")
-        except Exception as exc:
+        except Exception as exc:  # Coordination memory logging degrades gracefully so the fix flow can still proceed  # noqa: BLE001
             trace.append(f"Coordination memory degraded: {exc}")
 
     async def _record_coord_close(
@@ -311,7 +311,7 @@ class FixOrchestrator:
                 )
             )
             trace.append("Coordination memory recorded fix validation")
-        except Exception as exc:
+        except Exception as exc:  # Coordination memory search/index degrades gracefully so the fix flow can still proceed  # noqa: BLE001
             trace.append(f"Coordination memory search/index degraded: {exc}")
 
         try:
@@ -323,7 +323,7 @@ class FixOrchestrator:
                 )
             )
             trace.append(f"Coordination memory search returned {len(search_results)} result(s)")
-        except Exception as exc:
+        except Exception as exc:  # Coordination memory search degrades gracefully so the fix flow can still proceed  # noqa: BLE001
             trace.append(f"Coordination memory search degraded: {exc}")
 
     async def _complete_checkpoint(
@@ -347,7 +347,7 @@ class FixOrchestrator:
                 )
             )
             trace.append("Session checkpoint marked completed")
-        except Exception as exc:
+        except Exception as exc:  # Checkpoint completion degrades gracefully so the fix flow can still proceed  # noqa: BLE001
             trace.append(f"Session checkpoint completion degraded: {exc}")
 
     async def execute_fix(
@@ -402,7 +402,7 @@ class FixOrchestrator:
                 pool_id,
                 {"prompt": task.prompt, "issue_id": task.issue_id, "files": task.affected_files},
             )
-        except Exception as e:
+        except Exception as e:  # Fix orchestrator wraps any pool-execution failure into a FixResult rather than propagating  # noqa: BLE001
             return FixResult(success=False, stage="execution", error_message=str(e))
 
         if not execution_result.get("success", False):

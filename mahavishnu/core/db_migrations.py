@@ -268,7 +268,7 @@ class MigrationManager:
             self._results.append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # Migration runner wraps any DB error in a FAILED MigrationResult so the batch report stays uniform  # noqa: BLE001
             migration.status = MigrationStatus.FAILED
             result = MigrationResult(
                 migration_id=migration_id,
@@ -331,7 +331,7 @@ class MigrationManager:
             self._results.append(result)
             return result
 
-        except Exception as e:
+        except Exception as e:  # Migration rollback wraps any DB error in a FAILED MigrationResult so the batch report stays uniform  # noqa: BLE001
             result = MigrationResult(
                 migration_id=migration_id,
                 status=MigrationStatus.FAILED,

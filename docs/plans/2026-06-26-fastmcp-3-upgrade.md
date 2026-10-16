@@ -124,7 +124,7 @@ Grep every repo (Bodai core + `*-mcp` standalone) for FastMCP usage patterns. Ca
 - Middleware classes (inherit from `Middleware` or `BaseMiddleware`)
 - `server.run(...)` calls
 
-Output: a per-repo inventory document listing every site that needs review. (Bodai core inventory already complete at [`2026-06-26-fastmcp-3-upgrade-inventory.md`](./2026-06-26-fastmcp-3-upgrade-inventory.md). Standalone `*-mcp` inventory still needed.)
+Output: a per-repo inventory document listing every site that needs review. (Bodai core inventory is referenced from `docs/plans/PLAN_INDEX.md`; the standalone `*-mcp` inventory was never produced. Treat the parenthetical as historical.)
 
 ### Phase 1 — mcp-common foundation (1 day)
 

@@ -207,7 +207,7 @@ class MCPAdapterRegistryClient:
             result = await self._client.call_tool(name, arguments)
             self._connected = True
             return result
-        except Exception as exc:
+        except Exception as exc:  # MCP client wraps any backing-service failure into a ConnectionError with stable typing
             self._connected = False
             raise ConnectionError(f"MCP adapter registry unavailable: {exc}") from exc
 
@@ -289,7 +289,7 @@ class MCPAdapterRegistryClient:
         except ConnectionError:
             await self._circuit_breaker.record_failure(adapter_id)
             raise
-        except Exception:
+        except Exception:  # Adapter lookup records circuit-breaker failure and returns None on any unexpected error  # noqa: BLE001
             await self._circuit_breaker.record_failure(adapter_id)
             return None
 
@@ -316,7 +316,7 @@ class MCPAdapterRegistryClient:
             else:
                 await self._circuit_breaker.record_failure(adapter_id)
             return healthy
-        except Exception:
+        except Exception:  # Health probe records circuit-breaker failure and reports unhealthy on any error  # noqa: BLE001
             await self._circuit_breaker.record_failure(adapter_id)
             return False
 
@@ -362,7 +362,7 @@ class MCPAdapterRegistryClient:
                 "cache_entries": len(self._cache),
                 "contract": contract,
             }
-        except Exception as exc:
+        except Exception as exc:  # Health snapshot returns unhealthy payload on any probe failure
             return {
                 "status": "unhealthy",
                 "connected": False,

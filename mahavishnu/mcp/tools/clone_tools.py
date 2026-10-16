@@ -471,7 +471,7 @@ class CloneTools:
             # cluster_claim raised before the sentinel was overwritten — no claim.
             # Both paths share "raise without cleanup".
             raise
-        except Exception:
+        except Exception:  # MCP tool error handler — broad catch is the documented contract (release claim then re-raise)
             # Any other exception: release claim (if acquired) before re-raising.
             await self._cleanup_on_failure(claim_acquired, mcp_backend, cluster_id)
             raise
@@ -534,7 +534,7 @@ class CloneTools:
             records = await mcp_backend.list_prefix("workflow/v1/")
             # Sort by UUID7 lexicographically (newest first).
             return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("clone_refactor_status: list_prefix failed (%s); returning []", exc)
             return []
 

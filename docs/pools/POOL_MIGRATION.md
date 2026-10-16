@@ -725,7 +725,7 @@ worker_mgr = WorkerManager(terminal_manager=tm)
 For migration assistance:
 
 - Review [POOL_ARCHITECTURE.md](POOL_ARCHITECTURE.md)
-- Check [MCP_TOOLS_SPECIFICATION.md](mcp/MCP_TOOLS_SPECIFICATION.md)
+- Check [MCP_TOOLS_SPECIFICATION.md](../mcp/MCP_TOOLS_SPECIFICATION.md)
 - Run tests: `pytest tests/unit/test_pools.py`
 - View examples in POOL_IMPLEMENTATION_PROGRESS.md
 

@@ -353,7 +353,7 @@ class QualityGateManager:
                 severity=rule.severity,
             )
 
-        except Exception as e:
+        except Exception as e:  # Quality check wraps any check-tool failure in a failed QualityCheckResult rather than propagating  # noqa: BLE001
             logger.error(f"Quality check {rule.name} failed with error: {e}")
             return QualityCheckResult(
                 check_name=rule.name,
