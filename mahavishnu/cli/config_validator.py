@@ -514,7 +514,7 @@ def _bifrost_schema_dump() -> dict[str, object]:
         return {"_error": "MahavishnuSettings not importable"}
     try:
         settings = MahavishnuSettings()
-    except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {"_error": f"settings load failed: {exc}"}
     return settings.bifrost.model_dump(exclude={"auth_env"})
 
