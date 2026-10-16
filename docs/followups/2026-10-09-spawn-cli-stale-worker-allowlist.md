@@ -1,5 +1,5 @@
 ---
-status: open
+status: active
 role: implementation
 topic: cli-deprecation-drift
 date: 2026-10-09
