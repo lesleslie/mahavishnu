@@ -1,13 +1,28 @@
 ---
-status: draft
+status: superseded
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-15
 superseded_by: null
 topic: dhara-crackerjack-bug-fixes
 title: "Dhara-Crackerjack Critical Bug Fixes Implementation Plan"
+archive_note: |
+  Superseded 2026-10-15 by mahavishnu plan audit Bundle D.
+
+  Dhara bugs #1-3 (sqlite.py:384 _oid_lock, connection.py:41 _async_init_lock,
+  connection.py:549 get_stored_pickle KeyError) all SHIPPED — verified against
+  current dhara 0.17.0 source at the same line numbers.
+
+  Crackerjack bugs #4-5 (dhara_integration.py:560-643) are MOOT — target file
+  `crackerjack/integration/dhara_integration.py` was decommissioned per
+  docs/plans/2026-09-20-delete-all-dhara-named-code.md (zero production
+  consumers, zero surviving test cases). No successor plan needed because
+  Dhara-Crackerjack integration no longer exists in the ecosystem.
 
 ---
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Goal:** Fix 5 critical bugs (3 in Dhara, 2 in Crackerjack) that prevent reliable production use of the Dhara async storage layer and its Crackerjack integration.
 
 # Dhara-Crackerjack Critical Bug Fixes Implementation Plan
 
