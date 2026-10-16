@@ -116,8 +116,10 @@ class MahavishnuPool(BasePool):
 
                 base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
                 candidates.append(base / "pools" / config.name / "workspace")
-            except Exception:
-                pass
+            except (ImportError, OSError):
+                logger.exception(
+                    "platformdirs unavailable or user_data_dir failed; skipping platform candidate"
+                )
             candidates.append(Path("/tmp") / "mahavishnu-ephemeral" / config.name / "workspace")
 
             chosen: Path | None = None

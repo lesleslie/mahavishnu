@@ -1314,8 +1314,8 @@ def _probe_bifrost_state(settings: MahavishnuSettings) -> bool:
         url = settings.bifrost.base_url.rstrip("/") + "/health"
         response = httpx.get(url, timeout=2)
     except (
-        Exception
-    ):  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
+        Exception  # noqa: BLE001  background health probe — broad catch is the documented contract
+    ):
         return False
     return response.status_code == 200
 
@@ -1337,8 +1337,8 @@ def _probe_local_provider_state(settings: MahavishnuSettings) -> bool:
         url = settings.bifrost.local_provider_url.rstrip("/") + "/health"
         response = httpx.get(url, timeout=2)
     except (
-        Exception
-    ):  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
+        Exception  # noqa: BLE001  background health probe — broad catch is the documented contract
+    ):
         return False
     return response.status_code == 200
 
