@@ -489,7 +489,9 @@ async def _ensure_consumer_group(
             id="$",
             mkstream=True,
         )
-    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (  # background task — broad catch is the documented contract
+        Exception  # noqa: BLE001, RUF100
+    ) as e:
         if "BUSYGROUP" in str(exc):
             _logger.debug(
                 "bodai.subscriber: consumer group already exists",
@@ -630,7 +632,9 @@ async def _close_redis_client(client: Any) -> None:
     except Exception:  # background task — broad catch is the documented contract  # noqa: BLE001
         try:
             await client.close()
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (  # background task — broad catch is the documented contract
+            Exception  # noqa: BLE001, RUF100
+        ) as e:
             _logger.debug("Client close error: %s", e)
 
 

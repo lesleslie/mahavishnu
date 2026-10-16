@@ -102,7 +102,9 @@ def _extract_text(html: str) -> str:
     try:
         parser.feed(html)
         parser.close()
-    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100
+    ):
         # Best-effort: fall back to a stripped raw string.
         return re.sub(r"<[^>]+>", "", html)
     text = "".join(parser._chunks)

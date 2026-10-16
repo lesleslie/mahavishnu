@@ -51,7 +51,9 @@ async def _fetch_tools(server: FastMCP) -> list[Any]:
     """
     try:
         tools = await server.list_tools()
-    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100
+    ):
         return []
     return list(tools)
 

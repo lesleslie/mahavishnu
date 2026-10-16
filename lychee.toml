@@ -45,6 +45,9 @@ exclude = [
   # Sites that block bots (connection failures or persistent 403s)
   "https://openai.com/",
   "https://www.datacamp.com/",
+  # MiniMax API base URL (correct, but 401/404 to anonymous — same situation
+  # as openai.com; the documented base is the live production endpoint)
+  "https://api.minimax.io/",
   # Slack workspaces (require auth; always 403 for anonymous clients)
   "https://cloud-native.slack.com/",
   "https://*.slack.com/archives/",

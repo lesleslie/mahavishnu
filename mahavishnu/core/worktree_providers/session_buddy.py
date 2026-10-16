@@ -82,7 +82,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         self.session_buddy_url = session_buddy_url
         self._mcp_client = None
         self._is_healthy: bool = True
-        self._last_health: bool | None = None
+        self._last_health: bool = False
         self._health_checked_at: float | None = None
 
         logger.debug(f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})")
@@ -435,7 +435,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=2) as resp:  # nosec B310 — stdlib HTTP for health probe to localhost
+        with urllib.request.urlopen(req, timeout=2) as resp:  # nosec B310 — stdlib HTTP for health probe to localhost  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
             session_id = resp.headers.get("mcp-session-id", "")
             resp.read().decode("utf-8", errors="replace")
 
@@ -456,7 +456,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req2, timeout=2) as resp2:  # nosec B310 — localhost health probe
+        with urllib.request.urlopen(req2, timeout=2) as resp2:  # nosec B310 — localhost health probe  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
             raw2 = resp2.read().decode("utf-8", errors="replace")
 
         # The server returns SSE; the JSON payload is on a 'data: '

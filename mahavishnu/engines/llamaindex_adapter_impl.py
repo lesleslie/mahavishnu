@@ -390,7 +390,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 import urllib.request
 
                 with urllib.request.urlopen(
-                    f"{llama_server_url.rstrip('/')}/v1/models", timeout=5
+                    f"{llama_server_url.rstrip('/')}/v1/models", timeout=5  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 ) as resp:
                     payload = json.loads(resp.read().decode("utf-8"))
                 models = payload.get("data") or []

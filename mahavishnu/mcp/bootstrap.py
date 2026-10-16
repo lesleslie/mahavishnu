@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import field
 import datetime as dt
 import shutil
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import mcp_common
 from oneiric.core.logging import get_logger
@@ -164,7 +164,7 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
     return factory(config=config, mcp_client=mcp_client)  # ConfigurationError propagates naturally
 
 
-def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
+def init_terminal_manager(server: FastMCPServer | Any) -> TerminalManager | None:
     """Initialize the terminal manager using the server's MCP client.
 
     Note: the historical type annotation says ``FastMCPServer``,
@@ -178,14 +178,21 @@ def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
     instance.
     """
     try:
-        config = server.config.terminal
-        adapter = _resolve_terminal_adapter(config, getattr(server, "mcp_client", None))
+        # Defensive: server may be FastMCPServer (which has no `.config`) or
+        # MahavishnuApp (which does). The historical annotation was wrong.
+        config = getattr(server, "config", None)
+        if config is None:
+            logger.warning("init_terminal_manager: server has no .config attribute")
+            return None
+        terminal_config = config.terminal
+        mcp_client = getattr(server, "mcp_client", None)
+        adapter = _resolve_terminal_adapter(terminal_config, mcp_client)
 
-        manager = TerminalManager(adapter, config)
+        manager = TerminalManager(adapter, terminal_config)
         logger.info(
             "Terminal manager initialized with %s adapter (max_concurrent=%s)",
             adapter.adapter_name,
-            config.max_concurrent_sessions,
+            terminal_config.max_concurrent_sessions,
         )
         return manager
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100

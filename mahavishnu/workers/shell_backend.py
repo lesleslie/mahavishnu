@@ -105,12 +105,12 @@ class ShellWorker(BaseWorker):
         if not self._session_id:
             return WorkerResult(
                 worker_id="unknown",
-                success=False,
+                status=WorkerStatus.FAILED,
                 error="ShellWorker.execute called before start()",
             )
         return WorkerResult(
             worker_id=self._session_id,
-            success=True,
+            status=WorkerStatus.COMPLETED,
             output="",
             metadata={
                 "session_id": self._session_id,
@@ -121,12 +121,16 @@ class ShellWorker(BaseWorker):
     async def stop(self) -> None:
         if self._session_id and self._terminal_manager is not None:
             try:
-                await self._terminal_manager.close_sessions([self._session_id])
+                # TerminalManager exposes close_session (singular); close_sessions
+                # does not exist on the manager — that was an API drift typo.
+                await self._terminal_manager.close_session(self._session_id)
             except Exception:  # shutdown cleanup — best-effort, never fatal
                 logger.exception(
-                    f"ShellWorker.stop: close_sessions failed for session_id={self._session_id}"
+                    f"ShellWorker.stop: close_session failed for session_id={self._session_id}"
                 )
-        self._status = WorkerStatus.STOPPED
+        # WorkerStatus has no STOPPED; CANCELLED is the right value for a
+        # cooperative shutdown (DEGRADED is for runtime degradation, not stop).
+        self._status = WorkerStatus.CANCELLED
 
     async def status(self) -> WorkerStatus:
         """Return the worker's current status.

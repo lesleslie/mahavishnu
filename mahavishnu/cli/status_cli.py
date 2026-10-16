@@ -24,6 +24,7 @@ import os
 import pathlib
 import re
 import shutil
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from oneiric.core.logging import get_logger
@@ -242,8 +243,8 @@ def _build_rows(
 
 def _collect_diagnostic(
     *,
-    tmux_which: callable | None = None,
-    claude_which: callable | None = None,
+    tmux_which: Callable | None = None,
+    claude_which: Callable | None = None,
     yaml_path: pathlib.Path | None = None,
 ) -> tuple[list[str], bool]:
     """Collect the diagnostic rows + a boolean for the overall disagreement flag.

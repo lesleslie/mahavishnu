@@ -320,7 +320,9 @@ def collect_metrics(
     try:
         exit_code = collect_main()
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (  # CLI entry point — broad catch is the documented contract
+        Exception  # noqa: BLE001, RUF100
+    ) as e:
         console.print(f"[red]Error collecting metrics:[/red] {e}")
         sys.exit(1)
 
@@ -364,7 +366,9 @@ def generate_report(
             console.print(f"[green]Report saved to:[/green] {output}")
 
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (  # CLI entry point — broad catch is the documented contract
+        Exception  # noqa: BLE001, RUF100
+    ) as e:
         console.print(f"[red]Error generating report:[/red] {e}")
         sys.exit(1)
 
@@ -542,7 +546,9 @@ def show_history(
 
             prev_coverage = avg_cov
 
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (  # CLI entry point — broad catch is the documented contract
+            Exception  # noqa: BLE001, RUF100
+        ) as e:
             console.print(f"[red]Error reading {snapshot_path.name}: {e}[/red]")
 
     console.print(table)
@@ -597,7 +603,9 @@ def generate_dashboard(
             webbrowser.open(f"file://{output_path}")
 
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (  # CLI entry point — broad catch is the documented contract
+        Exception  # noqa: BLE001, RUF100
+    ) as e:
         console.print(f"[red]Error generating dashboard:[/red] {e}")
         sys.exit(1)
 
@@ -854,7 +862,9 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
                 port = mcp.get("port", 8683)
                 scheme = "https" if mcp.get("use_tls") else "http"
                 return f"{scheme}://{host}:{port}".rstrip("/")
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (  # CLI entry point — broad catch is the documented contract
+            Exception  # noqa: BLE001, RUF100
+        ) as e:
             logger.debug("MCP URL resolution skipped: %s", e)
 
     return "http://localhost:8683"
@@ -1464,13 +1474,13 @@ def _parse_bifrost_prometheus_text(
     return rows
 
 
-def _render_bifrost_table(rows: list[dict[str, object]]) -> None:
+def _render_bifrost_table(rows: list[dict[str, Any]]) -> None:
     """Render the bifrost series as a Rich table grouped by series."""
     if not rows:
         console.print("[yellow]No bifrost series in the per-server registry.[/yellow]")
         return
 
-    by_series: dict[str, list[dict[str, object]]] = {}
+    by_series: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         by_series.setdefault(str(row["series"]), []).append(row)
 

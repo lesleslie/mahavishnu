@@ -257,15 +257,14 @@ class LLMProviderFactory:
         )
 
         api_key = self._get_api_key("ANTHROPIC_API_KEY", self.config.api_key_env)
-        base_url = self._resolve_bifrost_base_url(
-            default_base="https://api.anthropic.com",
-            protocol_family=ProtocolFamily.ANTHROPIC,
-        )
+        # Note: Claude (Anthropic) does not accept base_url= directly; the SDK
+        # default is https://api.anthropic.com. Bifrost routing for Anthropic
+        # flows through the ANTHROPIC_BASE_URL env var (Phase D env-injection
+        # in mahavishnu/terminal/manager.py), not the model constructor.
 
         return Claude(
             id=model_id,
             api_key=api_key,
-            base_url=base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
