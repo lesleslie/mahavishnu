@@ -1,10 +1,10 @@
 ---
 date: 2026-10-04
-status: active
+status: superseded
 role: implementation
 topic: session-buddy-lifespan-publisher-inline
-last_reviewed: 2026-10-04
-superseded_by: null
+last_reviewed: 2026-10-15
+superseded_by: 2026-10-15-session-buddy-wrapper-cleanup.md
 ---
 
 # Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup
@@ -158,15 +158,3 @@ After implementation:
 - `session_buddy/settings.py` — `get_settings()` returns object with `.bodai_events.{stream,consumer_group,enabled}`
 - `session_buddy/modes.py` — `get_mode().get_config().enable_auto_checkpoint` gates the auto-loop
 - `session_buddy/server_optimized.py:287` — `mcp = FastMCP("session-buddy", ..., lifespan=session_lifecycle)` is the live instance; don't change the construction site, only the lifespan body
-
-## Resolution Note (2026-10-15)
-
-This plan's install-into-`session_lifecycle` approach was partially implemented via [`2026-10-02-bodai-task-system-v1.1.md`](../2026-10-02-bodai-task-system-v1.1.md) Task 4 — `BodaiEventsPublisher` install landed in `session_buddy/server_optimized.py:275` directly inside `session_lifecycle`, not inside the wrapper. The intended outcome (publisher installed in the production lifespan) is met via this alternate path.
-
-**Remaining work for this plan:**
-1. **Delete `_lifespan_with_dhara_cleanup`** at `session_buddy/mcp/server.py:313` — wrapper is now a duplicate install path with no callers
-2. **Remove the module-load side-effect** at `server.py:~458` (`mcp._lifespan = _lifespan_with_dhara_cleanup`) — CLI startup never imports that module anyway, but the dead side-effect should go
-4. **Slim `server.py` imports** per §2 of the original plan
-5. **Update `tests/unit/mcp/test_server_lifespan.py`** to drive `session_lifecycle` directly per §3 of the original plan
-
-Verify launchd cascade-restart loop is healed via `/health` smoke test once deletion lands.
