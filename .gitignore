@@ -149,7 +149,9 @@ oneiric.yaml
 # Archived Files
 # ============================================================================
 .archive/
+**/.archive/
 tests/archived/
+docs/plans/.archive/
 
 # ============================================================================
 # Documentation — image assets
