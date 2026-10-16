@@ -95,6 +95,22 @@ pools:
   queueing_enabled: true
   queueing_warmup_min_observations: 100
   queueing_warmup_min_seconds: 600.0
+  # Default filesystem path the ShepherdBackendWorker may write to.
+  # When a pool is created without an explicit `writable_root` on
+  # the PoolConfig, MahavishnuPool.__init__ falls back through this
+  # list (first existing/writable wins):
+  #   1. ~/.local/state/mahavishnu/worktrees/<pool_name>/workspace
+  #      (matches the worktree preference in CLAUDE.md; persistent)
+  #   2. $XDG_DATA_HOME/mahavishnu/pools/<pool_name>/workspace
+  #      (per-OS user data dir; e.g. ~/Library/Application Support/...)
+  #   3. /tmp/mahavishnu-ephemeral/<pool_name>/workspace
+  #      (last-resort for serverless / ephemeral contexts; lost on
+  #      reboot but always writable in containerized environments)
+  # The ShepherdBackendWorker only accepts a single path; this is the
+  # single-path default. Operators who need a list of write targets
+  # (e.g. code root + plist root + model dir) should set them via
+  # per-pool PoolConfig.writable_root on a case-by-case basis.
+  default_writable_root: "~/.local/state/mahavishnu/worktrees/"
 
 # RunPod Flash pool configuration
 # Set RUNPOD_API_KEY env var before spawning runpod pools

@@ -88,14 +88,46 @@ class MahavishnuPool(BasePool):
         # legacy-worker-deprecation.md). Falls back to a per-pool subdir
         # of $XDG_DATA_HOME/mahavishnu/pools/ when the config doesn't
         # specify one, so the spawn no longer raises MHV-312.
+        # Resolution order (first existing/writable wins):
+        #   1. config.writable_root (if set on PoolConfig)
+        #   2. ~/.local/state/mahavishnu/worktrees/<pool_name>/workspace
+        #      (matches the worktree preference in CLAUDE.md; persistent
+        #      across reboots)
+        #   3. user_data_dir/mahavishnu/pools/<pool_name>/workspace
+        #      (XDG-style; per-OS default)
+        #   4. /tmp/mahavishnu-ephemeral/<pool_name>/workspace
+        #      (last-resort for serverless / ephemeral workers; lost on
+        #      reboot but always writable in containerized contexts)
         config_writable_root = getattr(config, "writable_root", None)
         if config_writable_root:
             self.writable_root = Path(config_writable_root).resolve()
         else:
-            from platformdirs import user_data_dir
+            candidates = [
+                Path.home() / ".local" / "state" / "mahavishnu" / "worktrees" / config.name / "workspace",
+            ]
+            try:
+                from platformdirs import user_data_dir
+                base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
+                candidates.append(base / "pools" / config.name / "workspace")
+            except Exception:
+                pass
+            candidates.append(Path("/tmp") / "mahavishnu-ephemeral" / config.name / "workspace")
 
-            base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
-            self.writable_root = (base / "pools" / config.name / "workspace").resolve()
+            chosen: Path | None = None
+            for candidate in candidates:
+                try:
+                    candidate.mkdir(parents=True, exist_ok=True)
+                    if candidate.resolve().exists():
+                        chosen = candidate.resolve()
+                        break
+                except (OSError, PermissionError):
+                    continue
+            if chosen is None:
+                # Last-resort: use the first candidate and let the worker's
+                # own mkdir surface the error downstream if creation still
+                # fails. Better than refusing to spawn at the pool level.
+                chosen = candidates[0].resolve()
+            self.writable_root = chosen
 
         # Wrap existing WorkerManager
         self.worker_manager = WorkerManager(

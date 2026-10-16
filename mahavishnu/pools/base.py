@@ -25,6 +25,15 @@ class PoolConfig:
             other supported substrate (requires ``OPENCLAW_GATEWAY_URL``).
         auto_scale: Enable automatic scaling (default: False)
         memory_enabled: Enable memory aggregation (default: True)
+        writable_root: Default filesystem path the ShepherdBackendWorker
+            may write to. When None, ``MahavishnuPool.__init__`` falls
+            back to a sensible default under
+            ``~/.local/state/mahavishnu/worktrees/<pool_name>/workspace``
+            (matches the worktree preference in CLAUDE.md). Operators
+            running ephemeral / serverless workers can set this to a
+            ``/tmp/...`` path; the value must be a single filesystem
+            path (the ShepherdBackendWorker only accepts one
+            ``writable_root`` today).
     """
 
     name: str
@@ -34,6 +43,7 @@ class PoolConfig:
     worker_type: str = "shepherd"
     auto_scale: bool = False
     memory_enabled: bool = True
+    writable_root: str | None = None
 
     # Additional pool-specific configuration
     extra_config: dict[str, Any] = field(default_factory=dict)
