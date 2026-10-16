@@ -50,23 +50,43 @@ namespace and evict the test artifacts that don't belong there.
 
 ## Decision rule
 
-**1. Canonical archive location, top-level: `docs/.archive/`.**
+**1. Canonical archive location, top-level: `docs/.archive/`
+(gitignored — NOT tracked in the repo).**
 
 Per-repo, exactly one top-level archive directory. The legacy
-`docs/archive/` (no leading dot) is **deleted**, not migrated to a
-different name. Renaming `docs/archive/` → `docs/.archive/` (or merging
-into an existing `docs/.archive/`) is the convergence operation.
+`docs/archive/` (no leading dot) is **untracked from the repo**, not
+renamed via `git mv`. The convergence operation is:
+
+1. `git rm -r --cached docs/archive/` (untrack, keep on disk)
+2. `mv` the on-disk content to `docs/.archive/`
+3. `docs/.archive/` is already covered by the existing `.archive/`
+   pattern in the bodai shared gitignore (line 77 in
+   oneiric's `.gitignore`, mirrored across the fleet via
+   `crackerjack/templates/GITIGNORE_BODAI.md`)
+
+**`docs/.archive/` is operator-side scratch on local disk, NOT
+tracked in the repo.** Crackerjack's publish gate enforces that
+all `.archive/` directories are gitignored — re-including
+`docs/.archive/` via `!docs/.archive/` would fail the publish gate.
+The historical content is preserved on disk for operator reference
+but lives outside the repo's tracked history. This is the
+2026-10-16 amendment to this decision; the original 2026-10-15
+draft assumed `docs/.archive/` would be tracked, which is incorrect
+for repos under the cj publish gate.
 
 `docs/.archive/` and the previously-decided nested archives
 `docs/plans/.archive/` and `docs/specs/.archive/` coexist by design:
 
-- `docs/plans/.archive/` and `docs/specs/.archive/` are the *canonical
+- `docs/plans/.archive/` and `docs/specs/.archive/` are the *tracked
   per-document* supersession paths for plans and specs (decision
   `2026-10-03-plans-specs-canonical-paths.md`).
-- `docs/.archive/` is the *bulk-provenance* location for dated analysis,
-  historical designs, ADRs, decision-quality reviews, and similar.
+- `docs/.archive/` is the *untracked bulk-provenance* location for
+  dated analysis, historical designs, ADRs, decision-quality
+  reviews, and similar.
 
-They do not collapse into one another.
+They do not collapse into one another, and the tracked/untracked
+status is a feature: plans/specs need revision history,
+bulk-provenance does not.
 
 **2. Test artifacts must NEVER live under `docs/.archive/`.**
 
@@ -100,7 +120,7 @@ updated **first**, and the change recorded in `docs/decisions/`.
 | **session-buddy** | `docs/archive/` (README, implementation-reports/*, test-artifacts/*.py) | `git rm -r --cached docs/archive/test-artifacts/`; `git mv docs/archive docs/.archive`; clean up test-artifacts on disk. |
 | **crackerjack** | `docs/archive/` (309 files, mostly historical) AND `docs/.archive/` (62 files, dated analysis) | `git rm -r --cached docs/archive/test-artifacts/`; `git mv` each non-test-artifacts subdir from `docs/archive/` into `docs/.archive/`; `git rm -r` the (now-empty) `docs/archive/`. Merge preserves both content sets at the canonical path. |
 | **mcp-common** | `docs/archive/` (README, TEST_COVERAGE_EXPANSION, test-artifacts/test_coverage_analysis.py) | `git rm -r --cached docs/archive/test-artifacts/`; `git mv docs/archive docs/.archive`; clean up test-artifacts on disk; broaden gitignore `coverage*.json` → catch `test_*.py` too. |
-| **oneiric** | `docs/archive/` (ACB_COMPARISON, BUILD_PROMPTS, test-artifacts/coverage__2*.json × 2) | `git rm -r --cached docs/archive/test-artifacts/`; `git mv docs/archive docs/.archive`; clean up test-artifacts on disk; add missing `coverage*.json` gitignore pattern. |
+| **oneiric** | `docs/archive/` (ACB_COMPARISON, BUILD_PROMPTS, BUILD_PROGRESS, … 28 historical files + test-artifacts/coverage__2*.json × 2) | `git rm -r --cached docs/archive/` (untrack all 30 files, keep on disk); `mv` 28 historical files on disk to `docs/.archive/{analysis,implementation-plans,implementation-reports,summaries}/`; `rm` the 2 coverage JSONs from disk; `rmdir` empty subdirs. Add `coverage*.json` gitignore pattern (catches the original offender `coverage__20261014-104911.json`). Add `docs/archive/` defensive ignore (regression prevention). **NOT** a `git mv` — that would have made `docs/.archive/` tracked and failed the cj publish gate. Landed as `68732b7 chore(oneiric): untrack docs/archive/, keep historical on disk in docs/.archive/` on 2026-10-16. |
 
 Implementation plan: `docs/plans/2026-10-15-archive-dir-canonical.md`.
 
@@ -141,15 +161,35 @@ the SessionEnd hook fires.
   `docs/specs/.archive/`. Those are governed by
   `2026-10-03-plans-specs-canonical-paths.md`.
 - The per-repo archive README policy ("retained for provenance,
-  audits, migration history, and context recovery") is preserved —
-  just moved to live under `docs/.archive/`.
+  audits, migration history, and context recovery") is preserved on
+  local disk at `docs/.archive/README.md` for repos that had a
+  legacy `docs/archive/README.md`. The README + the decision doc
+  are the duplicate-record pair; the README is now untracked
+  (operator-side) rather than tracked.
 - The test-artifact exception (`*.coverage.json`, `test_*.py`, etc.)
   is a permanent rule, not a per-migration cleanup.
 - This decision is opt-in per repo: each operator decides whether to
   ship the rename now or defer to a follow-up PR. The plan's per-repo
   phases are independently mergeable.
-- 90-day reflog: any file `git rm`-ed during this migration stays
-  recoverable via `git reflog` until 2027-01-13.
+- 90-day reflog: any file `git rm --cached`-ed during this migration
+  stays recoverable via `git reflog` until 2027-01-13. Files
+  preserved on local disk under `docs/.archive/` are immediately
+  available (no reflog lookup needed) — only the `git log` history
+  is gone for them.
+- **2026-10-16 cj-publish-gate clarification**: the original
+  2026-10-15 draft of this decision assumed `docs/.archive/` would
+  be tracked (i.e., re-included via `!docs/.archive/` in `.gitignore`).
+  The oneiric migration on 2026-10-16 revealed that Crackerjack's
+  publish gate enforces all `.archive/` directories are gitignored.
+  This decision is now updated to reflect that constraint. The first
+  oneiric migration commit (`fed2195` on local branch
+  `oneiric-archive-canonical-2026-10-16`, since superseded) used
+  `git mv` to track the moves into `docs/.archive/`, which would
+  have failed the cj publish gate. The corrected commit (`68732b7`)
+  uses `git rm --cached` + on-disk `mv`, keeping `docs/.archive/`
+  untracked. Future migrations of `akosha`, `session-buddy`,
+  `crackerjack`, and `mcp-common` must follow the same pattern
+  (untrack + on-disk move, not `git mv`).
 
 ## Cross-references
 
