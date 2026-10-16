@@ -46,7 +46,7 @@ set -euo pipefail
 
 READY_FILE="${HOME}/.local/state/mcp/ready/bifrost.ready"
 BIFROST_LOG="${HOME}/.local/state/mcp/logs/bifrost.log"
-POOL_HEALTH_OUTPUT="$(mahavishnu pool health --output json 2>/dev/null || echo '{}')"
+POOL_HEALTH_OUTPUT="$(mahavishnu pool health 2>&1 || echo 'FAIL')"
 
 # 1. Bifrost ready file present.
 if [ ! -f "${READY_FILE}" ]; then
@@ -67,9 +67,10 @@ QWEN_VERSION="$(qwen --version 2>&1 || true)"
 echo "OK:   qwen CLI on PATH (${QWEN_VERSION%%[[:space:]]*})"
 
 # 3. Mahavishnu pool router is reachable.
-if ! echo "${POOL_HEALTH_OUTPUT}" | grep -q '"pools_active"'; then
-    echo "FAIL: 'mahavishnu pool health' did not return JSON" >&2
+if ! echo "${POOL_HEALTH_OUTPUT}" | grep -q "Pool Manager Health"; then
+    echo "FAIL: 'mahavishnu pool health' did not return expected output" >&2
     echo "      Is the Mahavishnu orchestrator running? (mahavishnu mcp start)" >&2
+    echo "      Got: ${POOL_HEALTH_OUTPUT}" >&2
     exit 2
 fi
 echo "OK:   Mahavishnu pool router reachable"
