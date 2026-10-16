@@ -232,7 +232,7 @@ runbook with the new action guidance.
 
 - [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md` §11](../plans/2026-09-14-common-mcp-client-transport-unification.md) — plan
   section that mandated this runbook.
-- [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`](../followups/.archive/2026-09-14-akosha-hnsw-on-duckdb.md) — HNSW
+- [`docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md`] — HNSW
   root cause for the original ``feed_never_populated`` symptom.
 - PromQL alert rules in [`mahavishnu/config/prometheus/health_aggregator_alerts.yml`](../../config/prometheus/health_aggregator_alerts.yml)
   — wire ``runbook_url`` annotations to this page.

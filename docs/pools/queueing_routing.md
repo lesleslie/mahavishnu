@@ -3,7 +3,7 @@
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
 **Last updated:** 2026-09-10
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1-§3](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1-§3]
 **Library:** `mahavishnu.pools.queueing` (Tier 1 Phase 1)
 **Integration:** `mahavishnu.pools.queueing.scorer` (Tier 1 Phase 2)
 
@@ -115,7 +115,7 @@ The new signal is observable via:
 
 ## References
 
-- Tier 1 plan §1-§3, §6 Phase 1, §6 Phase 2: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
+- Tier 1 plan §1-§3, §6 Phase 1, §6 Phase 2: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`]
 - Validation report: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-pool-queueing-routing.md`](../feature-tracking/) (added in Phase 4)
 - Library code: `mahavishnu/pools/queueing/`

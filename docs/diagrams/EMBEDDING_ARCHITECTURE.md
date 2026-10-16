@@ -443,7 +443,7 @@ ______________________________________________________________________
 
 ## Architecture Overview
 
-See [diagrams/EMBEDDING_ARCHITECTURE.md](diagrams/EMBEDDING_ARCHITECTURE.md) for source.
+See ] for source.
 ```
 
 ______________________________________________________________________

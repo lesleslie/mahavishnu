@@ -85,6 +85,6 @@ The niche filter document (`docs/adr/0001-mahavishnu-niche.md`) does not require
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-9-concurrency-limits.md](../plans/.archive/2026-09-26-impl-C-9-concurrency-limits.md) — implementation plan
+- [docs/plans/2026-09-26-impl-C-9-concurrency-limits.md] — implementation plan
 - [docs/slos/2026-09-26-wireup-pool-dispatch.md](../slos/2026-09-26-wireup-pool-dispatch.md) — SLO targets
 - `docs/runbooks/ON_CALL_HANDBOOK.md` — escalation procedures

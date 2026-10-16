@@ -3,7 +3,7 @@
 **Date**: 2026-02-03
 **Purpose**: Set up FastEmbed (production) and Ollama (development) for embeddings
 
-**📊 Visual Aids Available**: See [diagrams/EMBEDDING_ARCHITECTURE.md](diagrams/EMBEDDING_ARCHITECTURE.md) for comprehensive system diagrams.
+**📊 Visual Aids Available**: See \] for comprehensive system diagrams.
 
 ______________________________________________________________________
 

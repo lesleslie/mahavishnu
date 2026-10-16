@@ -64,5 +64,5 @@ The endpoint sanitizes via `DataSanitizeAction` and forwards via `safe_publish`.
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-10-ecosystem-intake.md](../plans/.archive/2026-09-26-impl-C-10-ecosystem-intake.md)
+- [docs/plans/2026-09-26-impl-C-10-ecosystem-intake.md]
 - [docs/adr/0001-mahavishnu-niche.md](../adr/0001-mahavishnu-niche.md)

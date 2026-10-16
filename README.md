@@ -111,9 +111,9 @@ for the tool contracts.
 - [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md)
 - [Architecture Documentation](docs/architecture/ARCHITECTURE.md)
 - [Visual Guide](docs/VISUAL_GUIDE.md)
-- [Workflow Diagrams](docs/.archive/WORKFLOW_DIAGRAMS.md)
+- Workflow Diagrams
 - [Pool Architecture](docs/pools/POOL_ARCHITECTURE.md)
-- [Goal-Driven Teams](docs/.archive/GOAL_DRIVEN_TEAMS.md)
+- Goal-Driven Teams
 - [Admin Shell Guide](docs/ADMIN_SHELL.md)
 
 ## Table of Contents
@@ -507,7 +507,7 @@ mahavishnu team parse "Build a REST API with authentication"
 mahavishnu team create --goal "Review code for security issues" --run
 ```
 
-See **[Goal-Driven Teams Documentation](docs/.archive/GOAL_DRIVEN_TEAMS.md)** for complete guide with examples, skill reference, and collaboration modes.
+See **Goal-Driven Teams Documentation** for complete guide with examples, skill reference, and collaboration modes.
 
 ## MCP Tools
 
@@ -724,7 +724,7 @@ mahavishnu/
 - **[MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md)** - Complete API documentation
 - **[Architecture](docs/architecture/ARCHITECTURE.md)** - System architecture and evolution
 - **[Pool Architecture](docs/pools/POOL_ARCHITECTURE.md)** - Multi-pool orchestration details
-- **[Goal-Driven Teams](docs/.archive/GOAL_DRIVEN_TEAMS.md)** - Create teams from natural language goals
+- **Goal-Driven Teams** - Create teams from natural language goals
 - **[Admin Shell Guide](docs/ADMIN_SHELL.md)** - Interactive debugging
 - **[Deployment Guide](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)** - Deployment checklist and operational notes
 - **[MCP Tools Specification](docs/mcp/MCP_TOOLS_SPECIFICATION.md)** - Detailed tool specs
@@ -733,8 +733,8 @@ mahavishnu/
 
 ### LLM Gateway Docs
 
-- **[LLM Inventory](docs/.archive/LLM_INVENTORY.md)** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
-- **[Bifrost Reactivation Runbook](docs/.archive/BIFROST_REACTIVATION_RUNBOOK.md)** - How to bring the dormant local gateway back later
+- **LLM Inventory** - Current client routing, direct-provider state, and cross-repo LLM callsite inventory
+- **Bifrost Reactivation Runbook** - How to bring the dormant local gateway back later
 - **Bifrost Gateway Plan (archived 2026-10-14 — see git history for the original)** - Implementation history, milestones, and paused cutover status
 
 ## Contributing

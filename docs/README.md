@@ -55,7 +55,7 @@ Start here when reviewing or implementing work. Do not assume a root-level docum
 
 ## Historical And Non-Authoritative Material
 
-- [Archive](./.archive/) - historical plans, completion reports, old analyses, and superseded guides (untracked; see Maintenance Rules below)
+- Archive (per [docs/decisions/2026-10-15-archive-dir-canonical.md](decisions/2026-10-15-archive-dir-canonical.md)) - historical plans, completion reports, old analyses, and superseded guides (untracked; see Maintenance Rules below)
 - [Reviews](./reviews/) - review inputs and audits; useful evidence, not automatically current authority
 - [Analysis](./analysis/) - investigation and analysis docs; verify against current plans/code before implementing
 - [Reports](./reports/) - generated or curated reports used for planning and review

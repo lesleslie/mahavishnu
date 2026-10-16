@@ -3,7 +3,7 @@
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
 **Last updated:** 2026-09-10
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1, §6 Phase 5-8](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
+**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §1, §6 Phase 5-8]
 **Library:** `mahavishnu.observability.changepoint` (Tier 1 Phase 5)
 **Integration:** `mahavishnu.core.observability` (Tier 1 Phase 6)
 
@@ -96,7 +96,7 @@ MAHAVISHNU_CHANGEPOINT__ENABLED=false
 
 ## References
 
-- Tier 1 plan §1, §6 Phase 5-8: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`](../plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md)
+- Tier 1 plan §1, §6 Phase 5-8: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`]
 - Validation report: [`docs/audits/2026-09-10-changepoint-validation.md`](../audits/2026-09-10-changepoint-validation.md)
 - Runbook: [`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../feature-tracking/) (added in Phase 8)

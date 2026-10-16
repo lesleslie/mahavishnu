@@ -49,7 +49,7 @@ ______________________________________________________________________
 
 ### 3. Migration Guide Diagrams
 
-**Location**: [../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md](../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md)
+**Location**: ../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md
 
 | Diagram | Section | Description |
 |---------|---------|-------------|
@@ -183,12 +183,12 @@ ______________________________________________________________________
 
 ### For Migrating Users
 
-1. **Migration Decision** → [Migration Decision Tree](../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md#migration-decision-tree)
+1. **Migration Decision** → Migration Decision Tree
 
    - Choose migration path
    - Compare solutions
 
-1. **Code Changes** → [Replace sentence-transformers](../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md#replace-sentence-transformers-in-code)
+1. **Code Changes** → Replace sentence-transformers
 
    - Before/after examples
    - Migration patterns
@@ -243,7 +243,7 @@ ______________________________________________________________________
 |----------|------|
 | **Main Architecture Diagrams** | [EMBEDDING_ARCHITECTURE.md](EMBEDDING_ARCHITECTURE.md) |
 | **Setup Guide** | [../EMBEDDINGS_SETUP_GUIDE.md](../EMBEDDINGS_SETUP_GUIDE.md) |
-| **Migration Guide** | [../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md](../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md) |
+| **Migration Guide** | ../.archive/SENTENCE_TRANSFORMERS_ALTERNATIVES.md |
 | **Configuration Reference** | [../../settings/embeddings.yaml](../../settings/embeddings.yaml) |
 | **API Documentation** | [../../mahavishnu/core/embeddings_oneiric.py](../../mahavishnu/core/embeddings_oneiric.py) |
 | **Test Examples** | [../../tests/unit/test_embeddings.py](../../tests/unit/test_embeddings.py) |

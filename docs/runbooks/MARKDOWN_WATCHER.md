@@ -132,5 +132,5 @@ The watcher uses `async with asyncio.timeout(...)` (NOT `wait_for(async_generato
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-11-markdown-board-watcher.md](../plans/.archive/2026-09-26-impl-C-11-markdown-board-watcher.md) — implementation plan
+- [docs/plans/2026-09-26-impl-C-11-markdown-board-watcher.md] — implementation plan
 - [docs/slos/2026-09-26-wireup-markdown-board.md](../slos/2026-09-26-wireup-markdown-board.md) — SLO targets

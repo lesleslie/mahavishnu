@@ -148,4 +148,4 @@ pytest tests/security/ --cov=mahavishnu.core --cov-report=html
 
 - Security Runbook - Incident response procedures
 - Phase 0 Action Plan (archived 2026-10-14 — see git history for the original) - Implementation details
-- [Master Plan v3](../plans/.archive/2026-02-18-task-orchestration.md) - Architecture overview
+- [Master Plan v3] - Architecture overview

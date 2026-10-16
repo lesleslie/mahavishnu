@@ -53,5 +53,5 @@ These are deferred to follow-up commits; the current `--watch` is functional but
 
 ## Related
 
-- [docs/plans/2026-09-26-impl-C-12-executions-cli.md](../plans/.archive/2026-09-26-impl-C-12-executions-cli.md) — implementation plan
+- [docs/plans/2026-09-26-impl-C-12-executions-cli.md] — implementation plan
 - [docs/runbooks/ON_CALL_HANDBOOK.md](./ON_CALL_HANDBOOK.md) — escalation procedures
