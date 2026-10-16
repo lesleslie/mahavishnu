@@ -1706,30 +1706,37 @@ app.add_typer(acp_app, name="acp")
 app.add_typer(executions_app, name="executions")
 
 
-# Worker type allowlist for `pool spawn`. The legacy
-# terminal-claude / terminal-qwen / terminal-codex / container-executor
-# names were retired on 2026-09-24 (see
-# docs/decisions/2026-09-24-legacy-worker-deprecation.md). The
-# post-deprecation set is shepherd (default, fail-closed OS-level
-# syscall jail) and gateway-openclaw (HTTP gateway worker, requires
+# Worker type allowlist for `pool spawn`. The 2026-09-24
+# legacy-worker-deprecation (see
+# docs/decisions/2026-09-24-legacy-worker-deprecation.md) retired
+# the **isolated** worker backends (apple_container, e2b_sandbox)
+# — the OS-level syscall-jail (shepherd) is the sole remaining
+# isolated backend. The CLI's AI assistant workers
+# (terminal-claude, terminal-codex, terminal-qwen) were never
+# isolated workers in the first place; they are in-process CLI
+# workers whose `WorkerConfig` entries in
+# mahavishnu/workers/registry.py are still production-shaped
+# (the Qwen CLI gate in the Bifrost plan depends on this).
+# `gateway-openclaw` is the HTTP-gateway worker (requires
 # OPENCLAW_GATEWAY_URL env var). The CLI pre-validation gates on
 # this allowlist; the runtime side enforces the same contract via
-# WorkerManager.WORKER_SUPPORTED_TYPES (frozenset({"shepherd"})).
-# tests/unit/cli/test_spawn_allowlist.py pins this list — see
-# docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md for
-# the drift that motivated it. Non-isolated workloads route via
-# `mahavishnu/pools/` (pool_route_execute, dispatch_to_pool) instead.
-SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset({"shepherd", "gateway-openclaw"})
+# WorkerManager.WORKER_SUPPORTED_TYPES (frozenset — currently
+# {"shepherd"} for the isolated-backend surface; the AI
+# assistant workers are dispatched via the registry path, not
+# the isolated-worker path).
+# tests/unit/cli/test_spawn_allowlist.py pins this list.
+# Non-isolated workloads may also route via `mahavishnu/pools/`
+# (pool_route_execute, dispatch_to_pool).
+SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset(
+    {"shepherd", "gateway-openclaw", "terminal-claude", "terminal-codex", "terminal-qwen"}
+)
 
 SPAWN_WORKER_TYPE_ERROR_HINT: str = (
-    "Supported worker types: shepherd, gateway-openclaw. "
-    "Worker types `terminal-claude`, `terminal-codex`, `terminal-qwen`, "
-    "and `container-executor` were retired on 2026-09-24 — see "
-    "docs/decisions/2026-09-24-legacy-worker-deprecation.md and "
-    "docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md. "
-    "For non-isolated workloads use the `mahavishnu/pools/` "
-    "orchestration surface (`pool_route_execute`, `dispatch_to_pool`) "
-    "instead."
+    "Supported worker types: shepherd, gateway-openclaw, "
+    "terminal-claude, terminal-codex, terminal-qwen. "
+    "For non-isolated workloads you may also use the "
+    "`mahavishnu/pools/` orchestration surface "
+    "(`pool_route_execute`, `dispatch_to_pool`)."
 )
 
 
@@ -1749,10 +1756,10 @@ def pool_spawn(
         "--worker-type",
         "-w",
         help=(
-            "Worker type (shepherd [default], gateway-openclaw). "
-            "terminal-claude / terminal-qwen / terminal-codex / container-executor "
-            "were retired on 2026-09-24 — see "
-            "docs/decisions/2026-09-24-legacy-worker-deprecation.md"
+            "Worker type: shepherd [default], gateway-openclaw, "
+            "terminal-claude, terminal-codex, terminal-qwen. "
+            "See docs/decisions/2026-09-24-legacy-worker-deprecation.md "
+            "for the deprecation scope (isolated backends only)."
         ),
     ),
 ) -> None:
@@ -1878,6 +1885,19 @@ def _dispatch_pool_spawn_via_mcp(
 ) -> dict[str, Any]:
     """Dispatch pool_spawn to the live MCP server over JSON-RPC 2.0.
 
+    The MCP server uses FastMCP's streamable-HTTP transport, which
+    requires an ``initialize`` JSON-RPC handshake before any
+    ``tools/call``. The handshake returns an ``mcp-session-id``
+    header; every subsequent call on the logical session must
+    echo that header. Skipping the handshake returns HTTP 400
+    "Missing session ID" — exactly the failure mode that the
+    SessionStart hook's wire helper
+    (``.claude/hooks/_bodai_mcp_client.py``) was extracted to
+    fix. The CLI's ``_main_cli.py`` lives outside the
+    ``.claude/hooks/`` directory so it can't import the sibling
+    helper directly; the wire shape is small and stable, so we
+    inline it here.
+
     Lazily imports ``httpx`` so the test suite can monkeypatch
     ``httpx.Client`` before the function body runs. Raises
     :class:`_MCPUnreachableError` when the server cannot be
@@ -1886,36 +1906,64 @@ def _dispatch_pool_spawn_via_mcp(
     """
     import json
     import os
+    import uuid
 
     import httpx
 
     mcp_url = os.environ.get("MAHAVISHNU_MCP_URL", "http://localhost:8680/mcp")
-    body = {
+    common_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+
+    # Step 1: ``initialize`` handshake. The server returns 200 + a
+    # ``mcp-session-id`` header that ALL subsequent calls on this
+    # logical session must echo. Skipping this step returns HTTP
+    # 400 "Missing session ID" — the bug this commit fixes.
+    initialize_body = {
         "jsonrpc": "2.0",
-        "id": "cli-pool-spawn",
-        "method": "tools/call",
+        "id": str(uuid.uuid4()),
+        "method": "initialize",
         "params": {
-            "name": "pool_spawn",
-            "arguments": {
-                "name": name,
-                "pool_type": canonical_pool_type,
-                "min_workers": min_workers,
-                "max_workers": max_workers,
-                "worker_type": worker_type,
-            },
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "mahavishnu-cli", "version": "0.3.2"},
         },
     }
     try:
         with httpx.Client() as client:
-            response = client.post(
-                mcp_url,
-                json=body,
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream",
-                },
-                timeout=10.0,
+            init_response = client.post(
+                mcp_url, json=initialize_body, headers=common_headers, timeout=10.0
             )
+            init_response.raise_for_status()
+            session_id = init_response.headers.get("mcp-session-id")
+            if not session_id:
+                # Some FastMCP configurations may not require a
+                # session id (e.g. stateless mode). Proceed
+                # without it; the tools/call will fail with 400 if
+                # the server actually requires one.
+                session_id = ""
+
+            # Step 2: ``tools/call`` with the session id echoed.
+            body = {
+                "jsonrpc": "2.0",
+                "id": "cli-pool-spawn",
+                "method": "tools/call",
+                "params": {
+                    "name": "pool_spawn",
+                    "arguments": {
+                        "name": name,
+                        "pool_type": canonical_pool_type,
+                        "min_workers": min_workers,
+                        "max_workers": max_workers,
+                        "worker_type": worker_type,
+                    },
+                },
+            }
+            call_headers = dict(common_headers)
+            if session_id:
+                call_headers["mcp-session-id"] = session_id
+            response = client.post(mcp_url, json=body, headers=call_headers, timeout=10.0)
             response.raise_for_status()
             # The MCP server returns SSE-shaped responses even for
             # tools/call. Parse the ``data:`` line if present;
