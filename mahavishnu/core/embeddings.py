@@ -2,7 +2,7 @@
 
 The original implementation in this file owned its own mock-only
 ``EmbeddingService`` with explicit provider selection
-(``EmbeddingProvider.FASTEMBED | OLLAMA | OPENAI``). After the hybrid
+(``EmbeddingProvider.FASTEMBED | OPENAI``). After the hybrid
 chain refactor in oneiric
 (``oneiric/docs/plans/2026-08-22-hybrid-embeddings-design.md``), the
 canonical embedding service lives in
@@ -13,16 +13,16 @@ This shim:
 - Keeps the public import path for any caller that imports
   ``mahavishnu.core.embeddings``
 - Re-exports ``EmbeddingProvider`` (kept as a deprecated enum so old
-  ``--provider fastembed|ollama|openai`` CLI flags don't break)
+  ``--provider fastembed|openai`` CLI flags don't break)
 - Re-exports ``cosine_similarity``, ``euclidean_distance``, the error
   classes, and the Pydantic models unchanged
 - Replaces ``EmbeddingService.embed`` with a oneiric-backed
-  implementation that uses the 5-backend probe chain
-  (llama_cpp → ollama → minimax → model2vec → mock)
+  implementation that uses the 4-backend probe chain
+  (llama_cpp → minimax → model2vec → mock)
 
 Future work: remove the provider enum, drop the explicit ``--provider``
 CLI flag, and prune the now-unreachable provider classes
-(``FastEmbedProvider``, ``OllamaProvider``, ``OpenAIProvider``). For
+(``FastEmbedProvider``, ``OpenAIProvider``). For
 now they remain importable but the public ``EmbeddingService.embed``
 path is the oneiric chain.
 """
@@ -53,7 +53,7 @@ class EmbeddingProvider(StrEnum):
     """Legacy provider sentinel. Retained for backward-compatible imports.
 
     The actual backend selection now happens inside oneiric's
-    probe chain (llama_cpp → ollama → minimax → model2vec → mock).
+    probe chain (llama_cpp → minimax → model2vec → mock).
     See ``oneiric/docs/plans/2026-08-22-hybrid-embeddings-design.md``.
 
     Use ``EmbeddingSettings`` from
@@ -62,7 +62,6 @@ class EmbeddingProvider(StrEnum):
     """
 
     FASTEMBED = "fastembed"
-    OLLAMA = "ollama"
     OPENAI = "openai"
 
 
@@ -207,19 +206,20 @@ class EmbeddingService(_OneiricEmbeddingService):
         legacy ``EmbeddingProvider`` enum value so callers that
         ``isinstance(...)`` the result still work.
 
-        The mapping is best-effort: ``ollama`` resolves to
-        ``EmbeddingProvider.OLLAMA``; every other real backend
+        The mapping is best-effort: every real backend
         (``llama_cpp``, ``minimax``, ``model2vec``) surfaces as
-        ``EmbeddingProvider.FASTEMBED``. Tests that need a specific
-        provider can ``MagicMock`` this method to return whatever
-        they want.
+        ``EmbeddingProvider.FASTEMBED`` (legacy alias for the local
+        provider class). Tests that need a specific provider can
+        ``MagicMock`` this method to return whatever they want.
         """
         if not self.is_available():
             return []
         backend = self.backend_name()
-        if backend == "ollama":
-            return [EmbeddingProvider.OLLAMA]
-        return [EmbeddingProvider.FASTEMBED]
+        if backend in ("minimax", "llama_cpp", "model2vec"):
+            return [EmbeddingProvider.FASTEMBED]
+        if backend == "openai":
+            return [EmbeddingProvider.OPENAI]
+        return []
 
 
 # ---------------------------------------------------------------------------

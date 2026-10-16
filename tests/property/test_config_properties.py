@@ -174,14 +174,14 @@ class TestAdapterConfigProperties:
 class TestLLMConfigProperties:
     """Property-based tests for LLM configuration."""
 
-    @given(model=simple_text_strategy, base_url=st.just("http://localhost:11434"))
+    @given(model=simple_text_strategy, base_url=st.just("http://localhost:8081"))
     @settings(max_examples=30, deadline=None)
     def test_llm_configuration_preserved(self, model, base_url):
         """LLM configuration settings are preserved correctly."""
-        config = MahavishnuSettings(llm_model=model, ollama_base_url=base_url)
+        config = MahavishnuSettings(llm_model=model, llm_base_url=base_url)
 
         assert config.llm_model == model[:50]  # May be truncated
-        assert config.ollama_base_url == base_url
+        assert config.llm_base_url == base_url
 
 
 # =============================================================================

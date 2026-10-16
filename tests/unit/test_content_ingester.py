@@ -237,10 +237,10 @@ class TestContentIngesterInit:
         from mahavishnu.core.embeddings import EmbeddingProvider
 
         ingester = ContentIngester(
-            embedding_provider=EmbeddingProvider.OLLAMA,
+            embedding_provider=EmbeddingProvider.OPENAI,
             output_dir=str(tmp_path),
         )
-        assert ingester._embedding_provider == EmbeddingProvider.OLLAMA
+        assert ingester._embedding_provider == EmbeddingProvider.OPENAI
 
     def test_turboquant_bits_stored(self, tmp_path: Path):
         ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)

@@ -93,16 +93,16 @@ async def fallback_example() -> None:
         temperature=0.5,
     )
 
-    # Configure Ollama as second fallback (local)
-    ollama_fallback = ModelConfig(
-        provider="ollama",
+    # Configure OpenAI-compatible as second fallback
+    openai_fallback = ModelConfig(
+        provider="openai",
         model_name="llama3",
-        base_url="http://localhost:11434",
+        base_url="http://localhost:8081",
     )
 
     settings = PydanticAISettings(
         primary_model=primary_model,
-        fallback_models=[fallback_model, ollama_fallback],
+        fallback_models=[fallback_model, openai_fallback],
         fallback_strategy=FallbackStrategy.SEQUENTIAL,
     )
 

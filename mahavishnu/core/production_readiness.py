@@ -84,7 +84,7 @@ class ProductionReadinessChecker:
                 "repos_path",
                 "max_concurrent_workflows",
                 "llm_model",
-                "ollama_base_url",
+                "base_url",
             ]
 
             for field in required_fields:

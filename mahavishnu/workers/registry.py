@@ -226,9 +226,6 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         one_shot=True,
         endpoint=None,  # read from env (OPENCLAW_GATEWAY_URL) at runtime
     ),
-    # terminal-ollama intentionally absent: Ollama uses HTTP API, not a CLI
-    # session.  Use OllamaWorker directly instead of routing through
-    # GenericShellWorker with an empty command.
     # Shell/REPL Environments
     "terminal-shell": WorkerConfig(
         name="Bash Shell",

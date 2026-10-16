@@ -518,7 +518,7 @@ class TestErrorTemplates:
         assert err.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
 
     def test_agno_llm_error(self):
-        err = ErrorTemplates.agno_llm_error("ollama", "qwen2.5", "No model")
+        err = ErrorTemplates.agno_llm_error("llama_server", "qwen3.5", "No model")
         assert err.error_code == ErrorCode.AGNO_LLM_PROVIDER_ERROR
 
     def test_adapter_init_failed(self):
@@ -936,9 +936,9 @@ class TestAdapterErrorExtended:
 
 class TestAdapterInitializationErrorExtended:
     def test_message_includes_adapter_and_reason(self):
-        err = AdapterInitializationError("llamaindex", "No Ollama")
+        err = AdapterInitializationError("llamaindex", "No llama-server")
         assert "llamaindex" in err.message
-        assert "No Ollama" in err.message
+        assert "No llama-server" in err.message
         assert "initialization failed" in err.message
 
     def test_error_code(self):
@@ -1378,9 +1378,9 @@ class TestErrorTemplatesExtended:
         assert err.details["reason"] == "timeout"
 
     def test_agno_llm_error_details(self):
-        err = ErrorTemplates.agno_llm_error("ollama", "qwen2.5:7b", "model not found")
-        assert err.details["provider"] == "ollama"
-        assert err.details["model"] == "qwen2.5:7b"
+        err = ErrorTemplates.agno_llm_error("llama_server", "qwen3.5", "model not found")
+        assert err.details["provider"] == "llama_server"
+        assert err.details["model"] == "qwen3.5"
         assert err.details["reason"] == "model not found"
 
     def test_adapter_init_failed_no_options(self):
@@ -1393,10 +1393,10 @@ class TestErrorTemplatesExtended:
         err = ErrorTemplates.adapter_init_failed(
             "agno",
             "missing deps and bad config",
-            missing_deps=["agno", "ollama"],
+            missing_deps=["agno", "llama-server-runtime"],
             config_issues=["missing api_url"],
         )
-        assert err.details["missing_deps"] == ["agno", "ollama"]
+        assert err.details["missing_deps"] == ["agno", "llama-server-runtime"]
         assert err.details["config_issues"] == ["missing api_url"]
 
     def test_workflow_step_failed_with_adapter(self):

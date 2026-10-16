@@ -53,8 +53,8 @@ dependencies = [
     "slowapi>=0.1.10",
     # OpenTelemetry trace storage
     "asyncpg>=0.32.0",
-    # Embeddings: Use Ollama (local) or OpenAI API instead.
-    # See: mahavishnu/core/embeddings.py for the OllamaProvider and OpenAIProvider.
+    # Embeddings: OpenAI-compatible API (replaces the former Ollama local option).
+    # See: mahavishnu/core/embeddings.py for the OpenAIProvider.
     # Resilience
     "tenacity>=9.1.4",
     "starlette-context>=0.5.1",
@@ -65,8 +65,8 @@ dependencies = [
     "agno>=3.1.2",
     # LlamaIndex: RAG pipelines
     "llama-index-core>=0.14.25,<0.15.0",
-    "llama-index-embeddings-ollama>=0.8.6,<0.9.0",
-    "llama-index-llms-ollama>=0.8.0,<0.9.0",
+    "llama-index-embeddings-openai>=0.5.0,<0.6.0",
+    "llama-index-llms-openai-like>=0.8.0,<0.9.0",
     "llama-index-vector-stores-opensearch>=0.6.3,<0.7.0",
     # Content ingestion
     "httpx2[http2]>=2.13.1",
@@ -180,9 +180,6 @@ treesitter = [
     "tree-sitter>=0.26.0",
     "tree-sitter-python>=0.25.0",
     "tree-sitter-go>=0.25.0",
-]
-llm-providers = [
-    "openai>=3.28.0",
 ]
 # Phase 3 streaming tar.zst support (ADR 015 v4). Declared locally — PEP 735
 # inheritance is not transitive across Bodai repos, so each consumer must
@@ -755,4 +752,7 @@ unused-ignore-comment = "ignore"
 # TODO: remove once crackerjack loosens its pin OR prefect lifts its cap.
 # ---------------------------------------------------------------------------
 [tool.uv]
-override-dependencies = ["websockets>=17.1,<18.0"]
+override-dependencies = [
+    "websockets>=17.1,<18.0",
+    "openai>=3.26.0",
+]

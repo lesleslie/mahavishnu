@@ -19,7 +19,7 @@ Architecture:
     │  - ~1ms latency                                         │
     │  - TTL: 24 hours                                        │
     ├─────────────────────────────────────────────────────────┤
-    │  Compute (FastEmbed/Ollama/OpenAI)                      │
+    │  Compute (FastEmbed/OpenAI)                            │
     │  - ~50-500ms latency                                    │
     └─────────────────────────────────────────────────────────┘
 

@@ -144,7 +144,7 @@ def _validate_adapter_config(settings: MahavishnuSettings) -> list[ValidationRes
         )
 
     if settings.adapters.llamaindex_enabled:
-        results.append(_ensure_http_url(settings.llm.ollama_base_url, "llm.ollama_base_url"))
+        results.append(_ensure_http_url(settings.llm.base_url, "llm.base_url"))
 
     return results
 

@@ -7,7 +7,7 @@ Key Features:
 - Multi-agent team orchestration
 - Native MCP tool integration
 - Native Agno tools (file operations, code analysis)
-- Multiple LLM provider support (Anthropic, OpenAI, Ollama, MiniMax)
+- Multiple LLM provider support (Anthropic, OpenAI, llama_server, MiniMax)
 - Memory and session management
 - OpenTelemetry instrumentation
 
@@ -43,7 +43,7 @@ from ..core.capabilities import (
 # AgnoMemoryConfig, AgnoToolsConfig, AgnoAdapterConfig lived in this module
 # and caused `isinstance(config.agno, AgnoAdapterConfig)` to fail silently
 # because the two classes were distinct objects. That made `_get_agno_config`
-# return the engine's defaults (provider=ollama) instead of the user-configured
+# return the engine's defaults (provider=llama_server) instead of the user-configured
 # values (provider=minimax).
 from ..core.config import (
     AgnoAdapterConfig,
@@ -106,8 +106,8 @@ class LLMProviderFactory:
 
     Uses the verified Agno v2.5.3 import paths:
     - OpenAIChat from agno.models.openai
+    - OpenAIChat (llama_server) from agno.models.openai.like
     - Claude from agno.models.anthropic
-    - Ollama from agno.models.ollama
 
     IMPORTANT: Model instantiation uses `id=` parameter, NOT `model=`.
     """
@@ -124,7 +124,7 @@ class LLMProviderFactory:
     _PROVIDER_FACTORY_METHODS: ClassVar[dict[str, str]] = {
         LLMProvider.OPENAI: "_create_openai_model",
         LLMProvider.ANTHROPIC: "_create_anthropic_model",
-        LLMProvider.OLLAMA: "_create_ollama_model",
+        LLMProvider.LLAMA_SERVER: "_create_llama_server_model",
         LLMProvider.MINIMAX: "_create_minimax_model",
     }
 
@@ -144,7 +144,7 @@ class LLMProviderFactory:
         """Create and return an LLM model instance.
 
         Returns:
-            LLM model instance (OpenAIChat, Claude, or Ollama)
+            LLM model instance (OpenAIChat or Claude)
 
         Raises:
             AgnoError: If LLM provider is not available or misconfigured
@@ -215,26 +215,27 @@ class LLMProviderFactory:
             max_tokens=self.config.max_tokens,
         )
 
-    def _create_ollama_model(self, model_id: str) -> Any:
-        """Create Ollama model instance for local LLM.
+    def _create_llama_server_model(self, model_id: str) -> Any:
+        """Create llama.cpp server (llama_server) model instance for local LLM.
+
+        Uses Agno's OpenAIChat in OpenAI-compatible mode against a llama.cpp
+        HTTP server. The server requires no auth, so ``api_key="no-auth"`` is
+        passed to satisfy the OpenAIChat client.
 
         Args:
-            model_id: Ollama model identifier (e.g., 'qwen2.5:7b', 'llama2')
+            model_id: llama.cpp model identifier (e.g., 'qwen2.5:7b', 'llama2')
 
         Returns:
-            Ollama model instance
+            OpenAIChat model instance pointed at the local llama.cpp server
         """
-        from agno.models.ollama import Ollama
+        from agno.models.openai.like import OpenAIChat
 
-        options = {
-            "temperature": self.config.temperature,
-            "num_predict": self.config.max_tokens,
-        }
-
-        return Ollama(
+        return OpenAIChat(
             id=model_id,
-            host=self.config.base_url or "http://localhost:11434",
-            options=options,
+            base_url=self.config.base_url or "http://localhost:8081",
+            api_key="no-auth",
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
         )
 
     def _create_minimax_model(self, model_id: str) -> Any:
@@ -440,7 +441,7 @@ class AgnoAdapter(OrchestratorAdapter):
     - Multi-agent team orchestration (supports_multi_agent=True)
     - Native MCP tool integration
     - Native Agno tools (file operations, code analysis) (Phase 3)
-    - Multiple LLM providers (Anthropic, OpenAI, Ollama)
+    - Multiple LLM providers (Anthropic, OpenAI, llama_server)
     - Memory and session management
     - Batch execution support
 
@@ -980,9 +981,7 @@ class AgnoAdapter(OrchestratorAdapter):
 
         base_url = None
         if llm_config is not None:
-            base_url = _clean_str(getattr(llm_config, "base_url", None)) or _clean_str(
-                getattr(llm_config, "ollama_base_url", None)
-            )
+            base_url = _clean_str(getattr(llm_config, "base_url", None))
 
         api_key_env = (
             _clean_str(getattr(llm_config, "api_key_env", None)) if llm_config is not None else None

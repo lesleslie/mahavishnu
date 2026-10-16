@@ -56,12 +56,6 @@ class EmbeddingConfig(BaseModel):
         description="Model name (provider-specific)",
     )
 
-    # Ollama configuration (if provider is OLLAMA)
-    ollama_base_url: str = Field(
-        default="http://localhost:11434",
-        description="Ollama API base URL",
-    )
-
     # OpenAI configuration (if provider is OPENAI)
     openai_api_key: str | None = Field(
         default=None,
@@ -112,9 +106,8 @@ class EmbeddingConfig(BaseModel):
         """Load configuration from environment variables.
 
         Environment variables (MAHAVISHNU_EMBEDDINGS_ prefix):
-        - PROVIDER: fastembed, ollama, openai
+        - PROVIDER: fastembed, openai
         - MODEL: model name
-        - OLLAMA_BASE_URL: Ollama API URL
         - OPENAI_API_KEY: OpenAI API key
         - OPENAI_MODEL: OpenAI model name
         - BATCH_SIZE: batch size
@@ -135,10 +128,6 @@ class EmbeddingConfig(BaseModel):
         # Model
         if model_env := os.getenv("MAHAVISHNU_EMBEDDINGS_MODEL"):
             config.model = model_env
-
-        # Ollama
-        if ollama_url := os.getenv("MAHAVISHNU_EMBEDDINGS_OLLAMA_BASE_URL"):
-            config.ollama_base_url = ollama_url
 
         # OpenAI
         if api_key := os.getenv("MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY"):
@@ -338,7 +327,7 @@ async def mcp_tool_get_embeddings(
 
     Args:
         texts: List of text strings
-        provider: Provider override (fastembed, ollama, openai)
+        provider: Provider override (fastembed, openai)
         model: Model name override
 
     Returns:

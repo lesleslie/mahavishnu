@@ -40,7 +40,7 @@ def _make_config(
     repos_path: str = "/tmp/repos.txt",
     max_concurrent_workflows: int = 8,
     llm_model: str = "gpt-test",
-    ollama_base_url: str = "http://localhost:11434",
+    base_url: str = "http://localhost:8081",
     retry_max_attempts: int = 3,
     timeout_per_repo: int = 120,
     opensearch_use_ssl: bool = True,
@@ -61,7 +61,7 @@ def _make_config(
         repos_path=repos_path,
         max_concurrent_workflows=max_concurrent_workflows,
         llm_model=llm_model,
-        ollama_base_url=ollama_base_url,
+        base_url=base_url,
     )
 
 
@@ -220,7 +220,7 @@ def test_config_resource_security_and_adapter_checks(
         resilience=SimpleNamespace(retry_max_attempts=3, timeout_per_repo=120),
         repos_path=str(tmp_path / "repos.txt"),
         max_concurrent_workflows=8,
-        ollama_base_url="http://localhost:11434",
+        base_url="http://localhost:8081",
     )
     assert (
         ProductionReadinessChecker(_make_app(config=missing_field_config))._check_config_validity()

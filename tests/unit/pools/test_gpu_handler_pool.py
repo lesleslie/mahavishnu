@@ -149,10 +149,10 @@ class TestGpuHandlerPoolExecution:
 
 
 class TestCategoryRouting:
-    def test_ml_inference_routing_entry_in_ollama_table(self):
-        from mahavishnu.core.model_routing import DEFAULT_OLLAMA_ROUTING
+    def test_ml_inference_routing_entry_in_llama_server_table(self):
+        from mahavishnu.core.model_routing import DEFAULT_LLAMA_SERVER_ROUTING
 
-        assert TaskCategory.ML_INFERENCE in DEFAULT_OLLAMA_ROUTING
+        assert TaskCategory.ML_INFERENCE in DEFAULT_LLAMA_SERVER_ROUTING
 
     def test_ml_inference_routing_entry_in_minimax_table(self):
         from mahavishnu.core.model_routing import DEFAULT_MINIMAX_ROUTING

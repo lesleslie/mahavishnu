@@ -83,7 +83,7 @@ def ingest_url(
         "--provider",
         "-p",
         help=(
-            "Embedding provider: fastembed|ollama|openai. Default "
+            "Embedding provider: fastembed|openai. Default "
             "(None) lets the oneiric probe chain auto-select."
         ),
     ),
@@ -96,7 +96,7 @@ def ingest_url(
     - Session-Buddy tracking
 
     Embedding backend selection is automatic via the oneiric probe chain
-    (llama_cpp -> ollama -> minimax -> model2vec -> mock). Configure which
+    (llama_cpp -> minimax -> model2vec -> mock). Configure which
     legs participate in ``EmbeddingSettings`` from
     ``oneiric.adapters.observability.embedding_settings``.
 
@@ -137,7 +137,7 @@ def ingest_file(
         "--provider",
         "-p",
         help=(
-            "Embedding provider: fastembed|ollama|openai. Default "
+            "Embedding provider: fastembed|openai. Default "
             "(None) lets the oneiric probe chain auto-select."
         ),
     ),
@@ -188,7 +188,7 @@ def ingest_batch(
         "--provider",
         "-p",
         help=(
-            "Embedding provider: fastembed|ollama|openai. Default "
+            "Embedding provider: fastembed|openai. Default "
             "(None) lets the oneiric probe chain auto-select."
         ),
     ),
@@ -270,7 +270,7 @@ def ingestion_stats(
         "--provider",
         "-p",
         help=(
-            "Embedding provider: fastembed|ollama|openai. Default "
+            "Embedding provider: fastembed|openai. Default "
             "(None) lets the oneiric probe chain auto-select."
         ),
     ),
@@ -284,7 +284,7 @@ def ingestion_stats(
     - System status
 
     Embedding backend selection is automatic via the oneiric probe chain
-    (llama_cpp -> ollama -> minimax -> model2vec -> mock). Configure which
+    (llama_cpp -> minimax -> model2vec -> mock). Configure which
     legs participate in ``EmbeddingSettings`` from
     ``oneiric.adapters.observability.embedding_settings``.
 

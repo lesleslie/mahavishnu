@@ -27,7 +27,7 @@ class _FakeLLMFactory:
         return {"provider": provider, "model_id": model_id, **kwargs}
 
     def get_default_provider(self) -> str:
-        return "ollama"
+        return "llama_server"
 
     def get_default_model(self) -> str:
         return "qwen2.5:7b"
@@ -53,7 +53,7 @@ def test_llm_factory_protocol_body_is_exercised() -> None:
     assert isinstance(_FakeLLMFactory(), LLMFactory)
     factory = _FakeLLMFactory()
     assert factory.create_llm() == {"provider": None, "model_id": None}
-    assert factory.get_default_provider() == "ollama"
+    assert factory.get_default_provider() == "llama_server"
     assert factory.get_default_model() == "qwen2.5:7b"
     assert factory.create_embedding(provider="openai") == {
         "embed": True,

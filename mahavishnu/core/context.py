@@ -60,7 +60,7 @@ class LLMFactory(Protocol):
         """Create an LLM instance.
 
         Args:
-            provider: Optional provider override (e.g., "ollama", "anthropic")
+            provider: Optional provider override (e.g., "anthropic")
             model_id: Optional model ID override
             **kwargs: Additional provider-specific arguments
 
@@ -73,7 +73,7 @@ class LLMFactory(Protocol):
         """Get the default LLM provider name.
 
         Returns:
-            Default provider name (e.g., "ollama", "anthropic")
+            Default provider name (e.g., "anthropic")
         """
         ...
 
@@ -94,7 +94,7 @@ class LLMFactory(Protocol):
         """Create an embedding model instance.
 
         Args:
-            provider: Optional provider override (e.g., "ollama", "openai")
+            provider: Optional provider override (e.g., "openai")
             model_id: Optional model ID override (e.g., "nomic-embed-text")
             **kwargs: Additional provider-specific arguments
 
@@ -103,7 +103,7 @@ class LLMFactory(Protocol):
 
         Example:
             >>> factory = get_llm_factory()
-            >>> embed_model = factory.create_embedding(provider="ollama")
+            >>> embed_model = factory.create_embedding(provider="openai")
         """
         ...
 
@@ -133,7 +133,7 @@ def get_llm_factory() -> LLMFactory:
 
     Example:
         >>> factory = get_llm_factory()
-        >>> llm = factory.create_llm(provider="ollama", model_id="qwen2.5:7b")
+        >>> llm = factory.create_llm(provider="anthropic", model_id="claude-sonnet-4-6")
     """
     factory = _llm_factory.get()
     if factory is None:

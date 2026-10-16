@@ -1,4 +1,4 @@
-"""Cloud AI worker — three-tier FallbackChain (MiniMax → llama-server → Ollama).
+"""Cloud AI worker — two-tier FallbackChain (MiniMax → llama-server).
 
 Delegates all LLM dispatch to mcp_common.llm.FallbackChain, which handles
 per-provider retry, circuit breaking, and fail-closed auth checks.
@@ -24,7 +24,6 @@ from mahavishnu.core.status import WorkerStatus
 from ..core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
-    DEFAULT_OLLAMA_ROUTING,
     TaskCategory,
     classify_task,
     get_rate_limiter,
@@ -44,7 +43,6 @@ class CloudWorkerConfig:
     Attributes:
         minimax_url: MiniMax API endpoint (OpenAI-compatible)
         llama_server_url: llama.cpp server endpoint (secondary)
-        ollama_url: Ollama endpoint (tertiary)
         model: Default MiniMax model when no task_type routing matches
         timeout: Request timeout in seconds (applied to each provider tier)
         temperature: Sampling temperature (0.0-2.0)
@@ -58,9 +56,6 @@ class CloudWorkerConfig:
     )
     llama_server_url: str = field(
         default_factory=lambda: os.environ.get("LLAMA_SERVER_URL", "http://localhost:8081")
-    )
-    ollama_url: str = field(
-        default_factory=lambda: os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
     )
     model: str = "MiniMax-M2.7"
     timeout: int = 300
@@ -94,18 +89,11 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
                 "task_routing": routing_to_task_map(DEFAULT_LLAMA_SERVER_ROUTING),
                 "timeout_seconds": config.timeout,
             },
-            "ollama": {
-                "name": "ollama",
-                "base_url": config.ollama_url,
-                "require_auth": False,
-                "task_routing": routing_to_task_map(DEFAULT_OLLAMA_ROUTING),
-                "timeout_seconds": config.timeout,
-            },
         },
-        fallback_chain=["minimax", "llama_server", "ollama"],
+        fallback_chain=["minimax", "llama_server"],
     )
     chain = FallbackChain.from_settings(settings)
-    if len(chain._providers) < 3:
+    if len(chain._providers) < 2:
         logger.error(
             "FallbackChain built with only %d provider(s); check MINIMAX_API_KEY and local server URLs.",
             len(chain._providers),
@@ -120,10 +108,10 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
 # for the design). The audit's static scanner cannot see parenthesized
 # imports / __all__ entries / class-body references across files.
 class CloudWorker(BaseWorker):
-    """Worker that executes tasks via a three-tier FallbackChain.
+    """Worker that executes tasks via a two-tier FallbackChain.
 
     Provider order: MiniMax (primary cloud) → llama-server/qwen3.5
-    (local secondary) → Ollama/qwen2.5-coder (local tertiary).
+    (local fallback).
 
     Args:
         config: Cloud worker configuration
@@ -186,7 +174,7 @@ class CloudWorker(BaseWorker):
         return self._worker_id
 
     async def _has_local_fallback(self) -> bool:
-        """Return True when a local ollama or llama-server endpoint is reachable.
+        """Return True when a local llama-server endpoint is reachable.
 
         Used by ``start()`` to decide whether to mark the worker DEGRADED or
         RUNNING when a required credential is missing. The probe is best-effort:
@@ -195,9 +183,9 @@ class CloudWorker(BaseWorker):
         and connection errors are treated as "not available" and the next URL
         is tried. We never log the env var values here.
         """
-        if not shutil.which("ollama") and not shutil.which("llama-server"):
+        if not shutil.which("llama-server"):
             return False
-        for url in ("http://localhost:11434", "http://localhost:8081"):
+        for url in ("http://localhost:8081",):
             try:
                 async with httpx.AsyncClient(timeout=1.0) as client:
                     response = await client.get(url)

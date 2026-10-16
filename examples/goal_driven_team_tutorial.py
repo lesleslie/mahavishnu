@@ -10,7 +10,7 @@ Run this example:
 Requirements:
     - Mahavishnu installed: pip install -e ".[dev]"
     - Agno SDK installed: pip install agno>=2.5.0
-    - Optional: Ollama running for local LLM (http://localhost:11434)
+    - Optional: llama.cpp server running for local LLM (http://localhost:8081)
 """
 
 from __future__ import annotations

@@ -29,9 +29,8 @@ akosha_url: "http://localhost:8682/mcp"
 # Embeddings Configuration
 # =============================================================================
 embeddings:
-  # Provider: fastembed, ollama, openai
+  # Provider: fastembed, openai
   # - fastembed: Production, cross-platform (recommended)
-  # - ollama: Development, local privacy
   # - openai: Cloud, high quality (requires API key)
   provider: fastembed
 
@@ -40,17 +39,10 @@ embeddings:
   #   - BAAI/bge-small-en-v1.5 (default, fast)
   #   - BAAI/bge-base-en-v1.5 (better quality)
   #   - BAAI/bge-large-en-v1.5 (best quality)
-  # Ollama models:
-  #   - nomic-embed-text (default)
-  #   - mxbai-embed-large-v1 (better quality)
-  #   - all-minilm (small, fast)
   # OpenAI models:
   #   - text-embedding-3-small (default, cheapest)
   #   - text-embedding-3-large (better quality)
   model: BAAI/bge-small-en-v1.5
-
-  # Ollama configuration (if provider is ollama)
-  ollama_base_url: "http://localhost:11434"
 
   # OpenAI configuration (if provider is openai)
   # Set via environment variable: MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY

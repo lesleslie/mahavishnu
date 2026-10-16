@@ -83,7 +83,7 @@ class ModelConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    provider: str = Field(description="LLM provider (openai, anthropic, ollama, etc.)")
+    provider: str = Field(description="LLM provider (openai, anthropic, llama_server, etc.)")
     model_name: str = Field(description="Model identifier (gpt-4, claude-sonnet-4-5, etc.)")
     api_key: str | None = Field(default=None, description="API key (use env var instead)")
     base_url: str | None = Field(default=None, description="Custom API base URL")
@@ -96,7 +96,7 @@ class ModelConfig(BaseModel):
         provider_prefixes = {
             "openai": "openai",
             "anthropic": "anthropic",
-            "ollama": "ollama",
+            "llama_server": "openai",  # OpenAI-compatible
             "google": "google",
             "groq": "groq",
             "litellm": "litellm",
@@ -255,7 +255,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
         │   LLM Providers    │
         │  • OpenAI          │
         │  • Anthropic       │
-        │  • Ollama          │
+        │  • llama_server    │
         │  • LiteLLM         │
         └────────────────────┘
 

@@ -5,7 +5,7 @@ with real-time progress tracking and Session-Buddy integration.
 
 After Plan v3 Phase 4.5b (legacy-worker-removal), the following surfaces
 were retired: ``apple-container``, ``e2b-sandbox``, ``generic_shell``,
-``ollama``, ``openclaw_gateway``, ``crow``, ``application``, ``a2a``,
+``openclaw_gateway``, ``crow``, ``application``, ``a2a``,
 ``protocol``, plus the capability caches ``_cache.py`` / ``_static.py``.
 The canonical orchestration layer is now ``mahavishnu/pools/``; the
 isolated-worker legacy surface is reduced to ``shepherd_backend`` only

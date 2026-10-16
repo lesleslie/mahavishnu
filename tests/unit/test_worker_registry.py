@@ -161,7 +161,6 @@ class TestWorkerRegistry:
         for key, cfg in WORKER_REGISTRY.items():
             if cfg.category == WorkerCategory.AI_ASSISTANT and key not in (
                 "gateway-openclaw",
-                "terminal-ollama",
             ):
                 assert cfg.requires_tool is not None, f"{key} AI assistant missing requires_tool"
 

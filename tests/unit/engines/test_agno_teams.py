@@ -94,7 +94,7 @@ def route_team_config(member_config: MemberConfig) -> TeamConfig:
 def mock_llm_factory() -> MagicMock:
     """Create a mock LLM provider factory."""
     factory = MagicMock()
-    factory.config = AgnoLLMConfig(provider=LLMProvider.OLLAMA, model_id="qwen2.5:7b")
+    factory.config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="qwen2.5:7b")
     factory._model_instance = None
 
     def create_model():

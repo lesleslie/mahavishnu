@@ -239,14 +239,14 @@ class TestValidateAdapterConfig:
     def test_llamaindex_with_valid_url(self):
         settings = self._make_settings()
         settings.adapters.llamaindex_enabled = True
-        settings.llm.ollama_base_url = "http://localhost:11434"
+        settings.llm.base_url = "http://localhost:8081"
         results = _validate_adapter_config(settings)
         assert all(r.valid for r in results)
 
     def test_llamaindex_with_invalid_url(self):
         settings = self._make_settings()
         settings.adapters.llamaindex_enabled = True
-        settings.llm.ollama_base_url = "nope"
+        settings.llm.base_url = "nope"
         results = _validate_adapter_config(settings)
         assert any(not r.valid for r in results)
 

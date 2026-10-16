@@ -62,12 +62,12 @@ from mahavishnu.engines.agno_adapter_impl import (
 
 
 @pytest.fixture
-def ollama_llm_config() -> ImplAgnoLLMConfig:
-    """Create Ollama LLM config for testing."""
+def llama_server_llm_config() -> ImplAgnoLLMConfig:
+    """Create llama.cpp server (llama_server) LLM config for testing."""
     return ImplAgnoLLMConfig(
-        provider=LLMProvider.OLLAMA,
-        model_id="qwen2.5:7b",
-        base_url="http://localhost:11434",
+        provider=LLMProvider.LLAMA_SERVER,
+        model_id="qwen3.5",
+        base_url="http://localhost:8081",
         temperature=0.7,
         max_tokens=4096,
     )
@@ -144,7 +144,7 @@ def tools_config() -> ImplAgnoToolsConfig:
 
 @pytest.fixture
 def adapter_config(
-    ollama_llm_config: ImplAgnoLLMConfig,
+    llama_server_llm_config: ImplAgnoLLMConfig,
     memory_config_disabled: ImplAgnoMemoryConfig,
     tools_config: ImplAgnoToolsConfig,
 ) -> AgnoAdapterConfig:
@@ -157,12 +157,12 @@ def adapter_config(
     return AgnoAdapterConfig(
         enabled=True,
         llm={
-            "provider": ollama_llm_config.provider,
-            "model_id": ollama_llm_config.model_id,
-            "api_key_env": ollama_llm_config.api_key_env,
-            "base_url": ollama_llm_config.base_url,
-            "temperature": ollama_llm_config.temperature,
-            "max_tokens": ollama_llm_config.max_tokens,
+            "provider": llama_server_llm_config.provider,
+            "model_id": llama_server_llm_config.model_id,
+            "api_key_env": llama_server_llm_config.api_key_env,
+            "base_url": llama_server_llm_config.base_url,
+            "temperature": llama_server_llm_config.temperature,
+            "max_tokens": llama_server_llm_config.max_tokens,
         },
         memory={
             "enabled": memory_config_disabled.enabled,
@@ -216,7 +216,7 @@ class TestLLMProviderEnum:
         """Test all LLM providers are defined."""
         assert LLMProvider.ANTHROPIC.value == "anthropic"
         assert LLMProvider.OPENAI.value == "openai"
-        assert LLMProvider.OLLAMA.value == "ollama"
+        assert LLMProvider.LLAMA_SERVER.value == "llama_server"
         assert LLMProvider.MINIMAX.value == "minimax"
 
     def test_provider_count(self) -> None:
@@ -244,10 +244,10 @@ class TestAgnoLLMConfigModel:
     def test_default_values(self) -> None:
         """Test default LLM config values."""
         config = ImplAgnoLLMConfig()
-        assert config.provider == LLMProvider.OLLAMA
+        assert config.provider == LLMProvider.LLAMA_SERVER
         assert config.model_id == "qwen2.5:7b"
         assert config.api_key_env is None
-        assert config.base_url == "http://localhost:11434"
+        assert config.base_url == "http://localhost:8081"
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
@@ -324,9 +324,9 @@ class TestAgnoLLMConfigModel:
         config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI)
         assert config.api_key_env == "OPENAI_API_KEY"
 
-    def test_api_key_env_stays_none_for_ollama(self) -> None:
-        # Ollama is local-only and has no API key.
-        config = ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA)
+    def test_api_key_env_stays_none_for_llama_server(self) -> None:
+        # llama_server is local-only and has no API key.
+        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
         assert config.api_key_env is None
 
     def test_api_key_env_explicit_override_wins(self) -> None:
@@ -530,15 +530,15 @@ class TestAgnoAdapterConfigModel:
 class TestLLMProviderFactory:
     """Tests for LLMProviderFactory."""
 
-    def test_factory_initialization(self, ollama_llm_config: ImplAgnoLLMConfig) -> None:
+    def test_factory_initialization(self, llama_server_llm_config: ImplAgnoLLMConfig) -> None:
         """Test factory initialization."""
-        factory = LLMProviderFactory(ollama_llm_config)
-        assert factory.config == ollama_llm_config
+        factory = LLMProviderFactory(llama_server_llm_config)
+        assert factory.config == llama_server_llm_config
         assert factory._model_instance is None
 
     def test_unsupported_provider(self) -> None:
         """Test error on unsupported provider."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA)
+        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
         factory = LLMProviderFactory(config)
 
         # Monkey-patch to test unsupported provider
@@ -592,18 +592,18 @@ class TestLLMProviderFactory:
             assert call_kwargs["api_key"] == "test-anthropic-key"
             assert model is mock_model
 
-    def test_create_ollama_model(self) -> None:
-        """Test Ollama model creation."""
+    def test_create_llama_server_model(self) -> None:
+        """Test llama-server (llama.cpp) model creation via OpenAI-compatible shim."""
         config = ImplAgnoLLMConfig(
-            provider=LLMProvider.OLLAMA,
+            provider=LLMProvider.LLAMA_SERVER,
             model_id="qwen2.5:7b",
-            base_url="http://localhost:11434",
+            base_url="http://localhost:8081",
             temperature=0.7,
             max_tokens=4096,
         )
         factory = LLMProviderFactory(config)
 
-        with patch("agno.models.ollama.Ollama") as mock_cls:
+        with patch("agno.models.openai.like.OpenAIChat") as mock_cls:
             mock_model = MagicMock()
             mock_cls.return_value = mock_model
 
@@ -612,9 +612,10 @@ class TestLLMProviderFactory:
             mock_cls.assert_called_once()
             call_kwargs = mock_cls.call_args[1]
             assert call_kwargs["id"] == "qwen2.5:7b"
-            assert call_kwargs["host"] == "http://localhost:11434"
-            assert call_kwargs["options"]["temperature"] == 0.7
-            assert call_kwargs["options"]["num_predict"] == 4096
+            assert call_kwargs["base_url"] == "http://localhost:8081"
+            assert call_kwargs["api_key"] == "no-auth"
+            assert call_kwargs["temperature"] == 0.7
+            assert call_kwargs["max_tokens"] == 4096
             assert model is mock_model
 
     @patch.dict(os.environ, {"MINIMAX_API_KEY": "test-minimax-key"})
@@ -647,12 +648,12 @@ class TestLLMProviderFactory:
     def test_model_caching(self) -> None:
         """Test that model is cached after first creation."""
         config = ImplAgnoLLMConfig(
-            provider=LLMProvider.OLLAMA,
+            provider=LLMProvider.LLAMA_SERVER,
             model_id="qwen2.5:7b",
         )
         factory = LLMProviderFactory(config)
 
-        with patch("agno.models.ollama.Ollama") as mock_cls:
+        with patch("agno.models.openai.like.OpenAIChat") as mock_cls:
             mock_model = MagicMock()
             mock_cls.return_value = mock_model
 
@@ -720,10 +721,10 @@ class TestLLMProviderFactory:
 
     def test_general_error_handling(self) -> None:
         """Test handling of general errors during model creation."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA)
+        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
         factory = LLMProviderFactory(config)
 
-        with patch("agno.models.ollama.Ollama", side_effect=Exception("Unknown error")):
+        with patch("agno.models.openai.like.OpenAIChat", side_effect=Exception("Unknown error")):
             with pytest.raises(AgnoError, match="Failed to create LLM model"):
                 factory.create_model()
 
@@ -982,7 +983,7 @@ class TestAgnoAdapterInitialization:
 
         assert adapter.agno_config is not None
         assert adapter.agno_config.enabled is True
-        assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
+        assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
 
     @pytest.mark.asyncio
     async def test_initialize(self, mock_settings: MagicMock) -> None:
@@ -1078,8 +1079,8 @@ class TestAgnoAdapterHealthCheck:
         assert health["status"] == "healthy"
         assert health["details"]["adapter"] == "agno"
         assert health["details"]["initialized"] is True
-        assert health["details"]["llm_provider"] == "ollama"
-        assert health["details"]["model_id"] == "qwen2.5:7b"
+        assert health["details"]["llm_provider"] == "llama_server"
+        assert health["details"]["model_id"] == "qwen3.5"
 
     @pytest.mark.asyncio
     async def test_health_details_complete(self, mock_settings: MagicMock) -> None:
@@ -1097,8 +1098,8 @@ class TestAgnoAdapterHealthCheck:
         assert details["version"] == "1.0.0"
         assert details["configured"] is True
         assert details["initialized"] is True
-        assert details["llm_provider"] == "ollama"
-        assert details["model_id"] == "qwen2.5:7b"
+        assert details["llm_provider"] == "llama_server"
+        assert details["model_id"] == "qwen3.5"
         assert details["agents_cached"] == 0
         assert details["teams_count"] == 0
         assert details["mcp_tools_initialized"] is True
@@ -1935,7 +1936,7 @@ class TestAgnoAdapterAPIURL:
 
         config = ImplAgnoAdapterConfig(
             enabled=True,
-            llm=ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA, model_id="test"),
+            llm=ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="test"),
             tools=ImplAgnoToolsConfig(mcp_server_url="http://custom:9999/mcp"),
         )
         adapter = AgnoAdapter(config)
@@ -1958,7 +1959,7 @@ class TestAgnoAdapterAPIURL:
         # Default config has mcp_server_url of http://localhost:8677/mcp
         config = ImplAgnoAdapterConfig(
             enabled=True,
-            llm=ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA, model_id="test"),
+            llm=ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="test"),
             tools=ImplAgnoToolsConfig(mcp_server_url="http://localhost:8677/mcp"),
         )
         adapter = AgnoAdapter(config)
@@ -2191,7 +2192,7 @@ class TestLegacyConfigResolution:
         adapter = AgnoAdapter(mock_settings)
 
         # Set up legacy config attributes
-        adapter.config.llm_provider = "ollama"
+        adapter.config.llm_provider = "llama_server"
         adapter.config.llm = MagicMock()
         adapter.config.llm.model_id = "llama2"
         adapter.config.llm.base_url = "http://custom:11434"
@@ -2204,7 +2205,7 @@ class TestLegacyConfigResolution:
 
         config = adapter._resolve_legacy_llm_config()
 
-        assert config.provider == LLMProvider.OLLAMA
+        assert config.provider == LLMProvider.LLAMA_SERVER
         assert config.model_id == "llama2"
 
     def test_resolve_legacy_with_invalid_provider(self, mock_settings: MagicMock) -> None:

@@ -799,7 +799,7 @@ class TestBootstrapDeepHelpers:
                     llm=SimpleNamespace(
                         provider=SimpleNamespace(value="openai"),
                         model_id="gpt-4o-mini",
-                        base_url="http://ollama",
+                        base_url="http://llama-server",
                     )
                 )
             ),
@@ -816,9 +816,9 @@ class TestBootstrapDeepHelpers:
         assert isinstance(default, FakeLLM)
         assert captured["llm_kwargs"]["provider"] == "openai"
         assert captured["llm_kwargs"]["model"] == "gpt-4o-mini"
-        ollama = factory.create_llm(provider="ollama")
-        assert isinstance(ollama, FakeLLM)
-        assert captured["llm_kwargs"]["base_url"] == "http://ollama"
+        llama_server = factory.create_llm(provider="llama_server")
+        assert isinstance(llama_server, FakeLLM)
+        assert captured["llm_kwargs"]["base_url"] == "http://llama-server"
         assert factory.get_default_provider() == "openai"
         assert factory.get_default_model() == "gpt-4o-mini"
 

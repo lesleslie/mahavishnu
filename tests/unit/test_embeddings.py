@@ -4,7 +4,7 @@ After the hybrid chain refactor (oneiric), these tests cover the
 delegation contract: the EmbeddingService shim should reach oneiric's
 probe chain and return real embeddings when a backend is reachable.
 Provider-specific unit tests are obsolete — they lived with the removed
-``FastEmbedProvider`` / ``OllamaProvider`` / ``OpenAIProvider`` classes.
+``FastEmbedProvider`` / ``OpenAIProvider`` classes.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class TestOneiricIntegration:
         """Test generating embeddings using Oneiric configuration.
 
         Dimension is whatever the chain probed (typically 768 from
-        Ollama's ``nomic-embed-text`` or 1024 from MiniMax). Asserting
+        llama_server or 1024 from MiniMax). Asserting
         ``>0`` rather than a fixed value keeps the test robust across
         backend switches.
         """
@@ -108,7 +108,7 @@ class TestHybridChainEmbeddingService:
     async def test_legacy_provider_kwarg_is_ignored(self) -> None:
         """The legacy ``provider=`` kwarg is accepted but ignored.
 
-        The chain probes backends in llama_cpp -> ollama -> minimax ->
+        The chain probes backends in llama_cpp -> minimax ->
         model2vec -> mock order; explicit provider selection is no longer
         supported. The shim accepts the kwarg so existing callers don't
         break, but the active backend is whatever the chain picked.
@@ -135,5 +135,4 @@ class TestEmbeddingProviderEnum:
         from mahavishnu.core.embeddings import EmbeddingProvider
 
         assert EmbeddingProvider.FASTEMBED == "fastembed"
-        assert EmbeddingProvider.OLLAMA == "ollama"
         assert EmbeddingProvider.OPENAI == "openai"

@@ -13,7 +13,6 @@ import pytest
 from mahavishnu.core.auth import JWTAuth, TokenPayload, get_auth_from_config
 from mahavishnu.core.model_routing import (
     DEFAULT_MINIMAX_ROUTING,
-    DEFAULT_OLLAMA_ROUTING,
     TASK_PATTERNS,
     TaskCategory,
     classify_task,
@@ -195,15 +194,6 @@ class TestClassifyTask:
 
 
 class TestGetModelForTask:
-    def test_ollama_routing(self):
-        model, category = get_model_for_task(
-            "Write a Python function",
-            DEFAULT_OLLAMA_ROUTING,
-            "qwen2.5-coder:7b",
-        )
-        assert category == TaskCategory.CODE_GENERATION
-        assert model == "qwen2.5-coder:7b"
-
     def test_minimax_reasoning(self):
         model, category = get_model_for_task(
             "Compare REST vs GraphQL",
@@ -233,7 +223,7 @@ class TestGetModelForTask:
         assert model == "MiniMax-M3"
 
     def test_returns_tuple(self):
-        result = get_model_for_task("test this", DEFAULT_OLLAMA_ROUTING, "default")
+        result = get_model_for_task("test this", DEFAULT_MINIMAX_ROUTING, "default")
         assert isinstance(result, tuple)
         assert len(result) == 2
 
@@ -256,7 +246,6 @@ class TestTaskPatterns:
 
     def test_default_routing_covers_all_categories(self):
         for cat in TaskCategory:
-            assert cat in DEFAULT_OLLAMA_ROUTING, f"Missing ollama routing for {cat}"
             assert cat in DEFAULT_MINIMAX_ROUTING, f"Missing minimax routing for {cat}"
 
 

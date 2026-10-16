@@ -1,13 +1,12 @@
 """Shared task routing logic for workers.
 
-Extracts task classification and model selection from OllamaWorker
-so that both OllamaWorker and CloudWorker can share the same routing.
+Task classification + per-provider model routing shared by CloudWorker.
 
 Task routing works in two layers:
 1. classify_task() - regex-based prompt classification into TaskCategory
 2. Model routing - maps TaskCategory to the best model for the provider
 
-Each provider (Ollama, MiniMax, etc.) has its own model routing config.
+Each provider (MiniMax, llama_server, etc.) has its own model routing config.
 """
 
 from __future__ import annotations
@@ -214,26 +213,6 @@ TASK_PATTERNS: dict[TaskCategory, list[str]] = {
 }
 
 
-# Default model routing for Ollama (local models)
-DEFAULT_OLLAMA_ROUTING: dict[TaskCategory, str] = {
-    TaskCategory.CODE_GENERATION: "qwen2.5-coder:7b",
-    TaskCategory.CODE_REVIEW: "qwen2.5-coder:7b",
-    TaskCategory.DEBUGGING: "qwen2.5-coder:7b",
-    TaskCategory.REFACTORING: "qwen2.5-coder:7b",
-    TaskCategory.DOCUMENTATION: "qwen2.5-coder:7b",
-    TaskCategory.TESTING: "qwen2.5-coder:7b",
-    TaskCategory.REASONING: "llama3:8b",
-    TaskCategory.CREATIVE: "llava:7b",
-    TaskCategory.ANALYSIS: "qwen2.5-coder:7b",
-    TaskCategory.VISION: "llava:7b",
-    TaskCategory.EMBEDDING: "nomic-embed-text",
-    TaskCategory.GENERAL: "qwen2.5-coder:7b",
-    TaskCategory.SWARM: "qwen2.5-coder:7b",
-    TaskCategory.QUICK: "qwen2.5-coder:7b",
-    TaskCategory.ML_INFERENCE: "llava:7b",
-    TaskCategory.AGENT_LOOP: "llama3:8b",
-}
-
 # Default model routing for llama-server (qwen3.5 — single model, all categories)
 DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(TaskCategory, "qwen3.5")
 
@@ -347,7 +326,6 @@ def get_model_for_task(
 __all__ = [
     "DEFAULT_LLAMA_SERVER_ROUTING",
     "DEFAULT_MINIMAX_ROUTING",
-    "DEFAULT_OLLAMA_ROUTING",
     "TASK_PATTERNS",
     "RateLimitConfig",
     "RateLimiter",

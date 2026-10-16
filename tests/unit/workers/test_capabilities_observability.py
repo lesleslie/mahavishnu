@@ -146,10 +146,10 @@ def test_publish_event_payload_does_not_leak_tool_or_setting_names(
     monkeypatch.setattr(observability, "_broadcast_event", lambda *a, **k: None)
 
     tool_report = WorkerCapabilityReport(
-        worker_type="adapter-ollama",
+        worker_type="adapter-llama-server",
         state=WorkerCapabilityState.CONFIGURED,
-        missing_requirements=["tool:ollama"],
-        safe_reason="tool:ollama",
+        missing_requirements=["tool:llama-server"],
+        safe_reason="tool:llama-server",
     )
     observability._publish_event(tool_report)
 

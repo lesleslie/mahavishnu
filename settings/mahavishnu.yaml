@@ -1,7 +1,7 @@
 # Mahavishnu Configuration with Terminal Management and OpenSearch Integration
 #
 # Related config files:
-#   - settings/models.yaml     - LLM model registry (Ollama, embeddings, cloud)
+#   - settings/models.yaml     - LLM model registry (embeddings, cloud)
 #   - settings/embeddings.yaml - Detailed embedding configuration
 #   - settings/ecosystem.yaml  - Repository manifest (preferred; has roles + coordination)
 #   - settings/repos.yaml      - Repository manifest (fallback for standalone users)
@@ -26,7 +26,7 @@ max_concurrent_workflows: 10
 # Adapter configuration
 adapters:
   prefect_enabled: true  # High-level orchestration with dynamic flows
-  llamaindex_enabled: true  # RAG pipelines with Ollama embeddings
+  llamaindex_enabled: true  # RAG pipelines with OpenAI-compatible embeddings
   agno_enabled: true  # Fast, scalable single/multi-agents with memory and tools
   hatchet_enabled: false  # Durable agent loops; requires HATCHET_CLIENT_TOKEN
 
@@ -41,8 +41,8 @@ hatchet:
 
 # LLM configuration for LlamaIndex and Agno
 llm:
-  model: nomic-embed-text  # Embedding model for llama-server
-  ollama_base_url: http://localhost:11434  # llama-server (llama.cpp) API endpoint
+  model: qwen3.5  # Embedding model for llama-server
+  base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
 # OpenSearch configuration for vector storage and observability
 opensearch:
@@ -277,7 +277,7 @@ openhands:
 
 # Embedding configuration with security and caching
 embeddings:
-  provider: "auto"  # auto, fastembed, ollama, openai
+  provider: "auto"  # auto, fastembed, openai
   model: "BAAI/bge-small-en-v1.5"  # Default model for FastEmbed
   dimension: 384  # Vector dimension
 

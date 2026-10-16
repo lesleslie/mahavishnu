@@ -110,10 +110,10 @@ class TestModelConfig:
         """Test Anthropic model string conversion."""
         assert fallback_model_config.to_model_string() == "anthropic:claude-sonnet-4-5"
 
-    def test_to_model_string_ollama(self) -> None:
-        """Test Ollama model string conversion."""
-        config = ModelConfig(provider="ollama", model_name="llama3")
-        assert config.to_model_string() == "ollama:llama3"
+    def test_to_model_string_llama_server(self) -> None:
+        """Test llama_server model string conversion (OpenAI-compatible prefix)."""
+        config = ModelConfig(provider="llama_server", model_name="qwen3.5")
+        assert config.to_model_string() == "openai:qwen3.5"
 
     def test_to_model_string_unknown_provider(self) -> None:
         """Test unknown provider falls back to provider name."""

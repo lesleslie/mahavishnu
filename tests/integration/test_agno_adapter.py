@@ -14,9 +14,9 @@ async def test_agno_adapter_requires_llm_configuration():
     """Test that Agno adapter requires proper LLM configuration."""
     # Create adapter with mock config that has no LLM provider
     config = MagicMock()
-    config.llm_provider = "ollama"
-    config.llm.model = "qwen2.5:7b"
-    config.llm.ollama_base_url = "http://localhost:11434"
+    config.llm_provider = "llama_server"
+    config.llm.model = "qwen3.5"
+    config.llm.base_url = "http://localhost:8081"
 
     adapter = AgnoAdapter(config)
 
@@ -42,17 +42,17 @@ async def test_agno_adapter_requires_llm_configuration():
 
 
 @pytest.mark.asyncio
-async def test_agno_adapter_with_ollama_llm():
-    """Test Agno adapter with Ollama LLM configuration."""
+async def test_agno_adapter_with_llama_server_llm():
+    """Test Agno adapter with llama.cpp server LLM configuration."""
     # Mock config
     config = MagicMock()
-    config.llm_provider = "ollama"
-    config.llm.model = "qwen2.5:7b"
-    config.llm.ollama_base_url = "http://localhost:11434"
+    config.llm_provider = "llama_server"
+    config.llm.model = "qwen3.5"
+    config.llm.base_url = "http://localhost:8081"
 
     adapter = AgnoAdapter(config)
 
-    # Test _get_llm method (without actually calling Ollama)
+    # Test _get_llm method (without actually calling the llama.cpp server)
     with patch.dict(os.environ, {}, clear=True):
         model = adapter._get_llm()
         assert model is not None
@@ -124,8 +124,8 @@ async def test_agno_adapter_unsupported_provider():
 async def test_agno_adapter_parallel_execution():
     """Test that Agno adapter processes repositories in parallel."""
     config = MagicMock()
-    config.llm_provider = "ollama"
-    config.llm.model = "qwen2.5:7b"
+    config.llm_provider = "llama_server"
+    config.llm.model = "qwen3.5"
 
     adapter = AgnoAdapter(config)
 

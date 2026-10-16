@@ -51,7 +51,6 @@ INTENT_PATTERNS: dict[TaskType, list[str]] = {
         r"\bllm\b",
         r"\bclaude\b",
         r"\bgpt\b",
-        r"\bollama\b",
         r"\bgenerate\b.*\bcode\b",
         r"\banalyze\b.*\bcode\b",
         r"\bwrite\b.*\bfunction\b",

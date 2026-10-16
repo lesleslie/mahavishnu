@@ -44,7 +44,7 @@ from mahavishnu.engines.agno_adapter_impl import (
 def agno_llm_config() -> AgnoLLMConfig:
     """Create default LLM config for testing."""
     return AgnoLLMConfig(
-        provider=LLMProvider.OLLAMA,
+        provider=LLMProvider.LLAMA_SERVER,
         model_id="qwen2.5:7b",
         base_url="http://localhost:11434",
         temperature=0.7,
@@ -111,9 +111,9 @@ class TestAgnoLLMConfig:
     def test_default_config(self) -> None:
         """Test default LLM configuration values."""
         config = AgnoLLMConfig()
-        assert config.provider == LLMProvider.OLLAMA
+        assert config.provider == LLMProvider.LLAMA_SERVER
         assert config.model_id == "qwen2.5:7b"
-        assert config.base_url == "http://localhost:11434"
+        assert config.base_url == "http://localhost:8081"
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
@@ -122,7 +122,7 @@ class TestAgnoLLMConfig:
         assert LLMProvider.ANTHROPIC.value == "anthropic"
         assert LLMProvider.OPENAI.value == "openai"
         assert LLMProvider.MINIMAX.value == "minimax"
-        assert LLMProvider.OLLAMA.value == "ollama"
+        assert LLMProvider.LLAMA_SERVER.value == "llama_server"
 
     def test_temperature_bounds(self) -> None:
         """Test temperature validation."""
@@ -212,7 +212,7 @@ class TestAgnoAdapterConfig:
     def test_nested_config(self, agno_llm_config: AgnoLLMConfig) -> None:
         """Test nested configuration."""
         config = AgnoAdapterConfig(llm=agno_llm_config)
-        assert config.llm.provider == LLMProvider.OLLAMA
+        assert config.llm.provider == LLMProvider.LLAMA_SERVER
         assert config.llm.model_id == "qwen2.5:7b"
 
 
@@ -293,39 +293,41 @@ class TestLLMProviderFactory:
             assert call_kwargs["base_url"] == "https://api.minimax.io/v1"
             assert model == mock_model
 
-    def test_create_ollama_model(self, agno_llm_config: AgnoLLMConfig) -> None:
-        """Test Ollama model creation."""
-        agno_llm_config.provider = LLMProvider.OLLAMA
+    def test_create_llama_server_model(self, agno_llm_config: AgnoLLMConfig) -> None:
+        """Test llama-server (llama.cpp) model creation via OpenAI-compatible shim."""
+        agno_llm_config.provider = LLMProvider.LLAMA_SERVER
         agno_llm_config.model_id = "qwen2.5:7b"
-        agno_llm_config.base_url = "http://localhost:11434"
+        agno_llm_config.base_url = "http://localhost:8081"
 
         factory = LLMProviderFactory(agno_llm_config)
 
-        with patch("agno.models.ollama.Ollama") as mock_ollama:
+        with patch("agno.models.openai.like.OpenAIChat") as mock_chat:
             mock_model = MagicMock()
-            mock_ollama.return_value = mock_model
+            mock_chat.return_value = mock_model
 
             model = factory.create_model()
 
-            mock_ollama.assert_called_once()
-            call_kwargs = mock_ollama.call_args[1]
+            mock_chat.assert_called_once()
+            call_kwargs = mock_chat.call_args[1]
             assert call_kwargs["id"] == "qwen2.5:7b"
-            assert call_kwargs["host"] == "http://localhost:11434"
+            assert call_kwargs["base_url"] == "http://localhost:8081"
+            assert call_kwargs["api_key"] == "no-auth"
             assert model == mock_model
 
     def test_model_caching(self, agno_llm_config: AgnoLLMConfig) -> None:
         """Test that model is cached after first creation."""
+        agno_llm_config.provider = LLMProvider.LLAMA_SERVER
         factory = LLMProviderFactory(agno_llm_config)
 
-        with patch("agno.models.ollama.Ollama") as mock_ollama:
+        with patch("agno.models.openai.like.OpenAIChat") as mock_chat:
             mock_model = MagicMock()
-            mock_ollama.return_value = mock_model
+            mock_chat.return_value = mock_model
 
             model1 = factory.create_model()
             model2 = factory.create_model()
 
             # Should only be called once due to caching
-            mock_ollama.assert_called_once()
+            mock_chat.assert_called_once()
             assert model1 is model2
 
     def test_missing_api_key(self, agno_llm_config: AgnoLLMConfig) -> None:
@@ -476,7 +478,7 @@ class TestAgnoAdapter:
         assert adapter.agno_config.enabled is True
         assert adapter.agno_config.memory.enabled is True
         assert adapter.agno_config.memory.backend == MemoryBackend.NONE
-        assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
+        assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
         assert adapter.agno_config.default_timeout_seconds == 300
 
     @pytest.mark.asyncio
@@ -531,7 +533,7 @@ class TestAgnoAdapter:
         assert health["status"] == "healthy"
         assert health["details"]["adapter"] == "agno"
         assert health["details"]["initialized"] is True
-        assert health["details"]["llm_provider"] == "ollama"
+        assert health["details"]["llm_provider"] == "llama_server"
 
     @pytest.mark.asyncio
     async def test_shutdown(self, mock_settings: MagicMock) -> None:

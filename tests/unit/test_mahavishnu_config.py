@@ -449,10 +449,10 @@ class TestAgnoLLMConfig:
     def test_default_values(self):
         """Test AgnoLLMConfig defaults."""
         config = AgnoLLMConfig()
-        assert config.provider == LLMProvider.OLLAMA
+        assert config.provider == LLMProvider.LLAMA_SERVER
         assert config.model_id == "qwen2.5:7b"
         assert config.api_key_env is None
-        assert config.base_url == "http://localhost:11434"
+        assert config.base_url == "http://localhost:8081"
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
@@ -479,7 +479,7 @@ class TestAgnoLLMConfig:
         assert LLMProvider.ANTHROPIC.value == "anthropic"
         assert LLMProvider.OPENAI.value == "openai"
         assert LLMProvider.MINIMAX.value == "minimax"
-        assert LLMProvider.OLLAMA.value == "ollama"
+        assert LLMProvider.LLAMA_SERVER.value == "llama_server"
 
 
 # ============================================================================
@@ -569,7 +569,7 @@ class TestAgnoAdapterConfig:
         """Test AgnoAdapterConfig defaults."""
         config = AgnoAdapterConfig()
         assert config.enabled is True
-        assert config.llm.provider == LLMProvider.OLLAMA
+        assert config.llm.provider == LLMProvider.LLAMA_SERVER
         assert config.memory.backend == MemoryBackend.NONE
         assert config.tools.mcp_transport == "sse"
         assert config.teams_config_path == "settings/agno_teams"
@@ -867,8 +867,8 @@ class TestLLMConfig:
     def test_default_values(self):
         """Test LLMConfig defaults."""
         config = LLMConfig()
-        assert config.model == "nomic-embed-text"
-        assert config.ollama_base_url == "http://localhost:11434"
+        assert config.model == "qwen3.5"
+        assert config.base_url == "http://localhost:8081"
 
 
 # ============================================================================

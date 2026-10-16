@@ -575,9 +575,9 @@ class TestErrorTemplates:
         assert err.details["agent_name"] == "coder"
 
     def test_agno_llm_error(self):
-        err = ErrorTemplates.agno_llm_error("ollama", "llama3", "model not found")
+        err = ErrorTemplates.agno_llm_error("llama_server", "qwen3.5", "model not found")
         assert err.error_code == ErrorCode.AGNO_LLM_PROVIDER_ERROR
-        assert err.details["provider"] == "ollama"
+        assert err.details["provider"] == "llama_server"
 
     def test_adapter_init_failed(self):
         err = ErrorTemplates.adapter_init_failed(

@@ -431,7 +431,7 @@ def _check_agno_preconditions(
     Probes (each injectable for tests):
 
     - ``agno`` Python SDK importable.
-    - For non-Ollama providers, the configured ``api_key_env`` is set
+    - For non-llama_server providers, the configured ``api_key_env`` is set
       in the environment (or ``None`` falls back to the provider default).
     - Settings are loadable (rejects malformed Oneiric config).
     """
@@ -458,7 +458,7 @@ def _check_agno_preconditions(
         failures.append(f"settings.agno.llm not configured: {exc}")
         return failures
 
-    # Provider-aware API-key check (Ollama runs locally with no key).
+    # Provider-aware API-key check (llama_server runs locally with no key).
     from mahavishnu.core.config import LLMProvider
 
     provider_value = agno_llm.provider
@@ -474,7 +474,7 @@ def _check_agno_preconditions(
             LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
             LLMProvider.OPENAI: "OPENAI_API_KEY",
             LLMProvider.MINIMAX: "MINIMAX_API_KEY",
-            LLMProvider.OLLAMA: None,  # no API key required
+            LLMProvider.LLAMA_SERVER: None,  # no API key required
         }.get(provider)
         if provider is not None
         else None

@@ -9,14 +9,14 @@ max_concurrent_workflows: 10
 # Adapter configuration - Core Components
 # Prefect: High-level orchestration with dynamic flows
 prefect_enabled: true
-# LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with Ollama
+# LlamaIndex: RAG pipelines for ingesting repos/docs, embedding with OpenAI-compatible llama-server
 llamaindex_enabled: true
 # Agno: Fast, scalable single/multi-agents with memory and tools
 agno_enabled: true
 
 # LLM configuration for LlamaIndex and Agno
-# llm_model: nomic-embed-text  # Ollama embedding model
-# ollama_base_url: http://localhost:11434  # Ollama API endpoint
+# llm_model: qwen3.5  # llama-server embedding model
+# base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
 # Quality control
 qc_enabled: true

@@ -1,7 +1,7 @@
 """Comprehensive tests for LlamaIndex adapter.
 
 Tests cover:
-- Adapter initialization with Ollama embeddings
+- Adapter initialization with OpenAI-compatible embeddings (llama_server or OpenAI)
 - OpenTelemetry instrumentation (tracing and metrics)
 - Document ingestion from repositories
 - Code graph integration for enhanced metadata
@@ -33,9 +33,9 @@ sys_modules = {
     "llama_index.core.storage": MagicMock(),
     "llama_index.core.storage.storage_context": MagicMock(),
     "llama_index.embeddings": MagicMock(),
-    "llama_index.embeddings.ollama": MagicMock(),
+    "llama_index.embeddings.openai": MagicMock(),
     "llama_index.llms": MagicMock(),
-    "llama_index.llms.ollama": MagicMock(),
+    "llama_index.llms.openai_like": MagicMock(),
     "llama_index.vector_stores": MagicMock(),
     "llama_index.vector_stores.opensearch": MagicMock(),
 }
@@ -66,7 +66,7 @@ def mock_config():
     config = MagicMock()
     # Use flat attributes as expected by getattr in adapter
     config.llm_model = "nomic-embed-text"
-    config.ollama_base_url = "http://localhost:11434"
+    config.llm_base_url = "http://localhost:8081"
     config.opensearch_endpoint = "https://localhost:9200"
     config.opensearch_index_name = "mahavishnu_code"
     config.opensearch_verify_certs = True
@@ -80,7 +80,7 @@ def mock_config_with_telemetry():
     """Create mock configuration with telemetry enabled."""
     config = MagicMock()
     config.llm_model = "nomic-embed-text"
-    config.ollama_base_url = "http://localhost:11434"
+    config.llm_base_url = "http://localhost:8081"
     config.opensearch_endpoint = "https://localhost:9200"
     config.opensearch_index_name = "mahavishnu_code"
     config.opensearch_verify_certs = True
@@ -941,9 +941,9 @@ class TestLlamaIndexEmbeddingError:
 
     def test_embedding_error_with_model(self):
         """Test embedding error with model information."""
-        original = ConnectionError("Ollama not running")
+        original = ConnectionError("llama-server not running")
         error = LlamaIndexEmbeddingError(
-            message="Failed to connect to Ollama",
+            message="Failed to connect to llama-server",
             model="nomic-embed-text",
             original_error=original,
         )
@@ -961,15 +961,15 @@ class TestWrapException:
         """Test wrapping embedding-related exception."""
         adapter = LlamaIndexAdapter(config=mock_config)
 
-        original = ConnectionError("Ollama connection failed")
+        original = ConnectionError("embedding service unreachable")
         wrapped = adapter._wrap_exception(
             original,
             "ingest",
-            {"repo_path": "/test/repo", "model": "nomic-embed-text"},
+            {"repo_path": "/test/repo", "model": "qwen3.5"},
         )
 
         assert isinstance(wrapped, LlamaIndexEmbeddingError)
-        assert wrapped.model == "nomic-embed-text"
+        assert wrapped.model == "qwen3.5"
 
     @pytest.mark.asyncio
     async def test_wrap_exception_ingestion_error(self, mock_config):

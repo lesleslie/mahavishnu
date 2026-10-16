@@ -208,9 +208,15 @@ class TestWorkerRegistry:
             assert isinstance(val, WorkerConfig)
             assert val.worker_type == key
 
-    def test_no_ollama_in_registry(self) -> None:
-        """Ollama intentionally omitted (uses HTTP API, not CLI)."""
-        assert "terminal-ollama" not in WORKER_REGISTRY
+    def test_no_legacy_workers_in_registry(self) -> None:
+        """Legacy worker types are gone.
+
+        The drop-legacy-local-workers plan retired several worker
+        surfaces. This test pins the registry to not include any of
+        them after the subsequent ollama drop.
+        """
+        for legacy in ("terminal-legacy-http", "terminal-openclaw", "terminal-application"):
+            assert legacy not in WORKER_REGISTRY
 
     def test_application_workers_have_mcp_server_or_command(self) -> None:
         for _key, cfg in WORKER_REGISTRY.items():

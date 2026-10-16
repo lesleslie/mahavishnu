@@ -98,7 +98,7 @@ def test_models_yaml_defaults_to_minimax() -> None:
     data = yaml.safe_load(models_path.read_text(encoding="utf-8"))
 
     assert data["default_provider"] == "minimax"
-    assert data["fallback_chain"] == ["minimax", "llama_server", "ollama"]
+    assert data["fallback_chain"] == ["minimax", "llama_server"]
     assert data["minimax"]["api_key"] == "${MINIMAX_API_KEY}"
     assert data["minimax"]["base_url"] == "https://api.minimax.io/v1"
     assert data["minimax"]["task_routing"]["CODE_GENERATION"] == "MiniMax-M3"
@@ -655,8 +655,8 @@ class TestMonitoringConfigDefaults:
 class TestLLMConfigDefaults:
     def test_defaults(self):
         cfg = LLMConfig()
-        assert cfg.model == "nomic-embed-text"
-        assert cfg.ollama_base_url == "http://localhost:11434"
+        assert cfg.model == "qwen3.5"
+        assert cfg.base_url == "http://localhost:8081"
 
 
 class TestMahavishnuSettingsReposPath:

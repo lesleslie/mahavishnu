@@ -732,8 +732,9 @@ def set_app_context(app: Any) -> None:
                     "provider": actual_provider,
                     "model": actual_model,
                 }
-                if actual_provider == "ollama":
-                    llm_kwargs["base_url"] = self._config.agno.llm.base_url
+                # base_url is no longer provider-specific; AgnoLLMConfig.base_url is the
+                # provider-aware endpoint, retained for back-compat with anthropic/openai/minimax.
+                llm_kwargs["base_url"] = self._config.agno.llm.base_url
                 llm_kwargs.update(kwargs)
                 return _AgnoModel(**llm_kwargs)
 

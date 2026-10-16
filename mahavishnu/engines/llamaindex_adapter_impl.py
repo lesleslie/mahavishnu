@@ -2,7 +2,7 @@
 
 This adapter provides:
 - Repository/document ingestion from ecosystem.yaml
-- Embedding with Ollama (local models)
+- Embedding with OpenAI-compatible llama-server (local models)
 - Vector store management
 - RAG query capabilities
 - Integration with Agno for agent knowledge bases
@@ -36,8 +36,8 @@ try:
     from llama_index.core.node_parser import SentenceSplitter
     from llama_index.core.settings import Settings
     from llama_index.core.storage.storage_context import StorageContext
-    from llama_index.embeddings.ollama import OllamaEmbedding
-    from llama_index.llms.ollama import Ollama
+    from llama_index.embeddings.openai import OpenAIEmbedding
+    from llama_index.llms.openai_like import OpenAILike
     from llama_index.vector_stores.opensearch import OpensearchVectorStore
 
     LLAMAINDEX_AVAILABLE = True
@@ -46,8 +46,8 @@ except ImportError:
     from unittest.mock import MagicMock
 
     Document = MagicMock(name="Document")
-    OllamaEmbedding = MagicMock(name="OllamaEmbedding")
-    Ollama = MagicMock(name="Ollama")
+    OpenAIEmbedding = MagicMock(name="OpenAIEmbedding")
+    OpenAILike = MagicMock(name="OpenAILike")
     OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")
     Settings = MagicMock(name="Settings")
     SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")
@@ -229,7 +229,7 @@ class LlamaIndexIndexNotFoundError(AdapterError):
 
 
 class LlamaIndexEmbeddingError(ExternalServiceError):
-    """Error during embedding generation with Ollama.
+    """Error during embedding generation with the llama-server backend.
 
     Attributes:
         model: The embedding model being used
@@ -259,7 +259,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
     This adapter handles:
     - Ingesting repositories and documents
-    - Creating embeddings with Ollama
+    - Creating embeddings via an OpenAI-compatible llama-server
     - Building vector stores for RAG
     - Querying knowledge bases
     - Integration with Agno agents
@@ -359,35 +359,41 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         if config is None:
             config = SimpleNamespace(
-                llm_model="nomic-embed-text",
-                ollama_base_url=api_url or "http://localhost:11434",
+                llm_model="qwen3.5",
+                llama_server_url=api_url or "http://localhost:8081",
                 opensearch_endpoint="http://localhost:9200",
                 opensearch_index_name="mahavishnu_code",
                 metrics_enabled=False,
             )
         elif api_url is not None:
-            config.ollama_base_url = api_url
+            config.llama_server_url = api_url
 
         self.config = config
-        self.api_url = getattr(self.config, "ollama_base_url", api_url or "http://localhost:11434")
+        self.api_url = getattr(self.config, "llama_server_url", api_url or "http://localhost:8081")
         self._client = None
         self.indices: dict[str, _VectorStoreIndexT] = {}
         self.documents: dict[str, list[_DocumentT]] = {}
 
-        # Configure Ollama embedding model
-        ollama_model = getattr(config, "llm_model", "nomic-embed-text")
-        ollama_base_url = getattr(config, "ollama_base_url", "http://localhost:11434")
+        # Configure llama-server embedding model
+        llama_server_model = getattr(config, "llm_model", "qwen3.5")
+        llama_server_url = getattr(config, "llama_server_url", "http://localhost:8081")
 
         try:
             # Configure LlamaIndex settings
-            Settings.embed_model = OllamaEmbedding(
-                model_name=ollama_model, base_url=ollama_base_url
+            Settings.embed_model = OpenAIEmbedding(
+                model_name=llama_server_model, api_base=llama_server_url, api_key="no-auth"
             )
-            Settings.llm = Ollama(model=ollama_model, base_url=ollama_base_url)
-        except Exception as e:  # Ollama client init may raise any error; wrap into domain-specific LlamaIndexEmbeddingError
+            Settings.llm = OpenAILike(
+                model=llama_server_model,
+                api_base=llama_server_url,
+                api_key="no-auth",
+                is_chat_model=True,
+                context_window=32768,
+            )
+        except Exception as e:  # llama-server client init may raise any error; wrap into domain-specific LlamaIndexEmbeddingError
             raise LlamaIndexEmbeddingError(
-                f"Failed to initialize Ollama embedding model: {e}",
-                model=ollama_model,
+                f"Failed to initialize llama-server embedding model: {e}",
+                model=llama_server_model,
                 original_error=e,
             ) from e
 
@@ -554,7 +560,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         error_message = str(error)
 
         # Check for specific error types
-        if "embedding" in error_message.lower() or "ollama" in error_message.lower():
+        if "embedding" in error_message.lower():
             return LlamaIndexEmbeddingError(
                 message=error_message,
                 model=context.get("model"),
@@ -1226,13 +1232,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             and adapter-specific health details including telemetry status.
         """
         try:
-            # Check Ollama availability
-            ollama_base_url = getattr(self.config, "ollama_base_url", "http://localhost:11434")
-            embedding_model = getattr(self.config, "llm_model", "nomic-embed-text")
+            # Check llama-server availability
+            llama_server_url = getattr(self.config, "llama_server_url", "http://localhost:8081")
+            embedding_model = getattr(self.config, "llm_model", "qwen3.5")
 
             health_details = {
                 "llamaindex_version": "0.14.x",
-                "ollama_base_url": ollama_base_url,
+                "llama_server_url": llama_server_url,
                 "api_url": self.api_url,
                 "embedding_model": embedding_model,
                 "implementation": "stub",

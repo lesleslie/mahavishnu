@@ -119,7 +119,7 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     MINIMAX = "minimax"
-    OLLAMA = "ollama"
+    LLAMA_SERVER = "llama_server"
 
 
 class MemoryBackend(StrEnum):
@@ -141,15 +141,15 @@ class AgnoLLMConfig(BaseModel):
     Example YAML:
         agno:
           llm:
-            provider: ollama
+            provider: llama_server
             model_id: qwen2.5:7b
-            base_url: http://localhost:11434
+            base_url: http://localhost:8081
             temperature: 0.7
     """
 
     provider: LLMProvider = Field(
-        default=LLMProvider.OLLAMA,
-        description="LLM provider (anthropic, openai, minimax, ollama)",
+        default=LLMProvider.LLAMA_SERVER,
+        description="LLM provider (anthropic, openai, minimax, llama_server)",
     )
     model_id: str = Field(
         default="qwen2.5:7b",
@@ -160,8 +160,8 @@ class AgnoLLMConfig(BaseModel):
         description="Environment variable name for API key",
     )
     base_url: str | None = Field(
-        default="http://localhost:11434",
-        description="Base URL for Ollama or custom endpoints",
+        default="http://localhost:8081",
+        description="Base URL for llama_server or custom OpenAI-compatible endpoints",
     )
     temperature: float = Field(
         default=0.7,
@@ -191,7 +191,7 @@ class AgnoLLMConfig(BaseModel):
         makes the field self-explanatory and prevents future callers
         from re-introducing the same trap.
 
-        Ollama is excluded because it runs locally with no API key.
+        llama_server is excluded because it runs locally with no API key.
         """
         if self.api_key_env is not None:
             return self
@@ -199,7 +199,7 @@ class AgnoLLMConfig(BaseModel):
             LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
             LLMProvider.OPENAI: "OPENAI_API_KEY",
             LLMProvider.MINIMAX: "MINIMAX_API_KEY",
-            LLMProvider.OLLAMA: None,  # local, no key required
+            LLMProvider.LLAMA_SERVER: None,  # local, no key required
         }.get(self.provider)
         if default_env is not None:
             object.__setattr__(self, "api_key_env", default_env)
@@ -336,7 +336,7 @@ class AgnoAdapterConfig(BaseModel):
         agno:
           enabled: true
           llm:
-            provider: ollama
+            provider: llama_server
             model_id: qwen2.5:7b
           memory:
             enabled: true
@@ -1851,12 +1851,12 @@ class LLMConfig(BaseModel):
     """LLM configuration for LlamaIndex and Agno."""
 
     model: str = Field(
-        default="nomic-embed-text",
-        description="LLM model name for Ollama (e.g., nomic-embed-text, llama2)",
+        default="qwen3.5",
+        description="LLM model name (e.g., qwen3.5, llama2)",
     )
-    ollama_base_url: str = Field(
-        default="http://localhost:11434",
-        description="Ollama API endpoint for local LLM access",
+    base_url: str = Field(
+        default="http://localhost:8081",
+        description="Base URL for llama-server (llama.cpp) or custom OpenAI-compatible endpoints",
     )
 
     model_config = ConfigDict(extra="forbid")
@@ -2812,7 +2812,7 @@ class MahavishnuSettings(BaseSettings):
         agno:
             enabled: true
             llm:
-                provider: ollama
+                provider: llama_server
                 model_id: qwen2.5:7b
 
     Example Environment Variables:

@@ -13,7 +13,6 @@ import pytest
 from mahavishnu.core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
-    DEFAULT_OLLAMA_ROUTING,
     RateLimitConfig,
     RateLimiter,
     TaskCategory,
@@ -195,11 +194,11 @@ class TestGetModelForTask:
         """get_model_for_task uses routing table for known category."""
         model, cat = get_model_for_task(
             "write a function",
-            DEFAULT_OLLAMA_ROUTING,
+            DEFAULT_LLAMA_SERVER_ROUTING,
             "default-model",
         )
         assert cat == TaskCategory.CODE_GENERATION
-        assert model == "qwen2.5-coder:7b"
+        assert model == "qwen3.5"
 
     def test_fallback_to_default_for_unknown(self):
         """Unknown categories fall back to default model."""

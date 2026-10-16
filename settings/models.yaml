@@ -1,13 +1,11 @@
 # Mahavishnu - LLM Model Configuration
-# Updated: 2026-05-16 (three-tier provider chain: minimax → llama_server → ollama)
+# Updated: 2026-10-16 (two-tier provider chain: minimax → llama_server)
 #
 # Provider chain:
 #   1. minimax  - MiniMax M3 (primary cloud, API key required)
 #   2. llama_server - llama.cpp server with qwen3.5 (local, no auth)
-#   3. ollama   - Ollama with qwen2.5-coder (local fallback, no auth)
 #
 # Related files:
-#   - mahavishnu/workers/ollama.py        - OllamaWorker implementation
 #   - mahavishnu/engines/agno_adapter_impl.py - Agno LLMProviderFactory
 #   - config/bifrost/config.template.json - Bifrost gateway config
 
@@ -73,29 +71,6 @@ llama_server:
     ML_INFERENCE: "qwen3.5"
     AGENT_LOOP: "qwen3.5"
 
-# Ollama - Tertiary local fallback with qwen2.5-coder
-ollama:
-  enabled: true
-  require_auth: false
-  base_url: "http://localhost:11434"
-  priority: 3
-  timeout: 120
-  max_retries: 1
-  task_routing:
-    CODE_GENERATION: "qwen2.5-coder:7b"
-    CODE_REVIEW: "qwen2.5-coder:7b"
-    DEBUGGING: "qwen2.5-coder:7b"
-    REFACTORING: "qwen2.5-coder:7b"
-    DOCUMENTATION: "qwen2.5-coder:7b"
-    TESTING: "qwen2.5-coder:7b"
-    REASONING: "qwen2.5-coder:7b"
-    CREATIVE: "qwen2.5-coder:7b"
-    ANALYSIS: "qwen2.5-coder:7b"
-    GENERAL: "qwen2.5-coder:7b"
-    QUICK: "qwen2.5-coder:7b"
-    EMBEDDING: "nomic-embed-text"
-    ML_INFERENCE: "qwen2.5-coder:7b"
-
 # =============================================================================
 # OPTIONAL PROVIDERS
 # =============================================================================
@@ -111,4 +86,4 @@ bifrost:
 # =============================================================================
 
 default_provider: "minimax"
-fallback_chain: ["minimax", "llama_server", "ollama"]
+fallback_chain: ["minimax", "llama_server"]

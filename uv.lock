@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -7,7 +7,10 @@ resolution-markers = [
 ]
 
 [manifest]
-overrides = [{ name = "websockets", specifier = ">=17.1,<18.0" }]
+overrides = [
+    { name = "openai", specifier = ">=3.26.0" },
+    { name = "websockets", specifier = ">=17.1,<18.0" },
+]
 
 [[package]]
 name = "agent-detector"
@@ -3305,17 +3308,16 @@ wheels = [
 ]
 
 [[package]]
-name = "llama-index-embeddings-ollama"
-version = "0.8.6"
+name = "llama-index-embeddings-openai"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-core" },
-    { name = "ollama" },
-    { name = "pytest-asyncio" },
+    { name = "openai" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/60/7276b54f9062b1c53667b312d7a4823f4ff9f253d09d5b14471c863e3975/llama_index_embeddings_ollama-0.8.6.tar.gz", hash = "sha256:b33c206872cb33dbddbbade53d278a6d77125143006ddb372bf3ed63c304b975", size = 6574, upload-time = "2026-01-07T21:24:09.551Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/a1/d238dfa453ba8ebc4f6261d6384b663f50b8dba6f4b22d8be800b305863d/llama_index_embeddings_openai-0.5.2.tar.gz", hash = "sha256:091bd0c3e9182748e8827de7d79713a219d5f5e0dc97d1bb7b271cf524520e4b", size = 7630, upload-time = "2026-03-03T11:27:38.127Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/53/9ab65a3d0db29f49967a292b7c33cf512e493e68cb63ef337b1fffadf489/llama_index_embeddings_ollama-0.8.6-py3-none-any.whl", hash = "sha256:cccf124891abaee5834159acb1cfbdc9a65e0aea854af2d1bbedea6820959992", size = 6256, upload-time = "2026-01-07T21:24:10.788Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/5e/da156f9c77443d22287eeaea341fe35fdcc25e59a9250e4cb10d4d5a066a/llama_index_embeddings_openai-0.5.2-py3-none-any.whl", hash = "sha256:37e7967de05b05f16c9b171091110bb1c6e5a0720198ea306d57cd3920cb81b7", size = 7667, upload-time = "2026-03-03T11:27:37.394Z" },
 ]
 
 [[package]]
@@ -3332,16 +3334,29 @@ wheels = [
 ]
 
 [[package]]
-name = "llama-index-llms-ollama"
-version = "0.8.0"
+name = "llama-index-llms-openai"
+version = "0.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "llama-index-core" },
-    { name = "ollama" },
+    { name = "openai" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/bd/4aa2352a314298140790092a8b0e3fd8a65083753cd0f2473b00ae20785a/llama_index_llms_ollama-0.8.0.tar.gz", hash = "sha256:df6d208ed3938ece2bb0e7da42f92ea90c45864ae1779576991e6c9556e1d33b", size = 8572, upload-time = "2025-10-04T05:30:08.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/f3/32798fca5abd745bdce5bc43246eb3ce8346c2a2f905c90ad19ed51b49e9/llama_index_llms_openai-0.8.3.tar.gz", hash = "sha256:a27c174fb8670209581513cb592291508043f10b5afea5198454501921808ba6", size = 27976, upload-time = "2026-10-12T19:29:01.214Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/a4/1de6e322c7f7fdae8166cba6dcc8fc509719ce8d7001f2259d6193be7fa5/llama_index_llms_ollama-0.8.0-py3-none-any.whl", hash = "sha256:0f3a2326acb86ccbfbff7319ab25fc609dfec44d5b0491451c6c2ee9d23bb50e", size = 8262, upload-time = "2025-10-04T05:30:07.121Z" },
+    { url = "https://files.pythonhosted.org/packages/07/91/149b84210eb39e205bfbe01d85a3e76495fe0c536f4aa9167eb6d80b61a3/llama_index_llms_openai-0.8.3-py3-none-any.whl", hash = "sha256:b86deb1a9d296ca8a66cd2fa1e039e8752a529232cebaf0c7c1d0626c039a29a", size = 28995, upload-time = "2026-10-12T19:29:00.312Z" },
+]
+
+[[package]]
+name = "llama-index-llms-openai-like"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "llama-index-core" },
+    { name = "llama-index-llms-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ce/3d/d76273f6a63f3c316ac22c2993240ec95af001b0deb8a3972bc1c92330f4/llama_index_llms_openai_like-0.8.1.tar.gz", hash = "sha256:1b6f973bba97cb4ce6c71feb54c2fa6834a071ec1c4b26636dc603b818d07b0b", size = 5382, upload-time = "2026-10-01T18:03:07.079Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/fc/ca69dde44a1f111604200b4dcb60f8be3899bbeef0baa9002d4562207bd7/llama_index_llms_openai_like-0.8.1-py3-none-any.whl", hash = "sha256:9fb26998e492d792d7594618258d5e05de235ccff25d8dd2960156f0f3f5007e", size = 6602, upload-time = "2026-10-01T18:03:06.241Z" },
 ]
 
 [[package]]
@@ -3501,8 +3516,8 @@ dependencies = [
     { name = "ipython" },
     { name = "llama-cpp-python" },
     { name = "llama-index-core" },
-    { name = "llama-index-embeddings-ollama" },
-    { name = "llama-index-llms-ollama" },
+    { name = "llama-index-embeddings-openai" },
+    { name = "llama-index-llms-openai-like" },
     { name = "llama-index-vector-stores-opensearch" },
     { name = "mcp-common" },
     { name = "msgspec" },
@@ -3599,9 +3614,6 @@ gpu = [
 hatchet = [
     { name = "hatchet-sdk" },
 ]
-llm-providers = [
-    { name = "openai" },
-]
 shepherd = [
     { name = "shepherd-ai" },
 ]
@@ -3634,8 +3646,8 @@ requires-dist = [
     { name = "ipython", specifier = ">=9.17.1" },
     { name = "llama-cpp-python", specifier = ">=0.3.36" },
     { name = "llama-index-core", specifier = ">=0.14.25,<0.15.0" },
-    { name = "llama-index-embeddings-ollama", specifier = ">=0.8.6,<0.9.0" },
-    { name = "llama-index-llms-ollama", specifier = ">=0.8.0,<0.9.0" },
+    { name = "llama-index-embeddings-openai", specifier = ">=0.5.0,<0.6.0" },
+    { name = "llama-index-llms-openai-like", specifier = ">=0.8.0,<0.9.0" },
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.30.2" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
@@ -3720,7 +3732,6 @@ ecosystem = [
 ]
 gpu = [{ name = "runpod-flash", specifier = ">=1.20.1" }]
 hatchet = [{ name = "hatchet-sdk", specifier = ">=1.42.1,<2" }]
-llm-providers = [{ name = "openai", specifier = ">=3.28.0" }]
 shepherd = [{ name = "shepherd-ai", specifier = ">=0.3.1" }]
 storage-pg = [{ name = "pgvector", specifier = ">=0.5.1" }]
 treesitter = [
@@ -4360,19 +4371,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7a/d8/a1bcc8ba112a627f8ffbdc212a78ce18d3ac07e91a5ca65d27918eee25a1/oauthlib-4.0.0.tar.gz", hash = "sha256:efb274799819440f95b4ab3b818869f1ce9ae26c5beacba0201d1a1b76b54f86", size = 187232, upload-time = "2026-09-28T06:01:18.77Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/f4/78229a1066068ca14fc60fb26cf7381cabe4382261392b90e5f9552722d4/oauthlib-4.0.0-py3-none-any.whl", hash = "sha256:624c28c13a0a59cabf9747dfa52af63be3e512a7f2714df16e91b5b3a145e6cd", size = 159715, upload-time = "2026-09-28T06:01:17.008Z" },
-]
-
-[[package]]
-name = "ollama"
-version = "0.6.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "httpx" },
-    { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/97/eeafe65594e4f4b25e443e068ef7d83aa3105b023e12e1c408c38669fc07/ollama-0.6.3.tar.gz", hash = "sha256:41fc49a8095c4a75939c4c1f8582e4d0671692fb6eac2a5a7ede8c9872b67096", size = 56868, upload-time = "2026-09-29T01:26:51.906Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/64/87505d9e006461233c21c8e66dc1ecee49c996090584b216abd0dd4a8322/ollama-0.6.3-py3-none-any.whl", hash = "sha256:6a20bc42c1a5f889295d7ec490d35e5132fc31f339561530f43a8abd4dbfe508", size = 16603, upload-time = "2026-09-29T01:26:50.451Z" },
 ]
 
 [[package]]

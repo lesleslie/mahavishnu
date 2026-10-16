@@ -435,9 +435,9 @@ class MahavishnuError(Exception):
         ],
         ErrorCode.EMBEDDING_SERVICE_ERROR: [
             "Embedding service is unavailable",
-            "Try using local embeddings (Ollama/fastembed)",
+            "Try using local embeddings (llama_server/fastembed)",
             "Check OpenAI API status if using OpenAI",
-            "Run 'ollama serve' if using Ollama",
+            "Start your llama.cpp server if using llama_server",
         ],
         ErrorCode.NLP_PARSER_ERROR: [
             "Could not parse natural language input",

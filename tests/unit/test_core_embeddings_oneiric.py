@@ -1,7 +1,7 @@
 """Unit tests for mahavishnu/core/embeddings_oneiric.py.
 
 The underlying EmbeddingService is mocked so these tests don't require
-fastembed / Ollama / OpenAI to be installed.
+fastembed / OpenAI to be installed.
 """
 
 from __future__ import annotations
@@ -75,7 +75,6 @@ class TestEmbeddingConfigDefaults:
             EmbeddingProvider.FASTEMBED,
         )
         assert cfg.model == "BAAI/bge-small-en-v1.5"
-        assert cfg.ollama_base_url == "http://localhost:11434"
         assert cfg.openai_api_key is None
         assert cfg.openai_model == "text-embedding-3-small"
         assert cfg.batch_size == 32

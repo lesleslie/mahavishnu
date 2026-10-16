@@ -36,7 +36,7 @@ def mock_config():
     config = MagicMock()
     agno_config = AgnoAdapterConfig(
         llm=AgnoLLMConfig(
-            provider=LLMProvider.OLLAMA,
+            provider=LLMProvider.LLAMA_SERVER,
             model_id="qwen2.5:7b",
             base_url="http://localhost:11434",
         ),
@@ -104,7 +104,7 @@ async def test_agno_adapter_initialization(mock_config):
 
     assert adapter.config is not None
     assert adapter.agno_config is not None
-    assert adapter.agno_config.llm.provider == LLMProvider.OLLAMA
+    assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
     assert adapter.agno_config.llm.model_id == "qwen2.5:7b"
 
 
@@ -126,8 +126,8 @@ async def test_agno_adapter_initialization_with_defaults():
 
 
 @pytest.mark.asyncio
-async def test_get_llm_ollama(mock_config):
-    """Test Ollama LLM configuration."""
+async def test_get_llm_llama_server(mock_config):
+    """Test llama_server (llama.cpp) LLM configuration."""
     adapter = AgnoAdapter(config=mock_config)
 
     factory = LLMProviderFactory(adapter.agno_config.llm)
@@ -170,7 +170,7 @@ async def test_get_llm_openai_no_key(mock_config_openai, monkeypatch):
 async def test_get_llm_unsupported_provider():
     """Test LLM configuration with unsupported provider."""
     # Create a config with an unsupported provider via direct manipulation
-    config = AgnoLLMConfig(provider=LLMProvider.OLLAMA)
+    config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
     # Manually set provider to an invalid value after construction
     config.provider = "unsupported"  # type: ignore[assignment]
 

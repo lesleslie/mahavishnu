@@ -13,7 +13,7 @@ Architecture:
     │  - Timeout: 5s                                             │
     ├─────────────────────────────────────────────────────────────┤
     │  Tier 2: Local EmbeddingService (fallback)                 │
-    │  - FastEmbed/Ollama/OpenAI                                 │
+    │  - FastEmbed/OpenAI                                         │
     │  - Dimension validated against standard                    │
     ├─────────────────────────────────────────────────────────────┤
     │  Tier 3: EmbeddingCache (LRU lookup)                       │

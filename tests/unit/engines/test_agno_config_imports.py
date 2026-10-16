@@ -9,7 +9,7 @@ Python sees duplicate class definitions as distinct objects, so
 `isinstance(config.agno, AgnoAdapterConfig)` always failed when the
 engine's local AgnoAdapterConfig was on the right-hand side. That caused
 `AgnoAdapter._get_agno_config` to silently fall through to the engine's
-default `AgnoAdapterConfig()` (provider=ollama) instead of the user's
+default `AgnoAdapterConfig()` (provider=llama_server) instead of the user's
 configured values (provider=minimax).
 
 See docs/followups/2026-06-29-agno-adapter-config-field-path.md for full context.
@@ -105,7 +105,7 @@ def test_agno_adapter_sees_user_configured_provider() -> None:
     )
     # local.yaml at /Users/les/Projects/mahavishnu/settings/local.yaml sets
     # `agno.llm.provider: minimax`. With the fix, this propagates; before the
-    # fix, this would be LLMProvider.OLLAMA.
+    # fix, this would be LLMProvider.LLAMA_SERVER.
     assert adapter.agno_config.llm.provider.value == "minimax", (
         f"Expected provider=minimax from local.yaml, got "
         f"{adapter.agno_config.llm.provider.value}. The duplicate-class bug "
