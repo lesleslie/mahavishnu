@@ -5,8 +5,7 @@ kind: plan
 date: 2026-10-16
 last_reviewed: 2026-10-16
 superseded_by: null
-blocks_on:
-  - docs/plans/2026-10-15-bifrost-gateway-wiring.md
+blocks_on: []
 related:
   - docs/plans/2026-05-10-minimax27-provider-migration.md
   - docs/plans/2026-10-15-bifrost-gateway-wiring.md
@@ -65,7 +64,7 @@ When this plan ships:
   (verified live) and a real LLM completion is returned.
 - The Agno engine (`mahavishnu demo agno`) routes to llama-server for
   local inference without going through Agno's Ollama library class.
-- All 5 `LLMProvider.OLLAMA` / `ProviderID.OLLAMA` / `EmbeddingProvider.OLLAMA`
+- All `LLMProvider.OLLAMA` / `ProviderID.OLLAMA` / `EmbeddingProvider.OLLAMA`
   enum values are deleted. All `ollama_base_url` config keys are
   deleted. All `OLLAMA_BASE_URL` / `SESSION_BUDDY_ENABLE_OLLAMA` env
   vars are no longer read.
@@ -79,7 +78,7 @@ When this plan ships:
 3. **Simplify the FallbackChain** in all three call sites
    (mahavishnu CloudWorker, session-buddy LLMManager, crackerjack
    FallbackChainCodeFixer) to `["minimax", "llama_server"]`.
-4. **Wire llama-server into a live demo** (PR 3) so the user has a
+4. **Wire llama-server into a live demo** (Phase 2) so the user has a
    one-command path to verify the cleanup actually works.
 
 ## 3. Non-Goals
@@ -88,17 +87,18 @@ When this plan ships:
   prefers it.
 - Migrate any non-Ollama local LLM (e.g. a future vLLM) — that is a
   separate decision.
-- Operator-facing install docs for llama-server. PR 3's demo only
+- Operator-facing install docs for llama-server. Phase 2's demo only
   assumes the operator has `llama-server` on `$PATH`; how they
   downloaded a GGUF is out of scope (per user direction, no docker).
-- The `mahavishnu demo llamaindex` CLI wrapper. PR 3 implements a
-  live demo via direct adapter invocation (mirroring how the Agno
-  fix in commit `ba832db6` wired the Agno demo). The full CLI wiring
-  is a separate cleanup.
-- Migration of the Pydantic-AI adapter (`mahavishnu/adapters/ai/pydantic_ai_adapter.py`).
-  Pydantic-AI's `ollama:` prefix is library-specific; the adapter is
-  secondary and the Ollama mention is a prefix-mapping dict entry
-  (no runtime test exercises it). Deferred to a follow-up plan.
+- Docker / docker-compose changes (per user direction).
+- Operator runbook / migration guide for users currently running
+  Ollama. Operators switch to llama-server (one binary, one config);
+  the user direction is "no backwards compat" so no migration guide.
+- The full `mahavishnu demo llamaindex` CLI wrapper in this plan —
+  Phase 2 implements a live demo via direct adapter invocation
+  (mirroring how the Agno fix in commit `ba832db6` wired the Agno
+  demo). The full CLI Typer wiring is the Phase 2 deliverable
+  itself, not a separate follow-up.
 
 ## 4. Current Findings
 
@@ -157,8 +157,8 @@ All three register Ollama with `base_url=http://localhost:11434/v1`
   options={"num_predict": ...})`. The `options.num_predict` and
   `host=` parameters are Ollama-specific. **Fix**: replace with
   `from agno.models.openai import OpenAIChat; OpenAIChat(id=...,
-  base_url=llama_server_url, ...)` (Agno already uses `OpenAIChat`
-  for the MiniMax path at L240-262 in the same file).
+  base_url=llama_server_url, api_key="no-auth")` (Agno already uses
+  `OpenAIChat` for the MiniMax path at L240-262 in the same file).
 - `mahavishnu/engines/llamaindex_adapter_impl.py:39-40, 383-386` imports
   `OllamaEmbedding` (which posts `{prompt: text}` to Ollama's
   `/api/embeddings`) and `Ollama` (which posts to Ollama's
@@ -175,6 +175,13 @@ uses Ollama-native payload shape (`{prompt: text}` per-text POST
 to `/api/embeddings`). The llama.cpp branch in the same file
 already uses the OpenAI shape. **Fix**: delete the Ollama branch;
 the llama.cpp branch covers it.
+
+### Streaming-usage accounting gap (pre-existing, not a regression)
+
+llama-server does not emit usage in streaming responses. This is a
+known OpenAI-compat gap shared with Ollama — neither is a
+regression introduced by this plan. Non-streaming usage accounting
+works. Documented as a known limitation; no fix in this plan.
 
 ## 4.5 Requirements
 
@@ -203,7 +210,7 @@ requirements:
   - id: REQ-OLLAMA-011
     title: "mahavishnu scripts/generate_ollama_embeddings.py deleted (offline script, no callers)"
   - id: REQ-OLLAMA-012
-    title: "mahavishnu/settings/*.yaml ollama:* and llm.ollama_base_url entries removed"
+    title: "mahavishnu settings/*.yaml ollama:* and llm.ollama_base_url entries removed"
   - id: REQ-OLLAMA-013
     title: "session_buddy settings.py ollama_base_url/ollama_default_model fields deleted; feature_flags.enable_ollama flag deleted"
   - id: REQ-OLLAMA-014
@@ -218,177 +225,359 @@ requirements:
     title: "Live demo: mahavishnu demo llamaindex runs end-to-end against llama-server and returns a real completion"
   - id: REQ-OLLAMA-019
     title: "Live demo: mahavishnu demo agno runs against llama-server (via OpenAIChat factory branch) and returns a real completion"
+  - id: REQ-OLLAMA-020
+    title: "pyproject.toml adds llama-index-embeddings-openai and llama-index-llms-openai-like as dependencies or extras"
+  - id: REQ-OLLAMA-021
+    title: "LLMProvider.LLAMA_SERVER enum value added to mahavishnu.core.config.LLMProvider"
+  - id: REQ-OLLAMA-022
+    title: "_PROVIDER_FACTORY_METHODS rekeyed from LLMProvider.OLLAMA to LLMProvider.LLAMA_SERVER; AgnoLLMConfig.provider default updated consistently"
+  - id: REQ-OLLAMA-023
+    title: "Pydantic-AI adapter ollama: provider_prefix entry removed (5-line change, folded into Phase 1 per wire-up-contract)"
+  - id: REQ-OLLAMA-024
+    title: "Core config.py parents[2] loader anchor (from commit 8580fe76) preserved untouched"
 ```
 
 ## 5. Implementation Phases
 
-The three PRs land **in order**, with mcp-common first (it's a
-dependency for the others), then the library-class swaps, then
-the live demo. Each PR is a separate merge to local `main` per
-`bodai-pre-1.0-merge-policy.md` (no PRs, direct merge).
+The plan lands in **2 phases**, each with **per-repo merge cycles**,
+in dependency order. Per `bodai-pre-1.0-merge-policy.md` and
+`MAHAVISHNU_AUTO_MERGE=1` default, each per-repo merge is a direct
+squash-merge to local `main` via the SessionEnd hook. There are no
+GitHub PRs.
 
-### Phase 1: Drop Ollama from the OpenAI-compat surface (B-list)
+**Why 2 phases, not 3**: a 3-phase plan (cleanup → swap library classes
+→ live demo) leaves `mahavishnu` broken between Phase 1 and Phase 2
+because `LLMProvider.OLLAMA` is used in the
+`_PROVIDER_FACTORY_METHODS` dict literal at
+`mahavishnu/engines/agno_adapter_impl.py:127`. Deleting the enum
+value in Phase 1 causes `AttributeError` at class-definition time
+before Phase 2 can land. Collapsing Phase 1 + Phase 2 into a single
+"Drop Ollama in source" phase eliminates the broken-tree window.
 
-**Goal**: Remove every reference to Ollama that lives on the
-OpenAI-compat surface (provider table, enum, schema, settings,
-feature flags, CLI selector, tests). After this PR, the production
-runtime no longer touches Ollama in any code path that uses
-`mcp_common.llm.OpenAICompatibleProvider` or its callers.
+The other 5 repos split cleanly (Phase 1 is config/schema cleanup
+with no library-class swap), so for those repos the per-repo
+merge-cycle is one. For mahavishnu, it's also one — but the merge
+combines the B-list cleanup with the A-list library-class swap.
 
-**Tasks** (in repo order — mcp-common first because the others
-import it):
+**Per-repo merge order** (driven by dependency on mcp-common's
+`fallback_chain` default change):
 
-1. **mcp-common**:
-   - `mcp_common/llm/config.py`: `fallback_chain` default →
-     `["minimax", "llama_server"]` (REQ-OLLAMA-004).
-   - `mcp_common/tests/test_llm.py` + `mcp_common/tests/unit/test_llm_additional.py`:
-     drop all `ollama` test cases; keep the `llama_server` ones.
-2. **mahavishnu**:
-   - `mahavishnu/workers/cloud_worker.py`: providers dict (no `ollama`),
-     `fallback_chain` (REQ-OLLAMA-001), `_has_local_fallback` probe
-     (no `shutil.which("ollama")`).
-   - `mahavishnu/core/config.py`: `LLMProvider.OLLAMA` enum entry,
-     `AgnoLLMConfig.provider` default, `LLMConfig.ollama_base_url`
-     (REQ-OLLAMA-010).
-   - `mahavishnu/core/embeddings_oneiric.py`:
-     `EmbeddingConfig.ollama_base_url` (REQ-OLLAMA-008 client side).
-   - `mahavishnu/core/bootstrap.py:735`: drop the
-     `if actual_provider == "ollama"` branch.
-   - `mahavishnu/core/errors.py:438-440`: update recovery hint
-     strings.
-   - `mahavishnu/cli/demo_cli.py:434, 461, 477`: drop
-     `LLMProvider.OLLAMA: None` key.
-   - `mahavishnu/cli/config_validator.py:147`: drop
-     `_ensure_http_url(settings.llm.ollama_base_url, ...)` line.
-   - `mahavishnu/core/production_readiness.py:87`: drop
-     `"ollama_base_url"` from validated keys.
-   - `mahavishnu/core/routing.py:54`: verify the `\bollama\b` regex
-     isn't depended on by any test (likely a misspelling of
-     `\bolama\b`); if not, drop the line.
-   - `mahavishnu/settings/models.yaml:76-97`: drop the `ollama:`
-     provider block.
-   - `mahavishnu/settings/embeddings.yaml:31-53`: drop the
-     ollama-specific config; keep `provider: fastembed` default.
-   - `mahavishnu/settings/mahavishnu.yaml:45`: drop
-     `llm.ollama_base_url`.
-   - `mahavishnu/settings/local.yaml.example:30, 33`,
-     `mahavishnu.yaml.example:18, 19`: drop ollama lines.
-   - Tests: drop `ollama` test cases from
-     `tests/unit/test_adapters/test_llamaindex_adapter.py` (skip
-     Agno-specific ones; that's Phase 2),
-     `tests/unit/test_core_embeddings_oneiric.py`,
-     `tests/unit/test_embeddings.py`,
-     `tests/unit/test_core_models.py`,
-     `tests/property/test_config_properties.py`,
-     `tests/unit/test_config.py`,
-     `tests/unit/test_mahavishnu_config.py`,
-     `tests/unit/test_config_validator_cli.py`,
-     `tests/unit/test_bootstrap.py`,
-     `tests/unit/test_content_ingester.py`,
-     `tests/unit/test_errors.py`,
-     `tests/unit/test_production_readiness.py`,
-     `tests/unit/test_task_router.py`,
-     `tests/unit/test_task_router_and_auth.py`,
-     `tests/unit/test_worker_registry.py`,
-     `tests/unit/test_workers_registry_coverage.py`,
-     `tests/unit/workers/test_capabilities_observability.py`,
-     `tests/unit/pools/test_gpu_handler_pool.py`,
-     `tests/unit/test_adapters/README.md`,
-     `tests/unit/core/test_context_coverage.py`.
-3. **session-buddy**:
-   - `session_buddy/llm/security.py:56-58, 132`: drop `"ollama"`
-     from the local-service set; the remaining set is
-     `{"llama_server"}`.
-   - `session_buddy/llm_providers.py:501-577`: `LLMManager._build_chain`
-     no longer registers `ollama`; the chain becomes
-     `["minimax", "llama_server"]` (REQ-OLLAMA-002).
-   - `session_buddy/llm/__init__.py:21, 36` and
-     `session_buddy/llm/providers/__init__.py:11, 17`:
-     delete the `OllamaProvider` re-exports (REQ-OLLAMA-005).
-   - `session_buddy/settings.py:113, 116, 121-127`:
-     drop `ollama_base_url`, `ollama_default_model`, drop
-     `"ollama"` from `fallback_providers` default.
-   - `session_buddy/config/feature_flags.py:30, 101, 122`:
-     delete `enable_ollama` flag (REQ-OLLAMA-013).
-   - `session_buddy/reflection/embeddings.py:68-97`:
-     delete `_try_ollama`; `_try_http_embedding_providers` becomes
-     llama-server-only (REQ-OLLAMA-014).
-   - `session_buddy/reflection/database.py:29`,
-     `session_buddy/adapters/reflection_adapter_oneiric.py:38, 1112, 1121`,
-     `session_buddy/mcp/oneiric_runtime.py:54-101`,
-     `session_buddy/utils/lazy_imports.py:118, 256`:
-     comment updates.
-   - `session_buddy/settings/session-buddy.yaml:11-25, 181`:
-     drop ollama entries.
-   - `session_buddy/tests/unit/test_llm_providers_ollama.py`:
-     delete the file.
-   - Drop ollama test cases from:
-     `tests/unit/test_llm_providers.py`,
-     `tests/unit/llm/test_security.py`,
-     `tests/unit/test_feature_flags.py`,
-     `tests/unit/test_settings.py`,
-     `tests/unit/test_settings_core.py`,
-     `tests/unit/test_lazy_imports.py`,
-     `tests/unit/test_llm_helper_functions.py`,
-     `tests/unit/test_llm_security.py`,
-     `tests/unit/test_pools_hybrid_d.py`,
-     `tests/unit/test_health_checks.py`,
-     `tests/unit/test_health_checks_core.py`,
-     `tests/unit/mcp/tools/infrastructure/test_feature_flags_tools.py`.
-4. **crackerjack**:
-   - `crackerjack/adapters/ai/unified.py:19-72`:
-     `_build_llm_settings` no longer registers `ollama`
-     (REQ-OLLAMA-003).
-   - `crackerjack/adapters/ai/registry.py:9-12, 29-57, 78-82`:
-     delete `ProviderID.OLLAMA` enum + `PROVIDER_INFO["ollama"]`
-     entry (REQ-OLLAMA-015). `get_code_fixer` returns
-     `FallbackChainCodeFixer` with the 2-provider chain.
-   - `crackerjack/cli/handlers/provider_selection.py:48-51, 190-196`:
-     remove the Ollama option from the interactive selector
-     (REQ-OLLAMA-015).
-   - `crackerjack/cli/options.py:674`: update help text.
-   - `crackerjack/config/settings.py:98-115`:
-     `ai_providers` Literal collapses to
-     `["minimax", "llama_server"]`; `ai_provider` default
-     stays `"minimax"`; drop `ollama_base_url`, `ollama_model`,
-     `ollama_timeout` (REQ-OLLAMA-016).
-   - `crackerjack/models/semantic_models.py:136-146`:
-     drop the `ollama` Literal and `ollama_base_url` field
-     (verify legacy schema is unused first).
-   - `crackerjack/fixers/security.py:168-204`:
-     drop `ollama` and `ollama_base_url` from heuristic lists.
-   - Tests: drop ollama test cases from
-     `tests/adapters/test_ai_registry.py`,
-     `tests/adapters/test_provider_chain.py`,
-     `tests/models/test_semantic_models.py`,
-     `tests/unit/services/test_config_service.py`,
-     `tests/unit/test_config_settings.py`.
-5. **oneiric**:
-   - `oneiric/adapters/observability/embedding_settings.py:17-77`:
-     drop `ollama_*` fields.
-   - `oneiric/core/substrate_settings.py:198-208, 240-246`:
-     drop `ollama` from `embedding__backend` Literal.
-   - `oneiric/adapters/llm/llm_interface.py:21`:
-     drop `LLMProvider.OLLAMA` enum entry.
-   - Tests: drop ollama test cases from
-     `oneiric/tests/adapters/test_observability_embeddings.py`.
-6. **akosha**:
-   - `akosha/processing/embedding_dim.py:45-58, 61-141`:
-     drop `BACKEND_DEFAULT_DIMS["ollama"]` entry (REQ-OLLAMA-017).
-   - `akosha/storage/hot_store.py:103, 109`: comment update.
-   - Tests: drop ollama test cases from
-     `akosha/tests/unit/test_embeddings.py`,
-     `akosha/tests/unit/processing/test_embedding_dim.py`.
-7. **mcp-common** tests already covered in step 1.
+1. **mcp-common** — changes the default `fallback_chain` first;
+   downstream repos pick up the new default via their existing
+   `mcp-common>=X` pin (no coordinated version bump needed; per
+   `feedback-mcp-common-version-bump-is-user.md`, the user runs
+   `crackerjack run -p <level>` from their shell to bump+tag+publish
+   when ready).
+2. **session-buddy** — drops `ollama_provider.py` + re-exports + the
+   `LLMManager` chain entry. Independent of mahavishnu.
+3. **oneiric** — drops the Ollama branch of the embedding probe chain
+   and the `ollama_*` settings fields. Independent of mahavishnu.
+4. **crackerjack** — drops `ProviderID.OLLAMA` and the chain entry.
+   Independent of mahavishnu.
+5. **akosha** — drops the `BACKEND_DEFAULT_DIMS["ollama"]` entry.
+   Smallest scope; no library-class case.
+6. **mahavishnu** — drops the B-list + A-list (Agno + LlamaIndex +
+   script deletion). Heaviest scope; lands last so the other 5 repos
+   don't transiently consume the old `LLMProvider.OLLAMA` value.
 
-**Exit criteria**:
-- `git grep -n "ollama\|Ollama" -- ':!*tests' ':!*docs' ':!*CHANGELOG.md'`
-  returns zero hits in the production source tree of all 6 repos
-  (modulo Pydantic-AI's optional adapter, deferred per §3).
+### Phase 1: Drop Ollama in source (per-repo merge cycles)
+
+**Goal**: Remove every reference to Ollama in production source across
+all 6 repos. After this phase, the production runtime no longer
+touches Ollama in any code path.
+
+**Phase 0 (preflight, lands first in any order):**
+- **Ecosystem-wide grep**: `rg -i "ollama" /Users/les/Projects/` —
+  search beyond the 6 core repos for any Bodai ecosystem member
+  (web_reader, bifrost, mahavishnu-web, bodai-crow, etc.) that
+  references Ollama. Document any finding in a follow-up plan if
+  it falls outside the 6 core repos' scope. (Catches anything the
+  6-repo inventory missed.)
+
+**Tasks** (per-repo, in the merge order above):
+
+#### 1a. mcp-common (REQ-OLLAMA-004)
+
+- `mcp_common/llm/config.py`: `fallback_chain` default →
+  `["minimax", "llama_server"]` (REQ-OLLAMA-004).
+- `mcp_common/tests/test_llm.py` + `mcp_common/tests/unit/test_llm_additional.py`:
+  drop all `ollama` test cases; keep the `llama_server` ones.
+
+#### 1b. session-buddy (REQ-OLLAMA-002, REQ-OLLAMA-005, REQ-OLLAMA-013, REQ-OLLAMA-014)
+
+- `session_buddy/llm/providers/ollama_provider.py`:
+  delete the entire file (304 LOC) (REQ-OLLAMA-005).
+- `session_buddy/llm/providers/__init__.py:11, 17` and
+  `session_buddy/llm/__init__.py:21, 36`:
+  delete the `OllamaProvider` re-exports (REQ-OLLAMA-005).
+- `session_buddy/llm/security.py:56-58, 132`:
+  drop `"ollama"` from the local-service set; the remaining set is
+  `{"llama_server"}` (REQ-OLLAMA-002).
+- `session_buddy/llm_providers.py:501-577`:
+  `LLMManager._build_chain` no longer registers `ollama`; the chain
+  becomes `["minimax", "llama_server"]` (REQ-OLLAMA-002).
+- `session_buddy/settings.py:113, 116, 121-127`:
+  drop `ollama_base_url`, `ollama_default_model`, drop `"ollama"` from
+  `fallback_providers` default (REQ-OLLAMA-013).
+- `session_buddy/config/feature_flags.py:30, 101, 122`:
+  delete `enable_ollama` flag (REQ-OLLAMA-013).
+- `session_buddy/reflection/embeddings.py:68-97`:
+  delete `_try_ollama`; `_try_http_embedding_providers` becomes
+  llama-server-only (REQ-OLLAMA-014).
+- `session_buddy/reflection/database.py:29`,
+  `session_buddy/adapters/reflection_adapter_oneiric.py:38, 1112, 1121`,
+  `session_buddy/mcp/oneiric_runtime.py:54-101`,
+  `session_buddy/utils/lazy_imports.py:118, 256`:
+  comment updates.
+- `session_buddy/settings/session-buddy.yaml:11-25, 181`:
+  drop ollama entries.
+- `session_buddy/tests/unit/test_llm_providers_ollama.py`:
+  delete the file.
+- Drop ollama test cases from:
+  `tests/unit/test_llm_providers.py`,
+  `tests/unit/llm/test_security.py`,
+  `tests/unit/test_feature_flags.py`,
+  `tests/unit/test_settings.py`,
+  `tests/unit/test_settings_core.py`,
+  `tests/unit/test_lazy_imports.py`,
+  `tests/unit/test_llm_helper_functions.py`,
+  `tests/unit/test_llm_security.py`,
+  `tests/unit/test_pools_hybrid_d.py`,
+  `tests/unit/test_health_checks.py`,
+  `tests/unit/test_health_checks_core.py`,
+  `tests/unit/mcp/tools/infrastructure/test_feature_flags_tools.py`.
+
+#### 1c. oneiric (REQ-OLLAMA-008, REQ-OLLAMA-009)
+
+- `oneiric/adapters/observability/embeddings.py:308-330, 387-425, 445-458`:
+  delete the Ollama branch (the `_probe_ollama` method,
+  the `ollama=True` branch in `_probe_encode_via`,
+  and the `_encode_ollama` method).
+  Update the probe order from
+  `("llama_cpp", "ollama", "minimax", "model2vec")` to
+  `("llama_cpp", "minimax", "model2vec")` (REQ-OLLAMA-008).
+- `oneiric/adapters/observability/embedding_settings.py:17-77`:
+  drop `ollama_*` fields (REQ-OLLAMA-009).
+- `oneiric/core/substrate_settings.py:198-208, 240-246`:
+  drop `ollama` from `embedding__backend` Literal (REQ-OLLAMA-009).
+- `oneiric/adapters/llm/llm_interface.py:21`:
+  drop `LLMProvider.OLLAMA` enum entry (REQ-OLLAMA-009).
+- Tests: drop ollama test cases from
+  `oneiric/tests/adapters/test_observability_embeddings.py`.
+
+#### 1d. crackerjack (REQ-OLLAMA-003, REQ-OLLAMA-015, REQ-OLLAMA-016)
+
+- `crackerjack/adapters/ai/unified.py:19-72`:
+  `_build_llm_settings` no longer registers `ollama`
+  (REQ-OLLAMA-003). Also fix the `http://localhost: 11434` cookie-cutter
+  typo (extra space) in the process.
+- `crackerjack/adapters/ai/registry.py:9-12, 29-57, 78-82`:
+  delete `ProviderID.OLLAMA` enum + `PROVIDER_INFO["ollama"]` entry
+  (REQ-OLLAMA-015). `get_code_fixer` returns
+  `FallbackChainCodeFixer` with the 2-provider chain.
+- `crackerjack/cli/handlers/provider_selection.py:48-51, 190-196`:
+  remove the Ollama option from the interactive selector
+  (REQ-OLLAMA-015).
+- `crackerjack/cli/options.py:674`: update help text.
+- `crackerjack/config/settings.py:98-115`:
+  `ai_providers` Literal collapses to `["minimax", "llama_server"]`;
+  `ai_provider` default stays `"minimax"`;
+  drop `ollama_base_url`, `ollama_model`, `ollama_timeout`
+  (REQ-OLLAMA-016).
+- `crackerjack/models/semantic_models.py:136-146`:
+  drop the `ollama` Literal and `ollama_base_url` field
+  (verify legacy schema is unused first).
+- `crackerjack/fixers/security.py:168-204`:
+  drop `ollama` and `ollama_base_url` from heuristic lists.
+- Tests: drop ollama test cases from
+  `tests/adapters/test_ai_registry.py`,
+  `tests/adapters/test_provider_chain.py`,
+  `tests/models/test_semantic_models.py`,
+  `tests/unit/services/test_config_service.py`,
+  `tests/unit/test_config_settings.py`.
+
+#### 1e. akosha (REQ-OLLAMA-017)
+
+- `akosha/processing/embedding_dim.py:45-58, 61-141`:
+  drop `BACKEND_DEFAULT_DIMS["ollama"]` entry (REQ-OLLAMA-017).
+- `akosha/storage/hot_store.py:103, 109`: comment update.
+- Tests: drop ollama test cases from
+  `akosha/tests/unit/test_embeddings.py`,
+  `akosha/tests/unit/processing/test_embedding_dim.py`.
+
+#### 1f. mahavishnu (REQ-OLLAMA-001, REQ-OLLAMA-006, REQ-OLLAMA-007, REQ-OLLAMA-010, REQ-OLLAMA-011, REQ-OLLAMA-012, REQ-OLLAMA-021, REQ-OLLAMA-022, REQ-OLLAMA-023, REQ-OLLAMA-024)
+
+This is the heaviest merge. It combines the B-list (config/schema
+cleanup) with the A-list (Agno + LlamaIndex library-class swaps +
+factory rekey + script deletion + new enum value). The Phase 1 / 2
+split from earlier drafts is collapsed here to avoid a broken tree
+between merges (see "Why 2 phases, not 3" above).
+
+**B-list (config / schema / settings cleanup):**
+
+- `mahavishnu/workers/cloud_worker.py`:
+  providers dict (no `ollama`), `fallback_chain` (REQ-OLLAMA-001),
+  `_has_local_fallback` probe (no `shutil.which("ollama")`).
+- `mahavishnu/core/config.py`:
+  - `LLMProvider.OLLAMA` enum entry deleted (REQ-OLLAMA-010).
+  - `LLMProvider.LLAMA_SERVER` enum value added (REQ-OLLAMA-021).
+  - `LLMProvider.OLLAMA: None` (key handling in `AgnoLLMConfig`
+    validator at L202) deleted.
+  - `AgnoLLMConfig.provider` default updated to
+    `LLMProvider.LLAMA_SERVER` (REQ-OLLAMA-022).
+  - `LLMConfig.ollama_base_url` field deleted (REQ-OLLAMA-010).
+  - **Preserve the `parents[2]` loader anchor at L3319** from
+    commit `8580fe76` — do not touch (REQ-OLLAMA-024).
+- `mahavishnu/core/embeddings_oneiric.py`:
+  `EmbeddingConfig.ollama_base_url` deleted.
+- `mahavishnu/core/bootstrap.py:735`:
+  drop the `if actual_provider == "ollama"` branch.
+- `mahavishnu/core/errors.py:438-440`:
+  update recovery hint strings.
+- `mahavishnu/cli/config_validator.py:147`:
+  drop the `_ensure_http_url(settings.llm.ollama_base_url, ...)` line.
+- `mahavishnu/core/production_readiness.py:87`:
+  drop `"ollama_base_url"` from validated keys.
+- `mahavishnu/core/routing.py:54`:
+  drop the `\bollama\b` line (the project name "ollama" is
+  correctly spelled; the line is removed because the project is
+  being dropped, not because it was a typo).
+- `mahavishnu/settings/models.yaml:76-97`:
+  drop the `ollama:` provider block (REQ-OLLAMA-012).
+- `mahavishnu/settings/embeddings.yaml:31-53`:
+  drop the ollama-specific config; keep `provider: fastembed` default
+  (REQ-OLLAMA-012).
+- `mahavishnu/settings/mahavishnu.yaml:45`:
+  drop `llm.ollama_base_url` (REQ-OLLAMA-012).
+- `mahavishnu/settings/local.yaml.example:30, 33`,
+  `mahavishnu/settings/mahavishnu.yaml.example:18, 19`:
+  drop ollama lines (REQ-OLLAMA-012).
+- Tests: drop `ollama` test cases from
+  `tests/unit/test_core_embeddings_oneiric.py`,
+  `tests/unit/test_embeddings.py`,
+  `tests/unit/test_core_models.py`,
+  `tests/property/test_config_properties.py`,
+  `tests/unit/test_config.py`,
+  `tests/unit/test_mahavishnu_config.py`,
+  `tests/unit/test_config_validator_cli.py`,
+  `tests/unit/test_bootstrap.py`,
+  `tests/unit/test_content_ingester.py`,
+  `tests/unit/test_errors.py`,
+  `tests/unit/test_production_readiness.py`,
+  `tests/unit/test_task_router.py`,
+  `tests/unit/test_task_router_and_auth.py`,
+  `tests/unit/test_worker_registry.py`,
+  `tests/unit/test_workers_registry_coverage.py`,
+  `tests/unit/workers/test_capabilities_observability.py`,
+  `tests/unit/pools/test_gpu_handler_pool.py`,
+  `tests/unit/test_adapters/README.md`,
+  `tests/unit/core/test_context_coverage.py`.
+
+**A-list (library-class swap + dead-code deletion):**
+
+- `mahavishnu/engines/agno_adapter_impl.py:218-238`:
+  replace `from agno.models.ollama import Ollama; Ollama(...)` with
+  `from agno.models.openai import OpenAIChat; OpenAIChat(id=...,
+  base_url=llama_server_url, api_key=None)`. Verify `api_key=None`
+  is accepted by llama-server (some builds reject any bearer
+  token; the verification step is a one-line `curl` against
+  `http://localhost:8081/v1/chat/completions` with
+  `Authorization: Bearer no-auth` — if rejected, fall back to
+  `api_key="no-auth"`). (REQ-OLLAMA-006)
+- `mahavishnu/engines/agno_adapter_impl.py:127` and
+  `_PROVIDER_FACTORY_METHODS`: rekey from `LLMProvider.OLLAMA` to
+  `LLMProvider.LLAMA_SERVER` (REQ-OLLAMA-022).
+  Also verify the second construction site at
+  `mahavishnu/engines/agno_adapter_impl.py:1032` (via
+  `_resolve_legacy_llm_config()`) — rekey consistently.
+- `mahavishnu/engines/llamaindex_adapter_impl.py`:
+  - Add `llama-index-embeddings-openai` and
+    `llama-index-llms-openai-like` to `pyproject.toml` (REQ-OLLAMA-020)
+    **before** swapping imports. The Phase 2 implementer must NOT
+    commit the import swap without the deps landing — `ModuleNotFoundError`
+    would break the production runtime.
+  - Replace `from llama_index.embeddings.ollama import OllamaEmbedding`
+    with `from llama_index.embeddings.openai import OpenAIEmbedding`
+    (lines 39, 49).
+  - Replace `from llama_index.llms.ollama import Ollama` with
+    `from llama_index.llms.openai_like import OpenAILike` (line 40, 50).
+  - Replace `Settings.embed_model = OllamaEmbedding(model_name=..., base_url=...)`
+    with `Settings.embed_model = OpenAIEmbedding(model_name=...,
+    api_base=..., api_key=None)` (lines 383-384).
+    **Constructor parameter renames** (a naive copy-paste swap
+    fails with `TypeError`):
+    | OllamaEmbedding param | OpenAIEmbedding param |
+    |---|---|
+    | `model_name` | `model_name` (unchanged) |
+    | `base_url` | `api_base` |
+    | (none) | `api_key=None` |
+    | `keep_alive` | no equivalent (drop) |
+    | `format="json"` | `additional_kwargs={"response_format": {"type": "json_object"}}` (only if needed) |
+  - Replace `Settings.llm = Ollama(model=..., base_url=...)` with
+    `Settings.llm = OpenAILike(model=llm_model, api_base=...,
+    api_key=None, is_chat_model=True, context_window=32768,
+    is_function_calling_model=False)` (lines 385-386).
+    **OpenAILike-specific kwargs** (the defaults are wrong for our
+    use case — `is_chat_model=False` posts to `/v1/completions`
+    not `/v1/chat/completions`; `context_window=3900` truncates a
+    32k-context Qwen3.5 silently):
+    | OpenAILike kwarg | Default | Required for our use case |
+    |---|---|---|
+    | `is_chat_model` | `False` | `True` |
+    | `context_window` | `3900` | `32768` (matches Qwen3.5) |
+    | `is_function_calling_model` | `False` | `False` (LlamaIndex adapter doesn't use tools) |
+  - Update the `LLAMAINDEX_AVAILABLE` `try/except ImportError` block
+    (lines 34-56) to also handle the new dependencies in the
+    `MagicMock` fallback (`OpenAIEmbedding = MagicMock(name="OpenAIEmbedding")`,
+    etc.) so import-block symmetry is preserved.
+  - Update `get_health` (lines 1230-1237) to report the new
+    provider class names.
+  - (REQ-OLLAMA-007)
+- `mahavishnu/scripts/generate_ollama_embeddings.py`:
+  delete the entire file (REQ-OLLAMA-011).
+- `mahavishnu/adapters/ai/pydantic_ai_adapter.py:86, 99, 258`:
+  remove the `"ollama" → "ollama"` mapping in `provider_prefixes`
+  and the corresponding ASCII-diagram reference (5-line change,
+  folded into Phase 1 per the wire-up-contract —
+  REQ-OLLAMA-023).
+
+**Doc updates** (across all 6 repos, in this same per-repo merge):
+
+- `mahavishnu/CLAUDE.md` "LLM Provider Configuration" section:
+  rewrite to describe MiniMax → llama-server (no Ollama tier).
+- `mahavishnu/docs/ROUTING_GUIDE.md`, `docs/CONFIGURATION.md`,
+  `docs/CLI_REFERENCE.md`: same.
+- `mahavishnu/docs/specs/`, `docs/adr/`, `docs/runbooks/`,
+  `docs/architecture/`, `docs/ingestion/`, `docs/grafana/`,
+  `docs/guides/`, `docs/followups/`, `docs/reviews/`,
+  `docs/src/adapters/llamaindex.md`, `docs/src/adapters/agno.md`:
+  remove "Ollama" references (the plan author reviewed the
+  inventory; ~15 doc files contain Ollama mentions).
+- `mahavishnu/examples/goal_driven_team_tutorial.py`,
+  `examples/cli_ingestion_examples.sh`,
+  `examples/pydantic_ai_adapter_example.py`: same.
+- Same doc sweep in session-buddy, crackerjack, oneiric, akosha,
+  mcp-common (`session_buddy/README.md`, `ARCHITECTURE.md`,
+  `CLAUDE.md`, `docs/architecture/`, `docs/API_KEY_SETUP.md`, etc.).
+
+**Exit criteria** (Phase 1):
+- `git grep -in "ollama\|Ollama\|OLLAMA" -- ':!*docs' ':!*CHANGELOG.md' ':!*ARCHIVED' ':!*BACKUP' ':!*tests' ':!*.md' ':!*.yaml.example'`
+  returns zero hits in the production source tree of all 6 repos.
+- `mahavishnu/engines/agno_adapter_impl.py` imports
+  `from agno.models.openai import OpenAIChat` and not
+  `from agno.models.ollama import Ollama`.
+- `mahavishnu/engines/llamaindex_adapter_impl.py` imports
+  `from llama_index.embeddings.openai import OpenAIEmbedding`
+  and `from llama_index.llms.openai_like import OpenAILike`,
+  not the ollama classes.
+- `session_buddy/llm/providers/ollama_provider.py` is deleted
+  (no entry in `git ls-files`).
 - `crackerjack run -v -f` passes in every repo (per the user's
   `feedback-crackerjack-merge-gate-is-vf`).
 - Each repo's pytest suite passes (modulo known pre-existing
   failures from the recent `raise Exception` commit).
+- The `parents[2]` loader anchor at `mahavishnu/core/config.py:3319`
+  is unchanged (verified via `git diff HEAD~1 -- mahavishnu/core/config.py`).
 
 #### Integration Contract (Phase 1)
 
@@ -398,169 +587,78 @@ import it):
   `session_buddy.llm_providers.LLMManager.__init__`,
   `crackerjack.adapters.ai.unified.FallbackChainCodeFixer.__init__`).
   Also: any code path that reads `mahavishnu.settings.models.yaml`
-  or any of the per-repo `settings/{repo}.yaml` files.
+  or any of the per-repo `settings/{repo}.yaml` files. Also:
+  `LLMProviderFactory._create_llama_server_model` (new factory
+  branch) at `mahavishnu/engines/agno_adapter_impl.py:218-238` (renamed
+  from `_create_ollama_model`).
 - **Returns to / updates**:
   - `LLMSettings.fallback_chain` is now `["minimax", "llama_server"]`
     by default. The `providers` dict no longer has an `"ollama"` key.
-  - The `LLMProvider` enum (mahavishnu, oneiric), `EmbeddingProvider`
+  - `LLMProvider` enum (mahavishnu, oneiric), `EmbeddingProvider`
     enum (mahavishnu), `ProviderID` enum (crackerjack) no longer
-    have an `OLLAMA` value.
+    have an `OLLAMA` value. `LLMProvider.LLAMA_SERVER` is added.
+  - `AgnoLLMConfig.provider` defaults to `LLMProvider.LLAMA_SERVER`.
+  - `_PROVIDER_FACTORY_METHODS` keys on `LLMProvider.LLAMA_SERVER`.
   - No persistent file or DB change; settings YAMLs are the
     source of truth.
 - **Demonstrable by**:
   ```bash
   # In each repo:
-  grep -rn "ollama\|Ollama\|OLLAMA" .venv/lib/python3.14/site-packages/ 2>/dev/null
-  # (this confirms no installed package leaks ollama into runtime imports)
+  grep -rin "ollama\|Ollama\|OLLAMA" \
+    --include="*.py" --include="*.yaml" \
+    --exclude-dir=.venv --exclude-dir=node_modules \
+    --exclude-dir=__pycache__ --exclude-dir=.git
+  # Returns: zero hits.
+
+  # In mahavishnu:
+  python -c "import mahavishnu.engines.llamaindex_adapter_impl; import sys; assert not any('ollama' in m.lower() for m in sys.modules); print('OK')"
+  # Returns: OK (verifies no Ollama library is imported transitively)
+
+  # In session-buddy:
+  git ls-files | grep ollama_provider.py
+  # Returns: zero hits (file deleted)
+
+  # In each repo:
   pytest tests/unit -q  # passes
   crackerjack run -v -f  # passes
   ```
-  Plus: `git grep -i ollama -- ':!*.md' ':!*.yaml.example' ':!ARCHIVED' ':!BACKUP'`
-  in each repo returns no hits in production code.
 - **Rollback signal**: `LLMManager.generate()` or
   `CloudWorker.execute()` raises `ValueError: provider 'ollama' not
-  found` if any caller still references the removed `LLMProvider.OLLAMA`
-  value. Catch on the first test run; `git revert` if rollout breaks
-  a production call site.
+  found` if any caller still references the removed
+  `LLMProvider.OLLAMA` value. Catch on the first test run;
+  `git revert` if rollout breaks a production call site.
+  Separately, `ModuleNotFoundError: llama_index.embeddings.openai`
+  or `ModuleNotFoundError: llama_index.llms.openai_like` if the
+  `pyproject.toml` deps weren't added before the import swap.
 - **Observability added**:
   - Existing OTel span `llm.fallback_chain` (in
     `mcp_common/llm/fallback.py`) already logs the chain order;
     no new span needed.
-  - Log line at startup: `"LLM FallbackChain initialized: chain=[minimax, llama_server], providers=2"`
-    replaces any previous ollama mention.
+  - **New log line** at startup:
+    `"LLM FallbackChain initialized: chain=[minimax, llama_server], providers=2"`
+    (replaces any previous ollama mention).
+  - **New log line** at Agno factory:
+    `"agno.adapter.factory_selected provider=llama_server base_url=<...>"`
+    (replaces the ollama-keyed log).
 
-### Phase 2: Library-class swaps and Ollama-specific deletions (A-list)
-
-**Goal**: Replace every code path that imports a vendor-specific
-Ollama library class with the OpenAI-compat equivalent. Delete the
-files that are dead code.
-
-**Tasks**:
-
-1. **mahavishnu**:
-   - `mahavishnu/engines/agno_adapter_impl.py:218-238`:
-     in `LLMProviderFactory._create_ollama_model`, replace
-     `from agno.models.ollama import Ollama; Ollama(...)` with
-     `from agno.models.openai import OpenAIChat; OpenAIChat(id=..., base_url=llama_server_url, api_key="no-auth")`.
-     The factory method's name and signature stay the same; the
-     default config flips `provider: LLMProvider.LLAMA_SERVER`
-     (or simply remove the LLMProvider.OLLAMA value as in
-     Phase 1 and route the "ollama" string through a different
-     factory branch keyed on `LLMProvider.LLAMA_SERVER`).
-     (REQ-OLLAMA-006)
-   - `mahavishnu/engines/llamaindex_adapter_impl.py:39-40, 383-386`:
-     swap the imports and the `Settings.embed_model = ...` /
-     `Settings.llm = ...` constructors to use
-     `llama_index.embeddings.openai.OpenAIEmbedding` and
-     `llama_index.llms.openai.OpenAI` (or `llama_index.llms.openai_like.OpenAILike`
-     for non-OpenAI-but-OpenAI-compat endpoints — fits llama-server
-     and MiniMax identically).
-     `ollama_base_url` and `opensearch_index_name` config keys
-     stay; the embedder/llm classes are what change.
-     `opensearch_endpoint` stays. `llm_model` stays as the model
-     name passed to `OpenAILike(model=llm_model)`.
-     (REQ-OLLAMA-007)
-   - `mahavishnu/scripts/generate_ollama_embeddings.py`:
-     delete the entire file (REQ-OLLAMA-011).
-2. **session-buddy**:
-   - `session_buddy/llm/providers/ollama_provider.py`:
-     delete the entire file (305 LOC) (REQ-OLLAMA-005).
-3. **oneiric**:
-   - `oneiric/adapters/observability/embeddings.py:308-330, 387-425, 445-458`:
-     delete the Ollama branch (the `_probe_ollama` method,
-     the `ollama=True` branch in `_probe_encode_via`,
-     and the `_encode_ollama` method).
-     Update the probe order from
-     `("llama_cpp", "ollama", "minimax", "model2vec")` to
-     `("llama_cpp", "minimax", "model2vec")` (REQ-OLLAMA-008).
-4. Tests:
-   - `mahavishnu/tests/unit/test_agno_adapter_impl.py`: update
-     the Ollama-path tests to expect `OpenAIChat` with the
-     llama-server `base_url`; verify the model_id default still
-     flows through.
-   - `mahavishnu/tests/unit/engines/test_agno_adapter.py`,
-     `tests/integration/test_agno_adapter.py`,
-     `tests/unit/engines/test_agno_config_imports.py`,
-     `tests/unit/engines/test_agno_teams.py`: same.
-   - `mahavishnu/tests/unit/test_adapters/test_llamaindex_adapter.py`:
-     replace the Ollama-class assertions with OpenAI-compat
-     assertions (the test currently constructs
-     `LlamaIndexAdapter(api_url="http://localhost:11434")`; flip
-     to `api_url="http://localhost:8081/v1"` and verify the
-     embedder/llm classes are OpenAIEmbedding/OpenAI).
-   - `oneiric/tests/adapters/test_observability_embeddings.py`:
-     delete the Ollama probe/encode tests; verify the
-     3-backend chain (llama_cpp → minimax → model2vec) initializes
-     correctly.
-
-**Exit criteria**:
-- `mahavishnu demo agno` runs against llama-server (no Ollama
-  library class in the import graph).
-- `mahavishnu demo llamaindex` runs against llama-server
-  (no Ollama library class in the import graph).
-- `git grep -n "from agno.models.ollama\|from llama_index.embeddings.ollama\|from llama_index.llms.ollama"`
-  in all 6 repos returns zero hits.
-- `git ls-files | xargs grep -l "ollama_provider.py"` returns
-  nothing (file is deleted everywhere).
-- All repo test suites pass.
-
-#### Integration Contract (Phase 2)
-
-- **Triggered from**: `mahavishnu demo agno` and
-  `mahavishnu demo llamaindex` CLI commands; any
-  `LLMProviderFactory.execute()` call that selects the local
-  provider; `oneiric.adapters.observability.embeddings.EmbeddingService.initialize()`
-  in any code path that runs an embedding.
-- **Returns to / updates**:
-  - The import graph of `mahavishnu.engines` no longer pulls in
-    `agno.models.ollama` or `llama_index.embeddings.ollama`. Verify
-    with `python -c "import sys; sys.modules"` after
-    `LlamaIndexAdapter()` and `AgnoAdapter()` construction.
-  - `oneiric.EmbeddingService.backend_name()` will return
-    `"llama_cpp"` instead of `"ollama"` for local traffic.
-  - `akosha.processing.embedding_dim.resolve_embedding_dim()`
-    will return 768 via the `"llama_cpp"` lookup (the
-    `nomic-embed-text` dimension is unchanged).
-  - No persistent file change.
-- **Demonstrable by**:
-  ```bash
-  # Live demo (requires llama-server running on :8081):
-  llama-server -m qwen3.5.Q4_K_M.gguf --port 8081 --embedding &
-  ./.venv/bin/mahavishnu demo llamaindex --repos <tmp> --prompt "..."
-  # Returns: a real LLM completion, not "not implemented".
-  ./.venv/bin/mahavishnu demo agno --repos <tmp> --prompt "..."
-  # Returns: a real LLM completion via OpenAIChat.
-  ```
-  Plus: `python -c "import mahavishnu.engines.agno_adapter_impl"` no
-  longer imports `agno.models.ollama`. Verify with
-  `python -c "import sys; [print(m) for m in sys.modules if 'ollama' in m.lower()]"`.
-- **Rollback signal**: `ModuleNotFoundError: agno.models.openai`
-  or `ModuleNotFoundError: llama_index.embeddings.openai`
-  in any test run. Catch on the first `pytest`; `git revert` if
-  the live demo fails on the new classes.
-- **Observability added**:
-  - Log line at adapter init:
-    `"llamaindex.adapter.initialized provider=openai_compat base_url=<...>"`.
-  - Log line at Agno factory:
-    `"agno.adapter.factory_selected provider=openai base_url=<...>"`.
-  - Existing OTel span `adapter.execute` (in
-    `mahavishnu/engines/llamaindex_adapter_impl.py:1125`) and
-    `llamaindex.ingest` already exist; no new spans needed.
-
-### Phase 3: Live demo wiring
+### Phase 2: Live demo wiring
 
 **Goal**: Make `mahavishnu demo llamaindex` a real CLI command
-(not a stub), and verify both demos run end-to-end against a
-llama-server endpoint.
+(not a stub), and verify the Phase 1 swap works end-to-end against
+a llama-server endpoint.
 
 **Tasks**:
 
-1. **mahavishnu**:
-   - `mahavishnu/cli/demo_cli.py`: follow the existing
-     `demo_agno` pattern (added in commit `ba832db6`):
-     - Remove `"llamaindex"` from `_STUB_COSTS` (L431).
-     - Add `_check_llamaindex_preconditions()`: probe `llama-index`
-       is importable, probe `llama_server` is on `$PATH` (or
+1. `mahavishnu/cli/demo_cli.py`:
+   - Follow the existing `demo_agno` pattern (added in commit
+     `ba832db6`):
+     - Remove `"llamaindex"` from `_STUB_COSTS` (the dict lives at
+       `demo_cli.py:654-655`, not L431 as the inventory report
+       said; the implementer must verify the actual line number
+       in the current file).
+     - Add `_check_llamaindex_preconditions()`: probe
+       `llama-index-embeddings-openai` and `llama-index-llms-openai-like`
+       are importable, probe `llama-server` is on `$PATH` (or
        `LLAMA_SERVER_URL` is set), probe a writeable working
        directory.
      - Add `@demo_app.command("llamaindex") demo_llamaindex(...)`
@@ -571,8 +669,8 @@ llama-server endpoint.
      - Add `_run_llamaindex_demo()` async helper mirroring
        `_run_agno_demo` from the Agno fix.
 2. Tests:
-   - `tests/unit/cli/test_cli_wireup_invariants.py`: add
-     invariant that `_STUB_COSTS` has no `"llamaindex"` key.
+   - `tests/unit/cli/test_cli_wireup_invariants.py`:
+     add invariant that `_STUB_COSTS` has no `"llamaindex"` key.
 3. Live verification (manual, not in CI):
    ```bash
    # Operator runs llama-server separately:
@@ -588,13 +686,33 @@ llama-server endpoint.
    # Returns a real completion via OpenAIChat.
    ```
 
-**Exit criteria**:
+**Embedding-quality caveat for the demo**: the demo uses a single
+Qwen3.5 GGUF for both chat and embeddings. This is for
+one-GGUF convenience only; production embeddings should use a
+dedicated embedding model (e.g. `nomic-embed-text-v1.5.Q8_0.gguf`).
+Documented as a known limitation; no fix in this plan.
+
+**Vector store caveat**: LlamaIndex's `SimpleVectorStore` (the
+fallback when OpenSearch KNN plugin is missing) is **not
+persistent across restarts**. Pre-existing condition; documented
+here for clarity.
+
+**Degraded-mode note** (2-tier FallbackChain): if both MiniMax and
+llama-server are unreachable, `CloudWorker.execute()` and the
+Agno/LlamaIndex adapters raise `RuntimeError` after retry
+exhaustion. The oneiric embedding chain still has 3 tiers
+(llama_cpp → minimax → model2vec) — `model2vec` is
+static-embeddings only; no inconsistency.
+
+**Exit criteria** (Phase 2):
 - `.venv/bin/mahavishnu demo llamaindex --help` shows the
   options (no longer a stub).
 - Both demos produce real LLM completions against a local
   llama-server.
+- `git grep -n "llamaindex" -- 'mahavishnu/cli/demo_cli.py'` shows
+  the new command is registered.
 
-#### Integration Contract (Phase 3)
+#### Integration Contract (Phase 2)
 
 - **Triggered from**: `./.venv/bin/mahavishnu demo llamaindex`
   CLI invocation; `./.venv/bin/mahavishnu demo agno` CLI
@@ -622,28 +740,47 @@ llama-server endpoint.
     `prompt.length`, `repos.count`, `adapter.llama_server_url`.
   - Log line `"demo.llamaindex.completed elapsed=<s> model=<id>"`.
 
+## 5.5 Per-repo commit discipline
+
+Each per-repo merge is a **separate squash-merge to local `main`**
+per the trunk-based agent-review workflow. Per
+`feedback-no-claude-code-coauthor-attribution.md`, no
+`Co-Authored-By` trailer. Per `git-author-email-correct-domain.md`,
+author email is `les@wedgwoodwebworks.com` (not `.local`). Per
+`feedback-bodai-push-is-user-controlled.md`, the user runs
+`git push` and `crackerjack run -p <level>` from their own shell —
+**the implementer does not push to origin**. mcp-common is a
+dependency for the other 5 repos, so the user may also run
+`crackerjack run -p <level>` to bump+tag+publish a new mcp-common
+version after Phase 1 lands; the implementer does NOT bump the
+mcp-common version themselves.
+
 ## 6. Required Code Changes
 
-### Production code
+### Production code (mahavishnu)
 
-- [ ] `mcp_common/llm/config.py` (REQ-OLLAMA-004)
 - [ ] `mahavishnu/workers/cloud_worker.py` (REQ-OLLAMA-001)
-- [ ] `mahavishnu/engines/agno_adapter_impl.py` (REQ-OLLAMA-006)
+- [ ] `mahavishnu/engines/agno_adapter_impl.py` (REQ-OLLAMA-006, REQ-OLLAMA-022)
 - [ ] `mahavishnu/engines/llamaindex_adapter_impl.py` (REQ-OLLAMA-007)
-- [ ] `mahavishnu/scripts/generate_ollama_embeddings.py` (REQ-OLLAMA-011) — DELETE
-- [ ] `mahavishnu/core/config.py` (REQ-OLLAMA-010)
-- [ ] `mahavishnu/core/embeddings_oneiric.py` (REQ-OLLAMA-008 client)
+- [ ] `mahavishnu/pyproject.toml` (REQ-OLLAMA-020 — add deps)
+- [ ] `scripts/generate_ollama_embeddings.py` (REQ-OLLAMA-011) — DELETE
+- [ ] `mahavishnu/core/config.py` (REQ-OLLAMA-010, REQ-OLLAMA-021, REQ-OLLAMA-022, REQ-OLLAMA-024)
+- [ ] `mahavishnu/core/embeddings_oneiric.py`
 - [ ] `mahavishnu/core/bootstrap.py:735`
 - [ ] `mahavishnu/core/errors.py:438-440`
-- [ ] `mahavishnu/cli/demo_cli.py` (REQ-OLLAMA-019 — live demo)
+- [ ] `mahavishnu/cli/demo_cli.py` (REQ-OLLAMA-018, REQ-OLLAMA-019 — live demo)
 - [ ] `mahavishnu/cli/config_validator.py:147`
 - [ ] `mahavishnu/core/production_readiness.py:87`
-- [ ] `mahavishnu/core/routing.py:54` (verify no test depends)
-- [ ] `mahavishnu/settings/models.yaml` (REQ-OLLAMA-012)
-- [ ] `mahavishnu/settings/embeddings.yaml` (REQ-OLLAMA-012)
-- [ ] `mahavishnu/settings/mahavishnu.yaml` (REQ-OLLAMA-012)
-- [ ] `mahavishnu/settings/local.yaml.example` (REQ-OLLAMA-012)
-- [ ] `mahavishnu/settings/mahavishnu.yaml.example` (REQ-OLLAMA-012)
+- [ ] `mahavishnu/core/routing.py:54`
+- [ ] `mahavishnu/adapters/ai/pydantic_ai_adapter.py` (REQ-OLLAMA-023)
+- [ ] `settings/models.yaml` (REQ-OLLAMA-012)
+- [ ] `settings/embeddings.yaml` (REQ-OLLAMA-012)
+- [ ] `settings/mahavishnu.yaml` (REQ-OLLAMA-012)
+- [ ] `settings/local.yaml.example` (REQ-OLLAMA-012)
+- [ ] `settings/mahavishnu.yaml.example` (REQ-OLLAMA-012)
+
+### Production code (session-buddy)
+
 - [ ] `session_buddy/llm/providers/ollama_provider.py` (REQ-OLLAMA-005) — DELETE
 - [ ] `session_buddy/llm/providers/__init__.py` (REQ-OLLAMA-005)
 - [ ] `session_buddy/llm/__init__.py` (REQ-OLLAMA-005)
@@ -656,7 +793,10 @@ llama-server endpoint.
 - [ ] `session_buddy/adapters/reflection_adapter_oneiric.py`
 - [ ] `session_buddy/mcp/oneiric_runtime.py`
 - [ ] `session_buddy/utils/lazy_imports.py`
-- [ ] `session_buddy/settings/session-buddy.yaml` (REQ-OLLAMA-013)
+- [ ] `settings/session-buddy.yaml` (REQ-OLLAMA-013)
+
+### Production code (crackerjack)
+
 - [ ] `crackerjack/adapters/ai/unified.py` (REQ-OLLAMA-003)
 - [ ] `crackerjack/adapters/ai/registry.py` (REQ-OLLAMA-015)
 - [ ] `crackerjack/cli/handlers/provider_selection.py` (REQ-OLLAMA-015)
@@ -664,38 +804,65 @@ llama-server endpoint.
 - [ ] `crackerjack/config/settings.py` (REQ-OLLAMA-016)
 - [ ] `crackerjack/models/semantic_models.py` (REQ-OLLAMA-016)
 - [ ] `crackerjack/fixers/security.py`
+
+### Production code (oneiric)
+
 - [ ] `oneiric/adapters/observability/embeddings.py` (REQ-OLLAMA-008)
 - [ ] `oneiric/adapters/observability/embedding_settings.py` (REQ-OLLAMA-009)
 - [ ] `oneiric/core/substrate_settings.py` (REQ-OLLAMA-009)
 - [ ] `oneiric/adapters/llm/llm_interface.py` (REQ-OLLAMA-009)
+
+### Production code (akosha)
+
 - [ ] `akosha/processing/embedding_dim.py` (REQ-OLLAMA-017)
 - [ ] `akosha/storage/hot_store.py`
 
-### Tests
+### Production code (mcp-common)
 
-- [ ] All 6 repos: drop ollama test cases per the Phase 1 / Phase 2
-  per-repo task lists (see inventory report, B-list test files).
+- [ ] `mcp_common/llm/config.py` (REQ-OLLAMA-004)
+
+### Tests (all 6 repos)
+
+- [ ] Drop ollama test cases per the per-repo task lists above.
 - [ ] `session_buddy/tests/unit/test_llm_providers_ollama.py` — DELETE
-- [ ] `mahavishnu/tests/unit/test_adapters/test_llamaindex_adapter.py` —
+- [ ] `tests/unit/test_adapters/test_llamaindex_adapter.py` —
   flip to llama-server base_url
-- [ ] `mahavishnu/tests/unit/engines/test_agno_adapter.py` and siblings —
+- [ ] `tests/unit/engines/test_agno_adapter.py` and siblings —
   flip factory expectations to `OpenAIChat`
-- [ ] `mahavishnu/tests/unit/cli/test_cli_wireup_invariants.py` —
+- [ ] `tests/unit/cli/test_cli_wireup_invariants.py` —
   add `_STUB_COSTS` has no `"llamaindex"` invariant
 - [ ] `oneiric/tests/adapters/test_observability_embeddings.py` —
   drop Ollama probe/encode cases; verify 3-backend chain
+- [ ] Add a runtime class-identity test:
+  `assert isinstance(LlamaIndexAdapter()._embed_model, OpenAIEmbedding)`
+  and `assert isinstance(LlamaIndexAdapter()._llm, OpenAILike)`
+  after the swap.
+
+### Docs (all 6 repos)
+
+- [ ] `mahavishnu/CLAUDE.md` "LLM Provider Configuration" section
+- [ ] `mahavishnu/docs/ROUTING_GUIDE.md`, `docs/CONFIGURATION.md`, `docs/CLI_REFERENCE.md`
+- [ ] `mahavishnu/docs/specs/`, `docs/adr/`, `docs/runbooks/`, `docs/architecture/`, `docs/ingestion/`, `docs/grafana/`, `docs/guides/`, `docs/followups/`, `docs/reviews/`, `docs/src/adapters/`
+- [ ] `mahavishnu/examples/`
+- [ ] `session_buddy/README.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `docs/`
+- [ ] `crackerjack/docs/`, `CHANGELOG.md`
+- [ ] `oneiric/docs/`
+- [ ] `akosha/README.md`, `docs/`
+- [ ] `mcp-common/docs/`
 
 ## 7. Validation Matrix
 
 | Check | Command | Expected outcome | Evidence |
 |---|---|---|---|
-| No Ollama in production source | `git grep -in ollama -- ':!*docs' ':!*CHANGELOG.md' ':!*ARCHIVED' ':!*BACKUP' ':!*tests' ':!*.md' ':!*.yaml.example'` | Zero hits in `*.py` and `*.yaml` | Test log |
+| No Ollama in production source | `rg -in ollama -- ':!docs' ':!CHANGELOG.md' ':!ARCHIVED' ':!BACKUP' ':!tests' ':!*.md' ':!*.yaml.example' --type py --type yaml` | Zero hits in `*.py` and `*.yaml` | Test log |
 | LLMManager chain | `python -c "from session_buddy.llm_providers import LLMManager; m = LLMManager(); print(m._chain._providers)"` | `["minimax", "llama_server"]` | Test log |
 | CloudWorker chain | `python -c "from mahavishnu.workers.cloud_worker import _build_fallback_chain, CloudWorkerConfig; print(_build_fallback_chain(CloudWorkerConfig())._providers)"` | `["minimax", "llama_server"]` | Test log |
-| FallbackChainCodeFixer chain | `python -c "from crackerjack.adapters.ai.unified import FallbackChainCodeFixer; ..."` | 2-provider chain | Test log |
-| Agno factory uses OpenAIChat | `python -c "import mahavishnu.engines.agno_adapter_impl; import inspect; src = inspect.getsource(...)"` | String contains `from agno.models.openai import OpenAIChat`; does not contain `from agno.models.ollama import Ollama` | Source inspection |
-| LlamaIndex adapter uses OpenAIEmbedding | Same as above for `llamaindex_adapter_impl` | String contains `from llama_index.embeddings.openai import OpenAIEmbedding`; does not contain `from llama_index.embeddings.ollama import OllamaEmbedding` | Source inspection |
+| FallbackChainCodeFixer chain | `python -c "from crackerjack.adapters.ai.unified import FallbackChainCodeFixer; fc = FallbackChainCodeFixer(); print(fc._chain._providers)"` | `["minimax", "llama_server"]` | Test log |
+| Agno factory uses OpenAIChat | `python -c "import mahavishnu.engines.agno_adapter_impl; import inspect; src = inspect.getsource(mahavishnu.engines.agno_adapter_impl); assert 'from agno.models.openai import OpenAIChat' in src; assert 'from agno.models.ollama import Ollama' not in src"` | Passes silently | Test log |
+| LlamaIndex adapter uses OpenAIEmbedding | `python -c "import mahavishnu.engines.llamaindex_adapter_impl; import inspect; src = inspect.getsource(mahavishnu.engines.llamaindex_adapter_impl); assert 'from llama_index.embeddings.openai import OpenAIEmbedding' in src; assert 'from llama_index.embeddings.ollama import OllamaEmbedding' not in src"` | Passes silently | Test log |
 | `OllamaProvider` is gone | `git ls-files | xargs grep -l "OllamaProvider" 2>/dev/null` | Zero output (file deleted) | Test log |
+| Phase 1 module imports succeed | `python -c "import mahavishnu.engines.llamaindex_adapter_impl, mahavishnu.engines.agno_adapter_impl, session_buddy.llm_providers; print('OK')"` | `OK` | Test log |
+| No Ollama library transitively imported | `python -c "import mahavishnu.engines.llamaindex_adapter_impl; import sys; assert not any('ollama' in m.lower() for m in sys.modules), f'stale imports: {[m for m in sys.modules if 'ollama' in m.lower()]}'; print('OK')"` | `OK` | Test log |
 | Live demo: llamaindex | `./.venv/bin/mahavishnu demo llamaindex --repos <tmp> --prompt "..."` | Real LLM completion | Screenshot / captured stdout |
 | Live demo: agno | `./.venv/bin/mahavishnu demo agno --repos <tmp> --prompt "..."` | Real LLM completion | Screenshot / captured stdout |
 | Crackerjack merge gate | `crackerjack run -v -f` | Pass | Test log |
@@ -705,50 +872,91 @@ llama-server endpoint.
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Operator currently runs Ollama in production; we delete the support | Medium | `feedback-no-backwards-compat-pre-1.0.md` says no deprecation. Operator migrates by switching to llama-server (one binary, one config). |
+| Operator currently runs Ollama in production; we delete the support | Medium | Per `feedback-no-backwards-compat-pre-1.0.md`, no deprecation. Operator migrates by switching to llama-server (one binary, one config). |
 | llama-server not available on the operator's machine | Low | Document the install in the demo's preconditions; the preconditions check fails loud. |
-| Pydantic-AI adapter breaks (Pydantic-AI's `ollama:` prefix is library-specific) | Low | Adapter is secondary/optional; the demo path doesn't use it. The reference is left in place (deleted in a follow-up). |
-| OpenSearch KNN plugin still missing on the operator's machine | Medium | Phase 2's LlamaIndex adapter still works via the in-memory vector store fallback (already exercised in the 2026-10-16 demo). Phase 3's live demo uses the same fallback. |
-| Hidden call sites referencing `OllamaProvider` or `LLMProvider.OLLAMA` we didn't find | Low | Phase 1's "Rollback signal" + the git grep validation matrix catches these on the first test run. |
+| `llama-index-embeddings-openai` / `llama-index-llms-openai-like` not installed at runtime | Medium | REQ-OLLAMA-020 adds the deps **before** the import swap. Phase 0 (ecosystem grep) catches any unflagged reference. If still missing, the `LLAMAINDEX_AVAILABLE` try/except block falls back to `MagicMock`, which fails the first LLM call with a clear error. |
+| `LLMProvider.OLLAMA` deletion racing factory class definition (Phase 1 split into two merges) | Eliminated | The plan collapses Phase 1 and Phase 2 into a single per-repo merge. No race window. |
+| `LLMProvider.OLLAMA: None` key handling at `mahavishnu/core/config.py:202` not yet deleted when other call sites still reference the enum | Eliminated | Single per-repo merge handles the enum deletion and the key-handling deletion together. |
+| `mahavishnu/cli/demo_cli.py:477` `LLMProvider.OLLAMA: None` is a separate call site from `core/config.py:202` | Medium | The plan calls out `demo_cli.py:477` explicitly in the B-list tasks; verify with grep on `LLMProvider.OLLAMA` in the new line. |
+| Pydantic-AI adapter breaks (Pydantic-AI's `ollama:` prefix is library-specific) | Low | REQ-OLLAMA-023 folds the 5-line change into Phase 1. Adapter is secondary/optional; the demo path doesn't use it. |
+| OpenSearch KNN plugin still missing on the operator's machine | Medium | Phase 1's LlamaIndex adapter still works via the in-memory vector store fallback. Phase 2's live demo uses the same fallback. Documented in Phase 2. |
+| Hidden call sites referencing `OllamaProvider` or `LLMProvider.OLLAMA` we didn't find | Low | Phase 0 ecosystem-wide grep + the git grep validation matrix catches these on the first test run. |
 | Cookie-cutter `crackerjack` URLs (e.g. typo `http://localhost: 11434` with extra space) hide the cleanup | Low | The inventory found one such typo in `crackerjack/adapters/ai/unified.py:44-54`. Phase 1 fixes the typo as part of the chain rewrite. |
-| Cross-repo coordination cost (6 repos, 3 PRs) | Medium | Each PR is a separate merge; crackerjack gates per repo. Sequence: mcp-common → mahavishnu → session-buddy → crackerjack → oneiric → akosha. |
+| Cross-repo coordination cost (6 repos, 7 merge cycles) | Medium | Per-repo merge via SessionEnd hook. Each repo's `crackerjack run -v -f` gates its own merge. Sequence: mcp-common → session-buddy → oneiric → crackerjack → akosha → mahavishnu. |
+| llama-server auth header rejection (sends `Authorization: Bearer <key>`; some builds reject any bearer token without `--api-key`) | Low | Phase 1 verification step: `curl -H "Authorization: Bearer no-auth" http://localhost:8081/v1/chat/completions`. If rejected, fall back to omitting the header. Document in the demo's preconditions. |
+| Vector store non-persistence (`SimpleVectorStore` fallback) | Pre-existing | Documented in Phase 2. Production deployments should install OpenSearch KNN plugin. |
+| Streaming-usage accounting gap in llama-server | Pre-existing | Documented in §4. Not a regression (shared with Ollama). Non-streaming usage works. |
+| 2-tier FallbackChain reduced to 2 providers (no tertiary) | Acceptable | Per `feedback-no-backwards-compat-pre-1.0.md`. If both MiniMax and llama-server unreachable, `CloudWorker.execute()` raises `RuntimeError` after retry exhaustion. The oneiric embedding chain still has 3 tiers. |
 
 ## 9. Decision Rule
 
 This plan is "done" when:
 - A user can run `./.venv/bin/mahavishnu demo llamaindex --prompt "..."` against a local llama-server and get a real LLM completion.
-- The Phase 1 + Phase 2 + Phase 3 exit criteria all pass.
+- The Phase 1 + Phase 2 exit criteria all pass.
 - The git grep validation matrix returns zero ollama hits in production code across all 6 repos.
 - Each repo's `crackerjack run -v -f` passes.
 - Each repo's pytest suite passes (modulo known pre-existing failures).
+- The plan has been promoted from `status: draft` to `status: active`
+  in `docs/plans/PLAN_INDEX.md` (per `TEMPLATE.md` line 147). Run
+  `python -m crackerjack.tools.plan_index_sync` (or equivalent)
+  to verify the index entry passes CI.
 
-If scope pressure forces a cut: **drop Phase 3** (the live demo).
-The library-class swaps in Phase 2 are the load-bearing changes;
-the demo is a one-command verification surface that can be added
-later as a follow-up plan.
+**If scope pressure forces a cut**:
+- **Drop Phase 1's B-list sweep first**, not Phase 2. Phase 1's B-list
+  is mechanical grep-and-delete across ~50 file-groups; the actual
+  fix is the library-class swap (Agno + LlamaIndex + the new
+  `LLMProvider.LLAMA_SERVER` enum value), which is Phase 2's A-list.
+  A minimal "Phase 1-essential" would be just the A-list + the
+  `_STUB_COSTS` removal.
+- Phase 2 is the only end-to-end verification surface (the live
+  demo). Without it, we have no way to confirm the swap actually
+  works at runtime — only that the test suite still passes.
+  Test-suite-passing-after-deletion is exactly the regime that
+  produced the original Ollama 501 bug. Dropping Phase 2 loses the
+  only signal that catches a runtime-only failure.
+
+**Post-plan discipline**:
+- After all per-repo merges land on local `main`, do **NOT** run
+  `git push origin main` — push is user-controlled per
+  `feedback-bodai-push-is-user-controlled.md`.
+- The user runs `git push` and `crackerjack run -p <level>` from
+  their own shell to bump+tag+publish the mcp-common version.
+- The implementer does not bump the mcp-common version themselves
+  per `feedback-mcp-common-version-bump-is-user.md`.
+- Each per-repo commit is authored as
+  `les@wedgwoodwebworks.com` (not `.local`) with no
+  `Co-Authored-By` trailer per `feedback-no-claude-code-coauthor-attribution.md`.
 
 ## References
 
 - `mahavishnu/docs/specs/2026-09-27-shared-bodai-substrate-design.md` —
   oneiric substrate (embedding service, LLM provider surface)
-- `mahavishnu/docs/plans/2026-10-15-bifrost-gateway-wiring.md` —
-  blocks on this plan; the gateway plan must land first (it
-  re-shapes how `LLMProvider` is consumed)
 - `mahavishnu/docs/plans/2026-05-10-minimax27-provider-migration.md` —
   the precedent for a major LLM-provider migration; the migration
   playbook in that plan is the template for the per-repo merges here
-- `mahavishnu/.claude/decisions/` — relevant governance decisions
-  (none directly contradict this plan)
-- `mahavishnu/CLAUDE.md` § "Crackerjack-Compliant Code" — gate and
-  conventions
+- `mahavishnu/docs/plans/2026-10-15-bifrost-gateway-wiring.md` —
+  related but independent (Bifrost does not consume or reshape the
+  LLM provider surface)
 - `mcp_common/mcp_common/llm/fallback.py` — the canonical
   FallbackChain implementation
 - `mahavishnu/workers/cloud_worker.py:78-113` — the canonical
-  three-tier chain pattern
+  three-tier chain pattern (now collapsing to two)
 - `feedback-no-backwards-compat-pre-1.0.md` — no deprecation windows
 - `feedback-crackerjack-merge-gate-is-vf.md` — gate is
   `crackerjack run -v -f`
+- `feedback-crackerjack-run-vf-not-f.md` — use `-v -f`, not bare `-f`
 - `bodai-pre-1.0-merge-policy.md` — direct merge to `main`,
   no PRs
+- `feedback-bodai-push-is-user-controlled.md` — push is
+  user-controlled; implementer does NOT `git push origin main`
+- `feedback-mcp-common-version-bump-is-user.md` — mcp-common
+  version bump is user-controlled; implementer does NOT edit
+  `pyproject.toml` version
+- `feedback-no-claude-code-coauthor-attribution.md` — no
+  `Co-Authored-By` trailer on commits
 - `git-author-email-correct-domain.md` — author email must be
   `les@wedgwoodwebworks.com` (not `.local`)
+- `mahavishnu/CLAUDE.md` § "Crackerjack-Compliant Code" — gate and
+  conventions
+- `mahavishnu/docs/decisions/wire-up-contract.md` — Pydantic-AI
+  cleanup is folded into Phase 1 (not deferred as a follow-up)
