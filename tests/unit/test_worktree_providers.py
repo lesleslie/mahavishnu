@@ -213,6 +213,45 @@ class TestSessionBuddyRemoveWorktree:
         with pytest.raises(WorktreeRemovalError):
             await provider.remove_worktree(Path("/repo"), Path("/wt"))
 
+    async def test_unknown_tool_raises_sentinel(self):
+        """When Session-Buddy MCP does not advertise remove_worktree,
+        the provider surfaces ``WorktreeToolNotAvailableError`` so the
+        coordinator can fall back. A plain ``WorktreeRemovalError`` would
+        hide the config gap behind a real-failure exception.
+        """
+        from mahavishnu.core.worktree_providers.errors import (
+            WorktreeToolNotAvailableError,
+        )
+
+        provider = SessionBuddyWorktreeProvider()
+        mock_client = AsyncMock()
+        provider._mcp_client = mock_client
+        mock_client.call_tool = AsyncMock(
+            side_effect=Exception("Unknown tool: 'remove_worktree'")
+        )
+
+        with pytest.raises(WorktreeToolNotAvailableError) as excinfo:
+            await provider.remove_worktree(Path("/repo"), Path("/wt"))
+        assert excinfo.value.details["missing_tool"] == "remove_worktree"
+
+    async def test_unknown_tool_lowercase_phrase_also_surfaces_sentinel(self):
+        """Some MCP error envelopes say 'tool not found' instead of
+        'Unknown tool'. Both phrasings must trigger the sentinel.
+        """
+        from mahavishnu.core.worktree_providers.errors import (
+            WorktreeToolNotAvailableError,
+        )
+
+        provider = SessionBuddyWorktreeProvider()
+        mock_client = AsyncMock()
+        provider._mcp_client = mock_client
+        mock_client.call_tool = AsyncMock(
+            side_effect=Exception("MCP error -32601: tool not found")
+        )
+
+        with pytest.raises(WorktreeToolNotAvailableError):
+            await provider.remove_worktree(Path("/repo"), Path("/wt"))
+
 
 class TestSessionBuddyListWorktrees:
     async def test_success(self):

@@ -170,6 +170,19 @@ class WorktreeProviderRegistry:
         """
         return self._provider_health.copy()
 
+    def all_providers(self) -> list[WorktreeProvider]:
+        """Return the registered providers in declared order.
+
+        The coordinator's ``remove_worktree`` uses this to walk the
+        fallback chain when ``get_available_provider()``'s chosen provider
+        raises ``WorktreeToolNotAvailableError``. Caller is responsible for
+        invoking ``health_check()`` per provider — the registry's
+        selection policy is intentionally not re-applied here so that
+        "skipped because unhealthy" and "skipped because tool missing"
+        remain distinguishable in the audit log.
+        """
+        return list(self._providers)
+
     def get_primary_provider(self) -> WorktreeProvider:
         """Get the primary (first) provider.
 

@@ -7,7 +7,12 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from .base import WorktreeProvider
-from .errors import WorktreeCreationError, WorktreeRemovalError, WorktreeValidationError
+from .errors import (
+    WorktreeCreationError,
+    WorktreeRemovalError,
+    WorktreeToolNotAvailableError,
+    WorktreeValidationError,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -239,6 +244,29 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         except WorktreeRemovalError:
             raise
         except Exception as e:  # translate any MCP error to typed WorktreeRemovalError
+            # FastMCP returns "Unknown tool: '<name>'" when the MCP server
+            # does not advertise the requested tool. That's a configuration
+            # gap, not a real failure — surface the sentinel so the
+            # coordinator can fall back to the next provider instead of
+            # misleadingly bubbling up a green-out-of-tree exception. Match
+            # the FastMCP error envelope verbatim (any case) plus the
+            # underlying MCP "tool not found" code path.
+            error_msg = str(e)
+            if "Unknown tool" in error_msg or "tool not found" in error_msg.lower():
+                logger.warning(
+                    "Session-Buddy MCP does not expose remove_worktree; "
+                    "coordinator will fall back to the next provider"
+                )
+                raise WorktreeToolNotAvailableError(
+                    message=(
+                        f"Session-Buddy MCP does not expose remove_worktree: {e}"
+                    ),
+                    details={
+                        "repository_path": str(repository_path),
+                        "worktree_path": str(worktree_path),
+                        "missing_tool": "remove_worktree",
+                    },
+                ) from e
             logger.exception("Session-Buddy remove_worktree failed")
             raise WorktreeRemovalError(
                 message=f"Session-Buddy worktree removal failed: {e}",

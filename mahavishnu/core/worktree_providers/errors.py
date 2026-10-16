@@ -52,6 +52,17 @@ class WorktreeRemovalError(WorktreeOperationError):
     """Raised when worktree removal fails."""
 
 
+class WorktreeToolNotAvailableError(WorktreeRemovalError):
+    """Sentinel: the provider's MCP/remote backend does not expose the tool.
+
+    The coordinator catches this specifically and tries the next provider
+    in the fallback chain. Raised by providers that discovered (e.g. via
+    an "Unknown tool" response) that their backend cannot satisfy the
+    requested operation. Distinct from ``WorktreeRemovalError`` (a real
+    failure that should bubble up to the operator).
+    """
+
+
 class WorktreeValidationError(WorktreeOperationError):
     """Raised when worktree validation fails."""
 

@@ -13,6 +13,7 @@ Tests comprehensive worktree coordination with safety mechanisms:
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
@@ -519,6 +520,184 @@ class TestWorktreeCoordinator:
         coordinator.audit_logger.log_removal_failure.assert_called_once()
         call_kwargs = coordinator.audit_logger.log_removal_failure.call_args.kwargs
         assert "timed out" in call_kwargs["error"]
+
+    @pytest.mark.asyncio
+    async def test_remove_worktree_falls_back_when_first_provider_lacks_tool(
+        self, tmp_path
+    ):
+        """When the chosen provider raises WorktreeToolNotAvailableError,
+        the coordinator tries the next provider in the registry.
+        """
+        from mahavishnu.core.worktree_providers.errors import (
+            WorktreeToolNotAvailableError,
+        )
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+
+        mock_repo = Repository(
+            name="test-repo",
+            package="test_repo",
+            path=str(tmp_path / "repos" / "test_repo"),
+            nickname="test-repo",
+            role="app",
+            tags=["test"],
+            description="Test repository",
+        )
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.get_by_name.return_value = mock_repo
+
+        mock_coord_manager = MagicMock()
+        mock_coord_manager.list_dependencies.return_value = []
+
+        primary = MockWorktreeProvider()
+        secondary = MockWorktreeProvider()
+
+        async def _primary_remove(*_args, **_kwargs):
+            raise WorktreeToolNotAvailableError(
+                message="Session-Buddy MCP does not expose remove_worktree: Unknown tool",
+                details={"missing_tool": "remove_worktree"},
+            )
+
+        primary.remove_worktree = AsyncMock(side_effect=_primary_remove)
+        secondary.remove_worktree = AsyncMock(
+            return_value={"success": True, "removed_path": "/wt/main"}
+        )
+
+        coordinator = WorktreeCoordinator(
+            repo_manager=mock_repo_manager,
+            coordination_manager=mock_coord_manager,
+            providers=[primary, secondary],
+            allowed_worktree_roots=[tmp_path / "worktrees"],
+        )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
+        coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        coordinator._verify_is_worktree = AsyncMock(return_value=True)
+
+        result = await coordinator.remove_worktree(
+            repo_nickname="test-repo",
+            worktree_path=str(tmp_path / "worktrees" / "test-repo" / "main"),
+            force=False,
+        )
+
+        assert result["success"] is True
+        primary.remove_worktree.assert_awaited_once()
+        secondary.remove_worktree.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_remove_worktree_returns_no_capable_provider_when_all_lack_tool(
+        self, tmp_path
+    ):
+        """When every provider raises the sentinel, return success=False
+        with ``error_code='no_capable_provider'`` so the CLI can render
+        it without crashing.
+        """
+        from mahavishnu.core.worktree_providers.errors import (
+            WorktreeToolNotAvailableError,
+        )
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+
+        mock_repo = Repository(
+            name="test-repo",
+            package="test_repo",
+            path=str(tmp_path / "repos" / "test_repo"),
+            nickname="test-repo",
+            role="app",
+            tags=["test"],
+            description="Test repository",
+        )
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.get_by_name.return_value = mock_repo
+
+        mock_coord_manager = MagicMock()
+        mock_coord_manager.list_dependencies.return_value = []
+
+        providers = []
+        for _ in range(3):
+            p = MockWorktreeProvider()
+            p.remove_worktree = AsyncMock(
+                side_effect=WorktreeToolNotAvailableError(
+                    message="Unknown tool: remove_worktree"
+                )
+            )
+            providers.append(p)
+
+        coordinator = WorktreeCoordinator(
+            repo_manager=mock_repo_manager,
+            coordination_manager=mock_coord_manager,
+            providers=providers,
+            allowed_worktree_roots=[tmp_path / "worktrees"],
+        )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
+        coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        coordinator._verify_is_worktree = AsyncMock(return_value=True)
+
+        result = await coordinator.remove_worktree(
+            repo_nickname="test-repo",
+            worktree_path=str(tmp_path / "worktrees" / "test-repo" / "main"),
+            force=False,
+        )
+
+        assert result["success"] is False
+        assert result["error_code"] == "no_capable_provider"
+        assert result["tool_not_available_chain"] == [
+            p.provider_name() for p in providers
+        ]
+        for p in providers:
+            p.remove_worktree.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_remove_worktree_does_not_fall_back_on_success_false(
+        self, tmp_path
+    ):
+        """A provider returning success=False is a real failure, not a
+        config gap — the coordinator must NOT fall through to the next
+        provider.
+        """
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+
+        mock_repo = Repository(
+            name="test-repo",
+            package="test_repo",
+            path=str(tmp_path / "repos" / "test_repo"),
+            nickname="test-repo",
+            role="app",
+            tags=["test"],
+            description="Test repository",
+        )
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.get_by_name.return_value = mock_repo
+
+        mock_coord_manager = MagicMock()
+        mock_coord_manager.list_dependencies.return_value = []
+
+        primary = MockWorktreeProvider()
+        secondary = MockWorktreeProvider()
+        primary.remove_worktree = AsyncMock(
+            return_value={"success": False, "error": "path rejected"}
+        )
+        secondary.remove_worktree = AsyncMock(
+            return_value={"success": True, "removed_path": "/wt/main"}
+        )
+
+        coordinator = WorktreeCoordinator(
+            repo_manager=mock_repo_manager,
+            coordination_manager=mock_coord_manager,
+            providers=[primary, secondary],
+            allowed_worktree_roots=[tmp_path / "worktrees"],
+        )
+        _patch_safe_path(coordinator, tmp_path / "worktrees")
+        coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        coordinator._verify_is_worktree = AsyncMock(return_value=True)
+
+        result = await coordinator.remove_worktree(
+            repo_nickname="test-repo",
+            worktree_path=str(tmp_path / "worktrees" / "test-repo" / "main"),
+            force=False,
+        )
+
+        assert result["success"] is False
+        assert result["error"] == "path rejected"
+        primary.remove_worktree.assert_awaited_once()
+        secondary.remove_worktree.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_remove_worktree_with_uncommitted_changes_blocked(self, tmp_path):
@@ -1276,3 +1455,264 @@ class TestWorktreeCoordinator:
         # Should succeed with only repo1 worktrees (repo2 error is logged but doesn't fail)
         assert result["success"] is True
         assert len(result["worktrees"]) == 1
+
+
+class TestPruneStaleMetadata:
+    """End-to-end coverage for ``WorktreeCoordinator.prune_stale_metadata``.
+
+    Each test materialises a real on-disk git repository with
+    ``git worktree add`` so we exercise the actual ``.git/worktrees/``
+    metadata shape — mocks would not catch path-content drift in the
+    ``gitdir`` pointer files.
+    """
+
+    @staticmethod
+    def _init_repo(repo_path: Path) -> None:
+        """Initialise a real git repo with a committed initial state."""
+        import subprocess
+
+        repo_path.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "init", "--initial-branch=main", str(repo_path)],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repo_path), "config", "user.email", "test@example.com"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repo_path), "config", "user.name", "Tester"],
+            check=True,
+            capture_output=True,
+        )
+        (repo_path / "README.md").write_text("hello\n")
+        subprocess.run(
+            ["git", "-C", str(repo_path), "add", "README.md"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repo_path), "commit", "-m", "init"],
+            check=True,
+            capture_output=True,
+        )
+
+    @staticmethod
+    def _build_coordinator(repo_path: Path):
+        """Build a WorktreeCoordinator pointed at a real repo on disk."""
+        mock_repo = Repository(
+            name="repo",
+            package="repo",
+            path=str(repo_path),
+            nickname="repo",
+            role="app",
+            tags=["test"],
+            description="Test repo",
+        )
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.get_by_name.return_value = mock_repo
+        mock_repo_manager.get_by_package.return_value = mock_repo
+        mock_coord_manager = MagicMock()
+
+        # Use the no-default-providers path so we don't accidentally hit
+        # Session-Buddy in tests (env var unset by default in CI).
+        from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
+
+        coordinator = WorktreeCoordinator(
+            repo_manager=mock_repo_manager,
+            coordination_manager=mock_coord_manager,
+            providers=[MockWorktreeProvider()],
+        )
+        return coordinator
+
+    @pytest.mark.asyncio
+    async def test_removes_entries_with_missing_paths(self, tmp_path):
+        """A worktree whose directory is gone but whose metadata dir
+        survives is the canonical stale entry. ``prune_stale_metadata``
+        must remove the metadata and force-delete the branch.
+        """
+        import subprocess
+
+        repo_path = tmp_path / "repo"
+        worktree_path = tmp_path / "wt-stale"
+        self._init_repo(repo_path)
+
+        # Create a real worktree
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                str(worktree_path),
+                "-b",
+                "stale-branch",
+            ],
+            check=True,
+            capture_output=True,
+        )
+        assert worktree_path.exists()
+        assert (repo_path / ".git" / "worktrees" / "wt-stale").is_dir()
+
+        # Simulate out-of-band deletion of the worktree directory
+        # without touching ``.git/worktrees/`` — the gap we are patching.
+        shutil.rmtree(worktree_path)
+        assert not worktree_path.exists()
+
+        coordinator = self._build_coordinator(repo_path)
+        result = await coordinator.prune_stale_metadata("repo")
+
+        assert result["success"] is True
+        assert result["removed_count"] == 1
+        assert result["removed"][0]["metadata"] == "wt-stale"
+        assert result["removed"][0]["branch"] == "stale-branch"
+        assert not (repo_path / ".git" / "worktrees" / "wt-stale").exists()
+
+        # Branch was force-deleted
+        branch_list = subprocess.run(
+            ["git", "-C", str(repo_path), "branch", "--list"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert "stale-branch" not in branch_list.stdout
+
+        # And ``git worktree list`` no longer reports it
+        wt_list = subprocess.run(
+            ["git", "-C", str(repo_path), "worktree", "list"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert "stale-branch" not in wt_list.stdout
+
+    @pytest.mark.asyncio
+    async def test_keeps_entries_with_existing_paths(self, tmp_path):
+        """Non-stale worktrees must be left alone."""
+        import subprocess
+
+        repo_path = tmp_path / "repo"
+        worktree_path = tmp_path / "wt-live"
+        self._init_repo(repo_path)
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                str(worktree_path),
+                "-b",
+                "live-branch",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        coordinator = self._build_coordinator(repo_path)
+        result = await coordinator.prune_stale_metadata("repo")
+
+        assert result["success"] is True
+        assert result["removed_count"] == 0
+        assert (repo_path / ".git" / "worktrees" / "wt-live").is_dir()
+        assert worktree_path.exists()
+
+    @pytest.mark.asyncio
+    async def test_skips_locked_entries(self, tmp_path):
+        """``<entry>/locked`` is a positive signal that the worktree
+        should stay registered even if the directory is gone.
+        """
+        import subprocess
+
+        repo_path = tmp_path / "repo"
+        worktree_path = tmp_path / "wt-locked"
+        self._init_repo(repo_path)
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                "--detach",
+                str(worktree_path),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        # Lock the worktree, then out-of-band-rm the directory.
+        subprocess.run(
+            ["git", "-C", str(repo_path), "worktree", "lock", str(worktree_path)],
+            check=True,
+            capture_output=True,
+        )
+        shutil.rmtree(worktree_path)
+
+        coordinator = self._build_coordinator(repo_path)
+        result = await coordinator.prune_stale_metadata("repo")
+
+        assert result["success"] is True
+        assert result["removed_count"] == 0
+        assert "wt-locked" in result["skipped_locked"]
+        # Metadata still present — the operator must unlock first.
+        assert (repo_path / ".git" / "worktrees" / "wt-locked").is_dir()
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_mutate(self, tmp_path):
+        """``dry_run=True`` returns the candidate set but never deletes."""
+        import subprocess
+
+        repo_path = tmp_path / "repo"
+        worktree_path = tmp_path / "wt-dry"
+        self._init_repo(repo_path)
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                str(worktree_path),
+                "-b",
+                "dry-branch",
+            ],
+            check=True,
+            capture_output=True,
+        )
+        shutil.rmtree(worktree_path)
+
+        coordinator = self._build_coordinator(repo_path)
+        result = await coordinator.prune_stale_metadata("repo", dry_run=True)
+
+        assert result["success"] is True
+        assert result["dry_run"] is True
+        assert result["removed_count"] == 1
+        # Nothing was actually removed.
+        assert (repo_path / ".git" / "worktrees" / "wt-dry").is_dir()
+        branch_list = subprocess.run(
+            ["git", "-C", str(repo_path), "branch", "--list"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert "dry-branch" in branch_list.stdout
+
+    @pytest.mark.asyncio
+    async def test_missing_repo_path(self, tmp_path):
+        """Repo path that does not exist on disk should be reported
+        as success with zero removed (operator-visible ``success=True``
+        is friendlier than a hard raise when the path was moved).
+        """
+        repo_path = tmp_path / "never-existed"
+        coordinator = self._build_coordinator(repo_path)
+        result = await coordinator.prune_stale_metadata("repo")
+
+        assert result["success"] is True
+        assert result["removed_count"] == 0
+        assert result["removed"] == []

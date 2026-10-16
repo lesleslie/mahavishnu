@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import typer
 import yaml
@@ -446,6 +446,114 @@ def prune_merged_worktrees(
             )
         if any(not result.success for result in results):
             raise typer.Exit(code=1)
+
+    _run_async(_run())
+
+
+@worktree_app.command("prune-stale-metadata")
+def prune_stale_metadata(
+    repo: str | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        help="Limit to one repo nickname (default: all configured repos)",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="List candidates without removing anything"
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON"),
+):
+    """Remove worktree metadata whose working tree is missing on disk.
+
+    Closes the gap left by ``git worktree prune``: when a worktree
+    directory is deleted out-of-band (e.g., operator ``rm -rf``) but
+    ``.git/worktrees/<name>/`` survives, plain prune leaves the entry
+    in place. This command walks the metadata directory, removes the
+    entries whose working-tree path is missing, and force-deletes the
+    matching branch ref.
+
+    Locked entries (those with a ``<name>/locked`` file) are skipped —
+    operators must ``git worktree unlock`` first.
+    """
+
+    async def _run() -> None:
+        app = MahavishnuApp.load()
+        await app.initialize_worktree_coordinator()
+        coordinator = app.worktree_coordinator
+        if coordinator is None:
+            typer.echo("WorktreeCoordinator not available", err=True)
+            raise typer.Exit(code=1)
+
+        repo_manager = _worktree_repo_manager(app)
+        if repo_manager is None:
+            typer.echo("Repository manager not available", err=True)
+            raise typer.Exit(code=1)
+
+        if repo is not None:
+            resolved = repo_manager.get_repo(repo)
+            if resolved is None:
+                typer.echo(f"Repo not found: {repo}", err=True)
+                raise typer.Exit(code=1)
+            repos = [resolved]
+        else:
+            repos = list(_configured_repos(repo_manager))
+
+        all_results: list[dict[str, Any]] = []
+        for repo_info in repos:
+            if not getattr(repo_info, "nickname", None):
+                typer.echo(
+                    f"Repo has no canonical nickname: {repo_info.name}",
+                    err=True,
+                )
+                continue
+            try:
+                result = await coordinator.prune_stale_metadata(
+                    repo_info.nickname,
+                    dry_run=dry_run,
+                )
+            except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+                typer.echo(
+                    f"Error pruning stale metadata for {repo_info.nickname}: {exc}",
+                    err=True,
+                )
+                continue
+            all_results.append(result)
+
+        if json_output:
+            typer.echo(
+                json.dumps(
+                    {
+                        "dry_run": dry_run,
+                        "results": all_results,
+                        "total_removed": sum(
+                            r.get("removed_count", 0) for r in all_results
+                        ),
+                    },
+                    indent=2,
+                )
+            )
+            return
+
+        total_removed = sum(r.get("removed_count", 0) for r in all_results)
+        total_locked = sum(len(r.get("skipped_locked", [])) for r in all_results)
+        prefix = "[DRY-RUN] " if dry_run else ""
+        typer.echo(
+            f"{prefix}stale-metadata prune: removed={total_removed} "
+            f"locked={total_locked} repos={len(all_results)}"
+        )
+        for r in all_results:
+            typer.echo(
+                f"  {r['repo_nickname']}: removed={r['removed_count']} "
+                f"locked_skipped={len(r.get('skipped_locked', []))}"
+            )
+            for entry in r.get("removed", []):
+                typer.echo(
+                    f"    - {entry['metadata']}  "
+                    f"worktree={entry['worktree_path']}  "
+                    f"branch={entry['branch']}"
+                )
+            for locked in r.get("skipped_locked", []):
+                typer.echo(f"    ! skipped (locked): {locked}")
 
     _run_async(_run())
 

@@ -32,6 +32,22 @@ def _make_coordinator():
         }
     )
     coord.prune_worktrees = AsyncMock(return_value={"success": True, "pruned_count": 2})
+    coord.prune_stale_metadata = AsyncMock(
+        return_value={
+            "success": True,
+            "repo_nickname": "myrepo",
+            "removed_count": 1,
+            "skipped_locked": [],
+            "removed": [
+                {
+                    "metadata": "wt-stale",
+                    "worktree_path": "/tmp/wt-stale",
+                    "branch": "stale-branch",
+                }
+            ],
+            "dry_run": False,
+        }
+    )
     coord.get_worktree_safety_status = AsyncMock(
         return_value={
             "uncommitted_changes": False,
@@ -338,6 +354,173 @@ class TestPruneWorktrees:
     def test_prune_missing_repo_arg(self):
         result = runner.invoke(worktree_app, ["prune"])
         assert result.exit_code != 0
+
+
+class TestPruneStaleMetadata:
+    """Tests for the 'prune-stale-metadata' command."""
+
+    @staticmethod
+    def _patch_repos(mock_app, repos):
+        """Wire up a working repo_manager.list_repos / get_repo pair."""
+        repo_manager = MagicMock()
+        repo_manager.list_repos.return_value = repos
+        # For the --repo flag path: get_repo("only") -> the matching repo.
+        def _get_repo(name):
+            for r in repos:
+                if r.nickname == name:
+                    return r
+            return None
+
+        repo_manager.get_repo.side_effect = _get_repo
+        mock_app.load.return_value.repo_manager = repo_manager
+
+    @staticmethod
+    def _make_repo(nickname):
+        from mahavishnu.core.repo_models import Repository
+
+        return Repository(
+            name=nickname,
+            package=nickname,
+            path=f"/tmp/{nickname}",
+            nickname=nickname,
+            role="app",
+            tags=["test"],
+            description=f"{nickname} for tests",
+        )
+
+    def test_prune_stale_metadata_default_repo(self, mock_app):
+        coord = mock_app.load.return_value.worktree_coordinator
+        self._patch_repos(
+            mock_app, [self._make_repo("myrepo")]
+        )
+        coord.prune_stale_metadata.return_value = {
+            "success": True,
+            "repo_nickname": "myrepo",
+            "removed_count": 2,
+            "skipped_locked": [],
+            "removed": [
+                {
+                    "metadata": "wt-a",
+                    "worktree_path": "/tmp/wt-a",
+                    "branch": "a",
+                },
+                {
+                    "metadata": "wt-b",
+                    "worktree_path": "/tmp/wt-b",
+                    "branch": "b",
+                },
+            ],
+            "dry_run": False,
+        }
+        result = runner.invoke(worktree_app, ["prune-stale-metadata"])
+        assert result.exit_code == 0
+        assert "removed=2" in result.output
+        assert "wt-a" in result.output
+        assert "wt-b" in result.output
+        coord.prune_stale_metadata.assert_awaited_once_with(
+            "myrepo", dry_run=False
+        )
+
+    def test_prune_stale_metadata_dry_run_prefix(self, mock_app):
+        coord = mock_app.load.return_value.worktree_coordinator
+        self._patch_repos(
+            mock_app, [self._make_repo("myrepo")]
+        )
+        coord.prune_stale_metadata.return_value = {
+            "success": True,
+            "repo_nickname": "myrepo",
+            "removed_count": 1,
+            "skipped_locked": [],
+            "removed": [
+                {
+                    "metadata": "wt-dry",
+                    "worktree_path": "/tmp/wt-dry",
+                    "branch": "dry",
+                }
+            ],
+            "dry_run": True,
+        }
+        result = runner.invoke(worktree_app, ["prune-stale-metadata", "--dry-run"])
+        assert result.exit_code == 0
+        assert "[DRY-RUN]" in result.output
+        # Verify dry_run flag was passed through
+        call_kwargs = coord.prune_stale_metadata.call_args.kwargs
+        assert call_kwargs["dry_run"] is True
+
+    def test_prune_stale_metadata_repo_filter(self, mock_app):
+        coord = mock_app.load.return_value.worktree_coordinator
+        self._patch_repos(
+            mock_app, [self._make_repo("only"), self._make_repo("other")]
+        )
+        coord.prune_stale_metadata.return_value = {
+            "success": True,
+            "repo_nickname": "only",
+            "removed_count": 0,
+            "skipped_locked": [],
+            "removed": [],
+            "dry_run": False,
+        }
+        result = runner.invoke(
+            worktree_app, ["prune-stale-metadata", "--repo", "only"]
+        )
+        assert result.exit_code == 0
+        coord.prune_stale_metadata.assert_awaited_once_with(
+            "only", dry_run=False
+        )
+
+    def test_prune_stale_metadata_locked_in_output(self, mock_app):
+        coord = mock_app.load.return_value.worktree_coordinator
+        self._patch_repos(
+            mock_app, [self._make_repo("myrepo")]
+        )
+        coord.prune_stale_metadata.return_value = {
+            "success": True,
+            "repo_nickname": "myrepo",
+            "removed_count": 0,
+            "skipped_locked": ["wt-locked"],
+            "removed": [],
+            "dry_run": False,
+        }
+        result = runner.invoke(worktree_app, ["prune-stale-metadata"])
+        assert result.exit_code == 0
+        assert "locked=1" in result.output
+        assert "skipped (locked): wt-locked" in result.output
+
+    def test_prune_stale_metadata_json_output(self, mock_app):
+        coord = mock_app.load.return_value.worktree_coordinator
+        self._patch_repos(
+            mock_app, [self._make_repo("myrepo")]
+        )
+        coord.prune_stale_metadata.return_value = {
+            "success": True,
+            "repo_nickname": "myrepo",
+            "removed_count": 1,
+            "skipped_locked": [],
+            "removed": [
+                {
+                    "metadata": "wt-json",
+                    "worktree_path": "/tmp/wt-json",
+                    "branch": "json",
+                }
+            ],
+            "dry_run": False,
+        }
+        result = runner.invoke(
+            worktree_app, ["prune-stale-metadata", "--json"]
+        )
+        assert result.exit_code == 0
+        import json
+
+        payload = json.loads(result.output)
+        assert payload["dry_run"] is False
+        assert payload["total_removed"] == 1
+        assert payload["results"][0]["removed"][0]["metadata"] == "wt-json"
+
+    def test_prune_stale_metadata_coordinator_unavailable(self, mock_app):
+        mock_app.load.return_value.worktree_coordinator = None
+        result = runner.invoke(worktree_app, ["prune-stale-metadata"])
+        assert result.exit_code == 1
+        assert "not available" in result.output
 
 
 class TestSafetyStatus:

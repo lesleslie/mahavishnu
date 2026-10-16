@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,7 @@ from mahavishnu.core.paths import get_worktree_base_path
 
 from .worktree_audit import WorktreeAuditLogger
 from .worktree_backup import WorktreeBackupManager
+from .worktree_providers.errors import WorktreeToolNotAvailableError
 from .worktree_providers.local import DirectGitWorktreeProvider, LocalWorktreeProvider
 from .worktree_providers.registry import WorktreeProviderRegistry
 from .worktree_providers.session_buddy import SessionBuddyWorktreeProvider
@@ -346,37 +348,108 @@ class WorktreeCoordinator:
             return safety_error
 
         try:
-            # Get provider and delegate
-            provider = await self.provider_registry.get_available_provider()
-            result = await provider.remove_worktree(
-                repository_path=Path(repo.path),
-                worktree_path=Path(worktree_path),
-                force=force,
-            )
+            # Fallback chain: walk the registry in declared order. If a
+            # provider raises WorktreeToolNotAvailableError (e.g. Session-Buddy
+            # MCP does not advertise ``remove_worktree``), we log and try the
+            # next provider. Any other exception propagates per the existing
+            # audit-failure path. ``result.success=False`` is treated as a
+            # provider-level failure (not a config gap) and returned to the
+            # operator — we do NOT fall back on it.
+            #
+            # Rationale: the registry's ``get_available_provider()`` returns
+            # the first healthy provider, but the registry's contract is
+            # "first wins" — fall-through to a sibling provider when the
+            # chosen one lacks the requested tool is a coordinator concern,
+            # not a registry concern.
+            last_not_available: tuple[str, str] | None = None
+            for provider in self.provider_registry.all_providers():
+                    if not provider.health_check():
+                        logger.debug(
+                            "Skipping unhealthy provider in fallback chain: %s",
+                            provider.provider_name(),
+                        )
+                        continue
+                    try:
+                        result = await provider.remove_worktree(
+                            repository_path=Path(repo.path),
+                            worktree_path=Path(worktree_path),
+                            force=force,
+                        )
+                    except WorktreeToolNotAvailableError as exc:
+                        last_not_available = (provider.provider_name(), str(exc))
+                        logger.warning(
+                            "Provider %s does not support remove_worktree; "
+                            "falling back to next provider",
+                            provider.provider_name(),
+                        )
+                        continue
+                    # Bug session-buddy-mcp-remove-worktree-bugs.md: do not
+                    # log ``removal_success`` when the provider reports
+                    # failure. The provider's return value is the only
+                    # source of truth — an exception path below handles
+                    # programming errors, but a well-formed
+                    # ``{"success": False, ...}`` dict was previously logged
+                    # as success, hiding real failures behind a green audit
+                    # line.
+                    self._log_removal_outcome(
+                        result=result,
+                        repo_nickname=repo_nickname,
+                        worktree_path=worktree_path,
+                        force=force,
+                        force_reason=force_reason,
+                        user_id=user_id,
+                        has_uncommitted=has_uncommitted,
+                        backup_path=backup_path,
+                    )
 
-            # Bug session-buddy-mcp-remove-worktree-bugs.md: do not log
-            # ``removal_success`` when the provider reports failure. The
-            # provider's return value is the only source of truth — an
-            # exception path below handles programming errors, but a
-            # well-formed ``{"success": False, ...}`` dict was previously
-            # logged as success, hiding real failures behind a green audit
-            # line.
-            self._log_removal_outcome(
-                result=result,
+                    if not result.get("success"):
+                        return result
+
+                    logger.info(
+                        "Worktree removed successfully via %s: %s",
+                        provider.provider_name(),
+                        worktree_path,
+                    )
+                    return result
+
+            # All providers in the chain were skipped (unhealthy or did not
+            # advertise the tool). Surface a typed failure that the CLI can
+            # render without crashing.
+            if last_not_available is not None:
+                provider_name, message = last_not_available
+                self.audit_logger.log_removal_failure(
+                    user_id=user_id,
+                    repo_nickname=repo_nickname,
+                    worktree_path=worktree_path,
+                    error=(
+                        f"No provider supports remove_worktree "
+                        f"(last failure: {provider_name}: {message})"
+                    ),
+                )
+                return {
+                    "success": False,
+                    "error": (
+                        f"No worktree provider in the fallback chain "
+                        f"supports remove_worktree (last tried: {provider_name})"
+                    ),
+                    "error_code": "no_capable_provider",
+                    "provider": provider_name,
+                    "tool_not_available_chain": [
+                        p.provider_name() for p in self.provider_registry.all_providers()
+                    ],
+                }
+            # Unhealthy providers across the board
+            self.audit_logger.log_removal_failure(
+                user_id=user_id,
                 repo_nickname=repo_nickname,
                 worktree_path=worktree_path,
-                force=force,
-                force_reason=force_reason,
-                user_id=user_id,
-                has_uncommitted=has_uncommitted,
-                backup_path=backup_path,
+                error="No healthy worktree provider available",
             )
-
-            if not result.get("success"):
-                return result
-
-            logger.info(f"Worktree removed successfully: {worktree_path}")
-            return result
+            return {
+                "success": False,
+                "error": "No healthy worktree provider available",
+                "error_code": "no_healthy_provider",
+            }
 
         except Exception as e:  # worktree coordination — broad catch logs the failure to the audit logger before re-raising
             self.audit_logger.log_removal_failure(
@@ -653,6 +726,204 @@ class WorktreeCoordinator:
         ):  # worktree coordination — broad catch logs full traceback before re-raising the failure
             logger.exception("Failed to prune worktrees")
             raise
+
+    async def prune_stale_metadata(
+        self,
+        repo_nickname: str,
+        dry_run: bool = False,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Remove worktree metadata directories whose working tree is missing.
+
+        ``git worktree prune`` only removes metadata whose directory was
+        externally deleted. When the working tree directory is gone but
+        ``.git/worktrees/<name>/`` is intact (the typical "out-of-band
+        deletion" pattern — operator ``rm -rf``s the worktree while git's
+        bookkeeping survives), prune leaves the entry in place. This
+        method closes that gap: it walks the metadata directory, reads
+        the ``gitdir`` pointer to find the worktree path, and removes the
+        metadata entry when the path is missing on disk. Per-entry
+        branch ref is force-deleted so the orphaned branch does not
+        linger after the worktree disappears.
+
+        Locked entries (``<entry>/locked``) are skipped — ``git worktree
+        lock`` is a positive signal that the worktree should remain
+        registered. Operators who want to override that should unlock
+        first (``git worktree unlock``).
+
+        Args:
+            repo_nickname: Repository nickname to scan.
+            dry_run: When True, return candidates without mutating.
+            user_id: Operator identity, propagated to the audit log.
+
+        Returns:
+            Dictionary with ``success``, ``repo_nickname``,
+            ``removed_count``, ``skipped_locked``, and (when not
+            dry-run) ``removed`` (list of metadata entries removed).
+        """
+        repo = self.repo_manager.get_by_name(repo_nickname)
+        if repo is None:
+            repo = self.repo_manager.get_by_package(repo_nickname)
+        if repo is None:
+            raise ConfigurationError(f"Repository not found: {repo_nickname}")
+
+        repo_path = Path(repo.path)
+        worktrees_meta_dir = repo_path / ".git" / "worktrees"
+        if not worktrees_meta_dir.is_dir():
+            self.audit_logger.log_prune_operation(
+                user_id=user_id,
+                repo_nickname=repo_nickname,
+                pruned_count=0,
+            )
+            return {
+                "success": True,
+                "repo_nickname": repo_nickname,
+                "removed_count": 0,
+                "skipped_locked": [],
+                "removed": [],
+            }
+
+        removed: list[dict[str, str]] = []
+        skipped_locked: list[str] = []
+
+        for entry in sorted(worktrees_meta_dir.iterdir()):
+            if not entry.is_dir():
+                continue
+            gitdir_file = entry / "gitdir"
+            if not gitdir_file.is_file():
+                # Malformed metadata — git would refuse it too. Surface
+                # but don't touch; an operator can clean up manually.
+                logger.warning(
+                    "Skipping malformed worktree metadata %s: missing gitdir file",
+                    entry,
+                )
+                continue
+
+            try:
+                gitdir_content = gitdir_file.read_text().strip()
+            except OSError as exc:
+                logger.warning("Could not read %s: %s", gitdir_file, exc)
+                continue
+
+            # Modern git (>= 2.30) writes the absolute path to the
+            # worktree's .git file pointer with NO ``gitdir: `` prefix.
+            # Older git wrote ``gitdir: <path>``. Accept both.
+            if gitdir_content.startswith("gitdir: "):
+                gitdir_value = gitdir_content[len("gitdir: "):]
+            else:
+                gitdir_value = gitdir_content
+
+            if not gitdir_value:
+                logger.warning(
+                    "Skipping malformed worktree metadata %s: empty gitdir content",
+                    entry,
+                )
+                continue
+            # gitdir points at ``<worktree>/.git`` — the worktree path
+            # is the parent of the .git file.
+            worktree_path = Path(gitdir_value).parent
+
+            # Skip locked entries — operator must unlock explicitly.
+            if (entry / "locked").exists():
+                skipped_locked.append(entry.name)
+                logger.info(
+                    "Skipping locked worktree metadata %s (live lock file present)",
+                    entry.name,
+                )
+                continue
+
+            # Stale iff the working tree directory is missing on disk.
+            if worktree_path.exists():
+                continue
+
+            # Extract the branch ref (best-effort; HEAD may be detached).
+            branch_name: str | None = None
+            head_file = entry / "HEAD"
+            if head_file.is_file():
+                head_content = head_file.read_text().strip()
+                if head_content.startswith("ref: refs/heads/"):
+                    branch_name = head_content[len("ref: refs/heads/"):]
+
+            if not dry_run:
+                shutil.rmtree(entry)
+                # ``git branch -D`` (force-delete) is appropriate here: the
+                # branch had only the worktree as its ref-holder, and the
+                # worktree is gone. ``-d`` would refuse if the branch
+                # tip is not merged, which is the wrong policy for a
+                # worktree we are explicitly destroying.
+                if branch_name is not None:
+                    proc = await asyncio.create_subprocess_exec(
+                        "git",
+                        "branch",
+                        "-D",
+                        branch_name,
+                        cwd=str(repo_path),
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _, stderr_bytes = await proc.communicate()
+                    if proc.returncode != 0:
+                        # Branch ref might be checked out elsewhere, or
+                        # already deleted. Surface but don't abort —
+                        # the metadata cleanup is the important part.
+                        stderr_text = (
+                            stderr_bytes.decode(errors="replace")
+                            if stderr_bytes
+                            else ""
+                        )
+                        logger.warning(
+                            "Could not delete branch %s in %s: %s",
+                            branch_name,
+                            repo_nickname,
+                            stderr_text.strip() or "<no stderr>",
+                        )
+
+            removed.append(
+                {
+                    "metadata": entry.name,
+                    "worktree_path": str(worktree_path),
+                    "branch": branch_name or "",
+                }
+            )
+
+        if not dry_run and removed:
+            # Refresh git's view so ``git worktree list`` agrees.
+            proc = await asyncio.create_subprocess_exec(
+                "git",
+                "worktree",
+                "prune",
+                cwd=str(repo_path),
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr_bytes = await proc.communicate()
+            if proc.returncode != 0:
+                # Non-fatal: even if prune fails, the metadata is gone.
+                stderr_text = (
+                    stderr_bytes.decode(errors="replace")
+                    if stderr_bytes
+                    else ""
+                )
+                logger.warning(
+                    "git worktree prune exited %d for %s: %s",
+                    proc.returncode,
+                    repo_nickname,
+                    stderr_text.strip() or "<no stderr>",
+                )
+
+        self.audit_logger.log_prune_operation(
+            user_id=user_id,
+            repo_nickname=repo_nickname,
+            pruned_count=len(removed),
+        )
+        return {
+            "success": True,
+            "repo_nickname": repo_nickname,
+            "removed_count": len(removed),
+            "skipped_locked": skipped_locked,
+            "removed": removed,
+            "dry_run": dry_run,
+        }
 
     async def get_worktree_safety_status(
         self, repo_nickname: str, worktree_path: str
