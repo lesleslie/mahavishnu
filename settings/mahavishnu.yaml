@@ -78,6 +78,17 @@ opensearch:
   ca_certs: null  # Path to CA certificate file if using self-signed certs
   use_ssl: true
   ssl_assert_hostname: true
+
+# 2026-10-16: Bifrost Phase D Qwen gate verified end-to-end. Flip
+# route_qwen_code to true so every deployment gets the
+# Bifrost-gateway env injection for terminal-qwen workers
+# (OPENAI_BASE_URL=<bifrost.base_url>/v1). The local.yaml
+# override that preceded this is now redundant; operators
+# can keep it as documentation of the issue but it is
+# otherwise inert. See scripts/verify_qwen_bifrost_gate.sh
+# for the operator-action verification path.
+bifrost:
+  route_qwen_code: true
   ssl_show_warn: true
 
 # OpenTelemetry trace storage with semantic search
