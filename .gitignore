@@ -331,6 +331,13 @@ docs/archive/test-artifacts/coverage*.json
 ~
 [{]HOME[}]
 [{]XDG_DATA_HOME:-$HOME
+# Claude Code runtime state (per-repo, was in .claude/.gitignore)
+scheduled_tasks.json
+scheduled_tasks.lock
+# Backup artifacts (was in .claude/.gitignore)
+*.backup
+*.backup.json
+
 # pytest-benchmark autosave cache (sibling of the tracked `benchmarks/` test suite)
 .benchmarks/
 # Vitest config timestamp cache
