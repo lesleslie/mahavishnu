@@ -42,7 +42,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
+from urllib.parse import urlparse
 
 import httpx
 
@@ -57,12 +59,73 @@ EVENT_NAME = "SessionStart"
 REQUEST_TIMEOUT_SECONDS = 1.0
 USER_AGENTS_DIR = os.path.expanduser("~/.claude/agents")
 
+# Agent name validation: lowercase letter, then 2-63 chars of
+# [a-z0-9_-]. Matches the slug convention used by
+# Bodai server registry entries. Anything outside this
+# pattern is rejected — agent names flow into FILE NAMES on
+# disk, so a too-broad regex becomes a path-traversal
+# primitive (e.g. ``../../../etc/passwd``) or a YAML
+# structural corruption primitive.
+_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]{2,63}$")
+
+# URL allowlist for the env-var override. Only the default
+# loopback URLs and the documented Bodai server hostnames are
+# trusted; anything else falls back to the default. This is a
+# defense-in-depth SSRF guard — the env var is set by the
+# user's shell, so a malicious process could redirect the
+# hook to an attacker-controlled server. Restricting to the
+# known Bodai hostnames (or loopback) limits the blast radius.
+_ALLOWED_URL_HOSTS: frozenset[str] = frozenset(
+    {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        # Documented Bodai server hostnames. Add new servers
+        # here, not in code scattered elsewhere.
+        "akosha.local",
+        "mahavishnu.local",
+        "crackerjack.local",
+    }
+)
+
+
+def _validate_url(url: str) -> str | None:
+    """Return ``url`` iff its scheme is http(s) AND its host is
+    loopback or in ``_ALLOWED_URL_HOSTS``. Otherwise None — the
+    caller falls back to the default URL.
+    """
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https"):
+        return None
+    host = (parsed.hostname or "").lower()
+    if host not in _ALLOWED_URL_HOSTS:
+        return None
+    return url
+
+
 # (server_key, default_mcp_url, tool_name)
 SERVERS: list[tuple[str, str, str]] = [
     ("akosha", "http://localhost:8682/mcp", "list_agents"),
     ("mahavishnu", "http://localhost:8680/mcp", "mahavishnu_list_agents"),
     ("crackerjack", "http://localhost:8676/mcp", "crackerjack_list_agents"),
 ]
+
+
+def _yaml_single_quote(s: str) -> str:
+    """YAML single-quoted string: double every internal single quote.
+
+    Single-quoted YAML strings (``'foo'``) interpret ONLY the
+    ``''`` escape — no other backslash sequences. That makes
+    this the safest quote style for values that come from an
+    untrusted source (a network response). Newlines inside the
+    value are preserved verbatim (the value collapses to a
+    single space in YAML's folded style, which is what the
+    description field wants).
+    """
+    return "'" + s.replace("'", "''") + "'"
 
 
 def _safe_parse_payload() -> dict[str, object]:
@@ -87,30 +150,39 @@ def _stub_for_agent(agent: object) -> str:
     YAML frontmatter only — name, description (>-, folded), model.
     No body, since the canonical body lives at <server>/mcp/agents/<name>.md
     and is fetched by mcp__<server>__<server>_get_agent on demand.
+
+    All three fields are SINGLE-QUOTED YAML strings via
+    :func:`_yaml_single_quote` to prevent YAML-injection from a
+    malicious or env-redirected server. The agent ``name`` is
+    additionally validated against ``_NAME_PATTERN`` (slug
+    convention) and rejected on mismatch — it flows into the
+    FILE NAME on disk, so a too-broad regex would become a
+    path-traversal / structural-corruption primitive.
     """
     if not isinstance(agent, dict):
         return ""
-    name = str(agent.get("name") or "").strip()
-    if not name:
+    raw_name = agent.get("name")
+    if not isinstance(raw_name, str) or not _NAME_PATTERN.match(raw_name.strip()):
         return ""
+    name = raw_name.strip()
     description = str(agent.get("description") or "").strip()
     model = str(agent.get("model") or "sonnet").strip()
+    # Model name goes through the same slug guard as the agent
+    # name — anything not matching the slug pattern is replaced
+    # with the safe default. Real Bodai server responses use
+    # well-known model IDs (claude-sonnet-4-6, minimax-m3, etc.)
+    # that match the pattern.
+    if not _NAME_PATTERN.match(model):
+        model = "sonnet"
 
-    body = ["---", f"name: {name}", "description: >-"]
-    if description:
-        line = "  "
-        for word in description.split():
-            candidate = line + (" " if line.strip() else "") + word
-            if len(candidate) > 80 and line.strip():
-                body.append(line)
-                line = "  " + word
-            else:
-                line = candidate
-        if line.strip():
-            body.append(line)
-    body.append(f"model: {model}")
-    body.append("---")
-    body.append("")
+    body = [
+        "---",
+        f"name: {_yaml_single_quote(name)}",
+        f"description: {_yaml_single_quote(description)}",
+        f"model: {_yaml_single_quote(model)}",
+        "---",
+        "",
+    ]
     return "\n".join(body)
 
 
@@ -126,9 +198,15 @@ def _materialize(agents: list[object]) -> tuple[int, list[str]]:
     for agent in agents:
         if not isinstance(agent, dict):
             continue
-        name = agent.get("name")
-        if not isinstance(name, str) or not name.strip():
+        raw_name = agent.get("name")
+        if not isinstance(raw_name, str):
             continue
+        # Re-validate the name pattern at the materialization
+        # site too — defense in depth against a future change to
+        # ``_stub_for_agent`` that loosens the guard.
+        if not _NAME_PATTERN.match(raw_name.strip()):
+            continue
+        name = raw_name.strip()
         target = os.path.join(USER_AGENTS_DIR, f"{name}.md")
         if os.path.exists(target):
             continue
@@ -200,7 +278,16 @@ def main() -> int:
     failures: list[str] = []
 
     for server_key, default_url, tool_name in SERVERS:
-        url = os.environ.get(f"{server_key.upper()}_MCP_URL", default_url)
+        env_url = os.environ.get(f"{server_key.upper()}_MCP_URL")
+        # ``_validate_url`` returns the env-var URL iff its host
+        # is loopback or in the Bodai allowlist; otherwise None
+        # — the caller falls back to the default. This is the
+        # SSRF guard: a malicious or misconfigured env var
+        # cannot redirect the hook to an attacker-controlled
+        # server.
+        url = _validate_url(env_url) if env_url else None
+        if url is None:
+            url = default_url
         try:
             with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
                 agents, error = _fetch_server_agents(client, url, tool_name)
