@@ -165,9 +165,20 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
 
 
 def init_terminal_manager(server: FastMCPServer) -> TerminalManager | None:
-    """Initialize the terminal manager using the server's MCP client."""
+    """Initialize the terminal manager using the server's MCP client.
+
+    Note: the historical type annotation says ``FastMCPServer``,
+    but in practice the call sites (see ``core/bootstrap.py:780``)
+    pass a ``MahavishnuApp`` here. ``server.config.terminal``
+    works for both because ``MahavishnuApp`` exposes ``config``
+    directly and ``FastMCPServer`` would expose it as the app's
+    config attribute — but the previous ``server.app.config``
+    access blew up with 'MahavishnuApp' object has no attribute
+    'app' the moment the call was made with a MahavishnuApp
+    instance.
+    """
     try:
-        config = server.app.config.terminal
+        config = server.config.terminal
         adapter = _resolve_terminal_adapter(config, getattr(server, "mcp_client", None))
 
         manager = TerminalManager(adapter, config)
