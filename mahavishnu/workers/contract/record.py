@@ -1,21 +1,27 @@
 # Pydantic v2 does not auto-resolve string annotations. We import
-# `WorkerLifecycleState` at runtime so Pydantic can resolve the
-# `state: WorkerLifecycleState` field annotation when validating the
-# model. `dt.datetime` is annotation-only, but ruff TC003 insists on
-# moving it under TYPE_CHECKING; since we still need `dt.datetime` at
-# runtime for Pydantic's field typing, we keep the import at top-level
-# with a noqa.
+# ``WorkerLifecycleState`` at runtime (NOT under ``TYPE_CHECKING``)
+# so Pydantic can resolve the ``state: WorkerLifecycleState`` field
+# annotation when validating the model. Earlier this import was
+# incorrectly placed under ``TYPE_CHECKING`` — a regression surfaced
+# when the SHELL dispatch path (Phase D) began exercising the
+# durable worker record at runtime, hitting the
+# ``not fully defined; you should define WorkerLifecycleState, then
+# call DurableWorkerRecord.model_rebuild()`` pydantic error.
+# ``dt.datetime`` is annotation-only; ruff TC003 pushes it under
+# TYPE_CHECKING, and Pydantic's runtime field typing handles the
+# string ``dt.datetime`` fine — so we keep it there.
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
-    import datetime as dt
+    pass
 
-    from .state import WorkerLifecycleState
+from .state import WorkerLifecycleState
 
 
 class TmuxTarget(BaseModel):
