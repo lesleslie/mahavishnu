@@ -29,8 +29,8 @@ from typing import TYPE_CHECKING, Any
 from .base import BaseWorker, WorkerResult, WorkerStatus
 
 if TYPE_CHECKING:
-    from .registry import WorkerConfig
     from ..terminal.manager import TerminalManager
+    from .registry import WorkerConfig
 
 logger = logging.getLogger(__name__)
 
