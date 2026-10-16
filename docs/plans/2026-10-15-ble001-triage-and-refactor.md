@@ -160,7 +160,7 @@ in another session" on 2026-10-15, deferring:
   reference, not a file).
 
 These are 3-of-3 in the `tc-refs` check; the fix is mechanical
-(`[text](../file.md)` → `[text](../plans/file.md)` for the first two,
+(`]` → `text` for the first two,
 and `./.archive/` → `./.archive/README.md` or remove for the third).
 
 ## 4.5 Requirements
@@ -346,13 +346,13 @@ Implementation in `crackerjack/hooks/check_ble001_justification.py`:
 **Deliverable**: 3 line-level fixes.
 
 - `docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md:42`:
-  change `[text](../2026-10-04-session-buddy-lifespan-publisher-inline.md)`
-  → `[text](../plans/2026-10-04-session-buddy-lifespan-publisher-inline.md)`.
+  change `]`
+  → `text`.
 - `docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md:43`:
-  change `[text](../2026-10-02-bodai-task-system-v1.1.md)` →
-  `[text](../plans/2026-10-02-bodai-task-system-v1.1.md)`.
+  change `text` →
+  `text`.
 - `docs/README.md:58`: change `[Archive](./.archive/)` to
-  `[Archive](./.archive/README.md)` (after creating the README,
+  `[Archive]` (after creating the README,
   which is itself a follow-up).
 
 **Integration Contract**:
