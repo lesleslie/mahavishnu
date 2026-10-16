@@ -135,3 +135,45 @@ def test_demo_stub_loop_no_longer_registers_llamaindex() -> None:
         "Remove the \"llamaindex\" entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
+
+
+def test_demo_pydantic_ai_is_live_implementation() -> None:
+    """``mahavishnu demo pydantic_ai`` must be a live implementation.
+
+    2026-10-16 wire-up fix: the pydantic_ai demo was promoted from a
+    stub to a live implementation (drives ``PydanticAIAdapter.execute``
+    end-to-end). The live path exposes ``--repos``, ``--prompt``,
+    ``--keep``, ``--timeout``; the stub path emits ``--why-stub``
+    instead. Asserting ``--repos`` is present proves the live callback
+    won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "pydantic_ai", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--repos" in result.output, (
+        "demo pydantic_ai is showing stub-style --help (missing --repos). "
+        "The live @demo_app.command(\"pydantic_ai\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_pydantic_ai() -> None:
+    """The stub registration loop must not include ``pydantic_ai``.
+
+    The loop in ``cli/demo_cli.py`` iterates over a tuple of stub names;
+    ``pydantic_ai`` was promoted to live in 2026-10-16 and would
+    otherwise override the live command with a no-op stub.
+    """
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "pydantic_ai" not in stub_names, (
+        "pydantic_ai is in _STUB_COSTS — the stub registration loop will "
+        "shadow the live @demo_app.command(\"pydantic_ai\") callback. "
+        "Remove the \"pydantic_ai\" entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )

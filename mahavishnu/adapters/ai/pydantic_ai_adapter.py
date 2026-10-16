@@ -1016,7 +1016,18 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     structured_output=structured_output,
                     model_used=model_config.safe_string(),
                     fallback_triggered=i > 0,
-                    tokens_used=getattr(result, "usage", {}).get("total_tokens"),
+                    # pydantic-ai 2.x's ``RunUsage`` is a Pydantic model
+                    # (attribute access), not a dict. The previous
+                    # ``.get("total_tokens")`` shape only worked when
+                    # the SDK returned a plain dict and silently broke
+                    # once the SDK upgraded. Use nested ``getattr`` so
+                    # the call survives both missing ``usage`` and
+                    # missing ``total_tokens`` cleanly.
+                    tokens_used=getattr(
+                        getattr(result, "usage", None),
+                        "total_tokens",
+                        None,
+                    ),
                 )
 
             except Exception as e:  # Adapter fallback loop catches every per-model failure and continues to the next model  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100

@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - decisions: Clarify docs/.archive is gitignored (cj publish gate)
 - decisions: Mark 5 of 6 repos landed in archive-dir-canonical table (oneiric/akosha/session-buddy/mcp-common/crackerjack)
-- plans: Drop broken [text](file.md) template refs in ble001 draft
+- plans: Drop broken `[text](file.md)` template refs in ble001 draft
 - plans: Ship and archive 2026-10-15-archive-dir-canonical (5/6 repos landed, mahavishnu deferred to operator)
 
 ### Testing

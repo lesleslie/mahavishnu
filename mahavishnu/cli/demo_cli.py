@@ -840,8 +840,344 @@ def demo_llamaindex(
 
 
 # ============================================================================
-# Stubs — 5 engines/terminals (agno + llamaindex promoted to live
-# implementations above)
+# pydantic_ai demo (full implementation — replaces 2026-10-16 stub)
+# ============================================================================
+
+
+DEFAULT_PYDANTIC_AI_PRECONDITION_TIMEOUT = 5.0
+
+# Provider → env-var mapping (mirrors `_check_agno_preconditions`).
+# ``None`` means the provider is local and needs no API key.
+_PYDANTIC_AI_PROVIDER_KEY_ENV: dict[str, str | None] = {
+    "minimax": "MINIMAX_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "ollama": None,
+    "llama_server": None,
+}
+
+
+def _check_pydantic_ai_preconditions(
+    *,
+    settings_getter: Callable[[], Any] | None = None,
+    import_probe: Callable[[str], Any] | None = None,
+    env_getter: Callable[[str], str | None] | None = None,
+    http_probe: Callable[..., Any] | None = None,
+    timeout: float = DEFAULT_PYDANTIC_AI_PRECONDITION_TIMEOUT,
+) -> list[str]:
+    """Return human-readable failures (empty list = pass).
+
+    Probes (each injectable for tests):
+
+    - ``pydantic_ai`` importable (the minimal public surface the
+      adapter actually uses; lives in the ``[ai]`` optional group).
+    - ``settings.integrations.pydantic_ai_enabled`` is True (the
+      feature flag the engine dispatch checks before constructing
+      the adapter).
+    - At least one provider is reachable — either the local
+      ``llama_server`` (no key required) or one of the cloud
+      providers (``MINIMAX_API_KEY`` / ``ANTHROPIC_API_KEY`` /
+      ``OPENAI_API_KEY``). The adapter's own
+      ``PydanticAISettings.primary_model`` defaults to None, so a
+      demo without a key surfaces as a noisy "no model configured"
+      failure rather than a clean run.
+    - Settings are loadable (rejects malformed Oneiric config).
+    """
+    settings_getter = settings_getter or _default_settings_getter
+    import_probe = import_probe or _default_import_probe
+    env_getter = env_getter or os.getenv
+    http_probe = http_probe or httpx.get
+
+    failures: list[str] = []
+    if import_probe("pydantic_ai") is None:
+        failures.append(
+            "pydantic-ai not installed (.venv/bin/python -c 'import pydantic_ai' "
+            "fails; run 'uv sync --group ai')"
+        )
+
+    try:
+        settings = settings_getter()
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(f"could not load settings: {exc}")
+        return failures
+
+    enabled = bool(getattr(getattr(settings, "integrations", None), "pydantic_ai_enabled", False))
+    if not enabled:
+        failures.append(
+            "settings.integrations.pydantic_ai_enabled is False "
+            "(set MAHAVISHNU_INTEGRATIONS__PYDANTIC_AI_ENABLED=true)"
+        )
+
+    # At least one provider must be reachable. Local llama_server wins
+    # if it's up; otherwise we need a cloud API key.
+    llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
+    llama_reachable = False
+    try:
+        resp = http_probe(llama_url.rstrip("/") + "/v1/models", timeout=timeout)
+        llama_reachable = resp.status_code == 200
+    except (  # CLI entry point — HTTP probe failure surfaces as "not reachable"
+        Exception  # noqa: BLE001, RUF100
+    ):
+        llama_reachable = False
+
+    cloud_keys = {
+        env_name
+        for env_name in (
+            "MINIMAX_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "OPENAI_API_KEY",
+        )
+        if env_getter(env_name)
+    }
+
+    if not llama_reachable and not cloud_keys:
+        failures.append(
+            f"no LLM provider reachable. Start llama_server at {llama_url} "
+            f"(with --embeddings) or set one of: "
+            f"{', '.join(sorted(_PYDANTIC_AI_PROVIDER_KEY_ENV[p] for p in ('anthropic', 'minimax', 'openai')))}"
+        )
+
+    return failures
+
+
+async def _run_pydantic_ai_demo(
+    *,
+    repos: Sequence[str],
+    prompt: str,
+    keep: bool = False,
+) -> dict[str, object]:
+    """Drive the Pydantic-AI engine end-to-end against one or more repos.
+
+    Uses ``PydanticAIAdapter.execute`` with a single ``"agent"`` task
+    carrying the user's prompt as ``task.prompt``.
+
+    The adapter's ``PydanticAISettings`` defaults to
+    ``primary_model=None, fallback_models=[]``, which trips the
+    ``MHV-001 No models configured`` guard at execute time — so the
+    demo must inject a ``ModelConfig`` based on the detected provider
+    and set the SDK env vars pydantic-ai reads on its own
+    (``OPENAI_API_KEY``/``OPENAI_BASE_URL`` for ``llama_server``;
+    ``ANTHROPIC_API_KEY``/``OPENAI_API_KEY``/``MINIMAX_API_KEY`` are
+    the user's responsibility for cloud providers).
+
+    On the exception path ``adapter.shutdown()`` is best-effort called
+    before re-raising, mirroring the ``_run_tmux_demo`` reap-on-error
+    pattern.
+    """
+    from mahavishnu.adapters.ai.pydantic_ai_adapter import (
+        PydanticAIAdapter,
+        PydanticAISettings,
+    )
+
+    model_config, env_overrides = _resolve_demo_pydantic_ai_model_config()
+    # pydantic-ai's SDK reads these env vars directly. Set them only
+    # if the user hasn't already exported a value (setdefault semantics).
+    for key, value in env_overrides.items():
+        os.environ.setdefault(key, value)
+
+    task = {
+        "id": f"demo-pydantic-ai-{int(time.time())}",
+        "type": "agent",
+        "prompt": prompt,
+        # pydantic-ai 2.57.0's Agent constructor iterates over
+        # ``system_prompt`` internally and fails on None. The adapter
+        # passes ``task["system_prompt"]`` straight through without
+        # defaulting, so the demo has to provide one. A future adapter
+        # fix could default to "" when the task omits it.
+        "system_prompt": "You are a helpful assistant. Be concise.",
+    }
+
+    adapter = PydanticAIAdapter(
+        settings=PydanticAISettings(primary_model=model_config),
+        # pydantic-ai's Agent requires a non-None output_type; ``str``
+        # is the simplest shape and yields plain text the demo can
+        # print. A future demo could parameterize a Pydantic model
+        # here to show the structured-output story.
+        output_type=str,
+    )
+    try:
+        await adapter.initialize()
+    except Exception:  # cleanup is best-effort on init failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_pydantic_ai_shutdown(adapter)
+        raise
+
+    try:
+        result = await adapter.execute(task=task, repos=list(repos))
+    except Exception:  # cleanup is best-effort on execute failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_pydantic_ai_shutdown(adapter)
+        raise
+
+    if not keep:
+        await adapter.shutdown()
+
+    return {
+        "status": result.get("status"),
+        "execution_id": result.get("execution_id"),
+        "model_used": result.get("model_used"),
+        "latency_ms": result.get("latency_ms"),
+        "output": result.get("output"),
+        "error": result.get("error"),
+        "repos": list(repos),
+    }
+
+
+def _resolve_demo_pydantic_ai_model_config() -> tuple[Any, dict[str, str]]:
+    """Return ``(ModelConfig, env_overrides)`` for the detected provider.
+
+    Walks the same provider order as ``_resolve_demo_pydantic_ai_model``:
+    local ``llama_server`` first (no key), then cloud providers in
+    ``minimax → anthropic → openai`` order. Returns the env-var
+    overrides the caller should set so pydantic-ai's SDK can find
+    them (``OPENAI_API_KEY``/``OPENAI_BASE_URL`` for llama_server;
+    cloud providers rely on whatever the user already exported).
+    """
+    from mahavishnu.adapters.ai.pydantic_ai_adapter import ModelConfig, PydanticAIAdapterError
+
+    settings = _default_settings_getter()
+    llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
+    try:
+        resp = httpx.get(llama_url.rstrip("/") + "/v1/models", timeout=2.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            models = data.get("data") or []
+            if models and isinstance(models, list):
+                first = models[0]
+                model_id = first.get("id") if isinstance(first, dict) else None
+                if model_id:
+                    return (
+                        ModelConfig(
+                            provider="llama_server",
+                            model_name=model_id,
+                            base_url=llama_url,
+                        ),
+                        # pydantic-ai's OpenAI provider reads these env
+                        # vars directly; llama_server doesn't check the
+                        # key but the SDK still requires it set.
+                        {
+                            "OPENAI_API_KEY": "no-auth",
+                            "OPENAI_BASE_URL": llama_url.rstrip("/") + "/v1",
+                        },
+                    )
+    except Exception as _exc:  # CLI entry point — llama_server probe failure is non-fatal, fall through to cloud providers  # noqa: BLE001, S110, RUF100
+        pass
+
+    if os.getenv("MINIMAX_API_KEY"):
+        # minimax uses an OpenAI-compatible endpoint but pydantic-ai
+        # doesn't have a first-class "minimax" provider, so route via
+        # the OpenAI provider with a custom base_url.
+        return (
+            ModelConfig(
+                provider="openai",
+                model_name="MiniMax-M3",
+                base_url="https://api.minimax.io/v1",
+                api_key=os.getenv("MINIMAX_API_KEY"),
+            ),
+            {},
+        )
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return (
+            ModelConfig(
+                provider="anthropic",
+                model_name="claude-sonnet-4-5",
+                api_key=os.getenv("ANTHROPIC_API_KEY"),
+            ),
+            {},
+        )
+    if os.getenv("OPENAI_API_KEY"):
+        return (
+            ModelConfig(
+                provider="openai",
+                model_name="gpt-4o-mini",
+                api_key=os.getenv("OPENAI_API_KEY"),
+            ),
+            {},
+        )
+    raise PydanticAIAdapterError(
+        "No LLM provider available — set MINIMAX/ANTHROPIC/OPENAI_API_KEY or start llama_server",
+    )
+
+
+async def _best_effort_pydantic_ai_shutdown(adapter: Any) -> None:
+    """Best-effort shutdown — called from the exception path."""
+    try:
+        await adapter.shutdown()
+    except Exception as exc:  # CLI entry point — shutdown errors must never mask the original failure  # noqa: BLE001, RUF100
+        typer.echo(f"[warning] adapter shutdown failed: {exc}", err=True)
+
+
+@demo_app.command("pydantic_ai")
+def demo_pydantic_ai(
+    repos: list[str] = typer.Option(
+        [],
+        "--repos",
+        help="Repos to pass to PydanticAIAdapter.execute. Defaults to the Mahavishnu repo itself.",
+    ),
+    prompt: str = typer.Option(
+        "describe the project architecture in one paragraph",
+        "--prompt",
+        "-p",
+        help="Prompt passed to the Pydantic-AI agent as task.prompt.",
+    ),
+    keep: bool = typer.Option(
+        False,
+        "--keep",
+        help="Leave the adapter initialized after the demo (mainly for debugging).",
+    ),
+    timeout: int = typer.Option(
+        600,
+        "--timeout",
+        help="Max seconds to wait for PydanticAIAdapter.execute. "
+        "Local 8B Q4_K_M models on CPU need 2-5 min for first token.",
+    ),
+) -> None:
+    """Run the Pydantic-AI engine end-to-end against the configured LLM.
+
+    Constructs ``PydanticAIAdapter`` with a ``PydanticAISettings`` whose
+    ``primary_model`` is built by ``_resolve_demo_pydantic_ai_model_config``
+    (local llama_server preferred, then ``minimax → anthropic → openai``),
+    calls ``adapter.execute(task, repos)``, prints the trimmed result,
+    and shuts down. The SDK env vars pydantic-ai reads on its own
+    (``OPENAI_API_KEY``/``OPENAI_BASE_URL`` for the local server) are
+    set by the runner before the adapter initializes.
+    """
+    failures = _check_pydantic_ai_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    # Resolve the model once for display (re-resolved inside the runner
+    # to build the actual ModelConfig). Cheap, single HTTP probe.
+    model_config_preview, _ = _resolve_demo_pydantic_ai_model_config()
+    typer.echo(f"Model:    {model_config_preview.safe_string()}")
+    typer.echo(f"Prompt:   {prompt}")
+    typer.echo(f"Repos:    {effective_repos}")
+
+    async def _run_with_timeout() -> dict[str, object]:
+        return await _run_pydantic_ai_demo(
+            repos=effective_repos,
+            prompt=prompt,
+            keep=keep,
+        )
+
+    try:
+        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+    except TimeoutError:
+        typer.echo(
+            f"Timed out after {timeout}s waiting for PydanticAIAdapter.execute",
+            err=True,
+        )
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nPydantic-AI demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
+# Stubs — 4 engines/terminals (agno + llamaindex + pydantic_ai promoted to
+# live implementations above)
 # ============================================================================
 
 
@@ -858,7 +1194,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 _STUB_COSTS = {
     "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
-    "pydantic_ai": "~50 LOC: PydanticAIAdapter agent shell",
     "crow": "~40 LOC: TerminalManager adapter bridge to crow-mcp",
     "goose": "~40 LOC: TerminalManager adapter bridge to goose serve",
     "mock": "~25 LOC: in-process adapter (already exists; CLI surface only)",
@@ -883,8 +1218,8 @@ def _stub_command(name: str) -> Callable[[bool], None]:
     return callback
 
 
-# Register the 5 stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("hatchet", "pydantic_ai", "crow", "goose", "mock"):
+# Register the 4 stubs. Live implementations land in follow-up PRs.
+for _stub_name in ("hatchet", "crow", "goose", "mock"):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene
