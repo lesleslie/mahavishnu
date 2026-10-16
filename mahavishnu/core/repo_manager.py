@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import aiofiles
@@ -22,7 +21,7 @@ class RepositoryManager:
 
     Performance improvements:
     - Tag index: O(1) tag filtering vs O(n) scan
-    - LRU cache: Repeated queries return instantly
+    - Per-instance caches: Repeated queries return instantly
     - Async I/O: Non-blocking config loading
     - Validation: Pydantic ensures data integrity
     """
@@ -38,6 +37,15 @@ class RepositoryManager:
         self._name_index: dict[str, Repository] = {}
         self._nickname_index: dict[str, Repository] = {}
         self._all_paths: list[str] = []
+
+        # Manual caches (replaces @lru_cache to avoid holding self in a class-level
+        # cache). Bounded in practice by the small key universes (tag set,
+        # 2 mcp types, filter combos). Lifecycle managed via invalidate_cache().
+        self._get_by_tag_cache: dict[str, list[str]] = {}
+        self._get_by_mcp_type_cache: dict[str, list[str]] = {}
+        self._filter_cached_cache: dict[
+            tuple[tuple[str, ...] | None, str | None, str | None], list[Repository]
+        ] = {}
 
     async def load(self) -> None:
         """Load repository manifest asynchronously."""
@@ -82,19 +90,27 @@ class RepositoryManager:
             if repo.mcp:
                 self._mcp_index[repo.mcp].append(repo.package)
 
-    @lru_cache(maxsize=256)  # cache lifecycle managed via .cache_clear() (line 282-284)
     def get_by_tag(self, tag: str) -> list[str]:
         """
         Get repository packages by tag.
 
         O(1) lookup with caching.
         """
-        return self._tag_index.get(tag, []).copy()
+        cached = self._get_by_tag_cache.get(tag)
+        if cached is not None:
+            return list(cached)
+        result = self._tag_index.get(tag, []).copy()
+        self._get_by_tag_cache[tag] = result
+        return result
 
-    @lru_cache(maxsize=128)  # cache lifecycle managed via .cache_clear() (line 282-284)
     def get_by_mcp_type(self, mcp_type: str) -> list[str]:
         """Get repositories by MCP type (native or 3rd-party)."""
-        return self._mcp_index.get(mcp_type, []).copy()
+        cached = self._get_by_mcp_type_cache.get(mcp_type)
+        if cached is not None:
+            return list(cached)
+        result = self._mcp_index.get(mcp_type, []).copy()
+        self._get_by_mcp_type_cache[mcp_type] = result
+        return result
 
     def get_by_package(self, package: str) -> Repository | None:
         """Get repository by package name (O(1))."""
@@ -152,7 +168,6 @@ class RepositoryManager:
         # Call the cached implementation
         return self._filter_cached(tags_tuple, mcp_type, language)
 
-    @lru_cache(maxsize=64)  # cache lifecycle managed via .cache_clear() (line 282-284)
     def _filter_cached(
         self,
         tags: tuple[str, ...] | None = None,
@@ -163,6 +178,11 @@ class RepositoryManager:
         Internal cached implementation of filter.
         Tags must be a tuple for cacheability.
         """
+        cache_key = (tags, mcp_type, language)
+        cached = self._filter_cached_cache.get(cache_key)
+        if cached is not None:
+            return list(cached)
+
         # Convert tuple back to list
         tags_list = list(tags) if tags else None
 
@@ -181,7 +201,9 @@ class RepositoryManager:
         if language:
             results = self._filter_by_language(results, language)
 
-        return results.copy()
+        final = results.copy()
+        self._filter_cached_cache[cache_key] = final
+        return final
 
     def _filter_by_tags(
         self, results: list[Repository], tags_list: list[str]
@@ -279,6 +301,6 @@ class RepositoryManager:
 
     def invalidate_cache(self) -> None:
         """Invalidate all caches."""
-        self.get_by_tag.cache_clear()
-        self.get_by_mcp_type.cache_clear()
-        self._filter_cached.cache_clear()
+        self._get_by_tag_cache.clear()
+        self._get_by_mcp_type_cache.clear()
+        self._filter_cached_cache.clear()
