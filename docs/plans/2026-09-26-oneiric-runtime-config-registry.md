@@ -4,7 +4,7 @@ role: implementation
 date: 2026-09-26
 last_reviewed: 2026-10-12
 last_revised_note: "Phase 2 corrected (v3) — list_adapters is at line 1225, not 1037-1084; SettingsWatcher.on_change does not exist; reconfigure trigger is oneiric.runtime.watchers.SelectionWatcher. Wire contract preservation rule added."
-superseded_by: null
+superseded_by: 2026-10-15-oneiric-substrate-rollout.md
 topic: oneiric-runtime-config-registry
 kind: plan
 title: "Oneiric Runtime Config Registry — Implementation Plan (v3)"

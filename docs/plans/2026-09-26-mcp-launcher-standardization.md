@@ -4,7 +4,7 @@ role: canonical
 kind: plan
 date: 2026-09-26
 last_reviewed: 2026-10-12
-superseded_by: null
+superseded_by: 2026-10-15-mcp-server-fleet-modernization.md
 topic: mcp-launcher-standardization
 title: "MCP Launcher Standardization Plan"
 phase_state: "phase-1-shipped; phase-2-not-started; phase-3-not-started; phase-4a-design-complete-awaiting-impl; phase-4b-not-started; phase-5a-not-started; phase-5b-cuttable"

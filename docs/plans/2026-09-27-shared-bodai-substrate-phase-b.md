@@ -3,7 +3,8 @@ status: draft
 role: implementation
 kind: plan
 date: 2026-09-27
-last_reviewed: 2026-09-27
+last_reviewed: 2026-10-15
+superseded_by: 2026-10-15-oneiric-substrate-rollout.md
 topic: shared-oneiric-substrate
 title: "Phase B: SB Warm Tier = pgvector — Implementation Plan"
 

@@ -4,7 +4,7 @@ status: active
 role: implementation
 topic: session-buddy-settings-oneiric-shape
 last_reviewed: 2026-10-04
-superseded_by: null
+superseded_by: 2026-10-15-oneiric-substrate-rollout.md
 ---
 
 # Plan: Convert `SessionMgmtSettings` → `SessionBuddySettings` (Oneiric-shaped)
