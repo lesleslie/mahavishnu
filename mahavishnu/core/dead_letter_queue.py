@@ -764,7 +764,9 @@ class DeadLetterQueue:
                 "message": "Task successfully retried",
             }
 
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             # Failed - update error info
             async with self._lock:
                 if failed_task in self._queue:

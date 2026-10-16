@@ -325,7 +325,9 @@ class TaskDashboard:
         try:
             tasks = await self.task_store.list()
             self.task_list.set_tasks(tasks)
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             logger.error(f"Failed to load tasks: {e}")
             self.task_list.set_tasks([])
 

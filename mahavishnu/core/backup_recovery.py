@@ -479,7 +479,9 @@ class DisasterRecoveryManager:
             else:
                 return {"status": "fail", "error": f"Failed to restore from backup {backup_id}"}
 
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             self.logger.error(f"Disaster recovery failed: {e}")
             return {"status": "fail", "error": str(e)}
 
@@ -544,7 +546,9 @@ class BackupAndRecoveryCLI:
                 "size_mb": round(backup_info.size_bytes / (1024 * 1024), 2),
                 "timestamp": backup_info.timestamp.isoformat(),
             }
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             return {"status": "error", "error": str(e)}
 
     async def list_backups(self) -> dict[str, Any]:
@@ -564,7 +568,9 @@ class BackupAndRecoveryCLI:
                 ],
                 "total_count": len(backups),
             }
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             return {"status": "error", "error": str(e)}
 
     async def restore_backup(self, backup_id: str) -> dict[str, Any]:
@@ -575,7 +581,9 @@ class BackupAndRecoveryCLI:
                 "status": "success" if success else "error",
                 "message": f"Restore {'completed' if success else 'failed'} for backup {backup_id}",
             }
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             return {"status": "error", "error": str(e)}
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
@@ -583,7 +591,9 @@ class BackupAndRecoveryCLI:
         try:
             results = await self.recovery_manager.run_disaster_recovery_check()
             return {"status": results["status"], "results": results}
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             return {"status": "error", "error": str(e)}
 
     async def get_recovery_procedures(self) -> dict[str, Any]:
@@ -591,5 +601,7 @@ class BackupAndRecoveryCLI:
         try:
             procedures = await self.recovery_manager.get_recovery_procedures()
             return {"status": "success", "procedures": procedures}
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             return {"status": "error", "error": str(e)}

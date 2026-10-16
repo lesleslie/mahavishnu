@@ -258,9 +258,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                     "coordinator will fall back to the next provider"
                 )
                 raise WorktreeToolNotAvailableError(
-                    message=(
-                        f"Session-Buddy MCP does not expose remove_worktree: {e}"
-                    ),
+                    message=(f"Session-Buddy MCP does not expose remove_worktree: {e}"),
                     details={
                         "repository_path": str(repository_path),
                         "worktree_path": str(worktree_path),

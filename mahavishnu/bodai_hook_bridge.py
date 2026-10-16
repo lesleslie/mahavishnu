@@ -52,13 +52,13 @@ if TYPE_CHECKING:
 _CACHE_DEPS_AVAILABLE: bool
 _CACHE_DEPS_ERROR: str | None
 try:
-    import coredis
-
-    _CACHE_DEPS_AVAILABLE = True
-    _CACHE_DEPS_ERROR = None
+    import coredis  # noqa: F401  # optional dependency for session-buddy cache writes
 except ImportError as exc:
     _CACHE_DEPS_AVAILABLE = False
     _CACHE_DEPS_ERROR = str(exc)
+else:
+    _CACHE_DEPS_AVAILABLE = True
+    _CACHE_DEPS_ERROR = None
 
 
 def _emit_cache_availability_warning() -> None:

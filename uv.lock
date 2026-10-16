@@ -1192,7 +1192,7 @@ wheels = [
 
 [[package]]
 name = "crackerjack"
-version = "0.89.0"
+version = "0.89.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1254,9 +1254,9 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/62/9ea2f0bc77cbf0114f17e42eedec9a2d5ae00e83e9dafc4fb624bdadebd5/crackerjack-0.89.0.tar.gz", hash = "sha256:c749784b301d3e44bc97af0367d1b9acf62d87190e45afb27eb9ea6e207024e1", size = 56298887, upload-time = "2026-10-14T23:48:09.834Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/14/aa840757fd7e9802653cff9f77ec49922775d8bd88456aff432e84d3d26d/crackerjack-0.89.1.tar.gz", hash = "sha256:99b23fb3bb012f49e6bff4ecfa684ee7126689238770282c06284248a85f3d75", size = 56301416, upload-time = "2026-10-16T01:13:53.725Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/85/4bd86227baed9c3b42aa29bd23e4a912c0b0f22c32b6fe06ec6ffc5dab84/crackerjack-0.89.0-py3-none-any.whl", hash = "sha256:51288c7344bbde6ed49eb8b24a87befa2e7d48e8c09b6cc2b2eb7c42e8de246c", size = 1526262, upload-time = "2026-10-14T23:47:55.871Z" },
+    { url = "https://files.pythonhosted.org/packages/52/58/8fc6d0e3787657e4875a3a4a4d05dd23ba0bd0410619a6f153ed080b407a/crackerjack-0.89.1-py3-none-any.whl", hash = "sha256:3c7222e0631d90bd57384673a443141675d0e1a81ee6ba94e65ada34dd4baf8f", size = 1526557, upload-time = "2026-10-16T01:13:44.235Z" },
 ]
 
 [[package]]
@@ -4886,11 +4886,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.13.2"
+version = "4.13.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/05/7d/5f8821cccec8cad4ac57d3b373764c28ada31f3d7ac691a28b9e23ad6198/platformdirs-4.13.2.tar.gz", hash = "sha256:7bea13e899d079e0a59b15ed7e481f8506dd1921df53afe23f4ae48eb3c117af", size = 61560, upload-time = "2026-10-16T00:05:11.132Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/91/4a03cfdb03314cfca262921797fff04ff4054bd86a160aed76eddf8aa12b/platformdirs-4.13.3.tar.gz", hash = "sha256:5e567f664eb087ab8521c0179cd8d1bd60857d271136567a39719e28e2d383ce", size = 61559, upload-time = "2026-10-16T01:16:16.573Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/7f/e0090311031e1c101a151c303e06988e217469fef857d0a36b43ac760c1e/platformdirs-4.13.2-py3-none-any.whl", hash = "sha256:0b220b7e6e71041a02b4aa07b69e575436f8268a669477e3b7fd1e4062587f1b", size = 32765, upload-time = "2026-10-16T00:05:09.768Z" },
+    { url = "https://files.pythonhosted.org/packages/45/b8/fd1af06b079af236f5423f7c1821264419cc8f6b4803f79353acbb8bfa53/platformdirs-4.13.3-py3-none-any.whl", hash = "sha256:f6ad7f447f24f8a3b82cce5976387428bff894a0eca6c3488f4a17f153c130c4", size = 32762, upload-time = "2026-10-16T01:16:15.051Z" },
 ]
 
 [[package]]

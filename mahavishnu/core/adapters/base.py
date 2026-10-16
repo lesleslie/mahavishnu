@@ -47,7 +47,7 @@ class OrchestratorAdapter(ABC):
     async def initialize(self) -> None:
         """Initialize adapter resources before execution."""
 
-    async def cleanup(self) -> None:
+    async def cleanup(self) -> None:  # noqa: B027 — empty body is intentional; not abstract so subclasses are not forced to override
         """Release adapter resources after execution.
 
         Concrete adapters may override this. The default implementation is a no-op

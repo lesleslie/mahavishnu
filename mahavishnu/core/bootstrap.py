@@ -715,7 +715,7 @@ def set_app_context(app: Any) -> None:
                 # ``FakeLLM`` for ``agno.llm.LLM`` to verify wiring
                 # without instantiating Agno's abstract ``Model``).
                 try:
-                    from agno.llm import (  # ty: ignore[unresolved-import]  # upstream `LLM` is a class, not a constant
+                    from agno.llm import (  # ty: ignore[unresolved-import]  # noqa: N811 — upstream `LLM` is a class, not a constant; rename avoids name collision with the LLM constant
                         LLM as _AgnoModel,  # rename avoids name collision with the LLM constant
                     )
                 except ImportError:

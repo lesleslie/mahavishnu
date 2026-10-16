@@ -249,12 +249,11 @@ class ReviewGate:
         # We do NOT keep a runtime dependency -- if the import fails we
         # simply mark Crackerjack as unavailable.
         try:
-            import crackerjack
-
-            self._crackerjack_available = True
+            import crackerjack  # noqa: F401  # optional dependency for review gate
         except ImportError:
             self._crackerjack_available = False
             raise
+        self._crackerjack_available = True
 
         # If crackerjack is importable we consider the check passed.
         # Future iterations will call specific MCP tools here.

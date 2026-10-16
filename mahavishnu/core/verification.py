@@ -459,7 +459,7 @@ def _parse_refuter_response(raw: str) -> dict[str, Any]:
         raise ValueError(f"invalid JSON: {exc.msg}") from exc
     if not isinstance(data, dict):
         # ValueError is part of this parser's contract and is handled by its callers.
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004 — ValueError is part of the parser's tested contract
             "response is not a JSON object"
         )  # ValueError is part of the parser's tested contract
     if "verdict" not in data:

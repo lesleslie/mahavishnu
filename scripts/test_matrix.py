@@ -37,7 +37,7 @@ import re
 import sys
 from typing import Any
 
-import defusedxml.ElementTree as ET
+from defusedxml import ElementTree
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -346,8 +346,8 @@ def parse_coverage_xml(project: Path) -> dict[str, float] | None:
     if not cov.is_file():
         return None
     try:
-        tree = ET.parse(cov)
-    except ET.ParseError:
+        tree = ElementTree.parse(cov)
+    except ElementTree.ParseError:
         return None
     out: dict[str, float] = {}
     for cls in tree.getroot().iter("class"):

@@ -39,8 +39,8 @@ This work lives in the **session-buddy repo**, not mahavishnu. Listed here for c
 
 This plan is the operational successor to:
 
-- [`2026-10-04-session-buddy-lifespan-publisher-inline.md`](../2026-10-04-session-buddy-lifespan-publisher-inline.md) — which described the inline approach (now mostly landed via v1.1 Task 4 in `server_optimized.py:275`)
-- [`2026-10-02-bodai-task-system-v1.1.md`](../2026-10-02-bodai-task-system-v1.1.md) — whose Task 4 (`_lifespan_with_dhara_cleanup` publisher install) was replaced by the cleaner `server_optimized.py:275` approach
+- [`2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) — which described the inline approach (now mostly landed via v1.1 Task 4 in `server_optimized.py:275`)
+- [`2026-10-02-bodai-task-system-v1.1.md`](../specs/2026-10-02-bodai-task-system-v1.1.md) — whose Task 4 (`_lifespan_with_dhara_cleanup` publisher install) was replaced by the cleaner `server_optimized.py:275` approach
 
 The 2026-10-15 plan audit Cluster 3 resolution noted: "Pick one canonical installation site before declaring done." This is the final cleanup step.
 

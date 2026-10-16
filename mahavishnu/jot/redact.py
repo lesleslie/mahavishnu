@@ -93,7 +93,7 @@ def redact_text(text: str) -> str:
         # The IIFE pattern (immediate lambda call) is intentional: each redaction
         # callback needs a unique closure over `tier`. PLC3002 flags the IIFE; the
         # B023 workaround is the reason the lambda is called rather than passed.
-        replacement = (lambda t: lambda m: _make_replacement(m, t))(
+        replacement = (lambda t: lambda m: _make_replacement(m, t))(  # noqa: PLC3002 — IIFE per B023 closure workaround
             tier
         )  # lambda-call is intentional per the comment above
         out = pattern.sub(replacement, out)

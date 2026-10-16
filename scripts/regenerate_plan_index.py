@@ -60,7 +60,7 @@ import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # ---------------------------------------------------------------------------
 # Constants — mirrors `crackerjack docs validate --allow-nonstandard`
@@ -1216,8 +1216,9 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"phase-b: cannot import plan_index.cron_core: {exc}\n")
         else:
             try:
-                from mahavishnu.plan_index.record import PlanRecord
                 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
+                if TYPE_CHECKING:
+                    from mahavishnu.plan_index.record import PlanRecord
 
                 records: list[PlanRecord] = discover_records(repo_root)
                 phase_b_success, phase_b_errors = _run_phase_b(

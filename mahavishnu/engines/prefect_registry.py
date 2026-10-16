@@ -109,7 +109,7 @@ class FlowRegistry:
         """
         if not callable(flow_func):
             # ValueError is retained for the documented public registry contract.
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004 — public registry contract is ValueError, not TypeError
                 "flow_func must be callable"
             )  # ValueError is the documented public registry contract
 

@@ -12,7 +12,9 @@ except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import (
+    getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
+)
 
 try:
     from oneiric.runtime.notifications import NotificationRoute, NotificationRouter
@@ -58,7 +60,7 @@ if TYPE_CHECKING:
 else:
     PubSubCallback = Any
 
-_logger = get_logger  # noqa: N813("mahavishnu.event_transport")
+_logger = get_logger("mahavishnu.event_transport")
 
 
 @runtime_checkable

@@ -61,7 +61,7 @@ def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
         dsn = persistence.get("postgres_url")
         if isinstance(dsn, str) and dsn.strip():
             return dsn.strip()
-    except Exception:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except Exception:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         return None
 
     return None
@@ -320,7 +320,7 @@ def collect_metrics(
     try:
         exit_code = collect_main()
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         console.print(f"[red]Error collecting metrics:[/red] {e}")
         sys.exit(1)
 
@@ -364,7 +364,7 @@ def generate_report(
             console.print(f"[green]Report saved to:[/green] {output}")
 
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         console.print(f"[red]Error generating report:[/red] {e}")
         sys.exit(1)
 
@@ -542,7 +542,7 @@ def show_history(
 
             prev_coverage = avg_cov
 
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
             console.print(f"[red]Error reading {snapshot_path.name}: {e}[/red]")
 
     console.print(table)
@@ -597,7 +597,7 @@ def generate_dashboard(
             webbrowser.open(f"file://{output_path}")
 
         sys.exit(exit_code)
-    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         console.print(f"[red]Error generating dashboard:[/red] {e}")
         sys.exit(1)
 
@@ -854,7 +854,7 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
                 port = mcp.get("port", 8683)
                 scheme = "https" if mcp.get("use_tls") else "http"
                 return f"{scheme}://{host}:{port}".rstrip("/")
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
             logger.debug("MCP URL resolution skipped: %s", e)
 
     return "http://localhost:8683"

@@ -1,8 +1,9 @@
 # Shepherd worker backend
 
-> Phase 4 of the [v2 plan](plans/2026-08-29-orchestrator-research-synthesis.md)
-> (lines 231–255). Adds an OS-level syscall-jail worker backend
-> alongside the Apple-container and E2B tiers.
+> Phase 4 of the v2 plan (plan removed; original at
+> `docs/plans/2026-08-29-orchestrator-research-synthesis.md`, lines 231–255,
+> recoverable from git history). Adds an OS-level syscall-jail worker
+> backend alongside the Apple-container and E2B tiers.
 
 `worker_type="shepherd"` routes to
 [`ShepherdBackendWorker`](../mahavishnu/workers/shepherd_backend.py),

@@ -16,7 +16,7 @@ title: "Jot Inbox: Read Sub-Plan Design"
 > **Sub-plan 2 of 3.** This spec covers the **read** surface (fold + render + MCP tools + CLI + /jot slash command).
 > Sub-plan 1 (capture) shipped at `8f8a90ea`.
 > Sub-plan 3 (drain) is deferred.
-> See [`2026-09-09-jot-inbox-design.md`](2026-09-09-jot-inbox-design.md) for the union.
+> See `2026-09-09-jot-inbox-design.md` (removed; recoverable from git history) for the union.
 
 **Goal:** Users (and AI agents) can list, show, edit, mark done/reopen, search, and inspect vitals for the captured jots via MCP tools, the `mahavishnu jot` CLI, and the `/jot` slash command.
 

@@ -349,7 +349,7 @@ class SessionBuddyPoller:
             result = await self._mcp.call_tool(tool_name, payload)
             if not isinstance(result, dict):
                 # ValueError is handled below as the invalid-response contract.
-                raise ValueError(
+                raise ValueError(  # noqa: TRY004 — invalid-response contract is ValueError, not TypeError
                     f"Invalid response type: {type(result)}"
                 )  # ValueError is the documented invalid-response contract
             return result

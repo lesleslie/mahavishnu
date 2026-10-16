@@ -292,7 +292,7 @@ class ProductionReadinessChecker:
 
         # Check for structlog in dependencies
         try:
-            import structlog
+            import structlog  # noqa: F401 — presence checked for readiness gate; not consumed here
 
             status = ReadinessStatus.PASS
             message = "Structured logging available (structlog)"
@@ -422,9 +422,9 @@ class ProductionReadinessChecker:
             coverage_file = self.project_root / "coverage.xml"
             if coverage_file.exists():
                 try:
-                    import defusedxml.ElementTree as ET  # ET is the stdlib convention for ElementTree
+                    import defusedxml.ElementTree as etree  # noqa: N813 — snake_case alias per N817 fix guidance
 
-                    tree = ET.parse(coverage_file)
+                    tree = etree.parse(coverage_file)
                     root = tree.getroot()
 
                     # Extract coverage percentage from line-rate attribute
@@ -443,7 +443,7 @@ class ProductionReadinessChecker:
                         message = f"Unit test coverage: {coverage_percent:.1f}% (below 60%)"
 
                     details = {"coverage_percent": coverage_percent}
-                except (ET.ParseError, ValueError, KeyError) as e:
+                except (etree.ParseError, ValueError, KeyError) as e:
                     status = ReadinessStatus.WARN
                     message = f"Could not parse coverage report: {e}"
                     details = None

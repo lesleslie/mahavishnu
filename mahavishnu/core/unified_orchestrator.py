@@ -156,7 +156,9 @@ class UnifiedOrchestrator:
 
             return workflow_id  # type: ignore[no-any-return]
 
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             # Log error and update state
             await self.task_router.state_manager.update_adapter_state(
                 workflow_id=workflow_id,

@@ -19,7 +19,7 @@ def _do_backup_create(backup_type: str) -> None:
 
         try:
             backup_info = await backup_manager.create_backup(backup_type)
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
             typer.echo(f"✗ Backup failed: {e}", err=True)
             raise typer.Exit(code=1) from None
 
@@ -67,7 +67,7 @@ def _do_backup_restore(backup_id: str) -> None:
 
         try:
             success = await backup_manager.restore_backup(backup_id)
-        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
             typer.echo(f"✗ Restore error: {e}", err=True)
             raise typer.Exit(code=1) from None
 

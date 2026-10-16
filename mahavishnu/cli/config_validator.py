@@ -62,7 +62,7 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
 
     if not isinstance(data, dict):
         # ValueError is retained for the loader's tested invalid-content contract.
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004 — ValueError is part of the parser's tested contract
             f"Configuration file must contain a mapping: {path}"
         )  # ValueError is part of the parser's tested contract
 

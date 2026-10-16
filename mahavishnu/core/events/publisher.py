@@ -20,7 +20,9 @@ except ImportError:
     # post-commit hook in any Bodai repo). The oneiric peer-directory
     # resolution only works when CWD is /Users/les/Projects/mahavishnu.
     # See `core/events/__init__.py` module docstring for the contract.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import (
+    getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
+)
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
 
@@ -32,7 +34,7 @@ _publisher: EventBridgePublisher | None = None
 # C-2 wire-up scaffolding uses this to capture envelopes per-test. Production
 # code never reads it; the real singleton lives in ``_publisher``.
 _capture_singleton: list[Any] = []
-logger = get_logger  # noqa: N813(__name__)
+logger = get_logger(__name__)
 
 
 def set_publisher(publisher: EventBridgePublisher | None) -> None:

@@ -114,12 +114,16 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
     else:
         cmd = ["npx", "-y", "@maximhq/bifrost", *bifrost_args]
 
-    # File handles stay open for the lifetime of the subprocess. The kernel
-    # dup's the FD into the child at exec time, so closing the Python handles
-    # is safe — but keeping them open is harmless and makes tail/lsof trivial.
-    stdout_log = open(LOG_DIR / "bifrost.log", "ab")
-    stderr_log = open(LOG_DIR / "bifrost.err", "ab")
-    return subprocess.Popen(cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log)
+    # The kernel dup's the FD into the child at exec time, so closing the
+    # Python handles after Popen returns is safe; the child still owns the FD
+    # for the lifetime of the subprocess, which keeps `tail`/`lsof` happy.
+    with (
+        open(LOG_DIR / "bifrost.log", "ab") as stdout_log,
+        open(LOG_DIR / "bifrost.err", "ab") as stderr_log,
+    ):
+        return subprocess.Popen(
+            cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log
+        )
 
 
 def _port_is_listening(port: int = PORT) -> bool:

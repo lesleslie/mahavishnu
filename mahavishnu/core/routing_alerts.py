@@ -177,7 +177,9 @@ class WebhookAlertHandler(AlertHandler):
                     self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
                 else:
                     self.logger.error(f"Failed to send alert: HTTP {response.status}")
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001  # background task — broad catch is the documented contract
+        ) as e:
             self.logger.error(f"Webhook alert failed: {e}")
 
 

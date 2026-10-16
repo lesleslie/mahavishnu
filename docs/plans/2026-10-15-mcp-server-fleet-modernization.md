@@ -22,15 +22,15 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 
 | Plan | Topic | Status (per 2026-10-15 audit) | Role in this umbrella |
 |---|---|---|---|
-| [`2026-06-26-fastmcp-3-upgrade.md`](2026-06-26-fastmcp-3-upgrade.md) | FastMCP 2.x → 3.4+ pin migration across 15 *-mcp repos | `stale-status` (Phases 1-3 done; 7/15 repos still on 2.x) | Foundation: every other plan here depends on FastMCP 3.4+ public API. |
-| [`2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) (+ [design spec](../specs/2026-08-18-mcp-tool-profile-adoption-design.md)) | `MAHAVISHNU_TOOL_PROFILE` dispatch via `mcp_common._apply_tool_profile` | `partial` (W0/W1/W2a shipped; W2b-W4 blocked on fastmcp 2.x → 3.4+) | Profile-aware tool surface across the fleet. |
+| `2026-06-26-fastmcp-3-upgrade.md` (removed) | FastMCP 2.x → 3.4+ pin migration across 15 *-mcp repos | `stale-status` (Phases 1-3 done; 7/15 repos still on 2.x) | Foundation: every other plan here depends on FastMCP 3.4+ public API. |
+| [`2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) (+ design spec, removed: `../specs/2026-08-18-mcp-tool-profile-adoption-design.md`) | `MAHAVISHNU_TOOL_PROFILE` dispatch via `mcp_common._apply_tool_profile` | `partial` (W0/W1/W2a shipped; W2b-W4 blocked on fastmcp 2.x → 3.4+) | Profile-aware tool surface across the fleet. |
 | [`2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | Unified `mcp_common.launcher` for consumer CLI bootstrap | `partial` (Phase 1 foundation shipped; Phases 2-5 pending) | Launcher path convergence so per-standalone CLI bugs get one fix per Stack Overflow. |
 
 ## Sequenced Remaining Work
 
 1. **Finish fastmcp pin migration for 2.x holdouts** (fastmcp-3-upgrade plan Phase 5):
    - `penpot-api-mcp`, `raindropio-mcp`, `mailgun-mcp`, `chat-bridge-mcp` (these are the actual 2.x/unpinned holdouts per the 2026-10-15 audit)
-   - `archive-org-mcp`, `medium-mcp`, `scapy-mcp` are covered by [`docs/specs/2026-09-06-mcp-stub-activation-design.md`](../specs/2026-09-06-mcp-stub-activation-design.md) (now `complete`)
+   - `archive-org-mcp`, `medium-mcp`, `scapy-mcp` are covered by `docs/specs/2026-09-06-mcp-stub-activation-design.md` (removed; originally marked `complete`)
 2. **Land tool-profile waves W2b-W4** (tool-profile plan): requires fastmcp 3.4+ so blocked on #1
 3. **Land launcher Phase 2** (launcher plan): oneiric vendored CLI fixes (REQ-009 + REQ-010) — known bugs
 4. **Defer launcher Phases 3-5** (cuttable per the plan's own §9): per-standalone migrations to launcher-call shape
@@ -52,6 +52,6 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 
 Created by the 2026-10-15 plan audit (10-batch parallel workflow). Supersedes the consolidation suggestion in:
 
-- [`2026-06-26-fastmcp-3-upgrade.md`](2026-06-26-fastmcp-3-upgrade.md) recommendation (last paragraph)
-- [`docs/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md`](../specs/2026-08-20-mcp-deps-crackerjack-loop-design.md) recommendation (last paragraph)
+- `2026-06-26-fastmcp-3-upgrade.md` (removed) recommendation (last paragraph)
+- `docs/specs/2026-08-20-mcp-deps-crackerjack-loop-design.md` (removed) recommendation (last paragraph)
 - Cluster 1 in the audit synthesis

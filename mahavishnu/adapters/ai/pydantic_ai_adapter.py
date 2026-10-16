@@ -306,12 +306,12 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
         # Check if pydantic-ai is available
         try:
-            import pydantic_ai
-
-            self._pydantic_ai_available = True
+            import pydantic_ai  # noqa: F401  # optional dependency for pydantic AI adapter
         except ImportError:
-            logger.warning("pydantic-ai not installed. Install with: pip install pydantic-ai")
             self._pydantic_ai_available = False
+            logger.warning("pydantic-ai not installed. Install with: pip install pydantic-ai")
+        else:
+            self._pydantic_ai_available = True
 
         primary_model_str = (
             self.settings.primary_model.safe_string() if self.settings.primary_model else "None"

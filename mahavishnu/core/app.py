@@ -58,7 +58,10 @@ def _log_budget_watchdog_done(task: asyncio.Task) -> None:
     """Log the outcome of a budget-watchdog asyncio task (mostly for shutdown)."""
     try:
         exc = task.exception()
-    except asyncio.CancelledError, Exception:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        asyncio.CancelledError,
+        Exception,  # noqa: BLE001  # background task — broad catch is the documented contract
+    ):
         exc = None
     if exc is not None:
         logger.warning("budget.watchdog exited with error: %s", exc)

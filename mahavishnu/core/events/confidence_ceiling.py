@@ -37,9 +37,11 @@ except ImportError:
     # See `core/events/__init__.py` module docstring — the `mahavishnu`
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
-    from logging import getLogger as get_logger  # type: ignore[assignment]
+    from logging import (
+    getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
+)
 
-logger = get_logger  # noqa: N813(__name__)
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants (spec article scaled to 0-100)

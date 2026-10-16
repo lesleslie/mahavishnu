@@ -22,9 +22,9 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 
 | Plan | Topic | Status (per 2026-10-15 audit) | Role in this umbrella |
 |---|---|---|---|
-| [`2026-09-26-oneiric-runtime-config-registry.md`](2026-09-26-oneiric-runtime-config-registry.md) | Oneiric registry (`oneiric_report_runtime` MCP tool) + Mahavishnu push on boot | `partial` (Phases 1-2 done; Phase 3 component-boot hooks pending) | Foundation: other components push runtime facts into Oneiric on startup. |
-| [`2026-10-04-session-buddy-settings-oneiric-shape.md`](2026-10-04-session-buddy-settings-oneiric-shape.md) | Convert `SessionMgmtSettings` → `SessionBuddySettings` (Oneiric-shaped) | `partial` (Phase 1 schema landed in session-buddy; Phases 2-3 consumer migration pending) | Session-buddy-side adoption of Oneiric substrate. |
-| [`2026-09-27-shared-bodai-substrate-phase-b.md`](2026-09-27-shared-bodai-substrate-phase-b.md) | SB Warm Tier = pgvector (oneiric PgvectorAdapter migration) | `stale-status` (work supplanted by Phase E2 substrate adoption + 2026-10-04 settings reshape) | Specifying earlier that the warm-tier migration is now partially absorbed — see Resolution Note. |
+| `2026-09-26-oneiric-runtime-config-registry.md` (removed) | Oneiric registry (`oneiric_report_runtime` MCP tool) + Mahavishnu push on boot | `partial` (Phases 1-2 done; Phase 3 component-boot hooks pending) | Foundation: other components push runtime facts into Oneiric on startup. |
+| `2026-10-04-session-buddy-settings-oneiric-shape.md` (removed) | Convert `SessionMgmtSettings` → `SessionBuddySettings` (Oneiric-shaped) | `partial` (Phase 1 schema landed in session-buddy; Phases 2-3 consumer migration pending) | Session-buddy-side adoption of Oneiric substrate. |
+| `2026-09-27-shared-bodai-substrate-phase-b.md` (removed) | SB Warm Tier = pgvector (oneiric PgvectorAdapter migration) | `stale-status` (work supplanted by Phase E2 substrate adoption + 2026-10-04 settings reshape) | Specifying earlier that the warm-tier migration is now partially absorbed — see Resolution Note. |
 
 ## Sequenced Remaining Work
 

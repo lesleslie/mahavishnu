@@ -71,11 +71,10 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
     def is_available() -> bool:
         """Check if PyAutoGUI is available."""
         try:
-            import pyautogui  # ty: ignore[unresolved-import]
-
-            return True
+            import pyautogui  # noqa: F401  # ty: ignore[unresolved-import]  # optional dependency for pyautogui backend
         except ImportError:
             return False
+        return True
 
     @property
     def backend_name(self) -> str:

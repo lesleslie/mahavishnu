@@ -525,9 +525,7 @@ def prune_stale_metadata(
                     {
                         "dry_run": dry_run,
                         "results": all_results,
-                        "total_removed": sum(
-                            r.get("removed_count", 0) for r in all_results
-                        ),
+                        "total_removed": sum(r.get("removed_count", 0) for r in all_results),
                     },
                     indent=2,
                 )

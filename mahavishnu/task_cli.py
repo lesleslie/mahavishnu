@@ -598,10 +598,8 @@ def generate_completion_script(shell: str = "bash") -> str:
     Returns:
         Completion script content
     """
-    if (
-        shell == "bash"
-    ):  # multi-line bash script literals read more clearly as a sequential if/elif chain than a dict-of-strings
-        return """
+    completion_scripts: dict[str, str] = {
+        "bash": """
 # Bash completion for mahavishnu
 _mahavishnu_completion() {
     local cur words
@@ -611,18 +609,17 @@ _mahavishnu_completion() {
 }
 complete -F _mahavishnu_completion mahavishnu
 complete -F _mahavishnu_completion mhv
-"""
-    elif shell == "zsh":
-        return """
+""",
+        "zsh": """
 # Zsh completion for mahavishnu
 # Add to ~/.zshrc
 autoload -U +X compinit && compinit
 autoload -U +X bashcompinit && bashcompinit
 source <(mahavishnu --show-completion bash)
-"""
-    elif shell == "fish":
-        return """
+""",
+        "fish": """
 # Fish completion for mahavishnu
 mahavishnu --show-completion fish | source
-"""
-    return ""
+""",
+    }
+    return completion_scripts.get(shell, "")

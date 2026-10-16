@@ -32,7 +32,9 @@ class _DefaultMonitorDataProvider:
 
             app = MahavishnuApp()
             metrics = await app.get_metrics()
-        except Exception:  # TUI handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001
+        ):  # TUI handler — broad catch is the documented contract
             return []
         return [
             {
@@ -49,7 +51,9 @@ class _DefaultMonitorDataProvider:
 
             app = MahavishnuApp()
             metrics = await app.get_metrics()
-        except Exception:  # TUI handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except (
+            Exception  # noqa: BLE001
+        ):  # TUI handler — broad catch is the documented contract
             return []
         running = int(metrics.get("workers_running", 0) or 0)
         return [
@@ -110,7 +114,7 @@ if TUI_AVAILABLE:
                 try:
                     self._pool_data = await self._data_provider.get_pools()
                     self._worker_data = await self._data_provider.get_workers()
-                except Exception as e:  # TUI refresh — broad catch to log skip and continue with stale data so the dashboard never crashes  # TUI handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+                except Exception as e:  # TUI refresh — broad catch to log skip and continue with stale data so the dashboard never crashes  # TUI handler — broad catch is the documented contract  # noqa: BLE001
                     logger.debug("Data provider fetch skipped: %s", e)
             self._render_pools()
             self._render_workers()
