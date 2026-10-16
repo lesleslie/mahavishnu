@@ -3,8 +3,8 @@ status: active
 role: implementation
 kind: plan
 date: 2026-07-29
-last_reviewed: 2026-10-12
-superseded_by: null
+last_reviewed: 2026-10-15
+superseded_by: 2026-10-12-ruff-cleanup-post-regrowth.md
 blocks_on: []
 topic: ruff-cleanup-waves
 title: "Ruff Cleanup Wave-Plan (2026-07-29)"
