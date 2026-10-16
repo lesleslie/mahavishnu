@@ -182,10 +182,22 @@ class MahavishnuWebSocketServer(WebSocketServer):
             auto_cert=auto_cert,
         )
 
-        # Initialize metrics
-        # Annotated assignment overrides the parent Optional annotation;
-        # get_metrics() always returns a concrete WebSocketMetrics.
-        self.metrics: WebSocketMetrics = get_metrics("mahavishnu")
+        # Initialize metrics. The annotation widens to ``WebSocketMetrics | None``
+        # to match the parent class declaration (``mcp_common.websocket.server``);
+        # LSP requires subclass attribute types to be assignable to the parent's
+        # declared type, and narrowing is rejected. At runtime ``get_metrics()``
+        # always returns a concrete instance, but the downstream
+        # ``if metrics is not None`` guards (lines 244, 276, 343) preserve the
+        # parent's Optional contract — they still work whether metrics is
+        # concrete or None.
+        #
+        # ty: ignore[invalid-attribute-override] -- ``mcp_common.websocket.metrics.WebSocketMetrics``
+        # and ``mahavishnu.websocket.metrics.WebSocketMetrics`` are two
+        # structurally-compatible classes in distinct packages; nominal
+        # equivalence is rejected by ty even though the LSP contract is
+        # preserved at runtime. The parent class lives in mcp-common and
+        # cannot depend on mahavishnu without inverting the dependency.
+        self.metrics: WebSocketMetrics | None = get_metrics("mahavishnu")  # ty: ignore[invalid-attribute-override]
 
         # Initialize rate limiter with configured rate
         # Burst size is 1.5x the rate to allow small bursts

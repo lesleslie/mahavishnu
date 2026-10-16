@@ -5,6 +5,117 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.1] - 2026-10-15
+
+### Added
+
+- conductor: Per-engine emit_node dispatch tables + level-by-level DAG dispatch (Plan 3)
+- governance: Pre-push consolidation gate (REQ-015)
+- hooks: Add bodai-activity-subscriber for SessionStart/End (Bundle B — plan 2026-07-11-phase-6-bodai-observability)
+- hooks: Wire bodai-activity-subscriber into SessionStart/End (Bundle B — plan 2026-07-11-phase-6-bodai-observability)
+- mahavishnu: Pool_tools budget_enforce extract (Stage 3b unblocker)
+- Merge tier1-validator-fix-2026-10-14 to main
+- merge: Add --no-crackerjack operator bypass + accept fast-cycles decision
+- monitoring: Add `monitor tui` subcommand per plan B-1.3
+
+### Changed
+
+- Bifrost: V1.1 - extend AI-CLI opt-in to terminal-qwen
+- Bifrost: V1.2 - post-4-lens-review amendment set
+- Bifrost: V1.3 - final-pass amendment (post mahavishnu-specialist + general-purpose review)
+- BLE001 noqa sweep + spell check + broken link/tc-refs fixes
+- Feat/wire-learning-pipeline -> origin/main
+- Fix/merge-fast-hooks -> main
+- Fix/squash-merge-local-main -> main
+- V1 design - first-class BifrostConfig wiring
+
+### Fixed
+
+- Close two cleanup gaps surfaced by stale-worktree scan
+- docs/codesync: Bundle C — serverless phase-1-fixes REQs + native-macos cleanup
+- docs: Redirect broken markdown links to current file locations
+- docs: Remove orphaned UPPERCASE schema files
+- docs: Rename schema files back to canonical lowercase
+- docs: Repair superseded_by refs and followup topic after archive sweep
+- docs: Resolve 7 stale conflict markers in fast-hooks-vs-comprehensive decision
+- docs: Restore decision-adapter-category plan/spec, drop duplicate .claude/decisions/ file
+- fast-hooks: Clear ruff-check + check-local-links gates
+- followups: Add trailing newline to consumer-followup doc
+- gitignore: Drop per-path .archive exceptions — blanket ignore is the new policy
+- hooks: Make Path available at runtime for typer annotation eval
+- hooks: Narrow bodai-activity-subscriber observability surface
+- lint: Re-apply per-site # noqa: BLE001 to regression sites
+- lint: Remaining small ruff categories (TRY004, TRY203, N811, N817, PLC3002, SIM116, TRY401)
+- lint: Ruff auto-fix + suppress intentional F401 imports
+- lint: Small-category ruff cleanups + per-file overrides for protocol contracts
+- merge-to-main: Gate recognizes squash-merge via commit subject
+- merge-to-main: Sibling discovery uses parent dir, not cwd basename
+- runbook-refs: Case-match runbook paths to actual lowercase files in main
+- tests: Remove obsolete dhara_client references
+- worktree-provider: Use fastmcp.Client instead of non-existent mcp_client
+
+### Documentation
+
+- agents: Add Decisions pointer section
+- Baseline refresh (Plans 4+5+6) + critical fixes (Plan 9)
+- Cluster 1+2 consolidation — create 2 umbrella plans, supersede 6 children
+- Consolidate topic clusters and archive legacy plans
+- Create unified-event-bus-wrapper decision doc, supersede spec
+- decision-adapter-category: Spec, plan, decision for Oneiric decision/ category
+- decision-adapter: 4-pass multi-agent review complete — plan status: active
+- decisions: Add bypass-gate-parallel-sessions rule + index entry
+- decisions: Backfill README index with 2 missing 2026-10-14 entries
+- ecosystem: Generate MCP_TOOL_PROFILES.md via scripts/generate_tool_profiles_doc.py
+- Fix 12 broken local links in active files
+- Fix 9 broken local links in archive files
+- followup: Dhara runtime scrub + WORKFLOW_DIAGRAMS archive annotations
+- followups: Consumer followup for shared-frontmatter-validator move
+- frontmatter: Resolve 7 validation errors for documentation_cleanup
+- Mark Plans 1, 2 complete (dhara-lock-delete + crackerjack c-wire Task 6)
+- Mark Plans 5, 7, 9 complete (RUF100 cleanup + tool profile doc + bodai-maintained wirings)
+- merge-to-main: Cross-link new governance decision in See also
+- Move Plans 3, 6 back to active dir + mark complete
+- Move Plans 3, 6 from .archive back to active dir; mark complete
+- plans/specs: Apply re-assessment items 1-2-3 (27 files)
+- plans: 2026-07-15-constellation-tui — keep draft, refresh last_reviewed
+- plans: 2026-08-31-zsh-modernization — keep draft, refresh last_reviewed
+- plans: 2026-10-03-eval-adapter-phase1 — keep draft, refresh last_reviewed
+- plans: Add Phase 1.5 medium-mcp gate + cmux-mcp rename + new bodai-maintained-mcp-promotion plan
+- plans: Add shared-frontmatter-validator move (spec amendment + implementation plan)
+- plans: Archive 2026-06-01-dhara-crackerjack-critical-bug-fixes (Bundle D)
+- plans: Archive per-engine emit-node-dispatch (shipped)
+- plans: Archive pool-tools budget_enforce extract (shipped)
+- plans: BLE001 triage and per-site refactor follow-up
+- plans: Cluster 4 supersede — 2026-07-29 ruff-cleanup-waves → 2026-10-12 ruff-cleanup-post-regrowth
+- plans: Cluster 5 cross-reference — ledger as canonical, matrix as companion
+- plans: Flip 22 plan/spec/ADR frontmatter statuses to reflect verified completion (audit 2026-10-15)
+- plans: Mark lifespan-publisher superseded by session-buddy-wrapper-cleanup
+- plans: Mark ruff-cleanup-post-regrowth partial (Phase 0 landed; 8 fix phases pending)
+- plans: Resolve Cluster 3 conflict — lifespan-publisher vs task-system-v1.1
+- pre-1.0: Archive Pass 3 — sweeps dated plans, followups, decisions
+- pre-1.0: Archive Pass 3 — sweeps dated plans, followups, decisions
+- pre-1.0: Consolidate OTel/OTLP docs into integrations/observability/
+- pre-1.0: Fix code-level refs to renamed docs (Pass 4d)
+- pre-1.0: Pre-merge link-ref fixes for crackerjack gate (in-progress)
+- Regenerate PLAN_INDEX.md (status: complete across 7 plans + Plan 4 partial)
+- specs: 2026-08-31-zsh-modernization-design — keep draft, refresh last_reviewed
+- specs: Archive 2026-06-22-three-layer-self-heal-design.md per user direction
+- specs: Archive 2026-08-12-bodai-ecosystem-consistency-design.md per user direction
+- validator: Fix topic-vocabulary hardcoded path + add 24 missing slugs
+- zsh: Add override note to plan + spec — kept draft per user override
+
+### Internal
+
+- docs: Apply parallel session's 3 decision files (pop stash)
+- Drop dead [mypy-mcp_client] block
+- gitignore: General sibling-of-parent .archive exception (replaces per-path list)
+- gitignore: Un-ignore .claude/decisions/.archive/ and docs/decisions/.archive/
+- Remove 6 long-moved docs files (canonical -> .archive/)
+- repo: Move .claude/decisions/ to docs/decisions/
+- ruff: Enable 9 rule families (post-regrowth Phase 0)
+- ruff: RUF100 stale # noqa cleanup (post-regrowth)
+- Untrack 649 historical archive files
+
 ## [0.35.0] - 2026-10-12
 
 ### Added

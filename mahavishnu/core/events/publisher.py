@@ -21,8 +21,8 @@ except ImportError:
     # resolution only works when CWD is /Users/les/Projects/mahavishnu.
     # See `core/events/__init__.py` module docstring for the contract.
     from logging import (
-    getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
-)
+        getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
+    )
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
 

@@ -751,6 +751,14 @@ class WorktreeCoordinator:
         registered. Operators who want to override that should unlock
         first (``git worktree unlock``).
 
+        The body is split into single-purpose helpers
+        (``_resolve_worktree_repo``, ``_parse_worktree_entry``,
+        ``_delete_worktree_metadata``, ``_refresh_worktree_metadata``)
+        to keep this orchestrator below the crackerjack cyclomatic
+        complexity ceiling (each helper has at most one decision
+        boundary per concern — see ``feedback-*`` memory on small
+        functions).
+
         Args:
             repo_nickname: Repository nickname to scan.
             dry_run: When True, return candidates without mutating.
@@ -761,12 +769,7 @@ class WorktreeCoordinator:
             ``removed_count``, ``skipped_locked``, and (when not
             dry-run) ``removed`` (list of metadata entries removed).
         """
-        repo = self.repo_manager.get_by_name(repo_nickname)
-        if repo is None:
-            repo = self.repo_manager.get_by_package(repo_nickname)
-        if repo is None:
-            raise ConfigurationError(f"Repository not found: {repo_nickname}")
-
+        repo = self._resolve_worktree_repo(repo_nickname)
         repo_path = Path(repo.path)
         worktrees_meta_dir = repo_path / ".git" / "worktrees"
         if not worktrees_meta_dir.is_dir():
@@ -787,93 +790,11 @@ class WorktreeCoordinator:
         skipped_locked: list[str] = []
 
         for entry in sorted(worktrees_meta_dir.iterdir()):
-            if not entry.is_dir():
+            parsed = self._parse_worktree_entry(entry, skipped_locked)
+            if parsed is None:
                 continue
-            gitdir_file = entry / "gitdir"
-            if not gitdir_file.is_file():
-                # Malformed metadata — git would refuse it too. Surface
-                # but don't touch; an operator can clean up manually.
-                logger.warning(
-                    "Skipping malformed worktree metadata %s: missing gitdir file",
-                    entry,
-                )
-                continue
-
-            try:
-                gitdir_content = gitdir_file.read_text().strip()
-            except OSError as exc:
-                logger.warning("Could not read %s: %s", gitdir_file, exc)
-                continue
-
-            # Modern git (>= 2.30) writes the absolute path to the
-            # worktree's .git file pointer with NO ``gitdir: `` prefix.
-            # Older git wrote ``gitdir: <path>``. Accept both.
-            if gitdir_content.startswith("gitdir: "):
-                gitdir_value = gitdir_content[len("gitdir: ") :]
-            else:
-                gitdir_value = gitdir_content
-
-            if not gitdir_value:
-                logger.warning(
-                    "Skipping malformed worktree metadata %s: empty gitdir content",
-                    entry,
-                )
-                continue
-            # gitdir points at ``<worktree>/.git`` — the worktree path
-            # is the parent of the .git file.
-            worktree_path = Path(gitdir_value).parent
-
-            # Skip locked entries — operator must unlock explicitly.
-            if (entry / "locked").exists():
-                skipped_locked.append(entry.name)
-                logger.info(
-                    "Skipping locked worktree metadata %s (live lock file present)",
-                    entry.name,
-                )
-                continue
-
-            # Stale iff the working tree directory is missing on disk.
-            if worktree_path.exists():
-                continue
-
-            # Extract the branch ref (best-effort; HEAD may be detached).
-            branch_name: str | None = None
-            head_file = entry / "HEAD"
-            if head_file.is_file():
-                head_content = head_file.read_text().strip()
-                if head_content.startswith("ref: refs/heads/"):
-                    branch_name = head_content[len("ref: refs/heads/") :]
-
-            if not dry_run:
-                shutil.rmtree(entry)
-                # ``git branch -D`` (force-delete) is appropriate here: the
-                # branch had only the worktree as its ref-holder, and the
-                # worktree is gone. ``-d`` would refuse if the branch
-                # tip is not merged, which is the wrong policy for a
-                # worktree we are explicitly destroying.
-                if branch_name is not None:
-                    proc = await asyncio.create_subprocess_exec(
-                        "git",
-                        "branch",
-                        "-D",
-                        branch_name,
-                        cwd=str(repo_path),
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    _, stderr_bytes = await proc.communicate()
-                    if proc.returncode != 0:
-                        # Branch ref might be checked out elsewhere, or
-                        # already deleted. Surface but don't abort —
-                        # the metadata cleanup is the important part.
-                        stderr_text = stderr_bytes.decode(errors="replace") if stderr_bytes else ""
-                        logger.warning(
-                            "Could not delete branch %s in %s: %s",
-                            branch_name,
-                            repo_nickname,
-                            stderr_text.strip() or "<no stderr>",
-                        )
-
+            worktree_path, branch_name = parsed
+            await self._delete_worktree_metadata(repo_path, entry, branch_name, dry_run)
             removed.append(
                 {
                     "metadata": entry.name,
@@ -883,25 +804,7 @@ class WorktreeCoordinator:
             )
 
         if not dry_run and removed:
-            # Refresh git's view so ``git worktree list`` agrees.
-            proc = await asyncio.create_subprocess_exec(
-                "git",
-                "worktree",
-                "prune",
-                cwd=str(repo_path),
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr_bytes = await proc.communicate()
-            if proc.returncode != 0:
-                # Non-fatal: even if prune fails, the metadata is gone.
-                stderr_text = stderr_bytes.decode(errors="replace") if stderr_bytes else ""
-                logger.warning(
-                    "git worktree prune exited %d for %s: %s",
-                    proc.returncode,
-                    repo_nickname,
-                    stderr_text.strip() or "<no stderr>",
-                )
+            await self._refresh_worktree_metadata(repo_path, repo_nickname)
 
         self.audit_logger.log_prune_operation(
             user_id=user_id,
@@ -916,6 +819,164 @@ class WorktreeCoordinator:
             "removed": removed,
             "dry_run": dry_run,
         }
+
+    def _resolve_worktree_repo(self, repo_nickname: str) -> Any:
+        """Return the repo record by name then package, or raise.
+
+        Extracted from :meth:`prune_stale_metadata` to keep the
+        orchestration function below the crackerjack cyclomatic
+        complexity ceiling. ``self.repo_manager.get_by_*`` may return
+        ``None`` for unknown nicknames; configuration errors must
+        surface so the operator sees the typo rather than an empty
+        result.
+        """
+        repo = self.repo_manager.get_by_name(repo_nickname)
+        if repo is None:
+            repo = self.repo_manager.get_by_package(repo_nickname)
+        if repo is None:
+            raise ConfigurationError(f"Repository not found: {repo_nickname}")
+        return repo
+
+    def _parse_worktree_entry(
+        self,
+        entry: Path,
+        skipped_locked: list[str],
+    ) -> tuple[Path, str | None] | None:
+        """Return ``(worktree_path, branch_name)`` for a stale entry.
+
+        Returns ``None`` to signal the entry should be skipped (live
+        path, locked, malformed, or read error). Skipping reasons are
+        logged at warning or info level. The branch name is best-effort:
+        ``HEAD`` may be detached or the file may be missing — both
+        cases yield ``branch_name=None``.
+        """
+        if not entry.is_dir():
+            return None
+        gitdir_file = entry / "gitdir"
+        if not gitdir_file.is_file():
+            # Malformed metadata — git would refuse it too. Surface
+            # but don't touch; an operator can clean up manually.
+            logger.warning(
+                "Skipping malformed worktree metadata %s: missing gitdir file",
+                entry,
+            )
+            return None
+
+        try:
+            gitdir_content = gitdir_file.read_text().strip()
+        except OSError as exc:
+            logger.warning("Could not read %s: %s", gitdir_file, exc)
+            return None
+
+        # Modern git (>= 2.30) writes the absolute path to the
+        # worktree's .git file pointer with NO ``gitdir: `` prefix.
+        # Older git wrote ``gitdir: <path>``. Accept both.
+        if gitdir_content.startswith("gitdir: "):
+            gitdir_value = gitdir_content[len("gitdir: ") :]
+        else:
+            gitdir_value = gitdir_content
+
+        if not gitdir_value:
+            logger.warning(
+                "Skipping malformed worktree metadata %s: empty gitdir content",
+                entry,
+            )
+            return None
+        # gitdir points at ``<worktree>/.git`` — the worktree path
+        # is the parent of the .git file.
+        worktree_path = Path(gitdir_value).parent
+
+        # Skip locked entries — operator must unlock explicitly.
+        if (entry / "locked").exists():
+            skipped_locked.append(entry.name)
+            logger.info(
+                "Skipping locked worktree metadata %s (live lock file present)",
+                entry.name,
+            )
+            return None
+
+        # Stale iff the working tree directory is missing on disk.
+        if worktree_path.exists():
+            return None
+
+        # Extract the branch ref (best-effort; HEAD may be detached).
+        branch_name: str | None = None
+        head_file = entry / "HEAD"
+        if head_file.is_file():
+            head_content = head_file.read_text().strip()
+            if head_content.startswith("ref: refs/heads/"):
+                branch_name = head_content[len("ref: refs/heads/") :]
+
+        return worktree_path, branch_name
+
+    async def _delete_worktree_metadata(
+        self,
+        repo_path: Path,
+        entry: Path,
+        branch_name: str | None,
+        dry_run: bool,
+    ) -> None:
+        """Rmtree entry and force-delete its branch ref.
+
+        ``git branch -D`` (force-delete) is appropriate here: the branch
+        had only the worktree as its ref-holder, and the worktree is
+        gone. ``-d`` would refuse if the branch tip is not merged, which
+        is the wrong policy for a worktree we are explicitly destroying.
+        Branch-delete failures are logged but do not abort — the metadata
+        cleanup is the important part.
+        """
+        if dry_run:
+            return
+        shutil.rmtree(entry)
+        if branch_name is None:
+            return
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "branch",
+            "-D",
+            branch_name,
+            cwd=str(repo_path),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr_bytes = await proc.communicate()
+        if proc.returncode != 0:
+            # Branch ref might be checked out elsewhere, or
+            # already deleted. Surface but don't abort —
+            # the metadata cleanup is the important part.
+            stderr_text = stderr_bytes.decode(errors="replace") if stderr_bytes else ""
+            logger.warning(
+                "Could not delete branch %s: %s",
+                branch_name,
+                stderr_text.strip() or "<no stderr>",
+            )
+
+    async def _refresh_worktree_metadata(
+        self,
+        repo_path: Path,
+        repo_nickname: str,
+    ) -> None:
+        """Run ``git worktree prune`` so ``git worktree list`` agrees.
+
+        Non-fatal: even if prune fails, the metadata is gone.
+        """
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "worktree",
+            "prune",
+            cwd=str(repo_path),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr_bytes = await proc.communicate()
+        if proc.returncode != 0:
+            stderr_text = stderr_bytes.decode(errors="replace") if stderr_bytes else ""
+            logger.warning(
+                "git worktree prune exited %d for %s: %s",
+                proc.returncode,
+                repo_nickname,
+                stderr_text.strip() or "<no stderr>",
+            )
 
     async def get_worktree_safety_status(
         self, repo_nickname: str, worktree_path: str

@@ -70,6 +70,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `partial` | `implementation` | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
 | [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `partial` | `canonical` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
 | [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `partial` | `canonical` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
+| [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `draft` | `canonical` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.3 |
 
 ### Docs: plans
 
@@ -145,9 +146,9 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 
 | Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 7 | 12 | 3 | · | 11 | **33** |
+| `canonical` | 8 | 12 | 3 | · | 11 | **34** |
 | `implementation` | 13 | 11 | 14 | 2 | 2 | **42** |
 | `umbrella` | · | 4 | 2 | · | · | **6** |
 | `historical` | · | 4 | · | · | 16 | **20** |
 | `superseded` | · | · | · | · | 7 | **7** |
-| **Total** | **20** | **31** | **19** | **2** | **36** | **108** |
+| **Total** | **21** | **31** | **19** | **2** | **36** | **109** |

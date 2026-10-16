@@ -82,7 +82,9 @@ class RepositoryManager:
             if repo.mcp:
                 self._mcp_index[repo.mcp].append(repo.package)
 
-    @lru_cache(maxsize=256)  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019 — instance held by cache is bounded; cache cleared on repo mutation
+    @lru_cache(
+        maxsize=256
+    )  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019
     def get_by_tag(self, tag: str) -> list[str]:
         """
         Get repository packages by tag.
@@ -91,7 +93,9 @@ class RepositoryManager:
         """
         return self._tag_index.get(tag, []).copy()
 
-    @lru_cache(maxsize=128)  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019 — instance held by cache is bounded; cache cleared on repo mutation
+    @lru_cache(
+        maxsize=128
+    )  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019
     def get_by_mcp_type(self, mcp_type: str) -> list[str]:
         """Get repositories by MCP type (native or 3rd-party)."""
         return self._mcp_index.get(mcp_type, []).copy()
@@ -152,7 +156,9 @@ class RepositoryManager:
         # Call the cached implementation
         return self._filter_cached(tags_tuple, mcp_type, language)
 
-    @lru_cache(maxsize=64)  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019 — instance held by cache is bounded; cache cleared on repo mutation
+    @lru_cache(
+        maxsize=64
+    )  # cache lifecycle managed via .cache_clear() (line 282-284)  # noqa: B019
     def _filter_cached(
         self,
         tags: tuple[str, ...] | None = None,

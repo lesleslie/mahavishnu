@@ -39,7 +39,7 @@ from mahavishnu.core.errors import ErrorCode, MahavishnuError
 if TYPE_CHECKING:
     from types import ModuleType
 
-    from mahavishnu.core.mcp_adapter import MCPAdapter
+    from mahavishnu.core.mcp_adapter import MCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 # Dispatch-function signature: takes a frozen NodeSpec and returns the NodeHandle
 # the per-engine dispatcher produced. Populated at import time by
 # ``mahavishnu.engines.emit_node_dispatch.register()``.
-_EmitNodeFn = Callable[[NodeSpec, "MCPAdapter"], Awaitable[NodeHandle]]
+_EmitNodeFn = Callable[[NodeSpec, "MCPClient"], Awaitable[NodeHandle]]
 _EMIT_NODE_DISPATCH: dict[str, _EmitNodeFn] = {}
 
 
@@ -166,7 +166,7 @@ async def emit_node(
     node: DAGNode,
     *,
     trace_id: TraceId,
-    mcp: MCPAdapter,
+    mcp: MCPClient,
     prompt: str,
     parent_envelope_ids: tuple[EnvelopeId, ...] = (),
     repos: tuple[str, ...] = (),
@@ -206,7 +206,7 @@ async def _dispatch_dag_waves(
     dag: ExecutionDAG,
     *,
     trace_id: TraceId,
-    mcp: MCPAdapter,
+    mcp: MCPClient,
     prompt_for_root: str,
 ) -> dict[str, EnvelopeId]:
     """Level-by-level dispatch across the DAG's ``DAGEdge`` topology.

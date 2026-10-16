@@ -121,9 +121,7 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
         open(LOG_DIR / "bifrost.log", "ab") as stdout_log,
         open(LOG_DIR / "bifrost.err", "ab") as stderr_log,
     ):
-        return subprocess.Popen(
-            cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log
-        )
+        return subprocess.Popen(cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log)
 
 
 def _port_is_listening(port: int = PORT) -> bool:

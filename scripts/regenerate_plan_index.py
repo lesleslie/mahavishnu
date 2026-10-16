@@ -1217,6 +1217,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             try:
                 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
+
                 if TYPE_CHECKING:
                     from mahavishnu.plan_index.record import PlanRecord
 

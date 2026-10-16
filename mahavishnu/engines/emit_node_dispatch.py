@@ -33,7 +33,7 @@ from mahavishnu.core.envelopes import write_envelope
 
 if TYPE_CHECKING:
     from mahavishnu.core.adapters.base import OrchestratorAdapter
-    from mahavishnu.core.mcp_adapter import MCPAdapter
+    from mahavishnu.core.mcp_adapter import MCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +49,15 @@ def _lookup(engine_id: str) -> OrchestratorAdapter | None:
 
 
 def _new_envelope_id() -> EnvelopeId:
-    """Generate a fresh UUIDv4 envelope id."""
-    return EnvelopeId(str(uuid.uuid4()))
+    """Generate a fresh UUIDv4 envelope id.
+
+    ``EnvelopeId`` is ``Annotated[str, StringConstraints(...)]`` — a UUIDv4
+    format-validated newtype that resolves to ``str``. We skip runtime
+    validation here because we just synthesized the UUID with ``uuid.uuid4()``,
+    which by construction yields a v4 string matching the EnvelopeId pattern.
+    The type annotation widens the return to ``EnvelopeId`` for callers.
+    """
+    return str(uuid.uuid4())
 
 
 def _build_envelope(
@@ -93,7 +100,7 @@ def _redact_response_io(results: list[Any]) -> dict[str, str]:
 async def _dispatch_with_envelope(
     spec: NodeSpec,
     *,
-    mcp: MCPAdapter,
+    mcp: MCPClient,
     adapter: OrchestratorAdapter,
     task: dict[str, Any],
     flow_run_id_field: str | None = None,
@@ -162,7 +169,7 @@ async def _dispatch_with_envelope(
 # ---------------------------------------------------------------------------
 
 
-async def emit_prefect_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
+async def emit_prefect_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """Dispatch a Prefect node.
 
     Task shape mirrors :func:`mahavishnu.engines.prefect_adapter_impl.PrefectAdapter.execute`:
@@ -186,7 +193,7 @@ async def emit_prefect_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     )
 
 
-async def emit_llamaindex_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
+async def emit_llamaindex_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """Dispatch a LlamaIndex node.
 
     Task shape mirrors :func:`mahavishnu.engines.llamaindex_adapter_impl.LlamaIndexAdapter.execute`:
@@ -209,7 +216,7 @@ async def emit_llamaindex_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     return await _dispatch_with_envelope(spec, mcp=mcp, adapter=adapter, task=task)
 
 
-async def emit_agno_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
+async def emit_agno_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """Dispatch an Agno node.
 
     Task shape mirrors :func:`mahavishnu.engines.agno_adapter_impl.AgnoAdapter.execute`:
@@ -229,7 +236,7 @@ async def emit_agno_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     return await _dispatch_with_envelope(spec, mcp=mcp, adapter=adapter, task=task)
 
 
-async def emit_hatchet_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
+async def emit_hatchet_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """Dispatch a Hatchet node.
 
     Task shape mirrors :func:`mahavishnu.engines.hatchet_adapter_impl.HatchetAdapterImpl.execute`:
@@ -256,7 +263,7 @@ async def emit_hatchet_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
     )
 
 
-async def emit_pydanticai_node(spec: NodeSpec, mcp: MCPAdapter) -> NodeHandle:
+async def emit_pydanticai_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """Dispatch a pydantic_ai node.
 
     The pydantic_ai adapter lives behind the optional ``ai`` PEP 735 dependency
