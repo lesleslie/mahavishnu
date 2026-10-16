@@ -148,7 +148,7 @@ def _caller_with_scope(*scopes: str, uid: int = 1000, name: str = "uid:1000") ->
 
 def test_register_handles_creates_schema_then_inserts() -> None:
     async def run() -> int:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         caller = _caller_with_scope("worktree:register")
         h = _make_handle()
         n = await register_handles(client, [h], caller=caller)
@@ -181,7 +181,7 @@ def test_register_handles_creates_schema_then_inserts() -> None:
     asyncio.run(run())
 
 
-async def _ensure_schema(client: FakeDharaClient) -> None:
+async def _ensure_schema(client: FakeMCPClient) -> None:
     await client.execute(
         "CREATE TABLE IF NOT EXISTS mahavishnu_worktree_registry (handle_id TEXT PRIMARY KEY, principal TEXT NOT NULL, principal_uid INTEGER, repo TEXT NOT NULL, branch TEXT NOT NULL, base_ref TEXT, created_at TEXT NOT NULL, sha256 TEXT NOT NULL DEFAULT '', bytes_size INTEGER NOT NULL DEFAULT 0, cleanup_policy TEXT, provenance TEXT NOT NULL, storage_ref_json TEXT NOT NULL, backend_kind TEXT NOT NULL, origin_path TEXT NOT NULL)"
     )
@@ -195,7 +195,7 @@ async def _ensure_schema(client: FakeDharaClient) -> None:
 
 def test_register_handles_inserts_principal_index() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
         await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
@@ -207,7 +207,7 @@ def test_register_handles_inserts_principal_index() -> None:
 
 def test_register_handles_inserts_repo_index() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
         await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
@@ -219,7 +219,7 @@ def test_register_handles_inserts_repo_index() -> None:
 
 def test_register_handles_batch_inserts_all() -> None:
     async def run() -> int:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         caller = _caller_with_scope("worktree:register")
         handles = [_make_handle(f"h-{i}") for i in range(5)]
         return await register_handles(client, handles, caller=caller)
@@ -229,7 +229,7 @@ def test_register_handles_batch_inserts_all() -> None:
 
 def test_register_handles_ensure_schema_false_skips_creates() -> None:
     async def run() -> int:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         client._sql_log.clear()
         await register_handles(
@@ -248,7 +248,7 @@ def test_register_handles_ensure_schema_false_skips_creates() -> None:
 
 def test_register_handles_requires_register_scope() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         # No scope → reject
         caller = Principal.from_uid(1000)
@@ -260,7 +260,7 @@ def test_register_handles_requires_register_scope() -> None:
 
 def test_register_handles_non_admin_cannot_register_other_principals() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         # Caller is uid:2000 (no admin scope); handle belongs to uid:1000
         caller = _caller_with_scope("worktree:register", uid=2000, name="uid:2000")
@@ -273,7 +273,7 @@ def test_register_handles_non_admin_cannot_register_other_principals() -> None:
 
 def test_register_handles_admin_can_register_any_principal() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         caller = _caller_with_scope(
             "worktree:register",
@@ -295,7 +295,7 @@ def test_register_handles_admin_can_register_any_principal() -> None:
 
 def test_list_handles_no_filter_returns_all() -> None:
     async def run() -> list:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         await register_handles(
             client,
@@ -311,7 +311,7 @@ def test_list_handles_no_filter_returns_all() -> None:
 
 def test_list_handles_filter_by_principal() -> None:
     async def run() -> tuple:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         h_uid1000_a = _make_handle("h-1")
         h_uid1000_b = _make_handle("h-3")
@@ -357,7 +357,7 @@ def test_list_handles_non_admin_cannot_query_other_principal() -> None:
     """Non-admin callers are rejected when asking for someone else's handles."""
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         caller_uid1k = _caller_with_scope("worktree:register", "worktree:read")
         with pytest.raises(PermissionError, match="can only list their own"):
@@ -368,7 +368,7 @@ def test_list_handles_non_admin_cannot_query_other_principal() -> None:
 
 def test_list_handles_filter_by_repo() -> None:
     async def run() -> list:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         h_mah = _make_handle("h-mah", repo="mahavishnu")
         h_fb = _make_handle("h-fb", repo="fastblocks")
@@ -387,7 +387,7 @@ def test_list_handles_filter_by_repo() -> None:
 
 def test_list_handles_repo_filter_without_read_scope_rejected() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         # No worktree:read scope → reject
         caller = _caller_with_scope("worktree:register")
@@ -402,7 +402,7 @@ def test_list_handles_repo_filter_post_filters_to_callers_own() -> None:
     to only handles the non-admin caller owns."""
 
     async def run() -> tuple:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         h_owner = _make_handle("h-owner")  # uid:1000
         from dataclasses import replace
@@ -435,7 +435,7 @@ def test_list_handles_unfiltered_raises_without_caller() -> None:
     """No caller + no filter → reject (would have nothing to default to)."""
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         with pytest.raises(PermissionError, match="list_handles requires"):
             await list_handles(client)
@@ -448,7 +448,7 @@ def test_list_handles_unfiltered_with_caller_returns_own_handles() -> None:
     default view)."""
 
     async def run() -> tuple:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         h = _make_handle("h-1")
         caller = _caller_with_scope("worktree:register")
@@ -463,7 +463,7 @@ def test_list_handles_unfiltered_with_caller_returns_own_handles() -> None:
 
 def test_list_handles_all_tenants_requires_admin_scope() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         # No scope → reject even with all_tenants=True
         with pytest.raises(PermissionError, match="worktree:list-all"):
@@ -481,7 +481,7 @@ def test_list_handles_all_tenants_requires_admin_scope() -> None:
 
 def test_register_then_list_roundtrip() -> None:
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         original = _make_handle("h-rt")
         caller = _caller_with_scope("worktree:register")
         await register_handles(client, [original], caller=caller)
@@ -511,7 +511,7 @@ def test_rejects_relative_storage_path() -> None:
     bad_handle = replace(h, storage_ref=bad_ref)
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         with pytest.raises(ValueError, match="must be absolute"):
             await register_handles(
@@ -530,7 +530,7 @@ def test_rejects_dotdot_storage_path() -> None:
     bad_handle = replace(h, storage_ref=bad_ref)
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         with pytest.raises(ValueError, match=r"\.\."):
             await register_handles(
@@ -556,7 +556,7 @@ def test_rejects_dash_prefix_storage_path() -> None:
     bad_handle = replace(h, storage_ref=bad_ref)
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         with pytest.raises(ValueError, match="dash"):
             await register_handles(
@@ -577,7 +577,7 @@ def test_rejects_path_outside_worktree_base() -> None:
     bad_handle = replace(h, storage_ref=bad_ref)
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         with pytest.raises(ValueError, match="outside worktree base"):
             await register_handles(
@@ -641,7 +641,7 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
     )
 
     async def run() -> None:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         await register_handles(client, [h_remote], caller=_caller_with_scope("worktree:register"))
         admin = _caller_with_scope("worktree:list-all")
@@ -688,7 +688,7 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
     )
 
     async def run() -> str:
-        client = FakeDharaClient()
+        client = FakeMCPClient()
         await _ensure_schema(client)
         await register_handles(client, [h], caller=_caller_with_scope("worktree:register"))
         admin = _caller_with_scope("worktree:list-all")
@@ -708,7 +708,7 @@ async def test_remove_handle_owner_can_delete() -> None:
     """Owner with ``worktree:remove`` scope can delete their own handle."""
     from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
-    client = FakeDharaClient()
+    client = FakeMCPClient()
     await _ensure_schema(client)
     owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
     handle = _make_handle()
@@ -734,7 +734,7 @@ async def test_remove_handle_non_owner_raises_permission_error() -> None:
     """
     from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
-    client = FakeDharaClient()
+    client = FakeMCPClient()
     await _ensure_schema(client)
     owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
     handle = _make_handle()
@@ -753,7 +753,7 @@ async def test_remove_handle_admin_can_delete_any() -> None:
     """Admin (``worktree:register-any``) bypasses the ownership check."""
     from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
-    client = FakeDharaClient()
+    client = FakeMCPClient()
     await _ensure_schema(client)
     # Admin registers (worktree:register-any → admin override) AND removes
     # (worktree:register-any → admin override of ownership check).
@@ -769,7 +769,7 @@ async def test_remove_handle_unauthorized_raises() -> None:
     """Caller without ``worktree:remove`` or admin scope is rejected."""
     from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
-    client = FakeDharaClient()
+    client = FakeMCPClient()
     await _ensure_schema(client)
     handle = _make_handle()
     await register_handles(
@@ -786,7 +786,7 @@ async def test_remove_handle_not_found_returns_false() -> None:
     """Missing handle returns False (no exception)."""
     from mahavishnu.core.worktree_providers.mcp_registry import remove_handle
 
-    client = FakeDharaClient()
+    client = FakeMCPClient()
     await _ensure_schema(client)
     admin = Principal(uid=9999, name="uid:9999", scopes=frozenset({"worktree:remove"}))
     removed = await remove_handle(client, "nonexistent-id", caller=admin)

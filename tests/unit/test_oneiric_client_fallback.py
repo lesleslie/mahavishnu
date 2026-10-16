@@ -55,7 +55,7 @@ def test_get_and_set_mcp_client_cache(monkeypatch: pytest.MonkeyPatch) -> None:
             created.append(base_url)
             self.base_url = base_url
 
-    monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", _DharaClient, raising=False)
+    monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", _MCPClient, raising=False)
     oc._mcp_clients.clear()
 
     oc.set_mcp_client_base_url("http://example:9999/mcp/")
@@ -123,7 +123,7 @@ async def test_circuit_breaker_block_and_reset() -> None:
 async def test_mcp_registry_client_happy_path_and_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _FakeDharaClient()
+    fake = _FakeMCPClient()
     monkeypatch.setattr(oc, "get_mcp_client", lambda _base_url=None, _token=None: fake)
 
     client = oc.OneiricMCPClient(oc.OneiricMCPConfig(enabled=True, cache_ttl_sec=120))
@@ -165,7 +165,7 @@ async def test_mcp_registry_client_happy_path_and_disabled(
 
 @pytest.mark.asyncio
 async def test_mcp_registry_client_error_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = _FakeDharaClient()
+    fake = _FakeMCPClient()
     monkeypatch.setattr(oc, "get_mcp_client", lambda _base_url=None, _token=None: fake)
     client = oc.OneiricMCPClient(oc.OneiricMCPConfig(enabled=True, cache_ttl_sec=0))
 
