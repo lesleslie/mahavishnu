@@ -1,8 +1,8 @@
 ---
-status: active
+status: shipped
 role: implementation
 date: 2026-08-25
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-15
 owner: les
 topic: bodai-tui-shell-surface
 scope: bodai-tui-shell
@@ -19,6 +19,8 @@ title: "Bodai TUI & Admin Shell Surface"
 
 **Goal**: the `bodai shell` IPython REPL, the `bodai dashboard` Textual
 TUI, and the `mahavishnu monitor --tui` command all work end-to-end.
+
+> **Resolution Note (2026-10-15):** Open question on `monitor` flag wiring resolved — chose **subcommand** `mahavishnu monitor tui` (Typer subcommand). Implemented at `mahavishnu/cli/monitoring_cli.py::tui_dashboard` as an alias to the existing `monitor watch` command. Frontmatter updated to `status: shipped`. The plan's `B-1.3` deliverable (test name `test_monitor_tui_invokes_monitor_app`) is the canonical test target.
 The `AdminShell` base class (in `oneiric`) is the foundation that all
 five per-repo admin shells build on; this plan ensures the bodai-level
 TUIs reuse the same pattern instead of duplicating it.

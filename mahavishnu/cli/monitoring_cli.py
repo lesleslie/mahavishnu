@@ -241,6 +241,12 @@ def watch_dashboard() -> None:
         _print_rich_dashboard()
 
 
+@app.command(name="tui")
+def tui_dashboard() -> None:
+    """Launch the Textual monitor dashboard (alias for `monitor watch`)."""
+    return watch_dashboard()
+
+
 def _print_rich_dashboard() -> None:
     """Print a one-shot Rich-formatted system status to the terminal."""
     from ..core.app import MahavishnuApp
