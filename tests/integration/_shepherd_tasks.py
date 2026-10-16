@@ -13,9 +13,12 @@ substrate refuses tasks that don't declare any handle).
 
 from __future__ import annotations
 
-from pathlib import Path
 
 from shepherd import GitRepo as _GitRepo
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def write_inside_grant(target: Path, _repo: _GitRepo) -> Path:

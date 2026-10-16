@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from pathlib import Path
 
 import pytest
 
@@ -12,6 +11,10 @@ from mahavishnu.jot.markdown_export import render_board
 from mahavishnu.jot.markdown_parser import parse_board
 from mahavishnu.jot.markdown_watcher import watch_board
 from mahavishnu.jot.state_persistence import load_state, save_state
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.req(["REQ-020"])
@@ -186,11 +189,6 @@ class TestWatcherDispatch:
         board = tmp_path / "board.md"
         state = tmp_path / "state.json"
         # expected_revision=0 against an existing rev=2 -> CAS conflict.
-        content = (
-            "# Board\n\n## Ready\n"
-            "- [ ] c1 | pool | prompt "
-            '[mahavishnu-jot-cas::expected_revision=0]\n'
-        )
         # The above is fragile to whitespace; use the explicit form the
         # parser recognizes.
         board.write_text("# Board\n\n## Ready\n- [ ] c1 | pool | prompt\n")

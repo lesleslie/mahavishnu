@@ -8,7 +8,6 @@ jots to process.
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 import time
 
 import pytest
@@ -18,6 +17,10 @@ from mahavishnu.jot.drain import (
     DispatchState,
     _reconcile_if_in_flight,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _make_summary(**overrides):  # type: ignore[no-untyped-def]

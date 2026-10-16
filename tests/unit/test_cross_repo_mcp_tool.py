@@ -12,11 +12,13 @@ instead of httpx2.AsyncClient.post.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Helpers

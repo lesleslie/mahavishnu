@@ -19,8 +19,7 @@ this file was extended to cover:
 from __future__ import annotations
 
 import base64
-from pathlib import Path  # used in pytest tmp_path parameter
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
@@ -48,6 +47,9 @@ from mahavishnu.skills_signer import (
     public_key_from_bytes,
     verify_signature,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Canonicalization

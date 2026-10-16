@@ -11,7 +11,6 @@ No production code in ``mahavishnu/`` is touched.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
@@ -34,6 +33,7 @@ from mahavishnu.core.config import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from collections.abc import Iterator
 
 

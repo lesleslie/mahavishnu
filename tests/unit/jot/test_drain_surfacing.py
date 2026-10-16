@@ -1,8 +1,7 @@
 """Task 8: surfacing scorers + _Throttle + surface_relevant."""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pytest
 
@@ -17,6 +16,9 @@ from mahavishnu.jot.drain import (
 )
 from mahavishnu.jot.events import JotEvent, serialize
 from mahavishnu.jot.hlc import HLC
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # =============================================================================
 # _tokenize

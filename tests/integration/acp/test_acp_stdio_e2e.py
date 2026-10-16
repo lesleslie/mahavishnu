@@ -306,7 +306,7 @@ async def test_auth_failure_e2e() -> None:
         await proc.stdin.drain()
         new_line = await _read_one_line(proc)
         new_resp = json.loads(new_line)
-        sid = new_resp["result"]["sessionId"]
+        new_resp["result"]["sessionId"]
 
         # Now call session/prompt — but first, simulate "auth lost" by
         # spawning a fresh subprocess with NO bearer, and try to prompt.

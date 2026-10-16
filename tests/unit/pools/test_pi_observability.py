@@ -11,10 +11,7 @@ Req: REQ-PI-009
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterator,
-)
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
@@ -26,6 +23,11 @@ from mahavishnu.core.errors import PiProtocolError, PiRPCTimeout
 from mahavishnu.pools import pi_observability
 from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.pi_pool import PiPool
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        Iterator,
+    )
 
 # ---------------------------------------------------------------------------
 # Fixtures

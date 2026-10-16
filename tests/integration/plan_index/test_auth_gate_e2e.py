@@ -33,16 +33,18 @@ not the rbac_manager is wired (missing manager → ``AUTH_NOT_CONFIGURED``).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.plan_tools import register_plan_tools
-from mahavishnu.plan_index.store import (
-    PlanIndexStore,  # annotation-only with __future__ annotations
-)
+
+if TYPE_CHECKING:
+    from mahavishnu.plan_index.store import (
+        PlanIndexStore,  # annotation-only with __future__ annotations
+    )
 
 
 class _FakeRBAC:

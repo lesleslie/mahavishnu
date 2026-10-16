@@ -7,8 +7,7 @@ to ``CommonMCPClient``. The coverage harness now patches
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp_common.exceptions import MCPServerError
@@ -16,6 +15,9 @@ import pytest
 
 from mahavishnu.pools.base import PoolConfig, PoolMetrics, PoolStatus
 from mahavishnu.pools.session_buddy_pool import SessionBuddyPool, _await_if_needed
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture

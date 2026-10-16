@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +8,10 @@ from mahavishnu.workers.contract.manager import DurableWorkerManager
 from mahavishnu.workers.contract.record import TmuxTarget
 from mahavishnu.workers.contract.state import WorkerLifecycleState
 from mahavishnu.workers.contract.store import WorkerRecordStore
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pathlib
 
 
 @pytest.fixture

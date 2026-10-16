@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
 
 import pytest
@@ -11,6 +10,10 @@ from mahavishnu.core.worktree_prune_merged import (
     classify_merge_status,
     find_merged_worktrees,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def run_git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:

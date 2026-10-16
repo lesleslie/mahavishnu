@@ -267,7 +267,7 @@ def test_main_json_output(tmp_path: Path) -> None:
     from contextlib import redirect_stdout
     import io
     buf = io.StringIO()
-    rc = feature_eligibility.main([
+    feature_eligibility.main([
         "--json",
         "--plan-root", str(tmp_path),
         "--dry-run",

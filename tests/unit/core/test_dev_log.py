@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import sys
 import types
-from pathlib import Path
 
 import pytest
 
 from mahavishnu.core.dev_log import write_entry
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

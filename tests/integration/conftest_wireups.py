@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 import time
 import uuid
-from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -28,6 +27,7 @@ from mahavishnu.core.event_store import EventStore
 from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database, not a Path
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Iterator
     from mahavishnu.core.worktree_manager import WorktreeManager  # FIX round-6: real module is worktree_manager, not worktree
     from mahavishnu.pools import PoolManager
 
@@ -44,7 +44,7 @@ async def isolated_database() -> AsyncIterator[Path]:
     """
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         path = Path(f.name)
-    db = Database(path)  # FIX round-6: real EventStore constructor takes Database
+    Database(path)  # FIX round-6: real EventStore constructor takes Database
     try:
         yield path  # Yield the path; downstream code creates its own EventStore(db)
     finally:

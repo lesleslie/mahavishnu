@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pytest
 import yaml
@@ -12,6 +10,10 @@ import yaml
 from mahavishnu.scaffolding.library import PatternLibrary
 from mahavishnu.scaffolding.models import Pattern
 from mahavishnu.scaffolding.validation import validate_pattern
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from collections.abc import Callable
 
 
 @pytest.fixture

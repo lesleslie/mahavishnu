@@ -10,7 +10,6 @@ Reference: ``mahavishnu/core/config.py:get_settings``.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,6 +17,7 @@ import pytest
 from mahavishnu.core.config import MahavishnuSettings, get_settings, reset_settings
 
 if TYPE_CHECKING:
+    from pathlib import Path
     pass
 
 

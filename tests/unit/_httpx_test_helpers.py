@@ -6,11 +6,14 @@ This helper provides a drop-in replacement using httpx2.MockTransport.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from unittest.mock import patch
 
 import httpx2 as httpx
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 def make_response_handler(

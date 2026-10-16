@@ -202,7 +202,7 @@ class TestMCPClientHelpers:
         import mahavishnu.core.oneiric_client as mod
 
         fake_client = SimpleNamespace(base_url="http://default:8683/mcp")
-        mock_dhara = MagicMock(return_value=fake_client)
+        MagicMock(return_value=fake_client)
         mock_module = ModuleType("mahavishnu.core.mcp_adapter")
         mock_module.MCPClient = mock_mcp
 

@@ -6,7 +6,6 @@ Implements: REQ-CLONE-010, REQ-CLONE-011, REQ-CLONE-012, REQ-CLONE-013
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 import subprocess
 from unittest.mock import AsyncMock, patch
 import warnings
@@ -17,6 +16,10 @@ from mahavishnu.workflows.clone_refactor_workflow import (
     DAGResult,
     run_clone_refactor_dag,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.req(["REQ-CLONE-010", "REQ-CLONE-011", "REQ-CLONE-012", "REQ-CLONE-013"])]
 

@@ -67,7 +67,7 @@ def _yaml_adapter_value(path: pathlib.Path = YAML_PATH) -> str | None:
 
     in_terminal_block = False
     for line in text.splitlines():
-        stripped = line.lstrip()
+        line.lstrip()
         if not in_terminal_block:
             # Match ``terminal:`` only at column zero to avoid false
             # positives on inline YAML keys named "terminal" inside other
@@ -205,7 +205,7 @@ def _build_rows(
 
     # Row 3 — env override
     env_display = repr(env_value) if env_value is not None else "unset"
-    env_mark = MARK_OK if env_value is not None else MARK_OK
+    env_mark = MARK_OK
     rows.append(
         _format_row(env_mark, f"Env override ({ENV_ADAPTER_KEY})", env_display),
     )

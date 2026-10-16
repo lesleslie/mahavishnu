@@ -19,7 +19,6 @@ monkeypatch-first pattern.
 
 from __future__ import annotations
 
-import pathlib
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -29,9 +28,10 @@ from typer.testing import CliRunner
 from mahavishnu import _main_cli as cli_module
 from mahavishnu.cli import status_cli
 from mahavishnu.workers.contract.record import DurableWorkerRecord
-from mahavishnu.workers.contract.state import WorkerLifecycleState
 
 if TYPE_CHECKING:
+    from mahavishnu.workers.contract.state import WorkerLifecycleState
+    import pathlib
     import datetime as dt
 
     import pytest

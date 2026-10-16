@@ -3,7 +3,6 @@ agent-review workflow (REQ-004, REQ-013, REQ-014).
 """
 from __future__ import annotations
 
-from pathlib import Path
 
 import pytest
 
@@ -28,6 +27,10 @@ from mahavishnu.core.merge_to_main import (
     run_squash_merge,
     write_review_state,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_review_state_round_trip(tmp_path: Path) -> None:

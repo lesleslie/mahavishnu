@@ -267,7 +267,7 @@ class TestConcurrentCalls:
                 backend.get = fake_get
 
                 # First call — succeeds
-                first = await tools.clone_refactor_group(
+                await tools.clone_refactor_group(
                     cluster_id="cluster-concurrent",
                     target_repo=str(git_repo),
                     consumer_repos=[],

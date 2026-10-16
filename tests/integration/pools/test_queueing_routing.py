@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 import random
 
 import pytest
 
 from mahavishnu.pools.queueing import MmcQueue
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Helpers

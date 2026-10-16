@@ -13,13 +13,15 @@ Replaces the original ``mock_http_client`` pytest fixture that used respx.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 import socket as _socket
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import patch
 
 import httpx2 as httpx
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 def _url_router(

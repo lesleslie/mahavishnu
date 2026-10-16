@@ -10,7 +10,6 @@ dispatches based on URL.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 import socket as _socket
 from unittest.mock import patch
@@ -20,6 +19,10 @@ import pytest
 
 from mahavishnu.mcp.crow.tools.web_tools import web_fetch, web_fetch_batch
 from tests.unit.mcp.crow.conftest import mock_settings
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 def _url_router(

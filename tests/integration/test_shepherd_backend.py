@@ -24,7 +24,6 @@ unit gate (``pytest -m 'not integration'``).
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import shutil
 import subprocess
 import sys
@@ -44,6 +43,10 @@ if _SHEPHERD_SPEC is None:
 
 # Eager import once the skip guard above has passed.
 from mahavishnu.workers import shepherd_backend as _shepherd_backend
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _has_substrate_cli() -> bool:

@@ -12,9 +12,12 @@ delta so a future regression that drops a single drain tool surfaces here.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 
 from mahavishnu.mcp.tools.profiles import FULL_REGISTRATIONS, REGISTRATION_MAP
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 DRAIN_TOOLS: tuple[str, ...] = (
     "jot_drain",

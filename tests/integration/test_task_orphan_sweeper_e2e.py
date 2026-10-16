@@ -146,7 +146,7 @@ async def test_sweeper_xreadgroup_recovers_orphan(redis_client: Any) -> None:
             # Defensive: legacy coredis shape (list of (stream, msgs))
             for _stream_key, msgs in entries or []:
                 for entry in msgs or []:
-                    raw_id, raw_fields = entry[0], entry[1]
+                    _raw_id, raw_fields = entry[0], entry[1]
                     if (
                         isinstance(raw_fields, dict)
                         and raw_fields.get(b"channel") == b"task.handoff_completed"

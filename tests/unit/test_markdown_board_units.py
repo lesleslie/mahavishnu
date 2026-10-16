@@ -1,13 +1,16 @@
 """Unit-level smoke tests for the markdown board surface (no I/O)."""
 from __future__ import annotations
 
-from pathlib import Path
 
 import pytest
 
 from mahavishnu.core.errors import MarkdownParseError, MarkdownWatcherDiedError
 from mahavishnu.jot.markdown_export import render_board
 from mahavishnu.jot.markdown_parser import CARD_SECTION_VALUES, _section_to_status
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_section_values_tuple_is_exact() -> None:

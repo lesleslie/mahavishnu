@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -17,6 +16,10 @@ from mahavishnu.core.production_readiness import (
     _calculate_overall_assessment,
     run_production_readiness_suite,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _FakeAdapter:

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 
 import pytest
 
@@ -19,6 +18,10 @@ from tests.integration.observability.test_changepoint_two_stage_benchmark import
     _benchmark_two_stage_fp_per_quiet,
     _benchmark_two_stage_warning_latency,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # CAL-1 (round-2 review): the benchmark uses the production detector

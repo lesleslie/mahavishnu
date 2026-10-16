@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
 
 import pytest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_minimal_ecosystem_yaml(tmp_path: Path, repo_entry: dict[str, str]) -> Path:

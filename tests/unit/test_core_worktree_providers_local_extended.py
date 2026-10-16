@@ -39,11 +39,10 @@ No production code is modified. Helpers stay local to this file.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -68,6 +67,9 @@ from mahavishnu.core.worktree_providers.types import (
     WorktreeHandle,
     WorktreeRef,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 pytestmark = pytest.mark.unit
 

@@ -27,8 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -56,6 +55,9 @@ from mahavishnu.jot.errors import (
     JotRetryError,
     JotValidationError,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Fixtures

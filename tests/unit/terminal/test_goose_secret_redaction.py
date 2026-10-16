@@ -14,7 +14,6 @@ Req: REQ-GOO-002.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 
 import httpx2 as httpx
 from pydantic import SecretStr
@@ -26,6 +25,10 @@ from mahavishnu.core.errors import (
     GooseUnavailable,
 )
 from mahavishnu.terminal.goose_client import GooseHTTPClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 SAMPLE_TOKEN = "this-is-the-bearer-secret-1234567890"
 

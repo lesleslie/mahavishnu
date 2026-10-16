@@ -237,7 +237,7 @@ class TestScanWorktreesDriver:
         (repo_dir / ".git").mkdir()
         # Mock git worktree list --porcelain output
         with patch.object(worktree_scan, "_run_git_scanned") as mock_git, \
-             patch.object(worktree_scan, "_run_ps") as mock_ps:
+             patch.object(worktree_scan, "_run_ps"):
             # Realistic porcelain block: one worktree with a branch line.
             mock_git.return_value = MagicMock(
                 returncode=0,

@@ -14,13 +14,10 @@ directly.
 from __future__ import annotations
 
 import inspect
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pytest
 
-from mahavishnu.core.permissions import (
-    Permission,  # annotation-only with __future__ annotations
-)
 from mahavishnu.mcp.tools.plan_tools import (
     plan_tools_default_store_provider,
     register_plan_tools,
@@ -29,6 +26,11 @@ from mahavishnu.plan_index.errors import PlanNotFoundError
 from mahavishnu.plan_index.record import PlanRecord
 from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import FakeMCP as _StorageMCP
+
+if TYPE_CHECKING:
+    from mahavishnu.core.permissions import (
+        Permission,  # annotation-only with __future__ annotations
+    )
 
 TOOL_NAMES = (
     "plan_list",

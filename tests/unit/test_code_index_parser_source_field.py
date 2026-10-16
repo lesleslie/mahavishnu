@@ -28,10 +28,13 @@ These tests pin the new contract:
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 from mahavishnu.core.code_index.models import CodeGraphNode
 from mahavishnu.core.code_index.parser import parse_file
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_parse_file_populates_source_field_with_line_slice(tmp_path: Path) -> None:

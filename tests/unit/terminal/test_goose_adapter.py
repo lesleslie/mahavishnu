@@ -7,7 +7,6 @@ REQ-GOO-002, REQ-GOO-005.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import json
 
 import httpx2 as httpx
@@ -26,6 +25,10 @@ from mahavishnu.terminal.goose_client import (
     GooseHTTPClient,
     create_goose_http_client,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _mock_handler(

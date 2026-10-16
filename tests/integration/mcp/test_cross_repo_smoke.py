@@ -22,12 +22,14 @@ For end-to-end smoke with a real running Session-Buddy, see
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 from mcp_common.exceptions import MCPServerError
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture

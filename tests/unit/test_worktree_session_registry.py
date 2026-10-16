@@ -10,7 +10,6 @@ Pins the contract for the SessionWorktreeRegistry class:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import uuid
 
 import pytest
@@ -20,6 +19,10 @@ from mahavishnu.core.worktree_session_registry import (
     SessionWorktreeRegistry,
     short_session_id,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

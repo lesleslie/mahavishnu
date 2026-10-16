@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -22,6 +21,10 @@ from mahavishnu.jot.drain import (
 )
 from mahavishnu.jot.events import serialize
 from mahavishnu.jot.fold import JotSummary as RealJotSummary
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

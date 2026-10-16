@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 
 import pytest
 
@@ -19,6 +18,10 @@ from mahavishnu.acp.auth import (
     verify_token,
 )
 from mahavishnu.acp.errors import AUTH_INVALID, ACPError
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.acp, pytest.mark.acp_stdio]
 

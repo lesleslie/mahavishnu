@@ -28,12 +28,15 @@ language.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
 import shutil
 import socket
 import subprocess
 
 import pytest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def _redis_reachable(host: str = "127.0.0.1", port: int = 6379) -> bool:

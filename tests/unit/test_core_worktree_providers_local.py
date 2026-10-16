@@ -13,7 +13,6 @@ provider identity, health checks, and edge cases in the porcelain parser.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,6 +33,10 @@ from mahavishnu.core.worktree_providers.local import (
     LocalWorktreeProvider,
     supports_streaming,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 pytestmark = pytest.mark.unit
 

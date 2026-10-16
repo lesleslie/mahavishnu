@@ -78,7 +78,7 @@ def test_capability_block_registers_four_core_tools() -> None:
     """
     server = _StubServer()
     with pytest.MonkeyPatch.context() as mp:
-        register_capability_tools = mp.setattr(
+        mp.setattr(
             "mahavishnu.mcp.bootstrap.register_capability_tools",
             "mahavishnu.mcp.tools.capability_tools.register_capability_tools",
             raising=False,

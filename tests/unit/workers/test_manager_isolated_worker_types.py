@@ -70,7 +70,7 @@ class TestIsolatedWorkerFactoryHappyPath:
             MahavishnuError,
         )
 
-        fake_module = MagicMock()
+        MagicMock()
         monkeypatch.setattr(
             "mahavishnu.workers.shepherd_backend.ShepherdBackendWorker",
             lambda **kw: MagicMock(),

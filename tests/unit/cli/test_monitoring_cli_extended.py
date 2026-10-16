@@ -25,8 +25,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -35,6 +34,9 @@ from typer.testing import CliRunner
 
 from mahavishnu.cli.monitoring_cli import add_monitoring_commands
 from mahavishnu.core.monitoring import Alert, AlertSeverity, AlertType
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Test fixtures

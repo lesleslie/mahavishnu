@@ -29,9 +29,6 @@ async def test_network_drop_during_polling(monkeypatch: pytest.MonkeyPatch) -> N
     def fail_handler(request: httpx.Request) -> httpx.Response:
         raise httpx.NetworkError("connection reset")
 
-    handler_factory = lambda: (
-        make_response_handler  # not used; placeholder for clarity
-    )
     # Build a stateful handler that returns success for /conversations and
     # raises for /conversations/{id} (the polling endpoint).
     from tests.unit._httpx_test_helpers import make_response_handler

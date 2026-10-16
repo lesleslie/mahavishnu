@@ -5,7 +5,6 @@ Implements: REQ-CLONE-011, REQ-CLONE-013
 
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
 
 import pytest
@@ -23,6 +22,10 @@ from mahavishnu.workflows._git_ops import (
     stash_pop,
     stash_push,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

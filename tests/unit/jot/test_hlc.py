@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import socket
 import time
@@ -16,6 +15,10 @@ from mahavishnu.jot.hlc import (
     node_init,
     read_tail_hlc,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # hlc_now (pure)

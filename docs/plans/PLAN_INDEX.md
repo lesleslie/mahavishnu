@@ -24,10 +24,10 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md`](../adr/013-mahavishnu-dhara-adapter-tool-boundary.md) | 2026-07-16 | `complete` | `superseded` | `adapter-tool-boundary` | ADR 013: Adapter Tool Boundary Between Mahavishnu and Dhara |
 | [`docs/adr/014-honcho-peer-model-routing-precedence.md`](../adr/014-honcho-peer-model-routing-precedence.md) | 2026-07-16 | `complete` | `canonical` | `honcho-routing` | ADR 014: Honcho Peer-Model Routing Precedence |
 | [`docs/adr/015-multi-agent-review.md`](../adr/015-multi-agent-review.md) | 2026-08-23 | `complete` | `historical` | `storage-abstraction-review` | ADR 015 Multi-Agent Review — Findings |
-| [`docs/adr/015-worktree-and-cache-storage-v4.md`](../adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | `complete` | `canonical` | `storage-abstraction` | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
+| [`docs/adr/015-worktree-and-cache-storage-v4.md`](../adr/015-worktree-and-cache-storage-v4.md) | 2026-08-23 | `complete` | `canonical` | `storage-consolidation` | ADR 015: Worktree and Cache Storage Architecture (Revised v4) |
 | [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | `draft` | `canonical` | `streaming-tar-evolution` | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
 | [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | `complete` | `canonical` | `persistence` | ADR 017: Oneiric as the shared persistence substrate for Bodai |
-| [`docs/adr/018-gateway-pattern-evaluation.md`](../adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | `draft` | `canonical` | `mcp-routing` | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
+| [`docs/adr/018-gateway-pattern-evaluation.md`](../adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | `draft` | `canonical` | `mcp-design` | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
 
 ### Docs: plans
 
@@ -40,7 +40,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
-| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `partial` | `implementation` | `bodai-auth` | mcp-common Authentication Primitives Implementation Plan |
+| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `partial` | `implementation` | `auth` | mcp-common Authentication Primitives Implementation Plan |
 | [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `partial` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `partial` | `implementation` | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
@@ -85,7 +85,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
-| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `partial` | `implementation` | `bodai-auth` | mcp-common Authentication Primitives Implementation Plan |
+| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `partial` | `implementation` | `auth` | mcp-common Authentication Primitives Implementation Plan |
 | [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `partial` | `implementation` | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `partial` | `implementation` | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
@@ -142,6 +142,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/followups/2026-09-10-tier2-phase-d-cross-repo.md`](../followups/2026-09-10-tier2-phase-d-cross-repo.md) | 2026-09-10 | `active` | `historical` | `tier2-phase-d-cross-repo` | Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
+| [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `active` | `implementation` | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
 | [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | `active` | `implementation` | `shared-frontmatter-validator` | Followup — Consumer-repo followup for the frontmatter-validator move |
 | [`docs/followups/README.md`](../followups/README.md) | 2026-07-16 | `active` | `canonical` | `followups-index` | `docs/followups/` index |
 | [`docs/followups/TEMPLATE.md`](../followups/TEMPLATE.md) | 2026-07-21 | `active` | `canonical` | `lifecycle` | YYYY-MM-DD-<name> — followup |
@@ -151,8 +152,8 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 13 | 3 | · | 11 | **34** |
-| `implementation` | 13 | 15 | 14 | 2 | 2 | **46** |
+| `implementation` | 13 | 16 | 14 | 2 | 2 | **47** |
 | `umbrella` | · | 4 | 2 | · | · | **6** |
 | `historical` | · | 4 | · | · | 16 | **20** |
 | `superseded` | · | · | · | · | 7 | **7** |
-| **Total** | **20** | **36** | **19** | **2** | **36** | **113** |
+| **Total** | **20** | **37** | **19** | **2** | **36** | **114** |
