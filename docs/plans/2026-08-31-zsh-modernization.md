@@ -11,6 +11,8 @@ title: "Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
 
 # Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)
 
+> **Override note (2026-10-15):** Per user direction during the plan audit walk-through, this plan is kept as `draft` rather than being archived despite the auditor's recommendation. The auditor flagged it as "personal dev tooling, not a Mahavishnu repo workstream — wrong repo for this work." The user explicitly chose to retain visibility here. If work ever resumes, consider whether it belongs in a personal dotfiles repo (`~/.claude/` or `~/.dotfiles/`) instead of this one.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Migrate off oh-my-zsh to a lean, modern zsh stack (Sheldon + Starship + NerdFonts + Atuin/zoxide/delta/fzf) with Ghostty as primary terminal and iTerm2 as secondary, and a reproducible dotfiles setup.

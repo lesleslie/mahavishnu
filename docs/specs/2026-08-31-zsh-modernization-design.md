@@ -11,6 +11,8 @@ title: "Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
 
 # Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)
 
+> **Override note (2026-10-15):** Per user direction during the plan audit walk-through, this spec is kept as `draft` rather than being archived. Companion to `docs/plans/2026-08-31-zsh-modernization.md`. User explicitly chose to retain visibility here despite the auditor's "wrong repo" recommendation.
+
 ## Why
 
 The current zsh setup runs **oh-my-zsh (OMZ)** as the plugin/theme/alias
