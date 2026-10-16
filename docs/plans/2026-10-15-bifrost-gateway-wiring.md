@@ -30,7 +30,7 @@ requirements:
 
 # Bifrost Gateway Wiring — Implementation Plan
 
-> **v1.2 amendment applied (2026-10-16)**: **Local llama-server provider as a first-class Bifrost target (Phase G).** Operator decision: keep llama-server (port 8081) and add it to the Bifrost gateway alongside the cloud LLMs; ollama is being removed from the ecosystem in a separate session. The previous "Routing llama-server or ollama through Bifrost" non-goal is dropped; the previous "Bifrost provider additions" non-goal is dropped for llama-server specifically. **Three new files in Phase G**: `config/bifrost/config.template.json` (add `llama-server` provider block + update `route-background` rule to prefer local with MiniMax fallback + add new `route-classify` rule for cheap classification/extraction); `~/Library/LaunchAgents/com.bodai.llama-server.plist` (correct argv — drop the broken `-tb 256` pair, change `-fa` to `-fa 1`, change `-port 11434` to `--port 8081` with `--host 127.0.0.1`, point `-m` at a real model file); downloaded GGUF model at `/usr/local/share/llama-server/models/qwen3-5b-q4_k_m.gguf` (Qwen3-5B Q4_K_M, ~3.5GB, from Hugging Face `Qwen/Qwen3-5B-GGUF` repo). **Three new `BifrostConfig` fields**: `local_provider_enabled: bool = True` (runtime kill-switch), `local_provider_url: str = "http://127.0.0.1:8081"`, `local_provider_model: str = "qwen3-5b-q4_k_m"`. **`BifrostHealth` sub-model gains `local_provider_reachable: bool`**. **New counter**: `mahavishnu_bifrost_local_dispatch_total{outcome, model}` (label set extended by one — still bounded). **New e2e test file**: `tests/integration/test_bifrost_local_provider_e2e.py` with `test_llama_server_health_endpoint` (the gate that catches a future regression — if the plist is broken or the model is missing, this test fails). **Phase ordering extended to A→B→C-merged→D→E→F→G**. **Reasoning-class rules stay cloud-only**: `route-think`, `route-long-context`, `route-web-search` do NOT route to llama-server — local models are not appropriate for high-reasoning tasks, 100K+ context, or tool-use. **REQ-007** declared in the plan frontmatter.
+> **v1.2 amendment applied (2026-10-16)**: **Local llama-server provider as a first-class Bifrost target (Phase G).** Operator decision: keep llama-server (port 8081) and add it to the Bifrost gateway alongside the cloud LLMs; ollama is being removed from the ecosystem in a separate session. The previous "Routing llama-server or ollama through Bifrost" non-goal is dropped; the previous "Bifrost provider additions" non-goal is dropped for llama-server specifically. **Three new files in Phase G**: `config/bifrost/config.template.json` (add `llama-server` provider block + update `route-background` rule to prefer local with MiniMax fallback + add new `route-classify` rule for cheap classification/extraction); `~/Library/LaunchAgents/com.bodai.llama-server.plist` (correct argv — drop the broken `-tb 256` pair, change `-fa` to `-fa on`, change `-port 11434` to `--port 8081` with `--host 127.0.0.1`, point `-m` at a real model file); downloaded GGUF model at `/usr/local/share/llama-server/models/qwen3-8b-q4_k_m.gguf` (Qwen3-8B Q4_K_M, ~4.5GB, from Hugging Face `Qwen/Qwen3-8B-GGUF` repo). **Three new `BifrostConfig` fields**: `local_provider_enabled: bool = True` (runtime kill-switch), `local_provider_url: str = "http://127.0.0.1:8081"`, `local_provider_model: str = "qwen3-8b-q4_k_m"`. **`BifrostHealth` sub-model gains `local_provider_reachable: bool`**. **New counter**: `mahavishnu_bifrost_local_dispatch_total{outcome, model}` (label set extended by one — still bounded). **New e2e test file**: `tests/integration/test_bifrost_local_provider_e2e.py` with `test_llama_server_health_endpoint` (the gate that catches a future regression — if the plist is broken or the model is missing, this test fails). **Phase ordering extended to A→B→C-merged-into-B→D→E→F→G**[^phase-letters]. **Reasoning-class rules stay cloud-only**: `route-think`, `route-long-context`, `route-web-search` do NOT route to llama-server — local models are not appropriate for high-reasoning tasks, 100K+ context, or tool-use. **REQ-007** declared in the plan frontmatter.
 >
 > **v1.1 amendment applied (2026-10-16)**: post-3-lens review corrections re-applied (the merge-to-main pipeline had rolled them back between commits — restoring these now). **Convergent BLOCKER across `mahavishnu-specialist` + `mcp-integration-expert` lenses**: **CloudWorker KEEP correction** — §4.2 item 3, §5.10 Phase F, §6 Required Code Changes, §7 Validation Matrix, §8 Risks, and §9 Decision Rule all cite `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58` (Decision: KEEP) instead of `:46` (audit finding, which is the rationale for KEEP, not orphan evidence). The `mahavishnu/workers/cloud_worker.py:37` `MINIMAX_OPENAI_BASE_URL` constant is preserved (it is read as the `MINIMAX_BASE_URL` env-var `default_factory` fallback at `cloud_worker.py:57`); §5.10 Phase F grep scope tightened to exclude `mahavishnu/workers/cloud_worker.py`; the §7 Validation Matrix row for the minimax.io/v1 grep drops the `cloud_worker.py` path. **GAP (`mcp-integration-expert`)**: **Phase D plural `launch_sessions` threading** — `TmuxTerminalAdapter.launch_sessions()` (plural, `tmux.py:37`) is an explicit thread-through point: the adapter's plural method gains `worker_type` and `env` kwargs and forwards them to `launch_session()` per iteration, which calls `self._manager.spawn(worker_type, env)`. Without the plural update, `TerminalManager.launch_sessions(worker_type=..., env=env)` fails at the adapter boundary (the current plural `async def launch_sessions(self, command: str, count: int) -> list[str]` accepts neither kwarg). **NIT (`mcp-integration-expert`)**: **BifrostHealth sub-model shape** — §5 Phase E explicitly names the `class BifrostHealth(BaseModel)` sub-model with `model_config = ConfigDict(extra="forbid")`, `config: dict[str, Any] | None`, `reachable: bool`; mounted as `bifrost: BifrostHealth = Field(default_factory=BifrostHealth, ...)` on `HealthResponse` (NOT `bifrost: BifrostHealth | None` — Pydantic v2 forbids dotted field names). **Status promoted to `active`**.
 >
@@ -41,7 +41,7 @@ requirements:
 > this plan adds the operational structure (Goal / Tasks / Exit criteria /
 > Validation / Risks) that `docs/plans/TEMPLATE.md` requires.
 >
-> **Phase ordering** is independent-rollback: A→B→C-merged→D→E→F→G. Each
+> **Phase ordering** is independent-rollback: A→B→C-merged-into-B→D→E→F→G[^phase-letters]. Each
 > phase has a kill-switch (set its flag to `false`) that reverts the
 > relevant scope without affecting prior phases. **Phase C is merged
 > with Phase B** (no separate Phase C) — the spec dropped LlamaIndex
@@ -84,11 +84,11 @@ After this plan ships:
 - **Local llama-server provider (Phase G)** — `config/bifrost/config.template.json`
   registers a `llama-server` provider at `http://127.0.0.1:8081`. The
   `route-background` and `route-classify` routing rules prefer
-  `llama-server/qwen3-5b-q4_k_m` first, fall back to
+  `llama-server/qwen3-8b-q4_k_m` first, fall back to
   `minimax-openai/MiniMax-M3` on local failure. Three new
   `BifrostConfig` fields gate the integration: `local_provider_enabled: bool = True`
   (runtime kill-switch), `local_provider_url: str = "http://127.0.0.1:8081"`,
-  `local_provider_model: str = "qwen3-5b-q4_k_m"`. The launchd plist
+  `local_provider_model: str = "qwen3-8b-q4_k_m"`. The launchd plist
   `~/Library/LaunchAgents/com.bodai.llama-server.plist` is corrected
   (Phase G real wiring deliverable — argv mis-shape + missing model
   path are fixed; a real GGUF model is downloaded). Reasoning-class
@@ -704,6 +704,7 @@ assertion window is reliable.
     AND verified Qwen env-var name, a real Qwen CLI dispatch produces
     a `'"caller_id":"mahavishnu"'` line in `bifrost.log`. This is the gate
     for shipping `route_qwen_code: true` enabled by default.
+- [ ] `tests/integration/conftest.py` — add skip-fixture that runs `lsof -nP -iTCP:8471 -sTCP:LISTEN` and `pytest.skip(...)` when Bifrost is unreachable. Apply via `pytestmark = pytest.mark.skipif(...)` in each `tests/integration/test_bifrost_*.py`. The risk-mitigation in §8 row "Bifrost not running locally" promises this behavior but it is not implemented today.
 
 **Exit criteria**:
 
@@ -771,7 +772,7 @@ Phase F grep scope excludes `mahavishnu/workers/cloud_worker.py`.
 **Tasks**:
 
 - [ ] **REQ-006** `settings/models.yaml:103-107` — delete the `bifrost:`
-  block (3 lines: `# Bifrost gateway (activated via env vars only)`,
+  block (5 lines: `# Bifrost gateway (activated via env vars only)`,
   `bifrost:`, `  enabled: false`, `  base_url: ...`, `  activate_env: ...`).
   This file is loaded outside the `MahavishnuSettings` envelope; the
   block was structurally misplaced from day one.
@@ -863,11 +864,11 @@ e2e gate.
 
 - [ ] **REQ-007** `config/bifrost/config.template.json` — add
   `llama-server` provider block at `http://127.0.0.1:8081` with
-  `base_provider_type: openai`, models list `["qwen3-5b-q4_k_m",
-  "qwen3-5b", "qwen3-8b-q4_k_m", "qwen3-8b"]`, key sourced from
-  `env.LLAMA_SERVER_API_KEY` (default empty — open on localhost).
+  `base_provider_type: openai`, models list `["qwen3-8b-q4_k_m"]`,
+  key sourced from `env.LLAMA_SERVER_API_KEY` (default empty — open
+  on localhost).
   Update `route-background` rule (priority 50) to target
-  `llama-server/qwen3-5b-q4_k_m` first, fallback
+  `llama-server/qwen3-8b-q4_k_m` first, fallback
   `minimax-openai/MiniMax-M3`. Add new `route-classify` rule
   (priority 60) with the same target/fallback for `x-bf-task: classify`
   / `x-bf-route: classify` / `x-bf-task: extract` / `x-bf-route: extract`.
@@ -876,14 +877,14 @@ e2e gate.
 - [ ] **REQ-007** `~/Library/LaunchAgents/com.bodai.llama-server.plist`
   — replace the broken plist with the corrected version:
   - **Drop the broken `-tb 256` pair** (the parser was reading `-tb` as the value of `-fa`).
-  - **Change `-fa` to `-fa 1`** (explicit Flash Attention enable).
+  - **Change `-fa` to `-fa on`** (explicit Flash Attention enable; llama.cpp expects `on|off|auto` — numeric values like `-fa 1` are rejected with the same "unknown value for --flash-attn" error that crashed the original plist).
   - **Change `-port 11434` to `--port 8081`** with `--host 127.0.0.1` (move from ollama's port to the standard local-LLM port; bind to loopback only).
-  - **Model path: `/usr/local/share/llama-server/models/qwen3-5b-q4_k_m.gguf`** (Qwen3-5B Q4_K_M, ~3.5GB; fits on Apple Silicon with 99 GPU layers).
+  - **Model path: `/usr/local/share/llama-server/models/qwen3-8b-q4_k_m.gguf`** (Qwen3-8B Q4_K_M, ~4.5GB; fits on Apple Silicon with 99 GPU layers).
   - Keep `RunAtLoad: true` and `KeepAlive: true`.
 - [ ] **REQ-007** Download the GGUF model:
   ```bash
   mkdir -p /usr/local/share/llama-server/models
-  huggingface-cli download Qwen/Qwen3-5B-GGUF qwen3-5b-q4_k_m.gguf \
+  huggingface-cli download Qwen/Qwen3-8B-GGUF qwen3-8b-q4_k_m.gguf \
       --local-dir /usr/local/share/llama-server/models/
   ```
   (Requires `huggingface-cli` on PATH; install via `pipx install
@@ -905,8 +906,11 @@ e2e gate.
   ```python
   local_provider_enabled: bool = Field(default=True, description="Enable local llama-server as a Bifrost target for cheap/background tasks")
   local_provider_url: str = Field(default="http://127.0.0.1:8081", description="llama-server base URL (Bifrost-side)")
-  local_provider_model: str = Field(default="qwen3-5b-q4_k_m", description="Default local model name for routing rules")
+  local_provider_model: str = Field(default="qwen3-8b-q4_k_m", description="Default local model name for routing rules")
   ```
+- [ ] **`mahavishnu/llm_gateway/contract.py`** — add `CLASSIFY = "classify"` and `EXTRACT = "extract"` to the `RouteClass` enum (line 20-30); add corresponding entries in `_TASK_LABEL_MAP` (line 41-55). This is the prerequisite for the `route-classify` Bifrost rule to fire on the wire — without it, the rule is structurally dead code (the contract's `route_headers` only emits values from this enum, and the existing enum doesn't have CLASSIFY/EXTRACT).
+- [ ] **`mahavishnu/engines/agno_adapter_impl.py`** — extend the `_bifrost_dispatch_heartbeat` wrapper to increment `mahavishnu_bifrost_local_dispatch_total{outcome, provider="llama-server", route_class}` on both success and failure paths of the local route. The counter is registered in Phase A but no current code path increments it; this gap was caught by the 3-lens review (would fail the e2e `test_local_dispatch_metrics` assertion).
+- [ ] **Prerequisite**: `command -v huggingface-cli || uv tool install huggingface-hub` — verify `huggingface-cli` is on PATH before the model download task. The download line in this Phase assumes the tool is available; on a clean machine the operator hits a 404 from Hugging Face before realizing the tool isn't installed. Add to Phase G exit criteria: ``command -v huggingface-cli`` exits 0 on the operator's machine.
 - [ ] **REQ-007** `settings/mahavishnu.yaml` — add the three new fields
   with the same defaults (commented-out for documentation; values
   match `BifrostConfig`).
@@ -931,10 +935,12 @@ e2e gate.
   - `test_local_provider_url_default` — defaults to
     `http://127.0.0.1:8081`.
   - `test_local_provider_model_default` — defaults to
-    `qwen3-5b-q4_k_m`.
+    `qwen3-8b-q4_k_m`.
   - `test_local_provider_enabled_env_override` —
     `MAHAVISHNU_BIFROST__local_provider_enabled=false` overrides yaml.
   - `test_local_provider_url_env_override` — same for url.
+- [ ] `tests/unit/test_llm_gateway_contract.py::test_classify_routes_via_classify_route_class` (NEW — contract-layer Phase G change verification)
+- [ ] `test_local_provider_empty_api_key_does_not_send_bearer` (NEW — silent-failure guard for the empty `LLAMA_SERVER_API_KEY` case)
 - [ ] **REQ-007** `tests/integration/test_bifrost_local_provider_e2e.py`
   (new file) — e2e tests:
   - `test_llama_server_health_endpoint` — `curl -s
@@ -964,7 +970,7 @@ e2e gate.
   `state = running` and `last exit code = 0`
 - `curl -s http://127.0.0.1:8081/health` returns 200 OK within 5 seconds
 - `curl -s http://127.0.0.1:8081/v1/models` lists the configured model
-- `grep -c 'qwen3-5b-q4_k_m' config/bifrost/config.template.json` ≥ 2
+- `grep -c 'qwen3-8b-q4_k_m' config/bifrost/config.template.json` ≥ 2
   (provider block + routing rule)
 - `curl -s http://localhost:8680/health | jq .bifrost.local_provider_reachable`
   returns a boolean
@@ -974,6 +980,9 @@ e2e gate.
   non-zero `local_dispatch_total` after one local dispatch
 - `python scripts/audit_orphans.py` — no new orphans
 - `crackerjack run -v` clean
+- ``command -v huggingface-cli`` exits 0 (prerequisite for the model download task; covers the case where the tool isn't installed on a clean machine)
+- `pytest tests/unit/test_llm_gateway_contract.py::test_classify_routes_via_classify_route_class` passes (Phase G contract change verified)
+- `pytest tests/integration/test_bifrost_local_provider_e2e.py::test_local_dispatch_metrics` asserts non-zero `local_dispatch_total` (positive-result; the e2e gate is **not vacuous** — distinguishes the real-wiring receipt from the kill-switch smoke-test that may skip)
 
 #### Integration Contract — Phase G
 
@@ -991,7 +1000,7 @@ e2e gate.
     new `route-classify` rule
   - `~/Library/LaunchAgents/com.bodai.llama-server.plist` is corrected
     (argv, port, model path) and reloaded
-  - `/usr/local/share/llama-server/models/qwen3-5b-q4_k_m.gguf`
+  - `/usr/local/share/llama-server/models/qwen3-8b-q4_k_m.gguf`
     exists and is the loaded model
   - `BifrostConfig` gains `local_provider_enabled`, `local_provider_url`,
     `local_provider_model` fields
@@ -1006,7 +1015,7 @@ e2e gate.
     `state = running` and `last exit code = 0`
   - `curl -s http://127.0.0.1:8081/health` returns 200 OK
   - `curl -s http://127.0.0.1:8081/v1/models` lists the configured model
-  - `grep -c 'qwen3-5b-q4_k_m' config/bifrost/config.template.json` ≥ 2
+  - `grep -c 'qwen3-8b-q4_k_m' config/bifrost/config.template.json` ≥ 2
   - `curl -s http://localhost:8680/health | jq .bifrost.local_provider_reachable`
     returns a boolean
   - `pytest tests/integration/test_bifrost_local_provider_e2e.py` all green
@@ -1017,14 +1026,13 @@ e2e gate.
   - `bifrost.local_provider_enabled: false` reverts to cloud-only
     routing (the local provider is bypassed without removing the plist
     or the provider block)
-  - Per-provider error rate > 50% over 60s on the local target
-    triggers the `MahavishnuBifrostLocalErrorRateHigh` alert
+  - Per-provider error rate > 50% over 60s on the local target triggers the `MahavishnuBifrostLocalErrorRateHigh` alert with PromQL: `sum(rate(mahavishnu_bifrost_local_dispatch_total{outcome="failure"}[1m])) / sum(rate(mahavishnu_bifrost_local_dispatch_total[1m])) > 0.5` (mirrors Phase E's `MahavishnuBifrostErrorRateHigh` shape; uses the new `outcome` label filter rather than the legacy `provider` filter, since the local counter is registered with `{outcome, provider, route_class}` per the mcp-integration-expert lens's recommendation)
   - `/health.bifrost.local_provider_reachable=false` propagates to
     `mahavishnu_health_feed_status{feed="bifrost",status="degraded"}`
     (operator-visible but not page-able — cloud fallback handles it)
 
 - **Observability added**:
-  - `mahavishnu_bifrost_local_dispatch_total{outcome, model}` counter
+  - `mahavishnu_bifrost_local_dispatch_total{outcome, provider, route_class}` counter (label set normalized to match the master `mahavishnu_bifrost_dispatch_total` shape for dashboard tier uniformity per the mcp-integration-expert lens's GAP-2 recommendation; the Bifrost label-set bound expands to 5 — `{outcome, provider, route_class, reason, model}` — per the v1.5 amendment)
   - `mahavishnu_health_feed_status{feed="bifrost",status="degraded"}`
     gauge increments on local-unreachable probe
   - `/health.bifrost.local_provider_reachable` boolean in the
@@ -1087,6 +1095,11 @@ Grouped by package. Each check is a one-line change in one commit
   settings into `LLMProviderFactory` (Phase B)
 - [ ] `agno_adapter_impl.py` — new `_bifrost_dispatch_heartbeat`
   wrapper (Phase B)
+- [ ] `agno_adapter_impl.py` — extend `_bifrost_dispatch_heartbeat` wrapper to increment `mahavishnu_bifrost_local_dispatch_total{outcome, provider, route_class}` on both success and failure paths of the local route (Phase G)
+
+### `mahavishnu/llm_gateway/`
+
+- [ ] `contract.py` — add `CLASSIFY = "classify"` and `EXTRACT = "extract"` to the `RouteClass` enum; add corresponding entries in `_TASK_LABEL_MAP` (Phase G; prerequisite for the `route-classify` Bifrost rule to fire on the wire)
 
 ### `mahavishnu/workers/`
 
@@ -1139,22 +1152,22 @@ Grouped by package. Each check is a one-line change in one commit
   `MahavishnuBifrostLocalErrorRateHigh` rule (Phase G)
 - [ ] `bifrost/config.template.json` — add `llama-server` provider
   block at `http://127.0.0.1:8081`; update `route-background` rule
-  to target `llama-server/qwen3-5b-q4_k_m` first with
+  to target `llama-server/qwen3-8b-q4_k_m` first with
   `minimax-openai/MiniMax-M3` fallback; add new `route-classify` rule
   (Phase G)
 
 ### `~/Library/LaunchAgents/`
 
 - [ ] `com.bodai.llama-server.plist` — correct argv (drop broken
-  `-tb 256` pair, change `-fa` to `-fa 1`, change `-port 11434` to
+  `-tb 256` pair, change `-fa` to `-fa on`, change `-port 11434` to
   `--port 8081` with `--host 127.0.0.1`, point `-m` at
-  `/usr/local/share/llama-server/models/qwen3-5b-q4_k_m.gguf`); reload
+  `/usr/local/share/llama-server/models/qwen3-8b-q4_k_m.gguf`); reload
   via `launchctl unload && launchctl load` (Phase G)
 
 ### Model downloads (one-time)
 
-- [ ] `huggingface-cli download Qwen/Qwen3-5B-GGUF qwen3-5b-q4_k_m.gguf
-  --local-dir /usr/local/share/llama-server/models/` — ~3.5GB
+- [ ] `huggingface-cli download Qwen/Qwen3-8B-GGUF qwen3-8b-q4_k_m.gguf
+  --local-dir /usr/local/share/llama-server/models/` — ~4.5GB
   (Phase G)
 
 ### `scripts/`
@@ -1169,21 +1182,23 @@ Grouped by package. Each check is a one-line change in one commit
 
 - [ ] `unit/test_config.py::TestBifrostConfigSchema` — Phase A
 - [ ] `unit/test_config.py::TestBifrostConfigSchema::test_local_provider_*` — Phase G
+- [ ] `unit/test_llm_gateway_contract.py::test_classify_routes_via_classify_route_class` — Phase G contract change verification
 - [ ] `unit/test_agno_adapter.py::TestAgnoAdapterBifrost` — Phase B
 - [ ] `unit/test_provider_probes.py::TestProviderProbesBifrost` — Phase B
 - [ ] `unit/test_terminal_worker_settings.py::TestTerminalWorkerSettingsBifrost` — Phase D
 - [ ] `integration/test_bifrost_routing_e2e.py` — Phase E
 - [ ] `integration/test_bifrost_health_e2e.py` — Phase E
-- [ ] `integration/test_bifrost_local_provider_e2e.py` — Phase G (new file)
+- [ ] `integration/conftest.py` — skip-fixture for offline Bifrost (`lsof -nP -iTCP:8471 -sTCP:LISTEN` check + `pytest.skip(...)`; covers the risk-mitigation promised in §8 row "Bifrost not running locally" but not implemented today) (Phase E)
+- [ ] `integration/test_bifrost_local_provider_e2e.py` — new file (Phase G)
 
 ## 7. Validation Matrix
 
 | Tool / command | Expected outcome | Evidence location |
 |---|---|---|
-| `mahavishnu config validate` | Schema dump shows `bifrost:` block with all 11 fields | stdout (CI log) |
+| `mahavishnu config validate` | Schema dump shows `bifrost:` block with all 14 fields (11 Phase A + 3 Phase G) | stdout (CI log) |
 | `MAHAVISHNU_BIFROST__enabled=true mahavishnu config validate` | `enabled: true` overrides `local.yaml` | stdout |
 | `python -c "from mahavishnu.core.config import MahavishnuSettings; print(MahavishnuSettings().bifrost)"` | Defaults match spec §5.1 | stdout |
-| `pytest tests/unit/test_config.py::TestBifrostConfigSchema` | All 6 tests green | CI log |
+| `pytest tests/unit/test_config.py::TestBifrostConfigSchema` | All 11 tests green (Phase A: 6 tests + Phase G: 5 new = 11 total) | CI log |
 | `pytest tests/unit/test_agno_adapter.py::TestAgnoAdapterBifrost` | All 6 tests green | CI log |
 | `pytest tests/unit/test_provider_probes.py::TestProviderProbesBifrost` | All 2 tests green | CI log |
 | `pytest tests/unit/test_terminal_worker_settings.py::TestTerminalWorkerSettingsBifrost` | All 6 tests green | CI log |
@@ -1201,11 +1216,12 @@ Grouped by package. Each check is a one-line change in one commit
 | `grep -rn "bifrost:" settings/models.yaml` | Zero hits (post-Phase F) | shell |
 | `launchctl print gui/$(id -u)/com.bodai.llama-server` | `state = running`, `last exit code = 0` (post-Phase G) | launchctl |
 | `curl -s http://127.0.0.1:8081/health` | 200 OK (post-Phase G) | HTTP probe |
-| `curl -s http://127.0.0.1:8081/v1/models` | Lists `qwen3-5b-q4_k_m` (post-Phase G) | HTTP probe |
-| `grep -c 'qwen3-5b-q4_k_m' config/bifrost/config.template.json` | ≥ 2 (provider block + routing rule) (post-Phase G) | shell |
+| `curl -s http://127.0.0.1:8081/v1/models` | Lists `qwen3-8b-q4_k_m` (post-Phase G) | HTTP probe |
+| `grep -c 'qwen3-8b-q4_k_m' config/bifrost/config.template.json` | ≥ 3 (1 provider block + 2 routing rules — `route-background` and `route-classify`) (post-Phase G) | shell |
 | `curl -s http://localhost:8680/health \| jq .bifrost.local_provider_reachable` | Boolean (post-Phase G) | HTTP probe |
-| `pytest tests/unit/test_config.py::TestBifrostConfigSchema::test_local_provider_*` | All green (post-Phase G) | CI log |
+| `pytest tests/unit/test_config.py::TestBifrostConfigSchema::test_local_provider_*` | All 5 new tests green (Phase A: 6 tests + Phase G: 5 new = 11 total) | CI log |
 | `pytest tests/integration/test_bifrost_local_provider_e2e.py` | All green or skipped (post-Phase G) | CI log |
+| `pytest tests/unit/test_llm_gateway_contract.py::test_classify_routes_via_classify_route_class` | Passes (Phase G contract change verified) | CI log |
 | `mahavishnu metrics bifrost --source auto --output table` | Non-zero `local_dispatch_total` after one local dispatch (post-Phase G) | stdout (operator) |
 
 ## 8. Risks
@@ -1220,7 +1236,7 @@ Grouped by package. Each check is a one-line change in one commit
 | **Pre-1.0 backwards-compat drift** (`BIFROST_BASE_URL` env var lingers) | Low | Per `feedback-no-backwards-compat-pre-1.0.md`: replace, don't extend. Phase F deletes the env var. Operators with the old env var set get a Pydantic `SettingsError` on validation, which is the correct loud-failure per `mcp-backend-wiring-discipline.md` §1. |
 | **Crackerjack gate regresses** on the new `extra="forbid"` and `Field(default_factory=...)` discipline | Low | Phase A's `TestBifrostConfigSchema` asserts both explicitly; the gate is verified by `crackerjack run -v -f` clean. |
 | **llama-server launchd plist breaks again after Phase G** (e.g., Homebrew `llama` formula update changes `llama-server` argv shape, or the model file is removed) | Medium | The `test_llama_server_health_endpoint` e2e test gates on `curl -s http://127.0.0.1:8081/health` returning 200 — any future plist breakage or missing model file is caught at CI time. The `local_provider_enabled: false` runtime kill-switch lets operators bypass the integration without removing the plist. |
-| **Qwen3-5B quality insufficient for the routed task classes** (background/cheap/classify) | Low | The routing rules only target llama-server for `x-bf-task in {background, cheap, high_throughput, classify, extract}` — all latency-tolerant, cost-sensitive, and relatively simple. Reasoning-class tasks (`route-think`, `route-long-context`, `route-web-search`) stay cloud-only. If the Qwen3-5B model proves insufficient, the operator edits `bifrost.local_provider_model` to a different model name (e.g., `qwen3-8b-q4_k_m`) without code changes; the model file is the only thing that needs to be re-downloaded. |
+| **Qwen3-8B quality insufficient for the routed task classes** (background/cheap/classify) | Low | The routing rules only target llama-server for `x-bf-task in {background, cheap, high_throughput, classify, extract}` — all latency-tolerant, cost-sensitive, and relatively simple. Reasoning-class tasks (`route-think`, `route-long-context`, `route-web-search`) stay cloud-only. If the Qwen3-8B model proves insufficient, the operator edits `bifrost.local_provider_model` to a different model name (e.g., `qwen3-8b-q4_k_m`) without code changes; the model file is the only thing that needs to be re-downloaded. |
 | **Spec/plan citation drift** (the file:line numbers in §4.3 and §5 shift) | Medium | The plan cites are verified at draft time (2026-10-15). The `scripts/audit_requirements.py` and the spec's own `Citation verification` (acceptance criterion 8) gate promotion. Drift during implementation = fix the citation, not the code (unless the code moved legitimately). |
 
 ## 9. Decision Rule
@@ -1246,7 +1262,7 @@ PRs; direct merge to main). Specifically:
 - **Phase G gate (REQ-007)**: `launchctl print
   gui/$(id -u)/com.bodai.llama-server` reports `state = running`;
   `curl -s http://127.0.0.1:8081/health` returns 200 OK; `grep -c
-  'qwen3-5b-q4_k_m' config/bifrost/config.template.json` ≥ 2;
+  'qwen3-8b-q4_k_m' config/bifrost/config.template.json` ≥ 2;
   `pytest tests/integration/test_bifrost_local_provider_e2e.py` all
   green (or skipped if `local_provider_enabled: false`); the
   e2e gate catches a future regression
@@ -1266,6 +1282,8 @@ When scope pressure forces a cut:
   the operator-conflict cost is too high (pre-1.0 only)
 
 ---
+
+[^phase-letters]: (Phase letters do not track alphabet after the C→B merge; Phase G is real and follows F.)
 
 ## References
 
