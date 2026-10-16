@@ -7,7 +7,7 @@ last_reviewed: 2026-10-13
 supersedes: ["015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2", "015-worktree-and-cache-storage-v3"]
 blocks_on: []
 decision_date: null
-topic: storage-abstraction
+topic: storage-consolidation
 related:
   - "015-multi-agent-review"
   - "015-worktree-and-cache-storage"

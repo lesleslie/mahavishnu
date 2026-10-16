@@ -6,7 +6,7 @@ date: 2026-09-07
 last_reviewed: 2026-10-12
 superseded_by: null
 blocks_on: []
-topic: bodai-auth
+topic: auth
 ---
 
 > **Status Note (2026-10-12)** — Tasks 1–13 (mcp-common internal package) **SHIPPED**: all 13 planned source files exist under `mcp_common/auth/` (audited: `principal.py`, `provider.py`, `context.py`, `core.py`, `middleware.py`, `error_middleware.py`, `decorator.py`, `config.py`, `identity.py`, `exceptions.py`, `permissions.py`, `audit.py`, plus `providers/__init__.py` and `providers/anthropic.py`); all 14 corresponding test files exist under `tests/auth/` (including the Task 6b `test_error_middleware.py`, the Task 7 `test_trusted_issuers.py`, and the `test_jwks_rotation.py` hardening test).
