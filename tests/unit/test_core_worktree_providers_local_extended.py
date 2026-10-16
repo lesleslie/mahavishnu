@@ -741,7 +741,7 @@ class TestRemoveHandle:
         monkeypatch.setattr(mcp_registry, "remove_handle", _fake_mcp_remove)
 
         cache = _FakeCache()
-        provider = LocalWorktreeProvider(cache=cache, dhara_client=_FakeDharaClient())
+        provider = LocalWorktreeProvider(cache=cache)
         handle = _handle(handle_id="ghost")
         # Should NOT raise despite git failure (best-effort).
         result = await provider.remove_handle(handle, caller=_principal())
@@ -757,7 +757,7 @@ class TestRemoveHandle:
 
         monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _fake_remove)
 
-        provider = LocalWorktreeProvider(cache=None, dhara_client=None)
+        provider = LocalWorktreeProvider(cache=None)
         handle = _handle(handle_id="x")
         assert await provider.remove_handle(handle, caller=_principal()) is True
 
@@ -779,8 +779,8 @@ class TestRemoveHandle:
         monkeypatch.setattr(mcp_registry, "remove_handle", _capture_mcp_remove)
 
         cache = _FakeCache()
-        client = _FakeDharaClient()
-        provider = LocalWorktreeProvider(cache=cache, dhara_client=client)
+        client = _FakeMCPClient()
+        provider = LocalWorktreeProvider(cache=cache, mcp_client=client)
         handle = _handle(handle_id="abc")
         await provider.remove_handle(handle, caller=_principal(name="caller-x"))
         assert captured["client"] is client
@@ -802,7 +802,7 @@ class TestListHandles:
             await provider.list_handles()
 
     async def test_returns_empty_when_no_mcp_client(self):
-        provider = LocalWorktreeProvider(dhara_client=None)
+        provider = LocalWorktreeProvider()
         result = await provider.list_handles(caller=_principal())
         assert result == []
 
@@ -819,8 +819,8 @@ class TestListHandles:
             return [{"handle_id": "h1", "principal": "alice"}]
 
         monkeypatch.setattr(mcp_registry, "list_handles", _fake_list)
-        client = _FakeDharaClient()
-        provider = LocalWorktreeProvider(dhara_client=client)
+        client = _FakeMCPClient()
+        provider = LocalWorktreeProvider(mcp_client=client)
         result = await provider.list_handles(
             principal=None, repo="mahavishnu", caller=_principal()
         )

@@ -594,9 +594,8 @@ class TestCreateWorktreeHandleStreaming:
         )
 
         storage = _FakeStorage(capabilities=["stream"])
-        mcp = _FakeDharaClient()
         provider = LocalWorktreeProvider(
-            storage=storage, dhara_client=mcp, cache=_FakeCache()
+            storage=storage, cache=_FakeCache()
         )
         principal = _make_principal()
 
@@ -619,11 +618,8 @@ class TestCreateWorktreeHandleStreaming:
         assert handle.sha256 == metadata["sha256"]
         # handle.bytes_size matches the metadata size
         assert handle.bytes_size == int(metadata["size"])
-        # Dhara registration was attempted (3 INSERTs per handle
-        # plus the 3 schema-setup statements from _ensure_schema_async).
-        # Filter to only INSERT statements to be robust to ordering.
-        inserts = [e for e in mcp.executes if "INSERT" in e[0]]
-        assert len(inserts) == 3
+        # Dhara registration was removed when Dhara itself was retired
+        # from the Bodai core components; no INSERT assertions remain.
 
     async def test_create_worktree_handle_emits_streaming_op_metric(
         self, tmp_path, monkeypatch
