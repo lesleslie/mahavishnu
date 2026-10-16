@@ -228,15 +228,18 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
 
 
 def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
-    """Each of the 6 stub sub-commands prints the discovery message and
+    """Each of the 5 stub sub-commands prints the discovery message and
     exits 0 — operators running ``mahavishnu demo hatchet`` get a clear
     indicator that this is a deferred-work surface, not a bug.
 
     2026-10-15 wire-up fix: agno was promoted to a live implementation
-    (drives ``AgnoAdapter.execute`` end-to-end), so the stub list is
-    now six names: llamaindex, hatchet, pydantic_ai, crow, goose, mock.
+    (drives ``AgnoAdapter.execute`` end-to-end), so the stub list shrank
+    to six names.
+    2026-10-16 wire-up fix: llamaindex was also promoted to live
+    (drives ``LlamaIndexAdapter.execute`` end-to-end after the ollama
+    drop), so the stub list is now five names.
     """
-    for stub in ["llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"]:
+    for stub in ["hatchet", "pydantic_ai", "crow", "goose", "mock"]:
         result = runner.invoke(demo_app, [stub])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "not implemented" in result.output, f"{stub}: missing not-implemented text"

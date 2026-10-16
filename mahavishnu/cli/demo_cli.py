@@ -636,7 +636,212 @@ def demo_agno(
 
 
 # ============================================================================
-# Stubs — 6 engines/terminals (agno promoted to live implementation above)
+# llamaindex demo (full implementation — replaces 2026-10-16 stub)
+# ============================================================================
+
+
+DEFAULT_LLAMAINDEX_PRECONDITION_TIMEOUT = 5.0
+
+
+def _check_llamaindex_preconditions(
+    *,
+    settings_getter: Callable[[], Any] | None = None,
+    import_probe: Callable[[str], Any] | None = None,
+    http_probe: Callable[..., Any] | None = None,
+    timeout: float = DEFAULT_LLAMAINDEX_PRECONDITION_TIMEOUT,
+) -> list[str]:
+    """Return human-readable failures (empty list = pass).
+
+    Probes (each injectable for tests):
+
+    - ``llama_index.core`` importable (the minimal public surface the
+      adapter actually uses; the full extras live in the ``[llamaindex]``
+      optional group).
+    - ``llama_server_url`` is set and reachable (the embed/llm
+      endpoint; after the ollama drop this is the canonical local
+      provider).
+    - Settings are loadable (rejects malformed Oneiric config).
+    """
+    settings_getter = settings_getter or _default_settings_getter
+    import_probe = import_probe or _default_import_probe
+    http_probe = http_probe or httpx.get
+
+    failures: list[str] = []
+    if import_probe("llama_index.core") is None:
+        failures.append(
+            "llama-index not installed (.venv/bin/python -c 'import llama_index.core' "
+            "fails; run uv pip install -e .[llamaindex])"
+        )
+
+    try:
+        settings = settings_getter()
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(f"could not load settings: {exc}")
+        return failures
+
+    # The adapter's config exposes llama_server_url. Reject explicit
+    # un-set; oneiric settings may not have it populated.
+    llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
+    try:
+        resp = http_probe(llama_url.rstrip("/") + "/v1/models", timeout=timeout)
+        if resp.status_code != 200:
+            failures.append(
+                f"llama_server returned HTTP {resp.status_code} at "
+                f"{llama_url}/v1/models (is the server running?)"
+            )
+    except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(
+            f"llama_server unreachable at {llama_url}/v1/models: {exc}. "
+            "Start the llama.cpp server with `--embedding` enabled."
+        )
+
+    return failures
+
+
+async def _run_llamaindex_demo(
+    *,
+    repos: Sequence[str],
+    task_type: str,
+    query: str,
+    keep: bool = False,
+) -> dict[str, object]:
+    """Drive the LlamaIndex engine end-to-end against one or more repos.
+
+    Uses ``LlamaIndexAdapter.execute`` with task types ``ingest`` /
+    ``query`` / ``ingest_and_query`` — the same wire as the production
+    path. ``query`` is the default; ``ingest_and_query`` exercises the
+    full ingest-then-retrieve path. On the exception path
+    ``adapter.cleanup()`` is best-effort called before re-raising,
+    mirroring the ``_run_tmux_demo`` reap-on-error pattern at
+    ``_run_tmux_demo:174-178``.
+    """
+    settings = _default_settings_getter()
+    from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
+
+    task = {
+        "id": f"demo-llamaindex-{int(time.time())}",
+        "type": task_type,
+        "params": {"query": query} if task_type in {"query", "ingest_and_query"} else {},
+    }
+
+    adapter = LlamaIndexAdapter(config=settings)
+    try:
+        await adapter.initialize()
+    except Exception:  # cleanup is best-effort on init failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_llamaindex_cleanup(adapter)
+        raise
+
+    try:
+        result = await adapter.execute(task=task, repos=list(repos))
+    except Exception:  # cleanup is best-effort on execute failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_llamaindex_cleanup(adapter)
+        raise
+
+    if not keep:
+        await adapter.cleanup()
+
+    return {
+        "status": result.get("status"),
+        "engine": result.get("engine"),
+        "execution_id": result.get("execution_id"),
+        "task_type": task_type,
+        "query": query,
+        "repos": list(repos),
+        "repos_processed": result.get("repos_processed"),
+        "success_count": result.get("success_count"),
+        "failure_count": result.get("failure_count"),
+        "first_result": (result.get("results") or [None])[0],
+    }
+
+
+async def _best_effort_llamaindex_cleanup(adapter: Any) -> None:
+    """Best-effort cleanup — called from the exception path."""
+    try:
+        await adapter.cleanup()
+    except Exception as exc:  # CLI entry point — cleanup errors must never mask the original failure  # noqa: BLE001, RUF100
+        typer.echo(f"[warning] adapter cleanup failed: {exc}", err=True)
+
+
+@demo_app.command("llamaindex")
+def demo_llamaindex(
+    repos: list[str] = typer.Option(
+        [],
+        "--repos",
+        help="Repos to pass to LlamaIndexAdapter.execute. Defaults to the Mahavishnu repo itself.",
+    ),
+    task_type: str = typer.Option(
+        "query",
+        "--task-type",
+        "-t",
+        help="LlamaIndex task type (ingest, query, or ingest_and_query).",
+    ),
+    query: str = typer.Option(
+        "summarize the project structure",
+        "--query",
+        "-q",
+        help="Focus query passed to the retrieval step (used for 'query' and 'ingest_and_query').",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the adapter initialized after the demo (mainly for debugging)."
+    ),
+    timeout: int = typer.Option(
+        120, "--timeout", help="Max seconds to wait for LlamaIndexAdapter.execute."
+    ),
+) -> None:
+    """Run the LlamaIndex engine end-to-end against the live llama_server.
+
+    Constructs ``LlamaIndexAdapter`` directly, calls
+    ``adapter.execute(task, repos)``, prints the trimmed result, and
+    cleans up. The llama_server URL and the embed/llm model names are
+    read from settings (post-ollama drop the canonical local provider
+    is llama.cpp's OpenAI-compat server, not a separate Ollama process).
+    """
+    if task_type not in {"ingest", "query", "ingest_and_query"}:
+        typer.echo(
+            f"Invalid --task-type {task_type!r}; must be ingest, query, or ingest_and_query",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    failures = _check_llamaindex_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    settings = _default_settings_getter()
+    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
+    typer.echo(f"llama_server URL: {llama_url}")
+    typer.echo(f"Task type:        {task_type}")
+    typer.echo(f"Query:            {query}")
+    typer.echo(f"Repos:            {effective_repos}")
+
+    async def _run_with_timeout() -> dict[str, object]:
+        return await _run_llamaindex_demo(
+            repos=effective_repos,
+            task_type=task_type,
+            query=query,
+            keep=keep,
+        )
+
+    try:
+        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+    except TimeoutError:
+        typer.echo(
+            f"Timed out after {timeout}s waiting for LlamaIndexAdapter.execute",
+            err=True,
+        )
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nLlamaIndex demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
+# Stubs — 5 engines/terminals (agno + llamaindex promoted to live
+# implementations above)
 # ============================================================================
 
 
@@ -652,7 +857,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 
 _STUB_COSTS = {
-    "llamaindex": "~60 LOC: LlamaIndexAdapter.retrieve + 1 ingestion pinning test",
     "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
     "pydantic_ai": "~50 LOC: PydanticAIAdapter agent shell",
     "crow": "~40 LOC: TerminalManager adapter bridge to crow-mcp",
@@ -679,8 +883,8 @@ def _stub_command(name: str) -> Callable[[bool], None]:
     return callback
 
 
-# Register the 7 stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"):
+# Register the 5 stubs. Live implementations land in follow-up PRs.
+for _stub_name in ("hatchet", "pydantic_ai", "crow", "goose", "mock"):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene
