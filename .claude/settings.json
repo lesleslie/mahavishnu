@@ -55,6 +55,10 @@
             "type": "command"
           },
           {
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/bodai-agent-mirror.py",
+            "type": "command"
+          },
+          {
             "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/bodai-activity-subscriber.py",
             "type": "command"
           }

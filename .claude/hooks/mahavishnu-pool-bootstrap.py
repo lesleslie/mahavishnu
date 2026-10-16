@@ -17,13 +17,19 @@ from __future__ import annotations
 import json
 import os
 import sys
-import uuid
 
 CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
 if CLAUDE_PROJECT_DIR:
     sys.path.insert(0, CLAUDE_PROJECT_DIR)
 
 import httpx
+
+# Wire-protocol helpers (initialize handshake, SSE parsing, tools/call)
+# live in a sibling module. See _bodai_mcp_client.py for the session
+# handshake rationale — without it, FastMCP's streamable-HTTP transport
+# returns HTTP 400 "Missing session ID" on every tools/call.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _bodai_mcp_client import call_tool, init_session  # noqa: E402
 
 from mahavishnu.bodai_hook_bridge import handle
 
@@ -52,67 +58,28 @@ def _safe_parse_payload() -> dict[str, object]:
 
 
 def _invoke_bootstrap() -> dict[str, object] | None:
-    """Call mcp__mahavishnu__pool_bootstrap via JSON-RPC 2.0 tools/call.
+    """Call mcp__mahavishnu__pool_bootstrap via JSON-RPC 2.0 over FastMCP.
 
     Returns the parsed result dict on success, or None on any failure.
-    The wire shape is JSON-RPC 2.0 over the FastMCP streamable-HTTP
-    transport (POST /mcp). See mahavishnu/mcp/crow/raw_jsonrpc.py:234
-    for the existing wire shape.
+    Uses the shared wire helpers in ``_bodai_mcp_client.py``: the
+    two-step shape is REQUIRED for FastMCP's streamable-HTTP transport
+    (``initialize`` → capture ``mcp-session-id`` → ``tools/call`` with
+    the header echoed). Skipping the handshake returns HTTP 400.
     """
     mcp_url = os.environ.get("MAHAVISHNU_MCP_URL", DEFAULT_MCP_URL)
-    request = {
-        "jsonrpc": "2.0",
-        "id": str(uuid.uuid4()),
-        "method": "tools/call",
-        "params": {"name": "pool_bootstrap", "arguments": {}},
-    }
     try:
         with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
-            response = client.post(
-                mcp_url,
-                json=request,
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream",
-                },
-            )
-            if response.status_code != 200:
-                sys.stderr.write(
-                    f"Hook output: pool_bootstrap returned HTTP {response.status_code}\n"
-                )
-                sys.stderr.flush()
+            session_id = init_session(client, mcp_url)
+            if session_id is None:
                 return None
-            envelope = response.json()
-            # JSON-RPC 2.0 envelope: {"jsonrpc": "2.0", "id": ..., "result": ...}
-            # or {"jsonrpc": "2.0", "id": ..., "error": ...}
-            if "error" in envelope:
-                sys.stderr.write(
-                    f"Hook output: pool_bootstrap JSON-RPC error: "
-                    f"{envelope['error']}\n"
-                )
-                sys.stderr.flush()
-                return None
-            result = envelope.get("result", {})
-            # FastMCP wraps the tool return as either:
-            #   {"content": [{"type": "text", "text": "..."}], "structuredContent": {...}}
-            # or just the dict directly. Prefer structuredContent; fall
-            # back to parsing the first text content as JSON.
-            if isinstance(result, dict) and "structuredContent" in result:
-                return result["structuredContent"]
-            if isinstance(result, dict) and "content" in result:
-                first = result["content"][0] if result["content"] else {}
-                if isinstance(first, dict) and "text" in first:
-                    try:
-                        return json.loads(first["text"])
-                    except (json.JSONDecodeError, ValueError):
-                        return None
-            if isinstance(result, dict):
-                return result
-            return None
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            result = call_tool(client, mcp_url, "pool_bootstrap", session_id, {})
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: pool_bootstrap call failed: {exc}\n")
         sys.stderr.flush()
         return None
+    if not isinstance(result, dict):
+        return None
+    return result
 
 
 def _format_result(result: dict[str, object]) -> str:
