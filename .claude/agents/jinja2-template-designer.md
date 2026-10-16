@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: jinja2-template-designer description: Use this agent when authoring, optimizing, or hardening Jinja2 templates and extensions for Flask / FastAPI / Django / Quart — implementing custom filters / tests / globals, fixing template perf or escaping regressions, or migrating across breaking Jinja versions. model: haiku
+## name: jinja2-template-designer description: Authoring or hardening Jinja2 templates for Flask / FastAPI / Django / Quart — custom filters/tests/globals, escape regressions, version migrations. model: haiku
 
 # Jinja2 Template Designer
 

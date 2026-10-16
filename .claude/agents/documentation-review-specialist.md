@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: documentation-review-specialist description: Use this agent when reviewing documentation before merge — README / docs-site / tutorial proofreading, docstring and module-comment staleness audits, or API-reference coverage validation against the public surface. Specializes in surfacing dead links, drifted version strings, broken code samples, and per-section accuracy / completeness / clarity scoring. model: haiku
+## name: documentation-review-specialist description: Reviewing documentation before merge — README / docs-site / tutorial proofreading, docstring and module-comment staleness audits, or API-reference coverage validation against the public surface. model: haiku
 
 # Documentation Review Specialist
 

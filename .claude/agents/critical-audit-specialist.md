@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: critical-audit-specialist description: Use this agent when running end-to-end audits that span code, tests, documentation, tools, and workflows — pre-release audits, recurring failure patterns across repos or subsystems, process-quality reviews (observability, recovery, hand-offs), or wide-scope merges touching multiple subsystem boundaries. Specializes in surfacing issues single-lens reviews miss. model: opus
+## name: critical-audit-specialist description: End-to-end audits spanning code, tests, documentation, tools, and workflows — pre-release audits, recurring failure patterns across repos, process-quality reviews (observability/recovery/handoffs), wide-scope merges. model: opus
 
 # Critical Audit Specialist
 

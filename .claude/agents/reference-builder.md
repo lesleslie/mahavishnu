@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: reference-builder description: Use this agent when building exhaustive, searchable technical reference docs — API reference pages from function/module signatures, config references from YAML schema or Pydantic models, or CLI command references from sub-app (Click/Typer) definitions. Specializes in per-symbol entries with type, default, constraints, and examples. model: haiku
+## name: reference-builder description: Building exhaustive searchable technical reference docs — API reference from function/module signatures, config references from YAML/Pydantic models, CLI command references from Click/Typer sub-apps. model: haiku
 
 # Reference Builder
 

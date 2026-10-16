@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: tui-designer description: Use this agent when designing or building terminal user interfaces with Rich / Textual / blessed — authoring a Rich-based prompt/table/progress view, building a Textual app with widgets, screens, and CSS, or designing keyboard-first navigation for a CLI tool. model: sonnet
+## name: tui-designer description: Designing or building Rich / Textual / blessed terminal UIs — prompts, tables, progress views, Textual apps with widgets and screens, keyboard-first navigation for CLI tools. model: sonnet
 
 # TUI Designer
 

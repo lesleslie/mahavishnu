@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: css-architect description: Use this agent when architecting modern CSS — building a design-token system for a new product or rebrand, choosing layout primitives (Grid vs Flexbox), reviewing CSS for cascade hygiene or specificity collisions, or migrating utility-first / BEM code to a hybrid token-based system. Specializes in scalable stylesheets with dark-mode parity. model: haiku
+## name: css-architect description: Architecting modern CSS — design-token systems, layout-primitive selection (Grid vs Flexbox), cascade / specificity review, utility-first or BEM migration. model: haiku
 
 # CSS Architect
 

@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: pycharm-plugin-creator description: Use this agent when authoring or refactoring an IntelliJ Platform / PyCharm plugin via the IntelliJ Platform SDK — plugin.xml + actions/services/extensions, PSI inspections/intentions/refactorings, or wiring editor UI (tool windows, notifications, gutter icons). Specializes in the `gradle-intellij-plugin` build. model: sonnet
+## name: pycharm-plugin-creator description: Authoring or refactoring IntelliJ / PyCharm plugins via the Platform SDK — plugin.xml + actions/services/extensions, PSI inspections/intentions/refactorings, editor UI wiring. model: sonnet
 
 # PyCharm Plugin Creator
 

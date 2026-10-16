@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: authentication-specialist description: Use this agent when designing, auditing, or hardening authentication flows across OAuth 2.1, OIDC, SAML, passkeys, and session-based systems — protocol selection, SSO migration, session/MFA/cookie/token review, or debugging auth-bypass / token-replay / session-fixation regressions. Specializes in identity-provider integrations. model: sonnet
+## name: authentication-specialist description: Designing, auditing, or hardening authentication flows across OAuth 2.1, OIDC, SAML, passkeys, or sessions — protocol selection, SSO migration, MFA/cookie/session/token review, replay-fixation regression debugging. model: sonnet
 
 # Authentication Specialist
 

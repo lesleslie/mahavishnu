@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: agent-creation-specialist description: Use this agent when creating, refining, or auditing Claude Code subagent definitions (`.claude/agents/*.md`) — drafting new agents, tuning frontmatter for triggering accuracy, or auditing existing agents against tooling conventions. Specializes in agent design, template creation, and capability scoping. model: opus
+## name: agent-creation-specialist description: Creating, refining, or auditing Claude Code subagent definitions (`.claude/agents/*.md`) — drafting new agents, tuning frontmatter for triggering accuracy, auditing tooling-conventions. model: opus
 
 # Agent Creation Specialist
 

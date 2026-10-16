@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: data-pipeline-engineer description: Use this agent when architecting or operating data pipelines across batch ETL, stream processing, and lakehouse workloads — choosing between Airflow, Dagster, Kafka Streams, or Spark; reviewing existing pipelines for backpressure or exactly-once semantics; designing schema-evolution strategy; or migrating to a new orchestrator/storage layer without downtime. model: sonnet
+## name: data-pipeline-engineer description: Architecting or operating batch, stream, or lakehouse data pipelines — choosing between Airflow / Dagster / Kafka Streams / Spark; backpressure or exactly-once review; schema-evolution strategy; orchestrator migration. model: sonnet
 
 # Data Pipeline Engineer
 

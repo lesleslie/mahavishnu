@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: api-security-specialist description: Use this agent when auditing or hardening API surfaces — pre-launch OWASP API Top 10 reviews, investigating authn/authz bypasses (BOLA, broken-function-level-auth, mass-assignment), designing token issuance / validation / revocation flows, or bringing an API up to OAuth 2.1 / OIDC conformance. Specializes in zero-trust API patterns. model: sonnet
+## name: api-security-specialist description: Auditing or hardening API surfaces — pre-launch OWASP API Top 10 review, authn/authz bypass investigation (BOLA, BFLA, mass-assignment), token issuance/revocation flows, OAuth 2.1 / OIDC conformance. model: sonnet
 
 # API Security Specialist
 

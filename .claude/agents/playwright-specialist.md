@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: playwright-specialist description: Use this agent when building or maintaining Playwright E2E suites — authoring browser tests against a real UI, setting up visual regression or accessibility audit suites, or debugging flaky tests across Chromium / Firefox / WebKit. Specializes in stable selectors and trace-driven flake debugging. model: sonnet
+## name: playwright-specialist description: Building or maintaining Playwright E2E suites — authoring real-UI tests, visual regression or a11y audit suites, debugging flaky tests across Chromium / Firefox / WebKit. model: sonnet
 
 # Playwright Specialist
 
