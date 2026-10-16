@@ -2,7 +2,7 @@
 status: draft
 role: canonical
 date: 2026-08-31
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-15
 superseded_by: null
 topic: config-consolidation
 title: "Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
