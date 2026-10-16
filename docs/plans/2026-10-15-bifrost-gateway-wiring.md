@@ -92,8 +92,10 @@ After this plan ships:
 ```bash
 # Source-level: no production code references direct MiniMax URLs anymore
 grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities \
-     mahavishnu/workers/cloud_worker.py mahavishnu/llm_gateway
-# Expected: zero hits outside settings/models.yaml and mahavishnu/llm_gateway/ (docs-only)
+     mahavishnu/llm_gateway
+# Expected: zero hits. (CloudWorker excluded per the KEEP decision at
+# docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58 — see §5.10
+# Phase F notes.)
 
 # BIFROST_BASE_URL is no longer read anywhere
 grep -rn BIFROST_BASE_URL .
@@ -207,7 +209,23 @@ $ curl -sS http://localhost:8471/health
 2. `settings/models.yaml:103-107` exposes a `bifrost:` block at the
    wrong layer (outside `MahavishnuSettings` envelope).
 3. CloudWorker `mahavishnu/workers/cloud_worker.py:37` hardcodes
-   `MINIMAX_OPENAI_BASE_URL = "https://api.minimax.io/v1"`.
+   `MINIMAX_OPENAI_BASE_URL = "https://api.minimax.io/v1"`. **The constant
+   is preserved per the KEEP decision at
+   `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`**
+   (CloudWorker is a public API surface exported via
+   `mahavishnu/workers/__init__.py:32`; the audit finding on line 46
+   — "zero production or test imports of CloudWorker outside the file
+   itself and its package export" — is the *rationale* for the KEEP
+   decision, NOT evidence of orphan status. The decision is on line
+   58 and reads "KEEP" on five counts: external API surface, doc
+   contract, working code, retirement cost > benefit, wrapper value.).
+   The constant is read as the `MINIMAX_BASE_URL` env-var fallback at
+   `cloud_worker.py:57`
+   (`default_factory=lambda: os.environ.get("MINIMAX_BASE_URL") or MINIMAX_OPENAI_BASE_URL`),
+   so deleting it breaks `CloudWorkerConfig()` instantiation at module
+   import time. **This plan inherits an upstream spec drift on this
+   point** (the v1.3 spec §5.10 carried the same "CloudWorker orphan"
+   misread; flag for a v1.4 amendment).
 4. `PROVIDER_PROBES["minimax"]` at `_probes.py:128` hardcodes the same
    URL; module-level dict literal evaluated at import time.
 
@@ -239,13 +257,21 @@ introduced in Phase B.
 - [ ] **REQ-001** Add `class BifrostConfig(BaseModel)` to
   `mahavishnu/core/config.py` (next to `ChangepointConfig` at
   `config.py:595-622`). `model_config = ConfigDict(extra="forbid")`.
-  Fields: `enabled: bool = False`, `base_url: str = "http://127.0.0.1:8471"`,
-  `anthropic_base_url: str = "http://127.0.0.1:8471/anthropic"`,
-  `caller_id: str = "mahavishnu"`,
-  `cache_mode: Literal["off","direct","semantic"] = "off"`,
-  `cache_ttl_seconds: int = 300`, `request_timeout_seconds: int = 30`,
-  `route_claude_code: bool = False`, `route_qwen_code: bool = False`,
-  `qwen_env_var: str = "OPENAI_BASE_URL"`, `auth_env: str = "BIFROST_API_KEY"`.
+  Each field uses `Field(default=..., description="...")` per the
+  `ChangepointConfig.detector` precedent at `config.py:622`:
+  ```python
+  enabled: bool = Field(default=False, description="Enable Bifrost gateway routing for mahavishnu LLM callers")
+  base_url: str = Field(default="http://127.0.0.1:8471", description="Bifrost gateway base URL")
+  anthropic_base_url: str = Field(default="http://127.0.0.1:8471/anthropic", description="Bifrost Anthropic-compatible base URL")
+  caller_id: str = Field(default="mahavishnu", description="Caller identity sent in BifrostGatewayRequest envelope")
+  cache_mode: Literal["off","direct","semantic"] = Field(default="off", description="Bifrost cache mode; see BifrostGatewayRequest")
+  cache_ttl_seconds: int = Field(default=300, description="Bifrost cache TTL in seconds")
+  request_timeout_seconds: int = Field(default=30, description="Per-request HTTP timeout for Bifrost dispatch")
+  route_claude_code: bool = Field(default=False, description="Inject ANTHROPIC_BASE_URL into terminal-claude workers when bifrost.enabled")
+  route_qwen_code: bool = Field(default=False, description="Inject qwen_env_var into terminal-qwen workers when bifrost.enabled")
+  qwen_env_var: str = Field(default="OPENAI_BASE_URL", description="Env var name that the Qwen CLI reads for a custom OpenAI-compatible base URL")
+  auth_env: str = Field(default="BIFROST_API_KEY", description="Env var name carrying the optional Bifrost bearer token (omitted from /health.bifrost.config to avoid leaking the env-var name)")
+  ```
 - [ ] **REQ-001** Mount on `MahavishnuSettings` (`config.py:2763`) at
   the `pi_pool:` precedent (line `2961+`):
   `bifrost: BifrostConfig = Field(default_factory=BifrostConfig, description="...")`.
@@ -263,7 +289,8 @@ introduced in Phase B.
   - `mahavishnu_bifrost_dispatch_failures_total{provider,reason}` (counter)
 - [ ] **REQ-005** Add `mahavishnu metrics bifrost` subcommand skeleton to
   `mahavishnu/metrics_cli.py` (extend the existing `engines` /
-  `dispatch` / `bodai` pattern at lines 296+). Flags: `--source {auto,prom,otel}`
+  `dispatch` / `bodai` pattern — `engines` at line 781, `dispatch`
+  at line 1244, `bodai` at line 1287 in the current file). Flags: `--source {auto,prom,otel}`
   default `auto`, `--output {table,json}` default `table`, `--provider {minimax,anthropic,all}`
   default `all`. Zero series is acceptable pre-B.
 - [ ] **REQ-001** Extend `mahavishnu/cli/config_validator.py` to dump
@@ -305,9 +332,12 @@ introduced in Phase B.
     `enabled: true` overriding `local.yaml`
   - `python -c "from mahavishnu.core.config import MahavishnuSettings; s = MahavishnuSettings(); print(s.bifrost)"` — defaults
 
-- **Rollback signal**: revert the `BifrostConfig` mount in
-  `config.py`. No production behavior change because Phase B has no
-  consumers yet.
+- **Rollback signal**: no operational signal needed in Phase A — zero
+  Bifrost traffic until Phase B dispatches. The validation gate is
+  `mahavishnu metrics bifrost --source auto --output table` shows zero
+  counters; if any `mahavishnu_bifrost_*` series is non-zero before
+  Phase B, revert the `BifrostConfig` mount in `config.py`. The
+  absence-of-counter is the rollback signal.
 
 - **Observability added**: `mahavishnu_bifrost_*` series registered in
   `prometheus_metrics.py`; zero counters until Phase B dispatches.
@@ -465,11 +495,21 @@ set-environment`**, not `tmux new-session -e`.
 - [ ] **REQ-004** `mahavishnu/workers/contract/manager.py:126`
   `DurableWorkerManager.spawn(...)` gains `env: dict[str, str] | None = None`
   and threads it into the `create_session` call.
-- [ ] **REQ-004** `mahavishnu/terminal/adapters/tmux.py:22`
-  `TmuxTerminalAdapter.launch_session(...)` gains
+- [ ] **REQ-004** `mahavishnu/terminal/adapters/tmux.py:22` and `:37` —
+  `TmuxTerminalAdapter.launch_session(...)` (singular) and
+  `launch_sessions(...)` (plural) both gain
   `worker_type: str = "terminal-claude"` and
-  `env: dict[str, str] | None = None` kwargs. Removes the hardcoded
-  `worker_type="terminal-claude"` at line 31.
+  `env: dict[str, str] | None = None` kwargs. **Both methods** thread
+  the new params into the underlying
+  `self._manager.spawn(worker_type=..., env=...)` call — the singular
+  makes the `spawn` call directly; the plural calls `launch_session`
+  per iteration and forwards `worker_type` and `env`. Removes the
+  hardcoded `worker_type="terminal-claude"` at line 31. Without the
+  plural update, the manager's call
+  `self.adapter.launch_sessions(worker_type=..., env=env)` fails at
+  the adapter boundary (the current plural
+  `async def launch_sessions(self, command: str, count: int) -> list[str]`
+  accepts neither kwarg).
 - [ ] **REQ-004** `mahavishnu/terminal/manager.py:240`
   `TerminalManager.launch_sessions(...)` gains
   `worker_type: str = "terminal-claude"` and threads it into the
@@ -573,14 +613,22 @@ assertion window is reliable.
 **Tasks**:
 
 - [ ] **REQ-005** `mahavishnu/core/health.py:78` `HealthResponse` gains
-  - `bifrost.config: dict[str, Any] | None` — config block projection
-    (`BifrostConfig.to_public_dict()`, omitting `auth_env` to avoid
-    leaking the env-var name)
-  - `bifrost.reachable: bool` — from `_probe_bifrost_state()` (an
-    `httpx.get(bifrost.base_url + "/health", timeout=2)` returning
-    `200 OK`)
-  - Both fields are populated by the existing `aggregate_mahavishnu_health()`
-    (called from the `/health` route per the docstring at line 109).
+  a `bifrost: BifrostHealth | None` field via a new sub-model
+  (Pydantic v2 forbids dotted field names, so the sub-model shape
+  is required to surface `bifrost.config` and `bifrost.reachable`
+  in the JSON response):
+  ```python
+  class BifrostHealth(BaseModel):
+      model_config = ConfigDict(extra="forbid")
+      config: dict[str, Any] | None = None  # BifrostConfig.to_public_dict() projection (omits auth_env)
+      reachable: bool = False               # from _probe_bifrost_state()
+  ```
+  Mounted as `bifrost: BifrostHealth = Field(default_factory=BifrostHealth, description="...")` on `HealthResponse`. Both fields are populated by the existing
+  `aggregate_mahavishnu_health()` (called from the `/health` route
+  per the docstring at line 109). `_probe_bifrost_state()` is an
+  `httpx.get(bifrost.base_url + "/health", timeout=2)` returning
+  `200 OK` (boolean). `to_public_dict()` omits `auth_env` to avoid
+  leaking the env-var name.
 - [ ] **REQ-005** `mahavishnu/observability/prometheus_metrics.py:85`
   existing `mahavishnu_health_feed_status` gauge gains Bifrost
   registration: when `_probe_bifrost_state()` returns `False`, increment
@@ -682,9 +730,14 @@ assertion window is reliable.
 
 **Goal**: delete the structurally-misplaced `bifrost:` block from
 `settings/models.yaml`; stop reading `BIFROST_BASE_URL`; replace the
-four in-tree runtime `minimax.io/v1` hits with bifrost-aware URLs (or
-delete the dead `MINIMAX_OPENAI_BASE_URL` constant in the orphan
-CloudWorker).
+three in-tree runtime `minimax.io/v1` hits
+(`_probes.py:128`, `agno_adapter_impl.py:244` docstring,
+`agno_adapter_impl.py:259` factory default-fallback) with
+bifrost-aware URLs. **CloudWorker is OUT of scope for Phase F** —
+the KEEP decision at
+`docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`
+preserves `cloud_worker.py:37` `MINIMAX_OPENAI_BASE_URL`. The
+Phase F grep scope excludes `mahavishnu/workers/cloud_worker.py`.
 
 **Tasks**:
 
@@ -693,12 +746,17 @@ CloudWorker).
   `bifrost:`, `  enabled: false`, `  base_url: ...`, `  activate_env: ...`).
   This file is loaded outside the `MahavishnuSettings` envelope; the
   block was structurally misplaced from day one.
-- [ ] **REQ-006** `mahavishnu/workers/cloud_worker.py:37` — delete
-  `MINIMAX_OPENAI_BASE_URL = "https://api.minimax.io/v1"` constant.
-  CloudWorker is orphan per
-  `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:46`; the
-  constant has zero readers. This is a dead-code deletion, not a
-  refactor.
+- [ ] **REQ-006** **CloudWorker is out of scope for Phase F.** Per
+  `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`
+  (Decision: KEEP), CloudWorker is a public API surface exported
+  via `mahavishnu/workers/__init__.py:32`. The audit finding on
+  line 46 ("zero production or test imports outside the file itself
+  and its package export") is the rationale for KEEP, not for
+  retirement. The constant `MINIMAX_OPENAI_BASE_URL` at
+  `cloud_worker.py:37` is read as the `default_factory` fallback at
+  `cloud_worker.py:57` and is preserved per the KEEP decision.
+  **This is a spec drift fix** — the v1.3 spec §5.10 carried the
+  same "CloudWorker orphan" misread; flag for a v1.4 amendment.
 - [ ] **REQ-006** `mahavishnu/engines/agno_adapter_impl.py:244` —
   docstring fix: the comment "Base URL: https://api.minimax.io/v1"
   is updated post-Phase B (the default has moved to
@@ -719,7 +777,7 @@ CloudWorker).
 
 **Exit criteria**:
 
-- `grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities mahavishnu/workers/cloud_worker.py mahavishnu/llm_gateway` returns zero hits outside `settings/models.yaml` and `mahavishnu/llm_gateway/`
+- `grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities mahavishnu/llm_gateway` returns zero hits (CloudWorker excluded per the KEEP decision at `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`)
 - `grep -rn BIFROST_BASE_URL .` returns zero hits
 - `grep -rn "bifrost:" settings/models.yaml` returns zero hits
 - `python scripts/audit_orphans.py` — zero new orphans; `BifrostConfig`
@@ -739,8 +797,12 @@ CloudWorker).
 - **Returns to / updates**:
   - `settings/models.yaml` no longer has `bifrost:` block
   - `BIFROST_BASE_URL` env var is no longer read in any code or doc
-  - The four in-tree runtime `minimax.io/v1` hits are deleted
-    (CloudWorker literal) or replaced (Agno default, _probes URL)
+  - The three in-tree runtime `minimax.io/v1` hits are deleted or
+    replaced: `_probes.py:128` (probe URL → `resolve_probe_endpoint`),
+    `agno_adapter_impl.py:244` (docstring), `agno_adapter_impl.py:259`
+    (factory default-fallback → `BifrostConfig`)
+  - The CloudWorker `MINIMAX_OPENAI_BASE_URL` constant at
+    `cloud_worker.py:37` is **preserved** per the KEEP decision
   - The docs-CI grep check is added
 
 - **Demonstrable by**:
@@ -809,8 +871,9 @@ Grouped by package. Each check is a one-line change in one commit
   `tmux set-environment -t <session> KEY VAL` per entry (Phase D)
 - [ ] `contract/manager.py:126` — `DurableWorkerManager.spawn` gains
   `env` kwarg and threads it (Phase D)
-- [ ] `cloud_worker.py:37` — delete `MINIMAX_OPENAI_BASE_URL` constant
-  (Phase F)
+- [ ] `cloud_worker.py:37` — **NO CHANGE** (preserved per the KEEP
+  decision at `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`;
+  see §5.10 Phase F notes)
 
 ### `mahavishnu/terminal/`
 
@@ -879,7 +942,7 @@ Grouped by package. Each check is a one-line change in one commit
 | `crackerjack run -v -f` | All hooks green | CI log |
 | `python scripts/audit_orphans.py` | Zero new orphans | CI log |
 | `python scripts/audit_requirements.py` | Zero orphans, zero phantoms | CI log |
-| `grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities mahavishnu/workers/cloud_worker.py mahavishnu/llm_gateway` | Zero hits (post-Phase F) | shell |
+| `grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities mahavishnu/llm_gateway` | Zero hits (post-Phase F; CloudWorker excluded per KEEP decision) | shell |
 | `grep -rn BIFROST_BASE_URL .` | Zero hits (post-Phase F) | shell |
 | `grep -rn "bifrost:" settings/models.yaml` | Zero hits (post-Phase F) | shell |
 
@@ -891,7 +954,7 @@ Grouped by package. Each check is a one-line change in one commit
 | **Qwen CLI's actual env-var name is not `OPENAI_BASE_URL`** (candidates: `QWEN_BASE_URL`, `DASHSCOPE_API_BASE`) | Medium | `bifrost.qwen_env_var: str = "OPENAI_BASE_URL"` is operator-overridable in `local.yaml`. Phase D ships with `route_qwen_code: false` until the verification gate (`test_qwen_actual_dispatch_emits_caller_id`) passes end-to-end. |
 | **Node stdout block-buffering** hides the `caller_id` log line for >5s | High | Phase E mitigates with `stdbuf -oL -eL`. The 15-second test timeout (not 5s) absorbs the flake per the existing precedent. |
 | **Bifrost not running locally** at the time of testing | Medium | The verification suite documents a `lsof -nP -iTCP:8471 -sTCP:LISTEN` check before each test; tests skip (not fail) when Bifrost is unreachable. |
-| **CloudWorker resurrection** reintroduces a hardcoded `minimax.io/v1` URL | Low | Phase F deletes `MINIMAX_OPENAI_BASE_URL` constant; the docs-CI grep check enforces zero hits on every PR. The orphan decision is recorded in `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:46`. |
+| **CloudWorker resurrection** reintroduces a hardcoded `minimax.io/v1` URL | Low | Phase F is **out of scope** for CloudWorker per the KEEP decision at `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58`. The constant `MINIMAX_OPENAI_BASE_URL` at `cloud_worker.py:37` is preserved (read as `default_factory` fallback at `cloud_worker.py:57`). The Phase F grep scope excludes `mahavishnu/workers/cloud_worker.py`. A separate decision is needed before any future CloudWorker deletion. |
 | **Pre-1.0 backwards-compat drift** (`BIFROST_BASE_URL` env var lingers) | Low | Per `feedback-no-backwards-compat-pre-1.0.md`: replace, don't extend. Phase F deletes the env var. Operators with the old env var set get a Pydantic `SettingsError` on validation, which is the correct loud-failure per `mcp-backend-wiring-discipline.md` §1. |
 | **Crackerjack gate regresses** on the new `extra="forbid"` and `Field(default_factory=...)` discipline | Low | Phase A's `TestBifrostConfigSchema` asserts both explicitly; the gate is verified by `crackerjack run -v -f` clean. |
 | **Spec/plan citation drift** (the file:line numbers in §4.3 and §5 shift) | Medium | The plan cites are verified at draft time (2026-10-15). The `scripts/audit_requirements.py` and the spec's own `Citation verification` (acceptance criterion 8) gate promotion. Drift during implementation = fix the citation, not the code (unless the code moved legitimately). |
@@ -941,7 +1004,9 @@ When scope pressure forces a cut:
 - `docs/decisions/mcp-backend-wiring-discipline.md` — observability + health sub-shape discipline
 - `docs/plans/TEMPLATE.md` — this template
 - `docs/plans/PLAN_INDEX.md` — plan index
-- `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:46` — CloudWorker orphan decision
+- `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58` —
+  CloudWorker **KEEP** decision (the audit finding on line 46 is the
+  *rationale* for the KEEP decision, not orphan evidence)
 - `mahavishnu/llm_gateway/` — the package this plan wires
 - `config/bifrost/config.template.json` — operator's gateway config
 - `settings/models.yaml` — the structurally-misplaced block this plan
@@ -956,3 +1021,58 @@ When scope pressure forces a cut:
   version; user does
 - `scripts/audit_orphans.py`, `scripts/audit_requirements.py` — CI gates
 - `crackerjack run -v -f` — final gate
+
+## v1.4 amendment proposed (post 3-lens review)
+
+This plan was reviewed by 3 lenses on 2026-10-15 (mahavishnu-specialist,
+mcp-integration-expert, general-purpose). One BLOCKER-adjacent GAP was
+caught and fixed in this commit; the same drift exists in the source
+spec (`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md` v1.3)
+and warrants a v1.4 amendment.
+
+### v1.4 amendment items
+
+1. **CloudWorker KEEP correction** (BLOCKER, mahavishnu-specialist
+   Finding 1). The spec's §3 Non-Goals, §5.10 Phase F, and §1 Proof
+   grep scope all misread `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:46`
+   (audit finding) as the decision instead of `:58` (KEEP). The
+   constant `MINIMAX_OPENAI_BASE_URL` at `cloud_worker.py:37` is read
+   as the env-var fallback at `cloud_worker.py:57`; deleting it
+   breaks `CloudWorkerConfig()` at import time. **Spec fix**:
+   re-cite `:58` (KEEP); drop the `cloud_worker.py:37` deletion
+   from §5.10 Phase F; narrow the §1 grep scope to exclude
+   `cloud_worker.py`; reword the §4.3 "surviving LLM-calling surface"
+   item to acknowledge the KEEP context.
+
+2. **BifrostHealth sub-model shape** (NIT, mcp-integration-expert
+   Finding 3). Pydantic v2 forbids dotted field names; the
+   `/health.bifrost.{config,reachable}` shape requires a `BifrostHealth`
+   sub-model. Spec §5.7 mentions the JSON shape but doesn't name the
+   Pydantic class. **Spec fix**: name `BifrostHealth` explicitly in
+   §5.7; mount as `bifrost: BifrostHealth | None` on `HealthResponse`.
+
+3. **Phase D `launch_sessions` (plural) threading** (GAP,
+   mcp-integration-expert Finding 1). The adapter's plural
+   `async def launch_sessions(self, command: str, count: int) -> list[str]`
+   at `tmux.py:37` accepts neither `worker_type` nor `env`. Spec §5.5
+   threads the chain through the singular `launch_session` only.
+   **Spec fix**: explicitly call out the plural as a thread-through
+   point in §5.5; add the manager → adapter call path.
+
+### Fixes already applied in this plan (not requiring spec amendment)
+
+- **Phase A `BifrostConfig` field shape** (NIT, mahavishnu-specialist
+  Finding 3) — fields now use `Field(default=..., description="...")`
+  per the `ChangepointConfig.detector` precedent at `config.py:622`.
+  The spec's sketch also lacks the `Field(...)` wrapping; a v1.4
+  spec amendment should mirror.
+- **Phase A "Rollback signal" reworded** (NIT, mcp-integration-expert
+  Finding 5) — now states the absence-of-counter as the signal
+  instead of a procedure.
+- **`metrics_cli.py` line citations** (NIT, mcp-integration-expert
+  Finding 2) — updated from `296+` to current line numbers
+  (`engines:781`, `dispatch:1244`, `bodai:1287`).
+- **Phase D adapter `self._manager.spawn(...)` thread-through**
+  (GAP, general-purpose Finding 1) — Phase D task now explicitly
+  says the new params are threaded into `spawn()`, not just added
+  as silent absorbers.

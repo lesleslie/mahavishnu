@@ -127,8 +127,20 @@ def is_feature_enabled(feature_name: str) -> bool:
     try:
         config = _config.get()
         if config is None:
-            # Config not set, use defaults
-            return _get_default_flag(feature_name)
+            # Production CLI/MCP paths never call set_config() — fall
+            # back to live settings so the master switch reads true when
+            # the YAML says true. get_settings() is cached at the module
+            # level (see core/config.py), so this is free on repeat
+            # calls within the same process.
+            #
+            # Tests that override via set_config() still win because they
+            # populate the ContextVar first and beat the None check.
+            from mahavishnu.core.config import get_settings
+
+            try:
+                config = get_settings()
+            except Exception:  # CLI entry point — fallback to defaults on settings error  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+                return _get_default_flag(feature_name)
 
         goal_teams = getattr(config, "goal_teams", None)
         if goal_teams is None:

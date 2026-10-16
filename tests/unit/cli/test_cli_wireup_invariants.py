@@ -48,3 +48,47 @@ def test_launchd_subcommands_wired_in_main_cli() -> None:
         "Re-add `from .cli.launchd_cli import launchd_app; app.add_typer(launchd_app, name=\"launchd\")` "
         "in the `=== LAUNCHD SUB-COMMANDS ===` block."
     )
+
+
+def test_demo_agno_is_live_implementation() -> None:
+    """``mahavishnu demo agno`` must be a live implementation.
+
+    2026-10-15 wire-up fix: the agno demo was promoted from a stub to
+    a live implementation (drives ``AgnoAdapter.execute`` end-to-end).
+    This invariant catches a silent revert back to the stub.
+
+    The stub registration path emits ``--why-stub`` and exits with
+    code 0; the live path exposes ``--repos``, ``--task-type``,
+    ``--prompt``, ``--keep``, ``--timeout``. Asserting ``--repos`` is
+    present proves the live callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "agno", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--repos" in result.output, (
+        "demo agno is showing stub-style --help (missing --repos). "
+        "The live @demo_app.command(\"agno\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_agno() -> None:
+    """The stub registration loop must not include ``agno``.
+
+    The loop in ``cli/demo_cli.py`` iterates over a tuple of stub names;
+    ``agno`` was promoted to live in 2026-10-15 and would otherwise
+    override the live command with a no-op stub.
+    """
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "agno" not in stub_names, (
+        "agno is in _STUB_COSTS — the stub registration loop will "
+        "shadow the live @demo_app.command(\"agno\") callback. "
+        "Remove the \"agno\" entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )

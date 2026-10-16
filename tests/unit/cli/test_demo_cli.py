@@ -228,12 +228,15 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
 
 
 def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
-    """Each of the 7 stub sub-commands prints the discovery message and
+    """Each of the 6 stub sub-commands prints the discovery message and
     exits 0 — operators running ``mahavishnu demo hatchet`` get a clear
-    indicator that this is a deferred-work surface, not a bug."""
-    # The seven stubs as decided in plan: agno, llamaindex, hatchet,
-    # pydantic_ai, crow, goose, mock.
-    for stub in ["agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"]:
+    indicator that this is a deferred-work surface, not a bug.
+
+    2026-10-15 wire-up fix: agno was promoted to a live implementation
+    (drives ``AgnoAdapter.execute`` end-to-end), so the stub list is
+    now six names: llamaindex, hatchet, pydantic_ai, crow, goose, mock.
+    """
+    for stub in ["llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"]:
         result = runner.invoke(demo_app, [stub])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "not implemented" in result.output, f"{stub}: missing not-implemented text"
@@ -241,12 +244,24 @@ def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
 
 def test_stub_subcommands_why_stub_flag_prints_implementation_cost() -> None:
     """``--why-stub`` reveals the implementation cost without a real impl."""
-    for stub in ["agno", "hatchet"]:
+    for stub in ["hatchet", "pydantic_ai"]:
         result = runner.invoke(demo_app, [stub, "--why-stub"])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "implementation cost" in result.output, f"{stub}: missing cost info"
         # A path to the plan is included so operators can find the followup work.
         assert "plan" in result.output.lower(), f"{stub}: missing plan pointer"
+
+
+def test_demo_agno_is_no_longer_a_stub() -> None:
+    """2026-10-15 wire-up fix: ``mahavishnu demo agno`` is a live command.
+
+    The stub path prints "not implemented" and exits 0; the live path
+    hits the precondition gate (or actually executes). Either way it
+    must NOT contain the stub message. We don't assert on precondition
+    success here — that's tested in test_cli_wireup_invariants.
+    """
+    result = runner.invoke(demo_app, ["agno"])
+    assert "not implemented" not in result.output, result.output
 
 
 # ============================================================================

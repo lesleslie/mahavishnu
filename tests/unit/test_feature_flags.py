@@ -36,9 +36,53 @@ def test_set_and_get_config_roundtrip() -> None:
 
 
 def test_is_feature_enabled_defaults_when_config_missing() -> None:
-    assert is_feature_enabled("enabled") is False
-    assert is_feature_enabled("mcp_tools_enabled") is True
-    assert is_feature_enabled("unknown_feature") is False
+    # 2026-10-15 wire-up fix: when the ContextVar is None, the
+    # fallback path now calls get_settings() so production CLI/MCP
+    # processes read live settings instead of always-defaulting. If
+    # get_settings() itself raises (e.g. malformed Oneiric config),
+    # the path falls back to Pydantic defaults — the test patches
+    # the source module to raise to exercise that branch.
+    from unittest.mock import patch
+
+    with patch(
+        "mahavishnu.core.config.get_settings",
+        side_effect=Exception("no settings available"),
+    ):
+        assert is_feature_enabled("enabled") is False
+        assert is_feature_enabled("mcp_tools_enabled") is True
+        assert is_feature_enabled("unknown_feature") is False
+
+
+def test_is_feature_enabled_loads_live_settings_when_contextvar_none() -> None:
+    # 2026-10-15 wire-up fix: when no config is in the ContextVar,
+    # the function reads live settings via get_settings(). Master
+    # switch + per-feature values come from settings/mahavishnu.yaml.
+    # This test exercises the load path with a MagicMock stand-in
+    # for the settings object.
+    from unittest.mock import MagicMock, patch
+
+    fake_settings = MagicMock()
+    fake_settings.goal_teams.enabled = True
+    fake_settings.goal_teams.feature_flags.mcp_tools_enabled = True
+
+    with patch("mahavishnu.core.config.get_settings", return_value=fake_settings):
+        assert is_feature_enabled("enabled") is True
+        assert is_feature_enabled("mcp_tools_enabled") is True
+
+
+def test_is_feature_enabled_respects_live_master_switch_when_off() -> None:
+    # Companion to test_loads_live_settings: when live settings has the
+    # master switch off, every individual flag reads False.
+    from unittest.mock import MagicMock, patch
+
+    fake_settings = MagicMock()
+    fake_settings.goal_teams.enabled = False
+    fake_settings.goal_teams.feature_flags.mcp_tools_enabled = True
+
+    with patch("mahavishnu.core.config.get_settings", return_value=fake_settings):
+        assert is_feature_enabled("enabled") is False
+        # Master switch off disables all non-master features.
+        assert is_feature_enabled("mcp_tools_enabled") is False
 
 
 def test_is_feature_enabled_defaults_when_goal_teams_missing() -> None:

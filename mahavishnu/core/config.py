@@ -178,6 +178,33 @@ class AgnoLLMConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="after")
+    def _default_api_key_env(self) -> AgnoLLMConfig:
+        """Default ``api_key_env`` to the provider's standard env var.
+
+        Without this, ``api_key_env=None`` would silently fall through
+        to ``os.getenv(None)`` (which raises ``TypeError``) if any
+        downstream call ever passed ``None`` as the literal
+        ``default_env``. The adapter's existing
+        ``LLMProviderFactory._get_api_key`` call sites pass non-None
+        literal defaults, so today this is a defensive guard — it
+        makes the field self-explanatory and prevents future callers
+        from re-introducing the same trap.
+
+        Ollama is excluded because it runs locally with no API key.
+        """
+        if self.api_key_env is not None:
+            return self
+        default_env = {
+            LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+            LLMProvider.OPENAI: "OPENAI_API_KEY",
+            LLMProvider.MINIMAX: "MINIMAX_API_KEY",
+            LLMProvider.OLLAMA: None,  # local, no key required
+        }.get(self.provider)
+        if default_env is not None:
+            object.__setattr__(self, "api_key_env", default_env)
+        return self
+
 
 class AgnoMemoryConfig(BaseModel):
     """Memory and storage configuration for Agno agents.

@@ -305,6 +305,36 @@ class TestAgnoLLMConfigModel:
         with pytest.raises(ValueError):
             ImplAgnoLLMConfig(unknown_field="value")
 
+    def test_api_key_env_defaults_per_provider_minimax(self) -> None:
+        """2026-10-15 wire-up fix: validator fills api_key_env per provider.
+
+        Without the validator, ``api_key_env=None`` would silently
+        fall through to ``os.getenv(None)`` if any future caller passed
+        ``None`` as the literal ``default_env`` to
+        ``LLMProviderFactory._get_api_key``.
+        """
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        assert config.api_key_env == "MINIMAX_API_KEY"
+
+    def test_api_key_env_defaults_per_provider_anthropic(self) -> None:
+        config = ImplAgnoLLMConfig(provider=LLMProvider.ANTHROPIC)
+        assert config.api_key_env == "ANTHROPIC_API_KEY"
+
+    def test_api_key_env_defaults_per_provider_openai(self) -> None:
+        config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI)
+        assert config.api_key_env == "OPENAI_API_KEY"
+
+    def test_api_key_env_stays_none_for_ollama(self) -> None:
+        # Ollama is local-only and has no API key.
+        config = ImplAgnoLLMConfig(provider=LLMProvider.OLLAMA)
+        assert config.api_key_env is None
+
+    def test_api_key_env_explicit_override_wins(self) -> None:
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX, api_key_env="MY_CUSTOM_KEY"
+        )
+        assert config.api_key_env == "MY_CUSTOM_KEY"
+
 
 class TestAgnoMemoryConfigModel:
     """Tests for AgnoMemoryConfig model validation."""

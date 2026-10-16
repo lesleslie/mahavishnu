@@ -47,6 +47,39 @@ except Exception:  # Package metadata lookup fallback — version() raises a var
     __version__ = "0.0.0-unknown"
 
 
+def _unwrap_call_tool_result(call_result: Any) -> Any:
+    """Unwrap a FastMCP ``CallToolResult`` envelope to its payload.
+
+    FastMCP wraps cross-process tool returns as
+    ``CallToolResult(content=[TextContent(text=...)])``. For tools
+    declared with ``-> dict[str, Any]`` (structured output) FastMCP also
+    sets ``structured_content`` to the dict directly.
+
+    Mirrors the shape of ``pools.session_buddy_pool._extract_tool_payload``
+    (kept local here to avoid coupling ``mcp/`` to ``pools/``). Returns
+    the dict directly for dict returns, the JSON-parsed payload for
+    JSON-stringified returns, or the raw ``call_result`` unchanged when
+    the shape is neither.
+    """
+    import json
+
+    structured = getattr(call_result, "structured_content", None)
+    if isinstance(structured, dict) and structured:
+        return structured
+    content = getattr(call_result, "content", None)
+    if content and len(content) > 0:
+        text = getattr(content[0], "text", None)
+        if isinstance(text, str):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, (dict, list)):
+                    return parsed
+            except ValueError, TypeError:
+                pass
+            return text
+    return call_result
+
+
 # Phase 1.1 (B2 refuter-review fix): map mcp-common ``StatusValue``
 # to the legacy v1 health status strings so the canonical
 # aggregator's verdict stays JSON-native on the wire. The mapping
@@ -459,16 +492,27 @@ class FastMCPServer:
 
                 # Execute workflow with timeout if specified
                 if timeout:
-                    result = await asyncio.wait_for(
+                    raw_result = await asyncio.wait_for(
                         self.app.execute_workflow_parallel(
                             task, adapter, target_repos, user_id=user_id
                         ),
                         timeout=timeout,
                     )
                 else:
-                    result = await self.app.execute_workflow_parallel(
+                    raw_result = await self.app.execute_workflow_parallel(
                         task, adapter, target_repos, user_id=user_id
                     )
+
+                # FastMCP returns a CallToolResult envelope from cross-process
+                # tool invocations (call_result.content[0].text is the
+                # JSON-stringified payload, .structured_content is the dict
+                # directly). The body below assumes a plain dict, so
+                # unwrap via the same shape used in pools/session_buddy_pool
+                # (see _extract_tool_payload there). Local copy to avoid
+                # coupling mcp/ to pools/.
+                result = _unwrap_call_tool_result(raw_result)
+                if not isinstance(result, dict):
+                    result = {}
 
                 return {
                     "workflow_id": result.get("workflow_id", "unknown"),

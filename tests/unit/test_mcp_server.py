@@ -374,6 +374,65 @@ class TestToolExecutionSuccess:
         assert hasattr(result, "content")
 
     @pytest.mark.asyncio
+    async def test_trigger_workflow_unwraps_call_tool_result_envelope(self, server):
+        """2026-10-15 wire-up fix: trigger_workflow unwraps the FastMCP envelope.
+
+        The bug: ``self.app.execute_workflow_parallel`` returns a
+        ``CallToolResult`` (FastMCP envelope with ``content=[TextContent]``
+        carrying a JSON-stringified dict) instead of a plain dict. The
+        body assumed ``dict`` and crashed at the first ``result.get(...)``
+        call with ``AttributeError: 'CallToolResult' object has no
+        attribute 'get'``. Fix: unwrap via ``_unwrap_call_tool_result``
+        in ``mcp/server_core.py``.
+
+        Test mocks ``execute_workflow_parallel`` to return a
+        ``CallToolResult`` shape — the actual production failure mode.
+        """
+        import json as json_lib
+
+        from mahavishnu.mcp.server_core import _unwrap_call_tool_result
+
+        payload = {
+            "workflow_id": "wf_test_42",
+            "status": "completed",
+            "repos_processed": 2,
+            "successful_repos": 2,
+            "failed_repos": 0,
+            "execution_time_seconds": 1.23,
+            "errors": [],
+        }
+
+        # Build a CallToolResult stand-in with the same shape FastMCP uses.
+        call_result = MagicMock()
+        call_result.structured_content = None  # the production failure mode
+        call_result.content = [MagicMock()]
+        call_result.content[0].text = json_lib.dumps(payload)
+
+        # Sanity-check the unwrap helper independently.
+        assert _unwrap_call_tool_result(call_result) == payload
+
+        # Now exercise the wired path: mock app.execute_workflow_parallel
+        # to return the envelope, and verify the tool body reads through.
+        server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2"])
+        server.app.execute_workflow_parallel = AsyncMock(return_value=call_result)
+
+        result = await server.server.call_tool(
+            "trigger_workflow",
+            {
+                "adapter": "agno",
+                "task_type": "code_sweep",
+                "params": {"focus": "smoke"},
+            },
+        )
+
+        assert result is not None
+        assert hasattr(result, "content")
+        # The tool body should have unwrapped, not errored out.
+        result_text = result.content[0].text if result.content else ""
+        # If the unwrap failed the body would crash and emit wf_error_*.
+        assert "wf_error_" not in result_text, result_text
+
+    @pytest.mark.asyncio
     async def test_get_workflow_status_not_found(self, server):
         """Test get_workflow_status when workflow not found."""
         server.app.workflow_state_manager.get = AsyncMock(return_value=None)

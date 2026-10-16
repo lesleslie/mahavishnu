@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
 import shutil
 import time
@@ -412,7 +413,230 @@ def demo_prefect(
 
 
 # ============================================================================
-# Stubs — 7 engines/terminals as discovery surface per user decision
+# agno demo (full implementation — replaces 2026-10-15 stub)
+# ============================================================================
+
+
+DEFAULT_AGNO_PRECONDITION_TIMEOUT = 5.0
+
+
+def _check_agno_preconditions(
+    *,
+    settings_getter: Callable[[], Any] | None = None,
+    import_probe: Callable[[str], Any] | None = None,
+    env_getter: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Return human-readable failures (empty list = pass).
+
+    Probes (each injectable for tests):
+
+    - ``agno`` Python SDK importable.
+    - For non-Ollama providers, the configured ``api_key_env`` is set
+      in the environment (or ``None`` falls back to the provider default).
+    - Settings are loadable (rejects malformed Oneiric config).
+    """
+    settings_getter = settings_getter or _default_settings_getter
+    import_probe = import_probe or _default_import_probe
+    env_getter = env_getter or os.getenv
+
+    failures: list[str] = []
+    if import_probe("agno") is None:
+        failures.append(
+            "agno SDK not installed (.venv/bin/python -c 'import agno' fails; "
+            "run uv pip install -e .[agno] or 'uv sync --group agno')"
+        )
+
+    try:
+        settings = settings_getter()
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        failures.append(f"could not load settings: {exc}")
+        return failures
+
+    try:
+        agno_llm = settings.agno.llm  # type: ignore[attr-defined]
+    except AttributeError as exc:
+        failures.append(f"settings.agno.llm not configured: {exc}")
+        return failures
+
+    # Provider-aware API-key check (Ollama runs locally with no key).
+    from mahavishnu.core.config import LLMProvider
+
+    provider_value = agno_llm.provider
+    provider = (
+        provider_value
+        if isinstance(provider_value, LLMProvider)
+        else LLMProvider(provider_value)
+        if isinstance(provider_value, str)
+        else None
+    )
+    provider_default_env = (
+        {
+            LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+            LLMProvider.OPENAI: "OPENAI_API_KEY",
+            LLMProvider.MINIMAX: "MINIMAX_API_KEY",
+            LLMProvider.OLLAMA: None,  # no API key required
+        }.get(provider)
+        if provider is not None
+        else None
+    )
+
+    env_var = agno_llm.api_key_env or provider_default_env
+    if env_var and not env_getter(env_var):
+        failures.append(
+            f"LLM API key not set. {env_var} is unset (or set "
+            f"MAHAVISHNU_AGNO__LLM__API_KEY_ENV to a populated env var)"
+        )
+
+    return failures
+
+
+def _default_import_probe(module_name: str) -> Any | None:
+    """Lazy-import probe (injectable for tests)."""
+    try:
+        return __import__(module_name)
+    except ImportError:
+        return None
+
+
+async def _run_agno_demo(
+    *,
+    repos: Sequence[str],
+    task_type: str,
+    params: dict[str, object] | None = None,
+    keep: bool = False,
+) -> dict[str, object]:
+    """Drive the Agno engine end-to-end against one or more repositories.
+
+    Constructs ``AgnoAdapter`` directly, initializes it, calls
+    ``adapter.execute(task, repos)``, and shuts down cleanly. Uses
+    ``AgnoAdapter.execute`` rather than ``run_team`` so the single-task
+    path is exercised; for multi-agent team orchestration use
+    ``mahavishnu team {create,run}``.
+
+    On the exception path, ``adapter.shutdown()`` is best-effort called
+    before re-raising — mirrors the ``_run_tmux_demo`` reap-on-error
+    pattern at ``_run_tmux_demo:174-178``.
+    """
+    settings = _default_settings_getter()
+    from mahavishnu.engines.agno_adapter_impl import AgnoAdapter
+
+    task = {
+        "id": f"demo-agno-{int(time.time())}",
+        "type": task_type,
+        "params": dict(params or {}),
+    }
+
+    adapter = AgnoAdapter(config=settings)
+    try:
+        await adapter.initialize()
+    except Exception:  # shutdown is best-effort on init failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_agno_shutdown(adapter)
+        raise
+
+    try:
+        result = await adapter.execute(task=task, repos=list(repos))
+    except Exception:  # shutdown is best-effort on execute failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_agno_shutdown(adapter)
+        raise
+
+    if not keep:
+        await adapter.shutdown()
+
+    return {
+        "status": result.get("status"),
+        "engine": result.get("engine"),
+        "engine_version": result.get("engine_version"),
+        "task_type": task_type,
+        "repos": list(repos),
+        "repos_processed": result.get("repos_processed"),
+        "success_count": result.get("success_count"),
+        "failure_count": result.get("failure_count"),
+        "first_result": (result.get("results") or [None])[0],
+    }
+
+
+async def _best_effort_agno_shutdown(adapter: Any) -> None:
+    """Best-effort shutdown — called from the exception path."""
+    try:
+        await adapter.shutdown()
+    except Exception as exc:  # CLI entry point — shutdown errors must never mask the original failure  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        typer.echo(f"[warning] adapter shutdown failed: {exc}", err=True)
+
+
+@demo_app.command("agno")
+def demo_agno(
+    repos: list[str] = typer.Option(
+        [],
+        "--repos",
+        help="Repos to pass to AgnoAdapter.execute. Defaults to the Mahavishnu repo itself.",
+    ),
+    task_type: str = typer.Option(
+        "default",
+        "--task-type",
+        "-t",
+        help="Agno task type (e.g. code_sweep, quality_check, default).",
+    ),
+    prompt: str | None = typer.Option(
+        None,
+        "--prompt",
+        "-p",
+        help="Optional focus hint passed through as task.params.focus.",
+    ),
+    keep: bool = typer.Option(
+        False,
+        "--keep",
+        help="Leave the AgnoAdapter initialized after the demo (rarely useful; mainly for debugging).",
+    ),
+    timeout: int = typer.Option(
+        120, "--timeout", help="Max seconds to wait for AgnoAdapter.execute."
+    ),
+) -> None:
+    """Run the Agno engine end-to-end against the live LLM provider.
+
+    Constructs ``AgnoAdapter`` directly, calls ``adapter.execute(task,
+    repos)``, prints the trimmed result, and shuts down. The LLM
+    provider and API key env var are read from
+    ``settings.agno.llm.{provider,api_key_env}`` (see
+    ``settings/mahavishnu.yaml`` under ``agno:``).
+    """
+    failures = _check_agno_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    settings = _default_settings_getter()
+    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    params: dict[str, object] = {}
+    if prompt:
+        params["focus"] = prompt
+
+    typer.echo(f"LLM provider: {settings.agno.llm.provider.value}")
+    typer.echo(f"LLM model:    {settings.agno.llm.model_id}")
+    typer.echo(f"Task type:    {task_type}")
+    typer.echo(f"Repos:        {effective_repos}")
+
+    async def _run_with_timeout() -> dict[str, object]:
+        return await _run_agno_demo(
+            repos=effective_repos,
+            task_type=task_type,
+            params=params,
+            keep=keep,
+        )
+
+    try:
+        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s waiting for AgnoAdapter.execute", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nAgno demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
+# Stubs — 6 engines/terminals (agno promoted to live implementation above)
 # ============================================================================
 
 
@@ -428,7 +652,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 
 _STUB_COSTS = {
-    "agno": "~80 LOC: AgnoAdapter.execute + 2 pinned tests",
     "llamaindex": "~60 LOC: LlamaIndexAdapter.retrieve + 1 ingestion pinning test",
     "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
     "pydantic_ai": "~50 LOC: PydanticAIAdapter agent shell",
@@ -457,7 +680,7 @@ def _stub_command(name: str) -> Callable[[bool], None]:
 
 
 # Register the 7 stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"):
+for _stub_name in ("llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene

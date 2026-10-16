@@ -351,9 +351,7 @@ class WebSocketBroadcaster:
             logger.debug(f"Broadcast {event} to {room}")
             return True
 
-        except (
-            Exception
-        ) as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # background task — broad catch is the documented contract
             logger.warning(f"Failed to broadcast {event}: {e}")
             if self._buffer_enabled:
                 self._buffer_event(event, event_data, room)

@@ -73,9 +73,7 @@ def validate_command(command: str) -> None:
     """
     if not isinstance(command, str):
         # ValueError is retained for this public validator's documented contract.
-        raise ValueError(
-            "Command must be a string"
-        )  # ValueError is the public validator contract  # noqa: TRY004
+        raise ValueError("Command must be a string")  # ValueError is the public validator contract
 
     if len(command) > MAX_COMMAND_LENGTH:
         raise ValueError(f"Command too long: {len(command)} > {MAX_COMMAND_LENGTH} characters")
