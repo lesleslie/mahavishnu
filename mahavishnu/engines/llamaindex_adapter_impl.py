@@ -389,7 +389,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 import json
                 import urllib.request
 
-                with urllib.request.urlopen(  # noqa: S310 — URL is operator-configured
+                with urllib.request.urlopen(
                     f"{llama_server_url.rstrip('/')}/v1/models", timeout=5
                 ) as resp:
                     payload = json.loads(resp.read().decode("utf-8"))

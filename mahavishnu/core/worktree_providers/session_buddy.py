@@ -435,9 +435,9 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=2) as resp:  # nosec B310 — stdlib HTTP for health probe to localhost  # noqa: S310
+        with urllib.request.urlopen(req, timeout=2) as resp:  # nosec B310 — stdlib HTTP for health probe to localhost
             session_id = resp.headers.get("mcp-session-id", "")
-            raw = resp.read().decode("utf-8", errors="replace")
+            resp.read().decode("utf-8", errors="replace")
 
         if not session_id:
             return False
@@ -456,7 +456,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req2, timeout=2) as resp2:  # nosec B310 — localhost health probe  # noqa: S310
+        with urllib.request.urlopen(req2, timeout=2) as resp2:  # nosec B310 — localhost health probe
             raw2 = resp2.read().decode("utf-8", errors="replace")
 
         # The server returns SSE; the JSON payload is on a 'data: '
@@ -470,9 +470,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
             except json.JSONDecodeError:
                 continue
             tools = payload.get("result", {}).get("tools", [])
-            if any(t.get("name") == "list_worktrees" for t in tools):
-                return True
-            return False
+            return bool(any(t.get("name") == "list_worktrees" for t in tools))
         return False
 
     def provider_name(self) -> str:

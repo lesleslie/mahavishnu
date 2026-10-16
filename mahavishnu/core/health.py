@@ -1350,6 +1350,3 @@ def _probe_local_provider_state(settings: MahavishnuSettings) -> bool:
 # the canonical entry point for both the HTTP /health route and
 # the MCP ``get_health`` tool. The Bifrost sub-shape is populated
 # there — see ``health_aggregator.aggregate_mahavishnu_health``.
-from mahavishnu.core.health_aggregator import (
-    aggregate_mahavishnu_health,
-)

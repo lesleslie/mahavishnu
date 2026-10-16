@@ -27,9 +27,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
-from .registry import WorkerConfig
 
 if TYPE_CHECKING:
+    from .registry import WorkerConfig
     from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
@@ -90,8 +90,7 @@ class ShellWorker(BaseWorker):
         self._session_id = sessions[0]
         self._status = WorkerStatus.RUNNING
         logger.info(
-            f"ShellWorker started: worker_type={self.worker_type} "
-            f"session_id={self._session_id}"
+            f"ShellWorker started: worker_type={self.worker_type} session_id={self._session_id}"
         )
         return self._session_id
 
@@ -123,10 +122,9 @@ class ShellWorker(BaseWorker):
         if self._session_id and self._terminal_manager is not None:
             try:
                 await self._terminal_manager.close_sessions([self._session_id])
-            except Exception:  # shutdown cleanup — best-effort, never fatal  # noqa: BLE001
+            except Exception:  # shutdown cleanup — best-effort, never fatal
                 logger.exception(
-                    f"ShellWorker.stop: close_sessions failed for "
-                    f"session_id={self._session_id}"
+                    f"ShellWorker.stop: close_sessions failed for session_id={self._session_id}"
                 )
         self._status = WorkerStatus.STOPPED
 

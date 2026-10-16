@@ -103,7 +103,13 @@ class MahavishnuPool(BasePool):
             self.writable_root = Path(config_writable_root).resolve()
         else:
             candidates = [
-                Path.home() / ".local" / "state" / "mahavishnu" / "worktrees" / config.name / "workspace",
+                Path.home()
+                / ".local"
+                / "state"
+                / "mahavishnu"
+                / "worktrees"
+                / config.name
+                / "workspace",
             ]
             try:
                 from platformdirs import user_data_dir
