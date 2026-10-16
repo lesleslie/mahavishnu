@@ -48,7 +48,7 @@ class FakeCircuitBreaker:
 
 
 @dataclass
-class FakeMCPState:
+class FakeDharaState:
     """Simple async key-value store for analyzer tests."""
 
     should_fail: bool = False

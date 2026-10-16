@@ -434,7 +434,7 @@ class TestCreateWorktreeHandleStreaming:
         )
 
         storage = _FakeCloudStorage(backend="s3")
-        mcp = FakeDharaClient()
+        mcp = FakeMCPClient()
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=_FakeCache(),
@@ -774,7 +774,7 @@ class TestRemoveHandle:
     async def test_remove_handle_calls_storage_delete_and_mcp_remove(self) -> None:
         storage = _FakeCloudStorage()
         cache = _FakeCache()
-        mcp = FakeDharaClient()
+        mcp = FakeMCPClient()
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=cache,

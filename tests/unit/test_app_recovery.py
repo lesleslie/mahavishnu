@@ -75,7 +75,7 @@ class _FakeMCPRecoveryBackend:
 @pytest.mark.asyncio
 async def test_app_recovers_running_workflows_and_pending_approvals() -> None:
     app = MahavishnuApp.__new__(MahavishnuApp)
-    app._mcp_state = _FakeDharaRecoveryBackend()
+    app._mcp_state = _FakeMCPRecoveryBackend()
     app.active_workflows = set()
     app.approval_manager = ApprovalManager()
 

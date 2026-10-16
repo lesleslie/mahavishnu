@@ -74,6 +74,7 @@ if TYPE_CHECKING:
     from ..core.config import BifrostConfig
     from .agno_teams.config import TeamConfig
     from .agno_teams.manager import AgentTeamManager, TeamRunResult
+    from ..llm_gateway.client import ProtocolFamily
 else:
     from .agno_teams.manager import TeamRunResult
 

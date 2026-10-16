@@ -433,7 +433,7 @@ class TestBootstrapDeepHelpers:
             async def put(self, key, value):
                 raise RuntimeError("write failed")
 
-        fake_module.MCPClient = FakeDharaClient
+        fake_module.MCPClient = FakeMCPClient
         monkeypatch.setitem(sys.modules, "mahavishnu.core.mcp_adapter", fake_module)
 
         mcp_state = SimpleNamespace(_client=SimpleNamespace(_base_url="http://mcp"))

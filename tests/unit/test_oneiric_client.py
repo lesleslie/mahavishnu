@@ -184,7 +184,7 @@ class TestMCPClientHelpers:
         fake_client = SimpleNamespace(base_url="http://example.com/mcp")
         mock_dhara = MagicMock(return_value=fake_client)
         mock_module = ModuleType("mahavishnu.core.mcp_adapter")
-        mock_module.MCPClient = mock_mcp
+        mock_module.MCPClient = mock_dhara
 
         with (
             patch.object(mod, "_mcp_clients", {}),
@@ -202,9 +202,9 @@ class TestMCPClientHelpers:
         import mahavishnu.core.oneiric_client as mod
 
         fake_client = SimpleNamespace(base_url="http://default:8683/mcp")
-        MagicMock(return_value=fake_client)
+        mock_dhara = MagicMock(return_value=fake_client)
         mock_module = ModuleType("mahavishnu.core.mcp_adapter")
-        mock_module.MCPClient = mock_mcp
+        mock_module.MCPClient = mock_dhara
 
         with (
             patch.object(mod, "_mcp_clients", {}),
@@ -223,7 +223,7 @@ class TestMCPClientHelpers:
         fake_client = SimpleNamespace(base_url="http://example.com/mcp")
         mock_dhara = MagicMock(return_value=fake_client)
         mock_module = ModuleType("mahavishnu.core.mcp_adapter")
-        mock_module.MCPClient = mock_mcp
+        mock_module.MCPClient = mock_dhara
 
         with (
             patch.object(mod, "_mcp_clients", {}),

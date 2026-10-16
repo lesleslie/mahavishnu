@@ -194,6 +194,7 @@ def test_qwen_actual_dispatch_emits_caller_id() -> None:
     """
     import os
     import re
+    from pathlib import Path
 
     # The script must exist (and the existence test pins the
     # documentation contract). The actual gate is a real-network

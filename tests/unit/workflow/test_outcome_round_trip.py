@@ -90,7 +90,7 @@ async def test_round_trip_succeeded_outcome_round_trips(shared_dhara: dict[str, 
     assert written.metadata == metadata
 
     # Substrate-side key matches producer contract
-    assert f"workflow-results/{workflow_id}/" in shared_mcp
+    assert f"workflow-results/{workflow_id}/" in shared_dhara
 
     # Consumer reads back via from_dict validation
     read_back = await workflow_get_outcome(workflow_id)
