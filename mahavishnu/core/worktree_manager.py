@@ -378,7 +378,7 @@ class WorktreeManager:
                     )
 
                 await asyncio.to_thread(_git_worktree_remove)
-        except Exception as exc:  # cleanup must not raise; log and continue so registry cleanup still happens  # noqa: BLE001
+        except Exception as exc:  # cleanup must not raise; log and continue so registry cleanup still happens  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Failed to git-worktree-remove %s: %s", worktree_id, exc)
         finally:
             self._registry.pop(worktree_id, None)

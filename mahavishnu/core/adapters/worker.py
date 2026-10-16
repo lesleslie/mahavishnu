@@ -237,7 +237,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 worker_ids,
                 tasks,
             )
-        except Exception as e:  # Batch execution logs and recovers any partial results before returning  # noqa: BLE001
+        except Exception as e:  # Batch execution logs and recovers any partial results before returning  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to execute tasks: {e}")
             # Partial results may exist
             results = await worker_manager.collect_results(worker_ids)

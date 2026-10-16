@@ -10,7 +10,7 @@ Pins the contract for the SessionWorktreeRegistry class:
 from __future__ import annotations
 
 import json
-from pathlib import Path  # noqa: TC003 — type-only with __future__ annotations
+from pathlib import Path
 import uuid
 
 import pytest

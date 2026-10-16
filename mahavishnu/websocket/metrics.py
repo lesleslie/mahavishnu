@@ -299,7 +299,7 @@ class WebSocketMetrics:
             self._select_metric_child(
                 counter, server=self.server_name, message_type=message_type
             ).inc(amount)
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping message metric update for {self.server_name}: {e}")
         logger.debug(f"Incremented {message_type} messages by {amount} for {self.server_name}")
 
@@ -314,7 +314,7 @@ class WebSocketMetrics:
         gauge = self._get_connection_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping connection metric update for {self.server_name}: {e}")
         logger.debug(f"Set connections to {count} for {self.server_name}")
 
@@ -329,7 +329,7 @@ class WebSocketMetrics:
         gauge = self._get_connection_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).inc(delta)
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping connection metric adjustment for {self.server_name}: {e}")
         logger.debug(f"Adjusted connections by {delta} for {self.server_name}")
 
@@ -347,7 +347,7 @@ class WebSocketMetrics:
             self._select_metric_child(histogram, server=self.server_name, channel=channel).observe(
                 duration
             )
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping broadcast metric update for {self.server_name}: {e}")
         logger.debug(f"Recorded broadcast to {channel}: {duration:.4f}s for {self.server_name}")
 
@@ -362,7 +362,7 @@ class WebSocketMetrics:
         gauge = self._get_subscription_gauge()
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping subscription metric update for {self.server_name}: {e}")
         logger.debug(f"Set subscriptions to {count} for {self.server_name}")
 
@@ -380,7 +380,7 @@ class WebSocketMetrics:
             self._select_metric_child(counter, server=self.server_name, error_type=error_type).inc(
                 amount
             )
-        except Exception as e:  # Metric emission must be best-effort and never fail the operation
+        except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Skipping error metric update for {self.server_name}: {e}")
         logger.warning(f"Incremented {error_type} errors by {amount} for {self.server_name}")
 

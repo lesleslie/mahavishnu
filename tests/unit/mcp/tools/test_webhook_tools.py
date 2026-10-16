@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastmcp import FastMCP
 import pytest
 
-from mahavishnu.mcp.tools import webhook_tools  # noqa: F401  (intentional import for side effects)
+from mahavishnu.mcp.tools import webhook_tools
 from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools
 from mahavishnu.webhooks import replay as replay_module
 

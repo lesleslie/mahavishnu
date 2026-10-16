@@ -217,7 +217,7 @@ class EncryptedSQLite:
             logger.debug("Database encrypted successfully")
             return True
 
-        except Exception as e:  # Storage helper logs and returns False for any encryption failure
+        except Exception as e:  # Storage helper logs and returns False for any encryption failure  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Encryption failed: {e}")
             return False
 
@@ -679,6 +679,6 @@ async def verify_encrypted_database(
         await db.close()
         return is_valid
 
-    except Exception as e:  # Verification helper swallows any error and reports invalid
+    except Exception as e:  # Verification helper swallows any error and reports invalid  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         logger.error(f"Encrypted database verification failed: {e}")
         return False

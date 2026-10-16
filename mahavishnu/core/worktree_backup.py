@@ -246,7 +246,7 @@ class WorktreeBackupManager:
                 },
                 result="success",
             )
-        except Exception as e:  # Background task — audit-log failures must never block the backup that just succeeded  # noqa: BLE001
+        except Exception as e:  # Background task — audit-log failures must never block the backup that just succeeded  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to log backup to audit trail: {e}")
 
     async def restore_from_backup(

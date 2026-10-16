@@ -373,7 +373,7 @@ class MultiRepoCoordinator:
             logger.info(f"Completed coordination step {step.step_id} for task {step.task_id}")
             return True
 
-        except Exception as e:  # task store update may raise any library error; mark step failed and let caller decide  # noqa: BLE001
+        except Exception as e:  # task store update may raise any library error; mark step failed and let caller decide  # background task — broad catch is the documented contract  # noqa: BLE001
             step.status = CoordinationStatus.FAILED
             step.error = str(e)
             logger.error(f"Failed to execute step {step.step_id}: {e}")
@@ -432,7 +432,7 @@ class MultiRepoCoordinator:
                         step.status = CoordinationStatus.ROLLED_BACK
                         rollback_count += 1
                         logger.info(f"Rolled back step {step.task_id}")
-                except Exception as e:  # rollback failures should not abort the rest of the rollback loop  # noqa: BLE001
+                except Exception as e:  # rollback failures should not abort the rest of the rollback loop  # background task — broad catch is the documented contract  # noqa: BLE001
                     logger.error(f"Failed to rollback step {step.step_id}: {e}")
 
         plan.status = CoordinationStatus.ROLLED_BACK
@@ -474,7 +474,7 @@ class MultiRepoCoordinator:
                         sync_status="in_sync",
                     )
                 )
-            except Exception as e:  # one repository sync probe must not break the rest of the query  # noqa: BLE001
+            except Exception as e:  # one repository sync probe must not break the rest of the query  # background task — broad catch is the documented contract  # noqa: BLE001
                 states.append(
                     RepoSyncState(
                         repository=repo,

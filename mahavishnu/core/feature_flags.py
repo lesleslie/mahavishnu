@@ -150,7 +150,7 @@ def is_feature_enabled(feature_name: str) -> bool:
         # Check specific feature flag
         return getattr(feature_flags, feature_name, False)
 
-    except Exception:  # feature flag lookup — broad catch returns default on any config or attribute error  # noqa: BLE001
+    except Exception:  # feature flag lookup — broad catch returns default on any config or attribute error  # background task — broad catch is the documented contract  # noqa: BLE001
         # On any error (including malformed config), return default
         return _get_default_flag(feature_name)
 

@@ -45,7 +45,7 @@ class _CapturingDispatcher:
                 results.append(
                     HandlerResult(handler=handler.name, success=True, duration=0.0)
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 results.append(
                     HandlerResult(
                         handler=handler.name,

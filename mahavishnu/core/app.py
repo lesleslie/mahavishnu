@@ -58,7 +58,7 @@ def _log_budget_watchdog_done(task: asyncio.Task) -> None:
     """Log the outcome of a budget-watchdog asyncio task (mostly for shutdown)."""
     try:
         exc = task.exception()
-    except asyncio.CancelledError, Exception:  # noqa: BLE001
+    except asyncio.CancelledError, Exception:  # background task — broad catch is the documented contract  # noqa: BLE001
         exc = None
     if exc is not None:
         logger.warning("budget.watchdog exited with error: %s", exc)
@@ -377,7 +377,7 @@ class MahavishnuApp:
                                     signature = hash(response.text)
                             else:
                                 signature = hash(response.text)
-                        except Exception:  # noqa: BLE001
+                        except Exception:  # background task — broad catch is the documented contract  # noqa: BLE001
                             # On any failure, fall through to push so we
                             # still attempt to refresh the Oneiric view.
                             signature = None
@@ -414,7 +414,7 @@ class MahavishnuApp:
                     },
                 )
                 probe.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.warning(
                 "runtime-facts watcher probe failed; reconfigure hook disabled: %s",
                 exc,
@@ -505,7 +505,7 @@ class MahavishnuApp:
         if mcp_client is not None and hasattr(mcp_client, "call_tool"):
             try:
                 store = MCPBudgetStore(mcp_client)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning(
                     "budget.watchdog: failed to build MCPBudgetStore: %s",
                     exc,
@@ -566,11 +566,11 @@ class MahavishnuApp:
                 await task
             except asyncio.CancelledError:
                 logger.debug("budget.watchdog: shutdown acknowledged")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("budget.watchdog: shutdown error: %s", exc)
         except asyncio.CancelledError:
             logger.debug("budget.watchdog: stop cancelled before drain")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.warning("budget.watchdog: unexpected shutdown error: %s", exc)
         self.budget_watchdog_task = None
         self.budget_watchdog_stop = None

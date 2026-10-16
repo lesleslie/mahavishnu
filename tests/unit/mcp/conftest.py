@@ -31,7 +31,7 @@ def _restore_real_mcp() -> None:
 
         try:
             import mcp
-            import mcp.types  # noqa: F401
+            import mcp.types
         except ImportError:
             pass  # unavailable; individual tests will fail naturally
 

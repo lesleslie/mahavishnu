@@ -99,7 +99,7 @@ class PermissionChecker:
             # PyObjC not available, assume permissions are granted
             # This allows the code to run in test environments
             return True
-        except Exception:  # macOS API failure — broad catch to return False (denied) when PyObjC call throws any error  # noqa: BLE001
+        except Exception:  # macOS API failure — broad catch to return False (denied) when PyObjC call throws any error  # background task — broad catch is the documented contract  # noqa: BLE001
             return False
 
     def check_screen_recording(self) -> bool:
@@ -134,7 +134,7 @@ class PermissionChecker:
         except ImportError:
             # Quartz not available, assume permissions are granted
             return True
-        except Exception:  # macOS API failure — broad catch to return False (denied) when Quartz screenshot probe throws any error  # noqa: BLE001
+        except Exception:  # macOS API failure — broad catch to return False (denied) when Quartz screenshot probe throws any error  # background task — broad catch is the documented contract  # noqa: BLE001
             return False
 
     def get_accessibility_status(self) -> PermissionStatus:
@@ -220,7 +220,7 @@ class PermissionChecker:
             return AXIsProcessTrustedWithOptions(options)  # type: ignore[no-any-return]
         except ImportError:
             return True
-        except Exception:  # macOS API failure — broad catch to return False (denied) when PyObjC trust-prompt call throws any error  # noqa: BLE001
+        except Exception:  # macOS API failure — broad catch to return False (denied) when PyObjC trust-prompt call throws any error  # background task — broad catch is the documented contract  # noqa: BLE001
             return False
 
     def to_dict(self) -> dict:

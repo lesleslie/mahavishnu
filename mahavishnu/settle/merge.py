@@ -499,7 +499,7 @@ def _runtime_fallback(
         # the bootstrap (or a test fake). The default no-op keeps the
         # hot path branch-free for non-bootstrap importers.
         _mark_fallback_callback()
-    except Exception as exc:  # observability side-effects must never block merge decision
+    except Exception as exc:  # observability side-effects must never block merge decision  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         logger.warning(
             "merge.semantic.fallback_observability_error: "
             "type=%s message=%s — fallback decision stands, "

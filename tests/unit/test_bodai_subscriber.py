@@ -36,7 +36,7 @@ from mahavishnu.core.events.bodai_subscriber import (
 )
 from mahavishnu.core.events.canonical import create_oneiric_envelope
 from mahavishnu.core.events.contract import (
-    InMemoryEventTransport,  # noqa: F401  (kept for downstream test references)
+    InMemoryEventTransport,
 )
 from mahavishnu.core.events.envelope import EventEnvelope as MahavishnuEventEnvelope
 

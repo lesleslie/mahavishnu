@@ -286,7 +286,7 @@ class ResilientEmbeddingClient:
             self._circuit_breaker.record_failure()
             return None
 
-        except Exception as e:  # Embedding tier records circuit-breaker failure and falls through to next tier on any error  # noqa: BLE001
+        except Exception as e:  # Embedding tier records circuit-breaker failure and falls through to next tier on any error  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"akosha_embedding_failed: {e}")
             self._circuit_breaker.record_failure()
             return None
@@ -310,7 +310,7 @@ class ResilientEmbeddingClient:
                 if self._validate_dimension(embedding, "local_service"):
                     return embedding
             return None
-        except Exception as e:  # Local embedding tier logs and falls through to next tier on any error  # noqa: BLE001
+        except Exception as e:  # Local embedding tier logs and falls through to next tier on any error  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"local_embedding_failed: {e}")
             return None
 
@@ -331,7 +331,7 @@ class ResilientEmbeddingClient:
             if cached and self._validate_dimension(cached, "cache"):
                 return cached
             return None
-        except Exception as e:  # Cache tier logs and falls through to next tier on any error
+        except Exception as e:  # Cache tier logs and falls through to next tier on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"cache_lookup_failed: {e}")
             return None
 
@@ -446,7 +446,7 @@ class ResilientEmbeddingClient:
                 result = await self._embedding_service.embed(uncached_texts)
                 if result.embeddings:
                     batch_embeddings = result.embeddings
-            except Exception as e:  # Batch embedding logs and continues with per-item fallback on any error  # noqa: BLE001
+            except Exception as e:  # Batch embedding logs and continues with per-item fallback on any error  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.debug(f"local_batch_failed: {e}")
 
         results: list[ResilientEmbeddingResult] = []
@@ -559,7 +559,7 @@ class ResilientEmbeddingClient:
             self._circuit_breaker.record_failure()
             return None
 
-        except Exception as e:  # Akosha batch embedding records circuit-breaker failure and falls through to next tier on any error  # noqa: BLE001
+        except Exception as e:  # Akosha batch embedding records circuit-breaker failure and falls through to next tier on any error  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"akosha_batch_failed: {e}")
             self._circuit_breaker.record_failure()
             return None

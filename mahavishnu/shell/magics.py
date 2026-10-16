@@ -86,5 +86,5 @@ class MahavishnuMagics(Magics):
                 print(f"Workflow not found: {workflow_id}")
                 return
             self.workflow_formatter.format_workflow_detail(workflow)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             print(f"Error fetching workflow: {e}")

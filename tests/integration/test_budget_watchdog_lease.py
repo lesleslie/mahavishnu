@@ -57,13 +57,13 @@ class _RecordingEmitter:
         self.spans.append((name, dict(attrs)))
 
         class _Span:
-            def __enter__(self) -> _Span:  # noqa: PYI034 - test stub
+            def __enter__(self) -> _Span:
                 return self
 
             def __exit__(self, *_: object) -> bool | None:
                 return None
 
-            async def __aenter__(self) -> _Span:  # noqa: PYI034 - test stub
+            async def __aenter__(self) -> _Span:
                 return self
 
             async def __aexit__(self, *_: object) -> bool | None:

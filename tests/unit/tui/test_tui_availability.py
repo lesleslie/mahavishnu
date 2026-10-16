@@ -90,7 +90,7 @@ async def test_monitor_app_action_refresh_with_mock_provider() -> None:
     app = MonitorApp(data_provider=provider)
     try:
         await app.action_refresh()
-    except Exception:  # noqa: BLE001 - event handler; logs and continues
+    except Exception:  # TUI handler — broad catch is the documented contract  # noqa: BLE001
         # The Textual App lifecycle (query_one, mount) requires a
         # running app; the headless test can't satisfy that. The
         # contract we care about is that the data was fetched.

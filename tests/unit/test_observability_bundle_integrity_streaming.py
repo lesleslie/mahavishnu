@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 
 try:
-    import zstandard  # noqa: F401
+    import zstandard
 except ImportError:
     pytest.skip(
         "zstandard not installed; uv sync --group compression-zstd required",
@@ -31,7 +31,7 @@ except ImportError:
     )
 
 try:
-    from opentelemetry import metrics as _otel_metrics  # noqa: F401
+    from opentelemetry import metrics as _otel_metrics
 except ImportError:
     pytest.skip(
         "opentelemetry not installed; observability metrics tests require it",

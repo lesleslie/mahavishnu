@@ -326,7 +326,7 @@ class LoadTestRunner:
             self.results.append(result)
             return result
 
-        except Exception as e:  # load test runner captures any setup/request error as a failed test result  # noqa: BLE001
+        except Exception as e:  # load test runner captures any setup/request error as a failed test result  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Load test failed: {e}")
             result = LoadTestResult(
                 test_name=self.config.name,

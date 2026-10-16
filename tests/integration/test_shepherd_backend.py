@@ -24,7 +24,7 @@ unit gate (``pytest -m 'not integration'``).
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path  # noqa: TC003  (only used in annotations under future-import)
+from pathlib import Path
 import shutil
 import subprocess
 import sys

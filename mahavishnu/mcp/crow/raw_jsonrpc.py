@@ -182,7 +182,7 @@ class _RawJsonRpcClient:
                     fut.set_result(msg)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # MCP substrate reader loop — broad catch to log loop crash without teardown (CancelledError re-raised above)  # noqa: BLE001
+        except Exception as exc:  # MCP substrate reader loop — broad catch to log loop crash without teardown (CancelledError re-raised above)  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("crow-mcp reader loop crashed: %s", exc)
 
     async def _round_trip(self, request: dict[str, Any], timeout: float) -> dict[str, Any]:
@@ -254,7 +254,7 @@ class _RawJsonRpcClient:
             self._reader_task.cancel()
             try:
                 await asyncio.wait_for(asyncio.shield(self._reader_task), timeout=2.0)
-            except BaseException as exc:  # crow-mcp reader shutdown — broad catch ensures pending cleanup runs on cancellation  # noqa: BLE001
+            except BaseException as exc:  # crow-mcp reader shutdown — broad catch ensures pending cleanup runs on cancellation  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.debug("crow-mcp reader shutdown skipped: %s", exc)
         # Fail any still-pending futures.
         for fut in self._pending.values():
@@ -265,7 +265,7 @@ class _RawJsonRpcClient:
         if proc.stdin is not None:
             try:
                 proc.stdin.close()
-            except Exception as exc:  # best-effort subprocess teardown — broad catch so stdin close failure doesn't prevent SIGKILL reap below  # noqa: BLE001
+            except Exception as exc:  # best-effort subprocess teardown — broad catch so stdin close failure doesn't prevent SIGKILL reap below  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.debug("subprocess stdin close failed: %s", exc)
         # SIGKILL + reap.
         if proc.returncode is None:

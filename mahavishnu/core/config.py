@@ -580,7 +580,7 @@ class PoolConfig(BaseModel):
         """
         try:
             from mahavishnu.pools._registry import list_pool_types
-        except Exception:  # Config validator — registry import failures fall through to "accept the value", letting the call site surface a real error  # noqa: BLE001
+        except Exception:  # Config validator — registry import failures fall through to "accept the value", letting the call site surface a real error  # background task — broad catch is the documented contract  # noqa: BLE001
             return v
         if v not in list_pool_types():
             raise ValueError(

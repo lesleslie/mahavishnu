@@ -1097,7 +1097,7 @@ class TestPoolManagerIntegration:
 
         # Override collect_memory to raise exception
         async def failing_collect():
-            raise Exception("Collection failed")  # noqa: TRY002 - test fixture uses generic exception intentionally
+            raise Exception("Collection failed")
 
         mock_pool.collect_memory = failing_collect
 

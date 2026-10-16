@@ -96,7 +96,7 @@ class MemoryOutboxDrainer:
         for row in batch:
             try:
                 await self._sink(row.key, row.payload)
-            except Exception as exc:  # Drainer wraps any sink error so it can mark rows failed or retry without aborting the batch  # noqa: BLE001
+            except Exception as exc:  # Drainer wraps any sink error so it can mark rows failed or retry without aborting the batch  # background task — broad catch is the documented contract  # noqa: BLE001
                 # Stop the batch on first sink exception to preserve ordering.
                 # If this attempt would push us past max_attempts, mark the
                 # row failed (terminal); otherwise bump attempts and leave it

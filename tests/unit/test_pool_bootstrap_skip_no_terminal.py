@@ -38,8 +38,8 @@ class _NoOpMcp:
     def __init__(self) -> None:
         self._registered: dict[str, Any] = {}
 
-    def tool(self) -> Any:  # noqa: ANN401 - test stub
-        def _decorator(fn: Any) -> Any:  # noqa: ANN401 - test stub
+    def tool(self) -> Any:
+        def _decorator(fn: Any) -> Any:
             self._registered[fn.__name__] = fn
             return fn
 

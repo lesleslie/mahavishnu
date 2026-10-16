@@ -312,7 +312,7 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
             else:
                 settings = _load_settings_from_dir(config_dir)
                 runtime_settings_source = str(config_dir)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
             runtime_validations.append(
                 ValidationResult(
                     valid=False,

@@ -484,7 +484,7 @@ async def test_retry_on_transient_failure(mock_config):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            raise Exception("Transient error")  # noqa: TRY002 - test fixture uses generic exception intentionally
+            raise Exception("Transient error")
         return await original_create(*args, **kwargs) if False else mock_agent_result
 
     with (

@@ -189,7 +189,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
             import shutil
 
             return shutil.which(self._git_executable) is not None
-        except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
+        except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
             return False
 
     async def create_worktree(
@@ -993,7 +993,7 @@ class LocalWorktreeProvider(WorktreeProvider):
                 handle.storage_ref.path,
                 force=True,
             )
-        except Exception as exc:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
+        except Exception as exc:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -1156,7 +1156,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._storage is not None:
             try:
                 storage_ok = await self._storage.health()
-            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
+            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
                 storage_ok = False
             if not storage_ok:
                 report.healthy = False
@@ -1165,7 +1165,7 @@ class LocalWorktreeProvider(WorktreeProvider):
         if self._cache is not None:
             try:
                 cache_ok = await self._cache.health()
-            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # noqa: BLE001
+            except Exception:  # utility wrapper around git subprocess / storage_io call — broad catch isolates external failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
                 cache_ok = False
             if not cache_ok:
                 report.healthy = False

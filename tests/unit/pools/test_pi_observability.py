@@ -12,7 +12,7 @@ Req: REQ-PI-009
 from __future__ import annotations
 
 from collections.abc import (
-    Iterator,  # noqa: TC003 — Iterator used in deferred (PEP 563) fixture return annotations
+    Iterator,
 )
 from typing import Any
 

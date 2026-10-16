@@ -294,7 +294,7 @@ class CoordinationMemory:
                 limit=limit,
             )
             return results  # type: ignore[no-any-return]
-        except Exception as e:  # best-effort cross-system memory operation — broad catch isolates storage backend failures from caller  # noqa: BLE001
+        except Exception as e:  # best-effort cross-system memory operation — broad catch isolates storage backend failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
             # If search fails, log error and return empty results
             logger.error(f"Coordination memory search failed: {e}")
             return []
@@ -337,7 +337,7 @@ class CoordinationMemory:
                 content=content,
                 metadata=metadata,
             )
-        except Exception as e:  # best-effort cross-system memory operation — broad catch isolates storage backend failures from caller  # noqa: BLE001
+        except Exception as e:  # best-effort cross-system memory operation — broad catch isolates storage backend failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error("Failed to store coordination memory in Session-Buddy: %s", e)
 
         await self._push_to_akosha(content, metadata)

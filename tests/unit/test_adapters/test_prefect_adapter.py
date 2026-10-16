@@ -575,7 +575,7 @@ async def test_execute_retry_on_transient_failure(prefect_config, sample_repo_pa
         nonlocal call_count
         call_count += 1
         if call_count < 2:
-            raise Exception("Transient connection error")  # noqa: TRY002 - test fixture uses generic exception intentionally
+            raise Exception("Transient connection error")
         return mock_flow_run
 
     mock_client.create_run = create_run_with_retry

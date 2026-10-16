@@ -238,7 +238,7 @@ async def worker_status(worker_id: str) -> dict:
     if pane_fn is not None and getattr(record, "tmux", None) is not None:
         try:
             pane_command = pane_fn(worker_id)
-        except Exception:  # noqa: BLE001
+        except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             pane_command = None
 
     return {

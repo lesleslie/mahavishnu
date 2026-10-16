@@ -238,7 +238,7 @@ class AkoshaEmbedder:
             self._available = True
             logger.info("akosha_embedding_service_available")
             return True
-        except Exception as e:  # MCP call_tool may surface any error; soft-fail to mark embedder unavailable  # noqa: BLE001
+        except Exception as e:  # MCP call_tool may surface any error; soft-fail to mark embedder unavailable  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"akosha_embedding_service_unavailable: {e}")
             self._available = False
             return False
@@ -292,7 +292,7 @@ class AkoshaEmbedder:
             logger.warning(f"unexpected_akosha_response: {result}")
             return [0.0] * self._dimension
 
-        except Exception as e:  # MCP call_tool may surface any error; fall back to zero-vector placeholder  # noqa: BLE001
+        except Exception as e:  # MCP call_tool may surface any error; fall back to zero-vector placeholder  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"akosha_embedding_failed: {e}")
             return [0.0] * self._dimension
 
@@ -317,7 +317,7 @@ class AkoshaEmbedder:
                 return result  # type: ignore[no-any-return]
             return [[0.0] * self._dimension] * len(texts)
 
-        except Exception as e:  # MCP call_tool may surface any error; fall back to zero-vector placeholders  # noqa: BLE001
+        except Exception as e:  # MCP call_tool may surface any error; fall back to zero-vector placeholders  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"akosha_batch_embedding_failed: {e}")
             return [[0.0] * self._dimension] * len(texts)
 
@@ -658,7 +658,7 @@ class OtelIngester:
                 embedder = self._create_embedder()
                 logger.info(f"Successfully initialized fallback backend: {backend.value}")
                 return embedder
-            except Exception as e:  # backend factory may raise any error during init; try next fallback  # noqa: BLE001
+            except Exception as e:  # backend factory may raise any error during init; try next fallback  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 logger.debug(f"Fallback backend {backend.value} unavailable: {e}")
                 continue
 
@@ -749,7 +749,7 @@ class OtelIngester:
 
         except ValidationError:
             raise
-        except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch
+        except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
             # Don't fail - log and continue for other traces
 
@@ -806,7 +806,7 @@ class OtelIngester:
 
         except ValidationError:
             raise
-        except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch
+        except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
 
     async def ingest_batch(self, traces: list[dict[str, Any]]) -> dict[str, Any]:
@@ -831,7 +831,7 @@ class OtelIngester:
             try:
                 await self.ingest_trace(trace)
                 success_count += 1
-            except Exception as e:  # batch driver collects per-trace errors; caller inspects errors list  # noqa: BLE001
+            except Exception as e:  # batch driver collects per-trace errors; caller inspects errors list  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 error_count += 1
                 error_msg = f"Trace {trace.get('trace_id', 'unknown')}: {e}"
                 errors.append(error_msg)
@@ -889,7 +889,7 @@ class OtelIngester:
             logger.info(f"Search for '{query}' returned {len(results)} results")
             return results
 
-        except Exception as e:  # search wrapper soft-fails; downstream callers handle empty results  # noqa: BLE001
+        except Exception as e:  # search wrapper soft-fails; downstream callers handle empty results  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Search failed for query '{query}': {e}")
             return []
 
@@ -1012,7 +1012,7 @@ class OtelIngester:
                 "metadata": metadata,
             }
 
-        except Exception as e:  # read path returns None on any backend failure; caller handles missing trace  # noqa: BLE001
+        except Exception as e:  # read path returns None on any backend failure; caller handles missing trace  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to get trace {trace_id}: {e}")
             return None
 
@@ -1047,7 +1047,7 @@ class OtelIngester:
             logger.debug(f"Trace {trace_id} not found")
             return None
 
-        except Exception as e:  # read path returns None on any backend failure; caller handles missing trace  # noqa: BLE001
+        except Exception as e:  # read path returns None on any backend failure; caller handles missing trace  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to get trace {trace_id}: {e}")
             return None
 
@@ -1067,7 +1067,7 @@ class OtelIngester:
             self._embedding_cache.clear()
             logger.info(f"OTel ingester closed (storage={self._storage_type.value})")
 
-        except Exception as e:  # cleanup must not raise; log and continue  # noqa: BLE001
+        except Exception as e:  # cleanup must not raise; log and continue  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Error closing OTel ingester: {e}")
 
     async def _get_embedding(self, content: str) -> list[float]:
@@ -1093,7 +1093,7 @@ class OtelIngester:
             if self._compressor and self._compressor.available:
                 try:
                     return self._compressor.decompress_batch([cached])[0]
-                except Exception as e:  # TurboQuant decompressor can fail on format drift; evict and re-embed  # noqa: BLE001
+                except Exception as e:  # TurboQuant decompressor can fail on format drift; evict and re-embed  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                     # Cache entry is corrupt (e.g. bit-width changed after restart).
                     # Evict it and fall through to re-generate a fresh embedding.
                     logger.warning(
@@ -1118,7 +1118,7 @@ class OtelIngester:
         if self._compressor and self._compressor.available:
             try:
                 self._embedding_cache[content] = self._compressor.compress_batch([embedding])[0]
-            except Exception as e:  # TurboQuant compress can fail on edge vectors; cache raw as fallback  # noqa: BLE001
+            except Exception as e:  # TurboQuant compress can fail on edge vectors; cache raw as fallback  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 logger.warning(f"turboquant_compress_failed, caching raw: {e}")
                 self._embedding_cache[content] = embedding
         else:

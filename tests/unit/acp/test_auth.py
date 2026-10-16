@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path  # noqa: TC003 — Path is used at runtime (Path("..."), tmp_path / "name")
+from pathlib import Path
 
 import pytest
 

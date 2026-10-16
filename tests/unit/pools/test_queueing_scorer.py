@@ -127,7 +127,7 @@ class TestQueueingObservationBuffer:
         # the buffer state should still be recoverable.
         try:
             buf.fit(num_workers=2)
-        except Exception:  # noqa: BLE001
+        except Exception:  # background task — broad catch is the documented contract  # noqa: BLE001
             pass
         # buffer is still usable
         assert len(buf.arrivals) == 2
@@ -301,7 +301,7 @@ class TestApplyQueueingPenalty:
         # Real constructor (no __new__) so internal dicts are set.
         try:
             return PoolManager(message_bus=None)
-        except Exception:
+        except Exception:  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             # The test environment may not have a configured
             # MahavishnuSettings; the apply_queueing_penalty tests
             # only touch _queueing_buffers and _pools, which are

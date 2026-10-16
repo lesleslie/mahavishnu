@@ -229,7 +229,7 @@ def _post_tool_use() -> int:
                 redis_url=_redis_url(),
             )
         )
-    except Exception as exc:  # noqa: BLE001 - boundary handler preserves the existing exit code
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         _log(f"bodai-activity-post-tool-use: bus read failed: {exc}")
         return 0
 
@@ -254,7 +254,7 @@ def _post_tool_use() -> int:
             continue
         try:
             summary = _format_summary(envelope)
-        except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+        except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
             _log("bodai-activity-post-tool-use: failed to format envelope")
             new_last_id = message_id
             continue
@@ -301,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.path.insert(0, _CLAUDE_PROJECT_DIR)
         from mahavishnu.bodai_hook_bridge import handle
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception as exc:  # noqa: BLE001 - boundary handler preserves the existing exit code
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(
             f"Hook output: bodai-activity-post-tool-use: bridge routing failed: {exc}\n"
         )
@@ -312,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write("Hook output: bodai-activity-post-tool-use: unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

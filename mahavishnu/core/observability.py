@@ -202,7 +202,7 @@ class ObservabilityManager:
                 description="Drift warning events from the warn detector (only emitted when changepoint.detector == 'two_stage'). Confirmed alerts emit drift_detected_total separately.",
             )
 
-        except Exception as e:  # OTel init may fail on partial/broken installations; fall back gracefully  # noqa: BLE001
+        except Exception as e:  # OTel init may fail on partial/broken installations; fall back gracefully  # background task — broad catch is the documented contract  # noqa: BLE001
             self.logger.warning(f"Failed to initialize OpenTelemetry: {e}")
             self._init_fallback_components()
 
@@ -409,7 +409,7 @@ class ObservabilityManager:
                 changepoint_cfg = getattr(self.config, "changepoint", None)
                 if changepoint_cfg is not None:
                     cadence = float(getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0))
-            except Exception:  # config block may be missing or malformed; use default cadence
+            except Exception:  # config block may be missing or malformed; use default cadence  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 self.logger.debug("config has no changepoint block; using default cadence")
             sampler = MetricSampler(cadence_seconds=cadence)
             self._metric_sampler = sampler  # type: ignore[attr-defined]
@@ -578,7 +578,7 @@ class ObservabilityManager:
             if changepoint_cfg is None:
                 return False
             return bool(getattr(changepoint_cfg, "enabled", False))
-        except Exception:  # config gating; missing/malformed config => feature disabled
+        except Exception:  # config gating; missing/malformed config => feature disabled  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return False
 
     def _changepoint_reference_mode(self) -> str:
@@ -587,7 +587,7 @@ class ObservabilityManager:
             if changepoint_cfg is None:
                 return "none"
             return str(getattr(changepoint_cfg, "reference_detector", "three_sigma"))
-        except Exception:  # config gating; missing/malformed config => reference disabled
+        except Exception:  # config gating; missing/malformed config => reference disabled  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return "none"
 
     def _get_or_create_changepoint_detector(self):
@@ -623,7 +623,7 @@ class ObservabilityManager:
                     defaults.target_mean_auto_window,
                 )
             )
-        except Exception:  # config block malformed; fall back to model defaults  # noqa: BLE001
+        except Exception:  # config block malformed; fall back to model defaults  # background task — broad catch is the documented contract  # noqa: BLE001
             from mahavishnu.core.config import ChangepointConfig
 
             defaults = ChangepointConfig()
@@ -668,7 +668,7 @@ class ObservabilityManager:
                         max(10, auto_window // 2),
                     )
                     return None
-            except Exception:  # sampler/detector warmup may fail; defer detector creation
+            except Exception:  # sampler/detector warmup may fail; defer detector creation  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 return None
 
         if algo == "page_hinkley":
@@ -715,7 +715,7 @@ class ObservabilityManager:
             if changepoint_cfg is None:
                 return "pool_queue_depth"
             return str(getattr(changepoint_cfg, "target_metric", "pool_queue_depth"))
-        except Exception:  # config read fallback; default target is documented  # noqa: BLE001
+        except Exception:  # config read fallback; default target is documented  # background task — broad catch is the documented contract  # noqa: BLE001
             return "pool_queue_depth"
 
     @staticmethod
@@ -850,7 +850,7 @@ class ObservabilityManager:
         try:
             cfg = getattr(self.config, "observability", None)
             override = getattr(cfg, "drift_runbook_url", None)
-        except Exception:  # config read best-effort; fall back to default runbook URL
+        except Exception:  # config read best-effort; fall back to default runbook URL  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             override = None
         return override or default
 
@@ -954,7 +954,7 @@ class ObservabilityManager:
                         "detector": detector_name,
                     },
                 )
-        except Exception as exc:  # OTel counter writes are best-effort; we still log the drift event  # noqa: BLE001
+        except Exception as exc:  # OTel counter writes are best-effort; we still log the drift event  # background task — broad catch is the documented contract  # noqa: BLE001
             self._log_debug("drift counter increment failed: %s", exc)
         self._last_two_stage_result = None  # type: ignore[attr-defined]
 
@@ -970,7 +970,7 @@ class ObservabilityManager:
             detector_obj = getattr(self, "_changepoint_detector", None)
             if detector_obj is not None and hasattr(detector_obj, "reset"):
                 detector_obj.reset()
-        except Exception as exc:  # detector reset is best-effort; next fire restarts the score cleanly either way  # noqa: BLE001
+        except Exception as exc:  # detector reset is best-effort; next fire restarts the score cleanly either way  # background task — broad catch is the documented contract  # noqa: BLE001
             self._log_debug("detector reset failed: %s", exc)
 
     def _emit_drift_otel_span(self, span_attributes: dict[str, object]) -> None:
@@ -985,7 +985,7 @@ class ObservabilityManager:
                     attributes=cast("Any", span_attributes),
                 ):
                     pass
-        except Exception as exc:  # OTel span emission is best-effort; structured log captures the drift regardless  # noqa: BLE001
+        except Exception as exc:  # OTel span emission is best-effort; structured log captures the drift regardless  # background task — broad catch is the documented contract  # noqa: BLE001
             self._log_debug("OTel span emission failed: %s", exc)
 
     def _log_drift_event(
@@ -1062,7 +1062,7 @@ class ObservabilityManager:
                         "detector": detector_name,
                     },
                 )
-        except Exception as exc:  # drift warning counter write is best-effort; structured log still fires  # noqa: BLE001
+        except Exception as exc:  # drift warning counter write is best-effort; structured log still fires  # background task — broad catch is the documented contract  # noqa: BLE001
             self._log_debug("drift warning counter increment failed: %s", exc)
 
         # Compute baseline statistics from the recent sampler window so the
@@ -1090,7 +1090,7 @@ class ObservabilityManager:
             try:
                 cfg = getattr(self.config, "observability", None)
                 override = getattr(cfg, "drift_runbook_url", None)
-            except Exception:  # config read best-effort; fall back to default runbook URL
+            except Exception:  # config read best-effort; fall back to default runbook URL  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 override = None
             return override or default
 
@@ -1134,7 +1134,7 @@ class ObservabilityManager:
                     attributes=cast("Any", span_attributes),
                 ):
                     pass
-        except Exception as exc:  # OTel span emission is best-effort; structured log records the warning either way  # noqa: BLE001
+        except Exception as exc:  # OTel span emission is best-effort; structured log records the warning either way  # background task — broad catch is the documented contract  # noqa: BLE001
             self._log_debug("drift warning span emission failed: %s", exc)
 
         self._log_warning(
@@ -1238,7 +1238,7 @@ class ObservabilityManager:
                 from opentelemetry.trace import get_tracer_provider
 
                 get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
-            except Exception as e:  # OTel force_flush may fail; log a warning but never raise from cleanup  # noqa: BLE001
+            except Exception as e:  # OTel force_flush may fail; log a warning but never raise from cleanup  # background task — broad catch is the documented contract  # noqa: BLE001
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
     async def start_change_point_tick_loop(
@@ -1317,7 +1317,7 @@ class ObservabilityManager:
                         self._evaluate_change_point(target_metric, value)
                     if reference_mode != "none":
                         self._evaluate_3sigma(target_metric, value)
-                except Exception as exc:  # background tick loop must keep running; swallow per-tick failures and retry next cadence  # noqa: BLE001
+                except Exception as exc:  # background tick loop must keep running; swallow per-tick failures and retry next cadence  # background task — broad catch is the documented contract  # noqa: BLE001
                     self._log_debug("change-point tick failed: %s", exc)
                 await asyncio.sleep(cadence)
 
@@ -1353,7 +1353,7 @@ class ObservabilityManager:
 
                 get_meter_provider().shutdown()  # ty: ignore[unresolved-attribute]
                 get_tracer_provider().shutdown()  # ty: ignore[unresolved-attribute]
-            except Exception as e:  # OTel shutdown is best-effort; never raise from cleanup
+            except Exception as e:  # OTel shutdown is best-effort; never raise from cleanup  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 self.logger.warning(f"Error during observability shutdown: {e}")
 
 

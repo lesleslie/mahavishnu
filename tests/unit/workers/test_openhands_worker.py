@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from mahavishnu.workers.openhands import OpenHandsConfig
 
 
-def make_config(tmp_path: Path) -> "OpenHandsConfig":  # noqa: UP037
+def make_config(tmp_path: Path) -> "OpenHandsConfig":
     from mahavishnu.workers.openhands import OpenHandsConfig
 
     return OpenHandsConfig(

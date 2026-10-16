@@ -540,7 +540,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
 
             except PydanticAIAdapterError:
                 raise
-            except Exception as e:  # Adapter execute converts every underlying failure into a FAILED AgentResult with sanitized message  # noqa: BLE001
+            except Exception as e:  # Adapter execute converts every underlying failure into a FAILED AgentResult with sanitized message  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -746,7 +746,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:  # Adapter execute_agent converts every underlying failure into a FAILED AgentResult  # noqa: BLE001
+            except Exception as e:  # Adapter execute_agent converts every underlying failure into a FAILED AgentResult  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
                 return AgentResult(
                     execution_id=execution_id,
@@ -865,7 +865,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             except TimeoutError:
                 logger.error("MCP server %s cleanup timed out", name)
                 failed_servers.append(name)
-            except Exception as e:  # Adapter cleanup_mcp_servers keeps going when a single server close fails  # noqa: BLE001
+            except Exception as e:  # Adapter cleanup_mcp_servers keeps going when a single server close fails  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("Error closing MCP server %s: %s", name, e)
                 failed_servers.append(name)
 
@@ -901,7 +901,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 self._mcp_servers[tool_config.name] = server
                 logger.info("Initialized MCP server: %s", tool_config.name)
 
-            except Exception as e:  # Adapter MCP init keeps going when one server fails — record failure and continue  # noqa: BLE001
+            except Exception as e:  # Adapter MCP init keeps going when one server fails — record failure and continue  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning(
                     "Failed to initialize MCP server %s: %s",
                     tool_config.name,
@@ -1019,7 +1019,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     tokens_used=getattr(result, "usage", {}).get("total_tokens"),
                 )
 
-            except Exception as e:  # Adapter fallback loop catches every per-model failure and continues to the next model  # noqa: BLE001
+            except Exception as e:  # Adapter fallback loop catches every per-model failure and continues to the next model  # background task — broad catch is the documented contract  # noqa: BLE001
                 last_error = e
                 logger.warning(
                     "Model %s failed: %s",

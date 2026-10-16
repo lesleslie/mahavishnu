@@ -374,7 +374,7 @@ class HybridSearchEngine:
             if result.embeddings and len(result.embeddings) > 0:
                 return result.embeddings[0]
             return None
-        except Exception as e:  # embedding service failure — broad catch to fall back to lexical-only search (per design contract)  # noqa: BLE001
+        except Exception as e:  # embedding service failure — broad catch to fall back to lexical-only search (per design contract)  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.warning(
                 "Failed to generate query embedding",
                 extra={"query": query[:100], "error": str(e)},

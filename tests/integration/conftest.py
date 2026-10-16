@@ -99,5 +99,5 @@ def redis_client() -> Iterator:
                     tl.run_until_complete(client.__aexit__(None, None, None))
                 finally:
                     tl.close()
-        except Exception:
+        except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             pass

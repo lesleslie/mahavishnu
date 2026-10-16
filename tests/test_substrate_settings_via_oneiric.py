@@ -42,7 +42,7 @@ def _isolate_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     settings cache so each test gets a fresh ``MahavishnuSettings``.
     """
     for k in list(monkeypatch.delenv if False else []):
-        pass  # noqa: E501 — placeholder; the loop below does the work
+        pass
     for key in [
         "ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE",
         "ONEIRIC__SUBSTRATE__RETRY__MAX_ATTEMPTS",

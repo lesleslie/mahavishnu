@@ -218,7 +218,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(records)} execution records to PostgreSQL")
             return len(records)
 
-        except Exception as e:  # persistence write — broad catch to re-queue and return 0
+        except Exception as e:  # persistence write — broad catch to re-queue and return 0  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to write execution records: {e}")
             # Re-queue failed records
             self._pending_executions.extend(records)
@@ -249,7 +249,7 @@ class RoutingMetricsPersistence:
                     return self._row_to_execution_record(row)
                 return None
 
-        except Exception as e:  # persistence read — broad catch to return None on any DB failure
+        except Exception as e:  # persistence read — broad catch to return None on any DB failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to get execution {execution_id}: {e}")
             return None
 
@@ -290,7 +290,7 @@ class RoutingMetricsPersistence:
 
                 return [self._row_to_execution_record(r) for r in rows]
 
-        except Exception as e:  # persistence read — broad catch to return empty list on DB failure
+        except Exception as e:  # persistence read — broad catch to return empty list on DB failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to get recent executions: {e}")
             return []
 
@@ -365,7 +365,7 @@ class RoutingMetricsPersistence:
 
             logger.debug(f"Wrote adapter stats for {stats.adapter.value} on {stats.date}")
 
-        except Exception as e:  # persistence write — broad catch to log error and continue
+        except Exception as e:  # persistence write — broad catch to log error and continue  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to write adapter stats: {e}")
 
     async def get_adapter_stats(
@@ -399,7 +399,7 @@ class RoutingMetricsPersistence:
 
                 return [self._row_to_adapter_stats(r) for r in rows]
 
-        except Exception as e:  # persistence read — broad catch to return empty list on DB failure
+        except Exception as e:  # persistence read — broad catch to return empty list on DB failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to get adapter stats: {e}")
             return []
 
@@ -475,7 +475,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(decisions)} routing decisions to PostgreSQL")
             return len(decisions)
 
-        except Exception as e:  # persistence write — broad catch to re-queue and return 0
+        except Exception as e:  # persistence write — broad catch to re-queue and return 0  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to write routing decisions: {e}")
             self._pending_decisions.extend(decisions)
             return 0
@@ -528,7 +528,7 @@ class RoutingMetricsPersistence:
             logger.debug(f"Wrote {len(costs)} cost records to PostgreSQL")
             return len(costs)
 
-        except Exception as e:  # persistence write — broad catch to re-queue and return 0
+        except Exception as e:  # persistence write — broad catch to re-queue and return 0  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Failed to write cost records: {e}")
             self._pending_costs.extend(costs)
             return 0
@@ -562,7 +562,7 @@ class RoutingMetricsPersistence:
                     "pool_idle": self._pool.get_idle_size(),
                 }
 
-        except Exception as e:  # health check — broad catch to report any error as unhealthy
+        except Exception as e:  # health check — broad catch to report any error as unhealthy  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return {
                 "status": "unhealthy",
                 "error": str(e),

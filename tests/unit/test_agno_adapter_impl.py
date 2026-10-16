@@ -2217,7 +2217,7 @@ class TestRetryBehavior:
         async def mock_run(agent, message, context=None, session_id=None):
             # Fail first two times
             if call_count < 3:
-                raise Exception("Transient error")  # noqa: TRY002 - test fixture uses generic exception intentionally
+                raise Exception("Transient error")
             return AgentRunResult(
                 agent_name="test_agent",
                 content="Success after retry",

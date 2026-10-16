@@ -1216,7 +1216,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"phase-b: cannot import plan_index.cron_core: {exc}\n")
         else:
             try:
-                from mahavishnu.plan_index.record import PlanRecord  # noqa: TC001
+                from mahavishnu.plan_index.record import PlanRecord
                 from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
 
                 records: list[PlanRecord] = discover_records(repo_root)

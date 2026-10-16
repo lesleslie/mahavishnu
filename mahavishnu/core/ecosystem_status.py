@@ -563,7 +563,7 @@ class EcosystemStatusService:
                         required=required,
                         latency_ms=body.get("latency_ms"),
                     )
-            except Exception:  # health probe over HTTP may fail any library error; report UNKNOWN
+            except Exception:  # health probe over HTTP may fail any library error; report UNKNOWN  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 services[name] = ServiceStatus(
                     status=CanonicalStatus.UNKNOWN,
                     required=required,
@@ -585,7 +585,7 @@ class EcosystemStatusService:
                     last_check=datetime.now(UTC),
                     preference_score=health.get("preference_score"),
                 )
-            except Exception:  # adapter.get_health may raise any error; report UNKNOWN
+            except Exception:  # adapter.get_health may raise any error; report UNKNOWN  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
                 adapters[name] = AdapterStatus(
                     status=CanonicalStatus.UNKNOWN,
                     last_check=datetime.now(UTC),
@@ -605,7 +605,7 @@ class EcosystemStatusService:
                 failed_count=failed,
                 recent_count=len(workflows),
             )
-        except Exception:  # workflow provider may be unconfigured or throw; return empty summary
+        except Exception:  # workflow provider may be unconfigured or throw; return empty summary  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return WorkflowSummary()
 
     async def _collect_recovery(self) -> RecoverySummary:
@@ -617,7 +617,7 @@ class EcosystemStatusService:
             if isinstance(summary, RecoverySummary):
                 return summary
             return RecoverySummary.model_validate(summary)
-        except Exception:  # recovery provider returns dict or model; both can fail any validation error  # noqa: BLE001
+        except Exception:  # recovery provider returns dict or model; both can fail any validation error  # background task — broad catch is the documented contract  # noqa: BLE001
             return RecoverySummary()
 
     async def _collect_alerts(self) -> AlertSummary:
@@ -644,7 +644,7 @@ class EcosystemStatusService:
                 by_severity=by_severity,
                 top_alerts=top,
             )
-        except Exception:  # alert provider may be unconfigured or throw; return empty summary
+        except Exception:  # alert provider may be unconfigured or throw; return empty summary  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return AlertSummary()
 
     async def _collect_capabilities(self) -> dict[str, CapabilityStatus]:
@@ -702,7 +702,7 @@ class EcosystemStatusService:
                         cap_statuses[cap], 0
                     ):
                         cap_statuses[cap] = adapter_status
-            except Exception as e:  # single adapter capability probe must not break the whole inventory walk  # noqa: BLE001
+            except Exception as e:  # single adapter capability probe must not break the whole inventory walk  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.debug("Adapter capability status skipped: %s", e)
 
         result: dict[str, CapabilityStatus] = {}

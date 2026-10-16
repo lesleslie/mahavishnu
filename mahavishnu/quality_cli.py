@@ -31,7 +31,7 @@ async def run_quality_check(output: str) -> int | None:
         # a deterministic ``int | None`` rather than an import error.
         score = float(len(output.strip()))
         return int(score)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         logger.warning("Crackerjack quality check failed: %s", e)
         return None
 
@@ -59,7 +59,7 @@ def quality_check(
             "[yellow]crackerjack not installed.[/yellow] Install: [cyan]uv add crackerjack[/cyan]"
         )
         return
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
         logger.warning("Quality check failed: %s", e)
         formatter.format_dict(
             {"status": "[red]ERROR[/red]", "error": str(e)},

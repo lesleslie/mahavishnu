@@ -75,7 +75,7 @@ def _run_hook(payload: dict[str, object]) -> int:
 
     try:
         result = surface_relevant("tool_result", context_text, limit=3)
-    except Exception as exc:  # noqa: BLE001 - boundary handler: never block PostToolUse
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: jot-post-tool-use surface_relevant failed: {exc}\n")
         sys.stderr.flush()
         return 0
@@ -95,7 +95,7 @@ def _run_hook(payload: dict[str, object]) -> int:
     }
     try:
         print(json.dumps(output))
-    except Exception as exc:  # noqa: BLE001 - boundary handler
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: jot-post-tool-use json.dumps failed: {exc}\n")
         sys.stderr.flush()
         return 0
@@ -112,7 +112,7 @@ def main() -> int:
     # influence the existing exit code).
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception as exc:  # noqa: BLE001 - boundary handler
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: jot-post-tool-use bridge dispatch failed: {exc}\n")
         sys.stderr.flush()
 
@@ -122,7 +122,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # noqa: BLE001 - boundary handler: never block PostToolUse
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write("Hook output: jot-post-tool-use unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

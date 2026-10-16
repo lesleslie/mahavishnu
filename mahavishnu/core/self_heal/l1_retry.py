@@ -80,7 +80,7 @@ async def l1_retry[T](
     for attempt_index in range(1, max_attempts + 1):
         try:
             return await operation(*args, **kwargs)
-        except Exception as exc:  # Background task — L1 retry absorbs every transient Exception and re-raises as L1RetryExhaustedError after the budget  # noqa: BLE001
+        except Exception as exc:  # Background task — L1 retry absorbs every transient Exception and re-raises as L1RetryExhaustedError after the budget  # background task — broad catch is the documented contract  # noqa: BLE001
             last_exc = exc
             if attempt_index >= max_attempts:
                 break

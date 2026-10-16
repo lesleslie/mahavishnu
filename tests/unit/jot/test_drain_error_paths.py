@@ -300,7 +300,7 @@ def _seed_in_flight(
     current_attempt: int = 1,
 ) -> None:
     """Seed a JSONL log with a capture + in-flight dispatch."""
-    from mahavishnu.jot.drain import log_path as _lp  # noqa: F401
+    from mahavishnu.jot.drain import log_path as _lp
 
     _write(
         isolated_log,

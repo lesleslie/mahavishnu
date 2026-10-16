@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.unit
 
 try:
-    import zstandard  # noqa: F401
+    import zstandard
 except ImportError:
     pytest.skip(
         "zstandard required; uv sync --group compression-zstd",
@@ -357,7 +357,7 @@ def tmp_git_repo(tmp_path: Path, monkeypatch) -> Path:
         subprocess.run(
             ["git", "commit", "-q", "-m", "init"], cwd=repo, check=True, capture_output=True
         )
-    except Exception:
+    except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         pytest.skip("git unavailable or repo init failed")
     return repo
 
@@ -508,7 +508,7 @@ class TestCreateWorktreeHandleStreaming:
                 base_ref="HEAD",
                 principal=_principal(),
             )
-        except Exception as exc:  # noqa: BLE001 — diagnostic
+        except Exception as exc:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             pytest.fail(f"create_worktree_handle raised: {type(exc).__name__}: {exc}")
 
         # Wait briefly for the producer-thread-state in case metrics are

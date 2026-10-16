@@ -416,7 +416,7 @@ def handle_pool_bootstrap(env: CanonicalEnvelope) -> int:
             "pool_bootstrap event observed",
             extra={"harness": env.harness, "session_id": env.session_id},
         )
-    except Exception as exc:  # hook bridge — SessionStart must always return 0  # noqa: BLE001
+    except Exception as exc:  # hook bridge — SessionStart must always return 0  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         # Use stderr (not logger) to avoid a logging failure cascading
         # into another try/except. SessionStart must always return 0.
         import sys

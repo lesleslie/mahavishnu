@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path  # noqa: TC003 — used directly by test fixtures
+from pathlib import Path
 import subprocess
 
 import pytest

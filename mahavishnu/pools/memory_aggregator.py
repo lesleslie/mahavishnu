@@ -217,7 +217,7 @@ class MemoryAggregator:
             memory_items = await _await_if_needed(pool.collect_memory())
             logger.info(f"Collected {len(memory_items)} items from pool {pool_id}")
             return memory_items  # type: ignore[no-any-return]
-        except Exception as e:  # Pool memory collection logs and returns empty list so aggregation can still proceed  # noqa: BLE001
+        except Exception as e:  # Pool memory collection logs and returns empty list so aggregation can still proceed  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
 
@@ -417,7 +417,7 @@ class MemoryAggregator:
             while not self._shutdown_event.is_set():
                 try:
                     await self.collect_and_sync(pool_manager)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
                     logger.error(f"Memory sync error: {e}")
 
                 # Sleep with shutdown check
@@ -523,7 +523,7 @@ class MemoryAggregator:
         if self._outbox_drainer is not None:
             try:
                 await self._outbox_drainer.drain_once()
-            except Exception as e:  # Outbox drainer failure logs and lets the rest of the sync proceed  # noqa: BLE001
+            except Exception as e:  # Outbox drainer failure logs and lets the rest of the sync proceed  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning(f"Outbox drainer failed during collect_and_sync: {e}")
 
         # Sync summary to Akosha
@@ -726,7 +726,7 @@ class MemoryAggregator:
                         "pool_type": pool.config.pool_type,
                         "status": (await _await_if_needed(pool.status())).value,
                     }
-                except Exception as e:  # Pool stats collection logs and records zero count so aggregation can still return per-pool data  # noqa: BLE001
+                except Exception as e:  # Pool stats collection logs and records zero count so aggregation can still return per-pool data  # background task — broad catch is the documented contract  # noqa: BLE001
                     stats[pool_id] = {
                         "error": str(e),
                         "memory_count": 0,

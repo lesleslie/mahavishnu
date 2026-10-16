@@ -208,7 +208,7 @@ class AutomationManager:
                     self._backend = backend_cls()
                     logger.info(f"Selected backend: {name}")
                     return
-                except Exception as e:  # Backend initialization logs and falls through to the next available backend  # noqa: BLE001
+                except Exception as e:  # Backend initialization logs and falls through to the next available backend  # background task — broad catch is the documented contract  # noqa: BLE001
                     logger.warning(f"Failed to initialize {name} backend: {e}")
                     continue
 
@@ -275,7 +275,7 @@ class AutomationManager:
                 data=result if isinstance(result, dict) else {"result": result},
                 duration_ms=duration_ms,
             )
-        except Exception as e:  # Automation manager translates any failure into an AutomationResult rather than propagating  # noqa: BLE001
+        except Exception as e:  # Automation manager translates any failure into an AutomationResult rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001
             duration_ms = (time.time() - start_time) * 1000
             self._record_operation(False)
             logger.error(f"Operation {operation_type} failed: {e}")

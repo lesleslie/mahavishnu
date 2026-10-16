@@ -194,7 +194,7 @@ async def find_merged_worktrees(
     if coordinator is not None:
         try:
             listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
-        except Exception:  # candidate enumeration — broad catch to return empty candidates when coordinator is unavailable  # noqa: BLE001
+        except Exception:  # candidate enumeration — broad catch to return empty candidates when coordinator is unavailable  # background task — broad catch is the documented contract  # noqa: BLE001
             return []
         if not listed.get("success"):
             return []
@@ -318,7 +318,7 @@ class WorktreePruner:
             return WorktreePruneResult(candidate, False, None, "candidate changed since discovery")
         try:
             return await self._remove_with_escalation(candidate, force_reason, user_id)
-        except Exception as exc:  # per-candidate removal wrapper — broad catch to convert any failure into a structured PruneResult  # noqa: BLE001
+        except Exception as exc:  # per-candidate removal wrapper — broad catch to convert any failure into a structured PruneResult  # background task — broad catch is the documented contract  # noqa: BLE001
             return WorktreePruneResult(candidate, False, None, str(exc))
 
     @staticmethod

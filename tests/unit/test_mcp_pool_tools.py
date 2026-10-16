@@ -229,7 +229,7 @@ class TestPoolCloseTool:
             try:
                 await mock_pool_manager.close_pool(pool_id)
                 return {"pool_id": pool_id, "status": "closed"}
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 return {
                     "pool_id": pool_id,
                     "status": "failed",
@@ -309,7 +309,7 @@ class TestPoolHealthTool:
         async def pool_health():
             try:
                 return await mock_pool_manager.health_check()
-            except Exception as e:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 return {
                     "status": "unhealthy",
                     "error": str(e),
@@ -372,7 +372,7 @@ class TestPoolSearchMemoryTool:
                     limit=limit,
                 )
                 return results
-            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 return []
 
         # Mock the aggregator to raise error

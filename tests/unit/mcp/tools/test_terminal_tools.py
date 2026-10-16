@@ -398,7 +398,7 @@ class TestTerminalLaunch:
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
         fn = registered_mcp.tools["terminal_launch"]
-        snap_before = registered_mcp  # noqa: F841 - placeholder
+        snap_before = registered_mcp
         # Use the singleton via the module's `_metrics` reference. The existing
         # test_pool_share_metrics.py already verifies the metric increment for
         # ``terminal_launch``; this test asserts the same tool is callable when

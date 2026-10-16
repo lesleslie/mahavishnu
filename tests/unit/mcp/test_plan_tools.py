@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from mahavishnu.core.permissions import (
-    Permission,  # noqa: TC001  # annotation-only with __future__ annotations
+    Permission,  # annotation-only with __future__ annotations
 )
 from mahavishnu.mcp.tools.plan_tools import (
     plan_tools_default_store_provider,

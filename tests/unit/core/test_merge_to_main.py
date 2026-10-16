@@ -364,7 +364,7 @@ def test_run_pipeline_iterates_when_no_progress(
 
     # Track whether stage 3 was reached.
     crackerjack_called: list[bool] = []
-    real_crackerjack_called = lambda *a, **kw: (crackerjack_called.append(True) or 0, "")  # noqa: E731
+    real_crackerjack_called = lambda *a, **kw: (crackerjack_called.append(True) or 0, "")
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main.run_crackerjack_gate",
         real_crackerjack_called,
@@ -616,7 +616,7 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_merged_branch(
     sibling.mkdir()
     worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-merged\n"
 
-    def fake_run(args, **kwargs):  # noqa: ARG001
+    def fake_run(args, **kwargs):
         if "merge-base" in args:
             return _FakeProc(returncode=0, stdout="")  # ancestor → rc 0
         if "rev-parse" in args:
@@ -645,7 +645,7 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_squash_merge(
     sibling.mkdir()
     worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-squash\n"
 
-    def fake_run(args, **kwargs):  # noqa: ARG001
+    def fake_run(args, **kwargs):
         if "merge-base" in args:
             return _FakeProc(returncode=1, stdout="")  # NOT an ancestor
         if "rev-parse" in args:
@@ -680,7 +680,7 @@ def test_consolidation_gate_sibling_worktree_check_holds_back_on_unrelated_branc
     sibling.mkdir()
     worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-unrelated\n"
 
-    def fake_run(args, **kwargs):  # noqa: ARG001
+    def fake_run(args, **kwargs):
         if "merge-base" in args:
             return _FakeProc(returncode=1, stdout="")  # NOT an ancestor
         if "rev-parse" in args:
@@ -712,7 +712,7 @@ def test_consolidation_gate_sibling_worktree_check_fails_on_wip_branch(
     sibling.mkdir()
     worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-wip\n"
 
-    def fake_run(args, **kwargs):  # noqa: ARG001
+    def fake_run(args, **kwargs):
         if "rev-parse" in args:
             return _FakeProc(returncode=0, stdout="feat-wip")
         if "merge-base" in args:

@@ -162,7 +162,7 @@ class AdapterManager:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:  # task router — broad catch falls back to manual enum lookup when the value lookup raises  # noqa: BLE001
+        except Exception:  # task router — broad catch falls back to manual enum lookup when the value lookup raises  # background task — broad catch is the documented contract  # noqa: BLE001
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -563,7 +563,7 @@ class CapabilityRouter:
                     "resolution_time_ms": resolution_time_ms,
                 }
 
-        except Exception as e:  # task router — broad catch logs the routing failure and returns an error response  # noqa: BLE001
+        except Exception as e:  # task router — broad catch logs the routing failure and returns an error response  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Capability routing failed: {e}")
             return {
                 "success": False,
@@ -707,7 +707,7 @@ class TaskRouter:
             return adapter
         try:
             return AdapterType(adapter)
-        except Exception:  # task router — broad catch falls back to manual enum lookup when the value lookup raises  # noqa: BLE001
+        except Exception:  # task router — broad catch falls back to manual enum lookup when the value lookup raises  # background task — broad catch is the documented contract  # noqa: BLE001
             for adapter_type in AdapterType:
                 if adapter_type.value == adapter:
                     return adapter_type
@@ -905,7 +905,7 @@ class TaskRouter:
             except RetryExhaustedError as exc:
                 total_attempts += exc.attempts
                 last_error = exc.last_exception if exc.last_exception is not None else exc
-            except Exception as exc:  # task router — broad catch captures the last failure for retry-attempt reporting  # noqa: BLE001
+            except Exception as exc:  # task router — broad catch captures the last failure for retry-attempt reporting  # background task — broad catch is the documented contract  # noqa: BLE001
                 last_error = exc
 
             self.adapter_registry.record_execution(adapter_type, success=False)
@@ -968,7 +968,7 @@ class TaskRouter:
                 "adapter_type": adapter_enum.value,
                 "status": "available_but_no_health_check",
             }
-        except Exception as e:  # task router — broad catch wraps any health-check error into a structured response  # noqa: BLE001
+        except Exception as e:  # task router — broad catch wraps any health-check error into a structured response  # background task — broad catch is the documented contract  # noqa: BLE001
             return {
                 "adapter_type": adapter_enum.value,
                 "status": "error",

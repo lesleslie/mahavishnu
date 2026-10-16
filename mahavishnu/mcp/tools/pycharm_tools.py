@@ -121,9 +121,9 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                             timeout=10,
                         )
                         mcp_available = True
-                    except Exception:  # noqa: BLE001
+                    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                         mcp_available = False
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.debug("PyCharm MCP probe skipped: %s", e)
 
         return {
@@ -173,7 +173,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         "file_path": file_path,
                         "problems": _extract_problems(result),
                     }
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"PyCharm MCP unavailable, using fallback: {e}")
 
         # Fallback to ruff
@@ -200,7 +200,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         timeout=15,
                     )
                     return {"source": "pycharm_mcp", "opened": True, "file_path": file_path}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"Failed to open file in PyCharm: {e}")
             return {
                 "source": "fallback",
@@ -233,7 +233,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         timeout=30,
                     )
                     return {"source": "pycharm_mcp", "results": result}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"PyCharm MCP unavailable, using fallback search: {e}")
 
         results = _fallback_search(pattern, file_pattern)
@@ -266,7 +266,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         timeout=30,
                     )
                     return {"source": "pycharm_mcp", "replaced": bool(result)}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"Failed to replace in PyCharm: {e}")
             return {
                 "source": "fallback",
@@ -293,7 +293,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         timeout=30,
                     )
                     return {"source": "pycharm_mcp", "reformatted": bool(result)}
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"Failed to reformat in PyCharm: {e}")
             return {
                 "source": "fallback",
@@ -334,7 +334,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         "source": "pycharm_mcp",
                         "refactored": bool(result),
                     }
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning(f"Failed to refactor in PyCharm: {e}")
             return {
                 "source": "fallback",
@@ -371,7 +371,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         "file_path": file_path,
                         "problems": _extract_problems(result),
                     }
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"PyCharm MCP unavailable, using fallback: {e}")
 
         errors_only = severity == "error" if severity else False

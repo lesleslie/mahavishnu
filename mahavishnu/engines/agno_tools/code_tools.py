@@ -207,7 +207,7 @@ def _analyze_python_file(file_path: Path) -> dict[str, Any]:
 
     except SyntaxError as e:
         _record_syntax_error(file_path, e, result)
-    except Exception as e:  # Analyzer records any non-syntax parse failure as a parse_error issue and continues with the next file  # noqa: BLE001
+    except Exception as e:  # Analyzer records any non-syntax parse failure as a parse_error issue and continues with the next file  # background task — broad catch is the documented contract  # noqa: BLE001
         _record_parse_error(file_path, e, result)
 
     return result
@@ -318,7 +318,7 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
                         }
                     )
 
-        except Exception as e:  # Search loop logs and skips unparsable files so one bad file doesn't fail the whole query  # noqa: BLE001
+        except Exception as e:  # Search loop logs and skips unparsable files so one bad file doesn't fail the whole query  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug(f"Error reading {py_file}: {e}")
             continue
 

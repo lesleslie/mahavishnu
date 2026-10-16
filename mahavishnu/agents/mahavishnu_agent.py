@@ -345,7 +345,7 @@ class MahavishnuAgent:
                 active_workers=active_workers,
             )
 
-        except Exception as e:  # Agent tool entry point translates any pool-status failure into a typed PoolStatusResult  # noqa: BLE001
+        except Exception as e:  # Agent tool entry point translates any pool-status failure into a typed PoolStatusResult  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.warning("get_pool_status failed: %s", e)
             return PoolStatusResult(error=str(e))
 
@@ -383,7 +383,7 @@ class MahavishnuAgent:
                 adapter_scores={a.value: s for a, s in scores.items()},
             )
 
-        except Exception as e:  # Agent tool entry point translates any routing-info failure into a typed RoutingInfoResult  # noqa: BLE001
+        except Exception as e:  # Agent tool entry point translates any routing-info failure into a typed RoutingInfoResult  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             logger.warning("get_routing_info failed: %s", e)
             return RoutingInfoResult(
                 task_type=task_type,

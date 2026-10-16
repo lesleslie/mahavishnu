@@ -94,7 +94,7 @@ class TestFastMCPVersion:
 
         # All imports succeeded; assert FastMCP class is the upstream class.
         import fastmcp
-        from mcp_common.fastmcp import (  # noqa: F401
+        from mcp_common.fastmcp import (
             Context,
             FastMCP,
             Middleware,

@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from mcp_common.auth.audit import (
-    AuthAuditEvent,  # noqa: TC002  # annotation-only with __future__ annotations
+    AuthAuditEvent,  # annotation-only with __future__ annotations
 )
 import pytest
 

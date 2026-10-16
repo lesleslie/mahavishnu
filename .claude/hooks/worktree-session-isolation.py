@@ -46,7 +46,7 @@ import sys
 # Shared helper lives in the same .claude/hooks directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _hook_io import (
-    read_session_payload,  # noqa: F401 — kept for back-compat; main() reads stdin directly via json.loads
+    read_session_payload,
 )
 
 # Map the CLI mode (`session-start` / `session-end`) that this hook
@@ -646,7 +646,7 @@ def main() -> int:
         from mahavishnu.bodai_hook_bridge import handle
 
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception as exc:  # noqa: BLE001 — defensive; bridge is fire-and-forget, never blocks hook hot path
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(
             f"mahavishnu: bodai_hook_bridge routing failed: "
             f"{type(exc).__name__}: {exc}\n"

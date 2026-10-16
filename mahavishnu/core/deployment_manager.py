@@ -301,7 +301,7 @@ class DeploymentManager:
 
             return result
 
-        except Exception as e:  # Deployment manager wraps any failure in a FAILED result rather than propagating  # noqa: BLE001
+        except Exception as e:  # Deployment manager wraps any failure in a FAILED result rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Deployment {deployment_id} failed: {e}")
             return DeploymentResult(
                 deployment_id=deployment_id,
@@ -361,7 +361,7 @@ class DeploymentManager:
 
             return result
 
-        except Exception as e:  # Rollback manager wraps any failure in a FAILED result rather than propagating  # noqa: BLE001
+        except Exception as e:  # Rollback manager wraps any failure in a FAILED result rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.error(f"Rollback failed: {e}")
             return DeploymentResult(
                 deployment_id=deployment_id,

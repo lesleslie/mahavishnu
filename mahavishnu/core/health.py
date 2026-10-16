@@ -529,7 +529,7 @@ class HealthChecker(HTTPXClientMixin):
 
             parsed = urlparse(url)
             return f"{parsed.hostname}:{parsed.port}" if parsed.port else str(parsed.hostname)
-        except Exception:  # Utility — URL parse failures degrade to using the raw URL string for log identification  # noqa: BLE001
+        except Exception:  # Utility — URL parse failures degrade to using the raw URL string for log identification  # background task — broad catch is the documented contract  # noqa: BLE001
             return url
 
 
@@ -1075,7 +1075,7 @@ def merge_driver_health(app: MahavishnuApp | None = None) -> dict[str, Any]:
                 probe_ok=probe_ok,
                 stamp=_resolve_degraded_since(app),
             )
-    except Exception as exc:  # Health probe wraps every failure as a structured empty payload so /health always returns a well-formed response  # noqa: BLE001
+    except Exception as exc:  # Health probe wraps every failure as a structured empty payload so /health always returns a well-formed response  # background task — broad catch is the documented contract  # noqa: BLE001
         # C3: the function used to claim "catches all subprocess errors"
         # but the body didn't actually wrap the probe helpers, so any
         # ``TypeError``/``AttributeError`` (e.g. on a malformed binary

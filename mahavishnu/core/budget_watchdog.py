@@ -464,7 +464,7 @@ async def _acquire_lease_or_failopen(
     """
     try:
         acquired = await store.try_acquire_lease(lease_key, holder, ttl_seconds=lease_ttl_seconds)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
         metrics.skipped_mcp_unavailable += 1
         logger.warning("budget.mcp_unavailable while acquiring lease: %s", exc)
         return False, True
@@ -485,7 +485,7 @@ async def _list_budget_keys_or_failopen(
     """
     try:
         keys = await store.list_keys(prefix)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
         metrics.skipped_mcp_unavailable += 1
         logger.warning("budget.mcp_unavailable while listing records: %s", exc)
         return None, True
@@ -540,7 +540,7 @@ async def _process_one_budget_record(
     """
     try:
         raw = await store.get(f"{record_prefix}{key}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
         logger.warning("budget.mcp_unavailable fetching %s: %s", key, exc)
         return False
     if not isinstance(raw, dict):
@@ -551,7 +551,7 @@ async def _process_one_budget_record(
         return False
     try:
         usage = await usage_source(sm.record.workflow_id)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
         logger.warning("budget.usage_source failed for %s: %s", sm.record.workflow_id, exc)
         return False
     if usage is None:
@@ -567,7 +567,7 @@ async def _process_one_budget_record(
             f"{record_prefix}{sm.record.workflow_id}.json",
             sm.record.to_dict(),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
         logger.warning("budget.mcp_unavailable persisting %s: %s", sm.record.workflow_id, exc)
     return dimension is not None
 
@@ -584,12 +584,12 @@ async def _close_otel_span(span: Any) -> None:
     if hasattr(span, "__aexit__"):
         try:
             await span.__aexit__(None, None, None)  # type: ignore[attr-defined]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug("budget.otel_aexit_failed: %s", exc)
     elif hasattr(span, "__exit__"):
         try:
             span.__exit__(None, None, None)  # type: ignore[attr-defined]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug("budget.otel_exit_failed: %s", exc)
 
 

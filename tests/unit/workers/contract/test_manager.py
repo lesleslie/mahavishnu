@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pathlib  # noqa: TC003  (test fixture parameter type only)
+import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest

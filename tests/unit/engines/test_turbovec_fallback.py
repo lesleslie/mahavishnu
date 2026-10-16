@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 
 
-def _make_adapter() -> "LlamaIndexAdapter":  # noqa: UP037
+def _make_adapter() -> "LlamaIndexAdapter":
     """Return a LlamaIndexAdapter with a minimal mock config."""
     from mahavishnu.engines.llamaindex_adapter_impl import LlamaIndexAdapter
 

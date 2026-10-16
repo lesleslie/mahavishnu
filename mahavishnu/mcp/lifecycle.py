@@ -62,7 +62,7 @@ def build_post_start_lifespan(server: Any) -> Any:
 
         try:
             init_signer_feed_state()
-        except Exception as exc:  # MCP server init — degrading gracefully is the documented contract  # noqa: BLE001
+        except Exception as exc:  # MCP server init — degrading gracefully is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.error("Failed to initialize skills_signer feed state: %s", exc)
             # Don't crash the server — /health reports skills_signer
             # as degraded with the error message.
@@ -80,7 +80,7 @@ def build_post_start_lifespan(server: Any) -> Any:
             server._task_orphan_sweeper = sweeper
             server._task_orphan_sweeper_task = sweeper_task
             logger.info("task_orphan_sweeper started (stream=bodai:events)")
-        except Exception as exc:  # background task init — keep server alive on any failure
+        except Exception as exc:  # background task init — keep server alive on any failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.error("Failed to start task_orphan_sweeper: %s", exc)
             # Don't crash — /health reports task_orphan_sweeper
             # degraded with the prior "not started" error message.
@@ -131,7 +131,7 @@ def build_post_start_lifespan(server: Any) -> Any:
                     outcome.entities_count,
                     repo_root or "<none — empty cycle>",
                 )
-            except Exception as exc:  # plan_index background init — degradable subsystem per contract  # noqa: BLE001
+            except Exception as exc:  # plan_index background init — degradable subsystem per contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.error("Failed to start plan_index subsystem: %s", exc)
                 # Don't crash — /health reports plan_index degraded.
 
@@ -150,14 +150,14 @@ def build_post_start_lifespan(server: Any) -> Any:
                 await sweeper_task
             except asyncio.CancelledError:
                 pass
-            except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+            except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
         sweeper = getattr(server, "_task_orphan_sweeper", None)
         if sweeper is not None:
             try:
                 await sweeper.cleanup()
                 logger.info("task_orphan_sweeper stopped")
-            except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+            except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("Error stopping task_orphan_sweeper: %s", exc)
 
         # plan_index init task (may have completed by now or may still
@@ -169,7 +169,7 @@ def build_post_start_lifespan(server: Any) -> Any:
                 await plan_index_init_task
             except asyncio.CancelledError:
                 pass
-            except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+            except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("Error cancelling plan_index_init task: %s", exc)
 
         runner = getattr(server, "_plan_index_runner", None)
@@ -177,14 +177,14 @@ def build_post_start_lifespan(server: Any) -> Any:
             try:
                 await runner.stop()
                 logger.info("plan_index runner stopped")
-            except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+            except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("Error stopping plan_index runner: %s", exc)
 
         from .signer_feed import reset_signer_feed_state
 
         try:
             reset_signer_feed_state()
-        except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+        except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Error resetting signer_feed_state: %s", exc)
 
     return _lifespan
@@ -303,14 +303,14 @@ async def stop_server(server: Any) -> None:
             await sweeper_task
         except asyncio.CancelledError:
             pass
-        except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+        except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
     sweeper = getattr(server, "_task_orphan_sweeper", None)
     if sweeper is not None:
         try:
             await sweeper.cleanup()
             logger.info("task_orphan_sweeper stopped")
-        except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+        except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Error stopping task_orphan_sweeper: %s", exc)
 
     # Phase 3 — stop the plan_index rebuild loop so the periodic task
@@ -321,7 +321,7 @@ async def stop_server(server: Any) -> None:
         try:
             await runner.stop()
             logger.info("plan_index runner stopped")
-        except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+        except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Error stopping plan_index runner: %s", exc)
 
     # Phase 1.5 — clear the skills_signer feed state singleton so
@@ -335,7 +335,7 @@ async def stop_server(server: Any) -> None:
         try:
             await server.mcp_client._client.stop()
             logger.info("Stopped embedded MCP client")
-        except Exception as exc:  # teardown — non-fatal, just log  # noqa: BLE001
+        except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("Error stopping embedded MCP client: %s", exc)
 
 

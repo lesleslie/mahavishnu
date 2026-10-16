@@ -68,7 +68,7 @@ async def budget_enforce_tool(
     )
     try:
         existing_raw = await _budget_store.get(f"mahavishni://budgets/{workflow_id}.json")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
         logger.warning("budget_enforce: read failed for %s: %s", workflow_id, exc)
         existing_raw = None
     sm = BudgetStateMachine(
@@ -90,7 +90,7 @@ async def budget_enforce_tool(
             f"mahavishni://budgets/{workflow_id}.json",
             sm.record.to_dict(),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
         logger.warning("budget_enforce: persist failed for %s: %s", workflow_id, exc)
         return {
             "workflow_id": workflow_id,

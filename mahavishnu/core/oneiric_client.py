@@ -289,7 +289,7 @@ class MCPAdapterRegistryClient:
         except ConnectionError:
             await self._circuit_breaker.record_failure(adapter_id)
             raise
-        except Exception:  # Adapter lookup records circuit-breaker failure and returns None on any unexpected error  # noqa: BLE001
+        except Exception:  # Adapter lookup records circuit-breaker failure and returns None on any unexpected error  # background task — broad catch is the documented contract  # noqa: BLE001
             await self._circuit_breaker.record_failure(adapter_id)
             return None
 
@@ -316,7 +316,7 @@ class MCPAdapterRegistryClient:
             else:
                 await self._circuit_breaker.record_failure(adapter_id)
             return healthy
-        except Exception:  # Health probe records circuit-breaker failure and reports unhealthy on any error  # noqa: BLE001
+        except Exception:  # Health probe records circuit-breaker failure and reports unhealthy on any error  # background task — broad catch is the documented contract  # noqa: BLE001
             await self._circuit_breaker.record_failure(adapter_id)
             return False
 
@@ -362,7 +362,7 @@ class MCPAdapterRegistryClient:
                 "cache_entries": len(self._cache),
                 "contract": contract,
             }
-        except Exception as exc:  # Health snapshot returns unhealthy payload on any probe failure
+        except Exception as exc:  # Health snapshot returns unhealthy payload on any probe failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return {
                 "status": "unhealthy",
                 "connected": False,

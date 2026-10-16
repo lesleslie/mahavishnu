@@ -18,7 +18,7 @@ import pytest
 from mahavishnu.core.config import MahavishnuSettings, get_settings, reset_settings
 
 if TYPE_CHECKING:
-    pass  # noqa
+    pass
 
 
 def _clear_mahavishnu_env(monkeypatch: pytest.MonkeyPatch) -> None:

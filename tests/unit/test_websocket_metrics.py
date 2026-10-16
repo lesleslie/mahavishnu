@@ -80,7 +80,7 @@ def _unregister_custom_collectors() -> None:
         if "websocket" in name.lower():
             try:
                 REGISTRY.unregister(collector)
-            except Exception:  # noqa: BLE001 - boundary handler catches all errors to keep calling code alive
+            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 pass
 
 

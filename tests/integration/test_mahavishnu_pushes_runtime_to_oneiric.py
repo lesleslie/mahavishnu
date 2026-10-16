@@ -222,7 +222,7 @@ class _StubApp:
                 await self.circuit_breaker.call(
                     _post, f"{ONEIRIC_BASE_URL}/mcp", payload
                 )
-            except Exception:
+            except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 # Mirror production policy: push failure must not raise.
                 pass
 

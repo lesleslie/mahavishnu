@@ -534,7 +534,7 @@ class CloneTools:
             records = await mcp_backend.list_prefix("workflow/v1/")
             # Sort by UUID7 lexicographically (newest first).
             return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
             logger.warning("clone_refactor_status: list_prefix failed (%s); returning []", exc)
             return []
 

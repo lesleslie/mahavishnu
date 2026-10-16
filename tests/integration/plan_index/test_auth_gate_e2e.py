@@ -41,7 +41,7 @@ import pytest
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.plan_tools import register_plan_tools
 from mahavishnu.plan_index.store import (
-    PlanIndexStore,  # noqa: TC001  # annotation-only with __future__ annotations
+    PlanIndexStore,  # annotation-only with __future__ annotations
 )
 
 

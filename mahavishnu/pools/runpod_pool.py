@@ -155,7 +155,7 @@ class RunPodPool(BasePool):
                 "duration": duration,
             }
 
-        except Exception as e:  # Background task — pool task execution converts every failure into a structured failed-result envelope  # noqa: BLE001
+        except Exception as e:  # Background task — pool task execution converts every failure into a structured failed-result envelope  # background task — broad catch is the documented contract  # noqa: BLE001
             self._tasks_failed += 1
             duration = time.time() - start_time
             logger.error("RunPod task failed: %s", e)

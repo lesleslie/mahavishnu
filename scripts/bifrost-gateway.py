@@ -117,8 +117,8 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
     # File handles stay open for the lifetime of the subprocess. The kernel
     # dup's the FD into the child at exec time, so closing the Python handles
     # is safe — but keeping them open is harmless and makes tail/lsof trivial.
-    stdout_log = open(LOG_DIR / "bifrost.log", "ab")  # noqa: SIM115
-    stderr_log = open(LOG_DIR / "bifrost.err", "ab")  # noqa: SIM115
+    stdout_log = open(LOG_DIR / "bifrost.log", "ab")
+    stderr_log = open(LOG_DIR / "bifrost.err", "ab")
     return subprocess.Popen(cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log)
 
 

@@ -73,7 +73,7 @@ pytestmark = pytest.mark.unit
 
 
 try:
-    import zstandard  # noqa: F401
+    import zstandard
 except ImportError:
     pytest.skip(
         "zstandard required; uv sync --group compression-zstd",

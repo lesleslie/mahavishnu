@@ -48,7 +48,7 @@ import sys
 
 # Shared helper lives in the same .claude/hooks directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _hook_io import read_session_payload  # noqa: E402 — sys.path mutation must precede import
+from _hook_io import read_session_payload
 
 
 # Env var that gates the whole feature. Per spec §4.2: unset = on (default);

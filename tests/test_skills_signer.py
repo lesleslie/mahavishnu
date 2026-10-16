@@ -19,7 +19,7 @@ this file was extended to cover:
 from __future__ import annotations
 
 import base64
-from pathlib import Path  # noqa: TC003  # used in pytest tmp_path parameter
+from pathlib import Path  # used in pytest tmp_path parameter
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature

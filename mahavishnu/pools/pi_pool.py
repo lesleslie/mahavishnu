@@ -298,7 +298,7 @@ class PiPool(BasePool):
         except (
             PiRPCTimeout,
             PiProtocolError,
-            Exception,
+            Exception,  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
         ) as exc:  # PiPool RPC — broad catch maps any failure to typed pool error
             duration = time.monotonic() - start_time
             self._task_durations.append(duration)
@@ -477,7 +477,7 @@ class PiPool(BasePool):
         if self._client is not None:
             try:
                 await self._client.stop()
-            except Exception as e:  # pragma: no cover - defensive shutdown  # noqa: BLE001
+            except Exception as e:  # pragma: no cover - defensive shutdown  # background task — broad catch is the documented contract  # noqa: BLE001
                 logger.warning("error stopping pi client: %s", e)
             self._client = None
         self._status = PoolStatus.STOPPED

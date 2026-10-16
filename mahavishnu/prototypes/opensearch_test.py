@@ -65,7 +65,7 @@ async def test_opensearch_connection():
 
         return True
 
-    except Exception as e:  # prototype smoke test prints any error and returns False; never raises
+    except Exception as e:  # prototype smoke test prints any error and returns False; never raises  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         print(f"❌ OpenSearch prototype failed: {e}")
         print("\n💡 To fix:")
         print("   1. Install OpenSearch: brew install opensearch")

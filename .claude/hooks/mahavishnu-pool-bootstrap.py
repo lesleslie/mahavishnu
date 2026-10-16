@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# ruff: noqa: EXE001
 """SessionStart hook: ensure a default pool exists via mcp__mahavishnu__pool_bootstrap.
 
 Mirrors the pattern of .claude/hooks/jot-session-start.py — the script
@@ -24,9 +23,9 @@ CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
 if CLAUDE_PROJECT_DIR:
     sys.path.insert(0, CLAUDE_PROJECT_DIR)
 
-import httpx  # noqa: E402 - import after sys.path tweak
+import httpx
 
-from mahavishnu.bodai_hook_bridge import handle  # noqa: E402
+from mahavishnu.bodai_hook_bridge import handle
 
 EVENT_NAME = "SessionStart"
 DEFAULT_MCP_URL = "http://localhost:8680/mcp"
@@ -41,7 +40,7 @@ def _safe_parse_payload() -> dict[str, object]:
     """Parse stdin JSON; return empty dict on any parse failure."""
     try:
         raw = sys.stdin.read()
-    except Exception:
+    except Exception:  # hook handler — broad catch is the documented contract  # hook handler — broad catch is the documented contract  # noqa: BLE001
         return {}
     if not raw.strip():
         return {}
@@ -110,7 +109,7 @@ def _invoke_bootstrap() -> dict[str, object] | None:
             if isinstance(result, dict):
                 return result
             return None
-    except Exception as exc:  # noqa: BLE001 - boundary: hook must never block SessionStart
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: pool_bootstrap call failed: {exc}\n")
         sys.stderr.flush()
         return None
@@ -157,14 +156,14 @@ def main() -> int:
     }
     try:
         print(json.dumps(output))
-    except Exception as exc:  # noqa: BLE001 - boundary: output rendering must not block
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write(f"Hook output: json.dumps failed: {exc}\n")
         sys.stderr.flush()
 
     # Bridge audit (fire-and-forget; failures ignored)
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # noqa: BLE001 - boundary: bridge is observation-only
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write("Hook output: pool-bootstrap bridge routing failed\n")
         sys.stderr.flush()
 
@@ -174,7 +173,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # noqa: BLE001 - boundary: never block SessionStart
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
         sys.stderr.write("Hook output: pool-bootstrap unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

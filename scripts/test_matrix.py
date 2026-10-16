@@ -37,7 +37,7 @@ import re
 import sys
 from typing import Any
 
-import defusedxml.ElementTree as ET  # noqa: N817 (ET is the conventional name)
+import defusedxml.ElementTree as ET
 
 # ---------------------------------------------------------------------------
 # Data structures

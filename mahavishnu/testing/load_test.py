@@ -324,7 +324,7 @@ class LoadTestRunner:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:  # Load test captures every per-request failure as a synthetic error result so one bad call doesn't break the synthetic-user session  # noqa: BLE001
+            except Exception as e:  # Load test captures every per-request failure as a synthetic error result so one bad call doesn't break the synthetic-user session  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
                 logger.error(f"User {user_id} error: {e}")
                 self.results.append(
                     RequestResult(

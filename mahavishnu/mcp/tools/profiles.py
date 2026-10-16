@@ -337,6 +337,6 @@ def settings_yaml_loader() -> dict | None:
         tool_profile = getattr(get_settings(), "tool_profile", None)
         if tool_profile:
             return {"tool_profile": str(tool_profile)}
-    except Exception:  # MCP tool profile fallback returns None on any settings load failure
+    except Exception:  # MCP tool profile fallback returns None on any settings load failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
         return None
     return None

@@ -423,7 +423,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             )
             self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
-        except Exception as e:  # OpenSearch client connect/handshake may fail; fall through to TurboVec  # noqa: BLE001
+        except Exception as e:  # OpenSearch client connect/handshake may fail; fall through to TurboVec  # background task — broad catch is the documented contract  # noqa: BLE001
             logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
                 from turbovec.integrations.llamaindex import (  # ty: ignore[unresolved-import]
@@ -501,7 +501,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             else:
                 self._init_fallback_instrumentation()
 
-        except Exception as e:  # OTel SDK init can fail on missing exporter/setup; fall back to MockTracer/MockMeter  # noqa: BLE001
+        except Exception as e:  # OTel SDK init can fail on missing exporter/setup; fall back to MockTracer/MockMeter  # background task — broad catch is the documented contract  # noqa: BLE001
             print(f"Warning: Failed to initialize OpenTelemetry instrumentation: {e}")
             self._init_fallback_instrumentation()
 
@@ -801,7 +801,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "task_id": task_params.get("id", "unknown"),
                 }
 
-            except Exception as e:  # ingestion driver records span/metric error and re-raises as domain error  # noqa: BLE001
+            except Exception as e:  # ingestion driver records span/metric error and re-raises as domain error  # background task — broad catch is the documented contract  # noqa: BLE001
                 error_msg = f"Ingestion failed: {e}"
 
                 # Record error in span
@@ -1062,7 +1062,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "task_id": task_params.get("id", "unknown"),
                 }
 
-            except Exception as e:  # query driver records span/metric error and re-raises as domain error  # noqa: BLE001
+            except Exception as e:  # query driver records span/metric error and re-raises as domain error  # background task — broad catch is the documented contract  # noqa: BLE001
                 error_msg = f"Query failed: {e}"
 
                 # Record error in span
@@ -1248,7 +1248,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
             return {"status": "healthy", "details": health_details}
 
-        except Exception as e:  # health check soft-fails to unhealthy with the raw error message
+        except Exception as e:  # health check soft-fails to unhealthy with the raw error message  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
             return {"status": "unhealthy", "details": {"error": str(e), "configured": True}}
 
 

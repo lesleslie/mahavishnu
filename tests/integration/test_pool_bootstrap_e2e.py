@@ -30,7 +30,7 @@ def _is_mcp_reachable() -> bool:
         with httpx.Client(timeout=1.0) as client:
             response = client.get(f"{_mcp_url()}/health")
             return response.status_code in (200, 503)
-    except Exception:
+    except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
         return False
 
 
@@ -82,7 +82,7 @@ def test_pool_bootstrap_e2e_empty_registry_spawns() -> None:
         try:
             _call_tool(client, "pool_close_all")
             time.sleep(0.5)
-        except Exception:
+        except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
             pass  # OK if pool_close_all doesn't exist or registry is already empty
 
         # 2. Verify empty

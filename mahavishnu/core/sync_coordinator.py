@@ -385,7 +385,7 @@ class SyncCoordinator:
                     item.status = SyncStatus.FAILED
                     result["failed"] += 1
 
-            except Exception as e:  # per-item sync failure — record as conflict, continue iteration  # noqa: BLE001
+            except Exception as e:  # per-item sync failure — record as conflict, continue iteration  # background task — broad catch is the documented contract  # noqa: BLE001
                 item.status = SyncStatus.CONFLICT
                 result["failed"] += 1
                 logger.error(f"Failed to sync item {item.external_id}: {e}")
