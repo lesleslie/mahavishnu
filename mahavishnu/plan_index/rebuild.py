@@ -101,7 +101,7 @@ class PlanIndexRebuilder:
                 normalized_record = replace(record, repo=normalized)
                 await store.upsert(normalized_record)
                 success += 1
-            except Exception:  # Per-record upsert records the error and continues with the next plan so the rebuild can complete  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # Per-record upsert records the error and continues with the next plan so the rebuild can complete  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 errors.append(
                     {
                         "path_hash": path_hash,

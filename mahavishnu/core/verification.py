@@ -97,7 +97,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
 
         backend = MCPStateBackend(base_url=mcp_url)
         return VerificationStore(mcp=backend)
-    except Exception:  # MCP backend may be unavailable at boot; degrade gracefully per documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # MCP backend may be unavailable at boot; degrade gracefully per documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("build_default_store: MCP unavailable, persistence disabled")
         return None
 
@@ -616,7 +616,7 @@ class VerificationStore:
                     "persisted_at": payload["persisted_at"],
                 },
             )
-        except Exception as exc:  # MCP write may fail any library error; encode as persisted=False with dead-letter fallback  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # MCP write may fail any library error; encode as persisted=False with dead-letter fallback  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "verification.persist_failure proposal_id=%s error=%s",
                 result.proposal_id,

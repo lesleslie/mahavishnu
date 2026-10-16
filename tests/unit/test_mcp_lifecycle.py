@@ -121,7 +121,7 @@ async def test_lifespan_spawns_task_orphan_sweeper(
         # teardown runs, even on test failure.
         try:
             await cm.__aexit__(None, None, None)
-        except Exception as exc:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logging.getLogger(__name__).debug(
                 "lifespan teardown raised during test cleanup: %s", exc
             )

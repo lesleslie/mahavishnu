@@ -86,5 +86,5 @@ def _mock_http_client(
         finally:
             try:
                 asyncio.run(fake.aclose())
-            except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pass

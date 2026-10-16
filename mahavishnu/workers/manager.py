@@ -531,7 +531,7 @@ class WorkerManager:
                     f"({result.duration_seconds:.2f}s)"
                 )
                 return result
-            except Exception as e:  # Background task — worker execution converts every failure into a FAILED WorkerResult with metrics update  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # Background task — worker execution converts every failure into a FAILED WorkerResult with metrics update  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.error(f"Worker {worker_id} failed: {e}")
                 failure_result = WorkerResult(
                     worker_id=worker_id,
@@ -612,7 +612,7 @@ class WorkerManager:
                 try:
                     status = await worker.status()
                     statuses[wid] = status
-                except Exception as e:  # Background task — monitor loop must keep going when a single worker probe fails  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # Background task — monitor loop must keep going when a single worker probe fails  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.warning(f"Failed to get status for {wid}: {e}")
                     statuses[wid] = WorkerStatus.FAILED
 
@@ -654,7 +654,7 @@ class WorkerManager:
                         duration_seconds=progress.get("duration_seconds", 0),
                         metadata=progress,
                     )
-                except Exception as e:  # Background task — result collector keeps going when a single worker fetch fails  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # Background task — result collector keeps going when a single worker fetch fails  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.error(f"Failed to collect result from {wid}: {e}")
                     results[wid] = WorkerResult(
                         worker_id=wid,
@@ -679,7 +679,7 @@ class WorkerManager:
             try:
                 await worker.stop()
                 logger.info(f"Closed worker {worker_id}")
-            except Exception as e:  # Background task — close failures must not break the calling cleanup path  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # Background task — close failures must not break the calling cleanup path  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.error(f"Failed to close worker {worker_id}: {e}")
             finally:
                 self._workers.pop(worker_id, None)
@@ -710,7 +710,7 @@ class WorkerManager:
                         "status": status.value,
                     }
                 )
-            except Exception:  # Background task — list snapshot keeps going when a single worker status probe fails  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # Background task — list snapshot keeps going when a single worker status probe fails  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 workers_info.append(
                     {
                         "worker_id": wid,

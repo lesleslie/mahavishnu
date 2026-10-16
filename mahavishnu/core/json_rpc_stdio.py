@@ -312,7 +312,7 @@ class JSONRPCStdioClient:
         if self._writer is not None and not self._writer.is_closing():
             try:
                 self._writer.close()
-            except Exception as e:  # Background task — writer-close errors during teardown are best-effort and must not block the stop() path  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # Background task — writer-close errors during teardown are best-effort and must not block the stop() path  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 self._logger.debug("error closing writer: %s", e)
         # Subprocess termination.
         if self._process is not None and self._process.returncode is None:

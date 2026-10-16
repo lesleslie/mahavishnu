@@ -1,9 +1,9 @@
 ---
 date: 2026-10-11
-status: active
+status: complete
 role: implementation
 topic: prefect-adapter-bug-fixes-cli
-last_reviewed: 2026-10-11
+last_reviewed: 2026-10-15
 superseded_by: null
 ---
 

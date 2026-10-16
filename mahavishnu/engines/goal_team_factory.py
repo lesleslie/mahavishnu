@@ -655,7 +655,7 @@ CONFIDENCE: <0.0-1.0>"""
             content = response.content if hasattr(response, "content") else str(response)
             return self._parse_llm_response(goal, content)
 
-        except Exception as e:  # LLM fallback — broad catch to return safe defaults when provider response is malformed  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # LLM fallback — broad catch to return safe defaults when provider response is malformed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"LLM parsing failed: {e}")
             return ParsedGoal(
                 intent="analyze",

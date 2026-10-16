@@ -351,7 +351,7 @@ class WebSocketBroadcaster:
             logger.debug(f"Broadcast {event} to {room}")
             return True
 
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to broadcast {event}: {e}")
             if self._buffer_enabled:
                 self._buffer_event(event, event_data, room)
@@ -519,7 +519,7 @@ class WebSocketBroadcaster:
                 else:
                     failed_events.append(buffered)
 
-            except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.error(f"Error flushing buffered event: {e}")
                 failed_events.append(buffered)
 

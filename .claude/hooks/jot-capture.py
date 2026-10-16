@@ -78,7 +78,7 @@ def main() -> int:
 
     try:
         existing_exit_code = _run_hook(payload)
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(f"Hook output: jot-capture wrapper error: {exc}\n")
         sys.stderr.flush()
         existing_exit_code = 0
@@ -87,7 +87,7 @@ def main() -> int:
     # missing, etc.) must NEVER alter the authoritative exit code.
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: jot-capture bridge routing failed\n")
         sys.stderr.flush()
 
@@ -97,7 +97,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: jot-capture wrapper unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

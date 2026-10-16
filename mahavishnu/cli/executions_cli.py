@@ -307,7 +307,7 @@ async def _watch_new_events(
                 consecutive_failures = 0
         except KeyboardInterrupt, SystemExit:
             raise
-        except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
             consecutive_failures += 1
             logger.warning(
                 "watch poll failed",

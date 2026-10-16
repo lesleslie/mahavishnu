@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: canonical
 kind: decision
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-15
 superseded_by: null
 blocks_on: []
 decision_date: 2026-04-27

@@ -325,7 +325,7 @@ class ExecutionTracker:
                     # Fallback for legacy interface
                     await asyncio.sleep(0.001)
                     written = len(records)
-            except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.error(f"PostgreSQL write failed: {e}")
                 return {"status": "error", "error": str(e), "written": 0}
         else:

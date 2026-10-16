@@ -325,7 +325,7 @@ class ContentIngester:
                 ratio=savings["ratio"],
                 bits=self._compressor.bits,
             )
-        except Exception as e:  # Compression estimation logs and returns None so ingestion can proceed without compression metrics  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # Compression estimation logs and returns None so ingestion can proceed without compression metrics  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._log.warning("turboquant_estimate_failed", error=str(e))
             return None
 
@@ -772,7 +772,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:  # Top-level ingestion wraps any failure into an IngestionResult rather than propagating  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # Top-level ingestion wraps any failure into an IngestionResult rather than propagating  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._log.error("ingestion_failed", url=url, error=str(e))
             return IngestionResult(
                 success=False,
@@ -881,7 +881,7 @@ class ContentIngester:
 
             return result
 
-        except Exception as e:  # File ingestion wraps any failure into an IngestionResult rather than propagating  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # File ingestion wraps any failure into an IngestionResult rather than propagating  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._log.error("file_ingestion_failed", file_path=str(file_path), error=str(e))
             return IngestionResult(
                 success=False,

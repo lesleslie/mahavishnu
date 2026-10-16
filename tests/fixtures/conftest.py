@@ -125,7 +125,7 @@ class IntegrationFixtures:
                     if hasattr(config, key):
                         setattr(config, key, value)
                 return config
-            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 # Fall back to mock if real config fails
                 pass
 
@@ -571,7 +571,7 @@ def mock_event_loop():
         from mahavishnu.core.adapter_persistence import close_persistence
 
         loop.run_until_complete(close_persistence())
-    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         pass
 
     pending = [task for task in asyncio.all_tasks(loop) if not task.done()]

@@ -2,10 +2,10 @@
 date: 2026-09-25
 title: "Fix `SessionBuddyPool` MCP Contract — v2 (Pivot: session-buddy wrappers)"
 topic: session-buddy-pool-mcp-contract-v2
-status: active
+status: complete
 role: implementation
 kind: plan
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-15
 superseded_by: null
 blocks_on: []
 ---

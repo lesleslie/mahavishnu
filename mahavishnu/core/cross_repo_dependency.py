@@ -444,7 +444,7 @@ class CrossRepoDependencyLinker:
         """Get a task by ID."""
         try:
             return await self.task_store.get(task_id)
-        except Exception:  # lookup miss is non-fatal; caller treats None as "skip"  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # lookup miss is non-fatal; caller treats None as "skip"  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return None
 
     def _would_create_cycle(

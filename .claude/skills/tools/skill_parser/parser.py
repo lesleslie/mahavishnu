@@ -394,7 +394,7 @@ def parse_all_skills(skills_dir: Path) -> list[SkillMetadata]:
         except SkillParserError as e:
             print(f"⚠️  Skipping {skill_file}: {e}")
             continue
-        except Exception as e:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             print(f"❌ Unexpected error parsing {skill_file}: {e}")
             continue
 

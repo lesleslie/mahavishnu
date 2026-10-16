@@ -302,7 +302,7 @@ class CrossRepoFilter:
                 repos = self.repo_manager.get_repos_by_role(role)
                 for repo in repos:
                     repo_names.append(repo.name)
-        except Exception as e:  # repo registry may not be initialized; return partials  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # repo registry may not be initialized; return partials  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to resolve repos by roles: {e}")
 
         return repo_names
@@ -316,7 +316,7 @@ class CrossRepoFilter:
                 repos = self.repo_manager.get_repos_by_tag(tag)
                 for repo in repos:
                     repo_names.append(repo.name)
-        except Exception as e:  # repo registry may not be initialized; return partials  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # repo registry may not be initialized; return partials  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to resolve repos by tags: {e}")
 
         return repo_names
@@ -449,7 +449,7 @@ class CrossRepoFilter:
                     repo_roles.add(repo.role)
                 if hasattr(repo, "tags"):
                     repo_tags.update(repo.tags)
-        except Exception as e:  # filter aggregation — missing metadata is non-fatal  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # filter aggregation — missing metadata is non-fatal  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Could not get repo metadata: {e}")
 
         return {

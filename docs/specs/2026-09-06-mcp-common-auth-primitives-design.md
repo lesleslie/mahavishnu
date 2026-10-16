@@ -2,7 +2,7 @@
 title: mcp-common Authentication Primitives — Design Spec
 date: 2026-09-06
 last_reviewed: 2026-10-13
-status: partial
+status: complete
 role: implementation
 topic: bodai-auth
 author: brainstormed 2026-09-06

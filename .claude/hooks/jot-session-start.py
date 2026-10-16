@@ -73,7 +73,7 @@ def _safe_parse_payload() -> dict[str, object]:
     """
     try:
         raw = sys.stdin.read()
-    except Exception:  # hook handler — broad catch is the documented contract  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {}
     if not raw.strip():
         return {}
@@ -94,7 +94,7 @@ def _run_hook() -> int:
     context_text = _build_context_text()
     try:
         result = surface_relevant("session_start", context_text, limit=3)
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(f"Hook output: jot-session-start surface_relevant failed: {exc}\n")
         sys.stderr.flush()
         return 0
@@ -118,7 +118,7 @@ def _run_hook() -> int:
     }
     try:
         print(json.dumps(output))
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(f"Hook output: jot-session-start json.dumps failed: {exc}\n")
         sys.stderr.flush()
         return 0
@@ -140,7 +140,7 @@ def main() -> int:
     # missing, etc.) must NEVER alter the authoritative exit code.
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: jot-session-start bridge routing failed\n")
         sys.stderr.flush()
 
@@ -150,7 +150,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: jot-session-start unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

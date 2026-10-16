@@ -227,7 +227,7 @@ class BaseWorker(ABC):
                 "worker_type": self.worker_type,
                 "details": {},
             }
-        except Exception as e:  # health check soft-fails to unhealthy with the raw error message  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # health check soft-fails to unhealthy with the raw error message  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {
                 "healthy": False,
                 "status": "unknown",

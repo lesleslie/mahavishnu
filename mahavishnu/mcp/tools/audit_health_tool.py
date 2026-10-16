@@ -210,7 +210,7 @@ async def audit_one_repo(
             "error": f"{type(exc).__name__}: {exc}",
             "silent_degraded": False,
         }
-    except Exception as exc:  # non-httpx transport error (DNS, connection-refused); surface as a partial-fleet row, never raise  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # non-httpx transport error (DNS, connection-refused); surface as a partial-fleet row, never raise  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {
             "repo": name,
             "host": host,
@@ -229,7 +229,7 @@ async def audit_one_repo(
     if content_type.startswith("application/json"):
         try:
             payload = response.json()
-        except Exception:  # body is not valid JSON; treat as no status (silent-degraded stays False)  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # body is not valid JSON; treat as no status (silent-degraded stays False)  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             payload = None
         if isinstance(payload, dict):
             # Prefer canonical_status (Phase 1.1 addition) when present;

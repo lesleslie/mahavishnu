@@ -140,7 +140,7 @@ async def worktree_manage(
 
     try:
         return await _dispatch_worktree_action(coordinator, normalized_action, fields)
-    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {
             "success": False,
             "action": normalized_action,

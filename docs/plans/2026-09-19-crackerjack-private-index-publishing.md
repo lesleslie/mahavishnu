@@ -1,9 +1,9 @@
 ---
 date: 2026-09-19
-status: active
+status: complete
 role: implementation
 topic: crackerjack-private-index-publishing
-last_reviewed: 2026-09-19
+last_reviewed: 2026-10-15
 superseded_by: null
 ---
 

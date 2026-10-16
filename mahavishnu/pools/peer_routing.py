@@ -176,7 +176,7 @@ class PeerRouteResolver:
                 peer_id=peer_id,
                 project_id=project_id,
             )
-        except Exception as exc:  # peer MCP failure — broad catch to fall back to None so caller uses LEAST_LOADED (peer is hint, not authority)  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # peer MCP failure — broad catch to fall back to None so caller uses LEAST_LOADED (peer is hint, not authority)  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "peer_route_session_buddy_failure: peer_id=%r project_id=%r err=%s",
                 peer_id,

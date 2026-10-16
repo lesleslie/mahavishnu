@@ -367,7 +367,7 @@ def prune_merged_worktrees(
                     registry_lookup=registry_lookup,
                 )
                 candidates.extend(await found if inspect.isawaitable(found) else found)
-            except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
                 if not json_output:
                     typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
 

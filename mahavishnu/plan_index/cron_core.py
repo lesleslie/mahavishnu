@@ -640,5 +640,5 @@ async def run_rebuild_cycle(
         # Always release the lock, even on partial failure.
         try:
             await mcp.delete(REBUILD_LOCK_HOLDER_KEY)
-        except Exception as release_exc:  # lock release is best-effort cleanup in finally; never mask original exception  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as release_exc:  # lock release is best-effort cleanup in finally; never mask original exception  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             _logger.warning("could not release rebuild lock: %s", release_exc)

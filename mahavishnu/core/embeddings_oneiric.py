@@ -182,7 +182,7 @@ class EmbeddingConfig(BaseModel):
         ]:
             try:
                 config = config.load_from_file(yaml_file)
-            except Exception as e:  # Layered config loader skips missing/unreadable YAML files and falls through to the next layer  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # Layered config loader skips missing/unreadable YAML files and falls through to the next layer  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.debug("Config file skipped: %s", e)
 
         # Override with environment variables

@@ -2,10 +2,10 @@
 date: 2026-09-21
 title: "jinja2-custom-delimiters 1.0.4 Update Implementation Plan"
 topic: jinja2-custom-delimiters-update
-status: active
+status: complete
 role: implementation
 kind: plan
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-15
 superseded_by: null
 blocks_on: []
 ---

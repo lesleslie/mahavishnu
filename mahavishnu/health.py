@@ -323,7 +323,7 @@ def _check_database() -> bool:
 
         test_db = EncryptedSQLite(":memory:")
         return test_db is not None
-    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
         return False
 
 
@@ -336,7 +336,7 @@ def _check_message_bus() -> bool:
         # can be constructed.
         transport = InMemoryEventTransport()
         return transport is not None
-    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
         return False
 
 
@@ -356,7 +356,7 @@ def _check_adapters() -> bool:
         )
 
         return has_adapter
-    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # readiness smoke test — any failure => not ready  # background health probe — broad catch is the documented contract  # noqa: BLE001, RUF100
         return False
 
 

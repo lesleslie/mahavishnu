@@ -412,7 +412,7 @@ class TestJWTAuthentication:
                 welcome = await asyncio.wait_for(ws.recv(), timeout=1.0)
                 assert "welcome" in json.loads(welcome).get("event", "")
 
-        except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             pytest.fail(f"Authentication failed: {e}")
 
     async def test_expired_token_rejected(
@@ -1076,7 +1076,7 @@ class TestGracefulDegradation:
         for ws in connections:
             try:
                 await ws.close()
-            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pass
 
 
@@ -1124,7 +1124,7 @@ class TestPerformance:
         for ws in successful:
             try:
                 await ws.close()
-            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pass
 
     async def test_broadcast_performance(

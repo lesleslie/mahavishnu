@@ -135,7 +135,7 @@ def _get_allowed_base_dirs() -> list[Path]:
                 ]
             )
             return list(dict.fromkeys(allowed))
-    except Exception:  # settings/config load can fail at import time; fall back to defaults  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # settings/config load can fail at import time; fall back to defaults  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
 
     return [p.resolve() for p in DEFAULT_ALLOWED_BASE_DIRS]
@@ -538,7 +538,7 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
                         extra={"match": str(match)},
                     )
                     continue
-            except Exception as e:  # per-result path validation; skip and continue on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # per-result path validation; skip and continue on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Could not validate search result path: {e}")
                 continue
 

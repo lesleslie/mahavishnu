@@ -875,7 +875,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
             wt_path = get_worktree_path(handle.repo, handle.branch)
             if wt_path.exists():
                 await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
-        except Exception as exc:  # best-effort on-disk cleanup — broad catch to log and continue with remote delete  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # best-effort on-disk cleanup — broad catch to log and continue with remote delete  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -895,7 +895,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 result = delete(ref.key)
                 if asyncio.iscoroutine(result):
                     await result
-        except Exception as exc:  # best-effort remote storage delete — broad catch to log and proceed to cache invalidation  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # best-effort remote storage delete — broad catch to log and proceed to cache invalidation  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "remote-storage-delete-failed",
                 extra={
@@ -908,7 +908,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         # 2. Invalidate cache entries for this handle.
         try:
             count = await self._cache.invalidate_handle(handle.handle_id)
-        except Exception as exc:  # best-effort cache invalidation — broad catch to log and treat as 0 invalidations  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # best-effort cache invalidation — broad catch to log and treat as 0 invalidations  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "remote-cache-invalidate-failed",
                 extra={"handle_id": handle.handle_id, "error": str(exc)},
@@ -974,7 +974,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if asyncio.iscoroutine(result):
                     return bool(await result)
                 return bool(result)
-            except Exception as exc:  # best-effort exists probe — broad catch to treat failure as not-exists  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # best-effort exists probe — broad catch to treat failure as not-exists  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(
                     "remote-exists-check-failed",
                     extra={"key": ref.key, "error": str(exc)},
@@ -997,7 +997,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 if callable(close):
                     close()
             return bool(first)
-        except Exception:  # best-effort existence probe fallback — broad catch to return False on any error  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # best-effort existence probe fallback — broad catch to return False on any error  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return False
 
     async def lock(
@@ -1059,7 +1059,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 storage_ok = await storage_health
             else:
                 storage_ok = bool(storage_health)
-        except Exception:  # health probe — broad catch to mark storage unhealthy on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # health probe — broad catch to mark storage unhealthy on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             storage_ok = False
         if not storage_ok:
             report.healthy = False
@@ -1067,7 +1067,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
 
         try:
             cache_ok = await self._cache.health()
-        except Exception:  # health probe — broad catch to mark cache unhealthy on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # health probe — broad catch to mark cache unhealthy on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             cache_ok = False
         if not cache_ok:
             report.healthy = False

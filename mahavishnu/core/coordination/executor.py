@@ -159,7 +159,7 @@ class CoordinationExecutor:
                 "end_time": end_time.isoformat(),
             }
 
-        except Exception as e:  # todo execution — translate any failure to blocked + error dict  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # todo execution — translate any failure to blocked + error dict  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             # Update todo to blocked if execution failed
             self._update_todo_status(todo_id, "blocked")
 
@@ -289,7 +289,7 @@ class CoordinationExecutor:
             )
             return result  # type: ignore[no-any-return]
 
-        except Exception as e:  # pool dispatch — any failure surfaces as error dict, never raise  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # pool dispatch — any failure surfaces as error dict, never raise  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {
                 "success": False,
                 "error": str(e),

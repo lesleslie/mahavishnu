@@ -246,7 +246,7 @@ class CoordinationManager:
 
         try:
             return IssueStatus(normalized)
-        except Exception:  # unknown legacy status falls back to PENDING; ValueError is the only realistic failure mode here  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # unknown legacy status falls back to PENDING; ValueError is the only realistic failure mode here  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return IssueStatus.PENDING
 
     def _normalize_issue_priority(self, value: Any) -> str:
@@ -287,7 +287,7 @@ class CoordinationManager:
 
         try:
             return TodoStatus(normalized)
-        except Exception:  # unknown legacy status falls back to PENDING; ValueError is the only realistic failure mode here  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # unknown legacy status falls back to PENDING; ValueError is the only realistic failure mode here  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return TodoStatus.PENDING
 
     def _stringify_datetime(self, value: Any) -> Any:
@@ -684,7 +684,7 @@ class CoordinationManager:
             except subprocess.CalledProcessError as e:
                 result["passed"] = False
                 result["details"] = getattr(e, "output", str(e))
-            except Exception as e:  # post-check runner captures subprocess/OS errors as failures; never raises out of the loop  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # post-check runner captures subprocess/OS errors as failures; never raises out of the loop  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 result["passed"] = False
                 result["details"] = str(e)
 

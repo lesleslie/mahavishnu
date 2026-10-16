@@ -56,7 +56,7 @@ def get_session_tracer() -> Any:
         return None
     try:
         return trace.get_tracer("mahavishnu.acp.session")
-    except Exception:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         # Provider not configured or other init issue — treat as no-op.
         return None
 
@@ -78,7 +78,7 @@ def is_otel_active() -> bool:
         from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
 
         return isinstance(provider, TracerProvider)
-    except Exception:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return False
 
 

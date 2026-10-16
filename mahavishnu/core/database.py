@@ -255,7 +255,7 @@ class Database:
             logger.info("Disconnecting from database")
             try:
                 await self._pool.close()
-            except Exception as e:  # pool close is best-effort during shutdown; log and continue  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # pool close is best-effort during shutdown; log and continue  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Error closing database pool: {e}")
             finally:
                 self._pool = None
@@ -284,7 +284,7 @@ class Database:
                 async with asyncio.timeout(5.0):
                     result = await self._pool.fetchval("SELECT 1")
                     health["query_test"] = result == 1
-            except Exception as e:  # health-check query probe may fail any library error; record as query_test=False  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # health-check query probe may fail any library error; record as query_test=False  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 health["query_test"] = False
                 health["error"] = str(e)
 

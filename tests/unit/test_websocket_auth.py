@@ -226,7 +226,7 @@ class TestWebSocketAuthenticationIntegration:
                 await client.connect()
                 # If connection succeeds, auth should have failed
                 assert client.is_authenticated is False
-            except (ConnectionError, Exception):  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except (ConnectionError, Exception):  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 # Expected - connection should be rejected
                 pass
             finally:

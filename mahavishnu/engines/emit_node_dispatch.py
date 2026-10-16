@@ -106,7 +106,7 @@ async def _dispatch_with_envelope(
     repos_list = list(spec.repos)
     try:
         response = await adapter.execute(task=task, repos=repos_list)
-    except Exception as exc:  # Engine dispatch wraps any adapter exception in a failed CapabilityEnvelope rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # Engine dispatch wraps any adapter exception in a failed CapabilityEnvelope rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         envelope_id = _new_envelope_id()
         envelope = CapabilityEnvelope(
             envelope_id=envelope_id,

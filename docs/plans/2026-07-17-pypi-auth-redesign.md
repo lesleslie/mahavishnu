@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-07-21
-last_reviewed: 2026-07-21
+last_reviewed: 2026-10-15
 topic: lifecycle
 title: "PyPI Auth Redesign Implementation Plan"
 

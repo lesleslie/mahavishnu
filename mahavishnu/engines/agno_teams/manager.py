@@ -330,7 +330,7 @@ class AgentTeamManager:
             self._run_history[team_id].append(result)
             return result
 
-        except Exception as e:  # Team run wraps any execution failure in a TeamRunResult rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # Team run wraps any execution failure in a TeamRunResult rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             latency_ms = (time.monotonic() - start_time) * 1000
             logger.error(f"Team run failed: team={config.name}, error={e}")
 

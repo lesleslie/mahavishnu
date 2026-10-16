@@ -414,7 +414,7 @@ async def finalize_workflow_execution(
                 finished_at=finished_at,
                 metadata={"adapter": adapter_name, "task_type": task_type},
             )
-        except Exception as outcome_err:  # best-effort outcome persistence — broad catch logs failure without blocking workflow result return  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as outcome_err:  # best-effort outcome persistence — broad catch logs failure without blocking workflow result return  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "record_workflow_outcome_failed",
                 extra={
@@ -519,7 +519,7 @@ async def execute_workflow_parallel(
             errors=errors,
             checkpoint_id=checkpoint_id,
         )
-    except Exception as exc:  # workflow execution wrapper — broad catch delegates to error handler which may re-raise or swallow per caller contract  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # workflow execution wrapper — broad catch delegates to error handler which may re-raise or swallow per caller contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         # handle_workflow_execution_error normally re-raises after recording
         # the failure. If a caller substitutes an error handler that
         # swallows the exception (returning None), return None so callers
@@ -570,7 +570,7 @@ async def execute_workflow_with_fallback(
                 "repo_results": result,
                 "errors": [],
             }
-        except Exception as exc:  # fallback chain iteration — broad catch records adapter failure and continues to next candidate  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # fallback chain iteration — broad catch records adapter failure and continues to next candidate  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             errors.append((adapter_name.value, str(exc)))
             logger.warning("Adapter %s failed: %s", adapter_name.value, exc)
             continue

@@ -186,7 +186,7 @@ class ProductionReadinessChecker:
                             # Exclude obvious placeholders/examples
                             if "example" not in content.lower() and "test" not in content.lower():
                                 issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
-                except Exception as e:  # per-file pattern scan can fail on read/decode; skip file and continue  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # per-file pattern scan can fail on read/decode; skip file and continue  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.debug("Pattern scan skipped: %s", e)
 
         if issues:
@@ -460,7 +460,7 @@ class ProductionReadinessChecker:
             status = ReadinessStatus.WARN
             message = "pytest not available"
             details = None
-        except Exception as e:  # pytest subprocess can fail on any error; map to WARN and continue checklist  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # pytest subprocess can fail on any error; map to WARN and continue checklist  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             status = ReadinessStatus.WARN
             message = f"Could not run tests: {e}"
             details = None

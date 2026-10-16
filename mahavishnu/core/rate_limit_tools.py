@@ -110,7 +110,7 @@ def rate_limit_tool(
             if key_func and kwargs:
                 try:
                     key = key_func(kwargs)
-                except Exception as e:  # Rate-limit key extraction logs any callback error and falls back to default key  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # Rate-limit key extraction logs any callback error and falls back to default key  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.warning(f"Failed to get rate limit key: {e}")
                     key = "default"
 

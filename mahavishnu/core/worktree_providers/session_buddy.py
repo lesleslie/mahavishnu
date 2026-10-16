@@ -330,7 +330,7 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
             return is_healthy
 
-        except Exception as e:  # health probe — exception means unreachable, return False  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # health probe — exception means unreachable, return False  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Session-Buddy health check failed: {e}")
             return False
 

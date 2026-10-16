@@ -215,7 +215,7 @@ def trigger_test_alert(
         raise typer.Exit(code=0)
     except typer.Exit:
         raise  # Propagate typer exits directly
-    except Exception as e:  # CLI entry point — alert trigger failures surface as exit-code 1 with a friendly message  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # CLI entry point — alert trigger failures surface as exit-code 1 with a friendly message  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
         typer.echo(f"❌ Failed to create test alert: {e}")
         raise typer.Exit(code=1) from None
 
@@ -250,7 +250,7 @@ def _print_rich_dashboard() -> None:
     try:
         app_instance = MahavishnuApp()
         metrics = asyncio.run(app_instance.get_metrics())
-    except Exception as e:  # CLI entry point — Rich fallback prints a structured error block rather than stack-tracing when app init fails  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # CLI entry point — Rich fallback prints a structured error block rather than stack-tracing when app init fails  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
         formatter.format_dict({"error": str(e)}, title="Monitor Error")
         return
 

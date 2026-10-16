@@ -174,7 +174,7 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
                     app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
                 ),
             )
-    except Exception:  # RBAC fail-open: deny-by-default would be a stronger posture, but compatibility wins here  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # RBAC fail-open: deny-by-default would be a stronger posture, but compatibility wins here  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         return True
 
 
@@ -228,7 +228,7 @@ async def is_healthy(app: Any) -> bool:
             health = await adapter.get_health()
             if health.get("status") != "healthy":
                 return False
-        except Exception:  # health probe — exception in any adapter means degraded, not fatal  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # health probe — exception in any adapter means degraded, not fatal  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return False
 
     return True

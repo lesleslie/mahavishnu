@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-15
 superseded_by: null
 topic: session-buddy-schema-alignment
 title: "Session-Buddy v2/Legacy Schema Alignment Plan"

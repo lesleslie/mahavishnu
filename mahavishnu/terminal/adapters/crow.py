@@ -209,7 +209,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "crow_terminal_close",
                 {"session_id": session_id},
             )
-        except Exception as e:  # best-effort terminal cleanup — broad catch so local session-tracking dict is always popped even if remote close fails  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # best-effort terminal cleanup — broad catch so local session-tracking dict is always popped even if remote close fails  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning("crow-mcp: close_session failed (non-fatal): %s", e)
         finally:
             self._sessions.pop(session_id, None)

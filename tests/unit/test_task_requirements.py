@@ -465,14 +465,14 @@ class TestResolutionCache:
             try:
                 for i in range(100):
                     cache.set(f"key_{i}", decision)
-            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 errors.append(e)
 
         def reader():
             try:
                 for i in range(100):
                     cache.get(f"key_{i}")
-            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 errors.append(e)
 
         threads = [

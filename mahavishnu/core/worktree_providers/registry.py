@@ -86,7 +86,7 @@ class WorktreeProviderRegistry:
                     capabilities=["worktree", "v4"],
                     require_all=True,
                 )
-            except Exception as exc:  # Resolver fallback path logs any resolver fault and continues with legacy selection  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # Resolver fallback path logs any resolver fault and continues with legacy selection  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 # pragma: no cover - resolver faults
                 logger.warning(
                     "worktree-resolver-fault",
@@ -116,7 +116,7 @@ class WorktreeProviderRegistry:
                             if hasattr(p, "health") and await cast("Any", p).health():
                                 self._provider_health[p.provider_name()] = True
                                 return p
-                        except Exception:  # Provider health probe logs and skips on any failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+                        except Exception:  # Provider health probe logs and skips on any failure  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                             logger.warning(
                                 "worktree-resolver-selected-unhealthy",
                                 extra={"provider": p.provider_name()},

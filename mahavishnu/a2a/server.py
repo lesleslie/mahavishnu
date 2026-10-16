@@ -70,7 +70,7 @@ def _get_version() -> str:
         from importlib.metadata import version
 
         return version("mahavishnu")
-    except Exception:  # Utility — package metadata lookup falls back to "0.0.0" when distribution metadata is missing or unparsable  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # Utility — package metadata lookup falls back to "0.0.0" when distribution metadata is missing or unparsable  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return "0.0.0"
 
 

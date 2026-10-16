@@ -191,7 +191,7 @@ def run_all_tests():
             "\n🎉 All tests passed! Claude Code and Codex authentication integration is working correctly."
         )
 
-    except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         print(f"\n❌ Test failed with error: {e}")
         import traceback
 

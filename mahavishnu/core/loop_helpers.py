@@ -191,7 +191,7 @@ async def detect_until_dry(
         for finding in iter_findings:
             try:
                 key = dedup_key(finding)
-            except Exception as exc:  # per-finding dedup_key may raise per project shape; record and break  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # per-finding dedup_key may raise per project shape; record and break  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 dedup_error = exc
                 break
             if key not in seen_keys:

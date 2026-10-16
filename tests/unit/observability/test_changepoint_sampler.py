@@ -323,7 +323,7 @@ class TestObservabilityManagerDriftDetection:
             return ObservabilityManager.__new__(ObservabilityManager).__init__(  # type: ignore[attr-defined]
                 config=settings,  # type: ignore[arg-type]
             )
-        except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             # __init__ may fail on OTel init in this minimal stub;
             # build directly without calling __init__.
             mgr = ObservabilityManager.__new__(ObservabilityManager)

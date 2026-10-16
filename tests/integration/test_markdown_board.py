@@ -245,7 +245,7 @@ class TestWatcherLoop:
             task.cancel()
             try:
                 await task
-            except (asyncio.CancelledError, Exception):  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except (asyncio.CancelledError, Exception):  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pass
 
         await asyncio.wait_for(run_briefly(), timeout=3.0)

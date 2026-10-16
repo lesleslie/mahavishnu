@@ -173,6 +173,6 @@ async def test_sweeper_xreadgroup_recovers_orphan(redis_client: Any) -> None:
         # assertion under test.
         try:
             await redis_client.delete(stream)
-        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             pass
         await sweeper.cleanup()

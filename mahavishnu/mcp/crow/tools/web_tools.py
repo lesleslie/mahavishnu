@@ -102,7 +102,7 @@ def _extract_text(html: str) -> str:
     try:
         parser.feed(html)
         parser.close()
-    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         # Best-effort: fall back to a stripped raw string.
         return re.sub(r"<[^>]+>", "", html)
     text = "".join(parser._chunks)
@@ -204,7 +204,7 @@ async def web_fetch_batch(
                     error=None,
                     duration_ms=result["duration_ms"],
                 )
-            except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                 return BatchItem(
                     url=u,
                     final_url=None,

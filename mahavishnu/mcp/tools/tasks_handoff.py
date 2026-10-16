@@ -269,7 +269,7 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
         return
     try:
         await publish_task_event_raw(event_type, payload)
-    except Exception as exc:  # best-effort event publish — broad catch so a fire-and-forget audit event never blocks the caller  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # best-effort event publish — broad catch so a fire-and-forget audit event never blocks the caller  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 
 

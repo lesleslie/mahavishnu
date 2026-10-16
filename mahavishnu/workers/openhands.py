@@ -76,7 +76,7 @@ class OpenHandsClient:
         try:
             resp = await self._http.get("/health", timeout=5.0)
             return resp.status_code == 200
-        except Exception:  # health probe soft-fails to False on any HTTP/connect error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # health probe soft-fails to False on any HTTP/connect error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return False
 
     async def close(self) -> None:
@@ -112,7 +112,7 @@ class OpenHandsWorker(BaseWorker):
 
         try:
             conv_id = await self._client.create_conversation(prompt)
-        except Exception as e:  # create_conversation may raise any HTTP/connect error; map to WorkerResult FAILED  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # create_conversation may raise any HTTP/connect error; map to WorkerResult FAILED  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return WorkerResult(
                 worker_id="openhands",
                 status=WorkerStatus.FAILED,
@@ -141,7 +141,7 @@ class OpenHandsWorker(BaseWorker):
                     output=output[: self._config.max_output_chars],
                     metadata={"worker_type": self.worker_type, "conv_id": conv_id},
                 )
-        except Exception as ws_err:  # WebSocket streaming can fail on any network/protocol error; fall back to REST polling  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as ws_err:  # WebSocket streaming can fail on any network/protocol error; fall back to REST polling  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"OpenHands WS stream failed, falling back to polling: {ws_err}")
 
         # REST polling fallback
@@ -149,7 +149,7 @@ class OpenHandsWorker(BaseWorker):
         while elapsed < timeout:
             try:
                 data = await self._client.get_status(conv_id)
-            except Exception as e:  # REST status poll may raise any HTTP/timeout error; map to WorkerResult FAILED  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # REST status poll may raise any HTTP/timeout error; map to WorkerResult FAILED  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 return WorkerResult(
                     worker_id=conv_id,
                     status=WorkerStatus.FAILED,

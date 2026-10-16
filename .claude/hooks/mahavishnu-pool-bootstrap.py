@@ -40,7 +40,7 @@ def _safe_parse_payload() -> dict[str, object]:
     """Parse stdin JSON; return empty dict on any parse failure."""
     try:
         raw = sys.stdin.read()
-    except Exception:  # hook handler — broad catch is the documented contract  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {}
     if not raw.strip():
         return {}
@@ -109,7 +109,7 @@ def _invoke_bootstrap() -> dict[str, object] | None:
             if isinstance(result, dict):
                 return result
             return None
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(f"Hook output: pool_bootstrap call failed: {exc}\n")
         sys.stderr.flush()
         return None
@@ -156,14 +156,14 @@ def main() -> int:
     }
     try:
         print(json.dumps(output))
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(f"Hook output: json.dumps failed: {exc}\n")
         sys.stderr.flush()
 
     # Bridge audit (fire-and-forget; failures ignored)
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: pool-bootstrap bridge routing failed\n")
         sys.stderr.flush()
 
@@ -173,7 +173,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write("Hook output: pool-bootstrap unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

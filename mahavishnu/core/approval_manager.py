@@ -341,7 +341,7 @@ class ApprovalManager:
                 if not request.is_expired and request.id not in self._pending_requests:
                     self._pending_requests[request.id] = request
                     restored += 1
-            except Exception as e:  # per-entry restoration — broad catch to skip malformed records and continue restoring the rest  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # per-entry restoration — broad catch to skip malformed records and continue restoring the rest  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.debug("Skipped approval request: %s", e)
         return restored
 

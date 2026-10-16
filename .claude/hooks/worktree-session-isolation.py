@@ -646,7 +646,7 @@ def main() -> int:
         from mahavishnu.bodai_hook_bridge import handle
 
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(
             f"mahavishnu: bodai_hook_bridge routing failed: "
             f"{type(exc).__name__}: {exc}\n"

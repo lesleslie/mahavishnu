@@ -241,7 +241,7 @@ class TestPerShiftSizeDecomposition:
             try:
                 q = MmcQueue.fit_from_observations(arrivals, services, num_workers=2)
                 w = q.expected_wait_time("kingman")
-            except Exception:  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 w = float("nan")
             results[cv2_tier] = {"predicted_w_q": w, "mean_service": sum(services) / len(services)}
         assert set(results.keys()) == {"cv2_low", "cv2_mid", "cv2_high"}

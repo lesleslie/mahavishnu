@@ -180,7 +180,7 @@ class MCPStateBackend:
         try:
             await self._client.put(key, value, ttl=ttl)
             self._record_success()
-        except Exception as exc:  # circuit-breaker sink: any substrate failure flips state to degraded  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # circuit-breaker sink: any substrate failure flips state to degraded  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
             logger.debug("MCP put(%r) failed: %s", key, exc)
 
@@ -217,26 +217,26 @@ class MCPStateBackend:
                         "clone_refactor.substrate_silent_write",
                         extra={"key": key, **_safe_extra(log_context)},
                     )
-                except Exception:  # best-effort log emission; never block the disabled-substrate short-circuit  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception:  # best-effort log emission; never block the disabled-substrate short-circuit  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     pass
                 return False
             await self._client.put(key, value, ttl=None)
             self._record_success()
             return True
-        except Exception as exc:  # outer catch for any substrate failure during try_put_with_log_context  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # outer catch for any substrate failure during try_put_with_log_context  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             # SF-M1 + CR-m1: wrap _record_failure() in try/except so a
             # metrics-sink failure cannot suppress the structured log
             # line. Log the _record_failure failure at WARNING (not DEBUG)
             # per CLAUDE.md style.
             try:
                 self._record_failure()
-            except Exception as record_exc:  # metrics-sink failure must never suppress the structured log line  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as record_exc:  # metrics-sink failure must never suppress the structured log line  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 try:
                     logger.warning(
                         "MCPStateBackend._record_failure failed; continuing",
                         exc_info=record_exc,
                     )
-                except Exception:  # nested log-warning emission; pass should never be reached  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception:  # nested log-warning emission; pass should never be reached  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     pass
             try:
                 logger.warning(
@@ -247,7 +247,7 @@ class MCPStateBackend:
                         **_safe_extra(log_context),
                     },
                 )
-            except Exception:  # best-effort log emission; substrate failures must not propagate  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception:  # best-effort log emission; substrate failures must not propagate  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pass
             return False
 
@@ -318,7 +318,7 @@ class MCPStateBackend:
             if isinstance(result, dict):
                 return result
             return None
-        except Exception as exc:  # circuit-breaker sink for get(): substrate failure → return None  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # circuit-breaker sink for get(): substrate failure → return None  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
             logger.debug("MCP get(%r) failed: %s", key, exc)
             return None
@@ -330,7 +330,7 @@ class MCPStateBackend:
         try:
             await self._client.call_tool("delete", {"key": key})
             self._record_success()
-        except Exception as exc:  # circuit-breaker sink for delete(): substrate failure → no-op  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # circuit-breaker sink for delete(): substrate failure → no-op  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
             logger.debug("MCP delete(%r) failed: %s", key, exc)
 
@@ -344,7 +344,7 @@ class MCPStateBackend:
             if isinstance(result, list):
                 return [(item["key"], item.get("value", {})) for item in result if "key" in item]
             return []
-        except Exception as exc:  # circuit-breaker sink for list_prefix(): substrate failure → []  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # circuit-breaker sink for list_prefix(): substrate failure → []  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
             logger.debug("MCP list_prefix(%r) failed: %s", prefix, exc)
             return []
@@ -364,7 +364,7 @@ class MCPStateBackend:
             self._available = True
             self._consecutive_failures = 0
             return True
-        except Exception:  # probe sink: any failure flips availability to False  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # probe sink: any failure flips availability to False  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._available = False
             logger.warning("MCP unavailable — state persistence disabled")
             return False

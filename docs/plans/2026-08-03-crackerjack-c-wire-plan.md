@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-08-03
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-15
 superseded_by: null
 blocks_on: []
 topic: crackerjack-c-wire-plan

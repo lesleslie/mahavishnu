@@ -53,7 +53,7 @@ def _drain(mock_async_fn) -> None:
     RuntimeWarning('coroutine ... was never awaited')."""
     try:
         mock_async_fn.return_value.close()
-    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         pass
 
 

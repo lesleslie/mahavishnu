@@ -177,7 +177,7 @@ class PgvectorAdapter:
             async with self._connection() as conn:
                 await conn.execute("SELECT 1")
             return True
-        except Exception as exc:  # pgvector health probe soft-fails to False on any DB connect/auth error  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # pgvector health probe soft-fails to False on any DB connect/auth error  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._logger.warning("pgvector-health-failed", extra={"error": str(exc)})
             return False
 

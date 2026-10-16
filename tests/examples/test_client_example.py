@@ -105,7 +105,7 @@ def main():
         print("✓ ALL CLIENT TESTS PASSED")
         print("=" * 60)
 
-    except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         print(f"\n✗ TEST FAILED: {e}")
         import traceback
 

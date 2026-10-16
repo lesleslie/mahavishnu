@@ -718,7 +718,7 @@ class TestHandleWorkflowExecutionError:
                 error=error,
                 checkpoint_id=None,
             )
-        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             pass  # Expected - error is re-raised
 
         assert "wf_123" not in app.active_workflows

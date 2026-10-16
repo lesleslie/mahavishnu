@@ -189,7 +189,7 @@ async def write_canonical_symbol(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -267,7 +267,7 @@ async def write_replacement_diff(
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
             return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
-        except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
                 meta_exc,
@@ -482,7 +482,7 @@ async def run_clone_refactor_dag(
                 )
             try:
                 return await write_replacement_diff(refactor_job_id, repo, diff)
-            except Exception as exc:  # per-consumer failure is recorded, not raised  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+            except Exception as exc:  # per-consumer failure is recorded, not raised  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 return RepoCommit(
                     repo=repo,
                     sha=None,
@@ -543,7 +543,7 @@ async def run_clone_refactor_dag(
         # would otherwise replace the traceback).
         try:
             await release_cluster_claim(mcp_backend, cluster_id)
-        except Exception as release_exc:  # release is best-effort; original DAG exception wins  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+        except Exception as release_exc:  # release is best-effort; original DAG exception wins  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "release_cluster_claim failed for cluster_id=%s (%s); continuing",
                 cluster_id,

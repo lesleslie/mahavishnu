@@ -1,9 +1,9 @@
 ---
 date: 2026-09-25
-status: active
+status: shipped
 role: implementation
 topic: remove-sb-insights-pipeline
-last_reviewed: 2026-09-25
+last_reviewed: 2026-10-15
 superseded_by: null
 ---
 

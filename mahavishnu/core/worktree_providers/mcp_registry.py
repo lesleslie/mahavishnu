@@ -418,7 +418,7 @@ async def _cleanup_principal_index(client: Any, handle_id: str) -> int:
             "DELETE FROM mahavishnu_worktree_registry_idx_principal WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={
@@ -438,7 +438,7 @@ async def _cleanup_repo_index(client: Any, handle_id: str) -> int:
             "DELETE FROM mahavishnu_worktree_registry_idx_repo WHERE handle_id = :handle_id",
             {"handle_id": handle_id},
         )
-    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception as exc:  # Index cleanup logs and continues; the canonical record is what callers actually need  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
             "worktree-registry-index-cleanup-failed",
             extra={

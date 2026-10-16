@@ -177,7 +177,7 @@ class WebhookAlertHandler(AlertHandler):
                     self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
                 else:
                     self.logger.error(f"Failed to send alert: HTTP {response.status}")
-        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.error(f"Webhook alert failed: {e}")
 
 
@@ -416,7 +416,7 @@ class RoutingAlertManager:
                     for handler in self.handlers:
                         try:
                             await handler.send_alert(alert)
-                        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001
+                        except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                             self.logger.error(f"Handler {handler.__class__.__name__} failed: {e}")
 
                 if all_alerts:

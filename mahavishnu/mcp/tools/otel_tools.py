@@ -110,7 +110,7 @@ def register_otel_tools(server, app, mcp_client):
                         files_processed += 1
                         logger.info(f"Ingested {len(traces)} traces from {log_file}")
 
-                    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+                    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                         error_msg = f"Failed to process {log_file}: {e!s}"
                         logger.error(error_msg)
                         errors.append(error_msg)
@@ -126,7 +126,7 @@ def register_otel_tools(server, app, mcp_client):
                     await ingester.ingest_batch(trace_data)
                     traces_ingested += len(trace_data)
                     logger.info(f"Ingested {len(trace_data)} direct traces")
-                except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                     error_msg = f"Failed to process direct traces: {e!s}"
                     logger.error(error_msg)
                     errors.append(error_msg)

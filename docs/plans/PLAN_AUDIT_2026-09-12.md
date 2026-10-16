@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: audit
 date: 2026-09-12
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-15
 topic: followups-lifecycle
 title: "Plan Audit — 2026-09-12"
 

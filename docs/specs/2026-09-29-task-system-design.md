@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: tooling
 date: 2026-09-29
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-15
 superseded_by: null
 blocks_on: []
 title: "Bodai Task System Design"

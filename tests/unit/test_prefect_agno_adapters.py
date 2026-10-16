@@ -144,7 +144,7 @@ async def test_agno_adapter_initialize_connection_failure():
     # For now, we expect it to handle the failure gracefully
     try:
         await adapter.initialize()
-    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         # Expected - connection should fail
         pass
 

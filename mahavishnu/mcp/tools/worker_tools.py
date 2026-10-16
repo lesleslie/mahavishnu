@@ -206,7 +206,7 @@ async def worker_close(
     try:
         await _worker_manager.close_worker(worker_id)
         return {"success": True, "worker_id": worker_id}
-    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {"success": False, "worker_id": worker_id, "error": str(e)}
 
 

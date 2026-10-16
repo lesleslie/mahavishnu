@@ -1,8 +1,8 @@
 ---
-status: draft
+status: shipped
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-15
 superseded_by: null
 topic: track4-turbovec
 title: "Track 4 — TurboVec Integration Implementation Plan"

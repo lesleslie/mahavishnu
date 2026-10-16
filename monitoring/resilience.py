@@ -368,7 +368,7 @@ class Retry:
                     if self.on_retry:
                         try:
                             await self._call_on_retry(attempt, e)
-                        except Exception as callback_error:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001
+                        except Exception as callback_error:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                             logger.error(f"on_retry callback failed: {callback_error}")
 
                     # Wait before retry

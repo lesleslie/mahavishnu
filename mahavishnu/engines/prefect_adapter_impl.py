@@ -232,7 +232,7 @@ async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[
             "result": result,
             "task_id": task_spec.get("id", "unknown"),
         }
-    except Exception as e:  # Prefect task wrapper — broad catch to return structured failure result  # background task — broad catch is the documented contract  # noqa: BLE001
+    except Exception as e:  # Prefect task wrapper — broad catch to return structured failure result  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         return {
             "repo": repo_path,
             "status": "failed",
@@ -735,7 +735,7 @@ class PrefectAdapter(OrchestratorAdapter):
         if self._client_context is not None:
             try:
                 await self._client_context.__aexit__(None, None, None)
-            except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # background task — broad catch is the documented contract  # noqa: BLE001
+            except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Error closing Prefect client: {e}")
             finally:
                 self._client_context = None
@@ -745,7 +745,7 @@ class PrefectAdapter(OrchestratorAdapter):
             if callable(close_method):
                 try:
                     await close_method()
-                except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # background task — broad catch is the documented contract  # noqa: BLE001
+                except Exception as e:  # adapter shutdown cleanup — broad catch to log warning during teardown  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.warning(f"Error closing Prefect client session: {e}")
 
         self._client = None
@@ -765,7 +765,7 @@ class PrefectAdapter(OrchestratorAdapter):
         # at all, so fall back to a lightweight HTTP shim for lifecycle checks.
         try:
             client_factory = get_client()
-        except Exception as exc:  # client factory fallback — broad catch to log shim warning and use lightweight shim  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # client factory fallback — broad catch to log shim warning and use lightweight shim  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "Falling back to lightweight Prefect client shim: %s",
                 exc,
@@ -939,7 +939,7 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             # Re-raise PrefectError without wrapping
             raise
-        except Exception as exc:  # flow execute — broad catch to map any error to structured failure result (PrefectError already handled above)  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # flow execute — broad catch to map any error to structured failure result (PrefectError already handled above)  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             error = _map_prefect_exception(exc, "execute", self.config.api_url)
             logger.error(
                 "Prefect flow execution failed",
@@ -1025,7 +1025,7 @@ class PrefectAdapter(OrchestratorAdapter):
                     "api_url": self.config.api_url,
                 },
             }
-        except Exception as exc:  # health check — broad catch to report any error as unhealthy  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001
+        except Exception as exc:  # health check — broad catch to report any error as unhealthy  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "Prefect health check failed with unexpected error",
                 extra={"error": str(exc)},
