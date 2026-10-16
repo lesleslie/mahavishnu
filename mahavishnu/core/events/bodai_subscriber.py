@@ -491,7 +491,7 @@ async def _ensure_consumer_group(
         )
     except (  # background task — broad catch is the documented contract
         Exception  # noqa: BLE001, RUF100
-    ) as e:
+    ) as exc:
         if "BUSYGROUP" in str(exc):
             _logger.debug(
                 "bodai.subscriber: consumer group already exists",

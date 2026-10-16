@@ -24,13 +24,14 @@ import os
 import pathlib
 import re
 import shutil
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from oneiric.core.logging import get_logger
 import typer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mahavishnu.core.config import MahavishnuSettings
     from mahavishnu.workers.contract.store import WorkerRecordStore
 

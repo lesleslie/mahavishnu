@@ -210,7 +210,7 @@ def status_prefect() -> None:
         typer.echo(f"Health probe  : HTTP {resp.status_code} — body={resp.text.strip()!r}")
     except (  # CLI entry point — broad catch is the documented contract
         Exception  # noqa: BLE001, RUF100
-    ) as e:
+    ) as exc:
         typer.echo(f"Health probe  : failed — {exc}", err=True)
 
 

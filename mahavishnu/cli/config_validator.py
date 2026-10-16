@@ -516,7 +516,7 @@ def _bifrost_schema_dump() -> dict[str, object]:
         settings = MahavishnuSettings()
     except (  # CLI entry point — broad catch is the documented contract
         Exception  # noqa: BLE001, RUF100
-    ) as e:
+    ) as exc:
         return {"_error": f"settings load failed: {exc}"}
     return settings.bifrost.model_dump(exclude={"auth_env"})
 
