@@ -53,6 +53,31 @@ The script never raises out of ``main()``; failures are logged and the
 exit code is always 0. The hooks contract for Claude Code requires
 non-zero exit only when we *want* the hook to block tool execution;
 SessionStart / SessionEnd hooks should fail silent.
+
+Safety guards
+-------------
+The observer surface is intentionally narrow. Two mitigations keep
+sensitive material from leaving the local host:
+
+* **Local-only Redis URL.** When ``MAHAVISHNU_BODAI_REDIS_URL`` is
+  unset the default ``redis://localhost:6379/0`` is used. When it
+  is set, the URL is validated: only loopback (``localhost``,
+  ``127.0.0.1``, ``::1``) and ``unix://`` sockets are accepted. A
+  non-local target causes the spawn to be skipped (logged at the
+  ``session-start`` level) so a misconfigured environment cannot
+  exfiltrate Bodai activity to a remote host.
+
+* **Secret-shaped key redaction.** The worker redacts values whose
+  envelope field name matches any of the credential-shaped patterns
+  (``secret*``, ``token*``, ``password*``, ``credential*``,
+  ``api_key*`` for prefixes; ``*_secret``, ``*_token``, ``*_password``,
+  ``*_credential``, ``*_api_key`` for suffixes; plus the exact name
+  ``apikey``), case-insensitive, recursively through nested dicts
+  and lists. Prefix matching catches ``password_hash``-style names;
+  suffix matching catches ``access_token``, ``refresh_token``,
+  ``client_secret``-style names. The redacted value is replaced with
+  the literal string ``<redacted>``. Envelopes that fail redaction
+  are dropped rather than written in cleartext.
 """
 from __future__ import annotations
 
@@ -86,8 +111,40 @@ def _state_path() -> Path:
     return _mahavishnu_home() / "bodai-subscriber-state.json"
 
 
-def _redis_url() -> str:
-    return os.environ.get("MAHAVISHNU_BODAI_REDIS_URL", "redis://localhost:6379/0")
+def _redis_url() -> str | None:
+    """Return the Redis URL, restricted to local-only targets.
+
+    The Bodai activity subscriber reads the Redis Streams transport
+    that backs the Oneiric EventBridge. To keep the observability
+    surface narrow, the URL is only accepted when it points at the
+    local host (loopback IPv4/IPv6, ``localhost``, or a Unix
+    socket). Operators who genuinely need a non-local Redis must run
+    the subscriber out-of-band — this hook will refuse to spawn
+    against a remote target and return ``None``.
+
+    Returns ``None`` when ``MAHAVISHNU_BODAI_REDIS_URL`` is set but
+    points at a non-local host. The caller is expected to log and
+    skip the spawn rather than fall back silently.
+    """
+    raw = os.environ.get("MAHAVISHNU_BODAI_REDIS_URL")
+    candidate = raw or "redis://localhost:6379/0"
+
+    # Unix socket: always local
+    if candidate.startswith("unix://"):
+        return candidate
+
+    # TCP URL: must resolve to a loopback host
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(candidate)
+    except ValueError:
+        return None
+    if parsed.scheme not in {"redis", "rediss"}:
+        return None
+    host = (parsed.hostname or "").lower()
+    if host not in {"localhost", "127.0.0.1", "::1"}:
+        return None
+    return candidate
 
 
 def _queue_path() -> Path:
@@ -224,6 +281,81 @@ def _queue_path() -> Path:
     return Path.home() / ".mahavishnu" / "bodai-event-queue.json"
 
 
+# Key patterns whose values must never be written to the on-disk queue
+# in cleartext. The names follow the convention used by the Oneiric
+# substrate (lowercase, snake_case). New patterns can be added here;
+# existing patterns should NOT be relaxed without an explicit security
+# review (see commit 21fa05dd review).
+#
+# Matching is case-insensitive on the key and accepts either prefix OR
+# suffix. Prefix covers ``password_hash``-style names; suffix covers
+# ``access_token``, ``refresh_token``, ``client_secret``-style names
+# where the credential type is the trailing word.
+_SECRET_KEY_PREFIXES = (
+    "secret",
+    "token",
+    "password",
+    "credential",
+    "api_key",
+)
+_SECRET_KEY_SUFFIXES = (
+    "_secret",
+    "_token",
+    "_password",
+    "_credential",
+    "_api_key",
+)
+_SECRET_KEY_EXACT = frozenset({"apikey"})
+
+_REDACTED_SENTINEL = "<redacted>"
+
+
+def _is_secret_key(key: object) -> bool:
+    if not isinstance(key, str):
+        return False
+    lowered = key.lower()
+    if lowered in _SECRET_KEY_EXACT:
+        return True
+    if any(lowered.startswith(prefix) for prefix in _SECRET_KEY_PREFIXES):
+        return True
+    return any(lowered.endswith(suffix) for suffix in _SECRET_KEY_SUFFIXES)
+
+
+def _redact_secrets(value, _seen=None, _depth=0):
+    '''Recursively replace values whose key matches a secret pattern.
+
+    Returns a deep-enough copy that no value reachable via a secret
+    key survives in the result. Walks dicts and lists; leaves other
+    types alone. Guards against pathological depth (max 16) and
+    shared-reference cycles via ``_seen`` (id-keyed). Triple-quotes
+    would terminate the enclosing ``_SUBSCRIBER_WORKER_CODE`` string,
+    so the docstring uses single-quotes.
+    '''
+    if _seen is None:
+        _seen = set()
+    if _depth > 16:
+        return value
+    if isinstance(value, dict):
+        sid = id(value)
+        if sid in _seen:
+            return value
+        _seen.add(sid)
+        out: dict = {}
+        for k, v in value.items():
+            if _is_secret_key(k):
+                out[k] = _REDACTED_SENTINEL
+            else:
+                out[k] = _redact_secrets(v, _seen, _depth + 1)
+        return out
+    if isinstance(value, list):
+        sid = id(value)
+        if sid in _seen:
+            return value
+        _seen.add(sid)
+        return [_redact_secrets(item, _seen, _depth + 1) for item in value]
+    return value
+
+
 async def _enqueue(envelope) -> None:
     import json
     from mahavishnu.core.events.bodai_subscriber import append_to_queue, _envelope_to_dict
@@ -233,9 +365,14 @@ async def _enqueue(envelope) -> None:
         logging.exception("failed to serialize envelope; skipping")
         return
     try:
+        redacted = _redact_secrets(envelope_dict)
+    except Exception:
+        logging.exception("redaction failed; refusing to enqueue envelope")
+        return
+    try:
         await asyncio.to_thread(
             append_to_queue,
-            envelope_dict,
+            redacted,
             queue_path=_queue_path(),
         )
     except Exception:
@@ -350,6 +487,13 @@ def _session_start() -> int:
             _clear_state()
 
     redis_url = _redis_url()
+    if redis_url is None:
+        _log(
+            "session-start: refusing to spawn — MAHAVISHNU_BODAI_REDIS_URL "
+            "is not a local-only target (loopback / unix socket). "
+            "Set it to redis://localhost:6379/0 or a unix:// path to enable.",
+        )
+        return 0
     queue_path = _queue_path()
     pid = _spawn_subprocess(redis_url, queue_path)
     if pid is None:
