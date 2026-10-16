@@ -305,15 +305,34 @@ def run_squash_merge(
     5. Semantic commit (``merge: <branch> → <base>``) in the main
        checkout.
 
+    Plus a pair of pre-/post- capture steps that protect the main
+    checkout's index from pollution across sessions:
+
+    - **Step 2.6** (before step 3): ``git status --porcelain`` in the
+      main checkout. If dirty (staged, modified, or untracked files
+      from prior sessions), ``git stash push --include-untracked``
+      captures the state into a dated stash entry. Without this,
+      step 4's ``git merge --squash`` adds the branch's files to
+      the already-polluted index, and step 5's bare ``git commit``
+      sweeps everything in (the
+      ``feedback-squash-merge-pollutes-parent-index`` failure mode —
+      observed 2026-10-16 in mcp-common: 24 unintended files,
+      6,535 lines).
+    - **Step 6** (after step 5): ``git stash pop`` restores the
+      captured state. Only fires on commit success; if the commit
+      fails, the stash is preserved so the user can inspect it via
+      ``git stash list`` and recover manually.
+
     Returns ``(returncode, stderr)`` verbatim. The call site maps any
     non-zero returncode to ``EXIT_REBASE_CONFLICT = 3``. The rebase
     step is the most likely failure point; the squash-merge step is
     a no-op after a clean rebase.
 
     The pre-rebase work (steps 1-2) stays in the worktree because
-    the ephemeral branch only exists there. Stages 3-5 relocate to
-    the main checkout so the squash-merge lands on the real
-    ``main`` branch.
+    the ephemeral branch only exists there. Stages 2.6, 3-6
+    relocate to the main checkout so the squash-merge lands on the
+    real ``main`` branch and the user's prior dirty state is
+    preserved across the merge.
     """
     # Step 1: rebase the branch onto the latest base.
     rebase_result = subprocess.run(  # nosec B603 — argv-list, no shell
@@ -362,6 +381,53 @@ def run_squash_merge(
             ),
         )
 
+    # Step 2.6: capture the main checkout's dirty tree state.
+    # The main_checkout is shared across sessions and accumulates
+    # staged-but-uncommitted files from prior work. Step 4's
+    # ``git merge --squash`` adds my files to that index, and Step 5's
+    # bare ``git commit`` would then sweep everything in (the
+    # ``feedback-squash-merge-pollutes-parent-index`` failure mode).
+    # Stash first, pop after the commit lands.
+    stash_ref: str | None = None
+    status_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "status", "--porcelain"],
+        cwd=main_checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if status_result.stdout.strip():
+        stash_message = (
+            f"merge-to-main auto-stash: {branch} -> {base} ({datetime.now(UTC).isoformat()})"
+        )
+        stash_result = subprocess.run(  # nosec B603 — argv-list, no shell
+            [
+                "git",
+                "stash",
+                "push",
+                "--include-untracked",
+                "-m",
+                stash_message,
+            ],
+            cwd=main_checkout,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if stash_result.returncode == 0:
+            stash_ref = stash_message
+            print(
+                f"[merge_to_main] captured main_checkout dirty tree: {stash_message}",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"[merge_to_main] warning: git stash push failed in "
+                f"main_checkout; proceeding without stash. stderr: "
+                f"{stash_result.stderr!r}",
+                file=sys.stderr,
+            )
+
     # Step 3: switch the main checkout onto the base branch.
     checkout_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "checkout", base],
@@ -371,6 +437,8 @@ def run_squash_merge(
         check=False,
     )
     if checkout_result.returncode != 0:
+        if stash_ref is not None:
+            _pop_stash_safely(main_checkout, stash_ref)
         return (EXIT_REBASE_CONFLICT, checkout_result.stderr)
 
     # Step 4: stage the squash-merge (does NOT auto-commit).
@@ -382,6 +450,8 @@ def run_squash_merge(
         check=False,
     )
     if squash_result.returncode != 0:
+        if stash_ref is not None:
+            _pop_stash_safely(main_checkout, stash_ref)
         return (EXIT_REBASE_CONFLICT, squash_result.stderr)
 
     # Step 5: semantic commit (one line, references the branch + base).
@@ -393,7 +463,56 @@ def run_squash_merge(
         text=True,
         check=False,
     )
+
+    # Step 6: restore the captured dirty tree (only on commit success).
+    # If the commit failed, leave the stash in place so the user can
+    # inspect it via ``git stash list`` and recover manually.
+    if commit_result.returncode == 0 and stash_ref is not None:
+        _pop_stash_safely(main_checkout, stash_ref)
+    elif commit_result.returncode != 0 and stash_ref is not None:
+        print(
+            "[merge_to_main] commit failed; auto-stash preserved in "
+            "main_checkout. Run `git stash list` to inspect, "
+            "`git stash pop` to restore.",
+            file=sys.stderr,
+        )
+
     return (commit_result.returncode, commit_result.stderr)
+
+
+def _pop_stash_safely(main_checkout: Path, stash_ref: str) -> None:
+    """Pop a stash and log (don't crash) if pop has conflicts.
+
+    Stash pop conflicts are common when the user's prior dirty tree
+    state overlapped with files modified by the squash-merge (e.g.
+    the user had staged changes to the same files the branch was
+    editing). Standard merge conflict markers surface; the user
+    resolves them via normal git tooling. We never want to fail the
+    entire merge pipeline just because the user's pre-existing
+    work overlapped with the new commit — the commit has already
+    landed on ``main`` and is the source of truth going forward.
+    """
+    pop_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "stash", "pop"],
+        cwd=main_checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if pop_result.returncode == 0:
+        print(
+            "[merge_to_main] restored main_checkout dirty tree from stash",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"[merge_to_main] warning: git stash pop failed in "
+            f"main_checkout. The user's pre-existing dirty tree "
+            f"state is in the stash; manual resolution required. "
+            f"git stash pop stdout: {pop_result.stdout!r}; "
+            f"git stash pop stderr: {pop_result.stderr!r}",
+            file=sys.stderr,
+        )
 
 
 def run_push(base_ref: str = "main") -> tuple[int, str]:

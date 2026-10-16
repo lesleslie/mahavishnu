@@ -9,16 +9,16 @@ import pytest
 
 from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
-    _check_pending_commit_eligibility,
-    _check_sibling_worktree_state,
-    _find_main_checkout_path,
-    _list_repo_worktrees,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
     EXIT_CRACKERJACK_FAILURE,
     EXIT_OK,
     EXIT_REVIEW_FAILURE,
     REVIEW_STATE_SCHEMA_VERSION,
+    _check_pending_commit_eligibility,
+    _check_sibling_worktree_state,
+    _find_main_checkout_path,
+    _list_repo_worktrees,
     aggregate_verdicts,
     parse_verdict,
     read_review_state,
@@ -935,6 +935,257 @@ def test_run_squash_merge_lands_commit_on_main_checkout(
     )
     assert commit_calls[0][1]["cwd"] == main_checkout, (
         f"commit must run in main checkout, got cwd={commit_calls[0][1]['cwd']!r}"
+    )
+
+
+def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Step 2.6 captures main_checkout dirty tree; step 6 restores it.
+
+    Regression test for the
+    ``feedback-squash-merge-pollutes-parent-index`` failure mode
+    (observed 2026-10-16 in mcp-common). Without the stash, the
+    main_checkout's pre-staged files (from prior sessions) are
+    swept into the squash-merge commit. With the stash: ``git
+    status --porcelain`` triggers ``git stash push
+    --include-untracked``, then ``git stash pop`` runs after the
+    commit succeeds.
+    """
+    worktree = tmp_path / "worktree"
+    main_checkout = tmp_path / "main"
+    worktree.mkdir()
+    main_checkout.mkdir()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.read_review_state",
+        lambda *a, **kw: {},
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda worktree_root: main_checkout,
+    )
+
+    # ``git status --porcelain`` returns a dirty state (M / A / ??).
+    # All other calls succeed.
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        # First call: ``git status --porcelain`` — return dirty state.
+        if cmd[:3] == ["git", "status", "--porcelain"]:
+            proc = _FakeProc(
+                returncode=0,
+                stdout="M  mahavishnu/core/config.py\n"
+                "?? untracked_file.txt\n",
+            )
+        # ``git stash push --include-untracked -m …`` — succeed.
+        elif cmd[:3] == ["git", "stash", "push"] or cmd[:2] == ["git", "stash"] and len(cmd) == 3 and cmd[2] == "pop":
+            proc = _FakeProc(returncode=0, stdout="", stderr="")
+        else:
+            proc = _FakeProc(returncode=0, stdout="", stderr="")
+        calls.append((cmd, kwargs))
+        return proc
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
+    assert rc == 0
+
+    # Find the stash-push, stash-pop, and commit calls (by argv signature,
+    # normalizing the stash-push message which varies per run).
+    stash_push_kwargs: dict[str, object] | None = None
+    stash_pop_kwargs: dict[str, object] | None = None
+    commit_kwargs: dict[str, object] | None = None
+    for cmd, kw in calls:
+        if cmd[:3] == ["git", "stash", "push"]:
+            stash_push_kwargs = kw
+        elif cmd[:2] == ["git", "stash"] and len(cmd) == 3 and cmd[2] == "pop":
+            stash_pop_kwargs = kw
+        elif cmd[:2] == ["git", "commit"]:
+            commit_kwargs = kw
+
+    # The stash push must include --include-untracked (catches both
+    # staged AND untracked pollution, not just tracked-modified).
+    assert stash_push_kwargs is not None, (
+        f"expected `git stash push` in call sequence; "
+        f"got argv first-3: {[c[:3] for c, _ in calls]}"
+    )
+    assert stash_push_kwargs["cwd"] == main_checkout, (
+        f"stash push cwd must be main_checkout, got "
+        f"{stash_push_kwargs['cwd']!r}"
+    )
+    assert "--include-untracked" in (
+        # cmd is the full argv; check it
+        next(c for c, _ in calls if c[:3] == ["git", "stash", "push"])
+    ), "stash push must include --include-untracked flag"
+
+    # The stash pop must happen (the commit succeeded).
+    assert stash_pop_kwargs is not None, (
+        "expected `git stash pop` after successful commit; not found"
+    )
+    assert stash_pop_kwargs["cwd"] == main_checkout, (
+        f"stash pop cwd must be main_checkout, got "
+        f"{stash_pop_kwargs['cwd']!r}"
+    )
+
+    # The commit must still happen exactly once, in main_checkout.
+    assert commit_kwargs is not None, "expected `git commit` in call sequence"
+    assert commit_kwargs["cwd"] == main_checkout, (
+        f"commit cwd must be main_checkout, got {commit_kwargs['cwd']!r}"
+    )
+
+    # Verify ordering: status → stash push → checkout → squash → commit
+    # → stash pop. The push must come BEFORE the squash-merge; the
+    # pop must come AFTER the commit.
+    argvs = [c for c, _ in calls]
+    push_idx = next(
+        i for i, c in enumerate(argvs) if c[:3] == ["git", "stash", "push"]
+    )
+    squash_idx = next(
+        i for i, c in enumerate(argvs) if c[:2] == ["git", "merge"]
+    )
+    commit_idx = next(
+        i for i, c in enumerate(argvs) if c[:2] == ["git", "commit"]
+    )
+    pop_idx = next(
+        i
+        for i, c in enumerate(argvs)
+        if c[:2] == ["git", "stash"] and len(c) == 3 and c[2] == "pop"
+    )
+    assert push_idx < squash_idx, (
+        f"stash push must precede squash-merge; "
+        f"push_idx={push_idx}, squash_idx={squash_idx}"
+    )
+    assert squash_idx < commit_idx, (
+        f"squash-merge must precede commit; "
+        f"squash_idx={squash_idx}, commit_idx={commit_idx}"
+    )
+    assert commit_idx < pop_idx, (
+        f"commit must precede stash pop; "
+        f"commit_idx={commit_idx}, pop_idx={pop_idx}"
+    )
+
+
+def test_run_squash_merge_skips_stash_when_main_clean(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Clean main_checkout → no stash push, no stash pop.
+
+    The new step 2.6 must be a no-op when ``git status --porcelain``
+    returns empty. Otherwise a clean parent pays the cost of a
+    unnecessary stash round-trip on every merge.
+    """
+    worktree = tmp_path / "worktree"
+    main_checkout = tmp_path / "main"
+    worktree.mkdir()
+    main_checkout.mkdir()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.read_review_state",
+        lambda *a, **kw: {},
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda worktree_root: main_checkout,
+    )
+
+    call_sequence: list[list[str]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        call_sequence.append(cmd)
+        if cmd[:3] == ["git", "status", "--porcelain"]:
+            # Empty stdout = clean tree
+            return _FakeProc(returncode=0, stdout="", stderr="")
+        return _FakeProc(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
+    assert rc == 0
+
+    # No stash push, no stash pop should have fired.
+    stash_pushes = [c for c in call_sequence if c[:3] == ["git", "stash", "push"]]
+    stash_pops = [
+        c
+        for c in call_sequence
+        if c[:2] == ["git", "stash"] and len(c) == 3 and c[2] == "pop"
+    ]
+    assert stash_pushes == [], (
+        f"expected no stash push on clean tree; got {stash_pushes}"
+    )
+    assert stash_pops == [], (
+        f"expected no stash pop on clean tree; got {stash_pops}"
+    )
+
+
+def test_run_squash_merge_preserves_stash_on_commit_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Commit fails → stash is preserved, not popped.
+
+    The contract: step 6 only fires on commit success. If the
+    commit fails (e.g. pre-commit hook, identity mismatch), the
+    user's prior dirty tree state must remain in the stash list
+    for manual recovery, not silently dropped.
+    """
+    worktree = tmp_path / "worktree"
+    main_checkout = tmp_path / "main"
+    worktree.mkdir()
+    main_checkout.mkdir()
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.read_review_state",
+        lambda *a, **kw: {},
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda worktree_root: main_checkout,
+    )
+
+    call_sequence: list[tuple[list[str], _FakeProc]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        if cmd[:3] == ["git", "status", "--porcelain"]:
+            proc = _FakeProc(
+                returncode=0, stdout="M  polluted_file.py\n", stderr=""
+            )
+        elif cmd[:3] == ["git", "stash", "push"]:
+            proc = _FakeProc(returncode=0, stdout="", stderr="")
+        elif cmd[:2] == ["git", "commit"]:
+            # Commit fails — simulate pre-commit hook rejection.
+            proc = _FakeProc(
+                returncode=1,
+                stdout="",
+                stderr="commit blocked by pre-commit hook\n",
+            )
+        else:
+            proc = _FakeProc(returncode=0, stdout="", stderr="")
+        call_sequence.append((cmd, proc))
+        return proc
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
+    )
+
+    rc, stderr = run_squash_merge(worktree, "origin/main", "feature-x")
+    assert rc == 1, f"expected commit-failure rc=1, got {rc}"
+    assert "commit blocked" in stderr
+
+    # Stash push happened; stash pop did NOT.
+    argvs = [c for c, _ in call_sequence]
+    stash_pushes = [c for c in argvs if c[:3] == ["git", "stash", "push"]]
+    stash_pops = [
+        c for c in argvs if c[:2] == ["git", "stash"] and len(c) == 3 and c[2] == "pop"
+    ]
+    assert len(stash_pushes) == 1, (
+        f"expected exactly one stash push; got {len(stash_pushes)}"
+    )
+    assert stash_pops == [], (
+        f"stash pop must NOT fire on commit failure; got {stash_pops}"
     )
 
 
