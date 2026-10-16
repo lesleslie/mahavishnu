@@ -378,10 +378,66 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         llama_server_model = getattr(config, "llm_model", "qwen3.5")
         llama_server_url = getattr(config, "llama_server_url", "http://localhost:8081")
 
+        # Auto-discover the actual model from llama-server if the
+        # configured value is the stale default. This handles "config
+        # drift" where the user swapped the GGUF but didn't update
+        # settings.yaml — without it, llama-server returns an error
+        # body that the OpenAI SDK mis-parses as a list, surfacing as
+        # `AttributeError: 'list' object has no attribute 'data'`.
+        if llama_server_model in {"qwen3.5", "llama-server-default"}:
+            try:
+                import json
+                import urllib.request
+
+                with urllib.request.urlopen(  # noqa: S310 — URL is operator-configured
+                    f"{llama_server_url.rstrip('/')}/v1/models", timeout=5
+                ) as resp:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                models = payload.get("data") or []
+                if models and isinstance(models[0], dict) and models[0].get("id"):
+                    discovered = models[0]["id"]
+                    logger.info(
+                        "llama_server model auto-discovered from /v1/models",
+                        extra={
+                            "configured": llama_server_model,
+                            "discovered": discovered,
+                            "url": llama_server_url,
+                        },
+                    )
+                    llama_server_model = discovered
+            except Exception as discovery_error:  # noqa: BLE001
+                logger.warning(
+                    "llama_server model auto-discovery failed; using configured value",
+                    extra={
+                        "configured": llama_server_model,
+                        "url": llama_server_url,
+                        "error": str(discovery_error),
+                    },
+                )
+
+        # Normalize api_base to include /v1. The OpenAI SDK does NOT
+        # auto-prepend /v1 for the embeddings endpoint — if we pass
+        # base_url="http://localhost:8081", the SDK hits
+        # POST /embeddings and llama-server returns a bare list, which
+        # the SDK then mis-parses as ``CreateEmbeddingResponse`` and
+        # crashes on ``obj.data``. Appending /v1 here is required.
+        if not llama_server_url.rstrip("/").endswith("/v1"):
+            llama_server_url = llama_server_url.rstrip("/") + "/v1"
+
         try:
-            # Configure LlamaIndex settings
+            # Configure LlamaIndex settings.
+            # The default OpenAIEmbedding/OpenAILike timeout is 60s,
+            # which is too tight for an 8B Q4_K_M llama-server on CPU
+            # (generation + retrieval can take 1-3 minutes per request).
+            # 600s is generous; llama-server still applies its own
+            # slot-level timeout, so this won't hang the call forever
+            # if the model is unresponsive.
+            llama_server_timeout = 600.0
             Settings.embed_model = OpenAIEmbedding(
-                model_name=llama_server_model, api_base=llama_server_url, api_key="no-auth"
+                model_name=llama_server_model,
+                api_base=llama_server_url,
+                api_key="no-auth",
+                timeout=llama_server_timeout,
             )
             Settings.llm = OpenAILike(
                 model=llama_server_model,
@@ -389,6 +445,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 api_key="no-auth",
                 is_chat_model=True,
                 context_window=32768,
+                timeout=llama_server_timeout,
             )
         except Exception as e:  # llama-server client init may raise any error; wrap into domain-specific LlamaIndexEmbeddingError
             raise LlamaIndexEmbeddingError(
