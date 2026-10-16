@@ -111,6 +111,15 @@ SERVERS: list[tuple[str, str, str]] = [
     ("akosha", "http://localhost:8682/mcp", "list_agents"),
     ("mahavishnu", "http://localhost:8680/mcp", "mahavishnu_list_agents"),
     ("crackerjack", "http://localhost:8676/mcp", "crackerjack_list_agents"),
+    # Phase 4 §11 federation: extend the agent mirror to every Bodai
+    # server that exposes list_agents via the Phase 3 factory in
+    # mcp_common.agents_tools. session-buddy uses the underscore
+    # server_key (``session_buddy_`` prefix on tool names).
+    # oneiric synthesizes its catalog at module load from
+    # oneiric/adapters/<domain>/ so the mirror picks up 17 entries
+    # (1 cross-domain + 16 per-domain specialists).
+    ("session-buddy", "http://localhost:8678/mcp", "session_buddy_list_agents"),
+    ("oneiric", "http://localhost:8684/mcp", "oneiric_list_agents"),
 ]
 
 
