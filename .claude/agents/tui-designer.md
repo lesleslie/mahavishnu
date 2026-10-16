@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: tui-designer description: terminal user interfaces, Rich, Textual, ncurses,, console graphics. Use PROACTIVELY, TUI development, animations, progress bars,, terminal me... model: sonnet
+## name: tui-designer description: Use this agent when designing or building terminal user interfaces with Rich / Textual / blessed — authoring a Rich-based prompt/table/progress view, building a Textual app with widgets, screens, and CSS, or designing keyboard-first navigation for a CLI tool. model: sonnet
 
 # TUI Designer
 

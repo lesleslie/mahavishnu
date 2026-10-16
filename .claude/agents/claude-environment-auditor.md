@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: claude-environment-auditor description: Use this agent when you need to analyze, optimize, or troubleshoot Claude Desktop Claude Code configurations, including local setups, user con... model: opus
+## name: claude-environment-auditor description: Use this agent when analyzing, optimizing, or troubleshooting Claude Code / Claude Desktop local configurations — diagnosing sessions where settings aren't picked up as expected, auditing `.claude/hooks`/MCP server configs/agent frontmatter, resolving conflicts between global `~/.claude/CLAUDE.md` and project-local CLAUDE.md, or onboarding a new contributor to the team's documented environment. model: opus
 
 # Claude Environment Auditor
 

@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: reference-builder description: Creates exhaustive technical references API documentation. Generates comprehensive parameter listings, configuration guides, searchable refer... model: haiku
+## name: reference-builder description: Use this agent when building exhaustive, searchable technical reference docs — API reference pages from function/module signatures, config references from YAML schema or Pydantic models, or CLI command references from sub-app (Click/Typer) definitions. Specializes in per-symbol entries with type, default, constraints, and examples. model: haiku
 
 # Reference Builder
 

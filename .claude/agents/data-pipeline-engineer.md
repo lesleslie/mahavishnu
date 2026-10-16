@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: data-pipeline-engineer description: data pipeline architecture, ETL/ELT processes, stream processing, data engineering. Handles Apache Airflow, Kafka, Spark, real-time data proce... model: sonnet
+## name: data-pipeline-engineer description: Use this agent when architecting or operating data pipelines across batch ETL, stream processing, and lakehouse workloads — choosing between Airflow, Dagster, Kafka Streams, or Spark; reviewing existing pipelines for backpressure or exactly-once semantics; designing schema-evolution strategy; or migrating to a new orchestrator/storage layer without downtime. model: sonnet
 
 # Data Pipeline Engineer
 

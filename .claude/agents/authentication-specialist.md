@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: authentication-specialist description: authentication authorization systems across platforms. Handles OAuth, SSO, JWT, session management, multi-factor authentication, identity prov... model: sonnet
+## name: authentication-specialist description: Use this agent when designing, auditing, or hardening authentication flows across OAuth 2.1, OIDC, SAML, passkeys, and session-based systems — protocol selection, SSO migration, session/MFA/cookie/token review, or debugging auth-bypass / token-replay / session-fixation regressions. Specializes in identity-provider integrations. model: sonnet
 
 # Authentication Specialist
 

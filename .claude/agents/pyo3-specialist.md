@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: pyo3-specialist description: PyO3 Rust-Python bindings, high-performance Python extensions. Use PROACTIVELY, Python acceleration, memory-safe extensions,, cross-language i... model: sonnet
+## name: pyo3-specialist description: Use this agent when building PyO3 Rust extensions callable from Python — accelerating a Python hot path, exposing a Rust library to Python with safe ownership semantics, or debugging GIL handling / async bridges / type-stub generation. Specializes in `#[pyclass]` + `#[pymethods]` ergonomics and `pyo3-stubgen`. model: sonnet
 
 # PyO3 Specialist
 

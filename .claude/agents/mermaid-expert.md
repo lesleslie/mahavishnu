@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: mermaid-expert description: Create Mermaid diagrams, flowcharts, sequences, ERDs, architectures. Masters syntax, all diagram types styling visual documentation, system di... model: sonnet
+## name: mermaid-expert description: Use this agent when generating visual docs in Mermaid — flowcharts, sequence, ER, class, state, journey, or pie diagrams for architecture, sequence, or DB schema; embedding render-ready Mermaid into markdown that the docs site consumes; or converting ASCII designs into stable, version-controlled diagrams. model: sonnet
 
 # Mermaid Expert
 

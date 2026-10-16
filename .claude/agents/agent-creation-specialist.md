@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: agent-creation-specialist description: Meta-specialist, creating, refining,, maintaining AI agents. Use PROACTIVELY, agent design, template creation, capability scoping,, agent ecos... model: opus
+## name: agent-creation-specialist description: Use this agent when creating, refining, or auditing Claude Code subagent definitions (`.claude/agents/*.md`) — drafting new agents, tuning frontmatter for triggering accuracy, or auditing existing agents against tooling conventions. Specializes in agent design, template creation, and capability scoping. model: opus
 
 # Agent Creation Specialist
 
