@@ -57,6 +57,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
+| [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `routing-composition` | Plan Template — Integration-Contract Required |
 | [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `draft` | `implementation` | `terminal` | Plan: Native macOS Automation Backend |
@@ -101,6 +102,7 @@ _Regenerated 2026-10-16 by `crackerjack.tools.plan_index_sync` (fast-hook)._
 | [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
+| [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `routing-composition` | Plan Template — Integration-Contract Required |
 | [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `draft` | `implementation` | `terminal` | Plan: Native macOS Automation Backend |
