@@ -185,35 +185,100 @@ class TestExecuteTask:
         endpoint_mock.run.assert_called_once_with({"prompt": "say hello"})
 
     @pytest.mark.asyncio
-    async def test_endpoint_in_progress_maps_to_pool_status(self):
-        # ``IN_PROGRESS`` shouldn't appear in practice (output() blocks
-        # until completion), but the pool's mapping logic handles it
-        # gracefully rather than crashing.
+    async def test_output_raising_maps_to_pool_failed(self):
+        # FAILED is signalled by ``.output()`` raising an exception,
+        # NOT by ``.status()`` returning "FAILED". The pool catches
+        # the raise in the ``except Exception`` branch and reports
+        # a structured failed envelope with ``output=None``.
         cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
-        req = _fake_run_request(status_value="IN_PROGRESS", output_value=None)
-        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
-        pool._endpoint = endpoint_mock
-
-        result = await pool.execute_task({"prompt": "x"})
-        assert result["status"] == "in_progress"
-
-    @pytest.mark.asyncio
-    async def test_endpoint_failed_maps_to_pool_failed(self):
-        cfg = _make_pool_config()
-        pool = RunPodPool(config=cfg)
-        pool._status = PoolStatus.RUNNING
-        req = _fake_run_request(
-            status_value="FAILED",
-            output_value={"error": "out of memory"},
-        )
+        req = MagicMock()
+        req.id = "job-uuid-failed"
+        req.job_id = "job-uuid-failed"
+        # ``.status()`` is informational; what matters is that
+        # ``.output()`` raises.
+        req.status.return_value = "FAILED"
+        req.output.side_effect = RuntimeError("out of memory")
         endpoint_mock = MagicMock(run=MagicMock(return_value=req))
         pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "big"})
         assert result["status"] == "failed"
-        assert result["output"] == {"error": "out of memory"}
+        assert result["output"] is None
+        assert "out of memory" in result["error"]
+        assert pool._tasks_completed == 0
+        assert pool._tasks_failed == 1
+
+    @pytest.mark.asyncio
+    async def test_output_returning_means_completed_regardless_of_status(self):
+        # ``.output()`` returning without raising is the sole source of
+        # truth for "the job completed". Even if the SDK reports an
+        # unknown or empty status string, the pool reports "completed"
+        # because the oracle returned. This guards against SDK contract
+        # drift adding new terminal status names we haven't seen yet.
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+        req = _fake_run_request(
+            status_value="CANCELLED",  # status we don't recognize
+            output_value={"result": "ok"},
+        )
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
+
+        result = await pool.execute_task({"prompt": "x"})
+        assert result["status"] == "completed"
+        assert result["output"] == {"result": "ok"}
+        assert pool._tasks_completed == 1
+        assert pool._tasks_failed == 0
+
+    @pytest.mark.asyncio
+    async def test_warning_logged_when_status_diverges_from_completed(self, caplog):
+        # Defensive: if ``.status()`` returns a non-COMPLETED value
+        # after a successful ``.output()`` return, the pool logs a
+        # warning so operators can spot SDK contract drift. The
+        # caller still receives ``status="completed"`` because
+        # ``.output()`` is the source of truth.
+        import logging
+
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+        req = _fake_run_request(
+            status_value="UNKNOWN_STATE",
+            output_value={"result": "ok"},
+        )
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
+
+        with caplog.at_level(logging.WARNING, logger="mahavishnu.pools.runpod_pool"):
+            result = await pool.execute_task({"prompt": "x"})
+
+        assert result["status"] == "completed"
+        assert any("UNKNOWN_STATE" in rec.message for rec in caplog.records)
+        assert any(
+            "SDK contract compatibility" in rec.message for rec in caplog.records
+        )
+
+    @pytest.mark.asyncio
+    async def test_empty_status_with_output_returning_means_completed(self):
+        # Empty / None status from the SDK (defensive against a
+        # future SDK revision) must not break the success path.
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+        req = MagicMock()
+        req.id = "job-uuid-empty"
+        req.job_id = "job-uuid-empty"
+        req.status.return_value = ""  # empty status
+        req.output.return_value = {"result": "ok"}
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
+
+        result = await pool.execute_task({"prompt": "x"})
+        assert result["status"] == "completed"
+        assert result["output"] == {"result": "ok"}
 
     @pytest.mark.asyncio
     async def test_timeout_tracks_failed(self):

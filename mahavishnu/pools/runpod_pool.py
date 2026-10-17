@@ -19,6 +19,17 @@ lives in the RunPod endpoint config. ``_build_endpoint()`` has been
 removed; configure workers via the RunPod console or
 ``runpod.serverless.start({...})`` in a dedicated handler repo.
 
+Status truth (2026-10-17 hardening): ``req.output()`` is the
+authoritative terminal oracle — it returns on COMPLETED and raises on
+FAILED. ``req.status()`` is a non-blocking snapshot that can return
+IN_QUEUE/IN_PROGRESS mid-flight and is NEVER used to infer the job's
+terminal state. The pool only consults ``.status()`` AFTER ``.output()``
+has settled, and only for telemetry: a non-COMPLETED status at that
+point triggers a warning (defensive against SDK contract drift) but
+the caller still receives ``status="completed"`` because ``.output()``
+returned. Failed jobs are caught by the ``except Exception`` branch
+when ``.output()`` raises.
+
 Authorisation: SDK 2.0 reads ``RUNPOD_API_KEY`` from the environment.
 The ``api_key`` config field is retained for backward compatibility
 but unused at dispatch time.
@@ -134,29 +145,41 @@ class RunPodPool(BasePool):
             # documented alternative in some SDK versions. Read both
             # so the pool survives minor SDK revisions.
             job_id = getattr(req, "id", None) or getattr(req, "job_id", None)
-            envelope: dict[str, Any] = {
-                "id": job_id,
-                "status": req.status(),
-                "output": req.output(),
-            }
-            return envelope
+            # ``req.output()`` is the terminal oracle: it blocks until
+            # the job reaches a terminal state and returns the output
+            # on COMPLETED, raising an exception on FAILED.
+            # ``req.status()`` is a non-blocking snapshot — it can
+            # return IN_QUEUE/IN_PROGRESS at any moment — so it is
+            # *never* used for state inference. The pool only consults
+            # ``.status()`` AFTER ``.output()`` has settled, and only
+            # for log/telemetry. ``.output()`` returning without
+            # raising is the sole source of truth for "the job
+            # completed".
+            final_output = req.output()
+            final_status = req.status()
+            return {"id": job_id, "status": final_status, "output": final_output}
 
         try:
             env = await asyncio.to_thread(_dispatch, task)
             duration = time.time() - start_time
 
-            endpoint_status = (env.get("status") or "").upper()
-            if endpoint_status == "COMPLETED":
-                pool_status = "completed"
-            elif endpoint_status == "FAILED":
-                pool_status = "failed"
-            elif endpoint_status in {"IN_QUEUE", "IN_PROGRESS"}:
-                pool_status = "in_progress"
-            else:
-                # Unknown terminal state — treat as completed so the
-                # caller's downstream state machine advances; the
-                # envelope's ``output`` still carries the raw status.
-                pool_status = "completed"
+            # ``.output()`` returned without raising → the SDK has
+            # confirmed the job reached a terminal-COMPLETED state.
+            # ``env["status"]`` is captured for telemetry; if it ever
+            # diverges from COMPLETED (SDK contract drift, new
+            # status names) we log a warning and forward the raw
+            # value — the caller still gets "completed" because
+            # ``.output()`` is the source of truth.
+            raw_status = (env.get("status") or "").upper()
+            if raw_status and raw_status != "COMPLETED":
+                logger.warning(
+                    "RunPod job %s reached terminal state but SDK reports "
+                    "status=%r (expected COMPLETED). Treating as completed "
+                    "because .output() returned; verify SDK contract "
+                    "compatibility.",
+                    env.get("id"),
+                    raw_status,
+                )
 
             self._tasks_completed += 1
             self._task_durations.append(duration)
@@ -164,14 +187,14 @@ class RunPodPool(BasePool):
                 {
                     "worker_id": worker_id,
                     "output": env.get("output"),
-                    "status": pool_status,
+                    "status": "completed",
                     "timestamp": start_time,
                 }
             )
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
-                "status": pool_status,
+                "status": "completed",
                 "output": env.get("output"),
                 "error": None,
                 "duration": duration,
