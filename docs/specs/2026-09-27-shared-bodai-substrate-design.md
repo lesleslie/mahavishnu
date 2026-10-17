@@ -1,9 +1,15 @@
 ---
-status: partial
+status: complete
 role: canonical
 kind: spec
 date: 2026-09-27
 last_reviewed: 2026-10-17
+resolved_at: 2026-10-17
+resolved_by:
+  - "Active umbrella plan 2026-10-15-oneiric-substrate-rollout.md owns Phase A, E1, E2 remainder"
+  - "Active plan 2026-10-16-drop-ollama-favor-llama-server.md owns Phase D ollama adapter"
+  - "Phase E1 settings substrate + Phase E2 per-component adoption shipped via 9c9ab67 (Akosha), aeaa6800 (Session-Buddy), 040c126c (Mahavishnu)"
+  - "Outstanding ~310 LOC (Phase A QueryCacheManager shim ~30 LOC; Phase D L2-normalize ~80 LOC; Phase E1 oneiric/docs/substrate.md ~200 LOC) is small, mechanical, and tracked by the active umbrella plan"
 topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team
