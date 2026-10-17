@@ -1,4 +1,6 @@
-"""Unit tests for RunPodPool — Flash SDK is fully mocked."""
+"""Unit tests for RunPodPool — runpod SDK 2.0 client path is fully mocked."""
+
+from __future__ import annotations
 
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,12 +11,23 @@ from mahavishnu.pools.base import PoolConfig, PoolStatus
 from mahavishnu.pools.runpod_pool import RunPodPool
 
 
+def _fake_run_request(status_value: str = "COMPLETED", output_value: object = None):
+    req = MagicMock()
+    req.id = "job-test"
+    req.job_id = "job-test"
+    req.status.return_value = status_value
+    req.output.return_value = output_value
+    return req
+
+
 @pytest.fixture
 def config():
     return PoolConfig(
         name="test-runpod",
         pool_type="runpod",
         extra_config={
+            # ``endpoint_id`` is required by the post-SDK-2.0 pool.
+            "endpoint_id": "ep-test-integration-1234",
             "api_key": "test-key",
             "gpu_type": "NVIDIA_GEFORCE_RTX_4090",
             "endpoint_name": "mahavishnu-test",
@@ -30,16 +43,20 @@ def pool(config):
 
 @pytest.mark.asyncio
 async def test_start_returns_pool_id(pool):
-    with patch("mahavishnu.pools.runpod_pool.Endpoint", return_value=MagicMock()):
+    fake_endpoint = MagicMock(name="endpoint-client")
+    mock_runpod = MagicMock(Endpoint=MagicMock(return_value=fake_endpoint))
+    with patch("mahavishnu.pools.runpod_pool.runpod", mock_runpod):
         pool_id = await pool.start()
     assert pool_id == pool.pool_id
     assert pool._status == PoolStatus.RUNNING
+    mock_runpod.Endpoint.assert_called_once_with("ep-test-integration-1234")
 
 
 @pytest.mark.asyncio
 async def test_execute_task_success(pool):
-    mock_endpoint = AsyncMock(return_value={"output": "result"})
-    pool._endpoint = mock_endpoint
+    req = _fake_run_request(status_value="COMPLETED", output_value={"output": "result"})
+    endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+    pool._endpoint = endpoint_mock
     pool._status = PoolStatus.RUNNING
 
     result = await pool.execute_task({"prompt": "analyze image", "category": "vision"})
@@ -52,8 +69,8 @@ async def test_execute_task_success(pool):
 
 @pytest.mark.asyncio
 async def test_execute_task_failure(pool):
-    mock_endpoint = AsyncMock(side_effect=RuntimeError("RunPod error"))
-    pool._endpoint = mock_endpoint
+    endpoint_mock = MagicMock(run=MagicMock(side_effect=RuntimeError("RunPod error")))
+    pool._endpoint = endpoint_mock
     pool._status = PoolStatus.RUNNING
 
     result = await pool.execute_task({"prompt": "analyze image"})
@@ -108,7 +125,7 @@ async def test_health_check_no_endpoint(pool):
 
 @pytest.mark.asyncio
 async def test_scale_is_noop(pool):
-    """Flash handles scaling; scale() should log and return without error."""
+    """The serverless endpoint scales itself; scale() should log and return without error."""
     pool._status = PoolStatus.RUNNING
     await pool.scale(5)  # No exception
     assert pool._status == PoolStatus.RUNNING

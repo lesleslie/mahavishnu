@@ -78,7 +78,7 @@ dependencies = [
     # pydantic-ai-slim moved to optional "ai" group (PEP 735).
     "llama-cpp-python>=0.3.36",
     # Serverless GPU
-    # runpod-flash moved to optional "gpu" group (PEP 735).
+    # runpod-sdk-2 moved to optional "gpu" group (PEP 735).
     # Security
     "defusedxml>=0.7.1",
     "ty>=0.0.86",
@@ -235,11 +235,15 @@ ai = [
     "pydantic-ai-slim[mcp,openai,anthropic,google,groq]>=2.55.0",
 ]
 
-# Optional: Serverless GPU execution via RunPod Flash
+# Optional: Serverless GPU execution via RunPod SDK 2.0
 # (mahavishnu.pools.runpod_pool). Lazy-imported; install only when the
-# RunPod pool is deployed.
+# RunPod pool is deployed. Migrated from runpod-flash on 2026-10-17
+# (Flash merged into the main ``runpod`` package in SDK 2.0).
+# ``>=2.0.0rc1`` accepts the release candidate; uv rejects a plain
+# ``>=2.0`` because only pre-release 2.0.x exists on PyPI as of
+# 2026-10-17.
 gpu = [
-    "runpod-flash>=1.20.1",
+    "runpod>=2.0.0rc1",
 ]
 
 # Phase 4 (Shepherd worker backend). shepherd-ai wraps the Shepherd OS-level

@@ -1,4 +1,4 @@
-"""Tests for mahavishnu.pools.runpod_pool — RunPodPool."""
+"""Tests for mahavishnu.pools.runpod_pool — RunPodPool (runpod SDK 2.0)."""
 
 from __future__ import annotations
 
@@ -11,14 +11,32 @@ from mahavishnu.pools.runpod_pool import RunPodPool
 
 
 def _make_pool_config(**overrides) -> PoolConfig:
+    """Build a PoolConfig with a valid ``endpoint_id`` (required by the pool)."""
     defaults: dict[str, object] = {
         "name": "test-runpod",
         "pool_type": "runpod",
         "min_workers": 1,
         "max_workers": 10,
+        "extra_config": {"endpoint_id": "ep-test-1234"},
     }
     defaults.update(overrides)
     return PoolConfig(**defaults)  # type: ignore[arg-type]
+
+
+def _fake_run_request(status_value: str = "COMPLETED", output_value: object = None, job_id: str = "job-1"):
+    """Return a MagicMock shaped like the runpod SDK 2.0 RunRequest handle.
+
+    The handle exposes ``.id`` / ``.job_id`` (job uuid), ``.status()`` (returns
+    "IN_QUEUE" / "IN_PROGRESS" / "COMPLETED" / "FAILED"), and ``.output()``
+    (returns the result dict; blocks until completion). The pool only
+    touches these three.
+    """
+    req = MagicMock()
+    req.id = job_id
+    req.job_id = job_id
+    req.status.return_value = status_value
+    req.output.return_value = output_value
+    return req
 
 
 # ---------------------------------------------------------------------------
@@ -36,12 +54,14 @@ class TestRunPodPoolInit:
         assert pool._tasks_failed == 0
         assert pool._task_durations == []
         assert pool._status == PoolStatus.PENDING
+        assert pool._endpoint_id == "ep-test-1234"
 
     def test_extra_config_parsed(self):
         cfg = PoolConfig(
             name="gpu-pool",
             pool_type="runpod",
             extra_config={
+                "endpoint_id": "ep-real",
                 "api_key": "rp-secret",
                 "gpu_type": "NVIDIA_A100",
                 "endpoint_name": "my-endpoint",
@@ -50,16 +70,12 @@ class TestRunPodPoolInit:
             },
         )
         pool = RunPodPool(config=cfg)
+        assert pool._endpoint_id == "ep-real"
         assert pool._api_key == "rp-secret"
         assert pool._gpu_type == "NVIDIA_A100"
         assert pool._endpoint_name == "my-endpoint"
         assert pool._num_workers == 5
         assert pool._dependencies == ["torch", "transformers"]
-
-    def test_default_gpu_type(self):
-        cfg = _make_pool_config()
-        pool = RunPodPool(config=cfg)
-        assert pool._gpu_type == "NVIDIA_GEFORCE_RTX_4090"
 
     def test_inherits_from_base(self):
         cfg = _make_pool_config()
@@ -69,67 +85,19 @@ class TestRunPodPoolInit:
 
 
 # ---------------------------------------------------------------------------
-# _build_endpoint
+# endpoint_id requirement + SDK presence
 # ---------------------------------------------------------------------------
 
 
-class TestBuildEndpoint:
-    def test_raises_when_runpod_flash_not_available(self):
-        cfg = _make_pool_config()
-        pool = RunPodPool(config=cfg)
-
-        with patch("mahavishnu.pools.runpod_pool.Endpoint", None):
-            with pytest.raises(RuntimeError, match="runpod-flash"):
-                pool._build_endpoint()
-
-    def test_raises_on_unknown_gpu_type(self):
+class TestRequiresEndpointId:
+    def test_raises_when_endpoint_id_missing(self):
         cfg = PoolConfig(
-            name="test",
+            name="no-id",
             pool_type="runpod",
-            extra_config={"gpu_type": "INVALID_GPU"},
+            extra_config={"gpu_type": "NVIDIA_A100"},  # endpoint_id absent
         )
-        pool = RunPodPool(config=cfg)
-
-        with patch("mahavishnu.pools.runpod_pool.GpuType", MagicMock(INVALID_GPU=None)):
-            with pytest.raises(ValueError, match="Unknown GpuType"):
-                pool._build_endpoint()
-
-    def test_build_endpoint_invocates_endpoint_decorator(self):
-        cfg = _make_pool_config(
-            extra_config={"gpu_type": "NVIDIA_GEFORCE_RTX_4090"},
-        )
-        pool = RunPodPool(config=cfg)
-
-        # Track what arguments Endpoint was called with
-        endpoint_calls: list[dict] = []
-        captured_fn = None
-
-        def mock_endpoint_decorator(*args, **kwargs):
-            endpoint_calls.append({"args": args, "kwargs": kwargs})
-
-            # Return a callable that, when invoked with a function, returns that function
-            def decorator(fn):
-                nonlocal captured_fn
-                captured_fn = fn
-                return fn
-
-            return decorator
-
-        mock_gpu = MagicMock()
-        mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
-
-        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_decorator):
-            with patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu):
-                pool._build_endpoint()
-
-        assert len(endpoint_calls) == 1
-        call_kwargs = endpoint_calls[0]["kwargs"]
-        assert call_kwargs["name"] == "mahavishnu-worker"
-        assert call_kwargs["gpu"] == "NVIDIA_GEFORCE_RTX_4090"
-        assert call_kwargs["workers"] == 3
-        assert call_kwargs["dependencies"] == []
-        # The internal _run_task was captured
-        assert captured_fn is not None
+        with pytest.raises(ValueError, match="endpoint_id"):
+            RunPodPool(config=cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -139,51 +107,32 @@ class TestBuildEndpoint:
 
 class TestStart:
     @pytest.mark.asyncio
-    async def test_start_success_sets_running(self):
+    async def test_start_constructs_runpod_endpoint_client(self):
         cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
 
-        # Track Endpoint decorator calls
-        endpoint_calls: list[dict] = []
-        captured_fn = None
+        with patch("mahavishnu.pools.runpod_pool.runpod") as mock_runpod_mod:
+            fake_endpoint = MagicMock(name="endpoint-client")
+            mock_runpod_mod.Endpoint.return_value = fake_endpoint
 
-        def mock_endpoint_decorator(*args, **kwargs):
-            endpoint_calls.append({"args": args, "kwargs": kwargs})
+            result = await pool.start()
 
-            def decorator(fn):
-                nonlocal captured_fn
-                captured_fn = fn
-                return fn
-
-            return decorator
-
-        mock_gpu = MagicMock()
-        mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
-
-        with patch("mahavishnu.pools.runpod_pool.Endpoint", mock_endpoint_decorator):
-            with patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu):
-                result = await pool.start()
-                assert result == pool.pool_id
-                assert pool._status == PoolStatus.RUNNING
-                # The decorated _run_task is stored as _endpoint
-                assert pool._endpoint is captured_fn
+        assert result == pool.pool_id
+        assert pool._status == PoolStatus.RUNNING
+        assert pool._endpoint is fake_endpoint
+        # The id was passed through to the SDK's Endpoint constructor.
+        mock_runpod_mod.Endpoint.assert_called_once_with("ep-test-1234")
 
     @pytest.mark.asyncio
     async def test_start_sets_failed_on_exception(self):
         cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
 
-        mock_gpu = MagicMock()
-        mock_gpu.NVIDIA_GEFORCE_RTX_4090 = "NVIDIA_GEFORCE_RTX_4090"
-
-        with (
-            patch(
-                "mahavishnu.pools.runpod_pool.Endpoint",
-                MagicMock(side_effect=RuntimeError("registration failed")),
-            ),
-            patch("mahavishnu.pools.runpod_pool.GpuType", mock_gpu),
+        with patch(
+            "mahavishnu.pools.runpod_pool.runpod",
+            MagicMock(Endpoint=MagicMock(side_effect=RuntimeError("auth failed"))),
         ):
-            with pytest.raises(RuntimeError, match="registration failed"):
+            with pytest.raises(RuntimeError, match="auth failed"):
                 await pool.start()
             assert pool._status == PoolStatus.FAILED
 
@@ -212,16 +161,59 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        mock_endpoint = AsyncMock(return_value={"result": "hello world"})
-        pool._endpoint = mock_endpoint
+        req = _fake_run_request(
+            status_value="COMPLETED",
+            output_value={"result": "hello world"},
+            job_id="job-uuid-1",
+        )
+        # The pool uses ``asyncio.to_thread`` to run the dispatch, but
+        # internally it calls ``endpoint.run(payload)`` synchronously.
+        endpoint_mock = MagicMock()
+        endpoint_mock.run = MagicMock(return_value=req)
+        pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "say hello"})
         assert result["status"] == "completed"
         assert result["output"] == {"result": "hello world"}
         assert result["pool_id"] == pool.pool_id
-        assert "mahavishnu-worker" in result["worker_id"]
+        # worker_id is "endpoint_id-timestamp" — the runpod job id is
+        # only accessible from the run_request envelope, not surfaced
+        # on the worker_id surface.
+        assert "ep-test-1234" in result["worker_id"]
         assert pool._tasks_completed == 1
         assert len(pool._task_durations) == 1
+        endpoint_mock.run.assert_called_once_with({"prompt": "say hello"})
+
+    @pytest.mark.asyncio
+    async def test_endpoint_in_progress_maps_to_pool_status(self):
+        # ``IN_PROGRESS`` shouldn't appear in practice (output() blocks
+        # until completion), but the pool's mapping logic handles it
+        # gracefully rather than crashing.
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+        req = _fake_run_request(status_value="IN_PROGRESS", output_value=None)
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
+
+        result = await pool.execute_task({"prompt": "x"})
+        assert result["status"] == "in_progress"
+
+    @pytest.mark.asyncio
+    async def test_endpoint_failed_maps_to_pool_failed(self):
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+        req = _fake_run_request(
+            status_value="FAILED",
+            output_value={"error": "out of memory"},
+        )
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
+
+        result = await pool.execute_task({"prompt": "big"})
+        assert result["status"] == "failed"
+        assert result["output"] == {"error": "out of memory"}
 
     @pytest.mark.asyncio
     async def test_timeout_tracks_failed(self):
@@ -229,7 +221,8 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(side_effect=TimeoutError("execution timeout"))
+        endpoint_mock = MagicMock(run=MagicMock(side_effect=TimeoutError("execution timeout")))
+        pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "slow task"})
         assert result["status"] == "timeout"
@@ -243,7 +236,8 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(side_effect=RuntimeError("GPU out of memory"))
+        endpoint_mock = MagicMock(run=MagicMock(side_effect=RuntimeError("GPU out of memory")))
+        pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "big model"})
         assert result["status"] == "failed"
@@ -256,8 +250,9 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        mock_endpoint = AsyncMock(return_value="output_data")
-        pool._endpoint = mock_endpoint
+        req = _fake_run_request(status_value="COMPLETED", output_value="output_data")
+        endpoint_mock = MagicMock(run=MagicMock(return_value=req))
+        pool._endpoint = endpoint_mock
 
         await pool.execute_task({"prompt": "test"})
         assert len(pool._task_results) == 1
@@ -277,16 +272,26 @@ class TestExecuteBatch:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(
-            side_effect=[
-                {"result": "r1"},
-                {"result": "r2"},
-                {"result": "r3"},
-            ]
-        )
+        # ``asyncio.to_thread`` schedules each task on the default
+        # executor; completion order is not guaranteed to match
+        # submission order. Use a callable side_effect that resolves by
+        # the *task payload*, which is preserved per dispatch.
+        def by_prompt(payload: dict[str, object]) -> object:
+            prompt = payload.get("prompt", "")
+            return _fake_run_request(
+                status_value="COMPLETED",
+                output_value={"result": {"a": "r1", "b": "r2", "c": "r3"}.get(prompt, "")},
+            )
 
-        results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}])
+        endpoint_mock = MagicMock(run=MagicMock(side_effect=by_prompt))
+        pool._endpoint = endpoint_mock
+
+        results = await pool.execute_batch(
+            [{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}]
+        )
         assert len(results) == 3
+        # asyncio.gather preserves input order in the returned list,
+        # so index → submission order.
         assert results["0"]["output"] == {"result": "r1"}
         assert results["1"]["output"] == {"result": "r2"}
         assert results["2"]["output"] == {"result": "r3"}
@@ -297,18 +302,21 @@ class TestExecuteBatch:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        pool._endpoint = AsyncMock(
-            side_effect=[
-                {"result": "ok"},
-                TimeoutError("timeout"),
-                {"result": "done"},
-            ]
-        )
+        # Second-payload trips a timeout; the other two complete.
+        call_index = {"n": 0}
+
+        def by_index(payload: dict[str, object]) -> object:
+            call_index["n"] += 1
+            if call_index["n"] == 2:
+                raise TimeoutError("timeout")
+            return _fake_run_request(status_value="COMPLETED", output_value={"result": "ok"})
+
+        endpoint_mock = MagicMock(run=MagicMock(side_effect=by_index))
+        pool._endpoint = endpoint_mock
 
         results = await pool.execute_batch([{}, {}, {}])
-        assert results["0"]["status"] == "completed"
-        assert results["1"]["status"] == "timeout"
-        assert results["2"]["status"] == "completed"
+        statuses = sorted(r["status"] for r in results.values())
+        assert statuses == ["completed", "completed", "timeout"]
         assert pool._tasks_completed == 2
         assert pool._tasks_failed == 1
 
@@ -323,7 +331,7 @@ class TestScale:
     async def test_scale_is_noop(self):
         cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
-        # Should not raise — Flash auto-scales
+        # Should not raise — the serverless endpoint scales itself.
         await pool.scale(target_worker_count=100)
 
 
@@ -342,7 +350,8 @@ class TestHealthCheck:
 
         health = await pool.health_check()
         assert health["status"] == "unhealthy"
-        assert health["reason"] == "endpoint not registered"
+        assert health["endpoint_id"] == "ep-test-1234"
+        assert health["reason"] == "endpoint client not constructed"
 
     @pytest.mark.asyncio
     async def test_unhealthy_when_endpoint_none_but_running(self):
@@ -356,12 +365,7 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_healthy_when_running(self):
-        cfg = _make_pool_config(
-            extra_config={
-                "gpu_type": "NVIDIA_A100",
-                "num_workers": 5,
-            },
-        )
+        cfg = _make_pool_config()
         pool = RunPodPool(config=cfg)
         pool._endpoint = MagicMock()
         pool._status = PoolStatus.RUNNING
@@ -370,8 +374,7 @@ class TestHealthCheck:
 
         health = await pool.health_check()
         assert health["status"] == "healthy"
-        assert health["gpu_type"] == "NVIDIA_A100"
-        assert health["workers_configured"] == 5
+        assert health["endpoint_id"] == "ep-test-1234"
         assert health["tasks_completed"] == 10
         assert health["tasks_failed"] == 2
 
@@ -396,7 +399,7 @@ class TestGetMetrics:
         assert metrics.tasks_completed == 5
         assert metrics.tasks_failed == 1
         assert metrics.avg_task_duration == pytest.approx(3.0)
-        assert metrics.total_workers == 3
+        assert metrics.total_workers == 3  # default _num_workers
 
     @pytest.mark.asyncio
     async def test_zero_duration_when_no_tasks(self):
@@ -472,8 +475,8 @@ class TestCollectMemory:
     @pytest.mark.asyncio
     async def test_collect_memory_empty_when_no_results(self):
         cfg = _make_pool_config()
-        pool = RunPodPool(config=cfg)
 
+        pool = RunPodPool(config=cfg)
         items = await pool.collect_memory()
         assert items == []
 

@@ -41,7 +41,7 @@ def test_record_pane_default_empty_when_no_tmux() -> None:
     rec = DurableWorkerRecord(
         worker_id="worker-xyz",
         worker_type="cloud-runpod",
-        backend="runpod_flash",
+        backend="runpod",
         tmux=None,
         state=WorkerLifecycleState.READY,
         created_at=dt.datetime(2026, 7, 26, 10, 0, 0, tzinfo=dt.UTC),

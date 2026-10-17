@@ -70,7 +70,7 @@ Each pool type is a **leaf substrate wrapper**. They are peers, not children, of
 |---|---|---|
 | `MahavishnuPool` | `WorkerManager` | In-process worker management (CLI/PTY) |
 | `SessionBuddyPool` | `CommonMCPClient` | Out-of-process MCP server (`http://localhost:8678/mcp`) |
-| `RunPodPool` | `runpod_flash.Endpoint` | GPU serverless SDK |
+| `RunPodPool` | `runpod.Endpoint` | GPU serverless SDK |
 
 Each pool implements the same 8 abstract methods on `BasePool` (`start`, `execute_task`, `execute_batch`, `scale`, `health_check`, `get_metrics`, `collect_memory`, `stop`) by delegating to its substrate. **`PoolManager.route_task` does not enter the picture** — it sits above all pool types, picks one pool, and calls `await pool.execute_task(task)`.
 

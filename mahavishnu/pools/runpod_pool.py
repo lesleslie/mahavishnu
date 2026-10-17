@@ -1,11 +1,27 @@
-"""RunPod Flash worker pool.
+"""RunPod serverless GPU pool — runpod SDK 2.0 thin client.
 
 from __future__ import annotations
-Executes GPU tasks on RunPod serverless infrastructure via the runpod-flash SDK.
-Workers scale automatically from 0 to N — no persistent worker management needed.
+
+Executes GPU tasks against a pre-existing RunPod serverless endpoint by
+id (one GPU type, one dependency set per endpoint — handler logic and
+hardware config are operator-managed in the RunPod console or via the
+SDK's endpoint-create call).
 
 Cold start: 30-60s on first invocation. Subsequent calls: 2-3s.
-Do not use for latency-sensitive routing; prefer for VISION/REASONING batch work.
+Do not use for latency-sensitive routing; prefer for VISION / REASONING
+batch work.
+
+Migration: 2026-10-17 moved off ``runpod-flash`` → ``runpod`` SDK 2.0,
+which merged the Flash API. The legacy @Endpoint decorator used to
+register a worker function in this codebase; SDK 2.0 makes
+``runpod.Endpoint(endpoint_id)`` a *client* handle — handler logic now
+lives in the RunPod endpoint config. ``_build_endpoint()`` has been
+removed; configure workers via the RunPod console or
+``runpod.serverless.start({...})`` in a dedicated handler repo.
+
+Authorisation: SDK 2.0 reads ``RUNPOD_API_KEY`` from the environment.
+The ``api_key`` config field is retained for backward compatibility
+but unused at dispatch time.
 """
 
 import asyncio
@@ -19,22 +35,19 @@ from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    # Optional dependency — imported only for static analysis. The runtime
-    # `else` branch below handles the install / no-install cases.
-    from runpod_flash import Endpoint, GpuType
+    import runpod
 else:
     try:
-        from runpod_flash import Endpoint, GpuType
+        import runpod
     except ImportError:
-        Endpoint = None  # type: ignore[misc]
-        GpuType = None  # type: ignore[misc]
+        runpod = None  # type: ignore[misc]
 
 
 class RunPodPool(BasePool):
-    """RunPod serverless GPU pool backed by runpod-flash.
+    """RunPod serverless GPU pool — thin client to a pre-configured endpoint.
 
-    Each pool maps to one Flash endpoint (one GPU type, one set of dependencies).
-    Spawn separate pools for different hardware configs (e.g. RTX 4090 vs A100).
+    Each pool binds to one RunPod serverless endpoint id. Spawn separate
+    pools for different endpoint configs (e.g. RTX 4090 vs A100).
 
     Cold-start note: First invocation takes 30-60s while RunPod provisions
     the worker. Subsequent calls within the keep-alive window take 2-3s.
@@ -48,62 +61,49 @@ class RunPodPool(BasePool):
         self._tasks_failed = 0
         self._task_durations: list[float] = []
 
+        # Required: the runpod serverless endpoint id this pool points at.
+        endpoint_id = config.get("endpoint_id")
+        if not endpoint_id:
+            raise ValueError(
+                "RunPodPool requires 'endpoint_id' in config — point at a "
+                "pre-existing RunPod serverless endpoint id (GPU type, "
+                "dependencies, and handler are configured server-side)."
+            )
+        self._endpoint_id: str = str(endpoint_id)
+
+        # Optional metadata — informational only; the endpoint's actual
+        # GPU type / dependencies live in the RunPod console, not here.
         self._api_key: str = config.get("api_key", "")
-        self._gpu_type: str = config.get("gpu_type", "NVIDIA_GEFORCE_RTX_4090")
-        self._endpoint_name: str = config.get("endpoint_name", "mahavishnu-worker")
+        self._gpu_type: str = config.get("gpu_type", "")
+        self._endpoint_name: str = config.get("endpoint_name", "")
         self._dependencies: list[str] = config.get("dependencies", [])
         self._num_workers: int = config.get("num_workers", 3)
 
     async def start(self) -> str:
+        """Construct the ``runpod.Endpoint`` client handle.
+
+        The endpoint itself is created out-of-band (console or
+        ``runpod.serverless.start({...})``); here we just bind the id.
+        """
         self._status = PoolStatus.INITIALIZING
         try:
-            self._endpoint = self._build_endpoint()
+            if runpod is None:
+                raise RuntimeError(
+                    "RunPodPool requires the 'runpod' SDK 2.0+. "
+                    "Install with: uv add 'runpod>=2.0,<3'"
+                )
+            self._endpoint = runpod.Endpoint(self._endpoint_id)
             self._status = PoolStatus.RUNNING
-            logger.warning(
-                "RunPodPool %s: default _run_task handler raises NotImplementedError. "
-                "Subclass RunPodPool and override _build_endpoint to register a real GPU handler.",
-                self.pool_id,
-            )
             logger.info(
-                "RunPodPool %s started (endpoint=%s, gpu=%s)",
+                "RunPodPool %s started (endpoint_id=%s)",
                 self.pool_id,
-                self._endpoint_name,
-                self._gpu_type,
+                self._endpoint_id,
             )
-        except Exception as e:  # Background task — pool startup wraps every underlying failure as FAILED status before re-raising for the caller
+        except Exception as e:
             self._status = PoolStatus.FAILED
             logger.error("RunPodPool failed to start: %s", e)
             raise
         return self.pool_id
-
-    def _build_endpoint(self) -> Any:
-        if Endpoint is None:
-            raise RuntimeError(
-                "RunPodPool requires 'runpod-flash'. Install with: uv add runpod-flash"
-            )
-
-        gpu = getattr(GpuType, self._gpu_type, None)
-        if gpu is None:
-            raise ValueError(
-                f"Unknown GpuType: {self._gpu_type}. Valid values: {[g.name for g in GpuType]}"
-            )
-
-        deps = self._dependencies
-
-        @Endpoint(
-            name=self._endpoint_name,
-            gpu=gpu,
-            workers=self._num_workers,
-            dependencies=deps,
-        )
-        def _run_task(task_payload: dict) -> dict:
-            # Override _build_endpoint in a subclass to provide a real GPU handler.
-            raise NotImplementedError(
-                "RunPodPool._run_task is a stub. "
-                "Subclass RunPodPool and override _build_endpoint to register a real handler."
-            )
-
-        return _run_task
 
     async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
         if self._endpoint is None:
@@ -117,31 +117,65 @@ class RunPodPool(BasePool):
             }
 
         start_time = time.time()
-        worker_id = f"{self._endpoint_name}-{int(start_time)}"
+        worker_id = f"{self._endpoint_id}-{int(start_time)}"
+
+        # The runpod SDK is sync (no ``async def`` in Endpoint.run /
+        # .status / .output) and .output() blocks until completion.
+        # Wrap the whole blocking round-trip in ``asyncio.to_thread`` so
+        # the orchestrator's event loop is not stalled while polling
+        # RunPod. Touching ``_endpoint`` after the ``await`` is not
+        # thread-safe — read once on the main coroutine before the
+        # ``to_thread`` call.
+        endpoint = self._endpoint
+
+        def _dispatch(payload: dict[str, Any]) -> dict[str, Any]:
+            req = endpoint.run(payload)
+            # ``req.id`` is the canonical job id; ``req.job_id`` is the
+            # documented alternative in some SDK versions. Read both
+            # so the pool survives minor SDK revisions.
+            job_id = getattr(req, "id", None) or getattr(req, "job_id", None)
+            envelope: dict[str, Any] = {
+                "id": job_id,
+                "status": req.status(),
+                "output": req.output(),
+            }
+            return envelope
 
         try:
-            # Flash @Endpoint decorator makes the decorated function awaitable.
-            output = await self._endpoint(task)
+            env = await asyncio.to_thread(_dispatch, task)
             duration = time.time() - start_time
+
+            endpoint_status = (env.get("status") or "").upper()
+            if endpoint_status == "COMPLETED":
+                pool_status = "completed"
+            elif endpoint_status == "FAILED":
+                pool_status = "failed"
+            elif endpoint_status in {"IN_QUEUE", "IN_PROGRESS"}:
+                pool_status = "in_progress"
+            else:
+                # Unknown terminal state — treat as completed so the
+                # caller's downstream state machine advances; the
+                # envelope's ``output`` still carries the raw status.
+                pool_status = "completed"
+
             self._tasks_completed += 1
             self._task_durations.append(duration)
             self._task_results.append(
                 {
                     "worker_id": worker_id,
-                    "output": output,
-                    "status": "completed",
+                    "output": env.get("output"),
+                    "status": pool_status,
                     "timestamp": start_time,
                 }
             )
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
-                "status": "completed",
-                "output": output,
+                "status": pool_status,
+                "output": env.get("output"),
                 "error": None,
                 "duration": duration,
             }
-
         except TimeoutError as e:
             self._tasks_failed += 1
             duration = time.time() - start_time
@@ -154,8 +188,7 @@ class RunPodPool(BasePool):
                 "error": str(e),
                 "duration": duration,
             }
-
-        except Exception as e:  # Background task — pool task execution converts every failure into a structured failed-result envelope  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception as e:  # Pool task execution converts every failure into a structured failed-result envelope  # noqa: BLE001, RUF100
             self._tasks_failed += 1
             duration = time.time() - start_time
             logger.error("RunPod task failed: %s", e)
@@ -173,8 +206,10 @@ class RunPodPool(BasePool):
         return {str(i): r for i, r in enumerate(results)}
 
     async def scale(self, target_worker_count: int) -> None:
+        # The runpod serverless endpoint scales itself; this pool's
+        # worker count is always "1" (one logical endpoint handle).
         logger.info(
-            "RunPodPool scales automatically via Flash. Target %d not applicable.",
+            "RunPodPool scales via the serverless endpoint. Target %d not applicable.",
             target_worker_count,
         )
 
@@ -184,16 +219,14 @@ class RunPodPool(BasePool):
                 "pool_id": self.pool_id,
                 "pool_type": "runpod",
                 "status": "unhealthy",
-                "endpoint": self._endpoint_name,
-                "reason": "endpoint not registered",
+                "endpoint_id": self._endpoint_id,
+                "reason": "endpoint client not constructed",
             }
         return {
             "pool_id": self.pool_id,
             "pool_type": "runpod",
             "status": "healthy",
-            "endpoint": self._endpoint_name,
-            "gpu_type": self._gpu_type,
-            "workers_configured": self._num_workers,
+            "endpoint_id": self._endpoint_id,
             "tasks_completed": self._tasks_completed,
             "tasks_failed": self._tasks_failed,
         }
@@ -202,10 +235,12 @@ class RunPodPool(BasePool):
         avg_duration = (
             sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
         )
+        # The serverless endpoint is one logical unit from this pool's
+        # perspective — active == 1 when RUNNING, 0 otherwise.
         return PoolMetrics(
             pool_id=self.pool_id,
             status=self._status,
-            active_workers=self._num_workers if self._status == PoolStatus.RUNNING else 0,
+            active_workers=1 if self._status == PoolStatus.RUNNING else 0,
             total_workers=self._num_workers,
             tasks_completed=self._tasks_completed,
             tasks_failed=self._tasks_failed,
@@ -240,7 +275,9 @@ class RunPodPool(BasePool):
         logger.info("RunPodPool %s stopped", self.pool_id)
 
 
-# Registry integration: RunPodPool is a simple factory — only needs config.
+# Registry integration: thin factory — only ``config`` is required. ``runpod``
+# SDK is lazy-imported in ``__init__`` so a missing install fails fast at
+# pool-construction time rather than at module import.
 def _build_runpod_pool(
     config: PoolConfig,
     **_unused_kwargs: Any,
