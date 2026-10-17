@@ -708,12 +708,21 @@ class TestBifrostConfigSchema:
         assert cfg.local_provider_model == "qwen3-8b-q4_k_m"
 
     def test_env_prefix_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """``MAHAVISHNU_BIFROST__enabled=true`` overrides yaml."""
-        from mahavishnu.core.config import BifrostConfig
+        """``MAHAVISHNU_BIFROST__enabled=true`` overrides yaml.
+
+        ``BifrostConfig`` is a ``BaseModel`` (not ``BaseSettings``), so
+        env-var reading happens at the ``MahavishnuSettings`` mount
+        (``env_prefix="MAHAVISHNU_"`` + ``env_nested_delimiter="__"``
+        routes ``MAHAVISHNU_BIFROST__<FIELD>`` to the nested mount).
+        Asserting on ``MahavishnuSettings().bifrost.enabled`` exercises
+        the real production path; constructing ``BifrostConfig()``
+        directly only ever returns the field defaults.
+        """
+        from mahavishnu.core.config import MahavishnuSettings
 
         monkeypatch.setenv("MAHAVISHNU_BIFROST__enabled", "true")
-        cfg = BifrostConfig()
-        assert cfg.enabled is True
+        settings = MahavishnuSettings()
+        assert settings.bifrost.enabled is True
 
     def test_extra_forbid_rejects_unknown_field(self) -> None:
         """Stray ``bifrost.foo`` is rejected by ``extra="forbid"``."""
@@ -740,32 +749,29 @@ class TestBifrostConfigSchema:
             BifrostConfig.model_validate({"cache_mode": "rabbit"})
 
     def test_mount_uses_field_default_factory(self) -> None:
-        """The BifrostConfig mount on MahavishnuSettings uses default_factory."""
+        """The BifrostConfig mount on MahavishnuSettings uses default_factory.
+
+        The mount is ``bifrost: BifrostConfig = Field(default_factory=BifrostConfig, ...)``.
+        When no env / yaml override is in effect, the field returns a
+        ``BifrostConfig`` instance with the spec defaults (not ``None``,
+        not a raw dict). The previous version of this assertion
+        compared against ``type(MahavishnuSettings())`` (i.e. the
+        ``MahavishnuSettings`` *class* itself) which is always False
+        for a BifrostConfig mount — the bug was checking the wrong type.
+        """
+        from mahavishnu.core.config import BifrostConfig
+
         settings = MahavishnuSettings()
-        # The mount is `bifrost: BifrostConfig = Field(default_factory=BifrostConfig, ...)`.
-        # When no env / yaml override is in effect, the field returns a BifrostConfig
-        # instance with the spec defaults (not None, not a string).
-        assert isinstance(settings.bifrost, type(MahavishnuSettings())), (
+        assert isinstance(settings.bifrost, BifrostConfig), (
             "BifrostConfig must be mounted, not None or raw dict"
         )
 
-    def test_env_overrides_local_yaml(self, monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-        """Env var wins per Oneiric precedence (settings/local.yaml < env)."""
-        from mahavishnu.core.config import BifrostConfig
-
-        # Simulate a local.yaml with enabled: true; the env var
-        # MAHAVISHNU_BIFROST__enabled=false must still win.
-        monkeypatch.setenv("MAHAVISHNU_BIFROST__enabled", "false")
-        # Oneiric's settings loader is what's used in production;
-        # here we test the env-var precedence at the pydantic level.
-        cfg = BifrostConfig.model_validate({})
-        # The env var IS read at construction (pydantic-settings
-        # auto-reads MAHAVISHNU_BIFROST__<FIELD>).
-        # If the test environment happens to have the var set to
-        # "false", cfg.enabled will be False.
-        # We don't assert the strict "true" value (depends on env);
-        # we only assert the env-var path is honored.
-        assert cfg.enabled in (True, False)  # type ignored
+    # Note: a previous `test_env_overrides_local_yaml` here was
+    # deleted in the 2026-10-17 cleanup. It was a tautology
+    # (``assert cfg.enabled in (True, False)``) that did not actually
+    # test env-var precedence; the meaningful env-var coverage now
+    # lives in :meth:`test_env_prefix_override` and the two
+    # ``test_local_provider_*_env_override`` tests above.
 
     # ----- Phase G tests -----
 
@@ -793,21 +799,31 @@ class TestBifrostConfigSchema:
     def test_local_provider_enabled_env_override(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``MAHAVISHNU_BIFROST__local_provider_enabled=false`` overrides yaml."""
-        from mahavishnu.core.config import BifrostConfig
+        """``MAHAVISHNU_BIFROST__local_provider_enabled=false`` overrides yaml.
+
+        Same caveat as :meth:`test_env_prefix_override`: the env var
+        is read at the ``MahavishnuSettings`` mount, not by
+        ``BifrostConfig`` itself.
+        """
+        from mahavishnu.core.config import MahavishnuSettings
 
         monkeypatch.setenv("MAHAVISHNU_BIFROST__local_provider_enabled", "false")
-        cfg = BifrostConfig()
-        assert cfg.local_provider_enabled is False
+        settings = MahavishnuSettings()
+        assert settings.bifrost.local_provider_enabled is False
 
     def test_local_provider_url_env_override(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``MAHAVISHNU_BIFROST__local_provider_url`` overrides yaml."""
-        from mahavishnu.core.config import BifrostConfig
+        """``MAHAVISHNU_BIFROST__local_provider_url`` overrides yaml.
+
+        Same caveat as :meth:`test_env_prefix_override`: the env var
+        is read at the ``MahavishnuSettings`` mount, not by
+        ``BifrostConfig`` itself.
+        """
+        from mahavishnu.core.config import MahavishnuSettings
 
         monkeypatch.setenv(
             "MAHAVISHNU_BIFROST__local_provider_url", "http://localhost:9999"
         )
-        cfg = BifrostConfig()
-        assert cfg.local_provider_url == "http://localhost:9999"
+        settings = MahavishnuSettings()
+        assert settings.bifrost.local_provider_url == "http://localhost:9999"
