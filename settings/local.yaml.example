@@ -36,21 +36,25 @@ observability:
 #     # connection_string required if backend=postgres, set via MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING
 #   telemetry_enabled: false
 
-# --- Crow Terminal Adapter (MHV-001) ---
-# terminal.adapter_preference defaults to "crow" in settings/mahavishnu.yaml:188.
-# The crow_enabled toggle (added in this PR per docs/followups/2026-06-29-crow-mcp-client-wiring.md
-# option C) defaults to false, so a stock install with adapter_preference="crow" falls
-# through to the mock adapter rather than crashing. The CLI call sites
-# (_main_cli.py: ~1073, 1156, 1381) now construct an mcp_client automatically when
-# crow_enabled=true, so flipping the toggle to true is enough to enable crow
-# end-to-end — no separate call-site fix needed.
-# Env-var overrides for the endpoint: MAHAVISHNU_CROW_HTTP_HOST, MAHAVISHNU_CROW_HTTP_PORT.
+# --- Terminal Adapters ---
+# Two adapters are wired for local development. tmux is the default
+# (adapter_preference: "tmux" is inherited from settings/mahavishnu.yaml:294
+# and needs no opt-in — it's the always-on DurableWorkerManager path).
+# crow requires the explicit `crow_enabled: true` flag; without it
+# the manager falls through to the mock adapter rather than crashing
+# (see mahavishnu/terminal/config.py:70-78). Both adapters are
+# registered, and `terminal_switch_adapter` (MCP tool) or a local.yaml
+# override of `adapter_preference` can flip between them at runtime.
+# Crow needs the bundled crow-mcp HTTP server reachable on
+# 127.0.0.1:8693 (CLAUDE.md portmap — 8693 was moved off 8675 to
+# avoid colliding with Prefect's local uvicorn).
+# Env-var overrides: MAHAVISHNU_TERMINAL__CROW_ENABLED, MAHAVISHNU_CROW_HTTP_HOST, MAHAVISHNU_CROW_HTTP_PORT.
 # See: docs/runbooks/crow-adapter-mcp-client.md
 # terminal:
-#   adapter_preference: "crow"  # default in mahavishnu.yaml
+#   # adapter_preference: "tmux"  # default; switch to "crow" to make crow the active adapter
 #   crow_enabled: true   # OPT IN to enable the crow adapter (CLI wires mcp_client)
 #   crow_http_host: "127.0.0.1"
-#   crow_http_port: 8675
+#   crow_http_port: 8693
 
 # --- OpenSearch Observability Backend ---
 # Auto-detected: the integration tries to connect at startup and falls back to
