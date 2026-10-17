@@ -524,10 +524,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 
 **`integrations`**:
 
-- `pydantic_ai_enabled` — `bool`, default `False`; enables Pydantic AI integration.
-- `openclaw_webhooks_enabled` — `bool`, default `True`; enables OpenClaw webhook endpoints.
-- `omo_enabled` — `bool`, default `False`; enables OMO integration.
-- `cross_platform_memory_enabled` — `bool`, default `True`; enables Session-Buddy/Akosha memory sharing.
+- `pydantic_ai_enabled` — `bool`, default `False`; enables Pydantic AI integration.  Pre-1.0 was the only survivor of an audit that removed three dead config fields (`openclaw_webhooks_enabled`, `omo_enabled`, `cross_platform_memory_enabled`) — none had any runtime reader.
 
 **`learning`**:
 

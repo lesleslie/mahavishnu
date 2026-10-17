@@ -590,8 +590,6 @@ class TestIntegrationConfigDefaults:
     def test_defaults(self):
         cfg = IntegrationConfig()
         assert cfg.pydantic_ai_enabled is False
-        assert cfg.openclaw_webhooks_enabled is True
-        assert cfg.cross_platform_memory_enabled is True
 
 
 class TestAdapterRegistryConfigDefaults:

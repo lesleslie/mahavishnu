@@ -2594,13 +2594,9 @@ class IntegrationConfig(BaseModel):
     Example YAML:
         integrations:
           pydantic_ai_enabled: true
-          openclaw_webhooks_enabled: true
-          omo_enabled: false
-          cross_platform_memory_enabled: true
 
     Example Environment Variables:
         MAHAVISHNU_INTEGRATIONS__PYDANTIC_AI_ENABLED=true
-        MAHAVISHNU_INTEGRATIONS__OPENCLAW_WEBHOOKS_ENABLED=false
 
     Created: 2026-04-02
     Related: docs/plans/PRE_IMPLEMENTATION_CHECKLIST.md (P1-8)
@@ -2609,18 +2605,6 @@ class IntegrationConfig(BaseModel):
     pydantic_ai_enabled: bool = Field(
         default=False,
         description="Enable Pydantic AI integration for structured agent outputs",
-    )
-    openclaw_webhooks_enabled: bool = Field(
-        default=True,
-        description="Enable OpenClaw webhook endpoints for external triggers",
-    )
-    omo_enabled: bool = Field(
-        default=False,
-        description="Enable OMO (Orchestration Multi-Objective) integration",
-    )
-    cross_platform_memory_enabled: bool = Field(
-        default=True,
-        description="Enable cross-platform memory sharing via Session-Buddy/Akosha",
     )
 
     model_config = ConfigDict(extra="forbid")

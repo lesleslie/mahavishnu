@@ -977,9 +977,6 @@ class TestIntegrationConfig:
         """Test IntegrationConfig defaults."""
         config = IntegrationConfig()
         assert config.pydantic_ai_enabled is False
-        assert config.openclaw_webhooks_enabled is True
-        assert config.omo_enabled is False
-        assert config.cross_platform_memory_enabled is True
 
 
 # ============================================================================

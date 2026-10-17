@@ -72,7 +72,6 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     ("session_buddy_polling", "interval_seconds", "SESSION_BUDDY_POLLING__INTERVAL_SECONDS", "99"),
     ("learning", "enabled", "LEARNING__ENABLED", "true"),
     ("integrations", "pydantic_ai_enabled", "INTEGRATIONS__PYDANTIC_AI_ENABLED", "true"),
-    ("integrations", "omo_enabled", "INTEGRATIONS__OMO_ENABLED", "true"),
 ]
 
 
