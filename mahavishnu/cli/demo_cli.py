@@ -1815,16 +1815,28 @@ DEFAULT_PI_RUNTIME_PROBE_TIMEOUT_S = 5.0
 
 def _check_pool_mahavishnu_preconditions(
     *,
+    pool_name: str = "demo-mahavishnu",
     tmux_which: Callable[[str], str | None] | None = None,
     claude_which: Callable[[str], str | None] | None = None,
+    exists: Callable[[Path], bool] | None = None,
+    home: Path | None = None,
     require_claude: bool = True,
 ) -> list[str]:
     """Check that tmux is installed (and claude by default).
 
-    Mirrors the tmux demo's preconditions, minus the writable-socket-dir
-    probe — the MahavishnuPool substrate resolves its own writable root
-    under ``~/.local/state/mahavishnu/worktrees/<pool_name>/workspace``
-    (per ``PoolConfig.writable_root`` docs).
+    Also checks the Shepherd workspace at the pool's resolved writable
+    root (per ``_expected_shepherd_workspace_path``). Without an
+    initialized workspace (``<workspace>/.vcscore``), ``pool.start()``
+    fails fail-closed with ``MHV-312`` — we surface that here so the
+    operator gets a clear "run sp init first" message instead of a
+    traceback.
+
+    Probes (all injectable for tests):
+
+    - ``tmux`` / ``claude`` binaries on PATH.
+    - Shepherd workspace marker via the ``exists`` callable.
+    - Home directory via the ``home`` ``Path`` (so tests don't depend
+      on ``Path.home()`` returning the real home).
     """
     tmux_lookup = tmux_which or shutil.which
     claude_lookup = claude_which or shutil.which
@@ -1836,6 +1848,8 @@ def _check_pool_mahavishnu_preconditions(
             "claude binary not on PATH (required for default worker; "
             "the pool itself is fine — the demo's default task uses claude)"
         )
+    workspace = _expected_shepherd_workspace_path(pool_name, home=home)
+    failures.extend(_check_shepherd_workspace(workspace, exists=exists))
     return failures
 
 
@@ -1884,6 +1898,53 @@ def _truncate(value: object, *, max_chars: int) -> object:
     return value
 
 
+def _expected_shepherd_workspace_path(
+    pool_name: str,
+    *,
+    home: Path | None = None,
+) -> Path:
+    """Return the Shepherd workspace path MahavishnuPool will spawn into.
+
+    Mirrors the first-priority candidate in
+    ``mahavishnu.pools.mahavishnu_pool.MahavishnuPool.__init__`` (the
+    candidates list prefers ``~/.local/state/mahavishnu/worktrees/<pool_name>/workspace``
+    before the XDG-data and /tmp fallbacks). The demo doesn't set a
+    custom ``writable_root`` on its ``PoolConfig``, so this is the
+    path the pool will try first — and the one whose Shepherd init
+    state the precondition should check.
+    """
+    base = home or Path.home()
+    return base / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "workspace"
+
+
+def _check_shepherd_workspace(
+    workspace: Path,
+    *,
+    exists: Callable[[Path], bool] | None = None,
+) -> list[str]:
+    """Return ``[failure]`` if the Shepherd workspace isn't initialized; ``[]`` if ready.
+
+    A Shepherd workspace is ready when ``<workspace>/.vcscore`` exists.
+    Per ``shepherd_dialect.workspace_control.workspace.discover`` (line 843
+    of the upstream ``workspace.py``), the missing-marker path raises
+    ``WorkspaceControlError("not a Shepherd workspace. Run `sp init` first.")``,
+    which surfaces as ``MHV-312`` at the pool's ``start()`` call.
+
+    The probe is ``Path.exists`` by default; tests can inject a substitute
+    to drive both branches without touching the real workspace.
+    """
+    exists_check = exists or Path.exists
+    marker = workspace / ".vcscore"
+    if not exists_check(marker):
+        message = (
+            f"Shepherd workspace not initialized at {workspace} "
+            f"(missing .vcscore marker). Run `sp init {workspace}` to "
+            f"initialize it before invoking this demo."
+        )
+        return [message]
+    return []
+
+
 @demo_app.command("pool-mahavishnu")
 def demo_pool_mahavishnu(
     pool_name: str = typer.Option(
@@ -1911,7 +1972,7 @@ def demo_pool_mahavishnu(
     reaps on success. Use ``--keep`` to leave the pool up for follow-up
     ``mahavishnu pool execute`` calls.
     """
-    failures = _check_pool_mahavishnu_preconditions()
+    failures = _check_pool_mahavishnu_preconditions(pool_name=pool_name)
     if failures:
         typer.echo("Precondition failure(s):", err=True)
         for failure in failures:
@@ -2412,7 +2473,10 @@ def _build_terminal_adapter(name: str) -> Any:
 def _check_workflow_pool_worker_terminal_preconditions(
     *,
     adapter: str,
+    pool_name: str = "demo-workflow-pwt",
     tmux_which: Callable[[str], str | None] | None = None,
+    exists: Callable[[Path], bool] | None = None,
+    home: Path | None = None,
 ) -> list[str]:
     """Verify the pool substrate and terminal adapter are present.
 
@@ -2420,6 +2484,11 @@ def _check_workflow_pool_worker_terminal_preconditions(
 
     - ``adapter == 'tmux'`` requires the tmux binary on PATH.
     - ``adapter == 'mock'`` has no shell-binary prereq (always passes).
+    - Shepherd workspace marker at the pool's resolved writable root
+      (per ``_expected_shepherd_workspace_path``); without an
+      initialized ``<workspace>/.vcscore``, ``pool.start()`` fails
+      fail-closed with ``MHV-312`` — surfaced here so the operator
+      sees a clear "run sp init first" message instead of a traceback.
     """
     tmux_lookup = tmux_which or shutil.which
     failures: list[str] = []
@@ -2427,6 +2496,8 @@ def _check_workflow_pool_worker_terminal_preconditions(
         failures.append(f"unsupported adapter: {adapter!r}. Supported: 'mock', 'tmux'.")
     if adapter == "tmux" and not tmux_lookup("tmux"):
         failures.append("tmux binary not on PATH (required for the tmux terminal adapter)")
+    workspace = _expected_shepherd_workspace_path(pool_name, home=home)
+    failures.extend(_check_shepherd_workspace(workspace, exists=exists))
     return failures
 
 
@@ -2747,7 +2818,11 @@ def _check_workflow_adapter_swap_preconditions(
     *,
     adapter_a: str,
     adapter_b: str,
+    pool_name_a: str = "demo-aswap-adapter_a",
+    pool_name_b: str = "demo-aswap-adapter_b",
     tmux_which: Callable[[str], str | None] | None = None,
+    exists: Callable[[Path], bool] | None = None,
+    home: Path | None = None,
 ) -> list[str]:
     """Verify both terminal adapters are usable.
 
@@ -2756,6 +2831,11 @@ def _check_workflow_adapter_swap_preconditions(
     - ``adapter_a == 'tmux'`` or ``adapter_b == 'tmux'`` requires the tmux binary.
     - ``adapter == 'mock'`` always passes.
     - Same-name + same-name is rejected (swap is meaningless).
+    - Shepherd workspace markers at the resolved writable roots for
+      each pool. Without an initialized ``<workspace>/.vcscore``,
+      each ``pool.start()`` fails fail-closed with ``MHV-312`` —
+      surfaced here so the operator sees a clear "run sp init first"
+      message instead of two stack traces.
     """
     tmux_lookup = tmux_which or shutil.which
     failures: list[str] = []
@@ -2769,6 +2849,9 @@ def _check_workflow_adapter_swap_preconditions(
             f"adapter-a and adapter-b are both {adapter_a!r} — "
             f"swap requires two different adapters."
         )
+    for pool_name in (pool_name_a, pool_name_b):
+        workspace = _expected_shepherd_workspace_path(pool_name, home=home)
+        failures.extend(_check_shepherd_workspace(workspace, exists=exists))
     return failures
 
 
