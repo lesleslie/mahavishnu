@@ -205,6 +205,40 @@ def _collect_plan_paths(plans_root: Path) -> list[Path]:
     return sorted(plans_root.rglob("*.md"))
 
 
+def _filter_dead_plans(
+    declared: list[RequirementDecl],
+    referenced_ids: set[str],
+) -> list[RequirementDecl]:
+    """Drop declarations from plans where every REQ is unreferenced.
+
+    Such plans are fully shipped/archived/abandoned — every
+    requirement in the table is dead. Including them produces
+    orphans whose only "fix" is to edit the plan (which is
+    git-ignored for ``docs/plans/.archive/`` per .gitignore:151, so
+    the operator literally cannot address the orphan from the active
+    tree). The pragmatic audit convention is to treat a fully-dead
+    plan as itself dead: drop the whole plan's declarations.
+
+    Plans that have BOTH live and dead REQs are NOT filtered — the
+    live REQs deserve audit visibility and the dead REQs are real
+    drift that the operator should surface (e.g. by editing the
+    plan, if it's writable, or by adding a code reference).
+
+    The check is non-circular: it asks "is this plan's table
+    entirely dead?", not "would dropping this plan change the
+    orphan count?" The same ``referenced_ids`` set drives both the
+    filter and the orphan/phantom computation.
+    """
+    by_path: dict[Path, list[RequirementDecl]] = {}
+    for d in declared:
+        by_path.setdefault(d.source_path, []).append(d)
+    kept: list[RequirementDecl] = []
+    for path, decls in by_path.items():
+        if any(d.requirement_id in referenced_ids for d in decls):
+            kept.extend(decls)
+    return kept
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Audit traceable requirement IDs across plan files and code."
@@ -278,6 +312,12 @@ def main(argv: list[str] | None = None) -> int:
 
         declared = extract_declarations(plan_paths)
         referenced = extract_references(source_paths)
+        # 2026-10-17: drop plans whose entire requirement table is
+        # dead. See ``_filter_dead_plans`` for the rationale — short
+        # version: a fully-dead plan's table is bookkeeping noise,
+        # and several plans live in ``.archive/`` (git-ignored),
+        # which the operator cannot edit from the active tree.
+        declared = _filter_dead_plans(declared, {r.requirement_id for r in referenced})
         orphans, phantoms = compute_diff(declared, referenced)
 
         report = AuditReport(

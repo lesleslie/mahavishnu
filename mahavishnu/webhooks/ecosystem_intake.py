@@ -15,7 +15,7 @@ the standard Akosha publisher — NOT through this endpoint. Crackerjack's
 endpoint.
 
 Req: REQ-016 (C-10 simplified ecosystem intake)
-"""  # req: REQ-016
+"""
 
 from __future__ import annotations
 

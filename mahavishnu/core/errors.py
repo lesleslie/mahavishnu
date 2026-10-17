@@ -2105,7 +2105,7 @@ class MarkdownParseError(MahavishnuError):
     """Raised when .mahavishnu/board.md fails schema validation.
 
     Req: REQ-017, REQ-020
-    """  # req: REQ-017, REQ-020
+    """
 
     def __init__(
         self,
@@ -2124,7 +2124,7 @@ class MarkdownWatcherDiedError(MahavishnuError):
     """Raised when the markdown board watcher crashes; supervisor restarts.
 
     Req: REQ-017
-    """  # req: REQ-017
+    """
 
     def __init__(
         self,
@@ -2149,7 +2149,7 @@ class EcosystemIntakeError(MahavishnuError):
     envelope construction fails. Returns 500 to the caller.
 
     Req: REQ-016 (C-10 simplified ecosystem intake)
-    """  # req: REQ-016
+    """
 
     def __init__(
         self,
