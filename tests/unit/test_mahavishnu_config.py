@@ -538,7 +538,13 @@ class TestAgnoToolsConfig:
         # actual production default and was a stale assertion left over
         # from the pre-port-rationalization era.
         assert config.mcp_server_url == "http://localhost:8680/mcp"
-        assert config.mcp_transport == "sse"
+        # 2026-10-05: default flipped ``"sse"`` → ``"streamable-http"`` in
+        # AgnoToolsConfig (mahavishnu/core/config.py:296). The Agno
+        # SDK 3.1.1 emits ``WARNING SSE as a standalone transport is
+        # deprecated and will be removed in a future release.`` whenever
+        # ``MCPTools(transport="sse")`` is constructed. The class
+        # docstring records the migration.
+        assert config.mcp_transport == "streamable-http"
         assert config.enabled_tools == [
             "search_code",
             "read_file",
@@ -571,7 +577,10 @@ class TestAgnoAdapterConfig:
         assert config.enabled is True
         assert config.llm.provider == LLMProvider.LLAMA_SERVER
         assert config.memory.backend == MemoryBackend.NONE
-        assert config.tools.mcp_transport == "sse"
+        # See TestAgnoToolsConfig::test_default_values for the
+        # 2026-10-05 ``sse`` → ``streamable-http`` flip and the
+        # upstream deprecation warning that drove it.
+        assert config.tools.mcp_transport == "streamable-http"
         assert config.teams_config_path == "settings/agno_teams"
         assert config.default_timeout_seconds == 300
         assert config.max_concurrent_agents == 5
