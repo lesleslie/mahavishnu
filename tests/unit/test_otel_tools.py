@@ -329,8 +329,8 @@ class TestOtelIngesterStats:
     @pytest.mark.asyncio
     async def test_import_error_returns_error_dict(self) -> None:
         tools = _register()
-        with patch.dict("sys.modules", {"akosha.storage": None}):
-            with patch("builtins.__import__", side_effect=ImportError("no akosha")):
+        with patch.dict("sys.modules", {"oneiric.adapters.vector.hot_store": None}):
+            with patch("builtins.__import__", side_effect=ImportError("no oneiric")):
                 result = await tools["otel_ingester_stats"]()
         assert result["status"] == "error"
 
@@ -340,7 +340,7 @@ class TestOtelIngesterStats:
         mock_store = MagicMock()
         mock_store.initialize = AsyncMock(side_effect=RuntimeError("store fail"))
         mock_store.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_store):
+        with patch("oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store):
             result = await tools["otel_ingester_stats"]()
         assert result["status"] == "error"
         assert "store fail" in result["error"]
@@ -351,7 +351,7 @@ class TestOtelIngesterStats:
         mock_store = MagicMock()
         mock_store.initialize = AsyncMock()
         mock_store.close = AsyncMock()
-        with patch("akosha.storage.HotStore", return_value=mock_store):
+        with patch("oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store):
             result = await tools["otel_ingester_stats"]()
         assert result["status"] == "healthy"
         assert result["storage_backend"] == "duckdb_hotstore"

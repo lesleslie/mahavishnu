@@ -13,7 +13,7 @@ async def main():
     print("=" * 60)
 
     # Create ingester (in-memory DuckDB)
-    from akosha.storage import HotStore
+    from oneiric.adapters.vector.hot_store import HotStore
 
     hot_store = HotStore(database_path=":memory:")
     ingester = OtelIngester(hot_store=hot_store)

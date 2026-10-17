@@ -13,7 +13,7 @@ async def main():
 
     # Import after path setup
     try:
-        from akosha.storage import HotStore
+        from oneiric.adapters.vector.hot_store import HotStore
 
         from mahavishnu.ingesters.otel_ingester import OtelIngester
     except ImportError as e:

@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(Path("/Users/les/Projects/mahavishnu")))
 sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
-from akosha.storage import HotStore
+from oneiric.adapters.vector.hot_store import HotStore
 
 from mahavishnu.ingesters.otel_ingester import OtelIngester
 

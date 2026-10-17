@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
 # Import only HotStore (no OtelIngester to avoid sentence-transformers)
 from akosha.models import HotRecord
-from akosha.storage import HotStore
+from oneiric.adapters.vector.hot_store import HotStore
 
 
 async def main():
