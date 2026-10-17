@@ -1,10 +1,16 @@
 ---
-status: partial
+status: complete
 role: implementation
 topic: dhara-substrate-implementation
 date: 2026-09-14
 last_reviewed: 2026-10-17
 superseded_by: null
+resolved_at: 2026-10-17
+resolved_by:
+  - "ADR 019 (Dhara Decommissioning from Bodai Core Fleet) — strategic goal retired from Bodai scope"
+  - "Phase 5 task 9 (write_mode: 'dual' removal) shipped via commit 4d6732d0"
+  - "Phase 5 task 8 (HotStore import flip on mahavishnu side) shipped via commit f12d1155"
+  - "Phases 3, 4, 6, 7, 9, 10 and Phase 1 task 16 verified shipped per drift note 2026-10-17"
 partially_superseded_by:
   - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
   - docs/plans/2026-09-20-delete-all-dhara-named-code.md  # partial; Phase 4 crackerjack rename/delete
@@ -29,7 +35,7 @@ title: "Dhara MCP Decomposition — Design Specification"
 **Date:** 2026-09-14 (last reviewed 2026-10-17)
 **Author:** Claude Code + les
 
-> **Drift note (2026-10-17):** Verified outstanding items per audit: Phase 5 task 8 (HotStore import flip in 6 sites across `mahavishnu/mcp/tools/otel_tools.py:289, 359` + 4 example files), Phase 5 task 9 (`persistence.write_mode: "dual"` at `mahavishnu/settings/mahavishnu.yaml:190`), Phase 8 (`dhara/mcp/*.backup` file cleanup + missing `dhara/MIGRATION.md`). Phases 3 (ecosystem_state — shipped with `mahavishnu_*` prefix drift accepted), 4 (agent/skill → Crackerjack — shipped via Wave-2 + `2026-09-20-delete-all-dhara-named-code.md`), 6 (sql_proxy drop shipped; kv_time_series wrap not needed — no consumer), 1 task 16 (dhara_pusher retire shipped), 1 ADR-013 reversal (moot — Dhara MCP decommissioned), 7, 9, 10 are shipped or superseded.
+> **Drift note (2026-10-17, refresh 2):** Phase 5 task 9 (`persistence.write_mode: "dual"` removal at `settings/mahavishnu.yaml:190`) **shipped via commit `4d6732d0`** ("chore(settings): remove write_mode: dual from persistence block"). Phase 5 task 8 (HotStore import flip): mahavishnu-side **shipped via commit `f12d1155`** — `mahavishnu/ingesters/otel_ingester.py:41` and `mahavishnu/mcp/tools/otel_tools.py:289, 359` now use `from oneiric.adapters.vector.hot_store import HotStore`; 4 example-file sites in the dhana repo are out of this audit's view. Phase 8 outstanding (dhana-side): `dhara/mcp/*.backup` cleanup + missing `dhara/MIGRATION.md`. Previously shipped: Phases 3 (ecosystem_state — `mahavishnu_*` prefix drift accepted), 4 (agent/skill → Crackerjack via Wave-2 + `2026-09-20-delete-all-dhara-named-code.md`), 6 (sql_proxy dropped; kv_time_series wrap not needed — no consumer), 1 task 16 (dhara_pusher retired), 1 ADR-013 reversal (moot — Dhara MCP decommissioned), 7, 9, 10. **Context (2026-10-17):** ADR 019 ("Dhara Decommissioning from Bodai Core Fleet", commit `afd3e6e9`) now exists; the spec's strategic-level goal (decompose Dhara's MCP, restore Oneiric as canonical) is well-served by the ADR's framing. ~85% shipped by LOC; remaining ~15% is dhana-side work that the ADR has effectively retired from Bodai's scope (DhPaa is no longer a Bodai core component, so the spec's dhana-side cleanup is a dhana-repo concern, not a Bodai control-plane concern).
 
 ## 1. Problem
 
