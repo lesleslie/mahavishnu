@@ -978,6 +978,25 @@ class TestIntegrationConfig:
         config = IntegrationConfig()
         assert config.pydantic_ai_enabled is False
 
+    def test_only_pydantic_ai_enabled_remains(self) -> None:
+        """Item 3 cleanup pin: tombstone flags are deleted.
+
+        `openclaw_webhooks_enabled`, `omo_enabled`, and
+        `cross_platform_memory_enabled` were dead config — the only
+        consumer of each was a default-value shape test on the field
+        itself (no runtime gate). Per
+        `feedback-no-backwards-compat-pre-1.0.md`, pre-1.0 we delete
+        rather than deprecate; the YAML schema shrinks and operators
+        with the old keys fail fast at next Oneiric validation.
+        `pydantic_ai_enabled` is the only survivor (the pydantic_ai
+        demo CLI precondition at `demo_cli.py:904` reads it).
+        """
+        fields = set(IntegrationConfig.model_fields.keys())
+        assert fields == {"pydantic_ai_enabled"}, (
+            f"IntegrationConfig should expose only pydantic_ai_enabled; "
+            f"unexpected survivors: {fields - {'pydantic_ai_enabled'}}"
+        )
+
 
 # ============================================================================
 # Test MCPStatePersistenceConfig
