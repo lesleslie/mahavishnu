@@ -1496,6 +1496,18 @@ from .cli.launchd_cli import launchd_app
 
 app.add_typer(launchd_app, name="launchd")
 
+# Terminal diagnostic — `mahavishnu status` surfaces adapter_precedence,
+# tmux binary location, and claude-on-PATH state with
+# [ok]/[warn]/[missing]/[error] markers. Lands via the delayed-attach
+# pattern in `status_cli.add_status_commands(root_app)` so the
+# import graph stays acyclic.
+# Anti-revert test: tests/unit/cli/test_status_cli.py (collection-time
+# import; runner assertions on `mahavishnu status` succeed when this
+# line is wired).
+from .cli.status_cli import add_status_commands
+
+add_status_commands(app)
+
 # Worker management
 workers_app = typer.Typer(help="Worker orchestration and management")
 app.add_typer(workers_app, name="workers")
@@ -1695,6 +1707,16 @@ def workers_list_types(
 # Pool management
 pool_app = typer.Typer(help="Multi-pool orchestration and management")
 app.add_typer(pool_app, name="pool")
+
+# `mahavishnu pool reap` — prune WorkerLifecycleState.REAPED
+# durable-worker audit rows and stale tmux sockets in
+# ~/.mahavishnu/{tmux,worker-sessions}/. Default scope REAPED-only;
+# --all expands to live states (destructive); --dry-run / --yes.
+# Delayed-attach pattern in `reap_cli.add_reap_commands(pool_app)` —
+# same anti-cyclic-import discipline as status_cli.
+from mahavishnu.cli.reap_cli import add_reap_commands
+
+add_reap_commands(pool_app)
 
 # ACP server (stdio JSON-RPC 2.0) — Phase 2 of the v1.0 ACP server build.
 # Import the sub-app from ``mahavishnu.cli.acp_cli``; commands are

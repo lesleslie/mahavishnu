@@ -105,7 +105,7 @@ def test_resolve_crow_mcp_client_uses_defaults_when_no_settings() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "call_site_line",
-    [1586, 2040],
+    [1543, 2059],
     ids=["workers_spawn", "pool_spawn"],
 )
 def test_call_sites_route_through_helper(reload_main_cli, call_site_line) -> None:
@@ -114,8 +114,8 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_line) -> Non
     rather than hardcoding ``None``. We verify the wiring by inspecting the
     source — a regression here means the symmetric wiring has drifted.
 
-    Line numbers pinned to the actual call sites (updated 2026-10-11 after
-    the demo + launchd Typer sub-apps were wired into ``_main_cli``):
+    Line numbers pinned to the actual call sites (updated 2026-10-17 after
+    the status + reap Typer sub-apps were wired into ``_main_cli``):
     - ``workers_spawn`` resolves the crow client into a local variable
       on line 1586 (``crow_client = _resolve_crow_mcp_client(...)``),
       then passes it to ``TerminalManager.create``.
