@@ -3,17 +3,22 @@ status: partial
 role: canonical
 kind: spec
 date: 2026-09-27
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-17
 topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
 related: docs/decisions/oneiric-substrate-extraction.md; docs/decisions/wire-up-contract.md; docs/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
+partially_superseded_by:
+  - docs/plans/2026-10-15-oneiric-substrate-rollout.md  # active umbrella; consolidates Phases A, E1, E2
+  - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md  # active; supersedes Phase D ollama adapter
 title: "Shared Oneiric Substrate - Design v5"
 
 ---
 
 # Shared Oneiric Substrate - Design v5
+
+> **Drift note (2026-10-17):** Phase B (SB DuckDB → pgvector) and Phase D ollama adapter are contradicted by active plans `2026-10-15-oneiric-substrate-rollout.md` and `2026-10-16-drop-ollama-favor-llama-server.md` respectively — see `partially_superseded_by:` in frontmatter. Phase E1 settings substrate + Phase E2 per-component adoption substantially shipped via commits `9c9ab67` (Akosha), `aeaa6800` (Session-Buddy), `040c126c` (Mahavishnu). Verified outstanding items per audit: Phase A `QueryCacheManager` shim deletion in SB (~30 LOC), Phase D L2-normalize enforcement in `EmbeddingBase.embed()` (~80 LOC), Phase E1 `oneiric/docs/substrate.md` (~200 LOC).
 
 > **About this design (v5, 2026-09-27)**: v4 → v5 fix pass after a 2-agent final-review (code-explorer citation audit + code-reviewer logical-completeness review). Fixed: hard citation drifts (Phase A `class QueryCacheManager` line, Phase D `_embedding_cache` dict line), 7 structural gaps (Phase B V1-V6 deletion + p99 perf test + akosha-searches-sb test, Phase D llama-server vs fastembed alignment test, Phase E1 storage adapter `get_feed_state`, Phase E1 `SubstrateSettings` nested per §9 validation), high-priority hygiene (cross-component dep diagrams per wire-up-contract §2, naming hygiene, `auth__loopback_trusted` test, /health 503 trigger logic, Observability on missing tasks), and 4 spec internal contradictions (shim-then-delete vs replace-not-extend, §4.6 mis-cite, §6.6 typo, §5.3 env-prefix ambiguity reconciled below). v4 itself was a rename pass per `feedback-no-bodai-prefix-in-config-names.md`; v3 was a rewrite from scratch after a 3-agent spec audit (code-explorer, code-reviewer, architecture-council) found 31 issues across structural, logical, and factual dimensions.
 

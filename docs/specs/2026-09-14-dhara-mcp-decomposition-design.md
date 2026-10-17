@@ -3,8 +3,13 @@ status: partial
 role: implementation
 topic: dhara-substrate-implementation
 date: 2026-09-14
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-17
 superseded_by: null
+partially_superseded_by:
+  - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
+  - docs/plans/2026-09-20-delete-all-dhara-named-code.md  # partial; Phase 4 crackerjack rename/delete
+  - docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md  # partial; Phase 1.5 wrapper consolidation
+  - docs/adr/018-gateway-pattern-evaluation.md  # draft; Phase 11 gateway evaluation
 blocks_on:
   - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md
   - docs/adr/017-oneiric-shared-persistence-substrate.md
@@ -20,9 +25,11 @@ title: "Dhara MCP Decomposition — Design Specification"
 
 # Dhara MCP Decomposition — Design Specification
 
-**Status:** Draft — pending user review
-**Date:** 2026-09-14
+**Status:** Partial — Dhara Wave-2 cleanup commits (2026-09-29 to 2026-10-13) shipped ~80% of this spec; outstanding items concentrated in Phases 5 + 8. See `partially_superseded_by:` in frontmatter for successor plans.
+**Date:** 2026-09-14 (last reviewed 2026-10-17)
 **Author:** Claude Code + les
+
+> **Drift note (2026-10-17):** Verified outstanding items per audit: Phase 5 task 8 (HotStore import flip in 6 sites across `mahavishnu/mcp/tools/otel_tools.py:289, 359` + 4 example files), Phase 5 task 9 (`persistence.write_mode: "dual"` at `mahavishnu/settings/mahavishnu.yaml:190`), Phase 8 (`dhara/mcp/*.backup` file cleanup + missing `dhara/MIGRATION.md`). Phases 3 (ecosystem_state — shipped with `mahavishnu_*` prefix drift accepted), 4 (agent/skill → Crackerjack — shipped via Wave-2 + `2026-09-20-delete-all-dhara-named-code.md`), 6 (sql_proxy drop shipped; kv_time_series wrap not needed — no consumer), 1 task 16 (dhara_pusher retire shipped), 1 ADR-013 reversal (moot — Dhara MCP decommissioned), 7, 9, 10 are shipped or superseded.
 
 ## 1. Problem
 
