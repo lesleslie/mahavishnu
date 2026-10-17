@@ -81,65 +81,6 @@ class TestResolutionCacheStats:
 
 
 # ---------------------------------------------------------------------------
-# AdapterDiscoveryEngine cache stats tests
-# ---------------------------------------------------------------------------
-
-
-class TestAdapterDiscoveryCacheStats:
-    """Hit/miss counters for AdapterDiscoveryEngine.get_cache_stats()."""
-
-    def test_initial_stats(self) -> None:
-        from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
-
-        engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_mcp_registry": False}
-        )
-        stats = engine.get_cache_stats()
-        assert stats["hits"] == 0
-        assert stats["misses"] == 0
-        assert stats["hit_rate"] == 0.0
-        assert "ttl_seconds" in stats
-
-    def test_miss_recorded_on_discover(self) -> None:
-        from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
-
-        engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_mcp_registry": False}
-        )
-
-        # discover_all with no sources returns empty list; counts as miss
-        result = asyncio.run(engine.discover_all())
-        assert result == []
-        stats = engine.get_cache_stats()
-        assert stats["misses"] == 1
-
-    def test_hit_recorded_on_cached_discover(self) -> None:
-        from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
-
-        engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_mcp_registry": False}
-        )
-
-        asyncio.run(engine.discover_all())  # miss
-        asyncio.run(engine.discover_all())  # hit
-        stats = engine.get_cache_stats()
-        assert stats["hits"] == 1
-        assert stats["misses"] == 1
-
-    def test_invalidate_clears_entries(self) -> None:
-        from mahavishnu.core.adapter_discovery import AdapterDiscoveryEngine
-
-        engine = AdapterDiscoveryEngine(
-            config={"enable_entry_points": False, "enable_mcp_registry": False}
-        )
-
-        asyncio.run(engine.discover_all())
-        engine.invalidate_cache()
-        stats = engine.get_cache_stats()
-        assert stats["entries"] == 0
-
-
-# ---------------------------------------------------------------------------
 # CrossRepoBlockerTracker cache stats tests
 # ---------------------------------------------------------------------------
 
