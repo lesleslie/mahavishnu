@@ -31,6 +31,8 @@ from mahavishnu.core.config import (
     SessionConfig,
     SubscriptionAuthConfig,
     WorkerConfig,
+    get_settings,
+    reset_settings,
 )
 
 
@@ -57,11 +59,35 @@ def test_default_config_values():
     assert config.observability.tracing_enabled is True
     assert config.observability.otlp_endpoint == "http://localhost:4317"
     assert config.auth.enabled is False
-    # Startup-critical dependency defaults
-    assert config.health.dependencies["session_buddy"].required is True
-    assert config.health.dependencies["akosha"].required is False
     # SECURITY: Empty connection string by default, not default credentials
     assert config.otel_storage.connection_string == ""
+
+
+def test_health_dependencies_loaded_from_mahavishnu_yaml() -> None:
+    """YAML-derived health.dependencies must be loaded by get_settings().
+
+    ``MahavishnuSettings()`` (no args) only materialises field defaults —
+    it does NOT load the YAML layer. The previous in-line assertions
+    on ``config.health.dependencies["session_buddy"]`` and
+    ``config.health.dependencies["akosha"]`` were KeyErroring because
+    the dict was empty under bare construction. The actual production
+    path is ``get_settings(project_root=...)`` which routes through
+    Oneiric's ``load_settings`` and populates
+    ``health.dependencies`` from ``settings/mahavishnu.yaml``
+    (lines 412-436: session_buddy required, akosha optional).
+
+    This test was split out per the TDD rule "one behavior per test"
+    — ``test_default_config_values`` covers field defaults; this test
+    covers the YAML integration that turns the empty dict into the
+    required-shape dict.
+    """
+    project_root = Path(__file__).resolve().parents[2]
+    reset_settings()  # ensure the cached instance reflects the real project
+    settings = get_settings(project_root=project_root)
+    assert "session_buddy" in settings.health.dependencies
+    assert settings.health.dependencies["session_buddy"].required is True
+    assert "akosha" in settings.health.dependencies
+    assert settings.health.dependencies["akosha"].required is False
 
 
 def test_eventbridge_default_factory_resolves() -> None:

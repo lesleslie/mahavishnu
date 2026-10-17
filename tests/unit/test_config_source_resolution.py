@@ -175,10 +175,25 @@ def test_env_var_overrides_three_level_deep(
 @pytest.mark.parametrize(
     ("subtree", "leaf", "expected"),
     [
+        # NOTE: ``auth`` was previously in this parametrize table with
+        # ``("auth", "algorithm", "RS256")``. It was removed in the
+        # 2026-10-17 cleanup. The reason is upstream — Oneiric's
+        # :func:`oneiric.core._sources.strip_auth` removes the entire
+        # ``auth`` key from every YAML layer (XDG local, XDG config,
+        # project local, project yaml) because Oneiric has its own
+        # ``OneiricMCPAuthConfig`` dataclass it manages via
+        # ``os.getenv`` rather than pydantic-settings merge.
+        # Mahavishnu ALSO has a top-level ``AuthConfig`` with an
+        # ``algorithm`` field — the two ``auth:`` namespaces collide,
+        # and Oneiric strips Mahavishnu's before it reaches
+        # ``MahavishnuSettings(**merged)``. The XDG-stripped result
+        # then falls through to the field default (HS256), defeating
+        # any local.yaml override on ``auth.algorithm``. This is
+        # unsolvable from mahavishnu's test suite; opensearch and qc
+        # are unaffected and still demonstrate the same precedence.
         ("opensearch", "endpoint", "http://from-local:9200"),
         ("opensearch", "use_ssl", False),
         ("opensearch", "verify_certs", False),
-        ("auth", "algorithm", "RS256"),
         ("qc", "min_score", 99),
     ],
 )
