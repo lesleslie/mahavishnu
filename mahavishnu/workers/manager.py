@@ -288,12 +288,27 @@ class WorkerManager:
             return
 
         if shutil.which(required_tool) is None:
+            current_path = os.environ.get("PATH", "")
+            if len(current_path) > 512:
+                current_path_truncated = current_path[:512] + "..."
+            else:
+                current_path_truncated = current_path
+            fix_hint = (
+                "Set MAHAVISHNU_NO_EXTRA_PATH=1 to skip PATH augmentation, "
+                "or rely on the PATH bootstrap in scripts/launch_mcp.py to "
+                "prepend ~/.local/bin before launching the subprocess."
+            )
             raise MahavishnuError(
-                f"Worker {worker_type!r} requires tool {required_tool!r} which is not on PATH",
+                f"Worker {worker_type!r} requires tool {required_tool!r} "
+                f"which is not on PATH.\n"
+                f"Current PATH: {current_path_truncated}\n"
+                f"Fix: {fix_hint}",
                 ErrorCode.VALIDATION_ERROR,
                 details={
                     "worker_type": worker_type,
                     "missing_tool": required_tool,
+                    "current_path_truncated": current_path_truncated,
+                    "fix_hint": fix_hint,
                 },
             )
 
