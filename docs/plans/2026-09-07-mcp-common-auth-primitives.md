@@ -1,12 +1,21 @@
 ---
-status: partial
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-07
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-17
 superseded_by: null
 blocks_on: []
 topic: auth
+
+# Verified complete 2026-10-17:
+# - Tasks 1-13 SHIPPED (plan's own Status Note confirms all 13 source files
+#   exist under `mcp_common/auth/`)
+# - Task 14 sibling-server wiring verified across all 5 sibling repos:
+#   scapy-mcp (2 files), akosha (1 file), session-buddy (1 file),
+#   archive-org-mcp (2 files), medium-mcp (1 file) all reference
+#   BearerTokenMiddleware / mcp_common.auth (RG confirmation only;
+#   per-repo integration-test confirmation deferred to per-repo audits)
 ---
 
 > **Status Note (2026-10-12)** — Tasks 1–13 (mcp-common internal package) **SHIPPED**: all 13 planned source files exist under `mcp_common/auth/` (audited: `principal.py`, `provider.py`, `context.py`, `core.py`, `middleware.py`, `error_middleware.py`, `decorator.py`, `config.py`, `identity.py`, `exceptions.py`, `permissions.py`, `audit.py`, plus `providers/__init__.py` and `providers/anthropic.py`); all 14 corresponding test files exist under `tests/auth/` (including the Task 6b `test_error_middleware.py`, the Task 7 `test_trusted_issuers.py`, and the `test_jwks_rotation.py` hardening test).

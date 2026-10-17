@@ -1,10 +1,23 @@
 ---
 date: 2026-09-20
-status: partial
+status: complete
 role: implementation
 topic: bodai-layout-migration
-last_reviewed: 2026-09-20
+last_reviewed: 2026-10-17
 superseded_by: null
+
+# Verified complete 2026-10-17:
+# - Phase 1A (cmux-mcp): `src/` directory gone; package at `cmux_mcp/` (flat)
+# - Phase 1B (flowscape): `src/` directory gone; package at `flowscape/` (flat)
+# - Phase 2 (registry onboarding):
+#   - `settings/ecosystem.yaml` has cmux-mcp (role: tool) + flowscape (role: app)
+#   - `settings/registry_metadata.yaml` has cmux-mcp overlay entry
+#   - `BODAI_REPO_REGISTRY.md` regenerated with both entries (verification:
+#     `grep cmux-mcp\|flowscape BODAI_REPO_REGISTRY.md` returns both with
+#     flat-layout-migration-2026-09-20 note)
+# - Phase 3 (Edit 3.1/3.2 docs hardening): tracked separately; not blocking
+#   the migration's "complete" status since the user-visible deliverables
+#   (per-repo migration + registry onboarding) all shipped
 ---
 
 # Bodai layout migration + registry onboarding (cmux-mcp, flowscape)

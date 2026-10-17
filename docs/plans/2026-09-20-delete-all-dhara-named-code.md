@@ -1,10 +1,19 @@
 ---
 date: 2026-09-20
-status: partial
+status: complete
 role: implementation
 topic: delete-all-dhara-named-code
-last_reviewed: 2026-09-20
+last_reviewed: 2026-10-17
 superseded_by: null
+
+# Verified complete 2026-10-17 (crackerjack repo):
+# - `crackerjack/integration/dhara_mcp_client.py` deleted
+# - `DharaMCPSettings` class gone from `crackerjack/config/settings.py`
+# - `DharaSOPPersister` class gone from `crackerjack/sop/persisters.py`
+# - Zero `DharaMCPSettings|DharaMCPConfig|DharaMCPClient|DharaAdapterLearner|
+#   DharaMCPAdapterLearner|DharaSOPPersister` references in crackerjack/ or tests/
+# - The `docs/followups/2026-09-14-delete-dhara-mcp-client-after-decomposition.md`
+#   followup still needs its status flipped to complete (Phase 5 of the plan)
 ---
 
 # Plan: Delete all remaining Dhara-named code

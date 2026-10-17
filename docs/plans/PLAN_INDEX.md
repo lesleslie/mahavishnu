@@ -77,10 +77,19 @@ Last regenerated: 2026-10-17.
 
 One table per store. Entries are sorted by `date` DESC, with ties broken by path ASC. Files without valid frontmatter are excluded; run `uv run crackerjack docs validate --allow-nonstandard` to surface them.
 
+### Cleanup V2 Plan Finalization (`.claude/worktree-snapshots/cleanup-v2-plan-finalization/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md) | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
+
 ### Architecture Decision Records (`docs/adr/`)
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/adr/019-dhara-decommissioning.md`](../../docs/adr/019-dhara-decommissioning.md) | 2026-10-17 | `complete` | `canonical` | `decision` | `dhara-decommissioning` | ADR 019: Dhara Decommissioning from Bodai Core Fleet |
 | [`docs/adr/0001-mahavishnu-niche.md`](../../docs/adr/0001-mahavishnu-niche.md) | 2026-09-26 | `complete` | `canonical` | `decision` | `mahavishnu-niche` | ADR 0001: Mahavishnu's Niche — LLM Control Plane + Repo Orchestrator |
 | [`docs/adr/018-gateway-pattern-evaluation.md`](../../docs/adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | `draft` | `canonical` | `decision` | `mcp-design` | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
 | [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | `complete` | `canonical` | `decision` | `persistence` | ADR 017: Oneiric as the shared persistence substrate for Bodai |
@@ -150,6 +159,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` | `decision` | `technical-debt` | Technical Debt Roadmap |
 | [`docs/decisions/test-matrix-review-followups.md`](../../docs/decisions/test-matrix-review-followups.md) | 2026-07-16 | `complete` | `implementation` |  | `test-matrix-followups` | Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` | `decision` | `wire-up-contract` | Wire-up contract |
+| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | — | `unknown` | `unknown` |  | `—` | 2026 10 17 runpod flash to sdk 2 |
 
 ### Workflows (`docs/decisions/workflows/`)
 
@@ -249,13 +259,13 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) | 2026-10-04 | `complete` | `superseded` |  | `session-buddy-lifespan-publisher-inline` | Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `active` | `canonical` |  | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
-| [`docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`](2026-09-20-bodai-layout-migration-and-registry-onboarding.md) | 2026-09-20 | `partial` | `implementation` |  | `bodai-layout-migration` | Bodai layout migration + registry onboarding (cmux-mcp, flowscape) |
-| [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `partial` | `implementation` |  | `delete-all-dhara-named-code` | Plan: Delete all remaining Dhara-named code |
+| [`docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`](2026-09-20-bodai-layout-migration-and-registry-onboarding.md) | 2026-09-20 | `complete` | `implementation` |  | `bodai-layout-migration` | Verified complete 2026-10-17: |
+| [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-dhara-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `partial` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `partial` | `umbrella` |  | `mcpserver-settings-convention` | CommonMCPClient Transport Unification Across Bodai (v2) |
-| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `partial` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Implementation Plan |
-| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `partial` | `implementation` |  | `auth` | mcp-common Authentication Primitives Implementation Plan |
+| [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `complete` | `implementation` |  | `jot-read` | Verified complete 2026-10-17: |
+| [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `complete` | `implementation` |  | `auth` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
@@ -319,12 +329,13 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
 
-### `decision` (48 entries)
+### `decision` (49 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/adr/019-dhara-decommissioning.md`](../../docs/adr/019-dhara-decommissioning.md) | 2026-10-17 | ADR 019: Dhara Decommissioning from Bodai Core Fleet |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | Archive directory canonical path: `docs/.archive/` (top-level) |
 | [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
 | [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
@@ -374,7 +385,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (107 entries)
+### `plan` (108 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -386,10 +397,10 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 38 | 2 | 1 | 12 | **58** |
-| `implementation` | 7 | 11 | 7 | 1 | 6 | **32** |
+| `canonical` | 5 | 38 | 2 | 1 | 13 | **59** |
+| `implementation` | 7 | 11 | 3 | 1 | 10 | **32** |
 | `umbrella` | · | 2 | 1 | · | · | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **55** | **10** | **2** | **57** | **136** |
+| **Total** | **12** | **55** | **6** | **2** | **62** | **137** |
