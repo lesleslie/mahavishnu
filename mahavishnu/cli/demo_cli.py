@@ -1787,8 +1787,566 @@ def demo_hatchet(
 
 
 # ============================================================================
+# Pool demos (PR #2 — live implementations of all 4 pool types)
+# ============================================================================
+#
+# Each sub-command drives one ``BasePool`` subclass end-to-end: build a
+# ``PoolConfig``, call ``start()``, dispatch a single task via
+# ``execute_task()``, optionally ``stop()`` (honors ``--keep``). The
+# preconditions function is the CLI-friendly surface for "is this
+# substrate even reachable from my shell?" — empty list = pass.
+#
+# Anti-revert pattern (sibling of the engine demos above): the stub
+# registration loop at the bottom of this file MUST NOT include any
+# of these names. ``tests/unit/cli/test_cli_wireup_invariants.py`` pins
+# the live-implementation property for each one.
+
+
+DEFAULT_POOL_DEMO_PROMPT = "echo hello from {pool_type} pool"
+DEFAULT_SESSION_BUDDY_URL = "http://localhost:8678/mcp"
+DEFAULT_RUNPOD_PROBE_TIMEOUT_S = 5.0
+DEFAULT_PI_RUNTIME_PROBE_TIMEOUT_S = 5.0
+
+
+# ----------------------------------------------------------------------------
+# pool-mahavishnu — in-process WorkerManager + tmux substrate
+# ----------------------------------------------------------------------------
+
+
+def _check_pool_mahavishnu_preconditions(
+    *,
+    tmux_which: Callable[[str], str | None] | None = None,
+    claude_which: Callable[[str], str | None] | None = None,
+    require_claude: bool = True,
+) -> list[str]:
+    """Check that tmux is installed (and claude by default).
+
+    Mirrors the tmux demo's preconditions, minus the writable-socket-dir
+    probe — the MahavishnuPool substrate resolves its own writable root
+    under ``~/.local/state/mahavishnu/worktrees/<pool_name>/workspace``
+    (per ``PoolConfig.writable_root`` docs).
+    """
+    tmux_lookup = tmux_which or shutil.which
+    claude_lookup = claude_which or shutil.which
+    failures: list[str] = []
+    if not tmux_lookup("tmux"):
+        failures.append("tmux binary not on PATH")
+    if require_claude and not claude_lookup("claude"):
+        failures.append(
+            "claude binary not on PATH (required for default worker; "
+            "the pool itself is fine — the demo's default task uses claude)"
+        )
+    return failures
+
+
+async def _run_pool_mahavishnu_demo(
+    *,
+    pool_name: str,
+    min_workers: int,
+    max_workers: int,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive ``MahavishnuPool`` end-to-end: start, dispatch, reap (unless ``--keep``)."""
+    from mahavishnu.pools import MahavishnuPool, PoolConfig
+
+    config = PoolConfig(
+        name=pool_name,
+        pool_type="mahavishnu",
+        min_workers=min_workers,
+        max_workers=max_workers,
+    )
+    pool = MahavishnuPool(config=config)
+    pool_id = await pool.start()
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+    return {
+        "pool_id": pool_id,
+        "pool_type": "mahavishnu",
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+def _truncate(value: object, *, max_chars: int) -> object:
+    """Return ``value`` unchanged unless it is a string over ``max_chars``.
+
+    Pools can return large output blobs (vision, embeddings); the demo
+    only needs enough context to confirm the substrate fired.
+    """
+    if isinstance(value, str) and len(value) > max_chars:
+        return value[:max_chars] + f"… (+{len(value) - max_chars} chars)"
+    return value
+
+
+@demo_app.command("pool-mahavishnu")
+def demo_pool_mahavishnu(
+    pool_name: str = typer.Option(
+        "demo-mahavishnu",
+        "--name",
+        help="Pool name (informational; used in the pool_id).",
+    ),
+    min_workers: int = typer.Option(1, "--min", min=1, help="Minimum workers."),
+    max_workers: int = typer.Option(2, "--max", min=1, help="Maximum workers."),
+    prompt: str = typer.Option(
+        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="mahavishnu"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to one MahavishnuPool worker.",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(60, "--timeout", help="Max seconds for start + execute + stop."),
+) -> None:
+    """Run the in-process MahavishnuPool (WorkerManager + tmux) end-to-end.
+
+    Exercises the local substrate: spawns a ``PoolConfig(pool_type=
+    "mahavishnu", min_workers, max_workers)``, dispatches one task, and
+    reaps on success. Use ``--keep`` to leave the pool up for follow-up
+    ``mahavishnu pool execute`` calls.
+    """
+    failures = _check_pool_mahavishnu_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Pool: {pool_name} (type=mahavishnu, {min_workers}..{max_workers} workers)")
+    typer.echo(f"Prompt: {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_pool_mahavishnu_demo(
+                    pool_name=pool_name,
+                    min_workers=min_workers,
+                    max_workers=max_workers,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nMahavishnuPool demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# pool-session-buddy — MCP-delegated substrate
+# ----------------------------------------------------------------------------
+
+
+def _check_pool_session_buddy_preconditions(
+    *,
+    url: str,
+    http_probe: Callable[[str, float], bool] | None = None,
+    probe_timeout_s: float = DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+) -> list[str]:
+    """Verify the Session-Buddy MCP server is reachable at ``url``.
+
+    Probes with a short-timeout HTTP GET on the MCP endpoint. A bare
+    TCP-connect is insufficient — many Session-Buddy installs accept
+    the TCP handshake but 5xx the first MCP frame.
+    """
+    probe = http_probe or _default_http_probe
+    failures: list[str] = []
+    if not url:
+        failures.append(
+            "Session-Buddy URL is empty (pass --url or set MAHAVISHNU_SESSION_BUDDY__POOL_URL)"
+        )
+        return failures
+    if not url.startswith(("http://", "https://")):
+        failures.append(f"Session-Buddy URL must be http(s); got {url!r}")
+        return failures
+    if not probe(url, probe_timeout_s):
+        failures.append(
+            f"Session-Buddy MCP server not reachable at {url} within {probe_timeout_s}s. "
+            f"Start it with `mahavishnu mcp start --adapter session-buddy` or "
+            f"`uv run session-buddy`."
+        )
+    return failures
+
+
+def _default_http_probe(url: str, timeout_s: float) -> bool:
+    """HEAD-equivalent GET probe with a tight timeout (synchronous)."""
+    try:
+        with httpx.Client(timeout=timeout_s) as client:
+            response = client.get(url, headers={"Accept": "text/event-stream"})
+        return response.status_code < 500
+    except Exception:  # CLI entry point — probe failures must yield a precondition failure, not crash the demo  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return False
+
+
+async def _run_pool_session_buddy_demo(
+    *,
+    pool_name: str,
+    url: str,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive ``SessionBuddyPool`` end-to-end against the live MCP server."""
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
+
+    config = PoolConfig(
+        name=pool_name,
+        pool_type="session-buddy",
+        # Session-Buddy manages a fixed 3 workers; the config min/max
+        # are advisory. Pass ``session_buddy_url=url`` to the pool ctor.
+    )
+    pool = SessionBuddyPool(config=config, session_buddy_url=url)
+    pool_id = await pool.start()
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+    return {
+        "pool_id": pool_id,
+        "pool_type": "session-buddy",
+        "session_buddy_url": url,
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+@demo_app.command("pool-session-buddy")
+def demo_pool_session_buddy(
+    pool_name: str = typer.Option(
+        "demo-session-buddy",
+        "--name",
+        help="Pool name (informational; used in the pool_id).",
+    ),
+    url: str = typer.Option(
+        DEFAULT_SESSION_BUDDY_URL,
+        "--url",
+        "-u",
+        help="Session-Buddy MCP server URL (defaults to http://localhost:8678/mcp).",
+    ),
+    prompt: str = typer.Option(
+        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="session-buddy"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to one Session-Buddy worker.",
+    ),
+    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    timeout: int = typer.Option(
+        60, "--timeout", help="Max seconds for probe + start + execute + stop."
+    ),
+    probe_timeout_s: float = typer.Option(
+        DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+        "--probe-timeout",
+        help="Seconds to wait on the Session-Buddy HTTP probe.",
+    ),
+) -> None:
+    """Run the Session-Buddy delegated pool end-to-end against the live MCP server.
+
+    The SessionBuddyPool owns 3 workers per server (fixed by the upstream
+    substrate); the demo confirms the MCP round-trip works. Pass
+    ``--keep`` to leave the pool up — useful for follow-up
+    ``mahavishnu pool execute pool_<id>`` calls.
+    """
+    failures = _check_pool_session_buddy_preconditions(url=url, probe_timeout_s=probe_timeout_s)
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Pool: {pool_name} (type=session-buddy, server={url})")
+    typer.echo(f"Prompt: {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_pool_session_buddy_demo(
+                    pool_name=pool_name,
+                    url=url,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nSessionBuddyPool demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# pool-runpod — runpod SDK 2.0 serverless client (post-migration substrate)
+# ----------------------------------------------------------------------------
+
+
+def _check_pool_runpod_preconditions(
+    *,
+    endpoint_id: str,
+    env_getter: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify ``RUNPOD_API_KEY`` is set and ``endpoint_id`` is non-empty.
+
+    SDK 2.0 reads ``RUNPOD_API_KEY`` natively (per the post-2026-10-17
+    migration — see ``docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md``).
+    The legacy ``api_key`` config field is no longer required; the
+    endpoint_id IS required (points at a pre-configured serverless
+    endpoint — handler logic lives in the RunPod console, not here).
+    """
+    env_getter = env_getter or os.getenv
+    failures: list[str] = []
+    if not env_getter("RUNPOD_API_KEY"):
+        failures.append(
+            "RUNPOD_API_KEY env var is unset. Set it in your shell "
+            "(export RUNPOD_API_KEY=...) before invoking this demo."
+        )
+    if not endpoint_id:
+        failures.append(
+            "RunPod endpoint_id is empty. Pass --endpoint-id <id> or set "
+            "RUNPOD_ENDPOINT_ID in the environment."
+        )
+    return failures
+
+
+async def _run_pool_runpod_demo(
+    *,
+    pool_name: str,
+    endpoint_id: str,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive ``RunPodPool`` end-to-end against the named serverless endpoint.
+
+    Uses the SDK 2.0 thin client (``runpod.Endpoint(id)``) — no worker
+    registration, no decorator. Pool's ``execute_task`` wraps
+    ``endpoint.run(payload) → req.output()`` in ``asyncio.to_thread``,
+    so the orchestrator's event loop stays unblocked during the
+    30-60s cold start and 2-3s warm call.
+    """
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.runpod_pool import RunPodPool
+
+    config = PoolConfig(
+        name=pool_name,
+        pool_type="runpod",
+        extra_config={"endpoint_id": endpoint_id},
+    )
+    pool = RunPodPool(config=config)
+    pool_id = await pool.start()
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+    return {
+        "pool_id": pool_id,
+        "pool_type": "runpod",
+        "endpoint_id": endpoint_id,
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+@demo_app.command("pool-runpod")
+def demo_pool_runpod(
+    pool_name: str = typer.Option(
+        "demo-runpod",
+        "--name",
+        help="Pool name (informational; used in the pool_id).",
+    ),
+    endpoint_id: str = typer.Option(
+        os.getenv("RUNPOD_ENDPOINT_ID", ""),
+        "--endpoint-id",
+        "-e",
+        help="RunPod serverless endpoint id (or set RUNPOD_ENDPOINT_ID).",
+    ),
+    prompt: str = typer.Option(
+        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="runpod"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to the RunPod serverless endpoint.",
+    ),
+    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    timeout: int = typer.Option(
+        120,
+        "--timeout",
+        help="Max seconds for start + execute + stop. Cold start can be 30-60s.",
+    ),
+) -> None:
+    """Run the RunPodPool (SDK 2.0) end-to-end against a serverless endpoint.
+
+    The endpoint is operator-managed (RunPod console or
+    ``runpod.serverless.start({...})`` in a dedicated handler repo).
+    This demo verifies the client-side substrate — that
+    ``runpod.Endpoint(id).run(payload)`` round-trips and the pool's
+    ``execute_task`` correctly surfaces the terminal state.
+    """
+    failures = _check_pool_runpod_preconditions(endpoint_id=endpoint_id)
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        typer.echo(
+            "\nHint: see docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md "
+            "for the migration context.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Pool: {pool_name} (type=runpod, endpoint_id={endpoint_id})")
+    typer.echo(f"Prompt: {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_pool_runpod_demo(
+                    pool_name=pool_name,
+                    endpoint_id=endpoint_id,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s (cold start can be 30-60s)", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nRunPodPool demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# pool-pi — single npx @earendil-works/pi-coding-agent subprocess
+# ----------------------------------------------------------------------------
+
+
+def _check_pool_pi_preconditions(
+    *,
+    npx_which: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Check that ``npx`` is on PATH (PiPool spawns ``npx pi-coding-agent --rpc``)."""
+    which = npx_which or shutil.which
+    failures: list[str] = []
+    if not which("npx"):
+        failures.append(
+            "npx binary not on PATH (PiPool spawns npx @earendil-works/pi-coding-agent). "
+            "Install Node.js 18+ and ensure npx is reachable."
+        )
+    return failures
+
+
+async def _run_pool_pi_demo(
+    *,
+    pool_name: str,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive ``PiPool`` end-to-end against a single ``pi-coding-agent`` subprocess.
+
+    PiPool has a fixed worker count of 1 (``scale(n>1)`` raises). The
+    demo spawns one subprocess via JSON-RPC 2.0 over stdio, dispatches
+    a single task, and reaps.
+    """
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.pi_pool import PiPool
+
+    config = PoolConfig(
+        name=pool_name,
+        pool_type="pi",
+        min_workers=1,
+        max_workers=1,  # PiPool rejects max_workers > 1 at construction
+    )
+    pool = PiPool(config=config)
+    pool_id = await pool.start()
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+    return {
+        "pool_id": pool_id,
+        "pool_type": "pi",
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+@demo_app.command("pool-pi")
+def demo_pool_pi(
+    pool_name: str = typer.Option(
+        "demo-pi",
+        "--name",
+        help="Pool name (informational; used in the pool_id).",
+    ),
+    prompt: str = typer.Option(
+        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="pi"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to the single pi-coding-agent subprocess.",
+    ),
+    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    timeout: int = typer.Option(60, "--timeout", help="Max seconds for start + execute + stop."),
+) -> None:
+    """Run the PiPool end-to-end (single npx pi-coding-agent subprocess).
+
+    The Pi substrate is model-agnostic — the prompt is forwarded to the
+    configured upstream (Bifrost routing). For multi-process capacity,
+    spawn additional PiPool instances (PiPool has a fixed worker count
+    of 1 per pool).
+    """
+    failures = _check_pool_pi_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Pool: {pool_name} (type=pi, single subprocess)")
+    typer.echo(f"Prompt: {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_pool_pi_demo(
+                    pool_name=pool_name,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nPiPool demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
 # Stubs — 1 mock terminal adapter remains (agno + llamaindex + pydantic_ai
-# + crow + hatchet promoted to live implementations above)
+# + crow + hatchet promoted to live implementations above; 4 pool demos
+# promoted to live in PR #2: pool-mahavishnu, pool-session-buddy,
+# pool-runpod, pool-pi)
 # ============================================================================
 
 

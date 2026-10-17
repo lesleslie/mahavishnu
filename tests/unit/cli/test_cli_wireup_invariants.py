@@ -261,3 +261,154 @@ def test_demo_stub_loop_no_longer_registers_hatchet() -> None:
         "Remove the \"hatchet\" entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
+
+
+# ============================================================================
+# Pool demos (PR #2 — 4 new live implementations)
+#
+# Each pool demo follows the same anti-revert pattern as the engine
+# demos above: (1) a live-implementation test asserting a callback-
+# specific flag is present in --help, and (2) a stub-loop exclusion
+# test asserting the name is NOT in _STUB_COSTS. The PR #2 migration
+# also removed the runpod-flash deprecation warning that the pool-runpod
+# demo would otherwise have inherited (the SDK 2.0 substrate is
+# deprecation-free; see docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md).
+# ============================================================================
+
+
+def test_demo_pool_mahavishnu_is_live_implementation() -> None:
+    """``mahavishnu demo pool-mahavishnu`` must be a live implementation.
+
+    The live path exposes ``--min`` and ``--max`` (MahavishnuPool scales
+    between min and max workers); the stub path only exposes
+    ``--why-stub``. Asserting ``--max`` proves the live callback won
+    the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "pool-mahavishnu", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--max" in result.output, (
+        "demo pool-mahavishnu is showing stub-style --help (missing --max). "
+        "The live @demo_app.command(\"pool-mahavishnu\") callback was "
+        "likely replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_pool_mahavishnu() -> None:
+    """The stub registration loop must not include ``pool-mahavishnu``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "pool-mahavishnu" not in stub_names, (
+        "pool-mahavishnu is in _STUB_COSTS — the stub registration "
+        "loop will shadow the live @demo_app.command(\"pool-mahavishnu\") "
+        "callback. Remove the entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )
+
+
+def test_demo_pool_session_buddy_is_live_implementation() -> None:
+    """``mahavishnu demo pool-session-buddy`` must be a live implementation.
+
+    The live path exposes ``--url`` (the Session-Buddy MCP server URL);
+    the stub path only exposes ``--why-stub``. Asserting ``--url``
+    proves the live callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "pool-session-buddy", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--url" in result.output, (
+        "demo pool-session-buddy is showing stub-style --help (missing --url). "
+        "The live @demo_app.command(\"pool-session-buddy\") callback was "
+        "likely replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_pool_session_buddy() -> None:
+    """The stub registration loop must not include ``pool-session-buddy``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "pool-session-buddy" not in stub_names, (
+        "pool-session-buddy is in _STUB_COSTS — the stub registration "
+        "loop will shadow the live @demo_app.command(\"pool-session-buddy\") "
+        "callback. Remove the entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )
+
+
+def test_demo_pool_runpod_is_live_implementation() -> None:
+    """``mahavishnu demo pool-runpod`` must be a live implementation.
+
+    The live path exposes ``--endpoint-id`` (the RunPod serverless
+    endpoint id); the stub path only exposes ``--why-stub``. Asserting
+    ``--endpoint-id`` proves the live callback won the Typer registration
+    race. This demo also exercises the SDK 2.0 thin client — the
+    runpod-flash deprecation warning is gone.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "pool-runpod", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--endpoint-id" in result.output, (
+        "demo pool-runpod is showing stub-style --help (missing --endpoint-id). "
+        "The live @demo_app.command(\"pool-runpod\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_pool_runpod() -> None:
+    """The stub registration loop must not include ``pool-runpod``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "pool-runpod" not in stub_names, (
+        "pool-runpod is in _STUB_COSTS — the stub registration loop "
+        "will shadow the live @demo_app.command(\"pool-runpod\") callback. "
+        "Remove the entry from _STUB_COSTS and from the registration loop tuple."
+    )
+
+
+def test_demo_pool_pi_is_live_implementation() -> None:
+    """``mahavishnu demo pool-pi`` must be a live implementation.
+
+    The live path exposes ``--prompt`` (PiPool dispatches a prompt to
+    the npx pi-coding-agent subprocess); the stub path only exposes
+    ``--why-stub``. Asserting ``--prompt`` proves the live callback won
+    the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "pool-pi", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--prompt" in result.output, (
+        "demo pool-pi is showing stub-style --help (missing --prompt). "
+        "The live @demo_app.command(\"pool-pi\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_pool_pi() -> None:
+    """The stub registration loop must not include ``pool-pi``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "pool-pi" not in stub_names, (
+        "pool-pi is in _STUB_COSTS — the stub registration loop will "
+        "shadow the live @demo_app.command(\"pool-pi\") callback. "
+        "Remove the entry from _STUB_COSTS and from the registration loop tuple."
+    )
