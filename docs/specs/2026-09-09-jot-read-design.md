@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 role: implementation
 kind: plan
 date: 2026-09-09
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-17
 superseded_by: null
 blocks_on: []
 topic: jot-read

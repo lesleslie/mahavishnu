@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 role: canonical
 kind: spec
 date: 2026-09-25
-last_reviewed: 2026-09-25
+last_reviewed: 2026-10-17
 topic: clone-refactor-wireup
 revision: v4
 owner: platform-team
