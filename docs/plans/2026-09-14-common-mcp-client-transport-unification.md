@@ -1,13 +1,27 @@
 ---
-status: partial
+status: complete
 role: umbrella
 kind: plan
 date: 2026-09-14
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-17
 superseded_by: docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
 topic: mcpserver-settings-convention
 revision: 2
 title: "CommonMCPClient Transport Unification Across Bodai (v2)"
+
+# Verified complete 2026-10-17 (cross-repo audit):
+# - Phase 1a SDK shipped (mcp_common.clients.CommonMCPClient +
+#   HealthFeedState + aggregate_feed_states)
+# - Phase 1b tests split out to docs/plans/2026-10-12-mcp-common-test-backfill.md
+# - Phase 2 deferred (overlaps with 2026-09-26-mcp-launcher-standardization.md)
+# - Phase 3 production migration: only docstring/comment references to
+#   /tools/call remain (3 sites in akosha + session-buddy all describe
+#   what was REPLACED, not legacy usage). The sole remaining /tools/call
+#   POST in tests is the intentional `LiveMcpToolClient` C5 live-smoke
+#   fixture (skipif'd behind MAHAVISHNU_C5_LIVE_SMOKE=1) — preserved as
+#   historical evidence of the hard-cutover, not a migration candidate.
+# - Phase 4 /health aggregator unification superseded by
+#   docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
 
 ---
 

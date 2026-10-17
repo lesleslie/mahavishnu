@@ -263,7 +263,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-dhara-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `partial` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
-| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `partial` | `umbrella` |  | `mcpserver-settings-convention` | CommonMCPClient Transport Unification Across Bodai (v2) |
+| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | Verified complete 2026-10-17 (cross-repo audit): |
 | [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `complete` | `implementation` |  | `jot-read` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `complete` | `implementation` |  | `auth` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
@@ -399,8 +399,8 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 38 | 2 | 1 | 13 | **59** |
 | `implementation` | 7 | 11 | 3 | 1 | 10 | **32** |
-| `umbrella` | · | 2 | 1 | · | · | **3** |
+| `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **55** | **6** | **2** | **62** | **137** |
+| **Total** | **12** | **55** | **5** | **2** | **63** | **137** |
