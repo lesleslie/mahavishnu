@@ -282,9 +282,9 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../../docs/specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `active` | `canonical` | `spec` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.5 |
-| [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../../docs/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `partial` | `canonical` | `spec` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
+| [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../../docs/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `complete` | `canonical` | `spec` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
 | [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../../docs/specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `complete` | `canonical` | `spec` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
-| [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../../docs/specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `partial` | `implementation` |  | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
+| [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../../docs/specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `complete` | `implementation` |  | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
 | [`docs/specs/2026-09-09-jot-read-design.md`](../../docs/specs/2026-09-09-jot-read-design.md) | 2026-09-09 | `complete` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Design |
 | [`docs/specs/2026-08-31-zsh-modernization-design.md`](../../docs/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md`](../../docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md) | 2026-08-03 | `draft` | `implementation` |  | `bodai-openclaw-hermes-inspired-portfolio` | Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design |
@@ -397,10 +397,10 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 38 | 2 | 1 | 13 | **59** |
-| `implementation` | 7 | 10 | 3 | 1 | 11 | **32** |
+| `canonical` | 5 | 38 | 1 | 1 | 14 | **59** |
+| `implementation` | 7 | 10 | 2 | 1 | 12 | **32** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **54** | **5** | **2** | **64** | **137** |
+| **Total** | **12** | **54** | **3** | **2** | **66** | **137** |
