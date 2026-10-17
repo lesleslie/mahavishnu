@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 
-from mahavishnu.core.adapter_discovery import AdapterMetadata as DiscoveryAdapterMetadata
+from oneiric.adapters.metadata import AdapterMetadata as DiscoveryAdapterMetadata
 from mahavishnu.core.adapters.base import AdapterMetadata, OrchestratorAdapter
 from mahavishnu.core.adapters.worker import WorkerOrchestratorAdapter
 from mahavishnu.engines.agno_adapter_impl import AgnoAdapter

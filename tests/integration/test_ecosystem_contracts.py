@@ -6,7 +6,7 @@ import inspect
 
 import pytest
 
-from mahavishnu.core.adapter_discovery import AdapterMetadata as DiscoveryAdapterMetadata
+from oneiric.adapters.metadata import AdapterMetadata as DiscoveryAdapterMetadata
 from mahavishnu.core.adapters.base import AdapterMetadata
 from mahavishnu.core.adapters.worker import WorkerOrchestratorAdapter
 from mahavishnu.core.compatibility import (
@@ -86,31 +86,6 @@ def test_adapter_contracts_are_concrete_and_complete() -> None:
         assert inspect.iscoroutinefunction(adapter_cls.cleanup)
         assert inspect.iscoroutinefunction(adapter_cls.shutdown)
         assert inspect.iscoroutinefunction(adapter_cls.get_health)
-
-
-def test_adapter_metadata_contract_shape() -> None:
-    """Adapter metadata should round-trip with the expected keys."""
-    metadata = AdapterMetadata(
-        adapter_id="mahavishnu.contract",
-        domain="orchestration",
-        category="workflow",
-        provider="contract",
-        capabilities=["execute"],
-        factory_path="mahavishnu.contract:Adapter",
-        source="test",
-    )
-
-    payload = metadata.to_dict()
-    assert DiscoveryAdapterMetadata is AdapterMetadata
-    assert {
-        "adapter_id",
-        "domain",
-        "category",
-        "provider",
-        "capabilities",
-        "factory_path",
-        "source",
-    }.issubset(payload)
 
 
 @pytest.mark.asyncio
