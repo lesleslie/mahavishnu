@@ -77,6 +77,14 @@ Last regenerated: 2026-10-17.
 
 One table per store. Entries are sorted by `date` DESC, with ties broken by path ASC. Files without valid frontmatter are excluded; run `uv run crackerjack docs validate --allow-nonstandard` to surface them.
 
+### Cleanup V2 Plan Finalization (`.claude/worktree-snapshots/cleanup-v2-plan-finalization/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md) | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
+| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
+
 ### Architecture Decision Records (`docs/adr/`)
 
 | Path | Date | Status | Role | Kind | Topic | Title |
@@ -184,7 +192,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../../docs/followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | `active` | `implementation` | `followup` | `shared-frontmatter-validator` | Followup — Consumer-repo followup for the frontmatter-validator move |
-| [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../../docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `active` | `implementation` |  | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
+| [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../../docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `complete` | `implementation` |  | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
 | [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
@@ -390,9 +398,9 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 38 | 2 | 1 | 13 | **59** |
-| `implementation` | 7 | 11 | 3 | 1 | 10 | **32** |
+| `implementation` | 7 | 10 | 3 | 1 | 11 | **32** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **55** | **5** | **2** | **63** | **137** |
+| **Total** | **12** | **54** | **5** | **2** | **64** | **137** |

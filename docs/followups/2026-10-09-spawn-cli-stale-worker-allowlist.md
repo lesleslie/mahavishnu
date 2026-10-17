@@ -1,14 +1,44 @@
 ---
-status: active
+status: complete
 role: implementation
 topic: cli-deprecation-drift
 date: 2026-10-09
-last_reviewed: 2026-10-09
+last_reviewed: 2026-10-17
 superseded_by: null
 blocks_on: []
 ---
 
 # `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation)
+
+**Resolved 2026-10-17** (commit `7b66eb1b`): the orphan commit
+`7949887b` (the original 2026-10-09 demo-session fix) was sitting
+in git history on no current branch. The diff was manually applied
+to main and committed. All 3 proposed fix items landed:
+
+1. `SPAWN_WORKER_TYPE_ALLOWLIST` collapsed from 5 entries to 2
+   (`{"shepherd", "gateway-openclaw"}`); `SPAWN_WORKER_TYPE_ERROR_HINT`
+   rewritten to point at the decision doc + the followup itself.
+2. The `worker_type not in {set literal}` inline check replaced with
+   `worker_type not in SPAWN_WORKER_TYPE_ALLOWLIST` + the new error
+   hint echo.
+3. `tests/unit/cli/test_spawn_allowlist.py` (151 LOC) pins the
+   allowlist shape so this drift cannot recur silently.
+
+Bonus (also landed in the same commit): `WorkerManager._validate_required_tool`
+now enriches the error envelope with the current `PATH` and a
+`fix_hint` recommending `MAHAVISHNU_NO_EXTRA_PATH=1` or the
+`scripts/launch_mcp.py` PATH bootstrap. Pinned by
+`tests/unit/workers/test_manager_validate_tool.py` (130 LOC).
+
+**Test run:** `12 passed` across the two new test files
+(`test_spawn_allowlist.py` 7 tests + `test_manager_validate_tool.py` 5 tests).
+The orphan's full diff was applied with two targeted edits instead
+of a 3-way cherry-pick because the conflict against the
+post-orphan `reap_cli` changes was non-trivial to resolve.
+
+Refs: `docs/decisions/2026-09-24-legacy-worker-deprecation.md`,
+`docs/plans/2026-09-10-bodai-serverless-readiness-phase-1-fixes.md` (sibling fix pattern),
+`feedback-cli-flag-consumer-wiring.md` (related: CLI surface drift).
 
 ## Problem
 
