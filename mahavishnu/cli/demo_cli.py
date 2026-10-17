@@ -1912,7 +1912,21 @@ def _expected_shepherd_workspace_path(
     custom ``writable_root`` on its ``PoolConfig``, so this is the
     path the pool will try first — and the one whose Shepherd init
     state the precondition should check.
+
+    Raises ``ValueError`` if ``pool_name`` contains path separators
+    or ``..`` segments: the operator-facing demos accept the name via
+    ``--name`` (a free-form Typer option), and a name like
+    ``"../../tmp/evil"`` would resolve the precondition's gate to a
+    different location than the pool's runtime ``Path.resolve()`` call
+    (``sibling-path-gate-parity``). Rejecting here keeps gate and
+    runtime on the same path.
     """
+    if not pool_name or pool_name != pool_name.strip():
+        raise ValueError(f"invalid pool_name {pool_name!r}: must be non-empty and stripped")
+    if ".." in Path(pool_name).parts or Path(pool_name).is_absolute():
+        raise ValueError(f"invalid pool_name {pool_name!r}: must not contain '..' or be absolute")
+    if any(sep in pool_name for sep in (os.sep, "/", "\\")):
+        raise ValueError(f"invalid pool_name {pool_name!r}: must not contain path separators")
     base = home or Path.home()
     return base / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "workspace"
 
@@ -1930,15 +1944,23 @@ def _check_shepherd_workspace(
     ``WorkspaceControlError("not a Shepherd workspace. Run `sp init` first.")``,
     which surfaces as ``MHV-312`` at the pool's ``start()`` call.
 
-    The probe is ``Path.exists`` by default; tests can inject a substitute
-    to drive both branches without touching the real workspace.
+    **Gate/runtime parity**: the probe resolves ``workspace`` the same
+    way ``MahavishnuPool.__init__`` does (``Path.resolve()``), so a
+    path containing symlinks or ``..`` segments is checked at the
+    *same* location the pool will spawn into — without this, a
+    literal-path gate can disagree with the resolved path the pool
+    actually uses, and the precondition would either false-positive
+    (warn when the real workspace IS ready) or false-negative
+    (pass when it isn't). The ``exists`` probe is injectable for
+    tests; the resolution step always uses the real ``Path.resolve``.
     """
+    resolved = workspace.resolve()
     exists_check = exists or Path.exists
-    marker = workspace / ".vcscore"
+    marker = resolved / ".vcscore"
     if not exists_check(marker):
         message = (
-            f"Shepherd workspace not initialized at {workspace} "
-            f"(missing .vcscore marker). Run `sp init {workspace}` to "
+            f"Shepherd workspace not initialized at {resolved} "
+            f"(missing .vcscore marker). Run `sp init {resolved}` to "
             f"initialize it before invoking this demo."
         )
         return [message]

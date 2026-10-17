@@ -105,6 +105,83 @@ def test_pool_mahavishnu_preconditions_pass_when_shepherd_workspace_initialized(
 
 
 # ---------------------------------------------------------------------------
+# _expected_shepherd_workspace_path — path-traversal rejection
+# (sibling-path-gate-parity hardening: keep the precondition's path
+#  equal to what the pool will resolve at runtime; reject names that
+#  would resolve to a different location).
+# ---------------------------------------------------------------------------
+
+
+def test_expected_shepherd_workspace_path_rejects_parent_traversal() -> None:
+    """``..`` in the pool name would let the gate disagree with the pool's ``Path.resolve()``."""
+    import pytest
+
+    from mahavishnu.cli.demo_cli import _expected_shepherd_workspace_path
+
+    with pytest.raises(ValueError, match="must not contain '..' or be absolute"):
+        _expected_shepherd_workspace_path("../../tmp/evil")
+
+
+def test_expected_shepherd_workspace_path_rejects_absolute_path() -> None:
+    """Absolute paths in the pool name would bypass the worktrees root entirely."""
+    import pytest
+
+    from mahavishnu.cli.demo_cli import _expected_shepherd_workspace_path
+
+    with pytest.raises(ValueError, match="must not contain '..' or be absolute"):
+        _expected_shepherd_workspace_path("/tmp/evil")
+
+
+def test_expected_shepherd_workspace_path_rejects_path_separators() -> None:
+    """``/`` or ``\\`` in the pool name would let the path escape the worktrees root."""
+    import pytest
+
+    from mahavishnu.cli.demo_cli import _expected_shepherd_workspace_path
+
+    with pytest.raises(ValueError, match="must not contain path separators"):
+        _expected_shepherd_workspace_path("subdir/evil")
+
+
+def test_expected_shepherd_workspace_path_accepts_clean_name() -> None:
+    """Clean names (kebab/underscore/alnum) are accepted and resolve under the worktrees root."""
+    from pathlib import Path
+
+    from mahavishnu.cli.demo_cli import _expected_shepherd_workspace_path
+
+    result = _expected_shepherd_workspace_path("demo-mahavishnu", home=Path("/tmp/fake-home"))
+    assert result == Path("/tmp/fake-home/.local/state/mahavishnu/worktrees/demo-mahavishnu/workspace")
+
+
+def test_check_shepherd_workspace_resolves_symlinks_for_gate_parity() -> None:
+    """``Path.resolve()`` is used inside the gate so a symlinked workspace is checked at its target.
+
+    Without resolution, the gate checks the literal symlink path while
+    the pool resolves the symlink and checks the target — gate and
+    runtime disagree. The ``exists`` probe is invoked with the
+    *resolved* path so the parity holds.
+    """
+    from pathlib import Path
+
+    from mahavishnu.cli.demo_cli import _check_shepherd_workspace
+
+    captured_paths: list[Path] = []
+
+    def capturing_exists(p: Path) -> bool:
+        captured_paths.append(p)
+        return False
+
+    # /tmp is a symlink to /private/tmp on macOS. Passing a workspace
+    # under /tmp should make the gate resolve to /private/tmp/... .
+    workspace = Path("/tmp/some-link-target/my-workspace")
+    failures = _check_shepherd_workspace(workspace, exists=capturing_exists)
+    assert failures, "expected a precondition failure when the marker is missing"
+    # The captured path is the resolved one, not the literal symlink path.
+    assert not str(captured_paths[0]).startswith("/tmp/some-link-target")
+    # The failure message also references the resolved path.
+    assert "/tmp/some-link-target" not in failures[0] or "/private" in failures[0]
+
+
+# ---------------------------------------------------------------------------
 # pool-session-buddy
 # ---------------------------------------------------------------------------
 
