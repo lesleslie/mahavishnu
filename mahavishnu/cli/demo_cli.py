@@ -1570,8 +1570,225 @@ def demo_crow(
 
 
 # ============================================================================
-# Stubs — 3 engines/terminals (agno + llamaindex + pydantic_ai + crow
-# promoted to live implementations above)
+# hatchet demo (full implementation — replaces 2026-10-17 stub)
+# ============================================================================
+
+
+DEFAULT_HATCHET_PRECONDITION_TIMEOUT = 3.0
+
+
+def _check_hatchet_preconditions(
+    *,
+    settings_getter: Callable[[], Any] | None = None,
+    import_probe: Callable[[str], Any | None] | None = None,
+    env_getter: Callable[[str], str | None] | None = None,
+    timeout: float = DEFAULT_HATCHET_PRECONDITION_TIMEOUT,
+) -> list[str]:
+    """Return human-readable failures (empty list = pass).
+
+    Probes (each injectable for tests):
+
+    - ``hatchet_sdk`` importable (lives in the optional ``[hatchet]``
+      group at pyproject.toml:203; pulled in transitively via the
+      ``dev`` group).
+    - ``settings.adapters.hatchet_enabled`` is True (the master
+      switch at ``settings/mahavishnu.yaml:31``).
+    - ``settings.hatchet`` exposed (top-level ``HatchetConfig`` field
+      at ``core/config.py:3279``).
+    - ``settings.hatchet.server_url`` is non-empty.
+    - ``HATCHET_CLIENT_TOKEN`` env var set (the SDK raises
+      ``RuntimeError`` at ``initialize()`` without it).
+    - Settings are loadable (rejects malformed Oneiric config).
+    """
+    settings_getter = settings_getter or _default_settings_getter
+    import_probe = import_probe or _default_import_probe
+    env_getter = env_getter or os.getenv
+
+    failures: list[str] = []
+    if import_probe("hatchet_sdk") is None:
+        failures.append(
+            "hatchet-sdk not installed (.venv/bin/python -c 'import hatchet_sdk' "
+            "fails; run 'uv sync --group hatchet' — pulled in transitively via dev)"
+        )
+
+    try:
+        settings = settings_getter()
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(f"could not load settings: {exc}")
+        return failures
+
+    enabled = bool(getattr(getattr(settings, "adapters", None), "hatchet_enabled", False))
+    if not enabled:
+        failures.append(
+            "settings.adapters.hatchet_enabled is False "
+            "(set MAHAVISHNU_ADAPTERS__HATCHET_ENABLED=true)"
+        )
+
+    try:
+        hatchet_cfg = settings.hatchet  # type: ignore[attr-defined]
+    except AttributeError as exc:
+        failures.append(f"settings.hatchet not configured: {exc}")
+        return failures
+
+    if not getattr(hatchet_cfg, "server_url", None):
+        failures.append(
+            "settings.hatchet.server_url is empty "
+            "(set MAHAVISHNU_HATCHET__SERVER_URL, e.g. 'localhost:7077')"
+        )
+
+    if not env_getter("HATCHET_CLIENT_TOKEN"):
+        failures.append(
+            "HATCHET_CLIENT_TOKEN env var unset — the Hatchet SDK raises "
+            "RuntimeError at initialize() without it"
+        )
+
+    return failures
+
+
+async def _run_hatchet_demo(
+    *,
+    repos: Sequence[str],
+    prompt: str,
+    workflow_name: str,
+    keep: bool = False,
+) -> dict[str, object]:
+    """Drive the Hatchet engine end-to-end against one or more repositories.
+
+    Constructs ``HatchetAdapterImpl`` directly, calls
+    ``adapter.initialize()`` (which validates ``HATCHET_CLIENT_TOKEN``
+    and opens the gRPC channel), ``adapter.execute(task, repos)`` to
+    dispatch the workflow run, prints the trimmed result, and calls
+    ``adapter.cleanup()``. On the exception path ``adapter.cleanup()``
+    is best-effort called before re-raising, mirroring the
+    ``_run_tmux_demo`` reap-on-error pattern at ``_run_tmux_demo:174-178``.
+    """
+    from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
+
+    settings = _default_settings_getter()
+    task = {
+        "id": f"demo-hatchet-{int(time.time())}",
+        "prompt": prompt,
+        "workflow_name": workflow_name,
+    }
+
+    adapter = HatchetAdapterImpl(config=settings.hatchet)
+    try:
+        await adapter.initialize()
+    except Exception:  # cleanup is best-effort on init failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_hatchet_cleanup(adapter)
+        raise
+
+    try:
+        result = await adapter.execute(task=task, repos=list(repos))
+    except Exception:  # cleanup is best-effort on execute failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_hatchet_cleanup(adapter)
+        raise
+
+    if not keep:
+        await adapter.cleanup()
+
+    return {
+        "status": result.get("status"),
+        "adapter": result.get("adapter"),
+        "workflow": result.get("workflow"),
+        "run_id": result.get("run_id"),
+        "output": result.get("output"),
+        "error": result.get("error"),
+        "repos": list(repos),
+    }
+
+
+async def _best_effort_hatchet_cleanup(adapter: Any) -> None:
+    """Best-effort cleanup — called from the exception path."""
+    try:
+        await adapter.cleanup()
+    except Exception as exc:  # CLI entry point — cleanup errors must never mask the original failure  # noqa: BLE001, RUF100
+        typer.echo(f"[warning] adapter cleanup failed: {exc}", err=True)
+
+
+@demo_app.command("hatchet")
+def demo_hatchet(
+    repos: list[str] = typer.Option(
+        [],
+        "--repos",
+        help="Repos to pass to HatchetAdapterImpl.execute. Defaults to the Mahavishnu repo itself.",
+    ),
+    prompt: str = typer.Option(
+        "describe the project architecture in one paragraph",
+        "--prompt",
+        "-p",
+        help="Prompt passed as the workflow input (Hatchet workflow 'input.prompt').",
+    ),
+    workflow_name: str = typer.Option(
+        "agent-loop",
+        "--workflow-name",
+        "-w",
+        help="Hatchet workflow to dispatch (default 'agent-loop').",
+    ),
+    keep: bool = typer.Option(
+        False,
+        "--keep",
+        help="Leave the HatchetAdapter initialized after the demo (mainly for debugging).",
+    ),
+    timeout: int = typer.Option(
+        180,
+        "--timeout",
+        help="Max seconds to wait for HatchetAdapterImpl.execute.",
+    ),
+) -> None:
+    """Run the Hatchet engine end-to-end against the live Hatchet server.
+
+    Constructs ``HatchetAdapterImpl`` directly, calls
+    ``adapter.initialize()`` (validates ``HATCHET_CLIENT_TOKEN`` and
+    opens the gRPC channel) → ``adapter.execute(task, repos)`` to
+    dispatch the workflow run, prints the trimmed result, and
+    cleans up. The server URL, namespace, and per-task timeout come
+    from ``settings.hatchet`` (top-level ``HatchetConfig`` field at
+    ``core/config.py:3279``); the master switch is
+    ``adapters.hatchet_enabled``. Hatchet is the alternative durable-
+    flow engine surfaced via the
+    ``engine:durable-flow-alternative`` capability in
+    ``HatchetAdapterImpl.provides``.
+    """
+    failures = _check_hatchet_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    settings = _default_settings_getter()
+    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    typer.echo(f"Hatchet server: {settings.hatchet.server_url}")
+    typer.echo(f"Namespace:     {settings.hatchet.namespace}")
+    typer.echo(f"Workflow:      {workflow_name}")
+    typer.echo(f"Prompt:        {prompt}")
+    typer.echo(f"Repos:         {effective_repos}")
+
+    async def _run_with_timeout() -> dict[str, object]:
+        return await _run_hatchet_demo(
+            repos=effective_repos,
+            prompt=prompt,
+            workflow_name=workflow_name,
+            keep=keep,
+        )
+
+    try:
+        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+    except TimeoutError:
+        typer.echo(
+            f"Timed out after {timeout}s waiting for HatchetAdapterImpl.execute",
+            err=True,
+        )
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nHatchet demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
+# Stubs — 1 mock terminal adapter remains (agno + llamaindex + pydantic_ai
+# + crow + hatchet promoted to live implementations above)
 # ============================================================================
 
 
@@ -1587,7 +1804,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 
 _STUB_COSTS = {
-    "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
     "mock": "~25 LOC: in-process adapter (already exists; CLI surface only)",
 }
 
@@ -1610,8 +1826,8 @@ def _stub_command(name: str) -> Callable[[bool], None]:
     return callback
 
 
-# Register the 2 remaining stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("hatchet", "mock"):
+# Register the 1 remaining stub. Live implementations land in follow-up PRs.
+for _stub_name in ("mock",):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene

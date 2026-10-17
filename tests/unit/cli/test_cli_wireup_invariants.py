@@ -219,3 +219,45 @@ def test_demo_stub_loop_no_longer_registers_crow() -> None:
         "Remove the \"crow\" entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
+
+
+def test_demo_hatchet_is_live_implementation() -> None:
+    """``mahavishnu demo hatchet`` must be a live implementation.
+
+    2026-10-17 wire-up fix: the hatchet demo was promoted from a
+    stub to a live implementation (drives ``HatchetAdapterImpl.execute``
+    end-to-end). The live path exposes ``--repos``, ``--prompt``,
+    ``--workflow-name``, ``--keep``, ``--timeout``; the stub path
+    emits ``--why-stub`` instead. Asserting ``--repos`` is present
+    proves the live callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "hatchet", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--repos" in result.output, (
+        "demo hatchet is showing stub-style --help (missing --repos). "
+        "The live @demo_app.command(\"hatchet\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_hatchet() -> None:
+    """The stub registration loop must not include ``hatchet``.
+
+    The loop in ``cli/demo_cli.py`` iterates over a tuple of stub names;
+    ``hatchet`` was promoted to live in 2026-10-17 and would otherwise
+    override the live command with a no-op stub.
+    """
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "hatchet" not in stub_names, (
+        "hatchet is in _STUB_COSTS — the stub registration loop will "
+        "shadow the live @demo_app.command(\"hatchet\") callback. "
+        "Remove the \"hatchet\" entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )

@@ -228,8 +228,8 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
 
 
 def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
-    """Each of the 2 remaining stub sub-commands prints the discovery message
-    and exits 0 — operators running ``mahavishnu demo hatchet`` get a clear
+    """The 1 remaining stub sub-command prints the discovery message
+    and exits 0 — operators running ``mahavishnu demo mock`` get a clear
     indicator that this is a deferred-work surface, not a bug.
 
     History of stub → live promotions and removals:
@@ -241,10 +241,12 @@ def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
     - 2026-10-16: pydantic_ai promoted to live (commit 01bb28e8 — drives
       ``PydanticAIAdapter.execute`` end-to-end).
     - 2026-10-17: goose adapter removed (Block never shipped the matching
-      ``goose serve`` server the design assumed). The stub list is now
-      two names: hatchet, mock.
+      ``goose serve`` server the design assumed).
+    - 2026-10-17: hatchet promoted to live (``HatchetAdapterImpl.execute``
+      end-to-end against the Hatchet server). The stub list is now
+      one name: mock.
     """
-    for stub in ["hatchet", "mock"]:
+    for stub in ["mock"]:
         result = runner.invoke(demo_app, [stub])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "not implemented" in result.output, f"{stub}: missing not-implemented text"
@@ -252,7 +254,7 @@ def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
 
 def test_stub_subcommands_why_stub_flag_prints_implementation_cost() -> None:
     """``--why-stub`` reveals the implementation cost without a real impl."""
-    for stub in ["hatchet"]:
+    for stub in ["mock"]:
         result = runner.invoke(demo_app, [stub, "--why-stub"])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "implementation cost" in result.output, f"{stub}: missing cost info"
