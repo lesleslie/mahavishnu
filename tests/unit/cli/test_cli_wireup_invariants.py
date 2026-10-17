@@ -412,3 +412,116 @@ def test_demo_stub_loop_no_longer_registers_pool_pi() -> None:
         "shadow the live @demo_app.command(\"pool-pi\") callback. "
         "Remove the entry from _STUB_COSTS and from the registration loop tuple."
     )
+
+
+# ============================================================================
+# Workflow demos (PR #3 — 3 new live implementations of cross-substrate
+# compositions). Each demo follows the same anti-revert pattern as the
+# pool demos above: (1) a live-implementation test asserting a callback-
+# specific flag is present in --help, and (2) a stub-loop exclusion test
+# asserting the name is NOT in _STUB_COSTS.
+# ============================================================================
+
+
+def test_demo_workflow_pool_worker_terminal_is_live_implementation() -> None:
+    """``mahavishnu demo workflow-pool-worker-terminal`` must be a live implementation.
+
+    The live path exposes ``--adapter`` (terminal adapter selection: mock|tmux);
+    the stub path only exposes ``--why-stub``. Asserting ``--adapter`` proves
+    the live callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "workflow-pool-worker-terminal", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--adapter" in result.output, (
+        "demo workflow-pool-worker-terminal is showing stub-style --help "
+        "(missing --adapter). The live @demo_app.command(\"workflow-pool-"
+        "worker-terminal\") callback was likely replaced by the stub "
+        "registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_workflow_pool_worker_terminal() -> None:
+    """The stub registration loop must not include ``workflow-pool-worker-terminal``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "workflow-pool-worker-terminal" not in stub_names, (
+        "workflow-pool-worker-terminal is in _STUB_COSTS — the stub "
+        "registration loop will shadow the live callback. Remove the "
+        "entry from _STUB_COSTS and from the registration loop tuple."
+    )
+
+
+def test_demo_workflow_multi_pool_handoff_is_live_implementation() -> None:
+    """``mahavishnu demo workflow-multi-pool-handoff`` must be a live implementation.
+
+    The live path exposes ``--source-pool`` and ``--target-pool`` (the two
+    pool substrates that participate in the handoff); the stub path only
+    exposes ``--why-stub``. Asserting ``--source-pool`` proves the live
+    callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "workflow-multi-pool-handoff", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--source-pool" in result.output, (
+        "demo workflow-multi-pool-handoff is showing stub-style --help "
+        "(missing --source-pool). The live @demo_app.command(\"workflow-"
+        "multi-pool-handoff\") callback was likely replaced by the stub "
+        "registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_workflow_multi_pool_handoff() -> None:
+    """The stub registration loop must not include ``workflow-multi-pool-handoff``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "workflow-multi-pool-handoff" not in stub_names, (
+        "workflow-multi-pool-handoff is in _STUB_COSTS — the stub "
+        "registration loop will shadow the live callback. Remove the "
+        "entry from _STUB_COSTS and from the registration loop tuple."
+    )
+
+
+def test_demo_workflow_adapter_swap_is_live_implementation() -> None:
+    """``mahavishnu demo workflow-adapter-swap`` must be a live implementation.
+
+    The live path exposes ``--adapter-a`` and ``--adapter-b`` (the two
+    terminal adapters compared side-by-side); the stub path only exposes
+    ``--why-stub``. Asserting ``--adapter-a`` proves the live callback
+    won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "workflow-adapter-swap", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--adapter-a" in result.output, (
+        "demo workflow-adapter-swap is showing stub-style --help "
+        "(missing --adapter-a). The live @demo_app.command(\"workflow-"
+        "adapter-swap\") callback was likely replaced by the stub "
+        "registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_workflow_adapter_swap() -> None:
+    """The stub registration loop must not include ``workflow-adapter-swap``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "workflow-adapter-swap" not in stub_names, (
+        "workflow-adapter-swap is in _STUB_COSTS — the stub registration "
+        "loop will shadow the live callback. Remove the entry from "
+        "_STUB_COSTS and from the registration loop tuple."
+    )

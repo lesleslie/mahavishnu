@@ -1472,7 +1472,8 @@ app.add_typer(board_app, name="board")
 # Re-creates the precedent set by commit 55630b45 (Oct 9 2026, since
 # reverted in an untraceable merge). Each sub-command runs an opinionated
 # scenario for a workflow engine or terminal adapter. Currently ships
-# tmux (full impl) + prefect (full impl) + 7 stubs (--why-stub flag).
+# 14 live implementations (tmux, prefect, agno, llamaindex, pydantic_ai,
+# crow, hatchet, 4 pool demos, 3 workflow demos) + 1 stub (mock).
 #
 # Anti-revert grep:    git grep -n 'DEMO SUB-COMMANDS' mahavishnu/_main_cli.py
 # Anti-revert test:    tests/unit/cli/test_cli_wireup_invariants.py
@@ -1739,9 +1740,7 @@ app.add_typer(executions_app, name="executions")
 # docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md.
 # Non-isolated workloads are routed via `mahavishnu/pools/` instead
 # (`pool_route_execute`, `dispatch_to_pool`).
-SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset(
-    {"shepherd", "gateway-openclaw"}
-)
+SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset({"shepherd", "gateway-openclaw"})
 
 SPAWN_WORKER_TYPE_ERROR_HINT: str = (
     "Supported worker types: shepherd, gateway-openclaw. "

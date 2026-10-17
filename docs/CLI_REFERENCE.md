@@ -78,6 +78,53 @@ hyphen forms; legacy `session_buddy` underscore form is also accepted).
 Available `--selector` values: `capability_score`, `random`,
 `least_loaded`, `round_robin`.
 
+## Demo
+
+Opinionated one-shot demos that exercise a single substrate or a
+cross-substrate composition. Each demo prints precondition failures
+clearly and exits non-zero if the substrate isn't reachable from your
+shell. Use `--keep` to leave the pool/runner alive for follow-up
+inspection; otherwise the demo tears down on success.
+
+### Engine and adapter demos (single substrate)
+
+```bash
+mahavishnu demo tmux                              # terminal adapter: tmux
+mahavishnu demo prefect    --repos <path>...      # workflow engine: prefect
+mahavishnu demo agno       --repos <path>...      # workflow engine: agno
+mahavishnu demo llamaindex --repos <path>...      # workflow engine: llamaindex
+mahavishnu demo pydantic_ai --repos <path>...     # workflow engine: pydantic_ai
+mahavishnu demo crow       --cmd <shell-cmd>      # terminal adapter: crow
+mahavishnu demo hatchet    --repos <path>...      # workflow engine: hatchet
+```
+
+### Pool demos (single substrate, PR #2)
+
+```bash
+mahavishnu demo pool-mahavishnu    --min 1 --max 2 --prompt "..."
+mahavishnu demo pool-session-buddy --url http://localhost:8678/mcp --prompt "..."
+mahavishnu demo pool-runpod        --endpoint-id <id> --prompt "..."
+mahavishnu demo pool-pi            --prompt "..."
+```
+
+### Workflow demos (cross-substrate compositions, PR #3)
+
+```bash
+# Operator E2E: pool + worker + terminal adapter triple, stage-narrated trace
+mahavishnu demo workflow-pool-worker-terminal --adapter tmux --prompt "..."
+
+# CI smoke: two pools in sequence (source -> target), compact step output
+mahavishnu demo workflow-multi-pool-handoff --source-pool session-buddy --target-pool mahavishnu
+
+# Doc reference: same task run through two terminal adapters back-to-back, side-by-side
+mahavishnu demo workflow-adapter-swap --adapter-a tmux --adapter-b mock
+```
+
+The workflow demos are designed to fail fast when a substrate is
+unreachable — see `mahavishnu demo <name> --help` for the full flag
+set and `docs/CLI_REFERENCE.md` for the broader pool/worker/terminal
+subsystem reference.
+
 ## Workers
 
 ```bash

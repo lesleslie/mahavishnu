@@ -2343,10 +2343,566 @@ def demo_pool_pi(
 
 
 # ============================================================================
+# Workflow demos (PR #3 — cross-substrate compositions of pools, workers,
+# and terminal adapters)
+# ============================================================================
+#
+# Each demo exercises a different *combination* of substrates — unlike the
+# single-substrate demos above, these narrate the handoff between two or
+# more components. Three flavors, one demo each:
+#
+# 1. ``workflow-pool-worker-terminal``  (Operator E2E) — pool + worker +
+#    terminal adapter triple. Narrative output with stage labels.
+# 2. ``workflow-multi-pool-handoff``     (CI smoke)     — two pools in
+#    sequence (source -> target). Compact ✓/✗ per stage, fast (<10s).
+# 3. ``workflow-adapter-swap``           (Doc reference) — same task run
+#    through two terminal adapters back-to-back. Verbose, side-by-side.
+#
+# Anti-revert pattern (sibling of the pool demos above): the stub
+# registration loop at the bottom of this file MUST NOT include any
+# of these names. ``tests/unit/cli/test_cli_wireup_invariants.py`` pins
+# the live-implementation property for each one via unique flags in
+# ``--help``.
+
+
+DEFAULT_WORKFLOW_DEMO_PROMPT = "echo hello from workflow demo ({stage})"
+DEFAULT_WORKFLOW_ADAPTER = "tmux"
+DEFAULT_WORKFLOW_ADAPTER_B = "mock"
+DEFAULT_WORKFLOW_SOURCE_POOL = "session-buddy"
+DEFAULT_WORKFLOW_TARGET_POOL = "mahavishnu"
+
+
+def _emit_workflow_stage(stage: int, total: int, message: str) -> None:
+    """Print a single ``[stage N/M] message`` line to stdout.
+
+    Used by the workflow demos to narrate each handoff. Goes to stdout
+    (not stderr) so it appears interleaved with the eventual JSON result
+    for operator E2E demos.
+    """
+    typer.echo(f"[stage {stage}/{total}] {message}")
+
+
+def _build_terminal_adapter(name: str) -> Any:
+    """Construct a TerminalAdapter by registered name.
+
+    Supports ``mock`` and ``tmux`` for direct construction. ``crow`` is
+    intentionally NOT supported here because the crow adapter needs an
+    MCP client that only ``TerminalManager.create`` knows how to build
+    (with config + crow_enabled flag + crow_http_endpoint); the demo
+    surface is too thin to pass that through cleanly. Operators who
+    want crow should use the standalone ``mahavishnu demo crow`` command.
+    """
+    from mahavishnu.terminal.adapters import _build_mock_adapter, _build_tmux_adapter
+
+    if name == "mock":
+        return _build_mock_adapter()
+    if name == "tmux":
+        return _build_tmux_adapter()
+    raise ValueError(
+        f"unsupported terminal adapter for workflow demo: {name!r}. "
+        f"Supported: 'mock', 'tmux'. For crow, use `mahavishnu demo crow`."
+    )
+
+
+# ----------------------------------------------------------------------------
+# workflow-pool-worker-terminal — Operator E2E triple composition
+# ----------------------------------------------------------------------------
+
+
+def _check_workflow_pool_worker_terminal_preconditions(
+    *,
+    adapter: str,
+    tmux_which: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify the pool substrate and terminal adapter are present.
+
+    Probes (injectable for tests):
+
+    - ``adapter == 'tmux'`` requires the tmux binary on PATH.
+    - ``adapter == 'mock'`` has no shell-binary prereq (always passes).
+    """
+    tmux_lookup = tmux_which or shutil.which
+    failures: list[str] = []
+    if adapter not in ("mock", "tmux"):
+        failures.append(f"unsupported adapter: {adapter!r}. Supported: 'mock', 'tmux'.")
+    if adapter == "tmux" and not tmux_lookup("tmux"):
+        failures.append("tmux binary not on PATH (required for the tmux terminal adapter)")
+    return failures
+
+
+async def _run_workflow_pool_worker_terminal_demo(
+    *,
+    prompt: str,
+    adapter: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive pool + worker + terminal adapter end-to-end (3 stages).
+
+    Composition:
+
+    - MahavishnuPool wraps a WorkerManager (the 'worker' substrate).
+    - WorkerManager attaches to a TerminalAdapter (the 'terminal' substrate).
+    - The pool is the orchestrator that holds both.
+
+    The demo narrates each handoff as a stage so an operator can see the
+    pool -> worker -> terminal fan-out in a single trace.
+    """
+    # NOTE: ``MahavishnuPool`` is NOT in ``mahavishnu.pools``'s lazy
+    # importer table (only ``RunPodPool`` is re-exported). Import from
+    # the concrete module to avoid an ImportError at runtime.
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
+    from mahavishnu.terminal.manager import TerminalManager
+
+    total_stages = 3
+    _emit_workflow_stage(1, total_stages, f"initializing pool + {adapter} terminal adapter")
+    pool_config = PoolConfig(
+        name="demo-workflow-pwt",
+        pool_type="mahavishnu",
+        min_workers=1,
+        max_workers=1,
+    )
+    terminal_adapter = _build_terminal_adapter(adapter)
+    terminal_manager = TerminalManager(adapter=terminal_adapter)
+    pool = MahavishnuPool(config=pool_config, terminal_manager=terminal_manager)
+    pool_id = await pool.start()
+    _emit_workflow_stage(2, total_stages, f"pool {pool_id} started; dispatching task")
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+            _emit_workflow_stage(3, total_stages, "pool + worker + adapter stopped")
+    return {
+        "workflow": "pool-worker-terminal",
+        "pool_id": pool_id,
+        "pool_type": "mahavishnu",
+        "adapter": adapter,
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+@demo_app.command("workflow-pool-worker-terminal")
+def demo_workflow_pool_worker_terminal(
+    prompt: str = typer.Option(
+        DEFAULT_WORKFLOW_DEMO_PROMPT.format(stage="pool-worker-terminal"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched through the pool+worker+terminal chain.",
+    ),
+    adapter: str = typer.Option(
+        DEFAULT_WORKFLOW_ADAPTER,
+        "--adapter",
+        "-a",
+        help="Terminal adapter to wire into the pool's TerminalManager (mock|tmux).",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(60, "--timeout", help="Max seconds for the 3-stage handoff."),
+) -> None:
+    """Run a pool + worker + terminal adapter end-to-end with stage narration.
+
+    Operator-facing E2E demo. Composes three substrates in a single trace:
+
+    1. ``MahavishnuPool`` (orchestrator, scales min..max workers)
+    2. ``WorkerManager`` (the 'worker'; the pool's internal substrate)
+    3. ``TerminalAdapter`` (mock or tmux; controls how workers attach)
+
+    Output is a stage-narrated trace followed by a structured result JSON.
+    Use ``--adapter mock`` for a fast in-process run (no tmux overhead).
+    """
+    failures = _check_workflow_pool_worker_terminal_preconditions(adapter=adapter)
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Workflow: pool + worker + {adapter} terminal adapter")
+    typer.echo(f"Prompt:   {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_workflow_pool_worker_terminal_demo(
+                    prompt=prompt,
+                    adapter=adapter,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nWorkflow result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# workflow-multi-pool-handoff — CI smoke: two pools in sequence
+# ----------------------------------------------------------------------------
+
+
+def _check_workflow_multi_pool_handoff_preconditions(
+    *,
+    source_pool: str,
+    target_pool: str,
+    http_probe: Callable[[str, float], bool] | None = None,
+    probe_timeout_s: float = DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+    tmux_which: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify both pool substrates are reachable.
+
+    - source_pool='session-buddy'  -> HTTP probe the configured URL.
+    - source_pool='mahavishnu'      -> require tmux binary (default backend).
+    - source_pool='pi'              -> require npx (PiPool substrate).
+    - target_pool follows the same matrix; 'mahavishnu' defaults require tmux.
+    """
+    tmux_lookup = tmux_which or shutil.which
+    probe = http_probe or _default_http_probe
+    failures: list[str] = []
+
+    def _check_pool_substrate(label: str, pool: str) -> None:
+        if pool == "session-buddy":
+            if not probe(DEFAULT_SESSION_BUDDY_URL, probe_timeout_s):
+                failures.append(
+                    f"{label} pool 'session-buddy' not reachable at "
+                    f"{DEFAULT_SESSION_BUDDY_URL} within {probe_timeout_s}s"
+                )
+        elif pool == "mahavishnu":
+            if not tmux_lookup("tmux"):
+                failures.append(f"{label} pool 'mahavishnu' requires tmux binary (not on PATH)")
+        elif pool == "pi":
+            if not shutil.which("npx"):
+                failures.append(f"{label} pool 'pi' requires npx binary (not on PATH)")
+        else:
+            failures.append(
+                f"{label} pool {pool!r} is not supported in this demo. "
+                f"Supported: 'session-buddy', 'mahavishnu', 'pi'."
+            )
+
+    _check_pool_substrate("source", source_pool)
+    _check_pool_substrate("target", target_pool)
+    return failures
+
+
+async def _run_workflow_multi_pool_handoff_demo(
+    *,
+    source_pool: str,
+    target_pool: str,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Dispatch to source pool, then hand the result to target pool.
+
+    Compact step output (one line per step) — designed for CI smoke,
+    not operator E2E. The follow-up prompt to the target pool echoes
+    the source result so the handoff is observable in the output.
+    """
+
+    source_pool_obj = await _spawn_pool_by_type(source_pool, name="demo-mh-src")
+    target_pool_obj = await _spawn_pool_by_type(target_pool, name="demo-mh-tgt")
+    try:
+        typer.echo(f"  ✓ source pool ({source_pool}) started: {source_pool_obj.pool_id}")
+        source_result = await source_pool_obj.execute_task({"prompt": prompt})
+        typer.echo(f"  ✓ source task complete: status={source_result.get('status')}")
+        followup = f"echo 'received from {source_pool}: ' \"{source_result.get('output', '')}\""
+        target_result = await target_pool_obj.execute_task({"prompt": followup})
+        typer.echo(
+            f"  ✓ target pool ({target_pool}) task complete: status={target_result.get('status')}"
+        )
+    finally:
+        if not keep:
+            await source_pool_obj.stop()
+            await target_pool_obj.stop()
+            typer.echo("  ✓ both pools stopped")
+    return {
+        "workflow": "multi-pool-handoff",
+        "source": {
+            "pool_type": source_pool,
+            "pool_id": source_pool_obj.pool_id,
+            "status": source_result.get("status"),
+            "duration": source_result.get("duration"),
+        },
+        "target": {
+            "pool_type": target_pool,
+            "pool_id": target_pool_obj.pool_id,
+            "status": target_result.get("status"),
+            "duration": target_result.get("duration"),
+        },
+    }
+
+
+async def _spawn_pool_by_type(pool_type: str, *, name: str) -> Any:
+    """Construct a BasePool by string name (helper for workflow demos).
+
+    Returns the constructed pool object. Caller is responsible for
+    ``start()``, ``execute_task()``, and ``stop()`` (or use the
+    pool-mahavishnu / pool-session-buddy / pool-pi demo helpers).
+    """
+    from mahavishnu.pools import PoolConfig
+
+    if pool_type == "session-buddy":
+        from mahavishnu.pools.session_buddy_pool import SessionBuddyPool
+
+        return SessionBuddyPool(
+            config=PoolConfig(name=name, pool_type="session-buddy"),
+            session_buddy_url=DEFAULT_SESSION_BUDDY_URL,
+        )
+    if pool_type == "mahavishnu":
+        from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
+        from mahavishnu.terminal.adapters import _build_tmux_adapter
+        from mahavishnu.terminal.manager import TerminalManager
+
+        return MahavishnuPool(
+            config=PoolConfig(name=name, pool_type="mahavishnu", min_workers=1, max_workers=1),
+            terminal_manager=TerminalManager(adapter=_build_tmux_adapter()),
+        )
+    if pool_type == "pi":
+        from mahavishnu.pools.pi_pool import PiPool
+
+        return PiPool(config=PoolConfig(name=name, pool_type="pi", min_workers=1, max_workers=1))
+    raise ValueError(f"unsupported pool_type for workflow demo: {pool_type!r}")
+
+
+@demo_app.command("workflow-multi-pool-handoff")
+def demo_workflow_multi_pool_handoff(
+    source_pool: str = typer.Option(
+        DEFAULT_WORKFLOW_SOURCE_POOL,
+        "--source-pool",
+        help="Source pool type (session-buddy|mahavishnu|pi).",
+    ),
+    target_pool: str = typer.Option(
+        DEFAULT_WORKFLOW_TARGET_POOL,
+        "--target-pool",
+        help="Target pool type (session-buddy|mahavishnu|pi).",
+    ),
+    prompt: str = typer.Option(
+        "echo 'hello from source pool'",
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to the source pool first.",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave both pools running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(
+        30, "--timeout", help="Max seconds for the 2-pool handoff (target <10s)."
+    ),
+) -> None:
+    """Run a 2-pool handoff (source -> target) with compact step output.
+
+    CI smoke flavor. Designed to be fast and exit-code-shaped: each step
+    prints ``✓`` on success, the final result is a structured JSON
+    payload. Use this in CI to confirm the pool-handoff path is not
+    regressed (e.g. after a refactor of ``BasePool.execute_task``).
+
+    For the operator-facing E2E (Prefect -> pool -> worker -> terminal),
+    use ``mahavishnu demo workflow-pool-worker-terminal`` instead.
+    """
+    failures = _check_workflow_multi_pool_handoff_preconditions(
+        source_pool=source_pool,
+        target_pool=target_pool,
+    )
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Workflow: {source_pool} -> {target_pool} pool handoff")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_workflow_multi_pool_handoff_demo(
+                    source_pool=source_pool,
+                    target_pool=target_pool,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nWorkflow result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# workflow-adapter-swap — Doc reference: same task, two terminal adapters
+# ----------------------------------------------------------------------------
+
+
+def _check_workflow_adapter_swap_preconditions(
+    *,
+    adapter_a: str,
+    adapter_b: str,
+    tmux_which: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify both terminal adapters are usable.
+
+    Probes (injectable for tests):
+
+    - ``adapter_a == 'tmux'`` or ``adapter_b == 'tmux'`` requires the tmux binary.
+    - ``adapter == 'mock'`` always passes.
+    - Same-name + same-name is rejected (swap is meaningless).
+    """
+    tmux_lookup = tmux_which or shutil.which
+    failures: list[str] = []
+    for label, name in (("adapter-a", adapter_a), ("adapter-b", adapter_b)):
+        if name not in ("mock", "tmux"):
+            failures.append(f"{label}={name!r} is not supported. Supported: 'mock', 'tmux'.")
+    if (adapter_a == "tmux" or adapter_b == "tmux") and not tmux_lookup("tmux"):
+        failures.append("tmux binary not on PATH (required when either adapter is 'tmux')")
+    if adapter_a == adapter_b:
+        failures.append(
+            f"adapter-a and adapter-b are both {adapter_a!r} — "
+            f"swap requires two different adapters."
+        )
+    return failures
+
+
+async def _run_workflow_adapter_swap_demo(
+    *,
+    prompt: str,
+    adapter_a: str,
+    adapter_b: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Run the same prompt through adapter-a then adapter-b; compare.
+
+    The pool is constructed with adapter-a, dispatches the task, stops;
+    then re-constructed with adapter-b for the second run. Output is
+    side-by-side: each run's status, duration, and output preview are
+    returned under their own key so an operator can compare behavior.
+    """
+    # NOTE: ``MahavishnuPool`` is NOT re-exported by ``mahavishnu.pools``
+    # (only ``RunPodPool`` is). Import from the concrete module to
+    # avoid an ImportError at runtime.
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
+    from mahavishnu.terminal.manager import TerminalManager
+
+    runs: dict[str, dict[str, object]] = {}
+    for label, adapter_name in (("adapter_a", adapter_a), ("adapter_b", adapter_b)):
+        typer.echo(f"  → running with {label}={adapter_name}")
+        terminal_adapter = _build_terminal_adapter(adapter_name)
+        terminal_manager = TerminalManager(adapter=terminal_adapter)
+        pool = MahavishnuPool(
+            config=PoolConfig(
+                name=f"demo-aswap-{label}",
+                pool_type="mahavishnu",
+                min_workers=1,
+                max_workers=1,
+            ),
+            terminal_manager=terminal_manager,
+        )
+        pool_id = await pool.start()
+        try:
+            result = await pool.execute_task({"prompt": prompt})
+        finally:
+            if not keep:
+                await pool.stop()
+        runs[label] = {
+            "adapter": adapter_name,
+            "pool_id": pool_id,
+            "status": result.get("status"),
+            "duration": result.get("duration"),
+            "output_preview": _truncate(result.get("output"), max_chars=200),
+        }
+    return {
+        "workflow": "adapter-swap",
+        "prompt": prompt,
+        **runs,
+    }
+
+
+@demo_app.command("workflow-adapter-swap")
+def demo_workflow_adapter_swap(
+    adapter_a: str = typer.Option(
+        DEFAULT_WORKFLOW_ADAPTER,
+        "--adapter-a",
+        help="First terminal adapter (mock|tmux).",
+    ),
+    adapter_b: str = typer.Option(
+        DEFAULT_WORKFLOW_ADAPTER_B,
+        "--adapter-b",
+        help="Second terminal adapter (mock|tmux).",
+    ),
+    prompt: str = typer.Option(
+        "echo 'adapter swap: same prompt, different terminal adapters'",
+        "--prompt",
+        "-p",
+        help="Same prompt dispatched through both adapters for comparison.",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave both pools running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(
+        90, "--timeout", help="Max seconds for both runs (2 * pool start + execute + stop)."
+    ),
+) -> None:
+    """Run the same task with two terminal adapters back-to-back.
+
+    Doc-reference flavor. Demonstrates that the same MahavishnuPool
+    substrate can be wired with different terminal adapters without
+    changing the dispatch path — useful when writing guides that
+    compare adapter behavior, or when debugging a regression that's
+    specific to one adapter.
+
+    Returns a side-by-side JSON payload with per-adapter status,
+    duration, and output preview.
+    """
+    failures = _check_workflow_adapter_swap_preconditions(
+        adapter_a=adapter_a,
+        adapter_b=adapter_b,
+    )
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Workflow: adapter swap ({adapter_a} vs {adapter_b})")
+    typer.echo(f"Prompt:   {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_workflow_adapter_swap_demo(
+                    prompt=prompt,
+                    adapter_a=adapter_a,
+                    adapter_b=adapter_b,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nWorkflow result (side-by-side):")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
 # Stubs — 1 mock terminal adapter remains (agno + llamaindex + pydantic_ai
 # + crow + hatchet promoted to live implementations above; 4 pool demos
 # promoted to live in PR #2: pool-mahavishnu, pool-session-buddy,
-# pool-runpod, pool-pi)
+# pool-runpod, pool-pi; 3 workflow demos promoted to live in PR #3:
+# workflow-pool-worker-terminal, workflow-multi-pool-handoff,
+# workflow-adapter-swap)
 # ============================================================================
 
 
