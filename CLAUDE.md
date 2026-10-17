@@ -14,7 +14,6 @@ Mahavishnu is the control plane for the **Bodai Ecosystem**:
 | [Session-Buddy WebSocket](https://github.com/lesleslie/session-buddy) | Real-time metrics | 8765 |
 | [Crackerjack](https://github.com/lesleslie/crackerjack) | Inspector (Quality) | 8676 |
 | **Bodai Crow** | Browser/automation MCP bridge | 8693 |
-| **Goose serve** | Block's `goose` HTTP backend (D3 terminal adapter) | 8694 |
 | **Prefect API** | Workflow orchestration backend (`uvicorn prefect.server.api.server`) | 4200 |
 | **Mahavishnu WebSocket** | Real-time workflow events | 8690 |
 | **Mahavishnu Pool WebSocket** | Pool status events | 8691 |
@@ -168,7 +167,7 @@ Mahavishnu has three independent pool/executor abstractions with distinct owners
 | Module | Location | Purpose | Scope |
 |--------|----------|---------|-------|
 | **Multi-pool orchestration** | `mahavishnu/pools/` | Production task distribution across MahavishnuPool, PiPool, SessionBuddyPool, RunPodPool | Cross-server, auto-scaling |
-| **Terminal adapter registry** | `mahavishnu/terminal/adapters/` | Terminal backend adapters (`crow`, `goose`, `mock`, `tmux`) resolved via `get_adapter_class()` | Local development only |
+| **Terminal adapter registry** | `mahavishnu/terminal/adapters/` | Terminal backend adapters (`crow`, `mock`, `tmux`) resolved via `get_adapter_class()` | Local development only |
 | **Process pool executor** | `mahavishnu/core/process_pool_executor.py` | Generic ProcessPoolExecutor for blocking CPU-bound operations | Single-process offload |
 
 These modules share no imports or state. `pools/` is the production orchestration layer. `terminal/adapters/` resolves the active terminal backend (`adapter_preference` in settings; default is `tmux`). `process_pool_executor.py` is a low-level utility for event loop unblocking.

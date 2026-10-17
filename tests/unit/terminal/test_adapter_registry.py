@@ -18,12 +18,12 @@ from mahavishnu.terminal.adapters import (
 
 
 def test_list_adapter_names_contains_expected_entries() -> None:
-    """All four canonical terminal adapters are registered after D0."""
+    """The canonical always-available terminal adapters are registered."""
     names = list_adapter_names()
     assert "mock" in names
     assert "tmux" in names
-    # crow and goose are optional — only registered if their dep is available
-    # and the corresponding feature flag is enabled. We don't assert their
+    # crow is optional — only registered if its dep is available
+    # and the corresponding feature flag is enabled. We don't assert its
     # presence here, only that mock + tmux (always available) are present.
     assert "mock" in names
     assert "tmux" in names

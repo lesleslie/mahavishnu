@@ -1588,7 +1588,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 _STUB_COSTS = {
     "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
-    "goose": "~40 LOC: TerminalManager adapter bridge to goose serve",
     "mock": "~25 LOC: in-process adapter (already exists; CLI surface only)",
 }
 
@@ -1611,8 +1610,8 @@ def _stub_command(name: str) -> Callable[[bool], None]:
     return callback
 
 
-# Register the 4 stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("hatchet", "goose", "mock"):
+# Register the 2 remaining stubs. Live implementations land in follow-up PRs.
+for _stub_name in ("hatchet", "mock"):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene

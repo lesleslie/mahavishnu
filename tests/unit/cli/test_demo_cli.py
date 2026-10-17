@@ -228,18 +228,23 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
 
 
 def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
-    """Each of the 5 stub sub-commands prints the discovery message and
-    exits 0 — operators running ``mahavishnu demo hatchet`` get a clear
+    """Each of the 2 remaining stub sub-commands prints the discovery message
+    and exits 0 — operators running ``mahavishnu demo hatchet`` get a clear
     indicator that this is a deferred-work surface, not a bug.
 
-    2026-10-15 wire-up fix: agno was promoted to a live implementation
-    (drives ``AgnoAdapter.execute`` end-to-end), so the stub list shrank
-    to six names.
-    2026-10-16 wire-up fix: llamaindex was also promoted to live
-    (drives ``LlamaIndexAdapter.execute`` end-to-end after the ollama
-    drop), so the stub list is now five names.
+    History of stub → live promotions and removals:
+
+    - 2026-10-15: agno promoted to live (``AgnoAdapter.execute``).
+    - 2026-10-16: llamaindex promoted to live (``LlamaIndexAdapter.execute``).
+    - 2026-10-16: crow promoted to live (commit b892ab46 — drives
+      ``CrowTerminalAdapter`` end-to-end against the bundled crow-mcp).
+    - 2026-10-16: pydantic_ai promoted to live (commit 01bb28e8 — drives
+      ``PydanticAIAdapter.execute`` end-to-end).
+    - 2026-10-17: goose adapter removed (Block never shipped the matching
+      ``goose serve`` server the design assumed). The stub list is now
+      two names: hatchet, mock.
     """
-    for stub in ["hatchet", "pydantic_ai", "crow", "goose", "mock"]:
+    for stub in ["hatchet", "mock"]:
         result = runner.invoke(demo_app, [stub])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "not implemented" in result.output, f"{stub}: missing not-implemented text"
@@ -247,7 +252,7 @@ def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
 
 def test_stub_subcommands_why_stub_flag_prints_implementation_cost() -> None:
     """``--why-stub`` reveals the implementation cost without a real impl."""
-    for stub in ["hatchet", "pydantic_ai"]:
+    for stub in ["hatchet"]:
         result = runner.invoke(demo_app, [stub, "--why-stub"])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
         assert "implementation cost" in result.output, f"{stub}: missing cost info"
@@ -273,7 +278,7 @@ def test_demo_agno_is_no_longer_a_stub() -> None:
 
 
 def test_demo_app_exposes_expected_commands() -> None:
-    """Sanity: the module exposes ``demo_app`` and it has 9 registered commands
-    (tmux, prefect, 7 stubs). Test pin for accidental stub deletion."""
+    """Sanity: the module exposes ``demo_app`` and it has 8 registered commands
+    (tmux, prefect, 6 live). Test pin for accidental stub deletion."""
     cmd_names = {cmd.name for cmd in demo_app.registered_commands}
-    assert cmd_names == {"tmux", "prefect", "agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "goose", "mock"}
+    assert cmd_names == {"tmux", "prefect", "agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "mock"}

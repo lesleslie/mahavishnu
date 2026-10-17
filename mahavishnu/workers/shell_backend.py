@@ -40,7 +40,7 @@ class ShellWorker(BaseWorker):
 
     The session is launched via the shared :class:`TerminalManager`
     (which routes through the configured adapter — ``mock``,
-    ``tmux``, ``crow``, or ``goose``). The session id becomes the
+    ``tmux``, or ``crow``). The session id becomes the
     worker id; one session per worker. ``execute()`` is a
     thin pass-through to the terminal manager's execute interface
     for one-shot prompts; long-lived sessions stay up between
@@ -99,7 +99,7 @@ class ShellWorker(BaseWorker):
         # submitted through the terminal manager's execute
         # interface (e.g. terminal_manager.execute_task on the
         # session). The exact interface depends on the adapter
-        # in use (mock, tmux, crow, goose) and the Bifrost
+        # in use (mock, tmux, crow) and the Bifrost
         # Qwen gate's verification path runs the CLI directly
         # rather than through this method.
         if not self._session_id:

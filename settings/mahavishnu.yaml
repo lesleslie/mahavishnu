@@ -294,16 +294,6 @@ terminal:
   adapter_preference: "tmux"
   # NOTE (2026-09-27 audit): fallback_on_probe_failure removed from schema (no consumers).
 
-  # Goose adapter (Block's goose serve over HTTP)
-  # Operators must run `goose serve --port 8694 --auth-token $GOOSE_SECRET` separately.
-  # Defaults to disabled — opt in by setting goose_enabled=true (and either
-  # goose_secret_key in local.yaml or MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY in env).
-  goose_enabled: false
-  goose_http_host: "127.0.0.1"
-  goose_http_port: 8694
-  # NOTE (2026-09-27 audit): goose_poll_interval removed from schema (no consumers).
-  # goose_secret_key: read from env var MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY only — never commit
-
 openhands:
   enabled: true
   base_url: "http://localhost:3000"

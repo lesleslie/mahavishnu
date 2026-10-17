@@ -574,7 +574,7 @@ class TerminalManager:
         if preference == "iterm2":
             warnings.warn(
                 "adapter_preference='iterm2' is deprecated and has been removed. "
-                "Use 'tmux', 'crow', or 'goose' instead.",
+                "Use 'tmux' or 'crow' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )

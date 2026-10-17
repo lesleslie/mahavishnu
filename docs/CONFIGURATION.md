@@ -135,7 +135,6 @@ Additional supported overrides include:
 
 - `MAHAVISHNU_OPENSEARCH__VERIFY_CERTS` — OpenSearch certificate verification (`true`).
 - `MAHAVISHNU_OPENSEARCH__CA_CERTS` — OpenSearch CA certificate path (`null` unless configured).
-- `MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY` — Secret for the optional Goose terminal adapter.
 - `MAHAVISHNU_PERSISTENCE__POSTGRES_URL` — PostgreSQL URL for the storage-consolidation persistence block.
 - `MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING` — PostgreSQL + pgvector URL for OTel storage.
 - `MAHAVISHNU_SUBSCRIPTION_AUTH__SECRET` — Subscription-auth secret.
@@ -508,14 +507,10 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `capture_lines` — `int`, default `100`; captured output lines.
 - `poll_interval` — `float`, default `0.5`; output polling interval.
 - `max_concurrent_sessions` — `int`, default `20`; session limit.
-- `adapter_preference` — `str`, default `mock`; `mock`, `tmux`, `crow`, `goose`, or `auto`.
+- `adapter_preference` — `str`, default `mock`; `mock`, `tmux`, `crow`, or `auto`.
 - `fallback_on_probe_failure` — `bool`, default `False`; fallback to the mock adapter on probe failure.
 - `crow_enabled` — `bool`, default `False`; enables the Crow adapter.
 - `crow_http_host` / `crow_http_port` — `str` / `int`, defaults `127.0.0.1` / `8693`; Crow server endpoint.
-- `goose_enabled` — `bool`, default `False`; enables the Goose adapter.
-- `goose_http_host` / `goose_http_port` — `str` / `int`, defaults `127.0.0.1` / `8694`; Goose endpoint.
-- `goose_secret_key` — `SecretStr | null`, default `None`; set with `MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY`.
-- `goose_poll_interval` — `float`, default `0.5`; Goose capture polling interval.
 
 **`eventbridge`**:
 

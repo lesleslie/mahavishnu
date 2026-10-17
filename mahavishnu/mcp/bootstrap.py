@@ -126,7 +126,7 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
     """Select the terminal adapter named by ``terminal.adapter_preference``.
 
     Dispatches via the adapter registry (D0 refactor). All known adapters
-    (mock, tmux, crow, goose) are constructed by their factories in
+    (mock, tmux, crow) are constructed by their factories in
     ``mahavishnu.terminal.adapters.__init__``. Adding a new adapter is one
     ``register_adapter`` call, not a new branch here.
 
@@ -144,7 +144,7 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
 
         warnings.warn(
             "adapter_preference='iterm2' is deprecated and has been removed. "
-            "Use 'tmux', 'crow', or 'goose' instead.",
+            "Use 'tmux' or 'crow' instead.",
             DeprecationWarning,
             stacklevel=2,
         )

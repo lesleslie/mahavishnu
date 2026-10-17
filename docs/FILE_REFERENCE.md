@@ -38,7 +38,7 @@
 - `mahavishnu/workers/shepherd_backend.py` — OS-level syscall-jail isolated worker (post-Phase-4.5b; only remaining isolated-worker backend per `docs/decisions/2026-09-24-legacy-worker-deprecation.md`)
 - `mahavishnu/workers/registry.py` — `WORKER_REGISTRY` + `WorkerCategory` + `WorkerConfig`
 - `mahavishnu/terminal/manager.py` — Terminal session management
-- `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, goose, base)
+- `mahavishnu/terminal/adapters/` — Terminal adapter implementations (tmux, mock, crow, base)
 
 ## Data Ingestion
 

@@ -44,7 +44,7 @@ class TmuxTerminalAdapter(TerminalAdapter):
         ``TerminalManager._resolve_worker_env`` and the
         resulting dict is forwarded here. ``backend`` is also
         explicit so non-Claude workers can be spawned in the
-        future (e.g. terminal-qwen, terminal-goose).
+        future (e.g. terminal-qwen).
         """
         result = self._manager.spawn(
             worker_type=worker_type,

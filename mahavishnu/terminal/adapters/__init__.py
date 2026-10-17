@@ -7,7 +7,7 @@ up a factory by name.
 Backward compatibility:
 - ``get_available_adapters`` returns registered names
 - ``get_adapter_class`` returns the class for code that needs it (mock and crow only)
-- Adapters that depend on optional packages (crow, goose) register lazily —
+- Adapters that depend on optional packages (crow) register lazily —
   if the optional import fails, the adapter is simply not registered.
 - Tmux factory handles its own filesystem-path construction (was previously
   duplicated between ``terminal/manager.py`` and ``mcp/bootstrap.py``).
@@ -29,7 +29,7 @@ def register_adapter(name: str, factory: Callable[..., Any]) -> None:
     """Register an adapter factory.
 
     Args:
-        name: Canonical adapter name (e.g. "mock", "tmux", "crow", "goose").
+        name: Canonical adapter name (e.g. "mock", "tmux", "crow").
         factory: Callable that returns a ``TerminalAdapter`` instance. Receives
             ``config`` and ``mcp_client`` kwargs (callers may pass None for either).
 
@@ -187,7 +187,7 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
     """Backward-compatible lookup returning the adapter class (not an instance).
 
     Returns the class only for adapters that have a stable class identity
-    (currently just mock and crow). For tmux and goose, returns None — callers
+    (currently just mock and crow). For tmux, returns None — callers
     should use :func:`get_adapter_factory` for instance construction.
     """
     if name == "mock":
@@ -197,89 +197,9 @@ def get_adapter_class(name: str) -> type[TerminalAdapter] | None:
     return None
 
 
-# Goose adapter is opt-in: requires ``goose_enabled=True`` and a configured
-# ``goose_secret_key``. If either is missing, falls back to MockTerminalAdapter
-# (matches the documented Crow fallback behaviour). The factory itself runs
-# lazily so the import is deferred until ``list_adapter_names()`` is first
-# inspected — until then, the module has no impact on import time.
-try:
-    from pydantic import SecretStr
-
-    from .goose import GooseTerminalAdapter
-
-    GooseTerminalAdapter: type[TerminalAdapter] | None = GooseTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127 — self-bind narrows the import's type to type[TerminalAdapter] | None
-
-    def _build_goose_adapter(
-        config: Any = None,
-        mcp_client: Any = None,
-        **_unused: Any,
-    ) -> Any:
-        """Goose factory.
-
-        Requires ``config`` for ``goose_enabled`` + ``goose_secret_key``.
-        When ``goose_enabled`` is False, falls back to MockTerminalAdapter
-        (matching the Crow factory behaviour). When True, constructs a
-        :class:`~mahavishnu.terminal.goose_client.GooseHTTPClient` from
-        the configured host/port/secret.
-
-        Req: REQ-GOO-001, REQ-GOO-002
-        """
-        from ...core.errors import ConfigurationError
-        from ..goose_client import create_goose_http_client
-
-        if config is None:
-            raise ConfigurationError(
-                message="Goose adapter requires terminal config",
-                details={"adapter_preference": "goose"},
-            )
-
-        goose_enabled = getattr(config, "goose_enabled", False)
-        if not goose_enabled:
-            return MockTerminalAdapter()
-
-        secret = getattr(config, "goose_secret_key", None)
-        if secret is None:
-            raise ConfigurationError(
-                message=(
-                    "goose adapter is enabled (goose_enabled=true) but "
-                    "goose_secret_key is not configured. Set "
-                    "MAHAVISHNU_TERMINAL__GOOSE_SECRET_KEY or the "
-                    "goose_secret_key setting in local.yaml."
-                ),
-                details={
-                    "adapter_preference": "goose",
-                    "goose_enabled": True,
-                    "goose_http_endpoint": (
-                        f"{getattr(config, 'goose_http_host', '127.0.0.1')}:"
-                        f"{getattr(config, 'goose_http_port', 8694)}"
-                    ),
-                },
-            )
-
-        # Normalise SecretStr → SecretStr (already is, but keep type checkers quiet).
-        if isinstance(secret, str):  # pragma: no cover - defensive
-            secret = SecretStr(secret)
-
-        http_client = create_goose_http_client(
-            host=getattr(config, "goose_http_host", "127.0.0.1"),
-            port=getattr(config, "goose_http_port", 8694),
-            secret_key=secret,
-            timeout=30.0,
-        )
-        assert GooseTerminalAdapter is not None  # type narrowing for ty
-        # See Crow comment above for why ty ignores ``call-arg``.
-        return GooseTerminalAdapter(http_client=http_client)  # ty: ignore[unknown-argument]
-
-    register_adapter("goose", _build_goose_adapter)
-except ImportError:
-    GooseTerminalAdapter = None  # type: ignore[misc,assignment]
-
-
 __all__ = [
     # Crow adapter (requires crow-mcp MCP server)
     "CrowTerminalAdapter",
-    # Goose adapter (Block's goose serve over HTTP, opt-in)
-    "GooseTerminalAdapter",
     # Mock adapter (always available)
     "MockTerminalAdapter",
     "SessionNotFoundError",
