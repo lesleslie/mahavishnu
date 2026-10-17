@@ -177,3 +177,45 @@ def test_demo_stub_loop_no_longer_registers_pydantic_ai() -> None:
         "Remove the \"pydantic_ai\" entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
+
+
+def test_demo_crow_is_live_implementation() -> None:
+    """``mahavishnu demo crow`` must be a live implementation.
+
+    2026-10-16 wire-up fix: the crow demo was promoted from a stub
+    to a live implementation (drives ``CrowTerminalAdapter`` against
+    a live crow-mcp). The live path exposes ``--cmd``, ``--keep``,
+    ``--timeout``; the stub path emits ``--why-stub`` instead.
+    Asserting ``--cmd`` is present proves the live callback won the
+    Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "crow", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--cmd" in result.output, (
+        "demo crow is showing stub-style --help (missing --cmd). "
+        "The live @demo_app.command(\"crow\") callback was likely "
+        "replaced by the stub registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_crow() -> None:
+    """The stub registration loop must not include ``crow``.
+
+    The loop in ``cli/demo_cli.py`` iterates over a tuple of stub names;
+    ``crow`` was promoted to live in 2026-10-16 and would otherwise
+    override the live command with a no-op stub.
+    """
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "crow" not in stub_names, (
+        "crow is in _STUB_COSTS — the stub registration loop will "
+        "shadow the live @demo_app.command(\"crow\") callback. "
+        "Remove the \"crow\" entry from _STUB_COSTS and from the "
+        "registration loop tuple."
+    )

@@ -1,4 +1,14 @@
-"""crow-mcp PTY toolserver adapter for terminal management."""
+"""crow-mcp one-shot ``terminal`` adapter for terminal management.
+
+The installed ``crow-mcp`` server (0.1.x) exposes the one-shot
+``terminal`` tool (each call runs a fresh bash process — cwd, env,
+and venv do NOT persist between calls; chain with ``&&`` or ``;``).
+The server does NOT yet expose the per-session ``crow_terminal_open``
+/ ``exec`` / ``read`` / ``close`` family this adapter was originally
+written against. This module keeps the ``TerminalAdapter`` session-
+shaped interface stable (so callers don't churn) by wrapping the
+stateless ``terminal`` tool in a local per-session output cache.
+"""
 
 from __future__ import annotations
 
@@ -14,31 +24,29 @@ from ..adapters.base import SessionNotFoundError, TerminalAdapter, TerminalError
 logger = get_logger(__name__)
 
 
-def _canonical_session_id(result: Any, fallback: str) -> str:
-    """Return the server-canonical session_id when present, else *fallback*.
-
-    The server-side ``crow_terminal_open`` returns ``{"session_id": <handle>}``
-    so the producer can normalise the handle (strip whitespace, lowercase,
-    etc.). Callers that hand us a pre-shaped mapping without ``session_id``
-    (tests, mock clients) fall back to the input handle.
-    """
-    if isinstance(result, dict):
-        sid = result.get("session_id")
-        if isinstance(sid, str) and sid:
-            return sid
-    return fallback
-
-
 def _extract_output(result: Any) -> str:
-    """Extract the output text from either an MCP ``CallToolResult`` or a dict.
+    """Pull the output text out of an MCP ``tools/call`` result.
 
-    ``crow_terminal_read`` returns ``{"output": "..."}``. The legacy
-    ``terminal`` tool (still registered on the server) and some test
-    doubles wrap the text in ``CallToolResult.content[0].text``. Accept
-    either shape so the adapter works against both.
+    crow-mcp's ``terminal`` tool returns the MCP-typed
+    ``CallToolResult`` shape::
+
+        {"content": [{"type": "text", "text": "..."}], "isError": false}
+
+    The test doubles that hand us a plain ``{"output": "..."}`` dict
+    also work via the same accessor. Returns the empty string for any
+    shape we can't read.
     """
     if isinstance(result, dict):
-        return result.get("output") or ""
+        out = result.get("output")
+        if isinstance(out, str):
+            return out
+        content = result.get("content")
+        if isinstance(content, list) and content:
+            first = content[0]
+            if isinstance(first, dict):
+                text = first.get("text")
+                if isinstance(text, str):
+                    return text
     content = getattr(result, "content", None)
     if content:
         first = content[0]
@@ -49,21 +57,26 @@ def _extract_output(result: Any) -> str:
 
 
 class CrowTerminalAdapter(TerminalAdapter):
-    """Terminal adapter backed by crow-mcp PTY toolserver.
+    """Terminal adapter that wraps crow-mcp's one-shot ``terminal`` tool.
 
-    Allocates a dedicated server-side session per ``launch_session`` call
-    via ``crow_terminal_open`` (a UUID4 handle) and threads that handle
-    through ``crow_terminal_exec`` / ``_read`` / ``_close``. Concurrent
-    callers therefore get isolated PTYs instead of sharing a single
-    multiplexer.
+    Each call to ``launch_session`` / ``send_command`` invokes the
+    ``terminal`` tool (a fresh ``bash -c '<command>'`` on the server).
+    The adapter keeps the ``TerminalAdapter`` session-shaped ABC stable
+    by maintaining a local per-session cache that stores the most
+    recent output for each synthetic session_id; ``capture_output``
+    reads from the cache, ``close_session`` clears it.
 
-    The legacy ``terminal`` tool is still registered on the server for
-    one-shot callers; this adapter no longer uses it.
+    The server's behaviour of "each call starts a fresh shell" is
+    documented at the tool level — the adapter doesn't try to preserve
+    cwd / env / venv between calls. Callers that need a single command
+    to span multiple lines of work should chain with ``&&`` or ``;``
+    at the call site.
     """
 
     def __init__(self, mcp_client: Any) -> None:
         self.mcp = mcp_client
-        self._sessions: dict[str, dict[str, Any]] = {}
+        # session_id (synthetic) → {"output": <str>, "command": <str>}
+        self._sessions: dict[str, dict[str, str]] = {}
 
     @property
     def adapter_name(self) -> str:
@@ -77,39 +90,32 @@ class CrowTerminalAdapter(TerminalAdapter):
         rows: int = 24,
         **kwargs: Any,
     ) -> str:
-        """Allocate a dedicated crow-mcp session and run *command* in it.
+        """Allocate a synthetic session id and run *command* in a fresh shell.
+
+        The server runs ``bash -c '<command>'`` (or its one-shot
+        equivalent) per call. The returned session_id is local —
+        there is no server-side persistent shell to attach to.
 
         Args:
             command: Command to run in the terminal session.
-            columns: Terminal width in characters.
-            rows: Terminal height in lines.
-            **kwargs: Ignored (for compatibility with other adapters).
+            columns: Ignored (no PTY dimensions on the one-shot tool).
+            rows: Ignored (no PTY dimensions on the one-shot tool).
+            **kwargs: Ignored.
 
         Returns:
-            Server-canonical session identifier (UUID string). Concurrent
-            callers receive distinct identifiers and isolated PTYs.
+            Synthetic session identifier (UUID4 string). Distinct per
+            call so concurrent callers don't see each other's cached
+            output.
 
         Raises:
             TerminalError: If the crow-mcp call fails.
         """
         handle = str(uuid.uuid4())
         try:
-            open_result = await self.mcp.call_tool(
-                "crow_terminal_open",
-                {"handle": handle},
+            result = await self.mcp.call_tool(
+                "terminal",
+                {"command": command},
             )
-            session_id = _canonical_session_id(open_result, handle)
-            await self.mcp.call_tool(
-                "crow_terminal_exec",
-                {"session_id": session_id, "command": command},
-            )
-            self._sessions[session_id] = {
-                "command": command,
-                "columns": columns,
-                "rows": rows,
-            }
-            logger.debug("crow-mcp session launched: %s", session_id)
-            return session_id
         except (
             Exception
         ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
@@ -118,13 +124,22 @@ class CrowTerminalAdapter(TerminalAdapter):
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
                 details={"command": command, "handle": handle},
             ) from e
+        output = _extract_output(result)
+        self._sessions[handle] = {"output": output, "command": command}
+        logger.debug("crow-mcp one-shot session launched: %s", handle)
+        return handle
 
     async def send_command(self, session_id: str, command: str) -> None:
-        """Send a command to an active crow-mcp PTY session.
+        """Run *command* in a fresh shell and update the session cache.
+
+        Because crow-mcp's ``terminal`` is one-shot, this isn't a
+        "send into existing session" — it's a fresh invocation that
+        overwrites the cached output for the synthetic session_id.
 
         Args:
-            session_id: Terminal session identifier.
-            command: Command string to send.
+            session_id: Synthetic session identifier from
+                ``launch_session``.
+            command: Command string to run.
 
         Raises:
             SessionNotFoundError: If session_id is not tracked locally.
@@ -136,9 +151,9 @@ class CrowTerminalAdapter(TerminalAdapter):
                 details={"session_id": session_id},
             )
         try:
-            await self.mcp.call_tool(
-                "crow_terminal_exec",
-                {"session_id": session_id, "command": command},
+            result = await self.mcp.call_tool(
+                "terminal",
+                {"command": command},
             )
         except (
             Exception
@@ -148,53 +163,50 @@ class CrowTerminalAdapter(TerminalAdapter):
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
                 details={"session_id": session_id, "command": command},
             ) from e
+        self._sessions[session_id] = {
+            "output": _extract_output(result),
+            "command": command,
+        }
 
     async def capture_output(
         self,
         session_id: str,
         lines: int | None = None,
     ) -> str:
-        """Capture PTY output from crow-mcp.
+        """Return the most recently cached output for *session_id*.
+
+        The ``terminal`` tool runs synchronously and returns its
+        output inline; there is no async read-back. ``capture_output``
+        here is the ABC's hook for the tmux/crow-session adapters that
+        do have a long-lived PTY — for the one-shot ``terminal`` tool
+        it's a cache lookup.
 
         Args:
-            session_id: Terminal session identifier.
-            lines: Number of lines to return (None for all).
+            session_id: Synthetic session identifier.
+            lines: Ignored (caller already has the full output).
 
         Returns:
-            Terminal output as string.
+            Cached output string for the session.
 
         Raises:
             SessionNotFoundError: If session_id is not tracked locally.
-            TerminalError: If the crow-mcp call fails.
         """
         if session_id not in self._sessions:
             raise SessionNotFoundError(
                 message=f"crow-mcp: session {session_id} not found",
                 details={"session_id": session_id},
             )
-        try:
-            params: dict[str, Any] = {"session_id": session_id}
-            if lines is not None:
-                params["limit_lines"] = lines
-            result = await self.mcp.call_tool(
-                "crow_terminal_read",
-                params,
-            )
-            return _extract_output(result)
-        except (
-            Exception
-        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
-            raise TerminalError(
-                message=f"crow-mcp: failed to capture output: {e}",
-                error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
-                details={"session_id": session_id},
-            ) from e
+        return self._sessions[session_id].get("output", "")
 
     async def close_session(self, session_id: str) -> None:
-        """Close a crow-mcp PTY session.
+        """Clear the local session cache for *session_id*.
+
+        The server has no per-session resource to release (one-shot
+        tool spawns a fresh shell per call and tears it down
+        synchronously). We just drop the cached output.
 
         Args:
-            session_id: Terminal session identifier to close.
+            session_id: Synthetic session identifier to close.
 
         Raises:
             SessionNotFoundError: If session_id is not tracked locally.
@@ -204,16 +216,8 @@ class CrowTerminalAdapter(TerminalAdapter):
                 message=f"crow-mcp: session {session_id} not found",
                 details={"session_id": session_id},
             )
-        try:
-            await self.mcp.call_tool(
-                "crow_terminal_close",
-                {"session_id": session_id},
-            )
-        except Exception as e:  # best-effort terminal cleanup — broad catch so local session-tracking dict is always popped even if remote close fails  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("crow-mcp: close_session failed (non-fatal): %s", e)
-        finally:
-            self._sessions.pop(session_id, None)
-            logger.debug("crow-mcp session closed: %s", session_id)
+        self._sessions.pop(session_id, None)
+        logger.debug("crow-mcp one-shot session closed: %s", session_id)
 
     async def list_sessions(self) -> list[dict[str, Any]]:
         """Return all locally tracked crow-mcp sessions.

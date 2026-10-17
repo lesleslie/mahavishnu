@@ -1176,8 +1176,402 @@ def demo_pydantic_ai(
 
 
 # ============================================================================
-# Stubs — 4 engines/terminals (agno + llamaindex + pydantic_ai promoted to
-# live implementations above)
+# crow terminal adapter demo (full implementation — replaces 2026-10-16 stub)
+# ============================================================================
+
+
+DEFAULT_CROW_DEMO_CMD = "echo '[ack] from mahavishnu demo crow' && pwd"
+DEFAULT_CROW_ACK_CMD = "echo '[ack-2] crow-mcp PTY is alive'"
+DEFAULT_CROW_PRECONDITION_TIMEOUT = 3.0
+
+
+def _parse_sse_or_json(body: str) -> dict[str, object]:
+    """Parse an MCP streamable-HTTP response into a JSON-RPC envelope.
+
+    The streamable-HTTP transport returns SSE-formatted bodies
+    (per the MCP 2025-03-26 spec)::
+
+        event: message
+        data: {"jsonrpc":"2.0","id":1,"result":{...}}
+
+    Some servers may also respond with plain JSON. Accept either
+    shape and return the first JSON ``data:`` payload found, or
+    ``{}`` for an empty body (e.g. the 202 Accepted response from
+    ``notifications/initialized``).
+    """
+    body = body.strip()
+    if not body:
+        return {}
+    # Plain JSON shortcut (some MCP servers return it).
+    if body.startswith("{"):
+        import json as _json
+
+        result = _json.loads(body)
+        return result if isinstance(result, dict) else {"_": result}
+    # SSE: events are separated by a blank line; collect ``data:``
+    # lines from the first event with a JSON payload.
+    import json as _json
+
+    for event in body.split("\n\n"):
+        data_lines: list[str] = []
+        for line in event.splitlines():
+            if line.startswith("data: "):
+                data_lines.append(line[len("data: ") :])
+            elif line.startswith("data:"):
+                data_lines.append(line[len("data:") :])
+        if not data_lines:
+            continue
+        payload = "\n".join(data_lines).strip()
+        if not payload:
+            continue
+        try:
+            parsed = _json.loads(payload)
+        except ValueError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+class _CrowMCPClient:
+    """Minimal MCP client for crow-mcp's streamable-http transport.
+
+    Implements the only method ``CrowTerminalAdapter`` calls:
+    ``async call_tool(name, params)``. Returns the raw MCP
+    ``CallToolResult`` envelope (a dict shaped like
+    ``{"content": [{"type": "text", "text": "..."}], "isError": false}``)
+    so the adapter's ``_extract_output`` helper sees exactly what the
+    MCP SDK's ``CallToolResult`` would look like — no per-tool
+    reshaping needed.
+
+    The MCP streamable-HTTP transport requires an ``initialize``
+    handshake first that establishes a ``Mcp-Session-Id`` header
+    used on every subsequent request. Without it, crow-mcp returns
+    ``-32600 Missing session ID`` (verified 2026-10-16). The
+    handshake is two POSTs:
+
+    1. ``initialize`` → server returns ``Mcp-Session-Id`` response
+       header (and a 200 body with ``serverInfo``/``capabilities``).
+    2. ``notifications/initialized`` → server returns 202 Accepted
+       with empty body; we just need to wait for the status.
+
+    A full MCP client (session lifecycle, notifications, capability
+    negotiation, SSE streaming) is overkill for a demo that just
+    runs one shell command per call.
+    """
+
+    def __init__(self, base_url: str, timeout: float = 10.0) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._timeout = timeout
+        self._request_id = 0
+        self._session_id: str | None = None
+        self._initialized = False
+
+    async def _ensure_initialized(self) -> None:
+        """Drive the MCP ``initialize`` handshake on first call."""
+        if self._initialized:
+            return
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            # 1. initialize request — server returns Mcp-Session-Id header.
+            self._request_id += 1
+            init_payload = {
+                "jsonrpc": "2.0",
+                "id": self._request_id,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {"name": "mahavishnu-demo", "version": "0.36.0"},
+                },
+            }
+            init_resp = await client.post(
+                self._base_url,
+                json=init_payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                },
+            )
+            if init_resp.status_code != 200:
+                raise RuntimeError(
+                    f"crow-mcp initialize HTTP {init_resp.status_code}: {init_resp.text[:200]}"
+                )
+            # Header name is server-defined; case-insensitive lookup covers both.
+            session_id = init_resp.headers.get("Mcp-Session-Id") or init_resp.headers.get(
+                "mcp-session-id"
+            )
+            if not session_id:
+                raise RuntimeError(
+                    "crow-mcp did not return Mcp-Session-Id on initialize "
+                    f"(headers: {dict(init_resp.headers)})"
+                )
+            self._session_id = session_id
+
+            # 2. notifications/initialized — JSON-RPC notification (no id,
+            # no response expected). Server returns 202 Accepted.
+            self._request_id += 1
+            notif_payload: dict[str, object] = {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+            }
+            notif_resp = await client.post(
+                self._base_url,
+                json=notif_payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                    "Mcp-Session-Id": self._session_id,
+                },
+            )
+            if notif_resp.status_code not in (200, 202):
+                raise RuntimeError(
+                    f"crow-mcp notifications/initialized HTTP "
+                    f"{notif_resp.status_code}: {notif_resp.text[:200]}"
+                )
+        self._initialized = True
+
+    async def call_tool(self, name: str, params: dict[str, object]) -> dict[str, object]:
+        await self._ensure_initialized()
+        self._request_id += 1
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._request_id,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": params},
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Mcp-Session-Id": self._session_id or "",
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            resp = await client.post(self._base_url, json=payload, headers=headers)
+        # crow-mcp returns 200 for both success and tool errors; the
+        # JSON-RPC ``error`` field carries the failure detail.
+        if resp.status_code != 200:
+            raise RuntimeError(f"crow-mcp HTTP {resp.status_code}: {resp.text[:200]}")
+        body = _parse_sse_or_json(resp.text)
+        if "error" in body:
+            err = body["error"]
+            raise RuntimeError(f"crow-mcp JSON-RPC error {err.get('code')}: {err.get('message')}")
+        # Return the raw ``result`` envelope (the MCP ``CallToolResult``
+        # shape). The adapter's ``_extract_output`` reads ``content[0].text``
+        # from this directly — no client-side reshaping needed.
+        return body.get("result", {})
+
+
+def _check_crow_preconditions(
+    *,
+    settings_getter: Callable[[], Any] | None = None,
+    http_probe: Callable[..., Any] | None = None,
+    timeout: float = DEFAULT_CROW_PRECONDITION_TIMEOUT,
+) -> list[str]:
+    """Return human-readable failures (empty list = pass).
+
+    Probes (each injectable for tests):
+
+    - ``settings.terminal.crow_enabled`` is True (the feature flag
+      the manager dispatches on).
+    - ``http://{crow_http_host}:{crow_http_port}/mcp`` is reachable.
+      A 200/400/405/415 to a POST is acceptable — the path exists
+      and the server is up; an MCP ``initialize`` handshake isn't
+      required for reachability.
+    - Settings are loadable.
+    """
+    settings_getter = settings_getter or _default_settings_getter
+    http_probe = http_probe or httpx.post
+
+    failures: list[str] = []
+    try:
+        settings = settings_getter()
+    except Exception as exc:  # CLI entry point — settings load failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(f"could not load settings: {exc}")
+        return failures
+
+    try:
+        terminal = settings.terminal  # type: ignore[attr-defined]
+    except AttributeError as exc:
+        failures.append(f"settings.terminal not configured: {exc}")
+        return failures
+
+    if not bool(getattr(terminal, "crow_enabled", False)):
+        failures.append(
+            "settings.terminal.crow_enabled is False (set MAHAVISHNU_TERMINAL__CROW_ENABLED=true)"
+        )
+
+    host = getattr(terminal, "crow_http_host", "localhost")
+    port = int(getattr(terminal, "crow_http_port", 8693))
+    use_tls = bool(getattr(terminal, "crow_use_tls", False))
+    scheme = "https" if use_tls else "http"
+    url = f"{scheme}://{host}:{port}/mcp"
+    # POST to /mcp with the wrong content-type; any non-5xx confirms
+    # the path exists. 400/415 are expected; 200/404/405 also fine.
+    try:
+        resp = http_probe(url, content=b"probe", timeout=timeout)
+        if resp.status_code >= 500:
+            failures.append(
+                f"crow-mcp returned HTTP {resp.status_code} at {url} "
+                "(is the server running? start with: "
+                "`crow-mcp --transport streamable-http --host 127.0.0.1 "
+                "--port 8693 &`)"
+            )
+    except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure  # noqa: BLE001, RUF100
+        failures.append(
+            f"crow-mcp unreachable at {url}: {exc}. "
+            "Start it with: `crow-mcp --transport streamable-http "
+            "--host 127.0.0.1 --port 8693 &`"
+        )
+
+    return failures
+
+
+async def _run_crow_demo(
+    *,
+    command: str,
+    ack_command: str,
+    keep: bool = False,
+) -> dict[str, object]:
+    """Drive the crow terminal adapter end-to-end against a live crow-mcp.
+
+    Constructs a ``CrowTerminalAdapter`` directly with a minimal
+    ``_CrowMCPClient`` (httpx-based JSON-RPC wrapper), launches one
+    session running *command*, captures initial output, sends an ACK
+    command, captures the post-ACK output, and (unless ``--keep``)
+    closes the session. On the exception path the session is best-
+    effort closed, mirroring the ``_run_tmux_demo`` reap-on-error
+    pattern at ``_run_tmux_demo:174-178``.
+    """
+    from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
+
+    settings = _default_settings_getter()
+    host = getattr(settings.terminal, "crow_http_host", "localhost")
+    port = int(getattr(settings.terminal, "crow_http_port", 8693))
+    use_tls = bool(getattr(settings.terminal, "crow_use_tls", False))
+    scheme = "https" if use_tls else "http"
+    url = f"{scheme}://{host}:{port}/mcp"
+    timeout = float(getattr(settings.terminal, "crow_timeout_seconds", 10))
+
+    mcp_client = _CrowMCPClient(base_url=url, timeout=timeout)
+    adapter = CrowTerminalAdapter(mcp_client=mcp_client)
+
+    session_id = await adapter.launch_session(command=command)
+    session_ids = [session_id]
+    try:
+        typer.echo(f"\n[session {session_id}] launched with: {command!r}")
+        initial = await adapter.capture_output(session_id)
+        typer.echo(f"\n--- initial output ---\n{initial}")
+        typer.echo(f"\n--- sending ACK: {ack_command!r} ---")
+        await adapter.send_command(session_id, ack_command)
+        post_ack = await adapter.capture_output(session_id)
+        typer.echo(f"\n--- post-ACK output ---\n{post_ack}")
+    except (
+        Exception
+    ):  # cleanup is best-effort on failure — never mask the original error  # noqa: BLE001, RUF100
+        await _best_effort_crow_close(adapter, session_ids)
+        raise
+
+    if keep:
+        typer.echo(
+            f"\n--keep set: left session {session_id} running. "
+            "Close manually or re-run without --keep."
+        )
+        return {
+            "adapter": "crow",
+            "endpoint": url,
+            "session_id": session_id,
+            "command": command,
+            "ack_command": ack_command,
+            "initial_output": initial,
+            "post_ack_output": post_ack,
+            "kept": True,
+        }
+
+    await adapter.close_session(session_id)
+    return {
+        "adapter": "crow",
+        "endpoint": url,
+        "session_id": session_id,
+        "command": command,
+        "ack_command": ack_command,
+        "initial_output": initial,
+        "post_ack_output": post_ack,
+        "kept": False,
+    }
+
+
+async def _best_effort_crow_close(adapter: Any, session_ids: list[str]) -> None:
+    """Best-effort session close — called from the exception path."""
+    for sid in session_ids:
+        try:
+            await adapter.close_session(sid)
+        except Exception as exc:  # CLI entry point — cleanup errors must never mask the original failure  # noqa: BLE001, RUF100
+            typer.echo(f"[warning] crow close_session({sid}) failed: {exc}", err=True)
+
+
+@demo_app.command("crow")
+def demo_crow(
+    cmd: str | None = typer.Option(
+        None,
+        "--cmd",
+        "-c",
+        help="Command to run inside the crow-mcp PTY session.",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the crow-mcp session open after the demo."
+    ),
+    timeout: int = typer.Option(
+        60, "--timeout", help="Max seconds for the whole crow demo (preconditions + run)."
+    ),
+) -> None:
+    """Run the crow terminal adapter end-to-end against a live crow-mcp.
+
+    Probes ``settings.terminal.crow_*`` for host/port, launches one
+    session running ``--cmd`` (default ``echo + pwd``), captures
+    output, sends an ACK, captures again, then closes the session
+    (unless ``--keep``). Start crow-mcp first:
+
+        crow-mcp --transport streamable-http --host 127.0.0.1 --port 8693 &
+
+    Settings required: ``terminal.crow_enabled=true`` and
+    ``terminal.crow_http_port=8693`` (the default).
+    """
+    failures = _check_crow_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    settings = _default_settings_getter()
+    host = getattr(settings.terminal, "crow_http_host", "localhost")
+    port = int(getattr(settings.terminal, "crow_http_port", 8693))
+    use_tls = bool(getattr(settings.terminal, "crow_use_tls", False))
+    scheme = "https" if use_tls else "http"
+    url = f"{scheme}://{host}:{port}/mcp"
+    typer.echo(f"crow-mcp endpoint: {url}")
+
+    command = cmd if cmd is not None else DEFAULT_CROW_DEMO_CMD
+
+    async def _run_with_timeout() -> dict[str, object]:
+        return await _run_crow_demo(
+            command=command,
+            ack_command=DEFAULT_CROW_ACK_CMD,
+            keep=keep,
+        )
+
+    try:
+        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s running the crow demo", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nCrow demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ============================================================================
+# Stubs — 3 engines/terminals (agno + llamaindex + pydantic_ai + crow
+# promoted to live implementations above)
 # ============================================================================
 
 
@@ -1194,7 +1588,6 @@ def _emit_stub_notice(name: str, why: bool, implementation_cost: str) -> None:
 
 _STUB_COSTS = {
     "hatchet": "~70 LOC: HatchetEngine adaptation (alternative durable flow)",
-    "crow": "~40 LOC: TerminalManager adapter bridge to crow-mcp",
     "goose": "~40 LOC: TerminalManager adapter bridge to goose serve",
     "mock": "~25 LOC: in-process adapter (already exists; CLI surface only)",
 }
@@ -1219,7 +1612,7 @@ def _stub_command(name: str) -> Callable[[bool], None]:
 
 
 # Register the 4 stubs. Live implementations land in follow-up PRs.
-for _stub_name in ("hatchet", "crow", "goose", "mock"):
+for _stub_name in ("hatchet", "goose", "mock"):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene
