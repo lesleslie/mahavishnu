@@ -244,7 +244,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `active` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` |  | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
-| [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` |  | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
+| [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `shipped` | `umbrella` |  | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` |  | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
@@ -380,8 +380,8 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 |---|---|---|---|---|---|---|
 | `canonical` | 3 | 39 | 1 | 1 | 14 | **58** |
 | `implementation` | · | 5 | 2 | 4 | 13 | **24** |
-| `umbrella` | · | 1 | · | · | 1 | **2** |
+| `umbrella` | · | · | · | 1 | 1 | **2** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **3** | **45** | **3** | **5** | **66** | **122** |
+| **Total** | **3** | **44** | **3** | **6** | **66** | **122** |
