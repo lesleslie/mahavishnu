@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 topic: terminal
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 title: "Plan: Native macOS Automation Backend"

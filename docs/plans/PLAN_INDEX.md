@@ -266,7 +266,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
-| [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
+| [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `active` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `complete` | `superseded` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
 
 ### Superpowers Specs (`docs/specs/`)
@@ -389,9 +389,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 4 | 39 | 1 | 1 | 14 | **59** |
-| `implementation` | 2 | 9 | 1 | 3 | 14 | **29** |
+| `implementation` | 1 | 10 | 1 | 3 | 14 | **29** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 8 | **8** |
 
-| **Total** | **6** | **54** | **2** | **4** | **69** | **135** |
+| **Total** | **5** | **55** | **2** | **4** | **69** | **135** |
