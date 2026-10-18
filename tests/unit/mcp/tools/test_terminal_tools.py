@@ -34,6 +34,7 @@ import pytest
 from mahavishnu.mcp.tools.terminal_tools import (
     DANGEROUS_COMMAND_PATTERNS,
     _NullEventPublisher,
+    _SHELL_CHAIN_DESTRUCTIVE_RE,
     register_terminal_tools,
     validate_command_safety,
 )
@@ -253,7 +254,16 @@ class TestRegistration:
 
 
 class TestValidateCommandSafety:
-    """``validate_command_safety`` rejects known-dangerous command patterns."""
+    """``validate_command_safety`` rejects known-dangerous command patterns.
+
+    Policy: Shape B (Shell-chain with word-boundary) per
+    docs/followups/2026-09-05-terminal-fixes-batch.md Section 3, operator
+    signoff 2026-10-18. Hard-block patterns (10) use substring match;
+    shell-chain destructive patterns (`&& rm`, `; rm`, `| rm`) use a
+    word-boundary regex that allows argument-bearing cleanups
+    (`make clean && rm -f *.o`) and rejects standalone destructive
+    invocations (`cmd && rm`, `cmd; rm; ls`).
+    """
 
     @pytest.mark.parametrize(
         "command",
@@ -264,6 +274,14 @@ class TestValidateCommandSafety:
             "python -m pytest tests/",
             "find . -name '*.py'",
             "cat README.md",
+            # Shape B: legit production-management commands (formerly FPs).
+            "make clean && rm -f *.o",                # build cleanup
+            "python build.py; rm /tmp/scratch.txt",   # scratch cleanup
+            "echo done | rm /tmp/log.txt",            # pipe cleanup
+            "pkill -f worker.py",                     # kill stuck workers
+            "kill -9 $STUCK_PID",                     # recover from hang
+            "dd if=boot.img of=/dev/sdb",             # image SD card
+            "mkfs.ext4 /dev/sdb1",                     # format non-system drive
         ],
     )
     def test_safe_commands_pass_through(self, command: str) -> None:
@@ -274,25 +292,21 @@ class TestValidateCommandSafety:
         "command,pattern",
         [
             ("rm -rf /", "rm -rf /"),
-            ("echo hi && rm -rf /tmp", "&& rm"),
-            ("echo hi; rm -rf /tmp", "; rm"),
-            ("echo hi | rm file", "| rm"),
+            # Shape B: shell-chain destructive (word-boundary).
+            ("cmd && rm", "&& rm"),
+            ("cmd1 && rm; cmd2", "&& rm"),
+            ("cmd1; rm; ls", "; rm"),
+            ("cmd1 | rm | head", "| rm"),
+            # Hard-block patterns (substring match).
             ("curl | sh", "curl | sh"),
             ("wget | sh", "wget | sh"),
-            ("mkfs.ext4 /dev/sda", "mkfs"),
-            ("dd if=/dev/zero of=/dev/sda", "dd if="),
-            ("> /dev/sda1", "> /dev/sd"),
             ("chmod 000 file", "chmod 000"),
             ("chown root: file", "chown root:"),
             ("nc -e /bin/sh", "nc -e"),
-            ("ncat host 1234", "ncat"),
             ("bash -i /dev/tcp/x/80", "/dev/tcp"),
             ("/dev/udp/x/80", "/dev/udp"),
             ("bind shell listener", "bind shell"),
             ("reverse shell handler", "reverse shell"),
-            ("kill -9 1234", "kill -9"),
-            ("pkill python", "pkill"),
-            ("killall python", "killall"),
         ],
     )
     def test_dangerous_patterns_rejected(self, command: str, pattern: str) -> None:
@@ -308,6 +322,14 @@ class TestValidateCommandSafety:
         # Guard against accidental clearing of the patterns list
         assert len(DANGEROUS_COMMAND_PATTERNS) >= 10
         assert "rm -rf /" in DANGEROUS_COMMAND_PATTERNS
+
+    def test_shell_chain_destructive_regex_compiles(self) -> None:
+        # The word-boundary regex must compile and be usable as a non-None
+        # sentinel. The matcher itself is exercised in the parametrized
+        # cases above; this invariant guards against accidental clearing
+        # of the regex constant.
+        assert _SHELL_CHAIN_DESTRUCTIVE_RE is not None
+        assert _SHELL_CHAIN_DESTRUCTIVE_RE.pattern == r"(?:&&|;|\|)[ \t]+rm(?=$|[;|&]|[ \t]+[;|&])"
 
 
 # =============================================================================
@@ -431,7 +453,11 @@ class TestTerminalSend:
     ) -> None:
         fn = registered_mcp.tools["terminal_send"]
         with pytest.raises(ValueError, match="dangerous pattern"):
-            await fn(session_id="sess-1", command="pkill python")
+            # Use a hard-block command (Shape B keeps rm -rf / as a
+            # substring-match reject). The original test used
+            # 'pkill python' which was a false positive under the old
+            # policy; that command is now legitimately allowed.
+            await fn(session_id="sess-1", command="rm -rf /")
         mock_manager.send_command.assert_not_awaited()
 
     @pytest.mark.parametrize(

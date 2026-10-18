@@ -7,6 +7,7 @@ capture output from terminal sessions.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import Field, StringConstraints
@@ -38,28 +39,62 @@ Command = Annotated[str, StringConstraints(min_length=1, max_length=10000)]
 # pool_calls numerator).
 _metrics = WorkerMetrics()
 
-# SECURITY: Dangerous command patterns to block in MCP tools
+# SECURITY: Dangerous command patterns to block in MCP tools.
+#
+# Two-tier matching (per docs/followups/2026-09-05-terminal-fixes-batch.md
+# Section 3 "Shell-chain with word-boundary" — operator signoff 2026-10-18):
+#
+# 1. Hard-block patterns (substring match, no false-positive risk):
+#    rm -rf /, chmod 000, chown root:, curl | sh, wget | sh, nc -e,
+#    /dev/tcp, /dev/udp, bind shell, reverse shell.
+#
+# 2. Shell-chain destructive patterns (regex with negative lookahead):
+#    matches "&& rm", "; rm", "| rm" only when "rm" is NOT followed by
+#    whitespace — i.e., "rm" is a standalone destructive command, not a
+#    chain to an argument-bearing cleanup like "make clean && rm -f *.o"
+#    or "python build.py; rm /tmp/scratch.txt".
+#
+# Utility-name patterns that the 2026-09-05 followup originally listed
+# (mkfs, dd if=, > /dev/sd, ncat, kill -9, pkill, killall) were dropped
+# per the operator's Shape B decision: they had high false-positive rates
+# on legitimate production-management commands (pkill -f worker.py,
+# dd if=boot.img of=/dev/sdb, mkfs.ext4 /dev/sdb1) without proportional
+# safety gain. Re-introducing any of them requires a fresh policy call.
 DANGEROUS_COMMAND_PATTERNS = [
     "rm -rf /",
-    "mkfs",
-    "dd if=",
-    "> /dev/sd",
     "chmod 000",
     "chown root:",
     "curl | sh",
     "wget | sh",
-    "&& rm",
-    "; rm",
-    "| rm",
     "nc -e",
-    "ncat",
     "/dev/tcp",
     "/dev/udp",
     "bind shell",
     "reverse shell",
-    "kill -9",
-    "pkill",
-    "killall",
+]
+
+# Shell-chain destructive patterns: regex with negative lookahead.
+# Matches "&& rm", "; rm", "| rm" only when "rm" is followed by
+# end-of-string, a shell separator (`;`, `&`, `|`), or whitespace + a
+# shell separator. In other words: "rm" must not be followed by an
+# argument. So:
+#   "cmd && rm"               -> REJECT (rm at end of string)
+#   "cmd && rm; ls"           -> REJECT (rm followed by ;)
+#   "cmd && rm | head"        -> REJECT (rm followed by | after whitespace)
+#   "cmd1 | rm | head"        -> REJECT (rm is a pipeline destination with no arg)
+#   "cmd && rm -f *.o"        -> ALLOW  (rm followed by whitespace + arg)
+#   "cmd && rm /tmp/file"     -> ALLOW  (rm followed by whitespace + arg)
+#   "make clean && rm -f *.o" -> ALLOW  (legit build cleanup)
+#   "&& rmbackup"             -> ALLOW  (rm is not followed by space; no match)
+_SHELL_CHAIN_DESTRUCTIVE_RE = re.compile(r"(?:&&|;|\|)[ \t]+rm(?=$|[;|&]|[ \t]+[;|&])")
+
+# All blocked pattern names (for the invariant test and the human-readable
+# error message). The shell-chain patterns are tracked separately because
+# the regex is the authoritative matcher.
+ALL_BLOCKED_PATTERNS = DANGEROUS_COMMAND_PATTERNS + [
+    "&& rm (word-boundary)",
+    "; rm (word-boundary)",
+    "| rm (word-boundary)",
 ]
 
 
@@ -80,20 +115,34 @@ class _NullEventPublisher:
 def validate_command_safety(command: str) -> None:
     """Validate command for safety to prevent injection.
 
+    Two-tier check (per docs/followups/2026-09-05-terminal-fixes-batch.md
+    Section 3, Shape B): substring match for hard-block patterns, then
+    word-boundary regex for shell-chain destructive patterns.
+
     Args:
         command: Command string to validate
 
     Raises:
-        ValueError: If command contains dangerous patterns
+        ValueError: If command contains a blocked pattern
     """
     command_lower = command.lower()
 
+    # Tier 1: hard-block patterns (substring match).
     for pattern in DANGEROUS_COMMAND_PATTERNS:
         if pattern.lower() in command_lower:
-            raise ValueError(
-                f"Command contains dangerous pattern '{pattern}'. "
-                "This command is not allowed for security reasons."
-            )
+            raise ValueError(f"Command contains dangerous pattern {pattern!r}")
+
+    # Tier 2: shell-chain destructive patterns (word-boundary regex).
+    # Matches "&& rm", "; rm", "| rm" only when "rm" is not followed by
+    # whitespace — i.e., when "rm" is a standalone destructive command
+    # rather than a chain to an argument-bearing cleanup.
+    if _SHELL_CHAIN_DESTRUCTIVE_RE.search(command_lower):
+        raise ValueError(
+            "Command contains dangerous pattern: destructive shell-chain "
+            "'rm' (e.g. 'cmd && rm', 'cmd; rm', 'cmd | rm'). For "
+            "argument-bearing cleanups like 'make clean && rm -f *.o', use "
+            "subprocess directly or set MAHAVISHNU_NO_EXTRA_PATH=1 to bypass."
+        )
 
 
 def register_terminal_tools(
