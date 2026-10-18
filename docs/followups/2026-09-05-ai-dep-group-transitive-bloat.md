@@ -1,12 +1,22 @@
 ---
-status: active
+status: shipped
 role: implementation
 date: 2026-09-05
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-18
+resolved_at: 2026-10-18
 topic: ai-dep-group-transitive-bloat
 ---
 
 # `ai` optional dep group pulls 5 LLM providers + heavy `google-cloud-*` chain
+
+> **Reclassified 2026-10-18 (status: active → shipped):** No install-footprint
+> problem has surfaced since the followup was filed (2026-09-05). The `ai`
+> dep group remains optional and opt-in via `uv sync --group ai`; per the
+> followup's own deferral language, the split is filed for "future
+> consideration when the install footprint becomes a real problem."
+> No active work item. If a future edge deployment or constrained CI
+> runner signals the bloat is a real problem, re-file this as a new
+> active followup rather than re-opening this one (this file is closed).
 
 ## Status
 
