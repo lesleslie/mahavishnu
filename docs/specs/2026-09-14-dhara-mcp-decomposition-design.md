@@ -14,14 +14,14 @@ resolved_by:
 partially_superseded_by:
   - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
   - docs/plans/2026-09-20-delete-all-dhara-named-code.md  # partial; Phase 4 crackerjack rename/delete
-  - docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md  # partial; Phase 1.5 wrapper consolidation
+  - docs/plans/.archive/2026-09-20-bodai-layout-migration-and-registry-onboarding.md  # partial; Phase 1.5 wrapper consolidation
   - docs/adr/018-gateway-pattern-evaluation.md  # draft; Phase 11 gateway evaluation
 blocks_on:
   - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md
   - docs/adr/017-oneiric-shared-persistence-substrate.md
 related:
-  - docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
-  - docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md
+  - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
+  - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md
   - docs/plans/2026-07-26-mahavishnu-acp-server.md
   - docs/specs/2026-04-27-bodai-auth-standardization-design.md
   - docs/specs/2026-05-24-dhara-serverless-design.md
@@ -950,11 +950,11 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Tasks:**
 
-1. **Update `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`** (data-retention MEDIUM #6 — both the description text and the REQ table need updating):
+1. **Update `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`** (data-retention MEDIUM #6 — both the description text and the REQ table need updating):
    - **Phase 4 description** (line 566): add "MCP surface moved per `2026-09-14-dhara-mcp-decomposition-design.md`" alongside the existing goal sentence.
    - **Phase 4 REQ citations** in §4.5 (lines 467-472): REQ-DHARA-STORAGE's "Target file" column should read `oneiric/mcp/server_core.py:141-148` (per the decomposition spec's table 4.7), not `dhara/dhara/mcp/server_core.py:141-148`.
    - **Phase 11** (Harness-agnostic enablement): redirect Qwen Code / Claude Code validation tests from `mcp__dhara__*` to the new homes per the explicit tool-name table below.
-2. **Update `docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` precondition plan:** add `2026-09-14-dhara-mcp-decomposition-design.md` to the precondition plan's `related:` frontmatter. **Note:** the precondition plan has no Dhara MCP REQs to update (its 14 REQs are all text edits / governance fixes, none touch Dhara MCP code paths) — the previous draft's task 2 was a no-op.
+2. **Update `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` precondition plan:** add `2026-09-14-dhara-mcp-decomposition-design.md` to the precondition plan's `related:` frontmatter. **Note:** the precondition plan has no Dhara MCP REQs to update (its 14 REQs are all text edits / governance fixes, none touch Dhara MCP code paths) — the previous draft's task 2 was a no-op.
 3. Update cross-references in `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` (Option C amendment — overturning the 2026-09-14 amendment, see §4.7), `docs/adr/017-oneiric-shared-persistence-substrate.md` (clarify that Oneiric now has an MCP server).
 4. **If the Phase 1 commit did not include the ADR-013 reversal amendment, apply it now** (covers edge case where Phase 1 shipped without the amendment; Phase 9 is the safety net).
 5. **Pin a GitHub Discussions thread** at `https://github.com/lesleslie/dhara/discussions` with the migration guide and a "subscribe for breaking-change notifications" callout. Update `dhara/CHANGELOG.md` v1.0.0 entry with the discussion URL.
@@ -1237,8 +1237,8 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 
 - `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` — to be amended (Option B → Option C).
 - `docs/adr/017-oneiric-shared-persistence-substrate.md` — to be amended (Oneiric now has an MCP server).
-- `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — to be amended (Phase 4 description, Phase 11 redirect).
-- `docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` — precondition plan; cross-references need updating.
+- `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — to be amended (Phase 4 description, Phase 11 redirect).
+- `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` — precondition plan; cross-references need updating.
 - `docs/plans/2026-07-26-mahavishnu-acp-server.md` — Phase 1.5 (skill distribution) routes through Crackerjack per Phase 4 of this spec.
 - `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — Phase 2 of this spec completes Dhara's row.
 - `docs/specs/2026-05-24-dhara-serverless-design.md` — Phase 4 of the active plan (Dhara re-architecture) still applies; this spec decomposes the MCP surface.

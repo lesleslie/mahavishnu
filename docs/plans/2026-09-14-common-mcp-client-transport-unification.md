@@ -33,7 +33,7 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 > |---|---|---|
 > | **Phase 1a** (SDK code: `mcp_common/clients/common_mcp_client.py`, `mcp_common/health/{feed,aggregator}.py`) | ✅ SHIPPED | inline `# Implements: REQ-001…003` markers present (verified in `common_mcp_client.py:15`) |
 > | **Phase 1b** (Phase 1 tests: `tests/unit/clients/test_common_mcp_client.py`, `tests/unit/health/{test_feed,test_aggregator}.py`) | ❌ NOT STARTED | **Split out**: `docs/plans/2026-10-12-mcp-common-test-backfill.md` |
-> | **Phase 2** (per-repo `<COMPONENT>_MCP_URL` default normalization) | ⏸ DEFERRED | Overlaps with `docs/plans/2026-09-26-mcp-launcher-standardization.md` REQ-007 (`run_with_uvicorn_config` pipeline). Will not be re-tracked here. |
+> | **Phase 2** (per-repo `<COMPONENT>_MCP_URL` default normalization) | ⏸ DEFERRED | Overlaps with `docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md` REQ-007 (`run_with_uvicorn_config` pipeline). Will not be re-tracked here. |
 > | **Phase 3** (84 `/tools/call` production call-site migration + Dhara `/mcp/tools/call` mount removal in same commit) | ❓ UNVERIFIED | Needs a fresh `grep -rn '/tools/call' {session-buddy,mahavishnu,dhara,akosha,crackerjack} --include='*.py'` audit. Dhara `mcp/server_core.py` `_register_tools_call_route` deletion needs the same audit. Not split out — Phase 3 either still belongs to this umbrella or graduates into a new migration plan after the audit. |
 > | **Phase 4** (per-repo `/health` aggregator migration to `aggregate_feed_states`) | ↗ SUPERSEDED | Now under `docs/plans/2026-10-09-mcp-health-check-enrichment.md` (shipped 2026-10-09). |
 >

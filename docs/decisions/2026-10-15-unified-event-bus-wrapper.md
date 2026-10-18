@@ -12,7 +12,7 @@ decision_date: 2026-10-15
 
 **Date:** 2026-10-15
 **Status:** `active`, `decision`
-**Supersedes:** [`docs/plans/2026-05-09-unified-event-bus-spec.md`](../plans/2026-05-09-unified-event-bus-spec.md)
+**Supersedes:** [`docs/plans/.archive/2026-05-09-unified-event-bus-spec.md`](../plans/2026-05-09-unified-event-bus-spec.md)
 
 ## Context
 
@@ -66,6 +66,6 @@ The wrapper is a stable intermediate state. The eventual end state remains "lega
 
 ## Related
 
-- [`docs/plans/2026-05-09-unified-event-bus-spec.md`](../plans/2026-05-09-unified-event-bus-spec.md) — original spec (now superseded; retained for historical reference)
+- [`docs/plans/.archive/2026-05-09-unified-event-bus-spec.md`](../plans/2026-05-09-unified-event-bus-spec.md) — original spec (now superseded; retained for historical reference)
 - [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](../plans/2026-07-11-phase-6-bodai-observability.md) — Phase 6.4 cleanup work still pending
 - [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../specs/2026-09-27-shared-bodai-substrate-design.md) — broader substrate context

@@ -8,7 +8,7 @@ superseded_by: null
 blocks_on: []
 related:
   - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md
-  - docs/plans/2026-10-15-bifrost-gateway-wiring.md
+  - docs/plans/.archive/2026-10-15-bifrost-gateway-wiring.md
   - docs/plans/2026-10-15-oneiric-substrate-rollout.md
   - docs/plans/2026-09-27-shared-bodai-substrate-design.md
   - docs/specs/2026-10-15-bifrost-gateway-wiring-design.md
@@ -862,7 +862,7 @@ This plan was rewritten a second time after a 3-agent final review (2026-10-18).
 ## References
 
 - `docs/plans/2026-10-16-drop-ollama-favor-llama-server.md` — the active ollama removal plan; PR #0 already landed in this repo (`77b8bed8`) and mcp-common (`dd889b4`).
-- `docs/plans/2026-10-15-bifrost-gateway-wiring.md` — the existing Bifrost wiring plan (Phase D Qwen gate); the wiring this plan consolidates.
+- `docs/plans/.archive/2026-10-15-bifrost-gateway-wiring.md` — the existing Bifrost wiring plan (Phase D Qwen gate); the wiring this plan consolidates.
 - `docs/plans/2026-10-15-oneiric-substrate-rollout.md` — the umbrella oneiric substrate plan; this plan is a slice of it (LLM routing) that doesn't conflict with settings-class or embedding-substrate work.
 - `docs/specs/2026-10-15-bifrost-gateway-wiring-design.md` — the v1.5 Bifrost design spec; the schema here is a superset of the spec's Phase A fields.
 - `oneiric/adapters/llm/llm_interface.py:15-22` — the `LLMProvider` enum reused for router's `resolve` parameter.

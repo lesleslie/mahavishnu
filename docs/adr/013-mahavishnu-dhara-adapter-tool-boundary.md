@@ -168,7 +168,7 @@ If Option C is later adopted (remove):
 
 ## Amendment (2026-09-14)
 
-The serverless-readiness plan (`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`, active status) extends the storage substrate with Oneiric
+The serverless-readiness plan (`docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`, active status) extends the storage substrate with Oneiric
 adapter-based selection. ADR-013's "Option B keeps both surfaces,
 each answers a different question" framing is preserved, but the
 underlying persistence substrate assumed by Option B (Mahavishnu's

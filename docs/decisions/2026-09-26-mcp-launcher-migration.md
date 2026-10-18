@@ -19,7 +19,7 @@ component: vishnu (mahavishnu)
 > duck-types on `run_async(transport="http", ...)` but `FastMCPServer` exposes
 > `start()`/`run_http_async()` — see §4), and acceptance gates.
 
-**Plan**: `docs/plans/2026-09-26-mcp-launcher-standardization.md` §5 Phase 4a
+**Plan**: `docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md` §5 Phase 4a
 Task 4a.1 (REQ-013).
 
 **Cookbook**: `docs/mcp/launcher-cookbook.md` Example 2 (secrets-only — no
@@ -404,7 +404,7 @@ git -c user.email=les@wedgwoodwebworks.com -c user.name=les \
 
 - Collapse scripts/launch_mcp_with_secrets.py (93 LOC) to launch_mcp.py (~30 LOC)
   using mcp_common.server.launcher.launch() per plan
-  docs/plans/2026-09-26-mcp-launcher-standardization.md §5 Phase 4a Task 4a.1.
+  docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md §5 Phase 4a Task 4a.1.
 - Bridge FastMCPServer (sync __init__, no run_async method) to the launcher's
   duck-typed run_async(transport='http', ...) contract via _RunAsyncAdapter
   (calls inner FastMCP run_http_async with launcher-passed uvicorn_config so
@@ -443,7 +443,7 @@ surface area).
 
 ## Cross-references
 
-- Plan: `docs/plans/2026-09-26-mcp-launcher-standardization.md` §5 Phase 4a
+- Plan: `docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md` §5 Phase 4a
   Task 4a.1 (line 334); §3 Non-Goals item 6 (line 46) — pool/worker/task-router
   explicitly excluded.
 - Plan: §4.5 Requirements — REQ-001, REQ-002, REQ-003, REQ-007, REQ-013,

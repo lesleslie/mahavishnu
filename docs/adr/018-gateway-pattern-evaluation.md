@@ -11,7 +11,7 @@ blocks_on:
 related:
   - "docs/specs/2026-09-14-dhara-mcp-decomposition-design.md"
   - "docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
-  - "docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
+  - "docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
 decision_date: 2026-10-18
 topic: mcp-design
 ---
@@ -516,7 +516,7 @@ If Option C's wrapper consolidation introduces regressions:
   `register_remote_tools` rename).
 - `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md`
   — Phase 1.5 sequencing.
-- `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
+- `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
   — Phase 8 (EventBridge WAL) and Phase 10 (Postgres consolidation
   hygiene).
 - `docs/adr/017-oneiric-shared-persistence-substrate.md` —

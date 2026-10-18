@@ -152,7 +152,7 @@ in another session" on 2026-10-15, deferring:
 
 - `docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md:42` — broken
   link to `../2026-10-04-session-buddy-lifespan-publisher-inline.md`
-  (the file is at `docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`).
+  (the file is at `docs/plans/.archive/2026-10-04-session-buddy-lifespan-publisher-inline.md`).
 - `docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md:43` — broken
   link to `../2026-10-02-bodai-task-system-v1.1.md` (the file is at
   `docs/plans/2026-10-02-bodai-task-system-v1.1.md`).

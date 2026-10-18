@@ -6,7 +6,7 @@ ______________________________________________________________________
 
 > **For agentic workers:** This tracker gates Phase 5b (per-server migration). Each per-server PR
 > updates exactly one row. Cross-reference Phase 3 of the MCP Launcher Standardization plan
-> ([`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md))
+> ([`docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md))
 > §5 Phase 3.
 
 ## Status legend
@@ -102,7 +102,7 @@ When the transport is non-FastMCP and the cookbook does not apply:
 
 ## Cross-references
 
-- **Plan**: [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md) §5 Phase 3 Task 3.2 (this file) and Phase 5a (this file's maintenance contract).
+- **Plan**: [`docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md`](../plans/2026-09-26-mcp-launcher-standardization.md) §5 Phase 3 Task 3.2 (this file) and Phase 5a (this file's maintenance contract).
 - **Cookbook**: `/Users/les/Projects/mcp-common/docs/mcp/launcher-cookbook.md` — 4 worked examples (oneiric, vishnu, ak, cj) generated in Phase 1 Task 1.7.
 - **Audit script**: `scripts/audit_mcp_launchers.py` — to be created in Phase 3 Task 3.1; detects MCP server presence per repo (`mcp.py`, `mcp/`, `*-mcp` pattern, `~/Library/LaunchAgents/com.mcp.*.plist`).
 - **Source of truth for repo list**: [`BODAI_REPO_REGISTRY.md`](../../BODAI_REPO_REGISTRY.md) (generated from `settings/ecosystem.yaml` + `settings/registry_metadata.yaml`; regenerate via `python3 scripts/regen_bodai_registry.py`).

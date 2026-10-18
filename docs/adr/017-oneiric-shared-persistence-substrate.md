@@ -17,7 +17,7 @@ topic: persistence
 **Proposed** (2026-09-14) — pending review and adoption
 
 Promoted from Appendix C of the serverless-readiness plan
-(`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`,
+(`docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`,
 status: active) during plan-promotion time. This ADR carries the
 decision into the canonical record so it is not buried inside a
 long plan document.
@@ -157,7 +157,7 @@ is the contract they implement.
 
 ## References
 
-- `docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
+- `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
   (status: active) — implements this ADR through Phases 3-6 and 8.
 - `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` — amended
   2026-09-14 to note the Oneiric layer between Mahavishnu and Dhara.

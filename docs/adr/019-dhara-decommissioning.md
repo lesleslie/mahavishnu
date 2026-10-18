@@ -148,7 +148,7 @@ The decomposition has already shipped across the two scopes.
   decomposition.
 - `docs/plans/2026-09-20-delete-all-dhara-named-code.md` —
   partially shipped plan for the crackerjack rename/delete work.
-- `docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`
+- `docs/plans/.archive/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`
   — partially shipped plan for the Phase 1.5 wrapper consolidation.
 - Commit `de1a383b` (2026-10-15) — the rename + drop in mahavishnu.
 - Memory facts (Session-Buddy reflections):

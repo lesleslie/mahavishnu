@@ -8,7 +8,7 @@ superseded_by: null
 blocks_on: []
 related:
   - docs/plans/2026-05-10-minimax27-provider-migration.md
-  - docs/plans/2026-10-15-bifrost-gateway-wiring.md
+  - docs/plans/.archive/2026-10-15-bifrost-gateway-wiring.md
   - docs/plans/2026-09-27-shared-bodai-substrate-design.md
 replaces: null
 topic: drop-ollama-favor-llama-server
@@ -934,7 +934,7 @@ This plan is "done" when:
 - `mahavishnu/docs/plans/2026-05-10-minimax27-provider-migration.md` —
   the precedent for a major LLM-provider migration; the migration
   playbook in that plan is the template for the per-repo merges here
-- `mahavishnu/docs/plans/2026-10-15-bifrost-gateway-wiring.md` —
+- `mahavishnu/docs/plans/.archive/2026-10-15-bifrost-gateway-wiring.md` —
   related but independent (Bifrost does not consume or reshape the
   LLM provider surface)
 - `mcp_common/mcp_common/llm/fallback.py` — the canonical
