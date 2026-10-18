@@ -265,7 +265,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
-| [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `active` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
+| [`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`](2026-07-16-native-macos-automation-backend-plan.md) | 2026-07-16 | `active` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `complete` | `superseded` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
 
 ### Superpowers Specs (`docs/specs/`)
