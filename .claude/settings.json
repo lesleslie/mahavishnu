@@ -80,8 +80,6 @@
   "permissions": {
     "deny": [
       "Read(./.backups/**)",
-      "Read(./.archive/**)",
-      "Read(./docs/archive/**)",
       "Read(./.claude/backups/**)",
       "Read(./.claude/agents/.a2a_enrollment/**)",
       "Read(./.claude/agents/**/*.backup*)",
