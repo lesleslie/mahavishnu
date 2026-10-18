@@ -244,7 +244,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `active` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` |  | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
-| [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` |  | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` |  | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-session-buddy-wrapper-cleanup.md`](2026-10-15-session-buddy-wrapper-cleanup.md) | 2026-10-15 | `active` | `implementation` |  | `session-buddy-cleanup` | Session-Buddy Wrapper Cleanup — Delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
@@ -367,7 +366,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (88 entries)
+### `plan` (87 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -381,8 +380,8 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 |---|---|---|---|---|---|---|
 | `canonical` | 3 | 39 | 1 | 1 | 14 | **58** |
 | `implementation` | · | 5 | 2 | 4 | 13 | **24** |
-| `umbrella` | · | 2 | · | · | 1 | **3** |
+| `umbrella` | · | 1 | · | · | 1 | **2** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **3** | **46** | **3** | **5** | **66** | **123** |
+| **Total** | **3** | **45** | **3** | **5** | **66** | **122** |

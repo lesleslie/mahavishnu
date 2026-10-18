@@ -10,6 +10,16 @@ title: "Oneiric Substrate Rollout — Consolidated Parent Plan"
 
 ---
 
+> **Reclassified 2026-10-18 (partial):** Status remains `active, implementation`. Three Bodai core fastmcp pin stragglers (akosha, session-buddy, crackerjack) were migrated to `fastmcp>=4.0.0,<5` as part of the umbrella's tier 1.5 (operator correction 2026-10-18). The umbrella's other tail items (oneiric_report_runtime component-boot hooks in akosha/session-buddy/crackerjack, SessionBuddySettings consumer migration across 27 production + 50 test files in session-buddy) remain open and are not blocked by the fastmcp pin work. Status flip deferred until the SessionBuddySettings consumer migration lands.
+
+Migrations landed under this umbrella (commit SHAs):
+- `akosha` (Bodai core straggler): 941d4852966d
+- `session-buddy` (Bodai core straggler): d7b01e7dc3cb
+- `crackerjack` (Bodai core straggler): d7fd12741420
+
+These are the tier 1.5 deliveries referenced in the mcp-server-fleet umbrella's commit `004c3757`.
+
+
 # Oneiric Substrate Rollout — Consolidated Parent Plan
 
 **Date:** 2026-10-15
