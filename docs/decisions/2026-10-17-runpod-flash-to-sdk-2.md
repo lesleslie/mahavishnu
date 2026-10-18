@@ -1,7 +1,16 @@
 ---
-name: runpod-flash-to-sdk-2
-description: Replacement of `runpod-flash` with the merged `runpod` SDK 2.0; mahavishnu.pools.RunPodPool becomes a thin client to a pre-existing serverless endpoint id.
+status: complete
+role: implementation
+date: 2026-10-17
+last_reviewed: 2026-10-18
+superseded_by: null
+blocks_on: []
+kind: migration-design
+topic: runpod-sdk-2
+title: "2026-10-17 — Migrate `runpod-flash` to merged `runpod` SDK 2.0 (RunPodPool becomes a thin client)"
 ---
+
+**Description:** Replacement of `runpod-flash` with the merged `runpod` SDK 2.0; `mahavishnu.pools.RunPodPool` becomes a thin client to a pre-existing serverless endpoint id.
 
 **Context (2026-10-17):** Upstream merged Flash into the main `runpod` Python package (SDK 2.0, released 2026-10-15). The `runpod-flash` PyPI package is deprecated on 2026-10-29. Per the deprecation warning we emit on every `mahavishnu pool spawn --type runpod`, `runpod_flash.Endpoint` is now `runpod.Endpoint(id)` — a client handle, not a worker-registration decorator.
 

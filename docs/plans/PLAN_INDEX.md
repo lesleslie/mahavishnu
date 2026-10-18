@@ -116,6 +116,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | 2026-10-17 | `complete` | `implementation` | `migration-design` | `runpod-sdk-2` | 2026 10 17 runpod flash to sdk 2 |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | `active` | `canonical` | `decision` | `archive-dir-canonical` | Archive directory canonical path: `docs/.archive/` (top-level) |
 | [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | `active` | `unknown` | `decision` | `unified-event-bus` | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
 | [`docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md`](../../docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md) | 2026-10-14 | `active` | `unknown` |  | `parallel-sessions-vs-bypass-gate` | 2026-10-14 — `--no-consolidation-gate` and parallel sessions |
@@ -151,7 +152,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | `complete` | `implementation` | `decision` | `technical-debt` | Technical Debt Roadmap |
 | [`docs/decisions/test-matrix-review-followups.md`](../../docs/decisions/test-matrix-review-followups.md) | 2026-07-16 | `complete` | `implementation` |  | `test-matrix-followups` | Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | `active` | `canonical` | `decision` | `wire-up-contract` | Wire-up contract |
-| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | — | `unknown` | `unknown` |  | `—` | 2026 10 17 runpod flash to sdk 2 |
 
 ### Workflows (`docs/decisions/workflows/`)
 
@@ -188,10 +188,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
 | [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
-| [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `active` | `historical` |  | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
-| [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `active` | `historical` |  | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
-| [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | `active` | `historical` |  | `tier2-optimal-transport` | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
-| [`docs/followups/2026-09-10-tier2-phase-d-cross-repo.md`](../../docs/followups/2026-09-10-tier2-phase-d-cross-repo.md) | 2026-09-10 | `active` | `historical` |  | `tier2-phase-d-cross-repo` | Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring |
+| [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
+| [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
+| [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-optimal-transport` | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
+| [`docs/followups/2026-09-10-tier2-phase-d-cross-repo.md`](../../docs/followups/2026-09-10-tier2-phase-d-cross-repo.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-phase-d-cross-repo` | Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring |
 | [`docs/followups/2026-09-06-sibling-repos-yaml-audit.md`](../../docs/followups/2026-09-06-sibling-repos-yaml-audit.md) | 2026-09-06 | `complete` | `historical` |  | `mcp-stub-activation` | Sibling `repos.yaml` Audit |
 | [`docs/followups/2026-09-05-agno-memory-field-validator-silent-skip.md`](../../docs/followups/2026-09-05-agno-memory-field-validator-silent-skip.md) | 2026-09-05 | `complete` | `historical` |  | `agno-memory-field-validator-silent-skip` | AgnoMemoryConfig `@field_validator` silently skips when connection_string omitted |
 | [`docs/followups/2026-09-05-ai-dep-group-transitive-bloat.md`](../../docs/followups/2026-09-05-ai-dep-group-transitive-bloat.md) | 2026-09-05 | `shipped` | `implementation` |  | `ai-dep-group-transitive-bloat` | `ai` optional dep group pulls 5 LLM providers + heavy `google-cloud-*` chain |
@@ -376,7 +376,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (104 entries)
+### `plan` (99 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -389,9 +389,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 4 | 39 | 1 | 1 | 14 | **59** |
-| `implementation` | 1 | 10 | 1 | 3 | 14 | **29** |
+| `implementation` | 1 | 10 | 1 | 3 | 15 | **30** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
-| `historical` | · | 4 | · | · | 32 | **36** |
+| `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 8 | **8** |
 
-| **Total** | **5** | **55** | **2** | **4** | **69** | **135** |
+| **Total** | **5** | **51** | **2** | **4** | **70** | **132** |
