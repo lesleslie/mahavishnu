@@ -20,6 +20,8 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 
 ## Child Plans
 
+> All three child plans below are marked "(removed)" — the umbrella tracks the tail of their work here, not the children themselves. (verified 2026-10-18.)
+
 | Plan | Topic | Status (per 2026-10-15 audit) | Role in this umbrella |
 |---|---|---|---|
 | `2026-09-26-oneiric-runtime-config-registry.md` (removed) | Oneiric registry (`oneiric_report_runtime` MCP tool) + Mahavishnu push on boot | `partial` (Phases 1-2 done; Phase 3 component-boot hooks pending) | Foundation: other components push runtime facts into Oneiric on startup. |
@@ -34,7 +36,7 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 2. **Finish SessionBuddySettings consumer migration** (session-buddy settings plan):
    - Phase 2: load method + module helpers across session-buddy's 27 production files + 50 test files
    - Phase 3: YAML reshape + docs
-3. **Defer Pgvector warm-tier migration** (substrate Phase B): supplanted by Phase E2 work; mark `superseded_by` 2026-10-04-session-buddy-settings-oneiric-shape.md
+3. **Defer Pgvector warm-tier migration** (substrate Phase B): supplanted by Phase E2 work (commits `9c9ab67`, `aeaa6800` per Resolution Notes). The original "mark `superseded_by` 2026-10-04-session-buddy-settings-oneiric-shape.md" target is itself a removed plan — substrate Phase B is supplanted, not by a successor plan, but by direct Phase E2 commits.
 
 ## Resolution Notes
 
@@ -55,7 +57,7 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 
 - Every Bodai core MCP server calls `oneiric_report_runtime` on startup
 - Every Bodai core settings class extends `OneiricSettings` (or Oneiric-shaped)
-- Phase E2 substrate adoption complete (cache/warm/cold/embedding/auth/pool) for Akosha + Session-Buddy
+- Phase E2 substrate adoption complete (cache/warm/cold/embedding/auth/pool) for Akosha + Session-Buddy — **satisfied** per Resolution Notes (commits `9c9ab67` for Akosha; `aeaa6800` for Session-Buddy embedding/auth)
 - Phase E2 substrate adoption verified for Mahavishnu + Crackerjack
 
 ## Provenance

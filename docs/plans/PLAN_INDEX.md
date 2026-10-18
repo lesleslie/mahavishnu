@@ -242,7 +242,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `active` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` |  | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
-| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` |  | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan |
+| [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `complete` | `superseded` |  | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
 | [`docs/plans/2026-10-15-mcp-server-fleet-modernization.md`](2026-10-15-mcp-server-fleet-modernization.md) | 2026-10-15 | `active` | `umbrella` |  | `mcp-server-fleet-modernization` | MCP Server Fleet Modernization — Consolidated Parent Plan |
 | [`docs/plans/2026-10-15-oneiric-substrate-rollout.md`](2026-10-15-oneiric-substrate-rollout.md) | 2026-10-15 | `active` | `umbrella` |  | `oneiric-substrate-rollout` | Oneiric Substrate Rollout — Consolidated Parent Plan |
@@ -388,9 +388,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 3 | 38 | 1 | 1 | 14 | **57** |
-| `implementation` | 1 | 7 | 2 | 3 | 15 | **28** |
+| `implementation` | 1 | 6 | 2 | 3 | 15 | **27** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | · | · | · | 32 | **32** |
-| `superseded` | · | · | · | · | 11 | **11** |
+| `superseded` | · | · | · | · | 12 | **12** |
 
-| **Total** | **4** | **47** | **3** | **4** | **73** | **131** |
+| **Total** | **4** | **46** | **3** | **4** | **74** | **131** |

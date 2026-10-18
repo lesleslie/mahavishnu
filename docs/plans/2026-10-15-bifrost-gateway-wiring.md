@@ -1,11 +1,11 @@
 ---
-status: active
-role: implementation
+status: complete
+role: superseded
 kind: plan
 date: 2026-10-15
-last_reviewed: 2026-10-16
+last_reviewed: 2026-10-18
 owner: platform-team
-superseded_by: null
+superseded_by: docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md
 topic: bifrost-gateway-wiring
 title: "Bifrost Gateway Wiring — Implementation Plan (off spec v1.5)"
 replaces: null
@@ -29,6 +29,8 @@ requirements:
 ---
 
 # Bifrost Gateway Wiring — Implementation Plan
+
+> **Reclassified 2026-10-18:** Superseded by `docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`. The 5-agent multi-agent review + 3-agent final review of the adapter plan identified a structural supersession: the wiring plan's `BifrostConfig` (`mahavishnu/core/config.py:854-989`) is deleted in adapter plan Phase 7 (non-deferrable); the wiring plan's `ProtocolFamily` (`mahavishnu/llm_gateway/client.py:17`) is deleted alongside. The same call sites (Agno adapter, terminal worker env injection, CloudWorker, capability probes, session-buddy BifrostClient, crackerjack FallbackChainCodeFixer, pydantic-ai) are rewired to consult `oneiric.adapters.llm.bifrost.get_router().resolve(LLMProvider)` instead of the local `BifrostConfig`. The wiring plan's local llama-server provider (Phase G) is carried into the adapter plan via re-declared `local_provider_*` fields on `BifrostLLMSettings`. The plan remains as a record of the v1.5-spec implementation; the v1.5 spec itself is unchanged.
 
 > **v1.2 amendment applied (2026-10-16)**: **Local llama-server provider as a first-class Bifrost target (Phase G).** Operator decision: keep llama-server (port 8081) and add it to the Bifrost gateway alongside the cloud LLMs; ollama is being removed from the ecosystem in a separate session. The previous "Routing llama-server or ollama through Bifrost" non-goal is dropped; the previous "Bifrost provider additions" non-goal is dropped for llama-server specifically. **Three new files in Phase G**: `config/bifrost/config.template.json` (add `llama-server` provider block + update `route-background` rule to prefer local with MiniMax fallback + add new `route-classify` rule for cheap classification/extraction); `~/Library/LaunchAgents/com.bodai.llama-server.plist` (correct argv — drop the broken `-tb 256` pair, change `-fa` to `-fa on`, change `-port 11434` to `--port 8081` with `--host 127.0.0.1`, point `-m` at a real model file); downloaded GGUF model at `/usr/local/share/llama-server/models/qwen3-8b-q4_k_m.gguf` (Qwen3-8B Q4_K_M, ~4.5GB, from Hugging Face `Qwen/Qwen3-8B-GGUF` repo). **Three new `BifrostConfig` fields**: `local_provider_enabled: bool = True` (runtime kill-switch), `local_provider_url: str = "http://127.0.0.1:8081"`, `local_provider_model: str = "qwen3-8b-q4_k_m"`. **`BifrostHealth` sub-model gains `local_provider_reachable: bool`**. **New counter**: `mahavishnu_bifrost_local_dispatch_total{outcome, model}` (label set extended by one — still bounded). **New e2e test file**: `tests/integration/test_bifrost_local_provider_e2e.py` with `test_llama_server_health_endpoint` (the gate that catches a future regression — if the plist is broken or the model is missing, this test fails). **Phase ordering extended to A→B→C-merged-into-B→D→E→F→G**[^phase-letters]. **Reasoning-class rules stay cloud-only**: `route-think`, `route-long-context`, `route-web-search` do NOT route to llama-server — local models are not appropriate for high-reasoning tasks, 100K+ context, or tool-use. **REQ-007** declared in the plan frontmatter.
 >

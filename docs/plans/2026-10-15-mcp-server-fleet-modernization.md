@@ -23,10 +23,12 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 | Plan | Topic | Status (per 2026-10-15 audit) | Role in this umbrella |
 |---|---|---|---|
 | `2026-06-26-fastmcp-3-upgrade.md` (removed) | FastMCP 2.x → 3.4+ pin migration across 15 *-mcp repos | `stale-status` (Phases 1-3 done; 7/15 repos still on 2.x) | Foundation: every other plan here depends on FastMCP 3.4+ public API. |
-| [`2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) (+ design spec, removed: `../specs/2026-08-18-mcp-tool-profile-adoption-design.md`) | `MAHAVISHNU_TOOL_PROFILE` dispatch via `mcp_common._apply_tool_profile` | `partial` (W0/W1/W2a shipped; W2b-W4 blocked on fastmcp 2.x → 3.4+) | Profile-aware tool surface across the fleet. |
-| [`2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | Unified `mcp_common.launcher` for consumer CLI bootstrap | `partial` (Phase 1 foundation shipped; Phases 2-5 pending) | Launcher path convergence so per-standalone CLI bugs get one fix per Stack Overflow. |
+| [`2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) (+ design spec, removed: `../specs/2026-08-18-mcp-tool-profile-adoption-design.md`) | `MAHAVISHNU_TOOL_PROFILE` dispatch via `mcp_common._apply_tool_profile` | `complete, superseded` (W0/W1/W2a shipped; tail of W2b-W4 absorbed by this umbrella 2026-10-18) | Profile-aware tool surface across the fleet. |
+| [`2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | Unified `mcp_common.launcher` for consumer CLI bootstrap | `complete, superseded` (Phase 1 foundation shipped; Phases 2-5 tail absorbed by this umbrella 2026-10-18) | Launcher path convergence so per-standalone CLI bugs get one fix per Stack Overflow. |
 
 ## Sequenced Remaining Work
+
+> Two of three child plans (tool-profile, launcher) are now `complete, superseded` (triaged 2026-10-18). Their remaining work has been absorbed by this umbrella and is tracked below. The third child (fastmcp-3-upgrade) was already removed per its plan frontmatter.
 
 1. **Finish fastmcp pin migration for 2.x holdouts** (fastmcp-3-upgrade plan Phase 5):
    - `penpot-api-mcp`, `raindropio-mcp`, `mailgun-mcp`, `chat-bridge-mcp` (these are the actual 2.x/unpinned holdouts per the 2026-10-15 audit)
@@ -46,7 +48,7 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 - All 15 *-mcp repos pinned to `fastmcp>=3.4.0,<5` (or equivalent)
 - `_apply_tool_profile` wired in every Bodai core MCP server (mahavishnu, session-buddy, akosha, crackerjack, dhara)
 - `mcp_common.launcher` consumed by every per-standalone CLI that needs startup lifecycle
-- Each child plan's status field either `complete` (work done) or `superseded_by` this umbrella
+- Each child plan's status field either `complete` (work done) or `superseded_by` this umbrella — **satisfied 2026-10-18** (2 of 3 children confirmed: tool-profile, launcher)
 
 ## Provenance
 
