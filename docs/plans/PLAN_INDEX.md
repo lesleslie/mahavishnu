@@ -208,7 +208,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-09-05-mahavishnu-pool-error-code-attribute.md`](../../docs/followups/2026-09-05-mahavishnu-pool-error-code-attribute.md) | 2026-09-05 | `complete` | `historical` |  | `mahavishnu-pool-error-code-attribute` | `MahavishnuPool.start()` referenced nonexistent `MahavishnuError.code` attribute |
 | [`docs/followups/2026-09-05-metrics-schema-batch.md`](../../docs/followups/2026-09-05-metrics-schema-batch.md) | 2026-09-05 | `complete` | `historical` |  | `metrics-schema` | Metrics Schema Fixes Batch (consolidated) |
 | [`docs/followups/2026-09-05-permissions-batch.md`](../../docs/followups/2026-09-05-permissions-batch.md) | 2026-09-05 | `complete` | `historical` |  | `permissions` | Permissions Fixes Batch (consolidated) |
-| [`docs/followups/2026-09-05-terminal-fixes-batch.md`](../../docs/followups/2026-09-05-terminal-fixes-batch.md) | 2026-09-05 | `active` | `implementation` |  | `terminal` | Terminal Fixes Batch (consolidated) |
+| [`docs/followups/2026-09-05-terminal-fixes-batch.md`](../../docs/followups/2026-09-05-terminal-fixes-batch.md) | 2026-09-05 | `complete` | `implementation` |  | `terminal` | Terminal Fixes Batch (consolidated) |
 | [`docs/followups/2026-09-05-websocket-broadcaster-default.md`](../../docs/followups/2026-09-05-websocket-broadcaster-default.md) | 2026-09-05 | `complete` | `historical` |  | `websocket-broadcaster-default` | `websocket/integration.py` — settings default + `WebSocketBroadcaster` positional arg |
 | [`docs/followups/2026-09-05-worker-status-isoformat-crash.md`](../../docs/followups/2026-09-05-worker-status-isoformat-crash.md) | 2026-09-05 | `complete` | `historical` |  | `worker-status-isoformat-crash` | `worker_status` isoformat crash on malformed `last_seen_at` |
 | [`docs/followups/2026-08-12-mcpretentious-removed.md`](../../docs/followups/2026-08-12-mcpretentious-removed.md) | 2026-08-12 | `complete` | `historical` |  | `mcpretentious-removed` | Mcpretentious Terminal Adapter Removed — Bootstrap Followup |
@@ -399,9 +399,9 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 38 | 1 | 1 | 14 | **59** |
-| `implementation` | 7 | 9 | 1 | 3 | 12 | **32** |
+| `implementation` | 7 | 8 | 1 | 3 | 13 | **32** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **53** | **2** | **4** | **66** | **137** |
+| **Total** | **12** | **52** | **2** | **4** | **67** | **137** |
