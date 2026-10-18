@@ -240,6 +240,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `draft` | `implementation` | `plan` | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM adapter — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`](2026-10-16-drop-ollama-favor-llama-server.md) | 2026-10-16 | `active` | `implementation` |  | `drop-ollama-favor-llama-server` | Drop Ollama in favor of llama-server (llama.cpp) across the Bodai stack |
 | [`docs/plans/2026-10-15-bifrost-gateway-wiring.md`](2026-10-15-bifrost-gateway-wiring.md) | 2026-10-15 | `active` | `implementation` |  | `bifrost-gateway-wiring` | Bifrost Gateway Wiring — Implementation Plan |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
@@ -352,6 +353,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/016-phase-4-streaming-tar-evolution.md`](../../docs/adr/016-phase-4-streaming-tar-evolution.md) | 2026-08-23 | ADR 016: Phase 4 — Python 3.15 ecosystem migration + streaming tar evolution |
 | [`docs/decisions/promote-oneiric-action-kits.md`](../../docs/decisions/promote-oneiric-action-kits.md) | 2026-08-23 | Promote Oneiric Action Kits Across Bodai |
 | [`docs/decisions/ty-ignore-codes.md`](../../docs/decisions/ty-ignore-codes.md) | 2026-07-26 | `ty: ignore[...]` policy for `*-mcp` |
+| [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | Bifrost gateway as a oneiric LLM adapter — Bodai LLM call-site consolidation |
 | [`docs/adr/001-use-oneiric.md`](../../docs/adr/001-use-oneiric.md) | 2026-07-16 | ADR 001: Use Oneiric for Configuration and Logging |
 | [`docs/adr/002-mcp-first-design.md`](../../docs/adr/002-mcp-first-design.md) | 2026-07-16 | ADR 002: MCP-First Design with FastMCP + mcp-common |
 | [`docs/adr/003-error-handling-strategy.md`](../../docs/adr/003-error-handling-strategy.md) | 2026-07-16 | ADR 003: Error Handling and Resilience Strategy |
