@@ -1472,8 +1472,8 @@ app.add_typer(board_app, name="board")
 # Re-creates the precedent set by commit 55630b45 (Oct 9 2026, since
 # reverted in an untraceable merge). Each sub-command runs an opinionated
 # scenario for a workflow engine or terminal adapter. Currently ships
-# 14 live implementations (tmux, prefect, agno, llamaindex, pydantic_ai,
-# crow, hatchet, 4 pool demos, 3 workflow demos) + 1 stub (mock).
+# 16 live implementations (tmux, prefect, agno, llamaindex, pydantic_ai,
+# crow, hatchet, 4 pool demos, 5 workflow demos) + 1 stub (mock).
 #
 # Anti-revert grep:    git grep -n 'DEMO SUB-COMMANDS' mahavishnu/_main_cli.py
 # Anti-revert test:    tests/unit/cli/test_cli_wireup_invariants.py

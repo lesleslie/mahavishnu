@@ -525,3 +525,82 @@ def test_demo_stub_loop_no_longer_registers_workflow_adapter_swap() -> None:
         "loop will shadow the live callback. Remove the entry from "
         "_STUB_COSTS and from the registration loop tuple."
     )
+
+
+# ============================================================================
+# Workflow demos (PR #4 — 2 new live implementations: pi-cascade and
+# pi-then-local). Each demo follows the same anti-revert pattern as the
+# demos above: (1) a live-implementation test asserting a callback-
+# specific flag is present in --help, and (2) a stub-loop exclusion test
+# asserting the name is NOT in _STUB_COSTS.
+# ============================================================================
+
+
+def test_demo_workflow_pi_cascade_is_live_implementation() -> None:
+    """``mahavishnu demo workflow-pi-cascade`` must be a live implementation.
+
+    The live path exposes ``--followup`` (the second-turn prompt for
+    PiPool's cascade); the stub path only exposes ``--why-stub``.
+    Asserting ``--followup`` proves the live callback won the Typer
+    registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "workflow-pi-cascade", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--followup" in result.output, (
+        "demo workflow-pi-cascade is showing stub-style --help "
+        "(missing --followup). The live @demo_app.command(\"workflow-"
+        "pi-cascade\") callback was likely replaced by the stub "
+        "registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_workflow_pi_cascade() -> None:
+    """The stub registration loop must not include ``workflow-pi-cascade``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "workflow-pi-cascade" not in stub_names, (
+        "workflow-pi-cascade is in _STUB_COSTS — the stub registration "
+        "loop will shadow the live callback. Remove the entry from "
+        "_STUB_COSTS and from the registration loop tuple."
+    )
+
+
+def test_demo_workflow_pi_then_local_is_live_implementation() -> None:
+    """``mahavishnu demo workflow-pi-then-local`` must be a live implementation.
+
+    The live path exposes ``--pi-prompt`` and ``--local-prompt`` (the
+    two prompts sent to the two pools in sequence); the stub path
+    only exposes ``--why-stub``. Asserting ``--pi-prompt`` proves the
+    live callback won the Typer registration race.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["demo", "workflow-pi-then-local", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--pi-prompt" in result.output, (
+        "demo workflow-pi-then-local is showing stub-style --help "
+        "(missing --pi-prompt). The live @demo_app.command(\"workflow-"
+        "pi-then-local\") callback was likely replaced by the stub "
+        "registration loop."
+    )
+
+
+def test_demo_stub_loop_no_longer_registers_workflow_pi_then_local() -> None:
+    """The stub registration loop must not include ``workflow-pi-then-local``."""
+    from mahavishnu.cli import demo_cli
+
+    stub_names = set(demo_cli._STUB_COSTS.keys())
+    assert "workflow-pi-then-local" not in stub_names, (
+        "workflow-pi-then-local is in _STUB_COSTS — the stub registration "
+        "loop will shadow the live callback. Remove the entry from "
+        "_STUB_COSTS and from the registration loop tuple."
+    )

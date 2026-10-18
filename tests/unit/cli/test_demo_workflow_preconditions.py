@@ -247,3 +247,81 @@ def test_workflow_adapter_swap_preconditions_surfaces_both_shepherd_failures() -
     )
     assert any("demo-aswap-adapter_a" in f for f in shepherd_failures)
     assert any("demo-aswap-adapter_b" in f for f in shepherd_failures)
+
+
+# ---------------------------------------------------------------------------
+# workflow-pi-cascade (PR #4)
+# ---------------------------------------------------------------------------
+
+
+def test_workflow_pi_cascade_preconditions_pass_with_npx_present() -> None:
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_cascade_preconditions
+
+    failures = _check_workflow_pi_cascade_preconditions(npx_which=lambda _: "/usr/bin/npx")
+    assert failures == []
+
+
+def test_workflow_pi_cascade_preconditions_fail_when_npx_missing() -> None:
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_cascade_preconditions
+
+    failures = _check_workflow_pi_cascade_preconditions(npx_which=lambda _: None)
+    assert any("npx" in f for f in failures)
+
+
+# ---------------------------------------------------------------------------
+# workflow-pi-then-local (PR #4) — needs BOTH npx (PiPool) AND Shepherd
+# workspace (MahavishnuPool) to be present.
+# ---------------------------------------------------------------------------
+
+
+def test_workflow_pi_then_local_preconditions_pass_when_npx_and_shepherd_present() -> None:
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_then_local_preconditions
+
+    failures = _check_workflow_pi_then_local_preconditions(
+        npx_which=lambda _: "/usr/bin/npx",
+        exists=lambda _: True,  # bypass Shepherd workspace probe
+    )
+    assert failures == []
+
+
+def test_workflow_pi_then_local_preconditions_fail_when_npx_missing() -> None:
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_then_local_preconditions
+
+    failures = _check_workflow_pi_then_local_preconditions(
+        npx_which=lambda _: None,
+        exists=lambda _: True,
+    )
+    assert any("npx" in f for f in failures)
+
+
+def test_workflow_pi_then_local_preconditions_fail_when_shepherd_workspace_uninitialized() -> None:
+    """Shepherd precondition fires for the LOCAL pool (PiPool doesn't use Shepherd)."""
+    from pathlib import Path
+
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_then_local_preconditions
+
+    failures = _check_workflow_pi_then_local_preconditions(
+        npx_which=lambda _: "/usr/bin/npx",
+        exists=lambda _: False,
+        home=Path("/tmp/fake-home-for-shepherd-test"),
+    )
+    assert any("Shepherd workspace" in f and "sp init" in f for f in failures), (
+        f"expected a Shepherd-init remediation, got: {failures}"
+    )
+    # The Shepherd failure references the LOCAL pool's name, not the pi pool's.
+    assert any("demo-pi-then-local-local" in f for f in failures)
+
+
+def test_workflow_pi_then_local_preconditions_fail_with_both_messages() -> None:
+    """When both npx is missing AND Shepherd is uninitialized, both surface."""
+    from pathlib import Path
+
+    from mahavishnu.cli.demo_cli import _check_workflow_pi_then_local_preconditions
+
+    failures = _check_workflow_pi_then_local_preconditions(
+        npx_which=lambda _: None,
+        exists=lambda _: False,
+        home=Path("/tmp/fake-home-for-shepherd-test"),
+    )
+    assert any("npx" in f for f in failures)
+    assert any("Shepherd" in f for f in failures)

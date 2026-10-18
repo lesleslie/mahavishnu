@@ -118,12 +118,19 @@ mahavishnu demo workflow-multi-pool-handoff --source-pool session-buddy --target
 
 # Doc reference: same task run through two terminal adapters back-to-back, side-by-side
 mahavishnu demo workflow-adapter-swap --adapter-a tmux --adapter-b mock
+
+# CI smoke: single PiPool, 2-turn cascade (turn 1's result feeds turn 2)
+mahavishnu demo workflow-pi-cascade --prompt "what is 2+2" --followup "explain the answer"
+
+# Doc reference: PiPool (model-agnostic generator) -> MahavishnuPool (local executor) handoff
+mahavishnu demo workflow-pi-then-local --pi-prompt "write a hello-world in Python" --local-prompt "test it"
 ```
 
 The workflow demos are designed to fail fast when a substrate is
 unreachable — see `mahavishnu demo <name> --help` for the full flag
-set and `docs/CLI_REFERENCE.md` for the broader pool/worker/terminal
-subsystem reference.
+set and `docs/cookbook/workflows.md` for worked examples
+of multi-substrate recipes. The broader pool/worker/terminal
+subsystem reference is in `docs/pools/POOL_REFERENCE.md`.
 
 ## Workers
 

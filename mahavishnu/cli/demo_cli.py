@@ -3001,13 +3001,338 @@ def demo_workflow_adapter_swap(
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
+# ----------------------------------------------------------------------------
+# workflow-pi-cascade — CI smoke: single PiPool, 2-turn cascade
+# ----------------------------------------------------------------------------
+
+
+def _check_workflow_pi_cascade_preconditions(
+    *,
+    npx_which: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify the PiPool substrate can spawn its npx subprocess.
+
+    PiPool is the only pool in the demo set that does NOT use
+    Shepherd — it spawns ``npx @earendil-works/pi-coding-agent --rpc``
+    over stdio. So no Shepherd workspace check is needed (the pool
+    doesn't resolve a ``writable_root``), and ``npx`` is the only
+    binary prerequisite.
+    """
+    which = npx_which or shutil.which
+    failures: list[str] = []
+    if not which("npx"):
+        failures.append(
+            "npx binary not on PATH (PiPool spawns npx @earendil-works/"
+            "pi-coding-agent). Install Node.js 18+ and ensure npx is reachable."
+        )
+    return failures
+
+
+async def _run_workflow_pi_cascade_demo(
+    *,
+    prompt: str,
+    followup: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Run a single PiPool through a 2-turn cascade: turn 1's result feeds turn 2.
+
+    PiPool has a fixed ``max_workers=1`` (rejects ``scale(n>1)``), so a
+    "cascade" here means "two sequential dispatches against the same
+    long-lived subprocess" — turn 1's output is folded into turn 2's
+    prompt as context. This showcases PiPool's multi-turn agent
+    capability, which is its real-world use case (the other pool
+    demos all do single-dispatch).
+
+    CI-smoke flavor: compact ✓/✗ per stage, no Shepherd prerequisite,
+    runnable in any dev shell with ``npx`` installed.
+    """
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.pi_pool import PiPool
+
+    pool = PiPool(
+        config=PoolConfig(
+            name="demo-pi-cascade",
+            pool_type="pi",
+            min_workers=1,
+            max_workers=1,
+        )
+    )
+    pool_id = await pool.start()
+    try:
+        typer.echo(f"  ✓ pi pool started: {pool_id}")
+        turn1_result = await pool.execute_task({"prompt": prompt})
+        typer.echo(f"  ✓ turn 1 complete: status={turn1_result.get('status')}")
+        cascade_prompt = (
+            f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
+        )
+        turn2_result = await pool.execute_task({"prompt": cascade_prompt})
+        typer.echo(f"  ✓ turn 2 complete: status={turn2_result.get('status')}")
+    finally:
+        if not keep:
+            await pool.stop()
+            typer.echo("  ✓ pi pool stopped")
+    return {
+        "workflow": "pi-cascade",
+        "pool_id": pool_id,
+        "pool_type": "pi",
+        "turns": [
+            {
+                "prompt": prompt,
+                "status": turn1_result.get("status"),
+                "duration": turn1_result.get("duration"),
+                "output_preview": _truncate(turn1_result.get("output"), max_chars=200),
+            },
+            {
+                "prompt": cascade_prompt,
+                "status": turn2_result.get("status"),
+                "duration": turn2_result.get("duration"),
+                "output_preview": _truncate(turn2_result.get("output"), max_chars=200),
+            },
+        ],
+    }
+
+
+@demo_app.command("workflow-pi-cascade")
+def demo_workflow_pi_cascade(
+    prompt: str = typer.Option(
+        "what is 2+2?",
+        "--prompt",
+        "-p",
+        help="First-turn prompt dispatched to PiPool.",
+    ),
+    followup: str = typer.Option(
+        "explain the previous answer in one sentence.",
+        "--followup",
+        help="Second-turn prompt. Turn-1 result is prepended as context.",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pi pool running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(60, "--timeout", help="Max seconds for both turns + start + stop."),
+) -> None:
+    """Run a single PiPool through a 2-turn cascade (turn 1's result feeds turn 2).
+
+    CI-smoke flavor. Distinct from the existing 3 workflow demos in
+    shape: it uses a single pool, but exercises PiPool's
+    multi-turn-agent capability (the only pool in the demo set that
+    supports it). The cascade is a sequential pair of dispatches
+    against the same long-lived subprocess — turn 1's output is
+    folded into turn 2's prompt as context.
+
+    Runnable in any dev shell with ``npx`` on PATH (no Shepherd
+    workspace prerequisite — PiPool doesn't use one).
+    """
+    failures = _check_workflow_pi_cascade_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo("Workflow: pi cascade (2 turns on the same pool)")
+    typer.echo(f"Turn 1:  {prompt}")
+    typer.echo(f"Turn 2:  {followup}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_workflow_pi_cascade_demo(
+                    prompt=prompt,
+                    followup=followup,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nWorkflow result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ----------------------------------------------------------------------------
+# workflow-pi-then-local — Doc reference: PiPool → MahavishnuPool handoff
+# ----------------------------------------------------------------------------
+
+
+def _check_workflow_pi_then_local_preconditions(
+    *,
+    npx_which: Callable[[str], str | None] | None = None,
+    exists: Callable[[Path], bool] | None = None,
+    home: Path | None = None,
+    pool_name_local: str = "demo-pi-then-local-local",
+) -> list[str]:
+    """Verify PiPool's npx substrate AND the local pool's Shepherd workspace.
+
+    - PiPool half: npx on PATH (the only binary prereq for the
+      ``npx @earendil-works/pi-coding-agent --rpc`` subprocess).
+    - MahavishnuPool half: Shepherd workspace at
+      ``~/.local/state/mahavishnu/worktrees/<pool_name_local>/workspace``
+      must be initialized (``.vcscore`` marker present). Without it,
+      the local pool's ``start()`` fails fail-closed with ``MHV-312``.
+
+    Probes (all injectable for tests).
+    """
+    which = npx_which or shutil.which
+    failures: list[str] = []
+    if not which("npx"):
+        failures.append("npx binary not on PATH (PiPool half; install Node.js 18+).")
+    workspace = _expected_shepherd_workspace_path(pool_name_local, home=home)
+    failures.extend(_check_shepherd_workspace(workspace, exists=exists))
+    return failures
+
+
+async def _run_workflow_pi_then_local_demo(
+    *,
+    pi_prompt: str,
+    local_prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Run PiPool, then hand the result to MahavishnuPool for follow-up.
+
+    Two-pool handoff (PiPool → MahavishnuPool), each pool playing
+    to its strengths: PiPool's model-agnostic single-subprocess
+    agent generates something, then a local Shepherd-backed
+    pool executes the follow-up. The PiPool's output is folded
+    into the local pool's prompt as context.
+
+    Demo-recipe flavor (paired with ``docs/cookbook/workflows.md``).
+    Requires the Shepherd workspace to be initialized for the local
+    pool — the precondition surfaces that with an ``sp init`` hint
+    so the operator gets a clear path forward.
+    """
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
+    from mahavishnu.pools.pi_pool import PiPool
+    from mahavishnu.terminal.adapters import _build_tmux_adapter
+    from mahavishnu.terminal.manager import TerminalManager
+
+    pi_pool = PiPool(
+        config=PoolConfig(
+            name="demo-pi-then-local-pi",
+            pool_type="pi",
+            min_workers=1,
+            max_workers=1,
+        )
+    )
+    pi_pool_id = await pi_pool.start()
+    try:
+        typer.echo(f"  ✓ pi pool started: {pi_pool_id}")
+        pi_result = await pi_pool.execute_task({"prompt": pi_prompt})
+        typer.echo(f"  ✓ pi task complete: status={pi_result.get('status')}")
+    finally:
+        if not keep:
+            await pi_pool.stop()
+    typer.echo("  → starting local pool with pi output as context")
+    local_pool = MahavishnuPool(
+        config=PoolConfig(
+            name="demo-pi-then-local-local",
+            pool_type="mahavishnu",
+            min_workers=1,
+            max_workers=1,
+        ),
+        terminal_manager=TerminalManager(adapter=_build_tmux_adapter()),
+    )
+    local_pool_id = await local_pool.start()
+    try:
+        followup_prompt = (
+            f"received from pi pool: {pi_result.get('output', '')}\n\ntask: {local_prompt}"
+        )
+        local_result = await local_pool.execute_task({"prompt": followup_prompt})
+        typer.echo(f"  ✓ local task complete: status={local_result.get('status')}")
+    finally:
+        if not keep:
+            await local_pool.stop()
+            typer.echo("  ✓ both pools stopped")
+    return {
+        "workflow": "pi-then-local",
+        "pi": {
+            "pool_type": "pi",
+            "pool_id": pi_pool_id,
+            "status": pi_result.get("status"),
+            "duration": pi_result.get("duration"),
+            "output_preview": _truncate(pi_result.get("output"), max_chars=200),
+        },
+        "local": {
+            "pool_type": "mahavishnu",
+            "pool_id": local_pool_id,
+            "status": local_result.get("status"),
+            "duration": local_result.get("duration"),
+            "output_preview": _truncate(local_result.get("output"), max_chars=200),
+        },
+    }
+
+
+@demo_app.command("workflow-pi-then-local")
+def demo_workflow_pi_then_local(
+    pi_prompt: str = typer.Option(
+        "write a hello-world function in Python",
+        "--pi-prompt",
+        help="Prompt dispatched to PiPool first (the 'generate' step).",
+    ),
+    local_prompt: str = typer.Option(
+        "test it and report the result",
+        "--local-prompt",
+        help="Prompt dispatched to the local pool (the 'execute' step).",
+    ),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave both pools running after the demo (for debugging)."
+    ),
+    timeout: int = typer.Option(90, "--timeout", help="Max seconds for the 2-pool handoff."),
+) -> None:
+    """Run PiPool, then hand the result to MahavishnuPool for follow-up.
+
+    Doc-reference flavor. Showcases a real cross-pool handoff where
+    each pool plays to its strength: PiPool's model-agnostic single
+    subprocess generates something, then a Shepherd-backed local
+    pool executes the follow-up. The PiPool's output is folded
+    into the local pool's prompt as context.
+
+    Paired with ``docs/cookbook/workflows.md`` recipe 1.
+
+    Prerequisites: ``npx`` on PATH AND a Shepherd workspace at
+    ``~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local/workspace``
+    (run ``sp init`` there first if the precondition surfaces it).
+    """
+    failures = _check_workflow_pi_then_local_preconditions()
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo("Workflow: pi pool -> local pool handoff")
+    typer.echo(f"Pi prompt:    {pi_prompt}")
+    typer.echo(f"Local prompt: {local_prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_workflow_pi_then_local_demo(
+                    pi_prompt=pi_prompt,
+                    local_prompt=local_prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nWorkflow result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
 # ============================================================================
 # Stubs — 1 mock terminal adapter remains (agno + llamaindex + pydantic_ai
 # + crow + hatchet promoted to live implementations above; 4 pool demos
 # promoted to live in PR #2: pool-mahavishnu, pool-session-buddy,
-# pool-runpod, pool-pi; 3 workflow demos promoted to live in PR #3:
-# workflow-pool-worker-terminal, workflow-multi-pool-handoff,
-# workflow-adapter-swap)
+# pool-runpod, pool-pi; 5 workflow demos promoted to live across PR #3
+# and PR #4: workflow-pool-worker-terminal, workflow-multi-pool-handoff,
+# workflow-adapter-swap, workflow-pi-cascade, workflow-pi-then-local)
 # ============================================================================
 
 
