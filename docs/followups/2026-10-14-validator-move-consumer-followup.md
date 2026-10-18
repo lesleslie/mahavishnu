@@ -1,20 +1,46 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: followup
 date: 2026-10-14
-last_reviewed: 2026-10-14
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: shared-frontmatter-validator
+resolved_at: 2026-10-18
 ---
 
 # Followup — Consumer-repo followup for the frontmatter-validator move
 
 **Date:** 2026-10-14
-**Status:** PENDING USER ACTION
+**Status:** RESOLVED 2026-10-18
 **Originating plan:** `docs/plans/2026-10-14-shared-frontmatter-validator-move.md`
 **Originating spec:** `docs/specs/2026-10-14-shared-frontmatter-validator-move-amendment.md`
+
+> **Reclassified 2026-10-18 (status: active → complete):** All 4 consumer
+> repos bumped their `crackerjack` pin to `>=0.89.2` (current PyPI
+> latest, well past the `>=0.71.0` API-gate for `--vocab-path` and
+> `VocabFileNotFoundError`). The shared frontmatter validator is live
+> in every consumer's installed crackerjack. Smoke-tested locally
+> via `python -m crackerjack docs validate --vocab-path ...` in each
+> consumer; all 4 reports exit 0.
+>
+> - session-buddy: commit `eb5fdbed` on main (pin bump on main + dev groups)
+> - akosha: commit `e1cec25` on main (pin bump on dev group)
+> - oneiric: commit `cd6c7ae` on main (pin bump on dev group + 1-line comment header cleanup at `scripts/regenerate_plan_index.py:49`)
+> - mahavishnu: commit `c9e85321` on main (pin bump on dev + ecosystem groups)
+>
+> Step 5 (help-text update) collapsed to a no-op across all 4 consumers:
+> the deletion team had already updated the help text in
+> `scripts/regenerate_plan_index.py` to point at `crackerjack docs
+> validate` when the mcp-common script was deleted. Only oneiric had
+> a residual stale comment header (line 49, "mirrors
+> `validate_document_frontmatter.py`" → "mirrors crackerjack's
+> shared frontmatter validator"), fixed in the same commit.
+>
+> Push to origin pending operator action (4 separate
+> `git push origin main` operations, per
+> `feedback-bodai-push-is-user-controlled.md`).
 
 ## Why
 
