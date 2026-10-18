@@ -262,13 +262,12 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
-| [`docs/plans/2026-05-11-bodai-deletion-adoption-ledger.md`](2026-05-11-bodai-deletion-adoption-ledger.md) | 2026-07-16 | `draft` | `implementation` |  | `convergence-control-plane` | Bodai Deletion And Adoption Ledger |
 | [`docs/plans/2026-05-11-shared-foundation-adoption-matrix.md`](2026-05-11-shared-foundation-adoption-matrix.md) | 2026-07-16 | `draft` | `canonical` |  | `convergence-control-plane` | Shared Foundation Adoption Matrix |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
 | [`docs/plans/native-macos-automation-backend-plan.md`](native-macos-automation-backend-plan.md) | 2026-07-16 | `draft` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
-| [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `draft` | `implementation` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
+| [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `complete` | `superseded` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
 
 ### Superpowers Specs (`docs/specs/`)
 
@@ -280,7 +279,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../../docs/specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `complete` | `implementation` |  | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
 | [`docs/specs/2026-09-09-jot-read-design.md`](../../docs/specs/2026-09-09-jot-read-design.md) | 2026-09-09 | `complete` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Design |
 | [`docs/specs/2026-08-31-zsh-modernization-design.md`](../../docs/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
-| [`docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md`](../../docs/specs/2026-08-03-bodai-openclaw-hermes-inspired-portfolio-design.md) | 2026-08-03 | `draft` | `implementation` |  | `bodai-openclaw-hermes-inspired-portfolio` | Bodai OpenClaw/Hermes-Inspired Follow-Ups — Portfolio Design |
 
 ### Agents (`mahavishnu/mcp/agents/`)
 
@@ -378,7 +376,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (106 entries)
+### `plan` (104 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -391,9 +389,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 38 | 1 | 1 | 14 | **59** |
-| `implementation` | 7 | 7 | 1 | 3 | 14 | **32** |
+| `implementation` | 4 | 7 | 1 | 3 | 14 | **29** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
-| `superseded` | · | · | · | · | 7 | **7** |
+| `superseded` | · | · | · | · | 8 | **8** |
 
-| **Total** | **12** | **51** | **2** | **4** | **68** | **137** |
+| **Total** | **9** | **51** | **2** | **4** | **69** | **135** |

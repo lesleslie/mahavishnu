@@ -1,8 +1,8 @@
 ---
-status: draft
-role: implementation
+status: complete
+role: superseded
 date: 2026-05-09
-last_reviewed: 2026-10-15
+last_reviewed: 2026-10-18
 superseded_by: docs/decisions/2026-10-15-unified-event-bus-wrapper.md
 topic: observability
 title: "Bodai Unified Event Bus — Standardization Plan"
@@ -11,9 +11,28 @@ title: "Bodai Unified Event Bus — Standardization Plan"
 
 # Bodai Unified Event Bus — Standardization Plan
 
+> **Reclassified 2026-10-18 (status: draft → complete, role: implementation → superseded):** Per plan triage
+> walkthrough, this standardization plan is superseded by
+> [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../decisions/2026-10-15-unified-event-bus-wrapper.md)
+> (active, canonical), which adopts a *wrapper-layer* integration of Oneiric
+> `EventBridge` instead of a full library-mode migration. The wrapper
+> approach supersedes the architectural commitments in this file:
+>
+> - "Mahavishnu adopts Oneiric as a library" → *not pursued*; the wrapper
+>   layer keeps the dependency surface narrow.
+> - "Fragmented parallel event systems are removed" → *deferred*; the
+>   wrapper preserves existing call sites.
+> - "WebSocket server becomes an EventBridge handler" → *superseded*; the
+>   wrapper adapter is a separate component.
+>
+> Frontmatter `superseded_by` was already set; the body and `status`/`role`
+> fields are now aligned with the supersede. Per the 2026-10-15 archive
+> decision, the file stays in `docs/plans/` (tracked) but is no longer
+> authoritative — see the wrapper ADR for current policy.
+
 ## Metadata
 
-- Status: `draft`
+- Status: `complete` (superseded by [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../decisions/2026-10-15-unified-event-bus-wrapper.md))
 - Owner: `Core Eng`
 - Target Window: `2026-05-18` to `2026-06-30`
 - Prerequisite: Oneiric integration in Mahavishnu (MCP or library mode)
