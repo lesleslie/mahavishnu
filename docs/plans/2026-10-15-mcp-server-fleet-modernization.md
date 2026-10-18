@@ -2,7 +2,7 @@
 status: active
 role: umbrella
 date: 2026-10-15
-last_reviewed: 2026-10-15
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: mcp-server-fleet-modernization
@@ -33,6 +33,11 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 1. **Finish fastmcp pin migration for 2.x holdouts** (fastmcp-3-upgrade plan Phase 5):
    - `penpot-api-mcp`, `raindropio-mcp`, `mailgun-mcp`, `chat-bridge-mcp` (these are the actual 2.x/unpinned holdouts per the 2026-10-15 audit)
    - `archive-org-mcp`, `medium-mcp`, `scapy-mcp` are covered by `docs/specs/2026-09-06-mcp-stub-activation-design.md` (removed; originally marked `complete`)
+1.5. **Tighten Bodai core fastmcp pin floors to `fastmcp>=4.0.0,<5`** (operator correction 2026-10-18):
+   - `akosha` — currently `fastmcp>=3.4.0,<5`; tighten to `fastmcp>=4.0.0,<5`. Per the [archived fastmcp-4 plan](../plans/.archive/2026-09-06-fastmcp-4-upgrade.md) Phase 2, akosha already runs FastMCP 4.0.3 in its venv via mcp-common@4.0.11; the loose floor is left over from Phase 2's migration commit.
+   - `session-buddy` — currently `fastmcp>=3.4.0,<5`; tighten to `fastmcp>=4.0.0,<5`. Per the archived fastmcp-4 plan Phase 3, session-buddy has zero FastMCP-induced test failures after the v4 upgrade (527 decorator sites, all clean); the loose floor predates the operator correction.
+   - `crackerjack` — currently `fastmcp>=3.4.7` (no upper cap); tighten to `fastmcp>=4.0.0,<5`. Per the archived fastmcp-4 plan Phase 3 ("Pin was already open; already on 4.0.3"), this is the only Bodai core without an upper `<5` cap at all.
+   - Rationale: pin floors below `4.0` permit drift back to FastMCP 3.x and don't match the resolved version in every other Bodai core MCP server's venv (`mcp-common@0.30.4`, `mahavishnu@4.1.0,<5`). Tightening the floor keeps `_apply_tool_profile` and downstream migrations on the same major across the fleet.
 2. **Land tool-profile waves W2b-W4** (tool-profile plan): requires fastmcp 3.4+ so blocked on #1
 3. **Land launcher Phase 2** (launcher plan): oneiric vendored CLI fixes (REQ-009 + REQ-010) — known bugs
 4. **Defer launcher Phases 3-5** (cuttable per the plan's own §9): per-standalone migrations to launcher-call shape
@@ -46,6 +51,7 @@ This is a **consolidation plan**, not a new workstream — the actual work is de
 ## Acceptance Criteria
 
 - All 15 *-mcp repos pinned to `fastmcp>=3.4.0,<5` (or equivalent)
+- The 3 Bodai core stragglers (`akosha`, `session-buddy`, `crackerjack`) pinned to `fastmcp>=4.0.0,<5` per tier 1.5 — the umbrella's older `>=3.4.0,<5` floor is too lax for repos that already resolve FastMCP 4.x transitively via `mcp-common@0.30.4`
 - `_apply_tool_profile` wired in every Bodai core MCP server (mahavishnu, session-buddy, akosha, crackerjack, dhara)
 - `mcp_common.launcher` consumed by every per-standalone CLI that needs startup lifecycle
 - Each child plan's status field either `complete` (work done) or `superseded_by` this umbrella — **satisfied 2026-10-18** (2 of 3 children confirmed: tool-profile, launcher)
