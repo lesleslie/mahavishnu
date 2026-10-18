@@ -1,14 +1,25 @@
 ---
-status: active
+status: shipped
 role: implementation
 date: 2026-07-15
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-18
+resolved_at: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: convergence-control-plane
 ---
 
 # Convergence Control Plane v1.0 — SOP Deferrals
+
+> **Reclassified 2026-10-18 (status: active → shipped):** All 6 deferred
+> topics remain trigger-gated; none of the 6 external triggers (first
+> user complaint, first non-mahavishnu operator, first hypothesis-lock
+> incident, skill count > 500, etc.) have fired since the followup was
+> filed. The 12 archived siblings under `docs/plans/.archive/` and
+> `docs/specs/.archive/` are still the authoritative design + impl
+> material. This followup is closed; if any trigger fires, re-file the
+> affected topic as a new active followup referencing the archived
+> siblings (per the Re-evaluation rule below).
 
 This followup consolidates 6 design+implementation pairs that all defer
 the v1.0 SOP layer of the Convergence Control Plane. Each topic below
