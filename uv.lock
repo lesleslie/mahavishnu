@@ -1195,7 +1195,7 @@ wheels = [
 
 [[package]]
 name = "crackerjack"
-version = "0.89.1"
+version = "0.89.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1257,9 +1257,9 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/14/aa840757fd7e9802653cff9f77ec49922775d8bd88456aff432e84d3d26d/crackerjack-0.89.1.tar.gz", hash = "sha256:99b23fb3bb012f49e6bff4ecfa684ee7126689238770282c06284248a85f3d75", size = 56301416, upload-time = "2026-10-16T01:13:53.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/b5/f36e3eb4642517ab736d649d7c89bbf6d4b91c68bb0abdd661fb7c5589b3/crackerjack-0.89.2.tar.gz", hash = "sha256:d830636bb4c70722eaf85041451e2efb30fdd803fe53d8ee4e9512db2a8686e9", size = 5648459, upload-time = "2026-10-17T06:16:08.941Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/58/8fc6d0e3787657e4875a3a4a4d05dd23ba0bd0410619a6f153ed080b407a/crackerjack-0.89.1-py3-none-any.whl", hash = "sha256:3c7222e0631d90bd57384673a443141675d0e1a81ee6ba94e65ada34dd4baf8f", size = 1526557, upload-time = "2026-10-16T01:13:44.235Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/aa/95515c84b0d99b720c7d480f44aab42ad39c0dbb32014a6afca73f4824d9/crackerjack-0.89.2-py3-none-any.whl", hash = "sha256:091e017e6f8083d63ae42ae750955eaf958f98e08c097d188da5a36331484ce0", size = 1528489, upload-time = "2026-10-17T06:16:05.523Z" },
 ]
 
 [[package]]
@@ -3697,7 +3697,7 @@ dev = [
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "complexipy", specifier = ">=8.0.1" },
     { name = "coredis", specifier = ">=6.9.0" },
-    { name = "crackerjack", specifier = ">=0.85.0" },
+    { name = "crackerjack", specifier = ">=0.89.2" },
     { name = "creosote", specifier = ">=5.2.0" },
     { name = "detect-secrets", specifier = ">=1.5.0" },
     { name = "ebooklib", specifier = ">=0.20" },
@@ -3727,7 +3727,7 @@ dev = [
 ]
 ecosystem = [
     { name = "akosha", specifier = ">=0.23.1" },
-    { name = "crackerjack", specifier = ">=0.85.0" },
+    { name = "crackerjack", specifier = ">=0.89.2" },
     { name = "session-buddy", specifier = ">=0.33.1" },
 ]
 gpu = [{ name = "runpod", specifier = ">=2.0.0rc1" }]

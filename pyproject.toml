@@ -134,7 +134,7 @@ dev = [
     "refurb>=2.3.1",
     "complexipy>=8.0.1",
     "zensical>=0.0.69",
-    "crackerjack>=0.85.0",
+    "crackerjack>=0.89.2",
     {include-group = "ai"},
     {include-group = "cache"},
     {include-group = "gpu"},
@@ -170,7 +170,7 @@ cache = [
 # Bodai ecosystem integrations
 ecosystem = [
     "akosha>=0.23.1",
-    "crackerjack>=0.85.0",
+    "crackerjack>=0.89.2",
     "session-buddy>=0.33.1",
 ]
 
