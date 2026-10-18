@@ -591,6 +591,6 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except Exception:  # noqa: BLE001 — top-level __main__ boundary: entry/main() failure must not surface a Python traceback to the Claude Code hook chain (state lost would be the parent SessionEnd/SessionStart hook lifecycle).
         _log("unhandled error; exiting 0")
         sys.exit(0)

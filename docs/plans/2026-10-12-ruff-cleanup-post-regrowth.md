@@ -69,18 +69,18 @@ mechanical enough that it gets its own plan
   `pyproject.toml` is not touched; every phase ends with the gate
   green for the targeted rule.
 
-## Current Findings (snapshot: 2026-10-13, cross-package)
+## Current Findings (snapshot: 2026-10-17, cross-package — Phase 0 re-measurement)
 
-Re-measured via `cd /Users/les/Projects && /Users/les/Projects/mahavishnu/.venv/bin/ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ --select "BLE001,RUF012,S110,DTZ001,PLW1510,ASYNC221,ASYNC230,PYI036,DTZ005" --statistics` after Phase 0 enabled the 9 rule codes. The original 2026-10-12 snapshot table is preserved as `plan_snapshot_2026-10-12.md` (companion archive) for the regression-baseline; this is the source of truth for execution.
+Re-measured from the `ruff-phase-0-1` worktree (Phase 0 baseline) via `cd /Users/les/Projects && /Users/les/Projects/mahavishnu/.venv/bin/ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ --select "BLE001,RUF012,S110,DTZ001,PLW1510,ASYNC221,ASYNC230,PYI036,DTZ005" --statistics`. The 9 rule codes were already present in `extend-select` before this plan's execution (confirmed via `pyproject.toml:281-299`) — Phase 0's config-only step was a no-op; the table below is the live baseline for Phase 1+ to converge from. The 2026-10-13 snapshot is preserved above for regression-baseline; this is the source of truth for execution.
 
 | Rule     | Count | Status           | Hot-spots (initial)                                       |
 |----------|------:|------------------|-----------------------------------------------------------|
-| BLE001   |   178 | New             | `mahavishnu/ingesters/*`, `mahavishnu/cli/*`, scattered  |
+| BLE001   |   170 | New             | `mahavishnu/ingesters/*`, `mahavishnu/cli/*`, scattered  |
 | RUF012   |    36 | New             | scattered — `Class.field: list = []` declarations          |
 | S110     |    39 | New             | scattered — `try: ... except: pass` patterns               |
 | DTZ001   |    26 | New             | ingestion paths, capability probes                         |
 | PLW1510  |    54 | New             | `mahavishnu/workers/capabilities/_probes.py`               |
-| ASYNC221 |    72 | New             | same hot-spots as PLW1510                                 |
+| ASYNC221 |    80 | New             | same hot-spots as PLW1510                                 |
 | ASYNC230 |     7 | New             | scattered                                                  |
 | PYI036   |     9 | New             | `oneiric/**/types.py` stubs                                |
 | DTZ005   |     6 | New             | `session-buddy/storage/migrations.py`                      |
