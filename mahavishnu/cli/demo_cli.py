@@ -852,7 +852,6 @@ _PYDANTIC_AI_PROVIDER_KEY_ENV: dict[str, str | None] = {
     "minimax": "MINIMAX_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
-    "ollama": None,
     "llama_server": None,
 }
 

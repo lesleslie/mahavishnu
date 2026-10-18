@@ -272,10 +272,10 @@ class LLMProviderFactory:
         HTTP server. The server requires no auth, so ``api_key="no-auth"`` is
         passed to satisfy the OpenAIChat client.
 
-        Ollama is a local server (default ``http://localhost:11434``);
-        it is not part of the Bifrost cloud-tier routing. The
-        ``base_url`` is the local Ollama endpoint. The
-        bifrost.enabled flag is intentionally ignored here.
+        llama-server is the canonical local LLM provider
+        (default ``http://localhost:8081``); it is not part of the Bifrost
+        cloud-tier routing, and the ``bifrost.enabled`` flag is
+        intentionally ignored here.
 
         Args:
             model_id: llama.cpp model identifier (e.g., 'qwen2.5:7b', 'llama2')

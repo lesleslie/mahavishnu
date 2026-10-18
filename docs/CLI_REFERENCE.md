@@ -185,14 +185,14 @@ mahavishnu quality fix <path> [--auto]              # Fix quality issues (--auto
 
 ```bash
 mahavishnu ingest url <url> [--chunk-size 1000] [--chunk-overlap 200]
-                           [--output ingested] [--provider fastembed|ollama|openai]
+                           [--output ingested] [--provider fastembed|openai]
 mahavishnu ingest file <path> [--chunk-size N] [--chunk-overlap N] [--provider <p>]
 mahavishnu ingest batch <urls.txt> [--parallel N] [--provider <p>]
 mahavishnu ingest stats [--provider <p>]
 ```
 
 `--provider` overrides the oneiric probe-chain auto-selection. When
-omitted, `llama_cpp -> ollama -> minimax -> model2vec -> mock` is consulted
+omitted, `llama_cpp -> minimax -> model2vec -> mock` is consulted
 in order.
 
 ## Coordination

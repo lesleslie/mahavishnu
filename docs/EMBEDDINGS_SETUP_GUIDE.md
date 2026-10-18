@@ -1,7 +1,8 @@
-# FastEmbed and Ollama Setup Guide
+# FastEmbed Setup Guide
 
-**Date**: 2026-02-03
-**Purpose**: Set up FastEmbed (production) and Ollama (development) for embeddings
+**Date**: 2026-02-03 (FastEmbed-only as of 2026-10-17; Ollama coverage removed per `docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`)
+
+**Purpose**: Set up FastEmbed for embeddings. llama-server (llama.cpp) is the only local HTTP provider.
 
 **📊 Visual Aids Available**: See \] for comprehensive system diagrams.
 

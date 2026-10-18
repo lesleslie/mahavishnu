@@ -863,8 +863,8 @@ class BifrostConfig(BaseModel):
 
     When ``enabled`` is True, the surviving mahavishnu LLM surface
     (Agno adapter, PROVIDER_PROBES) routes the cloud tier through
-    the gateway at ``base_url``. Local fallback tiers
-    (``llama_server``, ``ollama``) stay direct — the Phase G
+    the gateway at ``base_url``. The local fallback tier
+    (``llama_server``) stays direct — the Phase G
     ``local_provider_*`` fields wire llama-server as a *Bifrost*
     target (routing rules prefer it for cheap/background/classify),
     not a direct fallback.
