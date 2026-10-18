@@ -1,18 +1,23 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-09-05
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: terminal
+resolved_at: 2026-10-18
+resolved_by:
+  - "Section 1 (close_all empty id roundtrip): commit at 2026-09-05"
+  - "Section 2 (terminal_send regex mismatch): commit at 2026-09-05"
+  - "Section 3 (validate_command_safety Shape B): commit 13e7bf95"
 ---
 
 # Terminal Fixes Batch (consolidated)
 
 This followup consolidates three former followups that each tracked a
-terminal subsystem defect. Section 1 and 2 are complete/historical;
-Section 3 is active implementation work.
+terminal subsystem defect. All three sections are now resolved
+(2026-10-18). Status: complete.
 
 Each section preserves the original content verbatim.
 
@@ -93,7 +98,34 @@ single Annotated constraint, not reconcile two validators.)
 
 ## Status
 
-🔴 **Open — behavioral decision required** — the current implementation is
+✅ **Resolved 2026-10-17 (commit `13e7bf95`)** — operator signoff on
+**Shape B (shell-chain with word-boundary)** landed. The 7 utility-name
+overlap patterns that caused false positives (`mkfs`, `dd if=`, `> /dev/sd`,
+`ncat`, `kill -9`, `pkill`, `killall`) were dropped from
+`DANGEROUS_COMMAND_PATTERNS`. The shell-chain destructive patterns
+(`&& rm`, `; rm`, `| rm`) were tightened via a new word-boundary regex
+(`_SHELL_CHAIN_DESTRUCTIVE_RE = re.compile(r"(?:&&|;|\|)[ \t]+rm(?=$|[;|&]|[ \t]+[;|&])")`).
+The 10 hard-block patterns (rm -rf /, chmod 000, chown root:, curl | sh,
+wget | sh, nc -e, /dev/tcp, /dev/udp, bind shell, reverse shell) remain
+as substring-match rejects.
+
+Test parametrize updates: `test_safe_commands_pass_through` grew by 7
+cases (the formerly-blocked legit commands — `make clean && rm -f *.o`,
+`pkill -f worker.py`, `kill -9 $STUCK_PID`, `dd if=boot.img of=/dev/sdb`,
+`mkfs.ext4 /dev/sdb1`, etc.); `test_dangerous_patterns_rejected` shrank
+by 10 cases and grew by 5 (the shell-chain edge cases: `cmd && rm`,
+`cmd1 && rm; cmd2`, `cmd1; rm; ls`, `cmd1 | rm | head`). The
+`test_dangerous_command_rejected_before_send` test switched from
+`pkill python` to `rm -rf /` (still rejected under Shape B).
+All 84 tests in `tests/unit/mcp/tools/test_terminal_tools.py` pass;
+`crackerjack run -v -f` 18/18 fast hooks passed.
+
+Re-introducing any of the dropped patterns requires a fresh policy call.
+
+---
+
+🔴 **Open — behavioral decision required** (historical; resolved above) —
+the current implementation is
 deliberately strict (per the locked-in test suite at
 `tests/unit/mcp/tools/test_terminal_tools.py:273-300`), but the strictness
 blocks legitimate production-management commands. Choosing between strict
