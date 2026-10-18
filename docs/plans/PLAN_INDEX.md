@@ -262,7 +262,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `complete` | `superseded` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
-| [`docs/plans/2026-05-11-shared-foundation-adoption-matrix.md`](2026-05-11-shared-foundation-adoption-matrix.md) | 2026-07-16 | `draft` | `canonical` |  | `convergence-control-plane` | Shared Foundation Adoption Matrix |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
@@ -376,7 +375,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (99 entries)
+### `plan` (98 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -388,10 +387,10 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 4 | 38 | 1 | 1 | 14 | **58** |
+| `canonical` | 3 | 38 | 1 | 1 | 14 | **57** |
 | `implementation` | 1 | 7 | 2 | 3 | 15 | **28** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **5** | **47** | **3** | **4** | **73** | **132** |
+| **Total** | **4** | **47** | **3** | **4** | **73** | **131** |
