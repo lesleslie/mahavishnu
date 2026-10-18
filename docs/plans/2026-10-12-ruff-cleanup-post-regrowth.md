@@ -24,6 +24,21 @@ title: "Ruff Cleanup Post-Regrowth (2026-10-12)"
 > the prior plan (`docs/plans/2026-07-29-ruff-cleanup-waves.md`) is
 > archived to `.archive/` and this plan is the active referent.
 
+> **Status update 2026-10-17:** Phase 0 (rule enablement) was effectively
+> a no-op — the 9 in-scope rule codes (`BLE001, RUF012, S110, DTZ001,
+> PLW1510, ASYNC221, ASYNC230, PYI036, DTZ005`) were already present
+> in `[tool.ruff.lint] extend-select` at `pyproject.toml:281-299` by
+> the time work forked. The live 2026-10-17 re-measurement across the
+> 6 packages shows **427 findings total** (BLE001 178→170, ASYNC221
+> 72→80 vs the 2026-10-13 snapshot; others unchanged). Phase 1 BLE001
+> shipped in commit `745cb61d` (1 file fix in mahavishnu — the top-level
+> `__main__` boundary in `.claude/hooks/bodai-activity-subscriber.py:594`;
+> remaining 169 BLE001 findings live in 5 sibling repos: akosha,
+> session-buddy, oneiric, crackerjack, mcp-common). Phases 2-8 still
+> open. The plan's "Phantom baseline" paragraph below is now stale —
+> the 8 rules ARE checked on main; the "aspirational 0 baseline"
+> claim is no longer true.
+
 ## Why this plan exists
 
 The previous wave-plan (`2026-07-29-ruff-cleanup-waves.md`) drove a
