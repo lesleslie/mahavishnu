@@ -191,7 +191,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../../docs/followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | `active` | `implementation` | `followup` | `shared-frontmatter-validator` | Followup — Consumer-repo followup for the frontmatter-validator move |
+| [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../../docs/followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | `complete` | `implementation` | `followup` | `shared-frontmatter-validator` | Followup — Consumer-repo followup for the frontmatter-validator move |
 | [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../../docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `complete` | `implementation` |  | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
@@ -399,9 +399,9 @@ Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 38 | 1 | 1 | 14 | **59** |
-| `implementation` | 7 | 8 | 1 | 3 | 13 | **32** |
+| `implementation` | 7 | 7 | 1 | 3 | 14 | **32** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 7 | **7** |
 
-| **Total** | **12** | **52** | **2** | **4** | **67** | **137** |
+| **Total** | **12** | **51** | **2** | **4** | **68** | **137** |
