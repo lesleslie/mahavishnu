@@ -250,7 +250,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
 | [`docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) | 2026-10-04 | `complete` | `superseded` |  | `session-buddy-lifespan-publisher-inline` | Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup |
-| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `draft` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `active` | `canonical` |  | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
 | [`docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`](2026-09-20-bodai-layout-migration-and-registry-onboarding.md) | 2026-09-20 | `complete` | `implementation` |  | `bodai-layout-migration` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-dhara-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
@@ -389,9 +389,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 4 | 39 | 1 | 1 | 14 | **59** |
-| `implementation` | 3 | 8 | 1 | 3 | 14 | **29** |
+| `implementation` | 2 | 9 | 1 | 3 | 14 | **29** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 8 | **8** |
 
-| **Total** | **7** | **53** | **2** | **4** | **69** | **135** |
+| **Total** | **6** | **54** | **2** | **4** | **69** | **135** |
