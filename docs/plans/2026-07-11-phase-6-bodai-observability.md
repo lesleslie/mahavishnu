@@ -1,8 +1,8 @@
 ---
-status: draft
+status: complete
 role: implementation
 date: 2026-07-16
-last_reviewed: 2026-07-16
+last_reviewed: 2026-10-18
 superseded_by: null
 topic: observability
 title: "Phase 6 — Bodai-Wide Observability Surfacing"
@@ -11,13 +11,22 @@ title: "Phase 6 — Bodai-Wide Observability Surfacing"
 
 # Phase 6 — Bodai-Wide Observability Surfacing
 
+> **Reclassified 2026-10-18:** Status is `complete, implementation`. All 4 sub-phases shipped. The BLOCKING precondition (Convergence Plan C2 lands an "activity" event category in Oneiric EventBridge) was met: `oneiric/domains/events.py:25` defines `EventBridge`; `oneiric/core/metrics.py:8` carries the `oneiric_activity_pause_events_total` family. Per-sub-phase evidence:
+>
+> - **Phase 6.1** (envelope + subscriber skeleton): `mahavishnu/.claude/hooks/bodai-activity-subscriber.py` and `bodai-activity-post-tool-use.py` shipped. The `BodaiEvent` Pydantic model lives in `mahavishnu/core/events/bodai_subscriber.py`.
+> - **Phase 6.2** (Akosha + Crackerjack EventBridge publishers): Akosha's `register_eventbridge_group` wires the publisher (`akosha/tests/unit/test_mcp_group_registers.py:95`); Crackerjack's `EventBridgePublisher` has e2e tests (`crackerjack/tests/integration/test_eventbridge_e2e.py`).
+> - **Phase 6.3** (`/bodai-status` slash command): wired in `mahavishnu/bodai_hook_bridge.py:286` and `mahavishnu/core/events/bodai_subscriber.py:5`.
+> - **Phase 6.4** (replace Phase 5 hook): `.claude/hooks/mahavishnu-activity-stream.py` is the deleted single-WebSocket hook; the Bodai hook is now the single activity subscriber.
+>
+> This document is retained as the work record; the PLAN_INDEX still references this plan as the canonical "Bodai-wide observability surface" authority (line 50).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Date:** 2026-07-11
-> **Status:** draft, planning <!-- legacy status: draft, planning — see YAML frontmatter -->
+> **Status:** complete, implementation <!-- legacy status: draft, planning — see YAML frontmatter -->
 > **Owner:** mahavishnu core
 > **Scope:** Replace Mahavishnu's per-component activity hook with a Bodai-wide observability surface that reads from Oneiric EventBridge (the unified event spine from Convergence Plan C1b/C2).
 > **Purpose:** Make Claude Code's "observe Bodai" path go through a single canonical subscriber rather than per-component WebSocket hooks. Phase 5's transition state (Mahavishnu-only hook at `.claude/hooks/mahavishnu-activity-stream.py`) is replaced by the steady state here.
-> **Precondition (BLOCKING):** Convergence Plan C2 lands an "activity" event category in Oneiric EventBridge. Phase 6 cannot start until C2's envelope schema is published. If C2 has not landed, see the "Pre-C2 Path" section at the bottom.
+> **Precondition (was BLOCKING, met 2026-10-18):** Convergence Plan C2's "activity" event category shipped in Oneiric EventBridge (see `oneiric/domains/events.py:25`, `oneiric/core/metrics.py:8`). Phase 6.1–6.4 are complete. The "Pre-C2 Path" section at the bottom is no longer reachable.
 
 ______________________________________________________________________
 

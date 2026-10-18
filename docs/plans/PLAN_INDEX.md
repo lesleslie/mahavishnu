@@ -254,7 +254,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `complete` | `superseded` |  | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
 | [`docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`](2026-09-20-bodai-layout-migration-and-registry-onboarding.md) | 2026-09-20 | `complete` | `implementation` |  | `bodai-layout-migration` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-dhara-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
-| [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `superseded` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
+| [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `complete` | `superseded` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `complete` | `superseded` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | Verified complete 2026-10-17 (cross-repo audit): |
 | [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `complete` | `implementation` |  | `jot-read` | Verified complete 2026-10-17: |
@@ -262,10 +262,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `complete` | `superseded` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
-| [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
+| [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `complete` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
+| [`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`](2026-07-16-native-macos-automation-backend-plan.md) | 2026-07-16 | `shipped` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
-| [`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`](2026-07-16-native-macos-automation-backend-plan.md) | 2026-07-16 | `active` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/2026-05-09-unified-event-bus-spec.md`](2026-05-09-unified-event-bus-spec.md) | 2026-05-09 | `complete` | `superseded` |  | `observability` | Bodai Unified Event Bus — Standardization Plan |
 
 ### Superpowers Specs (`docs/specs/`)
@@ -388,9 +388,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 3 | 38 | 1 | 1 | 14 | **57** |
-| `implementation` | 1 | 6 | 2 | 3 | 15 | **27** |
+| `implementation` | · | 5 | 2 | 4 | 16 | **27** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | · | · | · | 32 | **32** |
-| `superseded` | · | · | · | · | 12 | **12** |
+| `superseded` | · | · | · | · | 13 | **13** |
 
-| **Total** | **4** | **46** | **3** | **4** | **74** | **131** |
+| **Total** | **3** | **45** | **3** | **5** | **76** | **132** |

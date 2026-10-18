@@ -1,6 +1,6 @@
 ---
-status: superseded
-role: implementation
+status: complete
+role: superseded
 topic: serverless-readiness-and-substitution
 date: 2026-09-14
 last_reviewed: 2026-10-18
@@ -39,6 +39,8 @@ title: "Revisions (2026-09-14, post-research)"
 ---
 
 # Revisions (2026-09-14, post-research)
+
+> **Reclassified 2026-10-18:** Status is `complete, superseded`. The plan's Phase 1 (Wire-up gap cleanup, REQ-CLEAN-001 through 007) shipped in commit `31827bf0` (2026-10-17). The remaining work (Phases 2-11) is now owned by the four active plans listed in `superseded_by:` — the MCP fleet umbrella, the Oneiric substrate umbrella, ADR 019 (Dhara decommissioning), and the drop-ollama plan. This document is retained as the historical record of the consolidated research (Convex/Oneiric SQLite/vendor CLIs) and §Rev-1 through §Rev-9 corrections. **Do not re-open Phases 2-11 from this file** — see the `superseded_by:` plans for the current authority.
 
 This plan was over-engineered in its initial §5 / §6 / §7 sections. After parallel research (Convex Object Sync Engine deep-dive + Oneiric SQLite libsql / gcloud sync / Tigris / MinIO verification), the local-to-cloud sync pattern is **off-the-shelf-via-CLI, not custom Oneiric adapters**. This Revisions section documents the changes; the rest of the plan remains for reference but Phase 3, §6, and §7 should be re-read with these corrections in mind.
 

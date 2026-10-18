@@ -1,5 +1,5 @@
 ---
-status: active
+status: shipped
 role: implementation
 topic: terminal
 date: 2026-07-16
@@ -12,9 +12,11 @@ title: "Plan: Native macOS Automation Backend"
 
 # Plan: Native macOS Automation Backend
 
+> **Reclassified 2026-10-18:** Status is `shipped, implementation`. All 8 file-changes in §1 / §6 have landed on disk. `mahavishnu/automation/backends/native_macos.py` shipped (26 KB, modified 2026-10-15); `pyxa.py` and `atomac.py` deleted; `backends/__init__.py`, `capabilities.py`, `manager.py`, `__init__.py`, and `models.py` updated; tests migrated. Activation `de96341d` (2026-10-03) post-dated the implementation but landed before the body was updated — this reclassification closes the audit gap. Body retained below as the original work record.
+
 ## Status
 
-Draft — pending implementation (updated from multi-agent review)
+Shipped 2026-10-15 (implementation on disk). Body preserved as the work record — the plan's scope, capability table, `_run_sync` and `_resolve_bundle_id` patterns, file-change list, and risks section describe the design that was actually implemented.
 
 ## Goal
 
