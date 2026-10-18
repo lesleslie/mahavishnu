@@ -18,7 +18,8 @@ contains at least two ``.md`` files with valid YAML frontmatter is treated
 as a store. The following system directories are skipped (anywhere in the
 tree): ``.git``, ``.venv``, ``venv``, ``__pycache__``, ``node_modules``,
 ``htmlcov``, ``dist``, ``.pytest_cache``, ``.archive``, ``archive``,
-``backups``, ``coverage_report``, ``assets``. The script's own output
+``backups``, ``coverage_report``, ``assets``, ``worktree-snapshots``.
+The script's own output
 (``docs/plans/PLAN_INDEX.md``) and the ``docs/plans/drafts/`` working tree
 are also self-excluded. A small static override map (``STORE_LABELS``)
 gives descriptive headings to well-known stores (e.g. ``docs/adr/`` →
@@ -116,6 +117,12 @@ SYSTEM_DIR_PARTS: frozenset[str] = frozenset(
         "cache",
         ".cache",
         ".playwright-mcp",
+        # Per-user decision 2026-10-18: worktree-snapshots hold historical
+        # captures of plan state from prior worktrees (e.g. the cleanup-v2
+        # snapshot under ``.claude/worktree-snapshots/``). They are not
+        # part of the live working tree and PLAN_INDEX should reflect
+        # only what's actually on local main.
+        "worktree-snapshots",
     }
 )
 

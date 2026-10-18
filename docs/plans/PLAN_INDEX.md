@@ -55,7 +55,7 @@ and reproduced here for index readability.
 ## Review Entry Points
 
 This file is regenerated mechanically from the per-file YAML frontmatter
-across the 12 auto-discovered stores. The registry tables below
+across the 11 auto-discovered stores. The registry tables below
 are sorted by `date` DESC within each store and group entries by store.
 The lifecycle × role distribution at the bottom is a quick consistency
 check — it should match the counts of the registry rows modulo files in
@@ -76,14 +76,6 @@ Last regenerated: 2026-10-18.
 ## Canonical and Active Plan Registry
 
 One table per store. Entries are sorted by `date` DESC, with ties broken by path ASC. Files without valid frontmatter are excluded; run `uv run crackerjack docs validate --allow-nonstandard` to surface them.
-
-### Cleanup V2 Plan Finalization (`.claude/worktree-snapshots/cleanup-v2-plan-finalization/`)
-
-| Path | Date | Status | Role | Kind | Topic | Title |
-|---|---|---|---|---|---|---|
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-pgvector-default.md) | 2026-08-30 | `draft, planning` | `implementation` |  | `pgvector-default-hotstore` | Plan — pgvector as the default production HotStore |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-embedding-dim-fix.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `embedding-dim-mismatch-fix` | Plan — Embedding dim mismatch (HotStore / pgvector) |
-| [`.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md`](../../.claude/worktree-snapshots/cleanup-v2-plan-finalization/2026-08-29-push-subscriber.md) | 2026-08-29 | `draft, planning` | `implementation` |  | `push-subscriber-via-bodai-events` | Plan — Push-based Dhara subscriber (replace polling) |
 
 ### Architecture Decision Records (`docs/adr/`)
 
@@ -386,7 +378,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (109 entries)
+### `plan` (106 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -394,7 +386,7 @@ Full per-store detail (with status, role, topic, date) is in the **Canonical and
 
 ## Lifecycle × Role Distribution
 
-Counts of entries per (lifecycle, role) cell across all 12 stores. Useful as a sanity check that the registry above is internally consistent.
+Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a sanity check that the registry above is internally consistent.
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
