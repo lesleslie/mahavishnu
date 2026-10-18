@@ -524,7 +524,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 
 **`integrations`**:
 
-- `pydantic_ai_enabled` — `bool`, default `False`; enables Pydantic AI integration.  Pre-1.0 was the only survivor of an audit that removed three dead config fields (`openclaw_webhooks_enabled`, `omo_enabled`, `cross_platform_memory_enabled`) — none had any runtime reader.
+- `pydantic_ai_enabled` — `bool`, default `False`; enables Pydantic AI integration. Pre-1.0 was the only survivor of an audit that removed three dead config fields (`openclaw_webhooks_enabled`, `omo_enabled`, `cross_platform_memory_enabled`) — none had any runtime reader.
 
 **`learning`**:
 
