@@ -1,10 +1,14 @@
 ---
-status: partial
+status: superseded
 role: implementation
 topic: serverless-readiness-and-substitution
 date: 2026-09-14
-last_reviewed: 2026-10-13
-superseded_by: null
+last_reviewed: 2026-10-18
+superseded_by:
+  - docs/adr/019-dhara-decommissioning.md  # Phase 4 (Dhara re-architecture) retired from Bodai scope
+  - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; consolidates Phases 1, 4, 8
+  - docs/plans/2026-10-15-oneiric-substrate-rollout.md  # active umbrella; consolidates Phases A, E1, E2 (substrate adoption)
+  - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md  # active; supersedes Phase D ollama adapter
 blocks_on:
   - docs/plans/.archive/REVIEW_serverless.md
   - docs/plans/.archive/2026-07-26-mahavishnu-acp-server.md  # REQ-HARNESS-ACP-INTEGRATION validates through the active ACP server plan
@@ -28,6 +32,8 @@ review_summary:
     - "Phase 11 (Harness-agnostic enablement) added 2026-09-14"
     - "14 new REQs covering Qwen Code v0.23.4 target (Codex CLI deferred per user decision 2026-09-14)"
     - "spec-kit workflow + superpowers skill-schema + bodai-skill-schema PyPI package adopted"
+  reclassified_at: 2026-10-18
+  reclassification_reason: "Phase 1 (REQ-CLEAN-001..007) shipped 2026-10-17 (commit 31827bf0). Active umbrella plans own the remaining work; this plan is the historical record per §Rev-9 H1 finding. §6 Required Code Changes citations are stale (REQ-CLEAN-001 cited task_router.py:758-760; actual line 794; REQ-CLEAN-005 cited _settle_dhara which had been renamed to _settle_mcp). A fresh audit pass over §6 would be needed before re-opening any of Phases 2-11 — recommended action: don't, because the active plans own the work."
 title: "Revisions (2026-09-14, post-research)"
 
 ---
