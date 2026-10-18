@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-10-12
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: mcpserver-settings-convention
