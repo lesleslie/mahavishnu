@@ -147,7 +147,6 @@ class TestCircuitBreakerRecordFailure:
 def aggregator() -> MemoryAggregator:
     return MemoryAggregator(
         session_buddy_url="http://localhost:8678/mcp",
-        akosha_url="http://localhost:8682/mcp",
         sync_interval=60.0,
     )
 
@@ -155,16 +154,13 @@ def aggregator() -> MemoryAggregator:
 class TestMemoryAggregatorInit:
     def test_defaults(self, aggregator: MemoryAggregator):
         assert aggregator.session_buddy_url == "http://localhost:8678/mcp"
-        assert aggregator.akosha_url == "http://localhost:8682/mcp"
         assert aggregator.sync_interval == 60.0
 
     def test_custom_urls(self):
         agg = MemoryAggregator(
             session_buddy_url="http://custom:9999/mcp",
-            akosha_url="http://other:8888/mcp",
         )
         assert agg.session_buddy_url == "http://custom:9999/mcp"
-        assert agg.akosha_url == "http://other:8888/mcp"
 
     def test_local_buffer_initially_empty(self, aggregator: MemoryAggregator):
         assert len(aggregator._local_buffer) == 0
@@ -175,7 +171,6 @@ class TestMemoryAggregatorInit:
 
     def test_circuit_breakers_created(self, aggregator: MemoryAggregator):
         assert not aggregator._sb_breaker.is_open
-        assert not aggregator._akosha_breaker.is_open
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +269,6 @@ class TestGetCircuitBreakerStats:
     def test_initial_stats(self, aggregator: MemoryAggregator):
         stats = aggregator.get_circuit_breaker_stats()
         assert not stats["session_buddy"]["circuit_open"]
-        assert not stats["akosha"]["circuit_open"]
         assert stats["local_buffer"]["size"] == 0
         assert stats["local_buffer"]["max"] == 500
         assert stats["local_buffer"]["drops"] == 0
@@ -465,14 +459,11 @@ class TestBatchInsertToSessionBuddy:
 class TestStartPeriodicSync:
     @pytest.mark.asyncio
     async def test_creates_task(self, aggregator: MemoryAggregator):
-        # Phase 3: stub the MCP clients so the loop doesn't reach out to a
-        # real Session-Buddy / Akosha. Without this, the underlying
-        # streamable-HTTP transport is the surfaces a GeneratorExit at the
-        # first cancel.
+        # Phase 3: stub the MCP client so the loop doesn't reach out to a
+        # real Session-Buddy. Without this, the underlying streamable-HTTP
+        # transport surfaces a GeneratorExit at the first cancel.
         aggregator._mcp_client = MagicMock()
         aggregator._mcp_client.aclose = AsyncMock()
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.aclose = AsyncMock()
         mock_pm = AsyncMock()
         mock_pm.list_pools.return_value = []
         await aggregator.start_periodic_sync(mock_pm)
@@ -484,8 +475,6 @@ class TestStartPeriodicSync:
     async def test_sync_loop_calls_collect_and_sync(self, aggregator: MemoryAggregator):
         aggregator._mcp_client = MagicMock()
         aggregator._mcp_client.aclose = AsyncMock()
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.aclose = AsyncMock()
         mock_pm = AsyncMock()
         mock_pm.list_pools.return_value = []
         with patch.object(aggregator, "collect_and_sync", new_callable=AsyncMock):
@@ -505,11 +494,8 @@ class TestStop:
     async def test_closes_http_clients(self, aggregator: MemoryAggregator):
         aggregator._mcp_client = MagicMock()
         aggregator._mcp_client.aclose = AsyncMock()
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.aclose = AsyncMock()
         await aggregator.stop()
         aggregator._mcp_client.aclose.assert_awaited_once()
-        aggregator._akosha_mcp.aclose.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_cancels_stuck_task(self, aggregator: MemoryAggregator):
@@ -519,46 +505,6 @@ class TestStop:
         aggregator._sync_task = asyncio.create_task(forever())
         await aggregator.stop()
         assert aggregator._sync_task.done()
-
-
-# ---------------------------------------------------------------------------
-# _sync_to_akosha
-# ---------------------------------------------------------------------------
-
-
-class TestSyncToAkosha:
-    @pytest.mark.asyncio
-    async def test_circuit_open_skips(self, aggregator: MemoryAggregator):
-        aggregator._akosha_breaker.record_failure()
-        aggregator._akosha_breaker.record_failure()
-        aggregator._akosha_breaker.record_failure()
-        aggregator._akosha_breaker.record_failure()
-        aggregator._akosha_breaker.record_failure()
-        await aggregator._sync_to_akosha({"pools_count": 1})
-        # No HTTP call made
-
-    @pytest.mark.asyncio
-    async def test_success_records_success(self, aggregator: MemoryAggregator):
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.call_tool = AsyncMock(return_value=None)
-
-        await aggregator._sync_to_akosha({"pools_count": 2, "memory_items_count": 10})
-        assert aggregator._akosha_breaker._failure_count == 0
-
-    @pytest.mark.asyncio
-    async def test_failure_records_failure(self, aggregator: MemoryAggregator):
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.call_tool = AsyncMock(side_effect=MCPServerError("upstream 500"))
-
-        await aggregator._sync_to_akosha({"pools_count": 2})
-        assert aggregator._akosha_breaker._failure_count == 1
-
-    @pytest.mark.asyncio
-    async def test_http_error_records_failure(self, aggregator: MemoryAggregator):
-        aggregator._akosha_mcp = MagicMock()
-        aggregator._akosha_mcp.call_tool = AsyncMock(side_effect=MCPServerError("timeout"))
-        await aggregator._sync_to_akosha({"pools_count": 1})
-        assert aggregator._akosha_breaker._failure_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -581,7 +527,6 @@ class TestCollectAndSync:
                 new_callable=AsyncMock,
                 return_value={"flushed": 0, "remaining": 0},
             ),
-            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 0
@@ -607,7 +552,6 @@ class TestCollectAndSync:
                 new_callable=AsyncMock,
                 return_value={"flushed": 0, "remaining": 0},
             ),
-            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1
@@ -623,7 +567,6 @@ class TestCollectAndSync:
             patch.object(
                 aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
             ),
-            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1
@@ -642,7 +585,6 @@ class TestCollectAndSync:
             patch.object(
                 aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
             ),
-            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["memory_items_synced"] == 0
@@ -668,7 +610,6 @@ class TestCollectAndSync:
                 new_callable=AsyncMock,
                 return_value={"flushed": 1, "remaining": 0},
             ),
-            patch.object(aggregator, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
         assert result["pools_synced"] == 1

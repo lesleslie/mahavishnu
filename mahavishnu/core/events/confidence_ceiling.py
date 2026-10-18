@@ -20,10 +20,10 @@ clamped to [0, 100] after multiplication by 100.
 Side effects (best-effort, never raise):
 
 - WARNING log when capping occurs.
-- Akosha anomaly emission (``mahavishnu.akosha_client.emit_anomaly``) when
-  capping occurs. The import is intentionally lazy: if Akosha is not
-  configured, the ImportError is swallowed and only the warning log
-  remains. v2.0 makes this mandatory.
+
+The Akosha anomaly emission path was removed in REQ-CLEAN-004 — the
+``mahavishnu.akosha_client.emit_anomaly`` module never existed; the lazy
+import always returned ``None`` and the call was dead code.
 """
 
 from __future__ import annotations
@@ -111,43 +111,6 @@ def effective_cap(report: dict) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _try_emit_anomaly(
-    *,
-    report: dict,
-    reported: int,
-    cap: int,
-) -> None:
-    """Best-effort Akosha anomaly emission.
-
-    Silent when ``mahavishnu.akosha_client.emit_anomaly`` is not importable
-    (Akosha not configured). Logs and swallows any exception from the call
-    itself; never propagates.
-    """
-    try:
-        import importlib
-
-        akosha_client = importlib.import_module("mahavishnu.akosha_client")
-        emit_anomaly = getattr(akosha_client, "emit_anomaly", None)
-        if emit_anomaly is None:
-            return
-    except ImportError:
-        return
-    except Exception:
-        logger.exception("failed to import akosha emit_anomaly")
-        return
-
-    try:
-        emit_anomaly(
-            kind="confidence_capped",
-            workflow_id=report.get("workflow_id"),
-            iteration_index=report.get("iteration_index"),
-            reported_confidence=reported,
-            computed_cap=cap,
-        )
-    except Exception:
-        logger.exception("failed to emit akosha anomaly for confidence cap")
-
-
 def apply_confidence_ceiling(report: dict) -> dict:
     """Apply the confidence ceiling to an iteration report.
 
@@ -160,7 +123,6 @@ def apply_confidence_ceiling(report: dict) -> dict:
 
     - WARNING log including workflow_id, iteration_index, reported
       confidence, computed cap, open_questions_count, unchecked_sources_count.
-    - Best-effort Akosha anomaly emission (silent if not configured).
 
     Does NOT raise. Over-confidence is calibration, not a rule violation.
     """
@@ -183,7 +145,6 @@ def apply_confidence_ceiling(report: dict) -> dict:
             "unchecked_sources_count": len(report.get("unchecked_sources", []) or []),
         },
     )
-    _try_emit_anomaly(report=report, reported=reported, cap=cap)
     return capped
 
 

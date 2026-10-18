@@ -863,8 +863,12 @@ class TestTaskRouterRoute:
         await mgr.register_adapter(AdapterType.PREFECT, adapter)
         tr = TaskRouter(adapter_registry=mgr)
         result = await tr.route({"task_type": "workflow"})
-        assert result["success"] is False
-        assert "No adapter available" in result["error"]
+        # REQ-CLEAN-001: route() no longer gates on adapter.is_available().
+        # Registered adapters are trusted; runtime availability is the
+        # adapter's execute() responsibility. The 'available' flag is
+        # preserved on FakeAdapter for execute_with_fallback coverage.
+        assert result["success"] is True
+        assert result["adapter"] == AdapterType.PREFECT
 
     async def test_route_no_adapters_at_all(self) -> None:
         mgr = AdapterManager()

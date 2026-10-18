@@ -791,8 +791,15 @@ class TaskRouter:
         selected_adapter: AdapterType | None = None
         for adapter_type in candidates:
             adapter = self.adapter_registry.get_adapter(adapter_type)
-            is_available = getattr(adapter, "is_available", None)
-            if adapter is not None and is_available is not None and await is_available():
+            # REQ-CLEAN-001: skip the is_available() gate. The base
+            # OrchestratorAdapter protocol doesn't require it, and no
+            # production adapter implements it; the previous getattr
+            # guard silently filtered every adapter out, so route()
+            # always returned "No adapter available". Trust that the
+            # adapter is registered (= available for routing) and let
+            # execute_with_fallback / adapter.execute() surface real
+            # failures.
+            if adapter is not None:
                 selected_adapter = adapter_type
                 break
 

@@ -264,6 +264,49 @@ def test_launch_worker_returns_no_tmux_when_session_mode_no_tmux(
     assert out == {"worker_id": None, "state": "no_tmux"}
 
 
+def test_launch_worker_returns_current_tmux_when_session_mode_current_tmux(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-007: ``session_mode=current_tmux`` reuses the caller's
+    session only when the caller is itself inside a tmux (``TMUX`` env
+    var set). When set, return the sentinel ``{state: 'current_tmux'}``.
+    """
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
+    monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,12345,0")
+    out = asyncio.run(tools.launch_worker(prompt="hi", session_mode="current_tmux"))
+    assert out == {
+        "worker_id": None,
+        "state": "current_tmux",
+        "session_mode": "current_tmux",
+        "pty": True,
+    }
+
+
+def test_launch_worker_returns_tmux_unavailable_when_session_mode_current_tmux_no_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-007: ``session_mode=current_tmux`` without ``TMUX`` set
+    surfaces a clear ``tmux_unavailable`` sentinel rather than silently
+    falling through to ``managed_tmux`` (the pre-fix behaviour).
+    """
+    import os
+
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    monkeypatch.delenv("TMUX", raising=False)
+    assert os.environ.get("TMUX") is None
+    monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
+    out = asyncio.run(tools.launch_worker(prompt="hi", session_mode="current_tmux"))
+    assert out == {
+        "worker_id": None,
+        "state": "tmux_unavailable",
+        "session_mode": "current_tmux",
+        "pty": True,
+    }
+
+
 def test_launch_worker_calls_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
@@ -969,6 +1012,177 @@ def test_register_worker_contract_tools_with_settle_dhara(
     settle_mcp = MagicMock()
     tools.register_worker_contract_tools(app, manager, settle_mcp=settle_mcp)
     assert tools._settle_mcp is settle_mcp
+    # websocket_server is optional; absence means broadcasts are dropped.
+    assert tools._websocket_server is None
+
+
+def test_register_worker_contract_tools_with_websocket_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-006: register() accepts the websocket server so
+    ``broadcast_settle_transition`` can fire from settle transitions.
+    """
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    app = MagicMock()
+    manager = _make_manager_mock()
+    websocket_server = MagicMock()
+    tools.register_worker_contract_tools(
+        app, manager, settle_mcp=None, websocket_server=websocket_server
+    )
+    assert tools._websocket_server is websocket_server
+
+
+@pytest.mark.asyncio
+async def test_broadcast_settle_transition_invoked_on_propose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-006 regression: worker_run_with_settle fires a broadcast
+    on the initial propose so subscribers on settle:/run: rooms observe
+    the run lifecycle from the very first transition.
+    """
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    manager = _make_manager_mock()
+    websocket = MagicMock()
+    websocket.broadcast_settle_transition = AsyncMock()
+    tools.register_worker_contract_tools(
+        MagicMock(), manager, websocket_server=websocket
+    )
+
+    broadcast_calls: list[dict] = []
+
+    async def _fake_broadcast(**kwargs: object) -> None:
+        broadcast_calls.append(kwargs)
+
+    monkeypatch.setattr(tools, "_broadcast_settle_transition", _fake_broadcast)
+
+    monkeypatch.setattr(tools, "_durable_manager", manager)
+    launch = await tools.worker_run_with_settle(
+        "do the task",
+        bindings=[{"path": "a.py", "base": ""}],
+    )
+
+    assert launch["run_ref"] is not None
+    # Fire-and-forget: asyncio.create_task may not have executed yet at
+    # the point the await returns. Yield to the loop and let it drain.
+    for _ in range(5):
+        if broadcast_calls:
+            break
+        await asyncio.sleep(0)
+    assert broadcast_calls, "expected at least one _broadcast_settle_transition call"
+    propose = broadcast_calls[0]
+    assert propose["action"] == "propose"
+    assert propose["run_ref"] == launch["run_ref"]
+    assert propose["from_state"] == "none"
+    assert propose["to_state"] == "proposed"
+
+
+@pytest.mark.asyncio
+async def test_broadcast_settle_transition_invoked_on_settle_action(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-006 regression: worker_settle fires a broadcast on every
+    action so subscribers see the full state-machine trace.
+    """
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    manager = _make_manager_mock()
+    websocket = MagicMock()
+    websocket.broadcast_settle_transition = AsyncMock()
+    tools.register_worker_contract_tools(
+        MagicMock(), manager, websocket_server=websocket
+    )
+
+    record = _make_settle_record(
+        run_ref="settle-broadcast-1",
+        worker_id="w-broadcast-1",
+        state=SettleState.PROPOSED,
+    )
+
+    broadcast_calls: list[dict] = []
+
+    async def _fake_broadcast(**kwargs: object) -> None:
+        broadcast_calls.append(kwargs)
+
+    monkeypatch.setattr(tools, "_broadcast_settle_transition", _fake_broadcast)
+
+    # Patch load_record to return our pre-canned record; persist_transition
+    # to a no-op (the unit test does not exercise MCP persistence).
+    async def _fake_load(run_ref: str, *, mcp: object = None) -> object:
+        return record
+
+    async def _fake_persist(record: object, *, mcp: object = None) -> object:
+        return record
+
+    monkeypatch.setattr(tools, "load_record", _fake_load)
+    monkeypatch.setattr(tools, "persist_transition", _fake_persist)
+
+    result = await tools.worker_settle("settle-broadcast-1", "select")
+
+    assert result["state"] == "selected"
+    for _ in range(5):
+        if broadcast_calls:
+            break
+        await asyncio.sleep(0)
+    assert broadcast_calls, "expected broadcast on settle action"
+    call = broadcast_calls[0]
+    assert call["action"] == "select"
+    assert call["from_state"] == "proposed"
+    assert call["to_state"] == "selected"
+    assert call["run_ref"] == "settle-broadcast-1"
+
+
+@pytest.mark.asyncio
+async def test_settle_mcp_backend_receives_initial_and_transition_writes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-CLEAN-005 regression: when settle_mcp is set, worker_run_with_settle
+    and worker_settle plumb writes through persist_initial_async /
+    persist_transition using the registered backend.
+
+    Without this guarantee the documented "settle persisted to MCP" claim is
+    silently false (writes would fall through to the local dead-letter
+    file only).
+    """
+    from mahavishnu.mcp.tools import worker_contract_tools as tools
+
+    manager = _make_manager_mock()
+    settle_mcp = MagicMock()
+    settle_mcp.put = AsyncMock()
+    tools.register_worker_contract_tools(MagicMock(), manager, settle_mcp=settle_mcp)
+
+    captured_keys: list[str] = []
+
+    async def _fake_persist_initial(record: object, *, mcp: object = None) -> object:
+        captured_keys.append(("initial", getattr(record, "run_ref", "?")))
+        if mcp is not None:
+            await mcp.put(f"settle/v1/{record.run_ref}", {"run_ref": record.run_ref})
+        return record
+
+    async def _fake_persist_transition(record: object, *, mcp: object = None) -> object:
+        captured_keys.append(("transition", getattr(record, "run_ref", "?")))
+        if mcp is not None:
+            await mcp.put(f"settle/v1/{record.run_ref}", {"run_ref": record.run_ref})
+        return record
+
+    monkeypatch.setattr(tools, "persist_initial_async", _fake_persist_initial)
+    monkeypatch.setattr(tools, "persist_transition", _fake_persist_transition)
+
+    # worker_run_with_settle should pass tools._settle_mcp (= our mock) to
+    # persist_initial_async.
+    monkeypatch.setattr(tools, "_durable_manager", manager)
+    launch = await tools.worker_run_with_settle(
+        "do the task",
+        bindings=[{"path": "a.py", "base": ""}],
+    )
+    assert launch["run_ref"] is not None
+    # Either a single initial write (worker_id unchanged on launch) or
+    # initial + restamp transition (worker_id replaced by the launch
+    # result) — both exercise the wiring.
+    assert len(captured_keys) >= 1
+    assert captured_keys[0] == ("initial", launch["run_ref"])
+    assert settle_mcp.put.await_count == len(captured_keys)
 
 
 # ---------------------------------------------------------------------------

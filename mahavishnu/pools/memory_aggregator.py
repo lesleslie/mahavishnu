@@ -145,22 +145,24 @@ class MemoryAggregator:
     def __init__(
         self,
         session_buddy_url: str = "http://localhost:8678/mcp",
-        akosha_url: str = "http://localhost:8682/mcp",
         sync_interval: float = 60.0,  # Sync every 60 seconds
     ):
         """Initialize memory aggregator.
 
         Args:
             session_buddy_url: Session-Buddy MCP server URL
-            akosha_url: Akosha MCP server URL
             sync_interval: Automatic sync interval in seconds
+
+        Note:
+            REQ-CLEAN-003 removed the Akosha sync path. ``aggregate_metrics``
+            was the only tool called and it does not exist on any registered
+            Akosha MCP server. The ``akosha_url`` constructor argument and
+            the ``_sync_to_akosha`` dead code path are gone.
         """
         self.session_buddy_url = session_buddy_url
-        self.akosha_url = akosha_url
         self.sync_interval = sync_interval
 
         self._mcp_client = CommonMCPClient(base_url=self.session_buddy_url, timeout=300.0)
-        self._akosha_mcp = CommonMCPClient(base_url=self.akosha_url, timeout=300.0)
         self._sync_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -168,7 +170,6 @@ class MemoryAggregator:
         self._sb_breaker = _CircuitBreaker(
             "session-buddy", failure_threshold=5, recovery_timeout=60.0
         )
-        self._akosha_breaker = _CircuitBreaker("akosha", failure_threshold=5, recovery_timeout=60.0)
 
         # Local fallback buffer: stores items when external services are down
         self._local_buffer: deque[dict[str, Any]] = deque(maxlen=self.LOCAL_BUFFER_MAX)
@@ -267,15 +268,17 @@ class MemoryAggregator:
 
         Returns:
             Dictionary with circuit breaker states and buffer metrics
+
+        Note:
+            REQ-CLEAN-003 removed the Akosha circuit breaker from the report.
+            With ``_sync_to_akosha`` gone, the breaker never recorded
+            success/failure; reporting it would have been a misleading
+            always-closed signal.
         """
         return {
             "session_buddy": {
                 "circuit_open": self._sb_breaker.is_open,
                 "service": self._sb_breaker.name,
-            },
-            "akosha": {
-                "circuit_open": self._akosha_breaker.is_open,
-                "service": self._akosha_breaker.name,
             },
             "local_buffer": {
                 "size": len(self._local_buffer),
@@ -452,7 +455,6 @@ class MemoryAggregator:
                     await self._sync_task
 
         await self._mcp_client.aclose()
-        await self._akosha_mcp.aclose()
         logger.info("MemoryAggregator stopped")
 
     async def collect_and_sync(
@@ -526,47 +528,16 @@ class MemoryAggregator:
             except Exception as e:  # Outbox drainer failure logs and lets the rest of the sync proceed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Outbox drainer failed during collect_and_sync: {e}")
 
-        # Sync summary to Akosha
-        await self._sync_to_akosha(
-            {
-                "pools_count": len(pools_info),
-                "memory_items_count": len(all_memory),
-                "timestamp": time.time(),
-            }
-        )
+        # REQ-CLEAN-003: Akosha sync removed. The only tool called
+        # (aggregate_metrics) does not exist on any registered Akosha
+        # MCP server, so the call always raised and was discarded by
+        # the circuit breaker. The summary was never reaching Akosha.
 
         return {
             "pools_synced": len(pools_info),
             "memory_items_synced": len(all_memory),
             "timestamp": time.time(),
         }
-
-    async def _sync_to_akosha(
-        self,
-        summary: dict[str, Any],
-    ) -> None:
-        """Sync summary to Akosha with circuit breaker protection.
-
-        Args:
-            summary: Summary dictionary with:
-                - pools_count: Number of pools
-                - memory_items_count: Number of memory items
-                - timestamp: Sync timestamp
-        """
-        if not self._akosha_breaker.can_execute():
-            logger.debug("Skipping Akosha sync: circuit breaker open")
-            return
-
-        try:
-            await self._akosha_mcp.call_tool(
-                "aggregate_metrics",
-                summary,
-            )
-            self._akosha_breaker.record_success()
-            logger.info("Synced summary to Akosha")
-        except MCPServerError as e:
-            self._akosha_breaker.record_failure()
-            logger.warning(f"Failed to sync to Akosha: {e}")
 
     async def cross_pool_search(
         self,

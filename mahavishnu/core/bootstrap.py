@@ -843,7 +843,6 @@ def init_memory_aggregator(app: Any) -> Any:
 
         memory_aggregator = MemoryAggregator(
             session_buddy_url=app.config.pools.session_buddy_url,
-            akosha_url=app.config.pools.akosha_url,
             sync_interval=app.config.pools.memory_sync_interval,
         )
         logger.info(

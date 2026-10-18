@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -72,6 +73,14 @@ _durable_manager: DurableWorkerManager | None = None
 # ``mahavishnu.settle.persistence``).
 _settle_mcp: Any = None
 
+# Optional WebSocket server for settle transition broadcasts. May be
+# ``None`` in tests or in deployments without a websocket server — in
+# which case transitions are silently dropped. REQ-CLEAN-006 wired
+# ``broadcast_settle_transition`` from the websocket server into the
+# settle lifecycle so subscribers on ``settle:`` / ``run:`` rooms see
+# every state transition.
+_websocket_server: Any = None
+
 # Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
 _metrics = WorkerMetrics()
 
@@ -107,6 +116,68 @@ def _tmux_payload(record: Any) -> dict[str, Any] | None:
     return tmux if isinstance(tmux, dict) else None
 
 
+async def _broadcast_settle_transition(
+    *,
+    run_ref: str,
+    worker_id: str,
+    from_state: str,
+    to_state: str,
+    action: str,
+    merge: dict[str, Any] | None = None,
+) -> None:
+    """Fire-and-forget broadcast of a settle-run state transition.
+
+    REQ-CLEAN-006 wired ``broadcast_settle_transition`` from
+    ``mahavishnu.websocket.server.MahavishnuWebSocketServer`` into the
+    settle lifecycle. The broadcast is fire-and-forget so a websocket
+    outage never blocks settle persistence; errors are logged and
+    swallowed.
+
+    When ``_websocket_server`` is ``None`` (tests, deployments without
+    a websocket server), the broadcast is silently dropped.
+    """
+    server = _websocket_server
+    if server is None:
+        return
+    broadcast = getattr(server, "broadcast_settle_transition", None)
+    if broadcast is None:
+        return
+    try:
+        await broadcast(
+            run_ref=run_ref,
+            worker_id=worker_id,
+            from_state=from_state,
+            to_state=to_state,
+            action=action,
+            merge=merge,
+        )
+    except Exception:  # broadcast failure is non-fatal — settle is the source of truth  # noqa: BLE001
+        logger.exception(
+            "settle broadcast failed run_ref=%s action=%s", run_ref, action
+        )
+
+
+def _latest_transition(record: Any) -> dict[str, str]:
+    """Return the latest transition dict from ``record.transitions``.
+
+    The state machine (:mod:`mahavishnu.settle.state_machine`) appends a
+    transition dict with ``from_state`` / ``to_state`` keys on every
+    ``transition()`` call. We use the last entry to derive the
+    broadcast payload; ``record.state`` is the destination state for
+    the most recent action.
+    """
+    transitions = getattr(record, "transitions", ()) or ()
+    if not transitions:
+        return {"from_state": "unknown", "to_state": _state_value(getattr(record, "state", None))}
+    last = transitions[-1]
+    if not isinstance(last, dict):
+        return {"from_state": "unknown", "to_state": _state_value(getattr(record, "state", None))}
+    return {
+        "from_state": str(last.get("from_state", "unknown")),
+        "to_state": str(last.get("to_state", _state_value(getattr(record, "state", None)))),
+    }
+
+
 async def launch_worker(
     prompt: str,
     *,
@@ -127,6 +198,13 @@ async def launch_worker(
     ``managed_tmux`` creates a private Mahavishnu-owned session, and
     ``no_tmux`` falls back to the legacy PTY/backend path with a sentinel
     return so callers can route accordingly.
+
+    REQ-CLEAN-007: ``current_tmux`` is now honored. When the caller is
+    inside a tmux session (``TMUX`` env var set), return
+    ``{state: "current_tmux"}`` so the caller can reuse their session
+    without spawning a new one. When ``TMUX`` is unset, return
+    ``{state: "tmux_unavailable"}`` — the caller must fall back to
+    ``managed_tmux`` or ``no_tmux``.
     """
     _metrics.record("launch_worker")
     if _durable_manager is None:
@@ -135,6 +213,26 @@ async def launch_worker(
     if session_mode == "no_tmux":
         # Backwards-compatible fallback. Falls through to legacy path.
         return {"worker_id": None, "state": "no_tmux"}
+
+    if session_mode == "current_tmux":
+        # REQ-CLEAN-007: only honor the caller's session when the caller
+        # is itself running inside a tmux. Without TMUX, there's nothing
+        # to reuse and the call would silently fall through to managed
+        # mode (the pre-fix behaviour) — surface the failure instead so
+        # the caller can pick a sensible fallback.
+        if not os.environ.get("TMUX"):
+            return {
+                "worker_id": None,
+                "state": "tmux_unavailable",
+                "session_mode": session_mode,
+                "pty": pty,
+            }
+        return {
+            "worker_id": None,
+            "state": "current_tmux",
+            "session_mode": session_mode,
+            "pty": pty,
+        }
 
     effective_command = command or ["claude"]
     window_name = metadata.get("window_name", "main") if isinstance(metadata, dict) else "main"
@@ -357,6 +455,7 @@ def register_worker_contract_tools(
     app: Any,
     durable_manager: DurableWorkerManager | None,
     settle_mcp: Any = None,
+    websocket_server: Any = None,
 ) -> None:
     """Register the worker-contract tool group on a FastMCP ``app``.
 
@@ -370,11 +469,19 @@ def register_worker_contract_tools(
     settle-record persistence. When ``None``, settle writes fall through
     to the local dead-letter file at
     ``~/.mahavishnu/settle-dead-letter/{run_ref}.json``.
+
+    ``websocket_server`` is an optional ``MahavishnuWebSocketServer`` for
+    broadcasting settle transitions on ``settle:`` / ``run:`` rooms.
+    REQ-CLEAN-006 wired ``broadcast_settle_transition`` into the settle
+    lifecycle so subscribers see every state transition. When
+    ``None``, broadcasts are silently dropped.
     """
     global _durable_manager
     global _settle_mcp
+    global _websocket_server
     _durable_manager = durable_manager
     _settle_mcp = settle_mcp
+    _websocket_server = websocket_server
 
     app.tool()(launch_worker)
     app.tool()(send_input)
@@ -481,6 +588,19 @@ async def worker_run_with_settle(
     # ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``.
     await persist_initial_async(record, mcp=_settle_mcp)
 
+    # REQ-CLEAN-006: announce the proposed transition so subscribers on
+    # settle:/run: rooms observe the run lifecycle. Fire-and-forget so
+    # a websocket outage never blocks settle persistence.
+    asyncio.create_task(
+        _broadcast_settle_transition(
+            run_ref=record.run_ref,
+            worker_id=str(record.worker_id),
+            from_state="none",
+            to_state=record.state.value,
+            action="propose",
+        )
+    )
+
     launch_result = await launch_worker(
         prompt=task_signature,
         worker_type=worker_type,
@@ -506,6 +626,17 @@ async def worker_run_with_settle(
         )
         await persist_transition(restamped, mcp=_settle_mcp)
         record = restamped
+        # REQ-CLEAN-006: announce the worker_id restamp so subscribers
+        # see the actual worker_id that the run is bound to.
+        asyncio.create_task(
+            _broadcast_settle_transition(
+                run_ref=record.run_ref,
+                worker_id=record.worker_id,
+                from_state=record.state.value,
+                to_state=record.state.value,
+                action="restamp",
+            )
+        )
 
     return {
         "run_ref": record.run_ref,
@@ -605,6 +736,21 @@ async def worker_settle(
         }
 
     await persist_transition(new_record, mcp=_settle_mcp)
+
+    # REQ-CLEAN-006: announce the transition so subscribers on
+    # settle:/run: rooms observe the run lifecycle. Fire-and-forget so
+    # a websocket outage never blocks settle persistence.
+    latest = _latest_transition(new_record)
+    asyncio.create_task(
+        _broadcast_settle_transition(
+            run_ref=new_record.run_ref,
+            worker_id=new_record.worker_id,
+            from_state=latest["from_state"],
+            to_state=latest["to_state"],
+            action=action_enum.value,
+            merge=merge_payload,
+        )
+    )
 
     response: dict[str, Any] = {
         "run_ref": new_record.run_ref,
