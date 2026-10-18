@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: canonical
 kind: decision
 date: 2026-09-16
-last_reviewed: 2026-09-16
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on:
   - "docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md"
@@ -12,7 +12,7 @@ related:
   - "docs/specs/2026-09-14-dhara-mcp-decomposition-design.md"
   - "docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
   - "docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
-decision_date: null
+decision_date: 2026-10-18
 topic: mcp-design
 ---
 
@@ -21,6 +21,7 @@ topic: mcp-design
 ## Status
 
 **Proposed** (2026-09-16) — pending review.
+**Ratified 2026-10-18** — Option C (hybrid) adopted. Per-wrapper-group Phase 1.5 commits per `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` §5. No Phase 2.X consolidation. Re-evaluate in Q1-2027 after Phase 13 / serverless-readiness Phase 8 (EventBridge WAL) produces new telemetry.
 
 The Dhara MCP decomposition spec
 (`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`)
@@ -506,8 +507,7 @@ If Option C's wrapper consolidation introduces regressions:
 - **2026-09-16**: This ADR drafted. Phase 10 closed 2026-09-15;
   Phase 12a hard-cutover landed 2026-09-15. Both Phase 10 and
   Phase 12 results referenced.
-- **Pending**: review against the decomposition spec §5 Phase 1.5
-  plan, multi-agent review, and user ratification.
+- **2026-10-18**: Ratified. Option C (hybrid) adopted. Per-wrapper-group Phase 1.5 commits per the decomposition spec §5 — 5 wrapper-category commits (PyCharm, `discover_tools`, `health`, trace catalog, registry), then Phase 1.5.1 call-site audit, then Phase 1.6, no Phase 2.X consolidation. Re-evaluate in Q1-2027 after Phase 13 / serverless-readiness Phase 8 (EventBridge WAL) produces new telemetry. Rollback plan: per-wrapper-group via the decomposition spec's commit-by-commit design; full revert via `git revert` per repo.
 
 ## References
 

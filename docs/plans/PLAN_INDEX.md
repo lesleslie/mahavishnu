@@ -83,7 +83,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|---|
 | [`docs/adr/019-dhara-decommissioning.md`](../../docs/adr/019-dhara-decommissioning.md) | 2026-10-17 | `complete` | `canonical` | `decision` | `dhara-decommissioning` | ADR 019: Dhara Decommissioning from Bodai Core Fleet |
 | [`docs/adr/0001-mahavishnu-niche.md`](../../docs/adr/0001-mahavishnu-niche.md) | 2026-09-26 | `complete` | `canonical` | `decision` | `mahavishnu-niche` | ADR 0001: Mahavishnu's Niche — LLM Control Plane + Repo Orchestrator |
-| [`docs/adr/018-gateway-pattern-evaluation.md`](../../docs/adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | `draft` | `canonical` | `decision` | `mcp-design` | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
+| [`docs/adr/018-gateway-pattern-evaluation.md`](../../docs/adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | `active` | `canonical` | `decision` | `mcp-design` | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
 | [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | `complete` | `canonical` | `decision` | `persistence` | ADR 017: Oneiric as the shared persistence substrate for Bodai |
 | [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | `complete` | `historical` | `decision` | `scapy-mcp-integration-review` | ADR 0016 Multi-Agent Review — Findings |
 | [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | `complete` | `canonical` | `decision` | `mcp-enrichment-posture` | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
@@ -388,10 +388,10 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 38 | 1 | 1 | 14 | **59** |
+| `canonical` | 4 | 39 | 1 | 1 | 14 | **59** |
 | `implementation` | 4 | 7 | 1 | 3 | 14 | **29** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | 4 | · | · | 32 | **36** |
 | `superseded` | · | · | · | · | 8 | **8** |
 
-| **Total** | **9** | **51** | **2** | **4** | **69** | **135** |
+| **Total** | **8** | **52** | **2** | **4** | **69** | **135** |
