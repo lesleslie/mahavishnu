@@ -187,7 +187,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../../docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `complete` | `implementation` |  | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
-| [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `active` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
+| [`docs/followups/2026-09-10-changepoint-two-stage-polish.md`](../../docs/followups/2026-09-10-changepoint-two-stage-polish.md) | 2026-09-10 | `partial` | `implementation` |  | `changepoint-two-stage-polish` | Followups — Tier 1 changepoint two-stage polish |
 | [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-hyperbolic-embeddings` | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
 | [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-multi-metric-drift` | Tier 2 Follow-up: Multi-Metric Drift Detection |
 | [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | `deferred` | `canonical` | `followup` | `tier2-optimal-transport` | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
@@ -251,17 +251,17 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
 | [`docs/plans/2026-10-04-session-buddy-lifespan-publisher-inline.md`](2026-10-04-session-buddy-lifespan-publisher-inline.md) | 2026-10-04 | `complete` | `superseded` |  | `session-buddy-lifespan-publisher-inline` | Plan: Inline BodaiEventsPublisher install into session_lifecycle; delete _lifespan_with_dhara_cleanup |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
-| [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `active` | `canonical` |  | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
+| [`docs/plans/2026-09-26-mcp-launcher-standardization.md`](2026-09-26-mcp-launcher-standardization.md) | 2026-09-26 | `complete` | `superseded` |  | `mcp-launcher-standardization` | MCP Launcher Standardization Plan |
 | [`docs/plans/2026-09-20-bodai-layout-migration-and-registry-onboarding.md`](2026-09-20-bodai-layout-migration-and-registry-onboarding.md) | 2026-09-20 | `complete` | `implementation` |  | `bodai-layout-migration` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-09-20-delete-all-dhara-named-code.md`](2026-09-20-delete-all-dhara-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-dhara-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
 | [`docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`](2026-09-14-bodai-serverless-readiness-and-component-substitution.md) | 2026-09-14 | `superseded` | `implementation` |  | `serverless-readiness-and-substitution` | Revisions (2026-09-14, post-research) |
-| [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `active` | `implementation` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
+| [`docs/plans/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md`](2026-09-14-bodai-serverless-readiness-phase-1-fixes.md) | 2026-09-14 | `complete` | `superseded` |  | `serverless-readiness-precondition-fixes` | Phase-1 Precondition Fixes — Serverless-Readiness Plan |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | Verified complete 2026-10-17 (cross-repo audit): |
 | [`docs/plans/2026-09-10-jot-read.md`](2026-09-10-jot-read.md) | 2026-09-10 | `complete` | `implementation` |  | `jot-read` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-09-07-mcp-common-auth-primitives.md`](2026-09-07-mcp-common-auth-primitives.md) | 2026-09-07 | `complete` | `implementation` |  | `auth` | Verified complete 2026-10-17: |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
-| [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `active` | `implementation` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
+| [`docs/plans/2026-08-18-mcp-tool-profile-adoption.md`](2026-08-18-mcp-tool-profile-adoption.md) | 2026-08-18 | `complete` | `superseded` |  | `mcp-tool-profile-adoption` | MCP Tool Profile Adoption Implementation Plan |
 | [`docs/plans/2026-05-11-shared-foundation-adoption-matrix.md`](2026-05-11-shared-foundation-adoption-matrix.md) | 2026-07-16 | `draft` | `canonical` |  | `convergence-control-plane` | Shared Foundation Adoption Matrix |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `draft` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
@@ -388,10 +388,10 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 4 | 39 | 1 | 1 | 14 | **59** |
-| `implementation` | 1 | 10 | 1 | 3 | 15 | **30** |
+| `canonical` | 4 | 38 | 1 | 1 | 14 | **58** |
+| `implementation` | 1 | 7 | 2 | 3 | 15 | **28** |
 | `umbrella` | · | 2 | · | · | 1 | **3** |
 | `historical` | · | · | · | · | 32 | **32** |
-| `superseded` | · | · | · | · | 8 | **8** |
+| `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **5** | **51** | **2** | **4** | **70** | **132** |
+| **Total** | **5** | **47** | **3** | **4** | **73** | **132** |

@@ -1,9 +1,9 @@
 ---
-status: active
-role: canonical
+status: complete
+role: superseded
 kind: plan
 date: 2026-09-26
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-18
 superseded_by: docs/plans/2026-10-15-mcp-server-fleet-modernization.md
 topic: mcp-launcher-standardization
 title: "MCP Launcher Standardization Plan"

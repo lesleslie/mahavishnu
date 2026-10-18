@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: implementation
 kind: plan
 date: 2026-09-10
-last_reviewed: 2026-09-13
+last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
 topic: changepoint-two-stage-polish

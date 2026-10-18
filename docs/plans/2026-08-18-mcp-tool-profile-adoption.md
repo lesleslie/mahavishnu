@@ -1,9 +1,9 @@
 ---
-status: active
-role: implementation
+status: complete
+role: superseded
 kind: plan
 date: 2026-08-18
-last_reviewed: 2026-10-12
+last_reviewed: 2026-10-18
 superseded_by: docs/plans/2026-10-15-mcp-server-fleet-modernization.md
 blocks_on: []
 topic: mcp-tool-profile-adoption

@@ -1,10 +1,13 @@
 ---
-status: active
-role: implementation
+status: complete
+role: superseded
 topic: serverless-readiness-precondition-fixes
 date: 2026-09-14
-last_reviewed: 2026-10-15
-superseded_by: null
+last_reviewed: 2026-10-18
+superseded_by:
+  - docs/plans/2026-10-15-mcp-server-fleet-modernization.md
+  - docs/plans/2026-10-15-oneiric-substrate-rollout.md
+  - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md
 blocks_on:
   - docs/plans/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
 related:
@@ -17,6 +20,12 @@ title: "Phase-1 Precondition Fixes — Serverless-Readiness Plan"
 ---
 
 # Phase-1 Precondition Fixes — Serverless-Readiness Plan
+
+> **Reclassified 2026-10-18:** Parent plan was reclassified as `superseded` today
+> (active umbrellas own the remaining work — see `superseded_by:`). The 14 REQs in
+> Phases A–D are historical record; the parent's status update notes that
+> REQ-FIX-A-002 (ADR 017 citation correction) did not land, confirming the
+> 14 REQs are a frozen backlog rather than a partially-completed work item.
 
 **Date:** 2026-09-14
 **Author:** Claude (post-promotion reviewer synthesis)
