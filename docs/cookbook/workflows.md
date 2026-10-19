@@ -35,14 +35,16 @@ with full worker + terminal-adapter wiring.
 
 **Substrates exercised**:
 
-- PiPool (model-agnostic agent; `npx @earendil-works/pi-coding-agent --rpc`)
+- PiPool (model-agnostic agent; per-task spawner against
+  `npx @earendil-works/pi-coding-agent@1.3.0`)
 - MahavishnuPool (in-process `WorkerManager` + tmux terminal adapter)
 - Shep­herd backend for the MahavishnuPool (post-2026-09-24 default worker substrate)
 
 **Prerequisites**:
 
-1. `npx` on PATH — PiPool spawns `npx @earendil-works/pi-coding-agent --rpc`
-   internally. Node.js 18+ ships `npx`; verify with `which npx`.
+1. `npx` on PATH — PiPool spawns one `npx @earendil-works/pi-coding-agent`
+   subprocess per task. Node.js 18+ ships `npx`; verify with
+   `which npx`.
 2. A Shepherd workspace initialized for the local pool. The pool's
    default writable root resolves to
    `~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local/workspace`.

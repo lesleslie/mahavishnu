@@ -81,13 +81,15 @@ about what config keys are recognized, not a runtime call site.
 
 ## Call site #10 — PiPool (model-agnostic agent bridge)
 
-`mahavishnu/pools/pi_pool.py` spawns a single
-`npx @earendil-works/pi-coding-agent --rpc` subprocess. The agent
-is a third-party tool that reads the standard
+`mahavishnu/pools/pi_pool.py` is a per-task spawner against
+`npx @earendil-works/pi-coding-agent@1.3.0`. Each `execute_task`
+call runs one `npx ... pi <prompt>` subprocess and reaps it. The
+agent is a third-party tool that reads the standard
 `OPENAI_API_KEY` / `OPENAI_BASE_URL` /
 `ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` env vars to call an
-upstream. The pool's `env_allowlist` (see `pi_pool.py:139-157`)
-forwards these vars from the parent shell into the subprocess.
+upstream. The pool's `env_allowlist` (see `pi_pool.py:_env_allowlist`
+default) forwards these vars from the parent shell into the
+per-task subprocess.
 
 To route PiPool through Bifrost, the operator exports the standard
 env vars pointed at the gateway:
@@ -104,8 +106,8 @@ configured MiniMax / Anthropic provider.
 The `mahavishnu demo pool-pi` precondition check
 (`_check_pool_pi_preconditions` in `cli/demo_cli.py`) fails fast
 with a clear hint if no LLM credential is exported, so the
-"subprocess starts, prompt times out" failure mode is no longer
-silent.
+"subprocess starts, upstream returns 401" failure mode surfaces
+as a visible error rather than a silent empty result.
 
 ## Local providers that bypass Bifrost
 

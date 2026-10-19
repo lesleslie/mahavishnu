@@ -198,14 +198,8 @@ pools:
 ### `pi_pool.*` — Pi coding-agent pool
 
 - `enabled` — `bool`, default `False`; opt-in pool backend.
-- `npx_command` — `tuple[str, ...]`, default `("npx", "-y", "@earendil-works/pi-coding-agent", "--rpc")`; allowlisted Pi invocation.
+- `npx_command` — `tuple[str, ...]`, default `("npx", "-y", "@earendil-works/pi-coding-agent")`; allowlisted Pi invocation (one-shot CLI; no `--rpc` flag — that was removed in agent v1.x). Override the env var `MAHAVISHNU_PI_POOL__NPX_COMMAND` (comma-separated) to pin a specific version, e.g. `npx,-y,@earendil-works/pi-coding-agent@1.3.0`.
 - `default_model` — `str`, default `claude-sonnet-4-5`; default Pi model.
-- `rpc_timeout_seconds` — `float`, default `30.0`; JSON-RPC timeout.
-- `probe_timeout_seconds` — `float`, default `3.0`; startup probe timeout.
-- `heartbeat_interval_seconds` — `float`, default `30.0`; watchdog interval.
-- `recipe_path` — `str | null`, default `None`; optional recipe file.
-- `env_allowlist` — `tuple[str, ...]`, default `("PATH", "HOME", "LANG", "NODE_PATH", "NODE_ENV", "TMPDIR")`; non-sensitive variables forwarded to Pi.
-- `pinned_version` — `str`, default `@earendil-works/pi-coding-agent@^1.0.0`; pinned package range.
 
 ### `otel_storage.*` and `otel_ingester.*` — OpenTelemetry
 

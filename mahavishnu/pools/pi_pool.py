@@ -1,11 +1,19 @@
 """Pi coding-agent pool — third pool type for Mahavishnu.
 
-Implements ``BasePool`` against a single persistent
-``npx @earendil-works/pi-coding-agent --rpc`` subprocess. JSON-RPC 2.0
-communication uses Content-Length framing (LSP convention; NOT NDJSON)
-via :class:`mahavishnu.core.json_rpc_stdio.JSONRPCStdioClient`.
+Implements ``BasePool`` against one-shot ``npx @earendil-works/pi-coding-agent``
+invocations. v1.3.0+ of the agent is a CLI tool — each prompt is a single
+``npx ... <prompt>`` subprocess that prints the model response to stdout
+and exits 0 (errors are also printed to stdout, not stderr, and may exit 0).
 
-Each pool manages exactly ONE subprocess. ``scale(n>1)`` raises
+Each ``execute_task`` call spawns a fresh subprocess and reaps it; there
+is no long-lived subprocess, no JSON-RPC handshake, and no Content-Length
+framing. The pool therefore has **no startup self-test beyond a one-shot
+``--version`` probe at ``start()`` time** (populates the health-check
+``version`` field) and **no watchdog loop**. Per-task timeouts still
+fire ``mahavishnu.pi.heartbeat.missed_total`` (the per-invocation
+counter replaces the old persistent-subprocess watchdog).
+
+Each pool manages exactly ONE logical worker. ``scale(n>1)`` raises
 ``NotImplementedError`` to match ``SessionBuddyPool.scale`` — see
 ``docs/plans/2026-09-07-pi-pool-backend.md`` (reverses the original
 "WARN-round-down" decision per multi-agent review consensus).
@@ -22,27 +30,34 @@ Security primitives (non-negotiable, see plan §D1.6):
   these in their shell. To route through Bifrost, set
   ``OPENAI_BASE_URL=http://127.0.0.1:8471/v1`` (the gateway serves
   the OpenAI-compatible endpoint at ``/v1/chat/completions`` per the
-  oneiric 0.32.1 default). Implementation lives in
-  :class:`mahavishnu.core.json_rpc_stdio.JSONRPCStdioClient`.
+  oneiric 0.32.1 default). The runtime denylist is
+  :data:`_FORBIDDEN_ENV_PREFIXES` (REQ-BIFROST-014).
 * ``npx_command`` — start of command must be in
-  ``{npx, /usr/bin/env, /usr/local/bin/npx}``; command must include
-  ``--rpc`` and reference ``@earendil-works/pi-coding-agent``. Enforced
-  by :class:`mahavishnu.core.config.PiPoolSettings._npx_command_allowlist`.
+  ``{npx, /usr/bin/env, /usr/local/bin/npx}``; command must reference
+  ``@earendil-works/pi-coding-agent``. Enforced by
+  :class:`mahavishnu.core.config.PiPoolSettings._npx_command_allowlist`.
 
 Observability:
 
 * OTel-style metrics: ``mahavishnu.pi.tasks.executed{status}``,
   ``mahavishnu.pi.task.duration``, ``mahavishnu.pi.heartbeat.missed_total``
-* Health-check dict carries ``rpc_latency_ms``, ``last_ping_at``,
-  ``version``, ``startup_self_test`` block.
+* Health-check dict carries ``rpc_latency_ms`` (last task duration in
+  ms), ``last_ping_at`` (last task timestamp), ``version`` (from the
+  ``--version`` probe), and ``startup_self_test`` block.
+
+Testability: ``subprocess_runner`` parameter lets tests inject an
+in-memory coroutine instead of spawning a real subprocess. The default
+runner uses :func:`asyncio.create_subprocess_exec` with stdout/stderr
+captured to ``PIPE``.
 """
 
 from __future__ import annotations
 
 import asyncio
 import os
+import re
 import time
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 import uuid
 
 from oneiric.core.logging import get_logger
@@ -52,7 +67,6 @@ from mahavishnu.core.errors import (
     PiRPCTimeout,
     PiUnavailable,
 )
-from mahavishnu.core.json_rpc_stdio import JSONRPCStdioClient
 
 from . import pi_observability
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
@@ -63,12 +77,136 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-# Methods on the Pi RPC that we treat as "execute a task".
-# The Pi coding-agent's --rpc protocol is documented as Pi-Coding-Agent
-# RPC. The contract used here is intentionally minimal — "execute" wraps
-# the prompt in a generic "complete" method so a future schema upgrade
-# does not require changing PiPool.
-_PI_EXECUTE_METHOD = "complete"
+# Default keys always passed through to the subprocess, in addition to the
+# caller-provided ``env_allowlist``. These are minimal POSIX keys required
+# for ``npx`` to function (``PATH``) and for the Node runtime to honour
+# locale expectations (``HOME``, ``LANG``, ``TMPDIR``). ``NODE_PATH`` and
+# ``NODE_ENV`` are forward-declared for future Pi features; both default to
+# empty in the subprocess.
+_REQUIRED_PASSTHROUGH_KEYS: tuple[str, ...] = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "NODE_PATH",
+    "NODE_ENV",
+    "TMPDIR",
+)
+
+
+# Runtime denylist: env-var name prefixes that MUST NOT be forwarded to the
+# subprocess, even if the caller's ``env_allowlist`` accidentally or
+# maliciously includes them. This is the runtime counterpart to the
+# PiPool allowlist — the model-level validator is the first line of
+# defense; this denylist is the second.
+#
+# REQ-BIFROST-014 (bifrost plan §5 Phase 3): the denylist is the
+# ACTUAL security boundary for the PiPool subprocess env forwarding.
+# ``MAHAVISHNU_`` is the mahavishnu operator's own config;
+# ``BIFROST_`` covers the bifrost gateway config (any env var
+# controlling the oneiric router or the legacy local bifrost).
+# Pinned by ``tests/unit/pools/test_pi_security.py``.
+_FORBIDDEN_ENV_PREFIXES: tuple[str, ...] = (
+    "MAHAVISHNU_",
+    "MINIMAX_",
+    "ZAI_",
+    "DHARA_",
+    "AKOSHA_",
+    "SESSION_BUDDY_",
+    "BIFROST_",  # covers MAHAVISHNU_BIFROST__*, ONEIRIC_BIFROST_*, BIFROST_ALLOW_REMOTE
+    "ONEIRIC_",
+)
+
+
+# Per-invocation timeout when the task dict doesn't specify one.
+_DEFAULT_TASK_TIMEOUT_SECONDS: float = 30.0
+
+# Per-invocation timeout for the ``--version`` startup probe.
+_STARTUP_PROBE_TIMEOUT_SECONDS: float = 10.0
+
+# Stdout/stderr line prefixes that indicate the agent failed. The v1.x
+# agent prints errors to stdout (not stderr) and may still exit 0, so
+# the pool treats these prefixes as failure regardless of return code.
+# The list is intentionally narrow — we only match the canonical
+# error shapes; user-facing model output (which can legitimately start
+# with any text) is never treated as a failure.
+_ERROR_LINE_PREFIXES: tuple[str, ...] = (
+    "Error:",
+    "OpenAI API error",
+    "Anthropic API error",
+    "AuthenticationError:",
+    "RateLimitError:",
+)
+
+
+class SubprocessRunner(Protocol):
+    """Callable that spawns the agent subprocess and returns its result.
+
+    Returned tuple: ``(returncode, stdout, stderr)``. Both ``stdout`` and
+    ``stderr`` are decoded text (``str``). Implementations MUST enforce
+    the ``timeout`` budget; on timeout they should raise
+    :class:`asyncio.TimeoutError` (the pool maps this to
+    :class:`PiRPCTimeout`).
+    """
+
+    async def __call__(
+        self,
+        *,
+        argv: tuple[str, ...],
+        env: dict[str, str],
+        timeout: float,
+    ) -> tuple[int, str, str]: ...
+
+
+async def _default_subprocess_runner(
+    *,
+    argv: tuple[str, ...],
+    env: dict[str, str],
+    timeout: float,
+) -> tuple[int, str, str]:
+    """Default runner — spawn via ``asyncio.create_subprocess_exec``.
+
+    Maps spawn-time errors (``FileNotFoundError``, ``PermissionError``,
+    ``OSError``) to :class:`PiUnavailable` so the pool's public
+    contract is uniform: any spawn failure surfaces as ``PiUnavailable``.
+    Runtime timeouts raise :class:`asyncio.TimeoutError`; the pool
+    catches and maps those to :class:`PiRPCTimeout`.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *argv,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
+    except FileNotFoundError as e:
+        raise PiUnavailable(
+            "`npx` binary not found on PATH",
+            install_hint="install Node.js (https://nodejs.org) which bundles npx",
+        ) from e
+    except PermissionError as e:
+        raise PiUnavailable(
+            f"subprocess executable not executable: {argv[0]!r}",
+            install_hint="check filesystem permissions on the npx binary",
+        ) from e
+    except OSError as e:
+        raise PiUnavailable(
+            f"failed to spawn Pi subprocess: {e}",
+            install_hint="check PATH and filesystem permissions",
+        ) from e
+    try:
+        stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except TimeoutError:
+        proc.kill()
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=2.0)
+        except TimeoutError:
+            logger.warning("Pi subprocess did not exit after SIGKILL")
+        raise
+    return (
+        proc.returncode if proc.returncode is not None else 0,
+        stdout_b.decode("utf-8", errors="replace"),
+        stderr_b.decode("utf-8", errors="replace"),
+    )
 
 
 def _format_worker_id(pool_id: str) -> str:
@@ -76,34 +214,49 @@ def _format_worker_id(pool_id: str) -> str:
     return f"{pool_id}:pi-{uuid.uuid4().hex[:8]}"
 
 
-def _map_rpc_error_to_pool_error(exc: Exception, *, method: str) -> dict[str, Any]:
-    """Translate an RPC exception to a pool-friendly error result.
+def _build_subprocess_env(env_allowlist: tuple[str, ...]) -> dict[str, str]:
+    """Build the subprocess env from the explicit ``env_allowlist``.
 
-    Centralised so :meth:`PiPool.execute_task` can keep its branch count
-    within the complexity budget (≤15 branches; see plan §D1.8).
+    Starts from a minimal POSIX-required base (``PATH``, ``HOME``,
+    ``LANG``, ``NODE_PATH``, ``NODE_ENV``, ``TMPDIR``) and overlays
+    the explicit ``env_allowlist`` keys taken from ``os.environ``.
+    Sensitive parent env vars (see :data:`_FORBIDDEN_ENV_PREFIXES`)
+    are NEVER copied — a denylist match is logged at WARNING and the
+    key is dropped, even if the caller's allowlist included it.
+    """
+    env: dict[str, str] = {}
+    for key in _REQUIRED_PASSTHROUGH_KEYS:
+        if key in os.environ:
+            env[key] = os.environ[key]
+    for key in env_allowlist:
+        if any(key.startswith(prefix) for prefix in _FORBIDDEN_ENV_PREFIXES):
+            logger.warning("pi-pool refusing to forward sensitive env var: %s", key)
+            continue
+        if key in os.environ:
+            env[key] = os.environ[key]
+    return env
 
-    Req: REQ-PI-007
-    """  # req: REQ-PI-007
-    if isinstance(exc, PiRPCTimeout):
-        return {
-            "status": "timeout",
-            "error": f"Pi RPC timeout: {exc.message}",
-        }
-    if isinstance(exc, PiProtocolError):
-        return {
-            "status": "failed",
-            "error": f"Pi protocol error: {exc.message}",
-        }
-    # JSON-RPC error returned by the peer.
-    message = str(exc)
-    return {
-        "status": "failed",
-        "error": f"Pi RPC {method} failed: {message}",
-    }
+
+def _looks_like_error_output(stdout: str) -> str | None:
+    """Return the first error line from ``stdout`` if any, else ``None``.
+
+    The v1.x agent prints errors to stdout (not stderr) and may still
+    exit 0, so we scan stdout for the canonical error prefixes. We
+    return the first matching line so the caller can surface it in
+    the pool's error field.
+    """
+    for line in stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        for prefix in _ERROR_LINE_PREFIXES:
+            if stripped.startswith(prefix):
+                return stripped
+    return None
 
 
 class PiPool(BasePool):
-    """Pool backed by a single ``npx pi-coding-agent --rpc`` subprocess.
+    """Pool backed by one-shot ``npx pi-coding-agent`` invocations.
 
     Req: REQ-PI-002, REQ-PI-004, REQ-PI-005, REQ-PI-006, REQ-PI-007
     """  # req: REQ-PI-002, REQ-PI-004, REQ-PI-005, REQ-PI-006, REQ-PI-007
@@ -115,21 +268,23 @@ class PiPool(BasePool):
         config: PoolConfig,
         *,
         runtime_probe: Callable[[], tuple[bool, str]] | None = None,
-        rpc_factory: Callable[..., JSONRPCStdioClient] | None = None,
+        subprocess_runner: SubprocessRunner | None = None,
         env_allowlist: tuple[str, ...] | None = None,
     ) -> None:
-        """Initialise PiPool. Does NOT spawn the subprocess — call ``start()``.
+        """Initialise PiPool. Does NOT spawn a subprocess — call ``start()``.
 
         Args:
             config: Pool configuration.
             runtime_probe: Optional ``(ok, message)`` callable used by
                 ``start()`` to gate pool creation on an external signal
-                (e.g. ``npx`` --version probe).
-            rpc_factory: Optional factory callable used to construct the
-                :class:`JSONRPCStdioClient`. Defaults to the class itself.
-                Tests use this seam to inject doubled pipes.
+                (e.g. ``npx`` --version probe). Default ``None``.
+            subprocess_runner: Optional test seam — defaults to
+                :func:`_default_subprocess_runner` which spawns via
+                ``asyncio.create_subprocess_exec``. Tests use this seam
+                to inject an in-memory coroutine that returns a
+                canned ``(returncode, stdout, stderr)`` triple.
             env_allowlist: Subprocess env allowlist. Defaults to the
-                ``PiPoolSettings.env_allowlist`` default.
+                10-key minimal allowlist documented in this module.
         """
         super().__init__(config)
         # PiPool has a fixed worker count (1). Reject configs that claim otherwise
@@ -142,7 +297,9 @@ class PiPool(BasePool):
                 f"Spawn additional PiPool instances for more capacity."
             )
         self._runtime_probe = runtime_probe
-        self._rpc_factory = rpc_factory or self._default_rpc_factory
+        self._subprocess_runner: SubprocessRunner = (
+            subprocess_runner or _default_subprocess_runner
+        )
         self._env_allowlist: tuple[str, ...] = env_allowlist or (
             # Minimal POSIX keys required for any subprocess.
             "PATH",
@@ -164,11 +321,13 @@ class PiPool(BasePool):
             "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
         )
-        self._client: JSONRPCStdioClient | None = None
+        # Pool state — populated by start() (version probe) and
+        # execute_task (last task telemetry). The pool is otherwise
+        # stateless across calls; each execute_task is independent.
         self._startup_version: str | None = None
         self._startup_self_test_at: float | None = None
-        self._last_ping_ms: float | None = None
-        self._last_ping_at: float | None = None
+        self._last_task_ms: float | None = None
+        self._last_task_at: float | None = None
         self._tasks_completed = 0
         self._tasks_failed = 0
         self._tasks_timed_out = 0
@@ -178,22 +337,27 @@ class PiPool(BasePool):
     # -- BasePool lifecycle --------------------------------------------------
 
     async def start(self) -> str:
-        """Spawn the subprocess and run the startup self-test.
+        """Run the startup ``--version`` probe; mark the pool RUNNING.
+
+        The probe is a one-shot ``npx <pkg> --version`` invocation that
+        returns the installed agent version. Failure to probe does not
+        abort start() — the version field is set to ``None`` and the
+        pool still serves tasks (the per-task subprocess is what
+        matters; the version probe is purely informational).
 
         Returns:
             pool_id: Unique pool identifier.
 
         Raises:
-            PiUnavailable: When ``npx`` is missing or ``--rpc`` unsupported.
-            PiProtocolError: When the subprocess fails to spawn.
+            PiUnavailable: When the ``runtime_probe`` callable returns
+                ``(False, message)`` (caller-supplied gate).
 
         Req: REQ-PI-005
         """  # req: REQ-PI-005
         self._status = PoolStatus.INITIALIZING
         self._gate_on_runtime_probe()
-        npx_command = self._resolve_npx_command()
-        await self._spawn_and_start_client(npx_command)
-        self._record_successful_start(npx_command)
+        version = await self._startup_version_probe()
+        self._record_successful_start(version)
         return self.pool_id
 
     def _gate_on_runtime_probe(self) -> None:
@@ -209,80 +373,60 @@ class PiPool(BasePool):
             install_hint="npm i -g npx && npx -y @earendil-works/pi-coding-agent",
         )
 
-    async def _spawn_and_start_client(self, npx_command: tuple[str, ...]) -> None:
-        """Construct the JSON-RPC client and run start(); map spawn failures.
+    async def _startup_version_probe(self) -> str | None:
+        """Run ``npx <pkg> --version`` to populate the version field.
 
-        Maps PiProtocolError / FileNotFoundError / OSError to PiUnavailable
-        with actionable ``install_hint`` so operators can resolve the most
-        common causes (missing npx, filesystem permissions, RPC handshake
-        rejection). Extracted from ``start()`` to keep that method under the
-        ≤15-branch complexity budget per CLAUDE.md.
-
-        Req: REQ-PI-005
-        """  # req: REQ-PI-005
+        Returns the version string on success, ``None`` on any
+        failure (the probe is best-effort). Never raises — the pool
+        must remain usable even if the agent binary is unavailable
+        at start() time.
+        """
+        cmd = self._resolve_npx_command()
+        argv = (*cmd, "--version")
+        env = _build_subprocess_env(self._env_allowlist)
         try:
-            self._client = self._rpc_factory(
-                command=npx_command,
-                env=self._env_allowlist,
-                logger=logger,
+            _, stdout, _ = await self._subprocess_runner(
+                argv=argv, env=env, timeout=_STARTUP_PROBE_TIMEOUT_SECONDS
             )
-            self._startup_version = await self._client.start()
-        except PiProtocolError as e:
-            self._status = PoolStatus.FAILED
-            raise PiUnavailable(
-                f"failed to start Pi subprocess: {e.message}",
-                install_hint="npm i -g npx && npx -y @earendil-works/pi-coding-agent",
-            ) from e
-        except FileNotFoundError as e:
-            self._status = PoolStatus.FAILED
-            raise PiUnavailable(
-                "`npx` binary not found on PATH",
-                install_hint="install Node.js (https://nodejs.org) which bundles npx",
-            ) from e
-        except OSError as e:
-            self._status = PoolStatus.FAILED
-            raise PiUnavailable(
-                f"failed to spawn Pi subprocess: {e}",
-                install_hint="check PATH and filesystem permissions",
-            ) from e
+        except (PiUnavailable, OSError) as e:
+            logger.debug("Pi --version probe failed: %s", e)
+            return None
+        version = stdout.strip().splitlines()[0] if stdout.strip() else None
+        return version or None
 
-    def _record_successful_start(self, npx_command: tuple[str, ...]) -> None:
+    def _record_successful_start(self, version: str | None) -> None:
         """Mark pool RUNNING, register the worker, emit spawn log."""
+        self._startup_version = version
         self._startup_self_test_at = time.monotonic()
         self._status = PoolStatus.RUNNING
         worker_id = _format_worker_id(self.pool_id)
         self._workers[worker_id] = {
             "kind": "pi",
-            "version": self._startup_version,
-            "command": list(npx_command),
+            "version": version,
+            "command": list(self._resolve_npx_command()),
         }
         logger.info(
             "pool.pi.spawned pool_id=%s version=%s startup_self_test_version=%s",
             self.pool_id,
-            self._startup_version,
-            self._startup_version,
+            version,
+            version,
         )
 
     async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
-        """Dispatch a task to the Pi subprocess via JSON-RPC.
+        """Dispatch a task to a fresh pi-coding-agent subprocess.
 
         Args:
             task: Task dict. Recognised keys: ``prompt`` (required),
-                ``timeout`` (optional, seconds).
+                ``timeout`` (optional, seconds), ``model`` (optional,
+                forwarded as ``--model`` argv), ``provider`` (optional,
+                forwarded as ``--provider`` argv — currently a no-op
+                for v1.x which auto-detects the provider from
+                ``OPENAI_*`` / ``ANTHROPIC_*`` env vars).
 
         Returns:
             Execution result dict with the BasePool contract shape:
             ``{pool_id, worker_id, status, output, error, duration}``.
         """
-        if self._client is None or not self._client.is_started:
-            return {
-                "pool_id": self.pool_id,
-                "worker_id": _format_worker_id(self.pool_id),
-                "status": "failed",
-                "output": None,
-                "error": "PiPool not started",
-                "duration": 0.0,
-            }
         prompt = task.get("prompt")
         if not prompt:
             self._tasks_failed += 1
@@ -294,60 +438,111 @@ class PiPool(BasePool):
                 "error": "task missing 'prompt' field",
                 "duration": 0.0,
             }
-        timeout = float(task.get("timeout") or getattr(self._client, "_request_timeout", 30.0))
+        timeout = float(task.get("timeout") or _DEFAULT_TASK_TIMEOUT_SECONDS)
+        argv = self._build_task_argv(prompt, task)
+        env = _build_subprocess_env(self._env_allowlist)
         worker_id = _format_worker_id(self.pool_id)
         start_time = time.monotonic()
         try:
-            result = await self._client.request(
-                _PI_EXECUTE_METHOD,
-                {"prompt": prompt, "model": task.get("model")},
-                timeout=timeout,
+            returncode, stdout, stderr = await self._subprocess_runner(
+                argv=argv, env=env, timeout=timeout
             )
+        except asyncio.TimeoutError as exc:
             duration = time.monotonic() - start_time
-            self._tasks_completed += 1
+            self._tasks_timed_out += 1
             self._task_durations.append(duration)
-            pi_observability.record_task_completed(duration)
-            return {
-                "pool_id": self.pool_id,
-                "worker_id": worker_id,
-                "status": "completed",
-                "output": result,
-                "error": None,
-                "duration": duration,
-            }
-        except (
-            PiRPCTimeout,
-            PiProtocolError,
-            Exception,  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-        ) as exc:  # PiPool RPC — broad catch maps any failure to typed pool error
-            duration = time.monotonic() - start_time
-            self._task_durations.append(duration)
-            mapped = _map_rpc_error_to_pool_error(exc, method=_PI_EXECUTE_METHOD)
-            timed_out = mapped["status"] == "timeout"
-            if timed_out:
-                self._tasks_timed_out += 1
-            else:
-                self._tasks_failed += 1
-            pi_observability.record_task_failed(duration, timed_out=timed_out)
-            if self._client.watchdog_failed:
-                self._heartbeats_missed += 1
-                self._status = PoolStatus.FAILED
-                pi_observability.record_heartbeat_missed()
+            self._heartbeats_missed += 1
+            pi_observability.record_task_failed(duration, timed_out=True)
+            pi_observability.record_heartbeat_missed()
             logger.warning(
-                "pool.pi.task_failed pool_id=%s worker_id=%s status=%s error=%s",
+                "pool.pi.task_timeout pool_id=%s worker_id=%s timeout=%.1fs",
                 self.pool_id,
                 worker_id,
-                mapped["status"],
-                mapped["error"],
+                timeout,
             )
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
-                "status": mapped["status"],
+                "status": "timeout",
                 "output": None,
-                "error": mapped["error"],
+                "error": f"Pi subprocess timeout after {timeout:.1f}s",
                 "duration": duration,
             }
+        except PiUnavailable as exc:
+            duration = time.monotonic() - start_time
+            self._tasks_failed += 1
+            self._task_durations.append(duration)
+            pi_observability.record_task_failed(duration, timed_out=False)
+            logger.warning(
+                "pool.pi.task_unavailable pool_id=%s worker_id=%s error=%s",
+                self.pool_id,
+                worker_id,
+                exc,
+            )
+            return {
+                "pool_id": self.pool_id,
+                "worker_id": worker_id,
+                "status": "failed",
+                "output": None,
+                "error": f"Pi subprocess unavailable: {exc.message}",
+                "duration": duration,
+            }
+        duration = time.monotonic() - start_time
+        error_line = _looks_like_error_output(stdout)
+        if error_line is not None or returncode != 0:
+            self._tasks_failed += 1
+            self._task_durations.append(duration)
+            pi_observability.record_task_failed(duration, timed_out=False)
+            error = error_line or (
+                f"Pi subprocess exited {returncode}: {stderr.strip() or '<no stderr>'}"
+            )
+            logger.warning(
+                "pool.pi.task_failed pool_id=%s worker_id=%s returncode=%d error=%s",
+                self.pool_id,
+                worker_id,
+                returncode,
+                error,
+            )
+            return {
+                "pool_id": self.pool_id,
+                "worker_id": worker_id,
+                "status": "failed",
+                "output": stdout if stdout else None,
+                "error": error,
+                "duration": duration,
+            }
+        # Success path.
+        self._tasks_completed += 1
+        self._task_durations.append(duration)
+        self._last_task_ms = duration * 1000.0
+        self._last_task_at = time.monotonic()
+        pi_observability.record_task_completed(duration)
+        return {
+            "pool_id": self.pool_id,
+            "worker_id": worker_id,
+            "status": "completed",
+            "output": stdout,
+            "error": None,
+            "duration": duration,
+        }
+
+    def _build_task_argv(self, prompt: str, task: dict[str, Any]) -> tuple[str, ...]:
+        """Build the per-task subprocess argv.
+
+        v1.x of the agent takes the prompt as a positional argument.
+        Optional ``--provider`` and ``--model`` flags are appended
+        when present in the task dict (v1.x's CLI surface; verified
+        with ``npx @earendil-works/pi-coding-agent --help``).
+        """
+        argv: list[str] = list(self._resolve_npx_command())
+        provider = task.get("provider")
+        model = task.get("model")
+        if provider:
+            argv.extend(["--provider", str(provider)])
+        if model:
+            argv.extend(["--model", str(model)])
+        argv.append(prompt)
+        return tuple(argv)
 
     async def execute_batch(
         self,
@@ -403,12 +598,11 @@ class PiPool(BasePool):
 
         Req: REQ-PI-006
         """  # req: REQ-PI-006
-        client = self._client
-        if client is None:
+        if self._status == PoolStatus.PENDING or self._status == PoolStatus.INITIALIZING:
             return {
                 "pool_id": self.pool_id,
                 "pool_type": "pi",
-                "status": "unhealthy",
+                "status": "initializing",
                 "workers_active": 0,
                 "worker_health": {
                     "rpc_latency_ms": None,
@@ -421,28 +615,33 @@ class PiPool(BasePool):
                     },
                 },
             }
-        # Best-effort ping (coarse write latency). Skipped if the client is
-        # already in failed state to avoid log spam.
-        if not client.watchdog_failed and not client.is_stopped:
-            try:
-                self._last_ping_ms = await client.ping()
-                self._last_ping_at = time.monotonic()
-            except (PiRPCTimeout, PiProtocolError, OSError) as e:
-                logger.debug("pi pool ping failed: %s", e)
-        pool_status = "healthy"
-        if client.watchdog_failed or self._status == PoolStatus.FAILED:
-            pool_status = "unhealthy"
-        elif client.protocol_errors > 0:
-            pool_status = "degraded"
+        if self._status == PoolStatus.FAILED:
+            return {
+                "pool_id": self.pool_id,
+                "pool_type": "pi",
+                "status": "unhealthy",
+                "workers_active": 0,
+                "worker_health": {
+                    "rpc_latency_ms": self._last_task_ms,
+                    "last_ping_at": self._last_task_at,
+                    "version": self._startup_version,
+                    "startup_self_test": {
+                        "passed": self._startup_version is not None,
+                        "version": self._startup_version,
+                        "checked_at": self._startup_self_test_at,
+                    },
+                },
+            }
+        # Status is RUNNING / STOPPED — report per-task telemetry.
         return {
             "pool_id": self.pool_id,
             "pool_type": "pi",
-            "status": pool_status,
-            "workers_active": 0 if pool_status == "unhealthy" else 1,
+            "status": "healthy" if self._status == PoolStatus.RUNNING else "stopped",
+            "workers_active": 1 if self._status == PoolStatus.RUNNING else 0,
             "worker_health": {
-                "rpc_latency_ms": self._last_ping_ms,
-                "last_ping_at": self._last_ping_at,
-                "version": client.startup_version,
+                "rpc_latency_ms": self._last_task_ms,
+                "last_ping_at": self._last_task_at,
+                "version": self._startup_version,
                 "startup_self_test": {
                     "passed": self._startup_version is not None,
                     "version": self._startup_version,
@@ -457,9 +656,8 @@ class PiPool(BasePool):
         OTel counters ``mahavishnu.pi.tasks.executed{status}``,
         ``mahavishnu.pi.task.duration``, and
         ``mahavishnu.pi.heartbeat.missed_total`` are emitted
-        incrementally at the mutation sites in :meth:`execute_task` and
-        :meth:`JSONRPCStdioClient._watchdog_loop`; see
-        :mod:`mahavishnu.pools.pi_observability` for the wire-up.
+        incrementally at the mutation sites in :meth:`execute_task`;
+        see :mod:`mahavishnu.pools.pi_observability` for the wire-up.
         Dashboards pulling those counter names will populate
         immediately on the next task, not on each ``get_metrics()``
         scrape.
@@ -488,38 +686,16 @@ class PiPool(BasePool):
         return []
 
     async def stop(self) -> None:
-        """Stop the pool: cancel pending requests, then SIGTERM subprocess."""
-        # STOPPING is treated as RUNNING until the subprocess terminates.
-        # We reuse the RUNNING status to avoid expanding the PoolStatus enum
-        # (which is imported from mahavishnu.core.status and may not have a
-        # STOPPING member in every code path).
-        self._status = PoolStatus.STOPPED
-        if self._client is not None:
-            try:
-                await self._client.stop()
-            except Exception as e:  # pragma: no cover - defensive shutdown  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("error stopping pi client: %s", e)
-            self._client = None
+        """Stop the pool.
+
+        No subprocess to reap in the per-invocation model — the pool
+        simply marks itself ``STOPPED``. Outstanding in-flight tasks
+        complete independently (they are not owned by the pool).
+        """
         self._status = PoolStatus.STOPPED
         logger.info("pool.pi.stopped pool_id=%s", self.pool_id)
 
     # -- Internal helpers ----------------------------------------------------
-
-    def _default_rpc_factory(
-        self,
-        *,
-        command: tuple[str, ...],
-        env: tuple[str, ...],
-        logger: Any,
-    ) -> JSONRPCStdioClient:
-        """Default factory — wires the env allowlist + heartbeat callback."""
-        env_map = {k: os.environ[k] for k in env if k in os.environ}
-        return JSONRPCStdioClient(
-            command=command,
-            env=env_map,
-            logger=logger,
-            on_heartbeat_missed=pi_observability.record_heartbeat_missed,
-        )
 
     def _resolve_npx_command(self) -> tuple[str, ...]:
         """Resolve the npx command from PoolConfig.extra_config or env.
@@ -527,7 +703,7 @@ class PiPool(BasePool):
         Order:
         1. ``config.extra_config["npx_command"]`` if present.
         2. ``MAHAVISHNU_PI_POOL__NPX_COMMAND`` (comma-separated) if set.
-        3. The default ``("npx", "-y", "@earendil-works/pi-coding-agent", "--rpc")``.
+        3. The default ``("npx", "-y", "@earendil-works/pi-coding-agent")``.
         """
         from mahavishnu.core.config import PiPoolSettings
 
@@ -544,19 +720,20 @@ def _build_pi_pool(
     config: PoolConfig,
     *,
     runtime_probe: Callable[[], tuple[bool, str]] | None = None,
-    rpc_factory: Callable[..., JSONRPCStdioClient] | None = None,
+    subprocess_runner: SubprocessRunner | None = None,
     env_allowlist: tuple[str, ...] | None = None,
     **_unused: Any,
 ) -> PiPool:
     """Factory used by the pool registry.
 
-    Accepts ``runtime_probe``, ``rpc_factory``, and ``env_allowlist`` as
-    kwargs so tests can inject seams without editing this function.
+    Accepts ``runtime_probe``, ``subprocess_runner``, and
+    ``env_allowlist`` as kwargs so tests can inject seams without
+    editing this function.
     """
     return PiPool(
         config=config,
         runtime_probe=runtime_probe,
-        rpc_factory=rpc_factory,
+        subprocess_runner=subprocess_runner,
         env_allowlist=env_allowlist,
     )
 
@@ -568,4 +745,12 @@ from ._registry import register_pool_type
 register_pool_type("pi", _build_pi_pool)
 
 
-__all__ = ["PiPool", "_build_pi_pool"]
+__all__ = [
+    "PiPool",
+    "_FORBIDDEN_ENV_PREFIXES",
+    "_build_pi_pool",
+    "_build_subprocess_env",
+    "_default_subprocess_runner",
+    "_looks_like_error_output",
+    "SubprocessRunner",
+]

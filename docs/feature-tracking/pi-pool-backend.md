@@ -11,7 +11,7 @@ role: canonical
 
 **Owner:** Core Eng
 **Created:** 2026-09-07
-**Last updated:** 2026-09-07
+**Last updated:** 2026-10-19
 **Repo(s):** /Users/les/Projects/mahavishnu
 
 ## State — pick one
@@ -26,12 +26,18 @@ role: canonical
 - [x] Trigger path identified (who calls this, and from where)
 - [x] Returns / state updates land in expected destination
 - [x] End-to-end smoke check documented (one command that proves it works)
-- [x] Observability hook in place — structured logs (`pool.pi.spawned`, `pool.pi.subprocess_died`, `pool.pi.task.failed`) **and** OTel counters `mahavishnu.pi.tasks.executed{status}`, `mahavishnu.pi.task.duration`, `mahavishnu.pi.heartbeat.missed_total` (emitted via `mahavishnu.pools.pi_observability`; lazy `@cache`-d instruments so the test fixture can swap MeterProviders). C1 follow-up closed 2026-09-08.
+- [x] Observability hook in place — structured logs (`pool.pi.spawned`, `pool.pi.task.failed`, `pool.pi.task_timeout`, `pool.pi.task_unavailable`) **and** OTel counters `mahavishnu.pi.tasks.executed{status}`, `mahavishnu.pi.task.duration`, `mahavishnu.pi.heartbeat.missed_total` (emitted via `mahavishnu.pools.pi_observability`; lazy `@cache`-d instruments so the test fixture can swap MeterProviders).
 - [x] Rollback signal defined
 
 ## Built (yes/no)
 
-\<yes — `mahavishnu/pools/pi_pool.py`, `mahavishnu/core/json_rpc_stdio.py`, and the new `PiPoolSettings` are merged on the main branch.>
+\<yes — `mahavishnu/pools/pi_pool.py` (per-task spawner against
+`@earendil-works/pi-coding-agent` v1.3.0+ CLI) and `PiPoolSettings`
+are merged on the main branch. The legacy
+`mahavishnu/core/json_rpc_stdio.py` and
+`mahavishnu/core/json_rpc_ipc.py` modules were removed when the
+pool switched from a persistent JSON-RPC subprocess to one-shot
+CLI invocations.>
 
 ## Wired (yes/no)
 
@@ -91,21 +97,22 @@ If any of the above fails, the wiring does not exist.
 ## Blocker
 
 None — feature is wired. Promotion to "adopted" requires at least one
-real `npx @earendil-works/pi-coding-agent --rpc` task to complete
-end-to-end against the actual subprocess. That smoke lives outside the
+real `npx @earendil-works/pi-coding-agent` task to complete
+end-to-end against the actual CLI. That smoke lives outside the
 unit-test harness (requires `npx` and Node.js on the operator host) and
 is captured in the plan's Phase 5 integration test as opt-in.
 
 ## Operator setup (2026-10-19 update)
 
-The pool subprocess inherits the operator's LLM credentials via the
-PiPool ``env_allowlist`` (see `mahavishnu/pools/pi_pool.py`). The
-default allowlist was extended to include the four standard LLM
-credential env vars; the operator opts in by setting them in their
-shell. The `mahavishnu demo pool-pi` precondition check
-(`_check_pool_pi_preconditions` in `mahavishnu/cli/demo_cli.py`)
-fails fast with a clear hint if no LLM cred is set, instead of
-silently timing out at the prompt-dispatch stage.
+The pool's per-task subprocess inherits the operator's LLM
+credentials via the PiPool ``env_allowlist`` (see
+`mahavishnu/pools/pi_pool.py`). The default allowlist includes
+the four standard LLM credential env vars; the operator opts in
+by setting them in their shell. The `mahavishnu demo pool-pi`
+precondition check (`_check_pool_pi_preconditions` in
+`mahavishnu/cli/demo_cli.py`) fails fast with a clear hint if no
+LLM cred is set, so the agent returns the upstream's auth error
+inline instead of a silent empty result.
 
 **Minimum (any provider):**
 
@@ -132,6 +139,20 @@ the second is what oneiric's `BifrostLLMRouter` reads. They stay
 in sync by convention (the oneiric 0.32.1 default is
 `http://127.0.0.1:8471/v1`).
 
+## Agent version (2026-10-19 update)
+
+The pool is pinned to `@earendil-works/pi-coding-agent` v1.3.0+
+which removed the legacy `--rpc` flag. The pool is now a per-task
+spawner: every `execute_task` runs one `npx ... pi <prompt>`
+invocation and reaps. There is no persistent subprocess, no
+JSON-RPC transport, and no Content-Length framing.
+
+To pin a specific version, set the env var override:
+
+```bash
+export MAHAVISHNU_PI_POOL__NPX_COMMAND=npx,-y,@earendil-works/pi-coding-agent@1.3.0
+```
+
 ## Next action
 
 - Run the manual smoke (above) on a host with `npx` available **and**
@@ -139,6 +160,40 @@ in sync by convention (the oneiric 0.32.1 default is
   `mahavishnu.pi.tasks.executed{status="completed"}` counter increments.
 - Promote to `adopted` once one real task completes end-to-end and at
   least one production user/workflow/agent has dispatched through it.
+
+## Per-task spawner design (2026-10-19 update)
+
+The pool is implemented as a per-task spawner against
+`@earendil-works/pi-coding-agent@1.3.0`:
+
+- `PiPool.start()` runs a single `npx ... --version` probe to populate
+  the health-check `version` field. Failure is best-effort; the pool
+  still serves tasks.
+- `PiPool.execute_task(task)` builds argv
+  `(*npx_command, --provider X?, --model Y?, <prompt>)` and runs one
+  `asyncio.create_subprocess_exec` invocation. The default 30s
+  per-task timeout fires `asyncio.TimeoutError` → `PiRPCTimeout`
+  → counter `mahavishnu.pi.heartbeat.missed_total` (retained under
+  the legacy name for dashboard continuity).
+- `PiPool.stop()` is a no-op (no subprocess to reap). Out-of-band
+  tasks complete independently.
+- Test seam: `subprocess_runner: SubprocessRunner | None` — defaults
+  to `_default_subprocess_runner` (real `create_subprocess_exec`),
+  tests inject an in-memory coroutine that returns a canned
+  `(returncode, stdout, stderr)` triple.
+
+Removed as dead code:
+
+- `mahavishnu/core/json_rpc_stdio.py` (the persistent-subprocess
+  Content-Length client; ~735 lines)
+- `mahavishnu/core/json_rpc_ipc.py` (the Unix-socket JSON-RPC server
+  only used by the deleted client; ~480 lines)
+- `tests/unit/test_json_rpc_ipc.py` and
+  `tests/unit/core/test_json_rpc_stdio.py` (tests for the deleted
+  modules; the security-boundary tests moved to
+  `tests/unit/test_pi_pool_env_stripping.py` and import
+  `_FORBIDDEN_ENV_PREFIXES` from its new home in
+  `mahavishnu.pools.pi_pool`).
 
 ## Related
 

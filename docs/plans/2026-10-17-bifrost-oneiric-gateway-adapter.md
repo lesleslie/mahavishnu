@@ -60,7 +60,7 @@ When this plan ships:
 10. **Delete the now-orphaned `BifrostConfig` model** in `mahavishnu/core/config.py:854-989` (per the generalist's H-2 citation correction; the old `:855-947` cite was 42 lines off — the class extends to line 989 where `HNSWIndexConfig` starts at 992). The oneiric router owns the schema from this point on. **`ProtocolFamily` in `mahavishnu/llm_gateway/client.py:17` is also deleted** — replaced by `oneiric.adapters.llm.llm_interface.LLMProvider`.
 11. **Preserve backward compat for env vars** — `MAHAVISHNU_BIFROST__*` env vars keep working via a back-compat shim in `BifrostLLMSettings` (lands in Phase 1, not Phase 7). The shim logs a `DeprecationWarning` AND mirrors to a structured INFO log line `legacy_env_prefix_in_use` with operator identity (`getpass.getuser()`, hostname) — `DeprecationWarning` is silent in production per the security agent's F-06. The structured log is the operator-visible surface. (REQ-BIFROST-011.)
 12. **Add SSRF defense** as a first-class concern (see §4.6). Pydantic `HttpUrl` for all URL fields, scheme allowlist, loopback-only default, opt-in `BIFROST_ALLOW_REMOTE=1` for non-loopback deployments, **and a metadata-IP + RFC1918 blocklist in the opt-in path** so an attacker who convinces an operator to set `BIFROST_ALLOW_REMOTE=1` still can't pivot to AWS/GCP/Azure IMDS endpoints.
-13. **Pin the PiPool security boundary correctly** in REQ-BIFROST-014. The plan previously tested `mahavishnu/pools/pi_pool.py:_env_allowlist`; the actual boundary is the `_FORBIDDEN_ENV_PREFIXES` denylist at `mahavishnu/core/json_rpc_stdio.py:76-83`. The test pins the denylist (and the allowlist as defense-in-depth).
+13. **Pin the PiPool security boundary correctly** in REQ-BIFROST-014. The plan previously tested `mahavishnu/pools/pi_pool.py:_env_allowlist`; the actual boundary is the `_FORBIDDEN_ENV_PREFIXES` denylist at `mahavishnu/pools/pi_pool.py`. The test pins the denylist (and the allowlist as defense-in-depth).
 14. **Pin the oneiric PyPI publication step as a precondition** for Phases 2-7. The implementer does NOT run `crackerjack run -p <level>` per `feedback-mcp-common-version-bump-is-user.md`; Phases 2-7 each declare "Triggered from: oneiric PyPI version ≥X.Y.Z (user runs `crackerjack run -p`)" in their Integration Contract.
 15. **Make Phase 7 non-deferrable.** The migration is structurally incomplete without it (the dead-field-leak fix only holds if there's no parallel config model that can independently drift). The §9 "done" criteria are unconditional; the §9 cut-rule no longer lists Phase 7 as deferrable.
 
@@ -69,7 +69,7 @@ When this plan ships:
 - **Full oneiric substrate migration** (settings classes, embedding, auth, pool) — that's the existing `2026-10-15-oneiric-substrate-rollout.md` umbrella. This plan only touches the LLM-routing slice.
 - **Ollama cleanup** — done in PR #0 of `2026-10-16-drop-ollama-favor-llama-server.md`; this plan operates on the post-ollama substrate.
 - **Bifrost runtime gateway itself** (the Node.js `@maximhq/bifrost` supervisor at `mahavishnu/scripts/bifrost-gateway.py:1-226` running on `localhost:8471`) — already in place and healthy per the 2026-10-17 audit. The plan does not add new Bifrost routing rules; it routes existing call sites through the existing gateway.
-- **PiPool substrate** (`mahavishnu/pools/pi_pool.py`) — the `npx @earendil-works/pi-coding-agent` subprocess uses an env allowlist that explicitly drops `MAHAVISHNU_*` and `MINIMAX_*` keys (`pi_pool.py:139-146` + docstring at lines 13-22). This is a security boundary, not a bug; threading Bifrost config into PiPool would violate the allowlist. The actual enforcement is the `_FORBIDDEN_ENV_PREFIXES` denylist at `mahavishnu/core/json_rpc_stdio.py:76-83`; REQ-BIFROST-014 pins the denylist.
+- **PiPool substrate** (`mahavishnu/pools/pi_pool.py`) — the per-task `npx @earendil-works/pi-coding-agent` subprocess uses an env allowlist that explicitly drops `MAHAVISHNU_*` and `MINIMAX_*` keys (`pi_pool.py:_env_allowlist` default). This is a security boundary, not a bug; threading Bifrost config into PiPool would violate the allowlist. The actual enforcement is the `_FORBIDDEN_ENV_PREFIXES` denylist at `mahavishnu/pools/pi_pool.py`; REQ-BIFROST-014 pins the denylist.
 - **crackerjack `doc_update_service.py:255-273` direct Anthropic SDK call** — deferred.
 - **Bifrost cache implementation** — `cache_mode` and `cache_ttl_seconds` are carried for consumer compatibility but the router does not implement cache. The fields are read by the health probe; a future plan can add cache behavior.
 - **The pydantic-ai adapter work** if Phase 6's audit (pinned by `test_pydantic_ai_no_bypass.py`) reveals all pydantic-ai calls already route through the Agno or CloudWorker paths.
@@ -286,10 +286,10 @@ requirements:
   - id: REQ-BIFROST-014
     title: "PiPool env-allowlist security boundary: `_FORBIDDEN_ENV_PREFIXES` denylist includes `MAHAVISHNU_*` and `BIFROST_*`"
     criteria:
-      given: the denylist at `mahavishnu/core/json_rpc_stdio.py:76-83`
+      given: the denylist at `mahavishnu/pools/pi_pool.py`
       when: a test asserts `"MAHAVISHNU_" in _FORBIDDEN_ENV_PREFIXES` and `"BIFROST_" in _FORBIDDEN_ENV_PREFIXES`
       then: both pass — any contributor who loosens the denylist trips the test
-      evidence: `mahavishnu/tests/unit/core/test_json_rpc_stdio.py::test_forbidden_env_prefixes_includes_mahavishnu_and_bifrost`
+      evidence: `mahavishnu/tests/unit/test_pi_pool_env_stripping.py::test_forbidden_env_prefixes_includes_mahavishnu_and_bifrost`
       and: defense-in-depth: the PiPool allowlist at `pi_pool.py:139-146` also has a test that greps for `MAHAVISHNU_BIFROST__` and fails the build if a future contributor adds it
 
   - id: REQ-BIFROST-015
@@ -525,7 +525,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
   - `tests/unit/terminal/test_manager.py::test_signature_has_no_bifrost`: REQ-BIFROST-004.
   - `tests/unit/terminal/test_manager.py::test_env_inject_claude`: REQ-BIFROST-006.
   - `tests/unit/terminal/test_manager.py::test_terminal_manager_constructor_has_no_bifrost`: REQ-BIFROST-023.
-  - `tests/unit/core/test_json_rpc_stdio.py::test_forbidden_env_prefixes_includes_mahavishnu_and_bifrost`: REQ-BIFROST-014 — pins the actual PiPool security boundary (the `_FORBIDDEN_ENV_PREFIXES` denylist at `json_rpc_stdio.py:76-83`).
+  - `tests/unit/test_pi_pool_env_stripping.py::test_forbidden_env_prefixes_includes_mahavishnu_and_bifrost`: REQ-BIFROST-014 — pins the actual PiPool security boundary (the `_FORBIDDEN_ENV_PREFIXES` denylist in `mahavishnu/pools/pi_pool.py`).
   - `tests/unit/pools/test_pi_pool.py::test_env_allowlist_excludes_bifrost_prefixes`: REQ-BIFROST-014 (defense-in-depth) — re-derived from the actual allowlist source (not a string grep).
 
 #### Integration Contract (Phase 3)
@@ -647,7 +647,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 - [ ] `tests/unit/workers/test_cloud_worker.py` (Phase 2 — REQ-BIFROST-008)
 - [ ] `tests/unit/workers/capabilities/test__probes.py` (Phase 2 — REQ-BIFROST-007)
 - [ ] `tests/unit/terminal/test_manager.py` (Phase 3 — REQ-BIFROST-003, 004, 006, 023)
-- [ ] `tests/unit/core/test_json_rpc_stdio.py` (Phase 3 — REQ-BIFROST-014)
+- [x] `tests/unit/test_pi_pool_env_stripping.py` (Phase 3 — REQ-BIFROST-014, moved from the deleted `tests/unit/core/test_json_rpc_stdio.py`)
 - [ ] `tests/unit/pools/test_pi_pool.py` (Phase 3 — REQ-BIFROST-014 defense-in-depth)
 - [ ] `tests/unit/test_config.py` (Phase 7 — REQ-BIFROST-012)
 - [ ] `tests/unit/test_health_bifrost.py` (Phase 7 — REQ-BIFROST-017 + F-07 fix)
@@ -698,7 +698,7 @@ The validation matrix below pins the explicit before/after signatures for each c
 | Mahavishnu terminal dead-flag (Phase 3) | `ONEIRIC_BIFROST__ENABLED=false ONEIRIC_BIFROST__ROUTES=claude_route,qwen_route .venv/bin/python -c "from mahavishnu.terminal.manager import _resolve_worker_env; print(_resolve_worker_env('terminal-claude'))"` | `{}` | Test log |
 | Mahavishnu terminal — old signature raises (Phase 3) | `.venv/bin/python -c "from mahavishnu.terminal.manager import _resolve_worker_env; _resolve_worker_env('claude', bifrost=None)"` | `TypeError: _resolve_worker_env() got an unexpected keyword argument 'bifrost'` | Test log |
 | Mahavishnu TerminalManager constructor — old signature raises (Phase 3, REQ-BIFROST-023) | `.venv/bin/python -c "from mahavishnu.terminal.manager import TerminalManager; TerminalManager(None, bifrost=None)"` | `TypeError: TerminalManager.__init__() got an unexpected keyword argument 'bifrost'` | Test log |
-| PiPool denylist (Phase 3) | `cd /Users/les/Projects/mahavishnu && .venv/bin/python -m pytest tests/unit/core/test_json_rpc_stdio.py -q -k "test_forbidden_env_prefixes"` | Pass | Test log |
+| PiPool denylist (Phase 3) | `cd /Users/les/Projects/mahavishnu && .venv/bin/python -m pytest tests/unit/test_pi_pool_env_stripping.py -q -k "test_forbidden_env_prefixes"` | Pass | Test log |
 | PiPool allowlist defense-in-depth (Phase 3) | `cd /Users/les/Projects/mahavishnu && .venv/bin/python -m pytest tests/unit/pools/test_pi_pool.py -q -k "test_env_allowlist"` | Pass | Test log |
 | Session-buddy URLs (Phase 4) | `cd /Users/les/Projects/session-buddy && ONEIRIC_BIFROST__ENABLED=true ONEIRIC_BIFROST__ROUTES=openai,claude_route .venv/bin/python -c "from session_buddy.llm_providers import LLMManager; m = LLMManager(); print([p.base_url for p in m._chain._providers])"` | Gateway URLs | Test log |
 | Crackerjack URLs (Phase 5) | `cd /Users/les/Projects/crackerjack && ONEIRIC_BIFROST__ENABLED=true .venv/bin/python -c "from crackerjack.adapters.ai.unified import FallbackChainCodeFixer; fc = FallbackChainCodeFixer(); print([p.base_url for p in fc._chain._providers])"` | Gateway URLs | Test log |
@@ -725,7 +725,7 @@ The validation matrix below pins the explicit before/after signatures for each c
 | **`auth_env` leaks through `/health.bifrost.config`** | Low (now) | REQ-BIFROST-017: centralized `_SENSITIVE_FIELDS: frozenset[str]` + `model_dump`/`model_dump_json` override so `auth_env` is excluded by default. Tested with `model_dump_json` and `dict()` paths too. |
 | **Pydantic v2 `HttpUrl` field-override conflict with `LLMBaseSettings.base_url: str \| None`** | Eliminated (now) | `BifrostLLMSettings` extends `pydantic_settings.BaseSettings` directly. |
 | **Test pollution from `get_router()` singleton** | Low (now) | REQ-BIFROST-018: `reset_router_for_tests()` module-level helper + `conftest.py` pytest fixture. |
-| **PiPool env-allowlist regression test pins the wrong boundary** | Low (now) | REQ-BIFROST-014: the test pins `_FORBIDDEN_ENV_PREFIXES` denylist at `json_rpc_stdio.py:76-83` (the actual security boundary), with the PiPool allowlist as defense-in-depth. |
+| **PiPool env-allowlist regression test pins the wrong boundary** | Low (now) | REQ-BIFROST-014: the test pins `_FORBIDDEN_ENV_PREFIXES` denylist in `mahavishnu/pools/pi_pool.py` (the actual security boundary, after the v1.x CLI rewrite removed the legacy `json_rpc_stdio.py` module), with the PiPool allowlist as defense-in-depth. |
 | **Operator-identity PII in logs** | Low (now) | `BIFROST_LOG_OPERATOR_IDENTITY=0` env var disables the operator/hostname fields for PII-sensitive environments. |
 | **Plan citation drift on `BifrostConfig` (855-947 vs 854-989)** | Low (now) | All citations re-cite to 854-989. |
 | **Phase 6 audit degenerates to a one-line PR comment** | Low (now) | L-1 fix: `tests/unit/adapters/test_pydantic_ai_no_bypass.py` pins the audit conclusion. |
@@ -875,7 +875,7 @@ This plan was rewritten a second time after a 3-agent final review (2026-10-18).
 - `mahavishnu/terminal/manager.py:32-68` — the current `_resolve_worker_env` helper that Phase 3 replaces.
 - `mahavishnu/terminal/manager.py:138-169` — the `TerminalManager.__init__` that Phase 3 also updates (REQ-BIFROST-023).
 - `mahavishnu/engines/agno_adapter_impl.py:334-378` — the current `_resolve_bifrost_base_url` helper that Phase 2 deletes.
-- `mahavishnu/core/json_rpc_stdio.py:76-83` — the `_FORBIDDEN_ENV_PREFIXES` denylist that REQ-BIFROST-014 pins.
+- `mahavishnu/pools/pi_pool.py` — the `_FORBIDDEN_ENV_PREFIXES` denylist that REQ-BIFROST-014 pins.
 - `session_buddy/bifrost_client.py:32-107` — the parallel session-buddy implementation that Phase 4 deletes.
 - `crackerjack/adapters/ai/unified.py:53-72` — the crackerjack call site that Phase 5 migrates.
 - `docs/decisions/wire-up-contract.md` — the policy this plan implements (Integration Contract block per phase).

@@ -66,7 +66,13 @@ def _task_duration() -> Histogram:
 def _heartbeat_missed_total() -> Counter:
     return metrics.get_meter("mahavishnu.pi").create_counter(
         name="mahavishnu.pi.heartbeat.missed_total",
-        description="Count of watchdog-detected heartbeat misses on the JSON-RPC stdio client.",
+        description=(
+            "Count of per-task timeouts (the agent subprocess exceeded its "
+            "per-call timeout budget). Retained under the legacy "
+            "heartbeat-missed name for dashboard continuity; the persistent-"
+            "subprocess watchdog was removed when PiPool switched to "
+            "one-shot CLI invocations."
+        ),
     )
 
 
@@ -100,11 +106,13 @@ def record_task_failed(
 
 
 def record_heartbeat_missed() -> None:
-    """Record a single watchdog-detected heartbeat miss.
+    """Record a single per-task timeout (the new heartbeat-missed semantic).
 
-    Called from :meth:`JSONRPCStdioClient._watchdog_loop` when the
-    inbound-frame interval exceeds ``heartbeat_interval *
-    watchdog_timeout_multiplier``.
+    In the per-invocation model, there is no persistent-subprocess
+    watchdog. A "heartbeat miss" is the per-task timeout firing — the
+    agent subprocess exceeded its per-call ``timeout`` budget. Called
+    from :meth:`mahavishnu.pools.pi_pool.PiPool.execute_task` on the
+    ``asyncio.TimeoutError`` path.
     """
     _heartbeat_missed_total().add(1)
 

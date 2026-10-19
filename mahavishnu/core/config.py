@@ -745,23 +745,28 @@ class PiPoolSettings(BaseModel):
     Mounted as the top-level ``pi_pool`` sibling on :class:`MahavishnuSettings`.
     Env var override pattern: ``MAHAVISHNU_PI_POOL__<FIELD>``.
 
-    Security: the ``npx_command`` and ``env_allowlist`` are intentionally
-    narrow — see ``_npx_command_allowlist`` and the docs/feature-tracking
-    entry for the threat model. The allowlist excludes every parent
-    environment key whose name starts with ``MAHAVISHNU_``, ``MINIMAX_``,
-    ``ZAI_``, ``DHARA_``, ``AKOSHA_``, or ``SESSION_BUDDY_`` (handled in
-    :class:`mahavishnu.core.json_rpc_stdio.JSONRPCStdioClient`).
+    Security: the ``npx_command`` is intentionally narrow — see
+    ``_npx_command_allowlist`` and the docs/feature-tracking entry for
+    the threat model. The runtime env-stripping denylist (in
+    :class:`mahavishnu.pools.pi_pool`) excludes every parent environment
+    key whose name starts with ``MAHAVISHNU_``, ``MINIMAX_``, ``ZAI_``,
+    ``DHARA_``, ``AKOSHA_``, ``SESSION_BUDDY_``, ``BIFROST_``, or
+    ``ONEIRIC_``.
 
     Req: REQ-PI-001 (npx-command allowlist),
     REQ-PI-003 (env-stripping contract).
     """
 
     npx_command: tuple[str, ...] = Field(
-        default=("npx", "-y", "@earendil-works/pi-coding-agent", "--rpc"),
+        default=("npx", "-y", "@earendil-works/pi-coding-agent"),
         description=(
-            "Literal-constrained. Must contain 'npx', '--rpc', and the "
-            "@earendil-works/pi-coding-agent package. Override only for "
-            "testing; production should pin to the package version tested."
+            "Literal-constrained. Must contain 'npx' and the "
+            "@earendil-works/pi-coding-agent package. The agent is invoked "
+            "as a one-shot CLI: each execute_task spawns one subprocess "
+            "with the prompt as a positional arg. Override via env var "
+            "MAHAVISHNU_PI_POOL__NPX_COMMAND (comma-separated) to pin a "
+            "specific version (e.g. 'npx,-y,@earendil-works/"
+            "pi-coding-agent@1.3.0')."
         ),
     )
     enabled: bool = Field(
@@ -774,14 +779,15 @@ class PiPoolSettings(BaseModel):
     # consumer in the Bodai ecosystem — the Pi pool runtime uses
     # hardcoded constants. Kept ``enabled`` (master toggle) and
     # ``npx_command`` (consumed by ``_npx_command_allowlist`` validator
-    # and the JSONRPCStdioClient subprocess launcher). Removed.
+    # and the per-task subprocess launcher). Removed.
 
     model_config = ConfigDict(extra="forbid")
 
     # NOTE (2026-09-27 audit): ``_env_allowlist_denylist`` validator was
     # removed along with the ``env_allowlist`` field — there is no longer
     # any user-configurable env-stripping knob to validate. The runtime
-    # denylist in ``JSONRPCStdioClient._build_subprocess_env`` still applies.
+    # denylist in ``mahavishnu.pools.pi_pool._FORBIDDEN_ENV_PREFIXES``
+    # still applies (REQ-BIFROST-014).
 
     @model_validator(mode="after")
     def _npx_command_allowlist(self) -> PiPoolSettings:
@@ -805,7 +811,7 @@ class PiPoolSettings(BaseModel):
                 f"Refusing to start PiPool to prevent arbitrary-binary execution."
             )
         # /usr/bin/env is only safe when it wraps npx directly — otherwise
-        # ``/usr/bin/env sh -c 'evil' --rpc <pkg>`` would bypass the validator
+        # ``/usr/bin/env sh -c 'evil' <pkg>`` would bypass the validator
         # because ``asyncio.create_subprocess_exec`` does not shell-interpret
         # argv. If env is used, the next argv element must be ``npx``.
         if cmd[0] == "/usr/bin/env" and len(cmd) >= 2 and cmd[1] != "npx":
@@ -818,10 +824,10 @@ class PiPoolSettings(BaseModel):
             )
         # Belt-and-suspenders: reject any argv that contains a shell-interpreter
         # binary or a shell-flag, even if it slipped through cmd[0]. Catches
-        # ``npx sh -c 'evil'`` style attempts via ``pinned_version`` overrides.
+        # ``npx sh -c 'evil'`` style attempts via ``npx_command`` overrides.
         # We only reject the specific shell-bypass shapes — not arbitrary
-        # ``-flag`` arguments, since npx legitimately takes ``-y``, ``--rpc``,
-        # package names, etc.
+        # ``-flag`` arguments, since npx legitimately takes ``-y``, the
+        # package name, the prompt (positional), etc.
         _FORBIDDEN_SHELL_BINARIES: frozenset[str] = frozenset(
             {"sh", "bash", "zsh", "fish", "dash", "ksh", "csh", "tcsh"}
         )
@@ -838,10 +844,6 @@ class PiPoolSettings(BaseModel):
                     f"shell-flag and is not permitted in the argv. Refusing to "
                     f"start PiPool to prevent shell injection."
                 )
-        if "--rpc" not in cmd:
-            from .errors import ConfigurationError
-
-            raise ConfigurationError("pi_pool.npx_command must include '--rpc'")
         if "@earendil-works/pi-coding-agent" not in " ".join(cmd):
             from .errors import ConfigurationError
 

@@ -2328,8 +2328,7 @@ def _check_pool_pi_preconditions(
     LLM credentials via the PiPool's ``env_allowlist`` (see
     ``mahavishnu/pools/pi_pool.py``). The allowlist is opt-in: if
     the operator hasn't exported an LLM credential, the subprocess
-    starts and the RPC connection establishes, but every prompt
-    dispatch times out with no upstream to call.
+    starts but every prompt returns an upstream auth error.
 
     We fail fast here with a clear operator-setup hint, including
     the Bifrost path (the post-bifrost-plan canonical upstream).
@@ -2369,11 +2368,11 @@ async def _run_pool_pi_demo(
     prompt: str,
     keep: bool,
 ) -> dict[str, object]:
-    """Drive ``PiPool`` end-to-end against a single ``pi-coding-agent`` subprocess.
+    """Drive ``PiPool`` end-to-end against the per-task pi-coding-agent CLI.
 
     PiPool has a fixed worker count of 1 (``scale(n>1)`` raises). The
-    demo spawns one subprocess via JSON-RPC 2.0 over stdio, dispatches
-    a single task, and reaps.
+    demo runs a one-shot ``npx @earendil-works/pi-coding-agent <prompt>``
+    invocation per task, captures stdout, and reaps.
     """
     from mahavishnu.pools import PoolConfig
     from mahavishnu.pools.pi_pool import PiPool
@@ -2412,12 +2411,12 @@ def demo_pool_pi(
         DEFAULT_POOL_DEMO_PROMPT.format(pool_type="pi"),
         "--prompt",
         "-p",
-        help="Prompt dispatched to the single pi-coding-agent subprocess.",
+        help="Prompt dispatched to a fresh pi-coding-agent subprocess.",
     ),
     keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
     timeout: int = typer.Option(60, "--timeout", help="Max seconds for start + execute + stop."),
 ) -> None:
-    """Run the PiPool end-to-end (single npx pi-coding-agent subprocess).
+    """Run the PiPool end-to-end (one-shot npx pi-coding-agent CLI).
 
     The Pi substrate is model-agnostic — the prompt is forwarded to the
     configured upstream (Bifrost routing). For multi-process capacity,
@@ -3041,10 +3040,10 @@ def _check_workflow_pi_cascade_preconditions(
     """Verify the PiPool substrate can spawn its npx subprocess.
 
     PiPool is the only pool in the demo set that does NOT use
-    Shepherd — it spawns ``npx @earendil-works/pi-coding-agent --rpc``
-    over stdio. So no Shepherd workspace check is needed (the pool
-    doesn't resolve a ``writable_root``), and ``npx`` is the only
-    binary prerequisite.
+    Shepherd — it spawns ``npx @earendil-works/pi-coding-agent``
+    as a one-shot CLI invocation. So no Shepherd workspace check
+    is needed (the pool doesn't resolve a ``writable_root``), and
+    ``npx`` is the only binary prerequisite.
     """
     which = npx_which or shutil.which
     failures: list[str] = []
@@ -3065,11 +3064,11 @@ async def _run_workflow_pi_cascade_demo(
     """Run a single PiPool through a 2-turn cascade: turn 1's result feeds turn 2.
 
     PiPool has a fixed ``max_workers=1`` (rejects ``scale(n>1)``), so a
-    "cascade" here means "two sequential dispatches against the same
-    long-lived subprocess" — turn 1's output is folded into turn 2's
-    prompt as context. This showcases PiPool's multi-turn agent
-    capability, which is its real-world use case (the other pool
-    demos all do single-dispatch).
+    "cascade" here means "two sequential dispatches, each a fresh
+    subprocess" — turn 1's output is folded into turn 2's prompt as
+    context. This showcases PiPool's multi-turn agent capability,
+    which is its real-world use case (the other pool demos all do
+    single-dispatch).
 
     CI-smoke flavor: compact ✓/✗ per stage, no Shepherd prerequisite,
     runnable in any dev shell with ``npx`` installed.
@@ -3195,7 +3194,7 @@ def _check_workflow_pi_then_local_preconditions(
     """Verify PiPool's npx substrate AND the local pool's Shepherd workspace.
 
     - PiPool half: npx on PATH (the only binary prereq for the
-      ``npx @earendil-works/pi-coding-agent --rpc`` subprocess).
+      ``npx @earendil-works/pi-coding-agent`` CLI invocation).
     - MahavishnuPool half: Shepherd workspace at
       ``~/.local/state/mahavishnu/worktrees/<pool_name_local>/workspace``
       must be initialized (``.vcscore`` marker present). Without it,

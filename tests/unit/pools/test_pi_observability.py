@@ -11,7 +11,9 @@ Req: REQ-PI-009
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+import asyncio
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 
 from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
@@ -19,7 +21,6 @@ from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.resources import Resource
 import pytest
 
-from mahavishnu.core.errors import PiProtocolError, PiRPCTimeout
 from mahavishnu.pools import pi_observability
 from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.pi_pool import PiPool
@@ -39,10 +40,15 @@ def _otel_test_provider() -> Iterator[MeterProvider]:
     """Install a session-wide MeterProvider with InMemoryMetricReader.
 
     OTel's ``set_meter_provider`` is one-shot per process — once a real
-    provider is installed, swapping in another is a silent no-op. So we
-    install exactly once for the test session; per-test fixtures reset
-    the instrument cache so each test sees fresh instruments bound to
-    this same provider.
+    provider is installed, subsequent ``set_meter_provider`` calls are
+    silent no-ops (logged as "Overriding of current MeterProvider is
+    not allowed"). Eagerly creating instruments at import time would
+    lock the module to whatever provider is installed when
+    ``pi_observability`` first imports, breaking tests that install an
+    ``InMemoryMetricReader`` fixture. The ``_get_*`` helpers resolve
+    instruments on first call, which lets the module-level meter
+    proxy pick up whichever ``MeterProvider`` is active at the moment
+    of the first emit.
     """
     reader = InMemoryMetricReader()
     provider = MeterProvider(
@@ -108,51 +114,64 @@ def _delta(
     return after_val - before_val
 
 
-def _make_pool_with_fake_client(
+class _FakeRunner:
+    """In-memory ``SubprocessRunner`` for the per-task pool path."""
+
+    def __init__(self) -> None:
+        self.returns: list[tuple[int, str, str]] = []
+        self.side_effects: list[BaseException] = []
+
+    async def __call__(
+        self,
+        *,
+        argv: tuple[str, ...],
+        env: dict[str, str],
+        timeout: float,
+    ) -> tuple[int, str, str]:
+        if self.returns:
+            return self.returns.pop(0)
+        if self.side_effects:
+            raise self.side_effects.pop(0)
+        return (0, "", "")
+
+    def set_return(self, returncode: int, stdout: str, stderr: str = "") -> None:
+        self.returns.append((returncode, stdout, stderr))
+
+    def set_side_effect(self, exc: BaseException) -> None:
+        self.side_effects.append(exc)
+
+
+def _make_pool_with_fake_runner(
     *,
-    request_return: Any | None = None,
-    request_side_effect: Exception | None = None,
-    watchdog_failed: bool = False,
-) -> tuple[PiPool, Any]:
-    """Build a PiPool wired to an AsyncMock client (no real subprocess).
+    returncode: int = 0,
+    stdout: str = "",
+    side_effect: BaseException | None = None,
+) -> tuple[PiPool, _FakeRunner]:
+    """Build a PiPool wired to a fake in-memory subprocess runner.
 
-    Returns ``(pool, fake_client)``. The pool is *not* started by this
-    helper — tests call ``pool.start()`` themselves when they need the
-    client attached.
+    Returns ``(pool, runner)``. The pool is *not* started; tests call
+    ``pool.start()`` themselves when they need the version probe.
     """
-    if request_return is None:
-        request_return = {"ok": True}
-    from unittest.mock import AsyncMock, MagicMock
-
-    from mahavishnu.core.json_rpc_stdio import JSONRPCStdioClient
-
-    fake = AsyncMock(spec=JSONRPCStdioClient)
-    fake.start = AsyncMock(return_value="1.0.0")
-    fake.stop = AsyncMock(return_value=None)
-    fake.is_started = True
-    fake.is_stopped = False
-    fake.startup_version = "1.0.0"
-    fake.watchdog_failed = watchdog_failed
-    fake.protocol_errors = 0
-    if request_side_effect is not None:
-        fake.request = AsyncMock(side_effect=request_side_effect)
+    runner = _FakeRunner()
+    # Default version-probe success.
+    runner.set_return(0, "1.0.0")
+    if side_effect is not None:
+        runner.set_side_effect(side_effect)
     else:
-        fake.request = AsyncMock(return_value=request_return)
-    fake.ping = AsyncMock(return_value=12.3)
-    fake._request_timeout = 30.0
+        runner.set_return(returncode, stdout)
     config = PoolConfig(
         name="test-pi",
         pool_type="pi",
         min_workers=1,
         max_workers=1,
-        extra_config={"npx_command": ["npx", "@earendil-works/pi-coding-agent", "--rpc"]},
     )
     pool = PiPool(
         config=config,
-        rpc_factory=MagicMock(return_value=fake),
+        runtime_probe=None,
+        subprocess_runner=runner,
         env_allowlist=("PATH",),
     )
-    return pool, fake
+    return pool, runner
 
 
 # --- helper-level tests --------------------------------------------------
@@ -218,7 +237,7 @@ def test_record_heartbeat_missed_increments_heartbeat_counter(
 async def test_execute_task_success_emits_completed_counter(
     metric_reader: InMemoryMetricReader,
 ) -> None:
-    pool, _ = _make_pool_with_fake_client(request_return={"text": "ok"})
+    pool, _ = _make_pool_with_fake_runner(returncode=0, stdout="ok")
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "hello"})
@@ -226,11 +245,24 @@ async def test_execute_task_success_emits_completed_counter(
 
 
 @pytest.mark.asyncio
-async def test_execute_task_protocol_error_emits_failed_counter(
+async def test_execute_task_nonzero_returncode_emits_failed_counter(
     metric_reader: InMemoryMetricReader,
 ) -> None:
-    pool, _ = _make_pool_with_fake_client(
-        request_side_effect=PiProtocolError("bad", frame_excerpt="x"),
+    pool, _ = _make_pool_with_fake_runner(returncode=1, stdout="oops")
+    before = _snapshot(metric_reader)
+    await pool.start()
+    await pool.execute_task({"prompt": "x"})
+    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}) == 1.0
+
+
+@pytest.mark.asyncio
+async def test_execute_task_openai_error_in_stdout_emits_failed_counter(
+    metric_reader: InMemoryMetricReader,
+) -> None:
+    """A v1.x OpenAI error in stdout is treated as failure (rc may be 0)."""
+    pool, _ = _make_pool_with_fake_runner(
+        returncode=0,
+        stdout="OpenAI API error (401): bad key",
     )
     before = _snapshot(metric_reader)
     await pool.start()
@@ -239,16 +271,16 @@ async def test_execute_task_protocol_error_emits_failed_counter(
 
 
 @pytest.mark.asyncio
-async def test_execute_task_timeout_emits_timeout_counter(
+async def test_execute_task_timeout_emits_timeout_and_heartbeat_counter(
     metric_reader: InMemoryMetricReader,
 ) -> None:
-    pool, _ = _make_pool_with_fake_client(
-        request_side_effect=PiRPCTimeout("slow", method="complete"),
-    )
+    """A per-task timeout emits BOTH timeout-task and heartbeat-missed."""
+    pool, _ = _make_pool_with_fake_runner(side_effect=asyncio.TimeoutError())
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "slow"})
     assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "timeout"}) == 1.0
+    assert _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 1.0
 
 
 @pytest.mark.asyncio
@@ -256,25 +288,8 @@ async def test_duration_histogram_records_successful_execution(
     metric_reader: InMemoryMetricReader,
 ) -> None:
     """A successful execute_task records one duration histogram observation."""
-    pool, _ = _make_pool_with_fake_client()
+    pool, _ = _make_pool_with_fake_runner(returncode=0, stdout="ok")
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "ok"})
     assert _delta(metric_reader, before, "mahavishnu.pi.task.duration", {}) == 1.0
-
-
-@pytest.mark.asyncio
-async def test_execute_task_watchdog_failure_emits_heartbeat_missed(
-    metric_reader: InMemoryMetricReader,
-) -> None:
-    """When watchdog_failed flips after a failure, heartbeat counter increments."""
-    pool, fake = _make_pool_with_fake_client(
-        request_side_effect=PiProtocolError("crash", frame_excerpt="x"),
-        watchdog_failed=False,
-    )
-    before = _snapshot(metric_reader)
-    await pool.start()
-    # Simulate the watchdog failing DURING the failed request.
-    fake.watchdog_failed = True
-    await pool.execute_task({"prompt": "crash"})
-    assert _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 1.0
