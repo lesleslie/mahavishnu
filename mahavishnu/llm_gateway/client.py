@@ -3,6 +3,13 @@
 This module keeps protocol selection, provider/model qualification, and
 header/caching defaults in one place so callers do not need to rebuild the
 gateway contract ad hoc.
+
+Phase 2 of the bifrost plan (2026-10-17) removed the
+``ProtocolFamily`` enum and the ``gateway_api_base`` helper — the
+mahavishnu call sites now resolve the base URL through the oneiric
+``BifrostLLMRouter`` directly (per REQ-BIFROST-002). The remaining
+functions take ``protocol_family: str`` instead of the deleted enum.
+Phase 7 deletes this whole module.
 """
 
 from __future__ import annotations
@@ -14,18 +21,19 @@ from urllib.parse import urljoin
 from .contract import BifrostGatewayRequest, CacheMode, RouteClass, infer_route_class
 
 
-class ProtocolFamily(StrEnum):
-    """Wire protocols exposed by the local Bifrost deployment."""
-
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-
-
 class ProviderNamespace(StrEnum):
     """Provider namespaces currently configured in Bifrost."""
 
     MINIMAX_OPENAI = "minimax-openai"
     ANTHROPIC = "anthropic"
+
+
+# Phase 2 note: the value strings match the prior
+# ``ProtocolFamily.OPENAI`` / ``ProtocolFamily.ANTHROPIC`` values
+# so the existing ``BifrostGatewayRequest.protocol_family`` field
+# keeps its wire format.
+_PROTOCOL_OPENAI = "openai"
+_PROTOCOL_ANTHROPIC = "anthropic"
 
 
 def qualify_model(model: str, *, provider: str) -> str:
@@ -36,37 +44,18 @@ def qualify_model(model: str, *, provider: str) -> str:
     return f"{provider}/{model}"
 
 
-def gateway_path(protocol_family: ProtocolFamily | str) -> str:
+def gateway_path(protocol_family: str) -> str:
     """Return the HTTP path for the selected protocol family."""
 
-    protocol = ProtocolFamily(protocol_family)
-    if protocol is ProtocolFamily.ANTHROPIC:
+    if protocol_family == _PROTOCOL_ANTHROPIC:
         return "/anthropic/v1/messages"
     return "/v1/chat/completions"
 
 
-def gateway_api_base(protocol_family: ProtocolFamily | str, *, base_url: str) -> str:
-    """Return the base URL prefix expected by SDK-style clients.
-
-    Some client libraries expect an API root rather than a full request path.
-    For the local Bifrost deployment that means:
-
-    - OpenAI clients -> ``http://127.0.0.1:8471/v1``
-    - Anthropic clients -> ``http://127.0.0.1:8471/anthropic``
-    """
-
-    protocol = ProtocolFamily(protocol_family)
-    normalized = base_url.rstrip("/")
-    if protocol is ProtocolFamily.ANTHROPIC:
-        return f"{normalized}/anthropic"
-    return f"{normalized}/v1"
-
-
-def default_provider_for_protocol(protocol_family: ProtocolFamily | str) -> ProviderNamespace:
+def default_provider_for_protocol(protocol_family: str) -> ProviderNamespace:
     """Return the configured provider namespace for a protocol family."""
 
-    protocol = ProtocolFamily(protocol_family)
-    if protocol is ProtocolFamily.ANTHROPIC:
+    if protocol_family == _PROTOCOL_ANTHROPIC:
         return ProviderNamespace.ANTHROPIC
     return ProviderNamespace.MINIMAX_OPENAI
 
@@ -108,15 +97,11 @@ class GatewayRequestEnvelope:
     def url(self) -> str:
         return urljoin(self.base_url.rstrip("/") + "/", self.path.lstrip("/"))
 
-    @property
-    def api_base(self) -> str:
-        return gateway_api_base(self.request.protocol_family, base_url=self.base_url)
-
 
 def build_gateway_envelope(
     *,
     caller_id: str,
-    protocol_family: ProtocolFamily | str,
+    protocol_family: str,
     model: str,
     prompt: str,
     task_label: str | None = None,
@@ -131,8 +116,7 @@ def build_gateway_envelope(
 ) -> GatewayRequestEnvelope:
     """Build a resolved Bifrost request envelope for a client call."""
 
-    protocol = ProtocolFamily(protocol_family)
-    resolved_provider = provider or default_provider_for_protocol(protocol).value
+    resolved_provider = provider or default_provider_for_protocol(protocol_family).value
     resolved_model = qualify_model(model, provider=resolved_provider)
     resolved_cache_mode = cache_mode or recommended_cache_mode(
         task_label=task_label,
@@ -142,7 +126,7 @@ def build_gateway_envelope(
     )
     request = BifrostGatewayRequest(
         caller_id=caller_id,
-        protocol_family=protocol.value,
+        protocol_family=protocol_family,
         provider=resolved_provider,
         model=resolved_model,
         prompt=prompt,
@@ -155,6 +139,6 @@ def build_gateway_envelope(
     )
     return GatewayRequestEnvelope(
         base_url=base_url,
-        path=gateway_path(protocol),
+        path=gateway_path(protocol_family),
         request=request,
     )

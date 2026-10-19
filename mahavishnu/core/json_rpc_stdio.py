@@ -80,6 +80,8 @@ _FORBIDDEN_ENV_PREFIXES: tuple[str, ...] = (
     "DHARA_",
     "AKOSHA_",
     "SESSION_BUDDY_",
+    "BIFROST_",  # covers MAHAVISHNU_BIFROST__*, ONEIRIC_BIFROST_*, BIFROST_ALLOW_REMOTE
+    "ONEIRIC_",
 )
 
 

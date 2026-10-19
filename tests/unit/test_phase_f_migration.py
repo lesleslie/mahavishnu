@@ -172,21 +172,36 @@ def audit_consumer_count() -> int:
     return count
 
 
-def test_llm_gateway_has_at_least_one_consumer(audit_consumer_count: int) -> None:
-    """At least one production file in mahavishnu/ imports from mahavishnu.llm_gateway.
+def test_llm_gateway_has_zero_production_consumers(
+    audit_consumer_count: int,
+) -> None:
+    """After the bifrost plan (2026-10-17) phases 2 + 3 land,
+    ``mahavishnu.llm_gateway`` has zero production consumers in
+    ``mahavishnu/`` — every LLM call site resolves the base URL
+    through the oneiric ``BifrostLLMRouter`` directly (per
+    REQ-BIFROST-005/007/008). The legacy
+    ``mahavishnu.llm_gateway.client.ProtocolFamily`` and
+    ``gateway_api_base`` helpers are deleted; the
+    ``mahavishnu.llm_gateway`` package itself is scheduled for
+    full removal in phase 7.
 
-    Phase B's LLMProviderFactory (in agno_adapter_impl.py) is the
-    canonical consumer. The audit_orphans.py sibling enforces the
-    inverse (zero orphans); this test guards the positive side.
+    The audit counts the regex pattern
+    ``from\\s+mahavishnu\\.llm_gateway`` across tracked production
+    Python files in ``mahavishnu/`` (changelogs and historical
+    docs are excluded). ``test_phase_f_migration.py`` itself is
+    excluded (the test's own assertions reference the module).
 
-    Originally marked xfail waiting on the LLMProviderFactory
-    refactor; flipped to a real pass after the 5 follow-up commits
-    (consumer count went from 1 → 5: openai, anthropic, minimax
-    each import the gateway helpers via the new
-    ``_resolve_bifrost_base_url`` helper).
+    Note: the test file's own docstring and the audit_consumer_count
+    fixture still match the pre-Phase-2 invariant in spirit — they
+    guard the *structural* state of the LLM routing surface. The
+    direction of the assertion flipped from ``> 0`` (Phase B's
+    ``_resolve_bifrost_base_url`` consumer) to ``== 0`` (Phase 2+3
+    oneiric-router consolidation).
     """
-    assert audit_consumer_count > 0, (
-        f"No production consumers of mahavishnu.llm_gateway in "
-        f"mahavishnu/ (count={audit_consumer_count}). Phase B's "
-        f"LLMProviderFactory should be the canonical consumer."
+    assert audit_consumer_count == 0, (
+        f"Found {audit_consumer_count} production consumer(s) of "
+        f"mahavishnu.llm_gateway in mahavishnu/ — Phase 2+3 of the "
+        f"bifrost plan should have moved all LLM call sites to the "
+        f"oneiric BifrostLLMRouter. The remaining consumers are "
+        f"either regressions or missed migrations."
     )

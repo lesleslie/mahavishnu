@@ -1,12 +1,16 @@
-"""Helpers for the local Bifrost LLM gateway contract."""
+"""Helpers for the local Bifrost LLM gateway contract.
+
+Phase 2 of the bifrost plan (2026-10-17) removed the
+``ProtocolFamily`` enum and the ``gateway_api_base`` helper. The
+mahavishnu call sites now resolve the base URL through the oneiric
+``BifrostLLMRouter`` directly. Phase 7 deletes this whole module.
+"""
 
 from .client import (
     GatewayRequestEnvelope,
-    ProtocolFamily,
     ProviderNamespace,
     build_gateway_envelope,
     default_provider_for_protocol,
-    gateway_api_base,
     gateway_path,
     qualify_model,
     recommended_cache_mode,
@@ -23,12 +27,10 @@ __all__ = [
     "BifrostGatewayRequest",
     "CacheMode",
     "GatewayRequestEnvelope",
-    "ProtocolFamily",
     "ProviderNamespace",
     "RouteClass",
     "build_gateway_envelope",
     "default_provider_for_protocol",
-    "gateway_api_base",
     "gateway_path",
     "hash_prompt",
     "infer_route_class",

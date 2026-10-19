@@ -70,13 +70,39 @@ class CloudWorkerConfig:
         return routing.get(category, self.model)
 
 
+def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
+    """Resolve the MiniMax provider's base_url through the oneiric router.
+
+    Phase 2 of the bifrost plan (2026-10-17, REQ-BIFROST-008):
+    when the oneiric ``BifrostLLMRouter`` returns a URL for the
+    OPENAI provider (router is enabled + OPENAI route is configured),
+    the worker routes through the gateway. The router returns the
+    bare gateway URL; this helper appends ``/v1`` for
+    OpenAI-compatible clients (the FallbackChain's provider
+    ``base_url`` is the API root with ``/v1``). The
+    Pydantic ``HttpUrl`` representation can carry a trailing slash,
+    so ``rstrip("/")`` normalizes before the suffix.
+
+    Falls back to ``config.minimax_url`` (from the ``MINIMAX_BASE_URL``
+    env var or the public default) when the router is not enabled
+    or the OPENAI route is not configured.
+    """
+    from oneiric.adapters.llm.bifrost import get_router
+    from oneiric.adapters.llm.llm_interface import LLMProvider
+
+    resolved = get_router().resolve(LLMProvider.OPENAI)
+    if resolved is not None:
+        return resolved.rstrip("/") + "/v1"
+    return config.minimax_url
+
+
 def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     minimax_routing = routing_to_task_map(config.model_routing or DEFAULT_MINIMAX_ROUTING)
     settings = LLMSettings(
         providers={
             "minimax": {
                 "name": "minimax",
-                "base_url": config.minimax_url,
+                "base_url": _resolve_minimax_base_url(config),
                 "api_key": "${MINIMAX_API_KEY}",
                 "require_auth": True,
                 "task_routing": minimax_routing,

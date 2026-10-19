@@ -135,24 +135,39 @@ def resolve_probe_endpoint(
 ) -> str:
     """Resolve the provider probe endpoint, routing through Bifrost when enabled.
 
-    Per the v1.5 Bifrost spec §5.3 + plan §5 Phase B (REQ-003):
-    when ``settings.bifrost.enabled and provider == "minimax"``, the
-    probe goes to ``<bifrost.base_url>/v1/models`` (the Bifrost
-    gateway's OpenAI-compatible /v1/models endpoint). Otherwise
-    the literal ``PROVIDER_PROBES[provider][1]`` is returned (so
-    the probe dictionary stays stable for tests and operator
+    Per REQ-BIFROST-007: when the oneiric ``BifrostLLMRouter``
+    returns a URL for the OPENAI provider (router is enabled +
+    OPENAI route is configured) **and** ``provider == "minimax"``,
+    the probe goes to ``<router.base_url>/v1/models`` (the Bifrost
+    gateway's OpenAI-compatible /v1/models endpoint). Otherwise the
+    literal ``PROVIDER_PROBES[provider][1]`` is returned (so the
+    probe dictionary stays stable for tests and operator
     inspection).
+
+    The ``settings`` parameter is preserved for API stability; the
+    oneiric router reads its own config from the environment. The
+    ``settings.bifrost`` check is honored as a precedence override —
+    if it's explicitly disabled, the probe stays direct.
 
     The provider set is the four in ``PROVIDER_PROBES``: ``minimax``,
     ``anthropic``, ``openai``, ``qwen``. For non-minimax providers
     the helper is a passthrough regardless of the bifrost flag
-    (per the v1.5 amendment — only the cloud-tier MinMax path is
+    (per the v1.5 amendment — only the cloud-tier MiniMax path is
     routed through Bifrost; the other providers stay direct).
     """
-    if settings is not None and getattr(settings, "bifrost", None) is not None:
-        bifrost = settings.bifrost
-        if bifrost.enabled and provider == "minimax":
-            return bifrost.base_url.rstrip("/") + "/v1/models"
+    from oneiric.adapters.llm.bifrost import get_router
+    from oneiric.adapters.llm.llm_interface import LLMProvider
+
+    settings_disables_bifrost = (
+        settings is not None
+        and getattr(settings, "bifrost", None) is not None
+        and not settings.bifrost.enabled
+    )
+    if settings_disables_bifrost or provider != "minimax":
+        return PROVIDER_PROBES[provider][1]
+    resolved = get_router().resolve(LLMProvider.OPENAI)
+    if resolved is not None:
+        return resolved.rstrip("/") + "/v1/models"
     return PROVIDER_PROBES[provider][1]
 
 

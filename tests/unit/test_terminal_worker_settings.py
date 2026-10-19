@@ -1,19 +1,18 @@
-"""Phase D (REQ-004) tests for AI-CLI worker env-injection.
+"""Phase 3 (REQ-BIFROST-006) tests for AI-CLI worker env-injection.
 
-Per docs/plans/2026-10-15-bifrost-gateway-wiring.md §5 Phase D exit
-criteria. These tests assert the per-worker env dict built by
-``TerminalManager._resolve_worker_env`` and threaded through
-``TmuxTerminalAdapter.launch_session``/``launch_sessions`` to
-``DurableWorkerManager.spawn`` and finally to
-``create_session``'s ``tmux set-environment -t <session> KEY VAL``
-emission.
+Per the bifrost plan §5 Phase 3, the per-worker env dict built by
+``TerminalManager._resolve_worker_env`` is sourced from the oneiric
+``BifrostLLMRouter``. The ``bifrost: BifrostConfig | None``
+parameter on both ``_resolve_worker_env`` and ``TerminalManager.__init__``
+is removed (REQ-BIFROST-004, REQ-BIFROST-023) — caller-spoofable
+settings were a real attack surface. These tests assert the
+router-driven env dict.
 
 The verification gate test
-(``test_qwen_actual_dispatch_emits_caller_id``) is marked
-``pytest.mark.xfail`` because it requires a live Bifrost gateway
-AND a real Qwen CLI dispatch — both out of scope for an offline
-unit test. Phase D ships with ``route_qwen_code: false`` by
-default; the flag is enabled only when this gate passes.
+(``test_qwen_actual_dispatch_emits_caller_id``) requires a live
+Bifrost gateway AND a real Qwen CLI dispatch — both out of scope
+for an offline unit test. The QWEN_ROUTE flag is enabled only
+when this gate passes end-to-end.
 """
 
 from __future__ import annotations
@@ -23,82 +22,143 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mahavishnu.core.config import BifrostConfig
 from mahavishnu.terminal.manager import _resolve_worker_env
+
+
+# ============================================================================
+# Fixtures / helpers
+# ============================================================================
+
+
+def _enable_bifrost(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    routes: tuple[str, ...] = ("claude_route",),
+    qwen_env_var: str = "OPENAI_BASE_URL",
+) -> None:
+    """Enable the oneiric Bifrost router via env vars + clear the
+    process-cached singleton so the test sees a fresh router.
+    """
+    from oneiric.adapters.llm.bifrost import reset_router_for_tests
+
+    monkeypatch.setenv("ONEIRIC_BIFROST_ENABLED", "true")
+    monkeypatch.setenv("ONEIRIC_BIFROST_ROUTES", ",".join(routes))
+    if "qwen_route" in routes and qwen_env_var != "OPENAI_BASE_URL":
+        monkeypatch.setenv("ONEIRIC_BIFROST_QWEN_ENV_VAR", qwen_env_var)
+    monkeypatch.delenv("BIFROST_ALLOW_REMOTE", raising=False)
+    reset_router_for_tests()
+
+
+def _disable_bifrost(monkeypatch: pytest.MonkeyPatch) -> None:
+    from oneiric.adapters.llm.bifrost import reset_router_for_tests
+
+    monkeypatch.delenv("ONEIRIC_BIFROST_ENABLED", raising=False)
+    reset_router_for_tests()
+
 
 # ============================================================================
 # _resolve_worker_env unit tests
 # ============================================================================
 
 
-def _bifrost(**overrides: object) -> BifrostConfig:
-    """Build a BifrostConfig with the given field overrides."""
-    return BifrostConfig.model_validate(overrides)
+def test_claude_code_inherits_anthropic_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``ANTHROPIC_BASE_URL`` is set when CLAUDE_ROUTE is in the routes set.
 
-
-def test_claude_code_inherits_anthropic_base_url() -> None:
-    """``ANTHROPIC_BASE_URL`` is set when route_claude_code is true."""
-    bifrost = _bifrost(enabled=True, route_claude_code=True)
-    env = _resolve_worker_env("terminal-claude", bifrost)
-    assert env.get("ANTHROPIC_BASE_URL") == bifrost.anthropic_base_url
+    The router's anthropic_base_url default is
+    ``http://127.0.0.1:8471/anthropic`` (matches the v1.5 spec).
+    """
+    _enable_bifrost(monkeypatch, routes=("claude_route",))
+    env = _resolve_worker_env("terminal-claude")
     assert env.get("ANTHROPIC_BASE_URL") == "http://127.0.0.1:8471/anthropic"
 
 
-def test_claude_code_default_unchanged() -> None:
-    """``ANTHROPIC_BASE_URL`` is absent when route_claude_code is false (default)."""
-    bifrost = _bifrost(enabled=True)  # route_claude_code defaults to False
-    env = _resolve_worker_env("terminal-claude", bifrost)
+def test_claude_code_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``ANTHROPIC_BASE_URL`` is absent when CLAUDE_ROUTE is not configured."""
+    _enable_bifrost(monkeypatch, routes=("qwen_route",))
+    env = _resolve_worker_env("terminal-claude")
     assert "ANTHROPIC_BASE_URL" not in env
 
 
-def test_qwen_code_inherits_qwen_env_var() -> None:
-    """``OPENAI_BASE_URL`` (the default ``qwen_env_var``) is set when route_qwen_code is true."""
-    bifrost = _bifrost(enabled=True, route_qwen_code=True)
-    env = _resolve_worker_env("terminal-qwen", bifrost)
-    # The env var name is bifrost.qwen_env_var; the value is the
-    # Bifrost OpenAI-compatible provider's base URL.
+def test_qwen_code_inherits_qwen_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``OPENAI_BASE_URL`` (the default ``qwen_env_var``) is set when
+    QWEN_ROUTE is in the routes set, and is suffixed with ``/v1``
+    so the OpenAI-compatible Qwen CLI can construct ``/v1/chat/completions``.
+    """
+    _enable_bifrost(monkeypatch, routes=("qwen_route",))
+    env = _resolve_worker_env("terminal-qwen")
     assert env.get("OPENAI_BASE_URL") == "http://127.0.0.1:8471/v1"
 
 
-def test_qwen_code_default_unchanged() -> None:
-    """``qwen_env_var`` is absent when route_qwen_code is false (default)."""
-    bifrost = _bifrost(enabled=True)  # route_qwen_code defaults to False
-    env = _resolve_worker_env("terminal-qwen", bifrost)
+def test_qwen_code_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``qwen_env_var`` is absent when QWEN_ROUTE is not configured."""
+    _enable_bifrost(monkeypatch, routes=("claude_route",))
+    env = _resolve_worker_env("terminal-qwen")
     assert "OPENAI_BASE_URL" not in env
 
 
-def test_qwen_env_var_field_override() -> None:
-    """A custom ``qwen_env_var`` name is honored."""
-    bifrost = _bifrost(
-        enabled=True,
-        route_qwen_code=True,
-        qwen_env_var="QWEN_BASE_URL",
+def test_qwen_env_var_field_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A custom ``qwen_env_var`` name (e.g. ``QWEN_BASE_URL``) is honored."""
+    _enable_bifrost(
+        monkeypatch, routes=("qwen_route",), qwen_env_var="QWEN_BASE_URL"
     )
-    env = _resolve_worker_env("terminal-qwen", bifrost)
+    env = _resolve_worker_env("terminal-qwen")
     assert "QWEN_BASE_URL" in env
     assert "OPENAI_BASE_URL" not in env
     assert env["QWEN_BASE_URL"] == "http://127.0.0.1:8471/v1"
 
 
-def test_bifrost_disabled_returns_empty_env() -> None:
-    """When ``bifrost.enabled`` is False (default), no env is injected regardless of route flags."""
-    bifrost = _bifrost()  # enabled defaults to False
-    assert _resolve_worker_env("terminal-claude", bifrost) == {}
-    bifrost_with_flags = _bifrost(route_claude_code=True)
-    assert _resolve_worker_env("terminal-claude", bifrost_with_flags) == {}
+def test_bifrost_disabled_returns_empty_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When the router is disabled (REQ-BIFROST-003 dead-flag regression),
+    no env is injected regardless of which routes are configured.
+    """
+    _enable_bifrost(monkeypatch, routes=("claude_route", "qwen_route"))
+    _disable_bifrost(monkeypatch)
+    # Even though the test set routes, the router is now disabled
+    # — the empty dict proves the dead-flag fix.
+    assert _resolve_worker_env("terminal-claude") == {}
 
 
-def test_unknown_worker_type_returns_empty_env() -> None:
+def test_unknown_worker_type_returns_empty_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Worker types other than terminal-claude / terminal-qwen get no env override."""
-    bifrost = _bifrost(enabled=True, route_claude_code=True, route_qwen_code=True)
+    _enable_bifrost(monkeypatch, routes=("claude_route", "qwen_route"))
     for worker_type in ("terminal-goose", "terminal-crackerjack", ""):
-        env = _resolve_worker_env(worker_type, bifrost)
+        env = _resolve_worker_env(worker_type)
         assert env == {}, f"unexpected env for {worker_type!r}: {env!r}"
 
 
-def test_none_bifrost_returns_empty_env() -> None:
-    """When bifrost is None (no settings wired), the helper returns empty."""
-    assert _resolve_worker_env("terminal-claude", None) == {}
+# ============================================================================
+# New-architecture signature contracts (REQ-BIFROST-004, REQ-BIFROST-023)
+# ============================================================================
+
+
+def test_signature_has_no_bifrost() -> None:
+    """The new function signature is ``_resolve_worker_env(worker_type: str) -> dict[str,str]``.
+
+    The prior signature was
+    ``_resolve_worker_env(worker_type, bifrost: BifrostConfig | None)``.
+    Passing ``bifrost=`` now raises ``TypeError`` — caller-spoofable
+    settings were a real attack surface.
+    """
+    with pytest.raises(TypeError):
+        _resolve_worker_env("terminal-claude", bifrost=None)  # type: ignore[call-arg]
+
+
+def test_terminal_manager_constructor_has_no_bifrost() -> None:
+    """The new constructor signature is ``TerminalManager(adapter, config=None)``.
+
+    The prior signature was
+    ``TerminalManager(adapter, config=None, bifrost=None)``.
+    """
+    from mahavishnu.terminal.adapters.base import TerminalAdapter
+    from mahavishnu.terminal.manager import TerminalManager
+
+    adapter = MagicMock(spec=TerminalAdapter)
+    with pytest.raises(TypeError):
+        TerminalManager(adapter=adapter, bifrost=None)  # type: ignore[call-arg]
 
 
 # ============================================================================
@@ -106,7 +166,9 @@ def test_none_bifrost_returns_empty_env() -> None:
 # ============================================================================
 
 
-def test_launch_sessions_threads_env_to_adapter() -> None:
+def test_launch_sessions_threads_env_to_adapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """TerminalManager.launch_sessions forwards the env dict to the adapter.
 
     The adapter is mocked; we assert launch_session is called with
@@ -118,14 +180,12 @@ def test_launch_sessions_threads_env_to_adapter() -> None:
     from mahavishnu.terminal.adapters.base import TerminalAdapter
     from mahavishnu.terminal.manager import TerminalManager
 
-    bifrost = _bifrost(enabled=True, route_claude_code=True)
+    _enable_bifrost(monkeypatch, routes=("claude_route",))
+
     adapter = MagicMock(spec=TerminalAdapter)
     adapter.adapter_name = "tmux"
-    # AsyncMock makes `await adapter.launch_session(...)` return
-    # the worker_id string directly. MagicMock's `return_value`
-    # is what the awaited result unwraps to.
     adapter.launch_session = AsyncMock(return_value="worker-1")
-    manager = TerminalManager(adapter=adapter, bifrost=bifrost)
+    manager = TerminalManager(adapter=adapter)
 
     async def _run() -> list[str]:
         return await manager.launch_sessions(
@@ -148,11 +208,9 @@ def test_launch_sessions_threads_env_to_adapter() -> None:
 # Xfail gate — the Qwen CLI dispatch verification
 # ----------------------------------------------------------------------------
 # This is the live-verification gate that requires a running Bifrost
-# gateway AND a real Qwen CLI dispatch. Phase D ships with
-# route_qwen_code: false; the flag is enabled when this passes.
-# It is documented as xfail so the suite still ships in CI; the
-# actual run is a manual operator action (or a CI job with a real
-# Bifrost + Qwen CLI).
+# gateway AND a real Qwen CLI dispatch. The QWEN_ROUTE flag is
+# enabled when this passes. The actual run is a manual operator
+# action (or a CI job with a real Bifrost + Qwen CLI).
 # ============================================================================
 
 

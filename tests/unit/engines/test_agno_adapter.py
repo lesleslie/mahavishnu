@@ -344,6 +344,171 @@ class TestLLMProviderFactory:
 
 
 # ============================================================================
+# Bifrost Routing Tests (REQ-BIFROST-005)
+# ============================================================================
+
+
+class TestLLMProviderFactoryBifrostRouting:
+    """REQ-BIFROST-005: factory methods route through the oneiric
+    ``BifrostLLMRouter`` when the router is enabled + routed.
+
+    The router returns the bare gateway URL; the OpenAI-compatible
+    factories append ``/v1`` so the Agno SDK constructs
+    ``<gateway>/v1/chat/completions``. The Anthropic factory sets
+    ``ANTHROPIC_BASE_URL`` (the env var the Anthropic SDK reads at
+    client init) since the Agno Claude wrapper does not accept a
+    ``base_url=`` kwarg directly.
+    """
+
+    def _enable_bifrost(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        routes: tuple[str, ...] = ("claude_route", "qwen_route"),
+    ) -> None:
+        """Enable the oneiric Bifrost router via env vars + clear the
+        singleton cache so the test sees a fresh router.
+        """
+        from oneiric.adapters.llm.bifrost import reset_router_for_tests
+
+        monkeypatch.setenv("ONEIRIC_BIFROST_ENABLED", "true")
+        monkeypatch.setenv("ONEIRIC_BIFROST_ROUTES", ",".join(routes))
+        # The default base_url is http://127.0.0.1:8471 (no /v1); the
+        # anthropic default is http://127.0.0.1:8471/anthropic.
+        monkeypatch.delenv("BIFROST_ALLOW_REMOTE", raising=False)
+        reset_router_for_tests()
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
+    def test_openai_routes_through_bifrost_router(
+        self, agno_llm_config: AgnoLLMConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The OpenAI factory picks up the oneiric router's URL and
+        appends ``/v1`` for OpenAI-compatible clients.
+        """
+        agno_llm_config.provider = LLMProvider.OPENAI
+        agno_llm_config.model_id = "gpt-4o"
+        # Explicit override is unset so router path is exercised.
+        agno_llm_config.base_url = None
+        self._enable_bifrost(monkeypatch, routes=("qwen_route",))
+
+        factory = LLMProviderFactory(agno_llm_config)
+        with patch("agno.models.openai.OpenAIChat") as mock_openai:
+            factory.create_model()
+            call_kwargs = mock_openai.call_args[1]
+            # The router returns http://127.0.0.1:8471/ (Pydantic
+            # HttpUrl adds trailing slash); rstrip + /v1 → /v1 suffix.
+            assert call_kwargs["base_url"] == "http://127.0.0.1:8471/v1"
+
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    def test_anthropic_model_uses_router(
+        self, agno_llm_config: AgnoLLMConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """REQ-BIFROST-005 (anthropic arm). The Anthropic factory sets
+        ``ANTHROPIC_BASE_URL`` from the oneiric router so the Anthropic
+        SDK reads it at client init.
+
+        The env-var mutation is scoped to the ``Claude(...)`` call
+        (per the api-security-specialist's review), so the test
+        captures the value at construction time via the
+        ``__init__`` side effect — not after the factory returns.
+        """
+        agno_llm_config.provider = LLMProvider.ANTHROPIC
+        agno_llm_config.model_id = "claude-sonnet-4-6"
+        agno_llm_config.base_url = None
+        self._enable_bifrost(monkeypatch, routes=("claude_route",))
+        # Ensure the env var is unset before the call so we can prove
+        # the factory set it.
+        monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
+
+        # Capture the env var at the moment Claude.__init__ runs
+        # (before the context manager restores the prior value).
+        captured: dict[str, str | None] = {}
+
+        def capture_init(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+            captured["ANTHROPIC_BASE_URL"] = os.environ.get("ANTHROPIC_BASE_URL")
+            return MagicMock()
+
+        factory = LLMProviderFactory(agno_llm_config)
+        with patch("agno.models.anthropic.Claude") as mock_claude:
+            mock_claude.side_effect = capture_init
+            factory.create_model()
+            mock_claude.assert_called_once()
+
+        # The captured value is the URL the SDK would have read.
+        assert captured["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:8471/anthropic"
+        # After the factory returns, the env var is restored (was
+        # unset before, so it's now absent) — proves the context
+        # manager is actually scoping the mutation.
+        assert "ANTHROPIC_BASE_URL" not in os.environ
+
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})
+    def test_anthropic_env_var_restored_after_factory(
+        self, agno_llm_config: AgnoLLMConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The scoped env-var mutation must restore the PRIOR value
+        on exit (not just remove the var). This guards against a
+        regression where a future refactor leaks the gateway URL
+        into other code paths.
+        """
+        agno_llm_config.provider = LLMProvider.ANTHROPIC
+        agno_llm_config.model_id = "claude-sonnet-4-6"
+        agno_llm_config.base_url = None
+        # Pre-set the env var to a non-router value; the context
+        # manager should leave it alone after the factory returns.
+        monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://anthropic.com")
+        self._enable_bifrost(monkeypatch, routes=("claude_route",))
+
+        factory = LLMProviderFactory(agno_llm_config)
+        with patch("agno.models.anthropic.Claude"):
+            factory.create_model()
+
+        # Pre-existing value is preserved.
+        assert os.environ["ANTHROPIC_BASE_URL"] == "https://anthropic.com"
+
+    @patch.dict(os.environ, {"MINIMAX_API_KEY": "test-key"})
+    def test_minimax_routes_through_bifrost_router(
+        self, agno_llm_config: AgnoLLMConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """MiniMax uses the OpenAI-compatible factory; same /v1 suffix
+        behavior as the OpenAI factory.
+        """
+        agno_llm_config.provider = LLMProvider.MINIMAX
+        agno_llm_config.model_id = "MiniMax-M2.7"
+        agno_llm_config.base_url = None
+        self._enable_bifrost(monkeypatch, routes=("qwen_route",))
+
+        factory = LLMProviderFactory(agno_llm_config)
+        with patch("agno.models.openai.OpenAIChat") as mock_openai:
+            factory.create_model()
+            call_kwargs = mock_openai.call_args[1]
+            assert call_kwargs["base_url"] == "http://127.0.0.1:8471/v1"
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
+    def test_bifrost_disabled_falls_back_to_sdk_default(
+        self, agno_llm_config: AgnoLLMConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When the router is disabled, the factory returns ``None``
+        for ``base_url`` so the SDK uses its built-in default
+        (``https://api.openai.com/v1`` for OpenAIChat).
+        """
+        from oneiric.adapters.llm.bifrost import reset_router_for_tests
+
+        agno_llm_config.provider = LLMProvider.OPENAI
+        agno_llm_config.model_id = "gpt-4o"
+        agno_llm_config.base_url = None
+        # Router disabled (default).
+        monkeypatch.delenv("ONEIRIC_BIFROST_ENABLED", raising=False)
+        reset_router_for_tests()
+
+        factory = LLMProviderFactory(agno_llm_config)
+        with patch("agno.models.openai.OpenAIChat") as mock_openai:
+            factory.create_model()
+            call_kwargs = mock_openai.call_args[1]
+            # No router URL → SDK default → no base_url kwarg (None).
+            assert call_kwargs.get("base_url") is None
+
+
+# ============================================================================
 # MCP Tools Registry Tests
 # ============================================================================
 

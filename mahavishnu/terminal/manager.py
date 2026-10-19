@@ -8,63 +8,77 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any
 import warnings
 
-# ``gateway_api_base`` and ``ProtocolFamily`` are both used at
-# runtime by ``_resolve_worker_env`` (the former as a function
-# call, the latter as an enum value: ``ProtocolFamily.OPENAI``),
-# so they need to be real imports even with ``from __future__
-# import annotations`` (which only stringifies annotations, not
-# runtime use). ``BifrostConfig`` is annotation-only and stays
-# under TYPE_CHECKING.
-from mahavishnu.llm_gateway.client import ProtocolFamily, gateway_api_base
+from oneiric.adapters.llm.bifrost import RouteKind, get_router
 
 from .config import TerminalSettings
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from mahavishnu.core.config import BifrostConfig
-
     from .adapters.base import TerminalAdapter
 
 logger = getLogger(__name__)
 
 
-def _resolve_worker_env(
-    worker_type: str,
-    bifrost: BifrostConfig | None,
-) -> dict[str, str]:
+def _resolve_worker_env(worker_type: str) -> dict[str, str]:
     """Build the per-worker env-var dict for Bifrost-wired CLI workers.
 
-    Phase D (REQ-004) wiring:
-    - When ``bifrost.enabled`` is False, return an empty dict (the
-      cloud tier is bypassed; local CLI workers see no env override).
-    - For ``terminal-claude`` workers with ``bifrost.route_claude_code``:
-      inject ``ANTHROPIC_BASE_URL=<bifrost.anthropic_base_url>`` so the
-      Claude Code CLI itself routes through Bifrost's Anthropic-
-      compatible endpoint at :8471/anthropic.
-    - For ``terminal-qwen`` workers with ``bifrost.route_qwen_code``:
-      inject the env var named by ``bifrost.qwen_env_var`` (default
-      ``OPENAI_BASE_URL``) pointing at the Bifrost OpenAI-compatible
-      provider at :8471/v1. Phase D ships with ``route_qwen_code:
-      false`` by default until the verification gate
-      (``test_qwen_actual_dispatch_emits_caller_id``) passes end-
-      to-end — see the plan §5 Phase D.
+    Phase 3 (REQ-BIFROST-006) wiring — URL-rewriter via the oneiric
+    ``BifrostLLMRouter`` (per the bifrost plan §4.7, the URL
+    rewriter was chosen over the chain-member pivot because
+    Bifrost is a transparent proxy and putting it in the chain
+    would compound retry/circuit-breaker logic):
+
+    - When the router is disabled (``enabled=False``), return an
+      empty dict (the cloud tier is bypassed; local CLI workers
+      see no env override). This is the structural dead-flag fix
+      (REQ-BIFROST-003): no caller can produce inert wiring because
+      the conditional collapses to ``None`` — not to a flag.
+    - For ``terminal-claude`` workers when the router is routed
+      for ``RouteKind.CLAUDE_ROUTE``: inject
+      ``ANTHROPIC_BASE_URL=<router.anthropic_base_url>`` so the
+      Claude Code CLI itself routes through Bifrost's
+      Anthropic-compatible endpoint at :8471/anthropic.
+    - For ``terminal-qwen`` workers when the router is routed
+      for ``RouteKind.QWEN_ROUTE``: inject the env var named by
+      ``router.qwen_env_var`` (default ``OPENAI_BASE_URL``)
+      pointing at the Bifrost OpenAI-compatible provider at :8471.
+      The router returns the bare gateway URL; the OpenAI SDK
+      appends ``/v1`` itself.
 
     Returns a plain dict suitable for the
     ``create_session(env=...)`` chain through the tmux adapter.
+
+    The prior ``bifrost: BifrostConfig | None`` parameter is
+    dropped (REQ-BIFROST-004, F-03 fix) — caller-spoofable
+    settings were a real attack surface (a caller could pass a
+    ``BifrostConfig(enabled=True, base_url=...)`` to override the
+    file-config). The router is the single source of truth.
     """
-    if bifrost is None or not bifrost.enabled:
+    router = get_router()
+    if not router._settings.enabled:
+        # Dead-flag regression (REQ-BIFROST-003): enabled=False is
+        # the only path to an empty env dict. No flag is set but
+        # unreachable; the conditional collapses to a real None.
         return {}
 
     env: dict[str, str] = {}
-    if worker_type == "terminal-claude" and bifrost.route_claude_code:
-        env["ANTHROPIC_BASE_URL"] = bifrost.anthropic_base_url
-    elif worker_type == "terminal-qwen" and bifrost.route_qwen_code:
-        # Lazy import to avoid pulling the LLM gateway into the
-        # terminal module's import chain when Bifrost is disabled.
-        env[bifrost.qwen_env_var] = gateway_api_base(
-            ProtocolFamily.OPENAI, base_url=bifrost.base_url
-        )
+    if worker_type == "terminal-claude":
+        if RouteKind.CLAUDE_ROUTE in router._settings.routes:
+            # The router's anthropic_base_url is pre-formatted
+            # ``<gateway>/anthropic`` (matches the v1.5 spec), so
+            # no suffix is needed — the gateway routes
+            # ``<base>/anthropic/v1/messages`` internally.
+            env["ANTHROPIC_BASE_URL"] = str(router._settings.anthropic_base_url)
+    elif worker_type == "terminal-qwen":
+        if RouteKind.QWEN_ROUTE in router._settings.routes:
+            # The OpenAI-compatible client (Qwen CLI's SDK) expects
+            # the URL with the ``/v1`` suffix — the bare gateway
+            # URL would 404 on ``/chat/completions``. Same shape the
+            # old ``gateway_api_base(ProtocolFamily.OPENAI, ...)``
+            # produced; the ``rstrip("/")`` handles the Pydantic
+            # ``HttpUrl`` trailing-slash quirk.
+            env[router._settings.qwen_env_var] = str(router._settings.base_url).rstrip("/") + "/v1"
     return env
 
 
@@ -139,24 +153,22 @@ class TerminalManager:
         self,
         adapter: TerminalAdapter,
         config: TerminalSettings | None = None,
-        bifrost: BifrostConfig | None = None,
     ) -> None:
         """Initialize terminal manager.
 
         Args:
             adapter: Terminal adapter backend
             config: Optional terminal settings
-            bifrost: Optional BifrostConfig (Phase D). When present
-                and ``enabled``, the per-worker env-injection in
-                ``launch_sessions`` consults
-                ``route_claude_code`` / ``route_qwen_code``. When
-                None, the manager behaves as a pure passthrough
-                (no env override) — pre-Phase-D callers continue
-                to work.
+
+        The prior ``bifrost: BifrostConfig | None = None`` parameter
+        is removed (REQ-BIFROST-023) — caller-spoofable settings
+        were a real attack surface. Per-worker env-injection in
+        ``launch_sessions`` now consults the oneiric
+        ``BifrostLLMRouter`` directly (the canonical source of
+        truth) instead of accepting a per-call config.
         """
         self.adapter = adapter
         self.config = config or TerminalSettings()
-        self.bifrost = bifrost
         self._semaphore = asyncio.Semaphore(self.config.max_concurrent_sessions)
         self._batch_size = 5  # Process 5 sessions at a time
         self._adapter_history: list[dict[str, Any]] = []
@@ -164,8 +176,7 @@ class TerminalManager:
 
         logger.info(
             f"Initialized TerminalManager with {self.adapter.adapter_name} adapter "
-            f"(max_concurrent={self.config.max_concurrent_sessions}"
-            f"{', bifrost=enabled' if bifrost and bifrost.enabled else ''})"
+            f"(max_concurrent={self.config.max_concurrent_sessions})"
         )
 
     async def switch_adapter(
@@ -334,7 +345,7 @@ class TerminalManager:
             TerminalError: If session launch fails
         """
 
-        env = _resolve_worker_env(worker_type, self.bifrost)
+        env = _resolve_worker_env(worker_type)
         if env:
             logger.info(
                 "Per-spawn Bifrost env injection: worker_type=%s env_keys=%s",

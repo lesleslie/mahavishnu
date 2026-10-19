@@ -1,13 +1,20 @@
-"""Tests for client-side Bifrost gateway helpers."""
+"""Tests for client-side Bifrost gateway helpers.
+
+Phase 2 of the bifrost plan (2026-10-17) removed
+``ProtocolFamily`` and ``gateway_api_base`` — the mahavishnu
+call sites now resolve the base URL through the oneiric
+``BifrostLLMRouter`` directly. The remaining functions in
+``mahavishnu.llm_gateway.client`` take ``protocol_family: str``
+instead of the deleted enum. These tests cover the surviving
+surface; the deleted helpers' tests are gone.
+"""
 
 from __future__ import annotations
 
 from mahavishnu.llm_gateway import CacheMode, RouteClass
 from mahavishnu.llm_gateway.client import (
-    ProtocolFamily,
     build_gateway_envelope,
     default_provider_for_protocol,
-    gateway_api_base,
     gateway_path,
     qualify_model,
     recommended_cache_mode,
@@ -15,21 +22,10 @@ from mahavishnu.llm_gateway.client import (
 
 
 def test_gateway_path_matches_protocol() -> None:
-    assert gateway_path(ProtocolFamily.OPENAI) == "/v1/chat/completions"
-    assert gateway_path(ProtocolFamily.ANTHROPIC) == "/anthropic/v1/messages"
-
-
-def test_gateway_api_base_matches_protocol() -> None:
-    assert gateway_api_base(ProtocolFamily.OPENAI, base_url="http://127.0.0.1:8471") == (
-        "http://127.0.0.1:8471/v1"
-    )
-    assert (
-        gateway_api_base(
-            ProtocolFamily.ANTHROPIC,
-            base_url="http://127.0.0.1:8471/",
-        )
-        == "http://127.0.0.1:8471/anthropic"
-    )
+    # Protocol values are plain strings (the deleted ProtocolFamily
+    # enum's values are preserved for wire compatibility).
+    assert gateway_path("openai") == "/v1/chat/completions"
+    assert gateway_path("anthropic") == "/anthropic/v1/messages"
 
 
 def test_qualify_model_is_idempotent() -> None:
@@ -40,8 +36,8 @@ def test_qualify_model_is_idempotent() -> None:
 
 
 def test_default_provider_follows_protocol_family() -> None:
-    assert default_provider_for_protocol(ProtocolFamily.OPENAI).value == "minimax-openai"
-    assert default_provider_for_protocol(ProtocolFamily.ANTHROPIC).value == "anthropic"
+    assert default_provider_for_protocol("openai").value == "minimax-openai"
+    assert default_provider_for_protocol("anthropic").value == "anthropic"
 
 
 def test_recommended_cache_mode_prefers_direct_without_semantic_provider() -> None:
@@ -60,14 +56,13 @@ def test_recommended_cache_mode_can_select_semantic_when_available() -> None:
 def test_build_gateway_envelope_resolves_url_model_headers_and_cache() -> None:
     envelope = build_gateway_envelope(
         caller_id="claude-code",
-        protocol_family=ProtocolFamily.ANTHROPIC,
+        protocol_family="anthropic",
         model="GLM-4.5-Air",
         prompt="summarize this diff",
         task_label="think",
     )
 
     assert envelope.url == "http://127.0.0.1:8471/anthropic/v1/messages"
-    assert envelope.api_base == "http://127.0.0.1:8471/anthropic"
     assert envelope.request.model == "anthropic/GLM-4.5-Air"
     assert envelope.request.route_class is RouteClass.THINK
     assert envelope.request.request_headers["x-bf-task"] == "think"
@@ -78,7 +73,7 @@ def test_build_gateway_envelope_resolves_url_model_headers_and_cache() -> None:
 def test_build_gateway_envelope_allows_openai_override_and_no_cache() -> None:
     envelope = build_gateway_envelope(
         caller_id="direct-openai-client",
-        protocol_family=ProtocolFamily.OPENAI,
+        protocol_family="openai",
         model="glm-5-turbo",
         prompt="describe this image",
         task_label="image",
@@ -86,7 +81,6 @@ def test_build_gateway_envelope_allows_openai_override_and_no_cache() -> None:
     )
 
     assert envelope.url == "http://127.0.0.1:8471/v1/chat/completions"
-    assert envelope.api_base == "http://127.0.0.1:8471/v1"
     assert envelope.request.model == "minimax-openai/glm-5-turbo"
     assert envelope.request.route_class is RouteClass.IMAGE
     assert envelope.request.cache_headers == {}

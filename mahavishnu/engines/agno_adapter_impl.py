@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from contextlib import asynccontextmanager
+from collections.abc import Iterator  # noqa: TC003
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import json
@@ -72,13 +73,56 @@ if TYPE_CHECKING:
     from agno.team import Team
 
     from ..core.config import BifrostConfig
-    from ..llm_gateway.client import ProtocolFamily
     from .agno_teams.config import TeamConfig
     from .agno_teams.manager import AgentTeamManager, TeamRunResult
 else:
     from .agno_teams.manager import TeamRunResult
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Bifrost routing helpers (oneiric.router integration)
+# ============================================================================
+
+
+@contextmanager
+def _anthropic_base_url_ctx() -> Iterator[None]:
+    """Module-level helper backing
+    :meth:`LLMProviderFactory._anthropic_base_url_ctx`.
+
+    Resolves the oneiric Bifrost router's ``ANTHROPIC_BASE_URL``,
+    sets it for the duration of the ``with`` block, and restores
+    the prior value on exit (or removes the env var if it was
+    previously unset). No-op when the router is not routed.
+
+    The Anthropic SDK reads ``ANTHROPIC_BASE_URL`` at client
+    ``__init__`` time. Scoping the mutation to the ``Claude(...)``
+    call avoids:
+
+    - permanent ``os.environ`` mutation across the process
+      lifetime (sibling workers / probes / diagnostics would see
+      the stale gateway URL after the first Anthropic factory call),
+    - test pollution — the prior value is restored on ``__exit__``
+      so other test classes are not affected by a test that set
+      the env var.
+    """
+    from oneiric.adapters.llm.bifrost import get_router
+    from oneiric.adapters.llm.llm_interface import LLMProvider
+
+    resolved = get_router().resolve(LLMProvider.ANTHROPIC)
+    if resolved is None:
+        yield
+        return
+    previous = os.environ.get("ANTHROPIC_BASE_URL")
+    os.environ["ANTHROPIC_BASE_URL"] = resolved
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop("ANTHROPIC_BASE_URL", None)
+        else:
+            os.environ["ANTHROPIC_BASE_URL"] = previous
 
 
 # ============================================================================
@@ -200,8 +244,9 @@ class LLMProviderFactory:
 
         Routing:
         - ``self.config.base_url`` (explicit) wins always.
-        - Else if ``bifrost.enabled``, routes through the gateway
-          at ``<bifrost.base_url>/v1`` (the Bifrost OpenAI-compatible
+        - Else if the oneiric Bifrost router is enabled+routed
+          (REQ-BIFROST-002), routes through the gateway at
+          ``<router.base_url>/v1`` (the Bifrost OpenAI-compatible
           provider).
         - Else falls back to the SDK default (no base_url — the
           Agno OpenAIChat resolves to ``https://api.openai.com/v1``).
@@ -214,14 +259,9 @@ class LLMProviderFactory:
         """
         from agno.models.openai import OpenAIChat
 
-        from mahavishnu.llm_gateway.client import (
-            ProtocolFamily,
-        )
-
         api_key = self._get_api_key("OPENAI_API_KEY", self.config.api_key_env)
-        base_url = self._resolve_bifrost_base_url(
+        base_url = self._resolve_openai_base_url(
             default_base="https://api.openai.com",
-            protocol_family=ProtocolFamily.OPENAI,
         )
 
         # Use id= parameter (NOT model=) per Agno v2.5.3 API
@@ -238,10 +278,16 @@ class LLMProviderFactory:
 
         Routing:
         - ``self.config.base_url`` (explicit) wins always.
-        - Else if ``bifrost.enabled``, routes through the gateway at
-          ``<bifrost.anthropic_base_url>`` (already pre-computed as
-          ``<bifrost.base_url>/anthropic`` per the config default).
-        - Else falls back to the SDK default (no base_url — the
+        - Else if the oneiric Bifrost router is enabled+routed
+          (REQ-BIFROST-002), sets ``ANTHROPIC_BASE_URL`` from
+          ``get_router().resolve(LLMProvider.ANTHROPIC)`` so the
+          Anthropic SDK picks it up at client construction. The
+          router already returns the gateway's anthropic path
+          (``<base>/anthropic``), so no suffix is appended here.
+          The env-var mutation is scoped to the ``Claude(...)`` call
+          via :meth:`_anthropic_base_url_ctx` — the prior value
+          (or absence) is restored on context exit.
+        - Else falls back to the SDK default (no env var set — the
           Agno Claude resolves to ``https://api.anthropic.com``).
 
         Args:
@@ -253,17 +299,17 @@ class LLMProviderFactory:
         from agno.models.anthropic import Claude
 
         api_key = self._get_api_key("ANTHROPIC_API_KEY", self.config.api_key_env)
-        # Note: Claude (Anthropic) does not accept base_url= directly; the SDK
-        # default is https://api.anthropic.com. Bifrost routing for Anthropic
-        # flows through the ANTHROPIC_BASE_URL env var (Phase D env-injection
-        # in mahavishnu/terminal/manager.py), not the model constructor.
-
-        return Claude(
-            id=model_id,
-            api_key=api_key,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-        )
+        # Claude (Anthropic) is constructed via the Anthropic SDK which
+        # reads ``ANTHROPIC_BASE_URL`` at client init. The oneiric
+        # Bifrost router's anthropic_base_url is pre-formatted
+        # ``<base>/anthropic`` (matches the v1.5 spec).
+        with self._anthropic_base_url_ctx():
+            return Claude(
+                id=model_id,
+                api_key=api_key,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
 
     def _create_llama_server_model(self, model_id: str) -> Any:
         """Create llama.cpp server (llama_server) model instance for local LLM.
@@ -274,8 +320,8 @@ class LLMProviderFactory:
 
         llama-server is the canonical local LLM provider
         (default ``http://localhost:8081``); it is not part of the Bifrost
-        cloud-tier routing, and the ``bifrost.enabled`` flag is
-        intentionally ignored here.
+        cloud-tier routing, and the Bifrost router is intentionally
+        ignored here.
 
         Args:
             model_id: llama.cpp model identifier (e.g., 'qwen2.5:7b', 'llama2')
@@ -299,8 +345,8 @@ class LLMProviderFactory:
         Routing:
         - ``self.config.base_url`` (explicit) wins always — used by
           the Phase G local llama-server path.
-        - Else if ``bifrost.enabled``, routes through the gateway at
-          ``<bifrost.base_url>/v1``.
+        - Else if the oneiric Bifrost router is enabled+routed,
+          routes through the gateway at ``<router.base_url>/v1``.
         - Else falls back to the public MiniMax OpenAI-compatible
           endpoint (the SDK's built-in default; no ``base_url``
           is passed).
@@ -313,14 +359,9 @@ class LLMProviderFactory:
         """
         from agno.models.openai import OpenAIChat
 
-        from mahavishnu.llm_gateway.client import (
-            ProtocolFamily,
-        )
-
         api_key = self._get_api_key("MINIMAX_API_KEY", self.config.api_key_env)
-        base_url = self._resolve_bifrost_base_url(
+        base_url = self._resolve_openai_base_url(
             default_base="https://api.minimax.io",
-            protocol_family=ProtocolFamily.OPENAI,
         )
 
         return OpenAIChat(
@@ -331,51 +372,73 @@ class LLMProviderFactory:
             max_tokens=self.config.max_tokens,
         )
 
-    def _resolve_bifrost_base_url(
-        self,
-        *,
-        default_base: str,
-        protocol_family: ProtocolFamily,
-    ) -> str | None:
-        """Resolve the base URL for an LLM factory call, routing through Bifrost when enabled.
+    def _resolve_openai_base_url(self, *, default_base: str) -> str | None:
+        """Resolve the OpenAI-compatible base URL for an LLM factory call.
 
         Resolution order (precedence: high to low):
         1. ``self.config.base_url`` — explicit operator override.
-           This is the path used by the Phase G local llama-server
-           wiring (``base_url: http://127.0.0.1:8081``) and any
-           per-adapter test that points the LLM at a specific URL.
-        2. ``bifrost.enabled`` — when True, return
-           ``gateway_api_base(protocol_family, base_url=<bifrost.base_url>)``
-           so the LLM call routes through the gateway. This is the
-           v1.5 spec §5.3 wire-up: cloud-tier providers (openai,
-           anthropic, minimax) flow through Bifrost when the
-           gateway is enabled.
+           Used by Phase G local llama-server wiring
+           (``base_url: http://127.0.0.1:8081``) and any per-adapter
+           test that points the LLM at a specific URL.
+        2. The oneiric Bifrost router's
+           ``resolve(LLMProvider.OPENAI)`` — when ``enabled`` and
+           the OPENAI route is in the configured ``routes`` set.
+           The OpenAI-compatible gateway path is ``<gateway>/v1``;
+           the router returns the bare gateway URL, so the ``/v1``
+           suffix is appended here.
         3. None — the SDK falls back to its own default endpoint
            (e.g. ``https://api.openai.com/v1``).
 
         Args:
             default_base: The provider's public upstream base URL.
-                Currently unused at runtime (the SDK default takes
-                over when no base_url is passed), but kept for
-                future per-provider explicit fallback paths.
-            protocol_family: ``ProtocolFamily.OPENAI`` or
-                ``ProtocolFamily.ANTHROPIC`` — selects the gateway
-                path (``/v1`` vs ``/anthropic``).
+                Kept for clarity and for future per-provider
+                explicit-fallback paths; the OpenAI SDK default
+                (``https://api.openai.com/v1``) takes over when
+                the resolution returns ``None``.
 
         Returns:
-            The resolved base URL string, or ``None`` to let the
-            SDK use its built-in default.
+            The resolved base URL string (with ``/v1`` suffix if
+            from the gateway), or ``None`` to let the SDK use its
+            built-in default.
         """
-        from mahavishnu.llm_gateway.client import gateway_api_base
+        from oneiric.adapters.llm.bifrost import get_router
+        from oneiric.adapters.llm.llm_interface import LLMProvider
 
-        # 1. Explicit operator override (Phase G local path / test override).
+        # 1. Explicit operator override.
         if self.config.base_url:
             return self.config.base_url
-        # 2. Bifrost routing when enabled.
-        if self.bifrost is not None and self.bifrost.enabled:
-            return gateway_api_base(protocol_family, base_url=self.bifrost.base_url)
-        # 3. SDK default — no base_url passed.
+        # 2. Oneiric Bifrost router (REQ-BIFROST-002): URL-rewriter, not
+        # chain-member. Returns bare gateway URL — append /v1 for
+        # OpenAI-compatible clients.
+        resolved = get_router().resolve(LLMProvider.OPENAI)
+        if resolved is not None:
+            return resolved.rstrip("/") + "/v1"
+        # 3. SDK default.
         return None
+
+    def _anthropic_base_url_ctx(self) -> Iterator[None]:
+        """Context manager that sets ``ANTHROPIC_BASE_URL`` from the
+        oneiric router for the duration of the ``with`` block, then
+        restores the prior value (or removes the env var if it was
+        previously unset).
+
+        The Anthropic SDK reads ``ANTHROPIC_BASE_URL`` at client
+        ``__init__`` time. Scoping the mutation to the ``Claude(...)``
+        call avoids:
+
+        - permanent ``os.environ`` mutation across the process
+          lifetime (sibling workers / probes / diagnostics would
+          see the stale gateway URL after the first Anthropic
+          factory call),
+        - test pollution — the prior value is restored on
+          ``__exit__`` so other test classes are not affected by
+          a test that set the env var.
+
+        If the router is not enabled or the ANTHROPIC route is not
+        configured, the context manager is a no-op and the SDK
+        default (``https://api.anthropic.com``) takes over.
+        """
+        return _anthropic_base_url_ctx()
 
     def _get_api_key(self, default_env: str, custom_env: str | None) -> str:
         """Get API key from environment.

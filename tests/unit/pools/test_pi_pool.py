@@ -284,3 +284,30 @@ async def test_start_translates_pi_protocol_error_to_pi_unavailable() -> None:
     with pytest.raises(PiUnavailable):
         await pool.start()
     assert pool._status == PoolStatus.FAILED
+
+
+# ============================================================================
+# REQ-BIFROST-014 (defense-in-depth)
+# ============================================================================
+
+
+def test_env_allowlist_excludes_bifrost_prefixes() -> None:
+    """REQ-BIFROST-014 defense-in-depth: the PiPool subprocess's
+    ``env_allowlist`` (the positive list of env-var prefixes forwarded
+    to the subprocess) must not include ``MAHAVISHNU_BIFROST__`` or
+    ``ONEIRIC_BIFROST_`` prefixes. The denylist at
+    ``mahavishnu.core.json_rpc_stdio._FORBIDDEN_ENV_PREFIXES`` is the
+    first line of defense; this test is the second (the allowlist
+    must not even permit the prefix).
+    """
+    pool, _ = _make_pool()
+    for prefix in pool._env_allowlist:
+        assert not prefix.startswith("MAHAVISHNU_"), (
+            f"PiPool env_allowlist contains mahavishnu config prefix: {prefix!r}"
+        )
+        assert not prefix.startswith("BIFROST_"), (
+            f"PiPool env_allowlist contains bifrost config prefix: {prefix!r}"
+        )
+        assert not prefix.startswith("ONEIRIC_"), (
+            f"PiPool env_allowlist contains oneiric config prefix: {prefix!r}"
+        )
