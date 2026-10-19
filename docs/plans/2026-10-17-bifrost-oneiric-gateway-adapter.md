@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-17
-last_reviewed: 2026-10-18
+last_reviewed: 2026-10-19
 superseded_by: null
 blocks_on: []
 related:
@@ -24,7 +24,7 @@ title: "Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolid
 > **Review status (2026-10-18)**: Plan rewritten twice after agent reviews.
 > - **First rewrite** (commit `91331689`): 5-agent multi-agent review (architecture-council, pr-review-toolkit:type-design-analyzer, api-security-specialist, general-purpose, oneiric-specialist). Final design: URL-rewriter via `BifrostLLMRouter` (3-2 vote against chain-member pivot, decided on oneiric specialist's transparent-proxy argument).
 > - **Second rewrite** (this document): 3-agent final review pass (2 proper + 1 random). 33 findings addressed. See the §11 3-Agent Final Review Findings appendix.
-> - The generalist's B-1 (blocker) caught a real bug: the prior "drop dead fields" decision was based on a wrong audit. Live consumers in `mahavishnu/llm_gateway/contract.py`, `mahavishnu/health.py`, and `mahavishnu/core/health.py` need the fields. Re-declared on `BifrostLLMSettings`.
+> - The generalist's B-1 (blocker) caught a real bug: the prior "drop dead fields" decision was based on a wrong audit. Live consumers in `mahavishnu/llm_gateway/contract.py`, `mahavishnu/health.py`, and `mahavishnu/core/health.py` need the fields. Redeclared on `BifrostLLMSettings`.
 
 ## 1. Outcome
 
@@ -38,12 +38,12 @@ When this plan ships:
 - **PR #0 of the active ollama plan is already merged** on local main (mahavishnu `77b8bed8`, mcp-common `dd889b4`) — confirmed by `git log --oneline main -3` in each repo. The cross-cutting call-site migration in this plan operates on a substrate that no longer has ollama in its default chain.
 - **The `ProtocolFamily` enum in `mahavishnu/llm_gateway/client.py:17` is deleted.** The plan reuses the existing `LLMProvider` enum in `oneiric/adapters/llm/llm_interface.py:15-22` (`OPENAI`, `ANTHROPIC`, `AZURE_OPENAI`, `GOOGLE_VERTEX`, `AWS_BEDROCK`, `LOCAL`, `ZAI`). The new router takes `LLMProvider` (not a mahavishnu-internal `ProtocolFamily`).
 - **SSRF defense is built in from day one** (see §4.6). All `base_url`-style fields are Pydantic `HttpUrl`; the default is loopback-only; non-loopback URLs require `BIFROST_ALLOW_REMOTE=1`; the opt-in path also blocks AWS/GCP/Azure IMDS IPs and RFC1918 ranges (`169.254.169.254`, `100.100.100.200`, `metadata.google.internal`, `metadata.azure.com`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`). This is non-negotiable.
-- **`BifrostLLMSettings` carries the fields live consumers need.** A previous version of this plan claimed `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url` were "dead in the current schema." The 3-agent final review's B-1 audit (generalist) proved the opposite: each field has live consumers (`auth_env` at `mahavishnu/health.py:176,456,494` and `mahavishnu/core/health.py:99`; `local_provider_*` at `mahavishnu/core/health.py:1326,1334,1337`; `cache_*` at `mahavishnu/llm_gateway/contract.py:147,148,197,202,204,205,232` and `client.py:74,127,128,137,152,153` — the last two files are themselves deleted in Phase 7). All are re-declared on `BifrostLLMSettings` and migrated in Phase 7. Only `request_timeout_seconds` is genuinely dead and is dropped.
+- **`BifrostLLMSettings` carries the fields live consumers need.** A previous version of this plan claimed `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url` were "dead in the current schema." The 3-agent final review's B-1 audit (generalist) proved the opposite: each field has live consumers (`auth_env` at `mahavishnu/health.py:176,456,494` and `mahavishnu/core/health.py:99`; `local_provider_*` at `mahavishnu/core/health.py:1326,1334,1337`; `cache_*` at `mahavishnu/llm_gateway/contract.py:147,148,197,202,204,205,232` and `client.py:74,127,128,137,152,153` — the last two files are themselves deleted in Phase 7). All are redeclared on `BifrostLLMSettings` and migrated in Phase 7. Only `request_timeout_seconds` is genuinely dead and is dropped.
 
 ## 2. Goals
 
 1. **Add `oneiric.adapters.llm.bifrost.BifrostLLMRouter`** — a new routing-policy class, NOT a subclass of `LLMBase`. The router exposes `resolve(provider: LLMProvider) -> str | None` returning the gateway URL for the given provider when `enabled: True` and `provider` is in the configured `routes` set, else `None`. Also exposes `metadata = AdapterMetadata(...)` so it registers in the catalog.
-2. **Add `BifrostLLMSettings(pydantic_settings.BaseSettings)`** with `env_prefix="ONEIRIC_BIFROST_"` (set directly on `SettingsConfigDict`, no inheritance). Includes a back-compat shim for the legacy `MAHAVISHNU_BIFROST__*` env-var prefix (see REQ-BIFROST-011). **Re-declares** the fields live consumers need (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`) so the deletion in Phase 7 doesn't break them. Defines `_SENSITIVE_FIELDS: frozenset[str] = frozenset({"auth_env"})` and overrides `model_dump` / `model_dump_json` so `auth_env` is excluded by default. Only `request_timeout_seconds` is dropped (genuinely dead).
+2. **Add `BifrostLLMSettings(pydantic_settings.BaseSettings)`** with `env_prefix="ONEIRIC_BIFROST_"` (set directly on `SettingsConfigDict`, no inheritance). Includes a back-compat shim for the legacy `MAHAVISHNU_BIFROST__*` env-var prefix (see REQ-BIFROST-011). **Redeclares** the fields live consumers need (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`) so the deletion in Phase 7 doesn't break them. Defines `_SENSITIVE_FIELDS: frozenset[str] = frozenset({"auth_env"})` and overrides `model_dump` / `model_dump_json` so `auth_env` is excluded by default. Only `request_timeout_seconds` is dropped (genuinely dead).
 3. **Add a module-level `get_router() -> BifrostLLMRouter` singleton** at `oneiric/adapters/llm/bifrost.py`. Process-cached. **Plus a `reset_router_for_tests()` module-level helper** that clears the cache (the test seam — without it, test pollution is a real risk per REQ-BIFROST-018).
 4. **Declare the `LLMProvider → RouteKind` mapping explicitly** as a class-level `_PROVIDER_ROUTE: ClassVar[Mapping[LLMProvider, RouteKind]]`. The 7-value `LLMProvider` enum (`OPENAI`, `ANTHROPIC`, `AZURE_OPENAI`, `GOOGLE_VERTEX`, `AWS_BEDROCK`, `LOCAL`, `ZAI`) maps to a 2-value `RouteKind` enum (`CLAUDE_ROUTE`, `QWEN_ROUTE`) renamed from `CLAUDE_CODE`/`QWEN_CODE` to avoid the value-collision footgun with `worker_type == "terminal-claude"` (REQ-BIFROST-020).
 5. **Migrate mahavishnu's three Bifrost-aware call sites** to consume the new router:
@@ -167,7 +167,7 @@ The oneiric specialist's decisive argument against chain-member: **Bifrost is a 
 
 ### 4.8 The `BifrostLLMRouter` does not subclass `LLMBase` or `LLMBaseSettings` (consolidated)
 
-`oneiric/adapters/llm/llm_interface.py:140-375` defines `LLMBase(ABC)` with 8 abstract methods. `LLMBaseSettings` at line 106-137 has 21 fields tuned for LLM client construction: `model`, `max_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `n`, `api_key`, `base_url`, `organization`, `timeout`, `max_retries`, `stream`, `response_format`, `seed`, `stop`, `logit_bias`, `functions`, `function_call`, `tools`, `tool_choice`. The router needs 6 of these (`enabled`, `base_url`, `anthropic_base_url`, `routes`, `qwen_env_var`, `caller_id`) plus 5 re-declared fields for consumer compatibility (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`).
+`oneiric/adapters/llm/llm_interface.py:140-375` defines `LLMBase(ABC)` with 8 abstract methods. `LLMBaseSettings` at line 106-137 has 21 fields tuned for LLM client construction: `model`, `max_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `n`, `api_key`, `base_url`, `organization`, `timeout`, `max_retries`, `stream`, `response_format`, `seed`, `stop`, `logit_bias`, `functions`, `function_call`, `tools`, `tool_choice`. The router needs 6 of these (`enabled`, `base_url`, `anthropic_base_url`, `routes`, `qwen_env_var`, `caller_id`) plus 5 redeclared fields for consumer compatibility (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`).
 
 The new `BifrostLLMRouter` and `BifrostLLMSettings` extend `BaseSettings` directly (not `LLMBaseSettings`) — this avoids the silent-accept `api_key: SecretStr` confusion (an operator setting `ONEIRIC_BIFROST__API_KEY=sk-...` would see no error and no effect, since the router doesn't consume it). It also avoids the Pydantic v2 field-type override conflict (`HttpUrl` cannot override `str | None` in a subclass).
 
@@ -415,7 +415,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
     - `routes: set[RouteKind] = Field(default_factory=set)`.
     - `qwen_env_var: str = Field(default="OPENAI_BASE_URL")`.
     - `caller_id: str = Field(default="")`.
-    - **Re-declared fields for consumer compatibility** (B-1 fix):
+    - **Redeclared fields for consumer compatibility** (B-1 fix):
       - `auth_env: str = Field(default="MAHAVISHNU_BIFROST_AUTH_TOKEN")` — the env-var *name*, not the secret value.
       - `cache_mode: Literal["off", "direct", "semantic"] = "off"`.
       - `cache_ttl_seconds: int = 0`.
@@ -718,7 +718,7 @@ The validation matrix below pins the explicit before/after signatures for each c
 |---|---|---|
 | **IMDS pivot**: `BIFROST_ALLOW_REMOTE=1` allows non-loopback; attacker convinces operator to set it, then exfiltrates to `169.254.169.254` | Medium | REQ-BIFROST-016: opt-in path also blocks AWS/GCP/Azure IMDS IPs and RFC1918 ranges. The opt-in is logged at INFO with operator identity. |
 | **The oneiric publication step blocks Phases 2-7** until the user runs `crackerjack run -p <level>` per `feedback-mcp-common-version-bump-is-user.md` | High (deterministic) | REQ-BIFROST-022: each Phase 2-7 Integration Contract declares the publication precondition in its `Triggered from` block. The implementer does NOT do this; the user runs `crackerjack run -p` from their shell. |
-| **Dead-field leak via `BifrostLLMRouter` settings migration**: `BifrostConfig` consumers don't migrate and break in Phase 7 | Medium | B-1 fix: `BifrostLLMSettings` re-declares `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`. Phase 7 migrates the consumers to read from `get_router()._settings`. |
+| **Dead-field leak via `BifrostLLMRouter` settings migration**: `BifrostConfig` consumers don't migrate and break in Phase 7 | Medium | B-1 fix: `BifrostLLMSettings` redeclares `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`. Phase 7 migrates the consumers to read from `get_router()._settings`. |
 | **`MAHAVISHNU_BIFROST__*` env-var prefix breaks for operators** | Low | REQ-BIFROST-011: back-compat shim in `BifrostLLMSettings` reads legacy prefix and emits one `DeprecationWarning` AND one structured INFO log `legacy_env_prefix_in_use` with operator identity (closes the migration gap). |
 | **`TerminalManager.__init__` still accepts caller-spoofable `bifrost`** | Low (after Phase 3 fix) | REQ-BIFROST-023: Phase 3 drops the `bifrost` parameter from both `_resolve_worker_env` AND `TerminalManager.__init__`. The previous plan only fixed the inner helper. |
 | **`api_key: SecretStr` silently accepted as `ONEIRIC_BIFROST__API_KEY`** | Low (now) | `BifrostLLMSettings` extends `pydantic_settings.BaseSettings` directly, not `LLMBaseSettings`. The 21 dead LLM-client fields (including the silent-accept `api_key`) are not inherited. |
@@ -803,7 +803,7 @@ This plan was rewritten a second time after a 3-agent final review (2026-10-18).
 
 ### Blocker
 
-- **B-1** (generalist): The plan claimed `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_*` were "dead in the current schema" — but each has live consumers (`auth_env` at `mahavishnu/health.py:176,456,494` and `mahavishnu/core/health.py:99`; `local_provider_*` at `mahavishnu/core/health.py:1326,1334,1337`; `cache_*` at `mahavishnu/llm_gateway/contract.py:147,148,197,202,204,205,232` and `client.py:74,127,128,137,152,153`). Phase 7 would break these. **Fix**: re-declare the fields on `BifrostLLMSettings`; migrate consumers in Phase 7 to read from `get_router()._settings` (§1, §2 goal 2, §5 Phase 7). Only `request_timeout_seconds` is dropped (genuinely dead).
+- **B-1** (generalist): The plan claimed `auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_*` were "dead in the current schema" — but each has live consumers (`auth_env` at `mahavishnu/health.py:176,456,494` and `mahavishnu/core/health.py:99`; `local_provider_*` at `mahavishnu/core/health.py:1326,1334,1337`; `cache_*` at `mahavishnu/llm_gateway/contract.py:147,148,197,202,204,205,232` and `client.py:74,127,128,137,152,153`). Phase 7 would break these. **Fix**: redeclare the fields on `BifrostLLMSettings`; migrate consumers in Phase 7 to read from `get_router()._settings` (§1, §2 goal 2, §5 Phase 7). Only `request_timeout_seconds` is dropped (genuinely dead).
 
 ### High
 
