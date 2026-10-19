@@ -1860,7 +1860,10 @@ async def _run_pool_mahavishnu_demo(
     keep: bool,
 ) -> dict[str, object]:
     """Drive ``MahavishnuPool`` end-to-end: start, dispatch, reap (unless ``--keep``)."""
-    from mahavishnu.pools import MahavishnuPool, PoolConfig
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
+    from mahavishnu.terminal.adapters import _build_tmux_adapter
+    from mahavishnu.terminal.manager import TerminalManager
 
     config = PoolConfig(
         name=pool_name,
@@ -1868,7 +1871,10 @@ async def _run_pool_mahavishnu_demo(
         min_workers=min_workers,
         max_workers=max_workers,
     )
-    pool = MahavishnuPool(config=config)
+    pool = MahavishnuPool(
+        config=config,
+        terminal_manager=TerminalManager(adapter=_build_tmux_adapter()),
+    )
     pool_id = await pool.start()
     try:
         result = await pool.execute_task({"prompt": prompt})
@@ -2729,6 +2735,12 @@ async def _run_workflow_multi_pool_handoff_demo(
     source_pool_obj = await _spawn_pool_by_type(source_pool, name="demo-mh-src")
     target_pool_obj = await _spawn_pool_by_type(target_pool, name="demo-mh-tgt")
     try:
+        # Start both pools so workers are registered before execute_task().
+        # Without this, self._workers is empty when execute_task checks
+        # availability, and the pool raises "No workers available in
+        # pool" before any task is actually dispatched.
+        await source_pool_obj.start()
+        await target_pool_obj.start()
         typer.echo(f"  ✓ source pool ({source_pool}) started: {source_pool_obj.pool_id}")
         source_result = await source_pool_obj.execute_task({"prompt": prompt})
         typer.echo(f"  ✓ source task complete: status={source_result.get('status')}")
