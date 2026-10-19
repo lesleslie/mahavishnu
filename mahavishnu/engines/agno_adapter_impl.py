@@ -72,7 +72,6 @@ if TYPE_CHECKING:
     from agno.run.agent import RunOutput
     from agno.team import Team
 
-    from ..core.config import BifrostConfig
     from .agno_teams.config import TeamConfig
     from .agno_teams.manager import AgentTeamManager, TeamRunResult
 else:
@@ -163,27 +162,21 @@ class LLMProviderFactory:
     def __init__(
         self,
         config: AgnoLLMConfig,
-        *,
-        bifrost: BifrostConfig | None = None,
     ):
         """Initialize factory with LLM configuration.
 
         Args:
             config: LLM configuration specifying provider and model settings.
-            bifrost: Optional Bifrost gateway settings. When
-                ``bifrost.enabled`` is True, the openai / anthropic /
-                minimax factory methods route through the gateway
-                (``gateway_api_base(...)``); when None or disabled,
-                each factory falls back to the direct upstream URL.
-                ``factory signature contract preservation``: this
-                kwarg is added without changing the existing
-                positional ``config`` parameter, so all existing
-                callers (``LLMProviderFactory(agno_config.llm)``) keep
-                working unchanged. New callers opt in via
-                ``LLMProviderFactory(agno_config.llm, bifrost=settings.bifrost)``.
+
+        The prior ``bifrost: BifrostConfig | None = None`` parameter
+        was removed in Phase 7 (REQ-BIFROST-005). The factory now
+        consults the oneiric ``BifrostLLMRouter`` directly via
+        ``get_router()._settings`` — caller-spoofable settings were
+        a real attack surface (a caller could pass
+        ``BifrostConfig(enabled=True, base_url=...)`` to override
+        the file-config). The router is the single source of truth.
         """
         self.config = config
-        self.bifrost = bifrost
         self._model_instance = None
 
     _PROVIDER_FACTORY_METHODS: ClassVar[dict[str, str]] = {
@@ -942,15 +935,10 @@ class AgnoAdapter(OrchestratorAdapter):
             # Validate Agno SDK
             self._validate_agno_sdk()
 
-            # Initialize LLM provider factory. The bifrost kwarg is
-            # plumbed from ``self.config.bifrost`` (only present when
-            # ``self.config`` is a :class:`MahavishnuSettings`;
-            # ``AgnoAdapterConfig`` has no bifrost field so the
-            # factory falls back to direct routing in that case).
-            bifrost_config = (
-                getattr(self.config, "bifrost", None) if self.config is not None else None
-            )
-            self._llm_factory = LLMProviderFactory(self.agno_config.llm, bifrost=bifrost_config)
+            # Initialize LLM provider factory. Phase 7 removed the
+            # ``bifrost`` kwarg — the factory now consults
+            # ``get_router()._settings`` directly.
+            self._llm_factory = LLMProviderFactory(self.agno_config.llm)
 
             # Initialize MCP tools registry
             self._mcp_registry = MCPToolsRegistry(self.agno_config.tools)
@@ -1353,15 +1341,12 @@ class AgnoAdapter(OrchestratorAdapter):
     def _get_llm(self) -> Any:
         """Compatibility helper that returns the configured LLM model."""
         if self._llm_factory is None:
-            # Plumb bifrost the same way initialize() does — legacy
-            # callers that pre-date the bifrost kwarg still get
-            # direct routing, but operators who set bifrost on
-            # settings get the routed base_url.
-            bifrost_config = (
-                getattr(self.config, "bifrost", None) if self.config is not None else None
-            )
+            # Phase 7 removed the ``bifrost`` kwarg — the factory now
+            # consults ``get_router()._settings`` directly. Legacy
+            # callers that pre-date the oneiric router still get
+            # direct routing when the router is disabled.
             self._llm_factory = LLMProviderFactory(
-                self._resolve_legacy_llm_config(), bifrost=bifrost_config
+                self._resolve_legacy_llm_config(),
             )
 
         try:

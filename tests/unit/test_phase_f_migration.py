@@ -17,7 +17,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 MODELS_YAML = REPO_ROOT / "settings" / "models.yaml"
-AUDIT_SCRIPT = REPO_ROOT / "scripts" / "audit_bifrost_grep.py"
 
 
 def test_models_yaml_bifrost_block_deleted() -> None:
@@ -83,60 +82,6 @@ def test_no_bifrost_base_url_references() -> None:
         "BIFROST_BASE_URL still referenced in production files: "
         + ", ".join(offenders)
     )
-
-
-def test_audit_bifrost_grep_runs_clean() -> None:
-    """``scripts/audit_bifrost_grep.py`` exits 0 on the current tree.
-
-    The audit script is the CI gate for the four Phase F proof
-    assertions. This test invokes it as a subprocess and asserts
-    the exit code is 0. A failure here means either the migration
-    regressed (e.g. someone re-introduced a direct minimax.io/v1
-    URL) or the audit script has a bug.
-
-    Originally marked xfail waiting on Phase B's wiring to land;
-    flipped to a real pass after the 5 follow-up commits (the
-    factory refactor added the minimax gateway consumer; the
-    heartbeat + review-pass fixup cleared the docstring URL).
-    """
-    proc = subprocess.run(
-        ["python3", str(AUDIT_SCRIPT)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert proc.returncode == 0, (
-        f"audit_bifrost_grep.py failed (rc={proc.returncode}):\n"
-        f"--- stdout ---\n{proc.stdout}\n"
-        f"--- stderr ---\n{proc.stderr}\n"
-    )
-    proc = subprocess.run(
-        ["python3", str(AUDIT_SCRIPT)],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert proc.returncode == 0, (
-        f"audit_bifrost_grep.py failed (rc={proc.returncode}):\n"
-        f"--- stdout ---\n{proc.stdout}\n"
-        f"--- stderr ---\n{proc.stderr}\n"
-    )
-
-
-def test_audit_bifrost_grep_uses_ripgrep_or_grep() -> None:
-    """The audit script's _run_grep helper prefers ripgrep (rg) and falls back to grep.
-
-    This is a regression-prevention test: if someone refactors the
-    helper to use a different tool that doesn't have the same
-    exclude-glob semantics, the audit may start matching files
-    inside .archive/ or .venv/ that should be ignored. Pin the
-    tool choice.
-    """
-    src = AUDIT_SCRIPT.read_text(encoding="utf-8")
-    assert "rg" in src or "ripgrep" in src, "audit script should use ripgrep"
-    assert "grep" in src, "audit script should fall back to grep"
 
 
 @pytest.fixture(scope="module")

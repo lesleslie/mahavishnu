@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 import typer
 import yaml
 
+from oneiric.adapters.llm.bifrost import get_router
+
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
 from ..core.health import HealthChecker, HealthCheckResult, HealthStatus
@@ -502,23 +504,21 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
 
 def _bifrost_schema_dump() -> dict[str, object]:
-    """Return the BifrostConfig projected to its public shape.
+    """Return the BifrostLLMSettings projected to its public shape.
 
-    Excludes ``auth_env`` to avoid leaking the env-var name (per
-    the plan's hard-rule for /health.bifrost.config — see the
-    v1.5 spec §5.5 / plan §5 Phase E).
+    The oneiric ``model_dump`` override excludes the ``auth_env``
+    field by default (via ``_SENSITIVE_FIELDS``) — see
+    REQ-BIFROST-017. The plan's hard-rule for /health.bifrost.config
+    is "don't leak the env-var name"; the centralized Pydantic-level
+    exclude replaces the three per-call sites that previously
+    spelled out ``exclude={"auth_env"}``.
     """
     try:
-        from mahavishnu.core.config import MahavishnuSettings
-    except ImportError:
-        return {"_error": "MahavishnuSettings not importable"}
-    try:
-        settings = MahavishnuSettings()
+        return get_router()._settings.model_dump()
     except (  # CLI entry point — broad catch is the documented contract
         Exception  # noqa: BLE001, RUF100
     ) as exc:
         return {"_error": f"settings load failed: {exc}"}
-    return settings.bifrost.model_dump(exclude={"auth_env"})
 
 
 def _print_bifrost_schema() -> None:

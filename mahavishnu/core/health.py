@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 import httpx2 as httpx
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
+from oneiric.adapters.llm.bifrost import BifrostLLMSettings
 from oneiric.core.logging import get_logger
 from opentelemetry import trace as _otel_trace
 from pydantic import BaseModel, ConfigDict, Field
@@ -95,8 +96,10 @@ class BifrostHealth(BaseModel):
     config: dict[str, Any] | None = Field(
         default=None,
         description=(
-            "BifrostConfig.to_public_dict() projection. Excludes the "
-            "auth_env field name to avoid leaking the env-var name."
+            "BifrostLLMSettings.model_dump() projection. The oneiric "
+            "model_dump override excludes the auth_env field name "
+            "(via _SENSITIVE_FIELDS) to avoid leaking the env-var name "
+            "— see REQ-BIFROST-017."
         ),
     )
     reachable: bool = Field(
@@ -1300,7 +1303,7 @@ def _probe_mergiraf_grammars(binary: str) -> GrammarProbeResult:
 # commit (after the local_provider e2e test exercises the path).
 
 
-def _probe_bifrost_state(settings: MahavishnuSettings) -> bool:
+def _probe_bifrost_state(router_settings: BifrostLLMSettings) -> bool:
     """Probe the Bifrost gateway's ``/health`` endpoint.
 
     Returns ``True`` when the gateway returns HTTP 200, ``False`` on
@@ -1309,9 +1312,14 @@ def _probe_bifrost_state(settings: MahavishnuSettings) -> bool:
 
     Per spec §1 goal 3, ``False`` means the cloud tier LLM callers
     will fail loud; operators see this on the /health route.
+
+    Reads from the oneiric ``BifrostLLMSettings`` directly (per
+    REQ-BIFROST-005) — the legacy ``settings.bifrost.*`` reads
+    on the deleted ``mahavishnu.core.config.BifrostConfig`` are
+    gone as of Phase 7.
     """
     try:
-        url = settings.bifrost.base_url.rstrip("/") + "/health"
+        url = str(router_settings.base_url).rstrip("/") + "/health"
         response = httpx.get(url, timeout=2)
     except (
         Exception  # noqa: BLE001  background health probe — broad catch is the documented contract
@@ -1320,7 +1328,7 @@ def _probe_bifrost_state(settings: MahavishnuSettings) -> bool:
     return response.status_code == 200
 
 
-def _probe_local_provider_state(settings: MahavishnuSettings) -> bool:
+def _probe_local_provider_state(router_settings: BifrostLLMSettings) -> bool:
     """Probe the local llama-server's ``/health`` endpoint.
 
     Short-circuits to ``False`` when ``local_provider_enabled`` is
@@ -1331,10 +1339,10 @@ def _probe_local_provider_state(settings: MahavishnuSettings) -> bool:
 
     Never raises.
     """
-    if not settings.bifrost.local_provider_enabled:
+    if not router_settings.local_provider_enabled:
         return False
     try:
-        url = settings.bifrost.local_provider_url.rstrip("/") + "/health"
+        url = str(router_settings.local_provider_url).rstrip("/") + "/health"
         response = httpx.get(url, timeout=2)
     except (
         Exception  # noqa: BLE001  background health probe — broad catch is the documented contract

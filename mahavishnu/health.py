@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Response
+from oneiric.adapters.llm.bifrost import get_router
 import prometheus_client
 
 from .core.health import HealthResponse, HealthStatus
@@ -489,9 +490,13 @@ def _build_bifrost_health_block() -> Any:
             _probe_local_provider_state,
         )
 
-        reachable = _probe_bifrost_state(settings)
-        local_provider_reachable = _probe_local_provider_state(settings)
-        config = settings.bifrost.model_dump(exclude={"auth_env"})
+        reachable = _probe_bifrost_state(get_router()._settings)
+        local_provider_reachable = _probe_local_provider_state(get_router()._settings)
+        # The oneiric ``BifrostLLMSettings.model_dump`` override excludes
+        # the ``auth_env`` field by default (per
+        # ``_SENSITIVE_FIELDS`` in oneiric/adapters/llm/bifrost.py).
+        # REQ-BIFROST-017.
+        config = get_router()._settings.model_dump()
     except ImportError, AttributeError:
         # Same fail-closed posture for probe-helper import /
         # settings attribute access. The probes themselves catch
