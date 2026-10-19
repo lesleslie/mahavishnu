@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the 7 forked `regenerate_plan_index.py` scripts with a oneiric-hosted shared library; make mahavishnu's `docs/plans/PLAN_INDEX.md` the master fleet index aggregated from sibling repos via pull-on-regeneration; wire crackerjack's `plan_index_sync` phase through the shared library behind a transition feature flag.
+**Goal:** Replace the per-sibling forked `regenerate_plan_index.py` scripts (one per Bodai core) with a oneiric-hosted shared library; make mahavishnu's `docs/plans/PLAN_INDEX.md` the master fleet index aggregated from sibling repos via pull-on-regeneration; wire crackerjack's `plan_index_sync` phase through the shared library behind a transition feature flag.
 
 **Architecture:** oneiric exposes `oneiric/plan_index/` as a pure-Python library (no I/O side effects in the public API beyond explicit `out_path` writes); per-repo regeneration goes through crackerjack's existing `plan_index_sync` PHASE (NOT a fast-hook — opt-in publish-time phase) which dispatches to either the new library or a legacy local implementation based on `settings.documentation.use_shared_regenerator`; the master regenerator lives at `mahavishnu/fleet_index/` (NEW package — NOT `mahavishnu/plan_index/` which is the separate Dhara-canonical CRUD layer, out of scope) and consumes the library for each `emit_in_master: true` entry in `settings/ecosystem.yaml`.
 
@@ -34,8 +34,51 @@ Five input classes the spec implies but no task's tests exercise that are most l
 1. **Siblings with identical `ecosystem.yaml` paths but different `slug` fields** → pinned by `test_master_dedup.py::test_duplicate_repo_path_dedupes` in **Task 8**.
 2. **Siblings with `slug` substring (`akosha` and `akosha-experimental`)** → pinned by `test_link_math.py::test_basename_substring_not_used_as_slug` in **Task 8**.
 3. **`plan_index_sync` re-introduced as fast-hook** → pinned by `test_plan_index_sync_phase.py` (existing tests, L79/L111/L149/L169) which **Task 4** does not touch.
-4. **`scan_entries` vs `regenerate` divergence** (a future refactor grows a separate code path that emits different output) → pinned by `test_regenerate.py::test_regenerate_equals_scan_plus_render` (identity test) in **Task 3**.
-5. **Oneiric version pin regression** (a sibling's `pyproject.toml` accidentally lowers the `oneiric>=` floor) → pinned by **Task 11** via a manifest-level grep test (`test_oneiric_floor_satisfies_plan_index_version`).
+4. **`scan_entries` vs `regenerate` divergence** (a future refactor grows a separate code path that emits different output) → pinned by `test_regenerate.py::test_regenerate_equals_scan_plus_render` (identity test) in **Task 2**.
+5. **Oneiric version pin regression** (a sibling's `pyproject.toml` accidentally lowers the `oneiric>=` floor) → pinned by **Task 11** (deferred to follow-on plan) via a manifest-level grep test (`test_oneiric_floor_satisfies_plan_index_version`).
+
+---
+
+### Task 0: Bump sibling `oneiric>=` pin floors to ≥0.33 (prerequisite for T4)
+
+**Files:**
+- Modify: 5 sibling `pyproject.toml` files (one edit each — dep floor only, not release version)
+
+**Interfaces:**
+- Consumes: existing pyproject.toml `dependencies` block
+- Produces: 5 siblings pin `oneiric>=0.33`
+
+**Why first:** T4 step 5 imports `from oneiric.plan_index import regenerate`, which requires `oneiric>=0.33` on the install path. None of the 5 consuming siblings currently meet that floor — actual on-disk `oneiric>=` values are `crackerjack=0.32`, `session-buddy=0.32`, `mahavishnu=0.28.0`, `akosha=0.20`, `mcp-common=0.26.4` (crackerjack-specialist review, finding C2). Without these floors bumped, T4's import raises `ImportError` on first run. Memory `feedback-mcp-common-version-bump-is-user.md` governs Bodai *release* versions, not *dep pin floors* — dep pins are operator-acknowledged here.
+
+- [ ] **Step 1: Bump `oneiric>=` in each sibling's `pyproject.toml`**
+
+For each of the following files, raise the `oneiric>=X.Y` floor to `>=0.33`:
+- `crackerjack/pyproject.toml` (current: `0.32`)
+- `session-buddy/pyproject.toml` (current: `0.32`)
+- `mahavishnu/pyproject.toml` (current: `0.28.0`)
+- `akosha/pyproject.toml` (current: `0.20`)
+- `mcp-common/pyproject.toml` (current: `0.26.4`)
+
+Read the current value, then edit `oneiric>=X.Y` → `oneiric>=0.33`. **Do not bump the sibling's own release version** — only the dep floor.
+
+- [ ] **Step 2: Per-sibling commit (one commit per repo)**
+
+For each sibling:
+```bash
+cd <sibling-repo>
+git add pyproject.toml
+git commit -m "chore(deps): bump oneiric>= to 0.33 (plan_index library floor)"
+```
+
+Order between siblings does not matter, but Task 1 (oneiric library) **must release 0.33** before Task 4 (crackerjack dispatcher) ships. Confirm with the user that oneiric 0.33 has shipped before merging any sibling flip; until it has, the bumped floor simply waits in the local checkout (uv will resolve against the future 0.33 once it hits PyPI).
+
+- [ ] **Step 3: Verify Task 11 (deferred) test will pass on first run after the bumps**
+
+Task 11's `test_siblings_pin_oneiric_above_plan_index_min` (deferred to follow-on plan) will assert all 5 siblings pin `oneiric>=0.33`. After Step 2 lands, that test should go GREEN on first execution. If it stays RED, one of the floors wasn't bumped or the regex doesn't match — re-check.
+
+- [ ] **Step 4: Commit gate**
+
+Do NOT proceed to Task 1 until all 5 sibling commits land. If the operator cannot release oneiric 0.33 immediately, hold the bumps in feature branches across the 5 siblings and merge them in lockstep when oneiric 0.33 ships.
 
 ---
 
@@ -565,7 +608,7 @@ import os
 from pathlib import Path
 from oneiric.plan_index.discovery import discover_stores, discover_files
 from oneiric.plan_index.frontmatter import extract_frontmatter
-from oneiric.plan_index.scan_entries_dummy import scan_entries  # see note in impl step
+from oneiric.plan_index import scan_entries  # exported via oneiric/plan_index/__init__.py (Task 2 step 15)
 
 def test_scan_entries_returns_dict(tmp_path: Path):
     docs = tmp_path / "docs" / "plans"
@@ -617,12 +660,12 @@ def test_check_mode_exits_0_on_no_drift(tmp_path: Path):
 
 def test_regenerate_equals_scan_plus_render(tmp_path: Path):
     """Identity test: regenerate(X) == scan_entries(X) → render_index path."""
-    from oneiric.plan_index.discovery import scan_entries_inline
+    from oneiric.plan_index import scan_entries
     from oneiric.plan_index.render import render_index
     docs = tmp_path / "docs" / "plans"
     docs.mkdir(parents=True)
     (docs / "x.md").write_text("---\nstatus: active\nrole: implementation\nkind: plan\ntopic: t\n---\n# X\n")
-    entries = scan_entries_inline(tmp_path)
+    entries = scan_entries(tmp_path)
     expected = render_index(entries_by_store=entries, generated_at="2026-10-19")
     # Now regenerate
     regenerate(repo_root=tmp_path)
@@ -720,9 +763,6 @@ def scan_entries(repo_root: Path, *, exclude: "Sequence[str]" = ()) -> dict[str,
         if entries:
             out[store] = entries
     return out
-
-# Backward-compat alias used by test_regenerate_equals_scan_plus_render
-scan_entries_inline = scan_entries
 ```
 
 Create `oneiric/plan_index/_entry_from_front.py`:
@@ -929,7 +969,7 @@ git commit -m "feat(oneiric): add 'plan-index regenerate' CLI subcommand"
 
 **Files:**
 - Modify: `crackerjack/config/settings.py:140` (`DocumentationSettings` dataclass — add `use_shared_regenerator: bool = False`)
-- Modify: `crackerjack/settings/crackerjack.yaml:14-66` (`documentation:` block — add `use_shared_regenerator: false` entry)
+- Modify: `crackerjack/settings/crackerjack.yaml:89-95` (`documentation:` block — add `use_shared_regenerator: false` entry; the YAML key is added explicitly even though `DocumentationSettings` would coerce from the Pydantic default, to keep the operator-visible intent explicit)
 - Modify: `crackerjack/tools/plan_index_sync.py:407-454` (rewrite `main()` to dispatch based on the setting)
 - Test: `crackerjack/tests/unit/test_plan_index_sync.py::test_dry_run_translates_to_check` (NEW)
 - Test: `crackerjack/tests/core/test_plan_index_sync_phase.py` (existing — DO NOT TOUCH)
@@ -948,15 +988,27 @@ import sys
 from pathlib import Path
 
 def test_dry_run_translates_to_check(tmp_path: Path, monkeypatch):
-    """crackerjack's --dry-run flag must translate to oneiric.plan_index.regenerate(check=True)."""
+    """crackerjack's --dry-run flag must translate to oneiric.plan_index.regenerate(check=True).
+
+    Invokes the dispatcher module DIRECTLY (NOT `crackerjack run`). The
+    `crackerjack run` CLI does not bind `--repo-root` (`grep` of
+    `crackerjack/cli/options.py` and `crackerjack/__main__.py:806`
+    confirms); `PhaseCoordinator` constructs `--repo-root` itself from
+    `process.cwd` (`crackerjack/core/phase_coordinator.py:858`). Calling
+    `crackerjack run --plan-index-sync --dry-run --repo-root <tmp>` would
+    silently ignore the `--repo-root` flag and run against the worktree's
+    cwd, NOT against `tmp_path`. Mirror the existing pattern at
+    `crackerjack/tests/unit/test_plan_index_sync.py:18` (the `_tool_help()`
+    probe) — direct module invocation only.
+    """
     monkeypatch.setenv("CRACKERJACK_DOCS__USE_SHARED_REGENERATOR", "true")
     docs = tmp_path / "docs" / "plans"
     docs.mkdir(parents=True)
     (docs / "foo.md").write_text("---\nstatus: active\n---\n# Foo\n")
-    # Run crackerjack with --dry-run on a fresh repo
+    # Run the dispatcher module directly with --dry-run
     result = subprocess.run(
-        [sys.executable, "-m", "crackerjack", "run", "--plan-index-sync",
-         "--dry-run", "--repo-root", str(tmp_path)],
+        [sys.executable, "-m", "crackerjack.tools.plan_index_sync",
+         "--repo-root", str(tmp_path), "--dry-run"],
         capture_output=True, text=True, timeout=30,
     )
     # exit 0 = no drift, exit 1 = drift (either is valid; key is no exception)
@@ -999,7 +1051,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()  # existing argparse parser — preserves --repo-root, --out, --dry-run
     args = parser.parse_args(argv)
     settings = load_settings()  # crackerjack/config/settings.py:load_settings()
-    use_shared = bool(getattr(settings.documentation, "use_shared_regenerator", False))
+    # Pydantic-v2 types `use_shared_regenerator` as bool; no bool() cast needed.
+    use_shared = getattr(settings.documentation, "use_shared_regenerator", False)
     if use_shared:
         from oneiric.plan_index import regenerate as shared_regenerate
         # --dry-run ≡ check=True (per spec acceptance criterion I-1)
@@ -1008,8 +1061,26 @@ def main(argv: list[str] | None = None) -> int:
             out_path=(args.out.resolve() if args.out else None),
             check=bool(args.dry_run),
         )
-    # Legacy local implementation (deleted in Phase 3 of each sibling)
-    return _legacy_render(args)
+    # LEGACY BRANCH: inline the pre-dispatch body of main() (originally
+    # at crackerjack/tools/plan_index_sync.py:407-454 before this rewrite).
+    #
+    # Per crackerjack-specialist review C3: do NOT extract to
+    # `_legacy_render(args)`. Inlining is preferable — fewer new symbols,
+    # tighter review diff, and the legacy branch is small once the
+    # shared import is removed. The implementer reads the current
+    # crackerjack/tools/plan_index_sync.py, copies the original render
+    # logic verbatim into this else-branch (the
+    # argparse-parse → render_plan_index → dry-run-vs-write → return int
+    # sequence), and DOES NOT touch the existing CLI surface
+    # (`--repo-root`, `--out`, `--dry-run` flags stay identical so the
+    # existing `test_help_smoke` continues to pass).
+    #
+    # ALSO per crackerjack-specialist review I1: the legacy
+    # `_render_index()` and argparse `description` strings embed the
+    # string `(fast-hook)` at plan_index_sync.py:368 and `:412` —
+    # update those to `(phase)` while inlining, so the legacy output
+    # post-T4 doesn't lie about being a fast-hook that no longer exists.
+    ...legacy body inlined here, with the (fast-hook) → (phase) tagline update...
 ```
 
 - [ ] **Step 6: Run test to verify it passes**
@@ -1031,753 +1102,26 @@ git commit -m "feat(crackerjack): dispatch plan_index_sync to oneiric.plan_index
 
 ---
 
-### Task 5: Move sibling plan_index tests into oneiric/tests/plan_index/
+### Tasks 5-12: Deferred to follow-on plan
 
-**Files:**
-- Move: each sibling's `tests/unit/test_*plan_index*` and `tests/integration/plan_index/*` → `oneiric/tests/plan_index/test_*`
-- Delete at source: the moved files
+Tasks 5-12 (sibling fork cleanup, master-land, version-pin regression, ecosystem.yaml opt-in, dhara-named-decision-file rename, transition verification) are deferred to their own release-train follow-on plan:
 
-**Interfaces:**
-- Consumes: `oneiric.plan_index` public API (Tasks 1-3)
-- Produces: a single canonical test suite in oneiric
+**`docs/plans/2026-10-19-master-plan-index-phase2-fork-cleanup.md`**
 
-- [ ] **Step 1: Audit existing plan_index tests across the 7 Bodai core repos**
+That plan lands T5-T12 in their own release. Reasoning and task-level steps live there; the in-flight master (Tasks 0-4) ships independently with `crackerjack run -v -f` as the merge gate per `feedback-crackerjack-merge-gate-is-vf.md` and the per-PR squash-merge from the trunk-based agent-review workflow.
 
-Run for each of `oneiric`, `akosha`, `session-buddy`, `crackerjack`, `mcp-common`, `mahavishnu`, and `dhara` (note: dhara is not bodai core per `feedback-no-dhara-mention-in-bodai` but has the test files):
-```bash
-for repo in oneiric akosha session-buddy crackerjack mcp-common mahavishnu; do
-    echo "=== $repo ==="
-    find "$repo" -path '*/test_*plan_index*' -o -path '*/plan_index/*' -name 'test_*.py' 2>/dev/null | grep -v __pycache__
-done
-```
+**Cross-references in this master that now live in the follow-on:**
+- Review Focus entries 5 (version-pin regression test) → T11 in the follow-on
+- Architecture CRITICAL C1 (hidden crackerjack version-bump prerequisite per sibling) → addressed by Task 0 (this master)
+- Architecture CRITICAL C3 (T7 master.py/format.py live planning commentary) → T7 in the follow-on (cleaned up before promotion)
+- Generalist CRITICAL F1 (T9 slug values vs `ecosystem.yaml` nicknames) → T9 in the follow-on (uses `akosha/buddy/common/oneir/crackerjack/vishnu` matching the actual nickname keys)
+- Generalist CRITICAL F7 (`settings/ecosystem.yaml` is gitignored) → T9 in the follow-on tasks the operator with the explicit handoff to land the bump out-of-band
+- Generalist CRITICAL F14 (typos `SYSTEM_DIR_DOCS` and `mahavishmu`) → applied here in this master file; the follow-on re-applies on copy
+- Generalist CRITICAL F17 (T7 `format.py` uses `e.store.split('/')[0]` against non-prefixed entries) → T7 in the follow-on now prefixes entries with `<slug>/` before reaching `format.py`
 
-Record the full list in the task comment for tracking.
+**Per-PR preconditions for follow-on landing:**
+1. oneiric 0.33 has shipped to PyPI (Task 1 in this master released)
+2. All 5 sibling `oneiric>=` pin bumps merged (Task 0 in this master landed)
+3. Crackerjack ships a release containing T4 (the dispatcher)
+4. All 6 siblings consume that crackerjack release (operator-driven, per `feedback-bodai-push-is-user-controlled.md`)
 
-- [ ] **Step 2: Move each test file to oneiric, with renames if needed**
-
-For each file from Step 1:
-- Move (preserving history via `git mv` if the source repo is git-tracked, else `cp` + delete)
-- Rename to `test_<original_basename>.py` if not already prefixed
-- Adjust imports from `mcp_common.*` or local-path to `oneiric.plan_index`
-
-- [ ] **Step 3: Run moved tests in oneiric**
-
-Run: `.venv/bin/pytest oneiric/tests/plan_index/ -v`
-Expected: ALL PASS (the moved tests now run against the new library, not the legacy script)
-
-- [ ] **Step 4: Commit in each sibling**
-
-For each sibling that had tests moved out:
-```bash
-cd <sibling-repo>
-git rm tests/unit/test_*plan_index* tests/integration/plan_index/*
-git commit -m "chore: move plan_index tests to oneiric"
-```
-
-- [ ] **Step 5: Commit in oneiric**
-
-```bash
-cd oneiric
-git add tests/plan_index/
-git commit -m "test(oneiric): adopt moved plan_index tests from sibling repos"
-```
-
-- [ ] **Step 6: Phase 3 fork deletion — per sibling (gated on Task 4)**
-
-This sub-step is **gated** on each sibling having completed Task 4 (crackerjack rewired and shipped a version with the dispatcher). Per spec §"Migration plan" Phase 3, each sibling lands in their own release train. For each of the 7 Bodai core repos:
-
-```bash
-cd <sibling-repo>
-
-# 1. Flip the feature flag in crackerjack's settings.yaml
-sed -i 's/use_shared_regenerator: false/use_shared_regenerator: true/' settings/crackerjack.yaml
-git add settings/crackerjack.yaml
-git commit -m "feat(<sibling>): flip plan_index_sync to shared library"
-
-# 2. Delete the forked regenerator
-git rm scripts/regenerate_plan_index.py
-
-# 3. (mahavishnu only) Delete the 5 extras
-[ "$(basename "$(pwd)")" = "mahavishnu" ] && git rm \
-  scripts/audit_plan_index.py \
-  scripts/bootstrap_plan_index.py \
-  scripts/backup_plan_index.py \
-  scripts/restore_plan_index_backup.py \
-  scripts/backfill_plan_spec_titles.py \
-  scripts/_apply_plan_audit_2026_09_12.py
-
-git commit -m "feat(<sibling>): delete plan_index script (Phase 3 per spec)"
-```
-
-Run for each of: `mahavishnu`, `akosha`, `session-buddy`, `crackerjack`, `mcp-common`, `oneiric`.
-
-- [ ] **Step 7: Verify all 7 forks are deleted**
-
-```bash
-for repo in mahavishnu akosha session-buddy crackerjack mcp-common oneiric; do
-    if [ -f "/Users/les/Projects/$repo/scripts/regenerate_plan_index.py" ]; then
-        echo "FAIL: $repo still has scripts/regenerate_plan_index.py"
-        exit 1
-    fi
-done
-echo "OK: all 7 siblings deleted their plan_index fork"
-```
-
-Expected: exit 0 after Step 6 completes across all 7 siblings. After this passes, Task 12 (Phase 6) is unblocked.
-
----
-
-### Task 6: Mahavishnu — `RepositoryConfig` schema migration for `slug` + `emit_in_master`
-
-**Files:**
-- Modify: `mahavishnu/core/ecosystem.py:22-55` (`RepositoryConfig` — add `slug: str | None = None` + `emit_in_master: bool = False`)
-- Test: `mahavishnu/tests/unit/core/test_ecosystem.py` (extend existing)
-
-**Interfaces:**
-- Consumes: Pydantic-v2 (already in mahavishnu's deps)
-- Produces: `RepositoryConfig` with `slug` and `emit_in_master` fields; backward-compat safe defaults
-
-- [ ] **Step 1: Write the failing test**
-
-```python
-# mahavishnu/tests/unit/core/test_ecosystem.py
-# Add to existing test file
-import yaml
-from mahavishnu.core.ecosystem import RepositoryConfig
-
-def test_slug_optional_defaults_none():
-    cfg = RepositoryConfig(name="akosha", path="/Users/les/Projects/akosha")
-    assert cfg.slug is None
-    assert cfg.emit_in_master is False
-
-def test_emit_in_master_opt_in():
-    cfg = RepositoryConfig(
-        name="oneiric",
-        path="/Users/les/Projects/oneiric",
-        slug="oneir",
-        emit_in_master=True,
-    )
-    assert cfg.emit_in_master is True
-    assert cfg.slug == "oneir"
-
-def test_existing_39_entries_still_load():
-    """Backward compat: existing ecosystem.yaml entries (no slug, no emit_in_master) must still load."""
-    import os
-    settings_path = "mahavishnu/settings/ecosystem.yaml"
-    assert os.path.exists(settings_path), "ecosystem.yaml missing"
-    from mahavishnu.core.ecosystem import load_repos
-    repos = load_repos()
-    assert len(repos) >= 39, f"Expected ≥39 entries, got {len(repos)}"
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `.venv/bin/pytest tests/unit/core/test_ecosystem.py -v`
-Expected: FAIL (`RepositoryConfig` has no `slug` field; `emit_in_master` unknown)
-
-- [ ] **Step 3: Modify `mahavishnu/core/ecosystem.py`**
-
-```python
-# Add fields to RepositoryConfig (mahavishnu/core/ecosystem.py:22-55)
-class RepositoryConfig(BaseModel):
-    # ... existing fields ...
-    slug: str | None = None          # NEW (Round 3 Decision #4): stable cross-repo link slug
-    emit_in_master: bool = False    # NEW: include in master fleet aggregation
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `.venv/bin/pytest tests/unit/core/test_ecosystem.py -v`
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add mahavishnu/core/ecosystem.py mahavishnu/tests/unit/core/test_ecosystem.py
-git commit -m "feat(mahavishnu): RepositoryConfig gains slug + emit_in_master fields"
-```
-
----
-
-### Task 7: Mahavishnu master generator — `mahavishnu/fleet_index/` package + CLI
-
-**Files:**
-- Create: `mahavishnu/fleet_index/__init__.py`
-- Create: `mahavishnu/fleet_index/master.py`
-- Create: `mahavishnu/fleet_index/format.py`
-- Create: `mahavishnu/fleet_index/cli.py`
-- Modify: `mahavishnu/_main_cli.py:1488` (add `app.add_typer(fleet_app, name="fleet")` next to existing plan_app registration)
-
-**Interfaces:**
-- Consumes: `oneiric.plan_index.scan_entries`, `oneiric.plan_index.regenerate`, `mahavishnu.core.ecosystem.load_repos`
-- Produces: `mahavishnu fleet regenerate` CLI; `FleetRegenerator` class for in-process use
-
-- [ ] **Step 1: Write the failing test for `FleetRegenerator`**
-
-```python
-# mahavishnu/tests/unit/fleet_index/test_master.py
-import os
-import tempfile
-from pathlib import Path
-import yaml
-from mahavishnu.fleet_index.master import FleetRegenerator
-
-def test_fleet_regenerator_with_no_emit_in_master(tmp_path: Path, monkeypatch):
-    """Master regen with zero emit_in_master=true entries yields the local PLAN_INDEX only."""
-    # Create a fake local repo at tmp_path
-    (tmp_path / "docs" / "plans").mkdir(parents=True)
-    (tmp_path / "docs" / "plans" / "foo.md").write_text("---\nstatus: active\n---\n# Foo\n")
-    (tmp_path / "settings").mkdir()
-    (tmp_path / "settings" / "ecosystem.yaml").write_text("repos: []\n")
-    # monkeypatch CWD to tmp_path and load_repos to read tmp_path/settings/ecosystem.yaml
-    monkeypatch.chdir(tmp_path)
-    from mahavishnu.core.ecosystem import load_repos
-    monkeypatch.setattr("mahavishnu.core.ecosystem.load_repos", lambda: load_repos.__wrapped__() if hasattr(load_repos, '__wrapped__') else [])
-    # Simpler: directly construct a FleetRegenerator with a custom loader
-    regen = FleetRegenerator(repos=[])
-    regen.regenerate(out_path=tmp_path / "PLAN_INDEX.md")
-    assert (tmp_path / "PLAN_INDEX.md").exists()
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `.venv/bin/pytest tests/unit/fleet_index/test_master.py -v`
-Expected: FAIL with `ModuleNotFoundError: mahavishnu.fleet_index`
-
-- [ ] **Step 3: Implement `format.py`**
-
-```python
-# mahavishnu/fleet_index/format.py
-"""Cross-repo section rendering for the master PLAN_INDEX."""
-from __future__ import annotations
-from collections import defaultdict
-from oneiric.plan_index.entry import Entry
-
-def render_cross_repo_section(entries_by_origin: dict[str, list[Entry]]) -> str:
-    """Render one subsection per origin slug; entries already tagged with `origin` in their store??"""
-    
-    # Group entries by origin. Each entry's store field will be `origin:<slug>` to distinguish
-    # from local stores; we just need to bucket by origin.
-    grouped: dict[str, list[Entry]] = defaultdict(list)
-    for entries in entries_by_origin.values():
-        for e in entries:
-            grouped[e.store.split('/')[0]].append(e)  # only if origin-prefixed
-    
-    sections = ["## Cross-repo plans", "",
-                "_One section per sibling repo with `emit_in_master: true`._"]
-    for origin in sorted(grouped):
-        sections.append(f"\n### `{origin}`\n")
-        sections.append("| Path | Date | Status | Role | Kind | Topic | Title |")
-        sections.append("|---|---|---|---|---|---|---|")
-        for e in sorted(grouped[origin], key=lambda e: (-_date_key(e.date), e.rel)):
-            sections.append(f"| `{e.rel}` | {e.date or '—'} | `{e.status}` | `{e.role}` | `{e.kind}` | `{e.topic}` | {e.title} |")
-    return "\n".join(sections)
-
-def _date_key(v: str) -> int:
-    if not v: return 0
-    import re
-    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", v)
-    if not m: return 0
-    return int(m.group(1)) * 10000 + int(m.group(2)) * 100 + int(m.group(3))
-```
-
-(Note: actual implementation will use a more explicit per-origin tagging scheme — see Task 7 step 4.)
-
-- [ ] **Step 4: Implement `master.py`**
-
-```python
-# mahavishnu/fleet_index/master.py
-"""Fleet regenerator: walks ecosystem.yaml, calls oneiric.plan_index.scan_entries for each emit_in_master entry."""
-from __future__ import annotations
-import datetime
-import sys
-from pathlib import Path
-from typing import Any
-
-from oneiric.plan_index import scan_entries, render_index
-
-class FleetRegenerator:
-    def __init__(self, repos: list[Any] | None = None) -> None:
-        """`repos` is a list of RepositoryConfig (or duck-typed). If None, calls load_repos()."""
-        if repos is None:
-            from mahavishnu.core.ecosystem import load_repos
-            repos = load_repos()
-        self._repos = repos
-
-    def regenerate(self, *, out_path: Path, generated_at: str | None = None) -> int:
-        """Render master PLAN_INDEX.md. Returns count of cross-repo entries written."""
-        if generated_at is None:
-            generated_at = datetime.date.today().isoformat()
-        # Step 1: local sections via oneiric.plan_index.regenerate to a tempfile
-        import tempfile
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md", delete=False) as local_tmp:
-            local_tmp_path = Path(local_tmp.name)
-        from oneiric.plan_index import regenerate as regen_fn
-        regen_fn(repo_root=Path("."), out_path=local_tmp_path)
-        local_body = local_tmp_path.read_text()
-        local_tmp_path.unlink()
-        # Split local body: keep everything up to but not including the distribution footer
-        # For now, strip the trailing "## Lifecycle × Role Distribution..." block
-        local_body_no_sliced = _strip_distribution_footer(local_body)
-        # Step 2: cross-repo scan
-        cross_repo_entries: dict[str, list] = {}
-        failed: list[str] = []
-        any_sibling_failed = False
-        for repo in self._repos:
-            if not getattr(repo, "emit_in_master", False):
-                continue
-            slug = getattr(repo, "slug", None) or repo.name
-            repo_path = Path(getattr(repo, "path"))
-            if not repo_path.is_dir():
-                print(f"warning: skipping {repo.name}: path {repo_path} does not exist", file=sys.stderr)
-                failed.append(repo.name)
-                any_sibling_failed = True
-                continue
-            try:
-                entries_by_store = scan_entries(repo_path)
-                # Tag entries with origin: <slug>
-                tagged: dict[str, list] = {}
-                for store, entries in entries_by_store.items():
-                    new_store = f"{slug}/{store}"  # prefix with slug
-                    tagged[new_store] = entries
-                cross_repo_entries.update(tagged)
-            except Exception as exc:
-                print(f"warning: skipping {repo.name}: {exc}", file=sys.stderr)
-                failed.append(repo.name)
-                any_sibling_failed = True
-        # Step 3: assemble
-        from mahavishnu.fleet_index.format import render_cross_repo_section
-        cross_body = render_cross_repo_section(cross_repo_entries) if cross_repo_entries else ""
-        # Step 4: re-render distribution footer once with full entries set
-        all_entries = [e for es in cross_repo_entries.values() for e in es]
-        from oneiric.plan_index.discovery import discover_stores
-        from oneiric.plan_index.render import render_index as _render
-        # ... render full local + cross-repo, get distribution footer from it
-        # Simpler: emit only the footer (re-call render_index with full set + extract footer)
-        # For now: append the footer text from local_body
-        footer_text = _extract_distribution_footer(local_body)
-        # Step 5: atomic write
-        final = local_body_no_sliced + "\n\n" + cross_body + "\n\n" + footer_text
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8",
-                                         dir=str(out_path.parent),
-                                         prefix=f".{out_path.name}.",
-                                         suffix=".tmp", delete=False) as tmp:
-            tmp.write(final)
-            tmp_path = Path(tmp.name)
-        tmp_path.replace(out_path)
-        return 0 if not any_sibling_failed else 1
-
-def _strip_distribution_footer(text: str) -> str:
-    """Remove the trailing distribution footer block."""
-    marker = "\n## Lifecycle × Role Distribution"
-    idx = text.rfind(marker)
-    return text[:idx] if idx != -1 else text
-
-def _extract_distribution_footer(text: str) -> str:
-    """Return just the distribution footer text (from the marker onward)."""
-    marker = "\n## Lifecycle × Role Distribution"
-    idx = text.rfind(marker)
-    return text[idx:] if idx != -1 else ""
-```
-
-- [ ] **Step 5: Implement `cli.py` and `__init__.py`**
-
-```python
-# mahavishnu/fleet_index/cli.py
-"""Typer subcommand for the master regenerator."""
-from __future__ import annotations
-from pathlib import Path
-import sys
-import typer
-from mahavishnu.cli.base import BaseModule  # if exists; otherwise use plain typer.Typer
-from mahavishnu.fleet_index.master import FleetRegenerator
-
-fleet_app = typer.Typer(name="fleet", help="Fleet-level plan index aggregation.")
-
-@fleet_app.command(name="regenerate")
-def regenerate(
-    out: Path = typer.Option(Path("docs/plans/PLAN_INDEX.md"), "--out", help="Output path"),
-    check: bool = typer.Option(False, "--check", help="Exit 1 on drift; do not write"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Alias for --check"),
-) -> None:
-    """Regenerate the master PLAN_INDEX.md from sibling repos."""
-    regen = FleetRegenerator()
-    if check or dry_run:
-        # Run a real regen to a temp; exit 1 on drift
-        import tempfile
-        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
-        rc = regen.regenerate(out_path=tmp_path)
-        existing = out.read_text() if out.is_file() else ""
-        new = tmp_path.read_text()
-        tmp_path.unlink()
-        if existing != new:
-            typer.echo(f"--check: drift detected ({out})", err=True)
-            sys.exit(1)
-        typer.echo(f"--check: {out} is up-to-date.")
-        sys.exit(0)
-    rc = regen.regenerate(out_path=out)
-    sys.exit(rc)
-```
-
-```python
-# mahavishnu/fleet_index/__init__.py
-"""Public surface of the master plan-index regenerator."""
-from oneiric.plan_index import (
-    Entry, extract_frontmatter, discover_stores, discover_files,
-    scan_entries, render_index, regenerate, is_excluded, SYSTEM_DIR_PARTS, MIN_STORE_DOCS,
-)
-from mahavishnu.fleet_index.master import FleetRegenerator
-
-__all__ = [
-    "Entry", "extract_frontmatter", "discover_stores", "discover_files",
-    "scan_entries", "render_index", "regenerate", "is_excluded",
-    "SYSTEM_DIR_DOCS", "MIN_STORE_DOCS",
-    "FleetRegenerator",
-]
-```
-
-(Note: `SYSTEM_DIR_DOCS` typo — should be `SYSTEM_DIR_PARTS`.)
-
-- [ ] **Step 6: Register in `mahavishnu/_main_cli.py`**
-
-```python
-# After line 1488 in mahavishnu/_main_cli.py:
-from mahavishnu.fleet_index.cli import fleet_app
-app.add_typer(fleet_app, name="fleet")
-```
-
-- [ ] **Step 7: Run unit tests**
-
-Run: `.venv/bin/pytest tests/unit/fleet_index/ -v`
-Expected: PASS
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add mahavishnu/fleet_index/ mahavishnu/_main_cli.py mahavishnu/tests/unit/fleet_index/
-git commit -m "feat(mahavishnu): fleet_index master regenerator + 'fleet' CLI"
-```
-
----
-
-### Task 8: Mahavishnu integration tests for fleet_index
-
-**Files:**
-- Create: `mahavishnu/tests/integration/fleet_index/test_master_regenerate.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_ecosystem_yaml_validation.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_master_error_handling.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_master_check.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_link_math.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_master_dedup.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_dedup.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_missing_local_index.py`
-- Create: `mahavishnu/tests/integration/fleet_index/test_e2e_smoke.py`
-
-**Interfaces:**
-- Consumes: `FleetRegenerator`, `oneiric.plan_index.*`
-- Produces: a hermetic integration test suite using `tmp_path` (NOT real repos)
-
-- [ ] **Step 1: Write `test_master_regenerate.py`**
-
-```python
-# mahavishnu/tests/integration/fleet_index/test_master_regenerate.py
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
-from mahavishmu.fleet_index.master import FleetRegenerator  # typo intentional — see note
-
-def test_section_order_and_singleton_footer(tmp_path: Path):
-    """Local table A precedes Cross-repo heading X; distribution footer appears exactly once."""
-    # ... 6 fake sibling checkouts + local entry, run FleetRegenerator, assert output
-```
-
-(Implementation of each test is local — pin the spec's acceptance criteria I-1 + I-4 and the 5 Review focus entries. Test bodies follow the same `tmp_path` fixture pattern as `test_master_regenerate.py::test_section_order_and_singleton_footer`.)
-
-- [ ] **Step 2-9: Write each test file (one per spec test entry)**
-
-For each spec test entry in §"Testing strategy / Integration", create the test file with the fixture pattern from Step 1.
-
-- [ ] **Step 10: Mark `test_e2e_smoke.py` `@pytest.mark.slow`**
-
-```python
-# mahavishnu/tests/integration/fleet_index/test_e2e_smoke.py
-import pytest
-
-@pytest.mark.slow
-def test_e2e_smoke_full_fleet_pipeline(tmp_path: Path):
-    ...
-```
-
-- [ ] **Step 11: Run integration tests**
-
-Run: `.venv/bin/pytest tests/integration/fleet_index/ -v`
-Expected: ALL PASS (slow verification)
-
-- [ ] **Step 12: Commit**
-
-```bash
-git add mahavishnu/tests/integration/fleet_index/
-git commit -m "test(mahavishnu): integration tests for fleet_index master regenerator"
-```
-
----
-
-### Task 9: Mahavishnu — `ecosystem.yaml` updates (6 entries)
-
-**Files:**
-- Modify: `mahavishnu/settings/ecosystem.yaml` (add `slug` + `emit_in_master: true` to the 6 Bodai core entries)
-
-- [ ] **Step 1: Audit current state**
-
-Run:
-```bash
-grep -E "^  - name: " mahavishnu/settings/ecosystem.yaml
-```
-
-Record the 6 Bodai core entry names: `oneiric`, `akosha`, `session-buddy`, `crackerjack`, `mcp-common`, `mahavishnu`.
-
-- [ ] **Step 2: Add `slug` and `emit_in_master: true` to each of the 6 entries**
-
-For each of the 6 entries in `mahavishnu/settings/ecosystem.yaml`, add:
-```yaml
-  slug: "<short-name>"
-  emit_in_master: true
-```
-
-`slug` values:
-- `oneiric` → `oneir` (or `oneiric` — pick short)
-- `akosha` → `akosha`
-- `session-buddy` → `buddy` (matches `nickname: buddy`)
-- `crackerjack` → `crackerjack` or `cj`
-- `mcp-common` → `mcp-common` or `common` (matches `nickname: common`)
-- `mahavishnu` → `mahavishnu` or `vishnu` (matches `nickname: vishnu`)
-
-Use the nickname value where it exists; otherwise the name.
-
-- [ ] **Step 3: Run sync-guard test**
-
-Run: `.venv/bin/pytest tests/integration/fleet_index/test_ecosystem_yaml_validation.py -v`
-Expected: PASS
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add mahavishnu/settings/ecosystem.yaml
-git commit -m "feat(mahavishnu): opt 6 Bodai cores into master fleet aggregation"
-```
-
----
-
-### Task 10: Phase 5 — rename Dhara-named decision file in oneiric
-
-**Files:**
-- Rename: `oneiric/.claude/decisions/2026-10-11-dhara-substrate-refs-cleanup.md` → `oneiric/.claude/decisions/2026-10-11-substrate-refs-cleanup.md`
-- Regenerate: `oneiric/docs/plans/PLAN_INDEX.md` (via `oneiric plan-index regenerate`)
-
-- [ ] **Step 1: Rename the file**
-
-Run:
-```bash
-cd oneiric
-git mv .claude/decisions/2026-10-11-dhara-substrate-refs-cleanup.md .claude/decisions/2026-10-11-substrate-refs-cleanup.md
-```
-
-- [ ] **Step 2: Update any cross-references to the old filename**
-
-Run:
-```bash
-grep -rn "2026-10-11-dhara-substrate-refs-cleanup" oneiric/ 2>/dev/null
-```
-
-For each match (other than the rename itself), update the reference.
-
-- [ ] **Step 3: Regenerate oneiric's local PLAN_INDEX.md**
-
-Run: `cd oneiric && ../.venv/bin/python -m oneiric plan-index regenerate --repo-root .`
-
-Verify: `docs/plans/PLAN_INDEX.md` now references `2026-10-11-substrate-refs-cleanup.md` (no Dhara in the title column).
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd oneiric
-git add .claude/decisions/ docs/plans/PLAN_INDEX.md
-git commit -m "chore(oneiric): rename dhara-substrate-refs decision file per fleet rename"
-```
-
----
-
-### Task 11: Version pin regression — all 6 cores already pin oneiric ≥0.32
-
-**Files:**
-- Add test: `oneiric/tests/plan_index/test_dist.py` (NEW)
-
-**Interfaces:**
-- Consumes: `tomli` or `yaml` (existing)
-- Produces: a regression test asserting no sibling lowers the `oneiric>=` pin below 0.33 (the version that ships `plan_index`)
-
-- [ ] **Step 1: Write the failing test**
-
-```python
-# oneiric/tests/plan_index/test_dist.py
-import re
-import tomllib
-from pathlib import Path
-
-# The version that ships oneiric.plan_index (next release after 0.32.x).
-PLAN_INDEX_MIN_VERSION: str = "0.33"
-
-# Sibling repos whose pyproject.toml must require oneiric >= PLAN_INDEX_MIN_VERSION.
-SIBLINGS = [
-    "mahavishnu", "akosha", "session-buddy", "crackerjack", "mcp-common",
-]
-
-def _parse_min_oneiric(pyproject_text: str) -> str | None:
-    """Return the minimum oneiric>=X.X requirement, or None if absent."""
-    match = re.search(r'oneiric\s*>=\s*([0-9]+\.[0-9]+(?:\.[0-9]+)?)', pyproject_text)
-    return match.group(1) if match else None
-
-def test_siblings_pin_oneiric_above_plan_index_min():
-    for repo in SIBLINGS:
-        pyproject = Path(f"../{repo}/pyproject.toml")
-        if not pyproject.exists():
-            continue
-        data = tomllib.loads(pyproject.read_text())
-        deps = {**data.get("project", {}).get("dependencies", {}), **data.get("project", {}).get("optional-dependencies", {})}
-        oneiric_specs = [v for k, v in deps.items() if k.lower().replace("-", "_") == "oneiric"]
-        if not oneiric_specs:
-            continue
-        for spec in oneiric_specs:
-            assert spec.startswith(">="), f"{repo}: spec {spec!r} must use >= to allow future bumps"
-            min_ver = spec.removeprefix(">=")
-            from packaging.version import Version
-            assert Version(min_ver) >= Version(PLAN_INDEX_MIN_VERSION), (
-                f"{repo}: oneiric {min_ver} < plan_index minimum {PLAN_INDEX_MIN_VERSION}; "
-                f"bump the floor to receive the new library"
-            )
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `.venv/bin/pytest oneiric/tests/plan_index/test_dist.py -v`
-Expected: FAIL (no test file yet, then after creation, passes — confirms all siblings already pin ≥0.32 per the spec note; the test pins it)
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add oneiric/tests/plan_index/test_dist.py
-git commit -m "test(oneiric): pin sibling oneiric floors above plan_index minimum"
-```
-
----
-
-### Task 12: Phase 6 — drop legacy path in crackerjack + `verify_transition_complete.py`
-
-**Files:**
-- Modify: `crackerjack/tools/plan_index_sync.py:main()` (remove `use_shared` branch's `else` — legacy local code removed)
-- Create: `scripts/verify_transition_complete.py` (NEW, in each Bodai core repo OR centralized in crackerjack)
-
-**Interfaces:**
-- Consumes: `git grep` + `pyproject.toml` reads
-- Produces: a script that exits 0 when all 6 Bodai cores have flipped `use_shared_regenerator: true`
-
-- [ ] **Step 1: Write the failing test for the maintenance signal**
-
-```python
-# scripts/test_verify_transition_complete.py
-import subprocess
-import sys
-
-def test_verify_transition_exits_zero_when_all_flipped():
-    """All 6 Bodai cores should have use_shared_regenerator: true in their crackerjack settings."""
-    result = subprocess.run([sys.executable, "scripts/verify_transition_complete.py"],
-                            capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, result.stderr
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `.venv/bin/pytest scripts/test_verify_transition_complete.py -v`
-Expected: FAIL (script doesn't exist yet)
-
-- [ ] **Step 3: Implement `scripts/verify_transition_complete.py`**
-
-```python
-#!/usr/bin/env python3
-"""Verify all 6 Bodai core repos have flipped use_shared_regenerator: true.
-
-Run before Phase 6 (drop legacy path in crackerjack) to confirm
-all consumers are ready. Exits 0 if all flipped, 1 otherwise.
-
-Maintenance signal per spec §"Risks" #4.
-"""
-from __future__ import annotations
-import re
-import sys
-from pathlib import Path
-
-BODAI_CORES = [
-    "mahavishnu", "akosha", "session-buddy", "crackerjack", "mcp-common", "oneiric",
-]
-
-def check_repo(repo_path: Path) -> bool:
-    settings = repo_path / "settings" / "crackerjack.yaml"
-    if not settings.is_file():
-        return False
-    text = settings.read_text()
-    return bool(re.search(r"use_shared_regenerator:\s*true", text))
-
-def main() -> int:
-    base = Path(__file__).resolve().parent.parent
-    not_flipped = []
-    for repo in BODAI_CORES:
-        repo_path = base.parent / repo
-        if not check_repo(repo_path):
-            not_flipped.append(repo)
-    if not_flipped:
-        print(f"FAIL: {len(not_flipped)} repos have not flipped use_shared_regenerator: {not_flipped}", file=sys.stderr)
-        return 1
-    print(f"OK: all {len(BODAI_CORES)} Bodai cores have flipped use_shared_regenerator: true")
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `.venv/bin/pytest scripts/test_verify_transition_complete.py -v`
-Expected: PASS
-
-- [ ] **Step 5: Drop legacy path in crackerjack (post-coordination)**
-
-**NOTE**: This sub-step is **conditional** — only execute after running `scripts/verify_transition_complete.py` and confirming exit 0. Otherwise the migration is incomplete.
-
-After all 6 cores flipped, drop the legacy branch in `crackerjack/tools/plan_index_sync.py:main()`:
-
-```python
-def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    from oneiric.plan_index import regenerate as shared_regenerate
-    return shared_regenerate(
-        repo_root=args.repo_root.resolve(),
-        out_path=(args.out.resolve() if args.out else None),
-        check=bool(args.dry_run),
-    )
-```
-
-Drop the `use_shared_regenerator` setting from `DocumentationSettings` (it's now always true) and from `settings/crackerjack.yaml`.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add scripts/verify_transition_complete.py scripts/test_verify_transition_complete.py
-git commit -m "chore: verify_transition_complete script for Phase 6 rollout"
-
-# Phase 6 commit (after coordination):
-git add crackerjack/config/settings.py crackerjack/settings/crackerjack.yaml crackerjack/tools/plan_index_sync.py
-git commit -m "feat(crackerjack): drop legacy plan_index_sync path (Phase 6)"
-```
