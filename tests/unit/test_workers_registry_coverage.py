@@ -213,7 +213,7 @@ class TestWorkerRegistry:
 
         The drop-legacy-local-workers plan retired several worker
         surfaces. This test pins the registry to not include any of
-        them after the subsequent ollama drop.
+        them.
         """
         for legacy in ("terminal-legacy-http", "terminal-openclaw", "terminal-application"):
             assert legacy not in WORKER_REGISTRY

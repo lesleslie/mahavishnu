@@ -53,7 +53,7 @@ dependencies = [
     "slowapi>=0.1.10",
     # OpenTelemetry trace storage
     "asyncpg>=0.32.0",
-    # Embeddings: OpenAI-compatible API (replaces the former Ollama local option).
+    # Embeddings: OpenAI-compatible API (default: llama-server).
     # See: mahavishnu/core/embeddings.py for the OpenAIProvider.
     # Resilience
     "tenacity>=9.1.4",

@@ -2,7 +2,7 @@
 
 The LlamaIndex adapter provides integration with LlamaIndex for RAG (Retrieval-Augmented Generation) pipelines and knowledge bases.
 
-**Current Status**: Fully implemented (348 lines) with real Ollama integration
+**Current Status**: Fully implemented (348 lines) with real llama-server integration
 
 ## Overview
 
@@ -13,8 +13,8 @@ LlamaIndex is ideal for creating RAG pipelines with document ingestion, vector e
 ```yaml
 llamaindex:
   enabled: true
-  llm_model: "nomic-embed-text"  # Ollama embedding model
-  ollama_base_url: "http://localhost:11434"
+  llm_model: "qwen3.5"  # llama-server embedding model
+  base_url: "http://localhost:8081"
 ```
 
 ## Usage
@@ -32,7 +32,7 @@ mahavishnu query --query "authentication patterns" --adapter llamaindex
 ## Features
 
 - Repository/document ingestion from `ecosystem.yaml`
-- Vector embeddings with Ollama (local models)
+- Vector embeddings with llama-server (local models)
 - Document chunking and indexing
 - Semantic search across codebases
 - Integration with AI agents for knowledge bases
@@ -41,10 +41,10 @@ mahavishnu query --query "authentication patterns" --adapter llamaindex
 
 **Status**: Fully implemented (348 lines)
 
-The adapter includes real Ollama integration:
+The adapter includes real llama-server integration:
 
-- Ollama embedding model integration (`nomic-embed-text`)
-- Ollama LLM integration for generation
+- llama-server embedding model integration (`qwen3.5`)
+- llama-server LLM integration for generation
 - Document processing and chunking
 - Vector store operations
 - Semantic search queries
@@ -56,8 +56,8 @@ The adapter includes real Ollama integration:
 from mahavishnu.engines import LlamaIndexAdapter
 
 adapter = LlamaIndexAdapter(config={
-    "llm_model": "nomic-embed-text",
-    "ollama_base_url": "http://localhost:11434"
+    "llm_model": "qwen3.5",
+    "base_url": "http://localhost:8081"
 })
 
 # Ingest documents
@@ -78,7 +78,7 @@ results = await adapter.query_documents(
 
 This adapter is ready for production use with:
 
-- Real Ollama integration (not simulated)
+- Real llama-server integration (not simulated)
 - Comprehensive error handling
 - Configuration-based model selection
 - Support for multiple document types

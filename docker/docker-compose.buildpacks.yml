@@ -34,8 +34,8 @@ services:
       - MAHAVISHNU_CHECKPOINT_INTERVAL=60
 
       # LLM configuration
-      - MAHAVISHNU_LLM_MODEL=nomic-embed-text
-      - MAHAVISHNU_OLLAMA_BASE_URL=http://ollama:11434
+      - MAHAVISHNU_LLM_MODEL=qwen3.5
+      - MAHAVISHNU_LLM_BASE_URL=http://llama-server:8081
 
       # Quality control
       - MAHAVISHNU_QC_ENABLED=true
@@ -43,7 +43,7 @@ services:
     depends_on:
       otel-collector:
         condition: service_healthy
-      ollama:
+      llama-server:
         condition: service_started
     ports:
       - "3035:3035"  # MCP server
@@ -188,14 +188,14 @@ services:
     restart: unless-stopped
 
   # ==============================================================================
-  # Ollama (LLM Server)
+  # llama-server (Local LLM Server)
   # ==============================================================================
-  ollama:
-    image: ollama/ollama:latest
+  llama-server:
+    image: ghcr.io/ggerganov/llama.cpp:server
     ports:
-      - "11434:11434"  # Ollama API
+      - "8081:8081"  # llama-server API
     volumes:
-      - ollama-data:/root/.ollama
+      - llama-data:/root/.cache/llama.cpp
     networks:
       - mahavishnu-network
     restart: unless-stopped
@@ -228,5 +228,5 @@ volumes:
     driver: local
   elasticsearch-data:
     driver: local
-  ollama-data:
+  llama-data:
     driver: local

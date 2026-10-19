@@ -144,7 +144,7 @@ A successful response confirms the full round-trip: OpenWebUI → mcpo → Mahav
 
 **Connection drops**: Streamable HTTP is stateless per-request — mcpo reconnects automatically on each tool call. No persistent connection to drop.
 
-## Model Arena: MiniMax vs Ollama Benchmarking
+## Model Arena: MiniMax vs llama_server Benchmarking
 
 OpenWebUI's Arena mode enables blind ELO comparisons between models. Use this to build data for improving `StatisticalRouter` priors.
 
@@ -152,8 +152,8 @@ OpenWebUI's Arena mode enables blind ELO comparisons between models. Use this to
 
 1. In OpenWebUI **Admin → Settings → Connections**:
    - Add MiniMax endpoint: `https://api.minimax.io/v1` with your `MINIMAX_API_KEY`
-   - Add Ollama endpoint: `http://localhost:11434` (or your Ollama host)
-1. Enable models: `MiniMax-M3`, `llama3:8b`, `qwen2.5-coder:7b`
+   - Add llama-server endpoint: `http://localhost:8081/v1` (or your llama-server host)
+1. Enable models: `MiniMax-M3`, `qwen3.5`
 
 ### Benchmark Prompt Set
 

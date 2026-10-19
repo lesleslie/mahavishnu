@@ -139,7 +139,7 @@ Additional supported overrides include:
 - `MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING` — PostgreSQL + pgvector URL for OTel storage.
 - `MAHAVISHNU_SUBSCRIPTION_AUTH__SECRET` — Subscription-auth secret.
 - `MAHAVISHNU_HEALTH__DEPENDENCIES__SESSION_BUDDY__HOST` — Health dependency host; the same `__` form applies to `PORT`, `USE_TLS`, and other dependency fields.
-- `MAHAVISHNU_AGNO__LLM__PROVIDER` — Agno LLM provider (`anthropic`, `openai`, `minimax`, or `ollama`).
+- `MAHAVISHNU_AGNO__LLM__PROVIDER` — Agno LLM provider (`anthropic`, `openai`, `minimax`, or `llama_server`).
 - `MAHAVISHNU_AGNO__MEMORY__CONNECTION_STRING` — Agno PostgreSQL memory connection string.
 - `MAHAVISHNU_AGNO__LLM__API_KEY` — not a direct Agno settings field; Agno exposes `agno.llm.api_key_env` to name the credential variable instead (for example, `api_key_env: MINIMAX_API_KEY`).
 - `MINIMAX_API_HOST` — MiniMax API host override.
@@ -383,16 +383,16 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 
 **`llm`**:
 
-- `model` — `str`, default `nomic-embed-text`; embedding/LLM model name.
-- `ollama_base_url` — `str`, default `http://localhost:11434`; Ollama endpoint.
+- `model` — `str`, default `qwen3.5`; embedding/LLM model name.
+- `base_url` — `str`, default `http://localhost:8081`; llama-server (llama.cpp) endpoint.
 
 **`agno`**:
 
 - `enabled` — `bool`, default `True`; enables the Agno adapter.
-- `llm.provider` — `LLMProvider`, default `ollama`; provider enum.
+- `llm.provider` — `LLMProvider`, default `llama_server`; provider enum.
 - `llm.model_id` — `str`, default `qwen2.5:7b`; provider model.
 - `llm.api_key_env` — `str | null`, default `None`; environment variable containing the provider key.
-- `llm.base_url` — `str | null`, default `http://localhost:11434`; provider/Ollama endpoint.
+- `llm.base_url` — `str | null`, default `http://localhost:8081`; llama-server (llama.cpp) endpoint.
 - `llm.temperature` — `float`, default `0.7`; sampling temperature.
 - `llm.max_tokens` — `int`, default `4096`; response token limit.
 - `memory.enabled` — `bool`, default `True`; enables Agno memory.
@@ -479,7 +479,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 
 **`embeddings`**:
 
-- `provider` — `str`, default `auto`; `auto`, `fastembed`, `ollama`, or `openai`.
+- `provider` — `str`, default `auto`; `auto`, `fastembed`, or `openai`.
 - `model` — `str`, default `BAAI/bge-small-en-v1.5`; embedding model.
 - `dimension` — `int`, default `384`; vector dimension.
 - `cache` — nested cache settings; default L1 size `10000`, L2 enabled, Redis URL `redis://localhost:6379/0`, L2 TLS disabled, verification enabled, auth disabled, TTL `86400` seconds.
@@ -567,7 +567,7 @@ See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH 
 
 ## LLM Provider Configuration
 
-See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M2.7 and M2.7-highspeed are fallback models. Local `llama_server` (qwen3.5) and `ollama` (qwen2.5-coder) remain secondary fallbacks.
+See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M2.7 and M2.7-highspeed are fallback models. Local `llama_server` (qwen3.5) remains a secondary fallback.
 
 Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`); the YAML and in-code routing are intentionally pinned together.
 

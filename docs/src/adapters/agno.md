@@ -14,8 +14,8 @@ Agno is an experimental AI agent runtime with single and multi-agent systems, me
 agno:
   enabled: false  # Experimental - set to true for evaluation
   llm_providers:
-    - provider: "ollama"
-      model: "llama3"
+    - provider: "llama_server"
+      model: "qwen3.5"
     - provider: "anthropic"
       model: "claude-3-5-sonnet-20241022"
     - provider: "minimax"
@@ -35,7 +35,7 @@ mahavishnu workflow sweep --tag backend --adapter agno
 
 - Single and multi-agent systems
 - Memory management for agents
-- Multi-LLM routing (Ollama, Claude, MiniMax)
+- Multi-LLM routing (llama_server, Claude, MiniMax)
 - Tool integration
 - High-performance agent execution
 - Agent lifecycle management

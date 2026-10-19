@@ -8,7 +8,7 @@ Mahavishnu's content ingestion pipeline integrates with your existing MCP server
 
 1. **Fetch** content from URLs or local files
 1. **Extract** and clean text from webpages, PDFs, EPUBs
-1. **Generate** embeddings using FastEmbed, Ollama, or OpenAI
+1. **Generate** embeddings using FastEmbed or OpenAI
 1. **Store** in Akosha knowledge graph with semantic search
 1. **Index** in Crackerjack for similarity search
 1. **Track** ingestion history in Session-Buddy
@@ -33,8 +33,8 @@ uv pip install pypdf ebooklib
 # Using default embedding provider (FastEmbed)
 mahavishnu ingest url https://blog.example.com/post
 
-# Use Ollama for local embeddings
-mahavishnu ingest url https://blog.example.com/post --provider ollama
+# Use FastEmbed for local embeddings
+mahavishnu ingest url https://blog.example.com/post --provider fastembed
 
 # Use OpenAI for highest quality
 mahavishnu ingest url https://blog.example.com/post --provider openai
@@ -79,7 +79,7 @@ mahavishnu ingest url <URL> [OPTIONS]
 
 **Options:**
 
-- `--provider, -p`: Embedding provider (fastembed, ollama, openai)
+- `--provider, -p`: Embedding provider (fastembed, openai)
 - `--chunk-size, -c`: Maximum characters per chunk (default: 1000)
 - `--chunk-overlap, -o`: Character overlap between chunks (default: 200)
 - `--output, -d`: Output directory (default: "ingested")
@@ -190,7 +190,7 @@ from mahavishnu.core.embeddings import EmbeddingProvider
 ingester = ContentIngester(
     chunk_size=2000,  # Larger chunks for detailed content
     chunk_overlap=400,  # More overlap for context
-    embedding_provider=EmbeddingProvider.OLLAMA,  # Use local embeddings
+    embedding_provider=EmbeddingProvider.FASTEMBED,  # Use local embeddings
     output_dir="knowledge_base",  # Custom output directory
 )
 
@@ -247,19 +247,6 @@ mahavishnu ingest url https://example.com --provider fastembed
 - **Privacy:** 100% local
 - **Platform:** Works on all platforms including Intel Macs
 
-### Ollama
-
-**Best for:** Development, local testing
-
-```bash
-mahavishnu ingest url https://example.com --provider ollama
-```
-
-- **Model:** nomic-embed-text (configurable)
-- **Speed:** Medium
-- **Privacy:** 100% local
-- **Setup:** Requires `brew install ollama && ollama pull nomic-embed-text`
-
 ### OpenAI
 
 **Best for:** Highest quality, cloud processing
@@ -308,7 +295,7 @@ mahavishnu ingest batch urls.txt --parallel 10
 
 ### 2. Provider Selection
 
-- **Development:** Use Ollama (free, local, fast)
+- **Development:** Use FastEmbed (free, local, fast)
 - **Production:** Use FastEmbed (cross-platform, no setup)
 - **Quality:** Use OpenAI (best embeddings, paid)
 
@@ -445,15 +432,14 @@ session-buddy mcp start
 ### Embedding Provider Not Available
 
 ```
-EmbeddingProviderError: Requested provider ollama is not available
+EmbeddingProviderError: Requested provider is not available
 ```
 
 **Solution:** Install or configure provider
 
 ```bash
-# For Ollama
-brew install ollama
-ollama pull nomic-embed-text
+# For FastEmbed (default)
+uv pip install fastembed
 
 # For OpenAI
 export OPENAI_API_KEY="sk-..."

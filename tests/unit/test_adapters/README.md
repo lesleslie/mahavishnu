@@ -4,7 +4,7 @@
 
 This test suite provides comprehensive coverage for all three Mahavishnu orchestration adapters:
 
-- **AgnoAdapter**: Agent-based orchestration with LLM integration (Claude, GPT, Ollama)
+- **AgnoAdapter**: Agent-based orchestration with LLM integration (Claude, GPT)
 - **PrefectAdapter**: Flow-based orchestration with workflow management
 - **LlamaIndexAdapter**: RAG pipelines with vector embeddings and OpenTelemetry instrumentation
 
@@ -20,9 +20,8 @@ This test suite provides comprehensive coverage for all three Mahavishnu orchest
 - Adapter initialization with defaults
 - Configuration validation
 
-#### LLM Configuration Tests (4 tests)
+#### LLM Configuration Tests (3 tests)
 
-- Ollama LLM configuration
 - Anthropic LLM with API key validation
 - OpenAI LLM with API key validation
 - Unsupported provider error handling
@@ -315,7 +314,7 @@ The target coverage for adapter tests is **100%** of all execution paths:
 ### AgnoAdapter Coverage Targets
 
 - [x] Agent creation (real and mock)
-- [x] LLM configuration (all 3 providers)
+- [x] LLM configuration (all providers)
 - [x] Code sweep execution
 - [x] Quality check execution
 - [x] Repository processing with code graph
@@ -392,7 +391,7 @@ async def test_async_functionality():
 
 ## Future Enhancements
 
-1. **End-to-End Tests**: Add tests that run against real services (Ollama, Prefect server)
+1. **End-to-End Tests**: Add tests that run against real services (Prefect server)
 1. **Performance Tests**: Add benchmarks for concurrent processing
 1. **Property-Based Tests**: Add Hypothesis tests for input validation
 1. **Contract Tests**: Verify adapter interface compliance

@@ -3,14 +3,8 @@
 ## Prerequisites
 
 ```bash
-# Install Ollama
-brew install ollama
-
-# Start Ollama
-ollama serve
-
-# Pull embedding model (one-time)
-ollama pull nomic-embed-text
+# Install FastEmbed (default embedding provider)
+uv pip install fastembed
 ```
 
 ## Initialization
@@ -31,17 +25,17 @@ conn = duckdb.connect('data/learning.db')
 
 ```bash
 # Generate embeddings for all records
-python scripts/generate_ollama_embeddings.py --db-path data/learning.db
+python scripts/generate_embeddings.py --db-path data/learning.db
 
 # Regenerate all embeddings
-python scripts/generate_ollama_embeddings.py --db-path data/learning.db --regenerate
+python scripts/generate_embeddings.py --db-path data/learning.db --regenerate
 ```
 
 ## Test Semantic Search
 
 ```bash
 # Test search with query
-python scripts/generate_ollama_embeddings.py \
+python scripts/generate_embeddings.py \
   --db-path data/learning.db \
   --test-search "database query optimization"
 ```
@@ -50,7 +44,7 @@ python scripts/generate_ollama_embeddings.py \
 
 ```python
 import duckdb
-import httpx
+from fastembed import TextEmbedding
 
 # Setup
 conn = duckdb.connect('data/learning.db')
@@ -58,12 +52,8 @@ conn.execute("INSTALL vss")
 conn.execute("LOAD vss")
 
 # Generate query embedding
-async with httpx.AsyncClient() as client:
-    response = await client.post(
-        "http://localhost:11434/api/embeddings",
-        json={"model": "nomic-embed-text", "prompt": "your query"},
-    )
-    query_emb = response.json()["embedding"]
+embed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+query_emb = next(embed_model.embed(["your query"])).tolist()
 
 # Search
 array_str = "[" + ",".join(str(x) for x in query_emb) + "]"
@@ -81,20 +71,15 @@ results = conn.execute(f"""
 - **Search Time:** ~8-10ms
 - **Embedding Time:** ~400ms
 - **Accuracy:** 75-85% similarity
-- **Dimensions:** 768 (nomic-embed-text)
+- **Dimensions:** 384 (BAAI/bge-small-en-v1.5)
 
 ## Troubleshooting
 
-**Ollama not running:**
+**FastEmbed model not downloaded:**
 
 ```bash
-ollama serve
-```
-
-**Model not found:**
-
-```bash
-ollama pull nomic-embed-text
+# Pre-download model
+python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
 ```
 
 **Database not initialized:**
@@ -106,5 +91,5 @@ python scripts/init_learning_db.py --db-path data/learning.db
 ## Files
 
 - `scripts/init_learning_db.py` - Database initialization
-- `scripts/generate_ollama_embeddings.py` - Embedding generation
+- `scripts/generate_embeddings.py` - Embedding generation
 - ~~`docs/archive/completion-reports/SEMANTIC_EMBEDDINGS_COMPLETE.md` - Full documentation~~ (target removed in 2026-10-14 archive consolidation; see `EMBEDDINGS_SETUP_GUIDE.md` for the current canonical reference)

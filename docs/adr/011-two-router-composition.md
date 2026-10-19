@@ -26,7 +26,7 @@ Mahavishnu uses two independent routers that compose at task dispatch time:
 | Router | File | Concern | Input | Output |
 |--------|------|---------|-------|--------|
 | **Task Router** | `mahavishnu/core/task_router.py` | Engine selection | `TaskType` enum | Adapter preference order (Prefect, Agno, LlamaIndex) |
-| **Model Router** | `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) | Model selection | `TaskCategory` enum | Model ID per provider (Ollama, MiniMax, ZAI compatibility) |
+| **Model Router** | `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`) | Model selection | `TaskCategory` enum | Model ID per provider (llama_server, MiniMax, ZAI compatibility) |
 
 ## How They Compose
 
@@ -49,12 +49,12 @@ Neither router imports the other. The composition is implicit: the Task Router s
 
 ## TaskCategory → Model Mapping (MiniMax provider)
 
-The MiniMax routing below mirrors `settings/models.yaml` (provider chain: minimax → llama_server → ollama). M3 is the primary for all task categories — minimax's API does not expose a distinct M3-highspeed variant (verified 2026-09-16; that name returns error 2013). M2.7/M2.7-highspeed are retained as the final fallback when M3 is unavailable.
+The MiniMax routing below mirrors `settings/models.yaml` (provider chain: minimax → llama_server). M3 is the primary for all task categories — minimax's API does not expose a distinct M3-highspeed variant (verified 2026-09-16; that name returns error 2013). M2.7/M2.7-highspeed are retained as the final fallback when M3 is unavailable.
 
 | TaskCategory | Cloud Model (MiniMax) | Local Model |
 |-------------|-------------|-------------|
-| `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `ML_INFERENCE` | `MiniMax-M3` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
-| `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL` | `MiniMax-M3` | qwen3.5 (llama_server) / qwen2.5-coder:7b (ollama) |
+| `CODE_GENERATION`, `CODE_REVIEW`, `DEBUGGING`, `REFACTORING`, `TESTING`, `REASONING`, `ANALYSIS`, `DOCUMENTATION`, `VISION`, `ML_INFERENCE` | `MiniMax-M3` | qwen3.5 (llama_server) |
+| `SWARM`, `QUICK`, `AGENT_LOOP`, `CREATIVE`, `GENERAL` | `MiniMax-M3` | qwen3.5 (llama_server) |
 | `FALLBACK` (any category, when M3 unavailable) | `MiniMax-M2.7` | llama3:8b |
 | `FALLBACK_HIGHSPEED` (high-volume, when M3 unavailable) | `MiniMax-M2.7-highspeed` | qwen2.5-coder:7b |
 

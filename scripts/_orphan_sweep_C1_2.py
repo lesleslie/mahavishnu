@@ -60,11 +60,6 @@ ASSIGNMENTS = {
         "historical",
         "convergence-control-plane",
     ),
-    "docs/plans/session-buddy-llama-server-ollama-migration.md": (
-        "complete",
-        "historical",
-        "routing-composition",
-    ),
 }
 
 

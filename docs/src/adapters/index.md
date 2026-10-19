@@ -14,7 +14,7 @@ Mahavishnu provides three orchestration adapters through a unified interface.
 
 Choose the right adapter for your use case:
 
-- **LlamaIndex**: Best for RAG (Retrieval-Augmented Generation) pipelines and semantic search. Fully functional with Ollama embeddings.
+- **LlamaIndex**: Best for RAG (Retrieval-Augmented Generation) pipelines and semantic search. Fully functional with llama-server embeddings.
 - **Prefect**: Best for general workflow orchestration and ETL pipelines. Stub only - returns simulated results.
 - **Agno**: For multi-agent workflows with memory and tools. Stub only - returns simulated results.
 
@@ -34,7 +34,7 @@ adapters:
 ### LlamaIndex Adapter
 
 - **Status**: Fully implemented (348 lines)
-- **Capabilities**: Real Ollama integration, vector embeddings, semantic search
+- **Capabilities**: Real llama-server integration, vector embeddings, semantic search
 - **Ready for production use**
 
 ### Prefect Adapter

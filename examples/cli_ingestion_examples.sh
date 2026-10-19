@@ -10,8 +10,8 @@ echo "Command: mahavishnu ingest url https://blog.example.com/post"
 echo ""
 
 # Example 2: Ingest with specific embedding provider
-echo "Example 2: Ingest with Ollama (local embeddings)"
-echo "Command: mahavishnu ingest url https://example.com --provider ollama"
+echo "Example 2: Ingest with FastEmbed (local embeddings)"
+echo "Command: mahavishnu ingest url https://example.com --provider fastembed"
 echo ""
 
 # Example 3: Ingest a PDF document

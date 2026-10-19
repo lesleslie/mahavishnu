@@ -71,7 +71,7 @@ Before you begin, ensure you have the following installed:
 - **uv** (recommended) or **pip** - For package management
 - **git** - For repository operations
 - **Optional dependencies**:
-  - **Ollama** - For local LLM embeddings (LlamaIndex adapter)
+  - **llama-server** (llama.cpp) - For local LLM (LlamaIndex adapter)
   - **OpenSearch** - For vector storage and observability
   - **PostgreSQL + pgvector** - For OTel trace storage (optional)
 
@@ -169,8 +169,8 @@ adapters:
 
 # LLM configuration
 llm:
-  model: nomic-embed-text
-  ollama_base_url: http://localhost:11434
+  model: qwen3.5
+  base_url: http://localhost:8081
 
 # Pool management
 pools:

@@ -43,7 +43,7 @@ Attempted to deploy Grafana dashboard for learning database monitoring. Dashboar
 
    - Learning database exists: `/Users/les/Projects/mahavishnu/data/learning.db` (3.3 MB)
    - Database is currently locked by embedding generation process
-   - Process: `python3 scripts/generate_ollama_embeddings.py`
+   - Process: `python3 scripts/generate_embeddings.py`
    - `executions` table structure exists but being populated
 
 1. **Dashboard Verification Failed**
@@ -157,7 +157,7 @@ The dashboard includes 17 monitoring panels organized in a grid layout:
 
    ```bash
    # Check if process is still running
-   ps aux | grep generate_ollama_embeddings
+   ps aux | grep generate_embeddings
    ```
 
 1. **Start the bridge server**
@@ -271,7 +271,7 @@ Consider building a custom dashboard using:
 **Path:** `/Users/les/Projects/mahavishnu/data/learning.db`
 **Size:** 3.3 MB
 **Status:** Being populated with embeddings
-**Process:** `generate_ollama_embeddings.py`
+**Process:** `generate_embeddings.py`
 
 **Schema:** `executions` table with columns:
 
@@ -290,7 +290,7 @@ Consider building a custom dashboard using:
 IO Error: Could not set lock on file
 ```
 
-**Solution:** Wait for `generate_ollama_embeddings.py` to complete or terminate it:
+**Solution:** Wait for `generate_embeddings.py` to complete or terminate it:
 
 ```bash
 kill 74007  # PID of the process

@@ -925,9 +925,9 @@ export MAHAVISHNU_PG_DATABASE="mahavishnu"
 export MAHAVISHNU_PG_USER="postgres"
 export MAHAVISHNU_PG_PASSWORD="your_password"
 
-# Ollama
-export OLLAMA_BASE_URL="http://localhost:11434"
-export OLLAMA_MODEL="nomic-embed-text"
+# llama-server
+export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
+export MAHAVISHNU_LLM__MODEL="qwen3.5"
 ```
 
 ______________________________________________________________________

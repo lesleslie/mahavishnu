@@ -41,7 +41,7 @@ This document should be read as an architectural reference and historical snapsh
 - CLI with authentication framework
 - Repository management (9 repos configured)
 - Test infrastructure (11 test files)
-- **LlamaIndex adapter** (348 lines, fully functional with Ollama)
+- **LlamaIndex adapter** (348 lines, fully functional with llama-server)
 
 **Stub Implementations**:
 
@@ -138,8 +138,8 @@ ______________________________________________________________________
 
 **Capabilities**:
 
-- Real Ollama integration (not simulated)
-- Vector embeddings with `nomic-embed-text` model
+- Real llama-server integration (not simulated)
+- Vector embeddings with FastEmbed default model
 - Document ingestion from `ecosystem.yaml`
 - Semantic search across codebases
 - Configuration-based model selection
@@ -148,8 +148,7 @@ ______________________________________________________________________
 **Key Imports**:
 
 ```python
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
+from llama_index.embeddings.openai import OpenAIEmbedding  # OpenAI-compatible (works with llama-server)
 ```
 
 ### 2. Prefect Adapter
@@ -212,7 +211,7 @@ ______________________________________________________________________
 
 **Active Adapters** (status snapshot at 2026-01-24 — **superseded** by the 2026-09-09 verification above):
 
-1. **LlamaIndex**: Fully implemented with Ollama integration
+1. **LlamaIndex**: Fully implemented with llama-server integration
 1. **Prefect**: Stub implementation, needs real orchestration logic
 1. **Agno**: Stub implementation, needs agent framework integration
 
@@ -359,8 +358,8 @@ adapters:
   hatchet: true     # Production-ready
 
 # LLM Configuration
-llm_model: "nomic-embed-text"  # Ollama embedding model
-ollama_base_url: "http://localhost:11434"
+llm_model: "qwen3.5"  # llama-server LLM model
+llm_base_url: "http://localhost:8081"  # llama-server (llama.cpp) endpoint
 
 # Quality Control
 qc:
@@ -599,7 +598,7 @@ ______________________________________________________________________
 **Current (Production Ready)**:
 
 - **LlamaIndex**: Use for RAG pipelines and semantic search
-- **Ollama**: Local embeddings with `nomic-embed-text`
+- **FastEmbed**: Local embeddings with `BAAI/bge-small-en-v1.5`
 - **FastMCP**: MCP server for Claude Desktop integration
 - **Oneiric**: Configuration management
 

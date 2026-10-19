@@ -111,9 +111,9 @@ export MAHAVISHNU_PG_DATABASE="mahavishnu"
 export MAHAVISHNU_PG_USER="postgres"
 export MAHAVISHNU_PG_PASSWORD="your_password"
 
-# Ollama configuration
-export OLLAMA_BASE_URL="http://localhost:11434"
-export OLLAMA_MODEL="nomic-embed-text"
+# llama-server configuration
+export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
+export MAHAVISHNU_LLM__MODEL="qwen3.5"
 ```
 
 #### Step 3: Start Mahavishnu MCP Server
@@ -210,9 +210,9 @@ export MAHAVISHNU_PG_HOST="localhost"
 export MAHAVISHNU_PG_PORT="5432"
 export MAHAVISHNU_PG_DATABASE="mahavishnu"
 
-# Ollama configuration
-export OLLAMA_BASE_URL="http://localhost:11434"
-export OLLAMA_MODEL="nomic-embed-text"
+# llama-server configuration
+export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
+export MAHAVISHNU_LLM__MODEL="qwen3.5"
 ```
 
 #### Step 3: Use Mahavishnu Inside Qwen
@@ -734,9 +734,9 @@ postgresql:
   pool_size: 50  # Higher for production
   max_overflow: 50
 
-# Ollama
-llm_model: "nomic-embed-text"
-ollama_base_url: "http://ollama.internal:11434"
+# llama-server
+llm_model: "qwen3.5"
+llm_base_url: "http://llama-server.internal:8081"
 
 # Adapters
 adapters:
@@ -787,9 +787,9 @@ postgresql:
   pool_size: 10  # Lower for dev
   max_overflow: 20
 
-# Ollama (local)
-llm_model: "nomic-embed-text"
-ollama_base_url: "http://localhost:11434"
+# llama-server (local)
+llm_model: "qwen3.5"
+llm_base_url: "http://localhost:8081"
 
 # Adapters
 adapters:
@@ -848,9 +848,9 @@ postgresql:
   pool_size: 30
   max_overflow: 40
 
-# Ollama
-llm_model: "nomic-embed-text"
-ollama_base_url: "http://localhost:11434"
+# llama-server
+llm_model: "qwen3.5"
+llm_base_url: "http://localhost:8081"
 
 # Adapters
 adapters:
@@ -989,7 +989,7 @@ asyncio.run(test())
 "
 ```
 
-### Issue 5: "Ollama embeddings not working"
+### Issue 5: "Embeddings not working"
 
 **Symptoms:**
 
@@ -998,35 +998,25 @@ asyncio.run(test())
 
 **Solutions:**
 
-1. Ensure Ollama is running
-1. Pull the embedding model
+1. Ensure FastEmbed model is downloaded (or use a remote OpenAI endpoint)
 1. Check base URL
 
 ```bash
-# Start Ollama
-ollama serve
-
-# Pull embedding model
-ollama pull nomic-embed-text
-
-# Test embedding generation
-curl http://localhost:11434/api/embeddings -d '{
-  "model": "nomic-embed-text",
-  "prompt": "test"
+# Test embedding generation via llama-server
+curl http://localhost:8081/v1/embeddings -d '{
+  "model": "qwen3.5",
+  "input": "test"
 }'
 
-# Test from Python
+# Test from Python (FastEmbed)
 python -c "
-from llama_index.embeddings.ollama import OllamaEmbedding
+from fastembed import TextEmbedding
 import asyncio
 
 async def test():
-    embed_model = OllamaEmbedding(
-        model_name='nomic-embed-text',
-        base_url='http://localhost:11434'
-    )
-    embedding = await embed_model.aget_text_embedding('test')
-    print(f'Embedding dimension: {len(embedding)}')
+    embed_model = TextEmbedding(model_name='BAAI/bge-small-en-v1.5')
+    embedding = next(embed_model.embed(['test']))
+    print(f'Embedding dimension: {len(embedding.tolist())}')
 
 asyncio.run(test())
 "

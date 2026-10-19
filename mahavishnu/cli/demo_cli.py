@@ -658,8 +658,7 @@ def _check_llamaindex_preconditions(
       adapter actually uses; the full extras live in the ``[llamaindex]``
       optional group).
     - ``llama_server_url`` is set and reachable (the embed/llm
-      endpoint; after the ollama drop this is the canonical local
-      provider).
+      endpoint; this is the canonical local provider).
     - Settings are loadable (rejects malformed Oneiric config).
     """
     settings_getter = settings_getter or _default_settings_getter
@@ -793,8 +792,8 @@ def demo_llamaindex(
     Constructs ``LlamaIndexAdapter`` directly, calls
     ``adapter.execute(task, repos)``, prints the trimmed result, and
     cleans up. The llama_server URL and the embed/llm model names are
-    read from settings (post-ollama drop the canonical local provider
-    is llama.cpp's OpenAI-compat server, not a separate Ollama process).
+    read from settings (the canonical local provider is llama.cpp's
+    OpenAI-compat server).
     """
     if task_type not in {"ingest", "query", "ingest_and_query"}:
         typer.echo(

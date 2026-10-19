@@ -64,7 +64,7 @@ Mahavishnu provides a unified interface to multiple orchestration engines, allow
 
 Mahavishnu provides three orchestration adapters:
 
-- **LlamaIndex**: Fully implemented RAG pipelines with Ollama embeddings (348 lines)
+- **LlamaIndex**: Fully implemented RAG pipelines with llama-server embeddings (348 lines)
 - **Prefect**: Stub implementation for high-level workflow orchestration (143 lines)
 - **Agno**: Stub implementation for AI agent workflows (116 lines)
 

@@ -66,12 +66,12 @@ This is the common case. `AgnoAdapter.initialize()` populates `_agents` and `_mc
 env | grep MAHAVISHNU_AGNO__LLM__API_KEY   # should print a non-empty value
 
 # 2. Is the provider one we support?
-env | grep MAHAVISHNU_AGNO__LLM__PROVIDER  # expect: anthropic | openai | minimax | ollama
+env | grep MAHAVISHNU_AGNO__LLM__PROVIDER  # expect: anthropic | openai | minimax | llama_server
 
 # 3. Is the base URL reachable from this host?
 curl -fsS --max-time 5 "$MAHAVISHNU_AGNO__LLM__BASE_URL/v1/models"
 # Anthropic: https://api.anthropic.com
-# OpenAI-compatible (OpenAI / MiniMax / Ollama): see provider docs
+# OpenAI-compatible (OpenAI / MiniMax / llama_server): see provider docs
 
 # 4. Memory backend reachable?
 env | grep MAHAVISHNU_AGNO__MEMORY__BACKEND         # expect: sqlite | postgres | none
@@ -90,7 +90,7 @@ Numbered steps. Apply in order; each step is independently reversible.
    export MAHAVISHNU_AGNO__LLM__API_KEY="sk-..."   # load from your secrets manager
    ```
 
-1. **Pick a supported provider.** `MAHAVISHNU_AGNO__LLM__PROVIDER` must be one of `anthropic`, `openai`, `minimax`, `ollama`. Typos (`antropic`, `minimaxio`) and unsupported names (`bedrock`, `vertex`) silently fail inside `initialize()`. Local fallbacks (`ollama` at `http://localhost:11434`, `llama_server` at `http://localhost:8081`) work without a cloud key.
+1. **Pick a supported provider.** `MAHAVISHNU_AGNO__LLM__PROVIDER` must be one of `anthropic`, `openai`, `minimax`, `llama_server`. Typos (`antropic`, `minimaxio`) and unsupported names (`bedrock`, `vertex`) silently fail inside `initialize()`. The local fallback (`llama_server` at `http://localhost:8081`) works without a cloud key.
 
    ```bash
    export MAHAVISHNU_AGNO__LLM__PROVIDER="anthropic"

@@ -92,7 +92,7 @@ The bridge server provides 17 pre-configured queries:
 **Database locked:**
 
 - Wait for embedding generation to complete
-- Check: `ps aux | grep generate_ollama_embeddings`
+- Check: `ps aux | grep generate_embeddings`
 
 ## Documentation
 

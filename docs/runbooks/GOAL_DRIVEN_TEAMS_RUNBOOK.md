@@ -628,7 +628,7 @@ tail -f logs/mahavishnu.log | grep -i "context\|adapter\|init"
 
 1. Pattern matching attempts first (fast, free)
 1. If confidence < 0.7 and LLM fallback enabled
-1. Goal sent to configured LLM (Ollama/OpenAI/Anthropic)
+1. Goal sent to configured LLM (llama_server/OpenAI/Anthropic)
 1. LLM extracts intent, domain, skills
 1. LLM result used if higher confidence
 
@@ -654,7 +654,7 @@ mahavishnu team parse "your problematic goal" --verbose
 grep -A10 "agno:" settings/mahavishnu.yaml | grep -A5 "llm:"
 
 # Step 5: Verify LLM provider is accessible
-curl http://localhost:11434/api/tags  # For Ollama
+curl http://localhost:8081/v1/models  # For llama_server
 ```
 
 ### 4.3 Debugging Steps
@@ -786,8 +786,8 @@ ______________________________________________________________________
 1. **Check Dependencies**
 
    ```bash
-   # LLM provider (Ollama)
-   curl http://localhost:11434/api/tags
+   # LLM provider (llama_server)
+   curl http://localhost:8081/v1/models
 
    # Agno adapter
    grep "agno" logs/mahavishnu.log | tail -20
@@ -942,9 +942,9 @@ goal_teams:
 agno:
   enabled: true
   llm:
-    provider: ollama
-    model_id: qwen2.5:7b
-    base_url: http://localhost:11434
+    provider: llama_server
+    model_id: qwen3.5
+    base_url: http://localhost:8081
     temperature: 0.7
   memory:
     enabled: true

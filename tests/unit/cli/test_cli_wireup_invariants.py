@@ -99,7 +99,7 @@ def test_demo_llamaindex_is_live_implementation() -> None:
 
     2026-10-16 wire-up fix: the llamaindex demo was promoted from a
     stub to a live implementation (drives ``LlamaIndexAdapter.execute``
-    end-to-end after the ollama drop). The live path exposes
+    end-to-end). The live path exposes
     ``--repos``, ``--task-type``, ``--query``, ``--keep``,
     ``--timeout``; the stub path emits ``--why-stub`` instead.
     Asserting ``--repos`` is present proves the live callback won the

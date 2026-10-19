@@ -29,8 +29,6 @@ The tests pin:
 5. ``test_explicit_base_url_overrides_bifrost_routing`` — when
    ``self.config.base_url`` is set (the Phase G local path), it
    wins over the Bifrost routing.
-6. ``test_ollama_factory_ignores_bifrost`` — the local Ollama
-   path stays direct regardless of bifrost.enabled.
 """
 
 from __future__ import annotations
@@ -278,29 +276,3 @@ def test_explicit_base_url_overrides_bifrost_routing() -> None:
 
     call_kwargs = mock_chat.call_args.kwargs
     assert call_kwargs["base_url"] == "http://127.0.0.1:8081"
-
-
-# ---------------------------------------------------------------------------
-# Ollama stays local regardless of bifrost
-# ---------------------------------------------------------------------------
-
-
-def test_ollama_factory_ignores_bifrost() -> None:
-    """Ollama is a local server; bifrost routing is intentionally ignored.
-
-    The Ollama factory uses ``config.base_url`` (or
-    ``http://localhost:11434``) as the host. ``bifrost.enabled``
-    has no effect on this path — local server, not cloud tier.
-    """
-    config = _llm_config(provider="ollama", model_id="qwen2.5:7b")
-    bifrost = _bifrost(enabled=True, base_url="http://127.0.0.1:8471")
-
-    factory = LLMProviderFactory(config, bifrost=bifrost)
-
-    with patch("agno.models.ollama.Ollama") as mock_ollama:
-        mock_ollama.return_value = MagicMock()
-        factory._create_ollama_model("qwen2.5:7b")
-
-    call_kwargs = mock_ollama.call_args.kwargs
-    # Ollama host is the local server, NOT the Bifrost gateway.
-    assert call_kwargs["host"] == "http://localhost:11434"

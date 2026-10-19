@@ -1,6 +1,6 @@
 # FastEmbed Setup Guide
 
-**Date**: 2026-02-03 (FastEmbed-only as of 2026-10-17; Ollama coverage removed per `docs/plans/2026-10-16-drop-ollama-favor-llama-server.md`)
+**Date**: 2026-02-03 (FastEmbed-only as of 2026-10-17)
 
 **Purpose**: Set up FastEmbed for embeddings. llama-server (llama.cpp) is the only local HTTP provider.
 
@@ -58,41 +58,29 @@ embeddings:
 
 ______________________________________________________________________
 
-### Option 2: Ollama (Development) ⭐ PRIVACY-FIRST
+### Option 2: Cloud: OpenAI API (high quality)
 
 **Installation**:
 
 ```bash
-# Install Ollama
-brew install ollama
-
-# Start Ollama service
-ollama serve &
-
-# Pull embedding model
-ollama pull nomic-embed-text
-
-# Install Python dependencies
-uv sync --extra ollama
-
-# Verify
-python -c "import socket; s=socket.socket(); s.connect(('localhost', 11434)); print('✅ Ollama available')"
+# Set OpenAI API key
+export MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY=sk-...
 ```
 
 **Usage**:
 
-```python
-# Configure to use Ollama
-# In settings/mahavishnu.yaml:
+```yaml
+# In settings/mahavishnu.yaml
 embeddings:
-  provider: ollama
-  model: nomic-embed-text
+  provider: openai
+  model: text-embedding-3-small
+```
 
-# Or override programmatically
+```python
 from mahavishnu.core.embeddings import EmbeddingProvider
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric, EmbeddingConfig
 
-config = EmbeddingConfig(provider=EmbeddingProvider.OLLAMA)
+config = EmbeddingConfig(provider=EmbeddingProvider.OPENAI)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)
 ```
 
@@ -126,14 +114,13 @@ embeddings:
   enable_cache: true
 ```
 
-### Development: Ollama (local, private)
+### Development: FastEmbed (local, private)
 
 ```yaml
 # settings/mahavishnu.yaml
 embeddings:
-  provider: ollama
-  model: nomic-embed-text
-  ollama_base_url: http://localhost:11434
+  provider: fastembed
+  model: BAAI/bge-small-en-v1.5
   batch_size: 32
 ```
 
@@ -172,10 +159,10 @@ print(f"Generated {len(embeddings)} embeddings of dimension {len(embeddings[0])}
 from mahavishnu.core.embeddings import EmbeddingProvider
 from mahavishnu.core.embeddings_oneiric import EmbeddingConfig, get_embeddings_with_oneiric
 
-# Use Ollama for development
+# Use FastEmbed for development
 config = EmbeddingConfig(
-    provider=EmbeddingProvider.OLLAMA,
-    model="nomic-embed-text",
+    provider=EmbeddingProvider.FASTEMBED,
+    model="BAAI/bge-small-en-v1.5",
 )
 
 embeddings = await get_embeddings_with_oneiric(["hello"], config)
@@ -220,7 +207,7 @@ async def get_embeddings(
 
     Args:
         texts: List of text strings to embed
-        provider: Override provider (fastembed, ollama, openai)
+        provider: Override provider (fastembed, openai)
         model: Override model name
 
     Returns:
@@ -261,9 +248,6 @@ See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical model dimension chart
 | - BAAI/bge-small-en-v1.5 | 384 | ⭐⭐⭐ | ⭐⭐ | Production, fast |
 | - BAAI/bge-base-en-v1.5 | 768 | ⭐⭐ | ⭐⭐⭐ | Better quality |
 | - BAAI/bge-large-en-v1.5 | 1024 | ⭐ | ⭐⭐⭐⭐ | Best quality |
-| **Ollama** | | | | | |
-| - nomic-embed-text | 768 | ⭐⭐ | ⭐⭐⭐ | Development |
-| - mxbai-embed-large-v1 | 1024 | ⭐ | ⭐⭐⭐ | High quality |
 | **OpenAI** | | | | | |
 | - text-embedding-3-small | 1536 | ⭐⭐⭐ | ⭐⭐⭐⭐ | Best quality |
 | - text-embedding-3-large | 3072 | ⭐ | ⭐⭐⭐⭐ | Best quality |
@@ -284,23 +268,6 @@ from fastembed import SentenceTransformer
 # Download model during deployment
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 # Model is now cached for future use
-```
-
-### Ollama: Connection Refused
-
-**Issue**: Cannot connect to Ollama API
-
-**Solution**: Start Ollama service
-
-```bash
-# Start Ollama
-ollama serve &
-
-# Verify it's running
-curl http://localhost:11434/api/tags
-
-# Pull model
-ollama pull nomic-embed-text
 ```
 
 ### OpenAI: API Key Not Found
@@ -324,9 +291,8 @@ See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical benchmark chart.
 
 **📊 Key Insights:**
 
-- 🟢 **FastEmbed**: 4x faster than Ollama, 12x faster than OpenAI (subsequent calls)
-- 🟡 **Ollama**: 3x faster than OpenAI, but slower than FastEmbed
-- 🔵 **OpenAI**: Slowest due to network latency, but best quality
+- 🟢 **FastEmbed**: Fastest local provider
+- 🔵 **OpenAI**: Cloud-based, highest quality
 
 ### Detailed Benchmarks (Intel Mac x86_64)
 
@@ -335,7 +301,6 @@ On Intel Mac (x86_64):
 | Provider | Init Time | First Embed | Subsequent | Batch (32) |
 |----------|-----------|------------|------------|------------|
 | **FastEmbed** | 0.5s | 50ms | 20ms | 600ms |
-| **Ollama** | 0s (service) | 100ms | 80ms | 2.5s |
 | **OpenAI** | 0s | 300ms | 250ms | 6s |
 
 ______________________________________________________________________
@@ -359,12 +324,12 @@ from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric
 embeddings = await get_embeddings_with_oneiric(["hello", "world"])
 ```
 
-### After (Ollama)
+### After (FastEmbed)
 
 ```python
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric, EmbeddingConfig, EmbeddingProvider
 
-config = EmbeddingConfig(provider=EmbeddingProvider.OLLAMA)
+config = EmbeddingConfig(provider=EmbeddingProvider.FASTEMBED)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)
 ```
 
@@ -378,9 +343,6 @@ All embedding configuration can be overridden via environment variables:
 # Provider selection
 export MAHAVISHNU_EMBEDDINGS_PROVIDER=fastembed
 export MAHAVISHNU_EMBEDDINGS_MODEL=BAAI/bge-base-en-v1.5
-
-# Ollama
-export MAHAVISHNU_EMBEDDINGS_OLLAMA_BASE_URL=http://localhost:11434
 
 # OpenAI
 export MAHAVISHNU_EMBEDDINGS_OPENAI_API_KEY=sk-...
@@ -396,10 +358,9 @@ ______________________________________________________________________
 ## Summary
 
 ✅ **FastEmbed**: Production-ready, cross-platform, fast
-✅ **Ollama**: Development, local privacy, works on Intel Macs
 ✅ **OpenAI**: Cloud-based, best quality, simple API
 
-**Recommendation**: Use FastEmbed for production, Ollama for development!
+**Recommendation**: Use FastEmbed for production.
 
 ______________________________________________________________________
 
