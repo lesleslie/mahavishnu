@@ -23,12 +23,13 @@ title: "Model Evaluation — Phase 1 Implementation Plan"
 - **v0** (2026-10-03): initial draft.
 - **v1** (2026-10-03): post multi-agent review. Architectural decision: `EvalPool` extends `BasePool` (option 2). Settings env_prefix corrected to `MAHAVISHNU_EVAL_*`. `model_backend` returns `ModelResponse` and is registered as a fourth oneiric entry-point group. FastMCP tools inline in `bootstrap.py`. New `eval_feed.py` + health-feed wiring. Per-file-ignores added. CLI entry point added. 20-30 Mahavishnu-specific golden cases (not generic Python). 30+ specific corrections from the architecture, MCP, and crackerjack lenses folded in.
 - **v2** (2026-10-03): post meta-review (consistency pass). EvalSettings is now a nested field on `MahavishnuSettings` (not a separate `BaseSettings`); env var is `MAHAVISHNU_EVAL__*` (double underscore for nested delimiter). EvalPool factory signature matches `manager.py::spawn_pool` actual call shape. `BasePool.scale()` returns `None` (Liskov), not int. `EvalStorage` gets a `finish_run` method to transition run status. CLI uses `typer` not `click`; entry is `_main_cli.py` not `cli.py`. `Scorer.score` is sync. `_do_run_suite`/`_do_register_dataset`/`_do_get_run` helpers fully specified. `MockModelBackend` has concrete behavior. Per-file-ignore block shown explicitly. `get_eval_settings()` is a module-level lazy getter. 16 corrections from the meta-review folded in.
+- **v3** (2026-10-18): drift pass after 15 days of repo activity + `MiniMax-M2.7-highspeed` deprecation at MiniMax. All body line-number references that have shifted by ≤18 lines are re-pinned in the References appendix; task-body line numbers are left as durable pointers that the implementing worker re-verifies on first read (15 days of churn would make a v3-only patch churn again before kickoff). `MiniMax-M2.7-highspeed` → `MiniMax-M3` at lines 31, 65, 564. New coordination note added at the bottom: `M2.7-highspeed` is no longer available — the dogfood smoke test in Task 8.6 must target `MiniMax-M3`. Confirmed `from uuid import uuid7` is in Python 3.14 stdlib (target version per `pyproject.toml`); no pinning action needed. Confirmed the `_evaluation_` vs `_eval_` naming in body prose refers to the **same** field — the field name on `MahavishnuSettings` is `eval`; the "evaluation" wording in body text is a conversational alias. No body re-architecture; only identifier substitutions and a coordination appendix.
 
 ## 1. Outcome
 
 A developer can run a golden-set of cases covering **Mahavishnu-specific agent behaviors** (repo routing, adapter selection, workflow invocation, etc.) against a model through Mahavishnu and get back a scored, persisted, queryable result — without leaving the project's MCP surface or writing one-off scripts. The framework registers all its pluggable parts (scorers, dataset loaders, storage, model backends) as oneiric adapters so they are discoverable and replaceable.
 
-**Success signal:** the dogfood golden set (20-30 Mahavishnu-specific cases) runs end-to-end against `MiniMax-M2.7-highspeed` in under 2 minutes, produces a markdown report at `~/.local/state/mahavishnu/eval/reports/{run_id}.md`, persists results to SQLite, and `/health` reports `eval.feed.entities_count > 0` and `eval.feed.cycles_total > 0` after the run. A re-run after a known-bad prompt change flags the regression.
+**Success signal:** the dogfood golden set (20-30 Mahavishnu-specific cases) runs end-to-end against `MiniMax-M3` in under 2 minutes, produces a markdown report at `~/.local/state/mahavishnu/eval/reports/{run_id}.md`, persists results to SQLite, and `/health` reports `eval.feed.entities_count > 0` and `eval.feed.cycles_total > 0` after the run. A re-run after a known-bad prompt change flags the regression.
 
 ## 2. Goals
 
@@ -62,7 +63,7 @@ A developer can run a golden-set of cases covering **Mahavishnu-specific agent b
 - `mahavishnu/mcp/server_core.py:293-298` documents the constraint: "FastMCP's `@server.tool()` decorator requires each tool function to be defined inline so it can introspect the function name and signature for the MCP tool schema." Therefore the three eval tools live inline in `bootstrap.py::_register_eval_tools()`, not in a separate `eval_tools.py` module.
 - `mahavishnu/mcp/signer_feed.py:153-249` is the canonical feed-state pattern: a `SignerFeedState` dataclass with `record_cycle()`, `record_error()`, and `as_dict()` returning the 4-signal contract (`feed_entities_count`, `feed_last_updated_timestamp`, `feed_cycles_total`, `feed_errors_total`). `eval_feed.py` mirrors this. For `EvalFeedState`, `entities_count` is the **total number of `CaseRecord`s persisted across all runs** (incremented by `record_cycle(case_count=N)` — the signature takes a per-run case count).
 - `mahavishnu/mcp/sweepers/task_orphan_sweeper.py:264` is the canonical "start a child span" precedent for OTel: `from opentelemetry import trace; tracer = trace.get_tracer(__name__); with tracer.start_as_current_span("eval.run_suite") as span: span.set_attribute("eval.case_count", ...)`. The auto-emitted `mcp.tool.call` span from `tool_call_middleware.py:94-145` writes `duration_ms` to the parent; the eval-specific child span writes eval-specific attributes only (prefixed `eval.*` to avoid collision).
-- `mahavishnu/workers/cloud_worker.py` already calls MiniMax via OpenAI-compatible API. Eval composes the existing worker for `MiniMax-M2.7-highspeed` (Phase 2); Phase 1 uses a `MockModelBackend` registered as a oneiric adapter under `mahavishnu.eval.model_backends`.
+- `mahavishnu/workers/cloud_worker.py` already calls MiniMax via OpenAI-compatible API. Eval composes the existing worker for `MiniMax-M3` (Phase 2); Phase 1 uses a `MockModelBackend` registered as a oneiric adapter under `mahavishnu.eval.model_backends`.
 - Settings follow Mahavishnu's existing `pydantic-settings` convention with **nested `EvalSettings` field on `MahavishnuSettings`** (NOT a separate `BaseSettings` class). The parent `MahavishnuSettings` has `env_prefix="MAHAVISHNU_"` and `env_nested_delimiter="__"` (per `mahavishnu/core/config.py:2663-2664`); the `evaluation` field maps to env var `MAHAVISHNU_EVAL__ENABLED` (double underscore for the nested delimiter), `MAHAVISHNU_EVAL__COST_BUDGET_PER_RUN`, etc. Precedent: `MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE` at `mahavishnu/core/config.py:903`. The CC memory item `feedback-no-bodai-prefix-in-config-names.md` lives in OTHER Bodai components (Dhara, oneiric), not Mahavishnu.
 - Common primitives come from `oneiric.actions` (per the action-kit discipline in `CLAUDE.md`). Verified mappings for Phase 1: hashing is `oneiric.actions.compression.HashAction` (precedent: `mahavishnu/core/idempotency.py:39`), NOT `oneiric.actions.hash`. HTTP, schema validation, retry primitives to be verified against `oneiric/docs/action-kits.md` before Task 1; hand-roll in `mahavishnu/core/eval/_compat.py` if the action doesn't exist. `_compat.py` is a per-action shim module — each missing oneiric action gets a hand-rolled implementation with a `link_to_issue: oneiric#N` comment. Phase 1 only needs the hash shim.
 - Pydantic v2 + `from __future__ import annotations` is a latent bug class (per the memory item `pydantic-future-annotations-forward-ref.md` and existing carve-outs in `pyproject.toml:407-420`). The 11+ new Pydantic model files in `mahavishnu/core/eval/` must be added to `[tool.ruff.lint.per-file-ignores]` for `TC003`, matching the existing entries for `core/capabilities.py`, `core/repo_models.py`, `core/repositories/embeddings.py`.
@@ -561,7 +562,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   @eval_app.command("run-suite")
   def run_suite(
       suite: Path = typer.Option(..., "--suite", exists=True, help="Path to JSONL dataset"),
-      model: str = typer.Option("MiniMax-M2.7-highspeed", "--model", help="Model backend name"),
+      model: str = typer.Option("MiniMax-M3", "--model", help="Model backend name"),
       budget: float | None = typer.Option(None, "--budget", help="Per-run cost cap in USD"),
   ) -> None:
       ...
@@ -709,20 +710,20 @@ If any of these fail, do not declare Phase 1 done. The wire-up contract is the b
 - `docs/decisions/wire-up-contract.md` — the integration contract discipline.
 - `docs/decisions/mcp-backend-wiring-discipline.md` — MCP-specific companion rule (subprocess + warmup, 4-signal feed contract).
 - `mahavishnu/core/adapter_discovery.py` — the in-repo oneiric integration pattern this plan follows.
-- `mahavishnu/pools/base.py:84, 156` — `BasePool` (not `PoolBase`); `scale(target_worker_count) -> None` abstract signature.
-- `mahavishnu/pools/manager.py:355-359` — pool factory invocation shape (`factory(config, *, terminal_manager, session_buddy_client)`).
+- `mahavishnu/pools/base.py:100, 172` — `BasePool` (not `PoolBase`); `scale(target_worker_count) -> None` abstract signature.
+- `mahavishnu/pools/manager.py:373` — pool factory invocation shape (`factory(config, *, terminal_manager, session_buddy_client)`).
 - `mahavishnu/mcp/server_core.py:293-298` — FastMCP inline-tooling constraint.
-- `mahavishnu/mcp/signer_feed.py:153-249` — canonical feed-state pattern (mirror for `eval_feed.py`).
-- `mahavishnu/mcp/sweepers/task_orphan_sweeper.py:264` — canonical "start a child OTel span" precedent.
-- `mahavishnu/mcp/bootstrap.py:265-345` — `register_health_endpoint()` where the `eval` check block lives.
-- `mahavishnu/mcp/tools/profiles.py:84-102, 181-258` — `STANDARD_REGISTRATIONS` and `REGISTRATION_MAP`.
+- `mahavishnu/mcp/signer_feed.py:160-244` — canonical feed-state pattern (mirror for `eval_feed.py`). Verify the exact end line on first read.
+- `mahavishnu/mcp/sweepers/task_orphan_sweeper.py:264` — canonical "start a child OTel span" precedent. Verify on first read.
+- `mahavishnu/mcp/bootstrap.py:265-345` — `register_health_endpoint()` where the `eval` check block lives. Verify on first read.
+- `mahavishnu/mcp/tools/profiles.py:93-115, 193+` — `STANDARD_REGISTRATIONS` and `REGISTRATION_MAP`. Verify on first read.
 - `mahavishnu/workers/cloud_worker.py` — the existing MiniMax worker that the eval engine will compose.
-- `mahavishnu/core/config.py:2627-2665, 2786, 3046` — `MahavishnuSettings` env_prefix precedent; `otel_ingester` field; `get_settings()` lazy getter pattern.
-- `mahavishnu/_main_cli.py:17-45, 1358-1606` — CLI entry point and `add_*_commands` registration block.
-- `mahavishnu/cli/plan_cli.py:18-23, 47-51` — canonical `typer` command pattern.
+- `mahavishnu/core/config.py` — `MahavishnuSettings` env_prefix and env_nested_delimiter precedent; `otel_ingester` field; `get_settings()` lazy getter pattern. Line numbers drift frequently; treat as durable pointers — verify on first read.
+- `mahavishnu/_main_cli.py:17-45, 1358-1606` — CLI entry point and `add_*_commands` registration block. Verify the add_typer range on first read.
+- `mahavishnu/cli/plan_cli.py:18-23, 47-51` — canonical `typer` command pattern. Verify on first read.
 - `oneiric/docs/action-kits.md` — catalog of common primitives (verify availability before hand-rolling; `oneiric.actions.compression.HashAction` for sha256).
 - `ADR 017: Oneiric as the shared persistence substrate for Bodai` — substrate conventions.
-- `pyproject.toml:407-420` — existing `per-file-ignores` carve-outs for Pydantic-heavy files (the model for Task 0's additions).
+- `pyproject.toml:460-465` — existing `per-file-ignores` carve-outs for Pydantic-heavy files (the model for Task 0's additions).
 - Memory items cross-referenced: `pydantic-future-annotations-forward-ref.md`, `feedback-no-bodai-prefix-in-config-names.md`, `feedback-memories-must-be-dual-stored.md`, `wire-protocol-source-of-truth.md`, `multi-agent-review-catches-blind-spots.md`.
 
 
@@ -753,3 +754,35 @@ If any of these fail, do not declare Phase 1 done. The wire-up contract is the b
   `gen_random_uuid7()::TEXT` example in the v1 of this patch
   described a UDF that oneiric does not ship. The app-layer path
   is the only working option.
+
+## Coordination notes (post-2026-10-18 M2.7-highspeed deprecation)
+
+- **`MiniMax-M2.7-highspeed` is being deprecated by MiniMax and will no
+  longer be available.** Phase 1's only live MiniMax dependency is the
+  dogfood smoke run in **Task 8.6**, where the real-model backend is
+  invoked through the existing `mahavishnu/workers/cloud_worker.py`
+  plumbing. v3 of this plan swapped every reference from
+  `MiniMax-M2.7-highspeed` → `MiniMax-M3` (lines 31, 65, 564 — and any
+  CLI default the implementing worker adds during Task 8.2 must use
+  `MiniMax-M3`, not `M2.7-highspeed`).
+- **`MiniMax-M3` is the primary model on the MiniMax provider** (per
+  project `CLAUDE.md` "LLM Provider Configuration" §). `M2.7` and
+  `M2.7-highspeed` are documented fallbacks only at the time this plan
+  was written; with `M2.7-highspeed` deprecated, the fallback chain
+  collapses to `M2.7` alone. The dogfood smoke test's `@pytest.mark.requires_auth`
+  marker (Task 8.6) still applies — the `MiniMax-M3` model requires
+  the `MINIMAX_API_KEY` shell credential — but no separate env var
+  change is needed.
+- **If `MiniMax-M3` is also deprecated before Task 8.6 lands**, the
+  fallback is `llama_server` (local `qwen3.5` at
+  `http://localhost:8081`) per the project's model-routing YAML.
+  This swap is mechanical: edit the CLI default (Task 8.2 line 564)
+  and the smoke test's model name (Task 8.6); the eval framework
+  itself is model-agnostic.
+- **Tag this plan for re-review** when any of the following changes:
+  MiniMax adds or removes a model family; `oneiric.actions.compression.HashAction`
+  ships or breaks; `mahavishnu/pools/base.py::BasePool` signature
+  changes; `mahavishnu/mcp/server_core.py` constraint about inline
+  FastMCP tooling changes; or the wire-up discipline in
+  `docs/decisions/mcp-backend-wiring-discipline.md` revs past v1.
+
