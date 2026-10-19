@@ -1082,6 +1082,49 @@ git add tests/plan_index/
 git commit -m "test(oneiric): adopt moved plan_index tests from sibling repos"
 ```
 
+- [ ] **Step 6: Phase 3 fork deletion — per sibling (gated on Task 4)**
+
+This sub-step is **gated** on each sibling having completed Task 4 (crackerjack rewired and shipped a version with the dispatcher). Per spec §"Migration plan" Phase 3, each sibling lands in their own release train. For each of the 7 Bodai core repos:
+
+```bash
+cd <sibling-repo>
+
+# 1. Flip the feature flag in crackerjack's settings.yaml
+sed -i 's/use_shared_regenerator: false/use_shared_regenerator: true/' settings/crackerjack.yaml
+git add settings/crackerjack.yaml
+git commit -m "feat(<sibling>): flip plan_index_sync to shared library"
+
+# 2. Delete the forked regenerator
+git rm scripts/regenerate_plan_index.py
+
+# 3. (mahavishnu only) Delete the 5 extras
+[ "$(basename "$(pwd)")" = "mahavishnu" ] && git rm \
+  scripts/audit_plan_index.py \
+  scripts/bootstrap_plan_index.py \
+  scripts/backup_plan_index.py \
+  scripts/restore_plan_index_backup.py \
+  scripts/backfill_plan_spec_titles.py \
+  scripts/_apply_plan_audit_2026_09_12.py
+
+git commit -m "feat(<sibling>): delete plan_index script (Phase 3 per spec)"
+```
+
+Run for each of: `mahavishnu`, `akosha`, `session-buddy`, `crackerjack`, `mcp-common`, `oneiric`.
+
+- [ ] **Step 7: Verify all 7 forks are deleted**
+
+```bash
+for repo in mahavishnu akosha session-buddy crackerjack mcp-common oneiric; do
+    if [ -f "/Users/les/Projects/$repo/scripts/regenerate_plan_index.py" ]; then
+        echo "FAIL: $repo still has scripts/regenerate_plan_index.py"
+        exit 1
+    fi
+done
+echo "OK: all 7 siblings deleted their plan_index fork"
+```
+
+Expected: exit 0 after Step 6 completes across all 7 siblings. After this passes, Task 12 (Phase 6) is unblocked.
+
 ---
 
 ### Task 6: Mahavishnu — `RepositoryConfig` schema migration for `slug` + `emit_in_master`
