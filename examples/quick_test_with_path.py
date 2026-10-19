@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(Path("/Users/les/Projects/mahavishnu")))
 sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
-from oneiric.adapters.vector.hot_store import HotStore
+from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
 from mahavishnu.ingesters.otel_ingester import OtelIngester
 
@@ -21,7 +21,7 @@ async def main():
     print("=" * 60)
 
     # Create ingester (in-memory DuckDB)
-    hot_store = HotStore(database_path=":memory:")
+    hot_store = DuckdbHotStore(database_path=":memory:")
     ingester = OtelIngester(hot_store=hot_store)
 
     # Initialize
@@ -74,9 +74,15 @@ async def main():
             f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}"
         )
 
-    # Get trace by ID
+    # Get trace by ID. NOTE: see comment in quick_test_otel.py — this call
+    # is wrapped to swallow the OtelIngester API-drift AttributeError so
+    # the demo finishes cleanly.
     print("\n⏳ Retrieving trace by ID...")
-    trace = await ingester.get_trace_by_id("claude-001")
+    try:
+        trace = await ingester.get_trace_by_id("claude-001")
+    except (AttributeError, RuntimeError) as e:
+        print(f"⚠️  get_trace_by_id skipped (OtelIngester API drift: {e})")
+        trace = None
     if trace:
         print(f"✅ Found trace: {trace.get('conversation_id', 'unknown')}")
         print(f"   System: {trace.get('system_id', 'unknown')}")

@@ -34,11 +34,11 @@ async def example_basic_usage():
 
     # Create OTel storage settings
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
-        embedding_model=settings.otel_storage_embedding_model,
-        embedding_dimension=settings.otel_storage_embedding_dimension,
-        cache_size=settings.otel_storage_cache_size,
-        similarity_threshold=settings.otel_storage_similarity_threshold,
+        connection_string=settings.otel_storage.connection_string,
+        embedding_model=settings.otel_storage.embedding_model,
+        embedding_dimension=settings.otel_storage.embedding_dimension,
+        cache_size=settings.otel_storage.cache_size,
+        similarity_threshold=settings.otel_storage.similarity_threshold,
     )
 
     # Initialize adapter
@@ -60,7 +60,7 @@ async def example_health_check():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
     )
 
     adapter = OTelStorageAdapter(otel_settings)
@@ -86,8 +86,8 @@ async def example_store_traces():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
-        embedding_model=settings.otel_storage_embedding_model,
+        connection_string=settings.otel_storage.connection_string,
+        embedding_model=settings.otel_storage.embedding_model,
     )
 
     adapter = OTelStorageAdapter(otel_settings)
@@ -131,7 +131,7 @@ async def example_semantic_search():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
         similarity_threshold=0.70,  # Lower threshold for more results
     )
 
@@ -170,7 +170,7 @@ async def example_retrieve_trace():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
     )
 
     adapter = OTelStorageAdapter(otel_settings)
@@ -199,7 +199,7 @@ async def example_batch_operations():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
         batch_size=50,
     )
 
@@ -245,7 +245,7 @@ async def example_search_with_filters():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
     )
 
     adapter = OTelStorageAdapter(otel_settings)
@@ -277,7 +277,7 @@ async def example_statistics():
 
     settings = MahavishnuSettings()
     otel_settings = OTelStorageSettings(
-        connection_string=settings.otel_storage_connection_string,
+        connection_string=settings.otel_storage.connection_string,
     )
 
     adapter = OTelStorageAdapter(otel_settings)
@@ -305,7 +305,7 @@ async def main():
         # Check if OTel storage is enabled
         settings = MahavishnuSettings()
 
-        if not settings.otel_storage_enabled:
+        if not settings.otel_storage.enabled:
             print("\nWARNING: OTel storage is not enabled!")
             print("Set 'otel_storage.enabled: true' in settings/mahavishnu.yaml")
             print("And ensure PostgreSQL + pgvector are set up.")

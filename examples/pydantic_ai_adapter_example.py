@@ -16,6 +16,25 @@ from __future__ import annotations
 import asyncio
 import logging
 
+# Set OPENAI_API_KEY (Bodai vkey) so Pydantic-AI's OpenAIProvider
+# authenticates against the local Bifrost gateway. Pydantic-AI's
+# OpenAIProvider reads OPENAI_API_KEY + OPENAI_BASE_URL from env at
+# construction; OPENAI_BASE_URL is set in ~/.zshenv. We use the
+# importlib bootstrap because ``from examples._bifrost_setup import
+# ...`` doesn't resolve when Python prepends ``examples/`` to
+# sys.path (the case when running this file directly).
+import importlib.util as _il
+import sys as _sys
+from pathlib import Path as _Path
+
+_shim_path = _Path(__file__).resolve().parent / "_bifrost_setup.py"
+_spec = _il.spec_from_file_location("examples._bifrost_setup", _shim_path)
+assert _spec is not None and _spec.loader is not None, "_bifrost_setup.py missing"
+_module = _il.module_from_spec(_spec)
+_sys.modules["examples._bifrost_setup"] = _module
+_spec.loader.exec_module(_module)
+_module.configure_bifrost_env()
+
 from mahavishnu.adapters.ai.pydantic_ai_adapter import (
     FallbackStrategy,
     MCPToolConfig,
@@ -63,9 +82,10 @@ async def basic_example() -> None:
     print(f"✓ Adapter initialized: {adapter.name}")
     print(f"  Capabilities: {adapter.capabilities}")
 
-    # Execute a simple task
+    # Execute a simple task. Pass output_type=str so Pydantic AI has a
+    # valid output schema (Agent() rejects None — see pydantic_ai UserError).
     result = await adapter.execute(
-        task={"prompt": "What is 2 + 2?"},
+        task={"prompt": "What is 2 + 2?", "output_type": str},
         repos=[],
     )
     print(f"  Result: {result}")
@@ -117,9 +137,10 @@ async def fallback_example() -> None:
 
     await adapter.initialize()
 
-    # If primary fails, adapter will try fallbacks in order
+    # If primary fails, adapter will try fallbacks in order. output_type=str
+    # so Pydantic AI has a valid output schema for Agent().
     result = await adapter.execute(
-        task={"prompt": "Analyze the sentiment: 'I love this product!'"},
+        task={"prompt": "Analyze the sentiment: 'I love this product!'", "output_type": str},
         repos=[],
     )
     print(f"  Result: {result}")
@@ -167,11 +188,13 @@ async def mcp_tools_example() -> None:
     await adapter.initialize()
     print(f"✓ MCP tools initialized: {list(adapter._mcp_servers.keys())}")
 
-    # Agent can now use MCP tools
+    # Agent can now use MCP tools. output_type=str so Pydantic AI has a
+    # valid output schema for Agent().
     result = await adapter.execute(
         task={
             "prompt": "List files in the workspace and summarize the project structure",
             "tools": ["filesystem"],
+            "output_type": str,
         },
         repos=[],
     )
@@ -204,20 +227,24 @@ async def agent_chaining_example() -> None:
 
     await adapter.initialize()
 
-    # Create specialized agents
+    # Create specialized agents. Pass output_type=str so Pydantic AI has a
+    # valid output schema (Agent() rejects None — see pydantic_ai UserError).
     research_agent = await adapter.create_agent(
         name="researcher",
         instructions="You are a research assistant. Gather and summarize information.",
+        output_type=str,
     )
 
     analysis_agent = await adapter.create_agent(
         name="analyst",
         instructions="You are an analyst. Process data and identify patterns.",
+        output_type=str,
     )
 
     writer_agent = await adapter.create_agent(
         name="writer",
         instructions="You are a technical writer. Create clear documentation.",
+        output_type=str,
     )
 
     # Chain agents: research → analysis → writing

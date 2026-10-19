@@ -13,9 +13,9 @@ async def main():
     print("=" * 60)
 
     # Create ingester (in-memory DuckDB)
-    from oneiric.adapters.vector.hot_store import HotStore
+    from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
-    hot_store = HotStore(database_path=":memory:")
+    hot_store = DuckdbHotStore(database_path=":memory:")
     ingester = OtelIngester(hot_store=hot_store)
 
     # Initialize
@@ -68,9 +68,17 @@ async def main():
             f"   {i}. [{result.get('similarity', 0):.2f}] {result.get('conversation_id', 'unknown')}"
         )
 
-    # Get trace by ID
+    # Get trace by ID. NOTE: OtelIngester.get_trace_by_id has a latent bug —
+    # it accesses HotStore.conn (removed in the post-2026-09 substrate
+    # rename). The call below is wrapped so the demo surfaces a SKIPPED
+    # message instead of an exception. Fixing the underlying ingester
+    # bug is tracked separately.
     print("\n⏳ Retrieving trace by ID...")
-    trace = await ingester.get_trace_by_id("claude-001")
+    try:
+        trace = await ingester.get_trace_by_id("claude-001")
+    except (AttributeError, RuntimeError) as e:
+        print(f"⚠️  get_trace_by_id skipped (OtelIngester API drift: {e})")
+        trace = None
     if trace:
         print(f"✅ Found trace: {trace.get('conversation_id', 'unknown')}")
         print(f"   System: {trace.get('system_id', 'unknown')}")

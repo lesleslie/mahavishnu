@@ -14,12 +14,13 @@ import asyncio
 import logging
 
 from mahavishnu.core import (
-    AdapterManager,
     CostOptimizer,
-    StateManager,
     StatisticalRouter,
     TaskRouter,
 )
+# AdapterManager / StateManager are no longer re-exported from
+# mahavishnu.core — they live with the routing primitives.
+from mahavishnu.core.task_router import AdapterManager, RouterMode, StateManager
 from mahavishnu.core.metrics_schema import AdapterType, TaskType
 from mahavishnu.core.routing_alerts import (
     LoggingAlertHandler,
@@ -77,26 +78,29 @@ async def setup_routing_with_monitoring():
     await alert_manager.start()
     logger.info(f"Alert manager started: {alert_manager.get_status()}")
 
-    # 4. Initialize core routing components
+    # 4. Initialize core routing components. NOTE: the current
+    # StatisticalRouter no longer takes adapter_manager/state_manager
+    # (it reads routing metrics directly via the global ExecutionTracker),
+    # and TaskRouter takes adapter_registry/state_manager/router_mode/
+    # metrics — no statistical_router or cost_optimizer parameters.
     adapter_manager = AdapterManager()
-    state_manager = StateManager()
 
-    # 5. Create statistical router with metrics integration
-    router = StatisticalRouter(
-        adapter_manager=adapter_manager,
-        state_manager=state_manager,
-    )
+    # 5. Create statistical router with metrics integration.
+    # Signature: StatisticalRouter(metrics=None, min_samples, ...).
+    router = StatisticalRouter(metrics=get_routing_metrics())
 
-    # 6. Create cost optimizer
-    cost_optimizer = CostOptimizer()
-
-    # 7. Create task router with all components
+    # 6. Create task router. cost_optimizer / statistical_router are
+    # wired internally via _statistical_router and _cost_optimizer
+    # properties; passing them at construction is no longer supported.
     task_router = TaskRouter(
-        adapter_manager=adapter_manager,
-        state_manager=state_manager,
-        statistical_router=router,
-        cost_optimizer=cost_optimizer,
+        adapter_registry=adapter_manager,
+        router_mode=RouterMode.STATISTICAL,
+        metrics=get_routing_metrics(),
     )
+
+    # (cost_optimizer is not a constructor arg anymore — kept here
+    # only for the simulate_routing_operations call signature below.)
+    cost_optimizer = CostOptimizer()
 
     logger.info("Routing components initialized")
 

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path("/Users/les/Projects/akosha")))
 
 # Import only HotStore (no OtelIngester to avoid sentence-transformers)
 from akosha.models import HotRecord
-from oneiric.adapters.vector.hot_store import HotStore
+from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
 
 async def main():
@@ -23,7 +23,7 @@ async def main():
     print("=" * 60)
 
     # Create HotStore (in-memory DuckDB)
-    hot_store = HotStore(database_path=":memory:")
+    hot_store = DuckdbHotStore(database_path=":memory:")
 
     # Initialize
     print("⏳ Initializing HotStore...")
@@ -154,12 +154,18 @@ async def main():
         threshold=0.0,  # Lower threshold since using dummy embeddings
     )
 
-    print(f"✅ Found {len(results)} results:")
-    for i, result in enumerate(results, 1):
-        sim = result.get("similarity", 0)
-        cid = result.get("conversation_id", "unknown")
-        cont = result.get("content", "N/A")[:40]
-        print(f"   {i}. [{sim:.2f}] {cid}: {cont}")
+    # search_similar may return None when no row beats the threshold
+    # (an all-zeros dummy embedding won't match anything); guard
+    # before iterating.
+    if results:
+        print(f"✅ Found {len(results)} results:")
+        for i, result in enumerate(results, 1):
+            sim = result.get("similarity", 0)
+            cid = result.get("conversation_id", "unknown")
+            cont = result.get("content", "N/A")[:40]
+            print(f"   {i}. [{sim:.2f}] {cid}: {cont}")
+    else:
+        print("ℹ️  No matches — dummy embedding didn't pass the similarity threshold (expected)")
 
     # Test 2: Count traces by system
     print("\n📊 Test 2: Trace Statistics")

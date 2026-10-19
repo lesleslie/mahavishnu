@@ -14,8 +14,12 @@ from mahavishnu.websocket import MahavishnuWebSocketServer
 async def main():
     """Run Mahavishnu with WebSocket server enabled."""
 
-    # Initialize Mahavishnu app
-    app = MahavishnuApp(config_path=Path("settings/mahavishnu.yaml"))
+    # Initialize Mahavishnu app. MahavishnuApp takes a MahavishnuSettings
+    # object (or None to load defaults from the layered Oneiric chain
+    # settings/mahavishnu.yaml → settings/local.yaml → env vars).
+    from mahavishnu.core.config import MahavishnuSettings
+
+    app = MahavishnuApp(config=MahavishnuSettings())
 
     # Start the app (initializes pool manager, etc.)
     await app.start()
