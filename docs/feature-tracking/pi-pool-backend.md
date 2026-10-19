@@ -96,9 +96,46 @@ end-to-end against the actual subprocess. That smoke lives outside the
 unit-test harness (requires `npx` and Node.js on the operator host) and
 is captured in the plan's Phase 5 integration test as opt-in.
 
+## Operator setup (2026-10-19 update)
+
+The pool subprocess inherits the operator's LLM credentials via the
+PiPool ``env_allowlist`` (see `mahavishnu/pools/pi_pool.py`). The
+default allowlist was extended to include the four standard LLM
+credential env vars; the operator opts in by setting them in their
+shell. The `mahavishnu demo pool-pi` precondition check
+(`_check_pool_pi_preconditions` in `mahavishnu/cli/demo_cli.py`)
+fails fast with a clear hint if no LLM cred is set, instead of
+silently timing out at the prompt-dispatch stage.
+
+**Minimum (any provider):**
+
+```bash
+export OPENAI_API_KEY=...      # any OpenAI-compatible key
+# OR
+export ANTHROPIC_API_KEY=...   # for Anthropic
+```
+
+**To route through the local Bifrost gateway** (the post-Phase-8
+canonical upstream — see `docs/llm-routing.md`):
+
+```bash
+export ONEIRIC_BIFROST_ENABLED=true
+export ONEIRIC_BIFROST_ROUTES=qwen_route   # OPENAI maps to QWEN_ROUTE
+export ONEIRIC_BIFROST_BASE_URL=http://127.0.0.1:8471/v1
+export OPENAI_API_KEY=...                 # any non-empty key (Bifrost may accept/drop)
+export OPENAI_BASE_URL=http://127.0.0.1:8471/v1   # what the pi-coding-agent actually calls
+```
+
+The `OPENAI_BASE_URL` and `ONEIRIC_BIFROST_BASE_URL` both point at
+the same gateway URL; the first is what the pi-coding-agent reads,
+the second is what oneiric's `BifrostLLMRouter` reads. They stay
+in sync by convention (the oneiric 0.32.1 default is
+`http://127.0.0.1:8471/v1`).
+
 ## Next action
 
-- Run the manual smoke (above) on a host with `npx` available; confirm
+- Run the manual smoke (above) on a host with `npx` available **and**
+  one of the LLM credential env vars exported; confirm
   `mahavishnu.pi.tasks.executed{status="completed"}` counter increments.
 - Promote to `adopted` once one real task completes end-to-end and at
   least one production user/workflow/agent has dispatched through it.

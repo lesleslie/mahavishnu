@@ -79,6 +79,34 @@ The `LLMSettings` model in `mcp_common/llm/config.py` defines
 `bifrost` as a reserved key in its YAML schema — this is metadata
 about what config keys are recognized, not a runtime call site.
 
+## Call site #10 — PiPool (model-agnostic agent bridge)
+
+`mahavishnu/pools/pi_pool.py` spawns a single
+`npx @earendil-works/pi-coding-agent --rpc` subprocess. The agent
+is a third-party tool that reads the standard
+`OPENAI_API_KEY` / `OPENAI_BASE_URL` /
+`ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` env vars to call an
+upstream. The pool's `env_allowlist` (see `pi_pool.py:139-157`)
+forwards these vars from the parent shell into the subprocess.
+
+To route PiPool through Bifrost, the operator exports the standard
+env vars pointed at the gateway:
+
+```bash
+export OPENAI_BASE_URL=http://127.0.0.1:8471/v1
+export OPENAI_API_KEY=...                 # any non-empty value
+```
+
+The pi-coding-agent treats `OPENAI_BASE_URL` as its upstream; with
+the gateway URL above, every prompt routes through Bifrost to the
+configured MiniMax / Anthropic provider.
+
+The `mahavishnu demo pool-pi` precondition check
+(`_check_pool_pi_preconditions` in `cli/demo_cli.py`) fails fast
+with a clear hint if no LLM credential is exported, so the
+"subprocess starts, prompt times out" failure mode is no longer
+silent.
+
 ## Local providers that bypass Bifrost
 
 The `llama_server` provider (and any future local-only provider)

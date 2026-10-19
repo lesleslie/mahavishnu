@@ -2322,7 +2322,18 @@ def _check_pool_pi_preconditions(
     *,
     npx_which: Callable[[str], str | None] | None = None,
 ) -> list[str]:
-    """Check that ``npx`` is on PATH (PiPool spawns ``npx pi-coding-agent --rpc``)."""
+    """Check that ``npx`` is on PATH and at least one LLM credential is set.
+
+    The pi-coding-agent subprocess inherits the operator's
+    LLM credentials via the PiPool's ``env_allowlist`` (see
+    ``mahavishnu/pools/pi_pool.py``). The allowlist is opt-in: if
+    the operator hasn't exported an LLM credential, the subprocess
+    starts and the RPC connection establishes, but every prompt
+    dispatch times out with no upstream to call.
+
+    We fail fast here with a clear operator-setup hint, including
+    the Bifrost path (the post-bifrost-plan canonical upstream).
+    """
     which = npx_which or shutil.which
     failures: list[str] = []
     if not which("npx"):
@@ -2330,6 +2341,25 @@ def _check_pool_pi_preconditions(
             "npx binary not on PATH (PiPool spawns npx @earendil-works/pi-coding-agent). "
             "Install Node.js 18+ and ensure npx is reachable."
         )
+
+    has_openai = bool(os.environ.get("OPENAI_API_KEY"))
+    has_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    if not (has_openai or has_anthropic):
+        bifrost_hint = (
+            "  Tip: to route through the local Bifrost gateway, also export:\n"
+            "    export OPENAI_BASE_URL=http://127.0.0.1:8471/v1\n"
+            "  (oneiric 0.32.1's default URL; the gateway serves the\n"
+            "  OpenAI-compatible endpoint at /v1/chat/completions.)\n"
+            "  See docs/llm-routing.md for the full setup."
+        )
+        failures.append(
+            "no LLM credentials exported — the pi-coding-agent subprocess "
+            "inherits the parent's env but needs an LLM upstream to generate text. "
+            "Export at least one of:\n"
+            "  export OPENAI_API_KEY=...      # any OpenAI-compatible key\n"
+            "  export ANTHROPIC_API_KEY=...   # for Anthropic\n" + bifrost_hint
+        )
+
     return failures
 
 

@@ -469,9 +469,14 @@ def _build_bifrost_health_block() -> Any:
     from .core.health import BifrostHealth
 
     try:
-        from mahavishnu.core.config import MahavishnuSettings
-
-        settings = MahavishnuSettings()
+        # Force the configuration load so a misconfigured
+        # ``MahavishnuSettings`` (e.g. invalid settings/mahavishnu.yaml
+        # or a missing env var) surfaces here as a fail-closed 500
+        # rather than silently producing an empty BifrostHealth. The
+        # imported class itself is unused post-Phase-7 — the function
+        # reads through ``get_router()._settings`` — but the import
+        # statement is the canary.
+        from mahavishnu.core.config import MahavishnuSettings  # noqa: F401
     except ImportError, AttributeError, ValueError, TypeError:
         # Fail-closed on configuration load failure: log at ERROR
         # (not WARNING) and re-raise so the /health route returns

@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Any
 import httpx2 as httpx
 from oneiric.actions.http import HttpActionSettings, HttpFetchAction
 from oneiric.adapters.httpx_base import HTTPXClientMixin
-from oneiric.adapters.llm.bifrost import BifrostLLMSettings
 from oneiric.core.logging import get_logger
 from opentelemetry import trace as _otel_trace
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,6 +39,8 @@ from monitoring.metrics import (
 )
 
 if TYPE_CHECKING:
+    from oneiric.adapters.llm.bifrost import BifrostLLMSettings
+
     from mahavishnu.core.app import MahavishnuApp
 
 logger = get_logger("mahavishnu.health")

@@ -15,7 +15,14 @@ Security primitives (non-negotiable, see plan §D1.6):
 * ``env_allowlist`` — minimal allowlist of env keys forwarded to the
   subprocess. Sensitive parent env keys (``MAHAVISHNU_*``, ``MINIMAX_*``,
   ``ZAI_*``, ``DHARA_*``, ``AKOSHA_*``, ``SESSION_BUDDY_*``) are NEVER
-  copied. Implementation lives in
+  copied. The default allowlist includes the standard LLM credential
+  env vars (``OPENAI_API_KEY``, ``OPENAI_BASE_URL``,
+  ``ANTHROPIC_API_KEY``, ``ANTHROPIC_BASE_URL``) so the pi-coding-agent
+  can actually call an upstream; the operator opts in by setting
+  these in their shell. To route through Bifrost, set
+  ``OPENAI_BASE_URL=http://127.0.0.1:8471/v1`` (the gateway serves
+  the OpenAI-compatible endpoint at ``/v1/chat/completions`` per the
+  oneiric 0.32.1 default). Implementation lives in
   :class:`mahavishnu.core.json_rpc_stdio.JSONRPCStdioClient`.
 * ``npx_command`` — start of command must be in
   ``{npx, /usr/bin/env, /usr/local/bin/npx}``; command must include
@@ -137,12 +144,25 @@ class PiPool(BasePool):
         self._runtime_probe = runtime_probe
         self._rpc_factory = rpc_factory or self._default_rpc_factory
         self._env_allowlist: tuple[str, ...] = env_allowlist or (
+            # Minimal POSIX keys required for any subprocess.
             "PATH",
             "HOME",
             "LANG",
             "NODE_PATH",
             "NODE_ENV",
             "TMPDIR",
+            # LLM credentials (the pi-coding-agent subprocess reads
+            # these directly to call the upstream). The operator
+            # sets them in their shell before spawning the pool;
+            # the pool forwards them through the allowlist rather
+            # than embedding them in the repo. To route through
+            # Bifrost, set ``OPENAI_BASE_URL=http://127.0.0.1:8471/v1``
+            # (the gateway serves the OpenAI-compatible endpoint at
+            # ``/v1/chat/completions`` per the oneiric 0.32.1 default).
+            "OPENAI_API_KEY",
+            "OPENAI_BASE_URL",
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_BASE_URL",
         )
         self._client: JSONRPCStdioClient | None = None
         self._startup_version: str | None = None
