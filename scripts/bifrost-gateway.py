@@ -42,10 +42,13 @@ TEMPLATE_CONFIG: Path = REPO_ROOT / "config/bifrost/config.template.json"
 TARGET_CONFIG: Path = APP_DIR / "config.json"
 
 # Secret IDs the gateway requires at startup. Resolution goes through Oneiric.
-NEEDED_KEYS: tuple[str, ...] = ("MINIMAX_API_KEY", "OPENAI_API_KEY")
+NEEDED_KEYS: tuple[str, ...] = ("MINIMAX_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")
 
-# Readiness probe budget. Matches the original shell wrapper.
-READY_TIMEOUT_SECONDS: int = 60
+# Readiness probe budget. The original shell wrapper used 60s, but newer
+# Bifrost versions (>=2.3.0) perform a URL sync of the MCP library catalog
+# at startup; cold cache can take 60-180s. 180s gives the sync room while
+# still failing fast enough to surface genuine boot errors via launchd.
+READY_TIMEOUT_SECONDS: int = 180
 
 
 async def resolve_secrets() -> None:
