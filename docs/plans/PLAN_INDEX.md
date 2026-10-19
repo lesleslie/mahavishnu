@@ -241,7 +241,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `active` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
+| [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `complete` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
@@ -376,9 +376,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 3 | 39 | 1 | 1 | 14 | **58** |
-| `implementation` | · | 3 | 2 | 4 | 13 | **22** |
+| `implementation` | · | 2 | 2 | 4 | 14 | **22** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **3** | **42** | **3** | **5** | **66** | **119** |
+| **Total** | **3** | **41** | **3** | **5** | **67** | **119** |
