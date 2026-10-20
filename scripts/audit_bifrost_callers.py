@@ -42,26 +42,30 @@ IN_SCOPE_REPOS: tuple[str, ...] = (
 )
 
 # Local-only providers that intentionally bypass Bifrost.
-LOCAL_PROVIDER_ALLOWLIST: frozenset[str] = frozenset({
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-    "http://localhost:11434",
-    "http://127.0.0.1:11434",
-})
+LOCAL_PROVIDER_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://localhost:11434",
+        "http://127.0.0.1:11434",
+    }
+)
 
 # Upstream cloud URLs that must NEVER appear as a hardcoded
 # ``base_url=...`` literal — the migration moved all routing
 # through Bifrost.
-FORBIDDEN_LITERAL_HOSTS: frozenset[str] = frozenset({
-    "api.minimax.io",
-    "api.z.ai",
-    "api.anthropic.com",
-    "api.openai.com",
-    "api.deepseek.com",
-    "api.groq.com",
-    "api.together.ai",
-    "api.mistral.ai",
-})
+FORBIDDEN_LITERAL_HOSTS: frozenset[str] = frozenset(
+    {
+        "api.minimax.io",
+        "api.z.ai",
+        "api.anthropic.com",
+        "api.openai.com",
+        "api.deepseek.com",
+        "api.groq.com",
+        "api.together.ai",
+        "api.mistral.ai",
+    }
+)
 
 # Line-level keywords that mark a line as LLM-client construction.
 # A line that contains one of these AND a ``base_url="..."``
@@ -81,9 +85,7 @@ LLM_CLIENT_KEYWORDS: tuple[str, ...] = (
     "create_async_model",
 )
 
-BASE_URL_LITERAL_RE = re.compile(
-    r"""\bbase_url\s*=\s*['"]([^'"]+)['"]"""
-)
+BASE_URL_LITERAL_RE = re.compile(r"""\bbase_url\s*=\s*['"]([^'"]+)['"]""")
 
 
 def _find_repo_root(repo_name: str) -> Path:
