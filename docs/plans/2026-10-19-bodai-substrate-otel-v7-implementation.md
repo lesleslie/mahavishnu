@@ -1942,7 +1942,7 @@ BLESSED_CONFIRM_PHRASES: dict[int, str] = {
 
 
 def _retention_settings() -> Any:
-    from akosha.config import get_settings
+    from akosha.config import get_config
     return get_config().otel.spans_substrate
 
 
@@ -2049,7 +2049,7 @@ app.add_typer(admin_app, name="admin")
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/cli/test_admin_otel_retention_cli.py -v`
-Expected: PASS — 4 tests.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 6: Verify the CLI registers without shadowing**
 
@@ -2493,7 +2493,7 @@ archival\".
 - Produces:
   - `KNOWN_MCP_SERVERS: list[str]` (module-level roster, populated at lifespan)
   - `async check_once(hot_store: HotStore) -> HeartbeatVerdict`
-  - `HeartbeatVerdict` dataclass: `(service_name, status: Literal["ok","query_empty","query_threw"], consecutive_absences: int)`
+  - `HeartbeatVerdict` dataclass: `(service_name, status: Literal["ok","query_empty","query_threw","empty_roster"], consecutive_absences: int = 0, p0a: bool = False)`
   - `/health` feeds `known_mcp_servers` (kwarg-only `HealthFeedState`)
 
 - [ ] **Step 1: Write the failing test**
@@ -2511,9 +2511,14 @@ from akosha.storage.hot_store import HotStore
 
 @pytest.fixture(autouse=True)
 def _reset_roster():
+    # _consecutive_absences is module-global state, so it leaks between tests
+    # exactly like the roster does. Reset both, or the escalation test sees
+    # a counter the previous test left at 1 and asserts 3.
     hw.KNOWN_MCP_SERVERS.clear()
+    hw._consecutive_absences.clear()
     yield
     hw.KNOWN_MCP_SERVERS.clear()
+    hw._consecutive_absences.clear()
 
 
 @pytest.fixture
@@ -2644,7 +2649,12 @@ async def check_once(hot_store: HotStore) -> HeartbeatVerdict:
                 consecutive_absences=n,
                 p0a=n >= ABSENCE_THRESHOLD,
             )
-            if v.p0a and not worst.p0a:
+            # Take the FIRST absence, not only an escalating one. Gating this
+            # on `v.p0a` leaves `worst` at its "ok" default for every
+            # sub-threshold absence, so the caller sees status="ok" while a
+            # producer is actually silent — the one signal this watcher
+            # exists to emit. Escalation then upgrades any single verdict.
+            if worst.status == "ok" or (v.p0a and not worst.p0a):
                 worst = v
         else:
             _consecutive_absences[name] = 0
@@ -2658,7 +2668,7 @@ In `akosha/mcp/server.py`, inside the lifespan after `hot_store.initialize()`:
 
 ```python
     from akosha.observability import heartbeat_watcher
-    from akosha.config import get_settings
+    from akosha.config import get_config
     heartbeat_watcher.KNOWN_MCP_SERVERS[:] = list(
         get_config().otel.receiver.known_mcp_servers or []
     )
@@ -2782,10 +2792,14 @@ def test_spike_threshold_alerts_once_per_window() -> None:
     for _ in range(rv.SPIKE_THRESHOLD):
         v.record(_span("mystery-ns"))
     assert v.spike_alert_active is False  # at threshold, not over
+    assert v.consume_spike_alert() is False
+
     v.record(_span("mystery-ns"))
     assert v.spike_alert_active is True
-    # Second drift in the same window does not re-alert.
-    assert v.spike_alert_active is True
+    # The latch fires exactly once per window. Re-reading the predicate stays
+    # True (it is not a latch); consuming is what is de-duplicated.
+    assert v.consume_spike_alert() is True
+    assert v.consume_spike_alert() is False
 
 
 def test_startup_burst_does_not_trip_sustained() -> None:
@@ -2795,6 +2809,16 @@ def test_startup_burst_does_not_trip_sustained() -> None:
     for _ in range(50):
         v.record(_span("mystery-ns"))
     assert v.sustained_drift_rate_hr < rv.SUSTAINED_THRESHOLD_HR * 10
+
+
+def test_sustained_fires_only_after_the_window() -> None:
+    """The 24h baseline is what makes the rate meaningful. Before it elapses
+    the rate is undefined, and must not be extrapolated from a burst."""
+    v = rv.ResourceValidator()
+    v._baseline_start -= rv.SUSTAINED_WINDOW_SECONDS  # pretend 24h uptime
+    for _ in range(13):  # 13/24h = 0.54/hr, just over the 0.5 threshold
+        v.record(_span("mystery-ns"))
+    assert v.sustained_drift_rate_hr > rv.SUSTAINED_THRESHOLD_HR
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -2822,6 +2846,9 @@ ALLOWED_NAMESPACES = ALLOWED_NAMESPACES_BRIDGE
 ROLLING_WINDOW_SECONDS = 300
 SPIKE_THRESHOLD = 3
 SUSTAINED_THRESHOLD_HR = 0.5
+# Spec §13.2 measures sustained pressure "over 24h". Until the process has
+# been up this long, the sustained rate is undefined, not "very high".
+SUSTAINED_WINDOW_SECONDS = 24 * 3600
 
 
 class ResourceValidator:
@@ -2831,6 +2858,10 @@ class ResourceValidator:
         self._events: list[tuple[float, str]] = []
         self._alerted_windows: set[int] = set()
         self._baseline_start: float = time.time()
+        # Counts drift events across the whole observation period. The
+        # `_events` list is pruned to ROLLING_WINDOW_SECONDS, so it can never
+        # answer a 24-hour question.
+        self._sustained_events: int = 0
 
     def _prune(self, now: float) -> None:
         self._events = [e for e in self._events if now - e[0] <= ROLLING_WINDOW_SECONDS]
@@ -2843,21 +2874,49 @@ class ResourceValidator:
         now = time.time()
         self._prune(now)
         self._events.append((now, str(ns)))
-        window = int(now // ROLLING_WINDOW_SECONDS)
-        if len(self._events) > SPIKE_THRESHOLD and window not in self._alerted_windows:
-            self._alerted_windows.add(window)
+        self._sustained_events += 1
         return False
 
     @property
     def spike_alert_active(self) -> bool:
+        """Whether a spike is currently detected. A pure predicate.
+
+        It deliberately does NOT consume the once-per-window latch — an alert
+        loop that polls this must not be able to silence itself by reading.
+        """
         now = time.time()
         self._prune(now)
         return len(self._events) > SPIKE_THRESHOLD
 
+    def consume_spike_alert(self) -> bool:
+        """True at most once per window while a spike is active.
+
+        Returns False if the threshold is not exceeded, or if this window has
+        already alerted. Call this from the alert emitter, not from a poll.
+        """
+        now = time.time()
+        self._prune(now)
+        window = int(now // ROLLING_WINDOW_SECONDS)
+        if len(self._events) <= SPIKE_THRESHOLD or window in self._alerted_windows:
+            return False
+        self._alerted_windows.add(window)
+        return True
+
     @property
     def sustained_drift_rate_hr(self) -> float:
-        hours = max((time.time() - self._baseline_start) / 3600, 1e-9)
-        return len(self._events) / hours
+        """Drift events per hour across the observation period.
+
+        Spec §13.2 defines sustained pressure as >0.5/hr *over 24h*, so the
+        rate is not computable until the baseline has run that long. Report
+        0.0 before then rather than dividing a handful of seconds of history
+        into a per-hour figure — which is precisely the startup-burst false
+        positive that rate-based detection exists to avoid, and which
+        `test_startup_burst_does_not_trip_sustained` pins.
+        """
+        elapsed = time.time() - self._baseline_start
+        if elapsed < SUSTAINED_WINDOW_SECONDS:
+            return 0.0
+        return self._sustained_events / (elapsed / 3600)
 ```
 
 - [ ] **Step 4: Wire the validator into `_handle_batch`**
@@ -2876,7 +2935,7 @@ Label cardinality is the concern here: an unbounded namespace label can itself b
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/observability/test_resource_validator.py -v`
-Expected: PASS — 4 tests.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -3575,7 +3634,7 @@ Both the consumer sweep (Step 1) and the dual-label test gate this. Do not flip 
 - [ ] **Step 8: Run to verify it passes**
 
 Run: `cd /Users/les/Projects/mcp-common && .venv/bin/pytest tests/integration/test_service_namespace_bridge.py -v`
-Expected: PASS — 4 tests.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 9: Commit mcp-common and oneiric**
 
