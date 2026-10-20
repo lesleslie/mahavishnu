@@ -134,14 +134,14 @@ def test_webhook_replay_rejects_missing_token(monkeypatch, caplog):
     """
     from mahavishnu.webhooks import replay
 
-    dhara_get = MagicMock(return_value={"webhook_id": "evt-1"})
-    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
+    mcp_get = MagicMock(return_value={"webhook_id": "evt-1"})
+    _make_mcp_calltime_patcher(monkeypatch, mcp_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-1", token=None)
 
     assert result is None
-    dhara_get.assert_not_called()
+    mcp_get.assert_not_called()
     skip_records = [r for r in caplog.records if "webhook_replay_skipped" in r.message]
     assert skip_records, [r.message for r in caplog.records]
     assert "'reason': 'rbac_denied'" in skip_records[-1].message
@@ -152,14 +152,14 @@ def test_webhook_replay_rejects_non_jwt_token(monkeypatch, caplog):
     """RBAC gate: a non-JWT-shaped token is rejected as malformed."""
     from mahavishnu.webhooks import replay
 
-    dhara_get = MagicMock(return_value={"webhook_id": "evt-2"})
-    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
+    mcp_get = MagicMock(return_value={"webhook_id": "evt-2"})
+    _make_mcp_calltime_patcher(monkeypatch, mcp_get)
 
     with caplog.at_level("WARNING", logger="mahavishnu.webhooks.replay"):
         result = replay.webhook_replay(webhook_id="evt-2", token="opaque")
 
     assert result is None
-    dhara_get.assert_not_called()
+    mcp_get.assert_not_called()
 
 
 def test_webhook_replay_passes_with_jwt_shaped_token(monkeypatch):
@@ -167,12 +167,12 @@ def test_webhook_replay_passes_with_jwt_shaped_token(monkeypatch):
     from mahavishnu.webhooks import replay
 
     payload = _payload("evt-3")
-    dhara_get = MagicMock(return_value=payload)
-    _make_mcp_calltime_patcher(monkeypatch, dhara_get)
+    mcp_get = MagicMock(return_value=payload)
+    _make_mcp_calltime_patcher(monkeypatch, mcp_get)
 
     token = "header.payload.signature"
     result = replay.webhook_replay(webhook_id="evt-3", token=token)
 
-    dhara_get.assert_called_once_with("webhook-ingress/evt-3/")
+    mcp_get.assert_called_once_with("webhook-ingress/evt-3/")
     assert isinstance(result, WebhookIngress)
     assert result.webhook_id == "evt-3"

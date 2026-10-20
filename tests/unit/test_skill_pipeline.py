@@ -2,9 +2,9 @@
 
 Spec #5: three-zone skill pipeline (intake, transform, publish) + audit log.
 
-The Dhara-backed implementation is a follow-up (Workstream B: substrate).
+The MCP-backed implementation is a follow-up (Workstream B: substrate).
 These tests pin the interface and the InMemory implementation so the
-Dhara implementation can be swapped in without breaking callers.
+MCP implementation can be swapped in without breaking callers.
 """
 
 from __future__ import annotations

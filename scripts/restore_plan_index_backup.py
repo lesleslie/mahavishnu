@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Restore docs/plans/PLAN_INDEX.md from a previous backup.
 
-The migration runbook's rollback path: if the Dhara-only render produces
+The migration runbook's rollback path: if the MCP-only render produces
 a broken PLAN_INDEX.md (missing rows, malformed table, drift from the
 legacy file), the operator picks the most recent good backup and runs
 this script. The script writes the backup back over PLAN_INDEX.md and

@@ -11,7 +11,7 @@ Task 11.10 — covers two latent defects in ``mahavishnu/mcp/auth.py``:
    error rather than silently granting a broad permission.
 
 2. **Wrapped ``rbac_manager.check_permission``** in
-   ``try / except Exception``. A buggy RBAC (Dhara network down,
+   ``try / except Exception``. A buggy RBAC (MCP network down,
    ``JSONDecodeError`` on stored user data, etc.) MUST deny with an audit
    event — it must never propagate out of the gate, where it would
    bypass the audit trail and either 500 to the caller or accidentally
@@ -57,7 +57,7 @@ class _ExplodingRBAC:
     """
 
     async def check_permission(self, *args: Any, **kwargs: Any) -> bool:
-        raise RuntimeError("Dhara network down")
+        raise RuntimeError("MCP network down")
 
 
 class _SpyAuditLogger:
@@ -186,7 +186,7 @@ class TestRBACExceptionIsDefenseInDepth:
         # denial. Format is "RBAC raised: <ClassName>: <message>".
         assert event.reason is not None
         assert "RuntimeError" in event.reason
-        assert "Dhara network down" in event.reason
+        assert "MCP network down" in event.reason
         # Prefix is stable for grep / alerting.
         assert event.reason.startswith("RBAC raised: ")
 

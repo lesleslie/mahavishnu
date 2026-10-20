@@ -74,7 +74,7 @@ class TestPlanShowE2E:
         """Non-32-hex plan_ids raise ``ValueError`` from the store (brief concern #2).
 
         The store's ``_validate_plan_id`` enforces the regex before
-        touching Dhara, so the tool body surfaces this as a
+        touching MCP, so the tool body surfaces this as a
         ``ValueError`` — FastMCP re-raises as ``ToolError`` with the
         original message. The test confirms the error reaches the
         client via the envelope, not a Python

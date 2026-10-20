@@ -6,15 +6,15 @@ the new caller-kind contract:
 
 - ``caller_kind`` must be coerced via ``coerce_caller_kind`` so
   novel strings cannot inflate quota buckets.
-- The persisted Dhara record must carry both ``caller_kind`` (as
+- The persisted MCP record must carry both ``caller_kind`` (as
   the enum's underlying string) and ``parent_session_id`` (as
   supplied) under ``routing-decisions/``.
 - Quota enforcement is the FIRST gate — it must raise
-  ``RateLimitError`` BEFORE any Dhara write happens, otherwise a
+  ``RateLimitError`` BEFORE any MCP write happens, otherwise a
   saturated caller would still produce audit noise.
 
 The tests use a MagicMock for ``_mcp_state`` so the persist call
-arguments are inspectable; no real Dhara is involved.
+arguments are inspectable; no real MCP is involved.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ class _StubPool:
 
 @pytest.fixture
 def mcp_state() -> MagicMock:
-    """An async-friendly MagicMock for the Dhara state backend."""
+    """An async-friendly MagicMock for the MCP state backend."""
     mock = MagicMock()
     mock.persist_routing_decision = AsyncMock(return_value=None)
     mock.persist_pool = AsyncMock(return_value=None)
@@ -61,7 +61,7 @@ def mcp_state() -> MagicMock:
 
 @pytest.fixture
 def pool_mgr(mcp_state: MagicMock) -> PoolManager:
-    """PoolManager with a stub pool and a mock Dhara backend attached."""
+    """PoolManager with a stub pool and a mock MCP backend attached."""
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(
             terminal_manager=None,
@@ -79,7 +79,7 @@ def pool_mgr(mcp_state: MagicMock) -> PoolManager:
 
 
 class TestRouteTaskPersistsCallerKind:
-    """The persisted Dhara record must carry both new fields."""
+    """The persisted MCP record must carry both new fields."""
 
     async def test_route_task_persists_caller_kind(self, pool_mgr: PoolManager) -> None:
         await pool_mgr.route_task(
@@ -95,12 +95,12 @@ class TestRouteTaskPersistsCallerKind:
 
 
 # ---------------------------------------------------------------------------
-# 10. Quota is enforced BEFORE the Dhara persist call
+# 10. Quota is enforced BEFORE the MCP persist call
 # ---------------------------------------------------------------------------
 
 
 class TestRouteTaskEnforcesQuotaAtEntry:
-    """Saturated callers never produce Dhara writes — quota gate is first."""
+    """Saturated callers never produce MCP writes — quota gate is first."""
 
     async def test_route_task_enforces_quota_at_entry(self, pool_mgr: PoolManager) -> None:
         # Pre-saturate the bucket anchored at the *current* time so the

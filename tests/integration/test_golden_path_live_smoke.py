@@ -86,12 +86,12 @@ def _mock_config(session_buddy_url: str) -> SimpleNamespace:
 async def test_live_golden_path_smoke_round_trip() -> None:
     fixture = golden_path_incident_fixture()
     session_buddy_url = os.environ["MAHAVISHNU_SESSION_BUDDY_URL"]
-    dhara_state_url = os.environ["MAHAVISHNU_DHARA_STATE_URL"]
+    mcp_state_url = os.environ["MAHAVISHNU_DHARA_STATE_URL"]
     akosha_url = os.environ["MAHAVISHNU_AKOSHA_URL"]
 
     session_buddy = SessionBuddy(_mock_config(session_buddy_url))
     mcp = MCPStateBackend(
-        base_url=dhara_state_url,
+        base_url=mcp_state_url,
         config=MCPStateConfig(enabled=True),
     )
     akosha = LiveMcpToolClient(akosha_url)

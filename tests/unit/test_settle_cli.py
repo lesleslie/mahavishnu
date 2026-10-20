@@ -11,7 +11,7 @@ The test file expects:
   - Registers a ``settle`` sub-typer on ``app`` with three commands:
     ``status <run_ref>``, ``start <run_ref>``, and ``merge <run_ref>``.
 
-The heavy machinery (Dhara substrate, settle record parsing) is mocked so
+The heavy machinery (MCP substrate, settle record parsing) is mocked so
 the tests stay fast and deterministic.
 """
 

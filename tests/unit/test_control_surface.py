@@ -60,7 +60,7 @@ def test_recovery_summary_without_mcp_state() -> None:
     assert summary["recovered_workflows"] == 2
     assert summary["recovered_approvals"] == 1
     assert summary["recovered_pools"] == 1
-    assert summary["dhara_available"] is False
+    assert summary["mcp_available"] is False
     assert summary["last_recovered_at"] is None
 
 
@@ -99,7 +99,7 @@ def test_recovery_summary_with_mcp_state() -> None:
     assert summary["recovered_approvals"] == 3
     assert summary["recovered_pools"] == 1
     assert summary["recovered_routing_decisions"] == 2
-    assert summary["dhara_available"] is True
+    assert summary["mcp_available"] is True
     assert summary["last_recovered_at"] is not None
 
 
@@ -129,7 +129,7 @@ def test_recovery_summary_swallows_mcp_errors() -> None:
     assert summary["recovered_approvals"] == 1
     assert summary["recovered_pools"] == 0
     assert summary["recovered_routing_decisions"] == 0
-    assert summary["dhara_available"] is False
+    assert summary["mcp_available"] is False
     assert summary["last_recovered_at"] is None
 
 
@@ -189,7 +189,7 @@ def test_event_activity_and_fix_traces() -> None:
     )
     assert status["trace_count"] == 2
     assert status["latest_stage"] == "finish"
-    assert status["dhara_available"] is False
+    assert status["mcp_available"] is False
 
 
 def test_approval_helpers_delegate_to_manager() -> None:

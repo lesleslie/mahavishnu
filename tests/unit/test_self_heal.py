@@ -15,11 +15,11 @@ Layer responsibilities:
   re-wiring callers. The marker string is the canonical regression pin.
 - L3 (rule extraction): when an operation ultimately fails, the failure
   is summarized into a ``RuleRecord`` and persisted in the in-memory
-  ``RuleStore`` (Dhara-backed implementation is a follow-up; v0 uses an
+  ``RuleStore`` (MCP-backed implementation is a follow-up; v0 uses an
   in-memory store so callers can plug it in immediately).
 
-Substrate status: ``sql_blocked`` (audit log table is gated on Dhara
-schema migration; v0 is in-memory). Dhara wiring is a follow-up.
+Substrate status: ``sql_blocked`` (audit log table is gated on MCP
+schema migration; v0 is in-memory). MCP wiring is a follow-up.
 """
 
 from __future__ import annotations
@@ -312,7 +312,7 @@ class TestExtractRule:
 
 
 class TestRuleStore:
-    """In-memory v0 of the audit log; Dhara-backed implementation follows."""
+    """In-memory v0 of the audit log; MCP-backed implementation follows."""
 
     def test_record_and_retrieve(self) -> None:
         store = RuleStore()

@@ -151,10 +151,8 @@ async def _broadcast_settle_transition(
             action=action,
             merge=merge,
         )
-    except Exception:  # broadcast failure is non-fatal — settle is the source of truth  # noqa: BLE001
-        logger.exception(
-            "settle broadcast failed run_ref=%s action=%s", run_ref, action
-        )
+    except Exception:  # broadcast failure is non-fatal — settle is the source of truth
+        logger.exception("settle broadcast failed run_ref=%s action=%s", run_ref, action)
 
 
 def _latest_transition(record: Any) -> dict[str, str]:

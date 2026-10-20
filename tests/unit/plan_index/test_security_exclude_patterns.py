@@ -2,7 +2,7 @@
 
 The CLI orchestrator (Task 15) must honor `--exclude PATTERN` (repeatable)
 and `--exclude-from FILE` (gitignore syntax). Files matching those patterns
-must NOT be indexed into Dhara.
+must NOT be indexed into MCP.
 
 Adaptation note (brief correction #4): the current implementation of
 `scripts/regenerate_plan_index.py` (HEAD commit) does not yet expose

@@ -16,17 +16,17 @@ on.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pydantic import BaseModel, ConfigDict
 
-if TYPE_CHECKING:
-    from mahavishnu.core.capabilities import (
-        CapabilityId,
-        EngineId,
-        EnvelopeId,
-        TraceId,
-    )
+from mahavishnu.core.capabilities import (
+    # Runtime import (not TYPE_CHECKING): Pydantic resolves field annotations
+    # at class-creation time, so these `Annotated[str, StringConstraints(...)]`
+    # newtypes must be importable or the models fail to build.
+    CapabilityId,
+    EngineId,
+    EnvelopeId,
+    TraceId,
+)
 
 _FROZEN_FORBID = ConfigDict(frozen=True, extra="forbid")
 

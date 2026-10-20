@@ -35,7 +35,7 @@ def test_golden_path_trace_assertions_reference_one_correlation_id() -> None:
 
     assert any(correlation_id in assertion for assertion in fixture.trace_assertions)
     assert any("Session-Buddy" in assertion for assertion in fixture.trace_assertions)
-    assert any("Dhara" in assertion for assertion in fixture.trace_assertions)
+    assert any("MCP" in assertion for assertion in fixture.trace_assertions)
 
 
 def test_golden_path_operator_transcript_covers_expected_stages() -> None:
@@ -46,5 +46,5 @@ def test_golden_path_operator_transcript_covers_expected_stages() -> None:
     assert "Crackerjack" in transcript
     assert "Session-Buddy" in transcript
     assert "approval" in transcript.lower()
-    assert "Dhara" in transcript
+    assert "MCP" in transcript
     assert "Akosha" in transcript

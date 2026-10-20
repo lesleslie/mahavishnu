@@ -149,8 +149,8 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
     the substrate is never queried. Without this gate, a caller could read
     arbitrary keys via ``workflow_id="../../etc/passwd"``.
     """
-    dhara_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, dhara_get)
+    mcp_get = AsyncMock()
+    _patch_mcp_get(monkeypatch, mcp_get)
 
     result = await workflow_get_outcome("../../etc/passwd")
 
@@ -158,7 +158,7 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
         "workflow_id": "../../etc/passwd",
         "status": "invalid_workflow_id",
     }
-    dhara_get.assert_not_called()
+    mcp_get.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -171,8 +171,8 @@ async def test_registered_tool_rejects_path_traversal(
     guard is wired in the production registration path, not only on the
     module-level coroutine.
     """
-    dhara_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, dhara_get)
+    mcp_get = AsyncMock()
+    _patch_mcp_get(monkeypatch, mcp_get)
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -184,7 +184,7 @@ async def test_registered_tool_rejects_path_traversal(
         "workflow_id": "../../etc/passwd",
         "status": "invalid_workflow_id",
     }
-    dhara_get.assert_not_called()
+    mcp_get.assert_not_called()
 
 
 async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
@@ -197,8 +197,8 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
 
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
-    dhara_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, dhara_get)
+    mcp_get = AsyncMock()
+    _patch_mcp_get(monkeypatch, mcp_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -209,7 +209,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     assert isinstance(result, dict)
     assert result.get("status") == "error"
     assert result.get("error_code") == "AUTH_REQUIRED"
-    dhara_get.assert_not_called()
+    mcp_get.assert_not_called()
 
 
 async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
@@ -223,8 +223,8 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
 
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
-    dhara_get = AsyncMock(return_value=None)
-    _patch_mcp_get(monkeypatch, dhara_get)
+    mcp_get = AsyncMock(return_value=None)
+    _patch_mcp_get(monkeypatch, mcp_get)
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -235,4 +235,4 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     # No AUTH_REQUIRED envelope → wrapper fell through.
     if isinstance(result, dict):
         assert result.get("error_code") != "AUTH_REQUIRED"
-    dhara_get.assert_awaited_once_with("workflow-results/wf-ok/")
+    mcp_get.assert_awaited_once_with("workflow-results/wf-ok/")

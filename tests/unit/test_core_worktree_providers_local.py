@@ -441,7 +441,7 @@ class _FakeCache:
 
 
 class _FakeMCPClient:
-    """Stand-in for the Dhara thin client. Just records execute() calls."""
+    """Stand-in for the MCP thin client. Just records execute() calls."""
 
     def __init__(self) -> None:
         self.executes: list[tuple[str, dict | None]] = []
@@ -473,7 +473,7 @@ def _make_handle(
     wt_path: Path | None = None,
     principal: Principal | None = None,
 ):
-    """Build a WorktreeHandle for fetch tests without Dhara round-trip."""
+    """Build a WorktreeHandle for fetch tests without MCP round-trip."""
     from mahavishnu.core.worktree_providers.types import (
         LocalWorktreeRef,
         WorktreeHandle,
@@ -570,8 +570,8 @@ class TestCreateWorktreeHandleStreaming:
         from mahavishnu.core.worktree_providers import local as local_mod
 
         # Pin both the worktree base and the per-worktree path under
-        # the same temp dir so the Dhara path-validation allowlist
-        # accepts the storage path. (Dhara rejects paths outside the
+        # the same temp dir so the MCP path-validation allowlist
+        # accepts the storage path. (MCP rejects paths outside the
         # configured worktree base; the test must keep them aligned.)
         wt_base = tmp_path / "wtbase"
         wt_base.mkdir()
@@ -621,7 +621,7 @@ class TestCreateWorktreeHandleStreaming:
         assert handle.sha256 == metadata["sha256"]
         # handle.bytes_size matches the metadata size
         assert handle.bytes_size == int(metadata["size"])
-        # Dhara registration was removed when Dhara itself was retired
+        # MCP registration was removed when MCP itself was retired
         # from the Bodai core components; no INSERT assertions remain.
 
     async def test_create_worktree_handle_emits_streaming_op_metric(

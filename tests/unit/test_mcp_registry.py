@@ -1,4 +1,4 @@
-"""Tests for the Dhara-backed worktree registry (ADR 015 v4 §11)."""
+"""Tests for the MCP-backed worktree registry (ADR 015 v4 §11)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from mahavishnu.auth import Principal
+from mahavishnu.core.paths import get_worktree_base_path
 from mahavishnu.core.worktree_providers.mcp_registry import (
     list_handles,
     register_handles,
@@ -117,10 +118,17 @@ class FakeMCPClient:
 
 
 def _make_handle(name: str = "h-1", repo: str = "mahavishnu") -> Any:
+    # Build the worktree path under the same base the production
+    # validator enforces (``get_worktree_base_path`` honors
+    # ``MAHAVISHNU_WORKTREE_BASE_PATH`` and the documented default of
+    # ``~/.local/state/mahavishnu/worktrees``). Hard-coding an absolute
+    # path here encodes the old worktree location and breaks the
+    # "storage path must live inside the worktree base" rule that
+    # ``_validate_storage_path_within_base`` enforces.
     return synthesize_handle(
         f"/Users/les/Projects/{repo}",
         {
-            "worktree": f"/Users/les/worktrees/{name}",
+            "worktree": str(get_worktree_base_path() / name),
             "HEAD": "abc123",
             "branch": "refs/heads/feature/auth",
         },

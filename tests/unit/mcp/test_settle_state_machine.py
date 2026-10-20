@@ -218,7 +218,7 @@ def test_binding_merge_strategy_defaults_to_none() -> None:
     """The ``merge_strategy`` field defaults to ``None`` for backward compat.
 
     Records written before Phase 3 (no ``merge_strategy`` key in the
-    Dhara payload) deserialize cleanly because the dataclass field
+    MCP payload) deserialize cleanly because the dataclass field
     defaults to ``None`` and ``_parse_bindings`` accepts absence.
     """
     binding = Binding(path="p", base="b")
@@ -247,7 +247,7 @@ def test_binding_accepts_merge_strategy_enum() -> None:
 
 
 def test_binding_strategy_roundtrip() -> None:
-    """REQ-SM-007: ``Binding.merge_strategy`` round-trips through Dhara shape.
+    """REQ-SM-007: ``Binding.merge_strategy`` round-trips through MCP shape.
 
     ``Binding(merge_strategy=MergeStrategy.SEMANTIC) → to_dict() → from_dict()
     → Binding(merge_strategy="semantic")``. The wire format is the raw
@@ -278,7 +278,7 @@ def test_binding_strategy_roundtrip() -> None:
 
 
 def test_binding_strategy_roundtrip_pydantic_v2_compat() -> None:
-    """REQ-SM-007 + REQ-SM-004: ``SettleRunRecord`` Dhara payload round-trip.
+    """REQ-SM-007 + REQ-SM-004: ``SettleRunRecord`` MCP payload round-trip.
 
     Belt-and-suspenders: a full ``SettleRunRecord`` with bindings of mixed
     strategies round-trips through ``to_dict`` / ``from_dict`` with

@@ -67,7 +67,7 @@ def registered(server):
 
 
 @pytest.fixture
-def fake_dhara():
+def fake_mcp():
     """Return a MagicMock for the MCPAdapter constructor."""
     instance = MagicMock()
     instance.query_time_series = AsyncMock(return_value=[])
@@ -102,9 +102,9 @@ class TestGitVelocityDashboard:
     """get_git_velocity_dashboard aggregates commits/branches/conflicts."""
 
     @pytest.mark.asyncio
-    async def test_success_aggregates_per_repo(self, registered, fake_dhara):
+    async def test_success_aggregates_per_repo(self, registered, fake_mcp):
         """Each repo should get per-day commits, branches, conflicts."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             side_effect=[
                 [
                     {"commits": 10, "branch_switches": 2, "merge_conflicts": 1},
@@ -114,7 +114,7 @@ class TestGitVelocityDashboard:
             ]
         )
 
-        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
             result = await registered.tools["get_git_velocity_dashboard"](
                 repo_paths=["/work/repo-a", "/work/repo-b"],
                 days_back=10,
@@ -132,10 +132,10 @@ class TestGitVelocityDashboard:
         assert result["result"]["aggregated"]["total_projects"] == 2
 
     @pytest.mark.asyncio
-    async def test_missing_app_returns_error(self, registered, fake_dhara):
+    async def test_missing_app_returns_error(self, registered, fake_mcp):
         """Without a server.app attribute, return error dict."""
         registered.app = None
-        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
             result = await registered.tools["get_git_velocity_dashboard"](
                 repo_paths=["/x/repo-a"], user_id="u1"
             )
@@ -143,7 +143,7 @@ class TestGitVelocityDashboard:
         assert "App instance" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_exception_returns_error(self, registered, fake_dhara):
+    async def test_exception_returns_error(self, registered, fake_mcp):
         """An exception in MCPAdapter should be caught and returned as error."""
         with patch(
             "mahavishnu.core.mcp_adapter.MCPAdapter",
@@ -165,9 +165,9 @@ class TestRepositoryHealth:
     """get_repository_health returns PR/branch counts and a health score."""
 
     @pytest.mark.asyncio
-    async def test_calculates_health_score(self, registered, fake_dhara):
+    async def test_calculates_health_score(self, registered, fake_mcp):
         """With no stale PRs/branches and full success, score should be 100."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             return_value=[
                 {"stale_prs": 0, "stale_branches": 0, "open_prs": 3},
             ]
@@ -181,7 +181,7 @@ class TestRepositoryHealth:
             return instance
 
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=_make_sb_integration(),
@@ -199,9 +199,9 @@ class TestRepositoryHealth:
         assert r["health_status"] == "excellent"
 
     @pytest.mark.asyncio
-    async def test_stale_prs_lower_score(self, registered, fake_dhara):
+    async def test_stale_prs_lower_score(self, registered, fake_mcp):
         """Stale PRs should reduce the score (5 points per, capped at 30)."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             return_value=[{"stale_prs": 4, "stale_branches": 0, "open_prs": 5}]
         )
 
@@ -209,7 +209,7 @@ class TestRepositoryHealth:
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 100})
 
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -224,13 +224,13 @@ class TestRepositoryHealth:
         assert result["result"]["health_status"] == "good"
 
     @pytest.mark.asyncio
-    async def test_session_buddy_unavailable(self, registered, fake_dhara):
+    async def test_session_buddy_unavailable(self, registered, fake_mcp):
         """When session-buddy integration raises, workflow_health should be unavailable."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             return_value=[{"stale_prs": 0, "stale_branches": 0, "open_prs": 0}]
         )
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 side_effect=RuntimeError("down"),
@@ -243,10 +243,10 @@ class TestRepositoryHealth:
         assert result["result"]["workflow_performance"]["status"] == "unavailable"
 
     @pytest.mark.asyncio
-    async def test_missing_app(self, registered, fake_dhara):
+    async def test_missing_app(self, registered, fake_mcp):
         """Missing server.app should yield error dict."""
         registered.app = None
-        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara):
+        with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
             result = await registered.tools["get_repository_health"](
                 repo_path="/x/repo-a", user_id="u1"
             )
@@ -262,9 +262,9 @@ class TestCrossProjectPatterns:
     """get_cross_project_patterns aggregates git/workflow/quality patterns."""
 
     @pytest.mark.asyncio
-    async def test_returns_aggregated_payload(self, registered, fake_dhara):
+    async def test_returns_aggregated_payload(self, registered, fake_mcp):
         """Successful run returns analysis_period and pattern sections."""
-        fake_dhara.aggregate_patterns = AsyncMock(
+        fake_mcp.aggregate_patterns = AsyncMock(
             return_value=[
                 {"type": "high_velocity", "repository": "repo-a"},
             ]
@@ -275,7 +275,7 @@ class TestCrossProjectPatterns:
         sb.get_quality_patterns = AsyncMock(return_value=[])
 
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -298,9 +298,9 @@ class TestCrossProjectPatterns:
         assert any("velocity" in s.lower() for s in r["insights"])
 
     @pytest.mark.asyncio
-    async def test_high_velocity_with_quality_issues(self, registered, fake_dhara):
+    async def test_high_velocity_with_quality_issues(self, registered, fake_mcp):
         """A high-velocity repo with high-severity quality issues should correlate."""
-        fake_dhara.aggregate_patterns = AsyncMock(
+        fake_mcp.aggregate_patterns = AsyncMock(
             return_value=[{"type": "high_velocity", "repository": "repo-a"}]
         )
         sb = MagicMock()
@@ -309,7 +309,7 @@ class TestCrossProjectPatterns:
             return_value=[{"severity": "high", "repository": "repo-a"}]
         )
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -324,14 +324,14 @@ class TestCrossProjectPatterns:
         assert "velocity_quality_correlation" in corr_types
 
     @pytest.mark.asyncio
-    async def test_failing_workflow_pattern(self, registered, fake_dhara):
+    async def test_failing_workflow_pattern(self, registered, fake_mcp):
         """Failing workflows should be flagged as a correlation."""
-        fake_dhara.aggregate_patterns = AsyncMock(return_value=[])
+        fake_mcp.aggregate_patterns = AsyncMock(return_value=[])
         sb = MagicMock()
         sb.detect_patterns = AsyncMock(return_value=[{"name": "wf1", "success_rate": 50}])
         sb.get_quality_patterns = AsyncMock(return_value=[])
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -343,7 +343,7 @@ class TestCrossProjectPatterns:
         assert "workflow_failure_pattern" in corr_types
 
     @pytest.mark.asyncio
-    async def test_exception_caught(self, registered, fake_dhara):
+    async def test_exception_caught(self, registered, fake_mcp):
         """An exception should be reported as an error result, not raise."""
         with patch(
             "mahavishnu.core.mcp_adapter.MCPAdapter",
@@ -363,15 +363,15 @@ class TestHealthScoreEdgeCases:
     """Verify the health-score formula via the public tool."""
 
     @pytest.mark.asyncio
-    async def test_health_score_critical(self, registered, fake_dhara):
+    async def test_health_score_critical(self, registered, fake_mcp):
         """Many stale PRs/branches + low workflow success should yield critical."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             return_value=[{"stale_prs": 50, "stale_branches": 50, "open_prs": 100}]
         )
         sb = MagicMock()
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 0})
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,
@@ -383,15 +383,15 @@ class TestHealthScoreEdgeCases:
         assert result["result"]["health_status"] == "critical"
 
     @pytest.mark.asyncio
-    async def test_health_score_fair(self, registered, fake_dhara):
+    async def test_health_score_fair(self, registered, fake_mcp):
         """Mid-range score should yield 'fair' status."""
-        fake_dhara.query_time_series = AsyncMock(
+        fake_mcp.query_time_series = AsyncMock(
             return_value=[{"stale_prs": 8, "stale_branches": 0, "open_prs": 10}]
         )
         sb = MagicMock()
         sb.get_workflow_metrics = AsyncMock(return_value={"success_rate": 100})
         with (
-            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_dhara),
+            patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
             patch(
                 "mahavishnu.session_buddy.integration.SessionBuddyIntegration",
                 return_value=sb,

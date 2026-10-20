@@ -22,14 +22,14 @@ from mahavishnu.core.approval_manager import (
 
 @pytest.fixture
 def manager_with_pending_request() -> tuple[ApprovalManager, MagicMock, ApprovalRequest]:
-    """ApprovalManager wired to a mock Dhara backend with one pending request."""
-    mock_dhara = MagicMock()
-    mock_dhara.schedule_put = MagicMock()
-    mock_dhara.schedule_delete = MagicMock()
-    manager = ApprovalManager(mcp_state=mock_dhara)
+    """ApprovalManager wired to a mock MCP backend with one pending request."""
+    mock_mcp = MagicMock()
+    mock_mcp.schedule_put = MagicMock()
+    mock_mcp.schedule_delete = MagicMock()
+    manager = ApprovalManager(mcp_state=mock_mcp)
     request = manager.create_request(approval_type="publish", context={})
-    mock_dhara.schedule_put.reset_mock()
-    return manager, mock_dhara, request
+    mock_mcp.schedule_put.reset_mock()
+    return manager, mock_mcp, request
 
 
 def test_respond_calls_record_approval_decision_with_mapped_args(
@@ -38,7 +38,7 @@ def test_respond_calls_record_approval_decision_with_mapped_args(
 ) -> None:
     """Approved path: respond() must invoke record_approval_decision with
     decision="approved" and the request id as approval_id."""
-    manager, _mock_dhara, request = manager_with_pending_request
+    manager, _mock_mcp, request = manager_with_pending_request
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "true")
 
@@ -63,7 +63,7 @@ def test_respond_calls_record_approval_decision_with_denied_on_rejection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Denied path: decision="denied", rationale carries rejection_reason."""
-    manager, _mock_dhara, request = manager_with_pending_request
+    manager, _mock_mcp, request = manager_with_pending_request
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "true")
 
@@ -87,12 +87,12 @@ def test_respond_uses_actor_from_request_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """When the request context carries a 'decided_by' actor, it propagates."""
-    manager, mock_dhara, _ = manager_with_pending_request
+    manager, mock_mcp, _ = manager_with_pending_request
     request = manager.create_request(
         approval_type="version_bump",
         context={"decided_by": "alice@example.com"},
     )
-    mock_dhara.schedule_put.reset_mock()
+    mock_mcp.schedule_put.reset_mock()
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "true")
 
@@ -111,14 +111,14 @@ def test_respond_does_not_schedule_mcp_delete_when_flag_enabled(
 ) -> None:
     """When APPROVAL_LOG_V1_ENABLED=true, the legacy delete-on-resolve branch
     must NOT fire — history is now persisted by the producer, not deleted."""
-    manager, mock_dhara, request = manager_with_pending_request
+    manager, mock_mcp, request = manager_with_pending_request
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "true")
 
     with patch("mahavishnu.core.approval_manager.record_approval_decision"):
         manager.respond(request.id, approved=True)
 
-    mock_dhara.schedule_delete.assert_not_called()
+    mock_mcp.schedule_delete.assert_not_called()
 
 
 def test_respond_still_deletes_when_flag_disabled(
@@ -127,14 +127,14 @@ def test_respond_still_deletes_when_flag_disabled(
 ) -> None:
     """Rollback path: APPROVAL_LOG_V1_ENABLED=false restores the legacy
     delete-on-resolve behavior; the producer is NOT invoked."""
-    manager, mock_dhara, request = manager_with_pending_request
+    manager, mock_mcp, request = manager_with_pending_request
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "false")
 
     with patch("mahavishnu.core.approval_manager.record_approval_decision") as mock_writer:
         manager.respond(request.id, approved=True)
 
-    mock_dhara.schedule_delete.assert_called_once_with(f"approval/v1/{request.id}")
+    mock_mcp.schedule_delete.assert_called_once_with(f"approval/v1/{request.id}")
     mock_writer.assert_not_called()
 
 
@@ -143,7 +143,7 @@ def test_respond_on_expired_request_still_deletes_when_flag_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Expired path also honors the feature flag."""
-    manager, mock_dhara, _ = manager_with_pending_request
+    manager, mock_mcp, _ = manager_with_pending_request
     expired = ApprovalRequest(
         id="exp-wired",
         approval_type="version_bump",
@@ -160,7 +160,7 @@ def test_respond_on_expired_request_still_deletes_when_flag_disabled(
         with pytest.raises(ValueError, match="expired"):
             manager.respond(expired.id, approved=True)
 
-    mock_dhara.schedule_delete.assert_called_once_with(f"approval/v1/{expired.id}")
+    mock_mcp.schedule_delete.assert_called_once_with(f"approval/v1/{expired.id}")
     mock_writer.assert_not_called()
 
 
@@ -170,7 +170,7 @@ def test_cleanup_expired_still_deletes_when_flag_disabled(
 ) -> None:
     """cleanup_expired is an admin op — must keep deleting regardless of flag
     (it does not persist a structured ApprovalLog; only live resolutions do)."""
-    manager, mock_dhara, _ = manager_with_pending_request
+    manager, mock_mcp, _ = manager_with_pending_request
     expired = ApprovalRequest(
         id="cleanup-expired",
         approval_type="version_bump",
@@ -185,4 +185,4 @@ def test_cleanup_expired_still_deletes_when_flag_disabled(
 
     manager.cleanup_expired()
 
-    mock_dhara.schedule_delete.assert_called_once_with("approval/v1/cleanup-expired")
+    mock_mcp.schedule_delete.assert_called_once_with("approval/v1/cleanup-expired")

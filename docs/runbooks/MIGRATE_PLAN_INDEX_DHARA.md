@@ -66,9 +66,9 @@ itself is functional.
 ## Step 2 — Audit-only dry-run of the bootstrap
 
 Before pointing the script at a live Dhara, run it in audit-only mode
-(no `--dhara-url`, no `--dry-run` confusion — `--dry-run` here means
+(no `--mcp-url`, no `--dry-run` confusion — `--dry-run` here means
 "don't write even if Dhara is reachable"). The bootstrap script
-defaults to audit-only when `--dhara-url` is omitted.
+defaults to audit-only when `--mcp-url` is omitted.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -92,7 +92,7 @@ overwrites the same records with no duplicates.
 cd /Users/les/Projects/mahavishnu
 uv run python scripts/bootstrap_plan_index.py \
     --repo-root . \
-    --dhara-url http://localhost:8683/mcp \
+    --mcp-url http://localhost:8683/mcp \
     --backup-index
 # stderr ⇒ backed up PLAN_INDEX.md -> docs/plans/PLAN_INDEX.20260915T000000Z.backup
 # stderr ⇒ bootstrap complete: success=N errors=0 skipped=K (no frontmatter)
@@ -106,7 +106,7 @@ the partial-failure errors in Dhara's
 | Symptom | Likely cause |
 |---|---|
 | `normalize_repo_url` rejection on every record | Frontmatter `repo:` field uses an unrecognized URL form. |
-| Dhara connection refused | `--dhara-url` points at the wrong port or Dhara is down. |
+| Dhara connection refused | `--mcp-url` points at the wrong port or Dhara is down. |
 | Partial success (some succeed, some error) | A few records have malformed frontmatter; the rebuilder continues. Re-run after fixing the frontmatter. |
 
 ## Step 4 — Three-way audit (PLAN_INDEX.md ↔ filesystem ↔ Dhara)
@@ -117,8 +117,8 @@ The three-way audit script surfaces drift.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-uv run python scripts/bootstrap_plan_index.py --repo-root . --dhara-url http://localhost:8683/mcp > /tmp/bootstrap.summary.json
-uv run python scripts/audit_plan_index.py --repo-root . --dhara-records /tmp/bootstrap.summary.json
+uv run python scripts/bootstrap_plan_index.py --repo-root . --mcp-url http://localhost:8683/mcp > /tmp/bootstrap.summary.json
+uv run python scripts/audit_plan_index.py --repo-root . --mcp-records /tmp/bootstrap.summary.json
 # exit 0 ⇒ consistent; proceed to step 5
 # exit 1 ⇒ drift detected; inspect which leg diverged
 ```
@@ -181,7 +181,7 @@ delete the affected `plan_index/*` keys via Dhara's MCP tooling.
   files only when the timestamp string differs. Manual operators
   rarely trigger this race.
 - The audit script reads from a JSON snapshot of the bootstrap
-  output (`--dhara-records`); it does not hold a live Dhara
+  output (`--mcp-records`); it does not hold a live Dhara
   connection, so it is safe to re-run any number of times.
 
 ## Observability

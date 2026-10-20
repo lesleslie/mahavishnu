@@ -1,4 +1,4 @@
-"""Coverage-focused tests for the Dhara-backed adapter registry client."""
+"""Coverage-focused tests for the MCP-backed adapter registry client."""
 
 from __future__ import annotations
 

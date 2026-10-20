@@ -606,7 +606,7 @@ async def test_fetch_active_alerts_empty_when_alerts_none_or_no_top(
 async def test_fetch_recovery_summary_zero_default_when_report_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """No report → all zeros, no Dhara, no last_recovered_at."""
+    """No report → all zeros, no MCP, no last_recovered_at."""
     _patch_report(monkeypatch, None)
 
     from mahavishnu.tui.app import fetch_recovery_summary
@@ -617,7 +617,7 @@ async def test_fetch_recovery_summary_zero_default_when_report_none(
         "recovered_approvals": 0,
         "recovered_pools": 0,
         "recovered_routing_decisions": 0,
-        "dhara_available": False,
+        "mcp_available": False,
         "last_recovered_at": None,
     }
 
@@ -632,7 +632,7 @@ async def test_fetch_recovery_summary_returns_recovery_fields(
         recovered_approvals=2,
         recovered_pools=1,
         recovered_routing_decisions=4,
-        dhara_available=True,
+        mcp_available=True,
         last_recovered_at=datetime(2026, 2, 1, tzinfo=UTC),
     )
     _patch_report(monkeypatch, _make_report(recovery=recovery))
@@ -644,7 +644,7 @@ async def test_fetch_recovery_summary_returns_recovery_fields(
     assert result["recovered_approvals"] == 2
     assert result["recovered_pools"] == 1
     assert result["recovered_routing_decisions"] == 4
-    assert result["dhara_available"] is True
+    assert result["mcp_available"] is True
     assert result["last_recovered_at"] == "2026-02-01T00:00:00+00:00"
 
 
@@ -2529,7 +2529,7 @@ async def test_recovery_screen_fetch(
                 "recovered_approvals": 2,
                 "recovered_pools": 3,
                 "recovered_routing_decisions": 4,
-                "dhara_available": True,
+                "mcp_available": True,
                 "last_recovered_at": "2026-01-01T00:00:00+00:00",
             }
         ),

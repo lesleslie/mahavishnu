@@ -505,9 +505,9 @@ class TestSelfImprovementGenerateVerification:
         tools = SelfImprovementTools(mock_app)
 
         # Three or more records so the count >= 3 threshold is met.
-        dhara_records = [{"id": f"rec-{i}"} for i in range(4)]
-        dhara_client = MagicMock()
-        dhara_client.query_time_series = AsyncMock(return_value=dhara_records)
+        mcp_records = [{"id": f"rec-{i}"} for i in range(4)]
+        mcp_client = MagicMock()
+        mcp_client.query_time_series = AsyncMock(return_value=mcp_records)
 
         # verification_enabled stays False (default); consensus != REJECT
         # means status="generating" with a job-id and verification payload.
@@ -517,7 +517,7 @@ class TestSelfImprovementGenerateVerification:
 
         with patch(
             "mahavishnu.core.mcp_adapter.MCPAdapter",
-            return_value=dhara_client,
+            return_value=mcp_client,
         ):
             result = await tools.self_improvement_generate(
                 fingerprint="deadbeef" * 4,  # 32 hex chars

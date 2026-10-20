@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""One-shot bootstrap for the Dhara-canonical plan index.
+"""One-shot bootstrap for the MCP-canonical plan index.
 
 Migration step 1 (per docs/plans/2026-09-10-plan-index-mcp.md
 §Migration): walk the filesystem, parse frontmatter, and upsert every
-plan record into Dhara. After this single run, the periodic
+plan record into MCP. After this single run, the periodic
 ``mahavishnu.plan_index.cron`` cycle (Task 14) takes over for ongoing
-sync — the cron path is incremental against the canonical Dhara index
+sync — the cron path is incremental against the canonical MCP index
 this script seeds.
 
 Usage:
@@ -15,23 +15,23 @@ Usage:
         --repo-root . --backup-index
 
 Behavior:
-    * Idempotent — PlanIndexRebuilder.upsert_all uses Dhara as canonical,
+    * Idempotent — PlanIndexRebuilder.upsert_all uses MCP as canonical,
       so a second run overwrites the same records with no duplicates.
     * Fail-soft — partial failures (bad repo URLs, missing frontmatter)
       are accumulated, logged, and surfaced in the exit summary. The
       rebuilder continues with remaining records; the script exits 0
       when at least one record succeeded, 1 only when zero records
       were upserted (e.g. nothing in the filesystem to bootstrap).
-    * Dhara is OPT-IN via ``--mcp-url``; without it the script runs
+    * MCP is OPT-IN via ``--mcp-url``; without it the script runs
       in audit-only mode (scan + counts, no writes). This mirrors the
-      three-way audit script's opt-in Dhara leg so the bootstrap can be
-      exercised in CI without a live Dhara subprocess.
+      three-way audit script's opt-in MCP leg so the bootstrap can be
+      exercised in CI without a live MCP subprocess.
 
 Backups are handled by a separate operator runbook step; this script
 invokes ``scripts/backup_plan_index.py`` when ``--backup-index`` is set.
 
 Exit codes:
-    0 = success (>=1 record processed; Dhara write OK when --mcp-url set)
+    0 = success (>=1 record processed; MCP write OK when --mcp-url set)
     1 = no records found OR total failure (every record errored)
     2 = bad CLI args
 
@@ -228,7 +228,7 @@ def _record_from_file(
         repo = ""
     if not repo:
         # Fall back to a synthetic repo that normalizes cleanly so the
-        # bootstrap record can still land in Dhara. The cron cycle's
+        # bootstrap record can still land in MCP. The cron cycle's
         # normalize_repo_url would reject this; here we keep going so
         # the operator can see "X files had no usable repo" in the
         # summary and decide whether to backfill frontmatter.
@@ -254,8 +254,8 @@ def _record_from_file(
     )
 
 
-async def _connect_dhara(url: str) -> Any:
-    """Construct a live Dhara client. Lazy import so the script runs in
+async def _connect_mcp(url: str) -> Any:
+    """Construct a live MCP client. Lazy import so the script runs in
     environments without the mcp package (CI, --dry-run). Raises
     ``ImportError`` when the package is missing — caught by ``main``.
     """
@@ -263,7 +263,7 @@ async def _connect_dhara(url: str) -> Any:
         from mcp.client import AsyncClient  # type: ignore[import-not-found]
     except ImportError as exc:
         raise SystemExit(
-            "Dhara client requested but the `mcp` package is not installed. "
+            "MCP client requested but the `mcp` package is not installed. "
             "Install with: uv pip install mcp\n"
             f"Original error: {exc}"
         ) from exc
@@ -273,10 +273,10 @@ async def _connect_dhara(url: str) -> Any:
 async def bootstrap(
     repo_root: Path,
     *,
-    dhara_client: Any | None = None,
+    mcp_client: Any | None = None,
     dry_run: bool = False,
 ) -> tuple[int, int, list[Any]]:
-    """Discover plan files, build records, upsert into Dhara.
+    """Discover plan files, build records, upsert into MCP.
 
     Returns ``(success_count, error_count, errors)`` mirroring the
     canonical ``PlanIndexRebuilder.upsert_all`` contract. ``errors``
@@ -295,7 +295,7 @@ async def bootstrap(
         else:
             records.append(rec)
 
-    if dry_run or dhara_client is None:
+    if dry_run or mcp_client is None:
         # Audit-only path: count records, surface skips, do NOT upsert.
         sys.stderr.write(
             f"bootstrap dry-run: scanned {len(md_files)} files, "
@@ -304,7 +304,7 @@ async def bootstrap(
         )
         return len(records), 0, []
 
-    store = PlanIndexStore(dhara_client)
+    store = PlanIndexStore(mcp_client)
     rebuilder = PlanIndexRebuilder()
     success, errors_count, errors = await rebuilder.upsert_all(records, store)
     sys.stderr.write(
@@ -347,7 +347,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bootstrap_plan_index",
         description=(
-            "One-shot filesystem scan + Dhara upsert that seeds the "
+            "One-shot filesystem scan + MCP upsert that seeds the "
             "plan_index canonical index before the periodic cron cycle "
             "(Task 14) takes over. Safe to re-run; writes are upserts."
         ),
@@ -362,14 +362,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--mcp-url",
         metavar="URL",
         help=(
-            "Dhara MCP URL (e.g. http://localhost:8683/mcp). When omitted, "
+            "MCP MCP URL (e.g. http://localhost:8683/mcp). When omitted, "
             "the script runs in audit-only mode (scan + counts, no writes)."
         ),
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=("Scan + count + report; do not write to Dhara even when --mcp-url is set."),
+        help=("Scan + count + report; do not write to MCP even when --mcp-url is set."),
     )
     parser.add_argument(
         "--backup-index",
@@ -393,20 +393,20 @@ async def _run_async(args: argparse.Namespace) -> int:
         if backup_path is not None:
             sys.stderr.write(f"backed up PLAN_INDEX.md -> {backup_path}\n")
 
-    dhara_client: Any | None = None
+    mcp_client: Any | None = None
     if args.mcp_url and not args.dry_run:
-        dhara_client = await _connect_dhara(args.mcp_url)
+        mcp_client = await _connect_mcp(args.mcp_url)
 
     success, errors_count, errors = await bootstrap(
         repo_root,
-        dhara_client=dhara_client,
+        mcp_client=mcp_client,
         dry_run=args.dry_run,
     )
     summary = {
         "success": success,
         "errors_count": errors_count,
         "error_samples": errors[:5],
-        "mode": ("dry-run" if args.dry_run else "audit-only" if dhara_client is None else "live"),
+        "mode": ("dry-run" if args.dry_run else "audit-only" if mcp_client is None else "live"),
     }
     print(_format_summary(summary))
     if success == 0 and errors_count == 0:

@@ -14,7 +14,7 @@ Scope (per Spec #1 brief, sql_blocked substrate):
 - Thin file-backed persister writing to $XDG_CACHE_HOME/mahavishnu/
   completion_reports/ (or ~/.cache fallback).
 
-The Dhara-backed persister is a follow-up once the substrate lands.
+The MCP-backed persister is a follow-up once the substrate lands.
 """
 
 from __future__ import annotations
@@ -252,7 +252,7 @@ class TestCompletionReportRoundtrip:
 
 
 # ---------------------------------------------------------------------------
-# Thin file-backed persister (Phase 1 v0; Dhara is follow-up)
+# Thin file-backed persister (Phase 1 v0; MCP is follow-up)
 # ---------------------------------------------------------------------------
 
 

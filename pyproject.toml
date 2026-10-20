@@ -449,21 +449,30 @@ force-sort-within-sections = true
     "B007", "B008", "E741",
     "SIM108", "SIM116", "SIM117", "TC003",
 ]
-# Pydantic v2 + ``from __future__ import annotations`` triplet: TC003/TC001
-# demand moving the imported type to TYPE_CHECKING, but Pydantic v2 cannot
-# resolve forward refs there at model-build time
-# (``PydanticUserError: class-not-fully-defined``). The runtime import is
-# required, so suppress the lint per-file. See the memory note
-# ``pydantic-future-annotations-forward-ref.md`` for the full pattern.
-# When adding a new Pydantic ``BaseModel`` field whose annotation is a
-# stdlib type (``datetime``, ``Path``, ``UUID``, ``Decimal`` ...) or an
-# app-level newtype, add the file here rather than moving the import.
-"mahavishnu/core/capabilities.py" = ["TC003"]
-"mahavishnu/core/repo_models.py" = ["TC003"]
-"mahavishnu/core/repositories/embeddings.py" = ["TC003"]
-"mahavishnu/core/repositories/events.py" = ["TC003"]
-"mahavishnu/engines/prefect_models.py" = ["TC003"]
+# Pydantic v2 + ``from __future__ import annotations``: TC003/TC001 demand
+# moving a field's type into TYPE_CHECKING, but Pydantic v2 cannot resolve
+# forward refs there at model-build time (``PydanticUserError:
+# <class> is not fully defined``). The runtime import is required, so the
+# rule is disabled globally for Pydantic via
+# ``[tool.ruff.lint.flake8-type-checking] runtime-evaluated-base-classes``
+# below rather than suppressed file-by-file here. If a Pydantic model ever
+# genuinely needs a type-checking-only import, prefer a local ``# noqa``
+# with a reason over adding a path back to this list. See the memory note
+# ``pydantic-future-annotations-forward-ref.md``.
+# Exception: FastMCP tool modules resolve signature annotations when building
+# schemas, so they need the same runtime imports but are not ``BaseModel``
+# subclasses and are therefore not covered by the global setting below.
 "mahavishnu/mcp/tools/get_capability_result_tool.py" = ["TC001"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic v2 evaluates field annotations at model-build time, so types
+# used in ``BaseModel`` fields must be importable at runtime. Without this,
+# TC001/TC003 move them into ``TYPE_CHECKING`` and the model fails with
+# ``PydanticUserError: <class> is not fully defined``. Telling ruff that
+# ``BaseModel`` subclasses are runtime-evaluated makes the rule correct
+# by default instead of suppressing it file-by-file. See the memory note
+# ``pydantic-future-annotations-forward-ref.md``.
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "msgspec.Struct"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 100

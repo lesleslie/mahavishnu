@@ -11,9 +11,9 @@ The CLI startup path (``mahavishnu mcp start``) uses
 
 These tests pin both the wiring (entry present in
 ``_OPTIONAL_TOOL_BLOCKS``) and the runtime behavior (the block actually
-registers the four core tools plus ``get_capability_result`` when Dhara
+registers the four core tools plus ``get_capability_result`` when MCP
 is reachable, and skips ``get_capability_result`` with a warning when
-Dhara init fails).
+MCP init fails).
 
 The companion test ``test_tool_profile_drift.py`` already enforces the
 orphan-check; this file enforces the call-time contract.
@@ -74,7 +74,7 @@ def test_capability_block_registers_four_core_tools() -> None:
     """Block must call ``register_capability_tools`` with the app config.
 
     This pins the FOUR-tool contract (list, resolve, plan, execute)
-    independent of Dhara availability.
+    independent of MCP availability.
     """
     server = _StubServer()
     with pytest.MonkeyPatch.context() as mp:
@@ -102,10 +102,10 @@ def test_capability_block_registers_four_core_tools() -> None:
 
 
 def test_capability_block_skips_get_capability_result_when_mcp_init_fails() -> None:
-    """Dhara init failure must NOT crash registration of the 4 core tools.
+    """MCP init failure must NOT crash registration of the 4 core tools.
 
     The contract from the v2 plan Phase 0: capability-tools must surface
-    loudly when Dhara is unavailable, NOT silently return ``not_found``.
+    loudly when MCP is unavailable, NOT silently return ``not_found``.
     Here we verify the complementary runtime path: when the substrate
     can't be reached at boot, the 4 core tools still register and the
     ``get_capability_result`` registration is skipped with a warning.
@@ -117,7 +117,7 @@ def test_capability_block_skips_get_capability_result_when_mcp_init_fails() -> N
         captured["core"] = fastmcp
 
     def _boom(*args, **kwargs) -> None:
-        raise RuntimeError("simulated Dhara outage")
+        raise RuntimeError("simulated MCP outage")
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(
@@ -127,10 +127,10 @@ def test_capability_block_skips_get_capability_result_when_mcp_init_fails() -> N
         )
         mp.setattr(
             "mahavishnu.core.mcp_adapter.MCPClient",
-            MagicMock(side_effect=RuntimeError("simulated Dhara outage")),
+            MagicMock(side_effect=RuntimeError("simulated MCP outage")),
             raising=False,
         )
-        # get_capability_result should NOT be called when Dhara init fails.
+        # get_capability_result should NOT be called when MCP init fails.
         gcr_mock = MagicMock(side_effect=AssertionError("must not be called"))
         mp.setattr(
             "mahavishnu.mcp.tools.get_capability_result_tool.register_get_capability_result",
@@ -140,7 +140,7 @@ def test_capability_block_skips_get_capability_result_when_mcp_init_fails() -> N
         bootstrap._register_capability_block(server)
 
     assert "core" in captured, (
-        "register_capability_tools must still be invoked even when Dhara "
+        "register_capability_tools must still be invoked even when MCP "
         "is unreachable; otherwise the 4 core tools are silently dropped."
     )
     gcr_mock.assert_not_called()
@@ -150,7 +150,7 @@ def test_capability_block_registers_get_capability_result_when_mcp_ok() -> None:
     """When MCPClient initializes, ``register_get_capability_result`` IS called."""
     server = _StubServer()
     gcr_mock = MagicMock()
-    dhara_mock = MagicMock()
+    mcp_mock = MagicMock()
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(
@@ -160,7 +160,7 @@ def test_capability_block_registers_get_capability_result_when_mcp_ok() -> None:
         )
         mp.setattr(
             "mahavishnu.core.mcp_adapter.MCPClient",
-            dhara_mock,
+            mcp_mock,
             raising=False,
         )
         mp.setattr(

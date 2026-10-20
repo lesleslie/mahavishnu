@@ -11,7 +11,7 @@ from scripts.audit_plan_index import (
     AuditReport,
     audit,
     collect_mcp_paths,
-    dhara_paths_from_records,
+    mcp_paths_from_records,
     extract_index_paths,
     format_report,
     main,
@@ -101,7 +101,7 @@ def test_audit_reports_ok_when_index_and_disk_agree() -> None:
     assert report.ok
     assert report.failures == 0
     assert report.index_count == 1
-    assert report.dhara_checked is False
+    assert report.mcp_checked is False
 
 
 def test_audit_flags_index_entry_missing_from_disk() -> None:
@@ -120,7 +120,7 @@ def test_audit_flags_mcp_record_missing_from_index() -> None:
     report = audit({"a.md"}, {"a.md"}, {"a.md", "orphan.md"})
     assert not report.ok
     assert report.in_mcp_only == frozenset({"orphan.md"})
-    assert report.dhara_checked is True
+    assert report.mcp_checked is True
 
 
 def test_audit_treats_index_without_mcp_record_as_warning_only() -> None:
@@ -132,7 +132,7 @@ def test_audit_treats_index_without_mcp_record_as_warning_only() -> None:
 def test_audit_three_way_clean_marks_mcp_checked() -> None:
     report = audit({"a.md"}, {"a.md"}, {"a.md"})
     assert report.ok
-    assert report.dhara_checked is True
+    assert report.mcp_checked is True
     assert report.missing_from_mcp == frozenset()
 
 
@@ -143,7 +143,7 @@ def test_audit_three_way_clean_marks_mcp_checked() -> None:
 
 def test_format_report_notes_unchecked_mcp_leg() -> None:
     lines = format_report(audit({"a.md"}, {"a.md"}))
-    assert any("Dhara leg not checked" in line for line in lines.out)
+    assert any("MCP leg not checked" in line for line in lines.out)
     assert lines.err == []
 
 
@@ -165,7 +165,7 @@ def test_format_report_emits_warning_for_missing_mcp_records() -> None:
 
 
 # --------------------------------------------------------------------------
-# Dhara adapters
+# MCP adapters
 # --------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ def test_mcp_paths_from_records_skips_malformed_entries() -> None:
         {"path": None},
         {"no_path": 1},
     ]
-    assert dhara_paths_from_records(records) == {"docs/plans/a.md"}
+    assert mcp_paths_from_records(records) == {"docs/plans/a.md"}
 
 
 async def test_collect_mcp_paths_uses_public_store_api() -> None:

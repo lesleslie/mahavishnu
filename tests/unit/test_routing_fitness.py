@@ -57,7 +57,7 @@ class TestSanitizeKeyComponent:
 
 
 class TestRoutingFitnessReader:
-    """Tests for Dhara-backed selector lookup."""
+    """Tests for MCP-backed selector lookup."""
 
     @pytest.mark.asyncio
     async def test_get_fitness_signals_returns_empty_without_backend(self):

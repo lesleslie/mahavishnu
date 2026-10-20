@@ -89,6 +89,17 @@ wait_for_ready_file() {
 
 toggle_claude_url() {
     local action="$1"
+    # Operator opt-out: setting ``BIFROST_CTL_NO_CC_URL_REWRITE=1`` (or
+    # any non-empty value) makes ``bifrost-ctl`` leave ``~/.claude/settings.json``
+    # alone. The gateway is still managed (start/stop/restart work as before);
+    # only the side-effect of pointing Claude Code's session at the gateway
+    # is skipped. Use this when the operator wants Bodai's LLM calls to
+    # route through Bifrost (via oneiric's ``BifrostLLMRouter``) while
+    # keeping Claude Code's own session on the direct upstream.
+    if [[ -n "${BIFROST_CTL_NO_CC_URL_REWRITE:-}" ]]; then
+        print "bifrost-ctl: BIFROST_CTL_NO_CC_URL_REWRITE set; skipping CC env.ANTHROPIC_BASE_URL rewrite (action=${action})"
+        return 0
+    fi
     if [[ ! -x "${TOGGLE_HELPER}" ]]; then
         print "warning: toggle helper not found at ${TOGGLE_HELPER}; skipping"
         return 0

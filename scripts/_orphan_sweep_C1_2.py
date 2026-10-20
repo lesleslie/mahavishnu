@@ -52,7 +52,11 @@ ASSIGNMENTS = {
         "routing-composition",
     ),
     "docs/plans/mcp-connection-stability-plan.md": ("complete", "historical", "mcp-design"),
-    "docs/plans/2026-07-16-native-macos-automation-backend-plan.md": ("active", "implementation", "terminal"),
+    "docs/plans/2026-07-16-native-macos-automation-backend-plan.md": (
+        "active",
+        "implementation",
+        "terminal",
+    ),
     "docs/plans/reviews/config-review.md": ("complete", "historical", "convergence-control-plane"),
     "docs/plans/reviews/ops-review.md": ("complete", "historical", "convergence-control-plane"),
     "docs/plans/reviews/security-review.md": (

@@ -13,7 +13,7 @@ These tests target the Phase 3 Task 3.5 surface:
 
 The tests are scoped to the unit contract. The manager is built with
 ``terminal_manager=None`` and a hand-rolled stub pool so neither
-async adapters nor Dhara are involved.
+async adapters nor MCP are involved.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class _StubPool:
 
 @pytest.fixture
 def pool_mgr_with_quota() -> PoolManager:
-    """A PoolManager pre-loaded with a single stub pool and no Dhara."""
+    """A PoolManager pre-loaded with a single stub pool and no MCP."""
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(terminal_manager=None, session_buddy_client=None)
     mgr._pools["pool_test"] = _StubPool()  # type: ignore[assignment]

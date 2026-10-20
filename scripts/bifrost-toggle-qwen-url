@@ -77,12 +77,18 @@ def _save_backup(url: str, dry_run: bool) -> None:
     BACKUP_PATH.write_text(url + "\n", encoding="utf-8")
 
 
-def _action_bifrost(path: Path, env_var: str, dry_run: bool) -> int:
+def _action_bifrost(path: Path, env_var: str, dry_run: bool, force: bool = False) -> int:
     settings = _read_settings(path)
     existing = _current_url(settings, env_var)
     if existing == BIFROST_URL:
         print(f"{env_var} already {BIFROST_URL}; no-op")
         return 0
+    if existing is not None and not force:
+        print(
+            f"{env_var}={existing!r} is not Bifrost-managed; refusing to overwrite. "
+            "Re-run with --force to back-up-and-overwrite."
+        )
+        return 1
     if existing is not None:
         _save_backup(existing, dry_run)
     env = settings.setdefault("env", {})
@@ -185,13 +191,20 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print intended changes without modifying any file.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="In 'bifrost' action, allow overwriting a non-Bifrost URL after "
+        "backing it up. The default refuses to overwrite a URL the toggle "
+        "did not set itself.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.action == "bifrost":
-        return _action_bifrost(args.settings, args.env_var, args.dry_run)
+        return _action_bifrost(args.settings, args.env_var, args.dry_run, args.force)
     if args.action == "direct":
         return _action_direct(args.settings, args.env_var, args.dry_run)
     return _action_status(args.settings, args.env_var)

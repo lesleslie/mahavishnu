@@ -739,7 +739,7 @@ class TestRemoveHandle:
 
         # Patch git subprocess helper to raise — must be swallowed.
         monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _exploding_remove)
-        # Patch Dhara remove directly so we don't trip the ownership check.
+        # Patch MCP remove directly so we don't trip the ownership check.
         monkeypatch.setattr(mcp_registry, "remove_handle", _fake_mcp_remove)
 
         cache = _FakeCache()
@@ -796,7 +796,7 @@ class TestRemoveHandle:
 
 
 class TestListHandles:
-    """``list_handles`` requires a caller; delegates to Dhara otherwise."""
+    """``list_handles`` requires a caller; delegates to MCP otherwise."""
 
     async def test_raises_permission_error_when_caller_missing(self):
         provider = LocalWorktreeProvider()

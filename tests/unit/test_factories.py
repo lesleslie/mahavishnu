@@ -117,7 +117,7 @@ class TestGetPoolManager:
         sb = MagicMock(name="SessionBuddyClient")
         mb = MagicMock(name="MessageBus")
         ep = MagicMock(name="EventPublisher")
-        ds = MagicMock(name="DharaState")
+        ds = MagicMock(name="MCPState")
 
         # The factory's ``tm = get_terminal_manager()`` local shadows the
         # ``terminal_manager`` parameter, so the explicit TM is only forwarded

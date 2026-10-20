@@ -62,7 +62,7 @@ python scripts/audit_plan_index.py --repo-root .
 ```
 
 Exits 0 when `PLAN_INDEX.md`, the filesystem, and — when
-`--dhara-records` is supplied — the Dhara records agree.
+`--mcp-records` is supplied — the Dhara records agree.
 
 ## Drift detection
 

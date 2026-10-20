@@ -187,7 +187,7 @@ class TestEcosystemStatusService:
                 "recovered_approvals": 3,
                 "recovered_pools": 4,
                 "recovered_routing_decisions": 5,
-                "dhara_available": True,
+                "mcp_available": True,
             }
 
     @pytest.mark.asyncio
@@ -205,14 +205,14 @@ class TestEcosystemStatusService:
         report = await service.generate_report()
         assert report.recovery.recovered_workflows == 2
         assert report.recovery.recovered_approvals == 3
-        assert report.recovery.dhara_available is True
+        assert report.recovery.mcp_available is True
 
     @pytest.mark.asyncio
     async def test_generate_report_defaults_without_recovery_provider(self):
         service = EcosystemStatusService(recovery_provider=None)
         report = await service.generate_report()
         assert report.recovery.recovered_workflows == 0
-        assert report.recovery.dhara_available is False
+        assert report.recovery.mcp_available is False
 
     @pytest.mark.asyncio
     async def test_generate_report_with_request_id(self):
@@ -427,7 +427,7 @@ class TestEcosystemStatusServiceCollectionBranches:
                     "recovered_approvals": 4,
                     "recovered_pools": 5,
                     "recovered_routing_decisions": 6,
-                    "dhara_available": True,
+                    "mcp_available": True,
                 }
 
         class Alert:
@@ -457,7 +457,7 @@ class TestEcosystemStatusServiceCollectionBranches:
         assert workflows.active_count == 1
         assert workflows.failed_count == 1
         assert recovery.recovered_workflows == 3
-        assert recovery.dhara_available is True
+        assert recovery.mcp_available is True
         assert alerts.total_active == 2
         assert alerts.by_severity["warning"] == 1
         assert alerts.by_severity["critical"] == 1
@@ -473,14 +473,14 @@ class TestEcosystemStatusServiceCollectionBranches:
                     recovered_approvals=8,
                     recovered_pools=9,
                     recovered_routing_decisions=10,
-                    dhara_available=False,
+                    mcp_available=False,
                 )
 
         svc = EcosystemStatusService(recovery_provider=RecoveryProvider())
         result = await svc._collect_recovery()
 
         assert result.recovered_workflows == 7
-        assert result.dhara_available is False
+        assert result.mcp_available is False
 
     @pytest.mark.asyncio
     async def test_collect_workflows_recovery_and_alerts_fail_closed(self):

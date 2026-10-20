@@ -14,7 +14,7 @@ from mahavishnu.core.models.persistence import ApprovalLog
 
 
 @pytest.fixture
-def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def mcp_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Stub mcp.put after module import so the substrate-compat guard sees it."""
     import mcp
 
@@ -28,7 +28,7 @@ def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 def test_record_approval_decision_persists_validated_struct(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
 ) -> None:
     record = record_approval_decision(
         approval_id="apr-001",
@@ -42,8 +42,8 @@ def test_record_approval_decision_persists_validated_struct(
     assert record.approval_id == "apr-001"
     assert isinstance(record.at, _dt.datetime)
     assert record.metadata.get("rationale") == "All checks pass"
-    assert dhara_storage.call_count == 1
-    call_args = dhara_storage.call_args
+    assert mcp_storage.call_count == 1
+    call_args = mcp_storage.call_args
     assert call_args.args[0] == "approval-history/apr-001/"
     persisted = call_args.args[1]
     assert isinstance(persisted, ApprovalLog)
@@ -51,7 +51,7 @@ def test_record_approval_decision_persists_validated_struct(
 
 
 def test_record_approval_decision_rejects_invalid_decision(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
 ) -> None:
     """Literal['approved','denied','requested'] enforced by substrate."""
     with pytest.raises(msgspec.ValidationError):
@@ -61,11 +61,11 @@ def test_record_approval_decision_rejects_invalid_decision(
             rationale="Test",
             decided_by="alice",
         )
-    assert dhara_storage.call_count == 0
+    assert mcp_storage.call_count == 0
 
 
 def test_record_approval_decision_passes_through_metadata(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
 ) -> None:
     record = record_approval_decision(
         approval_id="apr-003",
@@ -76,11 +76,11 @@ def test_record_approval_decision_passes_through_metadata(
     )
     assert record.metadata["ticket"] == "OPS-42"
     assert record.metadata["rationale"] == "Workflow failed"
-    assert dhara_storage.call_count == 1
+    assert mcp_storage.call_count == 1
 
 
 def test_record_approval_decision_emits_log_event(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Decision writer emits a structlog INFO event named approval_log_recorded.
@@ -115,4 +115,4 @@ def test_record_approval_decision_emits_log_event(
     assert extra.get("approval_id") == "apr-004"
     assert extra.get("action") == "requested"
     assert extra.get("actor") == "system"
-    assert dhara_storage.call_count == 1
+    assert mcp_storage.call_count == 1

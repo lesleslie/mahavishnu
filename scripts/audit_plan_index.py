@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Three-way consistency check: PLAN_INDEX.md <-> filesystem <-> Dhara.
+"""Three-way consistency check: PLAN_INDEX.md <-> filesystem <-> MCP.
 
 Usage:
     python scripts/audit_plan_index.py [--repo-root PATH]
@@ -8,12 +8,12 @@ Usage:
 Exits 0 if consistent; exits 1 if any of these fail:
   - Every entry in PLAN_INDEX.md corresponds to a .md file on disk.
   - Every .md file with valid frontmatter appears in PLAN_INDEX.md.
-  - Every Dhara-stored record is also in PLAN_INDEX.md.
+  - Every MCP-stored record is also in PLAN_INDEX.md.
 
-The Dhara leg is opt-in. The CLI reads records from a JSON file
+The MCP leg is opt-in. The CLI reads records from a JSON file
 (``--mcp-records``) so the audit stays runnable in CI without a live
-Dhara instance; callers that already hold a ``PlanIndexStore`` can use
-:func:`collect_mcp_paths` instead. Records not present in Dhara but
+MCP instance; callers that already hold a ``PlanIndexStore`` can use
+:func:`collect_mcp_paths` instead. Records not present in MCP but
 present in the rendered index are reported as warnings, not failures --
 the rendered artifact is allowed to lag a TTL-expired record.
 
@@ -49,7 +49,7 @@ _MAX_REPORTED = 10
 def extract_index_paths(index_text: str) -> set[str]:
     """Repo-relative paths referenced by a rendered PLAN_INDEX.md.
 
-    Accepts both the legacy and the Dhara-canonical row shapes; a file
+    Accepts both the legacy and the MCP-canonical row shapes; a file
     mid-migration may contain either.
     """
     paths: set[str] = set()
@@ -93,7 +93,7 @@ def scan_disk_paths(repo_root: Path, yaml_module: Any | None = None) -> set[str]
     return paths
 
 
-def dhara_paths_from_records(records: Iterable[dict[str, Any]]) -> set[str]:
+def mcp_paths_from_records(records: Iterable[dict[str, Any]]) -> set[str]:
     """Repo-relative paths carried by a sequence of plan record dicts."""
     paths: set[str] = set()
     for record in records:
@@ -111,14 +111,14 @@ async def collect_mcp_paths(store: Any, *, limit: int = 1000) -> set[str]:
     store are interchangeable here.
     """
     records = await store.list_all(limit=limit)
-    return dhara_paths_from_records(records)
+    return mcp_paths_from_records(records)
 
 
 @dataclass(frozen=True, slots=True)
 class AuditReport:
     """Outcome of the three-way comparison.
 
-    ``dhara_checked`` distinguishes "Dhara agreed" from "Dhara was not
+    ``mcp_checked`` distinguishes "MCP agreed" from "MCP was not
     consulted" -- an unchecked leg must never read as a pass.
     """
 
@@ -126,7 +126,7 @@ class AuditReport:
     in_disk_only: frozenset[str] = frozenset()
     in_mcp_only: frozenset[str] = frozenset()
     missing_from_mcp: frozenset[str] = frozenset()
-    dhara_checked: bool = False
+    mcp_checked: bool = False
     index_count: int = 0
 
     @property
@@ -143,19 +143,19 @@ class AuditReport:
 def audit(
     index_paths: set[str],
     disk_paths: set[str],
-    dhara_paths: set[str] | None = None,
+    mcp_paths: set[str] | None = None,
 ) -> AuditReport:
     """Compare the three views. Pure function -- no I/O."""
     return AuditReport(
         in_index_only=frozenset(index_paths - disk_paths),
         in_disk_only=frozenset(disk_paths - index_paths),
-        in_mcp_only=frozenset(dhara_paths - index_paths)
-        if dhara_paths is not None
+        in_mcp_only=frozenset(mcp_paths - index_paths)
+        if mcp_paths is not None
         else frozenset(),
-        missing_from_mcp=frozenset(index_paths - dhara_paths)
-        if dhara_paths is not None
+        missing_from_mcp=frozenset(index_paths - mcp_paths)
+        if mcp_paths is not None
         else frozenset(),
-        dhara_checked=dhara_paths is not None,
+        mcp_checked=mcp_paths is not None,
         index_count=len(index_paths),
     )
 
@@ -183,14 +183,14 @@ def format_report(report: AuditReport) -> _Lines:
     _report_group(
         lines, report.in_disk_only, "frontmatter'd files missing from PLAN_INDEX.md:", "+"
     )
-    _report_group(lines, report.in_mcp_only, "Dhara records missing from PLAN_INDEX.md:", "~")
+    _report_group(lines, report.in_mcp_only, "MCP records missing from PLAN_INDEX.md:", "~")
     if report.missing_from_mcp:
         lines.out.append(
-            f"WARN: {len(report.missing_from_mcp)} indexed paths have no Dhara record "
+            f"WARN: {len(report.missing_from_mcp)} indexed paths have no MCP record "
             "(expected while records are TTL-expiring)"
         )
     if report.ok:
-        suffix = "" if report.dhara_checked else " (Dhara leg not checked)"
+        suffix = "" if report.mcp_checked else " (MCP leg not checked)"
         lines.out.append(
             f"OK: {report.index_count} paths consistent across PLAN_INDEX.md and filesystem{suffix}"
         )
@@ -230,11 +230,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     index_paths = extract_index_paths(index_path.read_text(errors="replace"))
     disk_paths = scan_disk_paths(repo_root)
 
-    dhara_paths: set[str] | None = None
-    if args.dhara_records is not None:
-        dhara_paths = dhara_paths_from_records(_load_mcp_records(args.dhara_records))
+    mcp_paths: set[str] | None = None
+    if args.mcp_records is not None:
+        mcp_paths = mcp_paths_from_records(_load_mcp_records(args.mcp_records))
 
-    report = audit(index_paths, disk_paths, dhara_paths)
+    report = audit(index_paths, disk_paths, mcp_paths)
     lines = format_report(report)
     for line in lines.out:
         print(line)

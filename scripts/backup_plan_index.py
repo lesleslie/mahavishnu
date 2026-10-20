@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Snapshot docs/plans/PLAN_INDEX.md before the first Dhara-only render.
+"""Snapshot docs/plans/PLAN_INDEX.md before the first MCP-only render.
 
 Per the migration runbook (docs/runbooks/migrate-plan-index-mcp.md
 step 0), the operator takes a backup of the legacy PLAN_INDEX.md BEFORE
-the bootstrap script writes any Dhara records. This guards against
+the bootstrap script writes any MCP records. This guards against
 "the cron path produced a broken PLAN_INDEX.md" — the rollback path
 is always one ``mv`` away.
 
@@ -86,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="backup_plan_index",
         description=(
             "Snapshot docs/plans/PLAN_INDEX.md before the first "
-            "Dhara-only render. Keeps the legacy index recoverable."
+            "MCP-only render. Keeps the legacy index recoverable."
         ),
     )
     parser.add_argument(

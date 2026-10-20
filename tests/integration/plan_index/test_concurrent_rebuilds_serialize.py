@@ -1,4 +1,4 @@
-"""Two concurrent rebuild invocations serialize via the Dhara-backed lock.
+"""Two concurrent rebuild invocations serialize via the MCP-backed lock.
 
 Verifies that when two coroutines race to call run_rebuild_cycle from an
 *unlocked* starting state, exactly one acquires the lock and proceeds
@@ -7,7 +7,7 @@ lock pattern.
 
 `FakeMCP`'s coroutines never suspend, so `asyncio.gather` runs the
 first cycle to completion before the second starts and no interleaving is
-possible. `YieldingFakeDhara` inserts a real suspension point before
+possible. `YieldingFakeMCP` inserts a real suspension point before
 every operation, which step-locks the two cycles and exercises the
 read-then-write race the claim-based acquisition in `cron_core` exists to
 close (Task 14.6).
@@ -30,7 +30,7 @@ from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import FakeMCP
 
 
-class YieldingFakeDhara(FakeMCP):
+class YieldingFakeMCP(FakeMCP):
     """FakeMCP that yields to the event loop before every operation."""
 
     async def put(self, key: str, value: str, *, ttl: int | None = None) -> None:
@@ -52,7 +52,7 @@ class YieldingFakeDhara(FakeMCP):
 
 class TestConcurrentRebuildsSerialize:
     async def test_two_concurrent_invocations_one_proceeds_one_aborts(self) -> None:
-        mcp = YieldingFakeDhara()
+        mcp = YieldingFakeMCP()
         store = PlanIndexStore(mcp)  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 
@@ -77,7 +77,7 @@ class TestConcurrentRebuildsSerialize:
 
     async def test_a_live_lock_blocks_every_concurrent_invocation(self) -> None:
         """A fresh, non-stale holder aborts *both* racing cycles."""
-        mcp = YieldingFakeDhara()
+        mcp = YieldingFakeMCP()
         store = PlanIndexStore(mcp)  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
 

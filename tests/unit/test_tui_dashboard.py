@@ -227,7 +227,7 @@ class TestDataFetchers:
         data = await fetch_recovery_summary()
         assert "recovered_workflows" in data
         assert "recovered_approvals" in data
-        assert "dhara_available" in data
+        assert "mcp_available" in data
 
     @pytest.mark.asyncio
     async def test_fetch_pending_approvals(self) -> None:
@@ -538,7 +538,7 @@ class TestBodaiComponentScreen:
         slugs = [
             ("Crackerjack — Quality Inspector", "crackerjack", "http://localhost:8676"),
             ("Akosha — Intelligence Seer", "akosha", "http://localhost:8682"),
-            ("Dhara — State Curator", "mcp", "http://localhost:8683"),
+            ("MCP — State Curator", "mcp", "http://localhost:8683"),
             ("Session-Buddy — Memory Builder", "sb-metrics", "http://localhost:8678"),
         ]
         for label, slug, url in slugs:

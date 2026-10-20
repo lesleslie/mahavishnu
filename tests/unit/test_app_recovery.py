@@ -1,4 +1,4 @@
-"""Tests for app startup recovery from Dhara."""
+"""Tests for app startup recovery from MCP."""
 
 from datetime import UTC, datetime, timedelta
 

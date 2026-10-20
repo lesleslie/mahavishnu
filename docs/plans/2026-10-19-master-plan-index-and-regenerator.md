@@ -1124,4 +1124,3 @@ That plan lands T5-T12 in their own release. Reasoning and task-level steps live
 2. All 5 sibling `oneiric>=` pin bumps merged (Task 0 in this master landed)
 3. Crackerjack ships a release containing T4 (the dispatcher)
 4. All 6 siblings consume that crackerjack release (operator-driven, per `feedback-bodai-push-is-user-controlled.md`)
-

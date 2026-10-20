@@ -2,7 +2,7 @@
 
 Spec #8: adapter-runtime-observability (Phase 3).
 
-The Dhara-backed HTTP CRUD surface is http_blocked (per substrate status),
+The MCP-backed HTTP CRUD surface is http_blocked (per substrate status),
 so this module ships:
 
 - ``AdapterSettingsVersion`` frozen dataclass (adapter_id, version, settings_hash,
@@ -10,7 +10,7 @@ so this module ships:
 - ``SettingsActivationRecord`` lighter dataclass (what a caller passes when
   writing).
 - ``SettingsActivationPersister`` Protocol - the persister interface that the
-  Dhara-backed implementation will satisfy.
+  MCP-backed implementation will satisfy.
 - ``InMemorySettingsActivationPersister`` - in-memory implementation for v0.
 - ``MCPSettingsActivationPersister`` - stub that raises NotImplementedError
   with a TODO referencing Workstream C substrate.
@@ -31,7 +31,7 @@ Tests pin:
 - InMemory implementation rejects duplicate (adapter_id, version) and
   preserves insertion order
 - ``record_activation`` routes to the configured persister
-- Dhara stub raises NotImplementedError with a substrate-marked TODO
+- MCP stub raises NotImplementedError with a substrate-marked TODO
 """
 
 from __future__ import annotations

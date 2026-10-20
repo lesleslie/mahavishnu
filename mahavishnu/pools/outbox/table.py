@@ -10,14 +10,10 @@ Spec: docs/specs/2026-07-29-session-buddy-extension-design.md
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from datetime import (
-        datetime,  # Pydantic v2 resolves forward refs at model_rebuild() time
-    )
 
 OutboxStatus = Literal["pending", "drained", "failed"]
 

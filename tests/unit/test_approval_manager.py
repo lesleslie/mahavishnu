@@ -182,20 +182,20 @@ class TestApprovalManager:
 
 
 class TestApprovalManagerMCPPersistence:
-    """Tests for Dhara-backed durable persistence."""
+    """Tests for MCP-backed durable persistence."""
 
-    def _make_mock_dhara(self) -> MagicMock:
+    def _make_mock_mcp(self) -> MagicMock:
         mock = MagicMock()
         mock.schedule_put = MagicMock()
         mock.schedule_delete = MagicMock()
         return mock
 
     def test_create_request_schedules_mcp_persist(self) -> None:
-        mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(mcp_state=mock_dhara)
+        mock_mcp = self._make_mock_mcp()
+        manager = ApprovalManager(mcp_state=mock_mcp)
         request = manager.create_request(approval_type="version_bump", context={})
-        mock_dhara.schedule_put.assert_called_once()
-        args = mock_dhara.schedule_put.call_args[0]
+        mock_mcp.schedule_put.assert_called_once()
+        args = mock_mcp.schedule_put.call_args[0]
         assert args[0] == f"approval/v1/{request.id}"
         assert args[1]["id"] == request.id
 
@@ -211,17 +211,17 @@ class TestApprovalManagerMCPPersistence:
         persists an ApprovalLog (verified separately in
         tests/unit/approval/test_decision_wiring.py).
         """
-        mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(mcp_state=mock_dhara)
+        mock_mcp = self._make_mock_mcp()
+        manager = ApprovalManager(mcp_state=mock_mcp)
         request = manager.create_request(approval_type="publish", context={})
-        mock_dhara.schedule_put.reset_mock()
+        mock_mcp.schedule_put.reset_mock()
         manager.respond(request.id, approved=True)
         # Default flag = v1 enabled, so legacy delete must NOT fire.
-        mock_dhara.schedule_delete.assert_not_called()
+        mock_mcp.schedule_delete.assert_not_called()
 
     def test_cleanup_expired_schedules_mcp_delete(self) -> None:
-        mock_dhara = self._make_mock_dhara()
-        manager = ApprovalManager(mcp_state=mock_dhara)
+        mock_mcp = self._make_mock_mcp()
+        manager = ApprovalManager(mcp_state=mock_mcp)
         expired = ApprovalRequest(
             id="exp-001",
             approval_type="version_bump",
@@ -231,9 +231,9 @@ class TestApprovalManagerMCPPersistence:
             options=[],
         )
         manager._pending_requests[expired.id] = expired
-        mock_dhara.schedule_put.reset_mock()
+        mock_mcp.schedule_put.reset_mock()
         manager.cleanup_expired()
-        mock_dhara.schedule_delete.assert_called_once_with("approval/v1/exp-001")
+        mock_mcp.schedule_delete.assert_called_once_with("approval/v1/exp-001")
 
     def test_restore_skips_expired_entries(self) -> None:
         manager = ApprovalManager()

@@ -15,14 +15,14 @@ from mahavishnu.core.state_backends.mcp import (
 )
 
 
-def _make_backend(enabled: bool = True, dhara_put: AsyncMock | None = None) -> MCPStateBackend:
+def _make_backend(enabled: bool = True, mcp_put: AsyncMock | None = None) -> MCPStateBackend:
     """Build a MCPStateBackend with a mocked MCPClient.
 
     MCPClient is imported inside __init__, so patch the source module.
     After construction, replace _client directly with our mock.
     """
     mock_client = MagicMock()
-    mock_client.put = dhara_put or AsyncMock()
+    mock_client.put = mcp_put or AsyncMock()
     mock_client.call_tool = AsyncMock(return_value={"value": "test"})
     mock_client.aclose = AsyncMock()
 
@@ -46,7 +46,7 @@ class TestMCPStateBackendPut:
     @pytest.mark.asyncio
     async def test_put_calls_client_when_available(self):
         mock_put = AsyncMock()
-        backend = _make_backend(dhara_put=mock_put)
+        backend = _make_backend(mcp_put=mock_put)
 
         await backend.put("workflow/v1/abc", {"status": "running"})
 
@@ -55,7 +55,7 @@ class TestMCPStateBackendPut:
     @pytest.mark.asyncio
     async def test_put_is_noop_when_disabled(self):
         mock_put = AsyncMock()
-        backend = _make_backend(enabled=False, dhara_put=mock_put)
+        backend = _make_backend(enabled=False, mcp_put=mock_put)
 
         await backend.put("workflow/v1/abc", {"status": "running"})
 
@@ -63,8 +63,8 @@ class TestMCPStateBackendPut:
 
     @pytest.mark.asyncio
     async def test_put_is_noop_when_circuit_open(self):
-        mock_put = AsyncMock(side_effect=RuntimeError("Dhara down"))
-        backend = _make_backend(dhara_put=mock_put)
+        mock_put = AsyncMock(side_effect=RuntimeError("MCP down"))
+        backend = _make_backend(mcp_put=mock_put)
 
         # Trip the circuit
         for _ in range(_MCP_FAILURE_THRESHOLD):
@@ -81,7 +81,7 @@ class TestMCPStateBackendPut:
         import time
 
         mock_put = AsyncMock(side_effect=RuntimeError("down"))
-        backend = _make_backend(dhara_put=mock_put)
+        backend = _make_backend(mcp_put=mock_put)
 
         for _ in range(_MCP_FAILURE_THRESHOLD):
             await backend.put("key", {})

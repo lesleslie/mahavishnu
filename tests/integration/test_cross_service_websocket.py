@@ -276,7 +276,7 @@ class TestCrossServiceCommunication:
         mahavishnu_server: MahavishnuWebSocketServer,
         event_recorder: dict[str, list[dict[str, Any]]],
     ):
-        """Test Mahavishnu can broadcast to Dhara-specific channels."""
+        """Test Mahavishnu can broadcast to MCP-specific channels."""
         # Arrange
         mock_client = create_mock_websocket(
             event_recorder,
@@ -486,15 +486,15 @@ class TestMessageRouting:
     ):
         """Test broadcasting to service-specific rooms."""
         # Arrange
-        dhara_client = create_mock_websocket(event_recorder, "conn1", ["mcp:events"])
+        mcp_client = create_mock_websocket(event_recorder, "conn1", ["mcp:events"])
         excalidraw_client = create_mock_websocket(event_recorder, "conn2", ["excalidraw:events"])
 
-        mahavishnu_server.connections["conn1"] = dhara_client
+        mahavishnu_server.connections["conn1"] = mcp_client
         mahavishnu_server.connections["conn2"] = excalidraw_client
         mahavishnu_server.connection_rooms["mcp:events"] = {"conn1"}
         mahavishnu_server.connection_rooms["excalidraw:events"] = {"conn2"}
 
-        # Act - Broadcast to Dhara only
+        # Act - Broadcast to MCP only
         from mcp_common.websocket import WebSocketProtocol
 
         event = WebSocketProtocol.create_event(
@@ -503,7 +503,7 @@ class TestMessageRouting:
         )
         await mahavishnu_server.broadcast_to_room("mcp:events", event)
 
-        # Assert - only Dhara client should receive
+        # Assert - only MCP client should receive
         assert "mcp:events" in event_recorder
         assert "excalidraw:events" not in event_recorder
         assert len(event_recorder["mcp:events"]) == 1
@@ -632,30 +632,30 @@ class TestEventCorrelation:
 
     @pytest.mark.asyncio
     async def test_adapter_stored_in_mcp_visible_in_excalidraw(self):
-        """Test adapter stored in Dhara is visible in Excalidraw."""
-        # Arrange - Dhara server
+        """Test adapter stored in MCP is visible in Excalidraw."""
+        # Arrange - MCP server
         mock_pool_mgr = MagicMock()
         mock_pool_mgr.pools = {}
 
-        dhara_server = MahavishnuWebSocketServer(
+        mcp_server = MahavishnuWebSocketServer(
             pool_manager=mock_pool_mgr,
             host="127.0.0.1",
             port=8693,
         )
-        dhara_server.is_running = True
+        mcp_server.is_running = True
 
         event_recorder: dict[str, list[dict[str, Any]]] = {}
         mock_client = create_mock_websocket(
             event_recorder,
-            "dhara_to_excalidraw",
+            "mcp_to_excalidraw",
             ["excalidraw:diagrams"],
         )
 
-        conn_id = "dhara_to_excalidraw"
-        dhara_server.connections[conn_id] = mock_client
-        dhara_server.connection_rooms["excalidraw:diagrams"] = {conn_id}
+        conn_id = "mcp_to_excalidraw"
+        mcp_server.connections[conn_id] = mock_client
+        mcp_server.connection_rooms["excalidraw:diagrams"] = {conn_id}
 
-        # Act - Dhara broadcasts adapter storage event
+        # Act - MCP broadcasts adapter storage event
         from mcp_common.websocket import WebSocketProtocol
 
         event = WebSocketProtocol.create_event(
@@ -666,7 +666,7 @@ class TestEventCorrelation:
                 "version": "1.0.0",
             },
         )
-        await dhara_server.broadcast_to_room("excalidraw:diagrams", event)
+        await mcp_server.broadcast_to_room("excalidraw:diagrams", event)
 
         # Assert
         assert "excalidraw:diagrams" in event_recorder

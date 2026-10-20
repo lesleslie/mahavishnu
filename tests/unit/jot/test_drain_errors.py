@@ -32,7 +32,7 @@ def test_drain_errors_inherit_from_jot_error() -> None:
 
 
 def test_jot_dispatch_error_carries_error_id() -> None:
-    """Tier-2 reconciler matches on .error_id to correlate with Sentry/Dhara."""
+    """Tier-2 reconciler matches on .error_id to correlate with Sentry/MCP."""
     exc = JotDispatchError(
         "trigger_workflow timed out",
         error_id="ERROR_JOT_TRIGGER_WORKFLOW_FAILED",

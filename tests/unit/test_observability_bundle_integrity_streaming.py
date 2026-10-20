@@ -161,7 +161,7 @@ def test_verify_sha256_streaming_does_not_rehash_principal_short(
 def test_verify_sha256_streaming_writes_mcp_audit_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """B-DI-11 — Dhara audit row must be written on mismatch."""
+    """B-DI-11 — MCP audit row must be written on mismatch."""
     rows: list[dict[str, object]] = []
     monkeypatch.setattr(
         "mahavishnu.observability.bundle_integrity.write_mcp_audit_row",

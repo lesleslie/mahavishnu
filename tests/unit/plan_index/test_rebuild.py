@@ -91,7 +91,7 @@ class TestUpsertAll:
 class TestPureFunction:
     def test_derive_plan_id_no_io(self) -> None:
         rb = PlanIndexRebuilder()
-        # No Dhara client, no filesystem access — pure function
+        # No MCP client, no filesystem access — pure function
         plan_id = rb.derive_plan_id("https://github.com/foo/bar.git", "docs/x.md")
         assert isinstance(plan_id, str)
         assert len(plan_id) == 32

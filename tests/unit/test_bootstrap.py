@@ -316,7 +316,7 @@ class TestComponentEndpointRegistration:
         monkeypatch.setattr(asyncio, "create_task", fake_create_task)
 
         mcp_state = type(
-            "DharaState",
+            "MCPState",
             (),
             {"put": lambda self, key, value: asyncio.sleep(0)},
         )()
@@ -354,7 +354,7 @@ class TestComponentEndpointRegistration:
         monkeypatch.setattr(asyncio, "run", fake_run)
 
         mcp_state = type(
-            "DharaState",
+            "MCPState",
             (),
             {"_client": type("Client", (), {"_base_url": "http://mcp"})()},
         )()

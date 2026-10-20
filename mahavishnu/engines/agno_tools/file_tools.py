@@ -13,6 +13,7 @@ Paths are validated to ensure they remain within allowed base directories.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 import tempfile
 from typing import Any
@@ -26,6 +27,13 @@ logger = logging.getLogger(__name__)
 # Security constraints
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+# Search bounds — prevent unbounded walks over user-supplied directories.
+# Without these, a single _search_files_impl call could walk tens of
+# thousands of .venv / node_modules / .git entries on a typical repo root.
+MAX_SEARCH_RESULTS = 1000
+MAX_SEARCH_DEPTH = 64
+
 ALLOWED_EXTENSIONS = {
     # Python
     ".py",
@@ -475,6 +483,35 @@ def _list_directory_impl(path: str) -> list[str]:
     return entries
 
 
+def _is_match_allowed(match_path: Path) -> bool:
+    """Return True when match_path resolves inside an allowed base directory.
+
+    SECURITY: search_files uses this to defend against symlink-escape results.
+    A match whose resolved path falls outside every allowed directory (or
+    whose resolve() raises) is silently filtered from the search results.
+    """
+    try:
+        match_resolved = match_path.resolve()
+    except (OSError, RuntimeError, ValueError) as e:
+        # resolve() can fail on broken symlinks, permission errors, or
+        # invalid path components — treat any of these as not-in-allowed-dir.
+        logger.warning(f"Could not validate search result path: {e}")
+        return False
+
+    for allowed_dir in _get_allowed_base_dirs():
+        try:
+            if match_resolved.is_relative_to(allowed_dir):
+                return True
+        except AttributeError:
+            # Pre-3.9 fallback (not reachable on this project's 3.14 target).
+            try:
+                match_resolved.relative_to(allowed_dir)
+                return True
+            except ValueError:
+                continue
+    return False
+
+
 def _search_files_impl(pattern: str, directory: str) -> list[str]:
     """Search for files matching a pattern - implementation.
 
@@ -504,49 +541,56 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
             details={"directory": directory},
         )
 
-    # Search for matching files recursively
-    matches = []
-    for match in validated_path.rglob(pattern):
-        # Skip blocked paths
-        if any(blocked in str(match) for blocked in BLOCKED_PATHS):
-            continue
+    # Search recursively via os.walk so BLOCKED_PATHS can prune subdirectories
+    # at descent time. Path.rglob() descends before yielding, which made the
+    # BLOCKED_PATHS result filter a no-op for traversal cost — a typical repo
+    # root yields tens of thousands of `.venv` / `node_modules` entries
+    # before the caller's filter could skip them. Bounded by MAX_SEARCH_RESULTS
+    # / MAX_SEARCH_DEPTH to prevent denial-of-service on user-supplied dirs.
+    matches: list[str] = []
+    root_depth = len(validated_path.parts)
 
-        # Only include files, not directories
-        if match.is_file():
-            # SECURITY: Verify each match is still within allowed directory
-            # This prevents symlink attacks where rglob might escape
-            try:
-                match_resolved = match.resolve()
-                allowed_dirs = _get_allowed_base_dirs()
-                path_allowed = False
-                for allowed_dir in allowed_dirs:
-                    try:
-                        if match_resolved.is_relative_to(allowed_dir):
-                            path_allowed = True
-                            break
-                    except AttributeError:
-                        try:
-                            match_resolved.relative_to(allowed_dir)
-                            path_allowed = True
-                            break
-                        except ValueError:
-                            continue
+    for dirpath, dirnames, filenames in os.walk(validated_path):
+        # Prune blocked subdirectories in-place (see os.walk docs) and cap
+        # traversal depth at the same time.
+        depth = len(Path(dirpath).parts) - root_depth
+        if depth + 1 > MAX_SEARCH_DEPTH:
+            dirnames[:] = []
+        else:
+            dirnames[:] = [d for d in dirnames if d not in BLOCKED_PATHS]
 
-                if not path_allowed:
-                    logger.warning(
-                        "SECURITY: Skipping search result outside allowed directory",
-                        extra={"match": str(match)},
-                    )
-                    continue
-            except Exception as e:  # per-result path validation; skip and continue on any error  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning(f"Could not validate search result path: {e}")
+        for filename in filenames:
+            # Skip blocked names at the leaf as well (e.g. `.env` files).
+            if filename in BLOCKED_PATHS:
                 continue
 
-            # Return relative path
-            rel_path = match.relative_to(validated_path)
+            match_path = Path(dirpath) / filename
+            if not match_path.is_file():
+                continue
+            if not _is_match_allowed(match_path):
+                continue
+
+            rel_path = match_path.relative_to(validated_path)
+            # Match the repo-relative path with pathlib glob semantics so
+            # path-qualified patterns ("src/*.py", "*/main.py") behave as
+            # they did under rglob. fnmatch() against the bare filename
+            # would silently return nothing for those.
+            if not rel_path.match(pattern):
+                continue
+
             matches.append(str(rel_path))
 
-    # Sort results
+            if len(matches) >= MAX_SEARCH_RESULTS:
+                logger.warning(
+                    f"search_files hit MAX_SEARCH_RESULTS={MAX_SEARCH_RESULTS}; truncating",
+                    extra={"directory": str(validated_path), "pattern": pattern},
+                )
+                # Stop descending so os.walk exits quickly.
+                dirnames[:] = []
+                break
+        if len(matches) >= MAX_SEARCH_RESULTS:
+            break
+
     matches.sort()
 
     logger.debug(f"Found {len(matches)} files matching '{pattern}' in {directory}")

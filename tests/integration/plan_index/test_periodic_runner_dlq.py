@@ -1,4 +1,4 @@
-"""Round-2 fix: 3 transient Dhara write failures are absorbed into DLQ.
+"""Round-2 fix: 3 transient MCP write failures are absorbed into DLQ.
 
 The DLQ key is `plan_index/meta/recent_errors` (a bounded JSON list,
 max 20 entries). Failures are non-fatal — the rebuilder continues
@@ -33,7 +33,7 @@ class TestPeriodicRunnerDLQ:
             json.dumps(existing_errors),
         )
 
-        # Run the rebuilder; transient Dhara write failures should be
+        # Run the rebuilder; transient MCP write failures should be
         # captured into the DLQ without aborting the cycle.
         rebuilder = PlanIndexRebuilder()
         result = await run_rebuild_cycle(store, rebuilder)

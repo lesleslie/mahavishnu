@@ -51,8 +51,8 @@ class RecordingSessionBuddy:
         ]
 
 
-class RecordingDhara:
-    """Fake Dhara backend that records the durable-state writes."""
+class RecordingMCP:
+    """Fake MCP backend that records the durable-state writes."""
 
     def __init__(self) -> None:
         self.persisted: list[tuple[str, dict[str, object]]] = []
@@ -125,7 +125,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
 
     session_buddy = RecordingSessionBuddy()
     coordination_memory = CoordinationMemory(session_buddy_client=session_buddy)
-    mcp = RecordingDhara()
+    mcp = RecordingMCP()
     session_checkpoint = RecordingSessionCheckpoint()
     approval_manager = RecordingApprovalManager()
 
@@ -243,7 +243,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
 
     fix_result = await orchestrator.execute_fix("pool-golden-path", task)
     transcript.append(
-        f"Dhara recovery state shows the same correlation and workflow identifiers ({fixture.correlation_id}, {fixture.workflow_id})."
+        f"MCP recovery state shows the same correlation and workflow identifiers ({fixture.correlation_id}, {fixture.workflow_id})."
     )
     transcript.append("Akosha indexed the validated fix for semantic retrieval.")
     transcript.append("Operator cockpit reports the incident resolved and searchable.")
@@ -275,5 +275,5 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
     assert any(fixture.correlation_id in line for line in transcript)
     assert any("Session-Buddy" in line for line in transcript)
     assert any("Crackerjack" in line for line in transcript)
-    assert any("Dhara" in line for line in transcript)
+    assert any("MCP" in line for line in transcript)
     assert any("Akosha" in line for line in transcript)

@@ -1,15 +1,12 @@
 """Unit tests for workflow models (WorkflowExecution, PoolExecution, WorkflowCheckpoint).
 
-These tests are self-contained and do not rely on external projects like oneiric or mcp.
-Uses only the fallback generate_config_id and is_uuid7_id from the module itself.
-
 Per the cross-repo UUID7-only migration plan (Phase 6, mahavishnu), the
-models now emit UUID7 hex (32 lowercase hex chars, RFC 9562 sec 5.7)
-via the oneiric.core.ids substrate. The legacy ``is_uuid7_id`` name
-is preserved for source compatibility, but the underlying predicate
-``oneiric.core.ids.is_valid_id`` accepts both UUID7 (new) and 26-char
-Crockford Base32 ULID (legacy) for the read-time migration window
-(REQ-012).
+models emit UUID7 hex (32 lowercase hex chars, RFC 9562 sec 5.7) via the
+oneiric.core.ids substrate. The legacy ``is_uuid7_id`` name is preserved
+for source compatibility, but the underlying predicate
+``oneiric.core.ids.is_valid_id`` is UUID7-**only**: the 26-char Crockford
+Base32 ULID read-time acceptance was removed by T1 of
+``docs/plans/.archive/2026-10-12-ulid-surface-elimination.md``.
 """
 
 from __future__ import annotations
@@ -74,20 +71,20 @@ class TestWorkflowExecutionDefaults:
         assert wf.end_time is None
 
 
-class TestWorkflowExecutionULIDValidation:
+class TestWorkflowExecutionUUID7Validation:
     """Test UUID7 validation on execution_id.
 
-    The validator is named after its ULID-era predecessor, but the
-    contract is now UUID7-only for new writes while still accepting
-    legacy 26-char ULIDs in `is_valid_id` for the read-time migration
-    window (REQ-012). New auto-generated IDs are always UUID7.
+    The contract is UUID7-only. Legacy 26-char ULID read-time acceptance
+    was removed from `oneiric.core.ids.is_valid_id` by T1 of
+    `docs/plans/.archive/2026-10-12-ulid-surface-elimination.md`, whose
+    acceptance criterion is that a legacy ULID returns False.
     """
 
-    def test_rejects_invalid_ulid_format(self):
-        """execution_id must be a valid UUID7 (UUID7 only; ULID read-time acceptance removed)."""
+    def test_rejects_invalid_uuid7_format(self):
+        """execution_id must be a valid UUID7."""
         with pytest.raises(ValidationError, match="Invalid ID format"):
             WorkflowExecution(
-                execution_id="not-a-valid-ulid",
+                execution_id="not-a-valid-uuid7",
                 workflow_name="test",
                 status="running",
             )
@@ -97,8 +94,8 @@ class TestWorkflowExecutionULIDValidation:
         with pytest.raises(ValidationError):
             WorkflowExecution(execution_id="abc123", workflow_name="test", status="running")
 
-    def test_accepts_valid_ulid(self):
-        """Valid 32-char UUID7 hex is accepted (the new substrate)."""
+    def test_accepts_valid_uuid7(self):
+        """Valid 32-char UUID7 hex is accepted."""
         valid_id = generate_config_id()
         wf = WorkflowExecution(
             execution_id=valid_id,
@@ -107,10 +104,19 @@ class TestWorkflowExecutionULIDValidation:
         )
         assert wf.execution_id == valid_id
 
-    def test_accepts_legacy_ulid_for_read_window(self):
-        """Legacy 26-char ULID is accepted by is_valid_id (REQ-012)."""
+    def test_rejects_legacy_ulid(self):
+        """Legacy 26-char ULID is rejected (ULID read-time acceptance removed)."""
         legacy_ulid = "01kh85b0x6000a9vb7cgn42ed8"
-        assert is_uuid7_id(legacy_ulid) is True
+        assert is_uuid7_id(legacy_ulid) is False
+
+    def test_rejects_legacy_ulid_as_execution_id(self):
+        """A legacy ULID cannot be written to a new WorkflowExecution."""
+        with pytest.raises(ValidationError):
+            WorkflowExecution(
+                execution_id="01kh85b0x6000a9vb7cgn42ed8",
+                workflow_name="test",
+                status="running",
+            )
 
 
 class TestWorkflowExecutionMethods:
@@ -471,28 +477,38 @@ class TestAllModelsWithCustomExecutionID:
         assert cp.checkpoint_id == ulid
 
 
-class TestIsConfigULID:
+class TestIsUuid7Id:
     """Test the is_uuid7_id validation function.
 
-    Note: The fallback implementation uses isalnum() which is case-insensitive,
-    so mixed-case strings may return True depending on the implementation.
+    The contract is oneiric's `is_valid_id` (an alias for `is_uuid7`):
+    exactly 32 lowercase hex characters whose parsed UUID reports
+    version 7. Hyphenated 36-char UUIDs, legacy 26-char ULIDs, and any
+    non-hex input are all rejected.
     """
 
-    def test_valid_ulid_returns_true(self):
-        """Valid 26-char lowercase alnum returns True."""
-        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed8") is True
+    def test_valid_uuid7_returns_true(self):
+        """Valid 32-char UUID7 hex returns True."""
+        assert is_uuid7_id("01a15a15cb23709dbe53bb04da00e563") is True
+
+    def test_rejects_legacy_ulid(self):
+        """Legacy 26-char Crockford ULID returns False (T1 acceptance criterion)."""
+        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed8") is False
+
+    def test_rejects_hyphenated_uuid(self):
+        """Hyphenated 36-char UUID returns False; generator emits bare 32-hex."""
+        assert is_uuid7_id("bcfbf3f2-076c-4a35-96cc-340e3995ce74") is False
 
     def test_rejects_short_strings(self):
-        """Strings shorter than 26 return False."""
-        assert is_uuid7_id("01kh85b0x6") is False
+        """Strings shorter than 32 return False."""
+        assert is_uuid7_id("01a15a15cb23709dbe53bb04da00e5") is False
 
     def test_rejects_long_strings(self):
-        """Strings longer than 26 return False."""
-        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed8xxxx") is False
+        """Strings longer than 32 return False."""
+        assert is_uuid7_id("01a15a15cb23709dbe53bb04da00e563ffff") is False
 
     def test_rejects_strings_with_special_chars(self):
-        """Non-alphanumeric characters return False."""
-        assert is_uuid7_id("01kh85b0x6000a9vb7cgn42ed!") is False
+        """Non-hex characters return False."""
+        assert is_uuid7_id("01a15a15cb23709dbe53bb04da00e56!") is False
 
     def test_rejects_empty_string(self):
         """Empty string returns False."""

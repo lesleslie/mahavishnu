@@ -1,9 +1,9 @@
 """Round-trip test for ``mahavishnu.core.models.persistence``.
 
-Pins the wire-format compatibility with the original Dhara types
+Pins the wire-format compatibility with the original MCP types
 (``mcp.schema.{WorkflowOutcome, ApprovalLog, WebhookIngress}``) by
 asserting that ``msgspec.to_builtins(...)`` produces the exact field set
-Dhara would produce for an equivalent instance. Any drift in field name,
+MCP would produce for an equivalent instance. Any drift in field name,
 type, or ``frozen=True`` status surfaces here as a test failure rather
 than as silent data corruption at the durable store boundary.
 """
@@ -86,7 +86,7 @@ def test_webhook_ingress_roundtrip_matches_mcp_shape() -> None:
 
 
 def test_metadata_defaults_to_empty_dict() -> None:
-    """All three types default ``metadata`` to ``{}`` (matches Dhara originals)."""
+    """All three types default ``metadata`` to ``{}`` (matches MCP originals)."""
     assert WorkflowOutcome(
         workflow_id="wf-002",
         status="failed",

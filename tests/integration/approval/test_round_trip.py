@@ -3,8 +3,8 @@
 End-to-end check of the validate-on-write + validate-on-read contract between
 ``mahavishnu.core.approval.decision_writer.record_approval_decision`` (Task 1
 producer) and ``mahavishnu.cli.approval_cli.list_approval_history`` (Task 2
-consumer). The Dhara substrate is substituted with an in-memory dict so writes
-from ``mcp.put`` are visible to ``mcp.list`` without a real Dhara binding.
+consumer). The MCP substrate is substituted with an in-memory dict so writes
+from ``mcp.put`` are visible to ``mcp.list`` without a real MCP binding.
 
 Substrate-compat: ``mcp.put`` and ``mcp.list`` are runtime-attached
 attributes on the local substrate install; both modules stamp them to ``None``

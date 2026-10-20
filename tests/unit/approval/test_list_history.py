@@ -1,4 +1,4 @@
-"""Verify list_approval_history reads Dhara payloads and returns typed ApprovalLog structs."""
+"""Verify list_approval_history reads MCP payloads and returns typed ApprovalLog structs."""
 
 from __future__ import annotations
 
@@ -220,7 +220,7 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
 
 
 def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
-    """RBAC gate: missing token returns [] before any Dhara call.
+    """RBAC gate: missing token returns [] before any MCP call.
 
     Multi-agent review flagged HIGH-severity missing auth on this read
     path. The new gate must short-circuit before list_fn is invoked.

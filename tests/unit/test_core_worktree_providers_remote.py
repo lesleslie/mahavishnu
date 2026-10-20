@@ -5,7 +5,7 @@ Phase 3 (Task C.7) streaming tar.zst coverage — mirrors
 cloud-backed path (S3 / GCS / Azure) where ``save_stream`` is async and
 ``load_stream`` returns a zero-arg callable yielding ``Iterator[bytes]``.
 
-Uses in-memory storage / cache / Dhara fakes so no real cloud or Redis
+Uses in-memory storage / cache / MCP fakes so no real cloud or Redis
 connections are required.
 
 Test infra note: ``remote.py`` captures ``get_worktree_path`` /
@@ -55,7 +55,7 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Fakes — recording doubles for cloud storage / cache / Dhara
+# Fakes — recording doubles for cloud storage / cache / MCP
 # ---------------------------------------------------------------------------
 
 
@@ -180,7 +180,7 @@ class _FakeCache:
 
 
 class FakeMCPClient:
-    """In-memory Dhara thin client fake (mirrors ``test_mcp_registry``)."""
+    """In-memory MCP thin client fake (mirrors ``test_mcp_registry``)."""
 
     def __init__(self) -> None:
         self._registry: dict[str, dict[str, Any]] = {}
@@ -438,7 +438,7 @@ class TestCreateWorktreeHandleStreaming:
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=_FakeCache(),
-            dhara_client=mcp,
+            mcp_client=mcp,
             backend="s3",
         )
         principal = _principal()
@@ -465,7 +465,7 @@ class TestCreateWorktreeHandleStreaming:
         # Handle carries a RemoteWorktreeRef + the right backend label.
         assert handle.bytes_size > 0
         assert handle.sha256
-        # Dhara registration was attempted by the production code.
+        # MCP registration was attempted by the production code.
         rows = await mcp.query(
             "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
             {"h": handle.handle_id},
@@ -764,12 +764,12 @@ class TestFetchStreaming:
 
 
 # ---------------------------------------------------------------------------
-# remove_handle — covers storage.delete + cache invalidate + Dhara remove
+# remove_handle — covers storage.delete + cache invalidate + MCP remove
 # ---------------------------------------------------------------------------
 
 
 class TestRemoveHandle:
-    """``remove_handle`` calls storage.delete, invalidates cache, removes from Dhara."""
+    """``remove_handle`` calls storage.delete, invalidates cache, removes from MCP."""
 
     async def test_remove_handle_calls_storage_delete_and_mcp_remove(self) -> None:
         storage = _FakeCloudStorage()
@@ -778,11 +778,11 @@ class TestRemoveHandle:
         provider = RemoteWorktreeProvider(
             storage=storage,
             cache=cache,
-            dhara_client=mcp,
+            mcp_client=mcp,
             backend="s3",
         )
         from mahavishnu.core.worktree_providers.mcp_registry import (
-            register_handles as dhara_register,
+            register_handles as mcp_register,
         )
 
         principal_full = _principal(
@@ -796,7 +796,7 @@ class TestRemoveHandle:
         )
         # Seed storage with a fake blob so delete() can find the key.
         storage._blobs[handle.storage_ref.key] = b"x"
-        await dhara_register(mcp, [handle], caller=principal_full)
+        await mcp_register(mcp, [handle], caller=principal_full)
 
         removed = await provider.remove_handle(handle, caller=principal_full)
         assert removed is True
@@ -805,7 +805,7 @@ class TestRemoveHandle:
         assert handle.storage_ref.key not in storage._blobs
         # Cache invalidate called
         assert cache.invalidate_calls == [handle.handle_id]
-        # Dhara primary row removed
+        # MCP primary row removed
         rows = await mcp.query(
             "SELECT * FROM mahavishnu_worktree_registry WHERE handle_id = :h",
             {"h": handle.handle_id},

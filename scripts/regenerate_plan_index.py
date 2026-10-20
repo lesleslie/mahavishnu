@@ -976,7 +976,7 @@ def _glob_to_regex(pattern: str, *, anchored: bool) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Phase B — Dhara upsert via PlanIndexRebuilder
+# Phase B — MCP upsert via PlanIndexRebuilder
 # ---------------------------------------------------------------------------
 
 
@@ -985,7 +985,7 @@ def _run_phase_b(
     records: list[Any],
     mcp_url: str,
 ) -> tuple[int, int]:
-    """Run PlanIndexRebuilder.upsert_all against a real Dhara endpoint.
+    """Run PlanIndexRebuilder.upsert_all against a real MCP endpoint.
 
     Returns (success_count, error_count). Failures are non-fatal — the
     rebuilder continues past individual record errors.
@@ -1007,7 +1007,7 @@ def _run_phase_b(
             await client.aclose()
 
     success, errors, _err_list = asyncio.run(_upsert())
-    sys.stderr.write(f"phase-b: upserted {success} records to Dhara ({errors} errors)\n")
+    sys.stderr.write(f"phase-b: upserted {success} records to MCP ({errors} errors)\n")
     return success, errors
 
 
@@ -1018,7 +1018,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Regenerate docs/plans/PLAN_INDEX.md from the YAML frontmatter "
             "of every .md file under each auto-discovered documentation "
             "store in the repo. The orchestrator runs three phases: scan, "
-            "(optional) Dhara upsert via PlanIndexRebuilder, and render."
+            "(optional) MCP upsert via PlanIndexRebuilder, and render."
         ),
     )
     parser.add_argument(
@@ -1081,7 +1081,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip-render",
         action="store_true",
-        help="Skip writing PLAN_INDEX.md; Dhara upsert (Phase B) still runs when --mcp-url is set.",
+        help="Skip writing PLAN_INDEX.md; MCP upsert (Phase B) still runs when --mcp-url is set.",
     )
     parser.add_argument(
         "--rebuild-from",
@@ -1127,7 +1127,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Write rendered PLAN_INDEX.md to this path instead of --out. "
-            "Required by the migration golden workflow. Does not affect Dhara writes."
+            "Required by the migration golden workflow. Does not affect MCP writes."
         ),
     )
     parser.add_argument(
@@ -1135,7 +1135,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="URL",
         default=None,
         help=(
-            "Enable Phase B (Dhara upsert) by pointing the rebuilder at this Dhara base URL. "
+            "Enable Phase B (MCP upsert) by pointing the rebuilder at this MCP base URL. "
             "When unset, Phase B is skipped and the script behaves as a pure renderer."
         ),
     )
@@ -1212,7 +1212,7 @@ def main(argv: list[str] | None = None) -> int:
         entries_by_store[store] = store_entries
         total_with_frontmatter += len(store_entries)
 
-    # Phase B — optional Dhara upsert via PlanIndexRebuilder. Only runs
+    # Phase B — optional MCP upsert via PlanIndexRebuilder. Only runs
     # when --mcp-url is provided; otherwise the script is a pure renderer.
     phase_b_success = 0
     phase_b_errors = 0
@@ -1282,7 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write(f"--check: {out_path} is up-to-date.\n")
         return 0
 
-    # --dry-run: print to stdout. No file writes, no Dhara upsert.
+    # --dry-run: print to stdout. No file writes, no MCP upsert.
     if args.dry_run:
         sys.stdout.write(rendered)
         sys.stdout.flush()

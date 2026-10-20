@@ -4,7 +4,7 @@ The :mod:`mahavishnu.core.budget_watchdog` module ships an in-memory
 ``InMemoryBudgetStore`` plus an async ``run_watchdog_cycle`` kernel
 designed for unit-test use. These tests exercise the public surface
 (test fake + cycle + lease semantics) without spinning up the real
-Dhara substrate. The original tests live under ``tests/budget/``; this
+MCP substrate. The original tests live under ``tests/budget/``; this
 file exists only to give the public surface coverage without modifying
 the existing suite.
 """
@@ -286,7 +286,7 @@ class TestBackupCLICommands:
 
 
 class TestSettlePersistence:
-    """Smoke tests for ``mahavishnu.settle.persistence`` using a fake Dhara."""
+    """Smoke tests for ``mahavishnu.settle.persistence`` using a fake MCP."""
 
     def _make_record(self, run_ref: str = "run-1") -> SettleRunRecord:
         now = datetime.now(UTC)
@@ -328,30 +328,30 @@ class TestSettlePersistence:
 
     def test_persist_initial_async_with_dhara(self) -> None:
         record = self._make_record()
-        fake_dhara = MagicMock()
-        fake_dhara.put = AsyncMock(return_value=None)
+        fake_mcp = MagicMock()
+        fake_mcp.put = AsyncMock(return_value=None)
         # Run in a fresh loop to avoid "loop closed" issues.
         loop = asyncio.new_event_loop()
         try:
             returned = loop.run_until_complete(
-                persist_initial_async(record, mcp=fake_dhara)
+                persist_initial_async(record, mcp=fake_mcp)
             )
             assert returned is record
-            fake_dhara.put.assert_awaited_once()
+            fake_mcp.put.assert_awaited_once()
         finally:
             loop.close()
 
     def test_persist_transition_with_dhara(self) -> None:
         record = self._make_record("run-2")
-        fake_dhara = MagicMock()
-        fake_dhara.put = AsyncMock(return_value=None)
+        fake_mcp = MagicMock()
+        fake_mcp.put = AsyncMock(return_value=None)
         loop = asyncio.new_event_loop()
         try:
             returned = loop.run_until_complete(
-                persist_transition(record, mcp=fake_dhara)
+                persist_transition(record, mcp=fake_mcp)
             )
             assert returned is record
-            fake_dhara.put.assert_awaited_once()
+            fake_mcp.put.assert_awaited_once()
         finally:
             loop.close()
 

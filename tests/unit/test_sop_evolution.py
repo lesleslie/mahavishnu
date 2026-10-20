@@ -4,12 +4,12 @@ Phase 3 scope: ProjectSOP model, FailureModeCatalog entry, EvolutionTrigger
 threshold logic, and InMemory + HTTP CRUD persisters.
 
 Substrate status (per the implementation plan): sql_blocked + http_blocked,
-so the Dhara/SQL backend is intentionally a follow-up. These tests pin the
+so the MCP/SQL backend is intentionally a follow-up. These tests pin the
 interface and the InMemory implementation; the HTTP persister is a typed
 stub that exercises the call site at import time.
 
 The substrate swap-in mirrors Spec #5 (three-zone skill pipeline) and
-Substrate WS-A (dhara_client): the Dhara-backed implementations land with
+Substrate WS-A (mcp_client): the MCP-backed implementations land with
 Workstream C and reuse the same Protocol/abstract surface so callers do
 not break.
 """

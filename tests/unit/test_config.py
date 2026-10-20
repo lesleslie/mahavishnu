@@ -732,4 +732,3 @@ class TestBifrostConfigRemoved:
             "MahavishnuSettings.bifrost must be removed in Phase 7; "
             "production code reads from get_router()._settings instead"
         )
-

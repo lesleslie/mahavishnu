@@ -1,6 +1,6 @@
 """Unit tests for MCPKvClient — string-shape adapter for PlanIndexStore.
 
-PlanIndexStore's _DharaClient Protocol declares string KV (str | None),
+PlanIndexStore's _MCPClient Protocol declares string KV (str | None),
 but Dhara's MCP wire shape returns dict envelopes (``{"ok":..., "key":...,
 "value":...}``). This adapter unwraps the envelope so callers see the
 raw string value Dhara actually stored. See state_backends/mcp_kv.py.
@@ -114,7 +114,7 @@ class TestMCPKvClientListPrefix:
         """MCP tool wraps list_prefix_async result as
         ``{"ok": True, "count": N, "items": [{"key":..., "value":...}]}``.
         Adapter must flatten to ``[(key, str_value), ...]`` per
-        PlanIndexStore's _DharaClient Protocol."""
+        PlanIndexStore's _MCPClient Protocol."""
         wire_response = {
             "ok": True,
             "count": 2,
@@ -160,7 +160,7 @@ class TestMCPKvClientDelete:
 
 
 class TestMCPKvClientContract:
-    """Sanity: MCPKvClient satisfies PlanIndexStore's _DharaClient Protocol.
+    """Sanity: MCPKvClient satisfies PlanIndexStore's _MCPClient Protocol.
 
     The Protocol declared in plan_index/store.py:109-115 is::
 

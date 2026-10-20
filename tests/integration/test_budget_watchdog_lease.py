@@ -234,9 +234,9 @@ class TestMultiReplicaLease:
             lease_ttl_seconds=60,
             usage_source=raising_usage_source,
         )
-        # Fail-open: dhara_unavailable is True, the cycle did not raise,
+        # Fail-open: mcp_unavailable is True, the cycle did not raise,
         # and the metrics counter incremented.
-        assert result.dhara_unavailable is True
+        assert result.mcp_unavailable is True
         assert result.lease_acquired is False
 
 
@@ -297,7 +297,7 @@ class TestMCPFailOpen:
             metrics=metrics,
         )
         # Dhara unavailable path:
-        assert result.dhara_unavailable is True
+        assert result.mcp_unavailable is True
         assert result.lease_acquired is False
         assert metrics.skipped_mcp_unavailable == 1
 
@@ -319,7 +319,7 @@ class TestMCPFailOpen:
             usage_source=_static(BudgetUsage(tokens_used=50)),
             metrics=metrics,
         )
-        assert result.dhara_unavailable is True
+        assert result.mcp_unavailable is True
         assert metrics.skipped_mcp_unavailable == 1
 
     async def test_mcp_down_full_loop_does_not_crash(self) -> None:

@@ -283,7 +283,7 @@ The "hand-curated" sections at the top of mahavishnu's existing `PLAN_INDEX.md` 
 
 | Condition | Behavior | Exit code |
 |-----------|----------|-----------|
-| `ecosystem.yaml` missing or unparseable | Abort with clear error: "Cannot read ecosystem.yaml at <path>" | 2 |
+| `ecosystem.yaml` missing or unparsable | Abort with clear error: "Cannot read ecosystem.yaml at <path>" | 2 |
 | `emit_in_master: true` entry missing `slug` field | Abort with clear error: "<name> has emit_in_master but no slug"; do not emit partial master | 2 |
 | Sibling repo path doesn't exist | Log warning: "skipping <name>: path <p> does not exist"; continue | 1 (any sibling failure → 1) |
 | Sibling PLAN_INDEX.md missing | Log warning: "skipping <name>: no PLAN_INDEX.md at <path>"; continue | 1 |
@@ -324,7 +324,7 @@ Per `feedback-mcp-common-version-bump-is-user.md`, no `pyproject.toml` version b
 
 - `test_master_regenerate.py` — fleet regen over a tmp tree with 6 fake sibling checkouts; verifies Cross-repo section is appended; verifies per-repo entries are tagged with `origin: <slug>`; **section order test**: local table for A precedes Cross-repo heading for X, distribution footer appears exactly once, `generated_at` appears exactly once.
 - `test_ecosystem_yaml_validation.py` — `ecosystem.yaml` parsing; opt-in default (`emit_in_master` missing → excluded); malformed YAML → clear error; missing `slug` on `emit_in_master: true` entry → clear error; relative path → clear error.
-- `test_master_error_handling.py` — missing sibling path → warn + continue + exit 1; unparseable sibling → warn + continue + exit 1; final stderr summary lists failed siblings.
+- `test_master_error_handling.py` — missing sibling path → warn + continue + exit 1; unparsable sibling → warn + continue + exit 1; final stderr summary lists failed siblings.
 - `test_master_check.py` — `--check` mode detects drift → exit 1; `--check` mode no-drift → exit 0; `--check` mode one-sibling-missing → exit 1.
 - `test_link_math.py` — cross-repo link target is `../../` + `<slug>` + `/` + `<entry.rel>`; pin against absolute-path drift; **slug-vs-basename collision test** (`akosha` and `akosha-experimental` both present; link target for entry with `rel: docs/plans/akosha-some-other.md` resolves to `akosha-experimental/...` not `akosha/...`).
 - `test_master_dedup.py` — two siblings with identical `ecosystem.yaml` paths but different `slug` fields → dedupe by path (warn, take the first); two entries with same `slug` → reject at parse.

@@ -27,7 +27,7 @@ pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.skipif(
         os.getenv("MAHAVISHNU_DHARA_INTEGRATION") != "1",
-        reason="set MAHAVISHNU_DHARA_INTEGRATION=1 to run live Dhara registry tests",
+        reason="set MAHAVISHNU_DHARA_INTEGRATION=1 to run live MCP registry tests",
     ),
 ]
 

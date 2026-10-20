@@ -38,12 +38,10 @@ Scope notes for downstream Tasks 4 + 7 of the plan:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from datetime import datetime
+from typing import Any, Literal
 
 import msgspec
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class WorkflowOutcome(msgspec.Struct, frozen=True):

@@ -31,7 +31,7 @@ def is_uuid7_id(value: str) -> bool:
     This replaces the pre-2026-10-11 ``is_config_ulid`` alias. The
     contract is :func:`oneiric.core.ids.is_valid_id` (UUID7 only; the
     ULID read-time acceptance was removed in
-    ``docs/plans/2026-10-12-ulid-surface-elimination.md`` T1).
+    ``docs/plans/.archive/2026-10-12-ulid-surface-elimination.md`` T1).
     """
     return is_valid_id(value)
 

@@ -1,4 +1,4 @@
-"""Tests for mahavishnu.core.envelopes — Dhara-backed envelope transport.
+"""Tests for mahavishnu.core.envelopes — MCP-backed envelope transport.
 
 Verifies:
 - write_envelope uses a typed EnvelopeAddress key and awaits mcp.put()

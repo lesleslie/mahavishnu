@@ -65,6 +65,18 @@ DEFAULT_TIMEOUT: float = 30.0
 
 LOOPBACK_HOSTS: frozenset[str] = frozenset({"127.0.0.1", "localhost", "::1"})
 
+# Cloud-metadata endpoints that must NEVER receive credentials, even with
+# --allow-remote-base. Mirrors the v1.5 spec's BifrostLLMSettings IMDS blocklist.
+IMDS_BLOCKLIST: frozenset[str] = frozenset(
+    {
+        "169.254.169.254",
+        "169.254.169.253",
+        "100.100.100.200",
+        "metadata.google.internal",
+        "metadata.azure.com",
+    }
+)
+
 
 def is_loopback(url: str) -> bool:
     """Return True iff the URL's host is loopback. SSRF-style guard for the API-key path."""
@@ -72,6 +84,43 @@ def is_loopback(url: str) -> bool:
 
     host = (urlparse(url).hostname or "").lower()
     return host in LOOPBACK_HOSTS
+
+
+def remote_base_url_safety(url: str) -> tuple[bool, str]:
+    """For a non-loopback URL, return (ok, reason).
+
+    Non-loopback bases must use https and must not resolve to a cloud-metadata
+    endpoint on the IMDS_BLOCKLIST. The IMDS check is hostname-string-based
+    (no DNS resolution) so an attacker cannot bypass it via /etc/hosts.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        return False, f"non-loopback base requires https (got {parsed.scheme!r})"
+    host = (parsed.hostname or "").lower()
+    if host in IMDS_BLOCKLIST:
+        return False, f"host is on the IMDS / metadata blocklist: {host}"
+    return True, "ok"
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse 3xx redirects when an Authorization header is set.
+
+    An open redirect on the operator's intended base URL could otherwise
+    silently bounce the request to an attacker-controlled host while
+    the ``Authorization: Bearer <api_key>`` header stays attached —
+    leaking the credential. Refusing to follow redirects is the
+    defense-in-depth complement to the URL-string checks above; it does
+    not replace them.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Returning None from redirect_request suppresses redirect-following.
+        return None
+
+
+NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirect())
 
 
 @dataclass
@@ -112,7 +161,7 @@ def measure(base_url: str, api_key: str, model: str, prompt: str, timeout: float
     )
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with NO_REDIRECT_OPENER.open(req, timeout=timeout) as resp:
             http_status = resp.status
             first_byte_at: float | None = None
             buf: list[str] = []
@@ -224,6 +273,14 @@ def main() -> int:
         )
         return 2
     if remote_bases:
+        for label, url in remote_bases:
+            ok, reason = remote_base_url_safety(url)
+            if not ok:
+                print(
+                    f"refusing remote base {label}={url}: {reason}",
+                    file=sys.stderr,
+                )
+                return 2
         joined = ", ".join(f"{label}={url}" for label, url in remote_bases)
         print(
             f"WARNING: sending API key to non-loopback endpoint(s): {joined}. "

@@ -262,16 +262,52 @@ def test_stub_subcommands_why_stub_flag_prints_implementation_cost() -> None:
         assert "plan" in result.output.lower(), f"{stub}: missing plan pointer"
 
 
-def test_demo_agno_is_no_longer_a_stub() -> None:
+def test_demo_agno_is_no_longer_a_stub(monkeypatch) -> None:
     """2026-10-15 wire-up fix: ``mahavishnu demo agno`` is a live command.
 
     The stub path prints "not implemented" and exits 0; the live path
-    hits the precondition gate (or actually executes). Either way it
-    must NOT contain the stub message. We don't assert on precondition
-    success here — that's tested in test_cli_wireup_invariants.
+    invokes ``_check_agno_preconditions`` and exits 1 on precondition
+    failure (or executes the adapter on success). The original test
+    attempted to verify the wire-up by waiting for a real ``AgnoAdapter``
+    execution — but with ``MINIMAX_API_KEY`` exported and ``agno`` SDK
+    installed, the command ran a live LLM call that hung for 60+ s in
+    ``agno/tools/function.py`` → ``file_tools.search_files`` → pydantic-
+    settings reload (also blocking the xdist worker for 342 s before
+    being killed). A live billing call inside ``tests/unit/`` is non-
+    hermetic by definition, so this test now stubs the precondition
+    checker to deterministically enter the failure branch.
+
+    The test still verifies the actual wire-up:
+
+    1. The ``"not implemented"`` stub message is absent (the original
+       assertion, preserved verbatim). The stub path never called
+       ``_check_agno_preconditions``.
+    2. The output contains ``"Precondition failure"`` — proving the new
+       Typer callback invokes ``_check_agno_preconditions`` instead of
+       falling through to the stub printer. Without assertion (2) the
+       test would be tautological because ``"not implemented" not in
+       output`` would also pass for any future live-path that swallows
+       errors silently.
+
+    Precondition-success and adapter-execution coverage lives in
+    ``test_cli_wireup_invariants`` and the integration suite; this file
+    stays hermetic.
     """
+    # Deterministic precondition failure — exercises the live Typer
+    # callback (``demo_agno → _check_agno_preconditions → typer.Exit(1)``)
+    # without spinning up ``AgnoAdapter`` or hitting the LLM provider.
+    monkeypatch.setattr(
+        demo_cli,
+        "_check_agno_preconditions",
+        lambda: ["hermetic test: simulated precondition failure"],
+    )
     result = runner.invoke(demo_app, ["agno"])
     assert "not implemented" not in result.output, result.output
+    # Live-path proof: the precondition gate was reached and printed its
+    # banner. The stub path never invoked this code — it printed
+    # ``"not implemented"`` and exited 0 — so seeing the banner here
+    # is the actual wire-up assertion.
+    assert "Precondition failure" in result.output, result.output
 
 
 # ============================================================================

@@ -320,6 +320,26 @@ class PiPool(BasePool):
             "OPENAI_BASE_URL",
             "ANTHROPIC_API_KEY",
             "ANTHROPIC_BASE_URL",
+            # pi-coding-agent v1.x routes via a per-user agent
+            # directory (``~/.pi/agent/`` by default) which holds
+            # models.json + settings.json. Operators can point Pi at
+            # a project-local config via ``PI_CODING_AGENT_DIR``.
+            # PiPool forwards whichever the operator has set so the
+            # subprocess loads the right provider catalog.
+            "PI_CODING_AGENT_DIR",
+            # Bodai's Bifrost vkey. Pi's models.json authorises via
+            # ``apiKey: "$BODAI_BIFROST_VK"`` (env interpolation per
+            # Pi docs) — forwarding this env var lets the
+            # ``pi-coding-agent`` subprocess resolve the literal
+            # against the operator's shell secret instead of falling
+            # through to the OpenAI env-var auth precedence.
+            # NB: the name is intentionally NOT ``BIFROST_*`` prefixed
+            # — the pool's runtime denylist
+            # (:data:`_FORBIDDEN_ENV_PREFIXES`, REQ-BIFROST-014) strips
+            # any var matching ``BIFROST_*`` regardless of explicit
+            # allowlist entries, and that rule wins. Use
+            # ``BODAI_*`` instead.
+            "BODAI_BIFROST_VK",
         )
         # Pool state — populated by start() (version probe) and
         # execute_task (last task telemetry). The pool is otherwise
@@ -535,12 +555,16 @@ class PiPool(BasePool):
         with ``npx @earendil-works/pi-coding-agent --help``).
         """
         argv: list[str] = list(self._resolve_npx_command())
-        provider = task.get("provider")
-        model = task.get("model")
-        if provider:
-            argv.extend(["--provider", str(provider)])
-        if model:
-            argv.extend(["--model", str(model)])
+        # Default to the Bodai Bifrost provider+model when the task
+        # dict doesn't pin one. Without these defaults, ``pi --print``
+        # mode resolves the prompt against its built-in openai
+        # provider (hitting platform.openai.com directly), not the
+        # models.json provider the operator configured under
+        # ``~/.pi/agent/``. ``--provider REQUIRES --model`` per
+        # ``npx pi --help``, so we either set both or neither.
+        provider = task.get("provider") or "minimax-via-bifrost"
+        model = task.get("model") or "MiniMax-M3"
+        argv.extend(["--provider", str(provider), "--model", str(model)])
         argv.append(prompt)
         return tuple(argv)
 

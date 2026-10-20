@@ -15,7 +15,7 @@ from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 
 
 @pytest.fixture
-def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def mcp_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Patch the mcp.put call to capture writes without hitting the real DB.
 
     The writer resolves ``mcp.put`` at call time via
@@ -32,7 +32,7 @@ def dhara_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 def test_record_workflow_outcome_persists_validated_struct(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
 ) -> None:
     payload = {
         "workflow_id": "wf-123",
@@ -45,11 +45,11 @@ def test_record_workflow_outcome_persists_validated_struct(
     assert isinstance(record, WorkflowOutcome)
     assert record.workflow_id == "wf-123"
     assert record.status == "succeeded"
-    assert dhara_storage.call_count == 1
+    assert mcp_storage.call_count == 1
 
 
 def test_record_workflow_outcome_rejects_invalid_status(
-    dhara_storage: MagicMock,
+    mcp_storage: MagicMock,
 ) -> None:
     """Literal['succeeded','failed','cancelled'] enforced by substrate."""
     with pytest.raises(msgspec.ValidationError):
@@ -59,7 +59,7 @@ def test_record_workflow_outcome_rejects_invalid_status(
             started_at=datetime.now(UTC),
             finished_at=datetime.now(UTC),
         )
-    assert dhara_storage.call_count == 0  # invalid never persisted
+    assert mcp_storage.call_count == 0  # invalid never persisted
 
 
 # --- Task 149: feature flag + runtime gate coverage ---

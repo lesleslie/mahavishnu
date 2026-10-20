@@ -2,10 +2,10 @@
 
 Spec #9: multi-tenant-context-packs. Context packs scoped to tenants, versioned.
 
-The Dhara-backed implementation is a follow-up (Workstream C: substrate).
+The MCP-backed implementation is a follow-up (Workstream C: substrate).
 The HTTP CRUD endpoint is blocked on /tenants/<id>/context-versions.
 These tests pin the TenantContextPack model + TenantContextPublisher
-interface so the Dhara implementation can be swapped in without breaking callers.
+interface so the MCP implementation can be swapped in without breaking callers.
 """
 
 from __future__ import annotations

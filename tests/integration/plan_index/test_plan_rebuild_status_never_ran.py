@@ -1,4 +1,4 @@
-"""Round-2 e2e: ``plan_rebuild_status`` against a fresh Dhara substrate.
+"""Round-2 e2e: ``plan_rebuild_status`` against a fresh MCP substrate.
 
 REQ-PLAN-007 (§4 §6.4, empty-substrate coverage): when no rebuilder has
 fired yet, the tool returns:

@@ -2,7 +2,7 @@
 
 Three-phase orchestrator (scan → upsert → render). The brief specifies
 two smoke tests via subprocess; this file extends them with parser-level
-checks so the new flags are wired even when Dhara is not reachable.
+checks so the new flags are wired even when MCP is not reachable.
 """
 
 from __future__ import annotations

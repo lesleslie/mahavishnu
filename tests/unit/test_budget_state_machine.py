@@ -11,7 +11,7 @@ Covers:
 The state machine is intentionally pure (no I/O, no clock) so these
 tests are fast and deterministic — the watchdog tests in
 ``tests/integration/test_budget_watchdog_lease.py`` exercise the
-async + Dhara-dependent paths.
+async + MCP-dependent paths.
 """
 
 from __future__ import annotations
@@ -301,7 +301,7 @@ class TestBudgetStateMachine:
 
 
 class TestBudgetSerialization:
-    """Round-trip lossless serialization for Dhara persistence."""
+    """Round-trip lossless serialization for MCP persistence."""
 
     def test_spec_round_trip(self) -> None:
         original = BudgetSpec(

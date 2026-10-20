@@ -8,7 +8,7 @@ the Phase 1 Exit Criteria in
 - unanimous APPROVE → consensus APPROVE
 - all refuters failing → consensus UNAVAILABLE (NOT SPLIT)
 - error ↔ ABSTAIN biconditional on ``RefuterVerdict``
-- Dhara write failure → ``persisted=False`` and dead-letter file present
+- MCP write failure → ``persisted=False`` and dead-letter file present
 """
 
 from __future__ import annotations
@@ -269,25 +269,25 @@ def test_model_validator_enforces_error_abstain_biconditional() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Task 1.6 exit criteria — Dhara persistence failure
+# Task 1.6 exit criteria — MCP persistence failure
 # ---------------------------------------------------------------------------
 
 
 async def test_persisted_false_on_mcp_write_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Dhara raises on put() → result.persisted=False and a dead-letter file is written.
+    """MCP raises on put() → result.persisted=False and a dead-letter file is written.
 
     Redirects ``VerificationStore.DEAD_LETTER_DIR`` to ``tmp_path`` so the
     dead-letter file lands somewhere pytest cleans up.
     """
     monkeypatch.setattr(VerificationStore, "DEAD_LETTER_DIR", tmp_path)
 
-    class _BrokenDhara:
+    class _BrokenMCP:
         async def put(self, key: str, payload: dict) -> None:
             raise ConnectionError("mcp unreachable")
 
-    store = VerificationStore(mcp=_BrokenDhara())  # type: ignore[arg-type]
+    store = VerificationStore(mcp=_BrokenMCP())  # type: ignore[arg-type]
 
     result = VerificationResult(
         proposal_id="pid-deadletter",
@@ -311,7 +311,7 @@ async def test_persisted_false_on_mcp_write_failure(
     assert "ConnectionError" in persisted.persist_error
 
     dead_letter = tmp_path / "pid-deadletter.json"
-    assert dead_letter.exists(), "dead-letter file must be written on Dhara failure"
+    assert dead_letter.exists(), "dead-letter file must be written on MCP failure"
     payload = json.loads(dead_letter.read_text())
     assert payload["proposal_id"] == "pid-deadletter"
     assert payload["consensus"] == Consensus.APPROVE.value

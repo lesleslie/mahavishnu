@@ -1841,4 +1841,3 @@ MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://localhost:14317
 ```
 
 This already maps to the relocated `otlpclaude`/`otlpqwen` analogue or the off-Akosha collector. **No env-var change is part of v3.** The Mahavishnu exporter continues to point at `:14317`. PR-A3 adds Akosha's receiver on `:4317` (substrate receiver); Mahavishnu's `OTLP_EXPORTER_OTLP_ENDPOINT` could be re-pointed at `:4317` post-sub-spec-B-rewrite, but is **out of scope for v3** (it's a producer-side concern, not substrate).
-

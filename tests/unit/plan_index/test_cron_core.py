@@ -1,6 +1,6 @@
 """Tests for plan_index cron_core.run_rebuild_cycle.
 
-REQ-PLAN-014/15/16: The cycle acquires a Dhara-backed mutex, scans
+REQ-PLAN-014/15/16: The cycle acquires a MCP-backed mutex, scans
 records (when repo_root is provided), upserts via the rebuilder, and
 appends failures to a bounded recent_errors DLQ (max 20 entries).
 """

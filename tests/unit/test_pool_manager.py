@@ -718,12 +718,12 @@ class TestPersistPoolState:
         self, terminal_manager, session_buddy, message_bus
     ):
         """Test _persist_pool_state() calls mcp_state.persist_pool when available."""
-        mock_dhara = AsyncMock()
+        mock_mcp = AsyncMock()
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
             session_buddy_client=session_buddy,
             message_bus=message_bus,
-            mcp_state=mock_dhara,
+            mcp_state=mock_mcp,
         )
 
         config = PoolConfig(name="test", pool_type="mahavishnu", min_workers=1)
@@ -732,8 +732,8 @@ class TestPersistPoolState:
 
         await pool_manager._persist_pool_state("test-pool", mock_pool, "running")
 
-        mock_dhara.persist_pool.assert_called_once()
-        call_args = mock_dhara.persist_pool.call_args
+        mock_mcp.persist_pool.assert_called_once()
+        call_args = mock_mcp.persist_pool.call_args
         assert call_args[0][0] == "test-pool"
 
     @pytest.mark.asyncio
@@ -741,13 +741,13 @@ class TestPersistPoolState:
         self, terminal_manager, session_buddy, message_bus
     ):
         """Test _persist_pool_state() handles mcp exceptions gracefully."""
-        mock_dhara = AsyncMock()
-        mock_dhara.persist_pool.side_effect = Exception("Dhara error")
+        mock_mcp = AsyncMock()
+        mock_mcp.persist_pool.side_effect = Exception("MCP error")
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
             session_buddy_client=session_buddy,
             message_bus=message_bus,
-            mcp_state=mock_dhara,
+            mcp_state=mock_mcp,
         )
 
         config = PoolConfig(name="test", pool_type="mahavishnu", min_workers=1)
@@ -794,32 +794,32 @@ class TestPersistRoutingDecision:
         self, terminal_manager, session_buddy, message_bus
     ):
         """Test _persist_routing_decision() calls mcp_state.persist_routing_decision."""
-        mock_dhara = AsyncMock()
+        mock_mcp = AsyncMock()
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
             session_buddy_client=session_buddy,
             message_bus=message_bus,
-            mcp_state=mock_dhara,
+            mcp_state=mock_mcp,
         )
 
         await pool_manager._persist_routing_decision(
             {"category": "code"}, "pool-1", PoolSelector.LEAST_LOADED, None, "least_loaded"
         )
 
-        mock_dhara.persist_routing_decision.assert_called_once()
+        mock_mcp.persist_routing_decision.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_persist_routing_decision_gracefully_handles_exception(
         self, terminal_manager, session_buddy, message_bus
     ):
         """Test _persist_routing_decision() handles mcp exceptions gracefully."""
-        mock_dhara = AsyncMock()
-        mock_dhara.persist_routing_decision.side_effect = Exception("Dhara error")
+        mock_mcp = AsyncMock()
+        mock_mcp.persist_routing_decision.side_effect = Exception("MCP error")
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
             session_buddy_client=session_buddy,
             message_bus=message_bus,
-            mcp_state=mock_dhara,
+            mcp_state=mock_mcp,
         )
 
         # Should not raise

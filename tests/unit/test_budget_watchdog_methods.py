@@ -27,7 +27,7 @@ async def test_start_budget_watchdog_is_idempotent_when_uninitialised() -> None:
     """start_budget_watchdog is a safe no-op on a bare app instance.
 
     The lifespan hooks always call this on cold-start; calling twice
-    must not raise. With no Dhara store attached the lazy-init branch
+    must not raise. With no MCP store attached the lazy-init branch
     inside the method logs and swallows -- the public contract here is
     'never raise' so the test asserts exactly that.
     """
@@ -48,7 +48,7 @@ async def test_stop_budget_watchdog_is_noop_when_never_started() -> None:
 async def test_stop_budget_watchdog_after_start_drains_cleanly() -> None:
     """start then stop leaves the watchdog task in a drainable state.
 
-    Even when Dhara is unavailable the lifespan can run start+stop
+    Even when MCP is unavailable the lifespan can run start+stop
     back-to-back without blocking. The test just exercises both
     methods so they count as cross-file references for the audit.
     """

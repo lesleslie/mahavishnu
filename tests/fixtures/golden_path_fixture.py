@@ -50,7 +50,7 @@ def golden_path_incident_fixture() -> GoldenPathIncidentFixture:
             f"The same correlation_id {correlation_id} is present from detection through validation.",
             "Session-Buddy stores the workflow checkpoint for the incident flow.",
             "Crackerjack quality validation is recorded before approval is granted.",
-            "Dhara persists workflow, pool, routing, and approval checkpoints.",
+            "MCP persists workflow, pool, routing, and approval checkpoints.",
             "Akosha receives derived incident/fix memory after validation.",
         ),
         operator_transcript=(
@@ -58,7 +58,7 @@ def golden_path_incident_fixture() -> GoldenPathIncidentFixture:
             "Quality gate run delegated to Crackerjack and returned a blocking failure.",
             f"Session-Buddy checkpoint created for workflow {workflow_id}.",
             "Operator approval requested before fix execution is resumed.",
-            f"Dhara recovery state shows the same correlation and workflow identifiers ({correlation_id}, {workflow_id}).",
+            f"MCP recovery state shows the same correlation and workflow identifiers ({correlation_id}, {workflow_id}).",
             "Akosha indexed the validated fix for semantic retrieval.",
             "Operator cockpit reports the incident resolved and searchable.",
         ),

@@ -1,12 +1,12 @@
-"""Round-2 in-process: degraded-read path on Dhara outage.
+"""Round-2 in-process: degraded-read path on MCP outage.
 
 REQ-PLAN-008: the tool layer must translate ``PlanIndexUnavailableError``
 into a degraded ``PlanListResultDict`` (``status="degraded"``) per spec
-§Read paths. At the store level the rule is that Dhara outages surface
+§Read paths. At the store level the rule is that MCP outages surface
 as ``PlanIndexUnavailableError``; tests confirm that contract.
 
 This file is INTENTIONALLY in-process (no FastMCP, no JSON-RPC):
-the store→Dhara boundary is the one that needs the ``unavailable``
+the store→MCP boundary is the one that needs the ``unavailable``
 translation. A regression that re-raises a raw ``ConnectionError``
 breaks the autostop fallback at the tool layer; the test catches it
 directly.
@@ -20,11 +20,11 @@ from mahavishnu.plan_index.errors import PlanIndexUnavailableError
 from mahavishnu.plan_index.store import PlanIndexStore
 
 
-class _RaisingDhara:
+class _RaisingMCP:
     """``FakeMCP`` variant that raises ``ConnectionError`` on every call.
 
     Used by tests to verify the store's degraded-read surface. The
-    store currently does NOT wrap Dhara read-side errors in
+    store currently does NOT wrap MCP read-side errors in
     ``PlanIndexUnavailableError`` — those propagate as raw
     ``ConnectionError`` (see notes in report). The writes (``upsert``)
     do compensate to keep the secondary indices consistent.
@@ -45,7 +45,7 @@ class _RaisingDhara:
 
 class TestMCPUnreachableDegrades:
     async def test_store_list_propagates_mcp_failure(self) -> None:
-        """The store does NOT currently translate Dhara errors to ``PlanIndexUnavailableError``.
+        """The store does NOT currently translate MCP errors to ``PlanIndexUnavailableError``.
 
         Documented gap: spec REQ-PLAN-008 assumes the read path raises
         the typed error so the tool layer can mark the response
@@ -53,7 +53,7 @@ class TestMCPUnreachableDegrades:
         implementation propagates the raw ``ConnectionError`` — a
         regression catcher for the planned error-translation layer.
         """
-        store = PlanIndexStore(_RaisingDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(_RaisingMCP())  # type: ignore[arg-type]
 
         with pytest.raises((PlanIndexUnavailableError, ConnectionError)) as excinfo:
             await store.list_all()
@@ -63,14 +63,14 @@ class TestMCPUnreachableDegrades:
         assert excinfo.value is not None
 
     async def test_store_get_propagates_mcp_failure(self) -> None:
-        """``store.get`` propagates the raw Dhara failure too.
+        """``store.get`` propagates the raw MCP failure too.
 
         The store's read path doesn't translate ``ConnectionError``
         into ``PlanIndexUnavailableError`` — keeping the raw error
         visible at the boundary is deliberate until Task 12 lands the
         production wire.
         """
-        store = PlanIndexStore(_RaisingDhara())  # type: ignore[arg-type]
+        store = PlanIndexStore(_RaisingMCP())  # type: ignore[arg-type]
 
         with pytest.raises((PlanIndexUnavailableError, ConnectionError)):
             await store.get("f" * 32)
