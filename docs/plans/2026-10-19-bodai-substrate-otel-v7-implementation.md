@@ -382,22 +382,24 @@ Add after `initialize()` ends (line 185, after `logger.info("Hot store initializ
         is escaped by comparison rather than bound.
         """
         async with self._lock:
-            row = await self._conn.execute(
-                "SELECT 1 FROM duckdb_tables() WHERE table_name = ? LIMIT 1", [name]
-            ).fetchone()
-        return row is not None
-```
-
-**If `self._conn` is not the connection attribute in this class** — the verified code uses `self.conn` (line 136, `self.conn = duckdb.connect(...)`) — use `self.conn`. Also, the verified `initialize()` uses synchronous `self.conn.execute(...)` calls, not awaited ones. Match the surrounding style: if `conn.execute` is sync, drop the `await`:
-
-```python
-    async def table_exists(self, name: str) -> bool:
-        async with self._lock:
+            # NOTE: no `await`. `self.conn` is a plain
+            # `duckdb.DuckDBPyConnection` (set at oneiric
+            # duckdb_hot_store.py:136 via `duckdb.connect(...)`), and
+            # `.execute()` is synchronous — awaiting the returned cursor
+            # raises `TypeError: object DuckDBPyConnection can't be used in
+            # 'await' expression`. The enclosing method is `async` and
+            # `self._lock` is a real `asyncio.Lock()` (:121), so the `async
+            # with` is correct; only the `await` is wrong.
             row = self.conn.execute(
                 "SELECT 1 FROM duckdb_tables() WHERE table_name = ? LIMIT 1", [name]
             ).fetchone()
         return row is not None
 ```
+
+**The connection attribute is `self.conn`**, not `self._conn` — verified at
+`duckdb_hot_store.py:136` (`self.conn = duckdb.connect(str(self.db_path))`).
+Match the surrounding style, which calls `self.conn.execute(...)`
+synchronously at :135, :216, :275, :312.
 
 - [ ] **Step 5: Add the `spans_substrate` DDL to `initialize()`**
 
@@ -782,18 +784,57 @@ Then replace the resource literal at line 62:
 
 The `except` branch matters: `setup_telemetry` runs at boot, possibly before oneiric's settings are resolvable. Falling back to `service_name` preserves the old behavior rather than crashing the server.
 
-Update the call site at `akosha/mcp/server.py:466` to pass the live values:
+Update the call site at `akosha/mcp/server.py:466-472`. The existing call is:
 
 ```python
+        environment = os.getenv("ENVIRONMENT", "development")
+        otlp_endpoint = os.getenv("OTLP_ENDPOINT", None)
+
         tracer, meter = setup_telemetry(
-            service_name="akosha",
-            environment=settings.environment,
-            service_namespace=settings.telemetry__service_namespace,
-            legacy_namespace=settings.telemetry__legacy_namespace_alias,
+            service_name="akosha-mcp",
+            environment=environment,
+            otlp_endpoint=otlp_endpoint,
+            enable_console_export=(environment == "development"),
+            sample_rate=1.0 if environment == "development" else 0.1,
         )
 ```
 
-Read the surrounding call site first — it may already pass `otlp_endpoint` and `sample_rate` positionally. Add the two new kwargs without disturbing the existing arguments.
+**Add the two new kwargs. Do not replace the call.** There is no `settings`
+variable in this scope — it reads `os.getenv` directly — and three existing
+kwargs carry real behavior:
+
+- `otlp_endpoint` — dropping it stops akosha exporting spans over OTLP at
+  all. That is the entire point of the substrate.
+- `enable_console_export`, `sample_rate` — environment-dependent.
+- `service_name="akosha-mcp"` — leave it. Renaming to `"akosha"` silently
+  re-points every service-name-scoped query and dashboard away from the
+  spans akosha already emits.
+
+```python
+        from akosha.config import get_config
+
+        cfg = get_config()
+        environment = os.getenv("ENVIRONMENT", cfg.environment)
+        otlp_endpoint = os.getenv("OTLP_ENDPOINT", None)
+
+        tracer, meter = setup_telemetry(
+            service_name="akosha-mcp",
+            environment=environment,
+            otlp_endpoint=otlp_endpoint,
+            enable_console_export=(environment == "development"),
+            sample_rate=1.0 if environment == "development" else 0.1,
+            service_namespace=cfg.telemetry__service_namespace,
+            legacy_namespace=cfg.telemetry__legacy_namespace_alias,
+        )
+```
+
+`cfg.environment` is a top-level `AkoshaConfig` field (`config.py:489`); the
+existing `os.getenv` still wins when set, so this is additive rather than a
+behaviour change.
+
+Task 12 removes `legacy_namespace` and `telemetry__legacy_namespace_alias`.
+**It must delete the two lines added here in the same PR**, or akosha's boot
+passes a kwarg that no longer exists.
 
 - [ ] **Step 11: Run to verify it passes**
 
@@ -1072,15 +1113,22 @@ Add to `HotStore`:
         """
         if not rows:
             return (0, 0)
+        ncols = len(self._SPAN_COLUMNS)
         columns = ", ".join(self._SPAN_COLUMNS)
-        placeholders = ", ".join("?" for _ in self._SPAN_COLUMNS)
+        # One VALUES tuple PER ROW. A single tuple with a flat
+        # len(rows)*ncols parameter list does not bind -- DuckDB consumes the
+        # first ncols and raises:
+        #   InvalidInputException: Parameter argument/count mismatch,
+        #   identifiers of the excess parameters: 30, 31, ...
+        row_tuple = "(" + ", ".join("?" * ncols) + ")"
+        values_clause = ", ".join([row_tuple] * len(rows))
         # `row[col]`, not `row.get(col)`: a normalizer that forgets a column
         # must fail HERE, naming the column, rather than three layers down as
         # a NOT NULL violation on whichever column happened to be omitted.
         values = [row[col] for row in rows for col in self._SPAN_COLUMNS]
         sql = (
             f"INSERT INTO {self.spans_substrate_table} ({columns}) "
-            f"VALUES ({placeholders}) "
+            f"VALUES {values_clause} "
             "ON CONFLICT DO NOTHING RETURNING span_id"
         )
         async with self._lock:
@@ -1212,13 +1260,24 @@ from akosha.storage.hot_store import HotStore
 def _attr(resource: resource_pb2.Resource, key: str, value: str) -> None:
     """Set one resource attribute.
 
-    Only `Resource.attributes` is a `Struct` (a map). `Span.attributes` is a
-    *repeated* `KeyValue` — it takes `.add(key=..., value=...)`, so
-    `span.attributes[k] = v` cannot work. `service.name` and
-    `service.namespace` are resource attributes anyway, which is what the
-    receiver's namespace validator reads.
+    BOTH `Resource.attributes` and `Span.attributes` are `repeated
+    opentelemetry.proto.common.v1.KeyValue` — neither is a Struct or a map
+    (verified against opentelemetry-proto in akosha's venv:
+    `DESCRIPTOR.fields_by_name['attributes'].is_repeated` is True and
+    `.message_type.name == 'KeyValue'`). So subscript assignment
+    `resource.attributes[k] = v` raises
+    `TypeError: list indices must be integers`. Append instead:
+
+        kv = resource.attributes.add()
+        kv.key = key
+        kv.value.string_value = value
+
+    Setting the same key twice yields two KeyValues, not an overwrite —
+    the receiver's normalizer is what collapses duplicates.
     """
-    resource.attributes[key].string_value = value
+    kv = resource.attributes.add()
+    kv.key = key
+    kv.value.string_value = value
 
 
 def _span(span_id: str, trace_id: str = "1") -> trace_pb2.Span:
@@ -1566,7 +1625,11 @@ async def _ensure_operational_tables(self) -> None:
         )
         """,
     ):
-        await self.hot_store.conn.execute(ddl)
+        # Synchronous: `hot_store.conn` is a plain DuckDBPyConnection. The
+        # method is async and `async with self._lock` is correct; awaiting
+        # `.execute()` would raise TypeError on every start().
+        async with self.hot_store._lock:
+            self.hot_store.conn.execute(ddl)
 ```
 
 Without this, `_dlq_insert` raises `CatalogException: Table with name _dlq_rows does not exist` on the first rejected row — a failure that only appears once the receiver has already rejected something, which is the worst time to discover it.
@@ -1768,16 +1831,40 @@ Leave `otlp/claude`, `otlp/qwen`, `zipkin`, `jaeger`, `pprof` unchanged (spec §
 
 - [ ] **Step 12: Drain preflight (Review Focus #4)**
 
-Before restarting the collector, run this to confirm nothing is still pointed at `:4318`:
+Before restarting the collector, run this to confirm nothing is still pointed at `:4317`/`:4318`:
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-echo "=== dashboards ==="; git grep -n ':4318' -- 'monitoring/dashboards/' || echo "clean"
-echo "=== collector configs ==="; git grep -n ':4318' -- 'config/*alloy*.yaml' 'config/otel-collector-config.yaml' || echo "clean"
-echo "=== settings ==="; git grep -n '4318' -- 'settings/' || echo "clean"
+# Sweep the WHOLE repo, then report which files carry the ports. A pathspec
+# list that misses a file reports "clean" for that file — and there is no
+# `config/*alloy*.yaml` in this repo, so that glob always matches nothing.
+git grep -ln ':4317\|:4318' -- \
+  'config/' 'settings/' 'monitoring/' 'docker/' 'docker-compose*.yml' \
+  2>/dev/null || echo "no references found"
 ```
 
-For every hit, change it to `:14318`. Record each edited file in the PR description — the spec §13.1 consumer table names Grafana dashboards, Alloy relay templates, and the Bifrost gateway UI (operator-set at runtime per sub-spec B §4.4).
+Known carriers as of 2026-10-20 — verify each is handled:
+
+| Path | Notes |
+|---|---|
+| `config/grafana/dashboards/*.json` | the real dashboard dir, incl. `otlp-overview-dashboard.json` |
+| `config/otel-collector-config.yaml` | plus its Jaeger / external-forwarder endpoints (`:219`, `:252`) |
+| `config/clients/otel-collector-test-config.yaml` | |
+| `config/clients/docker-compose.otlp.yml` | |
+| `monitoring/docker-compose.yml` | |
+| `docker/docker-compose.buildpacks.yml` | |
+| `settings/` | incl. `settings/local.yaml` |
+
+For every hit, change it to `:14317`/`:14318`. Record each edited file in the
+PR description — the spec §13.1 consumer table names Grafana dashboards, Alloy
+relay templates, and the Bifrost gateway UI (operator-set at runtime per
+sub-spec B §4.4).
+
+**Direction matters.** The collector vacates `:4317`/`:4318` and moves to
+`:14317`/`:14318`; akosha's receiver *takes* `:4317`/`:4318`. Repointing every
+consumer at `:14318` keeps all traffic on the collector and leaves the new
+receiver with no producers. Sweeping is a port-collision check, not the
+migration — producers get repointed at the receiver by their own PRs.
 
 - [ ] **Step 13: Commit akosha and mahavishnu separately**
 
@@ -1807,7 +1894,8 @@ positional arg to both tasks, and is set() BEFORE the gather teardown.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add config/otel-collector-config.yaml 'monitoring/dashboards/' 'settings/'
+git add config/otel-collector-config.yaml 'config/grafana/dashboards/' \
+  config/clients/ 'settings/' monitoring/docker-compose.yml docker/
 git commit -m "chore(mahavishnu): move collector off :4317/:4318 to :14317/:14318
 
 The akosha OTLPReceiver takes :4317 (gRPC) and :4318 (HTTP). The
@@ -3120,7 +3208,12 @@ from dataclasses import dataclass
 CANARY_EMIT_INTERVAL_SECONDS = 30
 CANARY_SERVICE_NAME = "_receiver_canary"
 CANARY_SPAN_NAME = "_canary_substrate_write"
-CANARY_TRACE_ID = "_canary"
+# Hex only. These become wire ids via bytes.fromhex(...ljust(N, "0")), and
+# `fromhex` rejects any non-hex character -- "_canary" raises
+# `ValueError: non-hexadecimal number found in fromhex() arg at position 0`
+# on the very first emit. Pad-right with zeros to 32 chars for a 16-byte
+# trace id and 16 chars for an 8-byte span id.
+CANARY_TRACE_ID = "ca"
 
 
 @dataclass
@@ -3183,18 +3276,25 @@ async def _emit_canary_once(self) -> None:
     now_ns = _time.time_ns()
     override = getattr(self, "_canary_id_override", None)
     trace_hex = CANARY_TRACE_ID if override is None else override[0]
-    span_hex = f"_canary_{now_ns}" if override is None else override[1]
-    # Ids are fixed-width byte strings on the wire: 16 bytes for a trace_id,
-    # 8 for a span_id. Left-pad hex to 32 / 16 chars respectively.
-    span_id = bytes.fromhex(span_hex.ljust(16, "0"))
-    trace_id = bytes.fromhex(trace_hex.ljust(32, "0"))
+    # Default span id must be unique per emit or every emit after the first
+    # dedups. Hex only — see CANARY_TRACE_ID.
+    span_hex = f"ca{now_ns:x}"[-32:] if override is None else override[1]
+    span_id = bytes.fromhex(span_hex.ljust(16, "0")[:16])
+    trace_id = bytes.fromhex(trace_hex.ljust(32, "0")[:32])
 
     self.canary_state.canary_writes_attempted_total += 1
 
     batch = trace_service_pb2.ExportTraceServiceRequest()
     rs = batch.resource_spans.add()
-    rs.resource.attributes["service.name"].string_value = CANARY_SERVICE_NAME
-    rs.resource.attributes["service.namespace"].string_value = "bodai"
+    # attributes is `repeated KeyValue` on BOTH Resource and Span — append,
+    # never subscript.
+    for key, value in (
+        ("service.name", CANARY_SERVICE_NAME),
+        ("service.namespace", "bodai"),
+    ):
+        kv = rs.resource.attributes.add()
+        kv.key = key
+        kv.value.string_value = value
     ss = rs.scope_spans.add()
     ss.scope.name = "receiver.canary"
     span = ss.spans.add()
@@ -3540,8 +3640,12 @@ declared-but-unread symbol.
 **Files:**
 - Modify: `mcp_common/server/telemetry.py` (flip the default; remove `legacy_namespace`)
 - Modify: `oneiric/oneiric/core/substrate_settings.py` (flip `telemetry__service_namespace`; drop the alias field)
+- Modify: `akosha/akosha/mcp/server.py` — **required.** Remove the `legacy_namespace=` kwarg Task 3 added at :466-472 (Step 1b). Task 3 wires a reader that this task deletes the field for; leaving it raises `TypeError` on `akosha mcp start`.
 - Test: `mcp-common/tests/unit/server/test_namespace_flip.py`
 - Test: `mcp-common/tests/integration/test_service_namespace_bridge.py`
+- Test: `akosha/tests/unit/test_namespace_flip_removes_reader.py` (asserts no `legacy_namespace` remains in `akosha/`)
+
+**Repo:** mcp-common **and** akosha. This task is not single-repo.
 
 **Interfaces:**
 - Consumes: `legacy_namespace` / `telemetry__legacy_namespace_alias` (Task 1).
@@ -3552,22 +3656,62 @@ declared-but-unread symbol.
 The flip cannot merge until every consumer reads `bodai`. Run this **before** writing any code:
 
 ```bash
+sweep() {  # $1 = repo, $2... = pathspecs
+  local repo="$1"; shift
+  local hits
+  hits=$(cd "$repo" && git grep -n 'mcp-ecosystem' -- "$@" || true)
+  if [ -n "$hits" ]; then
+    printf 'HITS in %s [%s]:\n%s\n' "$repo" "$*" "$hits"
+    return 1
+  fi
+  printf 'clean: %s [%s]\n' "$repo" "$*"
+}
+
+# Verify each pathspec exists FIRST. `git grep` against a nonexistent path
+# exits non-zero with NO output, so a bare `|| echo clean` reports success
+# on a path that was never searched.
 cd /Users/les/Projects/mahavishnu
-echo "=== Grafana dashboards ==="
-git grep -n 'mcp-ecosystem' -- 'monitoring/dashboards/' || echo "clean"
-echo "=== Alert rules ==="
-git grep -n 'mcp-ecosystem' -- 'monitoring/prometheus/alerts.yml' || echo "clean"
+for p in config/grafana/dashboards/ monitoring/alertmanager/alert_rules.yml \
+         monitoring/prometheus.yml monitoring/otel.py config/clients/; do
+  [ -e "$p" ] || { echo "PATHSPEC MISSING: $p"; exit 1; }
+done
 
-cd /Users/les/Projects/akosha
-echo "=== Akosha queries ==="
-git grep -n 'mcp-ecosystem' -- 'akosha/' || echo "clean"
-
-cd /Users/les/Projects/mcp-common
-echo "=== mcp-common settings ==="
-git grep -n 'mcp-ecosystem' -- 'mcp_common/' || echo "clean"
+sweep /Users/les/Projects/mahavishnu monitoring/
+sweep /Users/les/Projects/akosha akosha/
+sweep /Users/les/Projects/mcp-common mcp_common/
 ```
 
+Known hits as of 2026-10-20, all in mahavishnu:
+`monitoring/dashboards/mcp_ecosystem.json`, `monitoring/prometheus.yml`,
+`monitoring/otel.py`. The real alert file is `monitoring/alertmanager/alert_rules.yml`
+— there is no `monitoring/prometheus/` directory in this repo. Grafana dashboards
+live in `config/grafana/dashboards/`, not `monitoring/dashboards/`.
+
 Every hit must be updated to read the new namespace, or the consumer must be switched to read `namespace.legacy_alias` during the bridge window. Record each edited file in the PR description.
+
+- [ ] **Step 1b: Remove the akosha reader of `legacy_namespace`**
+
+Task 3 added these two lines to `akosha/mcp/server.py:466-472`:
+
+```python
+            service_namespace=cfg.telemetry__service_namespace,
+            legacy_namespace=cfg.telemetry__legacy_namespace_alias,
+```
+
+Delete the `legacy_namespace=` line and, if `cfg.telemetry__service_namespace`
+is no longer read anywhere, the `cfg = get_config()` line too. Leaving the
+`legacy_namespace=` kwarg in place passes a keyword that no longer exists —
+akosha's boot raises `TypeError: setup_telemetry() got an unexpected keyword
+argument 'legacy_namespace'`, and the reader of the deleted setting raises
+`AttributeError` if the `cfg` line goes first. This step touches akosha and
+must merge with the mcp-common change, not after it.
+
+Verify:
+
+```bash
+cd /Users/les/Projects/akosha
+git grep -n 'legacy_namespace' -- akosha/ && echo "READER STILL PRESENT" || echo "clean"
+```
 
 - [ ] **Step 2: Add the CI gate**
 
