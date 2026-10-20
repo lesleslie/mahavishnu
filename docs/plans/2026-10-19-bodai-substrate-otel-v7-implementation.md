@@ -1947,7 +1947,6 @@ In `akosha/settings/akosha.yaml`, add at top level (sibling of `otel.receiver`, 
 ```yaml
 otel:
   receiver:
-    trace_ingester_poller: true
     known_mcp_servers:
       - "mahavishnu"
       - "akosha"
@@ -3498,13 +3497,14 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
 **Files:**
-- Modify: `akosha/mcp/server.py:620-660` (remove the `AKOSHA_SKIP_OTEL_INGESTER` block; gate on the settings key)
-- Modify: `akosha/settings/akosha.yaml` (flip `otel.receiver.trace_ingester_poller` to `false`)
+- Modify: `akosha/mcp/server.py:620-660` (remove the `AKOSHA_SKIP_OTEL_INGESTER` block entirely)
+- Modify: `akosha/settings/akosha.yaml` (delete the `trace_ingester_poller` key)
+- Modify: `akosha/CLAUDE.md` (operator note)
 - Test: `akosha/tests/integration/test_poller_retirement.py`
 
 **Interfaces:**
 - Consumes: the receiver from Task 5 (the poller's job is now the receiver's).
-- Produces: no new symbols. Removes `OtelTraceIngester` from the akosha lifespan; `otel.receiver.trace_ingester_poller: false` is the rollback lever.
+- Produces: no new symbols. Removes `OtelTraceIngester` from the akosha lifespan, and removes `otel.receiver.trace_ingester_poller` from the settings schema entirely. **Rollback is a git revert, not a flag flip** — the flag guarded code that no longer exists, so keeping it would advertise a control that does nothing.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3536,15 +3536,24 @@ def test_env_var_shim_retired() -> None:
     assert "AKOSHA_SKIP_OTEL_INGESTER" not in src
 
 
-def test_settings_flag_defaults_false() -> None:
-    from akosha.config import get_settings
-    assert get_settings().otel.receiver.trace_ingester_poller is False
+def test_settings_flag_removed() -> None:
+    """Pre-1.0 replace-don't-extend: the flag guarding deleted code is
+    deleted too. A flag that maps to nothing is worse than no flag — an
+    operator reads `trace_ingester_poller: false`, believes it is a live
+    rollback lever, and is wrong."""
+    from pathlib import Path
+
+    import yaml
+
+    cfg = Path(__file__).resolve().parents[2] / "akosha" / "settings" / "akosha.yaml"
+    receiver = yaml.safe_load(cfg.read_text())["otel"]["receiver"]
+    assert "trace_ingester_poller" not in receiver
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_poller_retirement.py -v`
-Expected: FAIL — the import and the env-var string are both still present.
+Expected: FAIL — the import, the env-var string, and the settings key are all still present.
 
 - [ ] **Step 3: Remove the poller block**
 
@@ -3559,30 +3568,70 @@ grep -rn "otel_ingester\|OtelTraceIngester" --include="*.py" . | grep -v "^./ako
 
 If the grep returns hits outside that file, keep the module and only remove the lifespan usage. If it returns nothing, delete the file.
 
-- [ ] **Step 4: Flip the settings flag**
+Also check for the settings model — if `trace_ingester_poller` is declared as a field on a Pydantic settings class (not just YAML), remove the field too:
 
-In `akosha/settings/akosha.yaml`:
-
-```yaml
-  receiver:
-    trace_ingester_poller: false
+```bash
+cd /Users/les/Projects/akosha
+grep -rn "trace_ingester_poller" --include="*.py" .
 ```
 
-This flag is now the documented rollback lever: setting it back to `true` restores the old polling path **only if** you also restore the removed lifespan block (a flag flip alone cannot resurrect deleted code). Be explicit about this in the operator note below — a flag that no longer maps to live code is worse than no flag.
+A YAML-only deletion leaves a declared-but-unread settings field, which `scripts/audit_orphans.py` flags as a zero-caller symbol.
 
-**Given the pre-1.0 no-backcompat rule, the honest choice is to delete the poller outright with no flag at all.** The spec §13.6 proposes keeping the flag; that is the spec's decision and this task implements it. If you would rather follow the rule strictly, delete the flag too and record the decision in `docs/decisions/`.
+- [ ] **Step 4: Delete the settings key**
 
-- [ ] **Step 5: Update the operator note**
-
-In `akosha/CLAUDE.md` (or wherever operators are documented for OTel), replace any `AKOSHA_SKIP_OTEL_INGESTER` reference with the settings-key form:
+In `akosha/settings/akosha.yaml`, remove the `trace_ingester_poller: true` line, leaving:
 
 ```yaml
 otel:
   receiver:
-    trace_ingester_poller: false   # poller retired in PR-A8; receiver owns ingestion
+    known_mcp_servers:
+      - "mahavishnu"
+      - "akosha"
+      - "session-buddy"
+      - "oneiric"
+      - "crackerjack"
+      - "bifrost-mcp"
 ```
 
-And in the spec runbooks (§11.1.5/6/7), confirm no step still tells an operator to set that env var.
+The spec §13.6 proposed keeping this flag as the rollback lever. This plan deletes it instead: the flag guarded a code path that this task removes, so flipping it back to `true` would do nothing. Advertising a rollback lever that does not work is worse than having no lever — rollback is a `git revert` of this commit, and the operator note below says so explicitly.
+
+Record the deviation from the spec in `docs/decisions/2026-10-19-poller-retirement-no-flag.md`:
+
+```markdown
+## Context
+
+Spec v7 §13.6 specifies `otel.receiver.trace_ingester_poller: bool` as the
+rollback lever for PR-A8, flipping true → false to retire the poller.
+
+## Decision rule
+
+The flag is deleted rather than flipped. PR-A8 removes the poller code it
+guards, so after merge the flag controls nothing. The pre-1.0 rule
+(feedback-no-backwards-compat-pre-1.0) is replace-don't-extend, and a
+settings key that maps to deleted code is a documentation lie.
+
+Rollback is `git revert` of the PR-A8 commit.
+
+## Status
+
+active
+```
+
+- [ ] **Step 5: Update the operator note**
+
+In `akosha/CLAUDE.md` (or wherever operators are documented for OTel), delete any `AKOSHA_SKIP_OTEL_INGESTER` or `trace_ingester_poller` reference. The OTel ingestion section should now read:
+
+```markdown
+## OTel ingestion
+
+Akosha receives spans over OTLP (`akosha/observability/otlp_receiver.py`,
+`:4317` gRPC / `:4318` HTTP) and writes them to the oneiric-managed
+`spans_substrate` table. The former `OtelTraceIngester` poller and its
+`AKOSHA_SKIP_OTEL_INGESTER` env var were removed in PR-A8 — there is no
+ingestion toggle. Rollback is a git revert, not a config flag.
+```
+
+Then confirm the spec runbooks (§11.1.5/6/7) contain no step that tells an operator to set the retired env var.
 
 - [ ] **Step 6: Run test to verify it passes**
 
@@ -3599,6 +3648,7 @@ Expected: PASS.
 ```bash
 cd /Users/les/Projects/akosha
 git add akosha/mcp/server.py akosha/settings/akosha.yaml akosha/CLAUDE.md \
+  docs/decisions/2026-10-19-poller-retirement-no-flag.md \
   tests/integration/test_poller_retirement.py
 git add -u
 git commit -m "refactor(akosha)!: retire the OtelTraceIngester poller (PR-A8)
@@ -3606,25 +3656,34 @@ git commit -m "refactor(akosha)!: retire the OtelTraceIngester poller (PR-A8)
 The OTLPReceiver owns ingestion now; the polling ingester duplicated
 the write path against a table the receiver already maintains.
 
-Removes the lifespan block AND the AKOSHA_SKIP_OTEL_INGESTER env var.
-The pre-1.0 no-backcompat rule applies: keeping the env var would mean
-an operator's launchd plist still setting it =1 silently re-enables the
-retired poller after merge — a live launchd plist is exactly the case
-that motivates deleting the shim rather than deprecating it.
+Removes three things: the lifespan block, the AKOSHA_SKIP_OTEL_INGESTER
+env var, and the otel.receiver.trace_ingester_poller settings key.
 
-otel.receiver.trace_ingester_poller flips to false. NOTE: as
-implemented, flipping it back to true does NOT resurrect the deleted
-code; rollback requires reverting this commit. Recorded in the
-operator note so nobody relies on the flag as a live rollback lever.
+Deleting the env var: keeping it would mean an operator's launchd plist
+still setting it =1 silently re-enables the retired poller after merge.
+A live launchd plist is exactly the case that motivates deleting the
+shim rather than deprecating it.
+
+Deleting the settings key DEVIATES from spec §13.6, which proposed
+flipping it true -> false as the rollback lever. The flag guarded code
+this commit removes, so post-merge it controls nothing — a flag that
+maps to deleted code is worse than no flag, because an operator reads
+it and believes they have a lever. Rollback is git revert. Recorded in
+docs/decisions/2026-10-19-poller-retirement-no-flag.md.
+
+Also deletes akosha/ingestion/otel_ingester.py when the consumer grep
+finds no other importer, and removes any Pydantic settings field for
+trace_ingester_poller so audit_orphans.py does not flag a
+declared-but-unread symbol.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
 #### Integration Contract (Task 13)
 - **Triggered from**: `akosha mcp start` (lifespan).
-- **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `akosha/settings/akosha.yaml` (`trace_ingester_poller: false`), `akosha/CLAUDE.md` (operator note).
+- **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `akosha/settings/akosha.yaml` (`trace_ingester_poller` key deleted), `akosha/CLAUDE.md` (operator note), `docs/decisions/2026-10-19-poller-retirement-no-flag.md` (the spec-deviation record).
 - **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 3 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line.
-- **Rollback signal**: any test still importing `akosha.ingestion.otel_ingester` fails at collection → the grep in Step 3 missed a consumer; restore the module and remove only the lifespan usage.
+- **Rollback signal**: any test still importing `akosha.ingestion.otel_ingester` fails at collection → the grep in Step 3 missed a consumer; restore the module and remove only the lifespan usage. Note this is a code rollback, not a config one — there is no flag to flip.
 - **Observability added**: none (a removal; the receiver's existing metrics cover ingestion).
 
 ---
