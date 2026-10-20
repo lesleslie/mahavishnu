@@ -94,11 +94,14 @@ def port_bound(host: str, port: int, timeout: float = 1.0) -> bool:
         return False
 
 
-def dry_run_toggle(toggle_helper: Path) -> tuple[str, str]:
+def dry_run_toggle(toggle_helper: Path) -> tuple[int, str, int, str]:
     """Run the toggle helper in --dry-run for both directions.
 
-    Returns ``(bifrost_out, direct_out)``. Never raises — non-zero exits
-    fall through to empty stdout, which the caller reports as INFO.
+    Returns ``(bifrost_code, bifrost_out, direct_code, direct_out)``. Never
+    raises — non-zero exits pass through; the caller gates the OK report
+    on both exit codes AND non-empty output. Without the exit-code check
+    a failed helper (e.g., import error, missing module) would still
+    produce a non-empty stdout and the smoke would falsely report OK.
     """
     bifrost_proc = subprocess.run(
         [sys.executable, str(toggle_helper), "bifrost", "--dry-run"],
@@ -112,7 +115,12 @@ def dry_run_toggle(toggle_helper: Path) -> tuple[str, str]:
         text=True,
         check=False,
     )
-    return bifrost_proc.stdout.strip(), direct_proc.stdout.strip()
+    return (
+        bifrost_proc.returncode,
+        bifrost_proc.stdout.strip(),
+        direct_proc.returncode,
+        direct_proc.stdout.strip(),
+    )
 
 
 def main() -> int:
@@ -165,11 +173,23 @@ def main() -> int:
         report.append(f"[INFO] bifrost.log absent: {LAUNCHD_LOG}")
 
     if TOGGLE_HELPER.exists():
-        bifrost_out, direct_out = dry_run_toggle(TOGGLE_HELPER)
-        report.append(
-            f"[OK]   dry-run toggle works "
-            f"(bifrost: {len(bifrost_out)}ch, direct: {len(direct_out)}ch)"
-        )
+        bifrost_code, bifrost_out, direct_code, direct_out = dry_run_toggle(TOGGLE_HELPER)
+        if bifrost_code == 0 and direct_code == 0 and bifrost_out and direct_out:
+            report.append(
+                f"[OK]   dry-run toggle works "
+                f"(bifrost: {len(bifrost_out)}ch, direct: {len(direct_out)}ch)"
+            )
+        else:
+            reasons: list[str] = []
+            if bifrost_code != 0:
+                reasons.append(f"bifrost exit={bifrost_code}")
+            if direct_code != 0:
+                reasons.append(f"direct exit={direct_code}")
+            if not bifrost_out:
+                reasons.append("bifrost stdout empty")
+            if not direct_out:
+                reasons.append("direct stdout empty")
+            failures.append("[FAIL] dry-run toggle: " + "; ".join(reasons))
     else:
         failures.append("[FAIL] qwen toggle helper missing — cannot dry-run")
 
