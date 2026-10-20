@@ -2049,7 +2049,7 @@ app.add_typer(admin_app, name="admin")
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/cli/test_admin_otel_retention_cli.py -v`
-Expected: PASS — 5 tests.
+Expected: PASS — 4 tests.
 
 - [ ] **Step 6: Verify the CLI registers without shadowing**
 
@@ -3003,6 +3003,7 @@ from akosha.observability.canary_watcher import (
     CANARY_SPAN_NAME,
 )
 from akosha.observability.otlp_receiver import OTLPReceiver
+from akosha.observability.prometheus_metrics import get_metrics_registry
 from akosha.storage.hot_store import HotStore
 
 
@@ -3055,14 +3056,26 @@ async def test_bridge_publishes_gauge(rx: OTLPReceiver) -> None:
     await asyncio.sleep(0.05)
     stop.set()
     await asyncio.gather(task, return_exceptions=True)
-    assert rx._metric_canary_last_success_unix_nano._value.get() > 0
+    # Read through the registry, not `metric._value.get()` — the latter is
+    # prometheus_client private API and differs across versions.
+    assert (
+        get_metrics_registry()
+        .get_sample_value("telemetry_receiver_canary_last_success_unix_nano")
+        or 0
+    ) > 0
 
 
 @pytest.mark.asyncio
 async def test_bridge_survives_exception(rx: OTLPReceiver) -> None:
     """Review: an uncaught exception in the bridge body kills it forever;
     the gauge freezes and P0-C pages with no cause. The bridge must retry."""
-    rx.canary_state = property(lambda s: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    class _ExplodingState:
+        @property
+        def last_canary_success_unix_nano(self):
+            raise RuntimeError("boom")
+
+    rx.canary_state = _ExplodingState()
 
     stop = asyncio.Event()
     task = asyncio.create_task(rx._canary_metrics_bridge(stop, interval=0.01))
@@ -3070,7 +3083,10 @@ async def test_bridge_survives_exception(rx: OTLPReceiver) -> None:
     assert not task.done(), "bridge died on a transient error"
     stop.set()
     await asyncio.gather(task, return_exceptions=True)
-    assert rx._metric_bridge_failed_total._value.get() > 0
+    assert (
+        get_metrics_registry().get_sample_value("telemetry_receiver_bridge_failed_total")
+        or 0
+    ) > 0
 
 
 @pytest.mark.asyncio
@@ -3147,8 +3163,17 @@ async def _emit_canary_once(self) -> None:
     Routing through _handle_batch (not a direct INSERT) is the point: a
     code change that breaks the live INSERT but leaves _dlq_insert
     working would otherwise pass silently.
+
+    Build a real ExportTraceServiceRequest rather than widening
+    `_handle_batch` to also accept `list[dict]`. Type-dispatch would let the
+    canary exercise a branch production never takes — which defeats the
+    stated purpose. If `_handle_batch` regresses while parsing proto, this
+    canary must fail too; that is the signal P0-C exists to catch.
     """
     import time as _time
+    from opentelemetry.proto.collector.trace.v1 import trace_service_pb2
+    from opentelemetry.proto.trace.v1 import trace_pb2
+
     from akosha.observability.canary_watcher import (
         CANARY_SERVICE_NAME,
         CANARY_SPAN_NAME,
@@ -3156,26 +3181,34 @@ async def _emit_canary_once(self) -> None:
     )
 
     now_ns = _time.time_ns()
-    span_id = getattr(
-        self, "_canary_id_override",
-        ("_canary", f"_canary_{now_ns}"),
-    )[1]
-    trace_id = getattr(self, "_canary_id_override", (CANARY_TRACE_ID, ""))[0]
+    override = getattr(self, "_canary_id_override", None)
+    trace_hex = CANARY_TRACE_ID if override is None else override[0]
+    span_hex = f"_canary_{now_ns}" if override is None else override[1]
+    # Ids are fixed-width byte strings on the wire: 16 bytes for a trace_id,
+    # 8 for a span_id. Left-pad hex to 32 / 16 chars respectively.
+    span_id = bytes.fromhex(span_hex.ljust(16, "0"))
+    trace_id = bytes.fromhex(trace_hex.ljust(32, "0"))
 
     self.canary_state.canary_writes_attempted_total += 1
-    result = await self._handle_batch([{
-        "span_id": span_id,
-        "trace_id": trace_id,
-        "service_name": CANARY_SERVICE_NAME,
-        "service_namespace": "bodai",
-        "span_name": CANARY_SPAN_NAME,
-        "start_time_unix_nano": now_ns,
-        "end_time_unix_nano": now_ns,
-        "outcome": "success",
-        "status_code": "STATUS_CODE_OK",
-        "attributes": {"_canary": True, "_canary_version": "1"},
-        "resource": {"service.name": CANARY_SERVICE_NAME},
-    }])
+
+    batch = trace_service_pb2.ExportTraceServiceRequest()
+    rs = batch.resource_spans.add()
+    rs.resource.attributes["service.name"].string_value = CANARY_SERVICE_NAME
+    rs.resource.attributes["service.namespace"].string_value = "bodai"
+    ss = rs.scope_spans.add()
+    ss.scope.name = "receiver.canary"
+    span = ss.spans.add()
+    span.trace_id = trace_id
+    span.span_id = span_id
+    span.name = CANARY_SPAN_NAME
+    span.kind = trace_pb2.Span.SPAN_KIND_INTERNAL
+    span.start_time_unix_nano = now_ns
+    span.end_time_unix_nano = now_ns
+    attr = span.attributes.add()
+    attr.key = "_canary"
+    attr.value.string_value = "true"
+
+    result = await self._handle_batch(batch)
 
     # Success is pinned: exactly one row inserted, none deduped.
     if result.ok == 1 and result.deduped == 0:
@@ -3203,8 +3236,6 @@ async def run_canary_emitter(self, stop_event: asyncio.Event) -> None:
             return
         await self._emit_canary_once_safe()
 ```
-
-**Note on `_handle_batch`'s signature:** Task 5 declares it as taking an `ExportTraceServiceRequest`. For the canary, calling it with a plain list of row dicts is simpler and exercises the same validation + INSERT + DLQ path. Either adapt `_handle_batch` to accept `list[dict] | ExportTraceServiceRequest` (dispatching on type), or build a real proto request here. Prefer the type-dispatch approach — it keeps `_handle_batch`'s single contract and lets the canary skip proto construction.
 
 - [ ] **Step 5: Implement the bridge**
 
@@ -3255,7 +3286,7 @@ And in the teardown, add `canary_metrics_task.cancel()` plus include it in the `
 - [ ] **Step 7: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_canary_watcher_e2e.py -v`
-Expected: PASS — 6 tests.
+Expected: PASS — 7 tests.
 
 - [ ] **Step 8: Commit**
 
@@ -3634,7 +3665,7 @@ Both the consumer sweep (Step 1) and the dual-label test gate this. Do not flip 
 - [ ] **Step 8: Run to verify it passes**
 
 Run: `cd /Users/les/Projects/mcp-common && .venv/bin/pytest tests/integration/test_service_namespace_bridge.py -v`
-Expected: PASS — 5 tests.
+Expected: PASS — 4 tests.
 
 - [ ] **Step 9: Commit mcp-common and oneiric**
 
