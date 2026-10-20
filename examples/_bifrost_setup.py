@@ -59,8 +59,7 @@ def _load_bodai_vkey() -> str | None:
     try:
         with sqlite3.connect(_BIFROST_CONFIG_DB) as con:
             row = con.execute(
-                "SELECT value FROM governance_virtual_keys "
-                "WHERE name = ? AND is_active = 1",
+                "SELECT value FROM governance_virtual_keys WHERE name = ? AND is_active = 1",
                 (_BIFROST_VKEY_NAME,),
             ).fetchone()
     except sqlite3.Error as exc:
@@ -96,9 +95,7 @@ def configure_bifrost_env() -> None:
     in the shell env before launching the demo.
     """
     if os.environ.get("BIFROST_SETUP_DISABLED") == "1":
-        logger.debug(
-            "BIFROST_SETUP_DISABLED=1 — leaving OPENAI_API_KEY as-is"
-        )
+        logger.debug("BIFROST_SETUP_DISABLED=1 — leaving OPENAI_API_KEY as-is")
         return
     vkey = _load_bodai_vkey()
     if vkey is None:

@@ -321,7 +321,7 @@ async def pydantic_ai_example(agent: MahavishnuAgent) -> None:
             timeout=30.0,
         )
         logger.info("Pydantic AI agent response: %s", result.output)
-    except (asyncio.TimeoutError, Exception):
+    except TimeoutError, Exception:
         # TimeoutError: agent's tool-call loop did not converge in 30s
         # (typical when a downstream is degraded). Exception: agent
         # raised — also acceptable for a wiring demo.
@@ -346,7 +346,7 @@ async def _run_with_timeout(coro, *, name: str, timeout_s: float = 10.0) -> None
     """
     try:
         await asyncio.wait_for(coro, timeout=timeout_s)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(
             "%s did not finish within %.0fs — skipping (downstream likely degraded)",
             name,

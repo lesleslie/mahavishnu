@@ -149,9 +149,7 @@ def audit(
     return AuditReport(
         in_index_only=frozenset(index_paths - disk_paths),
         in_disk_only=frozenset(disk_paths - index_paths),
-        in_mcp_only=frozenset(mcp_paths - index_paths)
-        if mcp_paths is not None
-        else frozenset(),
+        in_mcp_only=frozenset(mcp_paths - index_paths) if mcp_paths is not None else frozenset(),
         missing_from_mcp=frozenset(index_paths - mcp_paths)
         if mcp_paths is not None
         else frozenset(),

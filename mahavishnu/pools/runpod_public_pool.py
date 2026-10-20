@@ -315,7 +315,7 @@ class RunPodPublicEndpointPool(BasePool):
         if self._client is not None:
             try:
                 self._client.close()
-            except Exception:  # noqa: BLE001 — surface cleanup failure; do not silently drop
+            except Exception:
                 logger.warning(
                     "RunPodPublicEndpointPool client close failed during stop",
                     exc_info=True,

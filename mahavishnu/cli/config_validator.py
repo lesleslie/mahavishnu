@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from oneiric.adapters.llm.bifrost import get_router
 import typer
 import yaml
-
-from oneiric.adapters.llm.bifrost import get_router
 
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config

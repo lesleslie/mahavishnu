@@ -853,7 +853,6 @@ class PiPoolSettings(BaseModel):
         return self
 
 
-
 class HNSWIndexConfig(BaseModel):
     """HNSW index configuration for high-performance vector search.
 
@@ -3148,7 +3147,6 @@ class MahavishnuSettings(BaseSettings):
         description="Goal-Driven Teams configuration",
     )
 
-
     # Engine enablement (Task 2.7.1) — list of engine_ids to omit from
     # ``mahavishnu.engines.load_engine_registrations``.
     engines: EnginesConfig = Field(
@@ -3348,11 +3346,7 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
             # model_dump path above.
             extras = getattr(oneiric_obj, "__pydantic_extra__", None) or {}
             for k, v in extras.items():
-                if (
-                    k in MahavishnuSettings.model_fields
-                    and v is not None
-                    and k not in merged
-                ):
+                if k in MahavishnuSettings.model_fields and v is not None and k not in merged:
                     merged[k] = v
 
             # Per-subconfig key filter: drop keys not declared on the

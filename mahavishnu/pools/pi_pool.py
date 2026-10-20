@@ -55,7 +55,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import re
 import time
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 import uuid
@@ -63,8 +62,6 @@ import uuid
 from oneiric.core.logging import get_logger
 
 from mahavishnu.core.errors import (
-    PiProtocolError,
-    PiRPCTimeout,
     PiUnavailable,
 )
 
@@ -297,9 +294,7 @@ class PiPool(BasePool):
                 f"Spawn additional PiPool instances for more capacity."
             )
         self._runtime_probe = runtime_probe
-        self._subprocess_runner: SubprocessRunner = (
-            subprocess_runner or _default_subprocess_runner
-        )
+        self._subprocess_runner: SubprocessRunner = subprocess_runner or _default_subprocess_runner
         self._env_allowlist: tuple[str, ...] = env_allowlist or (
             # Minimal POSIX keys required for any subprocess.
             "PATH",
@@ -467,7 +462,7 @@ class PiPool(BasePool):
             returncode, stdout, stderr = await self._subprocess_runner(
                 argv=argv, env=env, timeout=timeout
             )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError:
             duration = time.monotonic() - start_time
             self._tasks_timed_out += 1
             self._task_durations.append(duration)
@@ -770,11 +765,11 @@ register_pool_type("pi", _build_pi_pool)
 
 
 __all__ = [
-    "PiPool",
     "_FORBIDDEN_ENV_PREFIXES",
+    "PiPool",
+    "SubprocessRunner",
     "_build_pi_pool",
     "_build_subprocess_env",
     "_default_subprocess_runner",
     "_looks_like_error_output",
-    "SubprocessRunner",
 ]

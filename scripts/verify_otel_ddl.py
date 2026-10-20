@@ -122,7 +122,7 @@ def _copy_inline(con: duckdb.DuckDBPyConnection, target: Path) -> None:
 def check(label: str, fn) -> None:
     try:
         fn()
-    except Exception as exc:  # noqa: BLE001 — the failure text is the finding
+    except Exception as exc:
         FAIL.append(f"{label}: {type(exc).__name__}: {exc}")
     else:
         PASS.append(label)
@@ -137,10 +137,12 @@ def expect_unsupported(label: str, sql: str, con: duckdb.DuckDBPyConnection) -> 
     """
     try:
         con.execute(sql)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         PASS.append(f"{label}: still unsupported ({type(exc).__name__})")
     else:
-        DRIFT.append(f"{label}: NOW SUPPORTED on duckdb {duckdb.__version__} — spec rationale is stale")
+        DRIFT.append(
+            f"{label}: NOW SUPPORTED on duckdb {duckdb.__version__} — spec rationale is stale"
+        )
 
 
 def main() -> int:

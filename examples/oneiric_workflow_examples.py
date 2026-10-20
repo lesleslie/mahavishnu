@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # determinism and to keep the example self-contained (no external deps).
 # ---------------------------------------------------------------------------
 
+
 def _build_demo_resolver() -> Resolver:
     """Construct a Resolver pre-populated with three storage candidates."""
     resolver = Resolver()
@@ -102,9 +103,11 @@ def _build_demo_resolver() -> Resolver:
 # Examples
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DemoRunResult:
     """Per-example return value so each step can be inspected separately."""
+
     name: str
     candidates: list[Candidate] = field(default_factory=list)
     selected: Candidate | None = None
@@ -154,7 +157,9 @@ async def example_3_shadowed_candidates() -> DemoRunResult:
     logger.info(f"Winner (active):   {winner.provider}  (priority={winner.priority})")
     logger.info(f"Shadowed candidates: {len(shadowed)}")
     for c in shadowed:
-        logger.info(f"  - {c.provider} (priority={c.priority})  factory={c.factory_path if hasattr(c, 'factory_path') else c.factory}")
+        logger.info(
+            f"  - {c.provider} (priority={c.priority})  factory={c.factory_path if hasattr(c, 'factory_path') else c.factory}"
+        )
 
     return DemoRunResult(name="shadowed", candidates=active, selected=winner)
 
@@ -187,9 +192,9 @@ async def example_6_parallel_discovery() -> list[DemoRunResult]:
     categories = ["storage", "cache", "orchestration"]
     # list_active is synchronous; use asyncio.to_thread to demonstrate the
     # async parallel-discovery pattern even when underlying calls are cheap.
-    results = await asyncio.gather(*(
-        asyncio.to_thread(resolver.list_active, "adapter") for _ in categories
-    ))
+    results = await asyncio.gather(
+        *(asyncio.to_thread(resolver.list_active, "adapter") for _ in categories)
+    )
 
     summary: list[DemoRunResult] = []
     for category, adapters in zip(categories, results, strict=True):

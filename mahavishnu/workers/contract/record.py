@@ -13,12 +13,14 @@
 
 from __future__ import annotations
 
-import datetime as dt  # noqa: TC003 — kept at runtime per the file header rationale
+import datetime as dt
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .state import WorkerLifecycleState  # noqa: TC001 — runtime import for Pydantic forward-ref resolution
+from .state import (
+    WorkerLifecycleState,
+)
 
 
 class TmuxTarget(BaseModel):

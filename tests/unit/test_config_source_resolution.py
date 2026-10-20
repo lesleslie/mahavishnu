@@ -243,7 +243,7 @@ def test_local_yaml_overrides_adapters_hatchet_enabled(
     # Hermetic install: commit hatchet_enabled:false in the canonical
     # yaml, override to true in project-local. Empty XDG ensures the
     # test machine's real ~/.config/mahavishnu/local.yaml cannot leak
-    # in and pre-empt the override under test.
+    # in and preempt the override under test.
     settings_dir = tmp_path / "settings"
     settings_dir.mkdir(parents=True, exist_ok=True)
     (settings_dir / "mahavishnu.yaml").write_text(

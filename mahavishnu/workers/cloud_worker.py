@@ -135,9 +135,7 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     if config.runpod_public_endpoint_id:
         providers["runpod_public"] = {
             "name": "runpod_public",
-            "base_url": (
-                f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"
-            ),
+            "base_url": (f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"),
             "api_key": "${RUNPOD_API_KEY}",
             "require_auth": True,
             "task_routing": routing_to_task_map(DEFAULT_RUNPOD_PUBLIC_ROUTING),

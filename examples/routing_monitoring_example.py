@@ -18,6 +18,7 @@ from mahavishnu.core import (
     StatisticalRouter,
     TaskRouter,
 )
+
 # AdapterManager / StateManager are no longer re-exported from
 # mahavishnu.core — they live with the routing primitives.
 from mahavishnu.core.task_router import AdapterManager, RouterMode, StateManager
