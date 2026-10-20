@@ -1264,6 +1264,8 @@ from opentelemetry.proto.common.v1 import common_pb2
 from opentelemetry.proto.trace.v1 import trace_pb2
 from google.protobuf import struct_pb2
 
+import json
+
 from akosha.observability.otlp_receiver import OTLPReceiver
 from akosha.storage.hot_store import HotStore
 
@@ -1310,7 +1312,12 @@ def _span(span_id: str, trace_id: str = "1") -> trace_pb2.Span:
     )
 
 
-def _batch(span_id: str = "aa") -> trace_service_pb2.ExportTraceServiceRequest:
+def _batch(
+    span_id: str = "aa",
+    status_code: int | None = None,
+    status_message: str | None = None,
+    span_attrs: dict[str, str] | None = None,
+) -> trace_service_pb2.ExportTraceServiceRequest:
     """One resource, one scope, one span.
 
     Repeated *message* fields are empty on a fresh parent: `.add()` creates the
@@ -1322,7 +1329,22 @@ def _batch(span_id: str = "aa") -> trace_service_pb2.ExportTraceServiceRequest:
     rs = batch.resource_spans.add()
     _attr(rs.resource, "service.name", "mahavishnu")
     _attr(rs.resource, "service.namespace", "bodai")
-    rs.scope_spans.add().spans.append(_span(span_id))
+    span = rs.scope_spans.add().spans.add()
+    span.trace_id = bytes.fromhex("1" * 32)
+    span.span_id = bytes.fromhex(span_id.ljust(16, "0")[:16])
+    span.name = "test.span"
+    span.kind = trace_pb2.Span.SPAN_KIND_INTERNAL
+    span.start_time_unix_nano = 1_700_000_000_000_000_000
+    span.end_time_unix_nano = 1_700_000_000_100_000_000
+    if status_code is not None:
+        # An INT, exactly as a producer sets it and as it survives the wire.
+        span.status.code = status_code
+    if status_message is not None:
+        span.status.message = status_message
+    for key, value in (span_attrs or {}).items():
+        kv = span.attributes.add()
+        kv.key = key
+        kv.value.string_value = value
     return batch
 
 
@@ -1348,6 +1370,126 @@ async def test_handle_batch_dedupes(tmp_path) -> None:
     second = await rx._handle_batch(_batch())
     assert second.ok == 0
     assert second.deduped == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_iter_spans_maps_int_status_code_to_name(tmp_path) -> None:
+    """`status.code` is an INT on the wire (0/1/2), not a string.
+
+    `pre_validate` compares against string enum names. If `_iter_spans` does
+    not map with `Status.StatusCode.Name(code)`, then `2 ==
+    "STATUS_CODE_ERROR"` is False and EVERY real span is rejected — 100% of
+    production traffic lands in the DLQ while the receiver reports itself
+    healthy. Verified against opentelemetry-proto: `Status(code=2)` stays an
+    int through SerializeToString/ParseFromString.
+    """
+    hs = HotStore(database_path=tmp_path / "code.duckdb")
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+
+    batch = _batch(span_id="bb", status_code=2, status_message="boom")
+    (row,) = list(rx._iter_spans(batch))
+
+    assert row["status_code"] == "STATUS_CODE_ERROR"
+    assert row["status_message"] == "boom"
+    assert rx.pre_validate(row) is None, "a real span must not be rejected"
+    assert row["outcome"] == "error"
+
+    ok_row = next(iter(rx._iter_spans(_batch(span_id="cc", status_code=1))))
+    assert ok_row["status_code"] == "STATUS_CODE_OK"
+    assert ok_row["outcome"] == "success"
+
+    unset_row = next(iter(rx._iter_spans(_batch(span_id="dd"))))
+    assert unset_row["status_code"] is None
+    assert unset_row["outcome"] is None
+
+
+@pytest.mark.asyncio
+async def test_iter_spans_yields_every_span_column(tmp_path) -> None:
+    """`insert_spans_substrate` binds with `row[col]`, so an omitted key is a
+    KeyError, not a NULL. `has_gen_ai_attrs` / `has_dispatch_attrs` are
+    derived here and nowhere else, so if _iter_spans forgets them EVERY batch
+    raises on the first row."""
+    hs = HotStore(database_path=tmp_path / "cols.duckdb")
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+
+    (row,) = list(rx._iter_spans(_batch(span_id="ee")))
+    missing = [c for c in HotStore._SPAN_COLUMNS if c not in row]
+    assert missing == [], f"_iter_spans omitted columns: {missing}"
+    assert row["has_gen_ai_attrs"] is False
+    assert row["has_dispatch_attrs"] is False
+
+
+@pytest.mark.asyncio
+async def test_iter_spans_derives_gen_ai_and_dispatch_flags(tmp_path) -> None:
+    hs = HotStore(database_path=tmp_path / "flags.duckdb")
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+
+    (row,) = list(
+        rx._iter_spans(
+            _batch(
+                span_id="ff",
+                span_attrs={
+                    "task.class": "code_generation",
+                    "gen_ai.request.model": "gpt-x",
+                    "selector": "fast",
+                },
+            )
+        )
+    )
+    assert row["has_gen_ai_attrs"] is True
+    assert row["has_dispatch_attrs"] is True
+    # Attribute normalization feeds the indexed columns.
+    assert row["task_class"] == "code_generation"
+    assert row["selector"] == "fast"
+    assert row["gen_ai_request_model"] == "gpt-x"
+
+
+@pytest.mark.asyncio
+async def test_handle_batch_accepts_a_real_error_span(tmp_path) -> None:
+    """End-to-end: a well-formed ERROR span must reach the substrate, not the
+    DLQ. This is the regression that 100% DLQ-rejection would produce."""
+    hs = HotStore(database_path=tmp_path / "e2e.duckdb")
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+
+    result = await rx._handle_batch(
+        _batch(span_id="99", status_code=2)
+    )
+    assert result.rejected == 0, f"valid span was rejected: {result}"
+    assert result.ok == 1
+
+    stored = hs.conn.execute(
+        "SELECT outcome, status_code FROM spans_substrate"
+    ).fetchall()
+    assert stored == [("error", "STATUS_CODE_ERROR")]
+
+
+@pytest.mark.asyncio
+async def test_dlq_insert_writes_all_five_columns(tmp_path) -> None:
+    """The DLQ row shape must match `_dlq_rows`, including row_json as JSON
+    *text*. If the table is missing, `_dlq_insert` raises and _handle_batch
+    still inserts the clean rows — so assert the rejected row survives."""
+    hs = HotStore(database_path=tmp_path / "dlq.duckdb")
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+    await rx.start()
+
+    bad = next(iter(rx._iter_spans(_batch(span_id="ab"))))
+    del bad["service_name"]  # trips pre_validate's not_null check
+    err = rx.pre_validate(bad)
+    assert err is not None
+
+    await rx._dlq_insert([(err, bad)])
+    row = hs.conn.execute(
+        "SELECT reason, field, row_json, trace_id, span_id FROM _dlq_rows"
+    ).fetchone()
+    assert row is not None
+    assert row[0] == "not_null" and row[1] == "service_name"
+    assert json.loads(row[2])["span_id"] == "ab"
 
 
 @pytest.mark.asyncio
@@ -1462,6 +1604,7 @@ class OTLPReceiver:
         self._metric_archival_failed = _metric_archival_failed
         self._metric_retention_sweep_failed = _metric_retention_sweep_failed
         self._metric_namespace_drift = _metric_namespace_drift
+        self._metric_canary_attempted = _metric_canary_attempted
         self._metric_canary_succeeded = _metric_canary_succeeded
         self._metric_canary_rejected = _metric_canary_rejected
         self._metric_canary_failed = _metric_canary_failed
@@ -1492,9 +1635,30 @@ class OTLPReceiver:
 **Metrics are module-level, not per-instance.** Declare them all at module scope in `otlp_receiver.py` against akosha's shared singleton registry, exactly as `akosha/observability/prometheus_metrics.py:117-137` does. Then *bind* them onto the instance — the rest of the receiver (and every later task that extends it) refers to them as `self._metric_*`:
 
 ```python
+import asyncio
+
 from prometheus_client import Counter, Gauge
 
 from akosha.observability.prometheus_metrics import get_metrics_registry
+
+
+async def _sleep_or_stop(stop_event: asyncio.Event, seconds: float) -> None:
+    """Sleep `seconds`, returning early if `stop_event` is set.
+
+    `asyncio.Event.wait()` takes NO arguments — `stop_event.wait(30)` raises
+    `TypeError: Event.wait() takes 1 positional argument but 2 were given`.
+    Every periodic loop in this receiver needs "sleep N, but wake on shutdown",
+    so the timeout lives in `asyncio.wait_for` around the bare `wait()`.
+
+    Cancels promptly: `wait_for` propagates CancelledError, so
+    `Task.cancel()` interrupts a 3600s backoff at the next await point rather
+    than blocking graceful shutdown for the full interval.
+    """
+    try:
+        await asyncio.wait_for(stop_event.wait(), timeout=seconds)
+    except TimeoutError:
+        pass
+
 
 # --- module scope: constructed exactly once, at import -----------------
 _metric_receiver_started: Counter = Counter(
@@ -1553,6 +1717,11 @@ _metric_namespace_drift: Counter = Counter(
     ["namespace"],
     registry=get_metrics_registry(),
 )
+_metric_canary_attempted: Counter = Counter(
+    "telemetry_receiver_canary_writes_attempted_total",
+    "Canary emit attempts; the P0-D alert's liveness precondition",
+    registry=get_metrics_registry(),
+)
 _metric_canary_succeeded: Counter = Counter(
     "telemetry_receiver_canary_writes_succeeded_total",
     "Canary emits that inserted exactly one row",
@@ -1603,7 +1772,7 @@ self._metric_bridge_failed_total = _metric_bridge_failed_total
 
 Do **not** construct metrics inside `__init__`. `get_metrics_registry()` returns a process-wide `CollectorRegistry`, so a second `OTLPReceiver` (the lifespan test constructs one, then the real server constructs another) would raise `ValueError: Duplicated timeseries in CollectorRegistry`. Module-level construction happens once at import.
 
-All 15 must be declared **here**, in Task 5, even though Tasks 7–10 are what increment most of them: a name referenced but never declared is an `AttributeError` at the first increment — which for the sweep metrics means the sweep dies on its first archival failure, the exact moment you most need the signal. Later tasks add no new metrics.
+All 16 must be declared **here**, in Task 5, even though Tasks 7–10 are what increment most of them: a name referenced but never declared is an `AttributeError` at the first increment — which for the sweep metrics means the sweep dies on its first archival failure, the exact moment you most need the signal. Later tasks add no new metrics.
 
 `_bind_grpc`, `_bind_http`, `_start_prometheus`, `_close_listeners` are the listener plumbing; implement them against the OTLP gRPC + HTTP receivers with `prometheus_client.start_http_server(PROMETHEUS_PORT)`. The metric names above are the spec §11.3 contract verbatim.
 
@@ -1690,6 +1859,152 @@ def pre_validate(self, span: dict) -> RowValidationError | None:
     if not span.get("start_time_unix_nano"):
         return RowValidationError(field="start_time_unix_nano", reason="not_null")
     return None
+
+
+def _any_value(value: common_pb2.AnyValue) -> Any:
+    """Unwrap a protobuf AnyValue to a Python scalar.
+
+    An unset AnyValue has `WhichOneof("value")` returning None; return None
+    rather than guessing a type, so the column lands as NULL and the
+    NOT NULL checks in pre_validate decide what happens.
+    """
+    which = value.WhichOneof("value")
+    if which is None:
+        return None
+    return getattr(value, which)
+
+
+def _kv_map(kvs) -> dict[str, Any]:
+    """`repeated KeyValue` -> {key: unwrapped value}. Last write wins."""
+    return {kv.key: _any_value(kv.value) for kv in kvs}
+
+
+def _iter_spans(self, batch: trace_service_pb2.ExportTraceServiceRequest):
+    """Yield one row dict per span, keyed by every `_SPAN_COLUMNS` entry.
+
+    Two things this must get right, both verified against the installed
+    opentelemetry-proto:
+
+    1. `status.code` arrives as an **int** (0/1/2), not a string. A producer
+       sets `Status(code=2)` and it round-trips through the wire as the int.
+       `pre_validate` compares against the string names, and `2 ==
+       "STATUS_CODE_ERROR"` is False — so validating without mapping here
+       rejects every real span and sends 100% of production traffic to the
+       DLQ. Map with `Status.StatusCode.Name(code)`.
+
+    2. EVERY `_SPAN_COLUMNS` key must be present. `insert_spans_substrate`
+       binds with `row[col]`, so an omitted key is a KeyError — not a NULL.
+       In particular `has_gen_ai_attrs` / `has_dispatch_attrs` are derived
+       here; nothing else sets them.
+
+    Attribute keys are normalized via `normalize_attributes`, which the
+    exporter may already have done (spec §9). Running it again is idempotent.
+    """
+    for rs in batch.resource_spans:
+        resource = _kv_map(rs.resource.attributes)
+        for ss in rs.scope_spans:
+            for span in ss.spans:
+                attrs = self.normalize_attributes(
+                    {
+                        "attributes": _kv_map(span.attributes),
+                        **{
+                            k: v
+                            for k, v in resource.items()
+                            if k
+                            in (
+                                "service_name",
+                                "service_namespace",
+                                "deployment_environment",
+                                "telemetry_source",
+                                "telemetry_source_type",
+                            )
+                        },
+                    }
+                )
+                code = span.status.code
+                status_name = (
+                    trace_pb2.Status.StatusCode.Name(code) if code else None
+                )
+                yield {
+                    "span_id": span.span_id.hex(),
+                    "trace_id": span.trace_id.hex(),
+                    "parent_span_id": span.parent_span_id.hex() or None,
+                    "service_name": attrs.get("service_name"),
+                    "service_namespace": attrs.get("service_namespace"),
+                    "deployment_environment": attrs.get(
+                        "deployment_environment"
+                    ),
+                    "telemetry_source": attrs.get("telemetry_source"),
+                    "telemetry_source_type": attrs.get("telemetry_source_type"),
+                    "span_name": span.name,
+                    "start_time_unix_nano": span.start_time_unix_nano,
+                    "end_time_unix_nano": span.end_time_unix_nano or None,
+                    "duration_ms": (
+                        (span.end_time_unix_nano - span.start_time_unix_nano)
+                        / 1_000_000
+                        or None
+                    ),
+                    "outcome": (
+                        "error"
+                        if status_name == "STATUS_CODE_ERROR"
+                        else "success"
+                        if status_name == "STATUS_CODE_OK"
+                        else None
+                    ),
+                    # No semconv source in spec §9 -- supplied by the
+                    # decision-adapter producer as a plain attribute.
+                    "selector": attrs.get("selector"),
+                    "task_class": attrs.get("task_class"),
+                    "latency_ms": attrs.get("latency_ms"),
+                    "gen_ai_provider_name": attrs.get("gen_ai_provider_name"),
+                    "gen_ai_request_model": attrs.get("gen_ai_request_model"),
+                    "gen_ai_response_model": attrs.get("gen_ai_response_model"),
+                    "gen_ai_usage_input_tokens": attrs.get(
+                        "gen_ai_usage_input_tokens"
+                    ),
+                    "gen_ai_usage_output_tokens": attrs.get(
+                        "gen_ai_usage_output_tokens"
+                    ),
+                    "gen_ai_usage_cost": attrs.get("gen_ai_usage_cost"),
+                    "status_code": status_name,
+                    "status_message": span.status.message or None,
+                    "attributes": dict(attrs),
+                    "events": None,
+                    "resource": dict(resource),
+                    "has_gen_ai_attrs": any(
+                        k.startswith("gen_ai_") for k in attrs
+                    ),
+                    "has_dispatch_attrs": any(
+                        k.startswith("dispatch_") or k == "selector" for k in attrs
+                    ),
+                }
+
+
+async def _dlq_insert(self, rows: list[tuple[RowValidationError, dict]]) -> None:
+    """Persist rejected rows.
+
+    Wrapped by `_handle_batch` in try/except: a DLQ failure must never abort
+    the batch, because the alternative is that one unwritable table zeroes
+    ingestion for every well-formed span in the same export.
+
+    `row_json` is the JSON text, not a JSON column cast — bind a str.
+    """
+    payload = [
+        (
+            err.reason,
+            err.field,
+            json.dumps(span, default=str),
+            span.get("trace_id"),
+            span.get("span_id"),
+        )
+        for err, span in rows
+    ]
+    sql = (
+        "INSERT INTO _dlq_rows (reason, field, row_json, trace_id, span_id) "
+        "VALUES (?, ?, ?, ?, ?)"
+    )
+    async with self.hot_store._lock:
+        self.hot_store.conn.executemany(sql, payload)
 ```
 
 - [ ] **Step 7: Implement `_handle_batch`**
@@ -1793,7 +2108,7 @@ In `akosha/mcp/server.py`, inside the `@asynccontextmanager async def lifespan(s
 
 ```python
     # v7: stop_event pinned at lifespan scope and passed explicitly to both
-    # tasks. It is set() BEFORE the gather so the await stop_event.wait(...)
+    # tasks. It is set() BEFORE the gather so the _sleep_or_stop(...)
     # inside each task body wakes before Task.cancel() propagates.
     stop_event = asyncio.Event()
     receiver = OTLPReceiver(hot_store=hot_store, settings=settings)
@@ -2551,7 +2866,7 @@ async def run_retention_sweep(self, stop_event: asyncio.Event) -> None:
     ) * 3600 if self.settings else 6 * 3600
     while not stop_event.is_set():
         try:
-            await stop_event.wait(interval)
+            await _sleep_or_stop(stop_event, interval)
         except asyncio.CancelledError:
             raise
         if stop_event.is_set():
@@ -2857,10 +3172,111 @@ HealthFeedState(
 
 `HealthFeedState` is a plain dataclass with defaults (`mcp_common/health/feed.py:103`), so keyword construction works. Do **not** call `HealthFeedState("known_mcp_servers", ...)` — that is the positional-constructor error the v7 review caught.
 
+- [ ] **Step 5b: Build the loop — `check_once` has no caller until you do**
+
+Steps 3–5 create `check_once` and a health feed, but nothing *calls* the
+watcher. Left here, `check_once` has zero runtime callers and fails the plan's
+own `audit_orphans.py` gate (Global Constraints), and P0-A never fires.
+
+Add to `heartbeat_watcher.py`:
+
+```python
+HEARTBEAT_INTERVAL_SECONDS: int = 60
+
+
+async def run_forever(hot_store: HotStore, stop_event: asyncio.Event) -> None:
+    """Call check_once every HEARTBEAT_INTERVAL_SECONDS until stopped.
+
+    Wrapped in try/except: an uncaught exception here kills the task for the
+    process lifetime, so a producer goes silent and nothing ever notices —
+    the exact failure this watcher exists to detect. On error, log, count it
+    against the health feed, and keep going.
+    """
+    while not stop_event.is_set():
+        try:
+            await _sleep_or_stop(stop_event, HEARTBEAT_INTERVAL_SECONDS)
+        except asyncio.CancelledError:
+            raise
+        if stop_event.is_set():
+            return
+        try:
+            verdict = await check_once(hot_store)
+            if verdict.p0a:
+                logger.error(
+                    "heartbeat_p0a service=%s absences=%s",
+                    verdict.service_name,
+                    verdict.consecutive_absences,
+                )
+        except Exception:
+            logger.exception("heartbeat_cycle_failed")
+```
+
+And wire it into the lifespan in `akosha/mcp/server.py`, alongside the sweep
+and canary tasks added in Task 5 — same `asyncio.create_task` + cancel-in-
+`finally` shape:
+
+```python
+    _hb_task = asyncio.create_task(
+        heartbeat_watcher.run_forever(hot_store, stop_event),
+        name="akosha.heartbeat",
+    )
+```
+
+`stop_event` is the receiver's, so one shutdown signal stops every periodic
+task. Cancel `_hb_task` in the lifespan teardown alongside the others.
+
+- [ ] **Step 5c: Prove the loop runs**
+
+Append to the heartbeat test file:
+
+```python
+@pytest.mark.asyncio
+async def test_run_forever_cycles_then_stops(hs: HotStore) -> None:
+    """The loop must actually call check_once, and must exit on stop_event."""
+    calls = 0
+    original = hw.check_once
+
+    async def counting(store):
+        nonlocal calls
+        calls += 1
+        return original(store)
+
+    hw.check_once = counting
+    hw.HEARTBEAT_INTERVAL_SECONDS = 0.01
+    stop = asyncio.Event()
+    task = asyncio.create_task(hw.run_forever(hs, stop))
+    await asyncio.sleep(0.06)
+    stop.set()
+    await asyncio.wait_for(task, timeout=1.0)
+    hw.check_once = original
+    assert calls >= 2, "loop did not cycle"
+
+
+@pytest.mark.asyncio
+async def test_run_forever_survives_a_raising_cycle(hs: HotStore) -> None:
+    """One bad cycle must not end the loop — otherwise a transient DB error
+    silently disables P0-A for the process lifetime."""
+    async def boom(store):
+        raise RuntimeError("transient")
+
+    hw.check_once = boom
+    hw.HEARTBEAT_INTERVAL_SECONDS = 0.01
+    stop = asyncio.Event()
+    task = asyncio.create_task(hw.run_forever(hs, stop))
+    await asyncio.sleep(0.05)
+    assert not task.done(), "loop died on a transient error"
+    stop.set()
+    await asyncio.wait_for(task, timeout=1.0)
+```
+
+`test_run_forever_cycles_then_stops` is the one that catches the zero-caller
+defect: `check_once` alone cannot fail a test, and a loop that never runs
+looks identical to a working one until a producer actually goes silent.
+
 - [ ] **Step 6: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_heartbeat_watcher_e2e.py -v`
-Expected: PASS — 5 tests.
+Expected: PASS — 7 tests.
 
 - [ ] **Step 7: Run the akosha health suite for regressions**
 
@@ -3346,6 +3762,7 @@ async def _emit_canary_once(self) -> None:
     trace_id = bytes.fromhex(trace_hex.ljust(32, "0")[:32])
 
     self.canary_state.canary_writes_attempted_total += 1
+    self._metric_canary_attempted.inc()
 
     batch = trace_service_pb2.ExportTraceServiceRequest()
     rs = batch.resource_spans.add()
@@ -3392,7 +3809,7 @@ async def _emit_canary_once(self) -> None:
 async def run_canary_emitter(self, stop_event: asyncio.Event) -> None:
     while not stop_event.is_set():
         try:
-            await stop_event.wait(CANARY_EMIT_INTERVAL_SECONDS)
+            await _sleep_or_stop(stop_event, CANARY_EMIT_INTERVAL_SECONDS)
         except asyncio.CancelledError:
             raise
         if stop_event.is_set():
@@ -3416,7 +3833,7 @@ async def _canary_metrics_bridge(
     backoff = 1.0
     while not stop_event.is_set():
         try:
-            await stop_event.wait(interval)
+            await _sleep_or_stop(stop_event, interval)
         except asyncio.CancelledError:
             raise
         if stop_event.is_set():
@@ -3428,7 +3845,7 @@ async def _canary_metrics_bridge(
         except Exception:
             self._metric_bridge_failed_total.inc()
             logger.exception("canary_metrics_bridge_failed retry_after=%s", backoff)
-            await stop_event.wait(backoff)
+            await _sleep_or_stop(stop_event, backoff)
             backoff = min(backoff * 2, 60)
             continue
         backoff = 1.0
