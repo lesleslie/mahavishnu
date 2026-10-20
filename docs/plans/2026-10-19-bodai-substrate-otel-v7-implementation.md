@@ -3353,9 +3353,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
+import yaml
 
-SERVER_PY = Path(__file__).resolve().parents[2] / "akosha" / "mcp" / "server.py"
+# This file lives at <repo>/akosha/tests/integration/test_*.py, so
+# parents[2] is the *package* dir (<repo>/akosha) and parents[3] is the
+# repository root. The package dir holds mcp/server.py; the settings YAMLs
+# live at the root. Getting this wrong yields a FileNotFoundError, not a
+# useful assertion failure.
+SERVER_PY = Path(__file__).resolve().parents[2] / "mcp" / "server.py"
+SETTINGS_YAML = Path(__file__).resolve().parents[3] / "settings" / "akosha.yaml"
+
+
+def test_paths_resolve() -> None:
+    """Guards the path arithmetic above — a silently-wrong parents[] index
+    turns both tests below into FileNotFoundError noise."""
+    assert SERVER_PY.is_file(), SERVER_PY
+    assert SETTINGS_YAML.is_file(), SETTINGS_YAML
 
 
 def test_otel_trace_ingester_no_longer_imported() -> None:
@@ -3379,12 +3392,7 @@ def test_settings_flag_removed() -> None:
     deleted too. A flag that maps to nothing is worse than no flag — an
     operator reads `trace_ingester_poller: false`, believes it is a live
     rollback lever, and is wrong."""
-    from pathlib import Path
-
-    import yaml
-
-    cfg = Path(__file__).resolve().parents[2] / "akosha" / "settings" / "akosha.yaml"
-    receiver = yaml.safe_load(cfg.read_text())["otel"]["receiver"]
+    receiver = yaml.safe_load(SETTINGS_YAML.read_text())["otel"]["receiver"]
     assert "trace_ingester_poller" not in receiver
 ```
 
@@ -3474,7 +3482,7 @@ Then confirm the spec runbooks (§11.1.5/6/7) contain no step that tells an oper
 - [ ] **Step 6: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_poller_retirement.py -v`
-Expected: PASS — 3 tests.
+Expected: PASS — 4 tests.
 
 - [ ] **Step 7: Run the full akosha suite for regressions**
 
@@ -3519,7 +3527,7 @@ declared-but-unread symbol.
 #### Integration Contract (Task 11)
 - **Triggered from**: `akosha mcp start` (lifespan).
 - **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `settings/akosha.yaml` (`trace_ingester_poller` key deleted), `akosha/CLAUDE.md` (operator note), `docs/decisions/2026-10-19-poller-retirement-no-flag.md` (the spec-deviation record).
-- **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 3 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line.
+- **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 4 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line.
 - **Rollback signal**: any test still importing `akosha.ingestion.otel_ingester` fails at collection → the grep in Step 3 missed a consumer; restore the module and remove only the lifespan usage. Note this is a code rollback, not a config one — there is no flag to flip.
 - **Observability added**: none (a removal; the receiver's existing metrics cover ingestion).
 
