@@ -47,10 +47,10 @@ These apply to every task. A task's requirements implicitly include this section
 Five failure modes the spec implies but no listed test exercises directly. Each gets a test added to the owning task, in that task's own step style.
 
 1. **`LifecycleError` lives in oneiric, not mcp-common.** The spec §6 says `from mcp_common.errors import LifecycleError` and claims it is "confirmed exported at PR-0b commit time". Neither is true. `LifecycleError` is at `oneiric/core/lifecycle.py:25` (a bare `RuntimeError` subclass), raised throughout `oneiric/domains/events.py` and `oneiric/domains/workflows.py` with a stable message-slug style (`"workflow-queue-adapter-missing-enqueue"`). mcp-common has no such symbol at all. **Task 5 imports from oneiric** — akosha already depends on oneiric, so no new dependency is needed.
-2. **`telemetry__service_namespace` exists in oneiric but nothing reads it.** `oneiric/core/substrate_settings.py:309` defines it with default `"oneiric-substrate"`. `grep -rn "telemetry__service_namespace"` across oneiric, akosha, and mahavishnu returns **only the definition** — zero consumers. Meanwhile mcp-common's `FastMCPOpenTelemetryMiddleware` hardcodes its own `"mcp-ecosystem"` default at `mcp_common/server/telemetry.py:103`, independent of oneiric. The spec's "bridge release in mcp-common" would emit a label nothing reads. **Task 1** wires the oneiric setting through to the middleware so the setting becomes load-bearing.
+2. **`telemetry__service_namespace` exists in oneiric but no production code reads it.** `oneiric/core/substrate_settings.py:309` defines it with default `"oneiric-substrate"`. `grep -rn "telemetry__service_namespace"` across oneiric, akosha, mcp-common and mahavishnu returns exactly two hits: that definition, and one assertion in `oneiric/tests/test_substrate_settings.py:64`. **No production consumer.** Meanwhile mcp-common's `FastMCPOpenTelemetryMiddleware` hardcodes its own `"mcp-ecosystem"` default at `mcp_common/server/telemetry.py:52` (the `__init__` parameter default; `:103` is where the value is *emitted* into span attributes, not where it is set), independent of oneiric. The spec's "bridge release in mcp-common" would emit a label nothing reads. **Task 1** wires the oneiric setting through to the middleware so the setting becomes load-bearing.
 3. **akosha's `mcp.common` module does not exist** — the spec's §15 references `mcp_common.health.feed`. The correct import path is `mcp_common.health.feed` (confirmed at `mcp_common/health/feed.py:80`). Copy-pasting the spec's path fails.
-4. **DuckDB file-lock on multi-pod sweep.** Two akosha pods running the sweep against the same DuckDB file: the second pod's `DELETE` raises an IO error and the pod dies silently. The spec §15 defers leader-election to writing-plans — **this plan ships the advisory lock in Task 8**.
-5. **`archival_target` set to a path outside the four storage roots** gets regex-rejected at settings-load (spec §8.2), which is correct — but the *error message* must name the four valid roots, or the operator's 3am fix is a guess. Task 7 pins the message content.
+4. **DuckDB file-lock on multi-pod sweep.** Two akosha pods running the sweep against the same DuckDB file: the second pod's `DELETE` raises an IO error and the pod dies silently. The spec §15 defers leader-election to writing-plans — **this plan ships the advisory lock in Task 7**.
+5. **`archival_target` set to a path outside the four storage roots** gets regex-rejected at settings-load (spec §8.2), which is correct — but the *error message* must name the four valid roots, or the operator's 3am fix is a guess. Task 6 pins the message content.
 
 ## Spec-vs-reality gaps this plan resolves
 
@@ -62,7 +62,7 @@ The spec (verified against live code 2026-10-19) has five assumptions that don't
 | §13: mcp-common "bridge release" emits `namespace.legacy_alias`; `OTelSettings` is the settings home | No `OTelSettings` class exists in any of the four repos. The real namespace setting is oneiric's `telemetry__service_namespace` (`oneiric/core/substrate_settings.py:309`, default `"oneiric-substrate"`) and **has zero consumers** — the only fleet-wide hit is the definition itself. mcp-common's middleware hardcodes its own `"mcp-ecosystem"` default. | **Task 1** adds `telemetry__legacy_namespace_alias` to oneiric's substrate settings and wires it into mcp-common's middleware, so the setting becomes load-bearing. **Task 12** flips the default and removes the alias. |
 | §13 PR-0a: "Bump oneiric minor" | Version bumps are operator-controlled (memory: `feedback-mcp-common-version-bump-is-user`). | **Task 3** stages the commit; the operator bumps oneiric's version. Recorded in the commit message. |
 | §6: "Pin `mcp-common>=0.40` in your PR description" | mcp-common is at **0.31.1**. | The bridge lands as two independent operator bumps (oneiric for the setting, mcp-common for the emission). Task 1's commit message names oneiric's expected minor; Task 6's names the mcp-common floor akosha should pin. |
-| §6 lifecycle: akosha CLI is `typer.Typer` | akosha's CLI is `AkoshaCLI()` (`akosha/cli.py:226`), a `typer.Typer` subclass with `add_typer` inherited. | Task 7 attaches the new sub-apps to `app` (the `AkoshaCLI` instance), matching the existing `mcp_app` registration at line 229-230. |
+| §6 lifecycle: akosha CLI is `typer.Typer` | akosha's CLI is `AkoshaCLI()` (`akosha/cli.py:226`), a subclass of oneiric's `OneiricCLIBase(typer.Typer)` with `add_typer` inherited. | Task 6 attaches the new sub-apps to `app` (the `AkoshaCLI` instance), matching the existing `mcp_app` registration at line 229-230. |
 
 ---
 
@@ -84,7 +84,7 @@ The spec (verified against live code 2026-10-19) has five assumptions that don't
   - `SubstrateSettings.telemetry__legacy_namespace_alias: str | None` — new field, default `None`
   - `FastMCPOpenTelemetryMiddleware(service_name, *, environment="production", service_namespace="oneiric-substrate", legacy_namespace: str | None = None)` — note the **default changes** from `"mcp-ecosystem"` to `"oneiric-substrate"`, matching the substrate setting
   - When `legacy_namespace is not None`, `_span_attributes` returns an extra key `namespace.legacy_alias: str`
-  Task 5 (akosha receiver) passes both values from oneiric's settings; Task 10 (flip) drops the alias.
+  Task 5 (akosha receiver) passes both values from oneiric's settings; Task 12 (flip) drops the alias.
 
 - [ ] **Step 1: Write the failing oneiric settings test**
 
@@ -93,18 +93,29 @@ Create `/Users/les/Projects/oneiric/tests/unit/core/test_substrate_settings_name
 ```python
 from __future__ import annotations
 
-from oneiric.core.substrate_settings import SubstrateSettings
+from oneiric.core.config import load_settings
 
 
 def test_legacy_alias_defaults_to_none() -> None:
-    assert SubstrateSettings().telemetry__legacy_namespace_alias is None
+    # Read through the settings object, not a standalone SubstrateSettings().
+    # oneiric attaches the substrate block as `OneiricSettings.substrate`, so
+    # constructing SubstrateSettings() directly bypasses exactly the wiring
+    # this task is meant to make load-bearing -- the test would pass while the
+    # real access path stayed broken. This mirrors the existing suite
+    # (oneiric/tests/test_substrate_settings.py:26, `s = load_settings()`).
+    s = load_settings()
+    assert s.substrate.telemetry__legacy_namespace_alias is None
 
 
 def test_service_namespace_default_is_oneiric_substrate() -> None:
-    assert SubstrateSettings().telemetry__service_namespace == "oneiric-substrate"
+    s = load_settings()
+    assert s.substrate.telemetry__service_namespace == "oneiric-substrate"
 ```
 
-Read `SubstrateSettings`' actual class name and env-prefix convention from `oneiric/core/substrate_settings.py` before running — the module may name it differently or use an `env_prefix`. Adjust the import to match; the assertions are the contract, not the spelling.
+The assertions are the contract. Read the field spelling and env-prefix from
+`oneiric/core/substrate_settings.py` — the module may rename the field, and the
+naming convention is `domain__subdomain__setting`, so `telemetry__` is the
+prefix to expect, not `feature_flag_`.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -1749,7 +1760,7 @@ async def _handle_batch(self, batch) -> BatchResult:
     )
 ```
 
-`_iter_spans`, `_dlq_insert`, and the `_metric_*` attributes are part of this implementation. `_dlq_insert` writes `(rejected_at, reason, field, row_json, trace_id, span_id)` tuples to the `_dlq_rows` table created in Task 6. If Task 5 lands before Task 6, `_dlq_insert` must fail loudly on a missing table — that is the §6.2 behavior this plan wants tested, so leave it unguarded and let the `try/except` catch it.
+`_iter_spans`, `_dlq_insert`, and the `_metric_*` attributes are part of this implementation. `_dlq_insert` writes `(rejected_at, reason, field, row_json, trace_id, span_id)` tuples to the `_dlq_rows` table created inline by `_ensure_operational_tables` in this same task. A missing table is a bug here, not a landing-order race — that is the §6.2 behavior this plan wants tested, so leave it unguarded and let the `try/except` catch it.
 
 **Note:** the `outcome` label set is spec §6.2's enum (`ok|dedup|partial|err|validation_failed|dlq_write_failed`). Keep all six label values declared even if some never increment (the spec pins `phase="copy"` as permanently dead for the same reason).
 
@@ -2003,7 +2014,7 @@ otel:
     archival_target: null
 ```
 
-If an `otel:` block already exists, merge into it rather than creating a second one. The `known_mcp_servers` roster is Task 9's input; it is declared here so the settings shape is in one place.
+If an `otel:` block already exists, merge into it rather than creating a second one. The `known_mcp_servers` roster is Task 8's input; it is declared here so the settings shape is in one place.
 
 - [ ] **Step 4: Implement the retention CLI group**
 
@@ -2057,22 +2068,28 @@ def _validate_archival_target(target: str | None) -> None:
 admin_app = typer.Typer(help="operator/admin subcommands")
 otel_app = typer.Typer(help="OpenTelemetry substrate commands")
 retention_app = typer.Typer(help="spans_substrate retention sweep")
+config_app = typer.Typer(help="retention settings overrides")
 
 
 @retention_app.command("manual-run")
 def retention_manual_run(
-    retention_days: int = typer.Option(..., "--retention-days", help="days of history to keep"),
-    dry_run: bool = typer.Option(True, "--dry-run/--apply", help="print SQL + preview; do not execute"),
-    apply: bool = typer.Option(False, "--apply", help="actually execute (requires --confirm)"),
+    retention_days: int | None = typer.Option(
+        None, "--retention-days", help="days of history to keep (default: configured value)"
+    ),
+    dry_run: bool = typer.Option(
+        True, "--dry-run/--apply", help="print SQL + preview; do not execute"
+    ),
     confirm: str = typer.Option("", "--confirm", help="typed-phrase confirmation"),
 ) -> None:
     """Run the retention sweep manually. Default is dry-run."""
-    _validate_archival_target(_retention_settings().archival_target)
-    cutoff_ns = time.time_ns() - retention_days * 86_400 * 1_000_000_000
+    settings = _retention_settings()
+    days = retention_days if retention_days is not None else settings.retention_days
+    _validate_archival_target(settings.archival_target)
+    cutoff_ns = time.time_ns() - days * 86_400 * 1_000_000_000
     sql = (
         f"DELETE FROM spans_substrate WHERE received_at_unix_nano < {cutoff_ns}"
     )
-    if dry_run and not apply:
+    if dry_run:
         typer.echo("DRY RUN — no rows deleted.")
         typer.echo(f"SQL: {sql}")
         typer.echo(
@@ -2080,25 +2097,21 @@ def retention_manual_run(
             f"WHERE received_at_unix_nano < {cutoff_ns}\"` for the row count."
         )
         return
-    if apply and confirm != BLESSED_CONFIRM_PHRASES.get(retention_days):
+    if confirm != BLESSED_CONFIRM_PHRASES.get(days):
         typer.echo(
-            f"--confirm must be exactly: {BLESSED_CONFIRM_PHRASES.get(retention_days, 'delete rows older than N days')!r}"
+            f"--confirm must be exactly: {BLESSED_CONFIRM_PHRASES.get(days, 'delete rows older than N days')!r}"
         )
         raise typer.Exit(code=1)
-    _execute_sweep(retention_days)
+    _execute_sweep(days)
 
 
 @retention_app.command("sweep-once")
 def retention_sweep_once() -> None:
     """Run one sweep cycle now, bypassing the wait interval."""
-    from akosha.observability.otlp_receiver import OTLPReceiver
-    from akosha.storage.hot_store import HotStore
-    s = _retention_settings()
-    hs = HotStore(database_path=_resolve_hot_store_path())
-    OTLPReceiver(hot_store=hs, settings=s).run_retention_sweep_once(s)
+    _execute_sweep(_retention_settings().retention_days)
 
 
-@retention_app.command("config set")
+@config_app.command("set")
 def retention_config_set(
     retention_days: int | None = typer.Option(None, "--retention-days", help="override retention_days"),
     reload: bool = typer.Option(False, "--reload", help="re-read settings after change"),
@@ -2109,6 +2122,13 @@ def retention_config_set(
     typer.echo("DRY RUN — no file written.")
     typer.echo(f"otel.spans_substrate.retention_days: {current.retention_days} -> {proposed}")
     typer.echo("Re-run with --apply to write settings/akosha.yaml.")
+
+
+# `config set` is TWO argv words, so it needs a nested sub-Typer. A command
+# literally named "config set" only resolves when passed as a single argv
+# element (`["config set"]`); the tests invoke `["config", "set"]` and get
+# exit code 2 "No such command 'set'". Verified both ways.
+retention_app.add_typer(config_app, name="config")
 
 
 @retention_app.command("cardinality-report")
@@ -2132,7 +2152,50 @@ admin_app.add_typer(otel_app, name="otel")
 app.add_typer(admin_app, name="admin")
 ```
 
-`_execute_sweep` is Task 7's body — extract the sweep logic into a module-level `async def run_sweep_once(settings)` on `OTLPReceiver` and call it here. To keep this task independently testable, define `_execute_sweep(retention_days)` in this task as a thin wrapper that opens the HotStore and calls `OTLPReceiver.run_retention_sweep_once`; Task 7 fills in that method's real body. If the method does not exist yet, stub it in Task 5 alongside the other stubs.
+Define both helpers here, in Task 6, alongside the CLI that calls them — an
+earlier draft deferred them to a task that has since been dropped, which left
+them defined nowhere:
+
+```python
+def _resolve_hot_store_path() -> str:
+    """Path to the live DuckDB file, from the same config the receiver uses.
+
+    Task 8 reads the configured path; this must be the SAME file or the CLI
+    reports counts for a database the receiver never writes to.
+    """
+    from akosha.config import get_config
+
+    path = get_config().hot.path
+    if path == ":memory:":
+        raise typer.Exit(
+            code=1,
+        )  # an in-memory store is per-process; there is no file to inspect
+    return path
+
+
+def _execute_sweep(retention_days: int) -> None:
+    """Run one sweep cycle synchronously, from the sync CLI.
+
+    `OTLPReceiver.run_retention_sweep_once` is `async def` and is a STUB at
+    this task — Task 7 replaces the body with the real cutoff + COPY + DELETE.
+    Without this wrapper the CLI's --apply path calls nothing.
+    """
+    import asyncio
+
+    from akosha.observability.otlp_receiver import OTLPReceiver
+    from akosha.storage.hot_store import HotStore
+
+    hs = HotStore(database_path=_resolve_hot_store_path())
+    deleted = asyncio.run(
+        OTLPReceiver(hot_store=hs).run_retention_sweep_once(
+            _retention_settings()
+        )
+    )
+    typer.echo(f"deleted {deleted} rows")
+```
+
+`sweep-once` above should call `_execute_sweep(...)` rather than open its own
+HotStore, so both CLI paths share one code path.
 
 - [ ] **Step 5: Run test to verify it passes**
 
@@ -2141,7 +2204,7 @@ Expected: PASS — 4 tests.
 
 - [ ] **Step 6: Verify the CLI registers without shadowing**
 
-Run: `cd /Users/les/Projects/akosha && .venv/bin/akosha --help 2>&1 | grep -E "admin|migrations|mcp"`
+Run: `cd /Users/les/Projects/akosha && .venv/bin/akosha --help 2>&1 | grep -E "admin|otel|mcp"`
 Expected: all three top-level groups present, and `data-migrate` still present under its original name.
 
 - [ ] **Step 7: Commit**
@@ -2174,7 +2237,7 @@ it — the sweep body reads settings.spans_substrate.*.
 - **Triggered from**: operator shell at 3am following a runbook in spec §11.1.5/6/7; the `otel.spans_substrate` settings block read by Task 7's sweep.
 - **Returns to / updates**: `akosha/cli.py` (3 new Typer sub-apps), `settings/akosha.yaml` (`otel.spans_substrate` block).
 - **Demonstrable by**: `pytest tests/unit/cli/test_admin_otel_retention_cli.py -v` — 4 passing; `akosha admin otel retention cardinality-report` prints a row count.
-- **Rollback signal**: `akosha --help` no longer lists `data-migrate` → the new `migrations` group shadowed the pre-existing Click group (spec §11.4a namespace safety).
+- **Rollback signal**: `akosha --help` no longer lists `data-migrate` → the new `admin` group shadowed a pre-existing command name (spec §11.4a namespace safety).
 - **Observability added**: none (operator-surface commands; the sweep they invoke emits the metrics).
 
 ---
@@ -2477,7 +2540,7 @@ The `phase="copy"` increment with `amount=0` is deliberate: it keeps the label s
 
 - [ ] **Step 6: Implement the loop body**
 
-Replace the `run_retention_sweep` stub from Task 6:
+Replace the `run_retention_sweep` stub from Task 5:
 
 ```python
 async def run_retention_sweep(self, stop_event: asyncio.Event) -> None:
@@ -2577,7 +2640,7 @@ archival\".
 - Test: `akosha/tests/integration/test_heartbeat_watcher_e2e.py`
 
 **Interfaces:**
-- Consumes: `otel.receiver.known_mcp_servers` settings (Task 7), `HotStore` (Task 5), `HealthFeedState` from `mcp_common.health.feed` (confirmed at `mcp_common/health/feed.py:80`).
+- Consumes: `otel.receiver.known_mcp_servers` settings (Task 6), `HotStore.insert_spans_substrate` (Task 4), `HealthFeedState` from `mcp_common.health.feed` (confirmed at `mcp_common/health/feed.py:80`).
 - Produces:
   - `KNOWN_MCP_SERVERS: list[str]` (module-level roster, populated at lifespan)
   - `async check_once(hot_store: HotStore) -> HeartbeatVerdict`
@@ -2845,7 +2908,7 @@ Positional construction raises TypeError.
 - Test: `akosha/tests/unit/observability/test_resource_validator.py`
 
 **Interfaces:**
-- Consumes: `ALLOWED_NAMESPACES` binding from spec §13.2 (bridge set at this task; flipped by Task 10).
+- Consumes: `ALLOWED_NAMESPACES` binding from spec §13.2 (bridge set at this task; flipped by Task 12).
 - Produces: `class ResourceValidator` with `record(span: dict) -> bool`, module constants `ALLOWED_NAMESPACES_BRIDGE`, `ALLOWED_NAMESPACES_POST_FLIP`, `ALLOWED_NAMESPACES`, `ROLLING_WINDOW_SECONDS`, `SPIKE_THRESHOLD`, `SUSTAINED_THRESHOLD_HR`.
 
 - [ ] **Step 1: Write the failing test**
@@ -2928,7 +2991,7 @@ ALLOWED_NAMESPACES_POST_FLIP = {"bodai"}
 
 # PR-A6 ships the bridge set: the bridge release is active at this task's
 # merge time, so mcp-ecosystem producers MUST be permitted or every span
-# is flagged as drift. Task 10 flips this single binding.
+# is flagged as drift. Task 12 flips this single binding.
 ALLOWED_NAMESPACES = ALLOWED_NAMESPACES_BRIDGE
 
 ROLLING_WINDOW_SECONDS = 300
@@ -3874,7 +3937,7 @@ drift and the cardinality alarm fires spuriously.
 
 ## Deferred items — how this plan resolves them
 
-The spec §1 defers four items to writing-plans. Here is where each lands.
+The spec §1 defers four items to writing-plans; two more PRs were dropped during planning. Here is where each lands.
 
 | Deferred item | Resolution in this plan |
 | **Dropped 2026-10-20:** yoyo migration framework in akosha (was PR-A2 / old Task 6) | **Not built — no migration framework is needed.** There is no yoyo in the fleet: not in akosha, not in oneiric, not in mahavishnu (only Alembic, in mahavishnu). Task 2 creates `spans_substrate` via `CREATE TABLE IF NOT EXISTS` in oneiric's `DuckdbHotStore.initialize()`, which runs on every substrate boot — idempotent, and it covers both fresh and pre-existing substrate files. A separate runner would have introduced a third framework into a repo that has none, for a substrate ADR 017 assigns to oneiric. |
@@ -3894,11 +3957,11 @@ The spec §1 defers four items to writing-plans. Here is where each lands.
 | 3 | PR-0b | akosha | deps + shared-receiver hook + namespace hygiene | 1 |
 | 4 | (spec-cumulative) | akosha | `HotStore.insert_spans_substrate` | 2 |
 | 5 | PR-A3 | akosha + mahavishnu | `OTLPReceiver` + lifespan + port move | 3, 4 |
-| 6 | (spec-cumulative) | akosha | `admin otel retention` CLI | 4 |
-| 7 | PR-A3 follow-on | akosha | sweep body + advisory lock | 4, 6 |
-| 8 | PR-A5 | akosha | heartbeat watcher | 4 |
+| 6 | (spec-cumulative) | akosha | `admin otel retention` CLI | 4, 5 |
+| 7 | PR-A3 follow-on | akosha | sweep body + advisory lock | 4, 5, 6 |
+| 8 | PR-A5 | akosha | heartbeat watcher | 4, 6 |
 | 9 | PR-A6 | akosha | resource-attribute validator | 5 |
-| 10 | PR-A4 | akosha | synthetic canary + bridge | 5, 7 |
+| 10 | PR-A4 | akosha | synthetic canary + bridge | 4, 5, 7 |
 | 11 | PR-A8 | akosha | poller retirement | 5, 10 |
 | 12 | PR-A7 | mcp-common + oneiric + akosha | namespace flip | 1, 9, plus the consumer sweep |
 
@@ -3916,7 +3979,7 @@ Before the branch merges:
 
 - [ ] `cd oneiric && .venv/bin/pytest tests/ -v` — substrate suite green
 - [ ] `cd mcp-common && .venv/bin/pytest tests/ -v` — telemetry suite green
-- [ ] `cd akosha && .venv/bin/pytest tests/ -v` — receiver, CLI, migration, and sweep suites green
+- [ ] `cd akosha && .venv/bin/pytest tests/ -v` — receiver, CLI, and sweep suites green
 - [ ] `cd mahavishnu && .venv/bin/pytest tests/ -k "otel or collector" -v` — port move did not break a consumer
 - [ ] `/Users/les/Projects/mahavishnu/.venv/bin/python /Users/les/Projects/mahavishnu/scripts/audit_orphans.py` — no zero-caller symbols (run from the mahavishnu repo root; the script lives there, not in akosha)
 - [ ] `crackerjack run -v -f` in each of the four repos — merge gate green
