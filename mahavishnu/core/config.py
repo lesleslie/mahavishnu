@@ -3312,17 +3312,48 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
                 project_name="mahavishnu",
                 project_root=anchor,
             )
+            merged: dict = {}
+            # Use the class-level model_fields — instance-level access
+            # emits a Pydantic 2.11 deprecation warning that will hard-
+            # error in Pydantic V3.
+            oneiric_declared = set(type(oneiric_obj).model_fields)
+
+            # 2026-10-19: pull fields declared on BOTH OneiricSettings and
+            # MahavishnuSettings (currently ``adapters``) via
+            # ``model_dump(exclude_unset=False)`` so unknown nested keys
+            # ride through ``LayerSettings.__pydantic_extra__`` and
+            # surface into Mahavishnu's stricter ``AdapterConfig``
+            # (extra="forbid"). Without this, Oneiric's ``LayerSettings``
+            # silently drops the inner ``hatchet_enabled`` flag during
+            # OneiricSettings construction and MahavishnuSettings falls
+            # back to the field default. The buggy symptom was
+            # ``adapters.hatchet_enabled: true`` in
+            # ``~/.config/mahavishnu/local.yaml`` being ignored even
+            # though the YAML loader ran.
+            for field_name in MahavishnuSettings.model_fields:
+                if field_name not in oneiric_declared:
+                    continue
+                field_val = getattr(oneiric_obj, field_name, None)
+                if field_val is None or not hasattr(field_val, "model_dump"):
+                    continue
+                dumped = field_val.model_dump(mode="python", exclude_unset=False)
+                if dumped is not None:
+                    merged[field_name] = dumped
+
             # Pydantic v2 stores ``extra="allow"`` additions on a private
-            # attr; ``model_dump()`` includes them too but also leaks
-            # Oneiric's declared framework fields (adapters, services,
-            # tasks, etc.) that would clash with MahavishnuSettings's
-            # extra="forbid" sub-models. Use the private attr directly.
+            # attr. These are operator-supplied keys Oneiric doesn't
+            # declare but Mahavishnu does (opensearch, terminal,
+            # otel_ingester, etc.). Shared-declared fields like
+            # ``adapters`` are NOT in extras — those flow through the
+            # model_dump path above.
             extras = getattr(oneiric_obj, "__pydantic_extra__", None) or {}
-            merged = {
-                k: v
-                for k, v in extras.items()
-                if k in MahavishnuSettings.model_fields and v is not None
-            }
+            for k, v in extras.items():
+                if (
+                    k in MahavishnuSettings.model_fields
+                    and v is not None
+                    and k not in merged
+                ):
+                    merged[k] = v
 
             # Per-subconfig key filter: drop keys not declared on the
             # target Pydantic model. The outer `k in MahavishnuSettings

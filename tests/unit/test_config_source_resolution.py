@@ -219,6 +219,57 @@ def test_local_yaml_overrides_committed_yaml(
         assert actual == expected
 
 
+def test_local_yaml_overrides_adapters_hatchet_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: Oneiric's ``LayerSettings`` used to swallow ``adapters.hatchet_enabled``.
+
+    2026-10-19: Oneiric's ``LayerSettings`` (the type declared for
+    ``OneiricSettings.adapters``, ``services``, ``tasks``, ``workflows``,
+    ``events``, ``actions``) had no ``model_config``, defaulting to
+    ``extra="ignore"``. Pydantic v2 then dropped any nested key not
+    declared on ``LayerSettings`` during ``OneiricSettings.__init__`` —
+    so ``adapters.hatchet_enabled: true`` in either
+    ``~/.config/mahavishnu/local.yaml`` or ``settings/local.yaml`` was
+    silently lost on the way to ``MahavishnuSettings.adapters``. The
+    fix flipped ``LayerSettings`` to ``extra="allow"`` and added a
+    ``model_dump``-based path in ``get_settings`` for fields declared
+    on both Oneiric and Mahavishnu, so the inner extras ride through
+    into Mahavishnu's stricter ``AdapterConfig`` (which uses
+    ``extra="forbid"``). Without the fix, the override is silently
+    ignored.
+    """
+    # Hermetic install: commit hatchet_enabled:false in the canonical
+    # yaml, override to true in project-local. Empty XDG ensures the
+    # test machine's real ~/.config/mahavishnu/local.yaml cannot leak
+    # in and pre-empt the override under test.
+    settings_dir = tmp_path / "settings"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+    (settings_dir / "mahavishnu.yaml").write_text(
+        yaml.safe_dump({"adapters": {"hatchet_enabled": False}})
+    )
+    (settings_dir / "local.yaml").write_text(
+        yaml.safe_dump({"adapters": {"hatchet_enabled": True}})
+    )
+    empty_xdg = tmp_path / "_empty_xdg"
+    empty_xdg.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(empty_xdg))
+    monkeypatch.delenv("MAHAVISHNU_XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("MAHAVISHNU_ADAPTERS__HATCHET_ENABLED", raising=False)
+    reset_settings()
+    try:
+        s = get_settings(project_root=tmp_path)
+        assert s.adapters.hatchet_enabled is True, (
+            "settings/local.yaml's `adapters.hatchet_enabled: true` must "
+            "win over settings/mahavishnu.yaml's `false`. Regression: "
+            "Oneiric's LayerSettings (extra='ignore' default) silently "
+            "swallowed the override during OneiricSettings construction."
+        )
+    finally:
+        reset_settings()
+
+
 def test_env_var_wins_over_local_yaml(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
