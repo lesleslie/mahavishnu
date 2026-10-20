@@ -1379,6 +1379,26 @@ class OTLPReceiver:
         self.settings = settings
         self._running = False
         self.canary_state: CanaryState = CanaryState()
+        self._sweep_first_started_unix_nano = 0
+        # Bind the module-level metric singletons. Do NOT construct here —
+        # see the metrics section below.
+        self._metric_receiver_started = _metric_receiver_started
+        self._metric_batch_inserted = _metric_batch_inserted
+        self._metric_row_rejected = _metric_row_rejected
+        self._metric_dlq_insert_failed = _metric_dlq_insert_failed
+        self._metric_sweep_first_started = _metric_sweep_first_started
+        self._metric_sweep_last_completed = _metric_sweep_last_completed
+        self._metric_sweep_deleted = _metric_sweep_deleted
+        self._metric_archival_failed = _metric_archival_failed
+        self._metric_retention_sweep_failed = _metric_retention_sweep_failed
+        self._metric_namespace_drift = _metric_namespace_drift
+        self._metric_canary_succeeded = _metric_canary_succeeded
+        self._metric_canary_rejected = _metric_canary_rejected
+        self._metric_canary_failed = _metric_canary_failed
+        self._metric_canary_last_success_unix_nano = (
+            _metric_canary_last_success_unix_nano
+        )
+        self._metric_bridge_failed_total = _metric_bridge_failed_total
 
     async def start(self) -> None:
         """Bind listeners. Fail loud when the substrate is missing."""
@@ -1399,21 +1419,123 @@ class OTLPReceiver:
         await self._close_listeners()
 ```
 
-**Metrics are module-level, not per-instance.** Declare them at module scope in `otlp_receiver.py` against akosha's shared singleton registry, exactly as `akosha/observability/prometheus_metrics.py:117-137` does:
+**Metrics are module-level, not per-instance.** Declare them all at module scope in `otlp_receiver.py` against akosha's shared singleton registry, exactly as `akosha/observability/prometheus_metrics.py:117-137` does. Then *bind* them onto the instance — the rest of the receiver (and every later task that extends it) refers to them as `self._metric_*`:
 
 ```python
+from prometheus_client import Counter, Gauge
+
 from akosha.observability.prometheus_metrics import get_metrics_registry
 
+# --- module scope: constructed exactly once, at import -----------------
 _metric_receiver_started: Counter = Counter(
-    name="telemetry_receiver_started_total",
-    documentation="OTLP receiver start() calls that bound all listeners",
+    "telemetry_receiver_started_total",
+    "start() calls that bound every listener",
+    registry=get_metrics_registry(),
+)
+_metric_batch_inserted: Counter = Counter(
+    "telemetry_receiver_batch_inserted_total",
+    "Spans inserted per export batch",
+    ["outcome"],
+    registry=get_metrics_registry(),
+)
+_metric_row_rejected: Counter = Counter(
+    "telemetry_receiver_row_rejected_total",
+    "Rows refused by validation and sent to the DLQ",
+    ["reason", "field"],
+    registry=get_metrics_registry(),
+)
+_metric_dlq_insert_failed: Counter = Counter(
+    "telemetry_receiver_dlq_insert_failed_total",
+    "DLQ writes that themselves failed; the rejected rows are lost",
+    ["reason"],
+    registry=get_metrics_registry(),
+)
+_metric_sweep_first_started: Gauge = Gauge(
+    "telemetry_receiver_sweep_first_started_unix_nano",
+    "When this pod first ran a sweep (0 = never)",
+    registry=get_metrics_registry(),
+)
+_metric_sweep_last_completed: Gauge = Gauge(
+    "telemetry_receiver_sweep_last_completed_unix_nano",
+    "When this pod last completed a sweep",
+    registry=get_metrics_registry(),
+)
+_metric_sweep_deleted: Counter = Counter(
+    "telemetry_receiver_sweep_deleted_total",
+    "Spans deleted by the retention sweep",
+    registry=get_metrics_registry(),
+)
+_metric_archival_failed: Counter = Counter(
+    "telemetry_receiver_archival_failed_total",
+    "Archival COPY failures; each one skipped the DELETE",
+    ["reason"],
+    registry=get_metrics_registry(),
+)
+_metric_retention_sweep_failed: Counter = Counter(
+    "telemetry_receiver_retention_sweep_failed_total",
+    "Sweep cycles that raised",
+    ["phase", "reason"],
+    registry=get_metrics_registry(),
+)
+_metric_namespace_drift: Counter = Counter(
+    "telemetry_receiver_namespace_drift_total",
+    "Spans whose service.namespace was not on the allowlist",
+    ["namespace"],
+    registry=get_metrics_registry(),
+)
+_metric_canary_succeeded: Counter = Counter(
+    "telemetry_receiver_canary_writes_succeeded_total",
+    "Canary emits that inserted exactly one row",
+    registry=get_metrics_registry(),
+)
+_metric_canary_rejected: Counter = Counter(
+    "telemetry_receiver_canary_writes_rejected_total",
+    "Canary emits that inserted zero rows (deduped by another pod)",
+    registry=get_metrics_registry(),
+)
+_metric_canary_failed: Counter = Counter(
+    "telemetry_receiver_canary_writes_failed_total",
+    "Canary emits that raised",
+    ["reason"],
+    registry=get_metrics_registry(),
+)
+_metric_canary_last_success_unix_nano: Gauge = Gauge(
+    "telemetry_receiver_canary_last_success_unix_nano",
+    "When a canary emit last inserted (bridged from CanaryState)",
+    registry=get_metrics_registry(),
+)
+_metric_bridge_failed_total: Counter = Counter(
+    "telemetry_receiver_bridge_failed_total",
+    "CanaryState -> Prometheus gauge bridge failures",
     registry=get_metrics_registry(),
 )
 ```
 
-Do **not** create metrics inside `__init__`. `get_metrics_registry()` returns a process-wide `CollectorRegistry`, so a second `OTLPReceiver` (the lifespan test constructs one, then the real server constructs another) would raise `ValueError: Duplicated timeseries in CollectorRegistry`. Module-level construction happens once at import.
+Inside `__init__`, bind each explicitly rather than constructing:
 
-`_bind_grpc`, `_bind_http`, `_start_prometheus`, `_close_listeners` are the listener plumbing; implement them against the OTLP gRPC + HTTP receivers with `prometheus_client.start_http_server(PROMETHEUS_PORT)`. The metric names must match the spec §11.3 contract verbatim (prefixed `telemetry_receiver_` when scraped by Prometheus).
+```python
+self._metric_receiver_started = _metric_receiver_started
+self._metric_batch_inserted = _metric_batch_inserted
+self._metric_row_rejected = _metric_row_rejected
+self._metric_dlq_insert_failed = _metric_dlq_insert_failed
+self._metric_sweep_first_started = _metric_sweep_first_started
+self._metric_sweep_last_completed = _metric_sweep_last_completed
+self._metric_sweep_deleted = _metric_sweep_deleted
+self._metric_archival_failed = _metric_archival_failed
+self._metric_retention_sweep_failed = _metric_retention_sweep_failed
+self._metric_namespace_drift = _metric_namespace_drift
+self._metric_canary_succeeded = _metric_canary_succeeded
+self._metric_canary_rejected = _metric_canary_rejected
+self._metric_canary_failed = _metric_canary_failed
+self._metric_canary_last_success_unix_nano = _metric_canary_last_success_unix_nano
+self._metric_bridge_failed_total = _metric_bridge_failed_total
+```
+
+Do **not** construct metrics inside `__init__`. `get_metrics_registry()` returns a process-wide `CollectorRegistry`, so a second `OTLPReceiver` (the lifespan test constructs one, then the real server constructs another) would raise `ValueError: Duplicated timeseries in CollectorRegistry`. Module-level construction happens once at import.
+
+All 15 must be declared **here**, in Task 5, even though Tasks 7–10 are what increment most of them: a name referenced but never declared is an `AttributeError` at the first increment — which for the sweep metrics means the sweep dies on its first archival failure, the exact moment you most need the signal. Later tasks add no new metrics.
+
+`_bind_grpc`, `_bind_http`, `_start_prometheus`, `_close_listeners` are the listener plumbing; implement them against the OTLP gRPC + HTTP receivers with `prometheus_client.start_http_server(PROMETHEUS_PORT)`. The metric names above are the spec §11.3 contract verbatim.
 
 `_ensure_operational_tables` creates the two akosha-owned operational tables inline. There is no migration framework in this repo — PR-A2 was dropped (see Deferred items) — so every table is created with `CREATE TABLE IF NOT EXISTS` at its point of first use, which is idempotent and runs on every boot:
 
@@ -2126,17 +2248,24 @@ async def _acquire_sweep_lock(ttl_seconds: int = 21_600) -> bool:
     is a marker row with a TTL, refreshed by the holder each cycle — NOT a
     transaction-level lock, because the sweep spans multiple statements.
 
-    Returns True when this process holds the lock. A stale lock (older
-    than ttl_seconds) is reclaimed; a fresh lock held by another pod
-    returns False and this pod skips the cycle.
+    Returns True when this process holds the lock. A stale lock (TTL expired)
+    is reclaimed; a live lock held by another pod returns False and this pod
+    skips the cycle.
+
+    The TTL lives in `sweep_lock_expires_unix_nano`, a BIGINT, not in
+    `last_applied_at`. `last_applied_at` answers "when did this component
+    last record state", which is a different fact from "is the lock still
+    held" — and comparing an epoch float against that TIMESTAMP is exactly
+    the coercion the lock should not depend on.
     """
-    now = time.time()
-    cutoff = now - ttl_seconds
+    now_unix_nano = int(time.time() * 1_000_000_000)
+    expires_unix_nano = now_unix_nano + ttl_seconds * 1_000_000_000
     async with self.hot_store._lock:
+        # Reclaim our own expired row, then try to take it.
         self.hot_store.conn.execute(
             "DELETE FROM _akosha_otel_receiver_state "
-            "WHERE component = 'sweep_lock' AND last_applied_at < ?",
-            [cutoff],
+            "WHERE component = 'sweep_lock' AND sweep_lock_expires_unix_nano < ?",
+            [now_unix_nano],
         )
         existing = self.hot_store.conn.execute(
             "SELECT component FROM _akosha_otel_receiver_state "
@@ -2146,10 +2275,21 @@ async def _acquire_sweep_lock(ttl_seconds: int = 21_600) -> bool:
             return False
         self.hot_store.conn.execute(
             "INSERT INTO _akosha_otel_receiver_state "
-            "(component, schema_version, last_applied_at) VALUES ('sweep_lock', 1, ?)",
-            [now],
+            "(component, sweep_lock_expires_unix_nano) VALUES ('sweep_lock', ?)",
+            [expires_unix_nano],
         )
     return True
+
+
+async def _renew_sweep_lock(self, ttl_seconds: int = 21_600) -> None:
+    """Extend the lock mid-cycle so a long sweep is not stolen mid-flight."""
+    expires_unix_nano = int(time.time() * 1_000_000_000) + ttl_seconds * 1_000_000_000
+    async with self.hot_store._lock:
+        self.hot_store.conn.execute(
+            "UPDATE _akosha_otel_receiver_state SET sweep_lock_expires_unix_nano = ? "
+            "WHERE component = 'sweep_lock'",
+            [expires_unix_nano],
+        )
 
 
 async def _release_sweep_lock(self) -> None:
@@ -2159,18 +2299,21 @@ async def _release_sweep_lock(self) -> None:
         )
 ```
 
-`_akosha_otel_receiver_state.last_applied_at` is `TIMESTAMP` per the DDL Task 5 creates inline; the parameter above passes a float epoch. Change the parameter to a `datetime` (`datetime.fromtimestamp(now, tz=UTC)`) to match the column type, or store the lock's own `sweep_lock_expires_unix_nano BIGINT` column — **preferred**, because a TIMESTAMP comparison against a marker row conflates "when the lock was taken" with "when this component last recorded state", which are different facts. Add the column to the inline `CREATE TABLE` in Task 5:
+The lock table is created inline by Task 5's `_ensure_operational_tables`:
 
 ```sql
--- In OTLPReceiver.start(), alongside the other inline DDL:
 CREATE TABLE IF NOT EXISTS _akosha_otel_receiver_state (
-    component                   TEXT PRIMARY KEY,
-    last_applied_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    component                    TEXT PRIMARY KEY,
+    last_applied_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     sweep_lock_expires_unix_nano BIGINT
 );
 ```
 
-DuckDB supports `ALTER TABLE ADD COLUMN` without constraints, but that is irrelevant here: there is no migration framework (see Deferred items — PR-A2 was dropped), so every table this plan needs is created with `CREATE TABLE IF NOT EXISTS` at the point of first use. Inline DDL is idempotent and runs on every boot, so there is nothing to sequence.
+Name every column you write. An earlier draft of this block also wrote `schema_version`, which that DDL does not define — DuckDB rejects it outright with `BinderException: Table "_akosha_otel_receiver_state" does not have a column with name "schema_version"`, so the lock would have failed on its very first call rather than degrading gracefully.
+
+**Not atomic across processes.** DELETE-then-SELECT-then-INSERT leaves a window in which two pods can both observe no row and both insert. Within one process `self.hot_store._lock` closes it; across pods on a shared DuckDB file, DuckDB's own file lock serialises the writers, which is sufficient. Do not extend this to a backend without a single-writer guarantee — use a real advisory lock there.
+
+There is no migration framework to sequence against (see Deferred items — PR-A2 was dropped), so every table this plan needs is created with `CREATE TABLE IF NOT EXISTS` at its point of first use. Inline DDL is idempotent and runs on every boot.
 
 - [ ] **Step 5: Implement `run_retention_sweep_once`**
 
@@ -2197,11 +2340,11 @@ async def run_retention_sweep_once(self, settings: Any) -> int:
         target = getattr(settings, "archival_target", None)
         if target:
             try:
-                # v6: COPY path is INLINED, not parameterized — DuckDB (2.0.0-dev)
-                # rejects COPY (…) TO ? with
-                # "INTERNAL Error: Unsupported parameter type for filename".
-                # The path is regex-validated at settings-load (Task 6), so
-                # only safe paths reach here.
+                # v6: COPY path is INLINED, not parameterized — DuckDB rejects
+                # COPY (…) TO ? (2.0.0-dev: InvalidInputException; on 1.5.6
+                # it was "INTERNAL Error: Unsupported parameter type for
+                # filename"). The path is regex-validated at settings-load
+                # (Task 6), so only safe paths reach here.
                 self.hot_store.conn.execute(
                     f"COPY (SELECT * FROM spans_substrate "
                     f"WHERE received_at_unix_nano < {cutoff_ns}) TO '{target}'"
@@ -2299,7 +2442,7 @@ async def test_sweep_lock_is_exclusive(rx: OTLPReceiver) -> None:
 - [ ] **Step 9: Commit**
 
 ```bash
-cd /Users/hes/Projects/akosha
+cd /Users/les/Projects/akosha
 git add akosha/observability/otlp_receiver.py \
   tests/integration/test_spans_substrate_retention_sweep.py
 git commit -m "feat(akosha): retention sweep body + advisory lock (spec §8.2)
