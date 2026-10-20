@@ -279,6 +279,27 @@ resulting release.
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 1)
 - **Triggered from**: any Bodai `*-mcp` server constructing `FastMCPOpenTelemetryMiddleware`; akosha's Task 5 lifespan passes both `service_namespace` and `legacy_namespace` from oneiric's settings.
 - **Returns to / updates**: `oneiric/core/substrate_settings.py` (new field), `mcp_common/server/telemetry.py` (`__init__` signature + default, `_span_attributes` body).
@@ -535,6 +556,27 @@ resulting oneiric release.
 - [ ] **Step 10: Record feature-tracking state**
 
 Create `docs/feature-tracking/otel-spans-substrate-ddl.md` from the template with state `built`. Not `adopted` until the operator bumps oneiric's version and akosha's `HotStore` subclasses the new DDL (Task 4).
+
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
 
 #### Integration Contract (Task 2)
 - **Triggered from**: `uv pip install -e .` (registers nothing new); any component calling `DuckdbHotStore.initialize()` at boot.
@@ -893,6 +935,27 @@ EXPECTED VERSION: minor bump — operator bumps pyproject.toml
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 3)
 - **Triggered from**: `uv sync` (installs the new deps); `akosha/mcp/server.py` lifespan (Task 5 calls `set_shared_otel_receiver`); `clear_shared_services()` on lifespan teardown; every akosha process boot calls `setup_telemetry`.
 - **Returns to / updates**: `akosha/mcp/server.py` (3 globals in `clear_shared_services`, the `setup_telemetry` call site), `akosha/observability/tracing.py` (signature + resource literal), `akosha/pyproject.toml` (`[project.dependencies]`).
@@ -976,7 +1039,7 @@ def _row(span_id: str, trace_id: str = "t1") -> dict:
 
 @pytest.fixture
 async def store(tmp_path):
-    hs = HotStore(database_path=tmp_path / "t.duckdb")
+    hs = HotStore(database_path=tmp_path / "t.duckdb", embedding_dim=384)
     await hs.initialize()
     return hs
 
@@ -1186,6 +1249,27 @@ is a substrate client, not a substrate owner.
 """
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 4)
 - **Triggered from**: Task 5's `_handle_batch`; Task 10's canary emitter; Task 3's installed oneiric dependency.
 - **Returns to / updates**: `akosha/storage/hot_store.py` — new `_SPAN_COLUMNS` tuple + `insert_spans_substrate` method.
@@ -1237,7 +1321,7 @@ from oneiric.core.lifecycle import LifecycleError
 
 @pytest.mark.asyncio
 async def test_start_raises_when_substrate_absent(tmp_path) -> None:
-    hs = HotStore(database_path=tmp_path / "bare.duckdb")
+    hs = HotStore(database_path=tmp_path / "bare.duckdb", embedding_dim=384)
     await hs.initialize()
     # Drop the substrate to simulate "receiver started before DDL ran".
     hs.conn.execute("DROP TABLE spans_substrate")
@@ -1350,7 +1434,7 @@ def _batch(
 
 @pytest.mark.asyncio
 async def test_handle_batch_inserts(tmp_path) -> None:
-    hs = HotStore(database_path=tmp_path / "e2e.duckdb")
+    hs = HotStore(database_path=tmp_path / "e2e.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1362,7 +1446,7 @@ async def test_handle_batch_inserts(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_handle_batch_dedupes(tmp_path) -> None:
-    hs = HotStore(database_path=tmp_path / "e2e2.duckdb")
+    hs = HotStore(database_path=tmp_path / "e2e2.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1384,7 +1468,7 @@ async def test_iter_spans_maps_int_status_code_to_name(tmp_path) -> None:
     healthy. Verified against opentelemetry-proto: `Status(code=2)` stays an
     int through SerializeToString/ParseFromString.
     """
-    hs = HotStore(database_path=tmp_path / "code.duckdb")
+    hs = HotStore(database_path=tmp_path / "code.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1411,7 +1495,7 @@ async def test_iter_spans_yields_every_span_column(tmp_path) -> None:
     KeyError, not a NULL. `has_gen_ai_attrs` / `has_dispatch_attrs` are
     derived here and nowhere else, so if _iter_spans forgets them EVERY batch
     raises on the first row."""
-    hs = HotStore(database_path=tmp_path / "cols.duckdb")
+    hs = HotStore(database_path=tmp_path / "cols.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1424,7 +1508,7 @@ async def test_iter_spans_yields_every_span_column(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_iter_spans_derives_gen_ai_and_dispatch_flags(tmp_path) -> None:
-    hs = HotStore(database_path=tmp_path / "flags.duckdb")
+    hs = HotStore(database_path=tmp_path / "flags.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1452,7 +1536,7 @@ async def test_iter_spans_derives_gen_ai_and_dispatch_flags(tmp_path) -> None:
 async def test_handle_batch_accepts_a_real_error_span(tmp_path) -> None:
     """End-to-end: a well-formed ERROR span must reach the substrate, not the
     DLQ. This is the regression that 100% DLQ-rejection would produce."""
-    hs = HotStore(database_path=tmp_path / "e2e.duckdb")
+    hs = HotStore(database_path=tmp_path / "e2e.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1473,7 +1557,7 @@ async def test_dlq_insert_writes_all_five_columns(tmp_path) -> None:
     """The DLQ row shape must match `_dlq_rows`, including row_json as JSON
     *text*. If the table is missing, `_dlq_insert` raises and _handle_batch
     still inserts the clean rows — so assert the rejected row survives."""
-    hs = HotStore(database_path=tmp_path / "dlq.duckdb")
+    hs = HotStore(database_path=tmp_path / "dlq.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
     await rx.start()
@@ -1495,7 +1579,7 @@ async def test_dlq_insert_writes_all_five_columns(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_normalize_attributes_assigns(tmp_path) -> None:
     """Spec §9.1: the normalizer must ASSIGN, not read-and-discard."""
-    hs = HotStore(database_path=tmp_path / "norm.duckdb")
+    hs = HotStore(database_path=tmp_path / "norm.duckdb", embedding_dim=384)
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
     out = rx.normalize_attributes({
@@ -2067,7 +2151,11 @@ async def _handle_batch(self, batch) -> BatchResult:
             outcome = "partial"
         else:
             outcome = "ok"
-        self._metric_batch_inserted.labels(outcome=outcome).inc(amount=len(batch.resource_spans))
+        # Count SPANS, not resource_spans: one ResourceSpans carries up to 512
+        # spans, so counting groups under-reports by orders of magnitude.
+        self._metric_batch_inserted.labels(outcome=outcome).inc(
+            amount=sum(1 for _ in self._iter_spans(batch))
+        )
 
     return BatchResult(
         ok=ok, deduped=deduped, rejected=rejected,
@@ -2233,6 +2321,27 @@ for :4318 across dashboards/collector-configs/settings — must return
 zero hits after this change, or producers still POSTing to :4318 drop
 spans silently.
 "
+```
+
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
 ```
 
 #### Integration Contract (Task 5)
@@ -2501,6 +2610,12 @@ def _execute_sweep(retention_days: int) -> None:
     from akosha.storage.hot_store import HotStore
 
     hs = HotStore(database_path=_resolve_hot_store_path())
+    # No explicit embedding_dim here, and deliberately so: the CLI talks to
+    # the LIVE store, and HotStore.__init__ resolves the dim from the running
+    # embedding service (akosha/storage/hot_store.py:101-113). Hardcoding 384
+    # would silently mismatch the live schema — the comment there records 768
+    # for the llama.cpp default. Test fixtures DO pass 384, because a fixture
+    # must not depend on a live service.
     deleted = asyncio.run(
         OTLPReceiver(hot_store=hs).run_retention_sweep_once(
             _retention_settings()
@@ -2546,6 +2661,27 @@ and the error message names the four valid storage roots (Review Focus
 otel.spans_substrate is a SIBLING of otel.receiver, not nested under
 it — the sweep body reads settings.spans_substrate.*.
 "
+```
+
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
 ```
 
 #### Integration Contract (Task 6)
@@ -2609,7 +2745,7 @@ class _S:
 
 @pytest.fixture
 async def rx(tmp_path):
-    hs = HotStore(database_path=tmp_path / "sweep.duckdb")
+    hs = HotStore(database_path=tmp_path / "sweep.duckdb", embedding_dim=384)
     await hs.initialize()
     return OTLPReceiver(hot_store=hs, settings=_S())
 
@@ -2936,6 +3072,27 @@ archival\".
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 7)
 - **Triggered from**: the lifespan task created in Task 5; `akosha admin otel retention sweep-once` (Task 6's CLI).
 - **Returns to / updates**: `akosha/observability/otlp_receiver.py` — `run_retention_sweep` body, `run_retention_sweep_once`, `_acquire_sweep_lock`, `_release_sweep_lock`.
@@ -2989,7 +3146,7 @@ def _reset_roster():
 
 @pytest.fixture
 async def hs(tmp_path):
-    s = HotStore(database_path=tmp_path / "hb.duckdb")
+    s = HotStore(database_path=tmp_path / "hb.duckdb", embedding_dim=384)
     await s.initialize()
     return s
 
@@ -3305,6 +3462,27 @@ Positional construction raises TypeError.
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 8)
 - **Triggered from**: the akosha lifespan (roster population); a 60s heartbeat loop (wire it into the lifespan alongside the sweep task, or an existing periodic task).
 - **Returns to / updates**: `akosha/observability/heartbeat_watcher.py` (new), `akosha/mcp/server.py` (roster population + `/health` feed).
@@ -3525,6 +3703,27 @@ binding change.
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 9)
 - **Triggered from**: `_handle_batch` on every span (akosha receiver).
 - **Returns to / updates**: `akosha/observability/resource_validator.py` (new), `akosha/observability/otlp_receiver.py` (`__init__` + `_handle_batch`).
@@ -3576,7 +3775,7 @@ from akosha.storage.hot_store import HotStore
 
 @pytest.fixture
 async def rx(tmp_path):
-    hs = HotStore(database_path=tmp_path / "canary.duckdb")
+    hs = HotStore(database_path=tmp_path / "canary.duckdb", embedding_dim=384)
     await hs.initialize()
     return OTLPReceiver(hot_store=hs)
 
@@ -3901,6 +4100,27 @@ Alerts (PromQL references the scraped gauge, not the Python field):
 "
 ```
 
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
+```
+
 #### Integration Contract (Task 10)
 - **Triggered from**: the lifespan tasks created in Task 5 (`receiver.run_canary_emitter`, `receiver._canary_metrics_bridge`).
 - **Returns to / updates**: `akosha/observability/canary_watcher.py` (new), `akosha/observability/otlp_receiver.py` (canary body + bridge), `akosha/mcp/server.py` (third lifespan task).
@@ -4102,6 +4322,27 @@ finds no other importer, and removes any Pydantic settings field for
 trace_ingester_poller so audit_orphans.py does not flag a
 declared-but-unread symbol.
 "
+```
+
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
 ```
 
 #### Integration Contract (Task 11)
@@ -4341,6 +4582,27 @@ ALLOWED_NAMESPACES_POST_FLIP. Do NOT flip before the consumer sweep is
 clean: with mcp-ecosystem producers still emitting, every span reads as
 drift and the cardinality alarm fires spuriously.
 "
+```
+
+
+#### Gate (every task — Global Constraints)
+
+Both run before the task is marked done. Only Task 2 and Task 4 carry these
+steps today; they are contract, not one-off.
+
+```bash
+# 1. Orphan audit — a zero-caller symbol blocks the commit: wire it or remove
+#    it. Do not suppress the finding.
+cd /Users/les/Projects/akosha          # or oneiric / mcp-common for that task
+/Users/les/Projects/mahavishnu/.venv/bin/python \
+  /Users/les/Projects/mahavishnu/scripts/audit_orphans.py
+```
+
+```bash
+# 2. Feature-tracking entry from docs/feature-tracking/TEMPLATE.md.
+#    `built` now; `wired` once a consumer calls in; `adopted` after the
+#    operator bumps the version and a real producer sends traffic.
+ls docs/feature-tracking/otel-spans-substrate.md
 ```
 
 #### Integration Contract (Task 12)
