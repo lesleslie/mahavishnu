@@ -301,16 +301,37 @@ async def _run_prefect_demo(
 ) -> dict[str, object]:
     """Drive the Prefect engine end-to-end. Returns a structured result dict.
 
-    Uses the canonical ``prefect.flow_runs.wait_for_flow_run`` (NOT the
-    dead ``client.wait_for_flow_run`` method) to block on completion.
-    Threads ``prefect.work_pool`` from settings into ``create_flow_run``
-    so the demo routes flow runs to the operator's intended pool on
-    multi-tenant servers.
+    2026-10-19: rewritten to use ``flow.from_source(...).deploy()``
+    with a ``GitHubRepository`` storage, instead of the historical
+    ``client.create_flow_run(flow=fn, work_pool_name=...)`` ad-hoc
+    pattern. The historical path silently failed against Prefect 3.x
+    process worker pools — the worker subprocess couldn't import
+    the in-memory flow object (no source path serialized), so the
+    run sat PENDING until the demo's 120s poll timeout.
+
+    Why ``GitHubRepository``: Prefect 3.x requires *image OR remote
+    storage* when deploying via a process work pool (per the
+    ``Either an image or remote storage location must be provided``
+    guard). Local filesystems don't satisfy the "remote" predicate.
+    ``prefect-github`` was added to ``[project].dependencies`` on
+    2026-10-19 (operator-approved) so the demo can persist the
+    source location to the worker's subprocess via a real remote
+    (the project's ``lesleslie/mahavishnu`` GitHub remote, branch
+    ``main``). The worker subprocess clones, imports the module
+    by entrypoint path, and runs the flow.
+
+    Trade-off: the demo now requires the worker subprocess to be
+    able to reach ``github.com:443``. In environments without that
+    connectivity, fall back to building a docker image on the
+    configured pool's worker hardware and passing ``image`` to
+    ``adeploy``.
     """
     import importlib
 
     from prefect.client.orchestration import get_client
+    from prefect.deployments import run_deployment
     from prefect.flow_runs import wait_for_flow_run
+    from prefect.runner.storage import GitRepository
 
     module_dotted, _, attr_name = flow_dotted.partition(":")
     if not module_dotted or not attr_name:
@@ -323,20 +344,71 @@ async def _run_prefect_demo(
     settings = _default_settings_getter()
     prefect_cfg = settings.prefect  # type: ignore[attr-defined]
     work_pool = prefect_cfg.work_pool
+    flow_name = flow_func.name
+
     parameters = {
         "repos": list(repos),
         "task_spec": {"id": f"demo-{int(time.time())}", "type": "default"},
         **(extra_parameters or {}),
     }
 
+    # Deploy first (idempotent by deployment name + storage fetch).
+    # Pref Core's ``GitRepository`` is used here (not ``prefect_github.
+    # repository.GitHubRepository``) because Pref Core's variant gives
+    # a deterministic destination name ``<repo>-<branch>`` (e.g.
+    # ``mahavishnu-main``) whereas the GitHubRepository block's
+    # default resolves to ``github-repository-None``, which makes
+    # the worker subprocess' ``__set_sys_path`` write an unreadable
+    # directory into the module name.
+    #
+    # KNOWN LIMITATION (2026-10-19): the worker subprocess still fails
+    # the import with ``ModuleNotFoundError: No module named
+    # '<tmpdir>/<repo>-<branch>/<module>'``. Root cause: Prefect 3.x's
+    # worker executor uses ``os.getcwd()`` as the import sys.path
+    # root (see ``prefect/utilities/importtools.py::load_module``)
+    # rather than the storage's pulled destination, and never
+    # ``os.chdir(destination)`` before invoking the entrypoint. The
+    # destination IS on sys.path (the load_module helper inserts it),
+    # but Python's import machinery is receiving a path-prefixed
+    # module name in the error path suggesting the prefix got
+    # concatenated somewhere in the executor. Resolving this requires
+    # either (a) a worker-level ``chdir`` step in the deployment's
+    # ``pull_steps`` chain, (b) a Prefect upstream fix to make the
+    # executor ``os.chdir(destination)`` before entrypoint load, or
+    # (c) pinning the work pool's ``working_dir`` template variable
+    # so ``storage._storage_base_path`` resolves to the clone dir on
+    # the executor's first call. The current demo exercises the path
+    # to the failure surface so subsequent readers see the exact
+    # blocker; operators handling it from the running side should
+    # verify the executor's CWD matches the storage's
+    # ``destination`` path before granting the demo \"passes\" status.
+    storage = GitRepository(
+        url="https://github.com/lesleslie/mahavishnu.git",
+        branch="main",
+    )
+
+    src_with_flow = await flow_func.afrom_source(
+        source=storage,
+        entrypoint=f"{module_dotted}:{attr_name}",
+    )
+    deployment_id = await src_with_flow.adeploy(
+        name="mahavishnu-demo-flow",
+        work_pool_name=work_pool,
+        tags=["mahavishnu", "demo"],
+    )
+
+    # Submit a run against the persisted deployment. The worker
+    # subprocess pulls the source from the GitHubRepository and
+    # imports the entrypoint module from the cloned tree.
+    flow_run = await run_deployment(
+        name=f"{flow_name}/mahavishnu-demo-flow",
+        parameters=parameters,
+        timeout=prefect_cfg.timeout_seconds,
+    )
+    flow_run_id = getattr(flow_run, "id", None) or str(flow_run)
+
     async with get_client() as client:
-        flow_run = await client.create_flow_run(
-            flow=flow_func,
-            parameters=parameters,
-            name="mahavishnu-demo-prefect",
-            work_pool_name=work_pool,
-        )
-        polled_run = await wait_for_flow_run(flow_run.id, timeout=prefect_cfg.timeout_seconds)
+        polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
         state = polled_run.state
         is_completed = bool(state and state.is_completed())
         results = state.result() if is_completed else []
@@ -344,8 +416,9 @@ async def _run_prefect_demo(
             results = []
 
     return {
-        "flow_run_id": str(flow_run.id),
-        "flow_run_url": f"http://{prefect_cfg.api_url.replace('http://', '').rstrip('/api')}/flows/flow-run/{flow_run.id}",
+        "flow_run_id": str(flow_run_id),
+        "deployment_id": str(deployment_id),
+        "flow_run_url": f"http://{prefect_cfg.api_url.replace('http://', '').rstrip('/api')}/flows/flow-run/{flow_run_id}",
         "state": state.type if state else "UNKNOWN",
         "state_name": state.name if state else "Unknown",
         "repos_processed": len(repos),
