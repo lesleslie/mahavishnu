@@ -105,13 +105,16 @@ requirements:
   - id: REQ-010
     title: "CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP"
     file: "mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py"
+  - id: REQ-011
+    title: "OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)"
+    file: "mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py"
 ```
 
 **Cross-component dependencies** (per `wire-up-contract.md` §2 "additional requirements"):
 
 - `Mahavishnu → LangSmith (MCP, read-only in Phase 1)` — for dataset ingestion when `LANGSMITH_API_KEY` is set.
 - `Mahavishnu → MiniMax (OpenAI-compatible API, via existing `mahavishnu/workers/cloud_worker.py`)` — for the dogfood run in Task 8.
-- `Mahavishnu → Akosha (OTel traces, one-way: Mahavishnu emits, Akosha ingests via `mahavishnu/ingesters/otel_ingester.py`)` — for cross-system observability of eval runs.
+- `Mahavishnu → Akosha (OTel traces, one-way: Mahavishnu emits, Akosha ingests via `mahavishnu/ingesters/otel_ingester.py`)` — for cross-system observability of eval runs. **Substrate path update (2026-10-19):** the legacy `mahavishnu/ingesters/otel_ingester.py` is the pre-v7 path. After PR-A0b (oneiric substrate ships) and PR-A1 (akosha OTLPReceiver ships), the eval plan's spans flow through the v7 OTel substrate: producers write to `oneiric.adapters.vector.duckdb_hot_store.spans_substrate` (DDL in `oneiric/adapters/vector/duckdb_hot_store.py:130-185`, spec `docs/specs/2026-10-19-bodai-substrate-otel-v7.md` §5.1) and `akosha/observability/otlp_receiver.py` does the per-row validation + DLQ + ON CONFLICT dedup. Eval becomes a vanilla `*-mcp` producer with no producer-side code changes; the env-var precedent `MAHAVISHNU__OTEL_INGESTER__*` is retired and replaced by `ONEIRIC__SUBSTRATE__*` (per the `feedback-no-bodai-prefix-in-config-names` rule). Cardinal rule: retention filters on the server-populated `received_at_unix_nano`, not on producer `start_time_unix_nano`.
 - `Mahavishnu → oneiric (entry-point discovery, scoped to `mahavishnu.eval.*` group via `AdapterDiscoveryEngine`)` — for pluggable extension points.
 
 ## 5. Implementation Phases
@@ -400,7 +403,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   ```
   Reference: `mahavishnu/ingesters/content_ingester.py:674` has ~50 statements for a comparable shape — `run_suite` MUST be smaller.
 - [ ] **6.5** Implement `MockModelBackend` in `mahavishnu/core/eval/model_backends/mock.py` with **concrete behavior**: `complete(prompt, model_config)` returns `ModelResponse(output=prompt, usage=TokenUsage(prompt_tokens=len(prompt) // 4, completion_tokens=len(prompt) // 4, total_tokens=len(prompt) // 2), latency_ms=10.0)`. The echo-means-equal mapping means `ExactMatchScorer.score(actual=prompt, expected=prompt)` returns `Score(value=1.0)`. Register in `_entry_points.py` under `group="mahavishnu.eval.model_backends"`, `name="mahavishnu.mock"`. Add a `mock_model_backend` pytest fixture in `tests/conftest.py` returning a configured `MockModelBackend` instance.
-- [ ] **6.6** Add `@observe(span_name="eval.run_suite")` on `run_suite` (from `mahavishnu/core/observability.py`). Child span uses prefixed attributes: `eval.suite_name`, `eval.model`, `eval.case_count`, `eval.cost_usd`. Avoids collision with the auto-emitted `mcp.tool.call` span's `duration_ms`.
+- [ ] **6.6** Add `@observe(span_name="eval.run_suite")` on `run_suite` (from `mahavishnu/core/observability.py`). Child span uses prefixed attributes: `eval.suite_name`, `eval.model`, `eval.case_count`, `eval.cost_usd`. Avoids collision with the auto-emitted `mcp.tool.call` span's `duration_ms`. **REQ-011 cardinality bound (2026-10-19):** the `eval.*` attribute keyspace is FIXED and CLOSED — the only allowed keys are `{eval.suite_name, eval.model, eval.case_count, eval.cost_usd, eval.duration_ms, eval.outcome, eval.total_input_tokens, eval.total_output_tokens}`. No per-case attribute keys (`eval.case_id`, `eval.prompt_hash`, `eval.case.*`) are emitted to the span; per-case data lives in the SQLite `case_results` and `scores` tables, NOT in OTel attributes. This is a hard bound to keep the v7 `spans_substrate` storage cardinality bounded — see the v7 spec's §11.1.6 cardinality alarm (`docs/specs/2026-10-19-bodai-substrate-otel-v7.md`). The bound is asserted by a dedicated test in Task 7 (see REQ-011 test file).
 - [ ] **6.7** Run tests, confirm PASS.
 - [ ] **6.8** Commit.
 
@@ -427,6 +430,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/unit/pools/test_eval_pool.py`
 - Test: `tests/integration/test_eval_tools_e2e.py` (4 gate assertions)
 - Test: `tests/integration/test_eval_smoke_subprocess.py` (subprocess + warmup per `mcp-backend-wiring-discipline.md` §2)
+- Test: `tests/integration/test_eval_cardinality.py` (REQ-011 — assert `eval.run_suite` child span emits ONLY the fixed attribute keyspace; the v7 `spans_substrate` cardinality alarm will trigger if any non-allowed key is emitted)
 
 **Steps:**
 - [ ] **7.1** Write the in-process e2e test with 4 gate assertions: (e1) all three tools return non-empty results in the happy path; (e2) `eval_run_suite` returns `{"status": "error", "error": "evaluation disabled"}` when `get_eval_settings().enabled=False`; (e3) raw FastMCP `tools/list` returns empty for eval tools when `MAHAVISHNU_TOOL_PROFILE="minimal"` (verify the meta-tool's actual filter logic before relying on this gate — if `discover_tools` doesn't filter by profile, this gate may need adjustment); (e4) `eval_run_suite` completes without an EvalPool being spawned (the tool calls `engine.run_suite` directly).
@@ -524,8 +528,14 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   ```
   Mirror patterns for `eval_register_dataset` and `eval_get_run`. The crackerjack complexity budget is then spread across 3 inline tool bodies + 3 helper functions.
 - [ ] **7.11** Add `_register_eval_tools` to `STANDARD_REGISTRATIONS` in `mahavishnu/mcp/tools/profiles.py:84-102` and to `REGISTRATION_MAP` at lines 181-258. Import at lines 34-63.
-- [ ] **7.12** Run e2e test, confirm PASS (4 assertions); run subprocess smoke test, confirm PASS.
-- [ ] **7.13** Commit.
+- [ ] **7.12** Write `tests/integration/test_eval_cardinality.py` (REQ-011). The test runs a small eval suite against `MockModelBackend`, captures the emitted `eval.run_suite` child span attributes via an in-memory `InMemorySpanExporter` (or by patching the active tracer provider for the test only), and asserts:
+  1. The set of `eval.*` attribute keys on the captured span is **exactly equal** to the closed keyspace `{eval.suite_name, eval.model, eval.case_count, eval.cost_usd, eval.duration_ms, eval.outcome, eval.total_input_tokens, eval.total_output_tokens}` — no extra keys, no missing keys.
+  2. No `eval.case_id`, `eval.prompt_hash`, `eval.case.*`, or any other per-case key is present.
+  3. The test re-asserts by introspecting the OTel attribute dict directly (not by parsing logs), so a future regression that adds a new `eval.*` key fails the gate immediately.
+
+  Reference: this is the v7 substrate's §11.1.6 cardinality alarm's "pre-flight" — the alarm catches the regression in production; this test catches it in CI before the alarm ever fires.
+- [ ] **7.13** Run e2e test, confirm PASS (4 assertions); run subprocess smoke test, confirm PASS; run cardinality test, confirm PASS.
+- [ ] **7.14** Commit.
 
 #### Integration Contract (Task 7)
 - **Triggered from**: any agent with access to `mcp__mahavishnu__*` tools.
@@ -785,4 +795,3 @@ If any of these fail, do not declare Phase 1 done. The wire-up contract is the b
   changes; `mahavishnu/mcp/server_core.py` constraint about inline
   FastMCP tooling changes; or the wire-up discipline in
   `docs/decisions/mcp-backend-wiring-discipline.md` revs past v1.
-

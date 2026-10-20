@@ -1,3 +1,15 @@
+---
+status: draft
+role: canonical
+kind: plan
+date: 2026-10-14
+last_reviewed: 2026-10-19
+superseded_by: null
+blocks_on: []
+topic: decision-adapter-category
+title: "Decision Adapter Category — Design Spec"
+---
+
 # Decision Adapter Category — Design Spec
 
 **Status:** Draft. Phase 0 substrate PR targets Oneiric. Phase 1 Mahavishnu

@@ -244,6 +244,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-19-bifrost-mcp-skills-aggregation.md`](2026-10-19-bifrost-mcp-skills-aggregation.md) | 2026-10-19 | `active` | `implementation` |  | `bifrost-mcp-skills-aggregation` | Bifrost MCP aggregation + Skills distribution — local single-VK plan |
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `complete` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
+| [`docs/plans/2026-10-14-decision-adapter-category.md`](2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `implementation` |  | `decision-adapter-category` | Decision Adapter Category Implementation Plan |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
@@ -261,8 +262,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md`](../../docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md) | 2026-10-19 | `draft` | `canonical` |  | `event-sourced-otel` | Bodai Event-Sourced OTel Architecture |
+| [`docs/specs/2026-10-19-bodai-substrate-otel-v7.md`](../../docs/specs/2026-10-19-bodai-substrate-otel-v7.md) | 2026-10-19 | `draft` | `canonical` |  | `substrate-otel` | Bodai OTel Substrate — v7 |
 | [`docs/specs/2026-10-19-master-plan-index-and-regenerator-design.md`](../../docs/specs/2026-10-19-master-plan-index-and-regenerator-design.md) | 2026-10-19 | `draft` | `canonical` |  | `convergence-control-plane` | Master Plan Index + Centralized Regenerator — Design Spec (Round 3) |
 | [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../../docs/specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `active` | `canonical` | `spec` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.5 |
+| [`docs/specs/2026-10-14-decision-adapter-category-design.md`](../../docs/specs/2026-10-14-decision-adapter-category-design.md) | 2026-10-14 | `draft` | `canonical` |  | `decision-adapter-category` | Decision Adapter Category — Design Spec |
 | [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../../docs/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `complete` | `canonical` | `spec` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
 | [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../../docs/specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `complete` | `canonical` | `spec` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
 | [`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`](../../docs/specs/2026-09-14-dhara-mcp-decomposition-design.md) | 2026-09-14 | `complete` | `implementation` |  | `dhara-substrate-implementation` | Dhara MCP Decomposition — Design Specification |
@@ -366,7 +369,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (87 entries)
+### `plan` (90 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -378,10 +381,10 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 39 | 1 | 1 | 14 | **60** |
-| `implementation` | · | 3 | 2 | 4 | 14 | **23** |
+| `canonical` | 7 | 39 | 1 | 1 | 14 | **62** |
+| `implementation` | · | 4 | 2 | 4 | 14 | **24** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **5** | **42** | **3** | **5** | **67** | **122** |
+| **Total** | **7** | **43** | **3** | **5** | **67** | **125** |

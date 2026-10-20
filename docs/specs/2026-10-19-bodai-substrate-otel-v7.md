@@ -1,11 +1,13 @@
 ---
-status: in-review
-role: sub-spec
+status: draft
+role: canonical
+kind: plan
 date: 2026-10-19
 last_reviewed: 2026-10-19
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
+title: "Bodai OTel Substrate — v7"
 parent_spec: docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md
 supersedes: docs/specs/.archive/2026-10-19-bodai-substrate-otel-v6.md
 review:

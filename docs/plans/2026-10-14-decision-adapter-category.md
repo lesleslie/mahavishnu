@@ -1,3 +1,14 @@
+---
+status: active
+role: implementation
+kind: plan
+date: 2026-10-14
+last_reviewed: 2026-10-19
+superseded_by: null
+topic: decision-adapter-category
+title: "Decision Adapter Category — Implementation Plan"
+---
+
 # Decision Adapter Category Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
