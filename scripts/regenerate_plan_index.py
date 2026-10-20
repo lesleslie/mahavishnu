@@ -1,4 +1,4 @@
-#!/usr/bin/env uv run python
+#!/usr/bin/env python3.14
 """Regenerate docs/plans/PLAN_INDEX.md from per-store frontmatter.
 
 Walks the repository's documentation stores, parses YAML frontmatter on
