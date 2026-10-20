@@ -1348,8 +1348,6 @@ from opentelemetry.proto.common.v1 import common_pb2
 from opentelemetry.proto.trace.v1 import trace_pb2
 from google.protobuf import struct_pb2
 
-import json
-
 from akosha.observability.otlp_receiver import OTLPReceiver
 from akosha.storage.hot_store import HotStore
 
@@ -1473,18 +1471,20 @@ async def test_iter_spans_maps_int_status_code_to_name(tmp_path) -> None:
     rx = OTLPReceiver(hot_store=hs)
 
     batch = _batch(span_id="bb", status_code=2, status_message="boom")
-    (row,) = list(rx._iter_spans(batch))
+    rows = [row async for row in rx._iter_spans(batch)]
+    assert len(rows) == 1
+    (row,) = rows
 
     assert row["status_code"] == "STATUS_CODE_ERROR"
     assert row["status_message"] == "boom"
     assert rx.pre_validate(row) is None, "a real span must not be rejected"
     assert row["outcome"] == "error"
 
-    ok_row = next(iter(rx._iter_spans(_batch(span_id="cc", status_code=1))))
+    ok_row = [r async for r in rx._iter_spans(_batch(span_id="cc", status_code=1))][0]
     assert ok_row["status_code"] == "STATUS_CODE_OK"
     assert ok_row["outcome"] == "success"
 
-    unset_row = next(iter(rx._iter_spans(_batch(span_id="dd"))))
+    unset_row = [r async for r in rx._iter_spans(_batch(span_id="dd"))][0]
     assert unset_row["status_code"] is None
     assert unset_row["outcome"] is None
 
@@ -1499,7 +1499,7 @@ async def test_iter_spans_yields_every_span_column(tmp_path) -> None:
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
-    (row,) = list(rx._iter_spans(_batch(span_id="ee")))
+    (row,) = [r async for r in rx._iter_spans(_batch(span_id="ee"))]
     missing = [c for c in HotStore._SPAN_COLUMNS if c not in row]
     assert missing == [], f"_iter_spans omitted columns: {missing}"
     assert row["has_gen_ai_attrs"] is False
@@ -1512,8 +1512,9 @@ async def test_iter_spans_derives_gen_ai_and_dispatch_flags(tmp_path) -> None:
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
-    (row,) = list(
-        rx._iter_spans(
+    (row,) = [
+        r
+        async for r in rx._iter_spans(
             _batch(
                 span_id="ff",
                 span_attrs={
@@ -1523,13 +1524,48 @@ async def test_iter_spans_derives_gen_ai_and_dispatch_flags(tmp_path) -> None:
                 },
             )
         )
-    )
+    ]
     assert row["has_gen_ai_attrs"] is True
     assert row["has_dispatch_attrs"] is True
     # Attribute normalization feeds the indexed columns.
     assert row["task_class"] == "code_generation"
     assert row["selector"] == "fast"
     assert row["gen_ai_request_model"] == "gpt-x"
+
+
+@pytest.mark.asyncio
+async def test_iter_spans_masks_pii_before_storage(tmp_path) -> None:
+    """The `attributes` column is a JSON dump of whatever the producer sent.
+
+    Without the sanitizer, a producer that sets `authorization` / `api_key` /
+    `cookie` as a span attribute persists it verbatim into spans_substrate —
+    and the retention sweep then archives it to parquet. Reuse akosha's
+    existing `data.sanitize`-backed masker rather than a second local field
+    list, which would drift the moment either copy gains a field.
+    """
+    hs = HotStore(database_path=tmp_path / "pii.duckdb", embedding_dim=384)
+    await hs.initialize()
+    rx = OTLPReceiver(hot_store=hs)
+
+    (row,) = [
+        r
+        async for r in rx._iter_spans(
+            _batch(
+                span_id="c1",
+                span_attrs={
+                    "gen_ai.request.model": "gpt-x",
+                    "authorization": "Bearer sk-secret",
+                    "api_key": "sk-live-123",
+                    "task.class": "code_generation",
+                },
+            )
+        )
+    ]
+    assert row["attributes"]["authorization"] == "***"
+    assert row["attributes"]["api_key"] == "***"
+    # Non-PII survives — the sanitizer masks, it does not drop.
+    assert row["attributes"]["gen_ai_request_model"] == "gpt-x"
+    assert row["attributes"]["task_class"] == "code_generation"
 
 
 @pytest.mark.asyncio
@@ -1562,7 +1598,7 @@ async def test_dlq_insert_writes_all_five_columns(tmp_path) -> None:
     rx = OTLPReceiver(hot_store=hs)
     await rx.start()
 
-    bad = next(iter(rx._iter_spans(_batch(span_id="ab"))))
+    bad = [r async for r in rx._iter_spans(_batch(span_id="ab"))][0]
     del bad["service_name"]  # trips pre_validate's not_null check
     err = rx.pre_validate(bad)
     assert err is not None
@@ -1963,7 +1999,32 @@ def _kv_map(kvs) -> dict[str, Any]:
     return {kv.key: _any_value(kv.value) for kv in kvs}
 
 
-def _iter_spans(self, batch: trace_service_pb2.ExportTraceServiceRequest):
+async def _sanitize(self, attrs: dict[str, Any]) -> dict[str, Any]:
+    """Mask PII in span attributes before they reach storage.
+
+    The `attributes` column is a JSON dump of whatever the producer sent.
+    Without this, a producer that sets `authorization`, `api_key`, `cookie`
+    or `session_id` as a span attribute persists it verbatim into
+    `spans_substrate` — and the sweep then archives it to parquet.
+
+    Reuse akosha's existing house sanitizer rather than writing a second
+    one: `akosha/observability/tracing.py:383` already builds a
+    `DataSanitizeAction` from oneiric's `data.sanitize` kit over a canonical
+    `_PII_MASK_FIELDS` tuple, exposed as `sanitize_span_attributes` (sync) /
+    `asanitize_span_attributes` (async). Same kit, same field list, same mask
+    value across every Bodai component — which is the entire reason the kit
+    exists. A second local mask list would drift the first time someone adds
+    a field to one of them.
+
+    Read `tracing.py:383-400` for the exact signature before calling: the sync
+    form raises if invoked from a running event loop.
+    """
+    from akosha.observability.tracing import asanitize_span_attributes
+
+    return await asanitize_span_attributes(attrs)
+
+
+async def _iter_spans(self, batch: trace_service_pb2.ExportTraceServiceRequest):
     """Yield one row dict per span, keyed by every `_SPAN_COLUMNS` entry.
 
     Two things this must get right, both verified against the installed
@@ -2052,7 +2113,7 @@ def _iter_spans(self, batch: trace_service_pb2.ExportTraceServiceRequest):
                     "gen_ai_usage_cost": attrs.get("gen_ai_usage_cost"),
                     "status_code": status_name,
                     "status_message": span.status.message or None,
-                    "attributes": dict(attrs),
+                    "attributes": self._sanitize(attrs),
                     "events": None,
                     "resource": dict(resource),
                     "has_gen_ai_attrs": any(
@@ -2098,8 +2159,9 @@ async def _handle_batch(self, batch) -> BatchResult:
     clean: list[dict] = []
     dlq: list[tuple[RowValidationError, dict]] = []
     rejected = 0
+    span_count = 0
 
-    for span in self._iter_spans(batch):
+    async for span in self._iter_spans(batch):
         try:
             err = self.pre_validate(span)
         except Exception as exc:  # validator itself raised
@@ -2109,6 +2171,7 @@ async def _handle_batch(self, batch) -> BatchResult:
             self._metric_row_rejected.labels(
                 reason="validator_threw", field="none"
             ).inc()
+        span_count += 1
         if err:
             dlq.append((err, span))
             rejected += 1
@@ -2153,9 +2216,7 @@ async def _handle_batch(self, batch) -> BatchResult:
             outcome = "ok"
         # Count SPANS, not resource_spans: one ResourceSpans carries up to 512
         # spans, so counting groups under-reports by orders of magnitude.
-        self._metric_batch_inserted.labels(outcome=outcome).inc(
-            amount=sum(1 for _ in self._iter_spans(batch))
-        )
+        self._metric_batch_inserted.labels(outcome=outcome).inc(amount=span_count)
 
     return BatchResult(
         ok=ok, deduped=deduped, rejected=rejected,
