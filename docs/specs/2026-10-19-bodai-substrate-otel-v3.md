@@ -10,6 +10,7 @@ parent_spec: docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md
 supersedes: docs/specs/.archive/2026-10-19-bodai-substrate-otel-v2.md
 review:
   - 2026-10-19: critical-audit-specialist (5 P0, 3 P1, 4 P2)
+  - 2026-10-19: observability-incident-lead (2 P0, 3 P1, 1 P2)
 ---
 
 # Bodai OTel Substrate — v3
