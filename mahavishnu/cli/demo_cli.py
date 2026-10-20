@@ -407,7 +407,7 @@ async def _run_prefect_demo(
     )
     flow_run_id = getattr(flow_run, "id", None) or str(flow_run)
 
-    async with get_client() as client:
+    async with get_client():
         polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
         state = polled_run.state
         is_completed = bool(state and state.is_completed())
@@ -2443,9 +2443,7 @@ def demo_pool_runpod_public(
             typer.echo(f"  - {failure}", err=True)
         raise typer.Exit(code=1)
 
-    typer.echo(
-        f"Pool: {pool_name} (type=runpod_public, endpoint_id={endpoint_id})"
-    )
+    typer.echo(f"Pool: {pool_name} (type=runpod_public, endpoint_id={endpoint_id})")
     typer.echo(f"Prompt: {prompt}")
 
     try:

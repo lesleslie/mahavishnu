@@ -103,6 +103,45 @@ Three independent stop-points. Each failure rolls back without disturbing the ne
 
 Each Phase is independent. Do not collapse them.
 
+## 5a. Qwen CLI cutover
+
+Shape mirrors the CC cutover. Same three-phase structure (pre-flight, sandboxed Qwen pilot, production), same gate discipline.
+
+**Toggle helper**: `scripts/bifrost-toggle-qwen-url bifrost` writes `env.OPENAI_BASE_URL=http://127.0.0.1:8471/v1` into `~/.qwen/settings.json` (per-tool backup at `~/.config/bifrost/qwen-url-backup.txt`). Qwen reads its env vars at session start; restart any running Qwen CLI for the change to take effect.
+
+**Default env-var name**: `OPENAI_BASE_URL` (per the v1.5 spec's `qwen_env_var` field). Override via `--env-var` or `BIFROST_QWEN_ENV_VAR`.
+
+**Smoke**: `python scripts/bifrost_qwen_url_cutover_smoke.py` — mirrors the CC smoke shape, with `~/.qwen/settings.json` as the target.
+
+**Verification gate**: this is where the v1.5 spec's `route_qwen_code: false` default lands. The shipped flag stays `false` until `test_qwen_actual_dispatch_emits_caller_id` passes. For an ad-hoc Qwen CLI dispatch, run `bash scripts/verify_qwen_bifrost_gate.sh` (a real Qwen spawn through `mahavishnu pool route --worker-type terminal-qwen`); the operator action flips `route_qwen_code: false → true` only once that gate passes.
+
+Per-vendor independence: flipping Qwen does not affect CC and vice versa. Each toggle has its own backup file (`claude-url-backup.txt` vs `qwen-url-backup.txt`).
+
+## 5b. Codex CLI cutover — deferred
+
+`~/.codex/config.toml` (4880 bytes, last edited 2026-09-13) has **no `base_url` knob**. Routing Codex through Bifrost would require either:
+
+- An undocumented Codex env var (`OPENAI_BASE_URL`, `CODEX_API_BASE`, …) — needs an empirical probe against the CLI binary.
+- Modifying the `model` field — needs research into Codex's `provider/model` override format.
+- Adding a new TOML key Codex doesn't currently understand — won't work.
+
+Until that's explored, no Codex toggle helper ships in this round. Codex remains on its direct-to-ChatGPT.app config; the `terminal-codex` Mahavishnu worker (also reverted per `config/bifrost/README.md:97-98`) stays in its prior state. Future round: a Codex toggle is "implement if desired" per the operator's instruction.
+
+## 5c. Performance comparison
+
+`scripts/bifrost_perf_compare.py` A/B's one streaming chat completion across two base URLs and reports per-endpoint TTFT, total ms, completion tokens (rough), tokens/sec, and HTTP status. Aggregate stats: median across N runs.
+
+**Workflow**:
+
+1. Capture baseline: `python scripts/bifrost_perf_compare.py --label-a direct --base-a https://api.minimax.io/v1 --allow-remote-base --model MiniMax-M3 --runs 5 > perf-baseline.json`.
+2. Flip CC's `ANTHROPIC_BASE_URL` onto Bifrost via `scripts/bifrost-toggle-claude-url bifrost`; restart CC; wait a few minutes for cache warmup.
+3. Capture Bifrost: `python scripts/bifrost_perf_compare.py --label-a bifrost --base-a http://127.0.0.1:8471/v1 --model MiniMax-M3 --runs 5 > perf-bifrost.json`.
+4. Diff: `diff perf-baseline.json perf-bifrost.json` — focus on the `aggregate` block (median TTFT, total ms, tokens/sec).
+
+**Credential-safety guard**: by default only loopback bases are accepted. To compare against a remote upstream (`api.minimax.io` etc.), the operator must pass `--allow-remote-base`; the script emits a clear `WARNING: sending API key to non-loopback endpoint(s)` on stderr. This prevents accidental credential exfiltration if the base URL is mistyped.
+
+This is **not** a load test — single concurrency, ~64 max-tokens, simple prompt. For richer sweeps, run multiple `--prompt` invocations and aggregate the JSON files with `jq`.
+
 ## 6. Rollback (kill switch)
 
 Three independent revert paths. Pick whichever is fastest:

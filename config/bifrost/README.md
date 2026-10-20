@@ -2,24 +2,32 @@
 
 This directory contains the bootstrap artifacts for the local Bifrost gateway.
 
-Current status (as of 2026-06-26):
+Current status (verified live, 2026-10-20):
 
-- **Bifrost is paused indefinitely.** The upstream `@maximhq/bifrost` npm
-  package ships a native Go binary with Mach-O metadata
-  (`LC_VERSION_MIN_MACOSX sdk 10.4`, no `LC_BUILD_VERSION`) that modern
-  macOS strict-validators and Gatekeeper reject. Re-downloading newer
-  package versions does not help — the npm `bin.js` hardcodes the same
-  `v1.6.0/bin/bifrost-http-0` path regardless of the package version.
-  The fix must come from the upstream build pipeline.
-- bootstrap artifacts are preserved in-repo for future reactivation
-- LaunchAgents (`ai.bifrost.gateway`, `ai.bifrost.redis-stack`) were
-  booted out on 2026-06-26; their `.plist` files remain in
-  `~/Library/LaunchAgents/` for future reactivation
-- live client cutover is paused
-- subscription-backed tools are routed directly to their native providers
-- Claude Code is on `https://api.minimax.io/anthropic` (direct)
-- Mahavishnu workers do not reference Bifrost in code (full revert
-  already happened; nothing left to flip)
+- **Bifrost is live on `127.0.0.1:8471`.** Verified by
+  `curl -fsS http://127.0.0.1:8471/health` returning `{"status":"ok",...}`
+  (HTTP 200) and the launchd ready file at `~/.local/state/mcp/ready/bifrost.ready`.
+- The earlier "paused indefinitely" state from 2026-06-26 (macOS Gatekeeper on
+  `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
+  launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
+  `scripts/bifrost-gateway.py` are healthy.
+- Live providers: `minimax-openai` (M3 primary, M2.7 fallback), `llama-server`
+  (`qwen3-8b-q4_k_m` local), `anthropic`, `openai` (`gpt-5.4` family).
+- Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` is currently
+  `https://api.minimax.io/anthropic` (direct-to-MiniMax, not via Bifrost).
+- The wired-worker opt-ins (`terminal-claude`, `terminal-qwen`, `terminal-codex`)
+  remain in their historical reverted state — see "Mahavishnu Worker Defaults" below.
+
+## Verifying Bifrost is Live
+
+Before any cutover, run these checks in order. Any failure = pause and investigate.
+
+1. `lsof -tiTCP:8471 -sTCP:LISTEN` — non-empty means a listener is bound.
+2. `curl -fsS http://127.0.0.1:8471/health` — must return
+   `{"components":{"db_pings":"ok"},"status":"ok"}` (or equivalent).
+3. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
+   by `scripts/bifrost-gateway.py` only after the listener probe succeeds.
+4. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
 
 ## Files
 

@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     import httpx2 as httpx
 else:
     try:
-        import httpx2 as httpx  # httpx2 is the bodai-standard alias per cloud_worker.py  # noqa: PLC0415
+        import httpx2 as httpx  # httpx2 is the bodai-standard alias per cloud_worker.py
     except ImportError:
         httpx = None  # type: ignore[misc]
 
@@ -59,7 +59,7 @@ else:
 # ``Exception`` fallback when httpx isn't importable.
 try:
     HTTPStatusError = httpx.HTTPStatusError  # type: ignore[union-attr]
-except (AttributeError, TypeError):
+except AttributeError, TypeError:
     HTTPStatusError = Exception  # type: ignore[misc,assignment]
 
 DEFAULT_RUNPOD_BASE_URL = "https://api.runpod.ai"
@@ -122,7 +122,9 @@ class RunPodPublicEndpointPool(BasePool):
             self._status = PoolStatus.RUNNING
             logger.info(
                 "RunPodPublicEndpointPool %s started (endpoint_id=%s, base_url=%s)",
-                self.pool_id, self._endpoint_id, base_url,
+                self.pool_id,
+                self._endpoint_id,
+                base_url,
             )
         except Exception as e:
             self._status = PoolStatus.FAILED
@@ -248,8 +250,7 @@ class RunPodPublicEndpointPool(BasePool):
 
     async def scale(self, target_worker_count: int) -> None:
         logger.info(
-            "RunPodPublicEndpointPool scales via the public endpoint. "
-            "Target %d not applicable.",
+            "RunPodPublicEndpointPool scales via the public endpoint. Target %d not applicable.",
             target_worker_count,
         )
 
@@ -304,7 +305,8 @@ class RunPodPublicEndpointPool(BasePool):
         self._task_results.clear()
         logger.info(
             "Collected %d memory items from RunPodPublicEndpointPool %s",
-            len(items), self.pool_id,
+            len(items),
+            self.pool_id,
         )
         return items
 
@@ -314,7 +316,7 @@ class RunPodPublicEndpointPool(BasePool):
             try:
                 self._client.close()
             except Exception:  # noqa: BLE001 — client cleanup is best-effort during stop
-                pass
+                logger.debug("client close during pool stop raised; ignoring", exc_info=True)
         self._client = None
         self._task_results.clear()
         self._status = PoolStatus.STOPPED

@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+"""Toggle Qwen CLI's base URL in ``~/.qwen/settings.json`` between Bifrost
+(``http://127.0.0.1:8471/v1``) and the operator's prior value.
+
+Mirrors ``scripts/bifrost-toggle-claude-url`` so the two tools have a
+matching shape for ops convenience. Qwen's settings live at
+``~/.qwen/settings.json`` by default (overridable via ``QWEN_HOME`` env
+var or ``--settings``). The toggle writes the URL into ``env.OPENAI_BASE_URL``
+— the v1.5 spec's ``qwen_env_var`` default; overridable via ``--env-var``
+or the ``BIFROST_QWEN_ENV_VAR`` env var.
+
+Three actions:
+
+- ``bifrost``: write ``http://127.0.0.1:8471/v1`` into ``env.<env_var>``.
+  If the key was already set, save the prior value to
+  ``~/.config/bifrost/qwen-url-backup.txt`` so ``direct`` can restore it.
+- ``direct``: restore the prior value (or remove the key if there is no
+  backup) and clear the backup file.
+- ``status``: print the current URL state and whether a backup exists.
+
+The script is idempotent: rerunning the same action with the file already
+in the matching state is a no-op. It never overwrites a URL it did not
+set itself.
+"""
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+DEFAULT_SETTINGS: Path = Path.home() / ".qwen" / "settings.json"
+BACKUP_PATH: Path = Path.home() / ".config" / "bifrost" / "qwen-url-backup.txt"
+BIFROST_HOST: str = os.environ.get("BIFROST_HOST", "127.0.0.1")
+BIFROST_PORT: str = os.environ.get("BIFROST_PORT", "8471")
+BIFROST_URL: str = f"http://{BIFROST_HOST}:{BIFROST_PORT}/v1"
+DEFAULT_ENV_VAR: str = "OPENAI_BASE_URL"
+ENV_VAR: str = os.environ.get("BIFROST_QWEN_ENV_VAR", DEFAULT_ENV_VAR)
+
+
+def _read_settings(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(
+            f"error: {path} is not valid JSON: {exc}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+def _write_settings(path: Path, settings: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+
+
+def _current_url(settings: dict, env_var: str) -> str | None:
+    env = settings.get("env")
+    if not isinstance(env, dict):
+        return None
+    value = env.get(env_var)
+    return value if isinstance(value, str) else None
+
+
+def _save_backup(url: str, dry_run: bool) -> None:
+    if BACKUP_PATH.exists() and BACKUP_PATH.read_text(encoding="utf-8").strip() == url:
+        return
+    prefix = "[dry-run] would save" if dry_run else "saved prior"
+    print(f"{prefix} OPENAI_BASE_URL={url!r} to {BACKUP_PATH}")
+    if dry_run:
+        return
+    BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+    BACKUP_PATH.write_text(url + "\n", encoding="utf-8")
+
+
+def _action_bifrost(path: Path, env_var: str, dry_run: bool) -> int:
+    settings = _read_settings(path)
+    existing = _current_url(settings, env_var)
+    if existing == BIFROST_URL:
+        print(f"{env_var} already {BIFROST_URL}; no-op")
+        return 0
+    if existing is not None:
+        _save_backup(existing, dry_run)
+    env = settings.setdefault("env", {})
+    if not isinstance(env, dict):
+        print(
+            f"error: {path} has a non-object 'env' key",
+            file=sys.stderr,
+        )
+        return 2
+    env[env_var] = BIFROST_URL
+    if dry_run:
+        print(f"[dry-run] would write {env_var}={BIFROST_URL} to {path}")
+        return 0
+    _write_settings(path, settings)
+    print(f"wrote {env_var}={BIFROST_URL} to {path}")
+    print("note: restart any running Qwen CLI session for this to take effect")
+    return 0
+
+
+def _action_direct(path: Path, env_var: str, dry_run: bool) -> int:
+    settings = _read_settings(path)
+    existing = _current_url(settings, env_var)
+    if existing is None:
+        print(f"{env_var} is unset; no-op")
+        return 0
+    if existing != BIFROST_URL:
+        print(
+            f"{env_var}={existing!r} is not Bifrost-managed; leaving it alone"
+        )
+        return 0
+    backup: str | None = None
+    if BACKUP_PATH.exists():
+        candidate = BACKUP_PATH.read_text(encoding="utf-8").strip()
+        if candidate:
+            backup = candidate
+    env = settings.setdefault("env", {})
+    if not isinstance(env, dict):
+        print(
+            f"error: {path} has a non-object 'env' key",
+            file=sys.stderr,
+        )
+        return 2
+    if backup is not None:
+        env[env_var] = backup
+        if dry_run:
+            print(f"[dry-run] would restore {env_var}={backup!r} in {path}")
+            return 0
+        _write_settings(path, settings)
+        BACKUP_PATH.unlink(missing_ok=True)
+        print(f"restored {env_var}={backup!r} in {path}")
+    else:
+        env.pop(env_var, None)
+        if not env:
+            settings.pop("env", None)
+        if dry_run:
+            print(f"[dry-run] would remove {env_var} from {path}")
+            return 0
+        _write_settings(path, settings)
+        print(f"removed {env_var} from {path}")
+    print("note: restart any running Qwen CLI session for this to take effect")
+    return 0
+
+
+def _action_status(path: Path, env_var: str) -> int:
+    settings = _read_settings(path)
+    url = _current_url(settings, env_var)
+    if url is None:
+        print(f"{env_var}: <unset>")
+    elif url == BIFROST_URL:
+        print(f"{env_var}: Bifrost ({url})")
+    else:
+        print(f"{env_var}: custom/direct ({url})")
+    print(f"backup at {BACKUP_PATH}: {'yes' if BACKUP_PATH.exists() else 'no'}")
+    return 0
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Toggle OPENAI_BASE_URL (or other qwen_env_var) in ~/.qwen/settings.json.",
+    )
+    parser.add_argument(
+        "action",
+        choices=("bifrost", "direct", "status"),
+        help="What to do. 'bifrost' points Qwen at the local gateway; "
+        "'direct' restores the prior value; 'status' reports the current state.",
+    )
+    parser.add_argument(
+        "--settings",
+        type=Path,
+        default=DEFAULT_SETTINGS,
+        help=f"Path to settings.json (default: {DEFAULT_SETTINGS}; overridable via QWEN_HOME)",
+    )
+    parser.add_argument(
+        "--env-var",
+        default=ENV_VAR,
+        help=f"Env var name to toggle (default: {ENV_VAR}; v1.5 spec's qwen_env_var)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print intended changes without modifying any file.",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    if args.action == "bifrost":
+        return _action_bifrost(args.settings, args.env_var, args.dry_run)
+    if args.action == "direct":
+        return _action_direct(args.settings, args.env_var, args.dry_run)
+    return _action_status(args.settings, args.env_var)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
