@@ -882,6 +882,13 @@ from akosha.storage.hot_store import HotStore
 
 
 def _row(span_id: str, trace_id: str = "t1") -> dict:
+    """A row carrying every column in `HotStore._SPAN_COLUMNS`.
+
+    The insert binds `_SPAN_COLUMNS` with `row[col]`, so a partial fixture
+    fails on the first missing key. That is deliberate — see
+    `test_missing_column_names_the_column` — but it means the happy-path
+    fixture must be complete.
+    """
     return {
         "span_id": span_id,
         "trace_id": trace_id,
@@ -889,14 +896,29 @@ def _row(span_id: str, trace_id: str = "t1") -> dict:
         "service_name": "mahavishnu",
         "service_namespace": "bodai",
         "deployment_environment": "local",
+        "telemetry_source": "pytest",
+        "telemetry_source_type": "test",
         "span_name": "test.span",
         "start_time_unix_nano": 1_700_000_000_000_000_000,
         "end_time_unix_nano": 1_700_000_000_100_000_000,
         "duration_ms": 100.0,
         "outcome": "success",
+        "selector": None,
+        "task_class": None,
+        "latency_ms": 100.0,
+        "gen_ai_provider_name": None,
+        "gen_ai_request_model": None,
+        "gen_ai_response_model": None,
+        "gen_ai_usage_input_tokens": None,
+        "gen_ai_usage_output_tokens": None,
+        "gen_ai_usage_cost": None,
         "status_code": "STATUS_CODE_OK",
+        "status_message": None,
         "attributes": {"k": "v"},
+        "events": None,
         "resource": {"service.name": "mahavishnu"},
+        "has_gen_ai_attrs": False,
+        "has_dispatch_attrs": False,
     }
 
 
@@ -941,6 +963,42 @@ async def test_received_at_is_server_populated(store: HotStore) -> None:
 @pytest.mark.asyncio
 async def test_empty_rows_returns_zero(store: HotStore) -> None:
     assert await store.insert_spans_substrate([]) == (0, 0)
+
+
+@pytest.mark.asyncio
+async def test_span_id_collision_does_not_discard_the_batch(
+    store: HotStore,
+) -> None:
+    """A span_id reused under a different trace_id must dedup, not raise.
+
+    ON CONFLICT with an arbiter of (trace_id, span_id) leaves the
+    span_id PRIMARY KEY uncovered, so this row raises ConstraintException --
+    and under executemany that aborts the statement, taking every other span
+    in the batch with it.
+    """
+    await store.insert_spans_substrate([_row("s1", trace_id="t1")])
+    inserted, deduped = await store.insert_spans_substrate(
+        [_row("s2", trace_id="t2"), _row("s1", trace_id="t9")]
+    )
+    # s2 lands; s1 is the colliding one and is skipped, not fatal.
+    assert (inserted, deduped) == (1, 1)
+    assert store.conn.execute(
+        "SELECT COUNT(*) FROM spans_substrate WHERE span_id='s2'"
+    ).fetchone()[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_missing_column_names_the_column(store: HotStore) -> None:
+    """An incomplete row must fail at the call site, naming the column.
+
+    `row.get(col)` would insert an explicit NULL, and a NOT NULL DEFAULT does
+    not fire for an explicit NULL -- the failure would surface as a bare
+    ConstraintException against whichever column the normalizer forgot.
+    """
+    incomplete = _row("s3")
+    del incomplete["has_gen_ai_attrs"]
+    with pytest.raises(KeyError, match="has_gen_ai_attrs"):
+        await store.insert_spans_substrate([incomplete])
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -961,6 +1019,17 @@ Add to `HotStore`:
 ```python
     # Columns written by the receiver, in DDL order. Rows carry every
     # NOT NULL column; the rest fall back to their defaults.
+    # Columns the receiver supplies. Deliberately EXCLUDES every column the
+    # DDL defaults server-side — received_at_unix_nano, inserted_at,
+    # updated_at — so those fire their DEFAULT instead of being overwritten.
+    #
+    # `has_gen_ai_attrs` / `has_dispatch_attrs` are in this list because the
+    # receiver derives them from the attribute set; they carry NOT NULL DEFAULT
+    # FALSE as a backstop for rows written by other clients, not for us. That
+    # distinction matters: an explicit NULL does NOT fall back to DEFAULT, so
+    # naming the column here obliges the normalizer to set it on every row.
+    # Verified on duckdb 2.0.0-dev — binding NULL raises
+    # `ConstraintException: NOT NULL constraint failed`.
     _SPAN_COLUMNS: tuple[str, ...] = (
         "span_id", "trace_id", "parent_span_id", "service_name",
         "service_namespace", "deployment_environment", "telemetry_source",
@@ -1005,7 +1074,10 @@ Add to `HotStore`:
             return (0, 0)
         columns = ", ".join(self._SPAN_COLUMNS)
         placeholders = ", ".join("?" for _ in self._SPAN_COLUMNS)
-        values = [row.get(col) for row in rows for col in self._SPAN_COLUMNS]
+        # `row[col]`, not `row.get(col)`: a normalizer that forgets a column
+        # must fail HERE, naming the column, rather than three layers down as
+        # a NOT NULL violation on whichever column happened to be omitted.
+        values = [row[col] for row in rows for col in self._SPAN_COLUMNS]
         sql = (
             f"INSERT INTO {self.spans_substrate_table} ({columns}) "
             f"VALUES ({placeholders}) "
@@ -1023,7 +1095,7 @@ Add to `HotStore`:
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/unit/storage/test_insert_spans_substrate.py -v`
-Expected: PASS — 5 tests.
+Expected: PASS — 7 tests.
 
 - [ ] **Step 6: Run the existing akosha storage suite for regressions**
 
