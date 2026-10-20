@@ -3,7 +3,7 @@ status: draft
 role: canonical
 kind: plan
 date: 2026-10-19
-last_reviewed: 2026-10-19
+last_reviewed: 2026-10-20
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -20,6 +20,7 @@ review:
   - 2026-10-19 v5: oneiric-specialist (3 P0, 0 P1, 0 P2 — DuckDB 1.5.6 verification)
   - 2026-10-19 v6: akosha-specialist (3 P1, 4 P2, 1 P3 — akosha-codebase wiring)
   - 2026-10-19 v7: pending (post-draft 1-agent pass)
+  - 2026-10-20 v7-rebaseline: DuckDB 2.0.0-dev re-verification (0 drift, 3 exception-type corrections, 1 new finding — see §5.1a)
 ---
 
 # Bodai OTel Substrate — v7
@@ -44,6 +45,18 @@ The 3-agent v5 review (critical-audit proper + observability-incident-lead rando
 v6 is **architecturally stable** (the substrate-in-oneiric + receiver-in-akosha split is unchanged from v5). What changes from v5: every DDL string is verified against DuckDB 1.5.6 (4 verified audit entries in §5.1a); the sweep body uses `result.rowcount` (verified cursor contract) and inline-paths the COPY target (with regex-validated `archival_target`); §11.3 canary now has liveness — try/except with backoff + `bridge_failed_total`; §11.1.7 typo fixed.
 
 The 4th-round review (akosha-specialist) found **3 P1 + 4 P2 + 1 P3** — every one of which is a spec-vs-akosha-codebase alignment bug no other lens (DB execution, runbook, contract-gaps) could catch. The akosha-reviewer did a direct read of `akosha/cli.py`, `akosha/storage/path_resolver.py`, `akosha/mcp/server.py:282-305`, `server.py:397-420`, and `server.py:951-1101` — and surfaced four structural issues: (1) `ARCHIVAL_TARGET_RE` regex excludes every default akosha storage path; (2) `set_shared_otel_receiver` is referenced as if it exists but is NEW code from PR-A0b; (3) the §6 lifespan snippet uses Starlette shape but akosha's actual is `@asynccontextmanager`; (4) `HealthFeedState("name")` notation is wrong — kwarg-only dataclass. v7 closes all 3 P1s and all 4 P2s.
+
+### 1.1 DuckDB re-baseline (2026-10-20)
+
+The v6 DDL verification footer cited `duckdb==1.5.6`, "per `mahavishnu/uv.lock`". **That attribution was wrong, and so was the version.** The substrate's DuckDB comes from *oneiric* (ADR 017), and `oneiric/uv.lock:1270` pins `duckdb==2.0.0.dev2610192346`. The v6 footer was a false attestation: it named a version nobody verified against, citing a lockfile that does not govern the substrate.
+
+Re-verified empirically against `2.0.0.dev2610192346` via `scripts/verify_otel_ddl.py` (12 assertions, all §5.1a claims):
+
+- **Zero design drift.** All four v6 negative claims still hold, so every DDL decision v6 made — inline `UNIQUE CONSTRAINT`, no index `WHERE`, inline `received_at_unix_nano`, inline `COPY` target — remains necessary. Nothing in §5.1 changed shape.
+- **Three exception-type corrections.** `ALTER ADD CONSTRAINT` and `ALTER ADD COLUMN NOT NULL DEFAULT` now raise `DependencyException` (not `NotImplementedException`/`Parser Error`); `COPY … TO ?` raises `InvalidInputException` (not `INTERNAL Error`). The *conclusions* are unchanged; only the cited diagnostic text was wrong. Implementation must not string-match on these.
+- **One new finding (§5.1a).** DuckDB does not store the declared constraint name `uq_span_identity`; it normalises to `spans_substrate_trace_id_span_id_key`. The name is a declaration label for readers. **Nothing may look the constraint up by name.**
+
+The re-baseline decision is *oneiric's* to own: this spec now targets whatever `oneiric/uv.lock` pins, and the footer names that version by reading the lock rather than by hardcoding it.
 
 ## 2. Scope
 
@@ -112,9 +125,9 @@ The substrate lives in oneiric. Akkosha's receiver writes through the substrate 
 Added to `oneiric/adapters/vector/duckdb_hot_store.py:130-185` (the `initialize()` method that today creates `conversations`). Substrate-managed; every Bodai component inherits the access path via the substrate.
 
 ```sql
--- spans_substrate DDL. v6: every DDL string below verified against
--- DuckDB 1.5.6 via the project venv (per v5-review's verified-P0
--- mandate). Audit trail in §5.3 below.
+-- spans_substrate DDL. Re-verified against the DuckDB that oneiric's
+-- uv.lock pins (2.0.0.dev2610192346 as of 2026-10-20) via
+-- scripts/verify_otel_ddl.py. Audit trail in §5.1a below.
 
 CREATE TABLE IF NOT EXISTS spans_substrate (
     span_id                 TEXT PRIMARY KEY,
@@ -128,7 +141,7 @@ CREATE TABLE IF NOT EXISTS spans_substrate (
     span_name               TEXT         NOT NULL,
     start_time_unix_nano    BIGINT       NOT NULL,
     end_time_unix_nano      BIGINT,
-    received_at_unix_nano   BIGINT       NOT NULL DEFAULT (CAST(epoch_ms(now()) * 1e6 AS BIGINT)),  -- v6: inline; ALTER ADD COLUMN with NOT NULL DEFAULT is unsupported in DuckDB 1.5.6 (Parser Error: Adding columns with constraints not yet supported)
+    received_at_unix_nano   BIGINT       NOT NULL DEFAULT (CAST(epoch_ms(now()) * 1e6 AS BIGINT)),  -- v6: inline; ALTER ADD COLUMN with NOT NULL DEFAULT is unsupported by DuckDB (2.0.0-dev: DependencyException)
     duration_ms             REAL,
     outcome                 TEXT,                              -- success | error | unset
     selector                TEXT,                              -- routing-decision side
@@ -149,18 +162,22 @@ CREATE TABLE IF NOT EXISTS spans_substrate (
     has_dispatch_attrs      BOOLEAN      NOT NULL DEFAULT FALSE,
     inserted_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- v6: composite uniqueness INLINE in CREATE TABLE (DuckDB 1.5.6 ALTER
-    -- TABLE ADD CONSTRAINT UNIQUE raises NotImplementedException; UNIQUE INDEX
-    -- is insufficient because ON CONFLICT (trace_id, span_id) only fires on
-    -- PRIMARY KEY or UNIQUE CONSTRAINT targets — UNIQUE INDEX leaves it
-    -- as Binder Error. v3/v4/v5 had this wrong in different ways.):
+    -- v6: composite uniqueness INLINE in CREATE TABLE (DuckDB ALTER TABLE
+    -- ADD CONSTRAINT UNIQUE is unsupported — 2.0.0-dev: DependencyException;
+    -- UNIQUE INDEX is insufficient because ON CONFLICT (trace_id, span_id)
+    -- only fires on PRIMARY KEY or UNIQUE CONSTRAINT targets — UNIQUE INDEX
+    -- leaves it as Binder Error. v3/v4/v5 had this wrong in different ways.).
+    -- NB: DuckDB does NOT store the declared name `uq_span_identity`; it
+    -- normalises to `spans_substrate_trace_id_span_id_key`. This label is for
+    -- readers — never look the constraint up by name (§5.1a).
     CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)
 );
 
 -- Hot-path projection indexes. v6: all four indexes order by
 -- `received_at_unix_nano DESC` (the server-side receive-time column; see
--- §8.2 cardinal rule). DuckDB 1.5.6 does NOT support `WHERE` clauses on
--- CREATE INDEX (NotImplementedException); the `outcome IN ('success','error')`
+-- §8.2 cardinal rule). DuckDB does NOT support `WHERE` clauses on
+-- CREATE INDEX (NotImplementedException on both 1.5.6 and 2.0.0-dev); the
+-- `outcome IN ('success','error')`
 -- predicate that v5 had here is gone — push the predicate into the read-side
 -- SELECT (the sub-spec B §5.6 FSM projection already qualifies with
 -- `WHERE outcome IN (...)`). Performance impact is negligible (the
@@ -185,9 +202,11 @@ class DuckdbHotStore:
 
     async def initialize(self) -> None:
         # existing conversations DDL stays
-        # NEW: spans_substrate DDL (above — v6 verified against duckdb 1.5.6)
+        # NEW: spans_substrate DDL (above — re-verified 2026-10-20 against
+        # the duckdb build oneiric/uv.lock pins; see §5.1a)
         # UNIQUE CONSTRAINT uq_span_identity is INLINE in CREATE TABLE;
-        # no separate ALTER step required.
+        # no separate ALTER step required. DuckDB stores it as
+        # spans_substrate_trace_id_span_id_key.
         ...
 
     async def table_exists(self, name: str) -> bool:
@@ -198,22 +217,29 @@ class DuckdbHotStore:
         return row is not None
 ```
 
-### 5.1a DDL verification trail (v6 — added after v5 P0 sweep)
+### 5.1a DDL verification trail (re-baselined 2026-10-20)
 
-**Every CREATE statement in §5.1 was executed in a live `duckdb.connect(':memory:')` on 2026-10-19 and resolved cleanly.** The agent-reviewed v5 found four P0 DuckDB execution issues; v6 verifies against the project's pinned version (DuckDB 1.5.6 per `mahavishnu/uv.lock`). Future spec edits to §5.1 must re-verify — add a footer in the form:
+**Every claim below is asserted by `scripts/verify_otel_ddl.py`, run against the DuckDB that `oneiric/uv.lock` pins. Re-run it after any `oneiric` dependency change and update this section from the output — do not hand-edit the version string to match a new pin.**
 
+```bash
+# Run from the substrate's own venv so `duckdb` resolves to oneiric's build.
+/Users/les/Projects/oneiric/.venv/bin/python scripts/verify_otel_ddl.py
 ```
--- DDL verification: duckdb==1.5.6, <date>, <who verified>
-```
+
+**Current result:** `duckdb==2.0.0.dev2610192346`, **12 passed, 0 drift, 0 failed** (2026-10-20).
+
+The script distinguishes two failure modes, which matters: a **FAIL** means a positive claim broke (the DDL no longer does what §5.1 says it does), while **DRIFT** means a negative claim stopped holding (a statement the spec relies on being *unsupported* has become supported, so the design that works around it needs revisiting). Zero of both means §5.1 is correct for this version.
+
+The v6 footer attributed the pin to `mahavishnu/uv.lock`. That was wrong — ADR 017 makes *oneiric* the substrate, so oneiric's lock governs. Corrected here.
 
 **Audit pins:**
-- `CREATE TABLE … (…, received_at_unix_nano BIGINT NOT NULL DEFAULT (CAST(epoch_ms(now()) * 1e6 AS BIGINT)))` resolves at INSERT time ✓
-- `CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)` (inline in CREATE TABLE) ✓
+- `CREATE TABLE … (…, received_at_unix_nano BIGINT NOT NULL DEFAULT (CAST(epoch_ms(now()) * 1e6 AS BIGINT)))` resolves, and the DEFAULT actually fires at INSERT ✓
+- `CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)` (inline in CREATE TABLE) is present as a `UNIQUE` constraint over those two columns ✓ — **asserted on `(constraint_type, constraint_column_names)`, never on the name**: DuckDB normalises the declared `uq_span_identity` to `spans_substrate_trace_id_span_id_key` (§1.1). Any code that queries `duckdb_constraints()` by `uq_span_identity` will find nothing.
 - All four `CREATE INDEX … ON spans_substrate(…, received_at_unix_nano DESC)` resolve ✓
-- No `WHERE` clause on any `CREATE INDEX` (DuckDB 1.5.6 limitation: NotImplementedException) ✓
-- `INSERT INTO spans_substrate (…) ON CONFLICT (trace_id, span_id) DO NOTHING` resolves against the inline CONSTRAINT ✓
-- `result.rowcount` (DuckDB Python cursor contract) returns the affected-row count for DML ✓
-- `COPY (SELECT * FROM spans_substrate WHERE received_at_unix_nano < ?)` to an inline path works; `TO ?` (parameterized) raises `INTERNAL Error: Unsupported parameter type for filename` — v6 §8.2 swap-inlines the target path with strict-path validation (see §8.2 v6 change).
+- No `WHERE` clause on any `CREATE INDEX` — still unsupported, `NotImplementedException` ✓
+- `INSERT INTO spans_substrate (…) ON CONFLICT (trace_id, span_id) DO NOTHING` resolves against the inline CONSTRAINT, and a replayed `(trace_id, span_id)` is a genuine no-op (row count unchanged) ✓
+- `result.rowcount` (DuckDB Python cursor contract) returns the affected-row count for DML ✓ — **version-sensitive**: this returned `-1` on 1.5.6. The §8.2 sweep body's rowcount check is only correct because oneiric currently pins 2.0.0-dev. If oneiric ever downgrades, the sweep must not trust `rowcount`.
+- `COPY (SELECT … FROM spans_substrate WHERE received_at_unix_nano < ?)` to an inline path writes a real file ✓; `TO ?` (parameterized) is still rejected — now `InvalidInputException`, previously `INTERNAL Error: Unsupported parameter type for filename`. §8.2 swap-inlines the target path with strict-path validation (see §8.2 v6 change).
 ```
 
 ### 5.2 Substrate-access path
@@ -661,7 +687,7 @@ async def _dlq_retention_sweep():
 |---|---|---|---|
 | `spans_substrate.retention_days` | `30` | PR-A3 ships default | yes (settings key) |
 | `spans_substrate.retention_sweep_interval_hours` | `6` | PR-A3 | yes |
-| `spans_substrate.archival_target` | `null` (no cold sink) | PR-A3 | yes (S3 URL OR filesystem path; format inferred from extension — `.parquet`/`.csv`/`.json` required; **v6 — `COPY ... TO ?` is rejected by DuckDB 1.5.6 with `INTERNAL Error: Unsupported parameter type for filename`; the sweep inlines the validated path instead. v7 — regex widened to cover the four storage roots akosha's `path_resolver.py:90-220` actually defaults to (XDG/macOS/Docker/log); reject else.**) |
+| `spans_substrate.archival_target` | `null` (no cold sink) | PR-A3 | yes (S3 URL OR filesystem path; format inferred from extension — `.parquet`/`.csv`/`.json` required; **v6 — `COPY ... TO ?` is rejected by DuckDB (2.0.0-dev: `InvalidInputException`); the sweep inlines the validated path instead. v7 — regex widened to cover the four storage roots akosha's `path_resolver.py:90-220` actually defaults to (XDG/macOS/Docker/log); reject else.**) |
 
 **`archival_target` validation regex (v7 — widened to match akosha's `path_resolver.py` defaults):**
 
@@ -746,9 +772,10 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
         archival_succeeded = True
         try:
             if settings.spans_substrate.archival_target:
-                # v6: COPY path is INLINE (not parameterized) — DuckDB 1.5.6
-                # rejects `COPY … TO ?` with INTERNAL Error. Path is regex-validated
-                # at settings-load; sweeping an unverified path is unreachable.
+                # v6: COPY path is INLINE (not parameterized) — DuckDB rejects
+                # `COPY … TO ?` (2.0.0-dev: InvalidInputException). Path is
+                # regex-validated at settings-load; sweeping an unverified
+                # path is unreachable.
                 archival_path = settings.spans_substrate.archival_target
                 assert ARCHIVAL_TARGET_RE.match(archival_path), \
                     f"archival_target {archival_path!r} failed validation; check §8.2 regex"
@@ -840,7 +867,7 @@ ALERT archival_stale
 
 Producer `start_time_unix_nano` is unreliable (paused-laptop drift, NTP outages; silently corrupts every index that orders by it). Every INSERT into `spans_substrate` carries a server-populated `received_at_unix_nano BIGINT NOT NULL DEFAULT (CAST(epoch_ms(now()) * 1e6 AS BIGINT))`. **Cardinal rule: every ordering column in v5 is `received_at_unix_nano`** — the cardinal-rule gap in v4 was that the original three hot-path indexes still ordered by `start_time_unix_nano`; v5 drops and recreates them on the trustworthy column. Cross-spec rewrite (§17) flips parent §5.6 projection SQL to use it.
 
-DDL updates to §5.1 (v6): **all DDL is INLINE in the §5.1 CREATE TABLE.** v5 attempted to ADD COLUMN via ALTER TABLE; v6's DuckDB 1.5.6 verification (per §5.1a audit trail) confirmed `ALTER TABLE … ADD COLUMN … NOT NULL DEFAULT (…)` raises `Parser Error: Adding columns with constraints not yet supported`. The column is now part of the initial substrate DDL; the v5 DROP+CREATE index migration collapsed to "create the indexes inline, no DROP step needed." Fresh deployments (PR-0a's path) get the canonical schema; legacy deployments (a substrate pre-v6 with rows that lack `received_at_unix_nano`) need a one-off script — deferred to writing-plans.
+DDL updates to §5.1 (v6): **all DDL is INLINE in the §5.1 CREATE TABLE.** v5 attempted to ADD COLUMN via ALTER TABLE; v6's DuckDB verification (per §5.1a audit trail) confirmed `ALTER TABLE … ADD COLUMN … NOT NULL DEFAULT (…)` is unsupported (1.5.6: `Parser Error: Adding columns with constraints not yet supported`; 2.0.0-dev: `DependencyException` — same conclusion, different diagnostic). The column is now part of the initial substrate DDL; the v5 DROP+CREATE index migration collapsed to "create the indexes inline, no DROP step needed." Fresh deployments (PR-0a's path) get the canonical schema; legacy deployments (a substrate pre-v6 with rows that lack `received_at_unix_nano`) need a one-off script — deferred to writing-plans.
 
 **Cardinality alarm** (runbook §11.1.6, mentioned for context):
 
@@ -1570,12 +1597,13 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | **v5** Sweep collision avoidance | Random 0-60s jitter + multi-pod advisory lock (deferred to writing-plans) | DuckDB file-lock + same-wall-clock sweep = silent pod death. |
 | **v5** Naming convention | `domain.subdomain.setting: bool` (nested YAML only) | v3's flat `feature_flag_` prefix is fully replaced. One canonical form across §11.4, §13.6, Appendix C. |
 | **v5** `phase="copy"` retention_sweep_failed label | **permanently dead** — COPY failures route to `archival_failed` (separate counter) instead of `retention_sweep_failed{phase="copy"}` | v5's inner COPY try/except swallows COPY errors before the outer except can route them. The outer except therefore only ever increments `phase="delete"`. Both labels remain in the contract for shape stability; `phase="copy"` never increments. |
-| **v6** DDL verification footer | Every CREATE statement in §5.1 verified live against `duckdb==1.5.6` with a `verified against duckdb 1.5.6 on <date>, <who>` footer in §5.1a | v5 had 4 P0 DuckDB-execution issues (partial index WHERE, ALTER ADD CONSTRAINT, COPY filename param, ALTER ADD COLUMN with NOT NULL DEFAULT) that oneiric-specialist's live-repl verification caught. The audit footer makes verification a spec discipline, not a one-off. |
-| **v6** UNIQUE CONSTRAINT inline in CREATE TABLE | Not via ALTER ADD CONSTRAINT | DuckDB 1.5.6 `ALTER TABLE … ADD CONSTRAINT UNIQUE (…)` raises `NotImplementedException`. Inline `CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)` is the only path; it's required for `ON CONFLICT (trace_id, span_id)` to resolve. |
-| **v6** Partial index — no WHERE clause | DuckDB 1.5.6 doesn't support `WHERE` on CREATE INDEX (NotImplementedException) | v5 had a `WHERE outcome IN ('success','error')` predicate that raised at first run. v6 drops the predicate; the read-side SELECT (sub-spec B §5.6) qualifies the outcome filter. |
-| **v6** `received_at_unix_nano` inline | Not via ALTER ADD COLUMN with NOT NULL DEFAULT | DuckDB 1.5.6 `ALTER TABLE ADD COLUMN NOT NULL DEFAULT (…)` raises `Parser Error: Adding columns with constraints not yet supported`. Inline the column in CREATE TABLE; the constraint then backfills any existing rows at INSERT time only. |
-| **v6** COPY filename path | Inline-string (with regex validation at settings-load) | DuckDB 1.5.6 `COPY (SELECT …) TO ?` raises `INTERNAL Error: Unsupported parameter type for filename`. Inline the validated path; ARCHIVAL_TARGET_RE ensures only safe paths reach the sweep body. |
-| **v6** Sweep DML row count | `result.rowcount` (DuckDB Python cursor contract) | v5 used `result.fetchone()[0]` which raises `TypeError` on DML cursors (None[0]). Every sweep iteration permanently incremented `retention_sweep_failed{phase="delete"}` as a false alarm. |
+| **v6** DDL verification footer | Every CREATE statement in §5.1 verified by re-running `scripts/verify_otel_ddl.py` against whatever `oneiric/uv.lock` pins; §5.1a carries the version, date, and result counts | v5 had 4 P0 DuckDB-execution issues (partial index WHERE, ALTER ADD CONSTRAINT, COPY filename param, ALTER ADD COLUMN with NOT NULL DEFAULT) that oneiric-specialist's live-repl verification caught. The audit footer makes verification a spec discipline, not a one-off. **v7 corrected it:** the v6 footer cited `duckdb==1.5.6` "per `mahavishnu/uv.lock`" — the wrong version *and* the wrong lockfile (ADR 017 puts the substrate in oneiric). A footer naming an unverified version is worse than none, because it reads as verification having happened. |
+| **v6** UNIQUE CONSTRAINT inline in CREATE TABLE | Not via ALTER ADD CONSTRAINT | DuckDB `ALTER TABLE … ADD CONSTRAINT UNIQUE (…)` is unsupported (1.5.6: `NotImplementedException`; 2.0.0-dev: `DependencyException`). Inline `CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)` is the only path; it's required for `ON CONFLICT (trace_id, span_id)` to resolve. **Do not match on the exception type** — it is not stable across versions. |
+| **v7** Constraint *name* is a declaration label | Query `duckdb_constraints()` by `(constraint_type, constraint_column_names)`, never by `uq_span_identity` | DuckDB normalises the declared name to `spans_substrate_trace_id_span_id_key`. The v6 DDL reads as if `uq_span_identity` were a stable handle; any code that looks the constraint up by that string finds nothing and silently concludes the dedup guarantee is absent. |
+| **v6** Partial index — no WHERE clause | DuckDB doesn't support `WHERE` on CREATE INDEX (NotImplementedException on both 1.5.6 and 2.0.0-dev) | v5 had a `WHERE outcome IN ('success','error')` predicate that raised at first run. v6 drops the predicate; the read-side SELECT (sub-spec B §5.6) qualifies the outcome filter. |
+| **v6** `received_at_unix_nano` inline | Not via ALTER ADD COLUMN with NOT NULL DEFAULT | DuckDB `ALTER TABLE ADD COLUMN NOT NULL DEFAULT (…)` is unsupported (1.5.6: `Parser Error: Adding columns with constraints not yet supported`; 2.0.0-dev: `DependencyException`). Inline the column in CREATE TABLE; the constraint then backfills any existing rows at INSERT time only. |
+| **v6** COPY filename path | Inline-string (with regex validation at settings-load) | DuckDB `COPY (SELECT …) TO ?` is unsupported (1.5.6: `INTERNAL Error: Unsupported parameter type for filename`; 2.0.0-dev: `InvalidInputException`). Inline the validated path; ARCHIVAL_TARGET_RE ensures only safe paths reach the sweep body. |
+| **v6** Sweep DML row count | `result.rowcount` (DuckDB Python cursor contract) | v5 used `result.fetchone()[0]` which raises `TypeError` on DML cursors (None[0]). Every sweep iteration permanently incremented `retention_sweep_failed{phase="delete"}` as a false alarm. **Version-sensitive (v7):** verified as returning the affected count on 2.0.0-dev, but it returned `-1` on 1.5.6. Correct only because oneiric currently pins 2.0.0-dev; a oneiric downgrade silently breaks the sweep's count. |
 | **v6** Sweep liveness ambiguity | `sweep_first_started_unix_nano` (set once, never reset) | v5 collapsed "sweep has never run on this pod" and "sweep is frozen on archival" into the same `sweep_last_completed_unix_nano == 0` signal. Operators couldn't disambiguate. v6 adds a separate gauge for the "never started" state, with the `sweep_retention_late` alert gated by `sweep_first_started_unix_nano > 0`. |
 | **v6** Canary "succeeded" definition | `BatchResult(ok=1, deduped=0)` exactly | Multi-pod races had undefined behavior — v5 let implementers pick between double-counting successes and under-counting them. v6 pins option (b): succeed iff exactly one row INSERTed, with losers tracked via `canary_writes_rejected_total` (its own counter, not a `canary_writes_failed_total` label). |
 | **v6** Canary bridge liveness | Try/except + retry-with-backoff + `bridge_failed_total` counter + P0-D alert | v5 had a `while not stop_event.is_set(): await stop_event.wait(10)` body with no exception handling — any uncaught exception killed the bridge forever until process restart. v6 wraps the body, increments a counter on failure, adds a `receiver_canary_bridge_dead` P0-D alert, and clears the counter on success. |
