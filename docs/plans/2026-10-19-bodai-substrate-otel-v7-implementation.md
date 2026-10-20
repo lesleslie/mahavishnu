@@ -30,7 +30,10 @@ These apply to every task. A task's requirements implicitly include this section
 - **No version bumps in any Bodai `pyproject.toml` without explicit user approval** (memory: `feedback-mcp-common-version-bump-is-user`). PR-0a's "bump oneiric minor" and the mcp-common pin in PR-A1/PR-A7 are **operator actions**. The plan implements the code and stages the commit; the operator bumps.
 - **Pre-1.0 no-backwards-compat** (memory: `feedback-no-backwards-compat-pre-1.0`): replace, don't extend; no deprecation windows. Governs PR-A8's `AKOSHA_SKIP_OTEL_INGESTER` retirement and the flat→nested feature-flag rename.
 - **DuckDB (2.0.0-dev) constraints** (spec §5.1a — all verified live): no `WHERE` on `CREATE INDEX`; no `ALTER TABLE ADD CONSTRAINT`; no `COPY (…) TO ?` (filename param); no `ALTER TABLE ADD COLUMN … NOT NULL DEFAULT`. `UNIQUE` must be inline in `CREATE TABLE` for `ON CONFLICT` to resolve.
-- **`result.rowcount`** for DML row counts on DuckDB cursors — never `result.fetchone()[0]` (raises `TypeError`).
+- **DML row counts on DuckDB** — never `result.fetchone()[0]` (raises `TypeError` on a DML
+  cursor). Use `result.rowcount`, **but see the version caveat below**: it returns the
+  affected count on oneiric's 2.0.0-dev and `-1` on akosha's 1.5.6, and the receiver
+  runs on akosha's build. Count the DELETE's effect explicitly rather than trusting it.
 - **Prometheus convention:** `.labels(...).inc(amount=N)`. Never `inc(n=N)` — `n=` becomes an unlabeled kwarg.
 - **Retention filters on `received_at_unix_nano`** (server-populated, clock-trustworthy), never `start_time_unix_nano` (producer clock, drift-prone). Cardinal rule.
 - **COPY failure → skip DELETE.** A cold-sink error (NFS, S3 IAM, ENOSPC) must never destroy the rows that failed to archive.
@@ -3023,9 +3026,28 @@ async def run_retention_sweep_once(self, settings: Any) -> int:
             result = self.hot_store.conn.execute(
                 f"DELETE FROM spans_substrate WHERE received_at_unix_nano < {cutoff_ns}"
             )
-            # v6: rowcount, NOT fetchone()[0] — a DML cursor raises TypeError
-            # on fetchone()[0] in DuckDB (2.0.0-dev).
-            deleted = result.rowcount
+            # NOT fetchone()[0] — a DML cursor raises TypeError on that.
+            # NOT result.rowcount either: it is version-dependent, and the
+            # receiver runs akosha's DuckDB 1.5.6 (akosha/uv.lock:1246), where
+            # it returns -1. Verified on both builds:
+            #   oneiric 2.0.0.dev2610192346 -> affected count
+            #   akosha   1.5.6               -> -1
+            # Count before/after instead, which is correct on either.
+            # Both counts must span the SAME population -- the whole table.
+            # Counting only the rows about to be deleted, then subtracting a
+            # total, mixes populations and reports 2-1=1 when the true answer
+            # is 2.
+            before = self.hot_store.conn.execute(
+                "SELECT COUNT(*) FROM spans_substrate"
+            ).fetchone()[0]
+            self.hot_store.conn.execute(
+                "DELETE FROM spans_substrate WHERE received_at_unix_nano < ?",
+                [cutoff_ns],
+            )
+            after = self.hot_store.conn.execute(
+                "SELECT COUNT(*) FROM spans_substrate"
+            ).fetchone()[0]
+            deleted = before - after
             self._metric_sweep_deleted.inc(amount=deleted)
         # else: DELETE SKIPPED. Rows stay; the next cycle retries archival.
 

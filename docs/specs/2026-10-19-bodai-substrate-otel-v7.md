@@ -228,6 +228,20 @@ class DuckdbHotStore:
 
 **Current result:** `duckdb==2.0.0.dev2610192346`, **12 passed, 0 drift, 0 failed** (2026-10-20).
 
+**Run it against BOTH builds the fleet carries (added 2026-10-20).** The substrate DDL is
+owned by oneiric, but the `duckdb` *library* is resolved by whichever process opens the
+file — and the receiver runs in akosha, whose lock pins **1.5.6**, not 2.0.0-dev:
+
+```
+/Users/les/Projects/oneiric/.venv/bin/python scripts/verify_otel_ddl.py   # 2.0.0-dev
+/Users/les/Projects/akosha/.venv/bin/python  scripts/verify_otel_ddl.py  # 1.5.6
+```
+
+This is not pedantry: on 1.5.6, `DELETE ... .rowcount` returns **-1** where 2.0.0-dev returns
+the affected count. §8.2's sweep reads `deleted = result.rowcount`, which is why the v7 plan
+now counts before/after instead. "Whichever DuckDB oneiric pins" is the wrong question —
+the right one is "whichever DuckDB the consuming process resolves."
+
 The script distinguishes two failure modes, which matters: a **FAIL** means a positive claim broke (the DDL no longer does what §5.1 says it does), while **DRIFT** means a negative claim stopped holding (a statement the spec relies on being *unsupported* has become supported, so the design that works around it needs revisiting). Zero of both means §5.1 is correct for this version.
 
 The v6 footer attributed the pin to `mahavishnu/uv.lock`. That was wrong — ADR 017 makes *oneiric* the substrate, so oneiric's lock governs. Corrected here.
@@ -1647,7 +1661,7 @@ This section enumerates **exactly what the parent spec needs to change** so PR-B
 | §4.1 Topology diagram | References `HotStore.spans` | `HotStore.spans_substrate` |
 | §5.2 `OTelSettings` resource defaults | Underspecified | Cite v3 §6.4 / §6.5; same conventions, different substrate |
 | §5.5 migration SQL | ALTERs `spans` (table doesn't exist); references columns that don't exist | Drop the ALTER entirely; substrate DDL is in oneiric per v3 §5.1 |
-| §5.6 projection SQL | `WHERE timestamp > now() - ...` (column doesn't exist); `parent_id` (column doesn't exist) | `WHERE start_time_unix_nano > now_ns - :window_seconds * 1e9`; `parent_span_id` |
+| §5.6 projection SQL | `WHERE timestamp > now() - ...` (column doesn't exist); `parent_id` (column doesn't exist); reads from `spans` (table doesn't exist) | `WHERE received_at_unix_nano > :cutoff_unix_nano`; `parent_span_id`. **Corrected 2026-10-20 — this row previously said `start_time_unix_nano`, which contradicts this spec's own §8.2 cardinal rule.** `start_time_unix_nano` is producer-supplied and drift-prone (§8.2: "silently corrupts every index that orders by it"), and a read filtered on it would disagree with what the retention sweep actually kept. `received_at_unix_nano` is BIGINT epoch nanos, so there is no interval arithmetic: bind a precomputed cutoff integer. The read path in `docs/specs/2026-10-20-bodai-otel-substrate-read-path.md` §4.2 already implements this; PR-B inherits that query rather than re-deriving it.an_id` |
 | §6.1 receiver section | Claims `set_shared_otel_receiver` already exists | Rename to reflect v3's actual location (akosha/observability/otlp_receiver.py) |
 | §7.2 P0-A | References `mcp_tool_call` as the roster source | Cite v3 §11 (separate `known_mcp_servers` field) |
 | §7.4 PR-A7 / default-flip | Lacks consumer-sweep gate | Cite v3 §10.1 + §10.2 (enumerated consumers + CI gate) |
