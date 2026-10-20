@@ -150,8 +150,7 @@ Default None — outside the bridge window, nothing changes.
 
 EXPECTED VERSION: minor bump — operator bumps pyproject.toml
 (per feedback-mcp-common-version-bump-is-user).
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 - [ ] **Step 6: Write the failing mcp-common test**
@@ -266,8 +265,7 @@ Two changes for the service.namespace two-release migration
 EXPECTED VERSION: minor bump — operator bumps pyproject.toml
 (per feedback-mcp-common-version-bump-is-user). Akosha pins the
 resulting release.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 1)
@@ -518,8 +516,7 @@ server-populated column), per the spec's cardinal rule.
 EXPECTED VERSION: minor bump — operator bumps pyproject.toml
 (per feedback-mcp-common-version-bump-is-user). Akosha PR-A3 pins the
 resulting oneiric release.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 - [ ] **Step 10: Record feature-tracking state**
@@ -841,8 +838,7 @@ carries the same namespace.
 
 EXPECTED VERSION: minor bump — operator bumps pyproject.toml
 (per feedback-mcp-common-version-bump-is-user).
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 3)
@@ -988,6 +984,22 @@ Add to `HotStore`:
         NOTHING + RETURNING gives us the inserted count in a single
         round-trip; deduped is derived by subtraction because DuckDB's
         RETURNING yields only the rows that actually landed.
+
+        The arbiter is deliberately OMITTED. Naming one — `(trace_id,
+        span_id)` — restricts the conflict target to that constraint, but the
+        table also has `span_id TEXT PRIMARY KEY`. A span_id that arrives under
+        a *different* trace_id matches neither arbiter nor uq_span_identity, so
+        it hits the primary key and raises:
+
+            ConstraintException: Duplicate key "span_id: s1" violates
+            primary key constraint.
+
+        On a single INSERT that is a lost span. Inside a batched `executemany`
+        it is worse: the exception aborts the whole statement, so every other
+        span in the batch is discarded with it — one collision costs a full
+        export. Bare `ON CONFLICT DO NOTHING` covers every constraint, so the
+        collision dedups instead of exploding (verified live on
+        duckdb 2.0.0-dev).
         """
         if not rows:
             return (0, 0)
@@ -997,7 +1009,7 @@ Add to `HotStore`:
         sql = (
             f"INSERT INTO {self.spans_substrate_table} ({columns}) "
             f"VALUES ({placeholders}) "
-            "ON CONFLICT (trace_id, span_id) DO NOTHING RETURNING span_id"
+            "ON CONFLICT DO NOTHING RETURNING span_id"
         )
         async with self._lock:
             result = self.conn.execute(sql, values)
@@ -1031,14 +1043,16 @@ git add akosha/storage/hot_store.py tests/unit/storage/test_insert_spans_substra
 git commit -m "feat(akosha): HotStore.insert_spans_substrate — batch INSERT with ON CONFLICT dedup
 
 Writes validated rows to the oneiric-managed spans_substrate table.
-Dedup resolves against the inline uq_span_identity UNIQUE CONSTRAINT
-(trace_id, span_id); RETURNING gives the inserted count in one
-round-trip, deduped is derived by subtraction.
+Dedup uses bare ON CONFLICT DO NOTHING — no arbiter, so it covers the
+span_id PRIMARY KEY as well as uq_span_identity. Naming the arbiter
+leaves span_id collisions across trace_ids raising ConstraintException,
+which in a batched insert discards every span alongside the offender.
+RETURNING gives the inserted count in one round-trip; deduped is
+derived by subtraction.
 
 ADR 017 holds: no akosha migration writes spans_substrate. The receiver
 is a substrate client, not a substrate owner.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"""
 ```
 
 #### Integration Contract (Task 4)
@@ -1123,22 +1137,51 @@ from akosha.observability.otlp_receiver import OTLPReceiver
 from akosha.storage.hot_store import HotStore
 
 
-def _attr(struct: struct_pb2.Struct, key: str, value) -> None:
-    struct.attributes[key] = struct_pb2.Value()
+def _attr(resource: resource_pb2.Resource, key: str, value: str) -> None:
+    """Set one resource attribute.
+
+    Only `Resource.attributes` is a `Struct` (a map). `Span.attributes` is a
+    *repeated* `KeyValue` — it takes `.add(key=..., value=...)`, so
+    `span.attributes[k] = v` cannot work. `service.name` and
+    `service.namespace` are resource attributes anyway, which is what the
+    receiver's namespace validator reads.
+    """
+    resource.attributes[key].string_value = value
 
 
-def _span(span_id: str, trace_id: str = "t1") -> trace_pb2.Span:
-    s = trace_pb2.Span(
-        trace_id=bytes.fromhex(trace_id * 2),
-        span_id=bytes.fromhex(span_id.ljust(32, "0")),
+def _span(span_id: str, trace_id: str = "1") -> trace_pb2.Span:
+    """A span with correctly sized ids.
+
+    OTLP ids are fixed-width byte strings: `span_id` is 8 bytes and `trace_id`
+    is 16. So the args are hex and get left-padded — 16 and 32 hex chars
+    respectively. `bytes.fromhex` raises `ValueError` on a non-hex char, and a
+    short id is malformed on the wire, so both the padding and the hex-only
+    alphabet matter.
+    """
+    return trace_pb2.Span(
+        trace_id=bytes.fromhex(trace_id.ljust(32, "0")),
+        span_id=bytes.fromhex(span_id.ljust(16, "0")),
         name="test.span",
         kind=trace_pb2.Span.SPAN_KIND_INTERNAL,
         start_time_unix_nano=1_700_000_000_000_000_000,
         end_time_unix_nano=1_700_000_000_100_000_000,
     )
-    for k in ("service.name", "service.namespace"):
-        _attr(s.attributes, k, None)
-    return s
+
+
+def _batch(span_id: str = "aa") -> trace_service_pb2.ExportTraceServiceRequest:
+    """One resource, one scope, one span.
+
+    Repeated *message* fields are empty on a fresh parent: `.add()` creates the
+    element. `rs.scope_spans[0]` raises `IndexError` right after
+    `resource_spans.add()` — the scope_spans list is still empty, because
+    `.add()` only creates the ResourceSpans message, not its children.
+    """
+    batch = trace_service_pb2.ExportTraceServiceRequest()
+    rs = batch.resource_spans.add()
+    _attr(rs.resource, "service.name", "mahavishnu")
+    _attr(rs.resource, "service.namespace", "bodai")
+    rs.scope_spans.add().spans.append(_span(span_id))
+    return batch
 
 
 @pytest.mark.asyncio
@@ -1147,12 +1190,7 @@ async def test_handle_batch_inserts(tmp_path) -> None:
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
-    batch = trace_service_pb2.ExportTraceServiceRequest()
-    rs = batch.resource_spans.add()
-    rs.resource.attributes["service.name"] = "mahavishnu"
-    rs.scope_spans[0].spans.append(_span("aa"))
-
-    result = await rx._handle_batch(batch)
+    result = await rx._handle_batch(_batch())
     assert result.ok == 1
     assert result.deduped == 0
     assert result.rejected == 0
@@ -1163,12 +1201,9 @@ async def test_handle_batch_dedupes(tmp_path) -> None:
     hs = HotStore(database_path=tmp_path / "e2e2.duckdb")
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
-    batch = trace_service_pb2.ExportTraceServiceRequest()
-    rs = batch.resource_spans.add()
-    rs.scope_spans[0].spans.append(_span("aa"))
 
-    await rx._handle_batch(batch)
-    second = await rx._handle_batch(batch)
+    await rx._handle_batch(_batch())
+    second = await rx._handle_batch(_batch())
     assert second.ok == 0
     assert second.deduped == 1
 
@@ -1573,8 +1608,7 @@ lifespan compiles; Task 10 swaps the canary body and Task 7 the sweep body.
 
 stop_event is pinned at lifespan scope and passed as an explicit
 positional arg to both tasks, and is set() BEFORE the gather teardown.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 ```bash
@@ -1590,8 +1624,7 @@ templates, settings-level OTLP_ENDPOINT. Drain preflight — git grep
 for :4318 across dashboards/collector-configs/settings — must return
 zero hits after this change, or producers still POSTing to :4318 drop
 spans silently.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 5)
@@ -1852,8 +1885,7 @@ and the error message names the four valid storage roots (Review Focus
 
 otel.spans_substrate is a SIBLING of otel.receiver, not nested under
 it — the sweep body reads settings.spans_substrate.*.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 6)
@@ -2220,8 +2252,7 @@ on an IO error and its failure was invisible. Resolves the deferred
 Liveness: sweep_first_started_unix_nano is set once and never reset, so
 operators can distinguish \"never ran on this pod\" from \"frozen on
 archival\".
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 7)
@@ -2479,8 +2510,7 @@ substrate lift that removed every entry.
 KNOWN_MCP_SERVERS is a module-level list[str], not a HealthFeedState
 field; HealthFeedState is kwarg-only (mcp_common/health/feed.py:103).
 Positional construction raises TypeError.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 8)
@@ -2651,8 +2681,7 @@ Ships with ALLOWED_NAMESPACES = ALLOWED_NAMESPACES_BRIDGE — the bridge
 release is active at merge time, so mcp-ecosystem producers must be
 permitted or every span reads as drift. The flip is a single-line
 binding change.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 9)
@@ -2984,8 +3013,7 @@ Alerts (PromQL references the scraped gauge, not the Python field):
   receiver_canary_bridge_dead:
     increase(telemetry_receiver_bridge_failed_total[5m]) > 0
       AND increase(telemetry_receiver_canary_writes_attempted_total[5m]) > 0
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 10)
@@ -3180,8 +3208,7 @@ Also deletes akosha/ingestion/otel_ingester.py when the consumer grep
 finds no other importer, and removes any Pydantic settings field for
 trace_ingester_poller so audit_orphans.py does not flag a
 declared-but-unread symbol.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 11)
@@ -3350,8 +3377,7 @@ the bridge window has closed.
 
 Gated on the consumer sweep (all four repos return zero hits for
 mcp-ecosystem) plus a CI step that keeps them at zero.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 ```bash
@@ -3363,8 +3389,7 @@ Drops telemetry__legacy_namespace_alias — the bridge window is closed.
 Pre-1.0: replaced, not deprecated.
 
 EXPECTED VERSION: minor bump — operator bumps pyproject.toml.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 - [ ] **Step 10: Commit the akosha allowlist flip**
@@ -3378,8 +3403,7 @@ Single-line binding change from ALLOWED_NAMESPACES_BRIDGE to
 ALLOWED_NAMESPACES_POST_FLIP. Do NOT flip before the consumer sweep is
 clean: with mcp-ecosystem producers still emitting, every span reads as
 drift and the cardinality alarm fires spuriously.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
+"
 ```
 
 #### Integration Contract (Task 12)
