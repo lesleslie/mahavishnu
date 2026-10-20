@@ -242,6 +242,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-10-19-bifrost-mcp-skills-aggregation.md`](2026-10-19-bifrost-mcp-skills-aggregation.md) | 2026-10-19 | `active` | `implementation` |  | `bifrost-mcp-skills-aggregation` | Bifrost MCP aggregation + Skills distribution — local single-VK plan |
+| [`docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md`](2026-10-19-bodai-substrate-otel-v7-implementation.md) | 2026-10-19 | `draft` | `implementation` |  | `substrate-otel` | Bodai OTel Substrate v7 — Implementation Plan |
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `complete` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
 | [`docs/plans/2026-10-14-decision-adapter-category.md`](2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `implementation` |  | `decision-adapter-category` | Decision Adapter Category Implementation Plan |
@@ -369,7 +370,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (90 entries)
+### `plan` (91 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -382,9 +383,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 39 | 1 | 1 | 14 | **62** |
-| `implementation` | · | 4 | 2 | 4 | 14 | **24** |
+| `implementation` | 1 | 4 | 2 | 4 | 14 | **25** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **7** | **43** | **3** | **5** | **67** | **125** |
+| **Total** | **8** | **43** | **3** | **5** | **67** | **126** |
