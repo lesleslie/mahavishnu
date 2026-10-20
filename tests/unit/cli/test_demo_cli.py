@@ -316,7 +316,35 @@ def test_demo_agno_is_no_longer_a_stub(monkeypatch) -> None:
 
 
 def test_demo_app_exposes_expected_commands() -> None:
-    """Sanity: the module exposes ``demo_app`` and it has 8 registered commands
-    (tmux, prefect, 6 live). Test pin for accidental stub deletion."""
+    """Sanity: the module exposes ``demo_app`` and it has the expected 18
+    registered commands (8 adapter/terminal demos + 5 pool demos +
+    5 workflow demos). Test pin for accidental stub deletion: any
+    addition or removal of a wire-up entry must be reflected here so the
+    pin's exact-equality contract still catches regressions. The set is
+    the wire-up inventory — update it together with the registration in
+    ``mahavishnu/cli/demo_cli.py``.
+    """
     cmd_names = {cmd.name for cmd in demo_app.registered_commands}
-    assert cmd_names == {"tmux", "prefect", "agno", "llamaindex", "hatchet", "pydantic_ai", "crow", "mock"}
+    assert cmd_names == {
+        # Adapter / terminal demos (8).
+        "tmux",
+        "prefect",
+        "agno",
+        "llamaindex",
+        "hatchet",
+        "pydantic_ai",
+        "crow",
+        "mock",
+        # Pool demos (5).
+        "pool-mahavishnu",
+        "pool-pi",
+        "pool-runpod",
+        "pool-runpod-public",
+        "pool-session-buddy",
+        # Workflow demos (5).
+        "workflow-adapter-swap",
+        "workflow-multi-pool-handoff",
+        "workflow-pi-cascade",
+        "workflow-pi-then-local",
+        "workflow-pool-worker-terminal",
+    }

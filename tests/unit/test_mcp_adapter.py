@@ -4,8 +4,10 @@ Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
 instead of httpx2.AsyncClient.post.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+from mcp.types import CallToolResult, TextContent
 import pytest
 
 from mahavishnu.core.mcp_adapter import MCPAdapter, MCPClient
@@ -13,6 +15,24 @@ from mahavishnu.core.mcp_adapter import MCPAdapter, MCPClient
 # ---------------------------------------------------------------------------
 # MCPClient
 # ---------------------------------------------------------------------------
+
+
+def _envelope(
+    *,
+    structured: dict[str, Any] | None = None,
+    text: str | None = None,
+    is_error: bool = False,
+) -> CallToolResult:
+    """Build the wire envelope ``CommonMCPClient.call_tool`` actually returns.
+
+    ``CommonMCPClient.call_tool`` is a pass-through of the MCP SDK's
+    ``ClientSession.call_tool``, so the value arriving in ``MCPClient.call_tool``
+    is always a ``CallToolResult`` — never an already-unwrapped ``dict`` /
+    ``str`` / ``None``. Unwrapping that envelope is the production
+    ``MCPClient.call_tool`` seam, so the fakes must hand it a real one.
+    """
+    content = [] if text is None else [TextContent(type="text", text=text)]
+    return CallToolResult(content=content, structured_content=structured, is_error=is_error)
 
 
 class TestMCPClientInit:
@@ -49,25 +69,57 @@ class TestMCPClientCallTool:
     async def test_call_tool_returns_result(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value={"key": "value"})
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(structured={"key": "value"})
+        )
 
         result = await client.call_tool("get", {"key": "test"})
         assert result == {"key": "value"}
         client._mcp.call_tool.assert_awaited_once_with("get", {"key": "test"})
 
     async def test_call_tool_returns_raw_payload(self):
-        """When transport returns a list, the wrapper passes it through."""
+        """The wrapper passes the tool's payload through unchanged."""
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value={"data": [1, 2, 3]})
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(structured={"data": [1, 2, 3]})
+        )
 
         result = await client.call_tool("list", {})
         assert result == {"data": [1, 2, 3]}
 
+    async def test_call_tool_decodes_json_text_content(self):
+        """String returns land in ``content[0].text`` and get JSON-decoded."""
+        client = MCPClient("http://localhost")
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(text='{"key": "value"}'))
+
+        result = await client.call_tool("get", {"key": "test"})
+        assert result == {"key": "value"}
+
+    async def test_call_tool_returns_error_dict_from_first_text_content(self):
+        """Errors surface as ``{"error": ..., "is_error": True}``."""
+        client = MCPClient("http://localhost")
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(text="tool blew up", is_error=True)
+        )
+
+        result = await client.call_tool("boom", {})
+        assert result == {"error": "tool blew up", "is_error": True}
+
+    async def test_call_tool_returns_none_for_empty_envelope(self):
+        """No structured content and no text content unwraps to ``None``."""
+        client = MCPClient("http://localhost")
+        client._mcp = MagicMock()
+        client._mcp.call_tool = AsyncMock(return_value=_envelope())
+
+        assert await client.call_tool("noop", {}) is None
+
     async def test_call_tool_passes_arguments(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value=None)
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(text="null"))
 
         await client.call_tool("my_tool", {"arg1": "val1"})
 
@@ -79,7 +131,7 @@ class TestMCPClientPut:
     async def test_put_without_ttl(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value="ok")
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(text="ok"))
 
         result = await client.put("mykey", {"data": 42})
         assert result == "ok"
@@ -94,7 +146,7 @@ class TestMCPClientPut:
     async def test_put_with_ttl(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value="ok")
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(text="ok"))
 
         await client.put("key", "val", ttl=3600)
 

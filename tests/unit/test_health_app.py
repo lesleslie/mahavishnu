@@ -89,24 +89,27 @@ def healthy_aggregator(monkeypatch: pytest.MonkeyPatch) -> None:
     from mcp_common.health.feed import StatusValue
 
     def _fake_aggregate(*, repo: str) -> MahavishnuHealthVerdict:
+        # Each feed must carry the 4 canonical fields that
+        # ``mcp-backend-wiring-discipline.md`` mandates and that
+        # ``mahavishnu/health.py`` surfaces verbatim via
+        # ``feed_states_json`` — entities_count, last_updated_timestamp,
+        # cycles_total, errors_total. Mirrors the real
+        # ``_probe_*_state`` shapes in ``core/health_aggregator.py``.
+        healthy_feed = {
+            "status": StatusValue.HEALTHY,
+            "healthy": True,
+            "reason_codes": [],
+            "entities_count": 1,
+            "last_updated_timestamp": 1_700_000_000.0,
+            "cycles_total": 1,
+            "errors_total": 0,
+        }
         snap = {
             "status": StatusValue.HEALTHY,
             "checks": {
-                "storage": {
-                    "status": StatusValue.HEALTHY,
-                    "healthy": True,
-                    "reason_codes": [],
-                },
-                "message_bus": {
-                    "status": StatusValue.HEALTHY,
-                    "healthy": True,
-                    "reason_codes": [],
-                },
-                "adapters": {
-                    "status": StatusValue.HEALTHY,
-                    "healthy": True,
-                    "reason_codes": [],
-                },
+                "storage": dict(healthy_feed),
+                "message_bus": dict(healthy_feed),
+                "adapters": dict(healthy_feed),
             },
             "reason_codes": [],
         }
@@ -136,24 +139,32 @@ def degraded_aggregator(monkeypatch: pytest.MonkeyPatch) -> None:
     from mcp_common.health.feed import ReasonCode, StatusValue
 
     def _fake_aggregate(*, repo: str) -> MahavishnuHealthVerdict:
+        # Same 4 canonical feed fields as the healthy fixture; the degraded
+        # feed reports the zeroed/erroring values the real probes emit
+        # (see ``core/health_aggregator.py`` ``_probe_*_state``).
+        healthy_feed = {
+            "status": StatusValue.HEALTHY,
+            "healthy": True,
+            "reason_codes": [],
+            "entities_count": 1,
+            "last_updated_timestamp": 1_700_000_000.0,
+            "cycles_total": 1,
+            "errors_total": 0,
+        }
         snap = {
             "status": StatusValue.DEGRADED,
             "checks": {
-                "storage": {
-                    "status": StatusValue.HEALTHY,
-                    "healthy": True,
-                    "reason_codes": [],
-                },
+                "storage": dict(healthy_feed),
                 "message_bus": {
                     "status": StatusValue.DEGRADED,
                     "healthy": False,
                     "reason_codes": [ReasonCode.FEED_NEVER_POPULATED],
+                    "entities_count": 0,
+                    "last_updated_timestamp": None,
+                    "cycles_total": 0,
+                    "errors_total": 1,
                 },
-                "adapters": {
-                    "status": StatusValue.HEALTHY,
-                    "healthy": True,
-                    "reason_codes": [],
-                },
+                "adapters": dict(healthy_feed),
             },
             "reason_codes": [ReasonCode.FEED_NEVER_POPULATED],
         }
