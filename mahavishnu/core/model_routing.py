@@ -218,14 +218,14 @@ DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(TaskCatego
 
 # Default model routing for MiniMax cloud provider
 # Kept in sync with settings/models.yaml `minimax.task_routing`.
-# Single model (MiniMax-M3) for all categories — minimax's API does not
-# expose a distinct MiniMax-M3-highspeed variant (verified via curl probe
-# 2026-09-16; minimax returns error 2013 "unknown model" for that name).
-# For environments that want a true speed differential, set
-# SWARM/QUICK/AGENT_LOOP/CREATIVE/GENERAL to MiniMax-M2.7-highspeed directly
-# — that variant does exist and is verified.
-# M2.7 variants are no longer used as defaults; they remain available as the
-# final fallback in CloudWorkerConfig.model.
+# Latency-sensitive categories (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL)
+# route to MiniMax-M3.1-Flash — a fast preview model added 2026-10-19
+# (verified available on the MiniMax API; advertised as 1M context +
+# multimodal input). The remaining categories stay on MiniMax-M3, the
+# stable production model.
+# MiniMax-M3-highspeed does not exist (verified 2026-09-16, error 2013);
+# do not reintroduce that name. M2.7 / M2.7-highspeed remain available
+# as the final fallback in CloudWorkerConfig.model.
 DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.CODE_GENERATION: "MiniMax-M3",
     TaskCategory.CODE_REVIEW: "MiniMax-M3",
@@ -238,12 +238,25 @@ DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.VISION: "MiniMax-M3",
     TaskCategory.EMBEDDING: "MiniMax-M3",
     TaskCategory.ML_INFERENCE: "MiniMax-M3",
-    TaskCategory.SWARM: "MiniMax-M3",
-    TaskCategory.QUICK: "MiniMax-M3",
-    TaskCategory.AGENT_LOOP: "MiniMax-M3",
-    TaskCategory.CREATIVE: "MiniMax-M3",
-    TaskCategory.GENERAL: "MiniMax-M3",
+    TaskCategory.SWARM: "MiniMax-M3.1-Flash",
+    TaskCategory.QUICK: "MiniMax-M3.1-Flash",
+    TaskCategory.AGENT_LOOP: "MiniMax-M3.1-Flash",
+    TaskCategory.CREATIVE: "MiniMax-M3.1-Flash",
+    TaskCategory.GENERAL: "MiniMax-M3.1-Flash",
 }
+
+
+# Default model routing for RunPod Public Endpoints (cloud, REST substrate).
+# Public endpoints host a *single* model each (``moonshot-kimi`` is the
+# Kimi family, ``granite-4-0-h-small`` is Granite 4 H Small) — the routing
+# layer can't change the model on the endpoint side, so the placeholder
+# ``"endpoint-default"`` is treated as "use whatever the endpoint
+# serves" by the FallbackChain. CI guard
+# (``tests/unit/test_task_router.py::TestYAMLRoutingSync``) keeps this
+# dict in lock-step with ``settings/models.yaml::runpod_public.task_routing``.
+DEFAULT_RUNPOD_PUBLIC_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
+    TaskCategory, "endpoint-default"
+)
 
 
 def routing_to_task_map(routing: dict[TaskCategory, str]) -> dict[str, str]:
@@ -326,6 +339,7 @@ def get_model_for_task(
 __all__ = [
     "DEFAULT_LLAMA_SERVER_ROUTING",
     "DEFAULT_MINIMAX_ROUTING",
+    "DEFAULT_RUNPOD_PUBLIC_ROUTING",
     "TASK_PATTERNS",
     "RateLimitConfig",
     "RateLimiter",

@@ -33,11 +33,14 @@ minimax:
     REASONING: "MiniMax-M3"
     ANALYSIS: "MiniMax-M3"
     DOCUMENTATION: "MiniMax-M3"
-    SWARM: "MiniMax-M3"
-    QUICK: "MiniMax-M3"
-    AGENT_LOOP: "MiniMax-M3"
-    CREATIVE: "MiniMax-M3"
-    GENERAL: "MiniMax-M3"
+    # Latency-sensitive bucket routes to MiniMax-M3.1-Flash (added 2026-10-19;
+    # fast preview model with 1M context + multimodal input; verified on the
+    # MiniMax API). The other 10 categories stay on the stable MiniMax-M3.
+    SWARM: "MiniMax-M3.1-Flash"
+    QUICK: "MiniMax-M3.1-Flash"
+    AGENT_LOOP: "MiniMax-M3.1-Flash"
+    CREATIVE: "MiniMax-M3.1-Flash"
+    GENERAL: "MiniMax-M3.1-Flash"
     VISION: "MiniMax-M3"
     ML_INFERENCE: "MiniMax-M3"
     # M2.7 fallback mappings for backward compatibility
@@ -70,6 +73,50 @@ llama_server:
     QUICK: "qwen3.5"
     ML_INFERENCE: "qwen3.5"
     AGENT_LOOP: "qwen3.5"
+
+# =============================================================================
+# CLOUD PUBLIC-ENDPOINT PROVIDERS (RunPod Public Endpoints REST substrate)
+# =============================================================================
+
+# RunPod Public Endpoints - Tertiary cloud provider for third-party
+# managed endpoints (``moonshot-kimi``, ``granite-4-0-h-small``, etc.).
+# The endpoint id is supplied at runtime via ``RUNPOD_PUBLIC_ENDPOINT_ID``
+# (or ``CloudWorkerConfig.runpod_public_endpoint_id``); the base_url is
+# composed from the global RunPod API root and the endpoint id, so the
+# operator never edits base_url here. Enabled by default; the operator
+# opts in by setting the endpoint id env var. Routing uses the
+# ``endpoint-default`` sentinel — the endpoint hosts a single model,
+# so per-category routing on the local side is a no-op.
+# Kept in sync with ``DEFAULT_RUNPOD_PUBLIC_ROUTING`` in
+# ``mahavishnu/core/model_routing.py`` (verified by
+# ``tests/unit/test_task_router.py::TestYAMLRoutingSync``).
+runpod_public:
+  enabled: true
+  require_auth: true
+  api_key_env: "RUNPOD_API_KEY"
+  endpoint_id_env: "RUNPOD_PUBLIC_ENDPOINT_ID"
+  base_url_template: "https://api.runpod.ai/v2/{endpoint_id}/v1"
+  api_key: "${RUNPOD_API_KEY}"
+  priority: 3
+  timeout: 60
+  max_retries: 2
+  task_routing:
+    CODE_GENERATION: "endpoint-default"
+    CODE_REVIEW: "endpoint-default"
+    DEBUGGING: "endpoint-default"
+    REFACTORING: "endpoint-default"
+    TESTING: "endpoint-default"
+    REASONING: "endpoint-default"
+    ANALYSIS: "endpoint-default"
+    DOCUMENTATION: "endpoint-default"
+    SWARM: "endpoint-default"
+    QUICK: "endpoint-default"
+    ML_INFERENCE: "endpoint-default"
+    AGENT_LOOP: "endpoint-default"
+    CREATIVE: "endpoint-default"
+    GENERAL: "endpoint-default"
+    VISION: "endpoint-default"
+    EMBEDDING: "endpoint-default"
 
 # =============================================================================
 # DEFAULTS

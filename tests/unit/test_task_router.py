@@ -13,6 +13,7 @@ import pytest
 from mahavishnu.core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
+    DEFAULT_RUNPOD_PUBLIC_ROUTING,
     RateLimitConfig,
     RateLimiter,
     TaskCategory,
@@ -210,35 +211,37 @@ class TestGetModelForTask:
         )
         assert model == "fallback-model"
 
-    def test_minimax_highspeed_for_swarm_quick(self):
-        """MiniMax routing for latency-sensitive categories uses M3.
+    def test_minimax_latency_bucket_routes_to_flash(self):
+        """Latency-sensitive categories route to MiniMax-M3.1-Flash.
 
         Covers SWARM, QUICK, AGENT_LOOP, CREATIVE, and GENERAL — the
-        categories that previously routed to a ``MiniMax-M3-highspeed``
-        variant. That variant does not exist on the MiniMax API (it
-        returns error 2013, verified 2026-09-16); commit ``9d337b30``
-        collapsed all five to ``MiniMax-M3``. This test pins the
-        post-fix routing — if any of these regress to a stale
-        ``MiniMax-M3-highspeed`` reference in YAML or code, this
-        test fires.
+        categories that historically wanted a speed-tier model. They
+        now route to ``MiniMax-M3.1-Flash`` (added 2026-10-19; verified
+        available on the MiniMax API). The earlier ``MiniMax-M3-highspeed``
+        variant does not exist on the MiniMax API (returns error 2013,
+        verified 2026-09-16); if any of these regress to that stale
+        name in YAML or code, this test fires.
 
-        Pre-fix the test asserted ``"highspeed" in model`` (the OLD
-        behavior), which started failing once the routing collapsed
-        to ``MiniMax-M3``. CI went red on this test until the
-        assertion was flipped.
+        Test history:
+        - Pre 2026-09-16: asserted ``"highspeed" in model`` (the OLD
+          behavior); CI went red once the routing collapsed to M3.
+        - Post 2026-09-16 fix (commit 9d337b30): asserted all five
+          categories route to ``MiniMax-M3``.
+        - Post 2026-10-19 update: re-routed the latency bucket to
+          ``MiniMax-M3.1-Flash``. This test now pins that routing.
         """
-        highspeed_cats = (
+        latency_cats = (
             TaskCategory.SWARM,
             TaskCategory.QUICK,
             TaskCategory.AGENT_LOOP,
             TaskCategory.CREATIVE,
             TaskCategory.GENERAL,
         )
-        for cat in highspeed_cats:
+        for cat in latency_cats:
             model, _ = get_model_for_task("do it fast", DEFAULT_MINIMAX_ROUTING, "default")
-            assert model == "MiniMax-M3", (
-                f"{cat} should route to MiniMax-M3 (the only M-series "
-                f"variant the MiniMax API exposes). Got {model!r}. "
+            assert model == "MiniMax-M3.1-Flash", (
+                f"{cat} should route to MiniMax-M3.1-Flash (the speed-tier "
+                f"M-series variant the MiniMax API exposes). Got {model!r}. "
                 f"If a future MiniMax model is added, update this "
                 f"assertion AND DEFAULT_MINIMAX_ROUTING together."
             )
@@ -340,6 +343,47 @@ class TestYAMLRoutingSync:
         }
         missing = required - set(yaml_routing.keys())
         assert not missing, f"YAML must cover high-traffic categories: {sorted(missing)}"
+
+    @staticmethod
+    def _load_yaml_provider_routing(provider_name: str) -> dict[str, str]:
+        """Load ``provider_name.task_routing`` from settings/models.yaml.
+
+        Mirrors ``_load_yaml_routing`` but parameterized over the
+        provider block so the same sync guard covers all routed
+        providers (minimax, llama_server, runpod_public).
+        """
+        from pathlib import Path
+
+        import yaml
+
+        yaml_path = Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
+        block = yaml.safe_load(yaml_path.read_text()).get(provider_name)
+        if block is None or "task_routing" not in block:
+            return {}
+        return dict(block["task_routing"])
+
+    def test_runpod_public_routing_in_sync(self):
+        """DEFAULT_RUNPOD_PUBLIC_ROUTING must agree with ``runpod_public.task_routing``.
+
+        Sister guard to ``test_yaml_entries_match_code_constant``.
+        The public-endpoint surface treats each endpoint as a
+        single-model host and uses the ``endpoint-default`` sentinel
+        here, so this guard mostly ensures the YAML block declares
+        the full category set rather than detecting model drift.
+        """
+        yaml_routing = self._load_yaml_provider_routing("runpod_public")
+        code_routing = {cat.value: model for cat, model in DEFAULT_RUNPOD_PUBLIC_ROUTING.items()}
+
+        assert yaml_routing, "settings/models.yaml must declare a runpod_public block"
+
+        for cat, yaml_model in yaml_routing.items():
+            cat_key = cat.lower()
+            assert cat_key in code_routing, (
+                f"YAML defines {cat} but DEFAULT_RUNPOD_PUBLIC_ROUTING is missing it"
+            )
+            assert code_routing[cat_key] == yaml_model, (
+                f"Model drift for {cat}: YAML={yaml_model!r} vs CODE={code_routing[cat_key]!r}"
+            )
 
 
 class TestRateLimiter:

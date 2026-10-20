@@ -24,6 +24,7 @@ from mahavishnu.core.status import WorkerStatus
 from ..core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
+    DEFAULT_RUNPOD_PUBLIC_ROUTING,
     TaskCategory,
     classify_task,
     get_rate_limiter,
@@ -56,6 +57,13 @@ class CloudWorkerConfig:
     )
     llama_server_url: str = field(
         default_factory=lambda: os.environ.get("LLAMA_SERVER_URL", "http://localhost:8081")
+    )
+    # RunPod Public Endpoint id (``moonshot-kimi``, ``granite-4-0-h-small``,
+    # ``qwen3-32b-awq`` etc.). Optional — when unset, the runpod_public
+    # provider is not added to the FallbackChain and the worker behaves
+    # exactly as before (minimax → llama_server only).
+    runpod_public_endpoint_id: str = field(
+        default_factory=lambda: os.getenv("RUNPOD_PUBLIC_ENDPOINT_ID", "")
     )
     model: str = "MiniMax-M2.7"
     timeout: int = 300
@@ -98,25 +106,48 @@ def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
 
 def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     minimax_routing = routing_to_task_map(config.model_routing or DEFAULT_MINIMAX_ROUTING)
-    settings = LLMSettings(
-        providers={
-            "minimax": {
-                "name": "minimax",
-                "base_url": _resolve_minimax_base_url(config),
-                "api_key": "${MINIMAX_API_KEY}",
-                "require_auth": True,
-                "task_routing": minimax_routing,
-                "timeout_seconds": config.timeout,
-            },
-            "llama_server": {
-                "name": "llama_server",
-                "base_url": config.llama_server_url,
-                "require_auth": False,
-                "task_routing": routing_to_task_map(DEFAULT_LLAMA_SERVER_ROUTING),
-                "timeout_seconds": config.timeout,
-            },
+    providers: dict[str, dict[str, object]] = {
+        "minimax": {
+            "name": "minimax",
+            "base_url": _resolve_minimax_base_url(config),
+            "api_key": "${MINIMAX_API_KEY}",
+            "require_auth": True,
+            "task_routing": minimax_routing,
+            "timeout_seconds": config.timeout,
         },
-        fallback_chain=["minimax", "llama_server"],
+        "llama_server": {
+            "name": "llama_server",
+            "base_url": config.llama_server_url,
+            "require_auth": False,
+            "task_routing": routing_to_task_map(DEFAULT_LLAMA_SERVER_ROUTING),
+            "timeout_seconds": config.timeout,
+        },
+    }
+    fallback_order: list[str] = ["minimax", "llama_server"]
+
+    # 2026-10-19: when ``runpod_public_endpoint_id`` is set, register a
+    # third tier pointing at ``https://api.runpod.ai/v2/{endpoint_id}/v1``.
+    # The endpoint id is operator-supplied (env var or constructor kwarg);
+    # only endpoints whose handler speaks the OpenAI chat-completions
+    # protocol will return valid output. The base_url is composed at
+    # chain-build time, so the operator never edits settings/models.yaml
+    # base_url field directly for this provider.
+    if config.runpod_public_endpoint_id:
+        providers["runpod_public"] = {
+            "name": "runpod_public",
+            "base_url": (
+                f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"
+            ),
+            "api_key": "${RUNPOD_API_KEY}",
+            "require_auth": True,
+            "task_routing": routing_to_task_map(DEFAULT_RUNPOD_PUBLIC_ROUTING),
+            "timeout_seconds": config.timeout,
+        }
+        fallback_order.append("runpod_public")
+
+    settings = LLMSettings(
+        providers=providers,
+        fallback_chain=fallback_order,
     )
     chain = FallbackChain.from_settings(settings)
     if len(chain._providers) < 2:

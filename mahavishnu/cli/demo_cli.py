@@ -2250,6 +2250,151 @@ async def _run_pool_runpod_demo(
     }
 
 
+# ----------------------------------------------------------------------------
+# pool-runpod-public — RunPod Public Endpoints REST substrate
+# ----------------------------------------------------------------------------
+
+
+def _check_pool_runpod_public_preconditions(
+    *,
+    endpoint_id: str,
+    env_getter: Callable[[str], str | None] | None = None,
+) -> list[str]:
+    """Verify ``RUNPOD_API_KEY`` is set and ``endpoint_id`` is a non-empty id.
+
+    Sister to ``_check_pool_runpod_preconditions`` but points at a
+    Public Endpoint id (``moonshot-kimi``, ``granite-4-0-h-small``,
+    etc.) rather than an operator-deployed serverless endpoint.
+    Auth is the same (``RUNPOD_API_KEY``). The body shape varies per
+    public endpoint — moonshot-kimi expects ``messages``, granite-4-
+    0-h-small expects ``prompt`` — so the demo passes the payload
+    through verbatim and the operator picks the right key for the
+    target endpoint.
+    """
+    env_getter = env_getter or os.getenv
+    failures: list[str] = []
+    if not env_getter("RUNPOD_API_KEY"):
+        failures.append(
+            "RUNPOD_API_KEY env var is unset. Set it in your shell "
+            "(export RUNPOD_API_KEY=...) before invoking this demo."
+        )
+    if not endpoint_id:
+        failures.append(
+            "RunPod public endpoint_id is empty. Pass --endpoint-id <id> or set "
+            "RUNPOD_PUBLIC_ENDPOINT_ID in the environment."
+        )
+    return failures
+
+
+async def _run_pool_runpod_public_demo(
+    *,
+    pool_name: str,
+    endpoint_id: str,
+    prompt: str,
+    keep: bool,
+) -> dict[str, object]:
+    """Drive ``RunPodPublicEndpointPool`` end-to-end against the public endpoint.
+
+    Wraps POST ``/v2/{endpoint_id}/runsync`` with ``{"input": payload}``
+    in ``asyncio.to_thread`` so the orchestrator's event loop stays
+    unblocked. The handler contract is endpoint-specific; the demo
+    passes the prompt through as the ``prompt`` field by default but
+    accepts any nested shape via the same input dict.
+    """
+    from mahavishnu.pools import PoolConfig
+    from mahavishnu.pools.runpod_public_pool import RunPodPublicEndpointPool
+
+    config = PoolConfig(
+        name=pool_name,
+        pool_type="runpod_public",
+        extra_config={"endpoint_id": endpoint_id},
+    )
+    pool = RunPodPublicEndpointPool(config=config)
+    pool_id = await pool.start()
+    try:
+        result = await pool.execute_task({"prompt": prompt})
+    finally:
+        if not keep:
+            await pool.stop()
+    return {
+        "pool_id": pool_id,
+        "pool_type": "runpod_public",
+        "endpoint_id": endpoint_id,
+        "worker_id": result.get("worker_id"),
+        "status": result.get("status"),
+        "duration": result.get("duration"),
+        "output_preview": _truncate(result.get("output"), max_chars=200),
+    }
+
+
+@demo_app.command("pool-runpod-public")
+def demo_pool_runpod_public(
+    pool_name: str = typer.Option(
+        "demo-runpod-public",
+        "--name",
+        help="Pool name (informational; used in the pool_id).",
+    ),
+    endpoint_id: str = typer.Option(
+        os.getenv("RUNPOD_PUBLIC_ENDPOINT_ID", ""),
+        "--endpoint-id",
+        "-e",
+        help="RunPod Public Endpoint id (e.g. moonshot-kimi, granite-4-0-h-small; "
+        "or set RUNPOD_PUBLIC_ENDPOINT_ID).",
+    ),
+    prompt: str = typer.Option(
+        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="runpod_public"),
+        "--prompt",
+        "-p",
+        help="Prompt dispatched to the public endpoint.",
+    ),
+    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    timeout: int = typer.Option(
+        120,
+        "--timeout",
+        help="Max seconds for start + execute + stop. Public endpoints "
+        "cold-start on first call (typically 1-5s).",
+    ),
+) -> None:
+    """Run the RunPodPublicEndpointPool end-to-end against a Public Endpoint.
+
+    Sister substrate to ``pool-runpod``: this demo exercises the REST
+    surface (``POST /v2/{id}/runsync``) instead of the ``runpod`` SDK.
+    Suitable for first-party public endpoints whose handler contract
+    does not match the SDK body shape (Moonshot Kimi, IBM Granite,
+    etc.).
+    """
+    failures = _check_pool_runpod_public_preconditions(endpoint_id=endpoint_id)
+    if failures:
+        typer.echo("Precondition failure(s):", err=True)
+        for failure in failures:
+            typer.echo(f"  - {failure}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(
+        f"Pool: {pool_name} (type=runpod_public, endpoint_id={endpoint_id})"
+    )
+    typer.echo(f"Prompt: {prompt}")
+
+    try:
+        result = asyncio.run(
+            asyncio.wait_for(
+                _run_pool_runpod_public_demo(
+                    pool_name=pool_name,
+                    endpoint_id=endpoint_id,
+                    prompt=prompt,
+                    keep=keep,
+                ),
+                timeout=timeout,
+            )
+        )
+    except TimeoutError:
+        typer.echo(f"Timed out after {timeout}s", err=True)
+        raise typer.Exit(code=2) from None
+
+    typer.echo("\nRunPodPublicEndpointPool demo result:")
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
 @demo_app.command("pool-runpod")
 def demo_pool_runpod(
     pool_name: str = typer.Option(
