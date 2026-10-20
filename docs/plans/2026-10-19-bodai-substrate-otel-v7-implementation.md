@@ -18,7 +18,7 @@ title: "Bodai OTel Substrate v7 — Implementation Plan (PR-0a → PR-A8)"
 
 **Architecture:** ADR 017 makes oneiric the canonical persistence substrate, so the `spans_substrate` DDL lands in `oneiric/adapters/vector/duckdb_hot_store.py` (PR-0a) and every component inherits it. Akosha runs an `OTLPReceiver` bound to `:4317` (gRPC) + `:4318` (HTTP), validating each row before batch INSERT, quarantining bad rows to a local `_dlq_rows` table, and running a 6-hour retention sweep with archival. mcp-common ships a two-release bridge (`mcp-ecosystem` → dual-label → `bodai`) so the namespace flip can't strand any consumer.
 
-**Tech Stack:** Python 3.14, DuckDB 1.5.6 (verified against live per spec §5.1a), OpenTelemetry `opentelemetry-proto>=1.27` + `opentelemetry-exporter-otlp-proto-grpc>=1.27`, `yoyo-migrations` (raw SQL + sibling `.rollback.sql`), `prometheus_client` (`:9464`), `typer` (akosha CLI), `pytest` + `pytest-asyncio`.
+**Tech Stack:** Python 3.14, DuckDB 2.0.0-dev — the build oneiric/uv.lock pins (re-verified per spec §5.1a), OpenTelemetry `opentelemetry-proto>=1.27` + `opentelemetry-exporter-otlp-proto-grpc>=1.27`, (no migration framework — all DDL is inline `CREATE TABLE IF NOT EXISTS`), `prometheus_client` (`:9464`), `typer` (akosha CLI), `pytest` + `pytest-asyncio`.
 
 **Spec:** `docs/specs/2026-10-19-bodai-substrate-otel-v7.md` — the substrate design. The plan argues from the spec; the spec travels with it. Every task cites the spec section it implements.
 
@@ -29,7 +29,7 @@ These apply to every task. A task's requirements implicitly include this section
 - **Python 3.14 only.** `from __future__ import annotations` as the first non-comment line of every new source file, after any module docstring.
 - **No version bumps in any Bodai `pyproject.toml` without explicit user approval** (memory: `feedback-mcp-common-version-bump-is-user`). PR-0a's "bump oneiric minor" and the mcp-common pin in PR-A1/PR-A7 are **operator actions**. The plan implements the code and stages the commit; the operator bumps.
 - **Pre-1.0 no-backwards-compat** (memory: `feedback-no-backwards-compat-pre-1.0`): replace, don't extend; no deprecation windows. Governs PR-A8's `AKOSHA_SKIP_OTEL_INGESTER` retirement and the flat→nested feature-flag rename.
-- **DuckDB 1.5.6 constraints** (spec §5.1a — all verified live): no `WHERE` on `CREATE INDEX`; no `ALTER TABLE ADD CONSTRAINT`; no `COPY (…) TO ?` (filename param); no `ALTER TABLE ADD COLUMN … NOT NULL DEFAULT`. `UNIQUE` must be inline in `CREATE TABLE` for `ON CONFLICT` to resolve.
+- **DuckDB (2.0.0-dev) constraints** (spec §5.1a — all verified live): no `WHERE` on `CREATE INDEX`; no `ALTER TABLE ADD CONSTRAINT`; no `COPY (…) TO ?` (filename param); no `ALTER TABLE ADD COLUMN … NOT NULL DEFAULT`. `UNIQUE` must be inline in `CREATE TABLE` for `ON CONFLICT` to resolve.
 - **`result.rowcount`** for DML row counts on DuckDB cursors — never `result.fetchone()[0]` (raises `TypeError`).
 - **Prometheus convention:** `.labels(...).inc(amount=N)`. Never `inc(n=N)` — `n=` becomes an unlabeled kwarg.
 - **Retention filters on `received_at_unix_nano`** (server-populated, clock-trustworthy), never `start_time_unix_nano` (producer clock, drift-prone). Cardinal rule.
@@ -84,7 +84,7 @@ The spec (verified against live code 2026-10-19) has five assumptions that don't
   - `SubstrateSettings.telemetry__legacy_namespace_alias: str | None` — new field, default `None`
   - `FastMCPOpenTelemetryMiddleware(service_name, *, environment="production", service_namespace="oneiric-substrate", legacy_namespace: str | None = None)` — note the **default changes** from `"mcp-ecosystem"` to `"oneiric-substrate"`, matching the substrate setting
   - When `legacy_namespace is not None`, `_span_attributes` returns an extra key `namespace.legacy_alias: str`
-  Task 5 (akosha receiver) passes both values from oneiric's settings; Task 12 (flip) drops the alias.
+  Task 5 (akosha receiver) passes both values from oneiric's settings; Task 10 (flip) drops the alias.
 
 - [ ] **Step 1: Write the failing oneiric settings test**
 
@@ -311,7 +311,7 @@ from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore
 
 @pytest.fixture
 def store(tmp_path):
-    return DuckdbHotStore(db_path=tmp_path / "test.duckdb", embedding_dim=4)
+    return DuckdbHotStore(database_path=tmp_path / "test.duckdb", embedding_dim=4)
 
 
 def test_spans_substrate_created_on_initialize(store: DuckdbHotStore) -> None:
@@ -335,7 +335,7 @@ async def test_table_exists_false_for_absent_table(store: DuckdbHotStore) -> Non
 @pytest.mark.asyncio
 async def test_unique_constraint_is_declared_inline(store: DuckdbHotStore) -> None:
     """ON CONFLICT (trace_id, span_id) requires a UNIQUE CONSTRAINT, not a
-    UNIQUE INDEX — DuckDB 1.5.6 raises NotImplementedException for
+    UNIQUE INDEX — DuckDB (2.0.0-dev) raises NotImplementedException for
     ALTER TABLE ADD CONSTRAINT (spec §5.1a)."""
     await store.initialize()
     rows = store.conn.execute(
@@ -379,7 +379,7 @@ Add after `initialize()` ends (line 185, after `logger.info("Hot store initializ
         """Return True if `name` is a table in the current database.
 
         Used by consumers (e.g. akosha's OTLPReceiver.start) to fail loud
-        when the substrate has not been initialized. DuckDB 1.5.6 does not
+        when the substrate has not been initialized. DuckDB (2.0.0-dev) does not
         accept a parameter marker in the duckdb_tables filter, so the name
         is escaped by comparison rather than bound.
         """
@@ -486,7 +486,7 @@ con.execute(\"INSERT INTO spans_substrate (span_id, trace_id, service_name, serv
 print('rowcount:', con.execute('SELECT COUNT(*) FROM spans_substrate').fetchone()[0])
 "`
 
-Expected: prints `duckdb 1.5.6`, lists `spans_substrate`, prints `rowcount: 1`. If the DuckDB version differs from 1.5.6, stop and re-verify the DDL against the spec §5.1a footer before proceeding — the spec's DDL was verified against 1.5.6 specifically.
+Expected: prints the duckdb version oneiric pins, lists `spans_substrate`, prints `rowcount: 1`. As of 2026-10-20 that version is `2.0.0.dev2610192346`. If it differs, run `mahavishnu/scripts/verify_otel_ddl.py` — not this ad-hoc snippet — and reconcile against the spec §5.1a footer before proceeding. `result.rowcount` is version-sensitive (it returned `-1` on 1.5.6), so a `rowcount: 1` that prints as `-1` means the pin moved back to an older DuckDB and the sweep in Task 7 must not trust `rowcount`.
 
 - [ ] **Step 8: Run the existing oneiric hot-store suite for regressions**
 
@@ -504,10 +504,13 @@ Adds the spans_substrate table (spec §5.1) alongside conversations in
 DuckdbHotStore.initialize(), plus spans_substrate_table /
 conversations_table class attributes and table_exists().
 
-DDL verified live against duckdb 1.5.6 on 2026-10-19. uq_span_identity
-UNIQUE (trace_id, span_id) is declared INLINE — ALTER TABLE ADD
-CONSTRAINT raises NotImplementedException on 1.5.6, and ON CONFLICT
+DDL verified live against the duckdb oneiric/uv.lock pins
+(2.0.0.dev2610192346) on 2026-10-20; re-verified with mahavishnu's
+scripts/verify_otel_ddl.py, 12 assertions, 0 drift.
+uq_span_identity UNIQUE (trace_id, span_id) is declared INLINE — ALTER
+TABLE ADD CONSTRAINT is unsupported (DependencyException), and ON CONFLICT
 (trace_id, span_id) only resolves against a CONSTRAINT, not an INDEX.
+Note DuckDB stores it as spans_substrate_trace_id_span_id_key.
 
 All four ordering indexes key on received_at_unix_nano DESC (the
 server-populated column), per the spec's cardinal rule.
@@ -552,7 +555,7 @@ Create `docs/feature-tracking/otel-spans-substrate-ddl.md` from the template wit
   - `clear_shared_services()` nils all three globals
   - `opentelemetry-proto>=1.27` and `opentelemetry-exporter-otlp-proto-grpc>=1.27` in `[project.dependencies]`
   - `setup_telemetry(service_name, environment, otlp_endpoint=None, enable_console_export=False, sample_rate=1.0, *, service_namespace: str | None = None, legacy_namespace: str | None = None) -> tuple[Tracer, Meter]` — the two new params are keyword-only with `None` defaults so existing call sites keep compiling
-  Task 5's lifespan calls `set_shared_otel_receiver(receiver)`. Task 14 removes the `legacy_namespace` param.
+  Task 5's lifespan calls `set_shared_otel_receiver(receiver)`. Task 12 removes the `legacy_namespace` param.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -787,7 +790,7 @@ Update the call site at `akosha/mcp/server.py:466` to pass the live values:
 ```python
         tracer, meter = setup_telemetry(
             service_name="akosha",
-            environment=settings.deployment.environment,
+            environment=settings.environment,
             service_namespace=settings.telemetry__service_namespace,
             legacy_namespace=settings.telemetry__legacy_namespace_alias,
         )
@@ -868,7 +871,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
   ) -> tuple[int, int]:
       """Returns (inserted_count, deduped_count)."""
   ```
-  `deduped_count` = `len(rows) - inserted_count`. Task 5's `_handle_batch` and Task 12's canary both call this.
+  `deduped_count` = `len(rows) - inserted_count`. Task 5's `_handle_batch` and Task 10's canary both call this.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -903,7 +906,7 @@ def _row(span_id: str, trace_id: str = "t1") -> dict:
 
 @pytest.fixture
 async def store(tmp_path):
-    hs = HotStore(db_path=tmp_path / "t.duckdb")
+    hs = HotStore(database_path=tmp_path / "t.duckdb")
     await hs.initialize()
     return hs
 
@@ -1003,7 +1006,7 @@ Add to `HotStore`:
         return (inserted, len(rows) - inserted)
 ```
 
-**Critical:** `RETURNING` must be fetched before the cursor is released — `fetchall()` inside the lock, not after. DuckDB 1.5.6 returns only the rows that passed the `ON CONFLICT` filter, which is exactly the `inserted` count we need.
+**Critical:** `RETURNING` must be fetched before the cursor is released — `fetchall()` inside the lock, not after. DuckDB (2.0.0-dev) returns only the rows that passed the `ON CONFLICT` filter, which is exactly the `inserted` count we need.
 
 - [ ] **Step 5: Run test to verify it passes**
 
@@ -1017,7 +1020,7 @@ Expected: PASS.
 
 - [ ] **Step 7: Run the orphan audit**
 
-Run: `cd /Users/les/Projects/akosha && .venv/bin/python scripts/audit_orphans.py 2>/dev/null || python scripts/audit_orphans.py`
+Run: `/Users/les/Projects/mahavishnu/.venv/bin/python /Users/les/Projects/mahavishnu/scripts/audit_orphans.py` — the orphan audit lives in mahavishnu, not akosha. Akosha has its own `scripts/` directory but no `audit_orphans.py` in it. Run this from the mahavishnu repo root so its git-index scan covers the changed files.
 Expected: no zero-caller symbols. `insert_spans_substrate` has a test caller; if the audit flags it, Task 5 (same branch) is the consumer — note that in the commit message rather than suppressing the finding.
 
 - [ ] **Step 8: Commit**
@@ -1039,7 +1042,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
 #### Integration Contract (Task 4)
-- **Triggered from**: Task 5's `_handle_batch`; Task 12's canary emitter; Task 3's installed oneiric dependency.
+- **Triggered from**: Task 5's `_handle_batch`; Task 10's canary emitter; Task 3's installed oneiric dependency.
 - **Returns to / updates**: `akosha/storage/hot_store.py` — new `_SPAN_COLUMNS` tuple + `insert_spans_substrate` method.
 - **Demonstrable by**: `pytest tests/unit/storage/test_insert_spans_substrate.py -v` — 5 passing.
 - **Rollback signal**: `test_partial_insert_mixed` returns `(2, 0)` instead of `(1, 1)` → `ON CONFLICT` is not matching the constraint (the `trace_id`/`span_id` ordering in the column list must match the constraint's).
@@ -1066,7 +1069,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
   - `async start() -> None` (raises `LifecycleError("spans_substrate_missing")` if the table is absent)
   - `async stop() -> None`
   - `async _handle_batch(batch: ExportTraceServiceRequest) -> BatchResult`
-  - `async run_canary_emitter(stop_event: asyncio.Event) -> None` — **stub body at this task** (Task 12 swaps it)
+  - `async run_canary_emitter(stop_event: asyncio.Event) -> None` — **stub body at this task** (Task 10 swaps it)
   - `async run_retention_sweep(stop_event: asyncio.Event) -> None`
   - Error classes: `ReceiverError`, `BatchRejected`, `RowValidationError`, `DLQWriteError`, `PreValidateException`
   - `BatchResult(ok, deduped, rejected, dlq_failed, errored)` dataclass
@@ -1089,7 +1092,7 @@ from oneiric.core.lifecycle import LifecycleError
 
 @pytest.mark.asyncio
 async def test_start_raises_when_substrate_absent(tmp_path) -> None:
-    hs = HotStore(db_path=tmp_path / "bare.duckdb")
+    hs = HotStore(database_path=tmp_path / "bare.duckdb")
     await hs.initialize()
     # Drop the substrate to simulate "receiver started before DDL ran".
     hs.conn.execute("DROP TABLE spans_substrate")
@@ -1140,7 +1143,7 @@ def _span(span_id: str, trace_id: str = "t1") -> trace_pb2.Span:
 
 @pytest.mark.asyncio
 async def test_handle_batch_inserts(tmp_path) -> None:
-    hs = HotStore(db_path=tmp_path / "e2e.duckdb")
+    hs = HotStore(database_path=tmp_path / "e2e.duckdb")
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
 
@@ -1157,7 +1160,7 @@ async def test_handle_batch_inserts(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_handle_batch_dedupes(tmp_path) -> None:
-    hs = HotStore(db_path=tmp_path / "e2e2.duckdb")
+    hs = HotStore(database_path=tmp_path / "e2e2.duckdb")
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
     batch = trace_service_pb2.ExportTraceServiceRequest()
@@ -1173,7 +1176,7 @@ async def test_handle_batch_dedupes(tmp_path) -> None:
 @pytest.mark.asyncio
 async def test_normalize_attributes_assigns(tmp_path) -> None:
     """Spec §9.1: the normalizer must ASSIGN, not read-and-discard."""
-    hs = HotStore(db_path=tmp_path / "norm.duckdb")
+    hs = HotStore(database_path=tmp_path / "norm.duckdb")
     await hs.initialize()
     rx = OTLPReceiver(hot_store=hs)
     out = rx.normalize_attributes({
@@ -1269,7 +1272,6 @@ class OTLPReceiver:
         self.settings = settings
         self._running = False
         self.canary_state: CanaryState = CanaryState()
-        self._init_metrics()
 
     async def start(self) -> None:
         """Bind listeners. Fail loud when the substrate is missing."""
@@ -1277,6 +1279,7 @@ class OTLPReceiver:
             self.hot_store.spans_substrate_table
         ):
             raise LifecycleError("spans_substrate_missing")
+        await self._ensure_operational_tables()
         await self._bind_grpc()
         await self._bind_http()
         await self._start_prometheus()
@@ -1289,9 +1292,57 @@ class OTLPReceiver:
         await self._close_listeners()
 ```
 
-`_init_metrics`, `_bind_grpc`, `_bind_http`, `_start_prometheus`, `_close_listeners` are the listener/metric plumbing; implement them against the OTLP gRPC + HTTP receivers with `prometheus_client.start_http_server(PROMETHEUS_PORT)`. The metric names must match the spec §11.3 contract verbatim (prefixed `telemetry_receiver_` when scraped by Prometheus).
+**Metrics are module-level, not per-instance.** Declare them at module scope in `otlp_receiver.py` against akosha's shared singleton registry, exactly as `akosha/observability/prometheus_metrics.py:117-137` does:
 
-`CanaryState` is defined in Task 12; at this task, declare the dataclass in `otlp_receiver.py` (it moves to `canary_watcher.py` in Task 12) so the attribute exists and the module imports:
+```python
+from akosha.observability.prometheus_metrics import get_metrics_registry
+
+_metric_receiver_started: Counter = Counter(
+    name="telemetry_receiver_started_total",
+    documentation="OTLP receiver start() calls that bound all listeners",
+    registry=get_metrics_registry(),
+)
+```
+
+Do **not** create metrics inside `__init__`. `get_metrics_registry()` returns a process-wide `CollectorRegistry`, so a second `OTLPReceiver` (the lifespan test constructs one, then the real server constructs another) would raise `ValueError: Duplicated timeseries in CollectorRegistry`. Module-level construction happens once at import.
+
+`_bind_grpc`, `_bind_http`, `_start_prometheus`, `_close_listeners` are the listener plumbing; implement them against the OTLP gRPC + HTTP receivers with `prometheus_client.start_http_server(PROMETHEUS_PORT)`. The metric names must match the spec §11.3 contract verbatim (prefixed `telemetry_receiver_` when scraped by Prometheus).
+
+`_ensure_operational_tables` creates the two akosha-owned operational tables inline. There is no migration framework in this repo — PR-A2 was dropped (see Deferred items) — so every table is created with `CREATE TABLE IF NOT EXISTS` at its point of first use, which is idempotent and runs on every boot:
+
+```python
+async def _ensure_operational_tables(self) -> None:
+    """Create the DLQ and sweep-state tables.
+
+    These are akosha's own operational tables, not substrate — ADR 017 puts
+    `spans_substrate` in oneiric, but the DLQ and the sweep advisory lock are
+    receiver state that belongs beside the receiver.
+    """
+    for ddl in (
+        """
+        CREATE TABLE IF NOT EXISTS _dlq_rows (
+            rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reason      TEXT,
+            field       TEXT,
+            row_json    JSON,
+            trace_id    TEXT,
+            span_id     TEXT
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS _akosha_otel_receiver_state (
+            component                    TEXT PRIMARY KEY,
+            last_applied_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sweep_lock_expires_unix_nano BIGINT
+        )
+        """,
+    ):
+        await self.hot_store.conn.execute(ddl)
+```
+
+Without this, `_dlq_insert` raises `CatalogException: Table with name _dlq_rows does not exist` on the first rejected row — a failure that only appears once the receiver has already rejected something, which is the worst time to discover it.
+
+`CanaryState` is defined in Task 10; at this task, declare the dataclass in `otlp_receiver.py` (it moves to `canary_watcher.py` in Task 10) so the attribute exists and the module imports:
 
 ```python
 @dataclass
@@ -1414,10 +1465,10 @@ async def _handle_batch(self, batch) -> BatchResult:
 
 ```python
 async def run_canary_emitter(self, stop_event: asyncio.Event) -> None:
-    """Stub at this task; Task 12 swaps the body for the real emitter.
+    """Stub at this task; Task 10 swaps the body for the real emitter.
 
     Present as a no-op so the lifespan compiles against the spec §6
-    snippet. Between this task and Task 12, canary writes succeed
+    snippet. Between this task and Task 10, canary writes succeed
     silently and the sweep_retention_late alert correctly does NOT fire
     because sweep_first_started_unix_nano == 0.
     """
@@ -1425,9 +1476,9 @@ async def run_canary_emitter(self, stop_event: asyncio.Event) -> None:
 
 
 async def run_retention_sweep(self, stop_event: asyncio.Event) -> None:
-    """Sweep loop. Task 8 implements the body (cutoff, COPY, DELETE).
+    """Sweep loop. Task 7 implements the body (cutoff, COPY, DELETE).
 
-    Task 6 stubs it to keep the lifespan wiring testable before the
+    Task 5 stubs it to keep the lifespan wiring testable before the
     settings keys exist.
     """
     return
@@ -1492,7 +1543,7 @@ Before restarting the collector, run this to confirm nothing is still pointed at
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-echo "=== dashboards ==="; git grep -n ':4318' -- 'config/grafana/dashboards/bodai/' || echo "clean"
+echo "=== dashboards ==="; git grep -n ':4318' -- 'monitoring/dashboards/' || echo "clean"
 echo "=== collector configs ==="; git grep -n ':4318' -- 'config/*alloy*.yaml' 'config/otel-collector-config.yaml' || echo "clean"
 echo "=== settings ==="; git grep -n '4318' -- 'settings/' || echo "clean"
 ```
@@ -1518,7 +1569,7 @@ zeroes throughput (clean rows still INSERT). normalize_attributes
 ASSIGNS rather than reading-and-discarding, per spec §9.1.
 
 run_canary_emitter and run_retention_sweep ship as stubs so the
-lifespan compiles; Task 12 swaps the canary body and Task 8 the sweep body.
+lifespan compiles; Task 10 swaps the canary body and Task 7 the sweep body.
 
 stop_event is pinned at lifespan scope and passed as an explicit
 positional arg to both tasks, and is set() BEFORE the gather teardown.
@@ -1528,7 +1579,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ```bash
 cd /Users/les/Projects/mahavishnu
-git add config/otel-collector-config.yaml 'config/grafana/dashboards/bodai/' 'settings/'
+git add config/otel-collector-config.yaml 'monitoring/dashboards/' 'settings/'
 git commit -m "chore(mahavishnu): move collector off :4317/:4318 to :14317/:14318
 
 The akosha OTLPReceiver takes :4317 (gRPC) and :4318 (HTTP). The
@@ -1547,345 +1598,22 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - **Triggered from**: `akosha mcp start` (lifespan); any OTLP producer POSTing to `:4318/v1/traces` or the gRPC `:4317`.
 - **Returns to / updates**: `akosha/observability/otlp_receiver.py` (new module), `akosha/mcp/server.py` (lifespan), `mahavishnu/config/otel-collector-config.yaml` (ports).
 - **Demonstrable by**: `pytest tests/integration/test_otlp_receiver_e2e.py tests/integration/test_substrate_lifespan_order.py -v` — all passing; `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver_started`.
-- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `akosha hot-store inspect --table spans_substrate` once Task 7's CLI lands, or `python -c "import duckdb; ..."` in the interim.
+- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `akosha hot-store inspect --table spans_substrate` once Task 6's CLI lands, or `python -c "import duckdb; ..."` in the interim.
 - **Observability added**: `telemetry_receiver_started_total`, `telemetry_receiver_batch_inserted{outcome}`, `telemetry_receiver_row_rejected{reason,field}`, `telemetry_receiver_dlq_insert_failed{reason}`, `telemetry_receiver_batch_size` histogram — all on `:9464`.
 
 ---
 
-## Task 6 (PR-A2): akosha — yoyo migrations + `migrations` CLI group
-
-**Repo:** `/Users/less/Projects/akosha`. Same branch as Task 4/5/6. *(typo in path above — use `/Users/les/Projects/akosha`)*
-
-**Files:**
-- Create: `akosha/migrations/versions/0001.akosha-otel-receiver-state.sql`
-- Create: `akosha/migrations/versions/0001.akosha-otel-receiver-state.rollback.sql`
-- Create: `akosha/migrations/versions/0002.dlq-rows.sql`
-- Create: `akosha/migrations/versions/0002.dlq-rows.rollback.sql`
-- Modify: `akosha/pyproject.toml` (add `yoyo-migrations` dep)
-- Modify: `akosha/cli.py` (add `migrations_app`)
-- Test: `akosha/tests/integration/test_yoyo_migrations_e2e.py`
-
-**Interfaces:**
-- Consumes: nothing (independent of Task 6's code; provides the tables `_dlq_insert` writes to).
-- Produces:
-  - Tables `_akosha_otel_receiver_state`, `_dlq_rows` (both akosha-local per spec §5.3)
-  - CLI `akosha migrations {up,down,status,list}`
-  Task 5's `_dlq_insert` writes to `_dlq_rows`. Task 8's sweep reads `_dlq_rows` for its own retention.
-
-- [ ] **Step 1: Write the failing test**
-
-Create `/Users/les/Projects/akosha/tests/integration/test_yoyo_migrations_e2e.py`:
-
-```python
-from __future__ import annotations
-
-import pytest
-
-from akosha.migrations.runner import apply_migrations, revert_last, applied_revisions
-
-
-@pytest.fixture
-def db(tmp_path):
-    return str(tmp_path / "mig.duckdb")
-
-
-def test_fresh_up_creates_both_tables(db: str) -> None:
-    apply_migrations(db)
-    import duckdb
-    con = duckdb.connect(db, read_only=True)
-    names = {
-        r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()
-    }
-    assert {"_akosha_otel_receiver_state", "_dlq_rows"} <= names
-    con.close()
-
-
-def test_up_is_idempotent(db: str) -> None:
-    apply_migrations(db)
-    apply_migrations(db)  # must not raise
-    assert set(applied_revisions(db)) == {"0001", "0002"}
-
-
-def test_rollback_sibling_reverts_0002(db: str) -> None:
-    apply_migrations(db)
-    revert_last(db)
-    import duckdb
-    con = duckdb.connect(db, read_only=True)
-    names = {
-        r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()
-    }
-    assert "_dlq_rows" not in names
-    assert "_akosha_otel_receiver_state" in names
-    con.close()
-
-
-def test_down_is_idempotent(db: str) -> None:
-    apply_migrations(db)
-    revert_last(db)
-    revert_last(db)  # second revert is a no-op, must not raise
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_yoyo_migrations_e2e.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'akosha.migrations'`
-
-- [ ] **Step 3: Write the four migration files**
-
-`akosha/migrations/versions/0001.akosha-otel-receiver-state.sql`:
-
-```sql
--- depends: -
-
-CREATE TABLE IF NOT EXISTS _akosha_otel_receiver_state (
-    component       TEXT PRIMARY KEY,
-    schema_version  INTEGER NOT NULL,
-    last_applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-`akosha/migrations/versions/0001.akosha-otel-receiver-state.rollback.sql`:
-
-```sql
-DROP TABLE IF EXISTS _akosha_otel_receiver_state;
-```
-
-`akosha/migrations/versions/0002.dlq-rows.sql`:
-
-```sql
--- depends: -
-
-CREATE TABLE IF NOT EXISTS _dlq_rows (
-    rejected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reason      TEXT      NOT NULL,
-    field       TEXT,
-    row_json    JSON      NOT NULL,
-    trace_id    TEXT,
-    span_id     TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_dlq_rows_recent ON _dlq_rows(rejected_at DESC);
-```
-
-`akosha/migrations/versions/0002.dlq-rows.rollback.sql`:
-
-```sql
-DROP TABLE IF EXISTS _dlq_rows;
-```
-
-yoyo's convention is a sibling `<id>.<name>.rollback.sql`. Inline `-- rollback:` comments are not a yoyo feature.
-
-- [ ] **Step 4: Add `yoyo-migrations` to dependencies**
-
-In `akosha/pyproject.toml` `[project.dependencies]`, add `"yoyo-migrations>=1.4"`. Then:
-
-Run: `cd /Users/les/Projects/akosha && uv pip install 'yoyo-migrations>=1.4'`
-
-- [ ] **Step 5: Write the migration runner**
-
-Create `akosha/migrations/__init__.py` (empty) and `akosha/migrations/runner.py`:
-
-```python
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Any
-
-MIGRATIONS_DIR = Path(__file__).parent / "versions"
-
-
-def _backend(db: str) -> Any:
-    import duckdb
-
-    con = duckdb.connect(db)
-    for ddl in (
-        "CREATE TABLE IF NOT EXISTS _yoyo_migration ("
-        "  id TEXT PRIMARY KEY,"
-        "  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-        "CREATE TABLE IF NOT EXISTS _yoyo_log ("
-        "  id TEXT NOT NULL,"
-        "  operation TEXT NOT NULL,"
-        "  execution_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-    ):
-        con.execute(ddl)
-    return con
-
-
-def apply_migrations(db: str, target: str = "head") -> list[str]:
-    """Apply pending .sql files in id order. Idempotent."""
-    con = _backend(db)
-    applied = {
-        r[0] for r in con.execute("SELECT id FROM _yoyo_migration").fetchall()
-    }
-    newly: list[str] = []
-    for sql_path in sorted(MIGRATIONS_DIR.glob("*.sql")):
-        if sql_path.name.endswith(".rollback.sql"):
-            continue
-        mig_id = sql_path.name.split(".")[0]
-        if mig_id in applied:
-            continue
-        for statement in sql_path.read_text().split(";"):
-            if statement.strip() and not statement.strip().startswith("--"):
-                con.execute(statement)
-        con.execute("INSERT INTO _yoyo_migration (id) VALUES (?)", [mig_id])
-        con.execute(
-            "INSERT INTO _yoyo_log (id, operation) VALUES (?, 'apply')", [mig_id]
-        )
-        newly.append(mig_id)
-    con.close()
-    return newly
-
-
-def revert_last(db: str) -> str | None:
-    """Revert the most recent applied migration via its sibling rollback."""
-    con = _backend(db)
-    row = con.execute(
-        "SELECT id FROM _yoyo_migration ORDER BY applied_at DESC, id DESC LIMIT 1"
-    ).fetchone()
-    if row is None:
-        con.close()
-        return None
-    mig_id = row[0]
-    rollback = MIGRATIONS_DIR / f"{mig_id}.rollback.sql"
-    if rollback.exists():
-        for statement in rollback.read_text().split(";"):
-            if statement.strip() and not statement.strip().startswith("--"):
-                con.execute(statement)
-    con.execute("DELETE FROM _yoyo_migration WHERE id = ?", [mig_id])
-    con.execute(
-        "INSERT INTO _yoyo_log (id, operation) VALUES (?, 'revert')", [mig_id]
-    )
-    con.close()
-    return mig_id
-
-
-def applied_revisions(db: str) -> list[str]:
-    con = _backend(db)
-    ids = sorted(r[0] for r in con.execute("SELECT id FROM _yoyo_migration").fetchall())
-    con.close()
-    return ids
-```
-
-The `split(";")` approach is adequate for these four files (no semicolons inside string literals or function bodies). If a future migration adds a `;` inside a literal, switch to `yoyo.read_sql_query` from the installed package.
-
-- [ ] **Step 6: Run test to verify it passes**
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_yoyo_migrations_e2e.py -v`
-Expected: PASS — 4 tests.
-
-- [ ] **Step 7: Add the `migrations` CLI group**
-
-In `akosha/cli.py`, after the existing `mcp_app` registration (line 229-230):
-
-```python
-migrations_app = typer.Typer(help="yoyo SQL migrations")
-
-
-@migrations_app.command("up")
-def migrations_up(
-    revision: str = typer.Option("head", help="target revision"),
-) -> None:
-    """Apply pending SQL migrations (default: head)."""
-    from akosha.migrations.runner import apply_migrations
-    db = _resolve_hot_store_path()
-    newly = apply_migrations(db)
-    typer.echo(f"applied: {newly or 'nothing (already up to date)'}")
-
-
-@migrations_app.command("down")
-def migrations_down(
-    revision: str = typer.Option("-1", help="relative target"),
-) -> None:
-    """Revert the most recent applied migration via its sibling rollback."""
-    from akosha.migrations.runner import revert_last
-    db = _resolve_hot_store_path()
-    typer.echo(f"reverted: {revert_last(db) or 'nothing (none applied)'}")
-
-
-@migrations_app.command("status")
-def migrations_status() -> None:
-    """Print applied vs available migrations."""
-    from akosha.migrations.runner import MIGRATIONS_DIR, applied_revisions
-    db = _resolve_hot_store_path()
-    applied = set(applied_revisions(db))
-    for sql in sorted(MIGRATIONS_DIR.glob("*.sql")):
-        if sql.name.endswith(".rollback.sql"):
-            continue
-        mig_id = sql.name.split(".")[0]
-        typer.echo(f"{'applied' if mig_id in applied else 'pending'}  {sql.name}")
-
-
-@migrations_app.command("list")
-def migrations_list() -> None:
-    """Enumerate available migration files."""
-    from akosha.migrations.runner import MIGRATIONS_DIR
-    for sql in sorted(MIGRATIONS_DIR.glob("*.sql")):
-        typer.echo(sql.name)
-
-
-app.add_typer(migrations_app, name="migrations")
-```
-
-`_resolve_hot_store_path()` is not yet written — Task 7 adds it alongside the `admin`/`otel` CLI group (both need it). For this task, add it now in a small helper near `mcp_app`:
-
-```python
-def _resolve_hot_store_path() -> str:
-    """Return the DuckDB file path the HotStore is configured to use."""
-    from akosha.config import get_settings
-    return str(get_settings().hotstore.db_path)
-```
-
-Read `akosha/config.py` (or wherever akosha reads settings) for the actual settings accessor and path field — the verified repo has `akosha/storage/path_resolver.py`, so the correct resolver may live there.
-
-**Namespace safety:** the pre-existing `cli/commands/migrate.py` Click group (`data-migrate`) must keep its own registration name. Do not rename it to `migrations`.
-
-- [ ] **Step 8: Run test to verify the CLI registers**
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/akosha migrations --help`
-Expected: lists `up`, `down`, `status`, `list`.
-
-- [ ] **Step 9: Commit**
-
-```bash
-cd /Users/les/Projects/akosha
-git add akosha/migrations/ akosha/cli.py akosha/pyproject.toml \
-  tests/integration/test_yoyo_migrations_e2e.py
-git commit -m "feat(akosha): yoyo migrations for receiver state + DLQ (PR-A2)
-
-Four SQL files (two migrations + two sibling .rollback.sql) plus a
-runner and the `akosha migrations {up,down,status,list}` Typer group.
-
-Both tables are akosha-local by design (spec §5.3), NOT substrate-managed:
-_akosha_otel_receiver_state is component-internal metadata; _dlq_rows is
-dead-letter storage for rows the substrate already rejected. ADR 017's
-single-source-of-truth claim covers spans_substrate and conversations
-only.
-
-The pre-existing Click `data-migrate` group keeps its own registration
-name — no collision with the new `migrations` group.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
-```
-
-#### Integration Contract (Task 6)
-- **Triggered from**: `akosha migrations up` (CLI, and at deploy); `akosha/migrations/runner.py::apply_migrations` called by Task 5's `_dlq_insert` path.
-- **Returns to / updates**: `akosha/migrations/versions/*.sql` (4 files), `akosha/migrations/runner.py` (new), `akosha/cli.py` (`migrations_app`).
-- **Demonstrable by**: `pytest tests/integration/test_yoyo_migrations_e2e.py -v` — 4 passing; `akosha migrations status` prints `applied 0001.akosha-otel-receiver-state.sql` + `applied 0002.dlq-rows.sql`.
-- **Rollback signal**: `test_fresh_up_creates_both_tables` fails → a migration file's SQL does not execute on DuckDB 1.5.6; check for a `;` inside a literal or a JSON type the version rejects.
-- **Observability added**: `_yoyo_log` rows record every apply/revert with a timestamp.
-
----
-
-## Task 7: akosha — `admin otel retention` CLI group
+## Task 6: akosha — `admin otel retention` CLI group
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
 **Files:**
 - Modify: `akosha/cli.py` (add `admin_app` / `otel_app` / `retention_app`)
-- Modify: `akosha/settings/akosha.yaml` (add the `otel.spans_substrate` block)
+- Modify: `settings/akosha.yaml` (add the `otel.spans_substrate` block)
 - Test: `akosha/tests/unit/cli/test_admin_otel_retention_cli.py`
 
 **Interfaces:**
-- Consumes: `akosha.migrations.runner` (Task 6) for the `migrations` sibling; settings via akosha's oneiric-layered config.
+- Consumes: settings via akosha's oneiric-layered config (`get_config()` → `AkoshaConfig`, `akosha/config.py:608`); the `_dlq_rows` table created inline by Task 5's `OTLPReceiver.start()`.
 - Produces:
   - `akosha admin otel retention manual-run [--retention-days N] [--dry-run|--apply --confirm PHRASE]`
   - `akosha admin otel retention sweep-once`
@@ -1942,7 +1670,7 @@ Expected: FAIL with `ExitCode: 2` (`No such command 'admin'`)
 
 - [ ] **Step 3: Add the settings block**
 
-In `akosha/settings/akosha.yaml`, add at top level (sibling of `otel.receiver`, **not** nested under it):
+In `settings/akosha.yaml`, add at top level (sibling of `otel.receiver`, **not** nested under it):
 
 ```yaml
 otel:
@@ -1960,7 +1688,7 @@ otel:
     archival_target: null
 ```
 
-If an `otel:` block already exists, merge into it rather than creating a second one. The `known_mcp_servers` roster is Task 10's input; it is declared here so the settings shape is in one place.
+If an `otel:` block already exists, merge into it rather than creating a second one. The `known_mcp_servers` roster is Task 9's input; it is declared here so the settings shape is in one place.
 
 - [ ] **Step 4: Implement the retention CLI group**
 
@@ -1988,7 +1716,7 @@ BLESSED_CONFIRM_PHRASES: dict[int, str] = {
 
 def _retention_settings() -> Any:
     from akosha.config import get_settings
-    return get_settings().otel.spans_substrate
+    return get_config().otel.spans_substrate
 
 
 def _validate_archival_target(target: str | None) -> None:
@@ -2051,7 +1779,7 @@ def retention_sweep_once() -> None:
     from akosha.observability.otlp_receiver import OTLPReceiver
     from akosha.storage.hot_store import HotStore
     s = _retention_settings()
-    hs = HotStore(db_path=_resolve_hot_store_path())
+    hs = HotStore(database_path=_resolve_hot_store_path())
     OTLPReceiver(hot_store=hs, settings=s).run_retention_sweep_once(s)
 
 
@@ -2065,7 +1793,7 @@ def retention_config_set(
     proposed = retention_days if retention_days is not None else current.retention_days
     typer.echo("DRY RUN — no file written.")
     typer.echo(f"otel.spans_substrate.retention_days: {current.retention_days} -> {proposed}")
-    typer.echo("Re-run with --apply to write akosha/settings/akosha.yaml.")
+    typer.echo("Re-run with --apply to write settings/akosha.yaml.")
 
 
 @retention_app.command("cardinality-report")
@@ -2089,7 +1817,7 @@ admin_app.add_typer(otel_app, name="otel")
 app.add_typer(admin_app, name="admin")
 ```
 
-`_execute_sweep` is Task 8's body — extract the sweep logic into a module-level `async def run_sweep_once(settings)` on `OTLPReceiver` and call it here. To keep this task independently testable, define `_execute_sweep(retention_days)` in this task as a thin wrapper that opens the HotStore and calls `OTLPReceiver.run_retention_sweep_once`; Task 8 fills in that method's real body. If the method does not exist yet, stub it in Task 5 alongside the other stubs.
+`_execute_sweep` is Task 7's body — extract the sweep logic into a module-level `async def run_sweep_once(settings)` on `OTLPReceiver` and call it here. To keep this task independently testable, define `_execute_sweep(retention_days)` in this task as a thin wrapper that opens the HotStore and calls `OTLPReceiver.run_retention_sweep_once`; Task 7 fills in that method's real body. If the method does not exist yet, stub it in Task 5 alongside the other stubs.
 
 - [ ] **Step 5: Run test to verify it passes**
 
@@ -2105,7 +1833,7 @@ Expected: all three top-level groups present, and `data-migrate` still present u
 
 ```bash
 cd /Users/les/Projects/akosha
-git add akosha/cli.py akosha/settings/akosha.yaml tests/unit/cli/test_admin_otel_retention_cli.py
+git add akosha/cli.py settings/akosha.yaml tests/unit/cli/test_admin_otel_retention_cli.py
 git commit -m "feat(akosha): admin otel retention CLI group (spec §11.4a)
 
 Ships admin/otel/retention Typer sub-apps plus the canonical
@@ -2128,16 +1856,16 @@ it — the sweep body reads settings.spans_substrate.*.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 7)
-- **Triggered from**: operator shell at 3am following a runbook in spec §11.1.5/6/7; the `otel.spans_substrate` settings block read by Task 8's sweep.
-- **Returns to / updates**: `akosha/cli.py` (3 new Typer sub-apps), `akosha/settings/akosha.yaml` (`otel.spans_substrate` block).
+#### Integration Contract (Task 6)
+- **Triggered from**: operator shell at 3am following a runbook in spec §11.1.5/6/7; the `otel.spans_substrate` settings block read by Task 7's sweep.
+- **Returns to / updates**: `akosha/cli.py` (3 new Typer sub-apps), `settings/akosha.yaml` (`otel.spans_substrate` block).
 - **Demonstrable by**: `pytest tests/unit/cli/test_admin_otel_retention_cli.py -v` — 4 passing; `akosha admin otel retention cardinality-report` prints a row count.
 - **Rollback signal**: `akosha --help` no longer lists `data-migrate` → the new `migrations` group shadowed the pre-existing Click group (spec §11.4a namespace safety).
 - **Observability added**: none (operator-surface commands; the sweep they invoke emits the metrics).
 
 ---
 
-## Task 8 (PR-A3 follow-on): akosha — retention sweep body + advisory lock + archival
+## Task 7 (PR-A3 follow-on): akosha — retention sweep body + advisory lock + archival
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
@@ -2146,7 +1874,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Test: `akosha/tests/integration/test_spans_substrate_retention_sweep.py`
 
 **Interfaces:**
-- Consumes: `ARCHIVAL_TARGET_RE` and `_retention_settings` (Task 7), `HotStore` (Task 4), `_dlq_rows` (Task 6).
+- Consumes: `ARCHIVAL_TARGET_RE` and `_retention_settings` (Task 6), `HotStore` (Task 4), `_dlq_rows` (created inline in Task 5).
 - Produces:
   - `async OTLPReceiver.run_retention_sweep_once(settings) -> int` (deleted count)
   - `async OTLPReceiver.run_retention_sweep(stop_event)` — real body
@@ -2189,7 +1917,7 @@ class _S:
 
 @pytest.fixture
 async def rx(tmp_path):
-    hs = HotStore(db_path=tmp_path / "sweep.duckdb")
+    hs = HotStore(database_path=tmp_path / "sweep.duckdb")
     await hs.initialize()
     return OTLPReceiver(hot_store=hs, settings=_S())
 
@@ -2327,14 +2055,18 @@ async def _release_sweep_lock(self) -> None:
         )
 ```
 
-`_akosha_otel_receiver_state.last_applied_at` is `TIMESTAMP` per the Task 6 DDL; the parameter above passes a float epoch. Change the parameter to a `datetime` (`datetime.fromtimestamp(now, tz=UTC)`) to match the column type, or store the lock's own `sweep_lock_expires_unix_nano BIGINT` column — **preferred**, because a TIMESTAMP comparison against a marker row conflates "when the lock was taken" with "when this component last applied a migration", which are different facts. Add the column in Task 6's `0001` migration if it is not there:
+`_akosha_otel_receiver_state.last_applied_at` is `TIMESTAMP` per the DDL Task 5 creates inline; the parameter above passes a float epoch. Change the parameter to a `datetime` (`datetime.fromtimestamp(now, tz=UTC)`) to match the column type, or store the lock's own `sweep_lock_expires_unix_nano BIGINT` column — **preferred**, because a TIMESTAMP comparison against a marker row conflates "when the lock was taken" with "when this component last recorded state", which are different facts. Add the column to the inline `CREATE TABLE` in Task 5:
 
 ```sql
-ALTER TABLE _akosha_otel_receiver_state
-    ADD COLUMN sweep_lock_expires_unix_nano BIGINT;
+-- In OTLPReceiver.start(), alongside the other inline DDL:
+CREATE TABLE IF NOT EXISTS _akosha_otel_receiver_state (
+    component                   TEXT PRIMARY KEY,
+    last_applied_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sweep_lock_expires_unix_nano BIGINT
+);
 ```
 
-DuckDB 1.5.6 supports `ALTER TABLE ADD COLUMN` without constraints (spec §5.1a — only the `NOT NULL DEFAULT` form is rejected). If Task 6 already merged, add a `0003.sweep-lock.sql` migration instead.
+DuckDB supports `ALTER TABLE ADD COLUMN` without constraints, but that is irrelevant here: there is no migration framework (see Deferred items — PR-A2 was dropped), so every table this plan needs is created with `CREATE TABLE IF NOT EXISTS` at the point of first use. Inline DDL is idempotent and runs on every boot, so there is nothing to sequence.
 
 - [ ] **Step 5: Implement `run_retention_sweep_once`**
 
@@ -2361,10 +2093,10 @@ async def run_retention_sweep_once(self, settings: Any) -> int:
         target = getattr(settings, "archival_target", None)
         if target:
             try:
-                # v6: COPY path is INLINED, not parameterized — DuckDB 1.5.6
+                # v6: COPY path is INLINED, not parameterized — DuckDB (2.0.0-dev)
                 # rejects COPY (…) TO ? with
                 # "INTERNAL Error: Unsupported parameter type for filename".
-                # The path is regex-validated at settings-load (Task 7), so
+                # The path is regex-validated at settings-load (Task 6), so
                 # only safe paths reach here.
                 self.hot_store.conn.execute(
                     f"COPY (SELECT * FROM spans_substrate "
@@ -2382,7 +2114,7 @@ async def run_retention_sweep_once(self, settings: Any) -> int:
                 f"DELETE FROM spans_substrate WHERE received_at_unix_nano < {cutoff_ns}"
             )
             # v6: rowcount, NOT fetchone()[0] — a DML cursor raises TypeError
-            # on fetchone()[0] in DuckDB 1.5.6.
+            # on fetchone()[0] in DuckDB (2.0.0-dev).
             deleted = result.rowcount
             self._metric_sweep_deleted.inc(amount=deleted)
         # else: DELETE SKIPPED. Rows stay; the next cycle retries archival.
@@ -2474,7 +2206,7 @@ start_time_unix_nano (producer clock, drift-prone) — the cardinal rule.
 COPY-then-DELETE ordering: an archival failure sets
 archival_succeeded=False and SKIPS the DELETE, so a cold-sink outage
 (NFS, S3 IAM, ENOSPC) never destroys unarchived rows. The COPY path is
-inlined because DuckDB 1.5.6 rejects COPY (…) TO ?.
+inlined because DuckDB (2.0.0-dev) rejects COPY (…) TO ?.
 
 rowcount, not fetchone()[0] — a DML cursor raises TypeError on
 fetchone()[0], which per spec §15 v6 made every sweep increment
@@ -2492,8 +2224,8 @@ archival\".
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 8)
-- **Triggered from**: the lifespan task created in Task 5; `akosha admin otel retention sweep-once` (Task 7's CLI).
+#### Integration Contract (Task 7)
+- **Triggered from**: the lifespan task created in Task 5; `akosha admin otel retention sweep-once` (Task 6's CLI).
 - **Returns to / updates**: `akosha/observability/otlp_receiver.py` — `run_retention_sweep` body, `run_retention_sweep_once`, `_acquire_sweep_lock`, `_release_sweep_lock`.
 - **Demonstrable by**: `pytest tests/integration/test_spans_substrate_retention_sweep.py -v` — 6 passing; `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver_sweep_` shows both gauges advancing.
 - **Rollback signal**: `test_sweep_uses_received_at_not_start_time` deletes the `skew` row → the sweep body filtered on `start_time_unix_nano`; re-read the cutoff SQL.
@@ -2501,7 +2233,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-## Task 9 (PR-A5): akosha — heartbeat watcher
+## Task 8 (PR-A5): akosha — heartbeat watcher
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
@@ -2511,7 +2243,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Test: `akosha/tests/integration/test_heartbeat_watcher_e2e.py`
 
 **Interfaces:**
-- Consumes: `otel.receiver.known_mcp_servers` settings (Task 8), `HotStore` (Task 5), `HealthFeedState` from `mcp_common.health.feed` (confirmed at `mcp_common/health/feed.py:80`).
+- Consumes: `otel.receiver.known_mcp_servers` settings (Task 7), `HotStore` (Task 5), `HealthFeedState` from `mcp_common.health.feed` (confirmed at `mcp_common/health/feed.py:80`).
 - Produces:
   - `KNOWN_MCP_SERVERS: list[str]` (module-level roster, populated at lifespan)
   - `async check_once(hot_store: HotStore) -> HeartbeatVerdict`
@@ -2540,7 +2272,7 @@ def _reset_roster():
 
 @pytest.fixture
 async def hs(tmp_path):
-    s = HotStore(db_path=tmp_path / "hb.duckdb")
+    s = HotStore(database_path=tmp_path / "hb.duckdb")
     await s.initialize()
     return s
 
@@ -2682,7 +2414,7 @@ In `akosha/mcp/server.py`, inside the lifespan after `hot_store.initialize()`:
     from akosha.observability import heartbeat_watcher
     from akosha.config import get_settings
     heartbeat_watcher.KNOWN_MCP_SERVERS[:] = list(
-        get_settings().otel.receiver.known_mcp_servers or []
+        get_config().otel.receiver.known_mcp_servers or []
     )
 ```
 
@@ -2751,7 +2483,7 @@ Positional construction raises TypeError.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 9)
+#### Integration Contract (Task 8)
 - **Triggered from**: the akosha lifespan (roster population); a 60s heartbeat loop (wire it into the lifespan alongside the sweep task, or an existing periodic task).
 - **Returns to / updates**: `akosha/observability/heartbeat_watcher.py` (new), `akosha/mcp/server.py` (roster population + `/health` feed).
 - **Demonstrable by**: `pytest tests/integration/test_heartbeat_watcher_e2e.py -v` — 5 passing; `curl -fsS http://localhost:8682/health | jq '.checks.known_mcp_servers'`.
@@ -2760,7 +2492,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-## Task 10 (PR-A6): akosha — resource-attribute validator
+## Task 9 (PR-A6): akosha — resource-attribute validator
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
@@ -2770,7 +2502,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 - Test: `akosha/tests/unit/observability/test_resource_validator.py`
 
 **Interfaces:**
-- Consumes: `ALLOWED_NAMESPACES` binding from spec §13.2 (bridge set at this task; flipped by Task 12).
+- Consumes: `ALLOWED_NAMESPACES` binding from spec §13.2 (bridge set at this task; flipped by Task 10).
 - Produces: `class ResourceValidator` with `record(span: dict) -> bool`, module constants `ALLOWED_NAMESPACES_BRIDGE`, `ALLOWED_NAMESPACES_POST_FLIP`, `ALLOWED_NAMESPACES`, `ROLLING_WINDOW_SECONDS`, `SPIKE_THRESHOLD`, `SUSTAINED_THRESHOLD_HR`.
 
 - [ ] **Step 1: Write the failing test**
@@ -2839,7 +2571,7 @@ ALLOWED_NAMESPACES_POST_FLIP = {"bodai"}
 
 # PR-A6 ships the bridge set: the bridge release is active at this task's
 # merge time, so mcp-ecosystem producers MUST be permitted or every span
-# is flagged as drift. Task 12 flips this single binding.
+# is flagged as drift. Task 10 flips this single binding.
 ALLOWED_NAMESPACES = ALLOWED_NAMESPACES_BRIDGE
 
 ROLLING_WINDOW_SECONDS = 300
@@ -2923,7 +2655,7 @@ binding change.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 10)
+#### Integration Contract (Task 9)
 - **Triggered from**: `_handle_batch` on every span (akosha receiver).
 - **Returns to / updates**: `akosha/observability/resource_validator.py` (new), `akosha/observability/otlp_receiver.py` (`__init__` + `_handle_batch`).
 - **Demonstrable by**: `pytest tests/unit/observability/test_resource_validator.py -v` — 4 passing.
@@ -2932,234 +2664,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-## Task 11 (PR-A6.5): akosha — existing `spans` table disposition
-
-**Repo:** `/Users/les/Projects/akosha`. Same branch.
-
-**Files:**
-- Create: `akosha/migrations/versions/0003.migrate-legacy-spans.sql`
-- Create: `akosha/migrations/versions/0003.migrate-legacy-spans.rollback.sql`
-- Modify: `akosha/settings/akosha.yaml` (`otel.hotstore.spans_substrate_drop_old_table`)
-- Test: `akosha/tests/integration/test_old_spans_table_migration.py`
-
-**Interfaces:**
-- Consumes: `akosha.migrations.runner` (Task 7), `spans_substrate` DDL (Task 3).
-- Produces: idempotent migration of a legacy `spans` table into `spans_substrate`, then drops it.
-
-- [ ] **Step 1: Write the failing test**
-
-Create `/Users/les/Projects/akosha/tests/integration/test_old_spans_table_migration.py`:
-
-```python
-from __future__ import annotations
-
-import duckdb
-import pytest
-
-from akosha.migrations.runner import apply_migrations
-
-
-def _make_legacy_spans(con) -> None:
-    con.execute(
-        "CREATE TABLE spans (span_id TEXT, trace_id TEXT, parent_id TEXT, "
-        "service_name TEXT, name TEXT, start_time BIGINT, end_time BIGINT, "
-        "duration_ms REAL, attributes JSON, events JSON, status TEXT, "
-        "embedding FLOAT[4], timestamp TIMESTAMP)"
-    )
-    con.execute(
-        "INSERT INTO spans VALUES ('s1','t1',NULL,'mahavishnu','old.span',"
-        "1700000000000,1700000000100,100.0,'{}','[]','ok',NULL,NULL)"
-    )
-
-
-def test_migrates_and_drops_when_spans_exists(tmp_path) -> None:
-    db = str(tmp_path / "with.duckdb")
-    con = duckdb.connect(db)
-    apply_migrations(db)          # 0001, 0002 — creates spans_substrate
-    _make_legacy_spans(con)
-    con.close()
-
-    apply_migrations(db)          # applies 0003
-
-    con = duckdb.connect(db, read_only=True)
-    names = {r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()}
-    assert "spans" not in names
-    rows = con.execute(
-        "SELECT span_id, span_name, service_namespace, outcome, start_time_unix_nano "
-        "FROM spans_substrate"
-    ).fetchall()
-    assert len(rows) == 1
-    span_id, span_name, ns, outcome, start_ns = rows[0]
-    assert span_id == "s1"
-    assert span_name == "old.span"
-    assert ns == "mcp-ecosystem"     # backfill for a NULL namespace
-    assert outcome == "success"      # legacy status 'ok' maps to success
-    assert start_ns == 1700000000000 * 1_000_000
-    con.close()
-
-
-def test_noop_when_spans_absent(tmp_path) -> None:
-    db = str(tmp_path / "without.duckdb")
-    con = duckdb.connect(db)
-    apply_migrations(db)
-    con.close()
-    apply_migrations(db)   # must not raise on DROP TABLE IF EXISTS
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_old_spans_table_migration.py -v`
-Expected: FAIL — 0003 does not exist, so `spans` still exists and the assertion `assert "spans" not in names` fails.
-
-- [ ] **Step 3: Inspect the live `spans` schema first**
-
-The migration SQL below assumes the legacy `spans` schema from spec §13.5. **Hand-inspect the live schema before writing the migration** — if it differs, edit the column mapping to match.
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/akosha hot-store exec "DESCRIBE spans"`
-
-If that command is unavailable (the `hot-store` group is not part of this plan), resolve the DB path from settings and run it directly:
-
-```bash
-cd /Users/les/Projects/akosha
-DB=$(.venv/bin/python -c "from akosha.config import get_settings; print(get_settings().hotstore.db_path)")
-.venv/bin/python -c "
-import duckdb, sys
-con = duckdb.connect('$DB', read_only=True)
-names = {r[0] for r in con.execute('SELECT table_name FROM duckdb_tables()').fetchall()}
-if 'spans' in names:
-    for row in con.execute('DESCRIBE spans').fetchall():
-        print(row[0], row[1])
-else:
-    print('NO spans TABLE — migration will be a no-op')
-con.close()
-"
-```
-
-Record the observed column list in the PR description. If `spans` does not exist (the expected common case), Step 4's migration still ships (it is guarded by `DROP TABLE IF EXISTS`), and `test_noop_when_spans_absent` is the gate that proves it.
-
-- [ ] **Step 4: Write the migration**
-
-`akosha/migrations/versions/0003.migrate-legacy-spans.sql`:
-
-```sql
--- depends: 0001, 0002
---
--- Migrates the legacy akosha `spans` table into the oneiric-managed
--- `spans_substrate` table, then drops it. Idempotent: the WHERE clause
--- excludes rows already present in spans_substrate.
---
--- Column mapping assumes the spec §13.5 legacy schema. Hand-inspect with
--- `DESCRIBE spans` before merging and edit if the live schema differs.
-
-INSERT INTO spans_substrate (
-    span_id, trace_id, parent_span_id, service_name, service_namespace,
-    deployment_environment, span_name,
-    start_time_unix_nano, end_time_unix_nano, duration_ms,
-    outcome, status_code, status_message,
-    attributes, events, has_gen_ai_attrs, has_dispatch_attrs
-)
-SELECT
-    span_id, trace_id, parent_id, service_name,
-    COALESCE(service_namespace, 'mcp-ecosystem') AS service_namespace,
-    COALESCE(deployment_environment, 'unknown') AS deployment_environment,
-    name AS span_name,
-    CAST(start_time AS BIGINT) * 1000000 AS start_time_unix_nano,
-    CAST(end_time   AS BIGINT) * 1000000 AS end_time_unix_nano,
-    duration_ms,
-    CASE status WHEN 'ok' THEN 'success' WHEN 'error' THEN 'error' ELSE 'unset' END
-        AS outcome,
-    CASE status WHEN 'ok' THEN 'STATUS_CODE_OK'
-                WHEN 'error' THEN 'STATUS_CODE_ERROR'
-                ELSE 'STATUS_CODE_UNSET' END
-        AS status_code,
-    NULL AS status_message,
-    attributes, events,
-    FALSE AS has_gen_ai_attrs,
-    FALSE AS has_dispatch_attrs
-FROM spans
-WHERE span_id NOT IN (SELECT span_id FROM spans_substrate);
-
-DROP TABLE IF EXISTS spans;
-```
-
-If Step 3 shows no `spans` table, ship this file anyway with the INSERT body removed (leaving only the guarded DROP) so the applied-revision sequence stays identical across environments.
-
-`akosha/migrations/versions/0003.migrate-legacy-spans.rollback.sql`:
-
-```sql
--- Cannot reconstruct the legacy schema from spans_substrate (the column
--- names and the ms-vs-ns time units differ). A revert re-creates an EMPTY
--- legacy table so older readers do not crash on a missing table.
-CREATE TABLE IF NOT EXISTS spans (
-    span_id TEXT,
-    trace_id TEXT,
-    parent_id TEXT,
-    service_name TEXT,
-    name TEXT,
-    start_time BIGINT,
-    end_time BIGINT,
-    duration_ms REAL,
-    attributes JSON,
-    events JSON,
-    status TEXT,
-    embedding FLOAT[4],
-    timestamp TIMESTAMP
-);
-```
-
-- [ ] **Step 5: Run test to verify it passes**
-
-Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_old_spans_table_migration.py -v`
-Expected: PASS — 2 tests.
-
-- [ ] **Step 6: Flip the drop flag**
-
-In `akosha/settings/akosha.yaml`, under the `otel:` block:
-
-```yaml
-  hotstore:
-    spans_substrate_drop_old_table: true
-```
-
-The flag documents operator intent for anyone reading the config; the migration itself is unconditional (guarded by `DROP TABLE IF EXISTS`). If you would rather gate the DROP on the flag, add a `DROP TABLE IF EXISTS` guard inside the runner keyed on that setting — but the spec treats the drop as part of the migration, so the default is to leave it unconditional.
-
-- [ ] **Step 7: Commit**
-
-```bash
-cd /Users/les/Projects/akosha
-git add akosha/migrations/versions/0003.migrate-legacy-spans.sql \
-  akosha/migrations/versions/0003.migrate-legacy-spans.rollback.sql \
-  akosha/settings/akosha.yaml \
-  tests/integration/test_old_spans_table_migration.py
-git commit -m "feat(akosha): migrate legacy spans table then drop it (PR-A6.5)
-
-The substrate uses spans_substrate; the legacy akosha `spans` table
-would otherwise linger as an orphan with a divergent column set. The
-migration maps columns explicitly (legacy parent_id -> parent_span_id,
-name -> span_name, ms -> ns, status -> outcome + status_code) rather
-than using a bare INSERT…SELECT, which fails when the column names
-differ.
-
-Idempotent via WHERE span_id NOT IN (…). DROP TABLE IF EXISTS makes
-the common case — no legacy table — a clean no-op.
-
-The rollback sibling re-creates an EMPTY legacy table rather than
-reconstructing data: the column names and time units differ, so a
-faithful reverse migration is not possible from spans_substrate alone.
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
-```
-
-#### Integration Contract (Task 11)
-- **Triggered from**: `akosha migrations up` at deploy.
-- **Returns to / updates**: `akosha/migrations/versions/0003.*` (2 files), `akosha/settings/akosha.yaml` (`otel.hotstore.spans_substrate_drop_old_table`).
-- **Demonstrable by**: `pytest tests/integration/test_old_spans_table_migration.py -v` — 2 passing, exercising both the populated-DB and empty-DB branches.
-- **Rollback signal**: `test_migrates_and_drops_when_spans_exists` fails on the row count → the live `spans` schema differs from the §13.5 assumption; re-inspect with `DESCRIBE spans` and correct the mapping.
-- **Observability added**: none (a migration; `_yoyo_log` records the apply).
-
----
-
-## Task 12 (PR-A4): akosha — synthetic canary + Prometheus bridge
+## Task 10 (PR-A4): akosha — synthetic canary + Prometheus bridge
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
@@ -3200,7 +2705,7 @@ from akosha.storage.hot_store import HotStore
 
 @pytest.fixture
 async def rx(tmp_path):
-    hs = HotStore(db_path=tmp_path / "canary.duckdb")
+    hs = HotStore(database_path=tmp_path / "canary.duckdb")
     await hs.initialize()
     return OTLPReceiver(hot_store=hs)
 
@@ -3483,7 +2988,7 @@ Alerts (PromQL references the scraped gauge, not the Python field):
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 12)
+#### Integration Contract (Task 10)
 - **Triggered from**: the lifespan tasks created in Task 5 (`receiver.run_canary_emitter`, `receiver._canary_metrics_bridge`).
 - **Returns to / updates**: `akosha/observability/canary_watcher.py` (new), `akosha/observability/otlp_receiver.py` (canary body + bridge), `akosha/mcp/server.py` (third lifespan task).
 - **Demonstrable by**: `pytest tests/integration/test_canary_watcher_e2e.py -v` — 6 passing; `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver_canary_last_success` shows a value advancing every 30s.
@@ -3492,13 +2997,13 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-## Task 13 (PR-A8): akosha — retire the `OtelTraceIngester` poller
+## Task 11 (PR-A8): akosha — retire the `OtelTraceIngester` poller
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
 **Files:**
 - Modify: `akosha/mcp/server.py:620-660` (remove the `AKOSHA_SKIP_OTEL_INGESTER` block entirely)
-- Modify: `akosha/settings/akosha.yaml` (delete the `trace_ingester_poller` key)
+- Modify: `settings/akosha.yaml` (delete the `trace_ingester_poller` key)
 - Modify: `akosha/CLAUDE.md` (operator note)
 - Test: `akosha/tests/integration/test_poller_retirement.py`
 
@@ -3579,7 +3084,7 @@ A YAML-only deletion leaves a declared-but-unread settings field, which `scripts
 
 - [ ] **Step 4: Delete the settings key**
 
-In `akosha/settings/akosha.yaml`, remove the `trace_ingester_poller: true` line, leaving:
+In `settings/akosha.yaml`, remove the `trace_ingester_poller: true` line, leaving:
 
 ```yaml
 otel:
@@ -3647,7 +3152,7 @@ Expected: PASS.
 
 ```bash
 cd /Users/les/Projects/akosha
-git add akosha/mcp/server.py akosha/settings/akosha.yaml akosha/CLAUDE.md \
+git add akosha/mcp/server.py settings/akosha.yaml akosha/CLAUDE.md \
   docs/decisions/2026-10-19-poller-retirement-no-flag.md \
   tests/integration/test_poller_retirement.py
 git add -u
@@ -3679,16 +3184,16 @@ declared-but-unread symbol.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 13)
+#### Integration Contract (Task 11)
 - **Triggered from**: `akosha mcp start` (lifespan).
-- **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `akosha/settings/akosha.yaml` (`trace_ingester_poller` key deleted), `akosha/CLAUDE.md` (operator note), `docs/decisions/2026-10-19-poller-retirement-no-flag.md` (the spec-deviation record).
+- **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `settings/akosha.yaml` (`trace_ingester_poller` key deleted), `akosha/CLAUDE.md` (operator note), `docs/decisions/2026-10-19-poller-retirement-no-flag.md` (the spec-deviation record).
 - **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 3 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line.
 - **Rollback signal**: any test still importing `akosha.ingestion.otel_ingester` fails at collection → the grep in Step 3 missed a consumer; restore the module and remove only the lifespan usage. Note this is a code rollback, not a config one — there is no flag to flip.
 - **Observability added**: none (a removal; the receiver's existing metrics cover ingestion).
 
 ---
 
-## Task 14 (PR-A7): mcp-common — `service.namespace` flip
+## Task 12 (PR-A7): mcp-common — `service.namespace` flip
 
 **Repo:** `/Users/les/Projects/mcp-common`. New branch, gated on the consumer sweep.
 
@@ -3709,9 +3214,9 @@ The flip cannot merge until every consumer reads `bodai`. Run this **before** wr
 ```bash
 cd /Users/les/Projects/mahavishnu
 echo "=== Grafana dashboards ==="
-git grep -n 'mcp-ecosystem' -- 'config/grafana/dashboards/bodai/' || echo "clean"
+git grep -n 'mcp-ecosystem' -- 'monitoring/dashboards/' || echo "clean"
 echo "=== Alert rules ==="
-git grep -n 'mcp-ecosystem' -- 'config/alerts/' || echo "clean"
+git grep -n 'mcp-ecosystem' -- 'monitoring/prometheus/alerts.yml' || echo "clean"
 
 cd /Users/les/Projects/akosha
 echo "=== Akosha queries ==="
@@ -3877,12 +3382,12 @@ drift and the cardinality alarm fires spuriously.
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
 
-#### Integration Contract (Task 14)
+#### Integration Contract (Task 12)
 - **Triggered from**: the consumer sweep completing clean; the CI gate passing.
 - **Returns to / updates**: `mcp_common/server/telemetry.py`, `oneiric/core/substrate_settings.py`, `akosha/observability/resource_validator.py`.
 - **Demonstrable by**: `pytest tests/integration/test_service_namespace_bridge.py -v` — 4 passing; `git grep -n mcp-ecosystem` returns zero across all four consumer paths.
 - **Rollback signal**: `test_consumer_sweep_returns_zero_pre_merge` fails → a consumer still reads the old namespace; fix the consumer rather than relaxing the test.
-- **Observability added**: none (a default flip; `telemetry_receiver_namespace_drift` from Task 10 is the signal if a producer was missed).
+- **Observability added**: none (a default flip; `telemetry_receiver_namespace_drift` from Task 9 is the signal if a producer was missed).
 
 ---
 
@@ -3891,10 +3396,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 The spec §1 defers four items to writing-plans. Here is where each lands.
 
 | Deferred item | Resolution in this plan |
+| **Dropped 2026-10-20:** yoyo migration framework in akosha (was PR-A2 / old Task 6) | **Not built — no migration framework is needed.** There is no yoyo in the fleet: not in akosha, not in oneiric, not in mahavishnu (only Alembic, in mahavishnu). Task 2 creates `spans_substrate` via `CREATE TABLE IF NOT EXISTS` in oneiric's `DuckdbHotStore.initialize()`, which runs on every substrate boot — idempotent, and it covers both fresh and pre-existing substrate files. A separate runner would have introduced a third framework into a repo that has none, for a substrate ADR 017 assigns to oneiric. |
+| **Dropped 2026-10-20:** legacy `spans` table migration (was PR-A6.5 / old Task 11) | **Not built — there is no `spans` table to migrate.** `mahavishnu/ingesters/otel_ingester.py` never wrote one: it flattens traces into `conversations`-shaped records (`system_id`, `content`, `embedding`, `timestamp`, `metadata`) through the inherited `DuckdbHotStore.insert()`. A repo-wide grep for `CREATE TABLE.*spans` returns nothing but the spec and this plan. The retirement obligation folds into Task 11 (old Task 13), which already removes the poller. |
 |---|---|
 | PR-A3 port-move drain step | **Task 5, Step 12** ships the drain preflight: a `git grep ':4318'` sweep across dashboards, collector configs, and settings, run before the collector restarts. The spec's §13.1 names the consumer classes; the preflight enumerates the files. |
-| PR-A3..A8 double-write artifacts DLQ classification | **Not applicable as written.** During the rollout the poller (Task 13) and the receiver (Task 5) both write spans, so a double-write looks like an `ok=0, deduped=1` result rather than a DLQ rejection. `deduped` already carries that signal; no new DLQ classification is needed. If a future phase produces artifacts that *do* quarantine, add a `reason="double_write"` label to `row_rejected` then. |
-| Sweep leader-election / advisory lock | **Task 8** ships a TTL advisory lock (marker row in `_akosha_otel_receiver_state`), reclaimable after its TTL. Multi-pod sweep no longer races on the DuckDB file lock. |
+| PR-A3..A8 double-write artifacts DLQ classification | **Not applicable as written.** During the rollout the poller (Task 11) and the receiver (Task 5) both write spans, so a double-write looks like an `ok=0, deduped=1` result rather than a DLQ rejection. `deduped` already carries that signal; no new DLQ classification is needed. If a future phase produces artifacts that *do* quarantine, add a `reason="double_write"` label to `row_rejected` then. |
+| Sweep leader-election / advisory lock | **Task 7** ships a TTL advisory lock (marker row in `_akosha_otel_receiver_state`), reclaimable after its TTL. Multi-pod sweep no longer races on the DuckDB file lock. |
 | Producer-side sampling policy | **Out of scope — PR-B prerequisite.** The spec's §17 assigns the parent spec's rewrite to PR-B, and sampling is a producer-side policy decision that needs the read-side projection design first. oneiric already has `telemetry__sample_ratio` in `substrate_settings.py`; wiring it to actual head sampling is PR-B work. |
 
 ## Execution order and PR boundaries
@@ -3906,21 +3413,21 @@ The spec §1 defers four items to writing-plans. Here is where each lands.
 | 3 | PR-0b | akosha | deps + shared-receiver hook + namespace hygiene | 1 |
 | 4 | (spec-cumulative) | akosha | `HotStore.insert_spans_substrate` | 2 |
 | 5 | PR-A3 | akosha + mahavishnu | `OTLPReceiver` + lifespan + port move | 3, 4 |
-| 6 | PR-A2 | akosha | yoyo migrations + `migrations` CLI | 2 |
-| 7 | (spec-cumulative) | akosha | `admin otel retention` CLI | 6 |
-| 8 | PR-A3 follow-on | akosha | sweep body + advisory lock | 4, 6, 7 |
-| 9 | PR-A5 | akosha | heartbeat watcher | 4 |
-| 10 | PR-A6 | akosha | resource-attribute validator | 5 |
-| 11 | PR-A6.5 | akosha | legacy `spans` migration | 4, 6 |
-| 12 | PR-A4 | akosha | synthetic canary + bridge | 5, 8 |
-| 13 | PR-A8 | akosha | poller retirement | 5, 12 |
-| 14 | PR-A7 | mcp-common + oneiric + akosha | namespace flip | 1, 10, plus the consumer sweep |
+| 6 | (spec-cumulative) | akosha | `admin otel retention` CLI | 4 |
+| 7 | PR-A3 follow-on | akosha | sweep body + advisory lock | 4, 6 |
+| 8 | PR-A5 | akosha | heartbeat watcher | 4 |
+| 9 | PR-A6 | akosha | resource-attribute validator | 5 |
+| 10 | PR-A4 | akosha | synthetic canary + bridge | 5, 7 |
+| 11 | PR-A8 | akosha | poller retirement | 5, 10 |
+| 12 | PR-A7 | mcp-common + oneiric + akosha | namespace flip | 1, 9, plus the consumer sweep |
 
-**Two tasks are not in the spec's PR table:** Task 4 (`HotStore.insert_spans_substrate`) and Task 7 (`admin otel retention` CLI). Both are spec-cumulative — the spec's §5.2 names the method and §11.4a names the commands, but neither has its own PR row. They ride along with the PR whose scope covers them: Task 4 with PR-A3, Task 7 with PR-A2.
+**Two tasks are not in the spec's PR table:** Task 4 (`HotStore.insert_spans_substrate`) and Task 6 (`admin otel retention` CLI). Both are spec-cumulative — the spec's §5.2 names the method and §11.4a names the commands, but neither has its own PR row. They ride along with the PR whose scope covers them: both with PR-A3.
+
+**Two spec PRs carry no task.** PR-A2 (yoyo migrations) and PR-A6.5 (legacy `spans` migration) were both dropped on 2026-10-20 because the codebase contradicts their premises — no yoyo exists in the fleet, and no `spans` table exists to migrate. The Deferred items table records the reasoning. Nothing depends on either PR landing, and no task below waits on one.
 
 **Cross-repo coordination:** Tasks 1, 2, and 3 must land before akosha's Task 5 runs, because the receiver imports `LifecycleError` from oneiric and the middleware signature from mcp-common. The operator bumps oneiric and mcp-common versions after Tasks 1-3 and before Task 5.
 
-**Relationship to the sibling plans:** this plan must merge through Task 14 before `docs/plans/2026-10-03-eval-adapter-phase1.md` and `docs/plans/2026-10-14-decision-adapter-category.md` open their first PRs, so all three share one oneiric/mcp-common version pin rather than racing three separate bumps.
+**Relationship to the sibling plans:** this plan must merge through Task 12 before `docs/plans/2026-10-03-eval-adapter-phase1.md` and `docs/plans/2026-10-14-decision-adapter-category.md` open their first PRs, so all three share one oneiric/mcp-common version pin rather than racing three separate bumps.
 
 ## Post-plan verification
 
@@ -3930,8 +3437,8 @@ Before the branch merges:
 - [ ] `cd mcp-common && .venv/bin/pytest tests/ -v` — telemetry suite green
 - [ ] `cd akosha && .venv/bin/pytest tests/ -v` — receiver, CLI, migration, and sweep suites green
 - [ ] `cd mahavishnu && .venv/bin/pytest tests/ -k "otel or collector" -v` — port move did not break a consumer
-- [ ] `cd akosha && .venv/bin/python scripts/audit_orphans.py` — no zero-caller symbols
+- [ ] `/Users/les/Projects/mahavishnu/.venv/bin/python /Users/les/Projects/mahavishnu/scripts/audit_orphans.py` — no zero-caller symbols (run from the mahavishnu repo root; the script lives there, not in akosha)
 - [ ] `crackerjack run -v -f` in each of the four repos — merge gate green
 - [ ] Live smoke: start akosha, confirm `/health` returns `known_mcp_servers` and `receiver_canary`, and `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver` shows the canary gauge advancing
 - [ ] `git grep ':4318'` returns zero hits across dashboards, collector configs, and settings
-- [ ] `git grep 'mcp-ecosystem'` returns zero hits across all four consumer paths (Task 14's gate)
+- [ ] `git grep 'mcp-ecosystem'` returns zero hits across all four consumer paths (Task 12's gate)
