@@ -1,3 +1,17 @@
+---
+status: in-review
+role: sub-spec
+date: 2026-10-19
+last_reviewed: 2026-10-19
+superseded_by: null
+blocks_on: []
+topic: substrate-otel
+parent_spec: docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md
+supersedes: docs/specs/.archive/2026-10-19-bodai-substrate-otel-v2.md
+review:
+  - 2026-10-19: critical-audit-specialist (5 P0, 3 P1, 4 P2)
+---
+
 # Bodai OTel Substrate — v3
 
 **Status:** Draft v3; supersedes v1 (`.archive/2026-10-19-bodai-akosha-otel-substrate.md`) and v2 (`.archive/2026-10-19-bodai-substrate-otel-v2.md`).
