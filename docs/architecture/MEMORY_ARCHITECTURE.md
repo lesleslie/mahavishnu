@@ -348,19 +348,19 @@ for the canonical per-tool version registry.
 | `_register_health_tools` | MINIMAL | `health_tools.py` | 9 | (health probes — read) |
 | `_register_skills_signer_tools` | MINIMAL | `skill_tools.py` | 2 | `mahavishnu_list_skills` / `mahavishnu_get_skill`; signer feed state in `mahavishnu.mcp.signer_feed` |
 | `_register_audit_health_tools` | MINIMAL | `audit_health_tool.py` | 1 | Fleet audit across the 5 Bodai core repos; surfaces the silent-degraded case (HTTP 200 + degraded body) |
-| `_register_terminal_tools` | STANDARD | `terminal_tools.py` | 12 | Side effect: iTerm2/tmux/crow sessions in `TerminalManager` |
+| `_register_terminal_tools` | STANDARD | `terminal_tools.py` | 10 | Side effect: iTerm2/tmux/crow sessions in `TerminalManager` |
 | `_register_pool_tools` | STANDARD | `pool_tools.py` | 10 | Writes `pool-state/{id}/`, `workflow-results/{id}/`; quota decisions in caller-kind buckets |
-| `_register_worker_tools` | STANDARD | `worker_tools.py` | 8 | Writes `worker-state/{id}/`; executes against `WorkerManager` |
+| `_register_worker_tools` | STANDARD | `worker_tools.py` | 9 | Writes `worker-state/{id}/`; executes against `WorkerManager` |
 | `_register_worker_contract_tools` | STANDARD | `worker_contract_tools.py` | n/a | Durable spawn templates — `~/.mahavishnu/verification-dead-letter/` on failure |
 | `_register_repository_messaging_tools` | STANDARD | `repository_messaging_tools.py` | 7 | Inter-repo message bus; emits to `mahavishnu/core/events` EventBridge |
-| `_register_git_analytics_tools` | STANDARD | `git_analytics.py` | 2 | Reads git history; writes `pattern.detected` envelopes on regression |
-| `_register_session_buddy_tools` | STANDARD | `session_buddy_tools.py` | 7 | Pushes code graphs to Session-Buddy `kg_entities` via `store_code_graph_from_mahavishnu` |
+| `_register_git_analytics_tools` | STANDARD | `git_analytics.py` | 3 | Reads git history; writes `pattern.detected` envelopes on regression |
+| `_register_session_buddy_tools` | STANDARD | `session_buddy_tools.py` | 9 | Pushes code graphs to Session-Buddy `kg_entities` via `store_code_graph_from_mahavishnu` |
 | `_register_openhands_tools` | STANDARD | `openhands_tools.py` | n/a | Bridges OpenHands-compatible actions through `WorkerManager` |
 | `_register_primitive_tools` | STANDARD | `primitive_tools.py` | 2 | Introspection of `mahavishnu/primitives/` (Keystone keystone_show analog) |
-| `_register_otel_tools` | FULL | `otel_tools.py` | 7 | Writes OTel `conversations` rows via `otel_ingester.ingest_trace` |
-| `_register_self_improvement_tools` | FULL | `self_improvement_tools.py` | 4 | `review_and_fix` runs the Crackerjack self-improvement loop; approval queue in `approval_manager` |
-| `_register_clone_tools` | FULL | `clone_tools.py` | 1 | `clone_detect_ecosystem` snapshots repo fingerprints to Dhara `ecosystem_events` |
-| `_register_goal_team_tools` | FULL | `goal_team_tools.py` | 9 | Goal parsing + team composition; writes `goal_team_metrics` |
+| `_register_otel_tools` | FULL | `otel_tools.py` | 5 | Writes OTel `conversations` rows via `otel_ingester.ingest_trace` |
+| `_register_self_improvement_tools` | FULL | `self_improvement_tools.py` | 7 | `review_and_fix` runs the Crackerjack self-improvement loop; approval queue in `approval_manager` |
+| `_register_clone_tools` | FULL | `clone_tools.py` | 4 | `clone_detect_ecosystem` snapshots repo fingerprints to Dhara `ecosystem_events` |
+| `_register_goal_team_tools` | FULL | `goal_team_tools.py` | 3 | Goal parsing + team composition; writes `goal_team_metrics` |
 | `_register_treesitter_tools` | FULL | `treesitter_tools.py` | 7 | AST extraction; caches results in `mahavishnu/workers/capabilities/_cache.py` |
 | `_register_pycharm_tools` | FULL | `pycharm_tools.py` | n/a | Bridges PyCharm MCP actions to Mahavishnu adapters |
 | `_register_search_tools` | FULL | `search_tools.py` | 5 | Code / semantic / documentation search across the ecosystem |
