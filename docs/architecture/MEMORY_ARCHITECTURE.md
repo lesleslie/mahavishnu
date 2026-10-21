@@ -12,7 +12,7 @@
 > `mcp__oneiric__get_adapter_health`. The remaining references to
 > `HybridAdapterRegistry` in the tables and examples below are pre-migration
 > historical context — see
-> `docs/plans/2026-10-12-adapter-registry-consolidation-to-oneiric.md` for the
+> `docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md` for the
 > new substrate. `mahavishnu adapter resolve` CLI still works (it routes
 > through `TaskRouter`); `mahavishnu adapter list|health` are removed.
 > **Source of truth**: `mahavishnu/core/paths.py` (XDG layout), `mahavishnu/mcp/tool_versions.py` (versioned tool registry), `mahavishnu/mcp/tools/profiles.py` (profile gating), `mahavishnu/pools/manager.py` (PoolManager + caller_kind quota), `mahavishnu/pools/peer_routing.py` (ADR-014 caller authorization), `mahavishnu/mcp/tools/pool_tools.py` (workflow-results persistence), and `mahavishnu/websocket/server.py` (broadcast channels).
@@ -333,6 +333,16 @@ Groups are registered by `register_profile_tools()` in
 is a separate FastMCP tool block; see `mahavishnu/mcp/tool_versions.py`
 for the canonical per-tool version registry.
 
+> **No adapter-registry group.** There is deliberately no
+> `_register_adapter_registry_tools` row here: `adapter_registry_tools.py`
+> and the 7 `mcp__mahavishnu__adapter_*` tools it registered were removed
+> in the 2026-10-12 migration (see the note at the top of this document and
+> `docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md`).
+> Adapter resolution now lives in Oneiric's substrate — use
+> `mcp__oneiric__list_adapters` / `oneiric_get_adapter` /
+> `oneiric_get_adapter_health`. The absence is **not** a missing or broken
+> registration; do not re-add it.
+
 | Group | Profile | File | Tools (count) | What it writes |
 |-------|---------|------|---------------|----------------|
 | `_register_health_tools` | MINIMAL | `health_tools.py` | 9 | (health probes — read) |
@@ -350,7 +360,6 @@ for the canonical per-tool version registry.
 | `_register_clone_tools` | FULL | `clone_tools.py` | 1 | `clone_detect_ecosystem` snapshots repo fingerprints to Dhara `ecosystem_events` |
 | `_register_goal_team_tools` | FULL | `goal_team_tools.py` | 9 | Goal parsing + team composition; writes `goal_team_metrics` |
 | `_register_treesitter_tools` | FULL | `treesitter_tools.py` | 7 | AST extraction; caches results in `mahavishnu/workers/capabilities/_cache.py` |
-| `_register_adapter_registry_tools` | FULL | `adapter_registry_tools.py` | 7 | `adapter_resolve` / `adapter_publish` / `adapter_health` — wired to Dhara `adapters` bucket |
 | `_register_pycharm_tools` | FULL | `pycharm_tools.py` | n/a | Bridges PyCharm MCP actions to Mahavishnu adapters |
 | `register_worktree_tools` (runtime-gated, not profile) | n/a | `worktree_tools.py` | 1 | `worktree_manage`; only if `app.worktree_coordinator` is initialized |
 
@@ -381,7 +390,7 @@ Five side-effect paths write operational state outside the MCP surface:
 
 - `MINIMAL_REGISTRATIONS = ["_register_health_tools"]`
 - `STANDARD_REGISTRATIONS = MINIMAL + [_register_terminal_tools, _register_pool_tools, _register_worker_tools, _register_worker_contract_tools, _register_repository_messaging_tools, _register_git_analytics_tools, _register_session_buddy_tools, _register_openhands_tools, _register_primitive_tools]`
-- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_adapter_registry_tools, _register_pycharm_tools]`
+- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools]`
 
 Resolution precedence:
 
@@ -454,7 +463,7 @@ by access pattern: discovery, state, recall, monitor, health.
 |------|---------------|----------|
 | `treesitter_parse` / `treesitter_extract_symbols` / `treesitter_find_usages` / `treesitter_query` / `treesitter_batch_analyze` / `treesitter_cache_stats` / `treesitter_clear_cache` | AST cache (`mahavishnu/workers/capabilities/_cache.py`) | Code symbol extraction |
 | `pycharm_*` (set) | PyCharm MCP actions via Mahavishnu adapters | IDE bridge |
-| `adapter_cache_invalidate` / `adapter_discover` / `adapter_enable` / `adapter_health` / `adapter_list` / `adapter_metadata` / `adapter_resolve` | Dhara `adapters` + `health_checks` | Oneiric adapter discovery + health |
+| *(removed 2026-10-12)* `adapter_cache_invalidate` / `adapter_discover` / `adapter_enable` / `adapter_health` / `adapter_list` / `adapter_metadata` / `adapter_resolve` | Dhara `adapters` + `health_checks` | **Not available from Mahavishnu.** Use `mcp__oneiric__list_adapters` / `mcp__oneiric__get_adapter` / `mcp__oneiric__get_adapter_health` instead |
 
 ### Ecosystem / clone / self-improvement
 
@@ -711,7 +720,6 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_clone_tools",
     "_register_goal_team_tools",
     "_register_treesitter_tools",
-    "_register_adapter_registry_tools",
     "_register_pycharm_tools",
 ]
 ```
@@ -906,10 +914,10 @@ via `index_document`).
 adapter.
 
 ```python
-mcp__mahavishnu__adapter_resolve(domain="cache", key="redis", provider="default")
+mcp__oneiric__get_adapter("cache:redis:default")
 ```
 
-Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters.cache.redis:RedisCacheAdapter", "version": "1.2.0"}`. Delegates to Dhara `adapters[cache:redis:default]`.
+Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters.cache.redis:RedisCacheAdapter", "version": "1.2.0"}`. Delegates to Dhara `adapters[cache:redis:default]`. The old `mcp__mahavishnu__adapter_resolve(domain=..., key=..., provider=...)` entry point was removed in the 2026-10-12 migration — see the note at the top of this document.
 
 ### Q12 — Self-improvement approval gate
 
@@ -1088,8 +1096,8 @@ invariants apply:
 | Profile | Total tools registered | Use case | Migration risk |
 |---------|------------------------|----------|----------------|
 | `MINIMAL` | 27 core + 9 health + 3 ecosystem = **39** | Boot probes only; no orchestration | Calling `pool_route_execute` returns "tool not found" — callers must check `discover_tools` first |
-| `STANDARD` | MINIMAL + 9 groups (terminal/pool/worker/worker-contract/repository-messaging/git-analytics/session-buddy/openhands/primitive) = **MINIMAL + ~50 tools** (~89 total) | Daily development; most operational workflows | `otel_*` and `adapter_*` not available; metric dashboards return empty |
-| `FULL` (default) | STANDARD + 7 groups (otel/self-improvement/clone/goal-team/treesitter/adapter-registry/pycharm) = **~174 tools** | Production; observability + adapter management | High context overhead per Claude Code session; consider `STANDARD` for CI/headless agents |
+| `STANDARD` | MINIMAL + 9 groups (terminal/pool/worker/worker-contract/repository-messaging/git-analytics/session-buddy/openhands/primitive) = **MINIMAL + ~50 tools** (~89 total) | Daily development; most operational workflows | `otel_*` not available; metric dashboards return empty. Adapter tools are not a Mahavishnu profile concern at all — use `mcp__oneiric__*` |
+| `FULL` (default) | STANDARD + 6 groups (otel/self-improvement/clone/goal-team/treesitter/pycharm) = **~174 tools** | Production; observability + code indexing | High context overhead per Claude Code session; consider `STANDARD` for CI/headless agents |
 
 **Profile migration gotcha**: tool names in `tool_versions.py::DEPRECATED_TOOLS`
 (`health_check_service`, `get_liveness`, `get_readiness`,
