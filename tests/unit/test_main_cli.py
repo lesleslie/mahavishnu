@@ -110,11 +110,14 @@ class TestAppStructure:
         assert cli_module.app.info.name == "mahavishnu"
 
     def test_all_subapps_registered(self):
+        # `adapter` was removed 2026-10-12 (Oneiric substrate consolidation,
+        # commit db06fc87). Consumers use `mcp__oneiric__list_adapters` /
+        # `get_adapter` / `get_adapter_health`. See
+        # ``docs/architecture/MEMORY_ARCHITECTURE.md``.
         registered_names = [g.name for g in cli_module.app.registered_groups if g.typer_instance]
         expected = [
             "worktree",
             "workflow",
-            "adapter",
             "mcp",
             "ecosystem",
             "terminal",
@@ -123,6 +126,11 @@ class TestAppStructure:
         ]
         for name in expected:
             assert name in registered_names, f"Missing sub-app: {name}"
+        # Removed-by-design guard: `adapter` must NOT be re-registered.
+        assert "adapter" not in registered_names, (
+            "`adapter` sub-app was deliberately removed in the 2026-10-12 "
+            "Oneiric consolidation; see docs/architecture/MEMORY_ARCHITECTURE.md"
+        )
 
 
 # ===========================================================================
@@ -138,7 +146,8 @@ class TestSweepCommand:
     def test_sweep_basic(self, mock_app_cls, mock_auth_cls):
         mock_app = _make_mock_app()
         mock_app.get_repos.return_value = ["/path/to/repo1", "/path/to/repo2"]
-        mock_app.adapters = {"langgraph": MagicMock()}
+        # Code default is `prefect` (post ca04ad1b "langgraph CLI default fix").
+        mock_app.adapters = {"prefect": MagicMock()}
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = mock_app
         mock_auth = MagicMock()
@@ -190,7 +199,8 @@ class TestSweepCommand:
     def test_sweep_claude_subscription_auth(self, mock_app_cls, mock_auth_cls):
         mock_app = _make_mock_app()
         mock_app.get_repos.return_value = ["/path/to/repo1"]
-        mock_app.adapters = {"langgraph": MagicMock()}
+        # Code default is `prefect` (post ca04ad1b "langgraph CLI default fix").
+        mock_app.adapters = {"prefect": MagicMock()}
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = mock_app
         mock_auth = MagicMock()
@@ -210,7 +220,8 @@ class TestSweepCommand:
         maha = _make_mock_app()
         maha.config = config
         maha.get_repos.return_value = ["/path/to/repo1"]
-        maha.adapters = {"langgraph": MagicMock()}
+        # Code default is `prefect` (post ca04ad1b "langgraph CLI default fix").
+        maha.adapters = {"prefect": MagicMock()}
         maha.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = maha
         mock_auth = MagicMock()
@@ -235,7 +246,8 @@ class TestWorkflowSweep:
     def test_workflow_sweep_basic(self, mock_app_cls, mock_auth_cls):
         mock_app = _make_mock_app()
         mock_app.get_repos.return_value = ["/path/to/repo1"]
-        mock_app.adapters = {"langgraph": MagicMock()}
+        # Code default is `prefect` (post ca04ad1b "langgraph CLI default fix").
+        mock_app.adapters = {"prefect": MagicMock()}
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = mock_app
         mock_auth = MagicMock()
@@ -459,114 +471,84 @@ class TestWorkflowReview:
 
 
 class TestAdapterList:
-    """Tests for 'adapter list' command."""
+    """Product decision (2026-10-12): ``mahavishnu adapter list`` was removed.
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_list_all(self, mock_reg_cls):
-        adapter_dict = {
-            "name": "prefect",
-            "adapter_id": "prefect",
-            "domain": "orchestration",
-            "category": "workflow",
-            "provider": "prefect",
-            "capabilities": ["workflow"],
-            "priority": 100,
-            "source": "registry",
-            "healthy": "healthy",
-            "has_instance": True,
-        }
+    See ``docs/architecture/MEMORY_ARCHITECTURE.md`` and the Oneiric
+    substrate consolidation (commit db06fc87): consumers now use
+    ``mcp__oneiric__list_adapters`` instead. These tests verify the
+    removed command is properly rejected by the CLI so a future
+    re-introduction (or accidental re-registration) is caught.
+    """
 
-        mock_reg = MagicMock()
-        mock_reg.list_adapters = MagicMock(return_value=[adapter_dict])
-        mock_reg_cls.return_value = mock_reg
-
+    def test_adapter_list_command_removed(self):
+        """`mahavishnu adapter list` no longer exists — typer exits 2."""
         result = runner.invoke(cli_module.app, ["adapter", "list"])
-        assert result.exit_code == 0
-        assert "prefect" in result.output
+        assert result.exit_code != 0
+        assert "No such command" in result.output or "adapter" in result.output.lower()
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_list_with_domain_filter(self, mock_reg_cls):
-        mock_reg = MagicMock()
-        mock_reg.list_adapters = MagicMock(return_value=[])
-        mock_reg_cls.return_value = mock_reg
-
+    def test_adapter_list_with_domain_filter_command_removed(self):
+        """`mahavishnu adapter list -d <domain>` no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "list", "-d", "orchestration"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_list_healthy_only(self, mock_reg_cls):
-        mock_reg = MagicMock()
-        mock_reg.list_adapters = MagicMock(return_value=[])
-        mock_reg_cls.return_value = mock_reg
-
+    def test_adapter_list_healthy_only_command_removed(self):
+        """`mahavishnu adapter list --healthy` no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "list", "--healthy"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
 
 class TestAdapterResolve:
-    """Tests for 'adapter resolve' command."""
+    """Product decision (2026-10-12): ``mahavishnu adapter resolve`` was removed.
 
-    @patch("mahavishnu.core.task_router.TaskRouter")
-    def test_adapter_resolve_basic(self, mock_router_cls):
-        mock_router = MagicMock()
-        mock_router.route = AsyncMock(return_value={"adapter": "prefect", "confidence": 0.9})
-        mock_router_cls.return_value = mock_router
+    The helper ``_async_adapter_resolve`` survives as an internal function
+    in ``_main_cli.py`` but no CLI subcommand is registered for it.
+    Consumers use ``mcp__oneiric__get_adapter`` (TaskRouter-backed).
+    These tests verify the removed CLI command is properly rejected.
+    """
 
+    def test_adapter_resolve_basic_command_removed(self):
+        """`mahavishnu adapter resolve <type> -c ...` no longer exists."""
         result = runner.invoke(
             cli_module.app,
             ["adapter", "resolve", "ai_task", "-c", "workflow", "-c", "parallel"],
         )
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
-    @patch("mahavishnu.core.task_router.TaskRouter")
-    def test_adapter_resolve_missing_args(self, mock_router_cls):
+    def test_adapter_resolve_missing_args_command_removed(self):
+        """`mahavishnu adapter resolve ai_task` (missing -c) no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "resolve", "ai_task"])
         assert result.exit_code != 0
 
-    @patch("mahavishnu.core.task_router.TaskType", side_effect=ValueError("bad type"))
-    @patch("mahavishnu.core.task_router.TaskRouter")
-    def test_adapter_resolve_invalid_task_type(self, mock_router_cls, mock_task_type):
+    def test_adapter_resolve_invalid_task_type_command_removed(self):
+        """`mahavishnu adapter resolve invalid_type` no longer exists."""
         result = runner.invoke(
             cli_module.app,
             ["adapter", "resolve", "invalid_type", "-c", "workflow"],
         )
-        assert result.exit_code == 1
-        assert "Unknown task type" in result.output
+        assert result.exit_code != 0
 
 
 class TestAdapterHealth:
-    """Tests for 'adapter health' command."""
+    """Product decision (2026-10-12): ``mahavishnu adapter health`` was removed.
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_health_all(self, mock_reg_cls):
-        mock_reg = MagicMock()
-        mock_reg.check_all_health = AsyncMock(return_value={"prefect": {"status": "healthy"}})
-        mock_reg_cls.return_value = mock_reg
+    Consumers use ``mcp__oneiric__get_adapter_health`` instead. These
+    tests verify the removed CLI command is properly rejected.
+    """
 
+    def test_adapter_health_all_command_removed(self):
+        """`mahavishnu adapter health` no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "health"])
-        assert result.exit_code == 0
+        assert result.exit_code != 0
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_health_specific_found(self, mock_reg_cls):
-        mock_reg = MagicMock()
-        mock_reg.check_all_health = AsyncMock(
-            return_value={"prefect": {"status": "healthy", "latency_ms": 10.0}}
-        )
-        mock_reg_cls.return_value = mock_reg
-
+    def test_adapter_health_specific_command_removed(self):
+        """`mahavishnu adapter health prefect` no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "health", "prefect"])
-        assert result.exit_code == 0
-        assert "prefect" in result.output
+        assert result.exit_code != 0
 
-    @patch("mahavishnu.core.adapter_registry.HybridAdapterRegistry")
-    def test_adapter_health_specific_not_found(self, mock_reg_cls):
-        mock_reg = MagicMock()
-        mock_reg.check_all_health = AsyncMock(return_value={})
-        mock_reg_cls.return_value = mock_reg
-
+    def test_adapter_health_not_found_command_removed(self):
+        """`mahavishnu adapter health missing` no longer exists."""
         result = runner.invoke(cli_module.app, ["adapter", "health", "missing"])
-        assert result.exit_code == 0
-        assert "not_found" in result.output
+        assert result.exit_code != 0
 
 
 # ===========================================================================
@@ -1602,13 +1584,30 @@ class TestWorkersListTypes:
 
 
 class TestPoolSpawn:
-    """Tests for 'pool spawn' command."""
+    """Tests for 'pool spawn' command.
 
+    The CLI's ``pool spawn`` primary path dispatches via the live MCP
+    server (JSON-RPC over HTTP). When the MCP server is unreachable,
+    the CLI falls back to an in-process transient spawn via
+    ``_spawn_transient`` (the legacy path these tests exercise). See
+    ``mahavishnu/_main_cli.py`` lines 1826-1857 for the dispatch + fallback
+    contract.
+    """
+
+    @patch("mahavishnu._main_cli._dispatch_pool_spawn_via_mcp")
     @patch("mahavishnu.mcp.protocols.message_bus.MessageBus")
     @patch("mahavishnu.pools.PoolManager")
     @patch("mahavishnu.terminal.manager.TerminalManager")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_spawn_success(self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls):
+    def test_pool_spawn_success(
+        self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls, mock_dispatch
+    ):
+        # Force the in-process transient fallback path (post ca04ad1b +
+        # MCP-dispatch adoption).
+        from mahavishnu._main_cli import _MCPUnreachableError
+
+        mock_dispatch.side_effect = _MCPUnreachableError("http://localhost:8680/mcp")
+
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
         mock_tm = MagicMock()
@@ -1627,8 +1626,15 @@ class TestPoolSpawn:
         assert "Spawned" in result.output
         assert "pool_1" in result.output
 
+    @patch("mahavishnu._main_cli._dispatch_pool_spawn_via_mcp")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_spawn_disabled(self, mock_app_cls):
+    def test_pool_spawn_disabled(self, mock_app_cls, mock_dispatch):
+        # Force the in-process transient fallback path so the legacy
+        # ``pools_enabled = False`` guard runs.
+        from mahavishnu._main_cli import _MCPUnreachableError
+
+        mock_dispatch.side_effect = _MCPUnreachableError("http://localhost:8680/mcp")
+
         config = _make_mock_config()
         config.pools.enabled = False
         config.pools_enabled = False
