@@ -13,8 +13,10 @@
 > `HybridAdapterRegistry` in the tables and examples below are pre-migration
 > historical context — see
 > `docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md` for the
-> new substrate. `mahavishnu adapter resolve` CLI still works (it routes
-> through `TaskRouter`); `mahavishnu adapter list|health` are removed.
+> new substrate. No `mahavishnu adapter` CLI subcommand is registered —
+> `list`, `resolve`, and `health` were all removed with the module. (The
+> internal helper `_async_adapter_resolve` survives in `mahavishnu/_main_cli.py`
+> but is not wired to any command.) Use the Oneiric-backed MCP tools instead.
 > **Source of truth**: `mahavishnu/core/paths.py` (XDG layout), `mahavishnu/mcp/tool_versions.py` (versioned tool registry), `mahavishnu/mcp/tools/profiles.py` (profile gating), `mahavishnu/pools/manager.py` (PoolManager + caller_kind quota), `mahavishnu/pools/peer_routing.py` (ADR-014 caller authorization), `mahavishnu/mcp/tools/pool_tools.py` (workflow-results persistence), and `mahavishnu/websocket/server.py` (broadcast channels).
 
 Mahavishnu is the **Orchestrator / control plane** of the Bodai ecosystem. It owns
