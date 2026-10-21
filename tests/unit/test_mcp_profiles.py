@@ -38,16 +38,26 @@ def clean_env(monkeypatch):
 class TestProfileConstants:
     """Tests for profile registration lists."""
 
-    def test_minimal_registrations_only_health(self):
-        """MINIMAL profile should register health and skills_signer tools.
+    def test_minimal_registrations_health_audit_and_signer(self):
+        """MINIMAL profile registers the three always-on operational groups.
 
-        Per Phase 1.5 plan §10.3.1, skills_signer is infrastructure-critical
-        (signing verification is on every Phase 2/6 install) and MUST be
-        visible from MINIMAL upward alongside the health probes.
+        - ``_register_health_tools`` -- the base health probes.
+        - ``_register_skills_signer_tools`` -- infrastructure-critical per
+          Phase 1.5 plan §10.3.1: signing verification runs on every
+          Phase 2/6 install, so it cannot be gated behind a higher tier.
+        - ``_register_audit_health_tools`` -- added by Phase 2 of the
+          ``/health`` enrichment (plan §5 Phase 2). The monthly operator
+          audit cadence runs against MINIMAL containers too, so the audit
+          surface must be reachable from every profile.
+
+        The historical name ``test_minimal_registrations_only_health`` no
+        longer described what this asserts; MINIMAL is three groups, not
+        one (and not two).
         """
         assert MINIMAL_REGISTRATIONS == [
             "_register_health_tools",
             "_register_skills_signer_tools",
+            "_register_audit_health_tools",
         ]
 
     def test_standard_includes_minimal(self):
@@ -61,14 +71,20 @@ class TestProfileConstants:
             assert entry in FULL_REGISTRATIONS
 
     def test_full_has_all_feature_specific_tools(self):
-        """FULL profile should register all major feature tools."""
+        """FULL profile should register all major feature tools.
+
+        ``_register_adapter_registry_tools`` is intentionally absent: it was
+        removed in the 2026-10-12 substrate migration, replaced by Oneiric's
+        substrate owning the adapter registry.
+        """
         expected = [
             "_register_otel_tools",
             "_register_self_improvement_tools",
             "_register_goal_team_tools",
             "_register_treesitter_tools",
-            "_register_adapter_registry_tools",
             "_register_pycharm_tools",
+            "_register_search_tools",
+            "_register_plan_tools",
         ]
         for tool in expected:
             assert tool in FULL_REGISTRATIONS

@@ -97,17 +97,55 @@ def test_full_is_superset_of_standard() -> None:
 
 
 def test_full_includes_feature_specific_tool_groups() -> None:
-    """FULL must register all feature-specific tool groups."""
+    """FULL must register all feature-specific tool groups.
+
+    ``_register_adapter_registry_tools`` was deliberately REMOVED in the
+    2026-10-12 substrate migration: the 7 ``mcp__mahavishnu__adapter_*``
+    tools were dropped in favour of Oneiric's substrate, which owns the
+    adapter registry now. Do not re-add it here -- see
+    ``test_adapter_registry_tools_absent_from_all_profiles`` below.
+    """
     expected_groups = {
         "_register_otel_tools",
         "_register_self_improvement_tools",
         "_register_clone_tools",
         "_register_goal_team_tools",
         "_register_treesitter_tools",
-        "_register_adapter_registry_tools",
         "_register_pycharm_tools",
+        "_register_search_tools",
+        "_register_plan_tools",
     }
     assert expected_groups.issubset(set(FULL_REGISTRATIONS))
+
+
+def test_adapter_registry_tools_absent_from_all_profiles() -> None:
+    """No profile may re-register the removed adapter-registry group.
+
+    Regression guard for the 2026-10-12 substrate migration. Oneiric's
+    substrate replaces ``adapter_registry_tools.py``; if any profile ever
+    lists it again, the 7 dropped ``mcp__mahavishnu__adapter_*`` tools
+    would silently come back into the exposed surface.
+    """
+    for name, lst in (
+        ("MINIMAL", MINIMAL_REGISTRATIONS),
+        ("STANDARD", STANDARD_REGISTRATIONS),
+        ("FULL", FULL_REGISTRATIONS),
+    ):
+        assert "_register_adapter_registry_tools" not in lst, (
+            f"{name} must not register the removed adapter-registry group"
+        )
+
+
+def test_profile_registration_counts_are_canonical() -> None:
+    """Pin the exact size of each profile tier.
+
+    These are the numbers quoted across the MCP docs and the tool-count
+    summaries; a drift here means a profile silently changed its exposed
+    surface. MINIMAL 3 / STANDARD 15 / FULL 37.
+    """
+    assert len(MINIMAL_REGISTRATIONS) == 3
+    assert len(STANDARD_REGISTRATIONS) == 15
+    assert len(FULL_REGISTRATIONS) == 37
 
 
 # =============================================================================

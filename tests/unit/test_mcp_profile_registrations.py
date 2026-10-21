@@ -17,17 +17,22 @@ from mahavishnu.mcp.tools.profiles import (
 class TestProfileEnumValues:
     """Test that each profile level has the correct registration methods."""
 
-    def test_minimal_registrations_contains_only_health_tools(self) -> None:
-        """MINIMAL profile registers health + skills_signer tools.
+    def test_minimal_registrations_contains_health_audit_and_signer(self) -> None:
+        """MINIMAL registers exactly the three always-on operational groups.
 
-        The historical "only_health" name is retained for invariant id but
-        MINIMAL canonical (per Phase 1.5 plan §10.3.1) now also includes
-        the skills_signer group, which is infrastructure-critical for
-        Phase 2/6 install signing verification.
+        ``_register_health_tools``, ``_register_skills_signer_tools`` (Phase 1.5
+        plan §10.3.1 -- infrastructure-critical for Phase 2/6 install signing
+        verification) and ``_register_audit_health_tools`` (Phase 2 of the
+        ``/health`` enrichment -- the monthly operator audit cadence runs
+        against MINIMAL containers too).
+
+        Renamed from ``test_minimal_registrations_contains_only_health_tools``:
+        MINIMAL is three groups, so the old name understated the surface.
         """
         assert MINIMAL_REGISTRATIONS == [
             "_register_health_tools",
             "_register_skills_signer_tools",
+            "_register_audit_health_tools",
         ]
 
     def test_standard_registrations_includes_minimal(self) -> None:
@@ -59,18 +64,27 @@ class TestProfileEnumValues:
 class TestGetProfileTools:
     """Test that get_profile_tools returns the correct tools for each profile."""
 
-    def test_minimal_has_health_and_skills_signer(self) -> None:
-        """MINIMAL profile maps to MINIMAL_REGISTRATIONS (health + skills_signer).
+    def test_minimal_has_health_audit_and_skills_signer(self) -> None:
+        """MINIMAL maps to the three always-on groups: health, audit, signer.
 
         Per Phase 1.5 plan §10.3.1 the skills_signer group MUST be visible
         from MINIMAL upward alongside the health probes (infrastructure-
-        critical for Phase 2/6 install signing verification).
+        critical for Phase 2/6 install signing verification). Phase 2 of the
+        ``/health`` enrichment added ``_register_audit_health_tools`` to the
+        same tier.
+
+        Renamed from ``test_minimal_has_health_and_skills_signer``: the
+        profile exposes three groups, not two.
         """
         from mcp_common.tools import ToolProfile
 
         tools = PROFILE_REGISTRATIONS[ToolProfile.MINIMAL]
         assert tools == MINIMAL_REGISTRATIONS
-        assert tools == ["_register_health_tools", "_register_skills_signer_tools"]
+        assert tools == [
+            "_register_health_tools",
+            "_register_skills_signer_tools",
+            "_register_audit_health_tools",
+        ]
 
     def test_standard_has_core_groups(self) -> None:
         """STANDARD profile includes terminal, pool, worker, messaging, git, session_buddy."""
@@ -93,7 +107,12 @@ class TestGetProfileTools:
         assert expected <= set(tools)
 
     def test_full_has_all_groups(self) -> None:
-        """FULL profile includes all groups (standard + otel, self-improv, goal/team, treesitter, adapters, pycharm)."""
+        """FULL includes all groups (standard + otel, self-improv, goal/team, treesitter, search, plan, pycharm).
+
+        The adapter-registry group is deliberately NOT expected here: it was
+        removed in the 2026-10-12 substrate migration in favour of Oneiric's
+        substrate owning the adapter registry.
+        """
         from mcp_common.tools import ToolProfile
 
         tools = PROFILE_REGISTRATIONS[ToolProfile.FULL]
@@ -102,8 +121,9 @@ class TestGetProfileTools:
         assert "_register_self_improvement_tools" in tools
         assert "_register_goal_team_tools" in tools
         assert "_register_treesitter_tools" in tools
-        assert "_register_adapter_registry_tools" in tools
         assert "_register_pycharm_tools" in tools
+        assert "_register_search_tools" in tools
+        assert "_register_plan_tools" in tools
 
     def test_full_count_exceeds_standard(self) -> None:
         """FULL should have strictly more methods than STANDARD."""
@@ -213,7 +233,13 @@ class TestProfileFilteringLogic:
         return PROFILE_REGISTRATIONS[ToolProfile.MINIMAL]
 
     def test_minimal_excludes_many_groups(self) -> None:
-        """MINIMAL profile excludes terminal, pool, worker, otel, pycharm, etc."""
+        """MINIMAL profile excludes terminal, pool, worker, otel, pycharm, etc.
+
+        ``_register_search_tools`` replaces the removed
+        ``_register_adapter_registry_tools`` here: both are FULL-only, so the
+        exclusion this test guards is now asserted against a group that
+        actually exists.
+        """
         minimal_tools = self._get_minimal_tools()
         excluded_from_minimal = [
             "_register_terminal_tools",
@@ -226,14 +252,14 @@ class TestProfileFilteringLogic:
             "_register_self_improvement_tools",
             "_register_goal_team_tools",
             "_register_treesitter_tools",
-            "_register_adapter_registry_tools",
+            "_register_search_tools",
             "_register_pycharm_tools",
         ]
         for method in excluded_from_minimal:
             assert method not in minimal_tools
 
     def test_standard_excludes_full_specific_groups(self) -> None:
-        """STANDARD profile excludes otel, self-improv, goal-team, treesitter, pycharm."""
+        """STANDARD profile excludes otel, self-improv, goal-team, treesitter, search, plan, pycharm."""
         from mcp_common.tools import ToolProfile
 
         excluded_from_standard = [
@@ -241,7 +267,8 @@ class TestProfileFilteringLogic:
             "_register_self_improvement_tools",
             "_register_goal_team_tools",
             "_register_treesitter_tools",
-            "_register_adapter_registry_tools",
+            "_register_search_tools",
+            "_register_plan_tools",
             "_register_pycharm_tools",
         ]
         standard_tools = PROFILE_REGISTRATIONS[ToolProfile.STANDARD]
