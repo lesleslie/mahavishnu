@@ -346,6 +346,8 @@ for the canonical per-tool version registry.
 | Group | Profile | File | Tools (count) | What it writes |
 |-------|---------|------|---------------|----------------|
 | `_register_health_tools` | MINIMAL | `health_tools.py` | 9 | (health probes — read) |
+| `_register_skills_signer_tools` | MINIMAL | `skill_tools.py` | 2 | `mahavishnu_list_skills` / `mahavishnu_get_skill`; signer feed state in `mahavishnu.mcp.signer_feed` |
+| `_register_audit_health_tools` | MINIMAL | `audit_health_tool.py` | 1 | Fleet audit across the 5 Bodai core repos; surfaces the silent-degraded case (HTTP 200 + degraded body) |
 | `_register_terminal_tools` | STANDARD | `terminal_tools.py` | 12 | Side effect: iTerm2/tmux/crow sessions in `TerminalManager` |
 | `_register_pool_tools` | STANDARD | `pool_tools.py` | 10 | Writes `pool-state/{id}/`, `workflow-results/{id}/`; quota decisions in caller-kind buckets |
 | `_register_worker_tools` | STANDARD | `worker_tools.py` | 8 | Writes `worker-state/{id}/`; executes against `WorkerManager` |
@@ -361,6 +363,9 @@ for the canonical per-tool version registry.
 | `_register_goal_team_tools` | FULL | `goal_team_tools.py` | 9 | Goal parsing + team composition; writes `goal_team_metrics` |
 | `_register_treesitter_tools` | FULL | `treesitter_tools.py` | 7 | AST extraction; caches results in `mahavishnu/workers/capabilities/_cache.py` |
 | `_register_pycharm_tools` | FULL | `pycharm_tools.py` | n/a | Bridges PyCharm MCP actions to Mahavishnu adapters |
+| `_register_search_tools` | FULL | `search_tools.py` | 5 | Code / semantic / documentation search across the ecosystem |
+| `_register_plan_tools` | FULL | `plan_tools.py` | 5 | Plan-index store built from `MahavishnuApp`; binds the five `plan_*` tools in one call |
+| jot inbox (14 inline keys) | FULL | `profiles.py` (`REGISTRATION_MAP`) | 14 | `jot_*` capture/defer/delete/retire surface; every key delegates to the same idempotent `register` callable, which re-decorates all 14 |
 | `register_worktree_tools` (runtime-gated, not profile) | n/a | `worktree_tools.py` | 1 | `worktree_manage`; only if `app.worktree_coordinator` is initialized |
 
 In addition, three groups are registered **after** the profile loop and
@@ -388,9 +393,14 @@ Five side-effect paths write operational state outside the MCP surface:
 
 `mahavishnu/mcp/tools/profiles.py` defines three registration lists:
 
-- `MINIMAL_REGISTRATIONS = ["_register_health_tools"]`
-- `STANDARD_REGISTRATIONS = MINIMAL + [_register_terminal_tools, _register_pool_tools, _register_worker_tools, _register_worker_contract_tools, _register_repository_messaging_tools, _register_git_analytics_tools, _register_session_buddy_tools, _register_openhands_tools, _register_primitive_tools]`
-- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools]`
+- `MINIMAL_REGISTRATIONS = ["_register_health_tools", "_register_skills_signer_tools", "_register_audit_health_tools"]` (3)
+- `STANDARD_REGISTRATIONS = MINIMAL + [_register_terminal_tools, _register_pool_tools, _register_worker_tools, _register_worker_contract_tools, _register_repository_messaging_tools, _register_git_analytics_tools, _register_session_buddy_tools, _register_openhands_tools, _register_primitive_tools, …]` (15)
+- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools, _register_search_tools, _register_plan_tools, plus the 14 inline jot_* keys]` (37)
+
+The three counts (3 / 15 / 37) are pinned by
+`tests/unit/mcp/test_profiles.py::test_profile_registration_counts_are_canonical`,
+so a change to any tier fails there rather than silently drifting from this
+document.
 
 Resolution precedence:
 
@@ -652,9 +662,11 @@ fallback paths:
 **Bug**: A pre-fix version of `discover_tools` returned
 `profile_methods_scheduled` (the registration list from `profiles.py`)
 when `capability="ready"` was passed. Operators keying dashboards off
-"routable workers" saw the registration target (e.g., 14 groups under
-FULL) instead of the actually-routable worker types (a subset filtered
-by `mahavishnu/workers/capabilities/select_routable_workers`).
+"routable workers" saw the registration target (the number of
+registration entries under FULL — see `len(FULL_REGISTRATIONS)`; it
+drifts, so don't hard-code a literal here) instead of the
+actually-routable worker types (a subset filtered by
+`mahavishnu/workers/capabilities/select_routable_workers`).
 
 **Contract**: When `capability="ready"` is passed, the response MUST
 include `routable_workers` — the same list returned by
@@ -684,7 +696,7 @@ effect so the test is deterministic.
   Oneiric `LifecycleManager` and asserts the resolved factory path; do
   not collapse to `MagicMock`.
 - **Profile tests must cover all three tiers**:
-  `tests/unit/test_mcp_tools_profiles.py` (or equivalent) covers MINIMAL,
+  `tests/unit/test_mcp_profiles.py` (or equivalent) covers MINIMAL,
   STANDARD, FULL with a `DummyFastMCP` that records every registered
   tool. Any new group MUST be added to `PROFILE_REGISTRATIONS` in
   `mahavishnu/mcp/tools/profiles.py` AND update the count assertion.
@@ -707,7 +719,7 @@ what's wired today.
 | **Oneiric `parent_hash` chain for adapter versions** | `dhara/mcp/adapter_tools.py` has `Adapter.version_history` (append-only); no parent-hash linking | Caller-supplied semver, no integrity check | Track Workstream D parent-hash migration |
 | **`PoolSelector.PEER_AFFINITY` ACL provider wiring in production** | `PoolManager.__init__` accepts an `acl_provider`; production wiring defaults to `DEFAULT_ACL_PROVIDER` (deny) | `PEER_AFFINITY` always falls back to `LEAST_LOADED` in production until an ACL provider is wired | Wire `mahavishnu/auth.py::get_peer_models_acl_provider` into `PoolManager`; add `tests/integration/test_pool_routing_peer_affinity.py::test_production_acl_provider_wired` |
 | **`worktree_tools` always-registered** | `register_worktree_tools` is gated by `app.worktree_coordinator is not None`; not by profile | Some deployments see `worktree_manage`; others don't | Track feature flag in `app.worktree_coordinator` initialization; document in `mahavishnu/mcp/tool_versions.py` |
-| **`FUL L_GROUPS` documentation drift** | `tool_versions.py` lists ~174 tools; `profiles.py` lists 14 registration methods. The `MINIMAL+STANDARD+FULL` lists in `profiles.py` enumerate `_register_*` *methods*, not individual tools. A tool count of 174 is not directly recoverable from the profile lists | Operators reading `profiles.py` may underestimate the FULL surface | Add a docstring note + an explicit count assertion in `tests/unit/test_mcp_tools_profiles.py` |
+| **`FULL_GROUPS` documentation drift** | `tool_versions.py` lists ~174 tools; `profiles.py` lists 22 registration entries beyond STANDARD (8 `_register_*` methods + 14 inline `jot_*` keys). The `MINIMAL+STANDARD+FULL` lists in `profiles.py` enumerate registration entries, not individual tools. A tool count of 174 is not directly recoverable from the profile lists | Operators reading `profiles.py` may underestimate the FULL surface | Add a docstring note + an explicit count assertion in `tests/unit/mcp/test_profiles.py` |
 
 ### Tool-profile documentation drift (specific finding)
 
@@ -721,19 +733,39 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     "_register_goal_team_tools",
     "_register_treesitter_tools",
     "_register_pycharm_tools",
+    "_register_search_tools",
+    "_register_plan_tools",  # 5 plan_* tools (Task 12)
+    # Jot inbox (14 keys). Each key delegates to the same idempotent
+    # ``register`` callable, which re-decorates all 14 against the server.
+    "jot_list",
+    "jot_show",
+    "jot_add",
+    "jot_edit",
+    "jot_done",
+    "jot_reopen",
+    "jot_vitals",
+    "jot_search",
+    "jot_drain",
+    "jot_dispatch",
+    "jot_defer",
+    "jot_delete",
+    "jot_retry",
+    "jot_resurface",
 ]
 ```
 
 The `MAHAVISHNU_TOOL_PROFILE` description in `docs/CLI_REFERENCE.md` says
-"~174 tools" but `profiles.py` only enumerates 14 `_register_*` *group*
-methods (each method registers multiple tools via a `@mcp.tool()`
-decorator). The actual tool count under FULL is the sum of every
-`@server.tool()` decorated function in the registered modules. Operators
-reading `profiles.py` alone cannot derive the 174 number — they have to
-read each tool file. This is documented but not currently a contract
-violation; the next refactor that splits a group (e.g., moving OTel
-ingestion into a separate module) must update both `profiles.py` and
-the count assertion in the profile tests.
+"~174 tools" but `profiles.py` enumerates only 22 *registration entries*
+beyond STANDARD — 8 `_register_*` *group* methods (each registering
+multiple tools via a `@mcp.tool()` decorator) plus 14 inline `jot_*`
+keys that resolve to a single shared registration callable. The actual
+tool count under FULL is the sum of every `@server.tool()` decorated
+function in the registered modules. Operators reading `profiles.py`
+alone cannot derive the 174 number — they have to read each tool file.
+This is documented but not currently a contract violation; the next
+refactor that splits a group (e.g., moving OTel ingestion into a separate
+module) must update both `profiles.py` and the count assertion in the
+profile tests.
 
 ______________________________________________________________________
 
@@ -953,7 +985,8 @@ Three diagrams are embedded above and persisted with this document:
    `workflow-results/{id}/` persistence. Captures the five contract
    invariants.
 1. **Tool profile gate** (this section) — `flowchart` of how
-   `MAHAVISHNU_TOOL_PROFILE` filters the 14 registration groups.
+   `MAHAVISHNU_TOOL_PROFILE` filters the registration entries of the active
+   tier (37 under FULL, 15 under STANDARD, 3 under MINIMAL).
 
 ### Pool routing flow (ADR-014 + caller-kind + peer resolver)
 
@@ -1097,7 +1130,7 @@ invariants apply:
 |---------|------------------------|----------|----------------|
 | `MINIMAL` | 27 core + 9 health + 3 ecosystem = **39** | Boot probes only; no orchestration | Calling `pool_route_execute` returns "tool not found" — callers must check `discover_tools` first |
 | `STANDARD` | MINIMAL + 9 groups (terminal/pool/worker/worker-contract/repository-messaging/git-analytics/session-buddy/openhands/primitive) = **MINIMAL + ~50 tools** (~89 total) | Daily development; most operational workflows | `otel_*` not available; metric dashboards return empty. Adapter tools are not a Mahavishnu profile concern at all — use `mcp__oneiric__*` |
-| `FULL` (default) | STANDARD + 6 groups (otel/self-improvement/clone/goal-team/treesitter/pycharm) = **~174 tools** | Production; observability + code indexing | High context overhead per Claude Code session; consider `STANDARD` for CI/headless agents |
+| `FULL` (default) | STANDARD + 22 registration entries (8 groups: otel/self-improvement/clone/goal-team/treesitter/pycharm/search/plan, plus 14 inline `jot_*` keys) = **~174 tools** | Production; observability + code indexing | High context overhead per Claude Code session; consider `STANDARD` for CI/headless agents |
 
 **Profile migration gotcha**: tool names in `tool_versions.py::DEPRECATED_TOOLS`
 (`health_check_service`, `get_liveness`, `get_readiness`,
@@ -1217,8 +1250,11 @@ many-to-many: each `_register_*` method calls a `register_*_tools(mcp)`
 function that registers N tools via `@mcp.tool()` decorators.
 
 Operators reading only `profiles.py` cannot derive the per-tool count
-without reading every tool file. Add a count assertion to
-`tests/unit/test_mcp_tools_profiles.py::test_full_profile_tool_count`
+without reading every tool file. The registration-entry counts are now
+pinned by
+`tests/unit/mcp/test_profiles.py::test_profile_registration_counts_are_canonical`
+(3 / 15 / 37), but the per-tool total is still unpinned. Add a count
+assertion to `tests/unit/test_mcp_profiles.py::test_full_profile_tool_count`
 that pins the FULL count (currently ~174) and the per-group breakdown,
 so a refactor that drops or adds tools is flagged immediately.
 
