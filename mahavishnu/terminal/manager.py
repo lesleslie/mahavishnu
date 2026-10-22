@@ -78,7 +78,15 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
             # old ``gateway_api_base(ProtocolFamily.OPENAI, ...)``
             # produced; the ``rstrip("/")`` handles the Pydantic
             # ``HttpUrl`` trailing-slash quirk.
-            env[router._settings.qwen_env_var] = str(router._settings.base_url).rstrip("/") + "/v1"
+            #
+            # The suffix is added only when absent: ``ONEIRIC_BIFROST_BASE_URL``
+            # is conventionally configured *with* ``/v1`` already present
+            # (``http://127.0.0.1:8471/v1``), so appending unconditionally
+            # produced ``/v1/v1`` and 404'd every Qwen chat completion.
+            base = str(router._settings.base_url).rstrip("/")
+            if not base.endswith("/v1"):
+                base += "/v1"
+            env[router._settings.qwen_env_var] = base
     return env
 
 

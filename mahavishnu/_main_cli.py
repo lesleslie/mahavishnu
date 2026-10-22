@@ -1497,6 +1497,14 @@ from .cli.launchd_cli import launchd_app
 
 app.add_typer(launchd_app, name="launchd")
 
+# === BIFROST SUB-COMMANDS ===
+# Wire-up contract (anti-revert): mahavishnu/cli/bifrost_cli.py docstring,
+# this marker block, and tests/unit/cli/test_cli_wireup_invariants.py
+# must all move together. Consolidates the retired scripts/bifrost* tools.
+from .cli.bifrost_cli import bifrost_app
+
+app.add_typer(bifrost_app, name="bifrost")
+
 # Terminal diagnostic — `mahavishnu status` surfaces adapter_precedence,
 # tmux binary location, and claude-on-PATH state with
 # [ok]/[warn]/[missing]/[error] markers. Lands via the delayed-attach

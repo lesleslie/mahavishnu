@@ -1,0 +1,411 @@
+"""Single toggle state machine for Bifrost client harnesses.
+
+req: REQ-BIFROST-025, REQ-BIFROST-026, REQ-BIFROST-027, REQ-BIFROST-028, REQ-BIFROST-029
+
+Replaces the separate ``scripts/bifrost-toggle-claude-url`` and
+``scripts/bifrost-toggle-qwen-url`` with one implementation parameterised by a
+:class:`~mahavishnu.bifrost.models.HarnessDescriptor`.
+
+Two defects in the retired scripts are fixed here:
+
+1. Neither wrote a credential -- only a base URL. Because Bifrost reads the
+   virtual key exclusively from the ``x-bf-vk`` header, both harnesses
+   reached the gateway and were rejected with ``401 virtual key is required``.
+2. The gate ``BIFROST_CTL_NO_CC_URL_REWRITE`` lived only in the shell wrapper
+   ``scripts/bifrost-ctl``, leaving this Python path as an unguarded side door
+   around the operator's own opt-out. It is enforced here now.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from typing import TYPE_CHECKING, Any
+
+import typer
+
+from .models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER, HarnessDescriptor
+from .paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+GATE_ENV = "BIFROST_CTL_NO_CC_URL_REWRITE"
+
+CC_CUSTOM_HEADERS_VAR = "ANTHROPIC_CUSTOM_HEADERS"
+
+EXIT_OK = 0
+EXIT_ERROR = 2
+
+
+# --------------------------------------------------------------------------
+# settings.json I/O
+# --------------------------------------------------------------------------
+
+
+def _read_settings(path: Path) -> dict[str, Any]:
+    """Load a harness settings file, treating absence as empty."""
+    if not path.exists():
+        return {}
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        typer.echo(f"error: {path} is not valid JSON: {exc}", err=True)
+        raise typer.Exit(EXIT_ERROR) from exc
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _write_settings(path: Path, settings: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+
+
+def _env_block(settings: dict[str, Any]) -> dict[str, Any]:
+    """Return ``settings["env"]``, creating or repairing it as a dict."""
+    env = settings.setdefault("env", {})
+    if not isinstance(env, dict):
+        typer.echo("error: settings 'env' is not an object", err=True)
+        raise typer.Exit(EXIT_ERROR)
+    return env
+
+
+def _get_url(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    value = _env_block(settings).get(harness.url_env_var)
+    return value if isinstance(value, str) else None
+
+
+def _set_url(settings: dict[str, Any], harness: HarnessDescriptor, url: str) -> None:
+    _env_block(settings)[harness.url_env_var] = url
+
+
+def _pop_url(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    _env_block(settings).pop(harness.url_env_var, None)
+    if not _env_block(settings):
+        settings.pop("env", None)
+
+
+# --------------------------------------------------------------------------
+# credential sinks -- req: REQ-BIFROST-026 / REQ-BIFROST-027
+# --------------------------------------------------------------------------
+
+
+def _upsert_header_line(raw: str | None, header: str, value: str) -> str:
+    """Return ``raw`` with ``header`` set to ``value``, preserving other lines.
+
+    ``ANTHROPIC_CUSTOM_HEADERS`` is a newline-separated list, so appending is
+    not safe either -- a prior ``x-bf-vk`` line must be dropped first or the
+    header would be sent twice.
+    """
+    prefix = f"{header}:"
+    kept = [
+        line
+        for line in (raw or "").splitlines()
+        if line.strip() and not line.strip().startswith(prefix)
+    ]
+    kept.append(f"{header}: {value}")
+    return "\n".join(kept)
+
+
+def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtual_key: str) -> None:
+    """Write the ``x-bf-vk`` header to the sink this harness actually reads.
+
+    Claude Code takes ``ANTHROPIC_CUSTOM_HEADERS`` in ``Name: Value`` form
+    (requires >= 2.1.227). Qwen Code takes ``customHeaders`` under
+    ``model.generationConfig`` for runtime models with no matching
+    ``modelProviders`` entry -- which is what this toggle configures, since it
+    points the harness via ``env.<URL var>`` rather than a provider block.
+    """
+    if harness.credential_sink == "env":
+        env = _env_block(settings)
+        existing = env.get(CC_CUSTOM_HEADERS_VAR)
+        env[CC_CUSTOM_HEADERS_VAR] = _upsert_header_line(
+            existing if isinstance(existing, str) else None,
+            VIRTUAL_KEY_HEADER,
+            virtual_key,
+        )
+        return
+
+    model = settings.setdefault("model", {})
+    if not isinstance(model, dict):
+        typer.echo("error: settings 'model' is not an object", err=True)
+        raise typer.Exit(EXIT_ERROR)
+    generation = model.setdefault("generationConfig", {})
+    headers = generation.setdefault("customHeaders", {})
+    headers[VIRTUAL_KEY_HEADER] = virtual_key
+
+
+def _read_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    """Return the currently-configured virtual key for ``harness``, if any."""
+    if harness.credential_sink == "env":
+        raw = _env_block(settings).get(CC_CUSTOM_HEADERS_VAR)
+        if not isinstance(raw, str):
+            return None
+        prefix = f"{VIRTUAL_KEY_HEADER}:"
+        for line in raw.splitlines():
+            if line.strip().startswith(prefix):
+                return line.strip()[len(prefix) :].strip()
+        return None
+
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return None
+    generation = model.get("generationConfig")
+    if not isinstance(generation, dict):
+        return None
+    headers = generation.get("customHeaders")
+    if not isinstance(headers, dict):
+        return None
+    value = headers.get(VIRTUAL_KEY_HEADER)
+    return value if isinstance(value, str) else None
+
+
+def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Remove only our header, leaving any other custom headers intact."""
+    if harness.credential_sink == "env":
+        env = _env_block(settings)
+        raw = env.get(CC_CUSTOM_HEADERS_VAR)
+        if isinstance(raw, str):
+            kept = [
+                ln for ln in raw.splitlines() if not ln.strip().startswith(f"{VIRTUAL_KEY_HEADER}:")
+            ]
+            if kept:
+                env[CC_CUSTOM_HEADERS_VAR] = "\n".join(kept)
+            else:
+                env.pop(CC_CUSTOM_HEADERS_VAR, None)
+        return
+
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return
+    generation = model.get("generationConfig")
+    if not isinstance(generation, dict):
+        return
+    headers = generation.get("customHeaders")
+    if not isinstance(headers, dict):
+        return
+    headers.pop(VIRTUAL_KEY_HEADER, None)
+    if not headers:
+        generation.pop("customHeaders", None)
+
+
+# --------------------------------------------------------------------------
+# backup -- tolerates the legacy plain-URL format written by the old scripts
+# --------------------------------------------------------------------------
+
+
+def _save_backup(
+    harness: HarnessDescriptor,
+    url: str | None,
+    credential_present: bool,
+    dry_run: bool,
+) -> None:
+    """Persist the pre-toggle URL and whether a key was already configured.
+
+    The virtual key value is deliberately **never** written here. A backup
+    file is plaintext, long-lived, and world-readable by default; parking a
+    credential in it would leave a copy on disk after the toggle completes.
+    Only the boolean is recorded, so ``direct`` can tell "there was nothing
+    here" from "we overwrote something we deliberately do not back up".
+    """
+    payload: dict[str, Any] = {"url": url, "credential_present": credential_present}
+    serialized = json.dumps(payload, indent=2)
+    if dry_run:
+        typer.echo(f"[dry-run] would save prior state to {harness.backup_path}")
+        return
+    harness.backup_path.parent.mkdir(parents=True, exist_ok=True)
+    harness.backup_path.write_text(serialized + "\n", encoding="utf-8")
+    harness.backup_path.chmod(0o600)
+    typer.echo(f"saved prior {harness.label} state to {harness.backup_path}")
+
+
+def _load_backup(harness: HarnessDescriptor) -> dict[str, str]:
+    """Load the backup, accepting both JSON and the legacy bare-URL format."""
+    if not harness.backup_path.exists():
+        return {}
+    raw = harness.backup_path.read_text(encoding="utf-8").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {"url": raw}
+    if not isinstance(data, dict):
+        return {"url": raw}
+    # Legacy backups written before the credential fix stored a secret under
+    # "credential". Drop it on read so it does not linger in memory or get
+    # copied forward; the file itself is rewritten by the next toggle.
+    present = data.get("credential_present")
+    if present is None:
+        present = "true" if isinstance(data.get("credential"), str) else "false"
+    return {"url": data.get("url"), "credential_present": str(bool(present)).lower()}
+
+
+# --------------------------------------------------------------------------
+# gate -- req: REQ-BIFROST-029
+# --------------------------------------------------------------------------
+
+
+def gate_blocks(action: str) -> bool:
+    """True when the operator opted out of harness URL rewrites."""
+    return bool(os.environ.get(GATE_ENV, ""))
+
+
+def _resolve_virtual_key(key_file: Path | None) -> str | None:
+    """Resolve the virtual key from a file, then the environment.
+
+    req: REQ-BIFROST-028 -- never hardcoded, never logged.
+
+    There is deliberately **no** ``--virtual-key`` CLI option: argv is
+    visible to any local user via ``ps``, and lands in shell history and
+    terminal scrollback. The env var and a file are the only supported
+    inputs.
+    """
+    if key_file and key_file.exists():
+        text = key_file.read_text(encoding="utf-8").strip()
+        return text or None
+    env_value = os.environ.get(VIRTUAL_KEY_ENV, "").strip()
+    return env_value or None
+
+
+# --------------------------------------------------------------------------
+# actions
+# --------------------------------------------------------------------------
+
+
+def _action_bifrost(
+    harness: HarnessDescriptor,
+    host: str,
+    port: int,
+    virtual_key: str | None,
+    dry_run: bool,
+    force: bool,
+) -> None:
+    settings = _read_settings(harness.settings_path)
+    url = harness.bifrost_url(host, port)
+    existing = _get_url(settings, harness)
+
+    if existing == url and _read_credential(settings, harness) == virtual_key:
+        typer.echo(f"{harness.label} already points at {url} with a matching key; no-op")
+        return
+
+    if existing != url or virtual_key:
+        existing_key = _read_credential(settings, harness)
+        if existing_key and existing_key != virtual_key and not force:
+            typer.echo(
+                f"refusing to overwrite an existing {VIRTUAL_KEY_HEADER} header on "
+                f"{harness.label}: this toggle never persists credentials to "
+                f"{harness.backup_path}, so the old value could not be restored. "
+                f"Re-run with --force to discard it, or remove the header first.",
+                err=True,
+            )
+            raise typer.Exit(EXIT_ERROR)
+        _save_backup(harness, existing, existing_key is not None, dry_run)
+
+    _set_url(settings, harness, url)
+    if virtual_key:
+        _set_credential(settings, harness, virtual_key)
+    else:
+        typer.echo(
+            f"WARNING: no virtual key available (set {VIRTUAL_KEY_ENV} or pass "
+            f"--virtual-key-file). {harness.label} will reach Bifrost but be "
+            f"rejected with 401 until a key is configured.",
+            err=True,
+        )
+
+    if dry_run:
+        typer.echo(f"[dry-run] would point {harness.label} at {url} in {harness.settings_path}")
+        return
+
+    _write_settings(harness.settings_path, settings)
+    typer.echo(f"wrote {harness.url_env_var}={url} to {harness.settings_path}")
+    typer.echo(f"note: {harness.restart_note}")
+
+
+def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
+    settings = _read_settings(harness.settings_path)
+    url = _get_url(settings, harness)
+    if url is None:
+        typer.echo(f"{harness.url_env_var} is unset; no-op")
+        return
+    if url != harness.bifrost_url():
+        typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
+        return
+
+    backup = _load_backup(harness)
+    prior_url = backup.get("url")
+    had_credential = backup.get("credential_present") == "true"
+
+    _pop_url(settings, harness)
+    _pop_credential(settings, harness)
+
+    if dry_run:
+        typer.echo(f"[dry-run] would restore {harness.label} to {prior_url or '<unset>'}")
+        return
+
+    if prior_url:
+        _set_url(settings, harness, prior_url)
+    if had_credential:
+        typer.echo(
+            f"note: a pre-existing {VIRTUAL_KEY_HEADER} header was removed. It was "
+            f"not backed up (credentials are never persisted), so re-add it if "
+            f"{harness.label} still needs it.",
+            err=True,
+        )
+
+    _write_settings(harness.settings_path, settings)
+    harness.backup_path.unlink(missing_ok=True)
+    typer.echo(f"restored {harness.label} to {prior_url or '<removed>'} in {harness.settings_path}")
+    typer.echo(f"note: {harness.restart_note}")
+
+
+def _action_status(harness: HarnessDescriptor) -> None:
+    settings = _read_settings(harness.settings_path)
+    url = _get_url(settings, harness)
+    if url is None:
+        typer.echo(f"{harness.url_env_var}: <unset>")
+    elif url == harness.bifrost_url():
+        typer.echo(f"{harness.url_env_var}: Bifrost ({url})")
+    else:
+        typer.echo(f"{harness.url_env_var}: custom ({url})")
+
+    credential = _read_credential(settings, harness)
+    typer.echo(f"{VIRTUAL_KEY_HEADER} header: {'present' if credential else 'absent'}")
+    typer.echo(
+        f"backup at {harness.backup_path}: {'yes' if harness.backup_path.exists() else 'no'}"
+    )
+
+
+def credential_configured(harness: HarnessDescriptor) -> bool:
+    """True when ``harness`` currently carries the virtual-key header."""
+    return _read_credential(_read_settings(harness.settings_path), harness) is not None
+
+
+def apply(
+    harness: HarnessDescriptor,
+    action: str,
+    host: str = DEFAULT_BIFROST_HOST,
+    port: int = DEFAULT_BIFROST_PORT,
+    key_file: Path | None = None,
+    dry_run: bool = False,
+    force: bool = False,
+) -> int:
+    """Run ``action`` against ``harness``. Returns a process exit code."""
+    if action == "status":
+        _action_status(harness)
+        return EXIT_OK
+
+    if gate_blocks(action):
+        typer.echo(f"{GATE_ENV} is set; skipping {harness.label} URL rewrite (action={action})")
+        return EXIT_OK
+
+    resolved_key = _resolve_virtual_key(key_file)
+
+    if action == "bifrost":
+        _action_bifrost(harness, host, port, resolved_key, dry_run, force)
+        return EXIT_OK
+    if action == "direct":
+        _action_direct(harness, dry_run)
+        return EXIT_OK
+
+    typer.echo(f"error: unknown action {action!r}; expected bifrost|direct|status", err=True)
+    return EXIT_ERROR

@@ -50,6 +50,25 @@ def test_launchd_subcommands_wired_in_main_cli() -> None:
     )
 
 
+def test_bifrost_subcommands_wired_in_main_cli() -> None:
+    """``mahavishnu bifrost`` must register on the root CLI.
+
+    Sibling to ``test_launchd_subcommands_wired_in_main_cli`` — same
+    anti-revert pattern. Added with the Phase 1 Bifrost CLI consolidation
+    (req: REQ-BIFROST-024); without this the new sub-app could be silently
+    dropped and the retired ``scripts/bifrost*`` tools would look like the
+    only remaining entry point.
+    """
+    from mahavishnu._main_cli import app
+
+    registered = {grp.name for grp in app.registered_groups if grp.name}
+    assert "bifrost" in registered, (
+        "bifrost sub-app silently missing from _main_cli.app.registered_groups. "
+        'Re-add `from .cli.bifrost_cli import bifrost_app; app.add_typer(bifrost_app, name="bifrost")` '
+        "in the `=== BIFROST SUB-COMMANDS ===` block."
+    )
+
+
 def test_demo_agno_is_live_implementation() -> None:
     """``mahavishnu demo agno`` must be a live implementation.
 
