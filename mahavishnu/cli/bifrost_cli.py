@@ -26,6 +26,8 @@ from pathlib import Path  # noqa: TC003 -- Typer resolves annotations at runtime
 
 import typer
 
+from ..bifrost import gateway, lifecycle
+from ..bifrost.lifecycle import TARGET_PLIST
 from ..bifrost.models import VIRTUAL_KEY_ENV, resolve_harness
 from ..bifrost.paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
 from ..bifrost.policy import build_report
@@ -119,3 +121,50 @@ def policy(
 def credential_source() -> None:
     """Print where the virtual key is read from. Never prints the key itself."""
     typer.echo(f"virtual key is read from ${VIRTUAL_KEY_ENV}, or --virtual-key-file")
+
+
+# --- lifecycle (req: REQ-BIFROST-033) ---
+
+
+@bifrost_app.command("start")
+def bifrost_start() -> None:
+    """Start the gateway via launchd; repoint harnesses once it is ready."""
+    lifecycle.start()
+
+
+@bifrost_app.command("stop")
+def bifrost_stop() -> None:
+    """Restore harness endpoints to their prior value, then stop the gateway."""
+    lifecycle.stop()
+
+
+@bifrost_app.command("restart")
+def bifrost_restart() -> None:
+    """Restart the gateway, keeping client routing intact."""
+    lifecycle.restart()
+
+
+@bifrost_app.command("rebootstrap")
+def bifrost_rebootstrap() -> None:
+    """Re-seed the gateway config from the repo template, then restart."""
+    lifecycle.sync_config()
+    lifecycle.rebootstrap()
+
+
+@bifrost_app.command("install")
+def bifrost_install() -> None:
+    """Install the launchd plist into ~/Library/LaunchAgents."""
+    lifecycle.install_plist()
+    typer.echo(f"installed {TARGET_PLIST}")
+
+
+@bifrost_app.command("status")
+def bifrost_status() -> None:
+    """Report service state, port binding, ready file, and harness routing."""
+    lifecycle.status()
+
+
+@bifrost_app.command("foreground", hidden=True)
+def bifrost_foreground() -> None:
+    """Run the gateway in this shell (used by the LaunchAgent plist)."""
+    gateway.serve()
