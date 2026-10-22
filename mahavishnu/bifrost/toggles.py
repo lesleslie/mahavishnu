@@ -20,15 +20,14 @@ from __future__ import annotations
 
 import json
 import os
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+import subprocess
+from typing import Any
 
 import typer
 
 from .models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER, HarnessDescriptor
 from .paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 GATE_ENV = "BIFROST_CTL_NO_CC_URL_REWRITE"
 
@@ -246,8 +245,37 @@ def _load_backup(harness: HarnessDescriptor) -> dict[str, str]:
 
 
 def gate_blocks(action: str) -> bool:
-    """True when the operator opted out of harness URL rewrites."""
-    return bool(os.environ.get(GATE_ENV, ""))
+    """True when the operator opted out of harness URL rewrites.
+
+    Reads the *environment* first, then falls back to sourcing-aware shells.
+    ``~/.zshenv`` historically carried this as a shell-local assignment
+    (``BIFROST_CTL_NO_CC_URL_REWRITE=1`` with no ``export``), which a zsh
+    script sees after sourcing but ``os.environ`` never does. Checking
+    ``os.environ`` alone therefore silently ignored the gate for any
+    non-zsh caller -- including this Typer app and the retired Python
+    helpers -- letting them rewrite settings the operator had opted out of.
+    """
+    if os.environ.get(GATE_ENV, ""):
+        return True
+
+    for shell in ("/bin/zsh", "/bin/bash", "/bin/sh"):
+        if not Path(shell).exists():
+            continue
+        try:
+            # The shell expands $GATE_ENV itself; only the default is
+            # substituted here so bash and zsh both parse it.
+            probe = subprocess.run(
+                [shell, "-c", 'printf %s "${' + GATE_ENV + ':-}"'],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except OSError, subprocess.SubprocessError:
+            continue
+        if probe.stdout.strip():
+            return True
+    return False
 
 
 def _resolve_virtual_key(key_file: Path | None) -> str | None:

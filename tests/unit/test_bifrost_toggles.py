@@ -7,21 +7,27 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import TYPE_CHECKING, Any
+from pathlib import Path  # noqa: TC003 -- used at runtime in the gate regression test
+import subprocess
+from typing import Any
 
 import pytest
 import typer
 
 from mahavishnu.bifrost import models, toggles
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 @pytest.fixture(autouse=True)
 def _no_gate(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Every test starts with the operator gate off unless it sets it."""
+    """Neutralise the gate for tests.
+
+    ``gate_blocks`` probes a sourcing shell, so a developer whose
+    ``~/.zshenv`` carries ``BIFROST_CTL_NO_CC_URL_REWRITE=1`` would otherwise
+    see every test in this module skip the write and fail. Patch the probe
+    itself to report "no gate" rather than mutating the real environment.
+    """
     monkeypatch.delenv(toggles.GATE_ENV, raising=False)
+    monkeypatch.setattr(toggles, "gate_blocks", lambda _action: False)
 
 
 @pytest.fixture(autouse=True)
@@ -189,6 +195,7 @@ def test_gate_blocks_rewrite(
     tmp_path: Path, backup_dir: Path, monkeypatch: pytest.MonkeyPatch, vk: str
 ) -> None:
     """req: REQ-BIFROST-029 -- opt-out must hold in the Python path too."""
+    monkeypatch.undo()  # restore the real gate_blocks from the autouse fixture
     settings = tmp_path / "settings.json"
     _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
     before = settings.read_text(encoding="utf-8")
@@ -196,6 +203,40 @@ def test_gate_blocks_rewrite(
     monkeypatch.setenv(toggles.GATE_ENV, "1")
     toggles.apply(_harness("cc", settings), "bifrost")
 
+    assert settings.read_text(encoding="utf-8") == before
+
+
+def test_gate_honoured_when_set_in_zshenv(
+    tmp_path: Path, backup_dir: Path, monkeypatch: pytest.MonkeyPatch, vk: str
+) -> None:
+    """Regression: the gate lives in ``~/.zshenv`` as a *shell-local* var.
+
+    ``BIFROST_CTL_NO_CC_URL_REWRITE=1`` with no ``export`` is invisible to
+    ``os.environ``, so a zsh wrapper honoured it while every Python caller
+    silently rewrote settings the operator had opted out of. Observed live on
+    2026-10-21: the retired ``scripts/bifrost-toggle-claude-url direct``
+    stripped ``ANTHROPIC_BASE_URL`` with the gate set. ``gate_blocks`` now
+    probes a sourcing shell as well as the environment.
+    """
+    monkeypatch.undo()
+    monkeypatch.delenv(toggles.GATE_ENV, raising=False)
+
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic"}})
+    before = settings.read_text(encoding="utf-8")
+
+    real_run = subprocess.run
+
+    def fake_run(cmd, *args, **kwargs):
+        # Simulate a shell that sources .zshenv and finds the gate set.
+        if isinstance(cmd, list) and "/bin/zsh" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, stdout="1\n", stderr="")
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(toggles.subprocess, "run", fake_run)
+    assert toggles.gate_blocks("direct") is True
+
+    toggles.apply(_harness("cc", settings), "direct")
     assert settings.read_text(encoding="utf-8") == before
 
 
