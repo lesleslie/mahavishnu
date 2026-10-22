@@ -323,11 +323,17 @@ class OTLPReceiver:
     BACKOFF_MAX_SECONDS:   float = 8.0
     QUEUE_MAX_DEPTH:    int      = 2048
     PROMETHEUS_PORT:     int      = 9464
+    # v7 addition (2026-10-21): bind ports were literals in start()'s docstring,
+    # leaving no seam. §13.1 requires them to be operator-settable — the substrate
+    # owns canonical :4317/:4318 and Alloy moves to :14317/:14318, and any later
+    # port change must not be a source edit in a receiver with live producers.
+    GRPC_PORT:         int      = 4317
+    HTTP_PORT:         int      = 4318
 
     async def start(self) -> None:
         """Lifespan-invoked. Asserts HotStore.spans_substrate_table exists
-        (LifecycleError if absent), binds :4317 (gRPC) + :4318 (HTTP),
-        starts :9464 (Prometheus), increments receiver_started_total."""
+        (LifecycleError if absent), binds GRPC_PORT (gRPC) + HTTP_PORT (HTTP),
+        starts PROMETHEUS_PORT, increments receiver_started_total."""
 
     async def stop(self) -> None:
         """Drains in-flight batches, closes listeners."""
@@ -702,6 +708,8 @@ async def _dlq_retention_sweep():
 | `spans_substrate.retention_days` | `30` | PR-A3 ships default | yes (settings key) |
 | `spans_substrate.retention_sweep_interval_hours` | `6` | PR-A3 | yes |
 | `spans_substrate.archival_target` | `null` (no cold sink) | PR-A3 | yes (S3 URL OR filesystem path; format inferred from extension — `.parquet`/`.csv`/`.json` required; **v6 — `COPY ... TO ?` is rejected by DuckDB (2.0.0-dev: `InvalidInputException`); the sweep inlines the validated path instead. v7 — regex widened to cover the four storage roots akosha's `path_resolver.py:90-220` actually defaults to (XDG/macOS/Docker/log); reject else.**) |
+| `spans_substrate.receiver_grpc_port` | `4317` | PR-A3 ships default | yes (settings key) — **v7 addition.** Canonical OTLP gRPC port; the substrate owns it (§13.1). Grafana Alloy moves to `:14317`. |
+| `spans_substrate.receiver_http_port` | `4318` | PR-A3 ships default | yes (settings key) — **v7 addition.** Canonical OTLP HTTP port; the substrate owns it (§13.1). Grafana Alloy moves to `:14318`. |
 
 **`archival_target` validation regex (v7 — widened to match akosha's `path_resolver.py` defaults):**
 
@@ -1384,7 +1392,7 @@ The `LifecycleError("opentelemetry-proto-missing")` path from v2 §12 is removed
 | **PR-0b** | akosha | Update `pyproject.toml` to declare `opentelemetry-proto` as `[project.dependencies]`. **Add `set_shared_otel_receiver()` hook + extend `clear_shared_services()`** to clear the new `_shared_otel_receiver` module global alongside `_shared_hot_store` and `_shared_kg_builder`. PR-0b PR description enumerates 3 edits: (a) `set_shared_otel_receiver(receiver)` + `get_shared_otel_receiver()`; (b) module-level `_shared_otel_receiver: OTLPReceiver \| None = None`; (c) extend `clear_shared_services()` body to also nil out `_shared_otel_receiver`. Regression test: `create_app()` twice → `get_shared_otel_receiver()` is `None` between calls. | PR-0a |
 | **PR-A1** | mcp-common | Bridge release — emit `namespace.legacy_alias=bodai` alongside current `service.namespace`. | — |
 | **PR-A2** | akosha | yoyo migrations `0001.akosha-otel-receiver-state.sql` + `0001.…rollback.sql` + `0002.dlq-rows.sql` + `0002.…rollback.sql`. | PR-0a, PR-0b |
-| **PR-A3** | akosha | `OTLPReceiver` lifespan wiring (HotStore.init → receiver.start → set_shared_otel_receiver → tool register). **Move existing Alloy collector from `:4318` to `:14318` (§13.1)**. Drop substrate mid-test and confirm `LifecycleError`. | PR-A2 |
+| **PR-A3** | akosha | `OTLPReceiver` lifespan wiring (HotStore.init → receiver.start → set_shared_otel_receiver → tool register). **Move the real port owner — Grafana Alloy — from `:4317`/`:4318` to `:14317`/`:14318`, and repoint the 4 `~/.zshrc` producer exports (§13.1, corrected 2026-10-21)**. Add `GRPC_PORT`/`HTTP_PORT` settings keys. Drop substrate mid-test and confirm `LifecycleError`. | PR-A2 |
 | **PR-A4** | akosha | Per-row validation + DLQ try/except wrapping + `_dlq_rows` retention sweep. | PR-A3 |
 | **PR-A5** | akosha | `heartbeat_watcher.py` reading `known_mcp_servers`. query-empty vs query-threw distinction. Empty-roster P0. | PR-A3 |
 | **PR-A6** | akosha | Receiver resource-attribute validator (allowlist-based, rate-based thresholds). | PR-A4 |
@@ -1398,53 +1406,112 @@ After PR-A8 ships:
 
 ### 13.1 Port collision fix (full enumeration)
 
-Existing collector (`mahavishnu/config/otel-collector-config.yaml`) currently binds:
-- `:4317` gRPC (OTLP)
-- `:4318` HTTP (OTLP)
-- `:4319` gRPC (`otlp/claude`)
-- `:4320` HTTP (`otlp/claude`)
-- `:4321` gRPC (`otlp/qwen`)
-- `:4322` HTTP (`otlp/qwen`)
-- `:9411` zipkin
-- `:14250` jaeger
-- `:8888` pprof
+**Corrected 2026-10-21.** The port owner is **Grafana Alloy**, not
+`mahavishnu/config/otel-collector-config.yaml`. Verified: no `otelcol` process
+is running, nothing listens on that config's ports, and the 2026-09-28 relay it
+descended from (`/tmp/otel_relay.py`) is gone. Alloy holds both ports as a
+Homebrew service (`sh.brew.grafana-alloy.plist`, config at
+`/usr/local/etc/grafana-alloy/config.alloy`). Rationale and rollback in
+`docs/decisions/2026-10-21-otel-substrate-port-ownership.md`.
+
+Two facts drive the design:
+
+- **Alloy's trace pipeline is a dead end.** `config.alloy:58-67` routes traces
+  to `otelcol.exporter.debug`; spans are discarded after a 2 s batch. Only
+  metrics survive, via the Prometheus exporter on `:12345`.
+- **Alloy is the designated ingress.** `~/.zshrc:183-195` points Claude Code,
+  Codex, Qwen, and the generic `OTEL_EXPORTER_OTLP_ENDPOINT` at it. Six live
+  connections at survey time (a point-in-time census, not a stable set):
+  `akosha mcp start`, two `claude` sessions, two `bifrost-http` connections,
+  and `scripts/launch_mcp.py` (gRPC).
+
+**Decision: the canonical OTLP ports belong to the substrate. Alloy keeps a
+non-canonical pair for metrics.** The substrate is the storage, not a relay
+hop — routing spans through a collector that discards them would preserve the
+existing data loss under a new name.
+
+```
+producers ──> :4317 gRPC / :4318 HTTP ──> Akosha OTLPReceiver
+                                                │
+                                                └──> spans_substrate (DuckDB)
+
+:14317 / :14318 ──> Alloy  (metrics ──> :12345 ──> Grafana)
+:4319 - :4322     ──> Alloy  (claude/qwen receivers, unchanged)
+```
 
 **Conflicts with new `OTLPReceiver`:**
 
-| New receiver port | Existing collector binding | Resolution |
+| New receiver port | Existing holder | Resolution |
 |---|---|---|
-| `:4317` (gRPC) | existing `:4317` | Existing must move; Akosha gets it |
-| `:4318` (HTTP) | existing `:4318` | Existing moves to `:14318`; Akosha gets `:4318` |
+| `:4317` (gRPC) | Alloy `otelcol.receiver.otlp.cli_tools` | Alloy moves to `:14317`; Akosha gets `:4317` |
+| `:4318` (HTTP) | Alloy `otelcol.receiver.otlp.cli_tools` | Alloy moves to `:14318`; Akosha gets `:4318` |
 
 **Migration:**
 
-```yaml
-# mahavishnu/config/otel-collector-config.yaml — refactor at PR-A3
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:14317     # was :4317
-      http:
-        endpoint: 0.0.0.0:14318    # was :4318
-  otlp/claude: ...                  # unchanged
-  otlp/qwen: ...                    # unchanged
-  zipkin: ...                       # unchanged
-  jaeger: ...                       # unchanged
-  pprof: ...                        # unchanged
+```alloy
+// /usr/local/etc/grafana-alloy/config.alloy — refactor at PR-A3
+otelcol.receiver.otlp "cli_tools" {
+    http { endpoint = "127.0.0.1:14318" }   // was :4318
+    grpc { endpoint = "127.0.0.1:14317" }   // was :4317
+
+    output {
+        metrics = [otelcol.processor.memory_limiter.cli_tools.input]
+        traces  = [otelcol.processor.batch.cli_tools_traces.input]
+    }
+}
+// otlp/claude (:4319/:4320), otlp/qwen (:4321/:4322) are NOT in this file —
+// they belong to the mahavishnu collector config and stay unchanged.
 ```
 
-`MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://localhost:14317` precedent holds.
+**Producer repointing** (required at PR-A3, in lockstep with the Alloy move):
+
+| Item | Change |
+|---|---|
+| `~/.zshrc:183-195` | 4 exports repointed to the substrate (`:4318` stays canonical) |
+| `akosha` | `AKOSHA_OTLP_ENDPOINT` → substrate receiver, not a collector |
+| `mahavishnu` | `MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://127.0.0.1:4317` |
+| `settings/local.yaml:4-19` | delete the dead 2026-09-28 relay comment block |
+
+**Receiver ports must be configurable.** §Appendix D declares
+`PROMETHEUS_PORT = 9464` as a class attribute, but the gRPC/HTTP ports appear
+only as literals inside `start()`'s docstring — there is no seam. PR-A3 must add
+`GRPC_PORT` / `HTTP_PORT` class attributes and settings keys alongside
+`PROMETHEUS_PORT`, so the port assignment above is a setting rather than a code
+edit in a receiver that has five live producers pointed at it.
 
 **Consumers that hardcoded `:4318`:**
 
 | Consumer | File pattern |
 |---|---|
+| `~/.zshrc` producer exports | lines 183-195 (4 exports) |
+| Alloy receiver config | `/usr/local/etc/grafana-alloy/config.alloy` |
 | Grafana metric-mirror probe | `mahavishnu/config/grafana/dashboards/bodai/*.json` |
-| Alloy relay templates | `mahavishnu/config/otel-collector-config.yaml` and any `*-alloy.yaml` |
-| Bifrost gateway UI | operator sets at runtime per sub-spec B §4.4 |
+| Bifrost gateway | operator-owned; **endpoint source unverified** — see risk below |
+| Mahavishnu's dead collector config | `mahavishnu/config/otel-collector-config.yaml` — **not running**; do not repoint |
 
-**Migration gate** (PR-A3 CI step): `git grep ':4318'` over `dashboards/bodai/` returns zero hits pointing at the substrate receiver; mirrored sweep over consumers.
+**Migration gate** (PR-A3 CI step): `git grep ':4318'` over `dashboards/bodai/`
+returns zero hits pointing at the substrate receiver; mirrored sweep over
+consumers. Plus a liveness assertion — the CI step fails if Alloy is bound to
+`:4317`/`:4318` after the move.
+
+**Risk — `bifrost-http` endpoint is not inspectable, and bifrost is
+intermittent.** Its `~/.config/bifrost/config.json` has no otlp/telemetry key,
+its process environment carries no `OTEL_*` variable, and its binary contains
+no `localhost:4318` literal — yet it held two established connections to
+`:4318` at survey time. The endpoint source is outside the files we can read.
+Those connections were gone on re-check ~50 min later and the process itself
+had exited, consistent with an interval-flushing batch exporter. PR-A3 must
+therefore **observe bifrost across at least one flush interval** after cutover:
+if its spans appear in `spans_substrate`, it followed the SDK default and the
+swap is correct; if reporting stops with no local signal, treat as a cutover
+failure and roll back. A single point-in-time `lsof` sweep is not a valid
+producer census — it missed bifrost entirely on the second pass. Do not assume
+either outcome.
+
+**Rollback:** reverts `config.alloy` to `:4317`/`:4318` (`brew services restart
+grafana-alloy`), restores the `~/.zshrc` exports, and stops the receiver. Rows
+already written to `spans_substrate` stay readable — the port number is not part
+of the storage path.
 
 **claude/qwen receivers** (`:4319`/`:4320`/`:4321`/`:4322`) — **reclassified as out-of-scope for v3**. Sub-spec B or a later spec will decide whether to mirror them through Akosha or leave them as Alloy-only. See §3.
 
@@ -1646,8 +1713,9 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 - Existing `OtelTraceIngester` (PR-A8 retirement target): `akosha/ingestion/otel_ingester.py`
 - Akkosha fitness analyzer (preserved, MCP-poll): `akosha/processing/fitness_analyzer.py` + `akosha/mcp/tools/fitness_tools.py`
 - Pre-1.0 no-backcompat rule: `feedback-no-backwards-compat-pre-1.0.md`
-- Existing collector config (PR-A3 port-move source): `mahavishnu/config/otel-collector-config.yaml`
-- Precedent relay env var: `mahavishnu/settings/local.yaml:17` (`MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://localhost:14317`)
+- **PR-A3 port-move source (corrected 2026-10-21):** Grafana Alloy, `/usr/local/etc/grafana-alloy/config.alloy` (Homebrew service `sh.brew.grafana-alloy.plist`). NOT `mahavishnu/config/otel-collector-config.yaml`, which is not running — see §13.1 and `docs/decisions/2026-10-21-otel-substrate-port-ownership.md`.
+- Producer exports to repoint at PR-A3: `~/.zshrc:183-195`
+- Dead 2026-09-28 relay (must be corrected or deleted at PR-A3): `mahavishnu/settings/local.yaml:4-19`
 - yoyo-migrations docs: <https://ollycope.com/software/yoyo/latest/>
 - OTLP protocol: <https://opentelemetry.io/docs/specs/otlp/>
 - OpenTelemetry GenAI semantic conventions: <https://github.com/open-telemetry/semantic-conventions-genai>
@@ -1725,6 +1793,8 @@ class OTLPReceiver:
     BACKOFF_MAX_SECONDS    = 8.0
     QUEUE_MAX_DEPTH         = 2048
     PROMETHEUS_PORT         = 9464
+    GRPC_PORT               = 4317   # v7 addition — see §13.1
+    HTTP_PORT               = 4318   # v7 addition — see §13.1
 
     REQUIRED_FIELDS = frozenset({
     "service_name",
@@ -1835,9 +1905,25 @@ If a hot down is needed (rare; usually avoided):
 
 ## Appendix D — `OBSERVABILITY__OTLP_ENDPOINT` env var change
 
-Today (pre-v3):
+Documented previously (and dead as of 2026-10-21 — see correction below):
 ```bash
 MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://localhost:14317
 ```
 
-This already maps to the relocated `otlpclaude`/`otlpqwen` analogue or the off-Akosha collector. **No env-var change is part of v3.** The Mahavishnu exporter continues to point at `:14317`. PR-A3 adds Akosha's receiver on `:4317` (substrate receiver); Mahavishnu's `OTLP_EXPORTER_OTLP_ENDPOINT` could be re-pointed at `:4317` post-sub-spec-B-rewrite, but is **out of scope for v3** (it's a producer-side concern, not substrate).
+This was intended to map to the relocated `otlpclaude`/`otlpqwen` analogue or the off-Akosha collector. PR-A3 adds Akosha's receiver on `:4317` (substrate receiver); Mahavishnu's `OTLP_EXPORTER_OTLP_ENDPOINT` could be re-pointed at `:4317` post-sub-spec-B-rewrite, but is **out of scope for v3** (it's a producer-side concern, not substrate).
+
+**Corrected 2026-10-21.** The `:14317` target named above does not
+exist — the 2026-09-28 relay at `/tmp/otel_relay.py` is gone and nothing
+listens on `:14317`/`:14318`. The env var is also unset in the current
+shell, so this is a documented-but-dead configuration rather than a live
+one. Two consequences:
+
+1. **The env-var change IS part of PR-A3.** With §13.1 as corrected, the
+   substrate takes canonical `:4317`, so Mahavishnu's exporter points at
+   `http://127.0.0.1:4317`. This is no longer the out-of-scope producer-side
+   concern the paragraph above describes — it is a required step of the
+   same cutover as the Alloy move. The producer-side *sampling* question
+   remains out of scope (see the deferred PR-B prerequisite).
+2. **`settings/local.yaml:4-19` must be corrected or deleted at PR-A3.** It
+   still documents the dead relay topology and will otherwise send the next
+   operator down a path that no longer exists.
