@@ -689,14 +689,26 @@ reason for the ordering.
 - Modify: `akosha/processing/fitness_analyzer.py:106` (`_collect_traces`), `:121` (`_compute_signal`)
 - Test: `akosha/tests/unit/test_fitness_analyzer_rewired.py`
 
-- [ ] **Step 1: Answer §5.7 before writing code**
+- [x] **Step 1: Answer §5.7 before writing code** — **DONE 2026-10-21**
 
 The pair set comes from `SELECT DISTINCT selector, task_class` over the window,
 from the v7 `known_mcp_servers` roster plus a producer→pairs mapping, or from a
 static configured list. **`SELECT DISTINCT` has the failure mode spec §5.7
 names**: a producer that migrated but emitted nothing disappears from the report
-entirely, which is the false negative this whole change risks. The choice is a
-decision, not an implementation detail — record it in the PR description.
+entirely, which is the false negative this whole change risks.
+
+**Answered** in `docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md`:
+a **declared inventory** for R-6's first cut (curated per producer, never the
+15×5 cross product), union'd with observed pairs in the long-term design so that
+both declared-but-silent and undeclared-but-observed are visible. The axes are
+already canonical — `TaskCategory` (`core/model_routing.py:94-112`) and the five
+pool-selector values — so the inventory is one new table, not an invention.
+
+Note for the implementer: the fan-out being rewired is **already dead**
+(`FitnessAnalyzer()` constructed with no args, `add_component` has zero call
+sites, `fitness_analyzer.py:162` short-circuits on the empty list). The risk in
+Step 2 is therefore not silent regression of a working signal but a new path
+that reports zeros and looks healthy — which is what Step 2's test must catch.
 
 - [ ] **Step 2: Write the failing test**
 

@@ -359,7 +359,28 @@ Today the pair set is an emergent property of the HTTP fan-out: enumerate regist
 | The v7 `otel.receiver.known_mcp_servers` roster | Enumerates producers, not `(selector, task_class)` pairs. Needs a declared mapping from producer to the pairs it emits, which does not exist today. |
 | A static configured list | Predictable and explicit, but goes stale silently as new selectors appear. Staleness is visible, though — an unknown pair produces no rows, and a configured pair producing no rows is a distinguishable condition. |
 
-§7 Q1 carries this as the first open question, ahead of the coverage question it is nested inside, because it is the question whose wrong answer produces a **healthy-looking wrong number** rather than a missing feature. R-6 must not be implemented until it is answered.
+§7 Q1 carried this as the first open question, ahead of the coverage question it is nested inside, because it is the question whose wrong answer produces a **healthy-looking wrong number** rather than a missing feature. R-6 must not be implemented until it is answered.
+
+**Resolved 2026-10-21 — see
+`docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md`.** The answer is
+**none of the three rows above on its own**: a *declared* inventory for R-6's
+first cut, union'd with *observed* pairs in the long-term design, with the
+difference carried as report output. `SELECT DISTINCT` is rejected outright — it
+re-derives the inventory from the data and so reintroduces, at the substrate
+layer, exactly the "inventory is a function of your own traffic" property the
+rewrite exists to remove. The static list alone is adopted for R-6 but cannot
+see drift, which is why the union, not the list, is the long-term shape.
+
+One finding materially reframes the stakes. The fan-out is **already dead**:
+`FitnessAnalyzer()` is constructed with no arguments
+(`akosha/mcp/tools/__init__.py:170`), `add_component` has zero call sites
+fleet-wide, and `fitness_analyzer.py:162` short-circuits on the empty endpoint
+list. So §5.6's "silent-signal-regression of a working signal" is not the risk —
+there is no working signal. The risk is its mirror: shipping a path that returns
+zeros and looks healthy. That makes the distinction the decision turns on
+*sharper*, not less important: with an empty substrate, a data-derived
+inventory yields no pairs at all while a declared one yields declared pairs with
+zero rows — the same dashboard, opposite readings.
 
 ### 5.8 The empty-window contract for `spans_summary`
 
@@ -416,6 +437,23 @@ Every "verified on DuckDB X" claim in a oneiric-hosted spec is therefore ambiguo
 This is not a read-path concern alone. It has one concrete consequence already found in the v7 plan: `DELETE ... .rowcount` returns the affected count on 2.0.0-dev but **returns `-1` on 1.5.6**, which is the version the retention sweep actually runs. That is recorded in the v7 plan, not fixed here. §7 Q7 carries the alignment question.
 
 ## 7. Open questions for review
+
+### Resolved
+
+**Q1 — §5.7 pair inventory: where does the `(selector, task_class)` pair set
+come from? — RESOLVED 2026-10-21.** Answered by
+`docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md`: a declared
+inventory for R-6's first cut, union'd with observed pairs in the long-term
+design, with the difference carried as report output so that
+declared-but-silent and undeclared-but-observed are both visible. Neither
+`SELECT DISTINCT` nor a bare static list survives on its own.
+
+*Numbering note (2026-10-21):* §5.7 referred to this as "§7 Q1", but the
+question was never listed here — the list began at the coverage-narrowing
+question. It is recorded now as a resolved entry rather than renumbering the
+list, so the existing `Q4` / `Q10` cross-references stay valid.
+
+### Open
 
 1. **§5.6 coverage narrowing.** Is repointing one producer in this spec sufficient, or does the rewiring need to wait for every producer in the roster? The narrow reading says one is enough to prove the path; the cautious reading says the analyzer loses real signal until all are migrated.
 2. **Does `search_spans` need a `trace_id`-shaped browse mode** (all spans of one trace), or is exact `trace_id` filtering enough? The former is a natural second tool and is deliberately out of scope here.
