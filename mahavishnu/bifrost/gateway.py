@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -41,7 +42,50 @@ TARGET_CONFIG: Path = APP_DIR / "config.json"
 #: Secret IDs the gateway requires at startup. Resolved through Oneiric.
 NEEDED_KEYS: tuple[str, ...] = ("MINIMAX_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")
 
+#: ``~/.config/secrets.env`` -- the operator's credential store. Read directly
+#: because launchd spawns this process without a shell, so it inherits none of
+#: the interactive environment. Oneiric's ``SecretsHook`` is not a substitute
+#: here: it reads ``~/.config/oneiric/local.yaml``, not this file.
+SECRETS_ENV: Path = Path.home() / ".config" / "secrets.env"
+
+#: Credentials read from ``secrets.env`` rather than Oneiric. The dashboard
+#: setup token belongs here: it is a local admin credential for the loopback
+#: gateway, not an upstream provider key, and losing it locks the operator out
+#: of the UI with "Dashboard auth is not configured and no setup token is set".
+SECRETS_ENV_KEYS: tuple[str, ...] = ("BIFROST_SETUP_TOKEN", "BIFROST_VIRTUAL_KEY")
+
+_ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
+
 READY_TIMEOUT_SECONDS: int = 180
+
+
+def load_secrets_env(keys: tuple[str, ...] = SECRETS_ENV_KEYS) -> dict[str, str]:
+    """Read selected assignments from ``~/.config/secrets.env``.
+
+    Values are unquoted in place -- the operator's convention is that shell
+    rc files source this file, so quotes are shell syntax, not part of the
+    value. Toggling the switch on an existing session cannot retroactively
+    change what a launchd child inherited, so both quoted and bare forms are
+    accepted and normalised here.
+    """
+    found: dict[str, str] = {}
+    if not SECRETS_ENV.exists():
+        return found
+    for raw in SECRETS_ENV.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = _ASSIGNMENT.match(line)
+        if match is None:
+            continue
+        name, value = match.group(1), match.group(2)
+        if name in keys:
+            unquoted = value.strip()
+            if len(unquoted) >= 2 and unquoted[0] == unquoted[-1] and unquoted[0] in "\"'":
+                unquoted = unquoted[1:-1]
+            if unquoted:
+                found[name] = unquoted
+    return found
 
 
 async def resolve_secrets() -> None:
@@ -187,6 +231,13 @@ def serve() -> int:
     launchd's KeepAlive seeing a healthy long-running process.
     """
     asyncio.run(resolve_secrets())
+    # Copy BIFROST_SETUP_TOKEN and BIFROST_VIRTUAL_KEY from the operator's
+    # credential store into this process environment so the spawned gateway
+    # inherits them. Without BIFROST_SETUP_TOKEN the dashboard refuses to
+    # start ("Dashboard auth is not configured and no setup token is set");
+    # setdefault leaves an already-exported value alone.
+    for key, value in load_secrets_env().items():
+        os.environ.setdefault(key, value)
     proc = launch_bifrost()
     try:
         if not wait_for_ready(proc):
