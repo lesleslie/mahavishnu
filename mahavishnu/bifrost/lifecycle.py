@@ -106,12 +106,43 @@ def wait_for_ready_file(timeout: int = READY_BUDGET_SECONDS) -> bool:
     return False
 
 
-def sync_config() -> None:
-    """Re-seed the live config from the repo template and drop stale DBs."""
+def sync_config(drop_db: bool = False) -> None:
+    """Re-seed ``config.json`` from the repo template.
+
+    The config **database is not stale** -- with ``config_store`` enabled it is
+    the authoritative store for providers, keys, governance config, virtual
+    keys, and the dashboard admin account. ``config.json`` is only a first-run
+    seed. This function previously deleted ``config.db`` unconditionally,
+    which silently destroyed the virtual key and admin account; it now backs
+    the database up first and only removes it when ``drop_db`` is explicit.
+    """
     TARGET_CONFIG.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(SOURCE_CONFIG, TARGET_CONFIG)
-    for stale in ("config.db", "config.db-shm", "config.db-wal"):
-        (BIFROST_CONFIG_DIR / stale).unlink(missing_ok=True)
+
+    db_files = [
+        BIFROST_CONFIG_DIR / name
+        for name in ("config.db", "config.db-shm", "config.db-wal")
+    ]
+    present = [path for path in db_files if path.exists()]
+    if not present:
+        return
+
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup_dir = BIFROST_CONFIG_DIR / ".bak" / f"{stamp}-presync"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    for path in present:
+        shutil.copy2(path, backup_dir / path.name)
+
+    if drop_db:
+        for path in present:
+            path.unlink(missing_ok=True)
+    else:
+        typer.echo(
+            f"kept config store ({', '.join(p.name for p in present)}); "
+            f"backed up to {backup_dir}\n"
+            f"  pass --drop-db to discard it and re-seed from the template",
+            err=True,
+        )
 
 
 # --------------------------------------------------------------------------
@@ -181,12 +212,16 @@ def restart() -> None:
     _after_ready("bifrost")
 
 
-def rebootstrap() -> None:
-    """Re-seed config from template, then restart."""
+def rebootstrap(drop_db: bool = False) -> None:
+    """Re-seed config from template, then restart.
+
+    The config store survives unless ``drop_db`` is set -- see
+    :func:`sync_config` for why dropping it is destructive.
+    """
     install_plist()
     bootout()
     kill_listener()
-    sync_config()
+    sync_config(drop_db=drop_db)
     time.sleep(1)
     bootstrap()
     _run(["launchctl", "kickstart", "-k", f"{GUI_DOMAIN}/{LAUNCHD_LABEL}"])

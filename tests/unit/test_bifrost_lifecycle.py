@@ -10,6 +10,7 @@ gate is honoured.
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -35,7 +36,7 @@ def _no_gate(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def _no_launchd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Never touch the real launchd domain, plist, port, or ready file."""
+    """Never touch the real launchd domain, plist, port, or config directory."""
     monkeypatch.setattr(lifecycle, "GUI_DOMAIN", f"gui/test-{tmp_path.name}")
     monkeypatch.setattr(lifecycle, "TARGET_PLIST", tmp_path / "ai.bifrost.gateway.plist")
     monkeypatch.setattr(lifecycle, "SOURCE_PLIST", tmp_path / "source.plist")
@@ -46,6 +47,27 @@ def _no_launchd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(lifecycle, "bootstrap", lambda: None)
     monkeypatch.setattr(lifecycle, "bootout", lambda: None)
     monkeypatch.setattr(lifecycle.time, "sleep", lambda _s: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Never write to the operator's live ``~/.config/bifrost``.
+
+    Regression for live data loss. ``sync_config`` performs real filesystem
+    work, and ``rebootstrap`` calls it. Before these paths were redirected,
+    running this module overwrote the live ``config.json`` with the repo
+    template and deleted the live ``config.db`` -- which took out the virtual
+    key and the dashboard admin account ("no such table:
+    governance_config"). Every test in a module that touches the config must
+    therefore be confined to a scratch directory.
+    """
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    template = tmp_path / "template.json"
+    template.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(lifecycle, "TARGET_CONFIG", config_dir / "config.json")
+    monkeypatch.setattr(lifecycle, "SOURCE_CONFIG", template)
     monkeypatch.setattr(lifecycle, "wait_for_ready_file", lambda *_a, **_k: True)
 
 
@@ -101,6 +123,91 @@ def test_restart_and_rebootstrap_repoint(monkeypatch: pytest.MonkeyPatch) -> Non
     _RECORDED.clear()
     lifecycle.rebootstrap()
     assert _calls() == ["bifrost", "bifrost"]
+
+
+def test_sync_config_keeps_the_config_store(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """req: REQ-BIFROST-034 -- re-seeding config.json must not drop config.db.
+
+    Regression for live data loss. With ``config_store`` enabled the SQLite DB
+    is authoritative: it holds the providers, keys, governance config, virtual
+    keys, and the dashboard admin account. ``config.json`` is only a first-run
+    seed. ``sync_config`` used to unlink ``config.db`` unconditionally, so
+    ``bifrost rebootstrap`` silently destroyed the virtual key and locked the
+    operator out of the dashboard with "no such table: governance_config".
+
+    The DB must now survive, with a timestamped backup alongside it.
+    """
+    config_dir = tmp_path / "bifrost"
+    config_dir.mkdir()
+    template = tmp_path / "template.json"
+    template.write_text('{"seeded": true}', encoding="utf-8")
+    target = config_dir / "config.json"
+    target.write_text('{"old": true}', encoding="utf-8")
+    db = config_dir / "config.db"
+    db.write_bytes(b"pretend this is a 34MB store")
+
+    monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(lifecycle, "TARGET_CONFIG", target)
+    monkeypatch.setattr(lifecycle, "SOURCE_CONFIG", template)
+
+    lifecycle.sync_config()
+
+    assert json.loads(target.read_text(encoding="utf-8")) == {"seeded": True}
+    assert db.exists(), "config store must survive a config.json re-seed"
+    backups = list((config_dir / ".bak").glob("*-presync/config.db"))
+    assert backups, "config store must be backed up before any re-seed"
+    assert backups[0].read_bytes() == b"pretend this is a 34MB store"
+
+
+def test_sync_config_drops_the_store_only_when_asked(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``drop_db=True`` still discards it -- after backing it up."""
+    config_dir = tmp_path / "bifrost"
+    config_dir.mkdir()
+    template = tmp_path / "template.json"
+    template.write_text("{}", encoding="utf-8")
+    target = config_dir / "config.json"
+    db = config_dir / "config.db"
+    db.write_bytes(b"store")
+
+    monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(lifecycle, "TARGET_CONFIG", target)
+    monkeypatch.setattr(lifecycle, "SOURCE_CONFIG", template)
+
+    lifecycle.sync_config(drop_db=True)
+
+    assert not db.exists()
+    assert list((config_dir / ".bak").glob("*-presync/config.db"))
+
+
+def test_rebootstrap_does_not_double_delete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """``rebootstrap`` seeds once, not twice.
+
+    The Typer command used to call ``sync_config()`` and then
+    ``rebootstrap()``, which called ``sync_config()`` again -- removing the
+    same three files twice and, before the fix, truncating the store twice.
+    """
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        lifecycle,
+        "sync_config",
+        lambda drop_db=False: calls.append(drop_db),
+    )
+    for name in ("install_plist", "bootout", "kill_listener", "bootstrap"):
+        monkeypatch.setattr(lifecycle, name, lambda: None)
+    monkeypatch.setattr(lifecycle, "_run", lambda *_a, **_k: None)
+    monkeypatch.setattr(lifecycle, "_after_ready", lambda _action: None)
+    monkeypatch.setattr(lifecycle.time, "sleep", lambda _s: None)
+
+    lifecycle.rebootstrap()
+    assert calls == [False], "rebootstrap must seed exactly once"
+
+    calls.clear()
+    lifecycle.rebootstrap(drop_db=True)
+    assert calls == [True], "drop_db must be threaded through to sync_config"
 
 
 def test_status_reports_not_loaded(monkeypatch: pytest.MonkeyPatch, capsys) -> None:

@@ -145,10 +145,21 @@ def bifrost_restart() -> None:
 
 
 @bifrost_app.command("rebootstrap")
-def bifrost_rebootstrap() -> None:
-    """Re-seed the gateway config from the repo template, then restart."""
-    lifecycle.sync_config()
-    lifecycle.rebootstrap()
+def bifrost_rebootstrap(
+    drop_db: bool = typer.Option(
+        False,
+        "--drop-db",
+        help=(
+            "Also delete config.db. That destroys virtual keys, the dashboard "
+            "admin account, and all governance config; it is backed up first."
+        ),
+    ),
+) -> None:
+    """Re-seed the gateway config from the repo template, then restart.
+
+    The config *store* is preserved unless ``--drop-db`` is passed.
+    """
+    lifecycle.rebootstrap(drop_db=drop_db)
 
 
 @bifrost_app.command("install")
