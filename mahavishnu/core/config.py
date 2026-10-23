@@ -1421,8 +1421,17 @@ class ObservabilityConfig(BaseModel):
     """Observability configuration for metrics and tracing."""
 
     metrics_enabled: bool = Field(
-        default=True,
-        description="Enable OpenTelemetry metrics",
+        default=False,
+        description=(
+            "Enable OpenTelemetry metric export. Off by default: akosha's "
+            "OTLP receiver implements TraceService only, so exports to :4317 "
+            "fail with UNIMPLEMENTED 'Method not found!' once a minute, "
+            "forever, and there is no other OTLP metrics sink in the fleet "
+            "(Alloy has no prometheus.scrape block; Grafana's prometheus "
+            "datasource points at a dead :9093). Instruments still record "
+            "in-process -- this gates export, not collection. Flip on when a "
+            "real metrics backend exists."
+        ),
     )
     tracing_enabled: bool = Field(
         default=True,
