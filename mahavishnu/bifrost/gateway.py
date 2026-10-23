@@ -48,11 +48,26 @@ NEEDED_KEYS: tuple[str, ...] = ("MINIMAX_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_
 #: here: it reads ``~/.config/oneiric/local.yaml``, not this file.
 SECRETS_ENV: Path = Path.home() / ".config" / "secrets.env"
 
-#: Credentials read from ``secrets.env`` rather than Oneiric. The dashboard
-#: setup token belongs here: it is a local admin credential for the loopback
-#: gateway, not an upstream provider key, and losing it locks the operator out
-#: of the UI with "Dashboard auth is not configured and no setup token is set".
-SECRETS_ENV_KEYS: tuple[str, ...] = ("BIFROST_SETUP_TOKEN", "BIFROST_VIRTUAL_KEY")
+#: Credentials read from ``secrets.env`` rather than Oneiric.
+#:
+#: The two Bifrost-local credentials belong here: the dashboard setup token is
+#: a local admin credential for the loopback gateway, not an upstream provider
+#: key, and losing it locks the operator out of the UI with "Dashboard auth is
+#: not configured and no setup token is set".
+#:
+#: The upstream provider keys are included deliberately even though
+#: :func:`resolve_secrets` asks Oneiric for them first. This deployment has no
+#: Oneiric secrets provider configured -- every boot logs
+#: ``no-secrets-provider-configured`` -- so that resolution returns nothing and
+#: these are the only thing that provisions them. The gateway process
+#: demonstrably receives them today (upstream calls authenticate), but by a
+#: path this module cannot see, so depending on it makes the guarantee
+#: untestable. Reading them here makes it explicit and setdefault-safe.
+SECRETS_ENV_KEYS: tuple[str, ...] = (
+    "BIFROST_SETUP_TOKEN",
+    "BIFROST_VIRTUAL_KEY",
+    *NEEDED_KEYS,
+)
 
 _ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
 
@@ -231,11 +246,13 @@ def serve() -> int:
     launchd's KeepAlive seeing a healthy long-running process.
     """
     asyncio.run(resolve_secrets())
-    # Copy BIFROST_SETUP_TOKEN and BIFROST_VIRTUAL_KEY from the operator's
-    # credential store into this process environment so the spawned gateway
-    # inherits them. Without BIFROST_SETUP_TOKEN the dashboard refuses to
-    # start ("Dashboard auth is not configured and no setup token is set");
-    # setdefault leaves an already-exported value alone.
+    # Provision the gateway from the operator's credential store. Oneiric runs
+    # first because it is the intended abstraction; setdefault means anything
+    # it resolved stays authoritative. In this deployment Oneiric has no
+    # secrets provider, so this loop is what actually provisions the
+    # credentials -- including BIFROST_SETUP_TOKEN, without which the
+    # dashboard refuses to start ("Dashboard auth is not configured and no
+    # setup token is set").
     for key, value in load_secrets_env().items():
         os.environ.setdefault(key, value)
     proc = launch_bifrost()
