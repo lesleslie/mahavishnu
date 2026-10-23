@@ -1873,7 +1873,7 @@ def demo_hatchet(
 # the live-implementation property for each one.
 
 
-DEFAULT_POOL_DEMO_PROMPT = "echo hello from {pool_type} pool"
+DEFAULT_POOL_DEMO_COMMAND = "echo hello from {pool_type} pool"
 DEFAULT_SESSION_BUDDY_URL = "http://localhost:8678/mcp"
 DEFAULT_RUNPOD_PROBE_TIMEOUT_S = 5.0
 DEFAULT_PI_RUNTIME_PROBE_TIMEOUT_S = 5.0
@@ -1929,10 +1929,18 @@ async def _run_pool_mahavishnu_demo(
     pool_name: str,
     min_workers: int,
     max_workers: int,
-    prompt: str,
+    command: str,
     keep: bool,
 ) -> dict[str, object]:
-    """Drive ``MahavishnuPool`` end-to-end: start, dispatch, reap (unless ``--keep``)."""
+    """Drive ``MahavishnuPool`` end-to-end: start, dispatch, reap (unless ``--keep``).
+
+    The dispatch carries a ``command``, not a ``prompt``. ``shepherd_backend``
+    accepts exactly one of ``task_ref`` or ``command`` and rejects a task with
+    neither; a ``prompt`` is the only bodyless form the legacy WorkerManager
+    understood, and it no longer has a backend. The command is validated and
+    sanitised by the backend's exec guard before it runs, so it must be a
+    shell command the workspace is willing to execute.
+    """
     from mahavishnu.pools import PoolConfig
     from mahavishnu.pools.mahavishnu_pool import MahavishnuPool
     from mahavishnu.terminal.adapters import _build_tmux_adapter
@@ -1950,7 +1958,7 @@ async def _run_pool_mahavishnu_demo(
     )
     pool_id = await pool.start()
     try:
-        result = await pool.execute_task({"prompt": prompt})
+        result = await pool.execute_task({"command": command})
     finally:
         if not keep:
             await pool.stop()
@@ -2053,11 +2061,10 @@ def demo_pool_mahavishnu(
     ),
     min_workers: int = typer.Option(1, "--min", min=1, help="Minimum workers."),
     max_workers: int = typer.Option(2, "--max", min=1, help="Maximum workers."),
-    prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="mahavishnu"),
-        "--prompt",
-        "-p",
-        help="Prompt dispatched to one MahavishnuPool worker.",
+    command: str = typer.Option(
+        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="mahavishnu"),
+        "--command",
+        help="Shell command run by one MahavishnuPool worker.",
     ),
     keep: bool = typer.Option(
         False, "--keep", help="Leave the pool running after the demo (for debugging)."
@@ -2067,9 +2074,13 @@ def demo_pool_mahavishnu(
     """Run the in-process MahavishnuPool (WorkerManager + tmux) end-to-end.
 
     Exercises the local substrate: spawns a ``PoolConfig(pool_type=
-    "mahavishnu", min_workers, max_workers)``, dispatches one task, and
+    "mahavishnu", min_workers, max_workers)``, dispatches one command, and
     reaps on success. Use ``--keep`` to leave the pool up for follow-up
     ``mahavishnu pool execute`` calls.
+
+    The dispatched task is a ``command``, not a prompt: ``shepherd_backend``
+    requires exactly one of ``task_ref`` or ``command`` and has no backend
+    for a free-form prompt.
     """
     failures = _check_pool_mahavishnu_preconditions(pool_name=pool_name)
     if failures:
@@ -2079,7 +2090,7 @@ def demo_pool_mahavishnu(
         raise typer.Exit(code=1)
 
     typer.echo(f"Pool: {pool_name} (type=mahavishnu, {min_workers}..{max_workers} workers)")
-    typer.echo(f"Prompt: {prompt}")
+    typer.echo(f"Command: {command}")
 
     try:
         result = asyncio.run(
@@ -2088,7 +2099,7 @@ def demo_pool_mahavishnu(
                     pool_name=pool_name,
                     min_workers=min_workers,
                     max_workers=max_workers,
-                    prompt=prompt,
+                    command=command,
                     keep=keep,
                 ),
                 timeout=timeout,
@@ -2197,7 +2208,7 @@ def demo_pool_session_buddy(
         help="Session-Buddy MCP server URL (defaults to http://localhost:8678/mcp).",
     ),
     prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="session-buddy"),
+        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="session-buddy"),
         "--prompt",
         "-p",
         help="Prompt dispatched to one Session-Buddy worker.",
@@ -2415,7 +2426,7 @@ def demo_pool_runpod_public(
         "or set RUNPOD_PUBLIC_ENDPOINT_ID).",
     ),
     prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="runpod_public"),
+        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="runpod_public"),
         "--prompt",
         "-p",
         help="Prompt dispatched to the public endpoint.",
@@ -2480,7 +2491,7 @@ def demo_pool_runpod(
         help="RunPod serverless endpoint id (or set RUNPOD_ENDPOINT_ID).",
     ),
     prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="runpod"),
+        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="runpod"),
         "--prompt",
         "-p",
         help="Prompt dispatched to the RunPod serverless endpoint.",
@@ -2630,7 +2641,7 @@ def demo_pool_pi(
         help="Pool name (informational; used in the pool_id).",
     ),
     prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_PROMPT.format(pool_type="pi"),
+        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="pi"),
         "--prompt",
         "-p",
         help="Prompt dispatched to a fresh pi-coding-agent subprocess.",
