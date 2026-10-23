@@ -10,7 +10,7 @@ Current status (verified live, 2026-10-20):
 - The earlier "paused indefinitely" state from 2026-06-26 (macOS Gatekeeper on
   `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
   launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
-  `scripts/bifrost-gateway.py` are healthy.
+  `mahavishnu bifrost status` are healthy.
 - Live providers: `minimax-openai` (M3 primary, M2.7 fallback), `llama-server`
   (`qwen3-8b-q4_k_m` local), `anthropic`, `openai` (`gpt-5.4` family).
 - Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` is currently
@@ -26,13 +26,13 @@ Before any cutover, run these checks in order. Any failure = pause and investiga
 2. `curl -fsS http://127.0.0.1:8471/health` — must return
    `{"components":{"db_pings":"ok"},"status":"ok"}` (or equivalent).
 3. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
-   by `scripts/bifrost-gateway.py` only after the listener probe succeeds.
+   by `mahavishnu bifrost foreground` only after the listener probe succeeds.
 4. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
 
 ## Files
 
 - `config.template.json`
-  - seed configuration copied into `~/.config/bifrost/config.json` by `scripts/bifrost-gateway.zsh`
+  - seed configuration copied into `~/.config/bifrost/config.json` by `mahavishnu/bifrost/gateway.py`
 - `../launchd/ai.bifrost.gateway.plist`
   - LaunchAgent template
 - `../launchd/ai.bifrost.redis-stack.plist`
@@ -195,14 +195,23 @@ Do not enable semantic mode while you remain primarily on subscription-backed cl
 
 ## Local Control
 
-Use [`scripts/bifrost-ctl`](../../scripts/bifrost-ctl) for local management:
+Use `mahavishnu bifrost` for local management (the standalone
+`scripts/bifrost*` tools were consolidated here in Phase 4 of
+`docs/plans/2026-10-21-bifrost-cli-consolidation.md`):
 
-- `scripts/bifrost-ctl install`
-- `scripts/bifrost-ctl sync-config`
-- `scripts/bifrost-ctl start`
-- `scripts/bifrost-ctl rebootstrap`
-- `scripts/bifrost-ctl status`
-- `scripts/bifrost-ctl tail`
+- `mahavishnu bifrost install`
+- `mahavishnu bifrost start`
+- `mahavishnu bifrost stop`
+- `mahavishnu bifrost restart`
+- `mahavishnu bifrost rebootstrap`
+- `mahavishnu bifrost status`
+- `mahavishnu bifrost verify-gate`
+
+Client routing:
+
+- `mahavishnu bifrost cc-url {bifrost|direct|status}`
+- `mahavishnu bifrost qwen-url {bifrost|direct|status}`
+- `mahavishnu bifrost policy`
 
 Use [`scripts/redis-stack-ctl`](../../scripts/redis-stack-ctl) for the dedicated cache backend:
 
@@ -215,7 +224,7 @@ Use [`scripts/redis-stack-ctl`](../../scripts/redis-stack-ctl) for the dedicated
 ### Claude Code URL toggle
 
 `start`, `restart`, `rebootstrap`, and `stop` invoke
-[`scripts/bifrost-toggle-claude-url`](../../scripts/bifrost-toggle-claude-url)
+`mahavishnu bifrost cc-url`
 so Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` follows
 Bifrost's lifecycle automatically:
 
@@ -235,11 +244,11 @@ Restart Claude Code after toggling for the change to take effect.
 
 - after repeated rapid restarts, launchd may report `spawn scheduled` before the job becomes healthy again
 - in that state, wait roughly one `ThrottleInterval` window before assuming startup failed
-- if you need a predictable recovery path, prefer `scripts/bifrost-ctl stop` followed by `scripts/bifrost-ctl start`
-- `scripts/bifrost-ctl` now force-kills any orphan listener on `127.0.0.1:8471` before restart/rebootstrap so stale child processes do not hold the port open
+- if you need a predictable recovery path, prefer `mahavishnu bifrost stop` followed by `mahavishnu bifrost start`
+- `mahavishnu bifrost` now force-kills any orphan listener on `127.0.0.1:8471` before restart/rebootstrap so stale child processes do not hold the port open
 - when validating the OpenAI provider, distinguish protocol failures from account-state failures:
   `429 insufficient_quota` from `/v1/responses` means the gateway path is working and the backing OpenAI account needs billing/quota attention
 - if the launchd job fails to start with `spawnSync .../bifrost-http-0 EACCES`, the npm package's native binary landed without an execute bit.
-  Run `chmod +x ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` for the affected version, then re-run `scripts/bifrost-ctl start`.
+  Run `chmod +x ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` for the affected version, then re-run `mahavishnu bifrost start`.
 - if the launchd job still fails to start after the chmod (with `Unknown system error -88` from `spawnSync`), macOS Gatekeeper is rejecting the unsigned native binary.
-  Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `scripts/bifrost-ctl start`. See `docs/BIFROST_REACTIVATION_RUNBOOK.md` for details.
+  Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `mahavishnu bifrost start`. See `docs/BIFROST_REACTIVATION_RUNBOOK.md` for details.

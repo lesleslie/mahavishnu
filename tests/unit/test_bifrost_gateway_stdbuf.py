@@ -1,4 +1,4 @@
-"""Phase G follow-up tests for ``_wrap_with_line_buffering`` in bifrost-gateway.
+"""Phase G follow-up tests for ``wrap_with_line_buffering`` in the Bifrost gateway.
 
 Per docs/plans/2026-10-15-bifrost-gateway-wiring.md §5 Phase G follow-ups
 the bifrost-gateway Node subprocess should emit stdout/stderr with
@@ -14,29 +14,19 @@ isn't. These tests pin both branches plus the integration with
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
-# Load scripts/bifrost-gateway.py as a module. The scripts/ package
-# is not on sys.path by default (it is a tools/admin path that
-# lives outside the production module surface per the
-# ``crackerjack-compliant-code`` per-file-ignore for
-# ``scripts/**``); importlib.util loads the file by path so the
-# test exercises the real module without making the scripts
-# directory a real Python package.
-_SCRIPT_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "scripts" / "bifrost-gateway.py"
-)
-_spec = importlib.util.spec_from_file_location("bifrost_gateway", _SCRIPT_PATH)
-bifrost_gateway = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(bifrost_gateway)
-
+# The gateway supervisor now lives in the package proper
+# (``mahavishnu.bifrost.gateway``) rather than ``scripts/bifrost-gateway.py``,
+# so a normal import replaces the old importlib-by-path dance.
+from mahavishnu.bifrost import gateway as bifrost_gateway
 
 # ---------------------------------------------------------------------------
-# _wrap_with_line_buffering
+# wrap_with_line_buffering
 # ---------------------------------------------------------------------------
 
 
@@ -44,7 +34,7 @@ def test_wraps_with_stdbuf_when_available() -> None:
     """``stdbuf -oL -eL`` is prepended when stdbuf is on PATH."""
     with patch("shutil.which") as mock_which:
         mock_which.return_value = "/usr/bin/stdbuf"
-        result = bifrost_gateway._wrap_with_line_buffering(["node", "bin.js"])
+        result = bifrost_gateway.wrap_with_line_buffering(["node", "bin.js"])
 
     assert result == ["stdbuf", "-oL", "-eL", "node", "bin.js"]
 
@@ -60,7 +50,7 @@ def test_passthrough_when_stdbuf_missing(capsys: pytest.CaptureFixture[str]) -> 
     """
     with patch("shutil.which") as mock_which:
         mock_which.return_value = None
-        result = bifrost_gateway._wrap_with_line_buffering(["node", "bin.js"])
+        result = bifrost_gateway.wrap_with_line_buffering(["node", "bin.js"])
 
     assert result == ["node", "bin.js"]
 
@@ -78,7 +68,7 @@ def test_wraps_preserves_command_args() -> None:
     """
     with patch("shutil.which") as mock_which:
         mock_which.return_value = "/usr/bin/stdbuf"
-        result = bifrost_gateway._wrap_with_line_buffering(
+        result = bifrost_gateway.wrap_with_line_buffering(
             ["npx", "-y", "@maximhq/bifrost", "-host", "127.0.0.1", "-port", "8471"]
         )
 
@@ -100,6 +90,6 @@ def test_wraps_empty_command() -> None:
     """Empty command list returns just the stdbuf prefix (defensive)."""
     with patch("shutil.which") as mock_which:
         mock_which.return_value = "/usr/bin/stdbuf"
-        result = bifrost_gateway._wrap_with_line_buffering([])
+        result = bifrost_gateway.wrap_with_line_buffering([])
 
     assert result == ["stdbuf", "-oL", "-eL"]

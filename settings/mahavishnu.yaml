@@ -85,7 +85,7 @@ opensearch:
 # (OPENAI_BASE_URL=<bifrost.base_url>/v1). The local.yaml
 # override that preceded this is now redundant; operators
 # can keep it as documentation of the issue but it is
-# otherwise inert. See scripts/verify_qwen_bifrost_gate.sh
+# otherwise inert. See `mahavishnu bifrost verify-gate`.
 # for the operator-action verification path.
 bifrost:
   route_qwen_code: true

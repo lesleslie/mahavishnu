@@ -156,8 +156,7 @@
         {
           "models": [
             "MiniMax-M3",
-            "MiniMax-M2.7",
-            "MiniMax-M2.7-highspeed"
+            "MiniMax-M3.1-Flash"
           ],
           "name": "minimax-anthropic-primary",
           "value": "env.MINIMAX_API_KEY",
@@ -210,9 +209,7 @@
         {
           "models": [
             "MiniMax-M3",
-            "MiniMax-M3",
-            "MiniMax-M2.7",
-            "MiniMax-M2.7-highspeed"
+            "MiniMax-M3.1-Flash"
           ],
           "name": "minimax-openai-primary",
           "value": "env.MINIMAX_API_KEY",

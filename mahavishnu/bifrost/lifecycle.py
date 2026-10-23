@@ -24,7 +24,6 @@ from __future__ import annotations
 from pathlib import Path
 import plistlib
 import shutil
-import signal
 import subprocess
 import time
 
@@ -214,46 +213,8 @@ def status() -> None:
         apply(harness, "status")
 
 
-def foreground() -> None:
-    """Run the gateway in this shell until interrupted.
-
-    Used when the LaunchAgent path cannot bind the native binary. Restores the
-    client endpoints on exit so an interrupted foreground run does not leave
-    Claude Code pointed at a dead gateway.
-    """
-    kill_listener()
-
-    def _on_exit(*_: object) -> None:
-        repoint_harnesses("direct")
-        READY_FILE.unlink(missing_ok=True)
-
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, lambda s, f: (_on_exit(), sys_exit(s)))
-
-    proc = _spawn_foreground()
-    if wait_for_ready_file():
-        repoint_harnesses("bifrost")
-    else:
-        typer.echo(f"warning: {READY_FILE} not seen; leaving client URL(s) untouched")
-    proc.wait()
-    _on_exit()
-
-
-def sys_exit(signum: int) -> None:
-    """Exit the process from a signal handler."""
-    raise SystemExit(128 + signum)
-
-
-def _spawn_foreground() -> subprocess.Popen[bytes]:
-    """Run the gateway wrapper as a child of this process."""
-    from .gateway import launch_bifrost
-
-    return launch_bifrost()
-
-
 __all__ = [
     "HarnessDescriptor",
-    "foreground",
     "install_plist",
     "rebootstrap",
     "repoint_harnesses",

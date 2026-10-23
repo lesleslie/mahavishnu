@@ -26,7 +26,7 @@ from pathlib import Path  # noqa: TC003 -- Typer resolves annotations at runtime
 
 import typer
 
-from ..bifrost import gateway, lifecycle
+from ..bifrost import gateway, lifecycle, verify
 from ..bifrost.lifecycle import TARGET_PLIST
 from ..bifrost.models import VIRTUAL_KEY_ENV, resolve_harness
 from ..bifrost.paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
@@ -168,3 +168,13 @@ def bifrost_status() -> None:
 def bifrost_foreground() -> None:
     """Run the gateway in this shell (used by the LaunchAgent plist)."""
     gateway.serve()
+
+
+@bifrost_app.command("verify-gate")
+def bifrost_verify_gate(
+    timeout: int = typer.Option(30, "--timeout", help="Seconds to wait for the caller_id line."),
+) -> None:
+    """Operator gate: confirm a Qwen worker actually routes through Bifrost."""
+    code = verify.run_gate(timeout)
+    if code:
+        raise typer.Exit(code)

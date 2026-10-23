@@ -8,8 +8,9 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/les/Projects/mahavishnu/.venv/bin/python3</string>
-        <string>/Users/les/Projects/mahavishnu/scripts/bifrost-gateway.py</string>
+        <string>/Users/les/Projects/mahavishnu/.venv/bin/mahavishnu</string>
+        <string>bifrost</string>
+        <string>foreground</string>
     </array>
 
     <key>WorkingDirectory</key>

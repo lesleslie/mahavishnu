@@ -132,6 +132,37 @@ set and `docs/cookbook/workflows.md` for worked examples
 of multi-substrate recipes. The broader pool/worker/terminal
 subsystem reference is in `docs/pools/POOL_REFERENCE.md`.
 
+## Bifrost Gateway
+
+`mahavishnu bifrost` manages the local Bifrost LLM gateway (port 8471) and
+points client harnesses at it. Replaces the retired `scripts/bifrost*` tools.
+
+### Lifecycle
+
+- `mahavishnu bifrost install` — install the launchd plist
+- `mahavishnu bifrost start` — start via launchd; repoint harnesses once ready
+- `mahavishnu bifrost stop` — restore harness endpoints, then stop
+- `mahavishnu bifrost restart` — restart, keeping client routing intact
+- `mahavishnu bifrost rebootstrap` — re-seed config from the repo template, then restart
+- `mahavishnu bifrost status` — service state, port binding, harness routing
+
+### Client routing
+
+- `mahavishnu bifrost cc-url {bifrost|direct|status}` — Claude Code
+- `mahavishnu bifrost qwen-url {bifrost|direct|status}` — Qwen Code
+- `mahavishnu bifrost policy` — bind addresses and per-harness credential state
+- `mahavishnu bifrost credential-source` — where the virtual key is read from
+
+Both toggles send the virtual key in the header Bifrost expects: Claude Code via
+`ANTHROPIC_CUSTOM_HEADERS` (`x-bf-vk: …`), Qwen Code via
+`model.generationConfig.customHeaders`. Supply the key with
+`$BIFROST_VIRTUAL_KEY` or `--virtual-key-file` — never `--virtual-key`, which
+would expose it via `ps` and shell history.
+
+### Verification
+
+- `mahavishnu bifrost verify-gate` — confirm a Qwen worker actually routes through Bifrost
+
 ## Workers
 
 ```bash

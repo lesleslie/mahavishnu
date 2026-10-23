@@ -18,12 +18,12 @@ when this gate passes end-to-end.
 from __future__ import annotations
 
 import asyncio
+import inspect
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mahavishnu.terminal.manager import _resolve_worker_env
-
 
 # ============================================================================
 # Fixtures / helpers
@@ -100,9 +100,7 @@ def test_qwen_code_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_qwen_env_var_field_override(monkeypatch: pytest.MonkeyPatch) -> None:
     """A custom ``qwen_env_var`` name (e.g. ``QWEN_BASE_URL``) is honored."""
-    _enable_bifrost(
-        monkeypatch, routes=("qwen_route",), qwen_env_var="QWEN_BASE_URL"
-    )
+    _enable_bifrost(monkeypatch, routes=("qwen_route",), qwen_env_var="QWEN_BASE_URL")
     env = _resolve_worker_env("terminal-qwen")
     assert "QWEN_BASE_URL" in env
     assert "OPENAI_BASE_URL" not in env
@@ -250,25 +248,19 @@ def test_qwen_actual_dispatch_emits_caller_id() -> None:
     documentation contract that the script exists and is
     accurate.
     """
-    import os
-    import re
-    from pathlib import Path
+    from mahavishnu.bifrost import verify
 
-    # The script must exist (and the existence test pins the
-    # documentation contract). The actual gate is a real-network
-    # test that needs Bifrost + Qwen CLI — see
-    # scripts/verify_qwen_bifrost_gate.sh.
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    script = repo_root / "scripts" / "verify_qwen_bifrost_gate.sh"
-    assert script.exists(), f"missing operator gate script at {script}"
-    text = script.read_text(encoding="utf-8")
+    # The gate moved from scripts/verify_qwen_bifrost_gate.sh to
+    # `mahavishnu bifrost verify-gate` (REQ-BIFROST-034). These tests
+    # pinned the shell file's *text*; they now pin the module's
+    # contract, which is what the operator-facing command exposes.
     # Pass criterion: caller_id line in bifrost.log.
-    assert '"caller_id":"mahavishnu"' in text, (
-        "gate script must assert the caller_id line is in bifrost.log"
+    assert verify.CALLER_MARKER == '"caller_id":"mahavishnu"', (
+        "gate must assert the caller_id line is in bifrost.log"
     )
-    # Exit-code contract.
-    assert "exit 0" in text and "exit 1" in text and "exit 2" in text, (
-        "gate script must document the 0/1/2/3 exit-code contract"
+    # Exit-code contract: 0 pass / 1 fail / 2 precondition.
+    assert (verify.EXIT_PASS, verify.EXIT_FAIL, verify.EXIT_PRECONDITION) == (0, 1, 2), (
+        "gate must preserve the 0/1/2/3 exit-code contract"
     )
 
 
@@ -276,32 +268,23 @@ def test_qwen_gate_preconditions_documented() -> None:
     """The Qwen gate's preconditions are documented for operators.
 
     Companion to :func:`test_qwen_actual_dispatch_emits_caller_id`:
-    when the env is ready, the operator-facing script at
-    ``scripts/verify_qwen_bifrost_gate.sh`` is the actionable
-    verification path. This test pins the file's existence and
-    that it documents all three preconditions (Bifrost ready
-    file, Qwen CLI on PATH, Mahavishnu pool router reachable)
-    plus the pass criterion (caller_id line in bifrost.log).
+    the operator-facing ``mahavishnu bifrost verify-gate`` command is the
+    actionable verification path (REQ-BIFROST-034). This pins that all
+    three preconditions -- Bifrost ready file, Qwen CLI on PATH, pool
+    router reachable -- plus the caller_id pass criterion survive the
+    shell-to-Python port.
     """
-    import shutil as _shutil
-    from pathlib import Path as _Path
+    from mahavishnu.bifrost import verify
+    from mahavishnu.bifrost.paths import READY_FILE
 
-    repo_root = _Path(__file__).resolve().parent.parent.parent
-    script = repo_root / "scripts" / "verify_qwen_bifrost_gate.sh"
-    assert script.exists(), f"missing operator gate script at {script}"
-    assert _shutil.which("bash") is not None, "bash required for the gate script"
-    text = script.read_text(encoding="utf-8")
+    src = inspect.getsource(verify)
+
     # Precondition 1: Bifrost ready file.
-    assert "bifrost.ready" in text, "gate script must check the Bifrost ready file"
+    assert READY_FILE.name == "bifrost.ready"
+    assert "READY_FILE.exists()" in src, "gate must check the Bifrost ready file"
     # Precondition 2: Qwen CLI on PATH.
-    assert "qwen" in text, "gate script must check the Qwen CLI on PATH"
+    assert 'shutil.which("qwen")' in src, "gate must check the Qwen CLI on PATH"
     # Precondition 3: Mahavishnu pool router.
-    assert "mahavishnu pool health" in text, "gate script must check the pool router"
+    assert '"mahavishnu", "pool", "health"' in src, "gate must check the pool router"
     # Pass criterion: caller_id line in bifrost.log.
-    assert '"caller_id":"mahavishnu"' in text, (
-        "gate script must assert the caller_id line is in bifrost.log"
-    )
-    # Exit-code contract.
-    assert "exit 0" in text and "exit 1" in text and "exit 2" in text, (
-        "gate script must document the 0/1/2/3 exit-code contract"
-    )
+    assert verify.CALLER_MARKER in src, "gate must assert the caller_id line is in bifrost.log"
