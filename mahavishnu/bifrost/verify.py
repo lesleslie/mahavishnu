@@ -261,35 +261,45 @@ def check_preconditions() -> str | None:
     if probe.returncode != 0:
         return f"'qwen --version' failed (exit {probe.returncode})"
 
-    health = _run(["mahavishnu", "pool", "health"], timeout=30)
-    if health.returncode != 0 or "mahavishnu pool health" not in (health.stdout + health.stderr):
-        return "'mahavishnu pool health' did not return expected output"
+    health = _run(["mahavishnu", "pool", "health"], timeout=60)
+    if health.returncode != 0:
+        # Exit status alone is the signal. The shell original additionally
+        # grepped stdout for the literal string "mahavishnu pool health",
+        # which that command never prints -- it emits "Pool Manager Health:
+        # healthy". The check therefore failed against a perfectly healthy
+        # router and blocked every gate run.
+        return f"'mahavishnu pool health' exited {health.returncode}"
 
     return None
 
 
 def dispatch() -> int:
-    """Drive one Qwen worker through the pool so Bifrost records a row.
+    """Drive one Qwen worker so Bifrost records a row.
 
-    Returns the subprocess exit status. A non-zero status means the dispatch
-    itself failed, which must fail the gate -- otherwise the gate would go on
-    to poll for a row that can never arrive.
+    ``mahavishnu workers execute`` is the executor; ``mahavishnu pool route``
+    is only a planner -- it emits a capability DAG and has no ``--worker-type``
+    option at all. Passing the latter here made every gate run fail with a
+    Typer usage error (exit 2) before dispatching anything.
+
+    Returns the subprocess exit status. A non-zero status must fail the gate --
+    otherwise the gate would go on to poll for a row that can never arrive,
+    which is indistinguishable from the routing being broken.
     """
     result = _run(
         [
             "mahavishnu",
-            "pool",
-            "route",
+            "workers",
+            "execute",
             "--prompt",
             DISPATCH_PROMPT,
-            "--worker-type",
+            "--type",
             "terminal-qwen",
-            "--selector",
-            "least_loaded",
+            "--count",
+            "1",
             "--timeout",
             "60",
         ],
-        timeout=90,
+        timeout=120,
     )
     for line in (result.stdout or "").splitlines()[:5]:
         typer.echo(f"  {line}")

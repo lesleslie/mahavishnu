@@ -23,6 +23,7 @@ and the store's real shape. A mock would encode the same assumption.
 from __future__ import annotations
 
 import sqlite3
+import subprocess
 from typing import TYPE_CHECKING
 
 import pytest
@@ -312,6 +313,51 @@ def test_precondition_reports_missing_store(
     failure = verify.check_preconditions()
     assert failure is not None
     assert "log store missing" in failure
+
+
+def test_healthy_pool_router_satisfies_precondition(
+    logs_db: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A working router must not be reported as broken.
+
+    Regression for the shell original's heuristic of grepping stdout for the
+    literal string ``"mahavishnu pool health"``. That command prints
+    ``"Pool Manager Health: healthy"`` and never echoes its own invocation,
+    so the check failed against a perfectly healthy router and aborted every
+    gate run at EXIT_PRECONDITION -- before any dispatch was attempted.
+    """
+    monkeypatch.setattr(verify, "READY_FILE", tmp_path / "bifrost.ready")
+    tmp_path.joinpath("bifrost.ready").touch()
+    monkeypatch.setattr(verify.shutil, "which", lambda _name: "/usr/local/bin/qwen")
+
+    def fake_run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
+        if cmd[:3] == ["mahavishnu", "pool", "health"]:
+            return subprocess.CompletedProcess(
+                cmd, 0, "Pool Manager Health: healthy\nActive pools: 0\n", ""
+            )
+        return subprocess.CompletedProcess(cmd, 0, "qwen 0.1.0", "")
+
+    monkeypatch.setattr(verify, "_run", fake_run)
+    assert verify.check_preconditions() is None
+
+
+def test_failing_pool_router_fails_precondition(
+    logs_db: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A non-zero exit from the router is a real precondition failure."""
+    monkeypatch.setattr(verify, "READY_FILE", tmp_path / "bifrost.ready")
+    tmp_path.joinpath("bifrost.ready").touch()
+    monkeypatch.setattr(verify.shutil, "which", lambda _name: "/usr/local/bin/qwen")
+
+    def fake_run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
+        if cmd[:3] == ["mahavishnu", "pool", "health"]:
+            return subprocess.CompletedProcess(cmd, 1, "", "router exploded")
+        return subprocess.CompletedProcess(cmd, 0, "qwen 0.1.0", "")
+
+    monkeypatch.setattr(verify, "_run", fake_run)
+    failure = verify.check_preconditions()
+    assert failure is not None
+    assert "exited 1" in failure
 
 
 def test_exit_code_contract_preserved() -> None:
