@@ -11,6 +11,8 @@ gate is honoured.
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 from typing import TYPE_CHECKING
 
 import pytest
@@ -144,7 +146,10 @@ def test_sync_config_keeps_the_config_store(tmp_path, monkeypatch: pytest.Monkey
     target = config_dir / "config.json"
     target.write_text('{"old": true}', encoding="utf-8")
     db = config_dir / "config.db"
-    db.write_bytes(b"pretend this is a 34MB store")
+    with sqlite3.connect(db) as con:
+        con.execute("CREATE TABLE governance_virtual_keys (name TEXT, value TEXT)")
+        con.execute("INSERT INTO governance_virtual_keys VALUES ('k', 'sk-bf-secret')")
+        con.commit()
 
     monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
     monkeypatch.setattr(lifecycle, "TARGET_CONFIG", target)
@@ -156,7 +161,10 @@ def test_sync_config_keeps_the_config_store(tmp_path, monkeypatch: pytest.Monkey
     assert db.exists(), "config store must survive a config.json re-seed"
     backups = list((config_dir / ".bak").glob("*-presync/config.db"))
     assert backups, "config store must be backed up before any re-seed"
-    assert backups[0].read_bytes() == b"pretend this is a 34MB store"
+    with sqlite3.connect(f"file:{backups[0]}?mode=ro", uri=True) as con:
+        assert con.execute("SELECT value FROM governance_virtual_keys").fetchone()[0] == (
+            "sk-bf-secret"
+        ), "the snapshot must carry the store's contents"
 
 
 def test_sync_config_drops_the_store_only_when_asked(
@@ -179,6 +187,79 @@ def test_sync_config_drops_the_store_only_when_asked(
 
     assert not db.exists()
     assert list((config_dir / ".bak").glob("*-presync/config.db"))
+
+
+def test_backup_is_owner_only_and_consistent(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """req: REQ-BIFROST-034 -- the snapshot is private and actually opens.
+
+    The backup holds provider key material and virtual-key values, so both the
+    directory and the file must be owner-only regardless of the process umask.
+    It must also be a *usable* database: the gateway runs the store in WAL mode,
+    so copying the files by hand can pair a main file with a mismatched WAL and
+    yield a snapshot that fails to open -- which reads as a successful backup
+    right up until it is needed.
+    """
+    config_dir = tmp_path / "store"
+    config_dir.mkdir()
+    template = tmp_path / "template.json"
+    template.write_text("{}", encoding="utf-8")
+    target = config_dir / "config.json"
+
+    source = config_dir / "config.db"
+    with sqlite3.connect(source) as con:
+        con.execute("CREATE TABLE governance_virtual_keys (name TEXT, value TEXT)")
+        con.execute("INSERT INTO governance_virtual_keys VALUES ('bodai-pi-pool', 'sk-bf-secret')")
+        con.commit()
+    source.chmod(0o644)
+
+    monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(lifecycle, "TARGET_CONFIG", target)
+    monkeypatch.setattr(lifecycle, "SOURCE_CONFIG", template)
+
+    lifecycle.sync_config()
+
+    backups = list((config_dir / ".bak").glob("*-presync"))
+    assert len(backups) == 1
+    backup_dir = backups[0]
+    assert backup_dir.stat().st_mode & 0o777 == 0o700, "backup dir must be owner-only"
+
+    snapshot = backup_dir / "config.db"
+    assert snapshot.stat().st_mode & 0o777 == 0o600, "snapshot must be owner-only"
+
+    # A private backup is useless if it cannot be opened.
+    with sqlite3.connect(f"file:{snapshot}?mode=ro", uri=True) as con:
+        assert con.execute("SELECT count(*) FROM governance_virtual_keys").fetchone()[0] == 1
+
+
+def test_backup_survives_a_rough_umask(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A permissive umask must not widen the backup's permissions.
+
+    ``mkdir(mode=0o700)`` is masked by the umask, so the explicit ``chmod``
+    is what actually holds the guarantee.
+    """
+    config_dir = tmp_path / "store"
+    config_dir.mkdir()
+    template = tmp_path / "template.json"
+    template.write_text("{}", encoding="utf-8")
+    target = config_dir / "config.json"
+    source = config_dir / "config.db"
+    with sqlite3.connect(source) as con:
+        con.execute("CREATE TABLE t (a TEXT)")
+        con.commit()
+
+    monkeypatch.setattr(lifecycle, "BIFROST_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(lifecycle, "TARGET_CONFIG", target)
+    monkeypatch.setattr(lifecycle, "SOURCE_CONFIG", template)
+
+    original = os.umask(0o000)
+    try:
+        lifecycle.sync_config()
+    finally:
+        os.umask(original)
+
+    backup_dir = next((config_dir / ".bak").glob("*-presync"))
+    assert backup_dir.stat().st_mode & 0o777 == 0o700
+    assert (backup_dir / "config.db").stat().st_mode & 0o777 == 0o600
 
 
 def test_rebootstrap_does_not_double_delete(

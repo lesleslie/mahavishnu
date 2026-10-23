@@ -24,6 +24,7 @@ from __future__ import annotations
 from pathlib import Path
 import plistlib
 import shutil
+import sqlite3
 import subprocess
 import time
 
@@ -106,6 +107,54 @@ def wait_for_ready_file(timeout: int = READY_BUDGET_SECONDS) -> bool:
     return False
 
 
+def _secure_dir(path: Path) -> None:
+    """Create ``path`` owner-only and force the mode past the umask.
+
+    ``mkdir(mode=...)`` is masked by the process umask, so a 0700 request can
+    still land as 0755. An explicit ``chmod`` is the only reliable way to get
+    owner-only.
+    """
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path.chmod(0o700)
+
+
+def _backup_config_store(backup_dir: Path) -> None:
+    """Snapshot the config store into an owner-only directory.
+
+    Uses SQLite's backup API rather than copying the files. The gateway holds
+    this database open in WAL mode, so a plain ``shutil.copy`` can capture a
+    main file that does not match its WAL -- a backup that fails to open, which
+    is worse than no backup because it looks like one worked. The API also
+    produces a single self-contained file, so the ``-shm``/``-wal`` siblings do
+    not need copying at all.
+
+    The destination holds provider key material and virtual-key values, so both
+    the directory and the file are forced to owner-only regardless of umask.
+    """
+    source = BIFROST_CONFIG_DIR / "config.db"
+    if not source.exists():
+        return
+
+    destination = backup_dir / "config.db"
+    connection = sqlite3.connect(source)
+    try:
+        target = sqlite3.connect(destination)
+        try:
+            with target:
+                connection.backup(target)
+        finally:
+            target.close()
+    except sqlite3.Error:
+        # Never let a failed backup abort the operator's own command; report
+        # it and let them decide whether proceeding is safe.
+        typer.echo(f"WARNING: config store backup failed: {destination}", err=True)
+        return
+    finally:
+        connection.close()
+
+    destination.chmod(0o600)
+
+
 def sync_config(drop_db: bool = False) -> None:
     """Re-seed ``config.json`` from the repo template.
 
@@ -129,9 +178,8 @@ def sync_config(drop_db: bool = False) -> None:
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     backup_dir = BIFROST_CONFIG_DIR / ".bak" / f"{stamp}-presync"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    for path in present:
-        shutil.copy2(path, backup_dir / path.name)
+    _secure_dir(backup_dir)
+    _backup_config_store(backup_dir)
 
     if drop_db:
         for path in present:
