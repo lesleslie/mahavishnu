@@ -132,8 +132,20 @@ class ObservabilityManager:
     def _init_otel_components(self):
         """Initialize OpenTelemetry components."""
         try:
-            # Create resource with service information
-            resource = Resource.create({"service.name": "mahavishnu", "service.version": "1.0.0"})
+            # Create resource with service information.
+            # service.namespace is load-bearing, not decoration: akosha's OTLP
+            # receiver lists it in REQUIRED_FIELDS and quarantines any span
+            # that omits it. mahavishnu is the only producer with a confirmed
+            # live gRPC export to :4317, so without this every span it sends
+            # lands in _dlq_rows instead of spans_substrate. Must match the
+            # mcp-common middleware default (PR-A7).
+            resource = Resource.create(
+                {
+                    "service.name": "mahavishnu",
+                    "service.namespace": "bodai",
+                    "service.version": "1.0.0",
+                }
+            )
 
             # Initialize tracer
             trace_provider = TracerProvider(resource=resource)

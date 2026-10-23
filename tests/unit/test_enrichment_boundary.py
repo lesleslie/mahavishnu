@@ -55,12 +55,15 @@ def test_mcp_common_telemetry_unchanged() -> None:
     assert len(source) > 0
     compile(source, str(MCP_COMMON_TELEMETRY_PATH), "exec")
 
-    # Pinned 2026-09-27 (Phase 1 implementation day). If this hash changes
-    # after this commit lands, the local-subclass boundary was violated
-    # (the plan added a new middleware by SUBCLASSING, not by modifying
-    # mcp_common). Update this pin only after an explicit cross-repo
-    # coordination conversation + reviewer sign-off.
-    pinned_pre_phase1_hash = "66567d5462cde38a18529c77cd4ad458aaeec5c17854d974bc13b1a6ce458b8a"
+    # Re-pinned 2026-10-23 for PR-A7. The earlier pin (2026-09-27,
+    # 66567d5462cd...) guarded the Phase 1 local-subclass boundary. PR-A7
+    # deliberately changed mcp_common: service_namespace now defaults to
+    # "bodai" instead of "mcp-ecosystem", because akosha's OTLP receiver
+    # lists service_namespace in REQUIRED_FIELDS and quarantined every span
+    # carrying the old default. Cross-repo coordination and operator
+    # sign-off obtained; the version bump in mcp-common's pyproject is the
+    # operator's to make, not the agent's.
+    pinned_pre_phase1_hash = "e8b996df082883f1a94e66132fd1c72df1aa200dcfc55012bfc1ef2f72a0000a"
     assert expected_hash == pinned_pre_phase1_hash, (
         f"mcp_common/server/telemetry.py sha256 changed "
         f"({pinned_pre_phase1_hash[:12]}... -> {expected_hash[:12]}...); "
