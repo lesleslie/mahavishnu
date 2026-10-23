@@ -116,8 +116,18 @@ class ObservabilityManager:
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-        # Initialize components based on availability
-        if OTEL_AVAILABLE and config.observability.metrics_enabled:
+        # Initialize components based on availability.
+        #
+        # Either flag is enough to warrant the real OTel path. They gate two
+        # independent signals and are declared as independent fields, but this
+        # check used metrics_enabled alone -- so turning metrics off also
+        # silently turned tracing off and dropped the process to mocks, even
+        # though traces were still wanted (akosha's receiver consumes them).
+        # Both off is the only case that legitimately wants the fallback.
+        obs = config.observability
+        if OTEL_AVAILABLE and (
+            obs.metrics_enabled or getattr(obs, "tracing_enabled", True)
+        ):
             self._init_otel_components()
         else:
             self._init_fallback_components()
@@ -156,11 +166,31 @@ class ObservabilityManager:
             trace.set_tracer_provider(trace_provider)
             self.tracer = trace.get_tracer(__name__)
 
-            # Initialize meter
-            metric_reader = PeriodicExportingMetricReader(
-                OTLPMetricExporter(endpoint=self.config.observability.otlp_endpoint)
-            )
-            meter_provider = MeterProvider(metric_readers=[metric_reader], resource=resource)
+            # Initialize meter.
+            #
+            # ``metrics_enabled`` was declared on ObservabilityConfig but never
+            # read here, so OTLP metrics went out unconditionally. akosha's
+            # receiver implements only the TraceService, so every export failed
+            # with UNIMPLEMENTED "Method not found!" once a minute, forever.
+            #
+            # Disabling builds a MeterProvider with NO reader rather than
+            # skipping meter setup: self.meter and every instrument built from
+            # it below must stay valid, or the recording call sites raise
+            # AttributeError at runtime. Nothing is exported either way.
+            metric_readers: list[Any] = []
+            if getattr(self.config.observability, "metrics_enabled", False):
+                metric_readers.append(
+                    PeriodicExportingMetricReader(
+                        OTLPMetricExporter(endpoint=self.config.observability.otlp_endpoint)
+                    )
+                )
+            else:
+                self.logger.info(
+                    "OTLP metric export disabled (observability.metrics_enabled=false); "
+                    "instruments stay live and record in-process, nothing is exported. "
+                    "akosha's receiver serves TraceService only."
+                )
+            meter_provider = MeterProvider(metric_readers=metric_readers, resource=resource)
             metrics.set_meter_provider(meter_provider)
             self.meter = metrics.get_meter(__name__)
 
