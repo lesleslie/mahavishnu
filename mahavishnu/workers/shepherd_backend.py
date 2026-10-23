@@ -52,6 +52,8 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Final
 
+from mahavishnu.workers._shell_task import run_shell_command, set_command
+
 from ..core.errors import ErrorCode, MahavishnuError
 from . import _exec_guard
 from .base import BaseWorker, WorkerResult, WorkerStatus
@@ -388,10 +390,19 @@ class ShepherdBackendWorker(BaseWorker):
         if callable(register):
             try:
                 register(task_ref)
-            except Exception:
+            except Exception as exc:
+                # Do not abort: a task already registered from a previous
+                # dispatch resolves fine, and aborting here would turn a
+                # redundant registration into a hard failure. But do log it --
+                # a genuine registration failure otherwise surfaces only as an
+                # opaque TaskNotFoundError from the run below, which sent this
+                # down a dead end once already.
                 logger.exception(
-                    "Shepherd task registration failed for %s",
+                    "Shepherd task registration failed for %s (%s); "
+                    "the run may fail with TaskNotFoundError if the task was "
+                    "never registered",
                     getattr(task_ref, "__qualname__", task_ref),
+                    type(exc).__name__,
                 )
         run = self._workspace.run(
             task_ref,
@@ -624,32 +635,21 @@ __all__ = [
 ]
 
 
+#: Command staged for the next shell dispatch.
+#:
+#: The ``command`` shortcut originally built a fresh closure per call. That
+#: cannot work: Shepherd's ``TaskLibrary.register`` rejects a body that is not
+#: introspectable, and additionally rejects any defining module containing a
+#: relative import -- which ``shepherd_backend`` is full of. The task
+#: therefore lives in :mod:`mahavishnu.workers._shell_task`, a module with no
+#: imports at all, and stages its input through module state.
 def _compose_shell_task(command: str) -> Any:
-    """Module-level shell-task factory for :meth:`ShepherdBackendWorker._wrap_command`.
+    """Stage ``command`` and return the shared, registerable task callable.
 
-    Lives at module scope so the decorated task carries a stable
-    ``__module__`` / ``__qualname__`` — Shepherd's ``coerce_task_ref``
-    refuses callables whose qualname contains ``<locals>`` (lambdas,
-    inner functions). The factory composes a single module-level
-    ``_command_body`` per call.
-
-    We return the *raw* callable (not the ``CallableTask`` wrapper
-    that ``@shepherd.task`` would yield), because
-    :func:`coerce_task_ref` derives the task identity from the
-    callable's own ``__module__`` / ``__qualname__`` — feeding it the
-    ``CallableTask`` wrapper surfaces an opaque object whose
-    identity Shepherd refuses to resolve. The wrapper's ``execute``
-    passes this callable straight to ``workspace.run``; Shepherd's
-    compiler picks the right surface ruleset from the callable's
-    declared ``May[GitRepo, ...]`` parameters at run time.
-
-    The :mod:`_exec_guard` at the ``execute`` boundary ensures the
-    command is on the allowlist before we reach here.
+    Returns the raw callable rather than a decorator's wrapper because
+    :func:`coerce_task_ref` derives the task identity from the callable's own
+    ``__module__`` / ``__qualname__``; handing it a wrapper object would
+    surface an identity Shepherd cannot resolve.
     """
-
-    def _command_body() -> str:
-        return command
-
-    _command_body.__name__ = f"_shell_body_for_{command[:32]}"
-    _command_body.__qualname__ = f"_command_body.{_command_body.__name__}"
-    return _command_body
+    set_command(command)
+    return run_shell_command
