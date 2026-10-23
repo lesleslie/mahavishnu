@@ -201,6 +201,35 @@ def test_gate_fails_closed_when_dispatch_fails(
     assert verify.run_gate(timeout=1) == verify.EXIT_FAIL
 
 
+@pytest.mark.parametrize(
+    ("target", "expected"),
+    [
+        ("/v1/chat/completions", True),
+        ("/v1/completions", True),
+        ("/v1/chat/completions?model=x", True),
+        ("http://127.0.0.1:8471/v1/chat/completions", True),
+        ("/v1/chat/completions/", True),
+        ("/v1/./chat/completions", True),
+        ("//v1//chat//completions", True),
+        # Traversal and lookalike paths must not satisfy an exact match.
+        ("/v1/chat/completions/../../admin", False),
+        ("/not-really/chat/completions", False),
+        ("/v1/chat/completions/extra", False),
+        ("/anthropic/v1/messages", False),
+        ("/", False),
+        ("", False),
+    ],
+)
+def test_endpoint_matching_is_exact_not_substring(target: str, expected: bool) -> None:
+    """Security: unanchored substring matching let traversal paths through.
+
+    ``"/chat/completions" in target`` also matched
+    ``/v1/chat/completions/../../admin`` and ``/not-really/chat/completions``.
+    Matching is now exact against the normalized path.
+    """
+    assert verify.is_qwen_endpoint(target) is expected
+
+
 def test_exit_code_contract_preserved() -> None:
     """The shell original's 0/1/2/3 contract must survive the port."""
     assert (verify.EXIT_PASS, verify.EXIT_FAIL) == (0, 1)

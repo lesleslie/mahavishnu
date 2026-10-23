@@ -30,9 +30,12 @@ Code Meaning
 from __future__ import annotations
 
 import json
+import posixpath
+import re
 import shutil
 import subprocess
 import time
+from urllib.parse import urlsplit
 
 import typer
 
@@ -42,11 +45,17 @@ CALLER_ID = "mahavishnu"
 CALLER_MARKER = f'"caller_id":"{CALLER_ID}"'
 DISPATCH_PROMPT = "Reply with a single word: bifrost-routed"
 
-#: Path fragments identifying the OpenAI-compatible endpoint the Qwen route
-#: uses (``qwen_env_var`` defaults to ``OPENAI_BASE_URL``). Anthropic-side
+#: Exact request paths identifying the OpenAI-compatible endpoints the Qwen
+#: route uses (``qwen_env_var`` defaults to ``OPENAI_BASE_URL``). Anthropic-side
 #: traffic -- Claude Code and the workers it spawns -- arrives on
 #: ``/anthropic/v1/messages`` instead, so this discriminates the two flows.
-QWEN_ENDPOINT_MARKERS: tuple[str, ...] = ("/chat/completions", "/v1/completions")
+#:
+#: Matched by exact equality against the *normalized* path, never by
+#: substring: an unanchored ``"/chat/completions" in target`` would also
+#: accept ``/v1/chat/completions/../../admin`` or ``/not-really/chat/completions``.
+QWEN_ENDPOINT_PATHS: frozenset[str] = frozenset({"/v1/chat/completions", "/v1/completions"})
+
+_MULTI_SLASH = re.compile(r"/{2,}")
 
 EXIT_PASS = 0
 EXIT_FAIL = 1
@@ -140,6 +149,42 @@ def _iter_appended_lines(offset: int) -> list[str]:
         return []
 
 
+def _normalize_request_path(target: str) -> str:
+    """Return the normalized path portion of an HTTP request target.
+
+    Strips any absolute-form URL and the query/fragment, collapses repeated
+    slashes, and resolves ``.`` / ``..`` segments so that traversal cannot
+    disguise one endpoint as another.
+
+    Only a target carrying an explicit scheme is treated as a URL. A bare
+    ``//v1/chat/completions`` is HTTP *origin-form* (a path), but
+    :func:`urlsplit` would read its leading ``//`` as a network location and
+    silently drop the first segment.
+    """
+    path = target
+    if "://" in target:
+        path = urlsplit(target).path
+    path = path.split("?", 1)[0].split("#", 1)[0]
+    if not path.startswith("/"):
+        path = "/" + path
+    # Collapse repeated slashes ourselves: POSIX normpath preserves a leading
+    # "//" verbatim (its meaning is implementation-defined), which would let
+    # "//v1/chat/completions" evade the exact-path comparison.
+    path = _MULTI_SLASH.sub("/", path)
+    normalized = posixpath.normpath(path)
+    # normpath drops a trailing slash; the router treats /a/ and /a alike,
+    # so that collapse is intended here.
+    return normalized or "/"
+
+
+def is_qwen_endpoint(target: str) -> bool:
+    """True only for an exact, normalized Qwen-route endpoint path."""
+    try:
+        return _normalize_request_path(str(target)) in QWEN_ENDPOINT_PATHS
+    except TypeError, ValueError:
+        return False
+
+
 def find_caller_line(lines: list[str]) -> str | None:
     """Return the first line proving *this* dispatch routed through Bifrost.
 
@@ -175,7 +220,7 @@ def find_caller_line(lines: list[str]) -> str | None:
         if "latency_seconds" not in record:
             continue
         target = str(record.get("http.target", ""))
-        if not any(path in target for path in QWEN_ENDPOINT_MARKERS):
+        if not is_qwen_endpoint(target):
             continue
         return stripped
     return None
