@@ -1592,6 +1592,93 @@ def workers_spawn(
     asyncio.run(_spawn())
 
 
+#: Capability the worker engine fills. Nodes carrying it are the dispatchable
+#: ones -- the ``engine:durable-flow`` node is a planning artifact here, not a
+#: substrate call, and Prefect has no business executing a prompt.
+TERMINAL_EXECUTION_CAPABILITY = "engine:terminal-execution"
+
+
+async def _dispatch_dag_nodes(
+    dag: Any,
+    *,
+    config: Any,
+    prompt: str,
+    worker_type: str,
+    count: int,
+    timeout: int,
+    repo: str | None,
+) -> None:
+    """Run every terminal-execution node in ``dag`` and report the outcome.
+
+    This replaces the old "Per-engine dispatch lands in Phase 4" no-op, which
+    printed a DAG and exited 0 having dispatched nothing -- so every caller
+    (including ``bifrost verify-gate``) waited on side effects that could not
+    occur.
+
+    Two things make it actually work:
+
+    - The adapter is built here, not taken from the candidate list.
+      ``load_engine_registrations`` constructs the worker engine with
+      ``_make_stub_worker_manager()`` -- a ``SimpleNamespace`` whose
+      ``spawn_workers`` returns ``[]``. Dispatching through that would
+      succeed and do nothing. Constructing with ``config`` inside the running
+      loop defers to ``_ensure_worker_manager``, which builds a real
+      ``WorkerManager`` over a real ``TerminalManager``.
+    - ``ShellWorker.execute`` used to return ``COMPLETED`` without sending
+      anything. It now drives the session and waits for a completion sentinel
+      (see ``mahavishnu/workers/shell_backend.py``).
+
+    Raises:
+        typer.Exit: code 1 when any dispatched node fails.
+    """
+    from mahavishnu.core.adapters.worker import WorkerOrchestratorAdapter
+
+    nodes = [n for n in dag.nodes if n.capability_id == TERMINAL_EXECUTION_CAPABILITY]
+    if not nodes:
+        typer.echo(
+            f"WARNING: DAG has no {TERMINAL_EXECUTION_CAPABILITY} node; "
+            "nothing was dispatched.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    work_dir = repo or str(_Path_cli(__file__).resolve().parent.parent)
+    typer.echo(f"\n🚀 Dispatching {len(nodes)} node(s) in {work_dir}")
+
+    task = {
+        "worker_type": worker_type,
+        "prompt": prompt,
+        "count": count,
+        "timeout": timeout,
+        "task_type": "general",
+    }
+
+    failures = 0
+    for node in nodes:
+        adapter = WorkerOrchestratorAdapter(config)
+        try:
+            result = await adapter.execute(task, [work_dir])
+        except Exception as exc:  # noqa: BLE001 - CLI boundary; report, don't crash
+            failures += 1
+            typer.echo(
+                f"❌ {node.node_id} ({node.engine_id}) raised {type(exc).__name__}: {exc}",
+                err=True,
+            )
+        else:
+            typer.echo(json.dumps(result, indent=2, default=str))
+            if result.get("status") != "completed":
+                failures += 1
+        finally:
+            manager = adapter.worker_manager
+            if manager is not None:
+                await manager.close_all()
+
+    if failures:
+        typer.echo(f"❌ {failures}/{len(nodes)} dispatch node(s) failed", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"\n✅ {len(nodes)}/{len(nodes)} dispatch node(s) completed")
+
+
 @workers_app.command("execute")
 def workers_execute(
     prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for AI workers"),
@@ -1613,6 +1700,16 @@ def workers_execute(
         max=3600,
         help="Task timeout in seconds",
     ),
+    repo: str = typer.Option(
+        None,
+        "--repo",
+        help="Repo the workers work in. Defaults to the mahavishnu repo root.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Plan and print the DAG without dispatching any worker.",
+    ),
 ) -> None:
     """Plan and dispatch a task via the capability conductor.
 
@@ -1625,9 +1722,9 @@ def workers_execute(
 
     Notes:
         Migrated in Task 3a.5 from the legacy WorkerManager.batch path to
-        the capability-driven Conductor (resolve → plan → emit DAG).
-        ``worker_type`` is preserved as a hint used to derive the required
-        worker capability ID.
+        the capability-driven Conductor (resolve → plan → dispatch).
+        ``worker_type`` selects which engine slot fills the
+        terminal-execution node; it does not name a capability.
     """
 
     async def _execute():
@@ -1671,8 +1768,18 @@ def workers_execute(
         for n in dag.nodes:
             typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
 
-        typer.echo(
-            "\n⚠️  Per-engine dispatch lands in Phase 4; this CLI now returns the planned DAG."
+        if dry_run:
+            typer.echo("\n--dry-run: planned only, no worker dispatched.")
+            return
+
+        await _dispatch_dag_nodes(
+            dag,
+            config=maha_app.config,
+            prompt=prompt,
+            worker_type=worker_type,
+            count=count,
+            timeout=timeout,
+            repo=repo,
         )
 
     asyncio.run(_execute())

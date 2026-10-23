@@ -43,6 +43,8 @@ record and MCP mirrors it via ``mahavishnu://workers/{worker_id}.json``.
 
 from __future__ import annotations
 
+import asyncio
+from contextlib import nullcontext
 from dataclasses import dataclass
 import json
 import logging
@@ -78,6 +80,11 @@ else:
         AmbientWorldAccessRefused = None  # type: ignore[misc]
         EffectNotPermitted = None  # type: ignore[misc]
 
+
+#: Serialises the staged-command handoff in ``_shell_task``. Process-wide
+#: because that staging slot is process-wide; see the comment at the lock
+#: acquisition in :meth:`ShepherdBackendWorker.execute`.
+_SHELL_COMMAND_LOCK: Final = asyncio.Lock()
 
 _DEFAULT_TIMEOUT_SECONDS: Final = 300
 _VALID_PLACEMENTS: Final = frozenset({"auto", "advisory", "jail"})
@@ -359,17 +366,30 @@ class ShepherdBackendWorker(BaseWorker):
         if command is not None:
             _exec_guard.validate_command(command)
             command = _exec_guard.sanitize_command(command)
-            # Bind the command into a bodyless task via the substrate's
-            # ``@task`` decorator so it inherits the same ``May[GitRepo,
-            # ...]`` grant language. This keeps the jail enforcement
-            # contract identical for first-class task bodies and shell
-            # pass-through.
-            task_ref = self._wrap_command(command)
+
+        # The shell path stages its command in a module global (see
+        # ``_shell_task``) because Shepherd keys a registered task by import
+        # path -- every shell dispatch resolves to the same callable, so the
+        # command cannot travel in a closure. That global is process-wide, so
+        # without this lock two concurrent dispatches interleave: A stages its
+        # command, B overwrites it, and A's run executes B's command
+        # (CWE-362). Held across both the staging and the run, so the
+        # handoff is atomic from the substrate's point of view. First-class
+        # ``task_ref`` bodies carry their own closure and need no lock.
+        lock = _SHELL_COMMAND_LOCK if command is not None else nullcontext()
 
         start_time = time.time()
         try:
-            repo = self._build_writable_binding()
-            workspace_run = await self._invoke_task(task_ref, repo=repo)
+            async with lock:
+                if command is not None:
+                    # Bind the command into a bodyless task via the substrate's
+                    # ``@task`` decorator so it inherits the same ``May[GitRepo,
+                    # ...]`` grant language. This keeps the jail enforcement
+                    # contract identical for first-class task bodies and shell
+                    # pass-through.
+                    task_ref = self._wrap_command(command)
+                repo = self._build_writable_binding()
+                workspace_run = await self._invoke_task(task_ref, repo=repo)
             duration = time.time() - start_time
             return self._build_result(
                 command=command,
