@@ -122,13 +122,38 @@ code"). The decision is recorded here as that step asks.
 currently **0 files** in `akosha/`). R-6's rewiring calls `SpanQuery.summary`
 against a table that does not yet exist.
 
-**Also note for whoever builds R-6:** the 13 characterization tests at
-`akosha/tests/unit/test_fitness_analyzer_baseline.py` pin the current
-`_compute_signal` contract — failure rate is `error_count / len(traces)`, and
-"p99" is the maximum for n ≤ 100. R-6 must preserve that denominator; changing it
-silently redefines the reported number and nothing downstream knows.
+## Implemented 2026-10-22 — and what it changed
+
+R-6 shipped (`akosha`, same day). Two things this decision did **not** predict,
+both found by the characterization tests this very decision's context refers to:
+
+**1. `p99_latency_ms` is now a real percentile — a deliberate behaviour change.**
+The removed `_compute_signal` computed `sorted[min(int(n * 0.99), n - 1)]`,
+which equals the *maximum* for any `n <= 100`. The substrate uses
+`PERCENTILE_CONT(0.99)`, which interpolates. Same ten spans, latency 1..10:
+`10.0` before, `9.91` after. Downstream consumers may notice. Recorded in
+`akosha/tests/unit/test_fitness_p99_semantics.py`.
+
+**2. `SpanQuery.summary` now takes `scored_outcomes_only`, and the two callers
+disagree.** The `spans_summary` MCP tool (R-3) scores only `success`/`error` —
+an `unsettled` span is neither, and must not pad the denominator. That contract
+is tested and intentional. The analyzer's historical denominator was *every*
+returned row, with only `'error'` counted as a failure. Filtering would silently
+redefine a reported fitness number. So the population is now an explicit
+parameter rather than a hidden one, and each caller states which it wants.
+
+The first R-6 attempt removed the `outcome IN (...)` predicate outright, on the
+reasoning that it was untested. It was tested — in `tests/unit/mcp/`, which the
+initial grep missed. Reverting to a parameter was the correct fix; deleting a
+shipped contract to suit one caller was not.
+
+**Consequence for this decision's scope:** the analyzer constructed with no
+arguments still has no `SpanQuery` and no declared pairs, so every cycle is a
+no-op. Supplying both belongs to the lifespan that owns the OTLP receiver
+(PR-A3). Until then R-6 is inert, not broken.
 
 ## Status
 
-Active. R-6 implements the declared list; the union and the undeclared-observed
-row are additive and do not change R-6's output shape.
+Active. The declared list and the no-data distinction are implemented. The union
+with observed pairs, and the undeclared-observed drift row, are additive and do
+not change the output shape.
