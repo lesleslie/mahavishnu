@@ -2,8 +2,8 @@
 
 req: REQ-BIFROST-034
 
-Port of ``scripts/verify_qwen_bifrost_gate.sh``. Preserves the contract the
-two tests in ``tests/unit/test_terminal_worker_settings.py`` pin:
+Reads Bifrost's **structured request log** (``~/.config/bifrost/logs.db``) to
+prove that one dispatched Qwen worker actually routed through the gateway.
 
 Preconditions (any missing aborts with ``EXIT_PRECONDITION``):
 
@@ -11,8 +11,8 @@ Preconditions (any missing aborts with ``EXIT_PRECONDITION``):
 2. A real ``qwen`` binary on PATH (probed with ``qwen --version``).
 3. The mahavishnu pool router reachable (``mahavishnu pool health``).
 
-Pass criterion: after the dispatch, ``bifrost.log`` contains a JSON line with
-``"caller_id":"mahavishnu"``.
+Pass criterion: a row appears in ``logs`` with ``virtual_key_name`` set to our
+key, ``status = 'success'``, and a model served only by the Qwen route.
 
 Exit codes (unchanged from the shell original, so operator runbooks and any
 wrapper scripts keep working):
@@ -20,57 +20,229 @@ wrapper scripts keep working):
 ==== ==========================================
 Code Meaning
 ==== ==========================================
-0    gate passed -- caller_id line found
-1    gate failed -- no caller_id line within 30s
+0    gate passed -- a Qwen-route row was recorded after dispatch
+1    gate failed -- no such row within 30s
 2    a precondition was not met
-3    ``bifrost.log`` missing entirely
+3    the log store is missing
 ==== ==========================================
+
+Why this reads SQLite rather than the stdout log
+-------------------------------------------------
+
+The previous implementation tail-grepped ``bifrost.log`` for a JSON line
+carrying ``caller_id`` and ``latency_seconds``. **Neither field is ever
+written there.** At ``info`` level the stdout log emits only HTTP access
+lines::
+
+    http.method http.target http.status_code http.request_duration_ms
+    http.remote_addr http.user_agent request_id trace_id
+
+so the gate could never pass regardless of routing health -- and because the
+skip is silent, that failure looked identical to "traffic did not arrive".
+Bifrost's own struct tag ``json:"caller_id,omitempty"`` is a *capability*,
+not evidence: the ``metadata`` column that would carry it is empty in every
+recorded row.
+
+The structured store has the real equivalents, under different names:
+
+===================  ==========================
+stdout log (wrong)   ``logs`` table (right)
+===================  ==========================
+``caller_id``        ``virtual_key_name``
+``latency_seconds``  ``latency`` (milliseconds)
+``http.target``      ``model`` + ``provider``
+===================  ==========================
+
+``virtual_key_name`` identifies the caller exactly as ``caller_id`` was meant
+to, and it is populated on every row.
 """
 
 from __future__ import annotations
 
-import json
-import posixpath
-import re
+from dataclasses import dataclass
 import shutil
+import sqlite3
 import subprocess
 import time
-from urllib.parse import urlsplit
 
 import typer
 
-from .paths import LOG_OUT, READY_FILE
+from .paths import LOGS_DB, READY_FILE
 
-CALLER_ID = "mahavishnu"
-CALLER_MARKER = f'"caller_id":"{CALLER_ID}"'
-DISPATCH_PROMPT = "Reply with a single word: bifrost-routed"
+#: Operator-facing name of the virtual key the harnesses authenticate with.
+#: Matches ``_BIFROST_VKEY_NAME`` in ``examples/_bifrost_setup.py``, which
+#: resolves the same key by name.
+VIRTUAL_KEY_NAME = "bodai-pi-pool"
 
-#: Exact request paths identifying the OpenAI-compatible endpoints the Qwen
-#: route uses (``qwen_env_var`` defaults to ``OPENAI_BASE_URL``). Anthropic-side
-#: traffic -- Claude Code and the workers it spawns -- arrives on
-#: ``/anthropic/v1/messages`` instead, so this discriminates the two flows.
+#: The model the Qwen route serves. ``config.json`` declares exactly one model
+#: for the ``llama-server`` provider, so a row carrying it can only have come
+#: from the Qwen route.
 #:
-#: Matched by exact equality against the *normalized* path, never by
-#: substring: an unanchored ``"/chat/completions" in target`` would also
-#: accept ``/v1/chat/completions/../../admin`` or ``/not-really/chat/completions``.
-QWEN_ENDPOINT_PATHS: frozenset[str] = frozenset({"/v1/chat/completions", "/v1/completions"})
+#: This is a *semantic* discriminator and replaces the old syntactic
+#: ``http.target == "/v1/chat/completions"`` check. Claude Code only ever
+#: requests ``MiniMax-M3*``, so no amount of concurrent CC traffic can collide
+#: with it -- and unlike a path comparison it has no normalisation or
+#: traversal surface to get wrong.
+QWEN_ROUTE_MODEL = "qwen3-8b-q4_k_m"
 
-_MULTI_SLASH = re.compile(r"/{2,}")
+DISPATCH_PROMPT = "Reply with a single word: bifrost-routed"
 
 EXIT_PASS = 0
 EXIT_FAIL = 1
 EXIT_PRECONDITION = 2
 EXIT_NO_LOG = 3
 
-#: Operator-friendly headroom for slow Qwen CLI first-token latency. The
-#: stdbuf line-buffered log normally resolves this in under a second.
+#: Operator-friendly headroom for slow Qwen CLI first-token latency.
 WAIT_SECONDS = 30
+
+
+@dataclass(frozen=True)
+class RoutedRequest:
+    """One row from Bifrost's ``logs`` table, narrowed to what the gate needs."""
+
+    rowid: int
+    timestamp: str
+    provider: str
+    model: str
+    status: str
+    latency: float | None
+    user_agent: str
+
+    def describe(self) -> str:
+        """One-line human summary for the operator."""
+        agent = self.user_agent or "(no user-agent)"
+        return (
+            f"{self.timestamp} provider={self.provider} model={self.model} "
+            f"status={self.status} latency={self.latency}ms via {agent}"
+        )
+
+
+def _connect() -> sqlite3.Connection | None:
+    """Open the log store read-only, or ``None`` if it isn't there.
+
+    ``mode=ro`` matters: the gateway holds this database open in WAL mode and
+    the gate must never take a write lock on it.
+    """
+    if not LOGS_DB.exists():
+        return None
+    return sqlite3.connect(f"file:{LOGS_DB}?mode=ro", uri=True, timeout=10)
+
+
+def _query(sql: str, params: tuple[object, ...] = ()) -> list[tuple[object, ...]]:
+    """Run a read-only query, treating any SQLite failure as "no rows"."""
+    connection = _connect()
+    if connection is None:
+        return []
+    try:
+        return connection.execute(sql, params).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        connection.close()
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    """Narrow a SQLite scalar to ``int``.
+
+    SQLite is dynamically typed and hands back whatever storage class a column
+    happened to use, so this narrows on the runtime type rather than asserting
+    one. A ``rowid`` that is not an integer would mean a different table shape
+    entirely, which is exactly when the gate should degrade to "no evidence"
+    rather than raise.
+    """
+    if isinstance(value, bool):
+        return default
+    return value if isinstance(value, int) else default
+
+
+def _as_float(value: object) -> float | None:
+    """Narrow a SQLite scalar to ``float``, or ``None`` when it is NULL."""
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def log_baseline() -> int:
+    """Highest ``rowid`` currently in the log store.
+
+    Everything at or below this is pre-existing history and is **not**
+    evidence that the gate's own dispatch worked. A long-lived gateway
+    accumulates rows from ordinary Claude Code and worker traffic, so a gate
+    that scans the whole table passes instantly without proving anything.
+
+    ``rowid`` is used rather than ``inc_number``: ``inc_number`` exists as a
+    column but is NULL on every recorded row (it is a ClickHouse-origin
+    autoincrement that the SQLite writer never populates), so it cannot serve
+    as a watermark. SQLite's implicit ``rowid`` is monotonic for appends,
+    which is exactly the property a baseline needs.
+    """
+    rows = _query("SELECT coalesce(max(rowid), 0) FROM logs")
+    if not rows:
+        return 0
+    return _as_int(rows[0][0])
+
+
+def find_routed_rows(baseline: int, virtual_key_name: str = VIRTUAL_KEY_NAME) -> list[RoutedRequest]:
+    """Successful requests attributed to ``virtual_key_name`` after ``baseline``.
+
+    Ordered by ``rowid`` so the first match is the oldest qualifying request,
+    which makes the gate's diagnostic stable rather than dependent on which
+    poll iteration happened to win the race.
+    """
+    rows = _query(
+        """
+        SELECT rowid, timestamp, provider, model, status, latency, user_agent
+          FROM logs
+         WHERE rowid > ?
+           AND virtual_key_name = ?
+           AND status = 'success'
+      ORDER BY rowid
+        """,
+        (baseline, virtual_key_name),
+    )
+    return [
+        RoutedRequest(
+            rowid=_as_int(rowid),
+            timestamp=str(timestamp or ""),
+            provider=str(provider or ""),
+            model=str(model or ""),
+            status=str(status or ""),
+            latency=_as_float(latency),
+            user_agent=str(user_agent or ""),
+        )
+        for rowid, timestamp, provider, model, status, latency, user_agent in rows
+    ]
+
+
+def is_qwen_route(request: RoutedRequest) -> bool:
+    """True only for a row served by the Qwen route's provider."""
+    return request.model == QWEN_ROUTE_MODEL
+
+
+def find_qwen_row(
+    baseline: int, virtual_key_name: str = VIRTUAL_KEY_NAME
+) -> RoutedRequest | None:
+    """Return the first post-baseline row proving the Qwen dispatch routed."""
+    for request in find_routed_rows(baseline, virtual_key_name):
+        if is_qwen_route(request):
+            return request
+    return None
+
+
+def wait_for_qwen_row(baseline: int, timeout: int = WAIT_SECONDS) -> RoutedRequest | None:
+    """Poll the log store for a Qwen-route row recorded after ``baseline``."""
+    deadline = time.monotonic() + timeout
+    while True:
+        hit = find_qwen_row(baseline)
+        if hit is not None:
+            return hit
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(1)
 
 
 def _run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
-    except OSError, subprocess.SubprocessError:
+    except (OSError, subprocess.SubprocessError):
         return subprocess.CompletedProcess(cmd, 127, "", "")
 
 
@@ -78,6 +250,9 @@ def check_preconditions() -> str | None:
     """Return a human-readable failure reason, or ``None`` if all are met."""
     if not READY_FILE.exists():
         return f"Bifrost not ready: {READY_FILE} is missing"
+
+    if not LOGS_DB.exists():
+        return f"Bifrost log store missing: {LOGS_DB} does not exist"
 
     if shutil.which("qwen") is None:
         return "Qwen CLI not on PATH"
@@ -93,26 +268,12 @@ def check_preconditions() -> str | None:
     return None
 
 
-def log_baseline() -> int:
-    """Byte offset of the end of ``bifrost.log`` right now.
-
-    Everything before this offset is pre-existing history and is NOT evidence
-    that the gate's own dispatch worked. A long-lived gateway accumulates
-    caller_id lines from ordinary Bodai worker traffic, so a gate that greps
-    the whole file passes instantly without proving anything.
-    """
-    try:
-        return LOG_OUT.stat().st_size
-    except OSError:
-        return 0
-
-
 def dispatch() -> int:
-    """Drive one Qwen worker through the pool so Bifrost logs a caller_id.
+    """Drive one Qwen worker through the pool so Bifrost records a row.
 
     Returns the subprocess exit status. A non-zero status means the dispatch
     itself failed, which must fail the gate -- otherwise the gate would go on
-    to poll for a line that can never arrive, or worse, match stale history.
+    to poll for a row that can never arrive.
     """
     result = _run(
         [
@@ -139,112 +300,11 @@ def dispatch() -> int:
     return result.returncode
 
 
-def _iter_appended_lines(offset: int) -> list[str]:
-    """Return log lines written after ``offset``, newest last."""
-    try:
-        with LOG_OUT.open("r", encoding="utf-8", errors="replace") as handle:
-            handle.seek(offset)
-            return handle.read().splitlines()
-    except OSError:
-        return []
-
-
-def _normalize_request_path(target: str) -> str:
-    """Return the normalized path portion of an HTTP request target.
-
-    Strips any absolute-form URL and the query/fragment, collapses repeated
-    slashes, and resolves ``.`` / ``..`` segments so that traversal cannot
-    disguise one endpoint as another.
-
-    Only a target carrying an explicit scheme is treated as a URL. A bare
-    ``//v1/chat/completions`` is HTTP *origin-form* (a path), but
-    :func:`urlsplit` would read its leading ``//`` as a network location and
-    silently drop the first segment.
-    """
-    path = target
-    if "://" in target:
-        path = urlsplit(target).path
-    path = path.split("?", 1)[0].split("#", 1)[0]
-    if not path.startswith("/"):
-        path = "/" + path
-    # Collapse repeated slashes ourselves: POSIX normpath preserves a leading
-    # "//" verbatim (its meaning is implementation-defined), which would let
-    # "//v1/chat/completions" evade the exact-path comparison.
-    path = _MULTI_SLASH.sub("/", path)
-    normalized = posixpath.normpath(path)
-    # normpath drops a trailing slash; the router treats /a/ and /a alike,
-    # so that collapse is intended here.
-    return normalized or "/"
-
-
-def is_qwen_endpoint(target: str) -> bool:
-    """True only for an exact, normalized Qwen-route endpoint path."""
-    try:
-        return _normalize_request_path(str(target)) in QWEN_ENDPOINT_PATHS
-    except TypeError, ValueError:
-        return False
-
-
-def find_caller_line(lines: list[str]) -> str | None:
-    """Return the first line proving *this* dispatch routed through Bifrost.
-
-    Matching requires three things, not just the first:
-
-    - ``caller_id`` parses to exactly ``mahavishnu`` (so a payload that
-      merely contains the text elsewhere cannot satisfy the gate);
-    - the record was served on the **OpenAI-compatible endpoint**
-      (``http.target`` under ``/v1/chat/completions``), which is what the
-      Qwen route uses via ``qwen_env_var`` / ``OPENAI_BASE_URL``;
-    - it is a completion record (``latency_seconds`` present), not merely an
-      HTTP access line.
-
-    The endpoint check is what makes the gate attributable. Every Bodai
-    worker shares this log and writes ``caller_id: "mahavishnu"``, so
-    matching on caller_id alone would accept *any* concurrent worker
-    traffic that happened to land inside the dispatch window. Qwen traffic
-    is the only flow that arrives on ``/v1/chat/completions``; Claude Code
-    and the workers it dispatches arrive on ``/anthropic/v1/messages``.
-    """
-    for line in lines:
-        stripped = line.strip()
-        if not stripped.startswith("{"):
-            continue
-        try:
-            record = json.loads(stripped)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(record, dict):
-            continue
-        if record.get("caller_id") != CALLER_ID:
-            continue
-        if "latency_seconds" not in record:
-            continue
-        target = str(record.get("http.target", ""))
-        if not is_qwen_endpoint(target):
-            continue
-        return stripped
-    return None
-
-
-def wait_for_caller_line(offset: int, timeout: int = WAIT_SECONDS) -> str | None:
-    """Poll ``bifrost.log`` for a caller_id line appended after ``offset``.
-
-    Only content written past the pre-dispatch offset counts. Returns the
-    matching line, or ``None`` on timeout.
-    """
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        hit = find_caller_line(_iter_appended_lines(offset))
-        if hit is not None:
-            return hit
-        time.sleep(1)
-    return None
-
-
 def run_gate(timeout: int = WAIT_SECONDS) -> int:
     """Execute the gate. Returns the process exit code."""
     typer.echo("Preconditions:")
-    typer.echo(f"  ready file : {READY_FILE}")
+    typer.echo(f"  ready file  : {READY_FILE}")
+    typer.echo(f"  log store   : {LOGS_DB}")
 
     failure = check_preconditions()
     if failure:
@@ -253,45 +313,48 @@ def run_gate(timeout: int = WAIT_SECONDS) -> int:
 
     typer.echo("  OK: preconditions met")
 
-    # Baseline BEFORE dispatch: a long-lived gateway already holds caller_id
-    # lines from ordinary worker traffic, so anything already in the file
+    # Baseline BEFORE dispatch: a long-lived gateway already holds rows from
+    # ordinary Claude Code and worker traffic, so anything already recorded
     # cannot prove that THIS dispatch routed through Bifrost.
     baseline = log_baseline()
-    typer.echo(f"INFO: log baseline at byte {baseline}")
+    typer.echo(f"INFO: log baseline at rowid {baseline}")
     typer.echo(f"INFO: dispatching one Qwen worker via pool route: {DISPATCH_PROMPT!r}")
 
     if dispatch() != 0:
         return EXIT_FAIL
 
-    if not LOG_OUT.exists():
-        typer.echo(f"FAIL: {LOG_OUT} is missing -- no Bifrost activity at all", err=True)
+    if not LOGS_DB.exists():
+        typer.echo(f"FAIL: {LOGS_DB} is missing -- no Bifrost activity at all", err=True)
         return EXIT_NO_LOG
 
-    typer.echo(f"INFO: waiting up to {timeout}s for a new caller_id line in {LOG_OUT}")
-    hit = wait_for_caller_line(baseline, timeout)
+    typer.echo(
+        f"INFO: waiting up to {timeout}s for a {QWEN_ROUTE_MODEL} row "
+        f"on virtual key {VIRTUAL_KEY_NAME!r}"
+    )
+    hit = wait_for_qwen_row(baseline, timeout)
     if hit is None:
-        typer.echo(f"FAIL: no caller_id line appended in {timeout}s", err=True)
+        typer.echo(f"FAIL: no Qwen-route row appeared within {timeout}s", err=True)
         return EXIT_FAIL
 
-    typer.echo("PASS: a new caller_id line was appended after dispatch")
-    typer.echo(f"  {hit[:200]}")
+    typer.echo(f"PASS: row {hit.rowid} recorded after dispatch")
+    typer.echo(f"  {hit.describe()}")
     return EXIT_PASS
 
 
-def log_has_caller_line() -> bool:
-    """True when any caller_id line exists (diagnostic only, not a gate)."""
-    if not LOG_OUT.exists():
-        return False
-    return find_caller_line(_iter_appended_lines(0)) is not None
-
-
 __all__ = [
-    "CALLER_MARKER",
     "DISPATCH_PROMPT",
     "EXIT_FAIL",
     "EXIT_NO_LOG",
     "EXIT_PASS",
     "EXIT_PRECONDITION",
+    "QWEN_ROUTE_MODEL",
+    "VIRTUAL_KEY_NAME",
+    "RoutedRequest",
     "check_preconditions",
+    "find_qwen_row",
+    "find_routed_rows",
+    "is_qwen_route",
+    "log_baseline",
     "run_gate",
+    "wait_for_qwen_row",
 ]

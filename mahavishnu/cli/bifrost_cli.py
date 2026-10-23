@@ -172,7 +172,11 @@ def bifrost_foreground() -> None:
 
 @bifrost_app.command("verify-gate")
 def bifrost_verify_gate(
-    timeout: int = typer.Option(30, "--timeout", help="Seconds to wait for the caller_id line."),
+    timeout: int = typer.Option(
+        30,
+        "--timeout",
+        help="Seconds to wait for a Qwen-route row in the Bifrost log store.",
+    ),
 ) -> None:
     """Operator gate: confirm a Qwen worker actually routes through Bifrost."""
     code = verify.run_gate(timeout)

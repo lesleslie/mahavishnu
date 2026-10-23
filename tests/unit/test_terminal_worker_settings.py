@@ -254,9 +254,12 @@ def test_qwen_actual_dispatch_emits_caller_id() -> None:
     # `mahavishnu bifrost verify-gate` (REQ-BIFROST-034). These tests
     # pinned the shell file's *text*; they now pin the module's
     # contract, which is what the operator-facing command exposes.
-    # Pass criterion: caller_id line in bifrost.log.
-    assert verify.CALLER_MARKER == '"caller_id":"mahavishnu"', (
-        "gate must assert the caller_id line is in bifrost.log"
+    # Pass criterion: a Qwen-route row in the structured log store.
+    assert verify.VIRTUAL_KEY_NAME == "bodai-pi-pool", (
+        "gate must resolve the same virtual key the demo shim does"
+    )
+    assert verify.QWEN_ROUTE_MODEL == "qwen3-8b-q4_k_m", (
+        "gate must discriminate on the model only the Qwen route serves"
     )
     # Exit-code contract: 0 pass / 1 fail / 2 precondition.
     assert (verify.EXIT_PASS, verify.EXIT_FAIL, verify.EXIT_PRECONDITION) == (0, 1, 2), (
@@ -286,5 +289,7 @@ def test_qwen_gate_preconditions_documented() -> None:
     assert 'shutil.which("qwen")' in src, "gate must check the Qwen CLI on PATH"
     # Precondition 3: Mahavishnu pool router.
     assert '"mahavishnu", "pool", "health"' in src, "gate must check the pool router"
-    # Pass criterion: caller_id line in bifrost.log.
-    assert verify.CALLER_MARKER in src, "gate must assert the caller_id line is in bifrost.log"
+    # Pass criterion: a Qwen-route row in the structured store, keyed on the
+    # virtual key and the model only that route serves.
+    assert "virtual_key_name = ?" in src, "gate must attribute the row to our virtual key"
+    assert verify.QWEN_ROUTE_MODEL in src, "gate must discriminate on the Qwen-route model"

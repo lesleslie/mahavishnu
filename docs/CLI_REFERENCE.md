@@ -161,7 +161,16 @@ would expose it via `ps` and shell history.
 
 ### Verification
 
-- `mahavishnu bifrost verify-gate` — confirm a Qwen worker actually routes through Bifrost
+- `mahavishnu bifrost verify-gate` — confirm a Qwen worker actually routes
+  through Bifrost
+
+The gate dispatches one `terminal-qwen` worker and waits for a matching row in
+Bifrost's structured request log (`~/.config/bifrost/logs.db`). A row qualifies
+only when `virtual_key_name` is `bodai-pi-pool`, `status` is `success`, and
+the model is `qwen3-8b-q4_k_m` — the sole model the `llama-server` provider
+serves, so concurrent Claude Code traffic can never satisfy it.
+
+Exit codes: `0` pass, `1` fail, `2` precondition unmet, `3` log store missing.
 
 ## Workers
 
