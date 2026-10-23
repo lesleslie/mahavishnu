@@ -22,6 +22,12 @@ dependencies = [
     # CLI
     "typer>=0.27.3",
     # Oneiric ecosystem
+    # Floor stays 0.33, NOT 0.33.2: bumping it makes the resolution unsatisfiable.
+    # oneiric>=0.33.2 requires aioboto3>=15.5.0, while the "gpu" group's
+    # runpod>=2.0.0rc1 caps aioboto3 below that. Unblocking this needs a runpod
+    # bump or dropping the gpu group from --all-groups, not a oneiric bump.
+    # Note `uv sync --upgrade` re-resolves to the MINIMUM satisfying the
+    # constraint, so this line pins 0.33.0 even though 0.33.1/0.33.2 exist.
     "oneiric>=0.33",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
