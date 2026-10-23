@@ -23,8 +23,11 @@ through Bifrost.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
 
@@ -33,6 +36,47 @@ if TYPE_CHECKING:
     from .registry import WorkerConfig
 
 logger = logging.getLogger(__name__)
+
+#: Prefix for the completion token appended to every dispatched prompt.
+_DONE_SENTINEL_PREFIX = "MAHAVISHNU-DONE-"
+
+#: How often the pane is re-read while waiting for the sentinel. One second
+#: keeps end-to-end latency close to the CLI's own while costing one tmux
+#: capture per poll.
+_POLL_INTERVAL_SECONDS = 1.0
+
+#: Fallback when neither the task nor the worker config carries a timeout.
+_DEFAULT_TIMEOUT_SECONDS = 300
+
+
+def _resolve_timeout(task: dict[str, Any], config: WorkerConfig) -> float:
+    """Pick the execution timeout from the task, then the worker config."""
+    for source in (task.get("timeout"), getattr(config, "default_timeout", None)):
+        if source is None:
+            continue
+        try:
+            value = float(source)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    return float(_DEFAULT_TIMEOUT_SECONDS)
+
+
+def _output_since(before: str, pane: str, marker: str) -> str:
+    """Return the pane text this call produced, without prior history.
+
+    ``capture_output`` returns the whole scrollback, so a long-lived session
+    would otherwise hand every ``execute()`` the output of all previous ones.
+    The slice starts past the pre-send snapshot; if that anchor is gone (the
+    adapter trimmed its buffer), fall back to everything and let the caller
+    see the sentinel rather than silently receiving nothing.
+    """
+    if before and pane.startswith(before):
+        pane = pane[len(before) :]
+    if marker in pane:
+        pane = pane.split(marker)[0]
+    return pane.strip()
 
 
 class ShellWorker(BaseWorker):
@@ -95,27 +139,81 @@ class ShellWorker(BaseWorker):
         return self._session_id
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
-        # The session is long-lived; one-shot tasks should be
-        # submitted through the terminal manager's execute
-        # interface (e.g. terminal_manager.execute_task on the
-        # session). The exact interface depends on the adapter
-        # in use (mock, tmux, crow) and the Bifrost
-        # Qwen gate's verification path runs the CLI directly
-        # rather than through this method.
+        """Run one prompt in the session and wait for the CLI to finish.
+
+        req: Phase 4 -- this used to return ``COMPLETED`` unconditionally
+        without sending anything, which was indistinguishable from real work:
+        a dispatch through ``WorkerOrchestratorAdapter`` went green in
+        0.187s with empty output while Bifrost logged nothing at all.
+
+        An interactive CLI has no completion signal, so the prompt is
+        suffixed with a unique sentinel and the pane is polled until the
+        sentinel comes back. Polling ``capture_output`` alone cannot work --
+        an LLM pausing between tokens is indistinguishable from being done.
+
+        The session is long-lived and is left running; only ``stop()`` tears
+        it down. Output is the pane text produced by *this* call, computed by
+        slicing away the snapshot taken before the prompt was sent, so
+        consecutive calls on one worker do not return each other's history.
+        """
         if not self._session_id:
             return WorkerResult(
                 worker_id="unknown",
                 status=WorkerStatus.FAILED,
                 error="ShellWorker.execute called before start()",
             )
+        if self._terminal_manager is None:
+            # ``start()`` is the guard for this, but ``execute`` may be reached
+            # through a pool that constructed the worker before wiring it.
+            return WorkerResult(
+                worker_id=self._session_id,
+                status=WorkerStatus.FAILED,
+                error=f"ShellWorker {self.worker_type!r} has no terminal_manager",
+            )
+        prompt = task.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return WorkerResult(
+                worker_id=self._session_id,
+                status=WorkerStatus.FAILED,
+                error="ShellWorker.execute requires a non-empty 'prompt' in the task",
+            )
+
+        marker = f"{_DONE_SENTINEL_PREFIX}{uuid4().hex[:12]}"
+        before = await self._terminal_manager.capture_output(self._session_id)
+        await self._terminal_manager.send_command(
+            self._session_id,
+            f"{prompt}\n\nWhen you are finished, reply with exactly this token "
+            f"and nothing else: {marker}",
+        )
+
+        timeout_s = _resolve_timeout(task, self.config)
+        deadline = time.monotonic() + timeout_s
+        pane = before
+        while time.monotonic() < deadline:
+            await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+            pane = await self._terminal_manager.capture_output(self._session_id)
+            if marker in pane:
+                return WorkerResult(
+                    worker_id=self._session_id,
+                    status=WorkerStatus.COMPLETED,
+                    output=_output_since(before, pane, marker),
+                    exit_code=0,
+                    duration_seconds=timeout_s - (deadline - time.monotonic()),
+                    metadata={"session_id": self._session_id, "sentinel": marker},
+                )
+            if self._status is WorkerStatus.CANCELLED:
+                break
+
         return WorkerResult(
             worker_id=self._session_id,
-            status=WorkerStatus.COMPLETED,
-            output="",
-            metadata={
-                "session_id": self._session_id,
-                "note": "long-lived shell session; one-shot tasks go through the terminal manager",
-            },
+            status=WorkerStatus.TIMEOUT,
+            output=_output_since(before, pane, marker),
+            error=(
+                f"CLI did not emit sentinel {marker!r} within {timeout_s}s; "
+                "the prompt may not have been accepted by the session"
+            ),
+            duration_seconds=timeout_s,
+            metadata={"session_id": self._session_id, "sentinel": marker, "timed_out": True},
         )
 
     async def stop(self) -> None:
