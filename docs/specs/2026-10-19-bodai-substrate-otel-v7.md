@@ -170,6 +170,29 @@ CREATE TABLE IF NOT EXISTS spans_substrate (
     -- NB: DuckDB does NOT store the declared name `uq_span_identity`; it
     -- normalises to `spans_substrate_trace_id_span_id_key`. This label is for
     -- readers — never look the constraint up by name (§5.1a).
+    --
+    -- DEFECT FOUND 2026-10-23 (PR-A3 implementation): this constraint is
+    -- UNREACHABLE, and the DDL is shipped as-is anyway. `span_id` above is
+    -- PRIMARY KEY — strictly NARROWER than this UNIQUE over the pair. Every
+    -- row colliding on (trace_id, span_id) has therefore already collided on
+    -- span_id, so the PK always fires first and this constraint can never be
+    -- the one that rejects anything.
+    --
+    -- Consequence: the spec's prescribed `ON CONFLICT (trace_id, span_id)`
+    -- names only this constraint, so a span_id collision falls through to
+    -- the PK and raises ConstraintException on the hot ingest path — in
+    -- exactly the case the composite key exists to handle (two producers
+    -- reusing a span_id under different trace_ids, e.g. a producer that
+    -- restarted its trace).
+    --
+    -- Fix applied in PR-A3: use UNTARGETED `ON CONFLICT DO NOTHING`, which
+    -- honours every constraint. The DDL is deliberately left unchanged —
+    -- dropping the PK would weaken span_id lookups for the read path, and the
+    -- untargeted clause already achieves the stated intent. NOT NULL
+    -- violations are unaffected and still raise, so the table constraint
+    -- remains a backstop for rows validation misses.
+    --
+    -- Docs: docs/decisions/2026-10-23-otel-substrate-spec-corrections.md §2
     CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)
 );
 
@@ -251,7 +274,7 @@ The v6 footer attributed the pin to `mahavishnu/uv.lock`. That was wrong — ADR
 - `CONSTRAINT uq_span_identity UNIQUE (trace_id, span_id)` (inline in CREATE TABLE) is present as a `UNIQUE` constraint over those two columns ✓ — **asserted on `(constraint_type, constraint_column_names)`, never on the name**: DuckDB normalises the declared `uq_span_identity` to `spans_substrate_trace_id_span_id_key` (§1.1). Any code that queries `duckdb_constraints()` by `uq_span_identity` will find nothing.
 - All four `CREATE INDEX … ON spans_substrate(…, received_at_unix_nano DESC)` resolve ✓
 - No `WHERE` clause on any `CREATE INDEX` — still unsupported, `NotImplementedException` ✓
-- `INSERT INTO spans_substrate (…) ON CONFLICT (trace_id, span_id) DO NOTHING` resolves against the inline CONSTRAINT, and a replayed `(trace_id, span_id)` is a genuine no-op (row count unchanged) ✓
+- `INSERT INTO spans_substrate (…) ON CONFLICT (trace_id, span_id) DO NOTHING` resolves against the inline CONSTRAINT, and a replayed `(trace_id, span_id)` is a genuine no-op (row count unchanged) ✓ — **AMENDED 2026-10-23 (PR-A3).** This pin is true but tests the wrong thing. It replays a *composite* collision, which the inline CONSTRAINT does catch, so it passes while the span_id-only collision the composite key exists to survive raises `ConstraintException` (see the DEFECT note in §5.1). The shipped statement is UNTARGETED `ON CONFLICT DO NOTHING`, which honours the PK and the composite constraint alike; verified on the pinned 2.0.0.dev build that it no-ops a span_id-only collision and still raises on NOT NULL.
 - `result.rowcount` (DuckDB Python cursor contract) returns the affected-row count for DML ✓ — **version-sensitive**: this returned `-1` on 1.5.6. The §8.2 sweep body's rowcount check is only correct because oneiric currently pins 2.0.0-dev. If oneiric ever downgrades, the sweep must not trust `rowcount`.
 - `COPY (SELECT … FROM spans_substrate WHERE received_at_unix_nano < ?)` to an inline path writes a real file ✓; `TO ?` (parameterized) is still rejected — now `InvalidInputException`, previously `INTERNAL Error: Unsupported parameter type for filename`. §8.2 swap-inlines the target path with strict-path validation (see §8.2 v6 change).
 ```
@@ -274,6 +297,22 @@ class HotStore(DuckdbHotStore):
 
 No `akosha/migrations/versions/...` writes against `spans_substrate`. ADR 017's canonical-home claim holds.
 
+**AMENDED 2026-10-23 (PR-A3 implementation).** The sketch above shows the
+writers *declared on akosha's subclass*. They are shipped on
+`DuckdbHotStore` in oneiric instead, and akosha's `HotStore` inherits
+them unchanged — so the receiver's call sites are unaffected.
+
+Two reasons. `akosha/storage/hot_store.py` is capped at 500 LOC by
+`tests/unit/test_hot_store_subclass.py`, precisely so it stays a thin
+subclass; declaring the writers there pushed it to 580, and the right
+response to a guard like that is to fix the layering rather than raise the
+ceiling. And ADR 017 puts `spans_substrate` ownership in oneiric, so the
+write path to it is substrate access rather than akosha domain logic —
+and placing the writers beside the DDL and indexes they target stops a
+column added in one repo and named in another from silently diverging.
+
+`insert_dlq_rows` moved for the same reason.
+
 ### 5.3 Substrate asymmetry — explicit
 
 Two tables in this design are **`akosha-local`, not substrate-managed**:
@@ -292,13 +331,14 @@ Documented as deliberate asymmetry. ADR 017's "substrate is the single source of
 The receiver lives at `akosha/observability/otlp_receiver.py`. Function signatures, error types, and constants are pinned here so the engineer can start typing without further design:
 
 ```python
-# LifecycleError is imported from mcp-common — substrate-bound starts raise
-# it when boot preconditions fail. Confirmed exported at PR-0b commit time
-# (mcp-common source: it is defined in `mcp_common.errors` and re-exported
-# from `mcp_common.__init__`). If you rebase against a mcp-common tag
-# older than the bridge release that introduced the import path, pin
-# `mcp-common>=0.40` in your PR description.
-from mcp_common.errors import LifecycleError
+# CORRECTED 2026-10-23 (PR-A3 implementation). The claim below that
+# LifecycleError lives in `mcp_common.errors` is FALSE: there is no such
+# module. mcp_common's submodules are auth, config, health, profiles,
+# traces, … and none is `errors`. The real class is in oneiric, and
+# subclasses RuntimeError. No `mcp-common>=0.40` pin is needed.
+#
+# See docs/decisions/2026-10-23-otel-substrate-spec-corrections.md
+from oneiric.core.lifecycle import LifecycleError
 
 class ReceiverError(Exception):                       ...
 class BatchRejected(ReceiverError):                  ...    # whole-batch abort
@@ -314,6 +354,14 @@ class BatchResult:
     dlq_failed: int  # DLQ itself failed; rows logged to stderr
     errored:   int   # whole-batch abort
 ```
+
+**As implemented (PR-A3), the exception hierarchy above is simplified.**
+`RowValidationError` is a frozen dataclass returned by `pre_validate`, not
+an exception — it doubles as a metric-label dedup key, which an exception
+would not survive. There are no `BatchRejected` / `DLQWriteError` /
+`PreValidateException` classes: a DLQ failure is caught and counted rather
+than re-raised (§15), and a validator failure is a return value. The class
+count above describes intent, not the shipped surface.
 
 ```python
 class OTLPReceiver:
@@ -1380,6 +1428,13 @@ The empty-roster case (no entries → the §11 P0-A `Empty roster = P0` check fi
 
 The `LifecycleError("opentelemetry-proto-missing")` path from v2 §12 is removed in v3 — the dep is always available; the error class never fires.
 
+**Verified at PR-A3 (2026-10-23).** `opentelemetry-proto` was already
+present in akosha's venv at 1.45.1, pulled in transitively by
+`opentelemetry-exporter-otlp`. No install was needed; §6.4's declaration
+into `[project.dependencies]` still matters, because the receiver imports
+the package directly and a direct import behind a transitive dependency
+breaks the moment the exporter's own dependency set moves.
+
 ---
 
 ## 13. Stage-A PR execution order
@@ -1392,7 +1447,7 @@ The `LifecycleError("opentelemetry-proto-missing")` path from v2 §12 is removed
 | **PR-0b** | akosha | Update `pyproject.toml` to declare `opentelemetry-proto` as `[project.dependencies]`. **Add `set_shared_otel_receiver()` hook + extend `clear_shared_services()`** to clear the new `_shared_otel_receiver` module global alongside `_shared_hot_store` and `_shared_kg_builder`. PR-0b PR description enumerates 3 edits: (a) `set_shared_otel_receiver(receiver)` + `get_shared_otel_receiver()`; (b) module-level `_shared_otel_receiver: OTLPReceiver \| None = None`; (c) extend `clear_shared_services()` body to also nil out `_shared_otel_receiver`. Regression test: `create_app()` twice → `get_shared_otel_receiver()` is `None` between calls. | PR-0a |
 | **PR-A1** | mcp-common | Bridge release — emit `namespace.legacy_alias=bodai` alongside current `service.namespace`. | — |
 | **PR-A2** | akosha | yoyo migrations `0001.akosha-otel-receiver-state.sql` + `0001.…rollback.sql` + `0002.dlq-rows.sql` + `0002.…rollback.sql`. | PR-0a, PR-0b |
-| **PR-A3** | akosha | `OTLPReceiver` lifespan wiring (HotStore.init → receiver.start → set_shared_otel_receiver → tool register). **Move the real port owner — Grafana Alloy — from `:4317`/`:4318` to `:14317`/`:14318`, and repoint the 3 `~/.zshrc` OTLP endpoint exports (§13.1, corrected 2026-10-21)**. Add `GRPC_PORT`/`HTTP_PORT` settings keys. Drop substrate mid-test and confirm `LifecycleError`. | PR-A2 |
+| **PR-A3** | akosha | `OTLPReceiver` lifespan wiring (HotStore.init → receiver.start → set_shared_otel_receiver → tool register). **Move the real port owner — Grafana Alloy — from `:4317`/`:4318` to `:14317`/`:14318`, and repoint the 3 `~/.zshrc` OTLP endpoint exports (§13.1, corrected 2026-10-21)**. Add `GRPC_PORT`/`HTTP_PORT` settings keys. Drop substrate mid-test and confirm `LifecycleError`. **SHIPPED 2026-10-23** (akosha `e897bbd`, `7a3f182`; oneiric `ddc40ed`, `c0c4556`) with four deviations, all recorded in `docs/decisions/2026-10-23-otel-substrate-spec-corrections.md`: (a) validation + DLQ ship **here**, not in PR-A4 — the port cutover is also in this row, and a receiver that binds `:4317` without ingesting would make the cutover strictly worse than not cutting over; (b) the three `~/.zshrc` exports need **no change**; (c) Alloy's trace pipeline is **deleted**, not just disconnected, because it blocks Alloy's startup outright; (d) the ingest writers live in oneiric, not akosha's subclass. | PR-A2 |
 | **PR-A4** | akosha | Per-row validation + DLQ try/except wrapping + `_dlq_rows` retention sweep. | PR-A3 |
 | **PR-A5** | akosha | `heartbeat_watcher.py` reading `known_mcp_servers`. query-empty vs query-threw distinction. Empty-roster P0. | PR-A3 |
 | **PR-A6** | akosha | Receiver resource-attribute validator (allowlist-based, rate-based thresholds). | PR-A4 |
@@ -1473,6 +1528,31 @@ otelcol.receiver.otlp "cli_tools" {
 // them, and they are out of scope — see below.
 ```
 
+**Executed 2026-10-23 — with one addition the sketch above omits.**
+Alloy's `otelcol.processor.batch "cli_tools_traces"` and
+`otelcol.exporter.debug "cli_tools_traces"` are **removed entirely**, not
+merely orphaned.
+
+`otelcol.exporter.debug` sits at "experimental" stability, below Alloy's
+minimum "generally-available" level, so the config could not load at all:
+
+```
+Error: otelcol.exporter.debug is at stability level "experimental",
+       below the minimum allowed stability level "generally-available"
+Error: could not perform the initial load successfully
+```
+
+That defect predates PR-A3 and was **masked**: Alloy had been running
+under the old config since April, and moving the ports forced a config
+reload that surfaced it. Leaving the trace pipeline in place would have
+left Alloy unable to start — and its metrics pipeline down with it.
+
+Deleting the pipeline is also the correct outcome independently of the
+startup bug: the debug exporter discards traces by design, which is the
+entire reason this substrate exists. Alloy is metrics-only after this
+change. Backup:
+`/usr/local/etc/grafana-alloy/config.alloy.bak-pre-akosha-cutover`.
+
 **Producer repointing** (required at PR-A3, in lockstep with the Alloy move):
 
 | Item | Change |
@@ -1482,9 +1562,45 @@ otelcol.receiver.otlp "cli_tools" {
 | `mahavishnu` | `MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://127.0.0.1:4318` — the HTTP port. An `http://` URL must not target `:4317`, which is gRPC |
 | `settings/local.yaml:4-19` | delete the dead 2026-09-28 relay comment block |
 
+**CORRECTED 2026-10-23 (PR-A3 execution).** The `~/.zshrc` row is a
+**no-op**, not a change. All three exports already target
+`http://127.0.0.1:4318`, which after the move IS the substrate receiver:
+
+```
+188:export CODEX_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
+191:export QWEN_TELEMETRY_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
+193:export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
+```
+
+Repointing them to `:14318` would route traces into Alloy's discarding
+pipeline — strictly worse than leaving them alone. They were never
+wrong; they were aimed at a port a debug exporter happened to occupy.
+Only the occupier moves.
+
+That is the payoff of resolving port **ownership** rather than port
+**numbers**: no coordinated producer rollout, and no window in which
+spans are lost. Verify the exports are unchanged rather than editing them.
+
 **Receiver ports must be configurable.** §Appendix D declares
 `PROMETHEUS_PORT = 9464` as a class attribute, but the gRPC/HTTP ports appear
 only as literals inside `start()`'s docstring — there is no seam. PR-A3 must add
+
+**Implemented.** `GRPC_PORT` / `HTTP_PORT` are class attributes, and the
+lifespan resolves them from a real `SpansSubstrateConfig` field
+(`spans_substrate.receiver_grpc_port` / `receiver_http_port`) rather than
+from a defensive `settings.get()`. `get_config` strips any key
+`AkoshaConfig` does not declare, **silently** — an undeclared key is
+dropped with nothing in the logs, so the receiver binds the canonical
+ports while the operator believes otherwise. A settings key with no
+matching model field is a lie that reads like a setting.
+
+**HTTP listener.** An earlier draft of §6 sketched
+`TraceServiceResource` from `opentelemetry.exporter.otlp.proto.http`.
+That package ships **no servicer and no ASGI app** — it is a client-side
+exporter, and the receiver is the server. Shipped instead: a Starlette app
+built in the receiver, parsing `ExportTraceServiceRequest` off the raw
+protobuf body at `POST /v1/traces`, served by uvicorn as a task so the
+lifespan's reverse-order teardown still owns shutdown.
 `GRPC_PORT` / `HTTP_PORT` class attributes and settings keys alongside
 `PROMETHEUS_PORT`, so the port assignment above is a setting rather than a code
 edit in a receiver that four producers are pointed at.
@@ -1672,7 +1788,11 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | DLQ is akosha-local, not substrate | §5.3 explicit | `_dlq_rows` is dead-letter for rejected substrate data, not telemetry itself |
 | Migration framework | **none — inline `CREATE TABLE IF NOT EXISTS` at point of first use** | **v7 corrected.** v6 chose yoyo (raw SQL + sibling `.rollback.sql`). There is no yoyo in the Bodai fleet — not in akosha, not in oneiric, not in mahavishnu, which uses Alembic (`migrations/versions/V*.sql`). Building a yoyo runner would have introduced a third framework into a repo that has none, for a substrate ADR 017 assigns to oneiric. `CREATE TABLE IF NOT EXISTS` in `DuckdbHotStore.initialize()` is idempotent and runs on every substrate boot, so it covers fresh and pre-existing substrate files with nothing to sequence. The receiver's two operational tables (`_dlq_rows`, `_akosha_otel_receiver_state`) follow the same rule. Reversibility is a `git revert`; there is no partial-apply state to roll back. |
 | `opentelemetry-proto` placement | `[project.dependencies]` (hard runtime dep) | Runtime-required; PEP 735 groups never auto-install and would fire `LifecycleError` |
-| `ON CONFLICT (trace_id, span_id)` | composite uniqueness | cross-producer dedup correctness |
+| `ON CONFLICT (trace_id, span_id)` | **superseded 2026-10-23 → untargeted `ON CONFLICT DO NOTHING`** | cross-producer dedup correctness. The targeted form could not deliver it: §5.1's PK on `span_id` is narrower than the composite UNIQUE, so the PK always fires first and the targeted clause handles an unreachable constraint — a span_id-only collision raised on the hot path. Untargeted honours both, and leaves NOT NULL violations raising, preserving the table constraint as a backstop |
+| `received_at_unix_nano` source | **receiver's `time.time_ns()`**, never the producer's | §15's "cardinal rule", now confirmed in code. Retention sweeps on this column; a producer clock offset either deletes spans before anything reads them or keeps them past retention. A queue-replayed batch is the same failure with no skew at all |
+| Missing required fields | **no `"unknown"` sentinel**; absence propagates to the DLQ | A sentinel satisfies `REQUIRED_FIELDS` on every row, which makes `pre_validate` unreachable, leaves `_dlq_rows` permanently empty, and writes rows no read-path filter can match |
+| Service identity source | **`ResourceSpans` attributes**, threaded into the per-span mapping | A protobuf `Span` has no `resource` field. A span-level lookup finds nothing, falls through to a default, and silently attributes every span to a service named `"unknown"` |
+| Ingest writers' home | **`oneiric.DuckdbHotStore`**, inherited by akosha's `HotStore` | akosha's module is capped at 500 LOC to stay a thin subclass; ADR 017 puts `spans_substrate` ownership in oneiric; and writers beside the DDL they target cannot drift from it |
 | DLQ error recovery | DLQ failure does NOT abort the batch; good rows still INSERT; metric emitted | Single failure mode shouldn't zero throughput |
 | Heartbeat known-server roster | separate `known_mcp_servers` field, boot-populated | The per-cycle feed can't carry a roster; empty roster is its own P0 |
 | Resource-attribute validator | rate-based (rolling 5m spike + 24h sustained) | v2's count/hour was misclassified by startup bursts and slow drift |
