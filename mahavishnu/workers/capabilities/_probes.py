@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 import shutil
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx2 as httpx
+
+from mahavishnu.bifrost.models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER
+from mahavishnu.bifrost.paths import DEFAULT_BIFROST_PORT
 
 from ._safe import safe_error_for_user
 from ._states import WorkerCheck
@@ -17,12 +21,29 @@ if TYPE_CHECKING:
     from mahavishnu.core.config import MahavishnuSettings
 
 
+def _is_loopback(hostname: str | None) -> bool:
+    """True for hosts that never leave the machine."""
+    if not hostname:
+        return False
+    if hostname.lower() in {"localhost", "localhost.localdomain"}:
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
 def _check_endpoint_scheme(endpoint: str, *, has_secret: bool) -> str | None:
     """Return an error reason when the endpoint is http:// and a secret is in use.
 
-    Sending Authorization: Bearer <token> over plain http:// leaks the token in
-    cleartext. Operators must use https:// for token-bearing requests. Returns
-    None when the scheme is acceptable (https://, no secret, or empty endpoint).
+    Sending a bearer token over plain http:// leaks it in cleartext. Operators
+    must use https:// for token-bearing requests.
+
+    Loopback is exempt: traffic to 127.0.0.1 never crosses a network, so there
+    is nothing to eavesdrop on. The Bifrost gateway is served over loopback
+    http and is the reason this exemption exists -- without it every probe of a
+    perfectly healthy local gateway reports ``insecure_endpoint`` and the
+    capability is scored unavailable.
     """
     if not endpoint or not has_secret:
         return None
@@ -30,9 +51,11 @@ def _check_endpoint_scheme(endpoint: str, *, has_secret: bool) -> str | None:
         parsed = urlparse(endpoint)
     except ValueError:
         return None
-    if parsed.scheme == "http":
-        return "insecure_endpoint"
-    return None
+    if parsed.scheme != "http":
+        return None
+    if _is_loopback(parsed.hostname):
+        return None
+    return "insecure_endpoint"
 
 
 async def _probe_openclaw_gateway(endpoint: str, token: str | None) -> WorkerCheck:
@@ -104,16 +127,48 @@ async def _probe_auth_presence(names: list[str]) -> WorkerCheck:
     )
 
 
-async def _probe_provider_request(provider: str, env_var: str, endpoint: str) -> WorkerCheck:
+def _is_bifrost_endpoint(endpoint: str) -> bool:
+    """True when ``endpoint`` addresses the local Bifrost gateway.
+
+    Bifrost is a gateway, not a provider: it does not accept an upstream
+    provider key, and reads virtual keys *exclusively* from its own
+    ``x-bf-vk`` header. A header-differential probe confirmed no
+    ``Authorization: Bearer`` form is honoured. Probing it the upstream way
+    returns 401 forever, which reports a healthy gateway as unreachable.
+    """
+    parsed = urlparse(endpoint)
+    return _is_loopback(parsed.hostname) and parsed.port == DEFAULT_BIFROST_PORT
+
+
+def _probe_auth_headers(provider: str, env_var: str, endpoint: str) -> tuple[dict[str, str] | None, str]:
+    """Build the headers for a provider probe, or explain why we cannot.
+
+    Returns ``(headers, "")`` on success and ``(None, reason)`` when the
+    required credential is absent. Bifrost probes use the gateway's virtual
+    key; direct-provider probes keep the upstream bearer token.
+    """
+    if _is_bifrost_endpoint(endpoint):
+        virtual_key = os.environ.get(VIRTUAL_KEY_ENV)
+        if not virtual_key:
+            return None, f"missing {VIRTUAL_KEY_ENV}"
+        return {VIRTUAL_KEY_HEADER: virtual_key}, ""
+
     token = os.environ.get(env_var)
     if not token:
-        return WorkerCheck(f"{provider}_auth", "fail", "missing")
+        return None, "missing"
+    return {"Authorization": f"Bearer {token}"}, ""
+
+
+async def _probe_provider_request(provider: str, env_var: str, endpoint: str) -> WorkerCheck:
+    headers, reason = _probe_auth_headers(provider, env_var, endpoint)
+    if headers is None:
+        return WorkerCheck(f"{provider}_auth", "fail", reason)
     scheme_error = _check_endpoint_scheme(endpoint, has_secret=True)
     if scheme_error is not None:
         return WorkerCheck(f"{provider}_auth", "fail", scheme_error)
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get(endpoint, headers={"Authorization": f"Bearer {token}"})
+            r = await client.get(endpoint, headers=headers)
             r.raise_for_status()
     except httpx.HTTPError as exc:
         return WorkerCheck(f"{provider}_auth", "fail", safe_error_for_user(type(exc).__name__))
@@ -167,7 +222,15 @@ def resolve_probe_endpoint(
         return PROVIDER_PROBES[provider][1]
     resolved = get_router().resolve(LLMProvider.OPENAI)
     if resolved is not None:
-        return resolved.rstrip("/") + "/v1/models"
+        # The router's base URL already carries the OpenAI-compatible ``/v1``
+        # suffix when it points at Bifrost (``OPENAI_BASE_URL`` convention), so
+        # unconditionally appending another produced ``/v1/v1/models`` -- a
+        # path Bifrost does not serve, which reported a healthy gateway as
+        # unreachable. Mirrors the same guard in ``terminal/manager.py``.
+        base = resolved.rstrip("/")
+        if not base.endswith("/v1"):
+            base += "/v1"
+        return f"{base}/models"
     return PROVIDER_PROBES[provider][1]
 
 
