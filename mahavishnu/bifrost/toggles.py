@@ -352,11 +352,35 @@ def _action_bifrost(
 def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     settings = _read_settings(harness.settings_path)
     url = _get_url(settings, harness)
-    if url is None:
+    existing_key = _read_credential(settings, harness)
+
+    if url is None and existing_key is None:
         typer.echo(f"{harness.url_env_var} is unset; no-op")
         return
-    if url != harness.bifrost_url():
-        typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
+
+    if url is not None and url != harness.bifrost_url():
+        # The URL is hand-set, so do not clobber it. But a stranded
+        # ``x-bf-vk`` header is a credential the harness will send to
+        # whatever endpoint the operator pointed at -- in practice a provider
+        # like api.minimax.io, which has no use for it. Leaving it behind
+        # because the URL no longer matches turns a Bifrost-specific secret
+        # into a third party's traffic. Drop it either way.
+        if existing_key is None:
+            typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
+            return
+        if dry_run:
+            typer.echo(
+                f"[dry-run] would remove the stranded {VIRTUAL_KEY_HEADER} header "
+                f"(no credential was persisted, so this cannot be undone)"
+            )
+            return
+        _pop_credential(settings, harness)
+        _write_settings(harness.settings_path, settings)
+        typer.echo(
+            f"removed stranded {VIRTUAL_KEY_HEADER} header; {harness.url_env_var}={url!r} "
+            f"left untouched"
+        )
+        typer.echo(f"note: {harness.restart_note}")
         return
 
     backup = _load_backup(harness)

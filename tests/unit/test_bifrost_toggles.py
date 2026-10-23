@@ -112,6 +112,90 @@ def test_direct_restores_url_and_removes_our_header(
     assert not (backup_dir / "cc-url-backup.txt").exists()
 
 
+def test_direct_strips_a_stranded_key_from_a_hand_set_url(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """req: REQ-BIFROST-026 -- a stranded credential must not outlive Bifrost.
+
+    Live incident: the operator reverted ``ANTHROPIC_BASE_URL`` by hand, which
+    made the URL non-Bifrost-managed. ``_action_direct`` bailed out on the URL
+    mismatch and left the ``x-bf-vk`` header in place, so Claude Code kept
+    sending the Bifrost virtual key to ``api.minimax.io`` on every request --
+    handing a local admin credential to a third party.
+
+    The URL stays untouched; only the credential is dropped, because it is
+    meaningless off Bifrost and dangerous anywhere else.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/",
+                "ANTHROPIC_CUSTOM_HEADERS": f"{'x-bf-vk'}: {vk}",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "direct")
+
+    env = _read(settings)["env"]
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic/", "URL is left alone"
+    assert "ANTHROPIC_CUSTOM_HEADERS" not in env, "stranded credential must be removed"
+
+
+def test_direct_keeps_other_headers_when_stripping_a_stranded_key(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """The strip is targeted: unrelated headers survive."""
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/",
+                "ANTHROPIC_CUSTOM_HEADERS": f"X-Other: keepme\n{'x-bf-vk'}: {vk}",
+            }
+        },
+    )
+
+    toggles.apply(_harness("cc", settings), "direct")
+
+    env = _read(settings)["env"]
+    assert env["ANTHROPIC_CUSTOM_HEADERS"] == "X-Other: keepme"
+
+
+def test_direct_dry_run_reports_the_stranded_key_without_writing(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """The credential is never backed up, so a dry-run must say so plainly."""
+    settings = tmp_path / "settings.json"
+    original = {
+        "env": {
+            "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/",
+            "ANTHROPIC_CUSTOM_HEADERS": f"{'x-bf-vk'}: {vk}",
+        }
+    }
+    _write(settings, original)
+
+    toggles.apply(_harness("cc", settings), "direct", dry_run=True)
+
+    assert _read(settings) == original, "dry-run must not write"
+
+
+def test_direct_leaves_a_non_bifrost_url_alone_when_no_credential(
+    tmp_path: Path, backup_dir: Path
+) -> None:
+    """No stranded key means no reason to touch the file at all."""
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/"}})
+
+    toggles.apply(_harness("cc", settings), "direct")
+
+    assert _read(settings)["env"]["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic/"
+
+
 def test_qwen_writes_model_generation_config_headers(
     tmp_path: Path, backup_dir: Path, vk: str
 ) -> None:
