@@ -71,14 +71,22 @@ def logs_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     return target
 
 
+#: Bifrost stamps the Qwen CLI's Anthropic-compatible user agent with that
+#: binary's own version (``claude-cli/0.23.3`` for ``qwen 0.23.3``); Claude
+#: Code stamps ``claude-cli/2.1.309``. The prefix is the discriminator that
+#: keeps a live CC session from passing a Qwen gate.
+QWEN_AGENT = "claude-cli/0.23.3"
+CC_AGENT = "claude-cli/2.1.309"
+
+
 def _write(
     db: Path,
     *,
-    provider: str = "llama-server",
+    provider: str = "minimax-openai",
     model: str = verify.QWEN_ROUTE_MODEL,
     status: str = "success",
     latency: float = 1234.5,
-    user_agent: str = "qwen-cli/1.0",
+    user_agent: str = f"{QWEN_AGENT} (external, cli)",
     vk: str = verify.VIRTUAL_KEY_NAME,
     metadata: str | None = None,
     inc_number: int | None = None,
@@ -139,7 +147,7 @@ def test_stale_qwen_row_does_not_satisfy_gate(logs_db: Path) -> None:
     """
     _write(logs_db)
     baseline = verify.log_baseline()
-    assert verify.find_qwen_row(baseline) is None
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None
 
 
 def test_new_qwen_row_after_baseline_satisfies_gate(logs_db: Path) -> None:
@@ -148,10 +156,10 @@ def test_new_qwen_row_after_baseline_satisfies_gate(logs_db: Path) -> None:
     baseline = verify.log_baseline()
 
     _write(logs_db, provider="openai", model="gpt-5.4")
-    assert verify.find_qwen_row(baseline) is None, "unrelated model must not satisfy the gate"
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None, "unrelated model must not satisfy the gate"
 
     _write(logs_db)
-    hit = verify.find_qwen_row(baseline)
+    hit = verify.find_qwen_row(baseline, user_agent=QWEN_AGENT)
     assert hit is not None
     assert hit.model == verify.QWEN_ROUTE_MODEL
     assert hit.rowid > baseline
@@ -177,7 +185,7 @@ def test_concurrent_claude_code_traffic_does_not_satisfy_gate(logs_db: Path) -> 
             user_agent="claude-cli/2.1.307 (external, cli)",
         )
 
-    assert verify.find_qwen_row(baseline) is None
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None
 
 
 def test_other_virtual_key_does_not_satisfy_gate(logs_db: Path) -> None:
@@ -186,7 +194,7 @@ def test_other_virtual_key_does_not_satisfy_gate(logs_db: Path) -> None:
     baseline = verify.log_baseline()
 
     _write(logs_db, vk="some-other-tenant")
-    assert verify.find_qwen_row(baseline) is None
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None
 
 
 def test_failed_request_does_not_satisfy_gate(logs_db: Path) -> None:
@@ -195,7 +203,7 @@ def test_failed_request_does_not_satisfy_gate(logs_db: Path) -> None:
     baseline = verify.log_baseline()
 
     _write(logs_db, status="error")
-    assert verify.find_qwen_row(baseline) is None
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None
 
 
 # ---------------------------------------------------------------------------
@@ -206,12 +214,12 @@ def test_failed_request_does_not_satisfy_gate(logs_db: Path) -> None:
 @pytest.mark.parametrize(
     ("model", "expected"),
     [
-        ("qwen3-8b-q4_k_m", True),
-        ("MiniMax-M3", False),
+        (verify.QWEN_ROUTE_MODEL, True),
         ("MiniMax-M3.1-Flash", False),
+        ("qwen3-8b-q4_k_m", False),
         # Substring and lookalike model names must not satisfy an exact match.
-        ("qwen3-8b-q4_k_m-extra", False),
-        ("not-qwen3-8b-q4_k_m", False),
+        (f"{verify.QWEN_ROUTE_MODEL}-extra", False),
+        (f"not-{verify.QWEN_ROUTE_MODEL}", False),
         ("", False),
     ],
 )
@@ -220,13 +228,51 @@ def test_qwen_route_matching_is_exact(model: str, expected: bool) -> None:
     request = verify.RoutedRequest(
         rowid=1,
         timestamp="t",
-        provider="llama-server",
+        provider="minimax-openai",
         model=model,
         status="success",
         latency=1.0,
-        user_agent="",
+        user_agent=f"{QWEN_AGENT} (external, cli)",
     )
-    assert verify.is_qwen_route(request) is expected
+    assert verify.is_qwen_route(request, user_agent=QWEN_AGENT) is expected
+
+
+@pytest.mark.parametrize(
+    ("agent", "expected"),
+    [
+        (QWEN_AGENT, True),
+        (f"{QWEN_AGENT} (external, cli)", True),
+        (CC_AGENT, False),
+        (f"{CC_AGENT} (external, sdk-py, agent-sdk/0.2.168)", False),
+        ("", False),
+    ],
+)
+def test_claude_code_traffic_never_matches_the_qwen_agent(agent: str, expected: bool) -> None:
+    """The agent prefix is what separates Qwen from this operator's own CC session."""
+    request = verify.RoutedRequest(
+        rowid=1,
+        timestamp="t",
+        provider="minimax-openai",
+        model=verify.QWEN_ROUTE_MODEL,
+        status="success",
+        latency=1.0,
+        user_agent=agent,
+    )
+    assert verify.is_qwen_route(request, user_agent=QWEN_AGENT) is expected
+
+
+def test_unresolved_user_agent_fails_closed() -> None:
+    """An unreadable ``qwen --version`` must not silently widen the match."""
+    request = verify.RoutedRequest(
+        rowid=1,
+        timestamp="t",
+        provider="minimax-openai",
+        model=verify.QWEN_ROUTE_MODEL,
+        status="success",
+        latency=1.0,
+        user_agent="anything-at-all",
+    )
+    assert verify.is_qwen_route(request, user_agent=None) is False
 
 
 def test_virtual_key_name_matches_the_demo_shim() -> None:
@@ -279,14 +325,41 @@ def test_gate_fails_closed_when_dispatch_fails(
 
     This holds even when a matching row already exists -- the baseline is
     taken first, and a dispatch error returns before any polling happens.
+
+    The ``qwen --version`` probe is stubbed separately: it shares ``_run`` with
+    the dispatch, and letting it fail would trip the new fail-closed
+    precondition instead, so the two must be distinguished to exercise the
+    dispatch branch this test is about.
+    """
+    _write(logs_db)
+    monkeypatch.setattr(verify, "check_preconditions", lambda: None)
+
+    def fake_run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
+        if cmd[:2] == ["qwen", "--version"]:
+            return subprocess.CompletedProcess(cmd, 0, f"{QWEN_AGENT}\n", "")
+        return subprocess.CompletedProcess(cmd, 7, "", "boom")
+
+    monkeypatch.setattr(verify, "_run", fake_run)
+
+    assert verify.run_gate(timeout=1) == verify.EXIT_FAIL
+
+
+def test_gate_fails_closed_when_qwen_version_is_unreadable(
+    logs_db: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unreadable version must abort before dispatching.
+
+    Without a user agent the gate cannot tell the Qwen CLI from this
+    operator's own Claude Code session, which shares the gateway, the virtual
+    key, and the model. Proceeding would let CC traffic satisfy the gate.
     """
     _write(logs_db)
     monkeypatch.setattr(verify, "check_preconditions", lambda: None)
     monkeypatch.setattr(
-        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 7, "", "boom")
+        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 1, "", "")
     )
 
-    assert verify.run_gate(timeout=1) == verify.EXIT_FAIL
+    assert verify.run_gate(timeout=1) == verify.EXIT_PRECONDITION
 
 
 def test_gate_reports_no_log_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -379,6 +452,6 @@ def test_gate_reads_the_structured_store_not_the_stdout_log(logs_db: Path) -> No
     baseline = verify.log_baseline()
     _write(logs_db)
 
-    assert verify.find_qwen_row(baseline) is not None
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is not None
     # The module binds only the store and the ready file from ``paths``.
     assert not hasattr(verify, "LOG_OUT")

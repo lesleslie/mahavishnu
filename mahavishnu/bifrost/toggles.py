@@ -33,8 +33,80 @@ GATE_ENV = "BIFROST_CTL_NO_CC_URL_REWRITE"
 
 CC_CUSTOM_HEADERS_VAR = "ANTHROPIC_CUSTOM_HEADERS"
 
+#: Bifrost serves each wire protocol at a distinct path. A Qwen model bound
+#: to the ``anthropic`` provider must be pointed at the Anthropic-compatible
+#: endpoint, not the OpenAI-compatible one -- the two are not interchangeable
+#: and a mismatch 404s every completion.
+_BIFROST_PATH_BY_PROVIDER: dict[str, str] = {"anthropic": "/anthropic", "openai": "/v1"}
+
+#: Upstream each provider entry pointed at before the toggle ran, restored on
+#: ``qwen-url direct``. These are the endpoints Qwen Code ships with for the
+#: providers this deployment uses; a provider with no entry here is left
+#: holding its Bifrost URL and reported, so nothing is silently invented.
+_BIFROST_UPSTREAMS: dict[str, str] = {
+    "anthropic": "https://api.minimax.io/anthropic",
+    "openai": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+}
+
 EXIT_OK = 0
 EXIT_ERROR = 2
+
+
+# --------------------------------------------------------------------------
+# model-provider resolution (Qwen Code)
+# --------------------------------------------------------------------------
+
+
+def _active_provider(settings: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
+    """Locate the ``modelProviders`` entry backing the active model.
+
+    Qwen Code resolves ``model.name`` against ``modelProviders`` before it
+    consults ``model.generationConfig``. When a provider entry matches, the
+    generic ``generationConfig`` block is **ignored** -- it emits
+
+        Warning: model.generationConfig.customHeaders is ignored for
+        provider model "MiniMax-M3" from modelProviders.anthropic. Move
+        this field to modelProviders.anthropic[].generationConfig
+
+    so a toggle that writes only the generic block reports success while the
+    harness keeps talking straight to the upstream provider. Verified
+    end-to-end: with only the generic block written, Qwen answered but
+    Bifrost logged no row; repointing the matching provider entry produced
+    two ``success`` rows on the virtual key.
+
+    Returns ``(provider_key, entry)`` for the match, or ``(None, None)`` when
+    the active model is a bare string or matches no provider -- the case the
+    generic block does serve.
+    """
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return None, None
+    name = model.get("name")
+    providers = settings.get("modelProviders")
+    if not isinstance(name, str) or not isinstance(providers, dict):
+        return None, None
+    for provider_key, entries in providers.items():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("name") == name:
+                return provider_key, entry
+    return None, None
+
+
+def provider_bifrost_url(settings: dict[str, Any], host: str, port: int) -> str | None:
+    """Bifrost URL matching the active model's wire protocol, or ``None``.
+
+    ``None`` means the active model has no provider entry, so the caller
+    should fall back to the harness's generic endpoint.
+    """
+    provider_key, _ = _active_provider(settings)
+    if provider_key is None:
+        return None
+    suffix = _BIFROST_PATH_BY_PROVIDER.get(provider_key)
+    if suffix is None:
+        return None
+    return f"http://{host}:{port}{suffix}"
 
 
 # --------------------------------------------------------------------------
@@ -69,15 +141,30 @@ def _env_block(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 def _get_url(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    _, entry = _active_provider(settings)
+    if entry is not None:
+        value = entry.get("baseUrl")
+        return value if isinstance(value, str) else None
     value = _env_block(settings).get(harness.url_env_var)
     return value if isinstance(value, str) else None
 
 
 def _set_url(settings: dict[str, Any], harness: HarnessDescriptor, url: str) -> None:
+    _, entry = _active_provider(settings)
+    if entry is not None:
+        entry["baseUrl"] = url
+        return
     _env_block(settings)[harness.url_env_var] = url
 
 
 def _pop_url(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    _, entry = _active_provider(settings)
+    if entry is not None:
+        # Delete rather than blank: the caller may have a prior URL to
+        # restore, and ``_get_url`` treats a missing key as "unset" while an
+        # empty string would read as a configured-but-empty endpoint.
+        entry.pop("baseUrl", None)
+        return
     _env_block(settings).pop(harness.url_env_var, None)
     if not _env_block(settings):
         settings.pop("env", None)
@@ -110,9 +197,11 @@ def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtua
 
     Claude Code takes ``ANTHROPIC_CUSTOM_HEADERS`` in ``Name: Value`` form
     (requires >= 2.1.227). Qwen Code takes ``customHeaders`` under
-    ``model.generationConfig`` for runtime models with no matching
-    ``modelProviders`` entry -- which is what this toggle configures, since it
-    points the harness via ``env.<URL var>`` rather than a provider block.
+    ``model.generationConfig`` -- but only for a runtime model with **no**
+    matching ``modelProviders`` entry. When the active model resolves to a
+    provider, Qwen ignores that block and reads the header from the matching
+    provider's own ``generationConfig``, so the header is written there. See
+    :func:`_active_provider`.
     """
     if harness.credential_sink == "env":
         env = _env_block(settings)
@@ -128,7 +217,10 @@ def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtua
     if not isinstance(model, dict):
         typer.echo("error: settings 'model' is not an object", err=True)
         raise typer.Exit(EXIT_ERROR)
-    generation = model.setdefault("generationConfig", {})
+
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    generation = target.setdefault("generationConfig", {})
     headers = generation.setdefault("customHeaders", {})
     headers[VIRTUAL_KEY_HEADER] = virtual_key
 
@@ -148,7 +240,9 @@ def _read_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> st
     model = settings.get("model")
     if not isinstance(model, dict):
         return None
-    generation = model.get("generationConfig")
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    generation = target.get("generationConfig")
     if not isinstance(generation, dict):
         return None
     headers = generation.get("customHeaders")
@@ -176,7 +270,9 @@ def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> Non
     model = settings.get("model")
     if not isinstance(model, dict):
         return
-    generation = model.get("generationConfig")
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    generation = target.get("generationConfig")
     if not isinstance(generation, dict):
         return
     headers = generation.get("customHeaders")
@@ -309,7 +405,10 @@ def _action_bifrost(
     force: bool,
 ) -> None:
     settings = _read_settings(harness.settings_path)
-    url = harness.bifrost_url(host, port)
+    # A Qwen model bound to a provider must be repointed at the Bifrost
+    # endpoint for that provider's wire protocol, not the harness default.
+    provider_url = provider_bifrost_url(settings, host, port)
+    url = provider_url or harness.bifrost_url(host, port)
     existing = _get_url(settings, harness)
 
     if existing == url and _read_credential(settings, harness) == virtual_key:
@@ -341,11 +440,14 @@ def _action_bifrost(
         )
 
     if dry_run:
-        typer.echo(f"[dry-run] would point {harness.label} at {url} in {harness.settings_path}")
+        typer.echo(
+            f"[dry-run] would point {_endpoint_label(settings, harness)} at {url} "
+            f"in {harness.settings_path}"
+        )
         return
 
     _write_settings(harness.settings_path, settings)
-    typer.echo(f"wrote {harness.url_env_var}={url} to {harness.settings_path}")
+    typer.echo(f"wrote {_endpoint_label(settings, harness)}={url} in {harness.settings_path}")
     typer.echo(f"note: {harness.restart_note}")
 
 
@@ -355,10 +457,17 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     existing_key = _read_credential(settings, harness)
 
     if url is None and existing_key is None:
-        typer.echo(f"{harness.url_env_var} is unset; no-op")
+        typer.echo(f"{_endpoint_label(settings, harness)} is unset; no-op")
         return
 
-    if url is not None and url != harness.bifrost_url():
+    # Compare against whichever endpoint this toggle would have written, so a
+    # provider-routed Qwen model (``/anthropic``) is recognised as
+    # Bifrost-managed rather than mistaken for a hand-set third-party URL.
+    bifrost_url = provider_bifrost_url(settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT)
+    if bifrost_url is None:
+        bifrost_url = harness.bifrost_url()
+
+    if url is not None and url != bifrost_url:
         # The URL is hand-set, so do not clobber it. But a stranded
         # ``x-bf-vk`` header is a credential the harness will send to
         # whatever endpoint the operator pointed at -- in practice a provider
@@ -396,6 +505,15 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
 
     if prior_url:
         _set_url(settings, harness, prior_url)
+    elif _active_provider(settings)[1] is not None:
+        # No prior URL was recorded (the model had no provider entry when the
+        # toggle first ran), so fall back to the shipped upstream for this
+        # provider rather than leaving the entry pointed at Bifrost.
+        provider_key, _ = _active_provider(settings)
+        upstream = _BIFROST_UPSTREAMS.get(provider_key or "")
+        if upstream:
+            _set_url(settings, harness, upstream)
+            typer.echo(f"restored {provider_key} provider upstream to {upstream}")
     if had_credential:
         typer.echo(
             f"note: a pre-existing {VIRTUAL_KEY_HEADER} header was removed. It was "
@@ -410,15 +528,33 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     typer.echo(f"note: {harness.restart_note}")
 
 
+def _endpoint_label(settings: dict[str, Any], harness: HarnessDescriptor) -> str:
+    """Name the setting that actually carries this harness's endpoint.
+
+    A Qwen model bound to a ``modelProviders`` entry is routed through that
+    entry's ``baseUrl``; only an unbound model uses the generic URL env var.
+    Printing the env-var name for a provider-routed model would misreport what
+    the toggle touched.
+    """
+    provider_key, entry = _active_provider(settings)
+    if entry is None:
+        return harness.url_env_var
+    return f"modelProviders.{provider_key}.baseUrl"
+
+
 def _action_status(harness: HarnessDescriptor) -> None:
     settings = _read_settings(harness.settings_path)
     url = _get_url(settings, harness)
+    provider_url = provider_bifrost_url(settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT)
+    if provider_url is None:
+        provider_url = harness.bifrost_url()
+    label = _endpoint_label(settings, harness)
     if url is None:
-        typer.echo(f"{harness.url_env_var}: <unset>")
-    elif url == harness.bifrost_url():
-        typer.echo(f"{harness.url_env_var}: Bifrost ({url})")
+        typer.echo(f"{label}: <unset>")
+    elif url == provider_url:
+        typer.echo(f"{label}: Bifrost ({url})")
     else:
-        typer.echo(f"{harness.url_env_var}: custom ({url})")
+        typer.echo(f"{label}: custom ({url})")
 
     credential = _read_credential(settings, harness)
     typer.echo(f"{VIRTUAL_KEY_HEADER} header: {'present' if credential else 'absent'}")

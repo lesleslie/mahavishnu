@@ -258,8 +258,22 @@ def test_qwen_actual_dispatch_emits_caller_id() -> None:
     assert verify.VIRTUAL_KEY_NAME == "bodai-pi-pool", (
         "gate must resolve the same virtual key the demo shim does"
     )
-    assert verify.QWEN_ROUTE_MODEL == "qwen3-8b-q4_k_m", (
-        "gate must discriminate on the model only the Qwen route serves"
+    # This used to pin ``QWEN_ROUTE_MODEL == "qwen3-8b-q4_k_m"``, the local
+    # llama-server model, on the theory that only the Qwen route requests it.
+    # It is false: Qwen Code resolves ``model.name`` against
+    # ``modelProviders`` and reaches MiniMax through the ``anthropic``
+    # provider, so it never requests that model at all and the gate could
+    # never pass. The discriminator is now model *and* the Qwen CLI's own
+    # user agent -- Claude Code shares this gateway, this virtual key, and
+    # the model, so model alone admits the operator's own traffic.
+    assert verify.QWEN_ROUTE_MODEL == "MiniMax-M3", (
+        "fallback model must be what Qwen Code actually requests"
+    )
+    assert callable(verify.expected_qwen_model), (
+        "gate must follow ~/.qwen/settings.json rather than a hardcoded model"
+    )
+    assert callable(verify.expected_qwen_user_agent), (
+        "gate must discriminate Qwen from Claude Code by user agent"
     )
     # Exit-code contract: 0 pass / 1 fail / 2 precondition.
     assert (verify.EXIT_PASS, verify.EXIT_FAIL, verify.EXIT_PRECONDITION) == (0, 1, 2), (

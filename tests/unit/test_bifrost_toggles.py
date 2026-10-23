@@ -376,3 +376,129 @@ def test_key_file_supplies_virtual_key(
     toggles.apply(_harness("cc", settings), "bifrost", key_file=key_file)
 
     assert toggles.credential_configured(_harness("cc", settings)) is True
+
+
+# ---------------------------------------------------------------------------
+# Qwen model-provider routing
+# ---------------------------------------------------------------------------
+#
+# Qwen Code resolves ``model.name`` against ``modelProviders`` *before* it
+# consults ``model.generationConfig``, and when a provider matches it ignores
+# the generic block outright:
+#
+#   Warning: model.generationConfig.customHeaders is ignored for provider
+#   model "MiniMax-M3" from modelProviders.anthropic. Move this field to
+#   modelProviders.anthropic[].generationConfig ...
+#
+# A toggle writing only the generic block therefore reports success while the
+# harness keeps talking straight to the upstream provider. Verified end to end:
+# with the generic block alone, Qwen answered but Bifrost logged no row.
+
+
+def _qwen_settings(upstream: str = "https://api.minimax.io/anthropic") -> dict[str, Any]:
+    return {
+        "model": {"name": "MiniMax-M3"},
+        "modelProviders": {
+            "openai": [{"name": "qwen3.6-plus", "baseUrl": "https://dashscope.aliyuncs.com"}],
+            "anthropic": [{"name": "MiniMax-M3", "baseUrl": upstream, "envKey": "MINIMAX_API_KEY"}],
+        },
+    }
+
+
+def test_qwen_repoints_the_matching_provider_not_the_env_var(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+
+    body = _read(settings)
+    entry = body["modelProviders"]["anthropic"][0]
+    assert entry["baseUrl"] == f"http://{toggles.DEFAULT_BIFROST_HOST}:{toggles.DEFAULT_BIFROST_PORT}/anthropic"
+    assert entry["generationConfig"]["customHeaders"]["x-bf-vk"] == vk
+    # The OpenAI-protocol provider is a different wire format; repointing it
+    # too would be a guess about a model this harness is not using.
+    assert body["modelProviders"]["openai"][0]["baseUrl"] == "https://dashscope.aliyuncs.com"
+    assert "OPENAI_BASE_URL" not in body.get("env", {})
+
+
+def test_qwen_header_never_lands_in_the_ignored_generic_block(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+
+    body = _read(settings)
+    assert "x-bf-vk" not in body["model"].get("generationConfig", {}).get("customHeaders", {})
+
+
+def test_qwen_direct_restores_the_upstream_provider(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    entry = _read(settings)["modelProviders"]["anthropic"][0]
+    assert entry["baseUrl"] == "https://api.minimax.io/anthropic"
+    assert "x-bf-vk" not in entry.get("generationConfig", {}).get("customHeaders", {})
+
+
+def test_qwen_without_a_provider_uses_the_generic_block(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """A bare ``model.name`` with no provider entry is the case the block serves."""
+    settings = tmp_path / "settings.json"
+    _write(settings, {"model": {"name": "MiniMax-M3"}})
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+
+    body = _read(settings)
+    assert body["model"]["generationConfig"]["customHeaders"]["x-bf-vk"] == vk
+    assert body["env"]["OPENAI_BASE_URL"].endswith("/v1")
+
+
+def test_provider_url_follows_the_wire_protocol(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """The ``anthropic`` provider must not be sent to the OpenAI endpoint."""
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "model": {"name": "qwen3.6-plus"},
+            "modelProviders": {
+                "openai": [{"name": "qwen3.6-plus", "baseUrl": "https://dashscope.aliyuncs.com"}]
+            },
+        },
+    )
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+
+    url = _read(settings)["modelProviders"]["openai"][0]["baseUrl"]
+    assert url.endswith("/v1")
+    assert not url.endswith("/anthropic")
+
+
+def test_status_names_the_provider_field_it_actually_wrote(
+    tmp_path: Path, backup_dir: Path, vk: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Reporting ``OPENAI_BASE_URL`` for a provider-routed model is a lie."""
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "status")
+
+    out = capsys.readouterr().out
+    assert "modelProviders.anthropic.baseUrl: Bifrost" in out
+    assert "x-bf-vk header: present" in out
