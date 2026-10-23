@@ -39,7 +39,15 @@ def _write(path: Path, *records: dict[str, object]) -> None:
 
 def test_baseline_marks_end_of_existing_log(log_file: Path) -> None:
     """req: REQ-BIFROST-034 -- baseline is the current end of file."""
-    _write(log_file, {"caller_id": "mahavishnu", "provider": "llama_server"})
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "provider": "llama_server",
+            "latency_seconds": 0.5,
+            "http.target": "/v1/chat/completions",
+        },
+    )
     first = verify.log_baseline()
     assert first == log_file.stat().st_size
 
@@ -53,7 +61,15 @@ def test_stale_caller_line_does_not_satisfy_gate(log_file: Path) -> None:
     This is the exact fail-open the review flagged -- 312 stale lines existed
     in the real log before any dispatch ran.
     """
-    _write(log_file, {"caller_id": "mahavishnu", "provider": "llama_server"})
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "provider": "llama_server",
+            "latency_seconds": 0.5,
+            "http.target": "/v1/chat/completions",
+        },
+    )
     baseline = verify.log_baseline()
 
     # No new content appended: the gate must not find anything.
@@ -61,17 +77,63 @@ def test_stale_caller_line_does_not_satisfy_gate(log_file: Path) -> None:
 
 
 def test_new_caller_line_after_baseline_satisfies_gate(log_file: Path) -> None:
-    """A line appended after the baseline is the only accepted evidence."""
-    _write(log_file, {"caller_id": "mahavishnu", "provider": "llama_server"})
+    """A Qwen-route line appended after the baseline is accepted evidence."""
+    _write(log_file, {"message": "seed"})
     baseline = verify.log_baseline()
 
     _write(log_file, {"message": "unrelated"})
     assert verify.find_caller_line(verify._iter_appended_lines(baseline)) is None
 
-    _write(log_file, {"caller_id": "mahavishnu", "model": "MiniMax-M3"})
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "model": "qwen3-8b-q4_k_m",
+            "latency_seconds": 0.4,
+            "http.target": "/v1/chat/completions",
+        },
+    )
     hit = verify.find_caller_line(verify._iter_appended_lines(baseline))
     assert hit is not None
-    assert json.loads(hit)["model"] == "MiniMax-M3"
+    assert json.loads(hit)["model"] == "qwen3-8b-q4_k_m"
+
+
+def test_concurrent_worker_traffic_does_not_satisfy_gate(log_file: Path) -> None:
+    """Regression: another worker's line must not be mistaken for our dispatch.
+
+    Every Bodai worker shares this log and writes caller_id=mahavishnu.
+    Anthropic-route traffic (Claude Code and its workers) lands on
+    /anthropic/v1/messages, so it cannot satisfy a Qwen-route gate even
+    when it arrives inside the dispatch window.
+    """
+    _write(log_file, {"message": "seed"})
+    baseline = verify.log_baseline()
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "provider": "ollama",
+            "model": "qwen2.5:7b",
+            "latency_seconds": 1.0,
+            "http.target": "/anthropic/v1/messages",
+        },
+    )
+    assert verify.find_caller_line(verify._iter_appended_lines(baseline)) is None
+
+
+def test_access_line_without_completion_record_is_rejected(log_file: Path) -> None:
+    """An http access line is not evidence of a completed routed request."""
+    _write(log_file, {"message": "seed"})
+    baseline = verify.log_baseline()
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "http.target": "/v1/chat/completions",
+            "http.status_code": 200,
+        },
+    )
+    assert verify.find_caller_line(verify._iter_appended_lines(baseline)) is None
 
 
 def test_substring_in_another_field_does_not_match(log_file: Path) -> None:
@@ -120,7 +182,15 @@ def test_gate_fails_closed_when_dispatch_fails(
     history -- the baseline is taken first, and a dispatch error returns
     before any polling happens.
     """
-    _write(log_file, {"caller_id": "mahavishnu", "provider": "llama_server"})
+    _write(
+        log_file,
+        {
+            "caller_id": "mahavishnu",
+            "provider": "llama_server",
+            "latency_seconds": 0.5,
+            "http.target": "/v1/chat/completions",
+        },
+    )
     monkeypatch.setattr(verify, "check_preconditions", lambda: None)
     monkeypatch.setattr(verify, "READY_FILE", log_file.parent / "bifrost.ready")
     log_file.parent.joinpath("bifrost.ready").touch()

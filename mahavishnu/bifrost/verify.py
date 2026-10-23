@@ -42,6 +42,12 @@ CALLER_ID = "mahavishnu"
 CALLER_MARKER = f'"caller_id":"{CALLER_ID}"'
 DISPATCH_PROMPT = "Reply with a single word: bifrost-routed"
 
+#: Path fragments identifying the OpenAI-compatible endpoint the Qwen route
+#: uses (``qwen_env_var`` defaults to ``OPENAI_BASE_URL``). Anthropic-side
+#: traffic -- Claude Code and the workers it spawns -- arrives on
+#: ``/anthropic/v1/messages`` instead, so this discriminates the two flows.
+QWEN_ENDPOINT_MARKERS: tuple[str, ...] = ("/chat/completions", "/v1/completions")
+
 EXIT_PASS = 0
 EXIT_FAIL = 1
 EXIT_PRECONDITION = 2
@@ -135,10 +141,24 @@ def _iter_appended_lines(offset: int) -> list[str]:
 
 
 def find_caller_line(lines: list[str]) -> str | None:
-    """Return the first line whose parsed ``caller_id`` is exactly mahavishnu.
+    """Return the first line proving *this* dispatch routed through Bifrost.
 
-    Parses JSON rather than substring-matching, so a payload that merely
-    *contains* the text inside another field cannot satisfy the gate.
+    Matching requires three things, not just the first:
+
+    - ``caller_id`` parses to exactly ``mahavishnu`` (so a payload that
+      merely contains the text elsewhere cannot satisfy the gate);
+    - the record was served on the **OpenAI-compatible endpoint**
+      (``http.target`` under ``/v1/chat/completions``), which is what the
+      Qwen route uses via ``qwen_env_var`` / ``OPENAI_BASE_URL``;
+    - it is a completion record (``latency_seconds`` present), not merely an
+      HTTP access line.
+
+    The endpoint check is what makes the gate attributable. Every Bodai
+    worker shares this log and writes ``caller_id: "mahavishnu"``, so
+    matching on caller_id alone would accept *any* concurrent worker
+    traffic that happened to land inside the dispatch window. Qwen traffic
+    is the only flow that arrives on ``/v1/chat/completions``; Claude Code
+    and the workers it dispatches arrive on ``/anthropic/v1/messages``.
     """
     for line in lines:
         stripped = line.strip()
@@ -148,8 +168,16 @@ def find_caller_line(lines: list[str]) -> str | None:
             record = json.loads(stripped)
         except json.JSONDecodeError:
             continue
-        if isinstance(record, dict) and record.get("caller_id") == CALLER_ID:
-            return stripped
+        if not isinstance(record, dict):
+            continue
+        if record.get("caller_id") != CALLER_ID:
+            continue
+        if "latency_seconds" not in record:
+            continue
+        target = str(record.get("http.target", ""))
+        if not any(path in target for path in QWEN_ENDPOINT_MARKERS):
+            continue
+        return stripped
     return None
 
 
