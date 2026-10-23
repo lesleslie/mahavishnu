@@ -1642,12 +1642,18 @@ def workers_execute(
             typer.echo("ERROR: Worker orchestration is disabled", err=True)
             raise typer.Exit(code=1)
 
-        # Map legacy worker_type to the worker capability namespace consumed
-        # by the conductor. ``count`` becomes fan-out inside the DAG node.
-        worker_cap = f"worker:{worker_type.replace('terminal-', '').replace('-', '_')}-context"
+        # ``worker_type`` is a *hint* that selects which engine slot fills
+        # the terminal-execution node -- it does not name a capability.
+        #
+        # This used to build a ``worker:<type>-context`` id by string
+        # interpolation. No engine has ever registered a ``worker:*``
+        # capability (the worker engine exposes ``engine:terminal-execution``),
+        # so ``plan`` raised MHV-009 "no engine provides required capability"
+        # for every --type, including the default. The DAG now requires only
+        # capabilities that actually exist.
         requires = [
             "engine:durable-flow",
-            worker_cap,
+            "engine:terminal-execution",
         ]
 
         typer.echo(f"🚀 Planning capability DAG for {count}× {worker_type}...")

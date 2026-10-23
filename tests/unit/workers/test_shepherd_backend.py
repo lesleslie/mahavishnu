@@ -59,10 +59,34 @@ def stub_shepherd(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         def stat(self) -> _FakeStat:
             return _FakeStat()
 
+    class _FakeTerminalization:
+        def __init__(self, body_status: str) -> None:
+            self.body_status = body_status
+            self.world_disposition = "retained"
+
+    class _FakeRecord:
+        def __init__(self, status: str, body_status: str) -> None:
+            self.status = status
+            self.terminalization = _FakeTerminalization(body_status)
+
     class _FakeWorkspaceRun:
-        def __init__(self) -> None:
-            self.status = "finished"
+        """Mirrors Shepherd's real ``WorkspaceRun`` handle shape.
+
+        The vocabulary here is load-bearing: Shepherd reports outcome on two
+        nested levels (``record.status`` for the run disposition,
+        ``record.terminalization.body_status`` for the task body). An earlier
+        version of this double used a made-up ``"finished"`` status that the
+        production predicate also matched -- which is exactly why a real
+        ``retained`` run kept being reported as a failure.
+        """
+
+        def __init__(self, status: str = "retained", body_status: str = "completed") -> None:
+            self.record = _FakeRecord(status, body_status)
             self.run_ref = "ref-1"
+
+        @property
+        def status(self) -> str:
+            return self.record.status
 
         def changeset(self) -> _FakeChangeset:
             return _FakeChangeset()
@@ -365,6 +389,150 @@ class TestExecuteContract:
         assert result.status.value == "failed"
         assert "EffectNotPermitted" in result.metadata["exception"]
         assert "outside granted root" in result.error
+
+
+# ---------------------------------------------------------------------------
+# Run-status vocabulary
+# ---------------------------------------------------------------------------
+
+
+class TestRunStatusVocabulary:
+    """Pin the mapping from Shepherd's two-level status onto ``WorkerResult``.
+
+    Shepherd reports a run on two nested levels: ``record.status`` for the
+    world disposition and ``record.terminalization.body_status`` for the
+    task body. The gate once compared ``record.status`` against
+    ``{"finished", "exhausted", None}`` -- none of which is a reachable
+    successful ``record.status`` -- so every real run, including the
+    ``retained`` runs that are the normal outcome for a sandboxed worker,
+    reported ``failed``. These tests exist to keep that from recurring.
+    """
+
+    @staticmethod
+    def _run(status: str, body_status: str) -> Any:
+        """Build a fake run handle at the requested two-level status."""
+
+        class _Terminalization:
+            def __init__(self) -> None:
+                self.body_status = body_status
+                self.world_disposition = status
+
+        class _Record:
+            def __init__(self) -> None:
+                self.status = status
+                self.terminalization = _Terminalization()
+
+        class _Run:
+            run_ref = "ref-1"
+
+            def __init__(self) -> None:
+                self.record = _Record()
+
+            @property
+            def status(self) -> str:
+                return self.record.status
+
+            def changeset(self) -> Any:
+                raise AssertionError("changeset read should be tolerated as a failure")
+
+        return _Run()
+
+    @staticmethod
+    def _worker(sb: Any, tmp_path: Any) -> Any:
+        return sb.ShepherdBackendWorker(writable_root=str(tmp_path))
+
+    @pytest.mark.parametrize("status", ["retained", "merged"])
+    async def test_successful_dispositions_report_completed(
+        self, stub_shepherd: dict[str, Any], tmp_path: Any, status: str
+    ) -> None:
+        """``retained`` and ``merged`` are the two *successful* terminals.
+
+        ``retained`` is the ordinary outcome for a worker run -- nothing
+        merges a worker workspace -- so treating it as a failure broke
+        every dispatch.
+        """
+        sb = _import_worker_class()
+        worker = self._worker(sb, tmp_path)
+        result = worker._build_result(
+            command="ls",
+            task_ref="t",
+            workspace_run=self._run(status, "completed"),
+            duration=0.1,
+        )
+
+        assert result.status.value == "completed", f"{status} is a success terminal"
+        assert result.exit_code == 0
+        assert result.metadata["run_status"] == status
+        assert result.metadata["body_status"] == "completed"
+
+    @pytest.mark.parametrize(
+        ("status", "body_status", "why"),
+        [
+            ("retained", "refused", "body refused -- nothing ran"),
+            ("retained", "failed", "body raised"),
+            ("retained", "stopped", "body was stopped mid-flight"),
+            ("failed", "completed", "world disposition failed"),
+            ("cancelled", "completed", "run was cancelled"),
+            ("discarded", "completed", "world was discarded, result unreadable"),
+            ("running", "running", "run never reached a terminal"),
+            ("pending", "pending", "run never started"),
+        ],
+    )
+    async def test_non_success_statuses_report_failed(
+        self,
+        stub_shepherd: dict[str, Any],
+        tmp_path: Any,
+        status: str,
+        body_status: str,
+        why: str,
+    ) -> None:
+        """Success needs both levels to agree; either alone is ambiguous."""
+        sb = _import_worker_class()
+        worker = self._worker(sb, tmp_path)
+        result = worker._build_result(
+            command="ls",
+            task_ref="t",
+            workspace_run=self._run(status, body_status),
+            duration=0.1,
+        )
+
+        assert result.status.value == "failed", why
+        assert result.exit_code == 1
+        assert status in result.error
+        assert body_status in result.error
+
+    async def test_finished_is_not_a_shepherd_status(
+        self, stub_shepherd: dict[str, Any], tmp_path: Any
+    ) -> None:
+        """``finished`` exists nowhere in Shepherd -- completion is ``completed``.
+
+        Guards the specific mistake: an invented status that the old
+        predicate matched, which let a fake double validate the real code.
+        """
+        from shepherd_dialect.workspace_control.schemas import _RUN_STATUSES
+
+        assert "finished" not in _RUN_STATUSES
+        assert {"merged", "retained"} <= _RUN_STATUSES
+
+    async def test_exhausted_is_not_success(
+        self, stub_shepherd: dict[str, Any], tmp_path: Any
+    ) -> None:
+        """Shepherd pairs ``exhausted`` with a discarded world.
+
+        The old comment claimed ``exhausted`` was "success-equivalent";
+        ``nucleus._terminalization`` shows it lands on a ``none`` or
+        ``discarded`` disposition, so nothing readable was produced.
+        """
+        sb = _import_worker_class()
+        worker = self._worker(sb, tmp_path)
+        result = worker._build_result(
+            command="ls",
+            task_ref="t",
+            workspace_run=self._run("discarded", "exhausted"),
+            duration=0.1,
+        )
+
+        assert result.status.value == "failed"
 
 
 # ---------------------------------------------------------------------------

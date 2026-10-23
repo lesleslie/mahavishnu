@@ -82,6 +82,31 @@ else:
 _DEFAULT_TIMEOUT_SECONDS: Final = 300
 _VALID_PLACEMENTS: Final = frozenset({"auto", "advisory", "jail"})
 
+# --- Shepherd run-status vocabulary -----------------------------------
+#
+# Shepherd reports run outcome across **two** nested vocabularies and they
+# are easy to conflate:
+#
+#   RunRecord.status                    "pending" | "running" | "merged" |
+#                                      "retained" | "discarded" | "failed" |
+#                                      "cancelled"
+#   RunRecord.terminalization.
+#     body_status                      "pending" | "running" | "completed" |
+#                                      "failed" | "stopped" | "exhausted" |
+#                                      "refused"
+#
+# ``merged`` and ``retained`` are the two *successful* terminal
+# dispositions: ``merged`` when the world was integrated, ``retained`` when
+# it was published instead. A sandboxed worker run normally lands on
+# ``retained`` -- nothing merges a worker workspace.
+#
+# ``finished`` does not exist in either vocabulary (the completion value is
+# ``completed``), and ``exhausted`` is a *body* status that Shepherd pairs
+# with a ``none``/``discarded`` world disposition -- the body stopped
+# cleanly but the world was thrown away, so it is not success.
+_SUCCESS_RUN_STATUSES: Final = frozenset({"merged", "retained"})
+_SUCCESS_BODY_STATUS: Final = "completed"
+
 
 class ShepherdBackendError(MahavishnuError):
     """Base class for Shepherd backend wiring failures.
@@ -469,10 +494,14 @@ class ShepherdBackendWorker(BaseWorker):
         """Map a Shepherd :class:`WorkspaceRun` onto a WorkerResult."""
         worker_id = self._workspace_id or "unknown"
         status_value = getattr(workspace_run, "status", None)
-        # Substrate status: ``finished`` / ``exhausted`` / ``failed`` /
-        # ``stopped``. We treat ``failed`` and ``stopped`` as non-zero
-        # exits; ``finished`` and ``exhausted`` are success-equivalent.
-        is_success = status_value in {"finished", "exhausted", None}
+        record = getattr(workspace_run, "record", None)
+        body_status = getattr(getattr(record, "terminalization", None), "body_status", None)
+        # Success requires agreement at both levels: the run reached a
+        # successful terminal disposition *and* the task body ran to
+        # completion. Either alone is ambiguous -- a ``retained`` run whose
+        # body ``refused`` is a failure, and a ``completed`` body whose
+        # world was ``discarded`` never produced a result anyone can read.
+        is_success = status_value in _SUCCESS_RUN_STATUSES and body_status == _SUCCESS_BODY_STATUS
         settled_ref = getattr(workspace_run, "run_ref", None)
         changeset_stat: dict[str, Any] | None = None
         try:
@@ -505,6 +534,8 @@ class ShepherdBackendWorker(BaseWorker):
                     "command": command,
                     "settle_ref": str(settled_ref) if settled_ref else None,
                     "changeset": changeset_stat,
+                    "run_status": status_value,
+                    "body_status": body_status,
                 },
             )
         else:
@@ -513,7 +544,7 @@ class ShepherdBackendWorker(BaseWorker):
                 worker_id=worker_id,
                 status=WorkerStatus.FAILED,
                 output=None,
-                error=f"Workspace run ended in {status_value!r}",
+                error=f"Workspace run ended in {status_value!r} (body {body_status!r})",
                 exit_code=1,
                 duration_seconds=duration,
                 metadata={
@@ -524,6 +555,8 @@ class ShepherdBackendWorker(BaseWorker):
                     "command": command,
                     "settle_ref": str(settled_ref) if settled_ref else None,
                     "changeset": changeset_stat,
+                    "run_status": status_value,
+                    "body_status": body_status,
                 },
             )
 
