@@ -40,6 +40,13 @@ logger = logging.getLogger(__name__)
 #: Prefix for the completion token appended to every dispatched prompt.
 _DONE_SENTINEL_PREFIX = "MAHAVISHNU-DONE-"
 
+#: Placed *after* the sentinel in the instruction, so it marks where the echo
+#: of the input ends. The sentinel alone is not a completion signal: the
+#: terminal echoes the instruction we sent, so a naive search finds it in the
+#: echo within a second and reports completion before the model has replied.
+#: Searching for the sentinel *after* this anchor distinguishes the reply.
+_ECHO_ANCHOR = "MAHAVISHNU-END-OF-INSTRUCTION"
+
 #: How often the pane is re-read while waiting for the sentinel. One second
 #: keeps end-to-end latency close to the CLI's own while costing one tmux
 #: capture per poll.
@@ -63,20 +70,66 @@ def _resolve_timeout(task: dict[str, Any], config: WorkerConfig) -> float:
     return float(_DEFAULT_TIMEOUT_SECONDS)
 
 
+def _sentinel_span(pane: str, marker: str) -> tuple[int, int] | None:
+    """Locate a genuine reply's sentinel in the pane.
+
+    Returns ``(answer_start, marker_end)`` for the model's own reply, or
+    ``None`` when the model has not answered yet.
+
+    The instruction we send contains the sentinel, so the terminal's echo of
+    that instruction contains it too. A plain substring search therefore
+    finds the sentinel in the echo within a second -- before the model has
+    produced anything -- and reports a completed dispatch that never
+    happened. Verified live: a dispatch "succeeded" in 1.05s with the
+    prompt's own text as its output, and Bifrost logged no request at all.
+
+    The instruction ends with an anchor *after* the sentinel, so the echo
+    reads ``... <marker> <anchor>`` while a genuine reply puts the marker
+    on its own, further down the pane. The sentinel therefore only counts
+    when it appears after the anchor.
+
+    The pane is flattened first: tmux renders wrapped lines as separate
+    rows, so the anchor can straddle a newline. Flattening replaces each
+    newline with one space, so indices are unchanged and still address the
+    original string.
+
+    An adapter that does not echo at all (the mock) has no anchor; there the
+    sentinel can only have come from a reply.
+    """
+    flat = pane.replace("\n", " ")
+    anchor_at = flat.rfind(_ECHO_ANCHOR)
+    search_from = anchor_at + len(_ECHO_ANCHOR) if anchor_at != -1 else 0
+    found = flat.find(marker, search_from)
+    if found == -1:
+        return None
+    return search_from, found + len(marker)
+
+
+def _sentinel_replied(pane: str, marker: str) -> bool:
+    """True only when the *model* replied, not when the terminal echoed us."""
+    return _sentinel_span(pane, marker) is not None
+
+
 def _output_since(before: str, pane: str, marker: str) -> str:
-    """Return the pane text this call produced, without prior history.
+    """Return the model's answer for this call, without prior history.
 
     ``capture_output`` returns the whole scrollback, so a long-lived session
     would otherwise hand every ``execute()`` the output of all previous ones.
     The slice starts past the pre-send snapshot; if that anchor is gone (the
-    adapter trimmed its buffer), fall back to everything and let the caller
-    see the sentinel rather than silently receiving nothing.
+    adapter trimmed its buffer), fall back to everything rather than
+    silently returning nothing.
+
+    The answer is the text between the end of the echoed instruction and the
+    sentinel the model was asked to append -- not the echo, and not the
+    sentinel itself.
     """
     if before and pane.startswith(before):
         pane = pane[len(before) :]
-    if marker in pane:
-        pane = pane.split(marker)[0]
-    return pane.strip()
+    span = _sentinel_span(pane, marker)
+    if span is None:
+        return pane.strip()
+    answer_start, marker_end = span
+    return pane[answer_start : marker_end - len(marker)].strip()
 
 
 class ShellWorker(BaseWorker):
@@ -182,8 +235,8 @@ class ShellWorker(BaseWorker):
         before = await self._terminal_manager.capture_output(self._session_id)
         await self._terminal_manager.send_command(
             self._session_id,
-            f"{prompt}\n\nWhen you are finished, reply with exactly this token "
-            f"and nothing else: {marker}",
+            f"{prompt}\n\nWhen you are finished, give your answer and then, on "
+            f"its own final line, reply with exactly this token: {marker} {_ECHO_ANCHOR}",
         )
 
         timeout_s = _resolve_timeout(task, self.config)
@@ -192,7 +245,7 @@ class ShellWorker(BaseWorker):
         while time.monotonic() < deadline:
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
             pane = await self._terminal_manager.capture_output(self._session_id)
-            if marker in pane:
+            if _sentinel_replied(pane, marker):
                 return WorkerResult(
                     worker_id=self._session_id,
                     status=WorkerStatus.COMPLETED,

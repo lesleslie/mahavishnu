@@ -21,7 +21,9 @@ class _FakeManager:
 
     ``replies`` is how many ``capture_output`` calls it takes before the CLI
     "answers"; every poll before that appends filler so the sentinel logic
-    cannot pass on the first read.
+    cannot pass on the first read. The first poll echoes the instruction --
+    including the sentinel -- because a real terminal does, and that echo is
+    what a naive completion check mistakes for a reply.
     """
 
     def __init__(self, *, replies: int = 2, echo_marker: bool = True) -> None:
@@ -42,11 +44,18 @@ class _FakeManager:
 
     async def capture_output(self, session_id: str, lines: int | None = None) -> str:
         self.captures += 1
-        if self.captures < self.replies:
+        if self.sent and self.captures == 2:
+            # The terminal echoes the instruction we sent -- including the
+            # sentinel. A naive substring search finds it here and reports
+            # completion before the model has replied. (Capture #1 is the
+            # pre-send snapshot, so the echo lands on the next read.)
+            self.pane += self.sent[0] + "\n"
+            return self.pane
+        if self.captures <= self.replies:
             self.pane += "thinking...\n"
             return self.pane
         if self.echo_marker:
-            marker = self.sent[0].rsplit(" ", 1)[-1]
+            marker = _marker_from(self.sent[0])
             self.pane += f"working done\n{marker}\n"
         else:
             self.pane += "finished without the token\n"
@@ -60,6 +69,15 @@ def _config(**overrides: Any) -> Any:
     base = {"worker_type": "terminal-claude", "command": "claude", "default_timeout": 5}
     base.update(overrides)
     return type("C", (), base)()
+
+
+def _marker_from(instruction: str) -> str:
+    """Extract the sentinel from a dispatched instruction."""
+    prefix = shell_backend._DONE_SENTINEL_PREFIX
+    start = instruction.index(prefix)
+    rest = instruction[start:]
+    end = rest.index(" ")
+    return rest[:end]
 
 
 async def _started(manager: _FakeManager, **cfg: Any) -> ShellWorker:
@@ -93,8 +111,8 @@ async def test_sentinel_is_unique_per_call() -> None:
     await worker.execute({"prompt": "first"})
     await worker.execute({"prompt": "second"})
 
-    first = manager.sent[0].rsplit(" ", 1)[-1]
-    second = manager.sent[1].rsplit(" ", 1)[-1]
+    first = _marker_from(manager.sent[0])
+    second = _marker_from(manager.sent[1])
     assert first != second
     assert first.startswith(shell_backend._DONE_SENTINEL_PREFIX)
 
@@ -163,6 +181,80 @@ async def test_session_is_left_running_for_the_next_call() -> None:
 
     assert worker._session_id == "sess-1"
     assert manager.launched == ["claude"], "no relaunch per execute"
+
+
+# ---------------------------------------------------------------------------
+# echo vs reply
+# ---------------------------------------------------------------------------
+
+
+def test_sentinel_in_the_echo_is_not_a_reply() -> None:
+    """The instruction's own echo must not satisfy the completion check.
+
+    Regression: a live dispatch "succeeded" in 1.05s with the prompt text as
+    its output, and Bifrost logged no request -- the sentinel was found in
+    the terminal's echo of the instruction, before the model replied.
+    """
+    marker = "MAHAVISHNU-DONE-abc123"
+    echo = f"Working in /repo. Do the thing\n\nreply with exactly this token and nothing else: {marker} {shell_backend._ECHO_ANCHOR}\n"
+
+    assert marker in echo, "the echo does contain the sentinel"
+    assert shell_backend._sentinel_replied(echo, marker) is False
+
+
+def test_sentinel_after_the_echo_is_a_reply() -> None:
+    marker = "MAHAVISHNU-DONE-abc123"
+    pane = (
+        f"Working in /repo. Do the thing\n\nreply with exactly this token and nothing else: "
+        f"{marker} {shell_backend._ECHO_ANCHOR}\n"
+        f"the work is done\n{marker}\n"
+    )
+
+    assert shell_backend._sentinel_replied(pane, marker) is True
+
+
+def test_wrapped_anchor_still_counts() -> None:
+    """tmux renders wrapped rows as separate lines; the anchor may straddle one."""
+    marker = "MAHAVISHNU-DONE-abc123"
+    pane = (
+        f"reply with exactly this token and nothing else: {marker} "
+        f"MAHAVISHNU-END-OF-\nINSTRUCTION\n"
+        f"{marker}\n"
+    )
+
+    assert shell_backend._sentinel_replied(pane, marker) is True
+
+
+def test_adapter_without_echo_still_detects_the_reply() -> None:
+    """The mock adapter never echoes; the sentinel can only be a reply."""
+    marker = "MAHAVISHNU-DONE-abc123"
+
+    assert shell_backend._sentinel_replied(f"done\n{marker}\n", marker) is True
+
+
+def test_answer_excludes_the_echo_and_the_sentinel() -> None:
+    """The reported output is the model's answer, not our own instruction.
+
+    Asking the model to reply with *exactly* the token would throw its work
+    away, so the instruction asks for the answer first and the token on a
+    final line. The answer is what lies between the echoed instruction and
+    that token.
+    """
+    marker = "MAHAVISHNU-DONE-abc123"
+    pane = (
+        "Working in /repo. Do the thing\n\n"
+        f"give your answer and then reply with exactly this token: {marker} "
+        f"{shell_backend._ECHO_ANCHOR}\n"
+        "the real answer is 42\n"
+        f"{marker}\n"
+    )
+
+    out = shell_backend._output_since("", pane, marker)
+
+    assert "the real answer is 42" in out
+    assert marker not in out
+    assert shell_backend._ECHO_ANCHOR not in out
+    assert "Working in /repo" not in out
 
 
 # ---------------------------------------------------------------------------
