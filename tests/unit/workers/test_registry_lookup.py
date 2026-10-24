@@ -35,8 +35,28 @@ def test_get_worker_entry_raises_for_unknown() -> None:
         get_worker_entry("does-not-exist", settings=s)
 
 
+def _loaded_registry_settings() -> MahavishnuSettings:
+    """The LOADED worker registry, from the committed ``worker_registry:`` block.
+
+    A bare ``MahavishnuSettings()`` carries field DEFAULTS only -- it is a
+    pydantic-settings model and does not read YAML. Its
+    ``worker_registry.entries`` is therefore empty, which is why the
+    capability-driven lookups are defined against the Oneiric-loaded
+    registry instead. This helper loads the committed block directly so
+    the test is hermetic: it does not touch ``~/.config`` or the
+    process-wide settings cache.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    repo_root = Path(__file__).resolve().parents[3]
+    data = yaml.safe_load((repo_root / "settings" / "mahavishnu.yaml").read_text())
+    return MahavishnuSettings.model_validate({"worker_registry": data["worker_registry"]})
+
+
 def test_list_worker_types_returns_all_registered() -> None:
-    s = MahavishnuSettings()
+    s = _loaded_registry_settings()
     types_ = list_worker_types(settings=s)
     assert "terminal-claude" in types_
     assert "terminal-shell" in types_

@@ -10,7 +10,6 @@ local providers stay direct.
 
 from __future__ import annotations
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -67,9 +66,44 @@ class TestResolveMinimaxBaseUrl:
     ) -> None:
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         config = CloudWorkerConfig(minimax_url="https://api.minimax.io/v1")
-        # The oneiric router returns http://127.0.0.1:8471/ (Pydantic
-        # HttpUrl adds trailing slash). The helper appends /v1.
+        # The oneiric router returns http://127.0.0.1:8471/v1/ (Pydantic
+        # HttpUrl adds trailing slash). The helper must not append a
+        # second /v1.
         assert _resolve_minimax_base_url(config) == "http://127.0.0.1:8471/v1"
+
+    @pytest.mark.parametrize(
+        ("router_url", "expected"),
+        [
+            # oneiric's current default (cd59122): already carries /v1.
+            ("http://127.0.0.1:8471/v1", "http://127.0.0.1:8471/v1"),
+            ("http://127.0.0.1:8471/v1/", "http://127.0.0.1:8471/v1"),
+            # The pre-cd59122 default: bare gateway root, needs the suffix.
+            ("http://127.0.0.1:8471", "http://127.0.0.1:8471/v1"),
+            ("http://127.0.0.1:8471/", "http://127.0.0.1:8471/v1"),
+        ],
+    )
+    def test_v1_suffix_is_applied_idempotently(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        router_url: str,
+        expected: str,
+    ) -> None:
+        """The suffix is added only when it is missing.
+
+        Appending unconditionally produced ``/v1/v1`` once oneiric
+        changed its router default to include ``/v1`` -- a path that
+        404s at the gateway. The helper has to accept both forms.
+        """
+        import oneiric.adapters.llm.bifrost as bifrost_mod
+
+        class _FakeRouter:
+            def resolve(self, provider: object) -> str:
+                return router_url
+
+        monkeypatch.setattr(bifrost_mod, "get_router", lambda: _FakeRouter())
+
+        config = CloudWorkerConfig(minimax_url="https://api.minimax.io/v1")
+        assert _resolve_minimax_base_url(config) == expected
 
 
 class TestBuildFallbackChainBifrostRouting:
@@ -153,8 +187,8 @@ class TestBuildFallbackChainBifrostRouting:
         the chain is a 2-tier minimax → llama_server; the chain
         providers dict has no anthropic entry.
         """
-        from oneiric.adapters.llm.bifrost import reset_router_for_tests
         from mcp_common.llm import FallbackChain
+        from oneiric.adapters.llm.bifrost import reset_router_for_tests
 
         monkeypatch.setenv("ONEIRIC_BIFROST_ENABLED", "true")
         monkeypatch.setenv("ONEIRIC_BIFROST_ROUTES", "claude_route,qwen_route")
