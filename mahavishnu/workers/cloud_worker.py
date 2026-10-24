@@ -27,6 +27,7 @@ from ..core.model_routing import (
     DEFAULT_RUNPOD_PUBLIC_ROUTING,
     TaskCategory,
     classify_task,
+    gateway_openai_base_url,
     get_rate_limiter,
     routing_to_task_map,
 )
@@ -86,17 +87,9 @@ def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
     OPENAI provider (router is enabled + OPENAI route is configured),
     the worker routes through the gateway. The FallbackChain's
     provider ``base_url`` is the OpenAI-compatible API root, so it
-    must end in ``/v1``.
-
-    The suffix is applied *idempotently*: the router's own default
-    is ``http://127.0.0.1:8471/v1`` (oneiric cd59122, 2026-10-19),
-    but it used to be the bare gateway root, and an operator may
-    override it with either form. Appending unconditionally produced
-    ``http://127.0.0.1:8471/v1/v1`` -- a path that 404s at the
-    gateway -- so the check is "does it already end in /v1?" rather
-    than "assume it does not". The Pydantic ``HttpUrl``
-    representation can also carry a trailing slash, so
-    ``rstrip("/")`` normalizes before the check.
+    must end in ``/v1`` -- see
+    :func:`mahavishnu.core.model_routing.gateway_openai_base_url` for why
+    the suffix is applied idempotently.
 
     Falls back to ``config.minimax_url`` (from the ``MINIMAX_BASE_URL``
     env var or the public default) when the router is not enabled
@@ -107,10 +100,7 @@ def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
 
     resolved = get_router().resolve(LLMProvider.OPENAI)
     if resolved is not None:
-        base = resolved.rstrip("/")
-        if not base.endswith("/v1"):
-            base += "/v1"
-        return base
+        return gateway_openai_base_url(resolved)
     return config.minimax_url
 
 

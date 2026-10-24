@@ -19,6 +19,7 @@ from mahavishnu.core.model_routing import (
     TaskCategory,
     classify_task,
     configure_rate_limiter,
+    gateway_openai_base_url,
     get_model_for_task,
     get_rate_limiter,
     routing_to_task_map,
@@ -204,7 +205,7 @@ class TestGetModelForTask:
     def test_fallback_to_default_for_unknown(self):
         """Unknown categories fall back to default model."""
         routing = {}
-        model, cat = get_model_for_task(
+        model, _cat = get_model_for_task(
             "write a function",
             routing,
             "fallback-model",
@@ -447,3 +448,35 @@ class TestRateLimiterModuleLevel:
 
         tr._rate_limiter = None
         assert get_rate_limiter() is None
+
+
+class TestGatewayOpenAIBaseUrl:
+    """The gateway's OpenAI-compatible root, with exactly one ``/v1``.
+
+    Both LLM consumers -- the CloudWorker's FallbackChain and the Agno
+    adapter's provider factory -- need the gateway's OpenAI-compatible
+    root, and both used to append ``/v1`` unconditionally. That was
+    right until oneiric changed its router default to include the
+    suffix (cd59122, 2026-10-19), after which both produced
+    ``http://127.0.0.1:8471/v1/v1`` -- a path that 404s at the
+    gateway.
+    """
+
+    @pytest.mark.parametrize(
+        ("resolved", "expected"),
+        [
+            # oneiric's current default: already carries /v1.
+            ("http://127.0.0.1:8471/v1", "http://127.0.0.1:8471/v1"),
+            ("http://127.0.0.1:8471/v1/", "http://127.0.0.1:8471/v1"),
+            # The pre-cd59122 default: bare gateway root, needs the suffix.
+            ("http://127.0.0.1:8471", "http://127.0.0.1:8471/v1"),
+            ("http://127.0.0.1:8471/", "http://127.0.0.1:8471/v1"),
+        ],
+    )
+    def test_suffix_is_applied_idempotently(self, resolved: str, expected: str) -> None:
+        assert gateway_openai_base_url(resolved) == expected
+
+    def test_result_is_idempotent(self) -> None:
+        """Applying it twice changes nothing -- the property that matters."""
+        once = gateway_openai_base_url("http://127.0.0.1:8471/v1")
+        assert gateway_openai_base_url(once) == once

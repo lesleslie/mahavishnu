@@ -64,6 +64,7 @@ from ..core.errors import (
 from ..core.errors import (
     TimeoutError as MahavishnuTimeoutError,
 )
+from ..core.model_routing import gateway_openai_base_url
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -377,8 +378,9 @@ class LLMProviderFactory:
            ``resolve(LLMProvider.OPENAI)`` — when ``enabled`` and
            the OPENAI route is in the configured ``routes`` set.
            The OpenAI-compatible gateway path is ``<gateway>/v1``;
-           the router returns the bare gateway URL, so the ``/v1``
-           suffix is appended here.
+           the suffix is applied idempotently by
+           :func:`mahavishnu.core.model_routing.gateway_openai_base_url`,
+           because the router's own default already carries it.
         3. None — the SDK falls back to its own default endpoint
            (e.g. ``https://api.openai.com/v1``).
 
@@ -401,11 +403,10 @@ class LLMProviderFactory:
         if self.config.base_url:
             return self.config.base_url
         # 2. Oneiric Bifrost router (REQ-BIFROST-002): URL-rewriter, not
-        # chain-member. Returns bare gateway URL — append /v1 for
-        # OpenAI-compatible clients.
+        # chain-member. The OpenAI-compatible root is <gateway>/v1.
         resolved = get_router().resolve(LLMProvider.OPENAI)
         if resolved is not None:
-            return resolved.rstrip("/") + "/v1"
+            return gateway_openai_base_url(resolved)
         # 3. SDK default.
         return None
 

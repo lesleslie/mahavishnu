@@ -336,6 +336,34 @@ def get_model_for_task(
     return model, category
 
 
+def gateway_openai_base_url(resolved: str) -> str:
+    """The gateway base URL for an OpenAI-compatible client.
+
+    The oneiric Bifrost router hands back the gateway's OpenAI-compatible
+    root, and OpenAI-compatible clients expect that root to end in
+    ``/v1`` (``https://api.openai.com/v1``).
+
+    The suffix is applied *idempotently*. The router's own default is
+    ``http://127.0.0.1:8471/v1`` (oneiric cd59122, 2026-10-19), but it
+    used to be the bare gateway root, and an operator may override it
+    with either form. Appending unconditionally produced
+    ``http://127.0.0.1:8471/v1/v1`` -- a path that 404s at the gateway
+    -- so the check is "does it already end in /v1?" rather than
+    "assume it does not".
+
+    Args:
+        resolved: The URL the router resolved, with or without a
+            trailing slash and with or without the ``/v1`` suffix.
+
+    Returns:
+        The URL with exactly one trailing ``/v1``.
+    """
+    base = resolved.rstrip("/")
+    if not base.endswith("/v1"):
+        base += "/v1"
+    return base
+
+
 __all__ = [
     "DEFAULT_LLAMA_SERVER_ROUTING",
     "DEFAULT_MINIMAX_ROUTING",
@@ -346,6 +374,7 @@ __all__ = [
     "TaskCategory",
     "classify_task",
     "configure_rate_limiter",
+    "gateway_openai_base_url",
     "get_model_for_task",
     "get_rate_limiter",
     "routing_to_task_map",
