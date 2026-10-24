@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from mahavishnu.workers import shell_backend
+from mahavishnu.workers.registry import PROMPT_ENV_VAR
 from mahavishnu.workers.shell_backend import ShellWorker
 
 
@@ -293,3 +294,136 @@ def test_output_since_strips_history_and_sentinel() -> None:
     assert shell_backend._output_since("old\n", "old\nnew\n", "M") == "new"
     # Buffer trimmed by the adapter: fall back to everything rather than "".
     assert "kept" in shell_backend._output_since("gone", "kept\nM", "M")
+
+# ---------------------------------------------------------------------------
+# The one-shot shape
+# ---------------------------------------------------------------------------
+#
+# A one-shot worker is launched WITH the prompt: it rides the command line
+# as $MAHAVISHNU_PROMPT, and the shell prints a completion marker when
+# the CLI exits. Nothing is typed into the session, so the worker's job is
+# to wait for the marker.
+
+
+class _OneShotManager:
+    """Terminal manager whose pane shows the CLI's output, then the marker."""
+
+    def __init__(self, *, emits_marker: bool = True, delay: int = 2) -> None:
+        self.pane = ""
+        self.sent: list[str] = []
+        self.captures = 0
+        self.emits_marker = emits_marker
+        self.delay = delay
+        self.env_overrides: dict[str, str] = {}
+
+    async def launch_sessions(self, command, count, worker_type, env_overrides=None):
+        self.env_overrides = dict(env_overrides or {})
+        return ["sess-1"]
+
+    async def send_command(self, session_id: str, command: str) -> None:
+        self.sent.append(command)
+
+    async def capture_output(self, session_id: str, lines: int | None = None) -> str:
+        self.captures += 1
+        if self.captures <= self.delay:
+            return self.pane
+        self.pane += 'the real answer is 42\n'
+        if self.emits_marker:
+            self.pane += "__MAHAVISHNU_DONE__\n"
+        return self.pane
+
+    async def close_session(self, session_id: str) -> None:
+        return None
+
+
+def _one_shot_config(**overrides: Any) -> Any:
+    base = {
+        "worker_type": "terminal-probe",
+        "command": "sh -lc 'probe \"$MAHAVISHNU_PROMPT\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"'",
+        "default_timeout": 5,
+        "permission_mode": None,
+        "requires_tool": "claude",
+        "completion_markers": ["__MAHAVISHNU_DONE__"],
+    }
+    base.update(overrides)
+    return type("C", (), base)()
+
+
+async def test_one_shot_prompt_travels_with_the_launch_command() -> None:
+    """The prompt rides the command line, so it must reach the session env."""
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+
+    await worker.start(prompt="do the thing")
+
+    assert manager.env_overrides[PROMPT_ENV_VAR] == "do the thing"
+    assert manager.sent == [], "a one-shot worker must not type anything"
+
+
+async def test_one_shot_waits_for_the_completion_marker() -> None:
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="do the thing")
+
+    result = await worker.execute({"prompt": "do the thing"})
+
+    assert result.status.value == "completed"
+    assert "the real answer is 42" in (result.output or "")
+    assert "__MAHAVISHNU_DONE__" not in (result.output or ""), (
+        "the marker is the shell's signal, not part of the answer"
+    )
+    assert manager.sent == []
+
+
+async def test_one_shot_times_out_without_the_marker() -> None:
+    """No marker means the CLI never finished -- that is a timeout."""
+    manager = _OneShotManager(emits_marker=False)
+    worker = ShellWorker(config=_one_shot_config(default_timeout=1), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="do the thing")
+
+    result = await worker.execute({"prompt": "do the thing"})
+
+    assert result.status.value == "timeout"
+    assert result.metadata["timed_out"] is True
+    assert "completion marker" in result.error
+
+
+async def test_one_shot_ignores_the_prompt_in_the_task() -> None:
+    """The prompt went out at launch; the task's copy is not a second prompt."""
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="the real prompt")
+
+    result = await worker.execute({"prompt": "a different prompt"})
+
+    assert result.status.value == "completed"
+    assert manager.sent == [], "the task prompt must not be typed"
+
+
+# ---------------------------------------------------------------------------
+# The instruction is one line
+# ---------------------------------------------------------------------------
+
+
+def test_the_instruction_is_a_single_line() -> None:
+    """A TUI submits on CR; a literal LF is not a submit.
+
+    A multi-line instruction is delivered as one message with the line
+    breaks folded, so the completion token is the last thing the model
+    reads rather than sitting in the middle of the message.
+    """
+    marker = "MAHAVISHNU-DONE-abc123"
+    instruction = shell_backend.build_instruction("line one\nline two\n\nline three", marker)
+
+    assert "\n" not in instruction
+    assert "line one line two line three" in instruction
+    assert instruction.endswith(f"{marker} {shell_backend._ECHO_ANCHOR}")
+
+
+def test_the_instruction_keeps_the_token_at_the_end() -> None:
+    """The model has to read the token last, or it cannot repeat it."""
+    marker = "MAHAVISHNU-DONE-abc123"
+    instruction = shell_backend.build_instruction("a multi\nline\nprompt", marker)
+
+    assert instruction.rstrip().endswith(shell_backend._ECHO_ANCHOR)
+    assert instruction.index(marker) < instruction.index(shell_backend._ECHO_ANCHOR)

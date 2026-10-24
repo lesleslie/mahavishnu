@@ -163,35 +163,46 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-qwen": WorkerConfig(
         name="Qwen AI",
         worker_type="terminal-qwen",
-        command="sh -lc 'qwen -o stream-json --approval-mode {permission_mode}'",
+        # One-shot: the prompt goes out on the command line, and the shell
+        # prints the completion marker when the CLI exits. Typing the
+        # prompt into the interactive TUI instead would depend on the CLI
+        # being ready to read it and on its Enter semantics -- both of
+        # which the tmux keystroke path got wrong.
+        command=(
+            'sh -lc \'qwen -o stream-json --approval-mode {permission_mode} '
+            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+        ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Fast local AI coding assistant with Qwen model",
-        completion_markers=["finish_reason", '"done"', '"type": "done"'],
+        completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="json",
         requires_tool="qwen",
         required_env=[],
         auth_kind=AuthKind.CLI_SUBSCRIPTION,
         runtime_kind=RuntimeKind.SHELL,
-        one_shot=False,
+        one_shot=True,
         endpoint=None,
         permission_mode="yolo",
     ),
     "terminal-claude": WorkerConfig(
         name="Claude Code",
         worker_type="terminal-claude",
+        # One-shot, like terminal-qwen: the prompt rides the command line
+        # and the shell prints the completion marker when the CLI exits.
         command=(
-            "sh -lc 'claude --output-format stream-json "
-            "--permission-mode {permission_mode}'"
+            'sh -lc \'claude --output-format stream-json '
+            '--permission-mode {permission_mode} "$MAHAVISHNU_PROMPT"; '
+            'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Claude Code CLI for complex reasoning and coding",
-        completion_markers=["finish_reason", '"done"', '"type": "done"'],
+        completion_markers=["__MAHAVISHNU_DONE__"],
         stream_format="json",
         requires_tool="claude",
         required_env=[],
         auth_kind=AuthKind.CLI_SUBSCRIPTION,
         runtime_kind=RuntimeKind.SHELL,
-        one_shot=False,
+        one_shot=True,
         endpoint=None,
         permission_mode="acceptEdits",
     ),
@@ -200,7 +211,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-codex",
         command=(
             'sh -lc \'codex exec --json --sandbox {permission_mode} '
-            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"\''
+            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Codex CLI one-shot execution with marker-based completion",
@@ -219,7 +230,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-deepagents",
         command=(
             'sh -lc \'deepagents-cli --non-interactive "$MAHAVISHNU_PROMPT" '
-            '--quiet --no-stream; printf "\\n__MAHAVISHNU_DONE__\\n"\''
+            '--quiet --no-stream; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="DeepAgents CLI one-shot execution with marker-based completion",
@@ -237,7 +248,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-clai",
         command=(
             'sh -lc \'clai --no-stream "$MAHAVISHNU_PROMPT"; '
-            'printf "\\n__MAHAVISHNU_DONE__\\n"\''
+            'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="CLAI one-shot execution with marker-based completion",

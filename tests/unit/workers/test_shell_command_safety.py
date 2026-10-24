@@ -96,7 +96,11 @@ def test_prompt_reaches_the_session_as_environment_data(worker_type: str) -> Non
     # Check the dangerous substring, not the exact prompt: an implementation
     # that quoted it would hide the literal while still executing it.
     assert "touch /tmp/pwned" not in captured["command"]
-    assert ";" not in captured["command"].replace("; printf", "")
+    # The only shell separators the registry's own commands use are the
+    # completion-marker printf and the blocking read that keeps the pane
+    # alive. Anything else would be an injection seam.
+    without_known_separators = captured["command"].replace("; printf", "").replace("; read -r _", "")
+    assert ";" not in without_known_separators
 
 
 def test_no_prompt_means_no_env_var() -> None:
@@ -232,3 +236,55 @@ def test_settings_default_is_empty() -> None:
     from mahavishnu.core.config import MahavishnuSettings
 
     assert MahavishnuSettings().workers.permission_modes == {}
+
+
+# ---------------------------------------------------------------------------
+# The one-shot shape
+# ---------------------------------------------------------------------------
+#
+# A one-shot worker is launched WITH the prompt: it rides the command line
+# as $MAHAVISHNU_PROMPT, and the shell prints a completion marker when the
+# CLI exits. Nothing is typed into the session.
+
+
+ONE_SHOT_AGENTS = ("terminal-qwen", "terminal-claude", "terminal-codex", "terminal-deepagents")
+
+
+@pytest.mark.parametrize("worker_type", ONE_SHOT_AGENTS)
+def test_the_one_shot_command_reads_the_prompt_from_the_environment(
+    worker_type: str,
+) -> None:
+    """The prompt is data on the command line, never typed into the session."""
+    command = WORKER_REGISTRY[worker_type].command
+
+    assert f'"${PROMPT_ENV_VAR}"' in command, (
+        f"{worker_type} must read the prompt from ${PROMPT_ENV_VAR}"
+    )
+    assert "{prompt}" not in command
+    assert WORKER_REGISTRY[worker_type].one_shot is True
+
+
+@pytest.mark.parametrize("worker_type", ONE_SHOT_AGENTS)
+def test_the_one_shot_command_keeps_the_pane_alive_after_the_cli_exits(
+    worker_type: str,
+) -> None:
+    """The pane must outlive the CLI, or the output dies with it.
+
+    When the command exits, tmux closes the pane and the output the CLI
+    produced goes with it -- including any error it printed on the way
+    out. A blocking ``read`` keeps the shell (and the pane) alive so the
+    worker can read what the CLI left behind.
+    """
+    command = WORKER_REGISTRY[worker_type].command
+
+    assert "read -r _" in command, f"{worker_type} must keep its pane alive after the CLI exits"
+    assert "__MAHAVISHNU_DONE__" in command
+    assert WORKER_REGISTRY[worker_type].completion_markers == ["__MAHAVISHNU_DONE__"]
+
+
+@pytest.mark.parametrize("worker_type", ONE_SHOT_AGENTS)
+def test_the_one_shot_marker_comes_after_the_cli(worker_type: str) -> None:
+    """The marker is printed when the CLI is done, so it must come last."""
+    command = WORKER_REGISTRY[worker_type].command
+
+    assert command.index("__MAHAVISHNU_DONE__") > command.index(PROMPT_ENV_VAR)

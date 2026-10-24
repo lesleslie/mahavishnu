@@ -213,10 +213,10 @@ class DurableWorkerManager:
             WorkerLifecycleState.DETACHED,
         }:
             return False
-        keys = [text]
-        if submit and not text.endswith("\n"):
-            keys = [text, "Enter"]
-        send_keys(record.tmux.socket, record.tmux.pane, keys)
+        # The text is typed literally; the Enter that submits it is a
+        # separate key press. Folding "Enter" into the text typed the
+        # word into the CLI's input buffer as well.
+        send_keys(record.tmux.socket, record.tmux.pane, [text], press_enter=submit)
         record = record.model_copy(update={"last_seen_at": _utcnow()})
         self.store.put(record)
         return True

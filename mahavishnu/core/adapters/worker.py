@@ -8,7 +8,7 @@ from typing import Any
 from oneiric.adapters.metadata import AdapterMetadata
 
 from ...workers.manager import WorkerManager
-from ...workers.registry import resolve_worker_type
+from ...workers.registry import get_worker_config, resolve_worker_type
 from ..adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..capabilities import (
     Capability,
@@ -16,6 +16,18 @@ from ..capabilities import (
     CapabilityState,
     TypeSchema,
 )
+
+
+def _is_one_shot(worker_type: str) -> bool:
+    """Does this worker type take its prompt with the launch command?
+
+    A one-shot worker is launched with the prompt already in place (it
+    rides the command line), so it must be started that way. An
+    interactive worker is started empty and has the prompt typed into it
+    afterwards.
+    """
+    config = get_worker_config(worker_type)
+    return bool(config and config.one_shot)
 
 
 class WorkerOrchestratorAdapter(OrchestratorAdapter):
@@ -206,30 +218,41 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             f"across {len(repos)} repos"
         )
 
+        # Build the per-worker task specs FIRST. A one-shot worker receives
+        # its prompt with the launch command (it rides the command line),
+        # so the prompt has to be known before the worker starts.
+        tasks: list[dict[str, Any]] = []
+        prompts: list[str] = []
+        for i in range(count):
+            repo = repos[i % len(repos)] if repos else None
+            worker_prompt = f"Working in {repo}. {prompt}" if repo else str(prompt)
+            prompts.append(worker_prompt)
+            task_spec = {
+                "prompt": worker_prompt,
+                "timeout": timeout,
+                "repo": repo,
+                "task_type": task_type,
+            }
+            tasks.append(task_spec)
+
         # Spawn workers
         try:
-            worker_ids = await worker_manager.spawn_workers(
-                worker_type=worker_type,
-                count=count,
-            )
+            if _is_one_shot(worker_type):
+                worker_ids = await worker_manager.submit_workers(
+                    worker_type,
+                    prompts,
+                )
+            else:
+                worker_ids = await worker_manager.spawn_workers(
+                    worker_type=worker_type,
+                    count=count,
+                )
             logger.info(f"Spawned {len(worker_ids)} workers: {', '.join(worker_ids)}")
         except (
             Exception
         ) as e:  # Worker spawn logs and re-raises so the caller can surface the orchestrator error
             logger.error(f"Failed to spawn workers: {e}")
             raise
-
-        # Distribute repos across workers (round-robin)
-        tasks = []
-        for i, _worker_id in enumerate(worker_ids):
-            repo = repos[i % len(repos)] if repos else None
-            task_spec = {
-                "prompt": f"Working in {repo}. {prompt}" if repo else prompt,
-                "timeout": timeout,
-                "repo": repo,
-                "task_type": task_type,
-            }
-            tasks.append(task_spec)
 
         # Execute tasks across workers
         try:

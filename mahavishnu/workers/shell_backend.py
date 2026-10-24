@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -55,6 +56,35 @@ _POLL_INTERVAL_SECONDS = 1.0
 
 #: Fallback when neither the task nor the worker config carries a timeout.
 _DEFAULT_TIMEOUT_SECONDS = 300
+
+#: How long to wait for the CLI to draw something before typing into it.
+#: The session is launched and the prompt is typed immediately, so without
+#: this wait the keystrokes can land while the CLI is still starting --
+#: before it has put the terminal into its own input mode -- and be
+#: dropped. A CLI that never draws (a plain shell) costs the wait.
+_READY_TIMEOUT_SECONDS = 8.0
+
+
+def build_instruction(prompt: str, marker: str) -> str:
+    """The instruction typed into the CLI's input buffer, on ONE line.
+
+    A TUI submits on CR -- what the Enter key sends. A literal LF is not
+    a submit; it is inserted into the buffer. So an instruction with
+    embedded newlines is delivered as ONE message with the line breaks
+    folded to spaces.
+
+    This matters because the instruction carries the completion token:
+    delivered across several lines, the CLI's buffer holds the token in
+    the middle of the message rather than at the end of the final line,
+    and the model is asked to repeat a token it has just been shown
+    mid-sentence. Folded, the token is the last thing the model reads
+    before it answers.
+    """
+    flat = re.sub(r"\s*\n\s*", " ", prompt).strip()
+    return (
+        f"{flat} When you are finished, give your answer and then, on its own "
+        f"final line, reply with exactly this token: {marker} {_ECHO_ANCHOR}"
+    )
 
 
 def resolve_permission_mode(
@@ -172,6 +202,18 @@ def _sentinel_replied(pane: str, marker: str) -> bool:
     return _sentinel_span(pane, marker) is not None
 
 
+def _strip_markers(pane: str, markers: list[str]) -> str:
+    """The pane text with the completion markers removed.
+
+    The marker is the shell's own signal that the CLI exited; it is not
+    part of what the CLI produced, so it is not part of the answer.
+    """
+    text = pane
+    for marker in markers:
+        text = text.replace(marker, "")
+    return text.strip()
+
+
 def _output_since(before: str, pane: str, marker: str) -> str:
     """Return the model's answer for this call, without prior history.
 
@@ -228,6 +270,9 @@ class ShellWorker(BaseWorker):
         self._terminal_manager = terminal_manager
         self._session_buddy_client = session_buddy_client
         self._session_id: str | None = None
+        # True when the prompt was delivered with the launch command (the
+        # one-shot shape) rather than typed into the session by execute().
+        self._prompt_delivered = False
 
     async def start(self, *, prompt: str | None = None) -> str:
         if self._terminal_manager is None:
@@ -252,6 +297,10 @@ class ShellWorker(BaseWorker):
         env_overrides: dict[str, str] = {}
         if prompt is not None:
             env_overrides[PROMPT_ENV_VAR] = prompt
+            # The prompt went out with the launch command, so the CLI is
+            # already running it. ``execute()`` must not type it again --
+            # it waits for the CLI to finish instead.
+            self._prompt_delivered = True
 
         sessions = await self._terminal_manager.launch_sessions(
             command=command,
@@ -272,17 +321,26 @@ class ShellWorker(BaseWorker):
         return self._session_id
 
     async def execute(self, task: dict[str, Any]) -> WorkerResult:
-        """Run one prompt in the session and wait for the CLI to finish.
+        """Wait for the CLI to finish and report what it produced.
 
         req: Phase 4 -- this used to return ``COMPLETED`` unconditionally
         without sending anything, which was indistinguishable from real work:
         a dispatch through ``WorkerOrchestratorAdapter`` went green in
         0.187s with empty output while Bifrost logged nothing at all.
 
-        An interactive CLI has no completion signal, so the prompt is
-        suffixed with a unique sentinel and the pane is polled until the
-        sentinel comes back. Polling ``capture_output`` alone cannot work --
-        an LLM pausing between tokens is indistinguishable from being done.
+        Two shapes, picked by how the prompt was delivered:
+
+        - **One-shot** (the prompt went out with the launch command, so the
+          CLI is already running it): wait for a completion marker to
+          appear in the pane. The registry's command ends with a
+          ``printf`` of that marker, so it lands when the CLI exits --
+          no cooperation from the model required.
+        - **Interactive** (the prompt is typed into a live session): the
+          CLI has no completion signal of its own, so the prompt is
+          suffixed with a unique sentinel and the pane is polled until
+          the sentinel comes back. Polling ``capture_output`` alone
+          cannot work -- an LLM pausing between tokens is
+          indistinguishable from being done.
 
         The session is long-lived and is left running; only ``stop()`` tears
         it down. Output is the pane text produced by *this* call, computed by
@@ -311,12 +369,18 @@ class ShellWorker(BaseWorker):
                 error="ShellWorker.execute requires a non-empty 'prompt' in the task",
             )
 
+        if self._prompt_delivered:
+            return await self._await_completion(task)
+
         marker = f"{_DONE_SENTINEL_PREFIX}{uuid4().hex[:12]}"
+        # Wait for the CLI to draw before typing: the session was launched
+        # a moment ago and the keystrokes would otherwise land before the
+        # CLI owns the terminal, and be dropped.
+        await self._await_ready()
         before = await self._terminal_manager.capture_output(self._session_id)
         await self._terminal_manager.send_command(
             self._session_id,
-            f"{prompt}\n\nWhen you are finished, give your answer and then, on "
-            f"its own final line, reply with exactly this token: {marker} {_ECHO_ANCHOR}",
+            build_instruction(prompt, marker),
         )
 
         timeout_s = _resolve_timeout(task, self.config)
@@ -348,6 +412,79 @@ class ShellWorker(BaseWorker):
             duration_seconds=timeout_s,
             metadata={"session_id": self._session_id, "sentinel": marker, "timed_out": True},
         )
+
+    async def _await_completion(self, task: dict[str, Any]) -> WorkerResult:
+        """Wait for the CLI to exit, signalled by a completion marker.
+
+        The registry's one-shot commands end with a ``printf`` of the
+        marker, so the marker lands exactly when the CLI is done -- no
+        cooperation from the model required, and no dependence on the
+        model emitting a token on a line of its own.
+
+        A worker whose config declares no completion marker can only be
+        waited on until the timeout; that is reported as a timeout
+        rather than a silent success.
+        """
+        markers = list(self.config.completion_markers or [])
+        timeout_s = _resolve_timeout(task, self.config)
+        deadline = time.monotonic() + timeout_s
+        manager = self._terminal_manager
+        session_id = self._session_id
+        if manager is None or session_id is None:
+            return WorkerResult(
+                worker_id=session_id or "unknown",
+                status=WorkerStatus.FAILED,
+                error=f"ShellWorker {self.worker_type!r} has no terminal session",
+            )
+        pane = await manager.capture_output(session_id)
+        while time.monotonic() < deadline:
+            await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+            pane = await manager.capture_output(session_id)
+            if any(marker in pane for marker in markers):
+                return WorkerResult(
+                    worker_id=session_id,
+                    status=WorkerStatus.COMPLETED,
+                    output=_strip_markers(pane, markers),
+                    exit_code=0,
+                    duration_seconds=timeout_s - (deadline - time.monotonic()),
+                    metadata={"session_id": session_id, "completion_markers": markers},
+                )
+            if self._status is WorkerStatus.CANCELLED:
+                break
+
+        return WorkerResult(
+            worker_id=session_id,
+            status=WorkerStatus.TIMEOUT,
+            output=_strip_markers(pane, markers),
+            error=(
+                f"CLI did not emit any completion marker {markers!r} within {timeout_s}s"
+            ),
+            duration_seconds=timeout_s,
+            metadata={"session_id": session_id, "timed_out": True},
+        )
+
+    async def _await_ready(self, timeout_s: float = _READY_TIMEOUT_SECONDS) -> None:
+        """Wait for the CLI to draw something before typing into it.
+
+        The session is launched and the prompt is typed immediately, so
+        without this wait the keystrokes can land while the CLI is still
+        starting -- before it has put the terminal into its own input
+        mode -- and be dropped. A live dispatch then waits the full
+        timeout for a model reply that was never asked for.
+
+        A CLI that never draws (a plain shell) costs the wait and then
+        the input is typed anyway.
+        """
+        deadline = time.monotonic() + timeout_s
+        manager = self._terminal_manager
+        session_id = self._session_id
+        if manager is None or session_id is None:
+            return
+        while time.monotonic() < deadline:
+            pane = await manager.capture_output(session_id)
+            if pane.strip():
+                return
+            await asyncio.sleep(_POLL_INTERVAL_SECONDS)
 
     async def stop(self) -> None:
         if self._session_id and self._terminal_manager is not None:

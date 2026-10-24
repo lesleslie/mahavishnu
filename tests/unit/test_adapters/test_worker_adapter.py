@@ -28,6 +28,7 @@ class _Result:
 class _Manager:
     def __init__(self) -> None:
         self.spawn_calls: list[tuple[str, int]] = []
+        self.submit_calls: list[tuple[str, list[str]]] = []
         self.exec_calls: list[tuple[list[str], list[dict]]] = []
         self.collect_calls: list[list[str]] = []
         self.raise_spawn = False
@@ -38,6 +39,13 @@ class _Manager:
         if self.raise_spawn:
             raise RuntimeError("spawn failed")
         return [f"w{i}" for i in range(count)]
+
+    async def submit_workers(self, worker_type: str, prompts: list[str]) -> list[str]:
+        """One-shot spawn: the prompt is delivered with the launch."""
+        self.submit_calls.append((worker_type, list(prompts)))
+        if self.raise_spawn:
+            raise RuntimeError("spawn failed")
+        return [f"w{i}" for i in range(len(prompts))]
 
     async def execute_batch(self, worker_ids: list[str], tasks: list[dict]) -> dict[str, _Result]:
         self.exec_calls.append((worker_ids, tasks))

@@ -4,7 +4,6 @@ import dataclasses
 import os
 from pathlib import Path
 import re
-import shlex
 import subprocess
 from typing import TYPE_CHECKING
 
@@ -97,12 +96,20 @@ def create_session(
     here — see commit msg of fix: shlex.join was producing doubly-quoted output
     that zsh could not parse.
 
-    The optional ``env`` mapping injects env vars into the session via
-    ``tmux set-environment -t <session> KEY VAL`` (NOT ``tmux new-session
-    -e KEY=VAL``, which does NOT propagate to spawned panes — see the v1.3
-    spec wiring chain correction). Each KEY/VAL is checked: keys must match
-    the project's safe-name policy (alphanumeric + underscore), and values
-    are passed through ``shlex.quote`` for shell safety.
+    The optional ``env`` mapping injects env vars into the session. They
+    are applied BOTH ways, for two different panes:
+
+    - ``tmux new-session -e KEY=VAL`` — the session's initial command
+      inherits these, because the command starts the moment the session
+      is created. Injecting them afterwards with ``set-environment`` is
+      too late: the command has already captured its environment and the
+      variables never arrive.
+    - ``tmux set-environment -t <session> KEY VAL`` — so panes spawned
+      LATER from this session inherit them too.
+
+    Keys are checked against the project's safe-name policy (alphanumeric
+    + underscore). Values are passed verbatim: tmux reads them from argv,
+    so no shell quoting applies.
     """
     _validate_socket_path(socket)
     _validate_session_name(session)
@@ -115,6 +122,22 @@ def create_session(
         raise TmuxAdapterError(
             f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
         ) from e
+
+    # The env is applied to the SESSION at creation, so the command that
+    # ``new-session`` starts immediately inherits it. Injecting it
+    # afterwards with ``set-environment`` is too late: the command has
+    # already started and captured its environment, so the variables
+    # never arrive. ``set-environment`` is still used below so that panes
+    # spawned LATER from this session also inherit them.
+    env_args: list[str] = []
+    if env:
+        for key, value in env.items():
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                raise TmuxAdapterError(f"refusing to inject unsafe env-var name: {key!r}")
+            # tmux takes the value verbatim from argv -- no shell is
+            # involved, so no quoting (shlex.quote would bake the quotes
+            # into the value).
+            env_args.extend(["-e", f"{key}={value}"])
 
     proc = subprocess.run(
         [
@@ -130,6 +153,7 @@ def create_session(
             "-P",
             "-F",
             "#{session_name}:#{window_id}:#{pane_id}",
+            *env_args,
             "--",
             *command,
         ],
@@ -154,22 +178,18 @@ def create_session(
         except PermissionError as e:
             raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
 
-    # Inject env vars via tmux set-environment — per-pane propagation,
-    # unlike `new-session -e` which does NOT propagate. Each entry is
-    # validated against the safe-name policy (alphanumeric + underscore
-    # only) before being passed to tmux.
+    # Also set the session environment, so panes spawned LATER from this
+    # session inherit the same variables. The value is passed verbatim:
+    # tmux reads it from argv, so quoting would bake the quotes into it.
     if env:
         for key, value in env.items():
-            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
-                raise TmuxAdapterError(f"refusing to inject unsafe env-var name: {key!r}")
-            quoted_value = shlex.quote(str(value))
             _run(
                 socket,
                 "set-environment",
                 "-t",
                 session_name,
                 key,
-                quoted_value,
+                str(value),
             )
 
     return TmuxSessionInfo(
@@ -240,22 +260,41 @@ def pane_alive(socket: str, pane: str) -> bool:
     return proc.stdout.strip() == "0"
 
 
-def send_keys(socket: str, pane: str, keys: Sequence[str]) -> None:
+def send_keys(
+    socket: str,
+    pane: str,
+    keys: Sequence[str],
+    *,
+    press_enter: bool = False,
+) -> None:
+    """Type ``keys`` into a pane as literal text.
+
+    Every element is LITERAL TEXT -- never a key name. ``send-keys -l``
+    sends the bytes verbatim, so the caller can type ``"Enter"`` or
+    ``"C-c"`` as words without tmux acting on them.
+
+    ``press_enter`` sends a real Enter (CR) afterwards, which is how an
+    interactive CLI is told to submit its buffer. It is a separate
+    argument rather than a ``"Enter"`` element in ``keys`` because a
+    mixed sequence cannot be told apart: a prompt may legitimately
+    contain the word "Enter", and folding a key name into the literal
+    types it as text.
+
+    The parts are space-joined so ``send_keys(s, p, ["echo", "hi"])``
+    types ``echo hi`` rather than ``echohi``.
+    """
     if not keys:
         return
     parts = [str(k) for k in keys]
     # `-l` sends the key as a literal string. `-H` (hex) silently drops
-    # non-hex input. We space-join the parts so
-    # `send_keys(s, p, ["echo", "hi"])` types `echo hi` rather than
-    # `echohi`.
+    # non-hex input.
     literal = " ".join(parts)
     proc = _run(socket, "send-keys", "-t", pane, "-l", literal, check=False)
     if proc.returncode != 0:
         raise TmuxAdapterError(
             f"tmux send-keys failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
-    # Always press Enter unless the caller appended a literal "\n" already.
-    if not (len(parts) == 1 and parts[0].endswith("\n")):
+    if press_enter:
         _run(socket, "send-keys", "-t", pane, "Enter", check=False)
 
 
