@@ -6,7 +6,6 @@ services:
   - name: mahavishnu
     repo: mahavishnu
     role: orchestrator
-    scrape_target: host.docker.internal:8680
     probe_urls:
       - http://localhost:8680/metrics
     metrics_path: /metrics
@@ -40,9 +39,14 @@ services:
     probe_urls:
       - http://localhost:8683/metrics
     metrics_path: /metrics
-    verification_status: verified
+    verification_status: decommissioned
     required: false
-    notes: Canonical metrics are exposed on the primary Dhara HTTP/MCP port.
+    notes: >-
+      Dhara was decommissioned on 2026-09-20 and replaced by oneiric. The
+      service is not running and its port refuses connections. It was
+      listed here as `verified`, which the verification script then
+      propagated into the Prometheus file_sd target list -- so Prometheus
+      was configured to scrape a port that has not existed for a month.
 
   - name: crackerjack
     repo: crackerjack
@@ -50,6 +54,12 @@ services:
     probe_urls:
       - http://localhost:8676/metrics
     metrics_path: /metrics
-    verification_status: verified
+    verification_status: absent
     required: false
-    notes: Canonical metrics are exposed on the primary Crackerjack HTTP/MCP port.
+    notes: >-
+      Crackerjack has no /metrics route. The service is up on 8676 and
+      answers every other path, but the route does not exist, so the
+      endpoint returns 404. This entry was marked `verified` with a note
+      claiming canonical metrics on the primary port, which was never
+      true. Add a /metrics route (or drop the entry) before listing it
+      as a scrape target again.

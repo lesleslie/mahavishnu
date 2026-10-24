@@ -18,12 +18,17 @@ the one repo the health alerts could not see.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from mcp_common.health.aggregator import aggregate_feed_states
 from mcp_common.health.feed import HealthFeedState
 from mcp_common.health.metrics import update_health_metrics
 
 from mahavishnu.core.health_aggregator import get_health_metrics_registry
 from monitoring.metrics import expose_metrics
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _populate_health_registry() -> None:
@@ -64,18 +69,32 @@ def test_expose_metrics_still_carries_the_main_registry() -> None:
 
     body = expose_metrics().decode()
 
-    # A metric that only exists in the main registry.
-    assert "mahavishnu" in body
+    # A family that exists only in the main registry.
+    assert "mahavishnu_workflows_total" in body
 
 
-def test_expose_metrics_is_not_broken_by_an_empty_health_registry() -> None:
+def test_expose_metrics_is_not_broken_by_an_empty_health_registry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """An unpopulated health registry must not break the exposition.
 
-    Before the first ``/health`` request the private registry is empty, and
-    ``/metrics`` is served independently of ``/health``. So this is the
-    common case, not an edge case.
+    Before the first ``/health`` request the private registry is empty,
+    and ``/metrics`` is served independently of ``/health``. So this is
+    the common case, not an edge case.
+
+    A FRESH registry is used rather than the process-wide one: the
+    private registry is populated by any earlier test that called the
+    aggregator, and this test is specifically about the EMPTY case.
     """
+    import prometheus_client
+
+    monkeypatch.setattr(
+        "mahavishnu.core.health_aggregator.get_health_metrics_registry",
+        lambda: prometheus_client.CollectorRegistry(),
+    )
+
     body = expose_metrics().decode()
 
     assert body  # non-empty
     assert "mcp_common_health_halflife_seconds" not in body
+    assert "mahavishnu_workflows_total" in body

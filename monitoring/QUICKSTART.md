@@ -8,6 +8,71 @@ Get full observability for your MCP ecosystem in **5 minutes**.
 - Python 3.10+ (for running MCP servers)
 - 4GB RAM minimum, 8GB recommended
 
+## This host runs NATIVE, not Docker
+
+**Read this before the Docker steps below.** The rest of this file
+describes the Docker Compose stack, but *this* host runs the Bodai fleet
+as native launchd services, and the monitoring stack here is **not**
+running at all:
+
+| Piece | State on this host |
+|---|---|
+| Docker daemon | **not running** (`~/.docker/run/docker.sock` absent) — so the Compose stack below cannot start |
+| Prometheus | **not installed** — no binary, no `prometheus.yml` anywhere |
+| Grafana | native Homebrew install on **:3030** (not :3000) |
+| Grafana's Prometheus datasource | points at `http://localhost:9093` — **nothing listens there** |
+| Grafana Alloy | running on :12345, but it is the CLI-tools OTel collector, not a metrics backend |
+
+`:9093` is Alertmanager's port, and the legacy per-service exporter
+design that used :9091–:9099 is deprecated. Prometheus's own port in
+this repo is **:9090**.
+
+### What IS live right now
+
+Three services expose real Prometheus text on their **primary** port:
+
+| Service | Endpoint |
+|---|---|
+| mahavishnu | `http://localhost:8680/metrics` |
+| session-buddy | `http://localhost:8678/metrics` |
+| akosha | `http://localhost:8682/metrics` |
+
+Verify them with the repo's own script:
+
+```bash
+cd /Users/les/Projects/mahavishnu
+.venv/bin/python scripts/verify_ecosystem_metrics.py
+```
+
+It prints one PASS/FAIL per service and exits non-zero if a service
+marked `verified` does not answer.
+
+### The native path (no Docker)
+
+```bash
+brew install prometheus
+```
+
+Write `/usr/local/etc/prometheus/prometheus.yml` with a `scrape_configs`
+block per live service, then repoint Grafana's Prometheus datasource
+(uid `dfd1f1q5ym9kwd`) at `http://localhost:9090`. Generate the target
+list with the script above — pass `--scrape-host 127.0.0.1` for a
+Prometheus running on this host, or leave it at the default
+`host.docker.internal` for one in a container:
+
+```bash
+.venv/bin/python scripts/verify_ecosystem_metrics.py \
+    --scrape-host 127.0.0.1 \
+    --write-verified-file monitoring/file_sd/verified_metrics_targets.yml
+```
+
+**Alloy is not the answer here.** It has never had a
+`prometheus.scrape` or `prometheus.remote_write` block, and its
+`:12345/metrics` is a *scrape exposure* endpoint, not a PromQL query
+API — a `GET /api/v1/query?query=up` against it returns Grafana
+Alloy's SPA HTML, not a Prometheus response. Pointing a Grafana
+*Prometheus* datasource at it will still fail Save & Test.
+
 ## Quick Start (5 Minutes)
 
 ### 1. Start Monitoring Stack (2 minutes)

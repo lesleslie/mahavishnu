@@ -35,8 +35,17 @@ def is_prometheus_text(content_type: str, body: str) -> bool:
     return any(marker in body for marker in PROMETHEUS_MARKERS)
 
 
-def probe_service(service: dict[str, Any], timeout: float) -> dict[str, Any]:
-    """Probe a single service metrics endpoint."""
+def probe_service(
+    service: dict[str, Any], timeout: float, scrape_host: str = "host.docker.internal"
+) -> dict[str, Any]:
+    """Probe a single service metrics endpoint.
+
+    ``scrape_host`` is the hostname Prometheus should use to REACH the
+    service -- not the one the probe uses. A Prometheus running in a
+    container reaches the host at ``host.docker.internal``; a Prometheus
+    running natively on the host reaches it at ``127.0.0.1``. The probe
+    always runs on the host, so the two are not the same value.
+    """
     probe_urls = service.get("probe_urls")
     if not probe_urls:
         probe_url = service.get("probe_url")
@@ -91,7 +100,7 @@ def probe_service(service: dict[str, Any], timeout: float) -> dict[str, Any]:
                     parsed = urlparse(probe_url)
                     if parsed.hostname and parsed.port:
                         host = (
-                            "host.docker.internal"
+                            scrape_host
                             if parsed.hostname in {"127.0.0.1", "localhost"}
                             else parsed.hostname
                         )
@@ -162,6 +171,15 @@ def parse_args() -> argparse.Namespace:
         help="Path to ecosystem metrics inventory YAML.",
     )
     parser.add_argument(
+        "--scrape-host",
+        default="host.docker.internal",
+        help=(
+            "The hostname Prometheus should use to reach the services. "
+            "host.docker.internal for a Prometheus in a container; "
+            "127.0.0.1 for a Prometheus running natively on this host."
+        ),
+    )
+    parser.add_argument(
         "--write-verified-file",
         type=Path,
         default=None,
@@ -196,7 +214,9 @@ def main() -> int:
     if selected:
         services = [service for service in services if service["name"] in selected]
 
-    results = [probe_service(service, args.timeout) for service in services]
+    results = [
+        probe_service(service, args.timeout, args.scrape_host) for service in services
+    ]
 
     if args.write_verified_file:
         write_verified_targets(results, args.write_verified_file)

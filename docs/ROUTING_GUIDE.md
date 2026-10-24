@@ -20,7 +20,11 @@ Mahavishnu implements intelligent adaptive routing with statistical learning and
 
 **Routing Metrics** (`mahavishnu/core/routing_metrics.py`):
 
-- Prometheus metrics on port 9091 (configurable via `monitoring.routing_metrics_port`)
+- Prometheus metrics on the main HTTP port 8680, alongside every other
+  mahavishnu metric family (`/metrics`). The dedicated
+  `monitoring.routing_metrics_port` (9091) is **deprecated** and nothing
+  listens on it — the routing collectors register in the shared
+  `prometheus_client` registry that the 8680 `/metrics` route renders.
 - Counter metrics: decisions, executions, fallbacks, costs, budget alerts, A/B test events
 - Histogram metrics: routing latency, adapter latency, fallback chain length, cost distribution
 - Gauge metrics: current costs, active experiments
@@ -39,7 +43,10 @@ Pre-built dashboard at `docs/grafana/Routing_Monitoring.json`:
 
 1. Open Grafana: `http://localhost:3000`
 1. Dashboards → Import → Upload `Routing_Monitoring.json`
-1. Select Prometheus datasource: `http://localhost:9091`
+1. Select Prometheus datasource: the one pointing at your Prometheus
+   server (`http://localhost:9090` for a native install). See
+   `monitoring/QUICKSTART.md` — the datasource must exist before any of
+   these panels can query anything.
 1. View 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
 
 ## Metrics API
@@ -50,7 +57,7 @@ from mahavishnu.core.routing_metrics import get_routing_metrics
 metrics = get_routing_metrics()  # Lazy singleton pattern
 
 # Metrics server starts automatically with MahavishnuApp
-# Available at: http://localhost:9091
+# Available at: http://localhost:8680/metrics
 ```
 
 ## Routing Configuration
