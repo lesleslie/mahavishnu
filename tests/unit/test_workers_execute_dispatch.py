@@ -225,19 +225,58 @@ def test_host_privileged_types_require_acknowledgement(worker_type: str) -> None
 
 
 def test_the_gated_types_are_the_ai_assistants() -> None:
-    """The gate must cover exactly the agent types, not the whole registry.
+    """The gate must cover the agent types, not the whole registry.
 
     ``shepherd`` runs jailed; the plain shell workers run a fixed command and
     are not agents.
     """
-    from mahavishnu.workers.registry import WORKER_REGISTRY
+    from mahavishnu.workers.registry import WORKER_REGISTRY, WorkerCategory
 
     gated = _main_cli.HOST_PRIVILEGED_AGENT_TYPES
     assert "shepherd" not in gated
     for worker_type in gated:
         assert worker_type in WORKER_REGISTRY
-        command = WORKER_REGISTRY[worker_type].command or ""
-        assert "claude" in command or "qwen" in command or "codex" in command
+        assert WORKER_REGISTRY[worker_type].category is WorkerCategory.AI_ASSISTANT
+
+
+def test_gate_covers_every_shell_ai_assistant() -> None:
+    """The gate is derived from the registry, so it cannot drift.
+
+    An earlier hand-written set named only claude/qwen/codex and silently
+    omitted ``terminal-deepagents`` and ``terminal-clai`` -- equally
+    host-privileged agents running in a shell with no approval gate.
+    """
+    from mahavishnu.workers.registry import WORKER_REGISTRY, RuntimeKind, WorkerCategory
+
+    expected = {
+        worker_type
+        for worker_type, cfg in WORKER_REGISTRY.items()
+        if cfg.category is WorkerCategory.AI_ASSISTANT
+        and cfg.runtime_kind is RuntimeKind.SHELL
+    }
+
+    assert expected, "the registry must still declare shell AI assistants"
+    assert expected == _main_cli.HOST_PRIVILEGED_AGENT_TYPES
+    # The two that were previously missed.
+    assert "terminal-deepagents" in _main_cli.HOST_PRIVILEGED_AGENT_TYPES
+    assert "terminal-clai" in _main_cli.HOST_PRIVILEGED_AGENT_TYPES
+
+
+def test_registry_permission_modes_are_unattended_by_design() -> None:
+    """The agent modes are the unattended ones, and that is deliberate.
+
+    These workers run in a tmux pane nobody is watching. An agent that
+    stopped to ask for approval would block forever on input that never
+    arrives, so the whole completion-marker design assumes unattended
+    operation. This test records that constraint so a future change to
+    ``default``/``plan`` modes is a deliberate one, with the hang risk
+    understood -- not an accidental tightening that wedges every pool.
+    """
+    from mahavishnu.workers.registry import WORKER_REGISTRY
+
+    commands = {k: (v.command or "") for k, v in WORKER_REGISTRY.items()}
+    assert "--permission-mode acceptEdits" in commands["terminal-claude"]
+    assert "--approval-mode yolo" in commands["terminal-qwen"]
 
 
 def test_hostile_prompt_is_refused_without_acknowledgement(

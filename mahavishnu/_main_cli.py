@@ -73,7 +73,7 @@ from .workers.capabilities import (
     WorkerCapabilityState,
     evaluate_worker_capabilities,
 )
-from .workers.registry import WORKER_REGISTRY
+from .workers.registry import WORKER_REGISTRY, RuntimeKind, WorkerCategory
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
@@ -1614,8 +1614,17 @@ TERMINAL_EXECUTION_CAPABILITY = "engine:terminal-execution"
 #: Dispatching to one of these therefore requires explicit acknowledgement.
 #: The jailed alternative is ``--type shepherd`` (Seatbelt/Landlock, fail
 #: closed), which runs a bounded command rather than an open-ended agent.
+#:
+#: Derived from the registry rather than listed, because a hand-written set
+#: drifts: an earlier version of this gate named only claude/qwen/codex and
+#: silently omitted ``terminal-deepagents`` and ``terminal-clai``, which are
+#: equally host-privileged. Any future AI assistant added to the registry is
+#: covered the moment it is registered.
 HOST_PRIVILEGED_AGENT_TYPES: frozenset[str] = frozenset(
-    {"terminal-claude", "terminal-qwen", "terminal-codex"}
+    worker_type
+    for worker_type, worker_config in WORKER_REGISTRY.items()
+    if worker_config.category is WorkerCategory.AI_ASSISTANT
+    and worker_config.runtime_kind is RuntimeKind.SHELL
 )
 
 
