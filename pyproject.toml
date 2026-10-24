@@ -22,13 +22,26 @@ dependencies = [
     # CLI
     "typer>=0.27.3",
     # Oneiric ecosystem
-    # Floor stays 0.33, NOT 0.33.2: bumping it makes the resolution unsatisfiable.
-    # oneiric>=0.33.2 requires aioboto3>=15.5.0, while the "gpu" group's
-    # runpod>=2.0.0rc1 caps aioboto3 below that. Unblocking this needs a runpod
-    # bump or dropping the gpu group from --all-groups, not a oneiric bump.
-    # Note `uv sync --upgrade` re-resolves to the MINIMUM satisfying the
-    # constraint, so this line pins 0.33.0 even though 0.33.1/0.33.2 exist.
-    "oneiric>=0.33",
+    # Floor is 0.33.2 (resolves 0.33.3), NOT 0.33. The ">=0.33" floor was
+    # re-resolving to the MINIMUM on every `uv sync --upgrade`, so 0.33.0 was
+    # what actually got installed -- and 0.33.0's OTelStorageSettings is
+    # extra="forbid" with no metrics_enabled field. Since oneiric's project
+    # settings share the MAHAVISHNU_ env prefix, a top-level `observability`
+    # key (or MAHAVISHNU_OBSERVABILITY__* env var) then makes the loader
+    # raise and EVERY CLI command fails with MHV-001.
+    #
+    # The 0.33.2 floor is what makes the "observability" key usable again:
+    # OTelStorageSettings became extra="allow" there.
+    #
+    # This required dropping the "gpu" dependency group (runpod). The
+    # conflict is on boto3, not aioboto3: oneiric 0.33.2 needs
+    # aioboto3>=15.5.0 -> aiobotocore[boto3]==2.25.1 -> boto3>=1.40.46,<1.40.62,
+    # while runpod needs boto3>=1.43.97 (2.0.0rc2 needs >=1.43.111, so
+    # bumping runpod makes it WORSE, not better). uv lock resolves every
+    # dependency group, so the group has to leave the project entirely --
+    # un- including it from "dev" is not enough. Operators who want the
+    # RunPod provider install it themselves: `uv pip install runpod`.
+    "oneiric>=0.33.2",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -51,6 +64,11 @@ dependencies = [
     "opentelemetry-api>=1.45.1",
     "opentelemetry-sdk>=1.45.1",
     "opentelemetry-instrumentation>=0.66b1",
+    # Declared explicitly, not inherited transitively: it used to arrive as
+    # a transitive dep, and the oneiric 0.33.2 re-resolution dropped it --
+    # which silently turned off the host CPU/RAM auto-instrumentation
+    # (core/observability.py falls back to SYSTEM_METRICS_AVAILABLE=False).
+    "opentelemetry-instrumentation-system-metrics>=0.66b1",
     "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     # Prometheus metrics
     "prometheus-client>=0.26.0",
@@ -144,7 +162,6 @@ dev = [
     "crackerjack>=0.89.2",
     {include-group = "ai"},
     {include-group = "cache"},
-    {include-group = "gpu"},
     {include-group = "content-ingest"},
     {include-group = "storage-pg"},
     {include-group = "compression-zstd"},
@@ -249,8 +266,21 @@ ai = [
 # ``>=2.0.0rc1`` accepts the release candidate; uv rejects a plain
 # ``>=2.0`` because only pre-release 2.0.x exists on PyPI as of
 # 2026-10-17.
+# The "gpu" group (runpod) was removed 2026-10-24. It blocked the oneiric
+# 0.33.2 floor: oneiric needs aioboto3>=15.5.0 -> aiobotocore[boto3]==2.25.1
+# -> boto3>=1.40.46,<1.40.62, while runpod needs boto3>=1.43.97. uv lock
+# resolves every dependency group, so the group had to leave the project
+# entirely -- excluding it from "dev" is not enough.
+#
+# RunPod pool is deployed. Migrated from runpod-flash on 2026-10-17
+# (Flash merged into the main ``runpod`` package in SDK 2.0).
+# ``>=2.0.0rc1`` accepts the release candidate; uv rejects a plain
+# ``>=2.0`` because only pre-release 2.0.x exists on PyPI as of
+# 2026-10-17.
+#
+# Operators who want the RunPod serverless provider install it themselves:
+#     uv pip install "runpod>=2.0.0rc1"
 gpu = [
-    "runpod>=2.0.0rc1",
 ]
 
 # Phase 4 (Shepherd worker backend). shepherd-ai wraps the Shepherd OS-level

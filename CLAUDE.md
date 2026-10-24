@@ -611,7 +611,7 @@ or include them in `dev` via `{include-group = "<name>"}` (already wired for `de
 | Group | Use it for | Install |
 |-------|-----------|---------|
 | `ai` | The Pydantic AI agent runtime (`mahavishnu.adapters.ai.pydantic_ai_adapter`). Lazy-imported at runtime; only needed when that adapter is enabled. | `uv sync --group ai` |
-| `gpu` | Serverless GPU execution via RunPod Flash (`mahavishnu.pools.runpod_pool`). Pulls the RunPod SDK; only deploy when using GPU pools. | `uv sync --group gpu` |
+| `gpu` | **Empty since 2026-10-24.** The RunPod SDK moved out of the project: `runpod` needs `boto3>=1.43.97` while oneiric 0.33.2 needs `aiobotocore[boto3]==2.25.1` → `boto3<1.40.62`, and `uv lock` resolves every dependency group, so the group had to leave the project entirely to unblock the oneiric floor. Operators who want the RunPod provider install it themselves. | `uv pip install "runpod>=2.0.0rc1"` |
 | `content-ingest` | PDF, EPUB, and trafilatura readability extraction. The base `content_ingester.py` lazy-imports `pypdf`/`ebooklib`; `trafilatura` powers the web-extract escalation path. | `uv sync --group content-ingest` |
 | `storage-pg` | PostgreSQL pgvector adapter with HNSW (`mahavishnu.adapters.pgvector_adapter`). Lazy-imported; only needed for the PostgreSQL OTel storage backend. | `uv sync --group storage-pg` |
 
