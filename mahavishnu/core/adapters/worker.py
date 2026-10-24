@@ -100,6 +100,10 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
             terminal_manager=terminal_mgr,
             max_concurrent=max_concurrent,
             session_buddy_client=None,
+            # The settings carry ``workers.enabled``, which the capability
+            # evaluator reads. Without them the manager evaluates every
+            # worker as "workers disabled by config" and refuses to spawn.
+            settings=config if hasattr(config, "workers") else None,
         )
 
     async def _ensure_worker_manager(self) -> WorkerManager:

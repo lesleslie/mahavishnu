@@ -192,6 +192,32 @@ def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.M
     assert adapter is not None
 
 
+def test_the_manager_is_given_the_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The manager needs the settings to evaluate ``workers.enabled``.
+
+    The capability evaluator reads ``workers.enabled`` off the settings
+    object. Without them it resolves to None, every worker evaluates as
+    "workers disabled by config", and the one-shot spawn path refuses
+    to start.
+    """
+    captured: dict = {}
+
+    class _WM:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(wa, "WorkerManager", _WM)
+    monkeypatch.setattr(
+        "mahavishnu.terminal.manager.TerminalManager.create",
+        AsyncMock(return_value="tmgr"),
+    )
+
+    cfg = SimpleNamespace(workers=SimpleNamespace(max_concurrent=7, enabled=True))
+    wa.WorkerOrchestratorAdapter(config=cfg)
+
+    assert captured["settings"] is cfg
+
+
 @pytest.mark.asyncio
 async def test_init_lazy_path_and_ensure_builds_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     class _Loop:
