@@ -198,9 +198,11 @@ startup banner). If the lifespan logs show the producer starting
 and then dying, the traceback is in stderr.
 
 **Action explicitly NOT to take**: do not assume this is an
-operator-configured skip (e.g., ``AKOSHA_SKIP_OTEL_INGESTER=1``)
-without first checking the env vars. A producer that *should* be
-running but isn't is a bug.
+operator-configured skip without first checking the config. The legacy
+``AKOSHA_SKIP_OTEL_INGESTER`` env var was retired in PR-A8 and is read
+nowhere; the legacy ``OtelTraceIngester`` poller is gated by
+``otel.receiver.trace_ingester_poller`` in akosha's settings and ships
+**false**. A producer that *should* be running but isn't is a bug.
 
 **When to escalate**: producer crashed during startup with an
 unrecoverable error → page the on-call; the server is in a broken

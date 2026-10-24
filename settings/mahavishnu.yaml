@@ -217,15 +217,23 @@ resilience:
   timeout_per_repo: 300  # Timeout per repo in seconds (30-3600)
 
 # Observability configuration
-# 2026-10-10: Removed the `observability:` block. oneiric 0.28.0's
+# 2026-10-10: The `observability:` block was removed here. oneiric 0.28.0's
 # OTelStorageSettings schema (extra="forbid") rejected the 3 feature-flag
 # fields, causing load_settings to raise and MahavishnuSettings.get_settings
 # to fall back to ObservabilityConfig defaults — the block was silently
 # dead. Override the OTLP endpoint via env var when needed:
-#     export MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://127.0.0.1:14317
+#     export MAHAVISHNU_OBSERVABILITY__OTLP_ENDPOINT=http://127.0.0.1:4317
 # in ~/.zshenv. pydantic-settings reads the env var natively without
 # going through oneiric, so the OTelStorageSettings schema mismatch is
 # bypassed.
+#
+# 2026-10-23: oneiric's OTelStorageSettings is now extra="allow", so the
+# whole-layer discard no longer happens and an `observability:` block is
+# safe to use again. The per-machine block lives in
+# ~/.config/mahavishnu/local.yaml, which is the layer that was silently
+# dying. The env var above is still the way to override the ENDPOINT: the
+# endpoint belongs to the substrate's receiver (:4317), NOT to Alloy, which
+# no longer has a trace pipeline since the port cutover.
 
 # Tier 1 Phase 8: change-point detector on observability metrics.
 # Top-level block (matches pi_pool:, runpod_pool:, caller_quota:,
