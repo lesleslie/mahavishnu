@@ -322,6 +322,42 @@ def test_defaults_unchanged_when_no_overrides(
 
 
 # ---------------------------------------------------------------------------
+# The loader the app actually uses
+# ---------------------------------------------------------------------------
+
+
+def test_app_config_loader_lets_env_vars_beat_the_yaml(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``bootstrap.load_config`` must honour env vars over the YAML.
+
+    This is the loader ``MahavishnuApp`` uses, and it passes the merged
+    YAML to ``MahavishnuSettings(**data)`` as *init* kwargs.
+    pydantic-settings gives init kwargs a HIGHER source priority than
+    env vars, so the YAML silently won and every ``MAHAVISHNU_*``
+    override of a YAML-defined key was ignored -- the opposite of the
+    documented precedence (defaults -> YAML -> env vars).
+
+    The symptom was concrete: ``MAHAVISHNU_WORKERS__ENABLED=false``
+    could not disable worker orchestration, so ``workers spawn``
+    ignored the setting and started workers anyway (and leaked a tmux
+    session doing it).
+    """
+    from pathlib import Path
+
+    from mahavishnu.core.bootstrap import load_config
+
+    repo_root = Path(__file__).resolve().parents[2]
+    committed = yaml.safe_load((repo_root / "settings" / "mahavishnu.yaml").read_text())
+    # The YAML must say True, or the assertion below would be vacuous.
+    assert committed["workers"]["enabled"] is True
+
+    monkeypatch.setenv("MAHAVISHNU_WORKERS__ENABLED", "false")
+
+    assert load_config().workers.enabled is False
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

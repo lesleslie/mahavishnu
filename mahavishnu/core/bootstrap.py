@@ -12,7 +12,11 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from .config import MahavishnuSettings
+from .config import (
+    MahavishnuSettings,
+    _mahavishnu_env_overlay,
+    _merge_env_overlay,
+)
 from .errors import ConfigurationError
 
 if TYPE_CHECKING:
@@ -58,8 +62,16 @@ def load_config() -> MahavishnuSettings:
     discovery, then constructs ``MahavishnuSettings`` from the merged
     dict (filtering to ``MahavishnuSettings.model_fields`` so unknown
     oneiric fields don't trip Pydantic's ``extra="forbid"`` validators).
-    Env vars (via ``MAHAVISHNU_*`` prefix) are still applied by
-    pydantic-settings when ``MahavishnuSettings(**data)`` is constructed.
+
+    Env vars (via ``MAHAVISHNU_*`` prefix) are applied as an overlay on
+    the merged dict BEFORE construction, because
+    ``MahavishnuSettings(**data)`` passes the YAML as *init* kwargs and
+    pydantic-settings gives init kwargs a HIGHER source priority than
+    env vars. Without the overlay the YAML silently wins, and every
+    ``MAHAVISHNU_*`` override of a YAML-defined key is ignored -- which
+    is the opposite of the documented precedence (defaults -> YAML ->
+    env vars) and left ``MAHAVISHNU_WORKERS__ENABLED=false`` unable to
+    disable worker orchestration.
 
     The oneiric dependency is imported inside the function to avoid a
     circular import at module load time (mahavishnu's bootstrap is
@@ -79,6 +91,7 @@ def load_config() -> MahavishnuSettings:
             if k in MahavishnuSettings.model_fields and v is not None
         }
         relevant_data = _filter_to_model(merged, MahavishnuSettings)
+        _merge_env_overlay(relevant_data, _mahavishnu_env_overlay())
         return MahavishnuSettings(**relevant_data)
     except (
         Exception
