@@ -15,7 +15,6 @@ from mahavishnu.core.config import (
     AgnoMemoryConfig,
     AgnoToolsConfig,
     AuthConfig,
-    MCPStatePersistenceConfig,
     FallbackStrategy,
     GoalParsingConfig,
     GoalTeamsConfig,
@@ -28,6 +27,7 @@ from mahavishnu.core.config import (
     LLMConfig,
     LLMProvider,
     MahavishnuSettings,
+    MCPStatePersistenceConfig,
     MemoryBackend,
     MonitoringConfig,
     ObservabilityConfig,
@@ -771,7 +771,11 @@ class TestObservabilityConfig:
     def test_default_values(self):
         """Test ObservabilityConfig defaults."""
         config = ObservabilityConfig()
-        assert config.metrics_enabled is True
+        # Metric EXPORT is off by default -- no OTLP metrics sink exists in
+        # the fleet, so exporting would fail forever. Instruments still
+        # record in-process. Opt in with
+        # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED=true.
+        assert config.metrics_enabled is False
         assert config.tracing_enabled is True
         assert config.otlp_endpoint == "http://localhost:4317"
 

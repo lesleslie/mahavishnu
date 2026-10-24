@@ -652,7 +652,13 @@ class TestResilienceConfigDefaults:
 class TestObservabilityConfigDefaults:
     def test_defaults(self):
         cfg = ObservabilityConfig()
-        assert cfg.metrics_enabled is True
+        # Metric EXPORT is off by default: akosha's OTLP receiver implements
+        # TraceService only, so exports to :4317 fail with UNIMPLEMENTED
+        # "Method not found!" once a minute, forever, and there is no other
+        # OTLP metrics sink in the fleet. Instruments still record
+        # in-process -- this gates export, not collection. Opt in with
+        # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED=true.
+        assert cfg.metrics_enabled is False
         assert cfg.tracing_enabled is True
         assert cfg.otlp_endpoint == "http://localhost:4317"
 
