@@ -565,7 +565,38 @@ def expose_metrics(registry: CollectorRegistry | None = None) -> bytes:
         >>> metrics = expose_metrics()
         >>> return Response(content=metrics, media_type=CONTENT_TYPE_LATEST)
     """
-    return generate_latest(registry or REGISTRY)
+    return generate_latest(registry or REGISTRY) + _health_metrics_exposition()
+
+
+def _health_metrics_exposition() -> bytes:
+    """The health aggregator's metrics, appended to the main exposition.
+
+    ``update_health_metrics`` writes into a PRIVATE registry
+    (``mahavishnu.core.health_aggregator.get_health_metrics_registry``)
+    so it cannot collide with the global REGISTRY's unrelated counters.
+    But the only endpoint that rendered that private registry was
+    ``mahavishnu/health.py``'s ``/metrics`` route, and that route belongs
+    to a uvicorn app that never starts -- so the ``mcp_common_health_*``
+    families were missing from the LIVE :8680 exposition.
+
+    The gap was invisible from Grafana and from the other two services:
+    akosha (:8682) and session-buddy (:8678) each exposed 19
+    ``mcp_common_health_*`` families, and mahavishnu exposed zero. The
+    PromQL alert rules in ``config/prometheus/health_aggregator_alerts.yml``
+    key on ``mcp_common_health_halflife_seconds{repo}``, so mahavishnu
+    was the one repo the health alerts could not see.
+
+    Imported lazily: ``monitoring`` is a top-level package that
+    ``mahavishnu.core.health_aggregator`` does not import, and a lazy
+    import keeps the dependency edge one-way regardless.
+    """
+    try:
+        from mahavishnu.core.health_aggregator import get_health_metrics_registry
+
+        return generate_latest(get_health_metrics_registry())
+    except Exception:  # pragma: no cover - defensive
+        logger.warning("could not render the health metrics registry", exc_info=True)
+        return b""
 
 
 # ============================================================================
