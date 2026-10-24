@@ -4215,17 +4215,54 @@ ls docs/feature-tracking/otel-spans-substrate.md
 
 ## Task 11 (PR-A8): akosha — retire the `OtelTraceIngester` poller
 
+> **Reconciled 2026-10-24.** This task originally deviated from the spec:
+> it deleted the `otel.receiver.trace_ingester_poller` key outright and
+> made rollback a `git revert`. **That deviation was rejected**, and the
+> task below now follows spec §13.6.
+>
+> The plan's reasoning was "the flag guarded code that this task removes,
+> so flipping it back to `true` would do nothing." That premise is false
+> under the spec: §13.6 says the flag *gates the import + lifespan start*,
+> so the code is retained, not removed. The plan deviated from the spec's
+> *mechanism* and then justified it with a claim about the spec's
+> *outcome* — and the outcome followed from the deviation, not from the
+> spec.
+>
+> Two things settled it. First, the spec agrees with itself in three
+> places — §13's PR-A8 row ("rollback is a flag flip + restart, never a
+> code revert"), §13.6 ("Rollback is a flag flip + restart; **never** a
+> code revert"), and §15's decisions log ("PR-A8 rollback |
+> `otel.receiver.trace_ingester_poller: bool` (settings YAML nested key) |
+> Rollback is flag-flip + restart, never code revert"). A single
+> contradicting plan step does not outvote three agreeing spec sections.
+>
+> Second, the plan's own design shipped a live regression. Deleting the
+> poller without re-pointing the health feeds left `mcp_tool_call_feed`
+> with `entities_count=0`, `cycles_total=0` and `ingester_running=False`
+> — which `mcp_common.health.feed.is_healthy` maps to FAILED, and
+> severity 3 is a **503 on `/health`**. The feed read `warming_up` today
+> only because the poller's `cycles_total` kept climbing while it
+> ingested nothing at all. A flag-flip rollback with the class retained
+> has no such failure mode.
+>
+> The supersession record lives in
+> `akosha/docs/decisions/2026-10-21-otel-producer-migration.md`, not in a
+> new `2026-10-19-poller-retirement-no-flag.md` — the deviation doc the
+> original step called for was never written, because the deviation it
+> described was never made.
+
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
 **Files:**
-- Modify: `akosha/mcp/server.py:620-660` (remove the `AKOSHA_SKIP_OTEL_INGESTER` block entirely)
-- Modify: `settings/akosha.yaml` (delete the `trace_ingester_poller` key)
+- Modify: `akosha/mcp/server.py` (gate the poller start on the settings key; remove the `AKOSHA_SKIP_OTEL_INGESTER` block entirely)
+- Modify: `akosha/config.py` (declare `otel.receiver.trace_ingester_poller`)
+- Modify: `settings/akosha.yaml` (keep the `trace_ingester_poller` key; set it to `false`)
 - Modify: `akosha/CLAUDE.md` (operator note)
 - Test: `akosha/tests/integration/test_poller_retirement.py`
 
 **Interfaces:**
 - Consumes: the receiver from Task 5 (the poller's job is now the receiver's).
-- Produces: no new symbols. Removes `OtelTraceIngester` from the akosha lifespan, and removes `otel.receiver.trace_ingester_poller` from the settings schema entirely. **Rollback is a git revert, not a flag flip** — the flag guarded code that no longer exists, so keeping it would advertise a control that does nothing.
+- Produces: no new symbols. `OtelTraceIngester` is **retained** and gated by `otel.receiver.trace_ingester_poller`, which ships `false`. The `AKOSHA_SKIP_OTEL_INGESTER` env var is retired and read nowhere. **Rollback is a flag flip plus a restart, never a code revert** (spec §13.6, §15).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4254,65 +4291,79 @@ def test_paths_resolve() -> None:
     assert SETTINGS_YAML.is_file(), SETTINGS_YAML
 
 
-def test_otel_trace_ingester_no_longer_imported() -> None:
-    src = SERVER_PY.read_text()
-    assert "from akosha.ingestion.otel_ingester import" not in src, (
-        "PR-A8 must remove the OtelTraceIngester import, not gate it"
-    )
-    assert "OtelTraceIngester(" not in src
+def test_the_poller_does_not_run_by_default() -> None:
+    """The shipped setting is off."""
+    receiver = yaml.safe_load(SETTINGS_YAML.read_text())["otel"]["receiver"]
+    assert receiver["trace_ingester_poller"] is False
 
 
-def test_env_var_shim_retired() -> None:
+def test_the_env_var_shim_is_retired() -> None:
     """Pre-1.0 no-backcompat: the AKOSHA_SKIP_OTEL_INGESTER env var is
     removed outright. An operator's launchd plist still setting it =1
-    would otherwise silently re-enable the retired poller."""
+    would otherwise silently re-enable the retired poller.
+
+    The literal string is checked rather than "no reference to the
+    variable", because a stale mention in a comment still teaches an
+    operator the wrong knob."""
     src = SERVER_PY.read_text()
     assert "AKOSHA_SKIP_OTEL_INGESTER" not in src
 
 
-def test_settings_flag_removed() -> None:
-    """Pre-1.0 replace-don't-extend: the flag guarding deleted code is
-    deleted too. A flag that maps to nothing is worse than no flag — an
-    operator reads `trace_ingester_poller: false`, believes it is a live
-    rollback lever, and is wrong."""
-    receiver = yaml.safe_load(SETTINGS_YAML.read_text())["otel"]["receiver"]
-    assert "trace_ingester_poller" not in receiver
+def test_the_poller_class_is_retained_for_rollback() -> None:
+    """The class is STILL THERE.
+
+    It is retained behind the flag precisely so rollback is a flag flip
+    plus a restart and never a code revert. Deleting it would turn the
+    flag into "a settings key that maps to deleted code" — a
+    documentation lie that outlives the code."""
+    from akosha.ingestion.otel_ingester import OtelTraceIngester
+
+    assert hasattr(OtelTraceIngester, "start")
+    assert hasattr(OtelTraceIngester, "stop")
+
+
+def test_the_lifespan_gates_the_poller_on_the_settings_key() -> None:
+    """The gate is the config key, not an env var."""
+    src = SERVER_PY.read_text()
+    assert "if get_config().otel.receiver.trace_ingester_poller:" in src
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/les/Projects/akosha && .venv/bin/pytest tests/integration/test_poller_retirement.py -v`
-Expected: FAIL — the import, the env-var string, and the settings key are all still present.
+Expected: FAIL — the settings key is still `true`, the env-var string is still present, and the lifespan is not gated on the settings key.
 
-- [ ] **Step 3: Remove the poller block**
+- [ ] **Step 3: Gate the poller on the settings key; retire the env var**
 
-In `akosha/mcp/server.py`, delete the entire block introduced by the "Wave 6" comment (around line 620-660), from `# Wave 6: start the OtelTraceIngester` through the closing of the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` statement, including the `global _otel_trace_ingester` line and the `try/except` that constructs `OtelTraceIngester(...)`.
+In `akosha/mcp/server.py`, replace the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` block with a settings-key gate:
 
-Then delete `akosha/ingestion/otel_ingester.py` if nothing else imports it:
+```python
+if get_config().otel.receiver.trace_ingester_poller:
+    # ... construct and start OtelTraceIngester
+```
+
+Delete `akosha/ingestion/otel_ingester.py`? **No.** The class is retained behind the flag — that is what makes rollback a flag flip instead of a code revert. Confirm it is still importable:
 
 ```bash
 cd /Users/les/Projects/akosha
-grep -rn "otel_ingester\|OtelTraceIngester" --include="*.py" . | grep -v "^./akosha/ingestion/otel_ingester.py"
+grep -rn "otel_ingester\|OtelTraceIngester" --include="*.py" .
 ```
 
-If the grep returns hits outside that file, keep the module and only remove the lifespan usage. If it returns nothing, delete the file.
-
-Also check for the settings model — if `trace_ingester_poller` is declared as a field on a Pydantic settings class (not just YAML), remove the field too:
+Declare the setting on the Pydantic model, not only in YAML. `get_config()` drops any key not present in `AkoshaConfig.model_fields`, so a YAML-only key vanishes with nothing in the logs to say why:
 
 ```bash
 cd /Users/les/Projects/akosha
 grep -rn "trace_ingester_poller" --include="*.py" .
 ```
 
-A YAML-only deletion leaves a declared-but-unread settings field, which `scripts/audit_orphans.py` flags as a zero-caller symbol.
+- [ ] **Step 4: Flip the settings key to `false`**
 
-- [ ] **Step 4: Delete the settings key**
-
-In `settings/akosha.yaml`, remove the `trace_ingester_poller: true` line, leaving:
+In `settings/akosha.yaml`, keep the key and set it to `false`:
 
 ```yaml
 otel:
   receiver:
+    trace_ingester_poller: false
     known_mcp_servers:
       - "mahavishnu"
       - "akosha"
@@ -4322,42 +4373,26 @@ otel:
       - "bifrost-mcp"
 ```
 
-The spec §13.6 proposed keeping this flag as the rollback lever. This plan deletes it instead: the flag guarded a code path that this task removes, so flipping it back to `true` would do nothing. Advertising a rollback lever that does not work is worse than having no lever — rollback is a `git revert` of this commit, and the operator note below says so explicitly.
+This is the spec §13.6 mechanism exactly: the flag gates the import and the lifespan start, PR-A8 flips it to `false`, and rollback is flipping it back plus a restart.
 
-Record the deviation from the spec in `docs/decisions/2026-10-19-poller-retirement-no-flag.md`:
+**Re-point the health feeds.** This is the part the original plan missed, and it is what made the deviation ship a 503. The `mcp_tool_call_feed` must source its `entities_count` from `spans_substrate` and its `cycles_total` from the OTLP receiver's `batches_total` — not from the retired poller's counters. With the poller gone and the feeds left pointing at it, `entities_count=0`, `cycles_total=0` and `ingester_running=False` is exactly the state `mcp_common.health.feed.is_healthy` maps to FAILED, and severity 3 is a 503 on the `/health` route.
 
-```markdown
-## Context
-
-Spec v7 §13.6 specifies `otel.receiver.trace_ingester_poller: bool` as the
-rollback lever for PR-A8, flipping true → false to retire the poller.
-
-## Decision rule
-
-The flag is deleted rather than flipped. PR-A8 removes the poller code it
-guards, so after merge the flag controls nothing. The pre-1.0 rule
-(feedback-no-backwards-compat-pre-1.0) is replace-don't-extend, and a
-settings key that maps to deleted code is a documentation lie.
-
-Rollback is `git revert` of the PR-A8 commit.
-
-## Status
-
-active
-```
+Record the supersession in `akosha/docs/decisions/2026-10-21-otel-producer-migration.md` (the existing decision doc), not in a new file.
 
 - [ ] **Step 5: Update the operator note**
 
-In `akosha/CLAUDE.md` (or wherever operators are documented for OTel), delete any `AKOSHA_SKIP_OTEL_INGESTER` or `trace_ingester_poller` reference. The OTel ingestion section should now read:
+In `akosha/CLAUDE.md`, the OTel section should now read:
 
 ```markdown
 ## OTel ingestion
 
 Akosha receives spans over OTLP (`akosha/observability/otlp_receiver.py`,
 `:4317` gRPC / `:4318` HTTP) and writes them to the oneiric-managed
-`spans_substrate` table. The former `OtelTraceIngester` poller and its
-`AKOSHA_SKIP_OTEL_INGESTER` env var were removed in PR-A8 — there is no
-ingestion toggle. Rollback is a git revert, not a config flag.
+`spans_substrate` table. The legacy `OtelTraceIngester` poller is gated by
+`otel.receiver.trace_ingester_poller`, which ships `false`; the
+`AKOSHA_SKIP_OTEL_INGESTER` env var is retired and read nowhere. The
+`OtelTraceIngester` class is retained behind the flag, so rollback is
+flipping the key back to `true` and restarting — never a code revert.
 ```
 
 Then confirm the spec runbooks (§11.1.5/6/7) contain no step that tells an operator to set the retired env var.
@@ -4376,34 +4411,35 @@ Expected: PASS.
 
 ```bash
 cd /Users/les/Projects/akosha
-git add akosha/mcp/server.py settings/akosha.yaml akosha/CLAUDE.md \
-  docs/decisions/2026-10-19-poller-retirement-no-flag.md \
-  tests/integration/test_poller_retirement.py
+git add akosha/mcp/server.py akosha/config.py settings/akosha.yaml \
+  akosha/CLAUDE.md tests/integration/test_poller_retirement.py
 git add -u
 git commit -m "refactor(akosha)!: retire the OtelTraceIngester poller (PR-A8)
 
 The OTLPReceiver owns ingestion now; the polling ingester duplicated
 the write path against a table the receiver already maintains.
 
-Removes three things: the lifespan block, the AKOSHA_SKIP_OTEL_INGESTER
-env var, and the otel.receiver.trace_ingester_poller settings key.
+Retires two things: the AKOSHA_SKIP_OTEL_INGESTER env var, and the
+poller's unconditional lifespan start.
 
 Deleting the env var: keeping it would mean an operator's launchd plist
 still setting it =1 silently re-enables the retired poller after merge.
 A live launchd plist is exactly the case that motivates deleting the
-shim rather than deprecating it.
+shim rather than deprecating it. The settings key is the only control,
+per spec §13.6.
 
-Deleting the settings key DEVIATES from spec §13.6, which proposed
-flipping it true -> false as the rollback lever. The flag guarded code
-this commit removes, so post-merge it controls nothing — a flag that
-maps to deleted code is worse than no flag, because an operator reads
-it and believes they have a lever. Rollback is git revert. Recorded in
-docs/decisions/2026-10-19-poller-retirement-no-flag.md.
+The OtelTraceIngester class is RETAINED behind
+otel.receiver.trace_ingester_poller, which ships false. Rollback is
+flipping the key back to true and restarting, never a code revert —
+spec §13.6 and §15 both say so. Deleting the class would turn the flag
+into a settings key that maps to deleted code, which is a documentation
+lie that outlives the code.
 
-Also deletes akosha/ingestion/otel_ingester.py when the consumer grep
-finds no other importer, and removes any Pydantic settings field for
-trace_ingester_poller so audit_orphans.py does not flag a
-declared-but-unread symbol.
+The health feeds are re-pointed from the retired poller's counters to
+the OTLP receiver and spans_substrate. Left pointing at the poller they
+would report entities_count=0, cycles_total=0 and ingester_running=False
+— the exact state is_healthy maps to FAILED, and severity 3 is a 503 on
+the /health route.
 "
 ```
 
@@ -4430,10 +4466,10 @@ ls docs/feature-tracking/otel-spans-substrate.md
 
 #### Integration Contract (Task 11)
 - **Triggered from**: `akosha mcp start` (lifespan).
-- **Returns to / updates**: `akosha/mcp/server.py` (poller block removed), `settings/akosha.yaml` (`trace_ingester_poller` key deleted), `akosha/CLAUDE.md` (operator note), `docs/decisions/2026-10-19-poller-retirement-no-flag.md` (the spec-deviation record).
-- **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 4 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line.
-- **Rollback signal**: any test still importing `akosha.ingestion.otel_ingester` fails at collection → the grep in Step 3 missed a consumer; restore the module and remove only the lifespan usage. Note this is a code rollback, not a config one — there is no flag to flip.
-- **Observability added**: none (a removal; the receiver's existing metrics cover ingestion).
+- **Returns to / updates**: `akosha/mcp/server.py` (poller gated on the settings key; env var retired), `akosha/config.py` (the setting declared on the model), `settings/akosha.yaml` (`trace_ingester_poller: false`), `akosha/CLAUDE.md` (operator note), `akosha/docs/decisions/2026-10-21-otel-producer-migration.md` (the supersession record).
+- **Demonstrable by**: `pytest tests/integration/test_poller_retirement.py -v` — 4 passing; `akosha mcp start` logs contain no `OtelTraceIngester` line; `/health` returns 200, not 503.
+- **Rollback signal**: the poller needs to run again — set `otel.receiver.trace_ingester_poller: true` and restart. **This is a config rollback, not a code one.** If the class were missing, rollback would be a code revert; the class is retained precisely so it is not.
+- **Observability added**: none (a retirement; the receiver's existing metrics cover ingestion). The retired poller's `cycles_total` is NOT a substitute for a real `entities_count` — the health feed now reads `spans_substrate`.
 
 ---
 

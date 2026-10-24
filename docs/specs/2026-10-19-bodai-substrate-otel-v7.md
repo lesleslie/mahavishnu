@@ -1774,9 +1774,17 @@ otel:
 | PR-A6 | `test_resource_validator.py` (rate-based spike threshold; allowlist honored; startup-burst rejection; sustained-pressure path) |
 | PR-A6.5 | `test_old_spans_table_migration.py` (idempotent; `spans` empty → DROP no-ops) |
 | PR-A7 | `test_service_namespace_bridge.py` (`test_dual_label_emitted_during_bridge` + `test_consumer_sweep_returns_zero_pre_merge`) |
-| PR-A8 | `test_poller_retirement.py` (assert `OtelTraceIngester` import gone; lifespan no longer references it; feature-flag-off path tested) |
+| PR-A8 | `test_poller_retirement.py` (assert the lifespan does not construct `OtelTraceIngester` when the flag is off; the retired `AKOSHA_SKIP_OTEL_INGESTER` env var is read nowhere; the `OtelTraceIngester` class is still importable so rollback stays a flag flip) |
 
 All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips them. **`crackerjack run -v -f` is the merge gate.**
+
+> **PR-A8 row corrected 2026-10-24.** The row previously read "assert
+> `OtelTraceIngester` import gone", which contradicted §13.6, §13's
+> PR-A8 row and §15's decisions log — all three of which say the flag
+> *gates the import + lifespan start* and rollback is a flag flip, never a
+> code revert. The class is retained behind the flag precisely so that
+> rollback stays a config change; asserting the class is gone would have
+> made the flag a lie. The row now asserts what §13.6 actually specifies.
 
 ---
 
