@@ -55,7 +55,11 @@ def test_default_config_values():
     assert config.resilience.retry_base_delay == 1.0
     assert config.resilience.circuit_breaker_threshold == 5
     assert config.resilience.timeout_per_repo == 300
-    assert config.observability.metrics_enabled is True
+    # OFF by default: akosha's receiver implements TraceService only, so
+    # metric exports to :4317 fail with UNIMPLEMENTED once a minute. This
+    # used to assert True and only passed because the machine's
+    # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED env var was set.
+    assert config.observability.metrics_enabled is False
     assert config.observability.tracing_enabled is True
     assert config.observability.otlp_endpoint == "http://localhost:4317"
     assert config.auth.enabled is False

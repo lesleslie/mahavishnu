@@ -2844,6 +2844,23 @@ class MahavishnuSettings(BaseSettings):
         default=False,
         description="Enable debug mode",
     )
+    otel_metrics_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable OTLP metric export. Off by default: akosha's receiver "
+            "implements TraceService only, so exports to :4317 fail with "
+            "UNIMPLEMENTED 'Method not found!' once a minute, forever. "
+            "Traces still export. Instruments still record in-process -- this "
+            "gates export, not collection. "
+            "TOP-LEVEL on purpose: the `observability` key belongs to oneiric "
+            "(its OTelStorageSettings is extra='forbid' and has no "
+            "metrics_enabled field), and oneiric's project settings share the "
+            "MAHAVISHNU_ env prefix -- so setting it under `observability` "
+            "makes oneiric's loader raise and every CLI command fail with "
+            "MHV-001. A top-level key does not collide: oneiric's project "
+            "model is extra='allow' at the top level."
+        ),
+    )
     log_level: str = Field(
         default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",

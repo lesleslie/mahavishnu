@@ -46,50 +46,66 @@ except ImportError:
     SystemMetricsInstrumentor = None  # type: ignore[assignment]
     SYSTEM_METRICS_AVAILABLE = False
 
-    # Define minimal fallback classes
-    class MockCounter:
-        def add(self, amount: int, attributes: dict[str, str] | None = None):
-            pass
 
-    class MockHistogram:
-        def record(self, amount: float, attributes: dict[str, str] | None = None):
-            pass
+# The mock fallbacks are what ``_init_fallback_components()`` uses when the
+# real OpenTelemetry is unavailable.
+#
+# They are defined UNCONDITIONALLY, and that matters: they used to live in
+# the ``except ImportError`` block of the OPTIONAL system-metrics import, so
+# they existed exactly when they were least needed -- system-metrics
+# installed (the normal case) meant the block did not run, and the fallback
+# path raised ``NameError: name 'MockTracer' is not defined`` instead of
+# falling back. It also tied the core OTel availability to an unrelated
+# optional package.
+class MockCounter:
+    def add(self, amount: int, attributes: dict[str, str] | None = None):
+        pass
 
-    class MockUpDownCounter:
-        def add(self, amount: int, attributes: dict[str, str] | None = None):
-            pass
 
-    class MockTracer:
-        def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None):
-            class MockSpan:
-                def __enter__(self):
-                    return self
+class MockHistogram:
+    def record(self, amount: float, attributes: dict[str, str] | None = None):
+        pass
 
-                def __exit__(self, *args):
-                    pass
 
-                def set_attribute(self, key: str, value: str):
-                    pass
+class MockUpDownCounter:
+    def add(self, amount: int, attributes: dict[str, str] | None = None):
+        pass
 
-            return MockSpan()
 
-    class MockMeter:
-        def create_counter(self, name: str) -> MockCounter:
-            return MockCounter()
+class MockTracer:
+    def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None):
+        class MockSpan:
+            def __enter__(self):
+                return self
 
-        def create_histogram(self, name: str) -> MockHistogram:
-            return MockHistogram()
+            def __exit__(self, *args):
+                pass
 
-        def create_up_down_counter(self, name: str) -> MockUpDownCounter:
-            return MockUpDownCounter()
+            def set_attribute(self, key: str, value: str):
+                pass
 
-    class MockTraceProvider:
-        def get_tracer(self, name: str) -> MockTracer:
-            return MockTracer()
+        return MockSpan()
 
-    class MockMeterProvider:
-        def get_meter(self, name: str) -> MockMeter:
-            return MockMeter()
+
+class MockMeter:
+    def create_counter(self, name: str) -> MockCounter:
+        return MockCounter()
+
+    def create_histogram(self, name: str) -> MockHistogram:
+        return MockHistogram()
+
+    def create_up_down_counter(self, name: str) -> MockUpDownCounter:
+        return MockUpDownCounter()
+
+
+class MockTraceProvider:
+    def get_tracer(self, name: str) -> MockTracer:
+        return MockTracer()
+
+
+class MockMeterProvider:
+    def get_meter(self, name: str) -> MockMeter:
+        return MockMeter()
 
 
 class LogLevel(Enum):
@@ -139,6 +155,27 @@ class ObservabilityManager:
         # Performance tracking
         self.workflow_performance: dict[str, dict[str, Any]] = {}
 
+    def _metrics_export_enabled(self) -> bool:
+        """Is OTLP metric export on?
+
+        Two sources, either of which turns it on:
+
+        - ``otel_metrics_enabled`` -- the TOP-LEVEL setting. This is the
+          one that can actually be set from the environment: the
+          ``observability`` key belongs to oneiric, whose project
+          settings share the MAHAVISHNU_ env prefix, and whose
+          OTelStorageSettings is extra="forbid" with no
+          ``metrics_enabled`` field. Setting it under ``observability``
+          makes oneiric's loader raise, and every CLI command fails with
+          MHV-001.
+        - ``observability.metrics_enabled`` -- kept for programmatic
+          configuration. It can only be set in-process, not through a
+          YAML layer or an env var, for the reason above.
+        """
+        if getattr(self.config, "otel_metrics_enabled", False):
+            return True
+        return bool(getattr(self.config.observability, "metrics_enabled", False))
+
     def _init_otel_components(self):
         """Initialize OpenTelemetry components."""
         try:
@@ -178,7 +215,7 @@ class ObservabilityManager:
             # it below must stay valid, or the recording call sites raise
             # AttributeError at runtime. Nothing is exported either way.
             metric_readers: list[Any] = []
-            if getattr(self.config.observability, "metrics_enabled", False):
+            if self._metrics_export_enabled():
                 metric_readers.append(
                     PeriodicExportingMetricReader(
                         OTLPMetricExporter(endpoint=self.config.observability.otlp_endpoint)

@@ -125,3 +125,58 @@ def test_instruments_survive_with_metrics_disabled(obs: Any) -> None:
             instrument.add(1)
         else:
             instrument.record(1.0)
+
+# ---------------------------------------------------------------------------
+# The toggle has to be settable from the environment
+# ---------------------------------------------------------------------------
+#
+# The `observability` key cannot carry it: oneiric's project settings
+# share the MAHAVISHNU_ env prefix, and oneiric's OTelStorageSettings is
+# extra="forbid" with no metrics_enabled field -- so setting it there
+# makes oneiric's loader raise and every CLI command fails with
+# MHV-001. The toggle therefore lives at the TOP level, where oneiric's
+# project model is extra="allow" and does not object.
+
+
+def test_the_top_level_toggle_turns_the_reader_on(
+    obs: Any, count_metric_readers: list[int]
+) -> None:
+    """MAHAVISHNU_OTEL_METRICS_ENABLED=true must build the metric reader."""
+    from mahavishnu.core.config import ObservabilityConfig
+
+    class _Cfg:
+        observability = ObservabilityConfig(metrics_enabled=False, tracing_enabled=True)
+        otel_metrics_enabled = True
+        log_level = "INFO"
+
+    # The constructor builds the components when tracing is on.
+    obs.ObservabilityManager(_Cfg())
+
+    assert count_metric_readers == [1]
+
+
+def test_the_top_level_toggle_defaults_off(obs: Any, count_metric_readers: list[int]) -> None:
+    """With neither toggle set, nothing is exported."""
+    from mahavishnu.core.config import ObservabilityConfig
+
+    class _Cfg:
+        observability = ObservabilityConfig(metrics_enabled=False, tracing_enabled=True)
+        log_level = "INFO"
+
+    obs.ObservabilityManager(_Cfg())
+
+    assert count_metric_readers == []
+
+
+def test_the_top_level_toggle_is_a_declared_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """It has to be a real field: pydantic-settings only maps env vars
+    onto declared fields, and an undeclared one is silently dropped."""
+    from mahavishnu.core.config import MahavishnuSettings
+
+    # The machine may export it; the DEFAULT is what is being asserted.
+    monkeypatch.delenv("MAHAVISHNU_OTEL_METRICS_ENABLED", raising=False)
+
+    assert "otel_metrics_enabled" in MahavishnuSettings.model_fields
+    assert MahavishnuSettings().otel_metrics_enabled is False
