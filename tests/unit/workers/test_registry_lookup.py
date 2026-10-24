@@ -15,7 +15,12 @@ import pytest
 
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.core.errors import MahavishnuError
-from mahavishnu.workers.registry import get_worker_entry, list_worker_types
+from mahavishnu.workers.registry import (
+    PROMPT_ENV_VAR,
+    WORKER_REGISTRY,
+    get_worker_entry,
+    list_worker_types,
+)
 
 
 def test_get_worker_entry_loads_from_settings() -> None:
@@ -69,3 +74,68 @@ def test_legacy_list_worker_types_with_category_still_works() -> None:
     s = MahavishnuSettings()
     types_ = legacy(settings=s, category="ai-context")  # may be empty, must not raise
     assert isinstance(types_, list)
+
+
+# ---------------------------------------------------------------------------
+# The two registries must not drift
+# ---------------------------------------------------------------------------
+#
+# Two registries describe the same workers: the Oneiric-loaded
+# ``worker_registry:`` block in settings/mahavishnu.yaml, and the in-code
+# ``WORKER_REGISTRY``. Dispatch builds the command from the in-code one,
+# so the YAML copy is a duplicate that drifts silently -- which is exactly
+# what happened to the five agent commands when the prompt became an env
+# var and the permission mode became a placeholder. The YAML still said
+# ``"$1"`` and a hardcoded ``acceptEdits``.
+
+
+def _inner_shell_command(command: str) -> str:
+    """The ``sh -lc '...'`` payload of a registry command."""
+    prefix = "sh -lc '"
+    if not command.startswith(prefix) or not command.endswith("'"):
+        raise AssertionError(f"not an `sh -lc` command: {command!r}")
+    return command[len(prefix) : -1]
+
+
+def test_every_yaml_command_matches_the_code_registry() -> None:
+    """The YAML's ``command_argv`` must be the code registry's command."""
+    settings = _loaded_registry_settings()
+
+    checked = 0
+    for entry in settings.worker_registry.entries:
+        code_config = WORKER_REGISTRY.get(entry.worker_type)
+        if code_config is None or not entry.command_argv:
+            continue
+        argv = list(entry.command_argv)
+        if argv[:2] == ["sh", "-lc"]:
+            yaml_command = argv[2]
+            code_command = _inner_shell_command(code_config.command)
+        else:
+            yaml_command = " ".join(argv)
+            code_command = code_config.command
+        assert yaml_command == code_command, (
+            f"{entry.worker_type}: settings/mahavishnu.yaml says {yaml_command!r} "
+            f"but the code registry says {code_command!r}"
+        )
+        checked += 1
+
+    assert checked >= 10, "the guard must actually be comparing something"
+
+
+def test_no_yaml_command_interpolates_the_prompt() -> None:
+    """The prompt is data (``$MAHAVISHNU_PROMPT``), never shell text.
+
+    A ``$1`` or ``{prompt}`` in the YAML copy would be the stale form of
+    the same injection the code registry was fixed for.
+    """
+    settings = _loaded_registry_settings()
+
+    offenders = [
+        entry.worker_type
+        for entry in settings.worker_registry.entries
+        if any("{prompt}" in part or '"$1"' in part for part in entry.command_argv)
+    ]
+    assert offenders == [], (
+        f"{offenders} pass the prompt as shell text; it must arrive as "
+        f"${PROMPT_ENV_VAR}"
+    )
