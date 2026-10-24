@@ -125,14 +125,27 @@ class WorkerConfig:
 #: An operator-supplied mode is validated against this before it reaches a
 #: command line, so a settings value cannot smuggle a flag into the CLI.
 PERMISSION_MODES: dict[str, frozenset[str]] = {
-    "claude": frozenset(
-        {"acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"}
-    ),
+    "claude": frozenset({"acceptEdits", "auto", "manual", "dontAsk", "plan"}),
     "qwen": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
-    "codex": frozenset({"read-only", "workspace-write", "danger-full-access"}),
+    "codex": frozenset({"read-only", "workspace-write"}),
     "clai": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
     "deepagents-cli": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
 }
+
+#: Claude's ``bypassPermissions`` and Codex's ``danger-full-access`` are
+#: deliberately **absent** from the allowlists above.
+#:
+#: Those two modes exist precisely to remove the enforcement boundary: one
+#: skips every permission check, the other removes the sandbox. They are
+#: strictly more permissive than any registry default, so letting a single
+#: settings line reach them would mean a config file could disable a
+#: worker's protections outright.
+#:
+#: There is deliberately no opt-in flag for them. If a deployment genuinely
+#: needs an unrestricted agent, the boundary has to come from outside the
+#: agent -- a container, a jail, a disposable VM -- and the way to arrange
+#: that is the registry, which is code and gets reviewed. A boolean in a
+#: YAML file is not a boundary.
 
 #: Environment variable carrying the prompt for one-shot workers.
 #:

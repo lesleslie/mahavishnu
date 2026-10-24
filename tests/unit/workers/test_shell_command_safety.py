@@ -172,9 +172,39 @@ def test_allowlists_match_the_clis_own_choices() -> None:
     assert "default" not in PERMISSION_MODES["claude"]
     assert "yolo" in PERMISSION_MODES["qwen"]
     assert "default" in PERMISSION_MODES["qwen"]
-    assert PERMISSION_MODES["codex"] == frozenset(
-        {"read-only", "workspace-write", "danger-full-access"}
-    )
+    assert PERMISSION_MODES["codex"] == frozenset({"read-only", "workspace-write"})
+
+
+def test_unrestricted_modes_are_not_reachable() -> None:
+    """The modes that remove the enforcement boundary are absent.
+
+    ``bypassPermissions`` skips every Claude Code permission check and
+    ``danger-full-access`` removes Codex's sandbox. Both are strictly more
+    permissive than any registry default, so allowing a settings line to
+    reach them would let a config file disable a worker's protections
+    outright. There is deliberately no opt-in flag -- a boolean in a YAML
+    file is not a boundary.
+    """
+    assert "bypassPermissions" not in PERMISSION_MODES["claude"]
+    assert "danger-full-access" not in PERMISSION_MODES["codex"]
+    for tool, modes in PERMISSION_MODES.items():
+        assert "bypassPermissions" not in modes, tool
+        assert "danger-full-access" not in modes, tool
+
+
+@pytest.mark.parametrize(
+    ("worker_type", "mode"),
+    [
+        ("terminal-claude", "bypassPermissions"),
+        ("terminal-codex", "danger-full-access"),
+    ],
+)
+def test_requesting_an_unrestricted_mode_fails_closed(worker_type: str, mode: str) -> None:
+    """Asking for one must raise, not fall back to something else."""
+    config = WORKER_REGISTRY[worker_type]
+
+    with pytest.raises(ValueError, match="not valid"):
+        shell_backend.resolve_permission_mode(config, mode)
 
 
 def test_settings_override_wins_over_the_registry_default() -> None:
