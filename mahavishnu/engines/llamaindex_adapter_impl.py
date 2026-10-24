@@ -12,10 +12,12 @@ This adapter provides:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import time
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
+import urllib.request
 import uuid
 
 from oneiric.core.logging import get_logger
@@ -461,11 +463,88 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         # Configure node parser for chunking
         self.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=20, separator=" ")
 
+        # Remember what the embeddings endpoint is actually serving, so the
+        # vector store can be created with a matching dimension.
+        self._llm_model = llama_server_model
+        self._embeddings_base_url = llama_server_url
+
         # Initialize OpenSearch vector store with security settings
         self._setup_vector_store()
 
         # Initialize OpenTelemetry instrumentation
         self._init_otel_instrumentation()
+
+    def _resolve_embedding_dim(self, endpoint: str, index_name: str) -> int:
+        """The embedding dimension the index must be created with.
+
+        It has to match what the model actually produces, or every write
+        is rejected on a dimension mismatch. It used to be hardcoded to
+        768 (nomic-embed-text), but the local llama-server may be
+        serving a different model -- a Qwen3-8B GGUF produces 4096-dim
+        embeddings -- and the two disagreeing is silent until a write
+        fails.
+
+        The EXISTING index is authoritative: its mapping already declares
+        the dimension, and that is what writes must match. Only when the
+        index does not exist yet do we ask the model, which costs a real
+        embedding call (~1.1s on a local 8B) -- worth paying once, at
+        index creation, and not on every startup.
+        """
+        try:
+            with urllib.request.urlopen(
+                f"{endpoint.rstrip('/')}/{index_name}/_mapping",
+                timeout=5,
+            ) as resp:
+                mapping = json.loads(resp.read().decode("utf-8"))
+            for body in mapping.values():
+                field = (
+                    (body.get("mappings", {}) or {}).get("properties", {}) or {}
+                ).get("embedding", {})
+                dimension = field.get("dimension")
+                if isinstance(dimension, int) and dimension > 0:
+                    logger.info(
+                        "embedding dimension taken from the existing index",
+                        extra={"index": index_name, "dimension": dimension},
+                    )
+                    return dimension
+        except Exception as mapping_error:  # noqa: BLE001
+            logger.debug(
+                "no existing index mapping to read the embedding dimension from",
+                extra={"index": index_name, "error": str(mapping_error)},
+            )
+
+        # No index yet: ask the model what it produces.
+        base_url = getattr(self, "_embeddings_base_url", None)
+        model = getattr(self, "_llm_model", None)
+        if not base_url or not model:
+            logger.warning(
+                "no embeddings endpoint to ask for the dimension; using 768",
+                extra={"model": model},
+            )
+            return 768
+        try:
+            with urllib.request.urlopen(
+                urllib.request.Request(
+                    f"{base_url.rstrip('/')}/embeddings",
+                    data=json.dumps({"model": model, "input": "dimension"}).encode(),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                ),
+                timeout=60,
+            ) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            dimension = len(payload["data"][0]["embedding"])
+            logger.info(
+                "embedding dimension discovered from the model",
+                extra={"model": model, "dimension": dimension},
+            )
+            return dimension
+        except Exception as probe_error:  # noqa: BLE001
+            logger.warning(
+                "could not determine the embedding dimension; using 768",
+                extra={"model": model, "error": str(probe_error)},
+            )
+            return 768
 
     def _setup_vector_store(self) -> None:
         """Set up the vector store backend with a two-tier fallback.
@@ -480,13 +559,33 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
             endpoint = getattr(self.config, "opensearch_endpoint", "http://localhost:9200")
             index_name = getattr(self.config, "opensearch_index_name", "mahavishnu_code")
-            dim = 768  # nomic-embed-text dimension
+            dim = self._resolve_embedding_dim(endpoint, index_name)
 
             # Create the client first (new API requirement)
             os_client = OpensearchVectorClient(
                 endpoint=endpoint,
                 index=index_name,
                 dim=dim,
+                # The engine, not the algorithm. The method name is
+                # "hnsw" either way; the engine is which implementation
+                # runs it:
+                #
+                #   nmslib -- native C++, removed for new indices in
+                #             OpenSearch 3.0 ("nmslib engine is
+                #             deprecated ... cannot be used for new
+                #             index creation"). The client's default.
+                #   faiss  -- native C++. Its shared libraries are not
+                #             shipped in the plugin artifact, and a
+                #             write without them kills the node with
+                #             "UnsatisfiedLinkError: no
+                #             opensearchknn_faiss_avx2 in
+                #             java.library.path".
+                #   lucene -- pure Java, OpenSearch's own Lucene HNSW.
+                #             Same HNSW algorithm, no JNI, no native
+                #             library to ship.
+                #
+                # So: HNSW, implemented in Java.
+                engine="lucene",
             )
             self.vector_store = OpensearchVectorStore(client=os_client)
             self._vector_backend = "opensearch"
