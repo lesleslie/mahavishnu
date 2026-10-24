@@ -1597,6 +1597,27 @@ def workers_spawn(
 #: substrate call, and Prefect has no business executing a prompt.
 TERMINAL_EXECUTION_CAPABILITY = "engine:terminal-execution"
 
+#: Worker types that run an AI agent **on the host**, with the operator's
+#: credentials, its filesystem and its sockets, and with no approval gate.
+#:
+#: Their launch commands in ``workers/registry.py`` set the mode themselves:
+#: ``claude --permission-mode acceptEdits`` auto-accepts file edits and
+#: ``qwen --approval-mode yolo`` auto-approves every tool including shell
+#: commands. A prompt is therefore not merely text handed to a model -- it is
+#: an instruction to an agent that can run commands and write files as the
+#: operator, unprompted.
+#:
+#: That makes the prompt a privilege-bearing input. If it can be influenced
+#: by anything other than the operator -- repository contents, a task queue, a
+#: webhook, an MCP caller -- it is a remote-code-execution primitive.
+#:
+#: Dispatching to one of these therefore requires explicit acknowledgement.
+#: The jailed alternative is ``--type shepherd`` (Seatbelt/Landlock, fail
+#: closed), which runs a bounded command rather than an open-ended agent.
+HOST_PRIVILEGED_AGENT_TYPES: frozenset[str] = frozenset(
+    {"terminal-claude", "terminal-qwen", "terminal-codex"}
+)
+
 
 async def _dispatch_dag_nodes(
     dag: Any,
@@ -1710,6 +1731,15 @@ def workers_execute(
         "--dry-run",
         help="Plan and print the DAG without dispatching any worker.",
     ),
+    allow_host_agent: bool = typer.Option(
+        False,
+        "--allow-host-agent",
+        help=(
+            "Acknowledge that an AI-assistant worker runs on this host with your "
+            "credentials and no approval gate. Required for --type "
+            "terminal-claude/qwen/codex."
+        ),
+    ),
 ) -> None:
     """Plan and dispatch a task via the capability conductor.
 
@@ -1771,6 +1801,24 @@ def workers_execute(
         if dry_run:
             typer.echo("\n--dry-run: planned only, no worker dispatched.")
             return
+
+        if worker_type in HOST_PRIVILEGED_AGENT_TYPES and not allow_host_agent:
+            # The prompt is an instruction to an agent that can run shell
+            # commands and write files as the operator, with no approval gate
+            # (``--permission-mode acceptEdits`` / ``--approval-mode yolo``).
+            # Make that an explicit choice rather than a default.
+            typer.echo(
+                f"ERROR: --type {worker_type} runs an AI agent on this host with your "
+                "credentials and no approval gate. The prompt is an instruction to that "
+                "agent, not just text sent to a model.",
+                err=True,
+            )
+            typer.echo(
+                "  Pass --allow-host-agent to accept that, or use --type shepherd "
+                "(Seatbelt/Landlock jail, fail-closed) for a bounded command.",
+                err=True,
+            )
+            raise typer.Exit(code=2)
 
         await _dispatch_dag_nodes(
             dag,

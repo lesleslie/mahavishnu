@@ -322,8 +322,12 @@ class TestWorkerCommands:
 
             fake_node = _FakeNode(
                 node_id="node-1",
-                engine_id="engine:claude",
-                capability_id="worker:claude_context",
+                engine_id="worker",
+                # The real capability the worker engine provides. The old
+                # "worker:claude_context" was a fabricated id -- no engine
+                # has ever registered a "worker:*" capability, which is why
+                # ``plan`` raised MHV-009 for every --type.
+                capability_id="engine:terminal-execution",
             )
             fake_dag = _FakeDAG(nodes=(fake_node,), edges=())
 
@@ -338,7 +342,8 @@ class TestWorkerCommands:
                 return_value=fake_dag,
             ):
                 result = runner.invoke(
-                    app, ["workers", "execute", "--prompt", "Write Python code"]
+                    app,
+                    ["workers", "execute", "--prompt", "Write Python code", "--dry-run"],
                 )
 
         assert result.exit_code == 0

@@ -1463,7 +1463,7 @@ class TestWorkersExecute:
 
         result = runner.invoke(
             cli_module.app,
-            ["workers", "execute", "-p", "Implement a REST API", "-n", "2"],
+            ["workers", "execute", "-p", "Implement a REST API", "-n", "2", "--dry-run"],
         )
         assert result.exit_code == 0
         assert "Planning capability DAG" in result.output
@@ -1486,18 +1486,52 @@ class TestWorkersExecute:
         mock_app_cls.return_value = mock_app
         mock_load_engines.return_value = []
         mock_resolve.return_value = []
-        mock_plan.return_value = ExecutionDAG(trace_id="0" * 32, nodes=[], edges=[])
+
+        # A DAG with a dispatchable node, so the assertion below is about
+        # the real dispatch path rather than a plan that goes nowhere.
+        from mahavishnu.core.capabilities import DAGNode, TypeSchema
+
+        mock_plan.return_value = ExecutionDAG(
+            trace_id="0" * 32,
+            nodes=[
+                DAGNode(
+                    node_id="n1",
+                    engine_id="worker",
+                    capability_id="engine:terminal-execution",
+                    inputs=TypeSchema(),
+                    outputs=TypeSchema(),
+                )
+            ],
+            edges=[],
+        )
+
+        class _StubAdapter:
+            def __init__(self, config=None):
+                self.worker_manager = None
+
+            async def execute(self, task, repos):
+                return {"status": "completed", "worker_count": 1, "successful": 1}
 
         # Even if some legacy attribute is referenced, the migrated handler
         # must not call WorkerManager.
         with patch(
             "mahavishnu.workers.WorkerManager"
-        ) as mock_wm_cls:
+        ) as mock_wm_cls, patch(
+            "mahavishnu.core.adapters.worker.WorkerOrchestratorAdapter", _StubAdapter
+        ):
             result = runner.invoke(
                 cli_module.app,
-                ["workers", "execute", "-p", "Create a class", "-t", "terminal-claude"],
+                [
+                    "workers",
+                    "execute",
+                    "-p",
+                    "Create a class",
+                    "-t",
+                    "terminal-claude",
+                    "--allow-host-agent",
+                ],
             )
-            assert result.exit_code == 0
+            assert result.exit_code == 0, result.output
             mock_wm_cls.assert_not_called()
 
 
