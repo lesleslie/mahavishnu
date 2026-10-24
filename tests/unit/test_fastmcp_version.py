@@ -11,6 +11,7 @@ runtime version; both must report ``>= 3.4``.
 
 from __future__ import annotations
 
+import contextlib
 from importlib.metadata import version
 from pathlib import Path
 import re
@@ -85,23 +86,47 @@ class TestFastMCPVersion:
         src = Path("/Users/les/Projects/mcp-common")
         assert src.is_dir(), f"mcp-common source tree not found at {src}"
         src_str = str(src)
-        if sys.path[0] != src_str:
+        path_was_first = sys.path[0] == src_str
+        if not path_was_first:
             sys.path.insert(0, src_str)
         # Drop a stale cached mcp_common so we re-import from source.
-        for name in list(sys.modules):
-            if name == "mcp_common" or name.startswith("mcp_common."):
-                del sys.modules[name]
+        #
+        # The evicted modules are RESTORED afterwards. Leaving the
+        # source-tree copy in sys.modules meant every later test in the
+        # same process imported a DIFFERENT mcp_common than the one the
+        # application modules were bound to -- so a test that patched
+        # ``mcp_common.llm.FallbackChain.from_settings`` patched the
+        # source copy while the code called the installed one, and the
+        # patch silently did nothing.
+        evicted = {
+            name: module
+            for name, module in sys.modules.items()
+            if name == "mcp_common" or name.startswith("mcp_common.")
+        }
+        for name in evicted:
+            del sys.modules[name]
 
-        # All imports succeeded; assert FastMCP class is the upstream class.
-        import fastmcp
-        from mcp_common.fastmcp import (
-            Context,
-            FastMCP,
-            Middleware,
-            MiddlewareContext,
-            OneiricMCPConfig,
-            RateLimitingMiddleware,
-        )
+        try:
+            # All imports succeeded; assert FastMCP class is the upstream class.
+            import fastmcp
+            from mcp_common.fastmcp import (
+                Context,
+                FastMCP,
+                Middleware,
+                MiddlewareContext,
+                OneiricMCPConfig,
+                RateLimitingMiddleware,
+            )
 
-        assert FastMCP is fastmcp.FastMCP
-        assert Context is fastmcp.Context
+            assert FastMCP is fastmcp.FastMCP
+            assert Context is fastmcp.Context
+        finally:
+            # Put the installed modules back, and drop anything the
+            # re-import pulled in from the source tree.
+            for name in list(sys.modules):
+                if name == "mcp_common" or name.startswith("mcp_common."):
+                    del sys.modules[name]
+            sys.modules.update(evicted)
+            if not path_was_first:
+                with contextlib.suppress(ValueError):
+                    sys.path.remove(src_str)
