@@ -33,9 +33,17 @@ class _FakeManager:
         self.replies = replies
         self.echo_marker = echo_marker
         self.launched: list[str] = []
+        self.env_overrides: dict[str, str] = {}
 
-    async def launch_sessions(self, command: str, count: int, worker_type: str) -> list[str]:
+    async def launch_sessions(
+        self,
+        command: str,
+        count: int,
+        worker_type: str,
+        env_overrides: dict[str, str] | None = None,
+    ) -> list[str]:
         self.launched.append(command)
+        self.env_overrides = dict(env_overrides or {})
         self.pane = f"$ {command}\n"
         return ["sess-1"]
 
@@ -66,7 +74,15 @@ class _FakeManager:
 
 
 def _config(**overrides: Any) -> Any:
-    base = {"worker_type": "terminal-claude", "command": "claude", "default_timeout": 5}
+    base = {
+        "worker_type": "terminal-claude",
+        "command": "claude",
+        "default_timeout": 5,
+        # No permission mode on this fake, and the fake command carries no
+        # {permission_mode} placeholder, so rendering is a pass-through.
+        "permission_mode": None,
+        "requires_tool": "claude",
+    }
     base.update(overrides)
     return type("C", (), base)()
 

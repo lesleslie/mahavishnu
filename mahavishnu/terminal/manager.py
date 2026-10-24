@@ -324,6 +324,7 @@ class TerminalManager:
         rows: int = 24,
         *,
         worker_type: str = "terminal-claude",
+        env_overrides: dict[str, str] | None = None,
     ) -> list[str]:
         """Launch multiple terminal sessions concurrently.
 
@@ -345,6 +346,11 @@ class TerminalManager:
             worker_type: Worker backend name (default
                 'terminal-claude'; 'terminal-qwen' selects the
                 Qwen CLI's env-var opt-in)
+            env_overrides: Extra environment variables for the session,
+                merged over the Bifrost routing env. Used to pass a
+                prompt as *data* (MAHAVISHNU_PROMPT) rather than
+                interpolating it into the command string, which would
+                make it shell-interpreted.
 
         Returns:
             List of session IDs
@@ -354,6 +360,8 @@ class TerminalManager:
         """
 
         env = _resolve_worker_env(worker_type)
+        if env_overrides:
+            env = {**env, **env_overrides}
         if env:
             logger.info(
                 "Per-spawn Bifrost env injection: worker_type=%s env_keys=%s",

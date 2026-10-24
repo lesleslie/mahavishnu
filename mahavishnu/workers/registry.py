@@ -84,6 +84,9 @@ class WorkerConfig:
         runtime_kind: Runtime that hosts the worker process
         one_shot: Whether the worker runs a single task and exits
         endpoint: Static base URL if the worker is a remote HTTP/RPC service
+        permission_mode: The agent's approval/sandbox mode, substituted into
+            ``command`` at the ``{permission_mode}`` placeholder. ``None``
+            for workers whose CLI has no such flag.
     """
 
     name: str
@@ -108,6 +111,37 @@ class WorkerConfig:
     runtime_kind: RuntimeKind = RuntimeKind.NONE
     one_shot: bool = False
     endpoint: str | None = None
+    permission_mode: str | None = None
+
+
+#: Allowed approval/sandbox modes per CLI, keyed by ``requires_tool``.
+#:
+#: The values are the CLIs' own enumerations, read from their ``--help``
+#: output -- they differ per tool and are not interchangeable. Claude Code
+#: has no ``default`` mode (it is ``manual``/``dontAsk``); Qwen uses
+#: ``--approval-mode`` with a different vocabulary again; Codex uses
+#: ``--sandbox`` with ``read-only``/``workspace-write``/``danger-full-access``.
+#:
+#: An operator-supplied mode is validated against this before it reaches a
+#: command line, so a settings value cannot smuggle a flag into the CLI.
+PERMISSION_MODES: dict[str, frozenset[str]] = {
+    "claude": frozenset(
+        {"acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"}
+    ),
+    "qwen": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
+    "codex": frozenset({"read-only", "workspace-write", "danger-full-access"}),
+    "clai": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
+    "deepagents-cli": frozenset({"plan", "default", "auto-edit", "auto", "yolo"}),
+}
+
+#: Environment variable carrying the prompt for one-shot workers.
+#:
+#: The prompt is *data*, so it travels as an environment variable and the
+#: registry command reads it as ``"$MAHAVISHNU_PROMPT"``. It used to be
+#: interpolated into the command string, which is a shell-injection vector:
+#: the command reaches tmux as a single string that tmux runs via
+#: ``/bin/sh -c``, so a prompt containing ``;`` or ``$(...)`` would execute.
+PROMPT_ENV_VAR = "MAHAVISHNU_PROMPT"
 
 
 # Worker type registry - all available workers
@@ -116,7 +150,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-qwen": WorkerConfig(
         name="Qwen AI",
         worker_type="terminal-qwen",
-        command="sh -lc 'qwen -o stream-json --approval-mode yolo'",
+        command="sh -lc 'qwen -o stream-json --approval-mode {permission_mode}'",
         category=WorkerCategory.AI_ASSISTANT,
         description="Fast local AI coding assistant with Qwen model",
         completion_markers=["finish_reason", '"done"', '"type": "done"'],
@@ -127,11 +161,15 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         runtime_kind=RuntimeKind.SHELL,
         one_shot=False,
         endpoint=None,
+        permission_mode="yolo",
     ),
     "terminal-claude": WorkerConfig(
         name="Claude Code",
         worker_type="terminal-claude",
-        command="sh -lc 'claude --output-format stream-json --permission-mode acceptEdits'",
+        command=(
+            "sh -lc 'claude --output-format stream-json "
+            "--permission-mode {permission_mode}'"
+        ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Claude Code CLI for complex reasoning and coding",
         completion_markers=["finish_reason", '"done"', '"type": "done"'],
@@ -142,12 +180,14 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         runtime_kind=RuntimeKind.SHELL,
         one_shot=False,
         endpoint=None,
+        permission_mode="acceptEdits",
     ),
     "terminal-codex": WorkerConfig(
         name="Codex CLI",
         worker_type="terminal-codex",
         command=(
-            'sh -lc \'codex exec --json "$1"; printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'
+            'sh -lc \'codex exec --json --sandbox {permission_mode} '
+            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Codex CLI one-shot execution with marker-based completion",
@@ -159,13 +199,14 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         runtime_kind=RuntimeKind.SHELL,
         one_shot=True,
         endpoint=None,
+        permission_mode="workspace-write",
     ),
     "terminal-deepagents": WorkerConfig(
         name="DeepAgents CLI",
         worker_type="terminal-deepagents",
         command=(
-            'sh -lc \'deepagents-cli --non-interactive "$1" --quiet --no-stream; '
-            'printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'
+            'sh -lc \'deepagents-cli --non-interactive "$MAHAVISHNU_PROMPT" '
+            '--quiet --no-stream; printf "\\n__MAHAVISHNU_DONE__\\n"\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="DeepAgents CLI one-shot execution with marker-based completion",
@@ -181,7 +222,10 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
     "terminal-clai": WorkerConfig(
         name="CLAI",
         worker_type="terminal-clai",
-        command=('sh -lc \'clai --no-stream "$1"; printf "\\n__MAHAVISHNU_DONE__\\n"\' _ {prompt}'),
+        command=(
+            'sh -lc \'clai --no-stream "$MAHAVISHNU_PROMPT"; '
+            'printf "\\n__MAHAVISHNU_DONE__\\n"\''
+        ),
         category=WorkerCategory.AI_ASSISTANT,
         description="CLAI one-shot execution with marker-based completion",
         completion_markers=["__MAHAVISHNU_DONE__"],

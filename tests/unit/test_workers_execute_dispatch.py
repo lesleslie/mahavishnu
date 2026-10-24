@@ -271,12 +271,17 @@ def test_registry_permission_modes_are_unattended_by_design() -> None:
     operation. This test records that constraint so a future change to
     ``default``/``plan`` modes is a deliberate one, with the hang risk
     understood -- not an accidental tightening that wedges every pool.
+
+    The mode lives in ``WorkerConfig.permission_mode`` and the command
+    carries a ``{permission_mode}`` placeholder, so an operator can
+    tighten it per deployment via ``workers.permission_modes``.
     """
     from mahavishnu.workers.registry import WORKER_REGISTRY
 
-    commands = {k: (v.command or "") for k, v in WORKER_REGISTRY.items()}
-    assert "--permission-mode acceptEdits" in commands["terminal-claude"]
-    assert "--approval-mode yolo" in commands["terminal-qwen"]
+    assert WORKER_REGISTRY["terminal-claude"].permission_mode == "acceptEdits"
+    assert WORKER_REGISTRY["terminal-qwen"].permission_mode == "yolo"
+    assert "{permission_mode}" in WORKER_REGISTRY["terminal-claude"].command
+    assert "{permission_mode}" in WORKER_REGISTRY["terminal-qwen"].command
 
 
 def test_hostile_prompt_is_refused_without_acknowledgement(

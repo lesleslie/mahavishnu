@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
+from .registry import PERMISSION_MODES, PROMPT_ENV_VAR
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -54,6 +55,67 @@ _POLL_INTERVAL_SECONDS = 1.0
 
 #: Fallback when neither the task nor the worker config carries a timeout.
 _DEFAULT_TIMEOUT_SECONDS = 300
+
+
+def resolve_permission_mode(
+    config: WorkerConfig,
+    override: str | None = None,
+) -> str | None:
+    """Return the agent's approval/sandbox mode, validated against its CLI.
+
+    The settings override (``workers.permission_modes``) wins over the
+    registry default. The value is checked against the allowlist for that
+    CLI, because it is substituted into a command line -- an unchecked
+    settings value could otherwise smuggle a flag into the agent's argv.
+
+    Returns ``None`` for a worker whose CLI has no such flag, and raises
+    ``ValueError`` for a mode the CLI does not support.
+    """
+    mode = override if override is not None else config.permission_mode
+    if mode is None:
+        return None
+    allowed = PERMISSION_MODES.get(config.requires_tool or "")
+    if allowed is None:
+        raise ValueError(
+            f"worker {config.worker_type!r} has tool {config.requires_tool!r} with no "
+            f"known permission modes; cannot validate {mode!r}"
+        )
+    if mode not in allowed:
+        raise ValueError(
+            f"permission mode {mode!r} is not valid for {config.requires_tool!r}; "
+            f"expected one of {sorted(allowed)}"
+        )
+    return mode
+
+
+def render_command(config: WorkerConfig, permission_mode: str | None) -> str:
+    """Render the registry command with the resolved permission mode.
+
+    The prompt is deliberately *not* substituted here. It reaches the CLI as
+    the environment variable ``MAHAVISHNU_PROMPT``, read by the command as
+    ``"$MAHAVISHNU_PROMPT"``.
+
+    Interpolating it into the command string would be a shell-injection
+    vector: the command reaches tmux as one string that tmux runs via
+    ``/bin/sh -c``, so a prompt containing ``;`` or ``$(...)`` would execute.
+    The prompt is data and must travel as data.
+    """
+    command = config.command
+    if "{permission_mode}" in command:
+        if permission_mode is None:
+            raise ValueError(
+                f"worker {config.worker_type!r} needs a permission mode but none resolved"
+            )
+        command = command.replace("{permission_mode}", permission_mode)
+    if "{prompt}" in command:
+        # Defence in depth: the placeholder is gone from the registry, and a
+        # reintroduced one must fail loudly rather than reach a shell.
+        raise ValueError(
+            f"worker {config.worker_type!r} still carries a {{prompt}} placeholder; "
+            "the prompt must be passed as data (MAHAVISHNU_PROMPT), never "
+            "interpolated into the command"
+        )
+    return command
 
 
 def _resolve_timeout(task: dict[str, Any], config: WorkerConfig) -> float:
@@ -150,9 +212,14 @@ class ShellWorker(BaseWorker):
         config: WorkerConfig,
         terminal_manager: TerminalManager | None,
         session_buddy_client: Any | None = None,
+        permission_mode: str | None = None,
     ) -> None:
         super().__init__(worker_type=config.worker_type)
         self.config = config
+        # The resolved approval/sandbox mode, already validated against the
+        # CLI's allowlist by :func:`resolve_permission_mode`. ``None`` means
+        # "use the registry default", resolved at start().
+        self._permission_mode = permission_mode
         # terminal_manager may be None at __init__ time when the
         # pool hasn't finished wiring it; the first ``start()``
         # call surfaces the diagnostic. We don't pre-validate
@@ -174,10 +241,23 @@ class ShellWorker(BaseWorker):
         # OPENAI_BASE_URL / ANTHROPIC_BASE_URL based on the
         # configured bifrost.routing flags. We don't need to
         # know about that here; it's the terminal manager's job.
+        mode = resolve_permission_mode(self.config, self._permission_mode)
+        command = render_command(self.config, mode)
+
+        # The prompt is data, so it travels as an environment variable that
+        # the command reads as "$MAHAVISHNU_PROMPT". It is never
+        # interpolated into the command string: the command reaches tmux as
+        # a single string that tmux runs via /bin/sh -c, so an interpolated
+        # prompt containing ";" or "$(...)" would execute.
+        env_overrides: dict[str, str] = {}
+        if prompt is not None:
+            env_overrides[PROMPT_ENV_VAR] = prompt
+
         sessions = await self._terminal_manager.launch_sessions(
-            command=self.config.command,
+            command=command,
             count=1,
             worker_type=self.worker_type,
+            env_overrides=env_overrides,
         )
         if not sessions:
             raise RuntimeError(

@@ -1722,6 +1722,16 @@ class WorkerConfig(BaseModel):
         default=True,
         description="Enable Session-Buddy result storage for workers",
     )
+    permission_modes: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Per-worker-type override of the agent's approval/sandbox mode, "
+            "e.g. {'terminal-claude': 'plan'}. The value is substituted into "
+            "the registry command at spawn time and validated against the "
+            "allowlist for that CLI (see workers.registry.PERMISSION_MODES). "
+            "Types not listed here keep the registry default."
+        ),
+    )
     container: ContainerSettings = Field(
         default_factory=ContainerSettings,
         description="Container worker runtime discovery and socket settings",

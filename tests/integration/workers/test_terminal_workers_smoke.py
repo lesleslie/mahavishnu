@@ -55,7 +55,13 @@ class _PoolableMockTerminalAdapter(MockTerminalAdapter):
         "ssh": ("$ ", "# ", "% "),
     }
 
-    async def launch_sessions(self, command: str, count: int) -> list[str]:
+    async def launch_sessions(
+        self,
+        command: str,
+        count: int,
+        worker_type: str = "terminal-claude",
+        env_overrides: dict[str, str] | None = None,
+    ) -> list[str]:
         return [await self.launch_session(command) for _ in range(count)]
 
     async def launch_session(

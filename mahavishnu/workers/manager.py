@@ -20,7 +20,7 @@ from .capabilities import (
     invalidate_capability,
 )
 from .registry import RuntimeKind, WorkerConfig, get_worker_config, get_worker_entry
-from .shell_backend import ShellWorker
+from .shell_backend import ShellWorker, resolve_permission_mode
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -409,6 +409,29 @@ class WorkerManager:
 
         return worker_ids
 
+    def _resolve_permission_mode(self, config: WorkerConfig) -> str | None:
+        """Resolve the agent's approval/sandbox mode from settings.
+
+        ``workers.permission_modes`` overrides the registry default per
+        worker type, e.g. ``{'terminal-claude': 'plan'}``. The value is
+        validated against the allowlist for that CLI -- it is substituted
+        into a command line, so an unchecked value could smuggle a flag
+        into the agent's argv.
+
+        A bad value raises at spawn time rather than silently falling back:
+        a deployment that asked for ``plan`` must not silently get
+        ``acceptEdits``.
+        """
+        override = None
+        settings = self.settings
+        workers_settings = getattr(settings, "workers", None)
+        modes = getattr(workers_settings, "permission_modes", None)
+        if isinstance(modes, dict):
+            candidate = modes.get(config.worker_type)
+            if isinstance(candidate, str):
+                override = candidate
+        return resolve_permission_mode(config, override)
+
     def _create_worker(self, worker_type: str, **kwargs: Any) -> BaseWorker:
         """Factory method for worker creation.
 
@@ -479,6 +502,7 @@ class WorkerManager:
                 config=config,
                 terminal_manager=self.terminal_manager,
                 session_buddy_client=self.session_buddy_client,
+                permission_mode=self._resolve_permission_mode(config),
             )
         return self._create_isolated_worker_from_config(config, kwargs)
 
