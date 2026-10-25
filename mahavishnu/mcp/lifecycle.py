@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-import logging
 from typing import TYPE_CHECKING, Any
+
+from oneiric.core.logging import get_logger
 
 from .bootstrap import register_profile_tools as _register_profile_tools_helper
 from .sweepers.task_orphan_sweeper import TaskOrphanSweeper
@@ -14,7 +15,7 @@ from .tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def get_session_buddy_client() -> Any:
@@ -50,7 +51,7 @@ async def start_change_point_tick_loop(server: Any) -> None:
         await app.start_change_point_tick_loop()
         logger.info("change-point tick loop started")
     except Exception as exc:  # background task init — keep server alive on any failure  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.error("Failed to start change-point tick loop: %s", exc)
+        logger.error(f"Failed to start change-point tick loop: {exc}")
         # Don't crash — drift detection is a degradable subsystem.
 
 
@@ -63,7 +64,7 @@ async def stop_change_point_tick_loop(server: Any) -> None:
         await app.stop_change_point_tick_loop()
         logger.info("change-point tick loop stopped")
     except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("Error stopping change-point tick loop: %s", exc)
+        logger.warning(f"Error stopping change-point tick loop: {exc}")
 
 
 def build_post_start_lifespan(server: Any) -> Any:
@@ -100,7 +101,7 @@ def build_post_start_lifespan(server: Any) -> Any:
         try:
             init_signer_feed_state()
         except Exception as exc:  # MCP server init — degrading gracefully is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.error("Failed to initialize skills_signer feed state: %s", exc)
+            logger.error(f"Failed to initialize skills_signer feed state: {exc}")
             # Don't crash the server — /health reports skills_signer
             # as degraded with the error message.
 
@@ -118,7 +119,7 @@ def build_post_start_lifespan(server: Any) -> Any:
             server._task_orphan_sweeper_task = sweeper_task
             logger.info("task_orphan_sweeper started (stream=bodai:events)")
         except Exception as exc:  # background task init — keep server alive on any failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.error("Failed to start task_orphan_sweeper: %s", exc)
+            logger.error(f"Failed to start task_orphan_sweeper: {exc}")
             # Don't crash — /health reports task_orphan_sweeper
             # degraded with the prior "not started" error message.
 
@@ -162,14 +163,12 @@ def build_post_start_lifespan(server: Any) -> Any:
                 runner.start()  # schedule the periodic loop for subsequent cycles
                 server._plan_index_runner = runner
                 logger.info(
-                    "plan_index cycle complete: success=%d errors=%d entities=%d (repo_root=%s)",
-                    outcome.success,
-                    outcome.errors,
-                    outcome.entities_count,
-                    repo_root or "<none — empty cycle>",
+                    f"plan_index cycle complete: success={outcome.success} "
+                    f"errors={outcome.errors} entities={outcome.entities_count} "
+                    f"(repo_root={repo_root or '<none — empty cycle>'})"
                 )
             except Exception as exc:  # plan_index background init — degradable subsystem per contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.error("Failed to start plan_index subsystem: %s", exc)
+                logger.error(f"Failed to start plan_index subsystem: {exc}")
                 # Don't crash — /health reports plan_index degraded.
 
         plan_index_task = asyncio.create_task(_init_plan_index(), name="plan_index_init")
@@ -195,14 +194,14 @@ def build_post_start_lifespan(server: Any) -> Any:
             except asyncio.CancelledError:
                 pass
             except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
+                logger.warning(f"Error awaiting task_orphan_sweeper task: {exc}")
         sweeper = getattr(server, "_task_orphan_sweeper", None)
         if sweeper is not None:
             try:
                 await sweeper.cleanup()
                 logger.info("task_orphan_sweeper stopped")
             except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("Error stopping task_orphan_sweeper: %s", exc)
+                logger.warning(f"Error stopping task_orphan_sweeper: {exc}")
 
         # plan_index init task (may have completed by now or may still
         # be running; cancel and wait for cleanup)
@@ -214,7 +213,7 @@ def build_post_start_lifespan(server: Any) -> Any:
             except asyncio.CancelledError:
                 pass
             except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("Error cancelling plan_index_init task: %s", exc)
+                logger.warning(f"Error cancelling plan_index_init task: {exc}")
 
         runner = getattr(server, "_plan_index_runner", None)
         if runner is not None:
@@ -222,7 +221,7 @@ def build_post_start_lifespan(server: Any) -> Any:
                 await runner.stop()
                 logger.info("plan_index runner stopped")
             except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("Error stopping plan_index runner: %s", exc)
+                logger.warning(f"Error stopping plan_index runner: {exc}")
 
         # change-point tick loop — cancel it so the task does not outlive
         # the event loop.
@@ -233,7 +232,7 @@ def build_post_start_lifespan(server: Any) -> Any:
         try:
             reset_signer_feed_state()
         except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("Error resetting signer_feed_state: %s", exc)
+            logger.warning(f"Error resetting signer_feed_state: {exc}")
 
     return _lifespan
 
@@ -272,9 +271,8 @@ async def start_server(
     methods_set = set(methods_to_call)
 
     logger.info(
-        "Starting Mahavishnu MCP server with tool profile: %s (%d registration groups scheduled)",
-        server._active_profile.value,
-        len(methods_to_call),
+        f"Starting Mahavishnu MCP server with tool profile: "
+        f"{server._active_profile.value} ({len(methods_to_call)} registration groups scheduled)"
     )
 
     # Wire managers that ``initialize_runtime_services`` sets up for the
@@ -352,14 +350,14 @@ async def stop_server(server: Any) -> None:
         except asyncio.CancelledError:
             pass
         except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("Error awaiting task_orphan_sweeper task: %s", exc)
+            logger.warning(f"Error awaiting task_orphan_sweeper task: {exc}")
     sweeper = getattr(server, "_task_orphan_sweeper", None)
     if sweeper is not None:
         try:
             await sweeper.cleanup()
             logger.info("task_orphan_sweeper stopped")
         except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("Error stopping task_orphan_sweeper: %s", exc)
+            logger.warning(f"Error stopping task_orphan_sweeper: {exc}")
 
     # Phase 3 — stop the plan_index rebuild loop so the periodic task
     # closes cleanly. Mirrors the signer reset pattern below. Skipped
@@ -370,7 +368,7 @@ async def stop_server(server: Any) -> None:
             await runner.stop()
             logger.info("plan_index runner stopped")
         except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("Error stopping plan_index runner: %s", exc)
+            logger.warning(f"Error stopping plan_index runner: {exc}")
 
     # Phase 1.5 — clear the skills_signer feed state singleton so
     # the next start() gets a fresh module-level state (and so a
@@ -384,7 +382,7 @@ async def stop_server(server: Any) -> None:
             await server.mcp_client._client.stop()
             logger.info("Stopped embedded MCP client")
         except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("Error stopping embedded MCP client: %s", exc)
+            logger.warning(f"Error stopping embedded MCP client: {exc}")
 
 
 async def register_worktree_tools(server: Any) -> None:
