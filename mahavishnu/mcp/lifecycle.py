@@ -29,6 +29,43 @@ def get_session_buddy_client() -> Any:
     return None
 
 
+async def start_change_point_tick_loop(server: Any) -> None:
+    """Start the change-point detector tick loop on the server's app.
+
+    This is the ONLY place the loop is started in production. It used
+    to be started opportunistically from ``MahavishnuApp.__init__``
+    (``bootstrap.init_observability``), which is a sync path with no
+    matching teardown — and the call site never ``await``ed the
+    manager's then-``async def`` method, so the loop never ran at all
+    and the detector was silently dead.
+
+    Starting it here pairs it with :func:`stop_change_point_tick_loop`,
+    so the task is cancelled rather than orphaned when the loop closes.
+    """
+    try:
+        app = getattr(server, "app", None)
+        if app is None:
+            logger.warning("change-point tick loop NOT started: server has no app")
+            return
+        await app.start_change_point_tick_loop()
+        logger.info("change-point tick loop started")
+    except Exception as exc:  # background task init — keep server alive on any failure  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.error("Failed to start change-point tick loop: %s", exc)
+        # Don't crash — drift detection is a degradable subsystem.
+
+
+async def stop_change_point_tick_loop(server: Any) -> None:
+    """Cancel the change-point tick loop task on shutdown."""
+    app = getattr(server, "app", None)
+    if app is None:
+        return
+    try:
+        await app.stop_change_point_tick_loop()
+        logger.info("change-point tick loop stopped")
+    except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("Error stopping change-point tick loop: %s", exc)
+
+
 def build_post_start_lifespan(server: Any) -> Any:
     """Return a FastMCP lifespan that runs all post-listener init.
 
@@ -138,6 +175,13 @@ def build_post_start_lifespan(server: Any) -> Any:
         plan_index_task = asyncio.create_task(_init_plan_index(), name="plan_index_init")
         server._plan_index_init_task = plan_index_task
 
+        # change-point detector tick loop.
+        #
+        # This is the ONLY place the loop is started, and it is paired
+        # with the shutdown half below so the task is cancelled rather
+        # than orphaned when the event loop closes.
+        await start_change_point_tick_loop(server)
+
         # ── yield: server runs here ──
         yield {}
 
@@ -179,6 +223,10 @@ def build_post_start_lifespan(server: Any) -> Any:
                 logger.info("plan_index runner stopped")
             except Exception as exc:  # teardown — non-fatal, just log  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning("Error stopping plan_index runner: %s", exc)
+
+        # change-point tick loop — cancel it so the task does not outlive
+        # the event loop.
+        await stop_change_point_tick_loop(server)
 
         from .signer_feed import reset_signer_feed_state
 

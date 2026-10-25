@@ -588,6 +588,16 @@ class MahavishnuApp:
         authoritative call site — start it from ``app.start()``
         or any other async lifecycle hook.
 
+        2026-10-24: ``ObservabilityManager.start_change_point_tick_loop``
+        is now synchronous and returns the ``asyncio.Task`` it created.
+        It used to be ``async def``, and this call site did not
+        ``await`` it — so the "task" stored in
+        ``self._change_point_tick_task`` was a *coroutine object*. The
+        tick loop therefore never started, the coroutine was collected
+        unawaited (a RuntimeWarning on every CLI run), and the stop
+        path called ``coroutine.cancel()``, which does not exist.
+        Calling a synchronous method removes that failure mode.
+
         Returns the asyncio.Task; callers should retain it for
         cancellation via ``stop_change_point_tick_loop``.
         """

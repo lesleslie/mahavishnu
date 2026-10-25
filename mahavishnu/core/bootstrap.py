@@ -379,33 +379,32 @@ def init_observability(app: Any):
     # not started, the §7 stage-1 gate is vacuously zero; the runbook
     # escalation policy explicitly assumes the loop is running. Log
     # loudly so operators see the gap.
-    try:
-        __import__("asyncio").get_running_loop()
-        # A loop IS running — start the tick loop immediately.
-        app._change_point_tick_task = manager.start_change_point_tick_loop(
-            metric_source=lambda: (
-                app.pool_manager.get_pool_queue_depths()
-                if hasattr(app, "pool_manager") and app.pool_manager is not None
-                else {}
-            ),
-        )
-    except RuntimeError:
-        # Sync bootstrap path — the tick loop will be started from
-        # MahavishnuApp.start_change_point_tick_loop (async). Until
-        # that runs, the detector is silent: this is operationally
-        # identical to the spec's Phase 6 default, but the §7 stage-1
-        # rollout gate will see zero drift events. Surface this loudly.
-        from oneiric.core.logging import get_logger
+    #
+    # 2026-10-24: this used to *opportunistically* start the loop when
+    # it noticed a running loop — and every call site invoked the
+    # (then-``async def``) manager method WITHOUT ``await``, so
+    # ``app._change_point_tick_task`` held a coroutine, not a task. The
+    # loop never ran, the coroutine was collected unawaited (a
+    # RuntimeWarning on every CLI run), and the stop path called
+    # ``coroutine.cancel()``, which does not exist.
+    #
+    # It no longer starts the loop at all. ``__init__`` has no matching
+    # teardown, so a task started here would be orphaned whenever the
+    # event loop closed — a "Task was destroyed but it is pending!"
+    # warning at best, a leaked task at worst. The MCP server's
+    # lifespan is the async lifecycle that starts it AND stops it
+    # (``mahavishnu/mcp/lifecycle.py``). Short-lived CLI commands never
+    # need a 60s-cadence drift detector.
+    app._change_point_tick_task = None
+    from oneiric.core.logging import get_logger
 
-        logger = get_logger(__name__)
-        logger.warning(
-            "change-point detector tick loop NOT started in init_observability "
-            "(sync bootstrap path). Operators must call "
-            "MahavishnuApp.start_change_point_tick_loop() from an async startup "
-            "path. Until then, drift_detected_total stays at zero and the §7 "
-            "stage-1 gate is vacuously satisfied."
-        )
-        app._change_point_tick_task = None
+    logger = get_logger(__name__)
+    logger.info(
+        "change-point detector tick loop not started by init_observability; "
+        "it is started and stopped by the MCP server lifespan "
+        "(MahavishnuApp.start_change_point_tick_loop). Until then, "
+        "drift_detected_total stays at zero."
+    )
     return manager
 
 

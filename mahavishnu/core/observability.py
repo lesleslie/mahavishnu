@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
@@ -1320,10 +1321,10 @@ class ObservabilityManager:
             except Exception as e:  # OTel force_flush may fail; log a warning but never raise from cleanup  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
-    async def start_change_point_tick_loop(
+    def start_change_point_tick_loop(
         self,
         metric_source: Any | None = None,
-    ) -> Any:
+    ) -> asyncio.Task:
         """Drive the change-point detector on a fixed cadence.
 
         CAL-2 (round-2 review): the Phase 6 pipeline
@@ -1334,13 +1335,35 @@ class ObservabilityManager:
         on the configured cadence (default 60s) for the configured
         ``changepoint.target_metric``.
 
-        R3-C1+C2 (round-3 review): must be called from a *running*
-        asyncio loop (i.e. an async startup path). The synchronous
-        ``__init__`` path cannot start the task because
-        ``asyncio.get_running_loop()`` raises ``RuntimeError`` when
-        no loop is active. Bootstrap callers should defer the call
-        to ``MahavishnuApp.start_change_point_tick_loop()`` (the app's
-        async lifecycle method) or any other coroutine context.
+        R3-C1+C2 (round-3 review): must be called with a *running*
+        asyncio loop. The synchronous ``__init__`` path cannot start
+        the task because ``asyncio.get_running_loop()`` raises
+        ``RuntimeError`` when no loop is active.
+
+        2026-10-24 — this method is SYNCHRONOUS and returns the
+        ``asyncio.Task`` it created. It used to be ``async def``, and
+        both of its call sites invoked it WITHOUT ``await``::
+
+            task = manager.start_change_point_tick_loop(...)   # a coroutine!
+
+        That assigned a *coroutine object* to the task slot, so:
+
+        - the body never ran, so ``asyncio.create_task`` was never
+          reached and the tick loop never started — the change-point
+          and 3-sigma detectors were silently dead in production;
+        - the coroutine was garbage-collected unawaited, emitting
+          ``RuntimeWarning: coroutine '...' was never awaited`` on
+          every CLI invocation;
+        - ``stop_change_point_tick_loop(task=coroutine)`` called
+          ``coroutine.cancel()``, which does not exist, so the
+          AttributeError was swallowed by the broad handler and the
+          task was never actually cancelled.
+
+        Making the method synchronous removes the whole failure mode:
+        there is nothing to forget to ``await``, and the returned
+        object is always a real ``asyncio.Task`` that can be
+        cancelled. A running loop is still required — ``create_task``
+        needs one — and the error message says so.
 
         Args:
             metric_source: optional callable returning
@@ -1353,14 +1376,12 @@ class ObservabilityManager:
         Returns:
             The asyncio.Task (callers can cancel it on shutdown).
         """
-        import asyncio
-
         try:
             asyncio.get_running_loop()
         except RuntimeError as exc:
             raise RuntimeError(
                 "start_change_point_tick_loop requires a running asyncio loop. "
-                "Call this method from an async startup path (e.g. "
+                "Call it from an async startup path (e.g. "
                 "MahavishnuApp.start_change_point_tick_loop), not from sync __init__."
             ) from exc
 
@@ -1409,9 +1430,24 @@ class ObservabilityManager:
         R3-C1 (round-3 review): the bootstrap originally leaked the
         tick task on shutdown. Callers should retain the task and
         cancel it here from ``MahavishnuApp.shutdown()``.
+
+        2026-10-24 — two corrections:
+
+        - ``asyncio.CancelledError`` is a ``BaseException``, so the
+          old ``except Exception`` did NOT catch it. Awaiting a
+          cancelled task therefore raised straight through this
+          method and into the caller's shutdown path. It is now
+          caught explicitly.
+        - A *coroutine* is not a task and has no ``.cancel()``. If
+          one is passed (a caller holding a pre-fix handle), it is
+          closed rather than awaited, so it does not emit "never
+          awaited" on garbage collection.
         """
         target = task if task is not None else getattr(self, "_change_point_tick_task", None)
         if target is None:
+            return
+        if asyncio.iscoroutine(target):
+            target.close()
             return
         try:
             target.cancel()
@@ -1419,7 +1455,10 @@ class ObservabilityManager:
             self.logger.debug("change-point tick cancel raised; ignoring", exc_info=True)
         try:
             await target
-        except Exception:  # awaited cancel may surface CancelledError or other shutdown quirks
+        except asyncio.CancelledError:
+            # Expected: this is the cancellation we just requested.
+            pass
+        except Exception:  # awaited cancel may surface other shutdown quirks
             self.logger.debug("change-point tick await raised; ignoring", exc_info=True)
 
     def shutdown(self):

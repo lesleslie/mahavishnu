@@ -2,7 +2,7 @@
 name: observability-changepoint
 status: adopted
 date: 2026-09-10
-last_reviewed: 2026-09-14
+last_reviewed: 2026-10-24
 owner: bodai-orchestrator
 role: canonical
 ---
@@ -11,7 +11,7 @@ role: canonical
 
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
-**Last updated:** 2026-09-14 (Phase 1 operator opt-in shipped — flip wired → adopted)
+**Last updated:** 2026-10-24 (tick loop actually wired into the MCP server lifespan — see "Wired")
 **Repo(s):** `/Users/les/Projects/mahavishnu`
 
 ## State — pick one
@@ -59,12 +59,43 @@ yes (Phase 6 commit; the detector is invoked via
 `ObservabilityManager._evaluate_change_point` on every metric
 sample from the `MetricSampler`).
 
+**Corrected 2026-10-24.** The description above inverted the
+dependency: the `MetricSampler` is *fed by* `_evaluate_change_point`,
+not the other way round. The only thing that drove
+`_evaluate_change_point` on a cadence was
+`ObservabilityManager.start_change_point_tick_loop` — and **both of
+its call sites invoked it without `await`** (it was `async def`).
+The task slot therefore held a coroutine, not an `asyncio.Task`, so:
+
+- the loop body never ran and the detector was **dead in
+  production** — `drift_detected_total` could never have been
+  non-zero from a live process;
+- the coroutine was collected unawaited, emitting a
+  `RuntimeWarning: coroutine '...' was never awaited` on every CLI
+  invocation;
+- the stop path called `coroutine.cancel()`, which does not exist, so
+  nothing was ever cancelled.
+
+Fixed by making `start_change_point_tick_loop` **synchronous** (it
+returns the `asyncio.Task` it creates, so there is nothing to forget
+to await) and by wiring the loop into the MCP server's lifespan
+(`mahavishnu/mcp/lifecycle.py`), which starts it on startup and
+cancels it on shutdown. `MahavishnuApp.__init__` no longer starts it
+opportunistically — a sync constructor has no matching teardown, so
+a task started there would be orphaned when the event loop closed.
+
+Regression coverage:
+`tests/unit/observability/test_change_point_tick_loop.py`.
+
 ## Trigger path
 
+* Driver: `ObservabilityManager.start_change_point_tick_loop` — an
+  `asyncio.Task` running at `changepoint.sampler_cadence_seconds`
+  (default 60s). Started and stopped by the MCP server lifespan.
 * Entry point: `ObservabilityManager._evaluate_change_point(metric_name, value)` and
   `ObservabilityManager._evaluate_3sigma(metric_name, value)`
 * Sample source: `MetricSampler` (ring buffer, default 7200 samples
-  at 60s cadence; 2-hour window)
+  at 60s cadence; 2-hour window) — fed *by* the entry point above.
 * Detector factory: lazy on first call, cached on
   `self._changepoint_detector`. Uses
   `changepoint.{slack, threshold, detector}` from config.
