@@ -8,13 +8,15 @@ prompt, poll the pane, return on the completion sentinel.
 
 from __future__ import annotations
 
+import asyncio
+import pathlib
 from typing import Any
 
 import pytest
 
 from mahavishnu.workers import shell_backend
 from mahavishnu.workers.registry import PROMPT_ENV_VAR
-from mahavishnu.workers.shell_backend import ShellWorker
+from mahavishnu.workers.shell_backend import STDERR_PATH_ENV_VAR, ShellWorker
 
 
 class _FakeManager:
@@ -339,7 +341,11 @@ class _OneShotManager:
 def _one_shot_config(**overrides: Any) -> Any:
     base = {
         "worker_type": "terminal-probe",
-        "command": "sh -lc 'probe \"$MAHAVISHNU_PROMPT\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"'",
+        "command": (
+            "sh -lc 'probe \"$MAHAVISHNU_PROMPT\" "
+            "2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; "
+            "printf \"\\n__MAHAVISHNU_DONE__\\n\"'"
+        ),
         "default_timeout": 5,
         "permission_mode": None,
         "requires_tool": "claude",
@@ -427,3 +433,61 @@ def test_the_instruction_keeps_the_token_at_the_end() -> None:
 
     assert instruction.rstrip().endswith(shell_backend._ECHO_ANCHOR)
     assert instruction.index(marker) < instruction.index(shell_backend._ECHO_ANCHOR)
+
+
+# ---------------------------------------------------------------------------
+# The stderr file is private and per-invocation
+# ---------------------------------------------------------------------------
+
+
+async def test_the_worker_creates_a_private_stderr_file() -> None:
+    """mkstemp semantics: unique per invocation, mode 0600.
+
+    A fixed pathname in a shared directory is a symlink target, and the
+    default umask would leave the CLI's stderr world-readable.
+    """
+    import os
+    import stat
+
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="do the thing")
+
+    path = manager.env_overrides[STDERR_PATH_ENV_VAR]
+    assert path
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+
+    # A second worker gets a different file.
+    other = _OneShotManager()
+    other_worker = ShellWorker(config=_one_shot_config(), terminal_manager=other)  # type: ignore[arg-type]
+    await other_worker.start(prompt="do the thing")
+    assert other.env_overrides[STDERR_PATH_ENV_VAR] != path
+
+
+async def test_the_stderr_file_is_removed_after_the_run() -> None:
+    """No diagnostic litter accumulates in the temp directory."""
+    import os
+
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="do the thing")
+    path = manager.env_overrides[STDERR_PATH_ENV_VAR]
+
+    await worker.execute({"prompt": "do the thing"})
+
+    assert not os.path.exists(path)
+
+
+async def test_the_stderr_tail_reaches_the_result() -> None:
+    """The CLI's stderr is preserved in the result, not left in a file."""
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    await worker.start(prompt="do the thing")
+    path = manager.env_overrides[STDERR_PATH_ENV_VAR]
+    await asyncio.to_thread(
+        pathlib.Path(path).write_text, "MCP server failed to start\n", encoding="utf-8"
+    )
+
+    result = await worker.execute({"prompt": "do the thing"})
+
+    assert "MCP server failed to start" in (result.metadata.get("stderr_tail") or "")

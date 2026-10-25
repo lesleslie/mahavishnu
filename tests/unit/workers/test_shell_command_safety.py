@@ -26,6 +26,7 @@ from mahavishnu.workers.registry import (
     WORKER_REGISTRY,
     WorkerConfig,
 )
+from mahavishnu.workers.shell_backend import STDERR_PATH_ENV_VAR
 
 HOSTILE_PROMPT = 'hello"; touch /tmp/pwned; echo "'
 
@@ -315,10 +316,29 @@ ONE_SHOT_COMMANDS = (
 
 @pytest.mark.parametrize("worker_type", ONE_SHOT_COMMANDS)
 def test_the_one_shot_command_keeps_stderr_out_of_the_pane(worker_type: str) -> None:
-    """stderr goes to a log file; stdout stays in the pane."""
+    """stderr goes to a file; stdout stays in the pane."""
     command = WORKER_REGISTRY[worker_type].command
 
     assert "2>>" in command, f"{worker_type} must not merge stderr into the pane"
-    assert "mahavishnu-worker-stderr.log" in command
+    assert STDERR_PATH_ENV_VAR in command
     # The redirect must apply to the CLI, not to the marker printf.
     assert command.index("2>>") < command.index("__MAHAVISHNU_DONE__")
+
+
+@pytest.mark.parametrize("worker_type", ONE_SHOT_COMMANDS)
+def test_the_stderr_redirect_has_no_shared_fixed_path(worker_type: str) -> None:
+    """The stderr file must be per-invocation, not a fixed name in /tmp.
+
+    A fixed pathname in a shared directory is a symlink target: anything
+    else on the machine could pre-create it pointing at a file the
+    worker can write, and the default umask would leave the CLI's
+    stderr world-readable. The path is chosen by the worker (mkstemp,
+    0600) and handed over in the environment.
+    """
+    command = WORKER_REGISTRY[worker_type].command
+
+    assert "/tmp/mahavishnu-worker-stderr" not in command
+    assert "${TMPDIR:-/tmp}" not in command
+    # The fallback for an unset variable is a character device, not a
+    # regular file in a shared directory.
+    assert "/dev/null" in command

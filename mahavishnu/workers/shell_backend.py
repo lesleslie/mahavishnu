@@ -24,8 +24,11 @@ through Bifrost.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+import os
 import re
+import tempfile
 import time
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -60,8 +63,13 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 #: Where the one-shot commands send the CLI's stderr. The pane is the
 #: CLI's stdout and stderr merged, and the agent CLIs' MCP servers print
 #: startup noise there -- which is what the first live dispatch reported
-#: as its "output". stdout stays in the pane; stderr goes here.
-_WORKER_STDERR_LOG = "${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"
+#: as its "output". stdout stays in the pane; stderr goes to the file
+#: whose path this variable carries.
+STDERR_PATH_ENV_VAR = "MAHAVISHNU_STDERR_PATH"
+
+#: Fallback when the variable is unset: /dev/null, a character device.
+#: A regular file in a shared directory would be a symlink target.
+_WORKER_STDERR_FALLBACK = "/dev/null"
 
 #: How long to wait for the CLI to draw something before typing into it.
 #: The session is launched and the prompt is typed immediately, so without
@@ -279,6 +287,9 @@ class ShellWorker(BaseWorker):
         # True when the prompt was delivered with the launch command (the
         # one-shot shape) rather than typed into the session by execute().
         self._prompt_delivered = False
+        # The private stderr file for this invocation, when the command
+        # redirects stderr. Drained and removed when the run finishes.
+        self._stderr_path: str | None = None
 
     async def start(self, *, prompt: str | None = None) -> str:
         if self._terminal_manager is None:
@@ -307,6 +318,22 @@ class ShellWorker(BaseWorker):
             # already running it. ``execute()`` must not type it again --
             # it waits for the CLI to finish instead.
             self._prompt_delivered = True
+
+        # The one-shot commands send the CLI's stderr to a file rather
+        # than to the pane, where the MCP servers' startup noise would sit
+        # at the head and hide the answer.
+        #
+        # The file is created HERE, not by the shell: a fixed pathname in
+        # a shared directory is a symlink target for anything else on the
+        # machine, and the default umask would make it world-readable.
+        # mkstemp creates it atomically (O_EXCL) with mode 0600, and the
+        # path is unique per invocation so concurrent workers cannot
+        # interleave into the same file.
+        if STDERR_PATH_ENV_VAR in command:
+            fd, path = tempfile.mkstemp(prefix="mahavishnu-worker-stderr-", suffix=".log")
+            os.close(fd)
+            env_overrides[STDERR_PATH_ENV_VAR] = path
+            self._stderr_path = path
 
         sessions = await self._terminal_manager.launch_sessions(
             command=command,
@@ -419,6 +446,29 @@ class ShellWorker(BaseWorker):
             metadata={"session_id": self._session_id, "sentinel": marker, "timed_out": True},
         )
 
+    def _drain_stderr(self, limit: int = 2000) -> str:
+        """Read this invocation's stderr tail and remove the file.
+
+        The file was created with mkstemp (0600, unique, no symlink
+        following) so nothing else on the machine can read it or point
+        it somewhere else. It is removed here so no diagnostic litter
+        accumulates in the temp directory.
+        """
+        path = self._stderr_path
+        self._stderr_path = None
+        if path is None:
+            return ""
+        try:
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                text = handle.read()
+        except OSError:
+            return ""
+        finally:
+            with contextlib.suppress(OSError):
+                os.unlink(path)
+        text = text.strip()
+        return text[-limit:] if len(text) > limit else text
+
     async def _await_completion(self, task: dict[str, Any]) -> WorkerResult:
         """Wait for the CLI to exit, signalled by a completion marker.
 
@@ -447,24 +497,30 @@ class ShellWorker(BaseWorker):
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
             pane = await manager.capture_output(session_id)
             if any(marker in pane for marker in markers):
+                stderr_tail = self._drain_stderr()
                 return WorkerResult(
                     worker_id=session_id,
                     status=WorkerStatus.COMPLETED,
                     output=_strip_markers(pane, markers),
                     exit_code=0,
                     duration_seconds=timeout_s - (deadline - time.monotonic()),
-                    metadata={"session_id": session_id, "completion_markers": markers},
+                    metadata={
+                        "session_id": session_id,
+                        "completion_markers": markers,
+                        "stderr_tail": stderr_tail,
+                    },
                 )
             if self._status is WorkerStatus.CANCELLED:
                 break
 
+        stderr_tail = self._drain_stderr()
         return WorkerResult(
             worker_id=session_id,
             status=WorkerStatus.TIMEOUT,
             output=_strip_markers(pane, markers),
             error=(
-                f"CLI did not emit any completion marker {markers!r} within {timeout_s}s; "
-                f"the CLI's stderr is in {_WORKER_STDERR_LOG}"
+                f"CLI did not emit any completion marker {markers!r} within {timeout_s}s"
+                + (f"; the CLI's stderr: {stderr_tail}" if stderr_tail else "")
             ),
             duration_seconds=timeout_s,
             metadata={"session_id": session_id, "timed_out": True},

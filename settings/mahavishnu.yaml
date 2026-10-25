@@ -533,35 +533,35 @@ worker_registry:
       provides: ["worker:node-repl"]
     - worker_type: terminal-claude
       name: "Claude Code"
-      command_argv: ["sh", "-lc", "claude --output-format stream-json --permission-mode {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
+      command_argv: ["sh", "-lc", "claude --output-format stream-json --permission-mode {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
       completion_markers: ["__MAHAVISHNU_DONE__"]
       requires_tool: claude
       one_shot: true
       provides: ["worker:claude-persistent", "worker:ai-context"]
     - worker_type: terminal-qwen
       name: "Qwen AI"
-      command_argv: ["sh", "-lc", "qwen -o stream-json --approval-mode {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
+      command_argv: ["sh", "-lc", "qwen -o stream-json --approval-mode {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
       completion_markers: ["__MAHAVISHNU_DONE__"]
       requires_tool: qwen
       one_shot: true
       provides: ["worker:qwen-persistent", "worker:ai-context"]
     - worker_type: terminal-codex
       name: "Codex CLI"
-      command_argv: ["sh", "-lc", "codex exec --json --sandbox {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
+      command_argv: ["sh", "-lc", "codex exec --json --sandbox {permission_mode} \"$MAHAVISHNU_PROMPT\" 2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
       completion_markers: ["__MAHAVISHNU_DONE__"]
       requires_tool: codex
       one_shot: true
       provides: ["worker:codex-oneshot", "worker:ai-context"]
     - worker_type: terminal-deepagents
       name: "DeepAgents CLI"
-      command_argv: ["sh", "-lc", "deepagents-cli --non-interactive \"$MAHAVISHNU_PROMPT\" --quiet --no-stream 2>>\"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
+      command_argv: ["sh", "-lc", "deepagents-cli --non-interactive \"$MAHAVISHNU_PROMPT\" --quiet --no-stream 2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
       completion_markers: ["__MAHAVISHNU_DONE__"]
       requires_tool: deepagents-cli
       one_shot: true
       provides: ["worker:deepagents-oneshot", "worker:ai-context"]
     - worker_type: terminal-clai
       name: "CLAI"
-      command_argv: ["sh", "-lc", "clai --no-stream \"$MAHAVISHNU_PROMPT\" 2>>\"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
+      command_argv: ["sh", "-lc", "clai --no-stream \"$MAHAVISHNU_PROMPT\" 2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; printf \"\\n__MAHAVISHNU_DONE__\\n\"; read -r _"]
       completion_markers: ["__MAHAVISHNU_DONE__"]
       requires_tool: clai
       one_shot: true
