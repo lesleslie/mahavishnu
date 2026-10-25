@@ -170,7 +170,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         # which the tmux keystroke path got wrong.
         command=(
             'sh -lc \'qwen -o stream-json --approval-mode {permission_mode} '
-            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '"$MAHAVISHNU_PROMPT" 2>>"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Fast local AI coding assistant with Qwen model",
@@ -191,7 +191,8 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         # and the shell prints the completion marker when the CLI exits.
         command=(
             'sh -lc \'claude --output-format stream-json '
-            '--permission-mode {permission_mode} "$MAHAVISHNU_PROMPT"; '
+            '--permission-mode {permission_mode} "$MAHAVISHNU_PROMPT" '
+            '2>>"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"; '
             'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
@@ -211,7 +212,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-codex",
         command=(
             'sh -lc \'codex exec --json --sandbox {permission_mode} '
-            '"$MAHAVISHNU_PROMPT"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '"$MAHAVISHNU_PROMPT" 2>>"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Codex CLI one-shot execution with marker-based completion",
@@ -230,7 +231,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-deepagents",
         command=(
             'sh -lc \'deepagents-cli --non-interactive "$MAHAVISHNU_PROMPT" '
-            '--quiet --no-stream; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '--quiet --no-stream 2>>"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="DeepAgents CLI one-shot execution with marker-based completion",
@@ -247,7 +248,8 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         name="CLAI",
         worker_type="terminal-clai",
         command=(
-            'sh -lc \'clai --no-stream "$MAHAVISHNU_PROMPT"; '
+            'sh -lc \'clai --no-stream "$MAHAVISHNU_PROMPT" '
+            '2>>"${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"; '
             'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,

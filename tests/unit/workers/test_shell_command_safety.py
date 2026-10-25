@@ -288,3 +288,37 @@ def test_the_one_shot_marker_comes_after_the_cli(worker_type: str) -> None:
     command = WORKER_REGISTRY[worker_type].command
 
     assert command.index("__MAHAVISHNU_DONE__") > command.index(PROMPT_ENV_VAR)
+
+
+# ---------------------------------------------------------------------------
+# The pane holds the answer, not the CLI's stderr
+# ---------------------------------------------------------------------------
+#
+# The agent CLIs start MCP servers, and those servers print startup noise
+# to stderr -- a Python deprecation warning from the session-buddy MCP
+# server was what the first live dispatch reported as its "output".
+# The pane is the CLI's stdout and stderr merged, so the noise landed at
+# the head and the adapter's 200-character truncation showed only that.
+#
+# So the one-shot commands route stderr to a log file and leave stdout in
+# the pane, where the completion marker and the answer both live.
+
+
+ONE_SHOT_COMMANDS = (
+    "terminal-qwen",
+    "terminal-claude",
+    "terminal-codex",
+    "terminal-deepagents",
+    "terminal-clai",
+)
+
+
+@pytest.mark.parametrize("worker_type", ONE_SHOT_COMMANDS)
+def test_the_one_shot_command_keeps_stderr_out_of_the_pane(worker_type: str) -> None:
+    """stderr goes to a log file; stdout stays in the pane."""
+    command = WORKER_REGISTRY[worker_type].command
+
+    assert "2>>" in command, f"{worker_type} must not merge stderr into the pane"
+    assert "mahavishnu-worker-stderr.log" in command
+    # The redirect must apply to the CLI, not to the marker printf.
+    assert command.index("2>>") < command.index("__MAHAVISHNU_DONE__")

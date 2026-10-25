@@ -57,6 +57,12 @@ _POLL_INTERVAL_SECONDS = 1.0
 #: Fallback when neither the task nor the worker config carries a timeout.
 _DEFAULT_TIMEOUT_SECONDS = 300
 
+#: Where the one-shot commands send the CLI's stderr. The pane is the
+#: CLI's stdout and stderr merged, and the agent CLIs' MCP servers print
+#: startup noise there -- which is what the first live dispatch reported
+#: as its "output". stdout stays in the pane; stderr goes here.
+_WORKER_STDERR_LOG = "${TMPDIR:-/tmp}/mahavishnu-worker-stderr.log"
+
 #: How long to wait for the CLI to draw something before typing into it.
 #: The session is launched and the prompt is typed immediately, so without
 #: this wait the keystrokes can land while the CLI is still starting --
@@ -457,7 +463,8 @@ class ShellWorker(BaseWorker):
             status=WorkerStatus.TIMEOUT,
             output=_strip_markers(pane, markers),
             error=(
-                f"CLI did not emit any completion marker {markers!r} within {timeout_s}s"
+                f"CLI did not emit any completion marker {markers!r} within {timeout_s}s; "
+                f"the CLI's stderr is in {_WORKER_STDERR_LOG}"
             ),
             duration_seconds=timeout_s,
             metadata={"session_id": session_id, "timed_out": True},
