@@ -101,8 +101,8 @@ In scope (the 8 items, refined from v1/v2):
                     │  ├── INSERT ... ON CONFLICT               │
                     │  │     (trace_id, span_id) DO NOTHING     │
                     │  │     RETURNING span_id                  │
-                    │  ├── /metrics on :9464                    │
-                    │  └── Prometheus counters emitted          │
+                    │  ├── Prometheus counters emitted          │
+                    │  │     (on the :8682 /metrics route)      │
                     └───────────────────────────────────────────┘
                                        │
                                        ▼
@@ -674,12 +674,29 @@ class HotStore(DuckdbHotStore):
         """
 ```
 
-Prometheus listener bound to `:9464`:
-- `telemetry.receiver.batch_inserted{outcome}` (counter — `.inc(amount=N)` per batch per outcome; `n` is NOT a label, it is the increment; v3 had this wrong)
-- `telemetry.receiver.batch_size` (histogram, log scale)
-- `telemetry.receiver.receiver_started_total` (counter)
-- `telemetry.receiver.row_rejected{reason,field}` (counter — labeled)
-- `telemetry.receiver.dlq_insert_failed{reason}` (counter — labeled; `.inc(amount=N)` where N is the count of rows whose DLQ write failed)
+Prometheus counters, on the **:8682 `/metrics` route** (v8 — the
+`:9464` listener is not a thing; see the note below):
+- `akosha_otlp_spans_received_total` (counter — spans accepted off the wire, before validation)
+- `akosha_otlp_spans_inserted_total` (counter — rows written to `spans_substrate`)
+- `akosha_otlp_spans_deduped_total` (counter — spans skipped because the span_id was already present)
+- `akosha_otlp_spans_rejected_total{field}` (counter — quarantined to `_dlq_rows`, labelled by the field that failed)
+- `akosha_otlp_dlq_inserts_total` (counter — rows written to `_dlq_rows`)
+- `akosha_otlp_dlq_insert_failed_total` (counter — DLQ writes that raised; the evidence was lost)
+- `akosha_otlp_http_body_undecodable_total` (counter — bodies that failed protobuf decode)
+- `akosha_otlp_sweep_first_started_unix_nano` / `akosha_otlp_sweep_last_completed_unix_nano` (gauges)
+- `akosha_otlp_sweep_duration_seconds` (histogram)
+- `akosha_otlp_retention_sweep_failed_total{table}` (counter — labelled by table)
+- `akosha_otlp_dlq_rows_deleted_total` (counter)
+- `akosha_otlp_resource_rejected_total` / `akosha_otlp_resource_drift_alert_total` / `akosha_otlp_resource_drift_values` (PR-A6)
+- `akosha_otlp_heartbeat_*` (PR-A5)
+
+**Why not `:9464`.** `OTLPReceiver.PROMETHEUS_PORT = 9464` is a
+class attribute that was never bound, and 9464 is Grafana Alloy's
+`otelcol.exporter.prometheus` default endpoint — binding it would
+collide the moment that exporter is given an `endpoint`. The receiver
+has no business owning a second port when a metrics route is already
+served for it on `:8682`. The constant is retained only as a
+description of the original intent; it is dead code.
 
 The gRPC servicer class is `opentelemetry.proto.collector.trace.v1.TraceServiceServicer` (the canonical OTel collector trace service). Subclass to override `Export`; route to `_handle_batch`.
 
@@ -1105,17 +1122,26 @@ The two are distinct. The heartbeat watcher reads `known_mcp_servers` for the pe
 # 1. Confirm Akosha reachable
 curl -fsS http://localhost:8682/health | jq '.checks'
 
-# 2. Inspect known_mcp_servers
-akosha admin heartbeat registry ls
+# 2. Inspect the roster the watcher is checking. There is no
+#    `akosha admin heartbeat registry ls` command -- the roster is a
+#    settings key, and the watcher reports against it:
+#      akosha_otlp_heartbeat_service_absent_total{...}   a producer went quiet
+#      akosha_otlp_heartbeat_p0_a_total{...}             P0-A fired
+#      akosha_otlp_heartbeat_empty_roster_total          the roster itself is empty
+curl -fsS http://localhost:8682/metrics | grep "^akosha_otlp_heartbeat_"
 
 # 3. Verify spans_substrate (receiver is the substrate's write path)
-tail -n 200 ~/.akosha/logs/observability/otlp_receiver.log | grep -i "lifecycle\|spans_substrate"
+tail -n 200 ~/.local/state/mcp/logs/akosha.err | grep -i "lifecycle\|spans_substrate"
 
-# 4. Read receiver state
-akosha hot-store exec "SELECT * FROM _akosha_otel_receiver_state"
+# 4. Read the receiver's own state. There is no `akosha hot-store exec` --
+#    the substrate is in-memory and has no CLI surface. The receiver's
+#    state is on the metrics route:
+curl -fsS http://localhost:8682/metrics \
+  | grep -E "^akosha_otlp_(spans_received|spans_inserted|spans_rejected)_total"
 
-# 5. Verify spans_substrate present
-akosha hot-store inspect --table spans_substrate
+# 5. Verify spans_substrate is present and populated, via the read path:
+#    mcp__akosha__search_spans {limit: 5}   -- the rows
+#    mcp__akosha__spans_summary {}          -- the counts
 ```
 
 ### 11.2 P0-B query-failure threshold
@@ -1130,80 +1156,113 @@ ALERT telemetry_heartbeat_query_failed_persistent
     runbook_url: "..."
 ```
 
-### 11.1.5 Retention sweep failure (v6)
+### 11.1.5 Retention sweep failure (v8 — rewritten 2026-10-27)
 
-`retention_sweep_failed{phase="delete",reason}` counter > 0 OR `sweep_retention_late` alert firing (v6 — alert is gated by `sweep_first_started_unix_nano > 0` so a never-run sweep doesn't page). Disambiguate which state you're in before action:
+`akosha_otlp_retention_sweep_failed_total{table}` > 0, OR the
+`sweep_retention_late` alert firing (the alert is gated by
+`akosha_otlp_sweep_first_started_unix_nano > 0`, so a sweep that has not
+come due yet cannot page anyone). Disambiguate which state you are in
+before taking action:
 
 ```bash
-# 1. Distinguish "never ran on this pod" from "frozen on archival":
-curl -fsS http://localhost:9464/metrics | grep -E "telemetry_receiver_sweep_(first_started|last_completed)_unix_nano"
-# Both 0           => sweep has never run (likely operator just deployed)
-# first_started > 0, last_completed = 0 => sweep has run but failed (most recent cycle)
-# first_started > 0, last_completed > 0 => sweep is healthy; check row count trend instead (see §11.1.6)
+# 1. Distinguish "has not come due yet" from "the last cycle failed":
+curl -fsS http://localhost:8682/metrics \
+  | grep -E "^akosha_otlp_sweep_(first_started|last_completed)_unix_nano"
+# both 0                        => the sweep has not come due yet. It runs one
+#                                  full interval AFTER start, not at t=0.
+# first_started > 0, last_completed = 0 => the last cycle FAILED
+# first_started > 0, last_completed > 0 => the last cycle completed cleanly;
+#                                  check the row-count trend instead (§11.1.6)
 
-# 2. If sweep has run, identify which phase:
-curl -fsS http://localhost:9464/metrics | grep retention_sweep_failed
-# v6: phase="copy" never increments (COPY failures route to archival_failed instead);
-# phase="delete" fires on DuckDB IO errors inside the DELETE branch.
-
-# 3. If phase="delete" / DuckDB IO:
-#     Most common: two Akosha pods race the sweep; one holds the file lock, the other fails.
-#     Failing pods should clear at the next 6h window. If alerts persist >12h, restart
-#     one pod at a time.
-
-# 4. Manual recovery (v6 — DO NOT use the bare SQL command; use the CLI subcommand):
-akosha admin otel retention manual-run --retention-days 30 --dry-run
-# (prints the SQL it would execute + the predicted deleted-row count, prompts confirm)
-akosha admin otel retention manual-run --retention-days 30 --apply --confirm "delete rows older than 30 days"
-# (typed-phrase confirmation; the regex-validated archival_target path is computed
-# internally so a fat-fingered shell arithmetic can't drop hot data)
+# 2. Which table failed — the counter is labelled by table:
+curl -fsS http://localhost:8682/metrics | grep "^akosha_otlp_retention_sweep_failed_total"
+# {table="spans_substrate"} or {table="_dlq_rows"}
 ```
 
-### 11.1.6 Cardinality alarm (v6)
+**The metrics endpoint is `:8682/metrics`, not `:9464`.** The receiver
+has no port of its own: `OTLPReceiver.PROMETHEUS_PORT = 9464` is dead
+code, and 9464 is Grafana Alloy's `otelcol.exporter.prometheus` default
+endpoint, so binding it would collide the moment that exporter is given
+an `endpoint`. The receiver's metrics ride the MCP server's own
+`/metrics` route.
+
+3. If the failure is DuckDB IO:
+   Two Akosha pods racing the sweep is the multi-pod failure mode; this
+   host runs one pod, so a single-pod failure is a real IO error, not a
+   race. A failing pod clears at the next 6h window.
+
+4. **There is no manual-run command.** The sweep is a lifespan task, not
+   a CLI subcommand — see §11.4a. Recovery is: fix the cause, then let
+   the next interval elapse. Restarting akosha does **not** force a
+   sweep; it restarts the interval clock, so the next sweep is a full
+   interval away again.
+
+5. To see what the sweep is about to remove, ask the substrate rather
+   than the shell. The retention cutoff is
+   `now - spans_substrate.retention_days`, and it filters on
+   `received_at_unix_nano` (the receiver's clock — §15's cardinal rule):
+   - `mcp__akosha__spans_summary` with `cutoff_unix_nano` set to the
+     cutoff boundary returns the count of rows that fall OUTSIDE the
+     retention window.
+   - `mcp__akosha__search_spans` with `since_unix_nano` set to the same
+     boundary returns those rows.
+
+### 11.1.6 Cardinality alarm (v8 — rewritten 2026-10-27)
 
 `spans_substrate_row_count_high` alert firing:
 
 ```bash
-# 1. Use v6's two-gauge disambiguation (§11.1.5)
-curl -fsS http://localhost:9464/metrics | grep -E "telemetry_receiver_sweep_(first_started|last_completed)_unix_nano"
-# AND row count trend (the substrate's row count, sampled over time):
-akosha admin otel retention cardinality-report
+# 1. The sweep's own state (§11.1.5's two-gauge disambiguation):
+curl -fsS http://localhost:8682/metrics \
+  | grep -E "^akosha_otlp_sweep_(first_started|last_completed)_unix_nano"
 
-# 2. If sweep is alive (last_completed > 0, recent) AND row count climbing:
-#     Lower retention_days OR raise archival_target via:
-akosha admin otel retention config set --retention-days 14 --reload
-# (CLI is dry-run by default; --apply required for mutation; receiver reads
-#  the new value on next sweep cycle without process restart)
+# 2. Ingest rate — the substrate's own counters:
+curl -fsS http://localhost:8682/metrics \
+  | grep -E "^akosha_otlp_spans_(received|inserted)_total"
 
-# 3. If sweep is stale (last_completed > 12h old) AND first_started > 0:
-#     See §11.1.5 step 3 (DuckDB IO / multi-pod race) or §11.1.7 (archival).
+# 3. Distinct namespace values the validator has seen — the cardinality
+#    signal it actually tracks:
+curl -fsS http://localhost:8682/metrics | grep "^akosha_otlp_resource_drift_values"
 
-# 4. If first_started == 0: sweep has never run (boot just completed; wait 1 cycle).
+# 4. Row counts per (selector, task_class) pair, via the substrate read
+#    path rather than a shell:
+#    mcp__akosha__spans_summary {selector: ..., task_class: ..., cutoff_unix_nano: 0}
 ```
 
-### 11.1.7 Archival-loss prevention: COPY-failure skips DELETE (v6)
+2. If the sweep is alive (last_completed > 0) AND the row count is
+   climbing: lower the retention horizon in `akosha/settings/akosha.yaml`
+   (or the deployment's local override):
 
-If `archival_failed{reason}` > 0:
+   ```yaml
+   spans_substrate:
+     retention_days: 14
+   ```
 
-```bash
-# 1. Diagnose the COPY failure
-tail -n 200 ~/.akosha/logs/observability/otlp_receiver.log | grep archival_target_write_failed | tail -10
-# Common causes:
-#   NFS:                     mount dropped → remount; sweep retries next cycle
-#   S3 IAM:                  aws iam get-access-key-last-used; rotate to active key
-#   S3 bucket:               aws s3 ls $ARCHIVAL_TARGET (validate bucket exists)
-#   Local filesystem full:   df -h $ARCHIVAL_DIR; archive target needs more space
-#   Path not matching §8.2 ARCHIVAL_TARGET_RE: settings change refused at
-#                                       config-load time; fix the YAML to a valid path
+   The receiver reads the value on the next sweep cycle, so **no restart
+   is needed**. There is no `config set` command — see §11.4a.
 
-# 2. After fix, force one sweep cycle manually OR wait for next 6h:
-akosha admin otel retention sweep-once
-# (Sweep uses the same _spans_substrate_retention_sweep body; safe to invoke
-#  manually — the lifespan task will also resume on the next interval.)
+3. If the sweep is stale (last_completed older than 12h) AND
+   first_started > 0: see §11.1.5.
 
-# 3. Verify recovery: archival_last_success_unix_nano advances within 6h.
-curl -fsS http://localhost:9464/metrics | grep archival_last_success_unix_nano
-```
+4. If first_started == 0: the sweep has not come due yet. It runs one
+   full interval after start, not at t=0 — wait one interval.
+
+### 11.1.7 Cold archival — NOT SHIPPED (v8)
+
+§8.2 permits `archival_target: null` (no cold sink), and that is what
+ships. The retention sweep **deletes** expired rows; it does not COPY
+them anywhere first. So there is no `archival_failed` counter and no
+`archival_last_success_unix_nano` gauge.
+
+**Do not write a PromQL rule on `archival_failed`.** The series does not
+exist, and a rule on a missing series never fires — so the alert would
+be silently dead, which is worse than no alert, because it reads as
+"archived fine". That silence is the specific failure this section
+exists to prevent.
+
+If a cold sink is required, that is a separate change with its own
+review: an operator-configured egress path for span rows. Until it
+exists, the sweep deletes rather than stalling on a write it cannot make.
 
 ### 11.3 Synthetic canary span (v4 addition; ops P0)
 
@@ -1242,7 +1301,7 @@ A canary write is **succeeded** iff `_handle_batch` returns `BatchResult(ok=1, d
 **PromQL bridge (v6 — wires the dataclass state to a Prometheus gauge surface AND has liveness)**:
 
 ```python
-# PR-A4 — lifespan task; bridges CanaryState -> /metrics on :9464.
+# PR-A4 — lifespan task; bridges CanaryState -> /metrics on :8682.
 # v7: explicit `stop_event` positional arg (was free variable in v6).
 # v6: wraps the loop body in try/except; transient failure does NOT kill the task.
 # Bridge alive invariant: retrying the same logic on the next iteration is acceptable;
@@ -1310,87 +1369,47 @@ P0-C catches:
 - `start()` succeeded but `_handle_batch` doesn't (e.g., a span class renamed without aliasing, JSON serializer accidentally returns `None` for `attributes`).
 - DLQ-flood scenarios where good rows stop landing.
 - Cold-start of substrate (the first canary might be slow; the P0 only fires after 90s).
-- The bridge itself is dead (Prometheus scrapes `:9464/metrics` and gets no `canary_last_success_unix_nano` — alerts on a stale gauge vs. no gauge at all is the difference between "broken canary writes" and "broken wiring"; both are P0-C).
+- The bridge itself is dead (Prometheus scrapes `:8682/metrics` and gets no `canary_last_success_unix_nano` — alerts on a stale gauge vs. no gauge at all is the difference between "broken canary writes" and "broken wiring"; both are P0-C).
 
 **Duplicate-suppression**: `INSERT INTO spans_substrate (…attributes JSON…) ON CONFLICT (trace_id, span_id) DO NOTHING` — the canary uses a deterministic `trace_id = "_canary"` and `span_id = "_canary_<unix_time_ns>"` so duplicate canaries don't bloat the table. Worst-case noise: 1 row per 30s = 86,400 rows/day per canary producer. With multiple Akosha pods, only one INSERT survives per `(trace_id, span_id)` due to the §5.1 UNIQUE CONSTRAINT — pods that lag emit a duplicate that the constraint quietly rejects. Failed pods show up only as `canary_writes_failed_total` and `canary_last_success_unix_nano` staleness; not as DLQ noise.
 
-### 11.4a `akosha admin otel …` CLI subtree (v7 — required by §11.1.5/6/7 runbooks)
+### 11.4a Operator interface for the substrate (v8 — rewritten 2026-10-27)
 
-The retention/canary/heartbeat runbooks reference `akosha admin otel retention {…}` and `akosha migrations {up,down,…}` subcommands. **Verified against `akosha/cli.py:226-501`** — none of these Typer sub-groups exist today. PR-A2 + PR-A3 must ship the new Typer hierarchy; the v7 declarations:
+**v7 required a new `akosha admin otel retention {…}` Typer subtree and a
+top-level `akosha migrations {up,down,…}` group. Neither ships.** The
+reasons are worth stating, because v7 asserted the opposite and an
+operator reading v7 would still reach for commands that do not exist:
 
-```python
-# akosha/cli.py — PR-A3 additions
-admin_app = typer.Typer(help="operator/admin subcommands")
-otel_app = typer.Typer(help="OpenTelemetry substrate commands")
-retention_app = typer.Typer(help="spans_substrate retention sweep")
+1. **There is no migration framework.** §15 chose inline
+   `CREATE TABLE IF NOT EXISTS` at the point of first use. The substrate
+   DDL lives in oneiric's `DuckdbHotStore.initialize()`; the receiver's
+   two operational tables follow the same rule. A `migrations` CLI would
+   be a Typer group wrapped around a framework the Bodai fleet does not
+   have. The v7 proposal even named yoyo — which v6 had already dropped
+   for this exact reason.
 
-@retention_app.command("manual-run")
-def retention_manual_run(
-    retention_days: int = typer.Option(..., help="days of history to keep"),
-    dry_run: bool = typer.Option(True, help="print SQL + row-count preview; do not execute"),
-    apply: bool = typer.Option(False, help="actually execute (requires --confirm)"),
-    confirm: str = typer.Option("", help="typed-phrase confirmation"),
-) -> None:
-    """Run the retention sweep manually. Default is --dry-run; --apply is required
-    for mutation. The --confirm phrase must be one of the spec's blessed
-    strings (e.g., 'delete rows older than 30 days'). The CLI computes the
-    cutoff_ns internally so a fat-fingered shell arithmetic can't drop hot data."""
-    ...
+2. **A CLI is the wrong surface for a self-driving subsystem.** The
+   retention sweep is a lifespan task that runs on its own interval. What
+   an operator normally needs is to *see* what it is doing and to change
+   the horizon it operates on. Both are already available: the first on
+   the metrics route, the second in the settings file.
 
-@retention_app.command("sweep-once")
-def retention_sweep_once() -> None:
-    """Run one sweep cycle now (same body as the lifespan task; bypasses
-    the wait interval)."""
-    ...
+The operator interface is therefore:
 
-@retention_app.command("config set")
-def retention_config_set(
-    retention_days: int | None = typer.Option(None, help="override retention_days"),
-    reload: bool = typer.Option(False, help="re-read settings after change"),
-) -> None:
-    """Operator-facing settings override (dry-run by default; --apply required)."""
-    ...
+| Need | Interface |
+|---|---|
+| Is the receiver alive, and what has it ingested? | `curl -fsS http://localhost:8682/metrics` — the `akosha_otlp_*` families |
+| Is the sweep healthy? | `akosha_otlp_sweep_first_started_unix_nano` / `akosha_otlp_sweep_last_completed_unix_nano` / `akosha_otlp_retention_sweep_failed_total{table}` |
+| Why was a span rejected? | `akosha_otlp_spans_rejected_total{field=…}` — labelled by the field that failed |
+| Which producers are reporting? | `akosha_otlp_heartbeat_*` (PR-A5) |
+| What is in the substrate? | `mcp__akosha__search_spans`, `mcp__akosha__spans_summary` |
+| Change the retention horizon? | `spans_substrate.retention_days` in `akosha/settings/akosha.yaml` |
+| Force a sweep now? | **Not available.** Wait for the next interval. |
 
-@retention_app.command("cardinality-report")
-def retention_cardinality_report() -> None:
-    """Print row count, retention horizon, and per-service-name row breakdown."""
-    ...
-
-otel_app.add_typer(retention_app, name="retention")
-admin_app.add_typer(otel_app, name="otel")
-app.add_typer(admin_app, name="admin")
-
-# akosha/cli.py — PR-A2 additions (separate top-level Typer group, not nested)
-migrations_app = typer.Typer(help="yoyo SQL migrations")
-
-@migrations_app.command("up")
-def migrations_up(revision: str = typer.Option("head", help="target revision")) -> None:
-    """yoyo `up` to <revision> (default: head)."""
-    ...
-
-@migrations_app.command("down")
-def migrations_down(revision: str = typer.Option("-1", help="relative target")) -> None:
-    """yoyo `down` to <revision>."""
-    ...
-
-@migrations_app.command("status")
-def migrations_status() -> None:
-    """Print applied vs pending migrations."""
-    ...
-
-@migrations_app.command("list")
-def migrations_list() -> None:
-    """Enumerate available migration files."""
-    ...
-
-app.add_typer(migrations_app, name="migrations")
-
-# The existing `cli/commands/migrate.py` (Click `data-migrate` group, pre-existing
-# data-migration tool) stays under its original Typer registration name to avoid
-# namespace collision with the new SQL `migrations` group.
-```
-
-The `migrations` and `admin` Typer groups land in PR-A2 + PR-A3 PR descriptions as enumerated deliverables. Without them, `§11.1.5` step 4 (`akosha admin otel retention manual-run`) and `Appendix C` (`akosha migrations down 0002.dlq-rows`) reference commands that won't exist post-deploy — operators will hit "command not found" at 3am.
+The last row is the honest gap. An operator cannot force a sweep, because
+there is no command to force it with. That is a deliberate consequence of
+dropping the CLI, and it is the one thing worth revisiting if an incident
+ever needs a sweep *now* rather than within the interval.
 
 ### 11.4 `known_mcp_servers` config home (v4; was undefined in v3)
 
@@ -1837,7 +1856,7 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | **v7** `stop_event` is an explicit positional arg | Declared at lifespan scope, passed to retention_sweep + canary_metrics_bridge | v6 referenced `stop_event` as a free variable in the bridge body; spec never pinned where it came from. |
 | **v7** `HealthFeedState("name")` is not valid Python | `HealthFeedState(entities_count=…, last_updated_timestamp=…, …)` (kwarg-only dataclass at `mcp_common.health.feed`) + a module-level `_known_mcp_servers_roster: list[str]` for the roster itself | The pos-arg notation crossed §11, §11.4, §13.6, §15 (four sites). Implementers copy-pasting hit a TypeError. Spec replaces with the kwarg shape + a separate roster list. |
 | **v7** PR-A8 retires `AKOSHA_SKIP_OTEL_INGESTER` env var | Remove the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` block at `akosha/mcp/server.py:627` | v6's §15 "no env-var shim" decision was incorrect for this var — operators with launchd plists setting `=1` get the poller silently re-enabled post-PR-A8. Pre-1.0 no-backcompat rule applied retroactively. |
-| **v7** CLI Typer hierarchy | New `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app` | v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist today. PR-A2 + PR-A3 must ship them; v7 §11.4a enumerates the surface. |
+| **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. The honest gap: an operator cannot force a sweep now. |
 | **v7** Spec vs codebase alignment priority | After v6, run multi-agent ensemble with at least one domain-specialist lens against the actual codebase (`akosha-specialist`, `mcp-integration-expert`, `crackerjack-specialist`) | The 4-round review (v3→v4→v5→v6→v7) found 9 P0s that all three codebase-illiterate lenses missed — every one surfaced by direct read of `akosha/cli.py`, `akosha/storage/path_resolver.py`, or `akosha/mcp/server.py`. Specialist lenses for component integration are now a hard requirement, not optional. |
 
 ## 16. References
@@ -2028,19 +2047,39 @@ class OTLPReceiver:
 
 ## Appendix C — Receiver shutdown sequence (operator procedure)
 
-If a hot down is needed (rare; usually avoided):
+**v8 — rewritten 2026-10-27.** The v7 procedure assumed a migration
+framework and a `hot-store` CLI. Neither exists: §15 chose inline
+`CREATE TABLE IF NOT EXISTS` at the point of first use, and akosha's CLI
+ships only `shell`, `start`, `version`, `info`, `modes` and the `mcp`
+group.
 
-1. Stop Akosha's MCP server (lifespan shutdown drains the receiver).
-2. Verify no more spans land: `akosha hot-store inspect --table spans_substrate --since=now-1m --count`.
-3. yoyo `down` calls (siblings):
-   ```bash
-   akosha migrations down 0002.dlq-rows   # drops _dlq_rows
-   akosha migrations down 0001.akosha-otel-receiver-state  # drops _akosha_otel_receiver_state
-   ```
-4. The substrate DDL (`spans_substrate` in `DuckdbHotStore.initialize()`) has no `down` — substrate-managed. To remove the table, run a one-off `akosha hot-store exec "DROP TABLE spans_substrate"`. The receiver's `start()` will fail-loud (the `table_exists()` check) on next boot — no silent boot possible.
-5. Restart Akosha. The receiver's `start()` will raise `LifecycleError("spans_substrate_missing")` if invoked without the table.
+**The substrate is in-memory.** `hot.backend` is `duckdb-memory` with
+`path: ":memory:"`, so `spans_substrate` lives in the akosha process.
+Stopping the process DOES drop every row — there is nothing to preserve
+across a restart, and no `down` to run. The table is recreated on the
+next boot by oneiric's `DuckdbHotStore.initialize()`.
 
-**PR-A8 has no `down`.** PR-A8 flips `otel.receiver.trace_ingester_poller` in `akosha/settings/akosha.yaml` to `false`. Rollback is `trace_ingester_poller: true` + restart.
+So the procedure is short:
+
+1. Stop akosha's MCP server (the lifespan shutdown drains the receiver).
+2. The substrate is gone with the process. To inspect what was in it
+   before stopping, use the read path:
+   - `mcp__akosha__search_spans` — the rows
+   - `mcp__akosha__spans_summary` — the counts per pair
+3. The receiver's two operational tables (`_dlq_rows`,
+   `_akosha_otel_receiver_state`) are created by the receiver's
+   `_ensure_operational_tables` call and are likewise in-memory. There
+   is nothing to drop, and no `migrations down` to run.
+4. The substrate DDL itself (`spans_substrate`) is substrate-managed and
+   has no `down`. If it is ever missing, the receiver's `start()` fails
+   loud with `LifecycleError("spans_substrate_missing")` — no silent boot
+   is possible.
+5. Restart akosha. The receiver recreates what it needs and re-binds
+   `:4317`/`:4318`.
+
+**PR-A8 has no `down`.** PR-A8 flips `otel.receiver.trace_ingester_poller`
+in `akosha/settings/akosha.yaml` to `false`. Rollback is
+`trace_ingester_poller: true` + restart.
 
 ## Appendix D — `OBSERVABILITY__OTLP_ENDPOINT` env var change
 

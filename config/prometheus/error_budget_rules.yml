@@ -84,8 +84,9 @@ groups:
         annotations:
           summary: "Error budget burning 2x faster than normal"
           description: |
-            Current burn rate: {{ $value | humanize }}x normal
-            If sustained, budget will be exhausted in {{ 43200 / $value | humanize }} minutes.
+            Current burn rate: {{ $value | humanize }}x normal.
+            If sustained, the 30-day error budget (43200 minutes) is
+            exhausted in about 43200/{{ $value | humanize }} minutes.
           runbook_url: "https://runbooks.example.com/error_budget_enforcement#burn-rate-alerts"
 
       - alert: ErrorBudgetBurnRateCritical

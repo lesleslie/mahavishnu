@@ -2417,23 +2417,52 @@ ls docs/feature-tracking/otel-spans-substrate.md
 
 ---
 
-## Task 6: akosha — `admin otel retention` CLI group
+## Task 6: akosha — `admin otel retention` CLI group — **DROPPED 2026-10-27**
+
+> **This task does not ship.** The operator has decided the substrate's
+> operator interface is the **metrics route, the MCP tools, and the
+> settings file** — not a new CLI subtree. Spec §11.4a was rewritten
+> accordingly, and §15's "CLI Typer hierarchy" decision row is marked
+> superseded.
+>
+> The reasoning, so the drop is not mistaken for an omission:
+>
+> 1. **The `migrations` half of this task was already dead.** §15 chose
+>    inline `CREATE TABLE IF NOT EXISTS` at the point of first use —
+>    there is no migration framework in the Bodai fleet, and this task
+>    would have introduced a third one (yoyo) wrapped in a Typer group.
+> 2. **The `admin otel retention` half was the wrong surface.** The
+>    sweep is a lifespan task that runs on its own interval. What an
+>    operator needs is to SEE it (the `akosha_otlp_*` families on
+>    `:8682/metrics`) and to change the horizon it operates on
+>    (`spans_substrate.retention_days` in the settings file). Neither
+>    needs a command.
+>
+> **The honest gap this leaves**: an operator cannot force a sweep
+> *now*, only wait for the next interval. That is the one thing worth
+> revisiting if an incident ever needs it.
+>
+> The settings keys this task also introduced DO ship — but at the
+> **top level** (`spans_substrate.*`, a sibling of `otel`), not nested
+> under `otel.spans_substrate` as this task originally wrote them. See
+> the note in Task 5's `SpansSubstrateConfig` for why the layout
+> consolidated.
 
 **Repo:** `/Users/les/Projects/akosha`. Same branch.
 
 **Files:**
-- Modify: `akosha/cli.py` (add `admin_app` / `otel_app` / `retention_app`)
-- Modify: `settings/akosha.yaml` (add the `otel.spans_substrate` block)
-- Test: `akosha/tests/unit/cli/test_admin_otel_retention_cli.py`
+- Modify: `akosha/cli.py` (add `admin_app` / `otel_app` / `retention_app`) — **NOT DONE**
+- Modify: `settings/akosha.yaml` (add the `otel.spans_substrate` block) — **shipped as top-level `spans_substrate:`**
+- Test: `akosha/tests/unit/cli/test_admin_otel_retention_cli.py` — **NOT WRITTEN**
 
 **Interfaces:**
 - Consumes: settings via akosha's oneiric-layered config (`get_config()` → `AkoshaConfig`, `akosha/config.py:608`); the `_dlq_rows` table created inline by Task 5's `OTLPReceiver.start()`.
 - Produces:
-  - `akosha admin otel retention manual-run [--retention-days N] [--dry-run|--apply --confirm PHRASE]`
-  - `akosha admin otel retention sweep-once`
-  - `akosha admin otel retention config set [--retention-days N] [--reload]`
-  - `akosha admin otel retention cardinality-report`
-  - Settings keys `otel.spans_substrate.{retention_days, retention_sweep_interval_hours, archival_target}` (canonical path, sibling of `otel.receiver`, NOT nested under it — spec §11.4)
+  - ~~`akosha admin otel retention manual-run [--retention-days N] [--dry-run|--apply --confirm PHRASE]`~~ — **not shipped**
+  - ~~`akosha admin otel retention sweep-once`~~ — **not shipped**
+  - ~~`akosha admin otel retention config set [--retention-days N] [--reload]`~~ — **not shipped**; the settings file is the interface
+  - ~~`akosha admin otel retention cardinality-report`~~ — **not shipped**; `mcp__akosha__spans_summary` and the `akosha_otlp_*` counters are
+  - Settings keys `spans_substrate.{retention_days, retention_sweep_interval_hours}` — **shipped, top-level** (canonical path, sibling of `otel`, NOT nested under it — spec §11.4)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4755,7 +4784,7 @@ The spec §1 defers four items to writing-plans; two more PRs were dropped durin
 | 3 | PR-0b | akosha | deps + shared-receiver hook + namespace hygiene | 1 |
 | 4 | (spec-cumulative) | akosha | `HotStore.insert_spans_substrate` | 2 |
 | 5 | PR-A3 | akosha + mahavishnu | `OTLPReceiver` + lifespan + port move | 3, 4 |
-| 6 | (spec-cumulative) | akosha | `admin otel retention` CLI | 4, 5 |
+| 6 | (spec-cumulative) | akosha | ~~`admin otel retention` CLI~~ — **DROPPED 2026-10-27**; the operator interface is the metrics route + the MCP tools + the settings file | 4, 5 |
 | 7 | PR-A3 follow-on | akosha | sweep body + advisory lock | 4, 5, 6 |
 | 8 | PR-A5 | akosha | heartbeat watcher | 4, 6 |
 | 9 | PR-A6 | akosha | resource-attribute validator | 5 |
@@ -4764,6 +4793,11 @@ The spec §1 defers four items to writing-plans; two more PRs were dropped durin
 | 12 | PR-A7 | mcp-common + oneiric + akosha | namespace flip | 1, 9, plus the consumer sweep |
 
 **Two tasks are not in the spec's PR table:** Task 4 (`HotStore.insert_spans_substrate`) and Task 6 (`admin otel retention` CLI). Both are spec-cumulative — the spec's §5.2 names the method and §11.4a names the commands, but neither has its own PR row. They ride along with the PR whose scope covers them: both with PR-A3.
+
+**Task 6 is DROPPED (2026-10-27).** Its CLI does not ship; spec §11.4a
+was rewritten to make the metrics route + the MCP tools + the settings
+file the operator interface, and the runbooks in §11.1.5/6/7 now point at
+those instead of at commands that do not exist. Task 4 still ships.
 
 **Two spec PRs carry no task.** PR-A2 (yoyo migrations) and PR-A6.5 (legacy `spans` migration) were both dropped on 2026-10-20 because the codebase contradicts their premises — no yoyo exists in the fleet, and no `spans` table exists to migrate. The Deferred items table records the reasoning. Nothing depends on either PR landing, and no task below waits on one.
 
