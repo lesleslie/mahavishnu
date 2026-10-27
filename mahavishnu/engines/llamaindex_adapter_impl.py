@@ -439,11 +439,34 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             # slot-level timeout, so this won't hang the call forever
             # if the model is unresponsive.
             llama_server_timeout = 600.0
+            #
+            # embed_batch_size and max_retries are the other half of the
+            # timeout story. LlamaIndex defaults to embed_batch_size=100,
+            # so an entire ingest goes out as ONE HTTP request. On a
+            # CPU-only embedding server a single chunk can take ~55s, so
+            # 18 chunks is ~990s -- past the 600s timeout. The client
+            # then retries the WHOLE batch (max_retries defaults to 10),
+            # and the ingest neither completes nor errors: it just burns
+            # an hour of CPU. Sizing the batch so one request fits inside
+            # the timeout is what makes the ingest terminate.
+            embed_batch_size = int(getattr(config, "llamaindex_embed_batch_size", 8))
+            embed_max_retries = int(getattr(config, "llamaindex_embed_max_retries", 3))
             Settings.embed_model = OpenAIEmbedding(
                 model_name=llama_server_model,
                 api_base=llama_server_url,
                 api_key="no-auth",
                 timeout=llama_server_timeout,
+                embed_batch_size=embed_batch_size,
+                max_retries=embed_max_retries,
+            )
+            logger.info(
+                "LlamaIndex embedding client configured",
+                extra={
+                    "model": llama_server_model,
+                    "timeout_s": llama_server_timeout,
+                    "embed_batch_size": embed_batch_size,
+                    "max_retries": embed_max_retries,
+                },
             )
             Settings.llm = OpenAILike(
                 model=llama_server_model,
@@ -460,8 +483,32 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 original_error=e,
             ) from e
 
-        # Configure node parser for chunking
-        self.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=20, separator=" ")
+        # Configure node parser for chunking.
+        #
+        # The chunk size is bounded by the embedding server's PHYSICAL batch
+        # size, not by anything local. llama.cpp's embedding mode forces
+        # n_batch = n_ubatch (default 512) and rejects any single input over
+        # that limit with HTTP 500 "input (N tokens) is too large to
+        # process". The chunk size used to be hardcoded to 1024, which is
+        # larger than that default -- so ingestion failed outright against a
+        # stock llama-server, and the only symptom was an MHV-007 error
+        # naming llama-server rather than the chunk size that caused it.
+        #
+        # Configurable now, and deliberately NOT defaulted lower: the right
+        # fix is to raise the server's --ubatch-size. A small chunk size only
+        # bounds the INGEST path -- the QUERY path embeds the caller's text
+        # with no chunking at all, so a long query still overflows.
+        chunk_size = int(getattr(config, "llamaindex_chunk_size", 1024))
+        chunk_overlap = int(getattr(config, "llamaindex_chunk_overlap", 20))
+        self.node_parser = SentenceSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separator=" ",
+        )
+        logger.info(
+            "LlamaIndex node parser configured",
+            extra={"chunk_size": chunk_size, "chunk_overlap": chunk_overlap},
+        )
 
         # Remember what the embeddings endpoint is actually serving, so the
         # vector store can be created with a matching dimension.

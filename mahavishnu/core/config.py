@@ -2865,6 +2865,52 @@ class MahavishnuSettings(BaseSettings):
         default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
+    llamaindex_chunk_size: int = Field(
+        default=1024,
+        ge=64,
+        le=8192,
+        description=(
+            "Chunk size (tokens) for the LlamaIndex node parser. "
+            "MUST be <= the embedding server's physical batch size "
+            "(llama.cpp's n_ubatch, default 512): llama-server rejects any "
+            "single embedding input over that limit with HTTP 500 "
+            "'input (N tokens) is too large to process'. Raise the server's "
+            "--ubatch-size rather than lowering this if you want large "
+            "chunks -- the QUERY path embeds the caller's text with no such "
+            "bound, so a small chunk size cannot protect the whole pipeline."
+        ),
+    )
+    llamaindex_chunk_overlap: int = Field(
+        default=20,
+        ge=0,
+        le=1024,
+        description="Token overlap between adjacent LlamaIndex chunks.",
+    )
+    llamaindex_embed_batch_size: int = Field(
+        default=8,
+        ge=1,
+        le=100,
+        description=(
+            "How many chunks go into ONE /v1/embeddings HTTP request. "
+            "The invariant is: batch_size * per_chunk_latency < the "
+            "embedding client's request timeout. LlamaIndex's default is "
+            "100, which on a CPU-only embedding server means a single "
+            "request that cannot finish inside the timeout -- the client "
+            "then retries the WHOLE batch (max_retries defaults to 10), "
+            "so the ingest never completes and never reports an error. "
+            "Lower this on slow hardware; raise it on a fast GPU server."
+        ),
+    )
+    llamaindex_embed_max_retries: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        description=(
+            "Retries for a failed /v1/embeddings request. LlamaIndex's "
+            "default is 10; combined with a request that cannot complete "
+            "inside the timeout, that is over an hour of silent retrying."
+        ),
+    )
     eventbridge: EventBridgeConfig = Field(
         default_factory=EventBridgeConfig,
         description=(
