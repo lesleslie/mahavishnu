@@ -92,8 +92,8 @@ if command -v jq >/dev/null 2>&1; then
         port=$(echo "$url" | sed -n 's/.*localhost:\([0-9]*\).*/\1/p')
         
         case $server_name in
-            "session-mgmt")
-                start_server_if_needed "$server_name" "$port" "cd '$PROJECT_DIR/../session-mgmt-mcp' && .venv/bin/python -m session_mgmt_mcp.server"
+            "session-buddy")
+                start_server_if_needed "$server_name" "$port" "cd '$PROJECT_DIR/../session-buddy' && .venv/bin/python -m session_buddy server start --force"
                 ;;
             "crackerjack")
                 start_server_if_needed "$server_name" "$port" "cd '$PROJECT_DIR' && python -m crackerjack --start-mcp-server"

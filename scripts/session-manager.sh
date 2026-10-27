@@ -1,6 +1,6 @@
 #!/bin/bash
 # Session management script for Claude Code
-# Handles automatic session-mgmt:init and session-mgmt:end
+# Handles automatic session-buddy:init and session-buddy:end
 
 set -e
 
@@ -27,7 +27,7 @@ case "$ACTION" in
             log "Git repository detected in $PROJECT_DIR"
             log "Initializing session management..."
             
-            # Check if session-mgmt MCP server is available
+            # Check if session-buddy MCP server is available
             if curl -s http://localhost:8678/mcp >/dev/null 2>&1; then
                 # Send session:init via MCP (this would be handled by Claude Code automatically)
                 log "Session management initialized"
@@ -43,7 +43,7 @@ case "$ACTION" in
         if is_git_repo; then
             log "Ending session for $PROJECT_DIR"
             
-            # Check if session-mgmt MCP server is available
+            # Check if session-buddy MCP server is available
             if curl -s http://localhost:8678/mcp >/dev/null 2>&1; then
                 # Send session:end via MCP (this would be handled by Claude Code automatically)
                 log "Session ended gracefully"

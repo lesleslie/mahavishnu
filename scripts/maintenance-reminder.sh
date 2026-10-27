@@ -33,7 +33,7 @@ echo ""
 
 # Check project file counts
 echo "Project Agent Counts:"
-PROJECTS=("crackerjack" "acb" "session-mgmt-mcp" "fastblocks" "splashstand")
+PROJECTS=("crackerjack" "acb" "session-buddy" "fastblocks" "splashstand")
 for project in "${PROJECTS[@]}"; do
   PROJECT_DIR="$HOME/Projects/$project"
   if [ -d "$PROJECT_DIR/.claude/agents" ]; then
