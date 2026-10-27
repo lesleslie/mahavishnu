@@ -87,6 +87,25 @@ a task started there would be orphaned when the event loop closed.
 Regression coverage:
 `tests/unit/observability/test_change_point_tick_loop.py`.
 
+**Why it stayed hidden for months.** The fix alone was not enough to
+make the loop observable: the whole process was muted. `crackerjack/__init__.py`
+pins structlog at WARNING at *import* time, expecting oneiric's
+`configure_logging` to run afterwards — but that is only ever called
+from oneiric's CLI, never from a library consumer. So every structlog
+INFO/DEBUG in the server was dropped, and the stdlib root logger had no
+handlers and sat at WARNING, so every `logging.getLogger(...).info(...)`
+was dropped too (224 modules under `mahavishnu/`). The lifecycle could
+not say "started" and the detector could not say "drift detected";
+`drift_detected_total` reading zero was the only honest signal, and
+nothing was watching it.
+
+Fixed by `mahavishnu.core.bootstrap.configure_logging`, which re-asserts
+the level after the imports that trigger the downgrade (called from
+`MahavishnuApp.__init__` and again from the MCP server's `start_server`,
+because `FastMCPServer.__init__` imports crackerjack *after* the app is
+built). Regression coverage:
+`tests/unit/test_logging_configuration.py`.
+
 ## Trigger path
 
 * Driver: `ObservabilityManager.start_change_point_tick_loop` — an

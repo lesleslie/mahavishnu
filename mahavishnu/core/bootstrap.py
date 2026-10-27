@@ -7,6 +7,7 @@ while preserving the existing initialization and recovery behavior.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +24,96 @@ if TYPE_CHECKING:
     from .state_backends.mcp import MCPStateBackend
 
 logger = logging.getLogger(__name__)
+
+
+def configure_logging(config: MahavishnuSettings | None = None) -> None:
+    """Re-assert the process log level after third-party import side effects.
+
+    Why this exists (2026-10-24):
+
+    ``crackerjack/__init__.py`` calls, at *import* time::
+
+        structlog.configure(
+            wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING),
+            cache_logger_on_first_use=True,
+        )
+
+    Its own comment says it silences structlog "so oneiric's later
+    ``configure_logging(DEBUG)`` call takes effect normally" -- i.e. it
+    relies on oneiric reconfiguring structlog afterwards. But
+    ``oneiric.core.logging.configure_logging`` is only ever called from
+    ``oneiric/cli/__init__.py``. A *library* consumer (mahavishnu's MCP
+    server) never runs the oneiric CLI, so structlog stays pinned at
+    WARNING for the life of the process.
+
+    The consequences were silent and total:
+
+    - every structlog INFO/DEBUG in mahavishnu was dropped;
+    - the stdlib root logger had no handlers and sat at WARNING, so
+      every ``logging.getLogger(__name__).info(...)`` was dropped too
+      (224 modules under ``mahavishnu/``).
+
+    That is how a change-point tick loop that had *never once run* was
+    invisible: the lifecycle could not say "started" and the detector
+    could not say "drift detected", so ``drift_detected_total`` reading
+    zero was the only honest signal and nothing was watching it.
+
+    This calls oneiric's own ``configure_logging`` so the process gets
+    the level the operator asked for, plus a stdlib root handler so the
+    224 stdlib-logging modules become visible too.
+
+    The console (non-JSON) renderer and the stdout sink are preserved
+    deliberately: they are what operators read today in
+    ``~/.local/state/mcp/logs/mahavishnu.log``. Flip ``emit_json`` here
+    if machine-readable logs are wanted instead.
+
+    Oneiric's own ``configure_logging`` is deliberately NOT called here.
+    It would honour oneiric's ``logging`` settings block, but it also
+    switches the renderer to oneiric's house style (ANSI colours, a
+    ``service.name`` kwarg, and JSON when ``emit_json`` is set). That
+    is a visible change to every line operators already read. This
+    helper restores the *level* -- the thing that was broken -- and
+    leaves the rendering exactly as it is.
+    """
+    try:
+        import structlog
+
+        level_name = str(
+            getattr(config, "log_level", None) or os.environ.get("ONEIRIC_LOG_LEVEL") or "INFO"
+        ).upper()
+        level = getattr(logging, level_name, logging.INFO)
+
+        # structlog: restore the level crackerjack pinned to WARNING.
+        # The processors are left alone, so the rendering is unchanged.
+        structlog.configure(
+            wrapper_class=structlog.make_filtering_bound_logger(level),
+            cache_logger_on_first_use=True,
+        )
+
+        # stdlib: install a root handler so the 224 modules under
+        # ``mahavishnu/`` that use ``logging.getLogger(__name__)`` are
+        # visible at the same level. Without a root handler the stdlib
+        # root logger sits at WARNING with no handlers, so every INFO
+        # line is dropped.
+        root = logging.getLogger()
+        if not root.handlers:
+            logging.basicConfig(
+                level=level,
+                format="%(asctime)s [%(levelname)-8s] %(name)s - %(message)s",
+                force=True,
+            )
+        else:
+            # A root handler already exists (oneiric's ``basicConfig``,
+            # say). Don't replace it -- but do make sure the level
+            # actually lets INFO through: a root logger at WARNING
+            # filters the record before any handler sees it, and a
+            # handler pinned above the target drops it too.
+            root.setLevel(level)
+            for handler in root.handlers:
+                if handler.level > level:
+                    handler.setLevel(level)
+    except Exception as exc:  # logging setup — never block startup on it  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("Failed to configure logging: %s", exc)
 
 
 def _filter_to_model(data: dict[str, Any], model_cls: Any) -> dict[str, Any]:

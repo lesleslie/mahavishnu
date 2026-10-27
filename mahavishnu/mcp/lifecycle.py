@@ -270,6 +270,16 @@ async def start_server(
     methods_to_call = PROFILE_REGISTRATIONS[server._active_profile]
     methods_set = set(methods_to_call)
 
+    # Re-assert the process log level. ``FastMCPServer.__init__`` imports
+    # crackerjack (whose module-level ``structlog.configure(...)`` pins
+    # structlog at WARNING), and that import happens AFTER
+    # ``MahavishnuApp.__init__`` restored the level. This is the last
+    # point before the server starts serving, so it is the right place
+    # to re-assert. See ``mahavishnu.core.bootstrap.configure_logging``.
+    from ..core.bootstrap import configure_logging as _configure_logging_helper
+
+    _configure_logging_helper(getattr(server.app, "config", None))
+
     logger.info(
         f"Starting Mahavishnu MCP server with tool profile: "
         f"{server._active_profile.value} ({len(methods_to_call)} registration groups scheduled)"

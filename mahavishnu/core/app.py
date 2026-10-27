@@ -69,6 +69,7 @@ def _log_budget_watchdog_done(task: asyncio.Task) -> None:
         logger.debug("budget.watchdog exited cleanly")
 
 
+from .bootstrap import configure_logging as _configure_logging_helper
 from .bootstrap import init_health_endpoint as _init_health_endpoint_helper
 from .bootstrap import init_learning_pipeline as _init_learning_pipeline_helper
 from .bootstrap import init_memory_aggregator as _init_memory_aggregator_helper
@@ -293,6 +294,15 @@ class MahavishnuApp:
 
         # Initialize remaining runtime services
         self._initialize_runtime_services()
+
+        # Restore the process log level. The adapters pulled in by
+        # ``_initialize_runtime_services`` import crackerjack, whose
+        # module-level ``structlog.configure(...)`` pins structlog at
+        # WARNING for the whole process — which silently drops every
+        # INFO line (and, without a stdlib root handler, every stdlib
+        # INFO line too). See ``bootstrap.configure_logging`` for the
+        # full story; this must run AFTER the imports that trigger it.
+        _configure_logging_helper(self.config)
 
     async def start_poller(self) -> None:
         """Start Session-Buddy poller if configured.
