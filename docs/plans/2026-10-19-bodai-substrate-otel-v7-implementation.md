@@ -2412,7 +2412,7 @@ ls docs/feature-tracking/otel-spans-substrate.md
 - **Triggered from**: `akosha mcp start` (lifespan); any OTLP producer POSTing to `:4318/v1/traces` or the gRPC `:4317`.
 - **Returns to / updates**: `akosha/observability/otlp_receiver.py` (new module), `akosha/mcp/server.py` (lifespan), `mahavishnu/config/otel-collector-config.yaml` (ports).
 - **Demonstrable by**: `pytest tests/integration/test_otlp_receiver_e2e.py tests/integration/test_substrate_lifespan_order.py -v` — all passing; `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver_started`.
-- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `akosha hot-store inspect --table spans_substrate` once Task 6's CLI lands, or `python -c "import duckdb; ..."` in the interim.
+- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `mcp__akosha__spans_summary` (the substrate read path) or `python -c "import duckdb; ..."` in the interim. Note: `akosha hot-store inspect --table spans_substrate` was the original probe, and it is **not** shipped — Task 6's CLI group was dropped, so no `akosha` subcommand inspects a table.
 - **Observability added**: `telemetry_receiver_started_total`, `telemetry_receiver_batch_inserted{outcome}`, `telemetry_receiver_row_rejected{reason,field}`, `telemetry_receiver_dlq_insert_failed{reason}`, `telemetry_receiver_batch_size` histogram — all on `:9464`.
 
 ---
@@ -2441,6 +2441,32 @@ ls docs/feature-tracking/otel-spans-substrate.md
 > **The honest gap this leaves**: an operator cannot force a sweep
 > *now*, only wait for the next interval. That is the one thing worth
 > revisiting if an incident ever needs it.
+>
+> **Reconciled 2026-10-27 — the gap is closed, by an MCP tool rather than
+> a CLI.** The gap above was real: forcing a sweep had no interface, and
+> the substrate is IN-MEMORY with a 1GB limit, so the 6-hour default
+> interval could matter during substrate pressure. What the reconciliation
+> changed is the SHAPE of the interface, not whether there is one.
+>
+> The trigger is `mcp__akosha__force_retention_sweep`. It cannot be a CLI
+> command, and this is architectural rather than a preference: the
+> substrate lives in the running akosha process's memory
+> (`HotStore(database_path=":memory:")`) and the receiver is a
+> process-local singleton published by `set_shared_otel_receiver`. A CLI
+> subprocess is a *different process* — it has neither the rows nor the
+> receiver. So `akosha admin otel retention manual-run` could not have
+> worked even if it had shipped.
+>
+> The tool SIGNALS; it never deletes. The sweep loop owns the single
+> DuckDB connection, so a caller that deleted would race the loop's own
+> DELETE on that handle. One pending request is one sweep. Spec §11.4a
+> carries the operator-interface table and §11.1.5 step 4 carries the
+> runbook.
+>
+> The `migrations` half of this task stays dead, and the `admin otel
+> retention` half stays dropped — the operator interface is the metrics
+> route, the MCP tools, and the settings file, plus this one MCP tool
+> where a command genuinely was needed.
 >
 > The settings keys this task also introduced DO ship — but at the
 > **top level** (`spans_substrate.*`, a sibling of `otel`), not nested

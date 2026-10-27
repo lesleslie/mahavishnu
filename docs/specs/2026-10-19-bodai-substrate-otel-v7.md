@@ -1170,6 +1170,8 @@ curl -fsS http://localhost:8682/metrics \
   | grep -E "^akosha_otlp_sweep_(first_started|last_completed)_unix_nano"
 # both 0                        => the sweep has not come due yet. It runs one
 #                                  full interval AFTER start, not at t=0.
+#                                  (Unless an operator asked for one — see
+#                                  step 4 — which makes it run early.)
 # first_started > 0, last_completed = 0 => the last cycle FAILED
 # first_started > 0, last_completed > 0 => the last cycle completed cleanly;
 #                                  check the row-count trend instead (§11.1.6)
@@ -1191,11 +1193,25 @@ an `endpoint`. The receiver's metrics ride the MCP server's own
    host runs one pod, so a single-pod failure is a real IO error, not a
    race. A failing pod clears at the next 6h window.
 
-4. **There is no manual-run command.** The sweep is a lifespan task, not
-   a CLI subcommand — see §11.4a. Recovery is: fix the cause, then let
-   the next interval elapse. Restarting akosha does **not** force a
-   sweep; it restarts the interval clock, so the next sweep is a full
-   interval away again.
+4. **There is no CLI manual-run command — there is an MCP tool.** The
+   sweep is a lifespan task, and the substrate is IN-MEMORY inside the
+   running akosha process, so the operation has to be triggered on the
+   server that owns the data (§11.4a). Recovery is: fix the cause, then
+   either wait for the next interval or ask for a sweep now:
+
+   ```
+   mcp__akosha__force_retention_sweep()
+     -> {"requested": true, "already_pending": false,
+         "interval_s": 21600,
+         "watch": "akosha_otlp_sweep_last_completed_unix_nano"}
+   ```
+
+   The call queues the request and returns; the sweep runs on the loop's
+   next turn. Confirm it landed on
+   `akosha_otlp_sweep_last_completed_unix_nano`.
+
+   Restarting akosha does **not** force a sweep; it restarts the interval
+   clock, so the next sweep is a full interval away again.
 
 5. To see what the sweep is about to remove, ask the substrate rather
    than the shell. The retention cutoff is
@@ -1348,6 +1364,14 @@ interval of confirmation so a single slow cycle does not page. Total
 detection is ~90s. (The v6 text said `for: 90s` over a `> 90e9`
 threshold, which is 180s of detection and does not match §14.)
 
+**The first emit is immediate (v9).** The gauge starts at 0, so a canary
+that waited out its first interval would leave it there for 30 seconds on
+every boot — and with `for: 30s` on the rule, long enough for the
+expression to fire on a receiver that is starting up perfectly normally.
+The emitter therefore writes its first canary at startup and then every
+30s after. This is the same reasoning the receiver already applies to
+`cycles_total`: the startup IS the first cycle.
+
 **The `up` guard matters.** If akosha is DOWN the gauge goes absent and
 the expression would not fire anyway — but "down" and "up but not
 writing" are different incidents with different fixes, and they deserve
@@ -1386,7 +1410,7 @@ P0-C catches:
 
 **Duplicate-suppression**: the canary uses a deterministic `trace_id` (derived from the constant `"_canary"`) and a `span_id` derived from the cycle's timestamp, so duplicate canaries don't bloat the table. Worst-case noise: 1 row per 30s = 86,400 rows/day per canary producer — which is why the canary rows are swept at 24h (above). With multiple Akosha pods, only one INSERT survives per `(trace_id, span_id)` due to the §5.1 UNIQUE CONSTRAINT — pods that lag emit a duplicate that the constraint quietly rejects, and that is counted in `akosha_otlp_canary_writes_rejected_total`, not as a failure. Loser pods show up in the rejection counter and in `canary_last_success_unix_nano` staleness; not as DLQ noise.
 
-### 11.4a Operator interface for the substrate (v8 — rewritten 2026-10-27)
+### 11.4a Operator interface for the substrate (v9 — rewritten 2026-10-27)
 
 **v7 required a new `akosha admin otel retention {…}` Typer subtree and a
 top-level `akosha migrations {up,down,…}` group. Neither ships.** The
@@ -1407,6 +1431,22 @@ operator reading v7 would still reach for commands that do not exist:
    the horizon it operates on. Both are already available: the first on
    the metrics route, the second in the settings file.
 
+3. **v9 adds the one operation that genuinely needed a trigger.** v8's
+   table marked "force a sweep now" as *Not available*, and that was
+   honest — but it left a 6-hour worst-case wait on the one operation
+   where waiting hurts: the substrate is an IN-MEMORY DuckDB with a 1GB
+   limit, and an operator watching the row count climb has no way to
+   reclaim space now.
+
+   **The trigger is an MCP tool, not a CLI.** This is not a preference:
+   the substrate lives in the running akosha process's memory
+   (`HotStore(database_path=":memory:")`) and the receiver is a
+   process-local singleton published by `set_shared_otel_receiver`. A CLI
+   subprocess is a *different process* — it has neither the rows nor the
+   receiver, so `akosha admin otel retention manual-run` could not have
+   worked even if it had shipped. The operation has to run on the server
+   that owns the data.
+
 The operator interface is therefore:
 
 | Need | Interface |
@@ -1417,12 +1457,22 @@ The operator interface is therefore:
 | Which producers are reporting? | `akosha_otlp_heartbeat_*` (PR-A5) |
 | What is in the substrate? | `mcp__akosha__search_spans`, `mcp__akosha__spans_summary` |
 | Change the retention horizon? | `spans_substrate.retention_days` in `akosha/settings/akosha.yaml` |
-| Force a sweep now? | **Not available.** Wait for the next interval. |
+| Force a sweep now? | `mcp__akosha__force_retention_sweep` — returns `{"requested": true, "already_pending": false, "interval_s": …, "watch": "akosha_otlp_sweep_last_completed_unix_nano"}` |
 
-The last row is the honest gap. An operator cannot force a sweep, because
-there is no command to force it with. That is a deliberate consequence of
-dropping the CLI, and it is the one thing worth revisiting if an incident
-ever needs a sweep *now* rather than within the interval.
+**The trigger SIGNALS; it never deletes.** The sweep loop owns the single
+DuckDB connection to the substrate. A caller that ran the sweep itself
+would put a second `DELETE` against that connection, and two coroutines
+deleting on one DuckDB handle is a race, not a feature. So the tool sets
+an event and returns; the loop — the sole writer — wakes and sweeps. The
+call returns *before* the sweep lands: the operator confirms it with
+`akosha_otlp_sweep_last_completed_unix_nano`, which the response names.
+
+One pending request is one sweep. A second call while one is queued
+reports `already_pending: true` rather than queueing a second DELETE over
+the same rows. A requested sweep does NOT reset the interval clock: the
+next automatic sweep still runs a full interval after the requested one.
+
+Operator runbook: `akosha/docs/ops/OTEL_RETENTION.md`.
 
 ### 11.4 `known_mcp_servers` config home (v4; was undefined in v3)
 
@@ -1869,7 +1919,7 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | **v7** `stop_event` is an explicit positional arg | Declared at lifespan scope, passed to retention_sweep + canary_metrics_bridge | v6 referenced `stop_event` as a free variable in the bridge body; spec never pinned where it came from. |
 | **v7** `HealthFeedState("name")` is not valid Python | `HealthFeedState(entities_count=…, last_updated_timestamp=…, …)` (kwarg-only dataclass at `mcp_common.health.feed`) + a module-level `_known_mcp_servers_roster: list[str]` for the roster itself | The pos-arg notation crossed §11, §11.4, §13.6, §15 (four sites). Implementers copy-pasting hit a TypeError. Spec replaces with the kwarg shape + a separate roster list. |
 | **v7** PR-A8 retires `AKOSHA_SKIP_OTEL_INGESTER` env var | Remove the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` block at `akosha/mcp/server.py:627` | v6's §15 "no env-var shim" decision was incorrect for this var — operators with launchd plists setting `=1` get the poller silently re-enabled post-PR-A8. Pre-1.0 no-backcompat rule applied retroactively. |
-| **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. The honest gap: an operator cannot force a sweep now. |
+| **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. **v9 (2026-10-27) adds the one operation that did need a trigger — `mcp__akosha__force_retention_sweep` — and the reason it is an MCP tool rather than a CLI is architectural, not a preference: the substrate is IN-MEMORY inside the running akosha process and the receiver is a process-local singleton, so a CLI subprocess could not have reached either.** |
 | **v7** Spec vs codebase alignment priority | After v6, run multi-agent ensemble with at least one domain-specialist lens against the actual codebase (`akosha-specialist`, `mcp-integration-expert`, `crackerjack-specialist`) | The 4-round review (v3→v4→v5→v6→v7) found 9 P0s that all three codebase-illiterate lenses missed — every one surfaced by direct read of `akosha/cli.py`, `akosha/storage/path_resolver.py`, or `akosha/mcp/server.py`. Specialist lenses for component integration are now a hard requirement, not optional. |
 
 ## 16. References
