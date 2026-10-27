@@ -1455,6 +1455,23 @@ class ObservabilityConfig(BaseModel):
         default="http://localhost:4317",
         description="OTLP endpoint for metrics/traces",
     )
+    otlp_metrics_endpoint: str | None = Field(
+        default=None,
+        description=(
+            "OTLP endpoint for METRICS only. Falls back to `otlp_endpoint` "
+            "when unset, which is what every deployment did until the "
+            "substrate split traces from metrics. "
+            "The Bodai OTel substrate (2026-10-23) runs them on different "
+            "receivers: akosha's receiver on :4317 implements TraceService "
+            "ONLY, while Alloy's receiver on :14317 implements the metric "
+            "path and exports to Prometheus. Sending metrics to the "
+            "trace-only receiver fails EVERY export with gRPC "
+            "UNIMPLEMENTED 'Method not found!' -- once a minute, forever -- "
+            "and those series never reach any backend. "
+            "Set this to http://127.0.0.1:14317 when Alloy is running. "
+            "Env var override: MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT."
+        ),
+    )
     # R3-L2 (round-4 observability review): the field was claimed in
     # the runbook and code but never declared on ObservabilityConfig.
     # extra: forbid caused the env-var override to raise ValidationError

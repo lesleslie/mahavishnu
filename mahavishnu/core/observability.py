@@ -217,10 +217,31 @@ class ObservabilityManager:
             # AttributeError at runtime. Nothing is exported either way.
             metric_readers: list[Any] = []
             if self._metrics_export_enabled():
+                # The metric exporter needs a receiver that implements the
+                # OTLP MetricsService. akosha's receiver on :4317 implements
+                # TraceService ONLY -- sending metrics there fails every
+                # export with gRPC UNIMPLEMENTED "Method not found!", once
+                # a minute, forever, and the series never reach a backend.
+                # The substrate split the two on 2026-10-23: traces go to
+                # akosha, metrics go to Alloy's receiver, which exports them
+                # to Prometheus. Fall back to the trace endpoint when
+                # unset, so nothing changes for a deployment that has not
+                # opted in.
+                metrics_endpoint = (
+                    getattr(self.config.observability, "otlp_metrics_endpoint", None)
+                    or self.config.observability.otlp_endpoint
+                )
                 metric_readers.append(
                     PeriodicExportingMetricReader(
-                        OTLPMetricExporter(endpoint=self.config.observability.otlp_endpoint)
+                        OTLPMetricExporter(endpoint=metrics_endpoint)
                     )
+                )
+                self.logger.info(
+                    "OTLP metric export enabled",
+                    extra={
+                        "endpoint": metrics_endpoint,
+                        "trace_endpoint": self.config.observability.otlp_endpoint,
+                    },
                 )
             else:
                 self.logger.info(
