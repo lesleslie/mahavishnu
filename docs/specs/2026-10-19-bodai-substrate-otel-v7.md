@@ -1104,7 +1104,7 @@ KNOWN_MCP_SERVERS: list[str] = []   # populated by lifespan from §13.6 settings
 |---|---|---|
 | `known_mcp_servers` | Static `KNOWN_MCP_SERVERS: list[str]` at module scope, populated at lifespan startup from `akosha/settings/akosha.yaml` (`servers = ["mahavishnu", "akosha", "session-buddy", "oneiric", "crackerjack", "bifrost-mcp"]`) | P0-A roster |
 | `mcp_tool_call` | Per-cycle observation (`entities_count`, `last_updated_timestamp`, `cycles_total`) | `/health` aggregate |
-| `receiver_canary` | Per-cycle observation from `_canary_metrics_bridge` (`last_canary_success_unix_nano`, `bridge_failed_total`) | P0-C alert + P0-D alert |
+| `receiver_canary` | Per-cycle observation from the canary emitter (`last_canary_success_unix_nano`, `canary_writes_*_total`) — **v8: updated in place by the emitter; there is no bridge task** | P0-C alert |
 
 The two are distinct. The heartbeat watcher reads `known_mcp_servers` for the per-service roster.
 
@@ -1274,10 +1274,11 @@ v4 adds a synthetic canary: the receiver (or, more cheaply, the lifespan) emits 
 
 - `service_name = "_receiver_canary"`
 - `span_name = "_canary_substrate_write"`
+- `service.namespace = "bodai"` (v8 — the fleet default, so the receiver's own validator accepts the marker; see the v8 note below)
 - `start_time_unix_nano = time.time_ns()`
 - `attributes = {"_canary": true, "_canary_version": "1"}`
 - Attempted every `CANARY_EMIT_INTERVAL_SECONDS = 30` (default)
-- INSERT goes through the same `_handle_batch` → `insert_spans_substrate` path the production spans use — **defends against partial-deploy code paths** (a code change that breaks the live INSERT but leaves `_dlq_insert` working would otherwise pass silently).
+- INSERT goes through the same `_handle_batch` → `insert_spans_substrate` path the production spans use — **defends against partial-deploy code paths** (a code change that breaks the live INSERT but leaves `_dlq_insert` working would otherwise pass silently). **v8: the FULL path, not just the INSERT** — protobuf decode and `_proto_to_dict` included, because the serializer is where the `ArrayValue` defect lived.
 
 **State tracking** (mirrors the §11 heartbeat-watcher pattern; new `receiver_canary`):
 
@@ -1291,87 +1292,99 @@ class CanaryState:
     canary_writes_succeeded_total:   int = 0   # v6: pinned to "BatchResult(ok=1, deduped=0)" — see below
     canary_writes_failed_total:      int = 0
     canary_writes_rejected_total:    int = 0   # v6: UNIQUE CONSTRAINT rejected (no exception)
-    bridge_failed_total:             int = 0   # v6: bridge body raised (liveness)
+    # v8: no `bridge_failed_total` — there is no bridge. See the v8 note below.
 ```
 
 **"Succeeded" definition (v6 — pinned to remove ambiguity for multi-pod deployments):**
 
-A canary write is **succeeded** iff `_handle_batch` returns `BatchResult(ok=1, deduped=0)` — i.e. exactly one row INSERTed (no exception, no UNIQUE-CONSTRAINT rejection). With multiple Akosha pods racing the canary emit, only one pod per cycle meets this bar; the others' INSERTs return `BatchResult(ok=0, deduped=N-1)` (or hit the §6.2 DLQ for bad rows), and they increment `canary_writes_failed_total{reason="duplicate_constraint"}` instead of `canary_writes_succeeded_total`. Without this pin, a multi-pod deployment either silently double-counts successes (option a) or silently under-counts them (option b) — both are misleading. Decided: **option b is the contract**, with explicit `canary_writes_rejected_total` as the positive signal that the loser-pod's constraint-rejection registered.
+A canary write is **succeeded** iff `_handle_batch` returns `BatchResult(ok=1, deduped=0)` — i.e. exactly one row INSERTed (no exception, no UNIQUE-CONSTRAINT rejection). With multiple Akosha pods racing the canary emit, only one pod per cycle meets this bar; the others' INSERTs return `BatchResult(ok=0, deduped=N-1)` (or hit the §6.2 DLQ for bad rows), and they increment `canary_writes_rejected_total` instead of `canary_writes_succeeded_total`. Without this pin, a multi-pod deployment either silently double-counts successes (option a) or silently under-counts them (option b) — both are misleading. Decided: **option b is the contract**, with explicit `canary_writes_rejected_total` as the positive signal that the loser-pod's constraint-rejection registered.
 
-**PromQL bridge (v6 — wires the dataclass state to a Prometheus gauge surface AND has liveness)**:
+**v8 — the canary's namespace is `bodai`, and it goes through the FULL path.**
 
-```python
-# PR-A4 — lifespan task; bridges CanaryState -> /metrics on :8682.
-# v7: explicit `stop_event` positional arg (was free variable in v6).
-# v6: wraps the loop body in try/except; transient failure does NOT kill the task.
-# Bridge alive invariant: retrying the same logic on the next iteration is acceptable;
-# killing the bridge silently keeps canary_last_success_unix_nano frozen.
-async def _canary_metrics_bridge(
-    stop_event: asyncio.Event,
-    receiver: "OTLPReceiver",
-):
-    backoff = 1.0
-    while not stop_event.is_set():
-        await stop_event.wait(10)
-        try:
-            state = receiver.canary_state   # CanaryState
-            last_success = state.last_canary_success_unix_nano or 0
-            receiver._metric_canary_last_success_unix_nano.set(last_success)
-            # Note: write-side counters incremented by _canary_writer at INSERT time
-            # (BatchResult.ok / BatchResult.dlq_failed / BatchResult.errored branches)
-            # — bridge is observation only; never increments counters itself.
-        except Exception as exc:
-            receiver._metric_bridge_failed_total.inc()
-            logger.exception("canary_metrics_bridge_failed",
-                             retry_after_seconds=backoff)
-            await stop_event.wait(backoff)   # backoff up to 60s on consecutive failures
-            backoff = min(backoff * 2, 60)
-            continue
-        backoff = 1.0   # reset on success
+Two pins the v6 text above did not make:
+
+1. **The namespace is `bodai`** (the fleet default), not a canary-specific one. The receiver's own resource validator runs on the canary, so a namespace outside the allowlist would reject the marker *before it reached the INSERT* — and a canary that fails on a namespace the fleet legitimately uses is a false alarm, not a signal. The marker is identifiable by its `service_name` (`_receiver_canary`), not by its namespace. If `bodai` ever leaves the allowlist, the canary failing is the CORRECT signal: the whole fleet is being rejected.
+2. **The marker is a real `ExportTraceServiceRequest`, not a dict.** It crosses protobuf decode → `_extract_spans` → `_proto_to_dict` → `pre_validate` → `insert_spans_substrate` — the same path a producer's span takes. A canary that shortcut into the INSERT would have missed exactly the bug class it exists to catch: the `ArrayValue` serializer defect lived in `_proto_to_dict`, and a canary that skipped it would have stayed green through that entire outage.
+
+**v8 — NO bridge task. The emitter updates the metrics directly.**
+
+v6 described a `_canary_metrics_bridge` task that copied `CanaryState` into Prometheus gauges every 10s, with its own `bridge_failed_total` and a P0-D alert for "the bridge died". That task is **not shipped**, and the reason is worth recording: a bridge that dies freezes the gauge, so the bridge needs its own liveness alert — and the P0-C staleness alert would then have two ways to fire for one underlying failure (stale gauge, dead bridge).
+
+Updating the metrics in place, at the moment the write outcome is known, removes that gap. The only way `canary_last_success_unix_nano` goes stale is the emitter task dying — and the P0-C staleness alert catches exactly that. So there is no `bridge_failed_total` and no P0-D alert; the P0-C alert covers both "the write path is broken" and "the emitter died", which is the correct granularity: from the outside they are the same symptom and the same action.
+
+**Prometheus surface** (PR-A4 contract — every name written by `canary_watcher.py`, on the `:8682` `/metrics` route):
+
+- `akosha_otlp_canary_last_success_unix_nano` (gauge; `last_canary_success_unix_nano` — the RECEIVER's clock at the moment the write landed, not the producer's and not the span's start time)
+- `akosha_otlp_canary_writes_attempted_total` (counter; monotonically incremented)
+- `akosha_otlp_canary_writes_succeeded_total` (counter; **ok=1 ∧ deduped=0 ∧ rejected=0 only**)
+- `akosha_otlp_canary_writes_failed_total{reason}` (counter; `reason` = the exception class name, or `unexpected_result` when the write returned without inserting)
+- `akosha_otlp_canary_writes_rejected_total` (counter; **incremented on `ok=0, deduped>0`** — its own counter, not a label on the failure counter, because a constraint rejection is not an exception)
+- `akosha_otlp_canary_rows_deleted_total` (counter; canary rows removed by the sweep)
+
+**v8 — canary rows are swept at 24h, not at the substrate's `retention_days`.**
+
+At one row per 30 seconds that is 86,400 rows a day. On the substrate's 30-day horizon the canary alone would accumulate into millions of rows inside an **IN-MEMORY** DuckDB with a 1GB limit — the canary would fill the table it is measuring. A canary row is liveness evidence, not history: the same reasoning §8.1 applies to `_dlq_rows`. The sweep runs a second DELETE against `spans_substrate` with a 24h cutoff and `service_name = '_receiver_canary'`, labelled `spans_substrate_canary` in `akosha_otlp_retention_sweep_failed_total` so the two sweeps on one table stay distinguishable in an alert.
+
+**P0-C alert** (v8 — corrected again for the shipped metric names and the
+absence of a bridge; v4 used `time_ns()` which is non-standard PromQL, and
+the LHS referenced a Python dataclass field, which evaluates `null` and
+never fires):
+
+```yaml
+# config/prometheus/health_aggregator_alerts.yml — group bodai-otel-canary
+- alert: OtelReceiverCanaryStale
+  expr: |
+    (time() * 1e9 - akosha_otlp_canary_last_success_unix_nano > 60e9)
+    and on(instance) (up{job="bodai-ecosystem", instance=~".*:8682"} == 1)
+  for: 30s
+  annotations:
+    summary: "Akosha's OTLP receiver is not writing spans (canary stale 60s+)"
 ```
 
-Or the cleaner Prometheus approach: a custom `Collector` registered against the `prometheus_client.REGISTRY` whose `collect()` reads `CanaryState` and yields the metrics on demand. PR-A4 picks one and pins it; either way, **`canary_writes_rejected_total{reason="duplicate_constraint"}` is its own counter, not a label on `canary_writes_failed_total`** (constraint rejection is not an exception — distinct metric cardinality).
+**Thresholds, pinned (v8).** The canary writes every 30s. The expression
+fires at **60s** of staleness — two missed emits, which is what §14's
+"2 missed emits surface P0-C" requires — and the `for: 30s` adds one more
+interval of confirmation so a single slow cycle does not page. Total
+detection is ~90s. (The v6 text said `for: 90s` over a `> 90e9`
+threshold, which is 180s of detection and does not match §14.)
 
-**Prometheus surface** (PR-A4 contract — every name written by `canary_watcher.py`):
+**The `up` guard matters.** If akosha is DOWN the gauge goes absent and
+the expression would not fire anyway — but "down" and "up but not
+writing" are different incidents with different fixes, and they deserve
+different alerts. The guard keeps the canary alert about the canary.
 
-- `telemetry.receiver.canary_last_success_unix_nano` (gauge; `last_canary_success_unix_nano`)
-- `telemetry.receiver.canary_writes_attempted_total` (counter; monotonically incremented)
-- `telemetry.receiver.canary_writes_succeeded_total` (counter; **v6: ok=1 ∧ deduped=0 only**)
-- `telemetry.receiver.canary_writes_failed_total{reason}` (counter; `reason` = exception class name; v6 no longer increments on `duplicate_constraint`)
-- `telemetry.receiver.canary_writes_rejected_total` (counter; **v6; incremented on `BatchResult(ok=0, deduped>0)`**)
-- `telemetry.receiver.bridge_failed_total` (counter; **v6; incremented on bridge-body exception; P0-D alert**)
-
-**P0-C alert** (corrected — v4 used `time_ns()` which is non-standard PromQL, and the LHS referenced a Python dataclass field; v5 fixes both; v6 keeps the fix):
+**No P0-D bridge alert** — there is no bridge (see above). The P0-C
+staleness alert covers both "the write path is broken" and "the emitter
+task died", which is the right granularity: from the outside they are
+the same symptom and the same action.
 
 ```
-ALERT receiver_canary_stale
+ALERT receiver_canary_stale   [superseded by the v8 form above]
   for 90s
   expr: time() * 1e9 - telemetry_receiver_canary_last_success_unix_nano > 90e9
   annotations:
     summary: "Receiver has not written a successful canary span in 90s"
     runbook_url: "docs/specs/2026-10-19-bodai-substrate-otel-v6.md#113-synthetic-canary-span-v4-addition-v5-hardened-v6-canary-bridge-liveness"
-
-ALERT receiver_canary_bridge_dead
-  for 5m
-  expr: increase(telemetry_receiver_bridge_failed_total[5m]) > 0
-    AND increase(telemetry_receiver_canary_writes_attempted_total[5m]) > 0
-  annotations:
-    summary: "Canary metrics bridge has failed in the last 5 minutes while canary writes are still being attempted"
-    runbook_url: "docs/specs/2026-10-19-bodai-substrate-otel-v6.md#113-synthetic-canary-span-v4-addition-v5-hardened-v6-canary-bridge-liveness"
 ```
+
+**The v6 P0-D bridge alert is withdrawn.** There is no bridge (see
+above), so `bridge_failed_total` does not exist and a rule on it would
+never fire — a silently dead alert, which is worse than no alert. The
+P0-C staleness rule covers the case the P0-D rule was for.
 
 PromQL notes:
 - `time()` returns Unix seconds; `time() * 1e9` is Unix nanoseconds. v4 had `time_ns()`, which PromQL doesn't define; the alert would have been syntactically invalid in strict parsers and surfaced a parse error.
-- The LHS is now the Prometheus gauge name (every Prometheus alert MUST address scraped metric names; referencing Python `CanaryState.last_canary_success_unix_nano` would evaluate `null > 90e9`, never firing). With the v5 bridge, the gauge is populated at every Prometheus scrape.
+- The LHS is the Prometheus gauge name (every Prometheus alert MUST address scraped metric names; referencing Python `CanaryState.last_canary_success_unix_nano` would evaluate `null > 90e9`, never firing). v8 removed the bridge, so the gauge is set by the emitter at write time rather than copied at scrape time — the value is the same, but it is now fresh by construction instead of fresh by polling.
 
 P0-C catches:
 - `INSERT` path regressions (the §6.2 try/except would have hidden a silently-failing batch).
 - `start()` succeeded but `_handle_batch` doesn't (e.g., a span class renamed without aliasing, JSON serializer accidentally returns `None` for `attributes`).
+- **Serializer regressions** — this is the class the canary's full-path design exists for. The `ArrayValue` defect (2026-10-23) broke `_proto_to_dict` for array-valued attributes; 223 Export RPCs failed and every producer's batch was dropped while `/health` stayed green. A canary that shortcut into the INSERT would not have noticed.
 - DLQ-flood scenarios where good rows stop landing.
-- Cold-start of substrate (the first canary might be slow; the P0 only fires after 90s).
-- The bridge itself is dead (Prometheus scrapes `:8682/metrics` and gets no `canary_last_success_unix_nano` — alerts on a stale gauge vs. no gauge at all is the difference between "broken canary writes" and "broken wiring"; both are P0-C).
+- Cold-start of substrate (the first canary might be slow; the P0 only fires after 60s of staleness plus 30s of confirmation).
+- The emitter task itself died — the gauge freezes, and that is the same symptom and the same action as a broken write path.
 
-**Duplicate-suppression**: `INSERT INTO spans_substrate (…attributes JSON…) ON CONFLICT (trace_id, span_id) DO NOTHING` — the canary uses a deterministic `trace_id = "_canary"` and `span_id = "_canary_<unix_time_ns>"` so duplicate canaries don't bloat the table. Worst-case noise: 1 row per 30s = 86,400 rows/day per canary producer. With multiple Akosha pods, only one INSERT survives per `(trace_id, span_id)` due to the §5.1 UNIQUE CONSTRAINT — pods that lag emit a duplicate that the constraint quietly rejects. Failed pods show up only as `canary_writes_failed_total` and `canary_last_success_unix_nano` staleness; not as DLQ noise.
+**Duplicate-suppression**: the canary uses a deterministic `trace_id` (derived from the constant `"_canary"`) and a `span_id` derived from the cycle's timestamp, so duplicate canaries don't bloat the table. Worst-case noise: 1 row per 30s = 86,400 rows/day per canary producer — which is why the canary rows are swept at 24h (above). With multiple Akosha pods, only one INSERT survives per `(trace_id, span_id)` due to the §5.1 UNIQUE CONSTRAINT — pods that lag emit a duplicate that the constraint quietly rejects, and that is counted in `akosha_otlp_canary_writes_rejected_total`, not as a failure. Loser pods show up in the rejection counter and in `canary_last_success_unix_nano` staleness; not as DLQ noise.
 
 ### 11.4a Operator interface for the substrate (v8 — rewritten 2026-10-27)
 

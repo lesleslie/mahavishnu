@@ -169,3 +169,52 @@ groups:
             the upstream issue is resolved, restart the server without
             the flag (or with ``HEALTH_FEED_HALFLIFE_SECONDS=300``).
           runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
+
+  # ------------------------------------------------------------------
+  # Synthetic canary (§11.3, PR-A4) — the receiver that stops writing
+  # ------------------------------------------------------------------
+
+  - name: bodai-otel-canary
+    interval: 30s
+    rules:
+
+      - alert: OtelReceiverCanaryStale
+        expr: |
+          (time() * 1e9 - akosha_otlp_canary_last_success_unix_nano > 60e9)
+          and on(instance) (up{job="bodai-ecosystem", instance=~".*:8682"} == 1)
+        for: 30s
+        labels:
+          severity: critical
+          component: otel-substrate
+          bodai_repo: "akosha"
+        annotations:
+          summary: "Akosha's OTLP receiver is not writing spans (canary stale 60s+)"
+          description: |
+            The synthetic canary (§11.3) has not landed a row in
+            `spans_substrate` for more than 60 seconds — two missed
+            30-second emits.
+
+            This is NOT the heartbeat watcher's P0-A. The heartbeat
+            watcher proves the substrate is QUERYABLE; the canary proves
+            the receiver WRITES. A receiver that accepts spans over OTLP
+            and then fails to insert them leaves `/health` green while
+            every producer's spans silently drop. That is the failure
+            this alert exists to catch.
+
+            Thresholds: the canary writes every 30s. The expression
+            fires at 60s of staleness (two missed emits) and the `for:
+            30s` adds one more interval of confirmation, so a single
+            slow cycle does not page. Total detection is ~90s.
+
+            The `up{...} == 1` guard matters: if akosha is DOWN, the
+            gauge is absent and the alert would not fire anyway, but
+            "down" and "up but not writing" are different incidents and
+            they deserve different alerts.
+
+            Check the write path:
+              curl -fsS http://localhost:8682/metrics \
+                | grep -E "^akosha_otlp_canary_(writes|last_success)"
+            A non-zero `akosha_otlp_canary_writes_failed_total{reason=...}`
+            names the failure. See the spec §11.3 and
+            `akosha/docs/ops/OTEL_TEMPO_HOOK.md`.
+          runbook_url: "https://github.com/lesleslie/akosha/blob/main/docs/ops/OTEL_TEMPO_HOOK.md"
