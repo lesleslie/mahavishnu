@@ -218,3 +218,137 @@ groups:
             names the failure. See the spec §11.3 and
             `akosha/docs/ops/OTEL_TEMPO_HOOK.md`.
           runbook_url: "https://github.com/lesleslie/akosha/blob/main/docs/ops/OTEL_TEMPO_HOOK.md"
+
+  # ---------------------------------------------------------------------------
+  # bodai-otel-heartbeat — the heartbeat watcher's three P0 conditions (§11)
+  #
+  # The canary group above proves the receiver WRITES. This group proves the
+  # producers still REPORT — the other half of the same question.
+  #
+  # The watcher in akosha/observability/heartbeat_watcher.py emits a counter
+  # for each of its three P0 conditions:
+  #
+  #   akosha_otlp_heartbeat_p0_a_total{service}      a service missed two
+  #                                                   consecutive 60s windows
+  #   akosha_otlp_heartbeat_query_failed_total{code}  the substrate could not
+  #                                                   be read at all
+  #   akosha_otlp_heartbeat_empty_roster_total        the roster is empty, so
+  #                                                   nothing is being watched
+  #
+  # All three counters were emitted and NONE of them was queried by a rule,
+  # so the watcher detected the fleet's producers going silent for four hours
+  # without anything paging. These rules close that loop.
+  #
+  # ---------------------------------------------------------------------------
+  # LABEL TRAP — read this before editing an expression here.
+  #
+  # The scrape config attaches `service` to the TARGET, not to the producer:
+  # `monitoring/file_sd/verified_metrics_targets.yml` labels the target
+  # 127.0.0.1:8682 with `service: akosha`, because that target IS akosha.
+  # The heartbeat counter carries its OWN `service` label (the roster entry
+  # that went quiet), and Prometheus -- with the default `honor_labels:
+  # false` -- renames the metric's label to `exported_service` and keeps the
+  # target's `service`.
+  #
+  # So every one of these series carries:
+  #     service="akosha"              <- the target that exposed it
+  #     exported_service="session-buddy"  <- the producer that emitted it
+  #
+  # `{{ $labels.service }}` in an annotation here would print "akosha" for
+  # EVERY producer -- an alert that names the wrong service. The producer is
+  # `exported_service`. Verified against the live series.
+  # ---------------------------------------------------------------------------
+
+  - name: bodai-otel-heartbeat
+    interval: 30s
+    rules:
+
+      - alert: OtelHeartbeatProducerSilent
+        expr: |
+          increase(akosha_otlp_heartbeat_p0_a_total[5m]) > 0
+          and on(instance) (up{job="bodai-ecosystem", instance=~".*:8682"} == 1)
+        for: 30s
+        labels:
+          severity: critical
+          component: otel-substrate
+          bodai_repo: "akosha"
+        annotations:
+          summary: "A rostered span producer has gone silent ({{ $labels.exported_service }})"
+          description: |-
+            The heartbeat watcher found no span from `{{ $labels.exported_service }}`
+            inside two consecutive 60-second windows. That is the P0-A
+            condition (spec §11).
+
+            The roster is `otel.receiver.known_mcp_servers` in
+            `akosha/settings/akosha.yaml`. A rostered service that stops
+            reporting is either broken or has left the fleet; both need a
+            human to decide which.
+
+            The counter only moves while the producer is ABSENT, so this
+            stays true for up to five minutes after it recovers. That tail
+            is deliberate: it gives the operator time to see the alert
+            rather than missing a blip.
+
+            Check:
+              curl -fsS http://localhost:8682/metrics \
+                | grep 'service="{{ $labels.exported_service }}"'
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#11-heartbeat-watcher-hooks"
+
+      - alert: OtelHeartbeatQueryFailedPersistent
+        expr: |
+          increase(akosha_otlp_heartbeat_query_failed_total[5m]) > 0
+          and on(instance) (up{job="bodai-ecosystem", instance=~".*:8682"} == 1)
+        for: 2m
+        labels:
+          severity: critical
+          component: otel-substrate
+          bodai_repo: "akosha"
+        annotations:
+          summary: "The heartbeat watcher cannot read the span substrate"
+          description: |-
+            The watcher's query RAISED rather than returning no rows — the
+            substrate is closed, locked, or corrupt. The `code` label says
+            which kind: `catalog`, `connection`, `io`, `operational`,
+            `runtime`, `timeout`, `not_initialized`.
+
+            This is NOT a quiet producer. A query that ran and found
+            nothing is evidence about a producer; a query that could not
+            run is evidence about the substrate, and it SUPPRESSES P0-A
+            while it lasts — paging on it sends the operator to the wrong
+            system at 3am.
+
+            The threshold is two heartbeat windows (120s) of continued
+            failure, which is why this rule holds for 2m.
+
+            Check:
+              curl -fsS http://localhost:8682/metrics \
+                | grep -E '^akosha_otlp_heartbeat_query_failed_total'
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#112-p0-b-query-failure-threshold"
+
+      - alert: OtelHeartbeatRosterEmpty
+        expr: |
+          increase(akosha_otlp_heartbeat_empty_roster_total[5m]) > 0
+          and on(instance) (up{job="bodai-ecosystem", instance=~".*:8682"} == 1)
+        for: 30s
+        labels:
+          severity: critical
+          component: otel-substrate
+          bodai_repo: "akosha"
+        annotations:
+          summary: "The heartbeat watcher's roster is empty — nothing is being watched"
+          description: |-
+            `otel.receiver.known_mcp_servers` in
+            `akosha/settings/akosha.yaml` is empty. The watcher therefore
+            has nothing to check, and "everything is fine" is the one
+            answer it must not give: a registry wipe, or a substrate lift
+            that dropped every entry, is indistinguishable from a healthy
+            system until somebody looks.
+
+            This fires on every cycle while the roster is empty, so the
+            counter climbs while it lasts and resets when the roster is
+            repopulated.
+
+            Check:
+              grep -A 8 'known_mcp_servers' \
+                /Users/les/Projects/akosha/settings/akosha.yaml
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#114-known_mcp_servers-config-home-v4-was-undefined-in-v3"

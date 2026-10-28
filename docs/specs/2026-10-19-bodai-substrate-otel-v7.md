@@ -1156,6 +1156,41 @@ ALERT telemetry_heartbeat_query_failed_persistent
     runbook_url: "..."
 ```
 
+### 11.2a The alert rules (v10, 2026-10-28)
+
+The watcher emits three counters, and until 2026-10-28 **no rule consumed any of
+them**. The detector shipped; the alerting loop did not. The fleet's producers
+went silent for four hours and the counters climbed past 292 per service while
+Prometheus watched them do nothing — the condition was found by reading
+`/metrics` by hand.
+
+All three rules now live in
+`mahavishnu/config/prometheus/health_aggregator_alerts.yml`, group
+`bodai-otel-heartbeat`, beside the `bodai-otel-canary` group that covers the
+other half of the same question:
+
+| Rule | Counter | `for` | Fires when |
+|---|---|---|---|
+| `OtelHeartbeatProducerSilent` | `akosha_otlp_heartbeat_p0_a_total{service}` | 30s | a rostered producer missed two consecutive 60s windows |
+| `OtelHeartbeatQueryFailedPersistent` | `akosha_otlp_heartbeat_query_failed_total{code}` | 2m | the substrate could not be read for two windows |
+| `OtelHeartbeatRosterEmpty` | `akosha_otlp_heartbeat_empty_roster_total` | 30s | the roster is empty, so nothing is being watched |
+
+**The producer is `exported_service`, never `service`.** The scrape config
+labels the TARGET — akosha's receiver, at `127.0.0.1:8682` — with
+`service: akosha`, and Prometheus renames the counter's own `service` label to
+`exported_service`. So every one of these series carries
+`service="akosha"` and `exported_service="<the producer>"`. An annotation
+reading `{{ $labels.service }}` would announce "akosha" for every producer in
+the fleet: an alert that fires correctly and points at the wrong service is
+worse than one that does not fire, because it looks like it works.
+
+`config/prometheus/tests/heartbeat_rules.test.yml` pins that with a
+`promtool test rules` unit test — the expected alert carries the producer's
+identity and names it in the summary — and `tests/unit/test_prometheus_alert_rules.py`
+runs `promtool check rules` and `promtool test rules` so neither file can rot
+unnoticed. Prometheus reloads rule files on SIGHUP; this host's Prometheus is
+reloaded that way.
+
 ### 11.1.5 Retention sweep failure (v8 — rewritten 2026-10-27)
 
 `akosha_otlp_retention_sweep_failed_total{table}` > 0, OR the
