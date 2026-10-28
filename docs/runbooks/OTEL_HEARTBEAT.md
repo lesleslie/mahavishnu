@@ -468,14 +468,15 @@ still firing ten seconds after it started reporting.
 want to read from the process's environment — the OTLP endpoint above all —
 lives on the child.
 
-**Two LaunchAgent plists are not well-formed XML.** `com.mcp.mahavishnu.plist`
-and `com.bodai.llama-server.plist` contain `--` inside an XML comment, which
-the XML spec forbids (`--` may not appear within a comment). `plutil` and
-launchd both use Apple's own parser and accept them; Python's `plistlib` and
-any strict XML tool reject them. **Read these files with `plutil -p` or
-`grep`, never with `plistlib`.** The fix is to replace the `--` inside the
-comment with an em dash, which preserves the operator note and satisfies the
-spec.
+**XML comments in a plist may not contain `--`.** The XML spec forbids a
+double hyphen anywhere inside a comment, and a plist that uses one as an em
+dash is not well-formed XML. `plutil` and launchd use Apple's own parser and
+accept it; Python's `plistlib` and any strict XML tool reject the whole file.
+Two LaunchAgent plists carried this defect until 2026-10-28
+(`com.mcp.mahavishnu.plist` and `com.bodai.llama-server.plist`). **Read these
+files with `plutil -p` or `grep` anyway** — they are the plists most likely to
+be hand-edited, and `plistlib` is what finds the problem. If you add a comment
+to a plist, write an em dash (`—`), not `--`.
 
 **`OTEL_EXPORTER_OTLP_ENDPOINT` vs `..._TRACES_ENDPOINT`.** The generic
 variable appends `/v1/traces` to a bare `host:port`; the traces-specific
