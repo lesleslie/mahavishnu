@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import stat
+import threading
 from typing import TYPE_CHECKING
 
 import pytest
@@ -128,3 +130,91 @@ class TestPatternLibrarySave:
         p = Pattern(id="newcat/item", name="New")
         lib.save(p)
         assert lib.root.joinpath("newcat").is_dir()
+
+
+class TestPatternLibraryAtomicSave:
+    """The pattern file is published atomically and owner-only.
+
+    The writer used to go through a *fixed-name* temp file
+    (``path.with_suffix(".tmp")``) and then rename it over the
+    destination. That shares one temp file between every writer of the
+    same destination, reuses whatever a crashed earlier write left
+    behind, and follows a symlink planted at the predictable temp path.
+    """
+
+    def test_the_pattern_is_published_owner_only(self, lib: PatternLibrary):
+        lib.save(Pattern(id="scaffolding/test", name="Test"))
+
+        dest = lib.root / "scaffolding" / "test.yaml"
+        assert stat.S_IMODE(dest.stat().st_mode) == 0o600
+
+    def test_save_leaves_no_temp_file_behind(self, lib: PatternLibrary):
+        lib.save(Pattern(id="scaffolding/test", name="Test"))
+
+        dest = lib.root / "scaffolding" / "test.yaml"
+        leftovers = [p.name for p in dest.parent.iterdir() if p != dest]
+        assert not leftovers, f"the writer left files behind: {leftovers}"
+
+    def test_a_stale_temp_file_cannot_leak_its_permissions(self, lib: PatternLibrary):
+        """A leftover temp file from a crashed write must not be reused.
+
+        ``Path.write_text`` truncates an existing file *in place* and
+        keeps its mode, so a stale temp left at 0644 would publish the
+        pattern at 0644 no matter what the writer intended.
+        """
+        category = lib.root / "scaffolding"
+        category.mkdir(parents=True)
+        stale = category / "test.tmp"
+        stale.write_text("poison")
+        stale.chmod(0o644)
+
+        lib.save(Pattern(id="scaffolding/test", name="Test"))
+
+        dest = category / "test.yaml"
+        assert "poison" not in dest.read_text()
+        assert stat.S_IMODE(dest.stat().st_mode) == 0o600
+
+    def test_a_symlinked_temp_path_is_not_written_through(self, lib: PatternLibrary):
+        """The old temp name was ``test.tmp``; it must not be reused.
+
+        ``Path.write_text`` opens with ``O_CREAT | O_TRUNC``, which
+        follows a symlink -- so a planted link would have its target
+        overwritten.
+        """
+        category = lib.root / "scaffolding"
+        category.mkdir(parents=True)
+        victim = lib.root / "victim.txt"
+        victim.write_text("precious")
+        (category / "test.tmp").symlink_to(victim)
+
+        lib.save(Pattern(id="scaffolding/test", name="Test"))
+
+        assert victim.read_text() == "precious"
+
+    def test_concurrent_saves_all_succeed(self, lib: PatternLibrary):
+        """Every writer of one destination must survive.
+
+        With a fixed temp name the first writer to rename moves the
+        file away from the others, whose rename then raises
+        ``FileNotFoundError``.
+        """
+        errors: list[BaseException] = []
+        barrier = threading.Barrier(8)
+
+        def writer(index: int) -> None:
+            try:
+                barrier.wait()
+                for _ in range(25):
+                    lib.save(Pattern(id="scaffolding/test", name=f"Test {index}"))
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert not errors, f"concurrent saves raised: {errors[:3]}"
+        dest = lib.root / "scaffolding" / "test.yaml"
+        assert yaml.safe_load(dest.read_text())["id"] == "scaffolding/test"

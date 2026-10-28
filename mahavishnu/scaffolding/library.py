@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 import logging
+import os
 from pathlib import Path
+import tempfile
 
 import yaml
 
@@ -86,7 +89,37 @@ class PatternLibrary:
 
 
 def atomic_write(path: Path, content: str) -> None:
-    """Write content to path atomically via temp file rename."""
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(content)
-    tmp.replace(path)
+    """Write content to path atomically via a uniquely named temp file.
+
+    The temp file is created with ``O_EXCL`` under a unique name, so
+    three separate hazards are closed at once:
+
+    - **Concurrent-writer collision.** With a fixed temp name, every
+      writer of the same destination shares one temp file. Whichever
+      writer renames first moves the file out from under the others,
+      whose rename then fails with ``FileNotFoundError``.
+    - **Stale temp reuse.** A temp file left behind by a crashed write
+      is reused rather than recreated, so the new content lands in a
+      file whose permissions that earlier write decided.
+    - **Symlink following.** Opening a fixed temp path with
+      ``O_CREAT | O_TRUNC`` follows symlinks, so anything able to write
+      into the destination directory can redirect the write -- and its
+      truncation -- at an arbitrary file.
+
+    The content is renamed over the destination with ``os.replace``,
+    which is atomic on POSIX, and the published file's mode is set with
+    ``fchmod`` on the open descriptor so it is never observable at a
+    wider mode than requested.
+    """
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            os.fchmod(handle.fileno(), 0o600)
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_name, path)
+    except BaseException:
+        with suppress(OSError):
+            os.unlink(temp_name)
+        raise
