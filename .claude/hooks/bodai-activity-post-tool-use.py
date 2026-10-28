@@ -41,6 +41,10 @@ from pathlib import Path
 import sys
 from typing import Any
 
+# Shared helper lives in the same .claude/hooks directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _atomic_write import atomic_write_text
+
 EVENT_NAME: str = "PostToolUse"
 
 ALLOWED_SOURCES: frozenset[str] = frozenset({"mahavishnu", "akosha", "crackerjack"})
@@ -114,20 +118,20 @@ def _read_state() -> dict[str, Any]:
 
 
 def _write_state(state: dict[str, Any]) -> None:
+    """Persist the state file atomically, owner-only.
+
+    The temp file gets a unique name rather than a fixed
+    ``<state>.json.tmp``: a fixed one is shared by every writer of the
+    state, so concurrent hook invocations collide and the later renames
+    fail with ``FileNotFoundError`` -- swallowed here, which turns a
+    concurrent update into a silently lost one.
+    """
     path = _state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
     try:
-        with tmp.open("w", encoding="utf-8") as fh:
-            json.dump(state, fh)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        atomic_write_text(path, json.dumps(state))
     except OSError:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
+        pass
 
 
 # ---------------------------------------------------------------------------

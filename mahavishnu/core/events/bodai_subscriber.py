@@ -42,6 +42,7 @@ from pathlib import Path
 import socket
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.atomic import atomic_write_text
 from mahavishnu.core.errors import EventEnvelopeConversionError
 from mahavishnu.core.events.canonical import (
     create_oneiric_envelope,
@@ -128,20 +129,16 @@ def _read_queue(path: Path) -> list[dict[str, Any]]:
 
 
 def _write_queue_atomic(path: Path, envelopes: list[dict[str, Any]]) -> None:
-    """Write the queue file atomically via tmp + rename. Mirrors Phase 5 hook pattern."""
+    """Write the queue file atomically via a uniquely named tmp + rename.
+
+    Mirrors the Phase 5 hook pattern, except that the temp file gets a
+    unique name: a fixed one is shared by every writer of the queue, so
+    concurrent writers collide and the later renames fail with
+    ``FileNotFoundError`` -- which this writer swallows, turning a
+    concurrent publish into a silently lost update.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    try:
-        with tmp.open("w", encoding="utf-8") as fh:
-            json.dump(envelopes, fh)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except OSError:
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
+    atomic_write_text(path, json.dumps(envelopes))
 
 
 def append_to_queue(

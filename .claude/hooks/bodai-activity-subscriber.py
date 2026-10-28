@@ -91,6 +91,9 @@ import subprocess
 import sys
 from typing import Any
 
+# Shared helper lives in the same .claude/hooks directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _atomic_write import atomic_write_text
 
 # ---------------------------------------------------------------------------
 # Paths / config
@@ -201,22 +204,20 @@ def _read_state() -> dict[str, Any] | None:
 
 
 def _write_state(state: dict[str, Any]) -> None:
-    """Persist the subscriber state via atomic tmp+rename."""
+    """Persist the subscriber state via an atomic tmp+rename.
+
+    The temp file gets a unique name rather than a fixed
+    ``<state>.json.tmp``: a fixed one is shared by every writer of the
+    state, so concurrent writes collide and the later renames fail with
+    ``FileNotFoundError`` -- swallowed here, which turns a concurrent
+    update into a silently lost one.
+    """
     path = _state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
     try:
-        with tmp.open("w", encoding="utf-8") as fh:
-            json.dump(state, fh)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        atomic_write_text(path, json.dumps(state))
     except OSError as exc:
         _log(f"failed to persist state file: {exc}")
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
 
 
 def _clear_state() -> None:
