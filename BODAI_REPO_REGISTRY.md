@@ -14,10 +14,25 @@ Python version coordination, dependency mapping, and Phase 4 (3.15) planning.
   footer are exempt from generation and may be edited by hand.
 -->
 
+## Path resolution
+
+The `Path` column is **relative to the projects root** — the directory that
+holds the fleet checkouts. No absolute path appears in this file, so it is
+machine-independent and safe to publish.
+
+Resolve the projects root in this order:
+
+1. `$BODAI_PROJECTS_ROOT` — explicit override.
+1. The parent of this repository — this file lives at
+   `<projects root>/mahavishnu/BODAI_REPO_REGISTRY.md`.
+1. `~/Projects` — the standard developer layout.
+
+A repo's location is then `<projects root>/<Path column>`.
+
 ## Discovery process (per Phase 0.0)
 
 1. Read MEMORY.md for inventory hints (e.g., `bodai-mcp-servers-not-mycelium-core.md`)
-1. `ls /Users/les/Projects/` for git repos
+1. `ls ~/Projects/` for git repos
 1. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
 1. Document in `settings/ecosystem.yaml` (gitignored per-machine catalog) — copy [`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) and populate
 1. Add registry-only annotations (Phase, FastMCP pin, provenance) to [`settings/registry_metadata.yaml`](settings/registry_metadata.yaml)
@@ -30,83 +45,84 @@ or higher.
 
 ## Confirmed Bodai repos (>=3.13 currently; bumping to >=3.14 in Phases 0.1–0.N)
 
-### Core 7 (in-scope for streaming tar Phase 3)
+
+### Core 6 (in-scope for streaming tar Phase 3)
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| mcp-common | /Users/les/Projects/mcp-common/ | >=3.14 | **Phase 0.1**. Leaf dep. FastMCP **>=4.0.3** (`2026-09-06`) |
-| oneiric | /Users/les/Projects/oneiric/ | >=3.14 | **Phase 0.2**. needed by Phase A |
-| session-buddy | /Users/les/Projects/session-buddy/ | >=3.14 | **Phase 0.4**. FastMCP **>=4.0.3** (`2026-09-06`) |
-| akosha | /Users/les/Projects/akosha/ | >=3.14 | **Phase 0.5**. required akosha/mcp/client.py transport-fix for streamable_http_client 2-tuple return. FastMCP **>=4.0.3** (`2026-09-06`) |
-| crackerjack | /Users/les/Projects/crackerjack/ | >=3.14 | **Phase 0.6**. FastMCP >=3.4.2 (already open ceiling); already 4.0.3 capable. FastMCP **>=4.0.3** (`2026-09-06`) |
-| mahavishnu | /Users/les/Projects/mahavishnu/ | >=3.14 | **Phase 0.N**. needed for Phase D; last in rollout. FastMCP **>=4.0.3** (`2026-09-06`) |
+| mcp-common | mcp-common/ | >=3.14 | **Phase 0.1**. Leaf dep. FastMCP **>=4.0.3** (`2026-09-06`) |
+| oneiric | oneiric/ | >=3.14 | **Phase 0.2**. needed by Phase A |
+| session-buddy | session-buddy/ | >=3.14 | **Phase 0.4**. FastMCP **>=4.0.3** (`2026-09-06`) |
+| akosha | akosha/ | >=3.14 | **Phase 0.5**. required akosha/mcp/client.py transport-fix for streamable_http_client 2-tuple return. FastMCP **>=4.0.3** (`2026-09-06`) |
+| crackerjack | crackerjack/ | >=3.14 | **Phase 0.6**. FastMCP >=3.4.2 (already open ceiling); already 4.0.3 capable. FastMCP **>=4.0.3** (`2026-09-06`) |
+| mahavishnu | mahavishnu/ | >=3.14 | **Phase 0.N**. needed for Phase D; last in rollout. FastMCP **>=4.0.3** (`2026-09-06`) |
 
 ### Web / framework libraries
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| fastblocks | /Users/les/Projects/fastblocks/ | >=3.14 | **Phase 0.7** |
-| fastblocks-ui | /Users/les/Projects/fastblocks-ui/ | >=3.14 | fastblocks runtime CSS dep |
-| jinja2-async-environment | /Users/les/Projects/jinja2-async-environment/ | >=3.14 | fastblocks transitive |
-| jinja2-inflection | /Users/les/Projects/jinja2-inflection/ | >=3.14 | fastblocks transitive |
-| starlette-async-jinja | /Users/les/Projects/starlette-async-jinja/ | >=3.14 | fastblocks transitive |
+| fastblocks | fastblocks/ | >=3.14 | **Phase 0.7** |
+| fastblocks-ui | fastblocks-ui/ | >=3.14 | fastblocks runtime CSS dep |
+| jinja2-async-environment | jinja2-async-environment/ | >=3.14 | fastblocks transitive |
+| jinja2-inflection | jinja2-inflection/ | >=3.14 | fastblocks transitive |
+| starlette-async-jinja | starlette-async-jinja/ | >=3.14 | fastblocks transitive |
 
 ### Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| archive-org-mcp | /Users/les/Projects/archive-org-mcp/ | >=3.14 | requires-python >=3.14 |
-| cmux-mcp | /Users/les/Projects/cmux-mcp/ | >=3.14 | MCP server for cmux terminal automation; flat-layout migration 2026-09-20 from src-layout |
-| css-mcp | /Users/les/Projects/css-mcp/ | >=3.14 | **Phase 0.8**. FastMCP **>=4.0.3** (`2026-09-06`) |
-| excalidraw-mcp | /Users/les/Projects/excalidraw-mcp/ | >=3.14 | discovered |
-| graphics-mcp | /Users/les/Projects/graphics-mcp/ | >=3.14 | **Phase 0.8**. pulled in httpcore2/httpx2 transitively. FastMCP **>=4.0.3** (`2026-09-06`) |
-| langsmith-mcp | /Users/les/Projects/langsmith-mcp/ | >=3.14 | **Phase 0.8** |
-| mailgun-mcp | /Users/les/Projects/mailgun-mcp/ | >=3.14 | discovered |
-| medium-mcp | /Users/les/Projects/medium-mcp/ | >=3.14 | requires-python >=3.14 |
-| neo4j-mcp | /Users/les/Projects/neo4j-mcp/ | >=3.14 | discovered |
-| opera-cloud-mcp | /Users/les/Projects/opera-cloud-mcp/ | >=3.14 | **Phase 0.8** |
-| penpot-api-mcp | /Users/les/Projects/penpot-api-mcp/ | >=3.14 | discovered |
-| porkbun-dns-mcp | /Users/les/Projects/porkbun-dns-mcp/ | >=3.14 | discovered |
-| porkbun-domain-mcp | /Users/les/Projects/porkbun-domain-mcp/ | >=3.14 | **Phase 0.8** |
-| raindropio-mcp | /Users/les/Projects/raindropio-mcp/ | >=3.14 | also named in bodai-mcp-servers-not-mycelium-core.md |
-| scapy-mcp | /Users/les/Projects/scapy-mcp/ | >=3.14 | requires-python >=3.14 |
-| splashstand | /Users/les/Projects/splashstand/ | >=3.14 | **Phase 0.8** |
-| spline-mcp | /Users/les/Projects/spline-mcp/ | >=3.14 | discovered |
-| synxis-crs-mcp | /Users/les/Projects/synxis-crs-mcp/ | >=3.14 | discovered |
-| synxis-pms-mcp | /Users/les/Projects/synxis-pms-mcp/ | >=3.14 | discovered |
-| unifi-mcp | /Users/les/Projects/unifi-mcp/ | >=3.14 | discovered |
-| www-mcp-servers | /Users/les/Projects/www-mcp-servers/ | n/a | active |
-
-### Extensions
-
-| Repo | Path | Current `requires-python` | Notes |
-|---|---|---|---|
-| jinja2-custom-delimiters | /Users/les/Projects/jinja2-custom-delimiters/ | n/a | PyCharm plugin for custom Jinja2 delimiter syntax highlighting (Python); role: extension in ecosystem.yaml |
+| archive-org-mcp | archive-org-mcp/ | >=3.14 | requires-python >=3.14 |
+| cmux-mcp | cmux-mcp/ | >=3.14 | MCP server for cmux terminal automation; flat-layout migration 2026-09-20 from src-layout |
+| css-mcp | css-mcp/ | >=3.14 | **Phase 0.8**. FastMCP **>=4.0.3** (`2026-09-06`) |
+| excalidraw-mcp | excalidraw-mcp/ | >=3.14 | discovered |
+| graphics-mcp | graphics-mcp/ | >=3.14 | **Phase 0.8**. pulled in httpcore2/httpx2 transitively. FastMCP **>=4.0.3** (`2026-09-06`) |
+| langsmith-mcp | langsmith-mcp/ | >=3.14 | **Phase 0.8** |
+| mailgun-mcp | mailgun-mcp/ | >=3.14 | discovered |
+| medium-mcp | medium-mcp/ | >=3.14 | requires-python >=3.14 |
+| neo4j-mcp | neo4j-mcp/ | >=3.14 | discovered |
+| opera-cloud-mcp | opera-cloud-mcp/ | >=3.14 | **Phase 0.8** |
+| penpot-api-mcp | penpot-api-mcp/ | >=3.14 | discovered |
+| porkbun-dns-mcp | porkbun-dns-mcp/ | >=3.14 | discovered |
+| porkbun-domain-mcp | porkbun-domain-mcp/ | >=3.14 | **Phase 0.8** |
+| raindropio-mcp | raindropio-mcp/ | >=3.14 | also named in bodai-mcp-servers-not-mycelium-core.md |
+| scapy-mcp | scapy-mcp/ | >=3.14 | requires-python >=3.14 |
+| splashstand | splashstand/ | >=3.14 | **Phase 0.8** |
+| spline-mcp | spline-mcp/ | >=3.14 | discovered |
+| synxis-crs-mcp | synxis-crs-mcp/ | >=3.14 | discovered |
+| synxis-pms-mcp | synxis-pms-mcp/ | >=3.14 | discovered |
+| unifi-mcp | unifi-mcp/ | >=3.14 | discovered |
 
 ### Desktop / GUI
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| flowscape | /Users/les/Projects/flowscape/ | >=3.14 | active |
-| mdinject | /Users/les/Projects/mdinject/ | >=3.14 | PySide6 desktop app; also exposes MCP server (mdinject-mcp) |
+| flowscape | flowscape/ | >=3.14 | active |
+| mdinject | mdinject/ | >=3.14 | PySide6 desktop app; also exposes MCP server (mdinject-mcp) |
 
 ### Meta
 
 | Repo | Path | Current `requires-python` | Notes |
 |---|---|---|---|
-| bodai | /Users/les/Projects/bodai/ | >=3.14 | The Orb — ecosystem meta-project |
+| bodai | bodai/ | >=3.14 | The Orb — ecosystem meta-project |
+
+### Deprecated / Archived (moved to `~/Projects/ARCHIVED/`)
+
+| Repo | Archive path | `requires-python` | Notes |
+|---|---|---|---|
+| fastblocks-htmy | ARCHIVED/fastblocks-htmy/ | n/a (archived) | Self-declared Development Status :: 7 - Inactive; absorbed into fastblocks>=0.31.0 |
+| peanutbutterpub | ARCHIVED/peanutbutterpub/ | n/a (archived) | Authored for personal exploration; not part of the orchestrated ecosystem |
 
 ## Summary counts
 
-- Core 7 (in-scope for streaming tar Phase 3): 7
+- Core 6 (in-scope for streaming tar Phase 3): 6
 - Web / framework libraries: 5
-- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 21
-- Extensions: 1
+- Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`): 20
+- Extensions: 0
 - Desktop / GUI: 2
 - Meta: 1
-- Deprecated/Archived: 0
+- Deprecated/Archived: 2
 
-**Total active Bodai repos: 37**
+**Total active Bodai repos: 34**
 
 ## Per-project MCP server and agent scoping
 
@@ -129,4 +145,12 @@ need a top-of-stack bump alongside the Phase 4 rollout.
 
 _(Hand-maintained footer. Not generated.)_
 
-## Excluded from scope (verified non-Bodai or non-Python)
+## Excluded from scope (not a fleet member)
+
+- `dhara/` — Decommissioned as a core component (ADR 019, 2026-10-17); still maintained by Bodai, but outside the six-repo fleet release set
+  Removed from `settings/ecosystem.yaml` 2026-10-28.
+- `jinja2-custom-delimiters/` — IntelliJ Platform plugin (Gradle/Kotlin), not a Python package
+  Removed from `settings/ecosystem.yaml` 2026-10-28.
+- `www-mcp-servers/` — no pyproject.toml; docs-only
+  Removed from `settings/ecosystem.yaml` 2026-09-09.
+  Archived at: `www-mcp-servers/`.

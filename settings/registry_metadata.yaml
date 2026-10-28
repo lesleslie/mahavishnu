@@ -174,14 +174,30 @@ repos:
     requires_python_pin: ">=3.13, <3.15"
     registry_notes: "needed for Phase D; last in rollout"
 
-# Excluded and archived repos are PER-MACHINE state (each maintainer's local
-# filesystem has different archive paths and personal projects). They live in
-# settings/registry_metadata.local.yaml (gitignored). See
-# settings/registry_metadata.local.yaml.example for the schema.
+# Exclusions and archive locations are two different kinds of state:
+#
+#   * WHY a repo is not a fleet member is a property of the repo itself (it
+#     has no pyproject.toml, it is not a Python package). That is shared
+#     across the fleet, so the reasons live here and are tracked.
+#   * WHERE an excluded or archived checkout sits on disk is per-machine, so
+#     it lives in settings/registry_metadata.local.yaml (gitignored). See
+#     settings/registry_metadata.local.yaml.example for the schema.
 #
 # When the registry renders the "Excluded" or "Deprecated/Archived" sections,
 # it merges both files: shared entries from this file + personal entries from
-# the local overlay.
+# the local overlay. A repo named in `excluded_repos` also drops out of the
+# active catalog tables -- otherwise it would be listed both as an active
+# fleet member and as excluded, which is self-contradictory.
 
-excluded_repos: {}
+excluded_repos:
+  dhara:
+    exclusion_reason: Decommissioned as a core component (ADR 019, 2026-10-17); still
+      maintained by Bodai, but outside the six-repo fleet release set
+    removed_from_ecosystem_yaml: '2026-10-28'
+  jinja2-custom-delimiters:
+    exclusion_reason: IntelliJ Platform plugin (Gradle/Kotlin), not a Python package
+    removed_from_ecosystem_yaml: '2026-10-28'
+  www-mcp-servers:
+    exclusion_reason: no pyproject.toml; docs-only
+    removed_from_ecosystem_yaml: '2026-09-09'
 archived_repos: {}

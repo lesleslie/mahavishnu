@@ -17,7 +17,7 @@ Run:
 
 Sections generated:
     1. Header + Discovery process (literal preamble)
-    2. Core 7 (filtered from ecosystem.yaml: role == orchestrator OR name in core set)
+    2. Core 6 (filtered from ecosystem.yaml: the ADR 019 fleet release set)
     3. Web / framework libraries (role == foundation + framework transitive)
     4. Bodai MCP servers (role == tool + mcp != native)
     5. Extensions (role == extension)
@@ -38,6 +38,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
+from collections.abc import Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -49,20 +51,78 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# Projects root
+# ---------------------------------------------------------------------------
+# This repo is public, so the published registry must not contain absolute
+# paths: they would disclose the operator's account name and local directory
+# layout to anyone who clones the repo.
+#
+# Every repo path in the catalog is therefore rendered *relative* to a
+# "projects root" -- the directory that holds the fleet checkouts -- and the
+# generated document declares how a consumer resolves that root back to a
+# directory on disk.
+#
+# The root is *inferred* from the catalog's own geometry (the parent shared
+# by the most repos) rather than configured, so the generator stays
+# deterministic and needs no machine-specific setup. A repo that does not
+# live under the inferred root falls back to its directory name alone, which
+# leaks nothing.
+#
+# PROJECTS_ROOT_ENV_VAR is the consumer-side override: a machine whose
+# checkouts live somewhere else sets it to point at its own root. The
+# generator deliberately ignores it -- the catalog's geometry is the ground
+# truth of where the repos are.
+
+PROJECTS_ROOT_ENV_VAR = "BODAI_PROJECTS_ROOT"
+
+
+def infer_projects_root(paths: Sequence[str]) -> Path | None:
+    """Infer the projects root that holds the fleet checkouts.
+
+    Returns the parent directory shared by the *most* repo paths. Using the
+    mode rather than the common ancestor matters: one stray repo kept
+    elsewhere must not drag the root up to the home directory, because the
+    rendered relative paths would then re-disclose the account name.
+    """
+    parents = Counter(str(Path(p).parent) for p in paths)
+    if not parents:
+        return None
+    root, _count = parents.most_common(1)[0]
+    return Path(root)
+
+
+def render_repo_path(repo_path: str, root: Path | None) -> str:
+    """Render a repo path for the published registry.
+
+    Root-relative when the repo lives under the inferred root; otherwise the
+    directory name alone, so a repo kept outside the root can never leak the
+    layout that holds it.
+    """
+    candidate = Path(repo_path)
+    if root is not None:
+        try:
+            relative = candidate.relative_to(root)
+        except ValueError:
+            pass
+        else:
+            return f"{relative.as_posix()}/"
+    return f"{candidate.name}/"
+
+
+# ---------------------------------------------------------------------------
 # Repo -> section mapping
 # ---------------------------------------------------------------------------
 # NAME_SECTION overrides the role-based default. Use this for repos whose
 # logical home in the registry differs from a naive role->section mapping.
-# The Core 7 are listed explicitly. splashstand and excalidraw-mcp are
+# The Core 6 are listed explicitly. splashstand and excalidraw-mcp are
 # logically MCP servers even though their roles are `app` and `visualizer`.
 # The fastblocks transitives are listed under Web/framework though their
 # roles are `extension` (they're conceptually part of fastblocks).
 
 NAME_SECTION: dict[str, str] = {
-    # Core 7 (streaming-tar rollout)
+    # Core 6 (streaming-tar rollout)
     "mcp-common": "core",
     "oneiric": "core",
-    "mcp": "core",
     "session-buddy": "core",
     "akosha": "core",
     "crackerjack": "core",
@@ -106,7 +166,7 @@ def resolve_section(name: str, role: str) -> str:
 
 
 SECTION_ORDER: list[tuple[str, str]] = [
-    ("core", "Core 7 (in-scope for streaming tar Phase 3)"),
+    ("core", "Core 6 (in-scope for streaming tar Phase 3)"),
     ("web_framework", "Web / framework libraries"),
     ("mcp_server", "Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)"),
     ("extensions", "Extensions"),
@@ -114,11 +174,13 @@ SECTION_ORDER: list[tuple[str, str]] = [
     ("meta", "Meta"),
 ]
 
-# Core 7 explicit ordering (the streaming-tar rollout phases)
+# Core 6 explicit ordering (the streaming-tar rollout phases).
+# This is the fleet release-probe set defined by ADR 019
+# (docs/adr/019-dhara-decommissioning.md): mahavishnu, akosha, session-buddy,
+# crackerjack, oneiric, mcp-common -- six repos, not seven.
 CORE_ORDER = [
     "mcp-common",
     "oneiric",
-    "mcp",
     "session-buddy",
     "akosha",
     "crackerjack",
@@ -173,13 +235,22 @@ def parse_requires_python(repo_path: str) -> str:
     return str(rp) if rp else "n/a"
 
 
-def filter_active(repos: list[dict]) -> list[dict]:
-    return [r for r in repos if r.get("status") == "active"]
+def filter_active(repos: list[dict], excluded: Collection[str] = ()) -> list[dict]:
+    """Keep the active repos that are not excluded.
+
+    A repo named in the overlay's ``excluded_repos`` is dropped even when the
+    per-machine catalog still lists it as active. The registry's own stated
+    criterion is that a Bodai repo has a ``pyproject.toml``; a repo that
+    fails it must not appear in the active tables *and* in the Excluded
+    section at the same time.
+    """
+    excluded_names = set(excluded)
+    return [r for r in repos if r.get("status") == "active" and r["name"] not in excluded_names]
 
 
-def render_repo_row(repo: dict, overlay: dict) -> str:
+def render_repo_row(repo: dict, overlay: dict, root: Path | None) -> str:
     name = repo["name"]
-    path = repo["path"] + "/"
+    path = render_repo_path(repo["path"], root)
     rp = parse_requires_python(repo["path"])
     notes_bits: list[str] = []
     o = overlay.get(name, {})
@@ -201,34 +272,52 @@ def render_repo_row(repo: dict, overlay: dict) -> str:
     return f"| {name} | {path} | {rp} | {notes} |"
 
 
-def render_core_section(repos: list[dict], overlay: dict) -> str:
+def bucket_repos(repos: list[dict]) -> dict[str, list[dict]]:
+    """Group the active repos into the sections the registry renders.
+
+    The core section is driven by ``CORE_ORDER`` (the streaming-tar rollout
+    order) and the remaining sections by name. Bucketing once and sharing it
+    between the renderer and the summary keeps the two from disagreeing
+    about how many repos the registry lists.
+    """
     by_name = {r["name"]: r for r in repos}
+    bucketed: dict[str, list[dict]] = {sec: [] for sec, _ in SECTION_ORDER}
+    for name in CORE_ORDER:
+        if name in by_name:
+            bucketed["core"].append(by_name[name])
+    for r in repos:
+        if r["name"] in CORE_ORDER:
+            continue
+        sec = resolve_section(r["name"], r["role"])
+        bucketed[sec].append(r)
+    return bucketed
+
+
+def render_core_section(core_repos: list[dict], overlay: dict, root: Path | None) -> str:
     out = [
-        "### Core 7 (in-scope for streaming tar Phase 3)\n",
+        "### Core 6 (in-scope for streaming tar Phase 3)\n",
         "| Repo | Path | Current `requires-python` | Notes |",
         "|---|---|---|---|",
     ]
-    for name in CORE_ORDER:
-        if name not in by_name:
-            continue
-        out.append(render_repo_row(by_name[name], overlay))
+    for repo in core_repos:
+        out.append(render_repo_row(repo, overlay, root))
     out.append("")
     return "\n".join(out)
 
 
-def render_section(title: str, repos: list[dict], overlay: dict) -> str:
+def render_section(title: str, repos: list[dict], overlay: dict, root: Path | None) -> str:
     out = [
         f"### {title}\n",
         "| Repo | Path | Current `requires-python` | Notes |",
         "|---|---|---|---|",
     ]
     for r in sorted(repos, key=lambda r: r["name"]):
-        out.append(render_repo_row(r, overlay))
+        out.append(render_repo_row(r, overlay, root))
     out.append("")
     return "\n".join(out)
 
 
-def render_archived_section(archived: dict) -> str:
+def render_archived_section(archived: dict, root: Path | None) -> str:
     out = [
         "### Deprecated / Archived (moved to `~/Projects/ARCHIVED/`)\n",
         "| Repo | Archive path | `requires-python` | Notes |",
@@ -236,15 +325,15 @@ def render_archived_section(archived: dict) -> str:
     ]
     for name in sorted(archived):
         info = archived[name]
-        out.append(
-            f"| {name} | {info.get('archive_path', 'n/a')} | n/a (archived) | {info.get('exclusion_reason', '')} |"
-        )
+        archive_path = info.get("archive_path")
+        rendered = render_repo_path(archive_path, root) if archive_path else "n/a"
+        out.append(f"| {name} | {rendered} | n/a (archived) | {info.get('exclusion_reason', '')} |")
     out.append("")
     return "\n".join(out)
 
 
-def render_excluded_section(excluded: dict) -> str:
-    out = ["## Excluded from scope (verified non-Bodai or non-Python)\n"]
+def render_excluded_section(excluded: dict, root: Path | None) -> str:
+    out = ["## Excluded from scope (not a fleet member)\n"]
     for name in sorted(excluded):
         info = excluded[name]
         out.append(f"- `{name}/` — {info.get('exclusion_reason', 'excluded')}")
@@ -253,17 +342,20 @@ def render_excluded_section(excluded: dict) -> str:
                 f"  Removed from `settings/ecosystem.yaml` {info['removed_from_ecosystem_yaml']}."
             )
         if info.get("archive_path"):
-            out.append(f"  Archived at: `{info['archive_path']}`.")
+            rendered = render_repo_path(info["archive_path"], root)
+            out.append(f"  Archived at: `{rendered}`.")
     out.append("")
     return "\n".join(out)
 
 
-def render_summary(active: list[dict], overlay: dict) -> str:
-    counts: dict[str, int] = {sec: 0 for sec, _ in SECTION_ORDER}
+def render_summary(bucketed: dict[str, list[dict]], overlay: dict) -> str:
+    """Summarize the repos the registry actually lists.
+
+    The counts come from the same buckets the renderer uses, so the summary
+    can never disagree with the tables above it.
+    """
+    counts: dict[str, int] = {sec: len(bucketed.get(sec, [])) for sec, _ in SECTION_ORDER}
     counts["archived"] = len(overlay.get("archived_repos", {}))
-    for r in active:
-        sec = resolve_section(r["name"], r["role"])
-        counts[sec] = counts.get(sec, 0) + 1
     total_active = sum(counts[s] for s, _ in SECTION_ORDER)
     out = ["## Summary counts\n"]
     for sec, title in SECTION_ORDER:
@@ -294,10 +386,25 @@ Python version coordination, dependency mapping, and Phase 4 (3.15) planning.
   footer are exempt from generation and may be edited by hand.
 -->
 
+## Path resolution
+
+The `Path` column is **relative to the projects root** — the directory that
+holds the fleet checkouts. No absolute path appears in this file, so it is
+machine-independent and safe to publish.
+
+Resolve the projects root in this order:
+
+1. `${PROJECTS_ROOT_ENV_VAR}` — explicit override.
+1. The parent of this repository — this file lives at
+   `<projects root>/mahavishnu/BODAI_REPO_REGISTRY.md`.
+1. `~/Projects` — the standard developer layout.
+
+A repo's location is then `<projects root>/<Path column>`.
+
 ## Discovery process (per Phase 0.0)
 
 1. Read MEMORY.md for inventory hints (e.g., `bodai-mcp-servers-not-mycelium-core.md`)
-1. `ls /Users/les/Projects/` for git repos
+1. `ls ~/Projects/` for git repos
 1. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
 1. Document in `settings/ecosystem.yaml` (gitignored per-machine catalog) — copy [`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) and populate
 1. Add registry-only annotations (Phase, FastMCP pin, provenance) to [`settings/registry_metadata.yaml`](settings/registry_metadata.yaml)
@@ -345,51 +452,33 @@ def generate(
     eco = load_yaml(ecosystem_path)
     overlay = load_yaml(overlay_path)
     overlay = merge_overlay_with_local(overlay, local_overlay_path)
-    repos = filter_active(eco.get("repos", []))
+    excluded_repos = overlay.get("excluded_repos", {})
+    repos = filter_active(eco.get("repos", []), excluded_repos)
 
-    sections: list[str] = []
-    sections.append(build_header(eco, overlay))
+    # The projects root is inferred from the catalog's own geometry so the
+    # published paths stay relative (and leak-free). See the "Projects root"
+    # section above.
+    root = infer_projects_root([r["path"] for r in repos])
 
-    # Core section
-    sections.append(render_core_section(repos, overlay.get("repos", {})))
-
-    # Bucket remaining active repos by section
-    bucketed: dict[str, list[dict]] = {sec: [] for sec, _ in SECTION_ORDER}
-    for r in repos:
-        if r["name"] in CORE_ORDER:
-            continue
-        sec = resolve_section(r["name"], r["role"])
-        bucketed[sec].append(r)
-
-    for sec, title in SECTION_ORDER:
-        if sec == "core":
-            continue
-        if bucketed[sec]:
-            sections.append(render_section(title, bucketed[sec], overlay.get("repos", {})))
-
-    # Archived (from overlay)
-    archived = overlay.get("archived_repos", {})
-    if archived:
-        sections.append(render_archived_section(archived))
-
-    summary = render_summary(repos, overlay)
-    excluded = render_excluded_section(overlay.get("excluded_repos", {}))
+    # Bucket the active repos into the sections the registry renders.
+    bucketed = bucket_repos(repos)
 
     # Compose final: header, core section, other catalog sections, archived,
     # summary, footer, excluded.
     final = []
     final.append(build_header(eco, overlay))
-    final.append(render_core_section(repos, overlay.get("repos", {})))
+    final.append(render_core_section(bucketed["core"], overlay.get("repos", {}), root))
     for sec, title in SECTION_ORDER:
         if sec == "core":
             continue
         if bucketed[sec]:
-            final.append(render_section(title, bucketed[sec], overlay.get("repos", {})))
+            final.append(render_section(title, bucketed[sec], overlay.get("repos", {}), root))
+    archived = overlay.get("archived_repos", {})
     if archived:
-        final.append(render_archived_section(archived))
-    final.append(summary)
+        final.append(render_archived_section(archived, root))
+    final.append(render_summary(bucketed, overlay))
     final.append(build_footer())
-    final.append(excluded)
+    final.append(render_excluded_section(excluded_repos, root))
     return "\n".join(final)
 
 

@@ -243,6 +243,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-10-28-registry-root-relative-paths.md`](2026-10-28-registry-root-relative-paths.md) | 2026-10-28 | `complete` | `implementation` |  | `registry-paths` | Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md` |
 | [`docs/plans/2026-10-27-bodai-producer-span-reporting.md`](2026-10-27-bodai-producer-span-reporting.md) | 2026-10-27 | `active` | `canonical` |  | `otel-producer-reporting` | Producer Span Reporting — make the heartbeat roster mean something |
 | [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `draft` | `implementation` |  | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
 | [`docs/plans/2026-10-21-bifrost-cli-consolidation.md`](2026-10-21-bifrost-cli-consolidation.md) | 2026-10-21 | `draft` | `implementation` |  | `bifrost-cli-consolidation` | 2026 10 21 bifrost cli consolidation |
@@ -378,7 +379,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (98 entries)
+### `plan` (99 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -391,9 +392,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 8 | 42 | 1 | 1 | 14 | **66** |
-| `implementation` | 4 | 4 | 2 | 4 | 14 | **28** |
+| `implementation` | 4 | 4 | 2 | 4 | 15 | **29** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **12** | **46** | **3** | **5** | **67** | **133** |
+| **Total** | **12** | **46** | **3** | **5** | **68** | **134** |

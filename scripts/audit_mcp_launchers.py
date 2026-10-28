@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 from dataclasses import asdict, dataclass, field
@@ -40,6 +41,13 @@ logger = logging.getLogger("audit_mcp_launchers")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / "BODAI_REPO_REGISTRY.md"
 ECOSYSTEM_YAML = REPO_ROOT / "settings" / "ecosystem.yaml"
+
+# The registry publishes root-relative paths (it lives in a public repo,
+# so it must not disclose the operator's account name). See
+# _resolve_projects_root for the resolution chain.
+PROJECTS_ROOT_ENV_VAR = "BODAI_PROJECTS_ROOT"
+DEFAULT_PROJECTS_DIRNAME = "Projects"
+REGISTRY_REPO_DIRNAME = "mahavishnu"
 
 # Per feedback-bodai-core-component-taxonomy memory: "Core" = vishnu/ak/sb/cj/oneiric
 # + mcp-common supporting lib. Five orchestrator/control-plane components plus
@@ -176,30 +184,105 @@ def _load_ecosystem(path: Path) -> dict[str, dict[str, Any]]:
     return {entry["name"]: entry for entry in data.get("repos", [])}
 
 
+def _resolve_projects_root(registry_path: Path) -> Path:
+    """Resolve the projects root the registry's Path column is relative to.
+
+    The registry lives in a public repository, so it publishes no absolute
+    paths: each row is relative to the directory that holds the fleet
+    checkouts. Resolution order (first hit wins):
+
+      1. ``$BODAI_PROJECTS_ROOT`` — explicit operator override.
+      2. The registry's own location — the registry lives at
+         ``<projects root>/mahavishnu/BODAI_REPO_REGISTRY.md``.
+      3. ``~/Projects`` — the standard developer layout.
+    """
+    override = os.environ.get(PROJECTS_ROOT_ENV_VAR)
+    if override:
+        return Path(override).expanduser()
+
+    repo_dir = registry_path.resolve().parent
+    if repo_dir.name == REGISTRY_REPO_DIRNAME:
+        return repo_dir.parent
+
+    try:
+        home = Path.home()
+    except RuntimeError:
+        return Path.cwd()
+    return home / DEFAULT_PROJECTS_DIRNAME
+
+
+def _display_path(path_str: str, root: Path) -> str:
+    """Render a repo path for the audit output.
+
+    The audit's output feeds a tracked, public tracker document, so it must
+    not disclose the operator's account name or local directory layout.
+    Paths under the projects root are shown relative to it; anything else
+    falls back to its directory name.
+    """
+    if not path_str:
+        return ""
+    candidate = Path(path_str)
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError:
+        return candidate.name
+    return relative.as_posix()
+
+
 def _parse_registry_paths(path: Path) -> dict[str, str]:
     """Parse ``BODAI_REPO_REGISTRY.md`` to extract ``{repo_name: path}``.
 
     The registry is generated from ecosystem.yaml + registry_metadata.yaml, so
     paths here must agree with ecosystem.yaml. We trust ecosystem.yaml as
     authoritative for the path field but cross-check against the registry's
-    markdown tables (which surface sections like "Core 7" / "Bodai MCP
+    markdown tables (which surface sections like "Core 6" / "Bodai MCP
     servers"). When the registry disagrees with ecosystem.yaml, the registry's
     path wins — it's the user-facing artifact.
+
+    The registry's Path column is relative to the projects root, so each row
+    is resolved against that root before being returned.
     """
     if not path.exists():
         msg = f"BODAI_REPO_REGISTRY.md not found at {path}"
         raise FileNotFoundError(msg)
     text = path.read_text(encoding="utf-8")
+    root = _resolve_projects_root(path)
 
     # Match markdown table rows of the shape:
-    #   | <repo> | /path/ | ... |
+    #   | <repo> | path/ | ... |
     # The leading whitespace varies (sometimes nested inside a section header).
     # Repo name is the first pipe-delimited cell; path is the second.
     row_re = re.compile(
-        r"^\|\s*([\w./-]+)\s*\|\s*(/Users/les/Projects/[\w./-]+/?)\s*\|",
+        r"^\|\s*([\w./-]+)\s*\|\s*([\w.~/-]+/?)\s*\|",
         re.MULTILINE,
     )
-    return {name: path.rstrip("/") for name, path in row_re.findall(text)}
+    entries: dict[str, str] = {}
+    trusted_root = root.resolve()
+    for name, raw in row_re.findall(text):
+        # Skip the table's own header ("Repo | Path | ...") and its
+        # separator row ("---|--- ...").
+        if name.lower() == "repo" or not raw.strip("-"):
+            continue
+        # The registry is an input, so a row must not be able to steer the
+        # audit at a directory outside the projects root. The check runs on
+        # the resolved path, so ".." segments and escaping symlinks are
+        # both rejected. An absolute path is honoured only when it lands
+        # inside the root, which keeps a registry generated before the
+        # relative-path format working.
+        candidate = (trusted_root / raw.rstrip("/")).resolve()
+        try:
+            relative = candidate.relative_to(trusted_root)
+        except ValueError:
+            logger.warning(
+                "Registry row %r resolves outside the projects root (%s); skipping it",
+                raw,
+                trusted_root,
+            )
+            continue
+        if not relative.parts:
+            continue
+        entries[name] = str(candidate)
+    return entries
 
 
 def _probe_candidates(repo_path: Path) -> list[ProbeCandidate]:
@@ -501,7 +584,7 @@ def _gather_audit_set(
     """
     notes_by_repo: dict[str, list[str]] = {}
 
-    # Core 5: surfaces in the registry's "Core 7" table.
+    # Core 5: surfaces in the registry's "Core 6" table.
     for repo in CORE_REPOS:
         notes_by_repo.setdefault(repo, [])
 
@@ -530,12 +613,16 @@ def _gather_audit_set(
     return out
 
 
-def _audit_repo(repo: str, path_str: str, notes: list[str]) -> RepoRecord:
-    """Probe one repo and build its audit row."""
+def _audit_repo(repo: str, path_str: str, notes: list[str], root: Path) -> RepoRecord:
+    """Probe one repo and build its audit row.
+
+    The repo is probed at its absolute location; the emitted row shows the
+    path relative to the projects root.
+    """
     repo_path = Path(path_str) if path_str else Path()
     candidates = _probe_candidates(repo_path)
     hits = _detect(candidates, repo_path)
-    return _build_record(repo, path_str, candidates, hits, notes)
+    return _build_record(repo, _display_path(path_str, root), candidates, hits, notes)
 
 
 def _render_markdown_table(records: list[RepoRecord]) -> str:
@@ -603,6 +690,7 @@ def main(argv: list[str] | None = None) -> int:
     ecosystem = _load_ecosystem(args.ecosystem)
     registry_paths = _parse_registry_paths(args.registry)
 
+    root = _resolve_projects_root(args.registry)
     audit_set = _gather_audit_set(ecosystem, registry_paths)
 
     if args.repo:
@@ -616,7 +704,7 @@ def main(argv: list[str] | None = None) -> int:
 
     records: list[RepoRecord] = []
     for repo, path, notes in audit_set:
-        records.append(_audit_repo(repo, path, notes))
+        records.append(_audit_repo(repo, path, notes, root))
 
     if args.json:
         json.dump(
