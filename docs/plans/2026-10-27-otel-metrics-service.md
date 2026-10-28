@@ -27,6 +27,9 @@ requirements:
   - id: REQ-M06
     title: "Malformed metric payloads are rejected without aborting the receiver"
     description: "Schema failures are counted in rejected_data_points and DLQ'd; the batch continues."
+  - id: REQ-M07
+    title: "Every in-process metric exporter reaches the substrate without error"
+    description: "Both mahavishnu's own exporter and oneiric's OTLPObservabilityAdapter, which sends traces and metrics to ONE endpoint and therefore requires a receiver that implements both services."
 ---
 
 # OTLP MetricsService in the Bodai Substrate — Implementation Plan
@@ -65,6 +68,11 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
 5. **G5** — the change-point drift counters and the new liveness instruments
    (`changepoint_evaluations_total`, `changepoint_detector_active`) are
    queryable, so the stage-1 gate can read a real zero instead of "missing".
+6. **G6** — **both** in-process metric exporters reach the substrate without
+   error: mahavishnu's own, and oneiric's `OTLPObservabilityAdapter`
+   (Finding 10). This is the requirement that makes the single-endpoint
+   design non-negotiable — a split-endpoint fix that only covers mahavishnu
+   leaves the second exporter failing.
 
 ## 3. Non-Goals
 
@@ -81,6 +89,29 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
    the retention sweep.
 5. **NG5** — Not adding a second telemetry store. `metrics_substrate` is a
    table in the same DuckDB substrate, not a new database.
+6. **NG6** — Not changing oneiric's `OTLPObservabilityAdapter`. It sends
+   traces and metrics to **one** endpoint
+   (`oneiric/adapters/monitoring/otlp.py:140-153`), so a receiver that
+   implements both services satisfies it as-is. Splitting oneiric's endpoint
+   would be a second mechanism solving the same problem.
+
+### Interim state (until Phase 2 lands)
+
+The `UNIMPLEMENTED` flood continues, but it is **one** exporter, not two:
+mahavishnu's own now targets `:14317` (commit `0b0886ea`) and succeeds, so
+the remaining 60-second error stream is oneiric's monitoring adapter against
+the trace-only `:4317`. Two interim options, neither of which this plan
+requires:
+
+- **Accept it.** The flood is one line per minute in a log file, and no
+  metric is lost that was ever delivered.
+- **Silence it in oneiric** by giving `OTLPObservabilitySettings` a separate
+  metrics endpoint, mirroring the mahavishnu change. This is a oneiric
+  change and buys nothing durable — it is a second endpoint-split mechanism
+  to maintain, and the substrate's MetricsService makes it unnecessary.
+
+Prefer the first. A durable fix in the substrate is worth more than a
+temporary one in a producer.
 
 ## 4. Current Findings
 
@@ -148,6 +179,39 @@ Citations are file:line against the working tree on 2026-10-27.
    trace endpoint). It stops the error and routes metrics to Alloy's
    receiver, where they are accepted and discarded. G4 retires it.
 
+10. **There are TWO metric exporters in the mahavishnu process, not one.**
+    Instrumenting `OTLPMetricExporter.__init__` while constructing
+    `MahavishnuApp()` **and** `FastMCPServer(app)` shows exactly one
+    construction — mahavishnu's own, to `http://127.0.0.1:14317`
+    (`mahavishnu/core/observability.py:236`). But the running process holds
+    **two** OTLP connections (`:14317` and `:4317`) and logs **two**
+    independent 60-second error streams to `localhost:4317`. An exhaustive
+    sweep of site-packages finds exactly one other gRPC metric-exporter
+    construction: **`oneiric/adapters/monitoring/otlp.py`** — oneiric's
+    `OTLPObservabilityAdapter`. It is the only file in the venv that both
+    imports `opentelemetry.exporter.otlp.proto.grpc.metric_exporter` and
+    mentions `4317`.
+
+    It is **lazily** resolved (not at app or server construction), which is
+    why the flood starts when it does rather than at boot. Its
+    `_create_metric_exporter` uses `self._settings.endpoint`
+    (`oneiric/adapters/monitoring/otlp.py:140-153`) — the **same** endpoint
+    as its span exporter. One endpoint, both signals.
+
+    This is the decisive design fact: oneiric's adapter can only work
+    against a receiver that implements **both** services. A MetricsService
+    on `:4317` therefore satisfies it with **no oneiric code change**, and
+    a split-endpoint fix in mahavishnu alone cannot.
+
+11. **The one-shot `set_meter_provider` rule makes the two exporters
+    independent.** OTel allows the global meter provider to be set once;
+    a later `set_meter_provider` is a silent no-op. oneiric's adapter
+    calls it too (`oneiric/adapters/monitoring/otlp.py:init`), so its
+    `PeriodicExportingMetricReader` — and therefore its exporter — keeps
+    running and keeps failing even though its instruments are never
+    recorded. A "fix" that only repoints the global provider would not
+    stop the flood.
+
 ## 4.5 Requirements
 
 The canonical requirement table lives in this file's **YAML frontmatter**
@@ -162,6 +226,7 @@ from. It is not duplicated here, so there is one source of truth.
 | REQ-M04 | Producers can target the substrate endpoint for metrics | Phase 3 |
 | REQ-M05 | Drift counters and detector liveness are queryable | Phases 3–4 |
 | REQ-M06 | Malformed metric payloads are rejected without aborting the receiver | Phase 2 |
+| REQ-M07 | Every in-process metric exporter reaches the substrate without error | Phase 2 |
 
 Traceability: each ID is marked in code with `# req: REQ-Mnn` (or
 `# Implements: REQ-Mnn` in a docstring, or `@pytest.mark.req(["REQ-Mnn"])` on
@@ -240,6 +305,12 @@ idempotently.
   sums become `Counter`/`Gauge`; histograms become `Histogram` with the
   producer's bucket boundaries.
 - Persist to `metrics_substrate` via Phase 1's primitives.
+- **Accept metrics from BOTH in-process producers** (REQ-M07): mahavishnu's
+  own exporter and oneiric's `OTLPObservabilityAdapter`. They are
+  indistinguishable at the wire level — both speak OTLP MetricsService to
+  `:4317` — so the receiver must not assume a single producer, and must
+  namespace the exposed series by the resource's `service.name` so
+  mahavishnu's and oneiric's instruments cannot collide.
 
 **Exit criteria:** an OTLP metrics export to `:4317` is accepted, appears in
 `curl http://localhost:8682/metrics`, and is queryable through Prometheus.
@@ -352,6 +423,9 @@ injected drift moves it.
       DDL, `insert_metrics_substrate`, `metrics_substrate_table`
 - [ ] oneiric lifespan hook — idempotent `metrics_substrate` creation
 - [ ] oneiric tests — `test_metrics_substrate.py`
+- [ ] **no change** to `oneiric/adapters/monitoring/otlp.py` — the adapter's
+      single endpoint works against a receiver that implements both services
+      (NG6, REQ-M07)
 
 **akosha** (`/Users/les/Projects/akosha`)
 - [ ] `akosha/observability/otlp_receiver.py` — `_MetricsServiceServicer`,
@@ -392,7 +466,7 @@ injected drift moves it.
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Metric-name collision between producers in the shared `prometheus_client` registry | medium | namespace by `service.name`; document the label set; reject (count as `rejected_data_points`) rather than silently overwrite |
+| Metric-name collision between producers in the shared `prometheus_client` registry | medium | there are **two** producers (Finding 10): mahavishnu's exporter and oneiric's monitoring adapter. Namespace by the resource's `service.name`; document the label set; reject (count as `rejected_data_points`) rather than silently overwrite |
 | Unbounded label cardinality in received data points | medium | cap distinct label values per metric; drop the excess into the DLQ count, matching the trace path's discipline |
 | Cumulative-sum semantics: a restart resets the counter, Prometheus sees a counter reset | medium | document the reset; `changepoint_evaluations_total` is a counter, so a reset shows as a decrease — the gate uses `rate()`/`increase()`, which handle it |
 | Oneiric's `DuckdbHotStore` is shared with other consumers | low | the metrics table is additive; `spans_substrate` DDL and the retention sweep are untouched (NG4) |
