@@ -303,6 +303,37 @@ class ObservabilityManager:
                 description="Drift warning events from the warn detector (only emitted when changepoint.detector == 'two_stage'). Confirmed alerts emit drift_detected_total separately.",
             )
 
+            # Detector liveness, for the §7 stage-1 gate.
+            #
+            # The drift counters carry {metric_name, detector, severity}
+            # attributes, so their series only exist AFTER a drift fires.
+            # "drift_detected_total is absent" is therefore ambiguous: it
+            # means either "the detector ran and found nothing" or "the
+            # detector was never wired" -- and the gate has to tell those
+            # apart to read a zero as a real zero.
+            #
+            # These two instruments make the distinction possible:
+            #   changepoint_evaluations_total -- a rising count proves the
+            #       detector is evaluating, so an absent drift counter
+            #       alongside it means "no drift", not "never wired".
+            #   changepoint_detector_active -- 1 while ticking. It goes
+            #       stale on its own if the process dies, because Prometheus
+            #       stops seeing the series.
+            #
+            # Deliberately NOT an add(0) on drift_detected_total: that
+            # counter is attributed, so a zero-valued registration would
+            # have to invent a metric_name/detector/severity combination
+            # that never occurred, and the fabricated series would then be
+            # indistinguishable from a real one in a query.
+            self.changepoint_evaluations_counter = self.meter.create_counter(
+                "mahavishnu.observability.changepoint_evaluations_total",
+                description="Change-point detector evaluations performed (one per sampler tick). A rising value proves the detector is wired and running.",
+            )
+            self.changepoint_active_counter = self.meter.create_up_down_counter(
+                "mahavishnu.observability.changepoint_detector_active",
+                description="1 while the change-point detector tick loop is running, 0 when it is not.",
+            )
+
         except Exception as e:  # OTel init may fail on partial/broken installations; fall back gracefully  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.warning(f"Failed to initialize OpenTelemetry: {e}")
             self._init_fallback_components()
@@ -336,6 +367,14 @@ class ObservabilityManager:
         # R4-M5: routed through _validate_labels at emit time.
         self.drift_warning_counter = self.meter.create_counter(
             "mahavishnu.observability.drift_warning_total"
+        )
+        # Liveness instruments -- see the OTel-path comment above for why
+        # the drift counters alone cannot answer "no drift vs never wired".
+        self.changepoint_evaluations_counter = self.meter.create_counter(
+            "mahavishnu.observability.changepoint_evaluations_total"
+        )
+        self.changepoint_active_counter = self.meter.create_up_down_counter(
+            "mahavishnu.observability.changepoint_detector_active"
         )
 
     def create_workflow_counter(self):
@@ -1059,6 +1098,29 @@ class ObservabilityManager:
             self._log_debug("drift counter increment failed: %s", exc)
         self._last_two_stage_result = None  # type: ignore[attr-defined]
 
+    def _record_changepoint_evaluation(self) -> None:
+        """Record one change-point detector evaluation (liveness).
+
+        Called from the tick loop on every successful evaluation, whether
+        or not a drift fired. This is what lets the §7 stage-1 gate
+        distinguish "the detector ran and found nothing" from "the
+        detector was never wired": the drift counters are attributed, so
+        they only exist after a fire, but this counter exists from the
+        first tick onwards.
+        """
+        try:
+            counter = getattr(self, "changepoint_evaluations_counter", None)
+            if counter is not None:
+                counter.add(1)
+            active = getattr(self, "changepoint_active_counter", None)
+            if active is not None:
+                # UpDownCounter semantics: 0 -> 1 on the first tick, then
+                # unchanged. The series goes stale on its own if the
+                # process dies, because Prometheus stops seeing it.
+                active.add(1)
+        except Exception as exc:  # liveness is best-effort; never break the tick loop  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+            self._log_debug("changepoint liveness record failed: %s", exc)
+
     def _reset_changepoint_detector_after_fire(self) -> None:
         """S-1 (round-2 review): reset the detector after fire.
 
@@ -1438,6 +1500,7 @@ class ObservabilityManager:
                         self._evaluate_change_point(target_metric, value)
                     if reference_mode != "none":
                         self._evaluate_3sigma(target_metric, value)
+                    self._record_changepoint_evaluation()
                 except Exception as exc:  # background tick loop must keep running; swallow per-tick failures and retry next cadence  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     self._log_debug("change-point tick failed: %s", exc)
                 await asyncio.sleep(cadence)

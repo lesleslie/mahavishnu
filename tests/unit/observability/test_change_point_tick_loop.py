@@ -221,3 +221,65 @@ async def test_the_mcp_lifecycle_survives_a_server_without_an_app() -> None:
 
     await mcp_lifecycle.start_change_point_tick_loop(_Server())
     await mcp_lifecycle.stop_change_point_tick_loop(_Server())
+
+
+# ---------------------------------------------------------------------------
+# Detector liveness -- "no drift" must be distinguishable from "never wired"
+# ---------------------------------------------------------------------------
+
+
+class _RecordingCounter:
+    """Minimal stand-in for an OTel counter."""
+
+    def __init__(self) -> None:
+        self.total = 0
+
+    def add(self, amount: int, attributes: dict | None = None) -> None:
+        self.total += amount
+
+
+@pytest.mark.asyncio
+async def test_each_tick_records_a_evaluation_even_when_no_drift_fires() -> None:
+    """The liveness counter rises on every tick, drift or no drift.
+
+    The drift counters carry {metric_name, detector, severity}
+    attributes, so their series only exist after a drift fires. A query
+    that finds no drift_detected_total therefore cannot tell "the
+    detector ran and found nothing" from "the detector was never
+    wired". The evaluation counter is what makes the difference
+    visible.
+    """
+    manager = obs.ObservabilityManager(_config(cadence=0.01))
+    evaluations = _RecordingCounter()
+    active = _RecordingCounter()
+    manager.changepoint_evaluations_counter = evaluations
+    manager.changepoint_active_counter = active
+
+    task = manager.start_change_point_tick_loop()
+    try:
+        await asyncio.sleep(0.1)
+    finally:
+        await manager.stop_change_point_tick_loop(task=task)
+
+    assert evaluations.total > 0, "no evaluation was recorded -- detector liveness is invisible"
+    assert active.total > 0, "the active flag was never set"
+
+
+@pytest.mark.asyncio
+async def test_the_evaluation_counter_survives_a_failing_instrument() -> None:
+    """A broken instrument must not kill the tick loop."""
+
+    class _Exploding:
+        def add(self, amount: int, attributes: dict | None = None) -> None:
+            raise RuntimeError("instrument is broken")
+
+    manager = obs.ObservabilityManager(_config(cadence=0.01))
+    manager.changepoint_evaluations_counter = _Exploding()
+    manager.changepoint_active_counter = _Exploding()
+
+    task = manager.start_change_point_tick_loop()
+    try:
+        await asyncio.sleep(0.05)
+        assert not task.done(), "the tick loop died when an instrument raised"
+    finally:
+        await manager.stop_change_point_tick_loop(task=task)
