@@ -292,7 +292,7 @@ groups:
             Check:
               curl -fsS http://localhost:8682/metrics \
                 | grep 'service="{{ $labels.exported_service }}"'
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#11-heartbeat-watcher-hooks"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-1-otelheartbeatproducersilent"
 
       - alert: OtelHeartbeatQueryFailedPersistent
         expr: |
@@ -323,7 +323,7 @@ groups:
             Check:
               curl -fsS http://localhost:8682/metrics \
                 | grep -E '^akosha_otlp_heartbeat_query_failed_total'
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#112-p0-b-query-failure-threshold"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-2-otelheartbeatqueryfailedpersistent"
 
       - alert: OtelHeartbeatRosterEmpty
         expr: |
@@ -351,4 +351,4 @@ groups:
             Check:
               grep -A 8 'known_mcp_servers' \
                 /Users/les/Projects/akosha/settings/akosha.yaml
-          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#114-known_mcp_servers-config-home-v4-was-undefined-in-v3"
+          runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-3-otelheartbeatrosterempty"

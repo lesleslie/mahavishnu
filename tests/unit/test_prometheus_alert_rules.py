@@ -28,6 +28,7 @@ works.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -38,6 +39,7 @@ pytestmark = pytest.mark.unit
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _RULES_FILE = _REPO_ROOT / "config" / "prometheus" / "health_aggregator_alerts.yml"
 _RULE_TESTS = _REPO_ROOT / "config" / "prometheus" / "tests" / "heartbeat_rules.test.yml"
+_RUNBOOK = _REPO_ROOT / "docs" / "runbooks" / "OTEL_HEARTBEAT.md"
 
 _PROMTOOL = shutil.which("promtool")
 _requires_promtool = pytest.mark.skipif(_PROMTOOL is None, reason="promtool is not installed")
@@ -104,4 +106,73 @@ class TestTheLabelTrap:
         assert "service: akosha" in text, (
             "the scrape config labels the target with `service: akosha`, "
             "which is why the metric's own label becomes exported_service"
+        )
+
+
+def _github_anchor(heading: str) -> str:
+    """Reproduce GitHub's heading-slug algorithm.
+
+    Lowercase, drop everything that is not a word character, a hyphen, or a
+    space, then turn spaces into hyphens. GitHub resolves a ``#fragment`` in
+    a markdown URL to a heading by exactly this rule, so the test has to
+    reproduce it to check an anchor.
+    """
+    text = heading.strip().lower()
+    text = re.sub(r"[^\w\- ]", "", text)
+    return text.replace(" ", "-")
+
+
+class TestTheRunbookIsReal:
+    """A ``runbook_url`` that 404s is not a runbook.
+
+    The heartbeat alerts are the only thing standing between a silent
+    producer and an operator who never learns about it. Their annotations
+    point at ``docs/runbooks/OTEL_HEARTBEAT.md``; if that file is renamed,
+    moved, or its headings changed, the link rots silently — Prometheus
+    does not care whether a URL resolves, and nothing else in the test
+    suite reads these annotations.
+    """
+
+    def _heartbeat_urls(self) -> list[str]:
+        text = _RULES_FILE.read_text(encoding="utf-8")
+        start = text.index("  - name: bodai-otel-heartbeat")
+        return re.findall(r'runbook_url: "([^"]+)"', text[start:])
+
+    def test_the_runbook_file_is_present(self) -> None:
+        assert _RUNBOOK.is_file(), (
+            f"{_RUNBOOK} is missing — the heartbeat alerts point at it"
+        )
+
+    def test_every_heartbeat_alert_points_at_the_runbook(self) -> None:
+        urls = self._heartbeat_urls()
+        assert len(urls) == 3, f"expected one runbook_url per heartbeat rule, found {len(urls)}"
+        for url in urls:
+            assert "docs/runbooks/OTEL_HEARTBEAT.md" in url, (
+                f"the heartbeat rules must point at the runbook, not at a spec: {url}"
+            )
+
+    def test_every_anchor_resolves_to_a_real_heading(self) -> None:
+        """The fragment after the ``#`` must be a heading in the runbook."""
+        assert _RUNBOOK.is_file()
+        headings = [
+            _github_anchor(match.group(1))
+            for match in re.finditer(r"^#{1,6}\s+(.*)$", _RUNBOOK.read_text(encoding="utf-8"), re.M)
+        ]
+        for url in self._heartbeat_urls():
+            fragment = url.rsplit("#", 1)[-1]
+            assert fragment in headings, (
+                f"the runbook has no heading that resolves to #{fragment}; "
+                f"the alert's link would land on a page with no such section. "
+                f"Headings present: {sorted(set(headings))}"
+            )
+
+    def test_the_runbook_names_the_label_trap(self) -> None:
+        """The two traps that make this runbook necessary."""
+        text = _RUNBOOK.read_text(encoding="utf-8")
+        assert "exported_service" in text, (
+            "the runbook must document the exported_service/service label trap"
+        )
+        assert "increase(" in text, (
+            "the runbook must warn that the raw counters are cumulative and "
+            "only `increase()` over a recent window says anything about now"
         )

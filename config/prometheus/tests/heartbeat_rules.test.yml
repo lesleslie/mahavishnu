@@ -62,7 +62,7 @@ tests:
                 Check:
                   curl -fsS http://localhost:8682/metrics \
                     | grep 'service="session-buddy"'
-              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#11-heartbeat-watcher-hooks"
+              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-1-otelheartbeatproducersilent"
   # -- P0-A: a producer that reported for hours and then stopped --------
   # The counter must be MOVING for the alert to fire. A producer that
   # reported for hours still has a large counter value, so the expression
@@ -120,7 +120,7 @@ tests:
                 Check:
                   curl -fsS http://localhost:8682/metrics \
                     | grep 'service="oneiric"'
-              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#11-heartbeat-watcher-hooks"
+              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-1-otelheartbeatproducersilent"
       # Not at 6m. The expression uses `increase(...[5m])`, and the
       # counter's last increment was at 2m -- so the window still contains
       # it and the alert is correctly still firing. The window only
@@ -169,7 +169,7 @@ tests:
                 Check:
                   curl -fsS http://localhost:8682/metrics \
                     | grep -E '^akosha_otlp_heartbeat_query_failed_total'
-              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#112-p0-b-query-failure-threshold"
+              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-2-otelheartbeatqueryfailedpersistent"
   # -- the roster is empty ---------------------------------------------------
   - interval: 30s
     input_series:
@@ -205,5 +205,5 @@ tests:
                 Check:
                   grep -A 8 'known_mcp_servers' \
                     /Users/les/Projects/akosha/settings/akosha.yaml
-              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/specs/2026-10-19-bodai-substrate-otel-v7.md#114-known_mcp_servers-config-home-v4-was-undefined-in-v3"
+              runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-3-otelheartbeatrosterempty"
 

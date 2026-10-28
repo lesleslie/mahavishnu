@@ -1191,6 +1191,17 @@ runs `promtool check rules` and `promtool test rules` so neither file can rot
 unnoticed. Prometheus reloads rule files on SIGHUP; this host's Prometheus is
 reloaded that way.
 
+**The operator procedure is `docs/runbooks/OTEL_HEARTBEAT.md`.** This spec
+says what the watcher does; the runbook says what to do at 3am. The three
+alerts' `runbook_url` annotations point at it, anchored to the scenario that
+matches each rule. The runbook covers the triage decision matrix (canary vs
+heartbeat), the seven root causes of a silent producer in the order they
+actually occur, and the traps — the cumulative counters, the
+`exported_service` label, the launchd wrapper's PID, and the boot-timeout
+loop. `tests/unit/test_prometheus_alert_rules.py` resolves each annotation's
+anchor against the runbook's actual headings, so the link cannot rot into a
+404 unnoticed.
+
 ### 11.1.5 Retention sweep failure (v8 — rewritten 2026-10-27)
 
 `akosha_otlp_retention_sweep_failed_total{table}` > 0, OR the
