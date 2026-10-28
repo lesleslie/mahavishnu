@@ -22,6 +22,11 @@ rostered services that are alive.
 akosha_otlp_heartbeat_p0_a_total` stops rising, and
 `search_spans` returns rows whose `service_name` is each roster entry.
 
+**Status: achieved 2026-10-28.** All five roster entries report
+`_service_liveness` spans under `service.namespace=bodai`, aged 8-25s
+against the watcher's 60s window. The P0-A counters are flat while
+`akosha_otlp_spans_inserted_total` keeps rising.
+
 ## 2. Goals
 
 1. Every rostered service installs a tracer provider that exports to the
@@ -292,6 +297,47 @@ exporter is not orphaned.
 | `service.namespace` drift → DLQ quarantine | low | the helper pins `service.namespace=bodai`, which is on the receiver's allowlist |
 | The liveness span is mistaken for a real trace | low | it is named `_service_liveness`; the canary uses the same `_`-prefix convention |
 | Env-gated opt-in leaves a service unwired | low | the plist edit is the checklist item; verification queries each roster name individually |
+
+## 8.5 What the implementation found that the plan did not
+
+The plan's §4.1 table was right about the shape of the problem and
+incomplete about its causes. Two further defects surfaced while making
+the producers actually report — both invisible to every metric, which is
+why neither showed up in the plan's investigation.
+
+**The exporter endpoint was missing its signal path.** The OTLP/HTTP
+exporter treats an explicit endpoint as the COMPLETE URL, signal path
+included. Session-Buddy handed it `http://127.0.0.1:4318`, so every
+batch posted to the port's root rather than to `/v1/traces` and came
+back `404 Not Found`. The receiver never saw the spans. Nothing showed
+it either: a rejected request and a request that was never made look
+identical from the sender's side, and the receiver's counters only move
+for requests that arrive.
+
+**The namespace was a service name.** The receiver's allowlist is a
+fixed set of NAMESPACES (`bodai`, `cli-tools`). `session-buddy` and
+`akosha-mcp` are service NAMES; a span carrying either as its namespace
+would have been quarantined as namespace drift even once the endpoint
+was right.
+
+Both are now handled in one place — mcp-common's shared producer
+telemetry — rather than in each producer, because the second producer
+with the same bug would otherwise have inherited it.
+
+**A third, in akosha itself:** `setup_telemetry` built the
+`TracerProvider` twice, once for the span processors and once for the
+sampler, and the second replaced the first. The exporter was attached to
+a provider nobody used. Verified in isolation: the old pattern exports
+zero spans; the new pattern exports the span.
+
+## 8.6 The boot timeout was not one service's problem
+
+The plan assumed akosha's `--timeout 120` was an isolated mistake. It
+was not: **session-buddy** and **crackerjack** were both set to `60`,
+and both booted in 60-69s against that budget during the rollout. They
+were one slow boot away from the same 245-kill failure mode. All three
+are now `300` — the value mahavishnu's plist already used for the same
+reason.
 
 ## 9. Decision Rule
 

@@ -1504,6 +1504,85 @@ The empty-roster case (no entries → the §11 P0-A `Empty roster = P0` check fi
 
 ---
 
+### 11.4b The producer side — what "reporting" means (v10, 2026-10-28)
+
+**The roster is a declaration of expectation, and until v10 nothing met it.**
+The §11 watcher read the substrate for spans whose `service_name` matched a
+roster entry. On 2026-10-28 the substrate held **no such spans at all** —
+`akosha_otlp_spans_received_total` equalled `inserted_total` and every row
+was the receiver's own canary. P0-A had fired for every rostered service,
+continuously, since PR-A5 shipped. It was telling the truth.
+
+Three things were wrong, and all three had to be fixed for the roster to
+mean anything.
+
+**1. Nothing installed a tracer provider.** The launchd plists set no
+`OTEL_EXPORTER_OTLP_*` variable, and launchd services do not inherit the
+shell environment — so no service had an exporter, every span it created
+stayed in the process, and the receiver heard only from itself. The fix
+lives in **one place**: `mcp_common/server/launcher.py::launch` calls
+`mcp_common/server/producer_telemetry.py::configure_producer_tracing`
+before it builds the server. Every core service already starts through
+that launcher, and the `component_name` it passes there is **the same
+string the roster watches**:
+
+| Service | `component_name` | Roster entry |
+|---|---|---|
+| mahavishnu | `"mahavishnu"` | `mahavishnu` |
+| akosha | `"akosha"` | `akosha` |
+| session-buddy | `"session-buddy"` | `session-buddy` |
+| oneiric | `"oneiric"` | `oneiric` |
+| crackerjack | `"crackerjack"` | `crackerjack` |
+
+**2. Request-driven spans cannot serve as a heartbeat.** An MCP server
+emits a span when somebody calls a tool. The watcher's window is 60s and
+its threshold is two consecutive absences, so an **idle** fleet trips
+P0-A by construction — the alert would be a guaranteed false positive
+rather than a detector. (Measured: mahavishnu was demonstrably alive and
+reporting `resolver.decision` spans, and the watcher still read it as
+absent, because those spans were 195s old.)
+
+The fix is a **producer-side liveness span**: `_service_liveness`, emitted
+every 30s by `run_liveness_emitter`. It mirrors the §11.3 canary one
+layer up — the canary proves the *write* path, the liveness span proves
+the *export* path. Silence then means "the telemetry pipeline is broken",
+which is what the watcher is for. It is emitted **immediately** at
+startup rather than one interval later, so a producer that came up late
+is distinguishable from one that is broken.
+
+**3. Two producers pointed at the wrong place.** Both were invisible to
+the receiver and neither produced a metric, which is what made them hard
+to find:
+
+- **The endpoint.** The OTLP/HTTP exporter treats an explicit endpoint as
+  the COMPLETE URL, signal path included. Session-Buddy handed it
+  `http://127.0.0.1:4318`, so every batch posted to the port's root
+  instead of `/v1/traces` and came back `404 Not Found`. A rejected
+  request and a request that was never made look identical from the
+  sender's side. The shared helper resolves the endpoint the way the
+  exporter expects.
+- **The namespace.** The §13.2 allowlist is a fixed set of **NAMESPACES**
+  (`bodai`, `cli-tools`). `session-buddy` and `akosha-mcp` are service
+  **NAMES**; a span carrying either as its namespace would have been
+  quarantined as namespace drift even with the endpoint right. Every core
+  service reports under `bodai`.
+
+**The rules, for anything added to the roster later:**
+
+1. The service must start through `mcp_common.server.launcher.launch` with
+   a `component_name` equal to its roster entry.
+2. Its launchd plist must set `OTEL_EXPORTER_OTLP_ENDPOINT` (and
+   `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`). The launcher is
+   **opt-in**: with no endpoint in the environment it installs nothing, so
+   the standalone MCP servers that share the launcher are unaffected.
+3. Its `service.namespace` must be `bodai`.
+4. The provider must carry the exporter. `setup_telemetry` used to build
+   the `TracerProvider` twice — once for the span processors, once for
+   the sampler — and the second replaced the first, so the exporter was
+   attached to a provider nobody used and akosha exported nothing at all.
+
+---
+
 ## 12. `opentelemetry-proto` install discipline
 
 `opentelemetry-proto` is **runtime-required** (the substrate's whole point). PR-A2 + PR-A3 move it from `[dependency-groups]` (PEP 735, opt-in) to `[project.dependencies]` (always-installed) per §6.4. **There is no separate install command.** Production deployments pick up the dep automatically with `uv sync`.
@@ -1920,6 +1999,10 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | **v7** `HealthFeedState("name")` is not valid Python | `HealthFeedState(entities_count=…, last_updated_timestamp=…, …)` (kwarg-only dataclass at `mcp_common.health.feed`) + a module-level `_known_mcp_servers_roster: list[str]` for the roster itself | The pos-arg notation crossed §11, §11.4, §13.6, §15 (four sites). Implementers copy-pasting hit a TypeError. Spec replaces with the kwarg shape + a separate roster list. |
 | **v7** PR-A8 retires `AKOSHA_SKIP_OTEL_INGESTER` env var | Remove the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` block at `akosha/mcp/server.py:627` | v6's §15 "no env-var shim" decision was incorrect for this var — operators with launchd plists setting `=1` get the poller silently re-enabled post-PR-A8. Pre-1.0 no-backcompat rule applied retroactively. |
 | **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. **v9 (2026-10-27) adds the one operation that did need a trigger — `mcp__akosha__force_retention_sweep` — and the reason it is an MCP tool rather than a CLI is architectural, not a preference: the substrate is IN-MEMORY inside the running akosha process and the receiver is a process-local singleton, so a CLI subprocess could not have reached either.** |
+| **v10** Producer reporting lives in mcp-common's launcher | `mcp_common.server.launcher.launch` installs the tracer provider and starts the liveness emitter; `component_name` is the service identity | Every core service already starts through that launcher and already passes a `component_name` equal to its roster entry, so this is ONE seam for the whole fleet rather than five copies — and no second naming scheme to keep in step with the roster. The alternative (a per-service exporter setup) would have left the roster and the producers free to drift apart again, which is exactly how the roster came to name five services that had never reported a span. |
+| **v10** A liveness span, not a request span, is the heartbeat | `_service_liveness`, emitted every 30s by the producer | An MCP server emits a span when somebody calls a tool, so request-driven spans cannot distinguish an idle service from a dead one — a 60s window with a two-cycle threshold fires on a healthy idle fleet by construction. Measured: mahavishnu was alive and reporting spans that were 195s old, and the watcher still read it as absent. The liveness span mirrors the §11.3 canary one layer up: the canary proves the write path, the liveness span proves the export path. |
+| **v10** The producer exporter is opt-in | `configure_producer_tracing` installs nothing unless `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) is set | The launcher is shared with the standalone MCP servers outside the Bodai core set. Making the wiring unconditional would have every one of them start exporting to the substrate without an operator asking for it. The plist is the opt-in, and the plist is where the destination lives. |
+| **v10** An explicit exporter endpoint is the COMPLETE URL | The shared helper normalises a base URL by appending `/v1/traces` | The OTLP/HTTP exporter treats an explicit endpoint as the full URL including the signal path, while the generic environment variable gets the path appended. Session-Buddy handed it the base URL, and every batch came back `404 Not Found` — with no metric anywhere, because a rejected request and a request that was never made look the same from the sender's side. |
 | **v7** Spec vs codebase alignment priority | After v6, run multi-agent ensemble with at least one domain-specialist lens against the actual codebase (`akosha-specialist`, `mcp-integration-expert`, `crackerjack-specialist`) | The 4-round review (v3→v4→v5→v6→v7) found 9 P0s that all three codebase-illiterate lenses missed — every one surfaced by direct read of `akosha/cli.py`, `akosha/storage/path_resolver.py`, or `akosha/mcp/server.py`. Specialist lenses for component integration are now a hard requirement, not optional. |
 
 ## 16. References
