@@ -294,9 +294,28 @@ Ship when the affected suites pass, the gates are clean, and the live
 adapter reports a `FallbackModel` over `[MiniMax-via-Bifrost,
 llama-server]`.
 
-## 10. Open Operator Decision
+## 10. Operator Decision — Deferred Store Repair
 
-Restoring Bifrost's `anthropic` provider to the live store (§4.6) needs
-an operator choice between the destructive `--drop-db` re-seed (new
-virtual key) and a surgical store write. That decision is not taken by
-this plan.
+Restoring Bifrost's `anthropic` provider to the live store (§4.6) was
+put to the operator on 2026-10-29. **Decision: leave the live store
+alone.**
+
+Rationale:
+
+1. The adapter-side fix is the durable deliverable — a gateway-routed
+   Anthropic provider now requests ``anthropic/MiniMax-M3``, which the
+   gateway serves. The path is correct the moment the provider is
+   present.
+2. The Anthropic provider is not in the active chain
+   (``minimax -> llama_server``), so the missing store row does not
+   affect the adapter's default behaviour.
+3. A concurrent session was actively editing ``config/bifrost/*`` and
+   ``mahavishnu/bifrost/gateway.py``, and its plan references
+   ``mahavishnu bifrost rebootstrap`` — a store write from this plan
+   would risk a write-conflict.
+4. The sanctioned repair (``--drop-db``) regenerates the virtual key,
+   which every client reads from ``~/.config/secrets.env`` and
+   ``~/.claude/settings.json``.
+
+**Follow-up**: if the ``anthropic`` provider is restored to the store
+later, no adapter change is needed — the model id is already correct.
