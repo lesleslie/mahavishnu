@@ -29,6 +29,7 @@ from mahavishnu.cli.demo_cli import (
     VERDICT_STUB,
     VERDICT_TIMEOUT,
     _classify_sweep_output,
+    _check_hatchet_server_reachable,
     _default_demo_repos,
     _deployment_entrypoint,
     _effective_prefect_api_url,
@@ -267,3 +268,37 @@ def test_effective_prefect_api_url_env_wins(monkeypatch) -> None:
 def test_effective_prefect_api_url_does_not_double_suffix(monkeypatch) -> None:
     monkeypatch.setenv("PREFECT_API_URL", "http://example.test:9999/api")
     assert not _effective_prefect_api_url().endswith("/api/api")
+
+
+# ============================================================================
+# Hatchet server reachability
+# ============================================================================
+
+
+def test_hatchet_server_reachable_reports_unreachable_server() -> None:
+    """A refused connection must be a precondition, not a demo defect.
+
+    The Hatchet SDK connects lazily, so without this probe the demo
+    reports a connection error that reads like an adapter bug.
+    """
+    failures = _check_hatchet_server_reachable("localhost:1", 0.5)
+    assert failures
+    assert "not reachable" in failures[0]
+    assert "hatchet server start" in failures[0]
+
+
+def test_hatchet_server_reachable_accepts_a_listening_port() -> None:
+    import socket
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        # Keep it listening for the duration of the check.
+        probe.listen(1)
+        assert _check_hatchet_server_reachable(f"127.0.0.1:{port}", 2.0) == []
+
+
+def test_hatchet_server_reachable_ignores_unparseable_url() -> None:
+    """A URL shape the probe cannot interpret is left to the SDK."""
+    assert _check_hatchet_server_reachable("not-a-host-port", 0.5) == []
+

@@ -161,14 +161,22 @@ changes above. All three were real and are fixed.
 
 ### `search_code` could read arbitrary files
 
-Accepting a file path widened the tool from "search a directory" to
-"read this file" — and `_search_code_impl` had **no** path validation
-at all, so an agent could name any path on the host (the directory
-form was already unguarded; the file form added non-Python files to
-it). The tool now runs the same `_validate_path` guard the file tools
-use: raw-traversal detection, symlink-resolving normalization, an
-allowed-base-directory check, and the blocked sensitive-directory
-list. `/etc/passwd` is now refused with
+`_search_code_impl` had **no** path validation at all, so an agent
+could name any directory on the host and read it. An intermediate
+attempt to also accept a *file* path made that worse (it added
+non-Python files to the reachable set) and broke the tool's pinned
+contract — `tests/unit/engines/test_agno_tools.py::test_search_code_not_directory`
+asserts that a file path raises `AgnoError`.
+
+The resolution keeps the contract and closes the hole: the tool runs
+the same `_validate_path` guard the file tools use (raw-traversal
+detection, symlink-resolving normalization, an allowed-base-directory
+check, the blocked sensitive-directory list), and still rejects a file
+path — but the message now names the directory to use
+(`Not a directory: …/health.py. Pass the containing directory (…) instead.`)
+so an agent recovers on its next turn instead of aborting.
+
+`/etc/passwd` is now refused with
 `Access denied: path is outside allowed directories`.
 
 ### The persisted vector store is shared across repositories

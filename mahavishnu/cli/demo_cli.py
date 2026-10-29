@@ -46,6 +46,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -1963,6 +1964,35 @@ def demo_crow(
 DEFAULT_HATCHET_PRECONDITION_TIMEOUT = 3.0
 
 
+def _check_hatchet_server_reachable(server_url: str, timeout: float) -> list[str]:
+    """Return a failure when the Hatchet server is not listening.
+
+    The Hatchet SDK connects lazily, so an unreachable server does not
+    fail until the workflow is dispatched -- the demo then reports a
+    connection error that reads like a defect in the adapter rather
+    than a missing substrate. A TCP reachability probe turns that into
+    an actionable precondition.
+
+    ``server_url`` is ``host:port`` (e.g. ``localhost:7077``), which is
+    what ``HatchetConfig.server_url`` carries.
+    """
+    host, _, port_text = server_url.rpartition(":")
+    if not host or not port_text.isdigit():
+        # An unusual URL shape (a full URL, or a unix socket) is not
+        # something this probe can interpret -- leave it to the SDK.
+        return []
+    try:
+        with socket.create_connection((host, int(port_text)), timeout=timeout):
+            return []
+    except OSError as exc:
+        return [
+            (
+                f"Hatchet server is not reachable at {server_url} ({exc}). "
+                "Start one with `hatchet server start`."
+            )
+        ]
+
+
 def _check_hatchet_preconditions(
     *,
     settings_getter: Callable[[], Any] | None = None,
@@ -2020,6 +2050,10 @@ def _check_hatchet_preconditions(
         failures.append(
             "settings.hatchet.server_url is empty "
             "(set MAHAVISHNU_HATCHET__SERVER_URL, e.g. 'localhost:7077')"
+        )
+    else:
+        failures.extend(
+            _check_hatchet_server_reachable(str(hatchet_cfg.server_url), timeout)
         )
 
     if not env_getter("HATCHET_CLIENT_TOKEN"):
@@ -4232,29 +4266,37 @@ def _sweep_argv(spec: DemoSweepSpec, demo_timeout: int) -> list[str]:
 
 
 def _write_sweep_log(path: Path, content: str) -> None:
-    """Write a sweep log file with restrictive permissions.
+    """Write a sweep log file securely.
 
     The sweep writes into a shared temp directory, and a demo's output
-    can carry prompt text, tool output, and error payloads. Two
-    protections:
+    can carry prompt text, tool output, and error payloads.
 
-    - ``O_NOFOLLOW`` so a symlink pre-planted at the log path cannot
-      redirect the write to a file the operator did not intend to
-      touch.
-    - mode ``0600`` so the log is readable only by its owner (an
-      existing file keeps its own mode, so ``chmod`` after the write
-      re-asserts it).
+    The write goes to a freshly created temporary file in the same
+    directory (``mkstemp`` creates with ``O_CREAT | O_EXCL`` and mode
+    0600, so it can never be a pre-existing file or a symlink), and
+    that file is then moved onto the destination with ``os.replace``.
+    Rename semantics replace a symlink at the destination *itself*
+    rather than following it, so a pre-planted symlink cannot redirect
+    the write -- and the move is atomic, so no reader ever sees a
+    half-written log.
+
+    Permissions are applied to the open descriptor with ``fchmod``
+    rather than to the path afterwards: a path-based ``chmod`` would
+    follow a symlink and leaves a window between the write and the
+    permission change.
     """
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(path, flags, 0o600)
+    fd, tmp_name = tempfile.mkstemp(prefix=".mahavishnu-demo-log-", dir=str(path.parent))
     try:
-        handle = os.fdopen(fd, "w", encoding="utf-8")
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+        os.replace(tmp_name, path)
     except BaseException:
-        os.close(fd)
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
         raise
-    with handle:
-        handle.write(content)
-    os.chmod(path, 0o600)
 
 
 def _run_sweep_demo(
