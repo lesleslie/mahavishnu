@@ -52,7 +52,14 @@ dependencies = [
     # http/protobuf), and this project does not declare that exporter
     # itself -- it declares the gRPC one below, for its own metrics and
     # spans.
-    "mcp-common>=0.33.0",
+    # 0.33.1+ required for the producer-telemetry OWNERSHIP API:
+    # `configure_producer_tracing` returns `ProducerTracingResult`, which
+    # separates "will this process export spans" from "may this caller
+    # close the provider". The launcher installs the provider before the
+    # server is built, so a component inherits one it does not own -- the
+    # ownership distinction is what keeps it from closing an exporter
+    # that belongs to someone else.
+    "mcp-common>=0.33.1",
     # Fast JSON serialization for the canonical event wire
     "msgspec>=0.21.1,<0.22",
     # MCP server
