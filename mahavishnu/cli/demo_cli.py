@@ -2219,6 +2219,17 @@ DEFAULT_SESSION_BUDDY_URL = "http://localhost:8678/mcp"
 DEFAULT_RUNPOD_PROBE_TIMEOUT_S = 5.0
 DEFAULT_PI_RUNTIME_PROBE_TIMEOUT_S = 5.0
 
+#: Timeout for the Session-Buddy MCP reachability probe.
+#:
+#: The probe is a GET with ``Accept: text/event-stream``. The MCP
+#: server answers 400 to a bare GET, but the handshake is not always
+#: fast: measured on this host, 3 of 4 probes exceeded 5 s and only
+#: the fourth answered (in 2.8 s). A 5 s budget therefore fails
+#: *intermittently* -- the pool demo and the multi-pool handoff both
+#: report "not reachable" while the server is plainly up. 15 s makes
+#: the probe reliable without turning it into a slow gate.
+DEFAULT_SESSION_BUDDY_PROBE_TIMEOUT_S = 15.0
+
 
 # ----------------------------------------------------------------------------
 # pool-mahavishnu — in-process WorkerManager + tmux substrate
@@ -2463,7 +2474,7 @@ def _check_pool_session_buddy_preconditions(
     *,
     url: str,
     http_probe: Callable[[str, float], bool] | None = None,
-    probe_timeout_s: float = DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+    probe_timeout_s: float = DEFAULT_SESSION_BUDDY_PROBE_TIMEOUT_S,
 ) -> list[str]:
     """Verify the Session-Buddy MCP server is reachable at ``url``.
 
@@ -2559,7 +2570,7 @@ def demo_pool_session_buddy(
         60, "--timeout", help="Max seconds for probe + start + execute + stop."
     ),
     probe_timeout_s: float = typer.Option(
-        DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+        DEFAULT_SESSION_BUDDY_PROBE_TIMEOUT_S,
         "--probe-timeout",
         help="Seconds to wait on the Session-Buddy HTTP probe.",
     ),
@@ -3235,7 +3246,13 @@ def demo_workflow_pool_worker_terminal(
     keep: bool = typer.Option(
         False, "--keep", help="Leave the pool running after the demo (for debugging)."
     ),
-    timeout: int = typer.Option(60, "--timeout", help="Max seconds for the 3-stage handoff."),
+    timeout: int = typer.Option(
+        180,
+        "--timeout",
+        help="Max seconds for the 3-stage handoff. The worker leg runs a real "
+        "command in the Shepherd jail, so the budget has to cover the pool "
+        "start/stop cycles as well as the task.",
+    ),
 ) -> None:
     """Run a pool + worker + terminal adapter end-to-end with stage narration.
 
@@ -3287,7 +3304,7 @@ def _check_workflow_multi_pool_handoff_preconditions(
     source_pool: str,
     target_pool: str,
     http_probe: Callable[[str, float], bool] | None = None,
-    probe_timeout_s: float = DEFAULT_RUNPOD_PROBE_TIMEOUT_S,
+    probe_timeout_s: float = DEFAULT_SESSION_BUDDY_PROBE_TIMEOUT_S,
     tmux_which: Callable[[str], str | None] | None = None,
 ) -> list[str]:
     """Verify both pool substrates are reachable.
@@ -3432,7 +3449,11 @@ def demo_workflow_multi_pool_handoff(
         False, "--keep", help="Leave both pools running after the demo (for debugging)."
     ),
     timeout: int = typer.Option(
-        30, "--timeout", help="Max seconds for the 2-pool handoff (target <10s)."
+        180,
+        "--timeout",
+        help="Max seconds for the 2-pool handoff. Both legs must finish "
+        "(the source pool dispatches a real task), so the budget covers "
+        "two pool start/stop cycles plus both tasks.",
     ),
 ) -> None:
     """Run a 2-pool handoff (source -> target) with compact step output.
@@ -3600,7 +3621,9 @@ def demo_workflow_adapter_swap(
         False, "--keep", help="Leave both pools running after the demo (for debugging)."
     ),
     timeout: int = typer.Option(
-        90, "--timeout", help="Max seconds for both runs (2 * pool start + execute + stop)."
+        240,
+        "--timeout",
+        help="Max seconds for both runs (2 * pool start + execute + stop).",
     ),
 ) -> None:
     """Run the same task with two terminal adapters back-to-back.
@@ -3755,7 +3778,12 @@ def demo_workflow_pi_cascade(
     keep: bool = typer.Option(
         False, "--keep", help="Leave the pi pool running after the demo (for debugging)."
     ),
-    timeout: int = typer.Option(60, "--timeout", help="Max seconds for both turns + start + stop."),
+    timeout: int = typer.Option(
+        180,
+        "--timeout",
+        help="Max seconds for both turns + start + stop. Each turn is a full "
+        "pi-coding-agent invocation.",
+    ),
 ) -> None:
     """Run a single PiPool through a 2-turn cascade (turn 1's result feeds turn 2).
 
@@ -4083,9 +4111,9 @@ DEMO_SWEEP_SPECS: tuple[DemoSweepSpec, ...] = (
     DemoSweepSpec("pool-runpod-public", 420),
     DemoSweepSpec("pool-runpod", 420),
     DemoSweepSpec("pool-pi", 420),
-    DemoSweepSpec("workflow-pool-worker-terminal", 240),
-    DemoSweepSpec("workflow-multi-pool-handoff", 240),
-    DemoSweepSpec("workflow-adapter-swap", 300),
+    DemoSweepSpec("workflow-pool-worker-terminal", 300),
+    DemoSweepSpec("workflow-multi-pool-handoff", 300),
+    DemoSweepSpec("workflow-adapter-swap", 360),
     DemoSweepSpec("workflow-pi-cascade", 420),
     DemoSweepSpec("workflow-pi-then-local", 420),
 )

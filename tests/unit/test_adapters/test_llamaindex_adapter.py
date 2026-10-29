@@ -201,16 +201,33 @@ def mock_documents():
 
 @pytest.fixture
 def mock_vector_store_index():
-    """Create mock vector store index."""
+    """Create mock vector store index.
+
+    The adapter builds its query engine from ``index.as_retriever(...)``
+    plus ``RetrieverQueryEngine.from_args(...)`` rather than
+    ``index.as_query_engine(...)``, so that the repository scope can be
+    applied as a node postprocessor *before* the response synthesizer
+    runs. The fixture mocks that path.
+    """
     index = MagicMock()
-    index.as_query_engine.return_value = MagicMock()
 
     mock_response = MagicMock()
     mock_response.source_nodes = []
     mock_response.__str__ = lambda self: "Test response"
-    index.as_query_engine.return_value.query.return_value = mock_response
 
-    return index
+    engine = MagicMock()
+    engine.query.return_value = mock_response
+
+    index.as_retriever.return_value = MagicMock()
+    index.as_query_engine.return_value = engine
+
+    # The patch has to stay active for the whole test, so the fixture
+    # yields inside the context manager rather than returning: a
+    # ``@patch.object`` decorator would stop the patch as soon as the
+    # fixture returned, leaving the real class in place during the test.
+    with patch.object(adapter_module, "RetrieverQueryEngine") as engine_cls:
+        engine_cls.from_args.return_value = engine
+        yield index
 
 
 # ============================================================================
@@ -465,7 +482,7 @@ async def test_query_index_success(mock_config, mock_vector_store_index):
         task_params={"query": "test query", "index_id": "test_0", "top_k": 5},
     )
 
-    assert result["status"] == "completed"
+    assert result["status"] == "completed", result
     assert "result" in result
     assert result["result"]["operation"] == "query"
 

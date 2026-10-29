@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 try:
     from llama_index.core import Document, SimpleDirectoryReader, VectorStoreIndex
     from llama_index.core.node_parser import SentenceSplitter
+    from llama_index.core.query_engine import RetrieverQueryEngine
     from llama_index.core.settings import Settings
     from llama_index.core.storage.storage_context import StorageContext
     from llama_index.embeddings.openai import OpenAIEmbedding
@@ -51,6 +52,7 @@ except ImportError:
     OpenAIEmbedding = MagicMock(name="OpenAIEmbedding")
     OpenAILike = MagicMock(name="OpenAILike")
     OpensearchVectorStore = MagicMock(name="OpensearchVectorStore")
+    RetrieverQueryEngine = MagicMock(name="RetrieverQueryEngine")
     Settings = MagicMock(name="Settings")
     SimpleDirectoryReader = MagicMock(name="SimpleDirectoryReader")
     StorageContext = MagicMock(name="StorageContext")
@@ -144,6 +146,36 @@ class MockMeter:
     def create_histogram(self, name: str, **kwargs) -> MockHistogram:
         """Return a no-op histogram."""
         return MockHistogram()
+
+
+class _RepoScopePostprocessor:
+    """Drop retrieved nodes that belong to another repository.
+
+    A LlamaIndex node postprocessor runs between retrieval and response
+    synthesis, so the synthesizer only ever sees in-repo nodes -- which
+    is the point: filtering the synthesized output instead would still
+    let another repository's content shape the answer.
+
+    The scope is matched against the absolute ``file_path`` each chunk
+    records, since the chunks do not carry a repo id and LlamaIndex's
+    metadata filters have no prefix operator.
+
+    Deliberately duck-typed rather than a ``BaseNodePostprocessor``
+    subclass: ``RetrieverQueryEngine`` only calls ``postprocess_nodes``
+    on each entry, so a plain class is enough -- and it keeps this
+    module free of an import that resolves to a mock under the test
+    suite's ``sys.modules`` patching.
+    """
+
+    def __init__(self, repo_root: str) -> None:
+        self.repo_root = repo_root
+
+    def postprocess_nodes(
+        self,
+        nodes: list[Any],
+        query_bundle: Any | None = None,
+    ) -> list[Any]:
+        return [node for node in nodes if _node_belongs_to_repo(node, self.repo_root)]
 
 
 def _node_belongs_to_repo(node: Any, repo_root: str) -> bool:
@@ -1323,8 +1355,35 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         find_span.set_attribute("index.id", index_id)
 
                 # Create query engine
-                query_engine = index.as_query_engine(
+                # Scope retrieval to the requested repository *before* the
+                # synthesizer sees the nodes.
+                #
+                # The vector store is a single shared index: every repo
+                # ingested into it lands in the same collection, so a
+                # similarity search returns the globally closest chunks
+                # regardless of which repo was asked for. On a developer
+                # host the persisted index routinely holds several repos
+                # at once -- this one held a different repo's content
+                # outright.
+                #
+                # The scope has to be applied here rather than to the
+                # synthesizer's output afterwards: by then the answer
+                # has already been written from those nodes, so
+                # another repo's code would have shaped the text.
+                #
+                # LlamaIndex's metadata filters have no prefix operator
+                # and the chunks record an absolute file path rather
+                # than a repo id, so the scope is expressed as a node
+                # postprocessor -- which runs between retrieval and
+                # synthesis. The failure mode is the safe one: too few
+                # results, never results from the wrong repo.
+                repo_root = str(Path(repo_path).resolve())
+                retriever = index.as_retriever(
                     similarity_top_k=top_k, retrieve_similarity_top_k=top_k * 2
+                )
+                query_engine = RetrieverQueryEngine.from_args(
+                    retriever,
+                    node_postprocessors=[_RepoScopePostprocessor(repo_root=repo_root)],
                 )
 
                 # Execute query
@@ -1332,22 +1391,11 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     response = query_engine.query(query_text)
                     exec_span.set_attribute("response.sources_count", len(response.source_nodes))
 
-                # Scope the answer to the requested repository.
-                #
-                # The vector store is a single shared index: every repo
-                # ingested into it lands in the same collection, so a
-                # similarity search returns the globally closest chunks
-                # regardless of which repo was asked for. Without this
-                # filter a query for repo A can answer with repo B's
-                # code -- the persisted index on a developer host
-                # routinely holds several repos at once.
-                #
-                # The filter is applied to the retrieved nodes rather
-                # than pushed into the retriever: LlamaIndex's metadata
-                # filters have no prefix operator, and a post-filter is
-                # backend-agnostic. The failure mode is the safe one --
-                # too few results, never results from the wrong repo.
-                repo_root = str(Path(repo_path).resolve())
+                # Belt-and-braces: the postprocessor already removed
+                # out-of-repo nodes, so this is normally a no-op. It
+                # stays so that a retriever implementation which skips
+                # postprocessors still cannot leak another repo's code
+                # into the reported sources.
                 scoped_nodes = [
                     node for node in response.source_nodes if _node_belongs_to_repo(node, repo_root)
                 ]
