@@ -210,7 +210,10 @@ the write. The default log directory is now created with
 - **`hatchet`** — needs a Hatchet server. `hatchet server start` pulls
   Docker images; the `hatchet-sdk` embedded sidecar downloads a native
   binary, which is a separate approval. The adapter's API drift is
-  fixed, but the demo cannot be exercised without a server.
+  fixed, and the demo now reports the missing server as a
+  *precondition* (`Hatchet server is not reachable at localhost:7077
+  (Connection refused). Start one with 'hatchet server start'.`)
+  rather than a connection error that reads like an adapter defect.
 - **`pool-runpod` / `pool-runpod-public`** — need a paid RunPod
   account and endpoint ids. Both fail cleanly at the precondition.
 - **`agno`** — the adapter's 300s budget expires because the agent
