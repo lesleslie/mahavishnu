@@ -51,6 +51,9 @@ _Regenerated 2026-10-29 by `crackerjack.tools.plan_index_sync` (phase)._
 | [`docs/plans/2026-10-27-bodai-producer-span-reporting.md`](2026-10-27-bodai-producer-span-reporting.md) | 2026-10-27 | `active` | `canonical` | `otel-producer-reporting` | Producer Span Reporting — make the heartbeat roster mean something |
 | [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `draft` | `implementation` | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
 | [`docs/plans/2026-10-28-registry-root-relative-paths.md`](2026-10-28-registry-root-relative-paths.md) | 2026-10-28 | `complete` | `implementation` | `registry-paths` | Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md` |
+| [`docs/plans/2026-10-29-agno-failover-and-gateway-repairs.md`](2026-10-29-agno-failover-and-gateway-repairs.md) | 2026-10-29 | `active` | `implementation` | `agno-failover-gateway` | Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key |
+| [`docs/plans/2026-10-29-agno-llm-provider-chain.md`](2026-10-29-agno-llm-provider-chain.md) | 2026-10-29 | `complete` | `implementation` | `agno-llm-routing` | Agno LLM provider chain — MiniMax primary, llama-server as fallback |
+| [`docs/plans/2026-10-29-demo-surface-sweep.md`](2026-10-29-demo-surface-sweep.md) | 2026-10-29 | `shipped` | `implementation` | `demo-surface` | Demo surface sweep — 2026-10-29 |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `routing-composition` | Plan Template — Integration-Contract Required |
 
@@ -112,11 +115,11 @@ _Regenerated 2026-10-29 by `crackerjack.tools.plan_index_sync` (phase)._
 
 ## Lifecycle × Role Distribution
 
-| Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
+| Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 14 | 1 | · | 14 | **36** |
-| `implementation` | 3 | 4 | 2 | 4 | 11 | **24** |
+| `implementation` | 3 | 5 | 2 | 5 | 12 | **27** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 16 | **16** |
 | `superseded` | · | · | · | · | 5 | **5** |
-| **Total** | **10** | **18** | **3** | **4** | **47** | **82** |
+| **Total** | **10** | **19** | **3** | **5** | **48** | **85** |
