@@ -1,6 +1,6 @@
 """Production Agno adapter for multi-agent AI orchestration.
 
-This module implements the AgnoAdapter using the real Agno SDK (v2.5.3+)
+This module implements the AgnoAdapter using the real Agno SDK (v3.1.2+)
 for agent-based workflows with multi-agent team support.
 
 Key Features:
@@ -11,7 +11,7 @@ Key Features:
 - Memory and session management
 - OpenTelemetry instrumentation
 
-SDK Verified: 2026-02-20 against Agno v2.5.3
+SDK Verified: 2026-10-29 against Agno v3.1.11 (the pyproject floor is 3.1.2)
 """
 
 from __future__ import annotations
@@ -49,6 +49,7 @@ from ..core.capabilities import (
 # return the engine's defaults (provider=llama_server) instead of the user-configured
 # values (provider=minimax).
 from ..core.config import (
+    GATEWAY_ANTHROPIC_MODEL_ID,
     AgnoAdapterConfig,
     AgnoLLMConfig,
     AgnoMemoryConfig,
@@ -66,6 +67,7 @@ from ..core.errors import (
     TimeoutError as MahavishnuTimeoutError,
 )
 from ..core.model_routing import gateway_openai_base_url
+from .agno_fallback_model import FallbackModel
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -173,17 +175,22 @@ class _ResolvedEndpoint:
             credential differs from the direct-provider case.
         api_key_env: Environment variable holding the credential.
             ``None`` for local providers that need no authentication.
+        gateway_model_id: Model id the gateway's provider surface serves,
+            when it differs from the provider's own catalogue. The
+            gateway's ``anthropic`` provider is Anthropic-protocol
+            *shaped* but MiniMax-backed, so it serves MiniMax model ids.
     """
 
     base_url: str | None
     via_gateway: bool
     api_key_env: str | None
+    gateway_model_id: str | None = None
 
 
 class LLMProviderFactory:
     """Factory for creating LLM model instances for Agno agents.
 
-    Uses the verified Agno v2.5.3 import paths:
+    Uses the verified Agno v3.1.x import paths:
     - OpenAIChat from agno.models.openai
     - OpenAIChat (llama_server) from agno.models.openai.like
     - Claude from agno.models.anthropic
@@ -264,14 +271,23 @@ class LLMProviderFactory:
                 chain.append(provider)
         return chain
 
-    def _model_id_for(self, provider: LLMProvider) -> str:
+    def _model_id_for(self, provider: LLMProvider, endpoint: _ResolvedEndpoint) -> str:
         """Model id to use for ``provider``.
 
         The configured provider keeps whatever the operator pinned. A
         *fallback* uses its own default, because model ids are
         provider-scoped — ``MiniMax-M3`` is meaningless to llama-server and
         the MiniMax API rejects unknown model names outright.
+
+        A gateway-routed provider prefers the gateway's own catalogue id
+        (``endpoint.gateway_model_id``) unless the operator pinned a model
+        id explicitly, because the gateway's provider surface may serve a
+        different catalogue than the upstream vendor's.
         """
+        if provider == self.config.provider and "model_id" in self.config.model_fields_set:
+            return self.config.model_id
+        if endpoint.gateway_model_id is not None:
+            return endpoint.gateway_model_id
         if provider == self.config.provider:
             return self.config.model_id
         return default_model_for(provider)
@@ -311,22 +327,45 @@ class LLMProviderFactory:
 
         llama-server is local: it always targets ``http://localhost:8081``
         (or an operator override) and needs no credential.
+
+        The configured ``base_url`` and ``api_key_env`` apply to the
+        *configured* provider only. A fallback provider resolves its own
+        endpoint and its own credential, so the primary's key is never
+        sent to a different vendor.
         """
+        is_primary = provider == self.config.provider
         if provider is LLMProvider.LLAMA_SERVER:
+            # The local endpoint is only overridden by the configured
+            # base_url when llama-server *is* the configured provider —
+            # a base_url set for a cloud provider must not be inherited
+            # by the local fallback.
+            base_url = self.config.base_url if is_primary else None
             return _ResolvedEndpoint(
-                base_url=self.config.base_url or "http://localhost:8081",
+                base_url=base_url or "http://localhost:8081",
                 via_gateway=False,
                 api_key_env=None,
             )
 
-        api_key_env = self.config.api_key_env or self._PROVIDER_API_KEY_ENV.get(provider)
+        # The configured ``api_key_env`` belongs to the *configured*
+        # provider. A fallback provider must use its own standard env var,
+        # otherwise the primary's credential would be sent to a different
+        # vendor's endpoint — e.g. MINIMAX_API_KEY posted to OpenAI.
+        if is_primary:
+            api_key_env = self.config.api_key_env or self._PROVIDER_API_KEY_ENV.get(provider)
+        else:
+            api_key_env = self._PROVIDER_API_KEY_ENV.get(provider)
 
-        if self.config.base_url:
+        # Likewise, an explicit base_url overrides the gateway only for
+        # the provider it was configured for.
+        if is_primary and self.config.base_url:
             return _ResolvedEndpoint(self.config.base_url, False, api_key_env)
 
         gateway_url = self._gateway_url(provider)
         if gateway_url is not None:
-            return _ResolvedEndpoint(gateway_url, True, VIRTUAL_KEY_ENV)
+            gateway_model_id = (
+                GATEWAY_ANTHROPIC_MODEL_ID if provider is LLMProvider.ANTHROPIC else None
+            )
+            return _ResolvedEndpoint(gateway_url, True, VIRTUAL_KEY_ENV, gateway_model_id)
 
         return _ResolvedEndpoint(None, False, api_key_env)
 
@@ -344,28 +383,23 @@ class LLMProviderFactory:
             return False
         return bool(os.getenv(endpoint.api_key_env))
 
-    def create_model(self) -> Any:
-        """Create and return an LLM model instance.
+    def _available_models(self) -> tuple[list[tuple[LLMProvider, Any]], Exception | None]:
+        """Build a model for every provider in the chain that is usable.
 
-        Providers are tried in order — the configured provider first, then
-        each entry of ``fallback_providers``. The first provider with
-        usable credentials wins, so a missing MiniMax key degrades to the
-        local llama-server instead of failing the adapter.
+        Providers are walked in chain order. A provider whose credentials
+        are missing is skipped; a provider that fails to construct is
+        skipped too, so one broken provider does not disable the rest of
+        the chain. An ``ImportError`` propagates — that is a broken SDK
+        integration, not a provider outage, and failing over would hide it.
 
         Returns:
-            LLM model instance (OpenAIChat or Claude)
-
-        Raises:
-            AgnoError: If the configured provider is not supported, or if
-                every provider in the chain failed to initialize.
-            ConfigurationError: If no provider in the chain has a usable
-                credential.
+            ``(models, last_error)`` — the ordered ``(provider, model)``
+            pairs for the usable providers, and the last construction
+            error when at least one provider was reachable but failed.
         """
-        if self._model_instance is not None:
-            return self._model_instance
-
-        chain = self._effective_providers()
+        built: list[tuple[LLMProvider, Any]] = []
         last_error: Exception | None = None
+        chain = self._effective_providers()
 
         for provider in chain:
             factory_name = self._PROVIDER_FACTORY_METHODS.get(provider)
@@ -389,16 +423,10 @@ class LLMProviderFactory:
                 )
                 continue
 
-            model_id = self._model_id_for(provider)
+            model_id = self._model_id_for(provider, endpoint)
             try:
-                self._model_instance = self._instantiate_model(
-                    provider, model_id, factory_name, endpoint
-                )
+                model = self._instantiate_model(provider, model_id, factory_name, endpoint)
             except (AgnoError, ConfigurationError) as exc:  # fmt: skip
-                # An ImportError means the Agno SDK integration itself is
-                # broken — a missing optional dependency, not a provider
-                # outage. Failing over would hide a broken environment
-                # behind a working fallback, so it propagates.
                 if "import_error" in getattr(exc, "details", {}):
                     raise
                 last_error = exc
@@ -424,25 +452,79 @@ class LLMProviderFactory:
                 continue
 
             logger.info(
-                "Agno LLM provider selected: provider=%s model_id=%s base_url=%s gateway=%s",
+                "Agno LLM provider available: provider=%s model_id=%s base_url=%s gateway=%s",
                 provider,
                 model_id,
                 endpoint.base_url or "<sdk default>",
                 endpoint.via_gateway,
             )
+            built.append((provider, model))
+
+        return built, last_error
+
+    def create_model_chain(self) -> Any:
+        """Create the model the adapter uses, wired for per-call failover.
+
+        Every usable provider in the chain is built. When more than one is
+        available the result is a :class:`FallbackModel`, so a provider
+        that fails *mid-run* — after the agent has already made tool calls
+        — falls through to the next one instead of failing the whole run.
+
+        Returns:
+            A single model instance when only one provider is usable,
+            otherwise a :class:`FallbackModel` over the usable providers.
+
+        Raises:
+            AgnoError: If the configured provider is not supported, or if
+                every reachable provider failed to initialize.
+            ConfigurationError: If no provider in the chain has a usable
+                credential.
+        """
+        if self._model_instance is not None:
             return self._model_instance
 
-        if last_error is not None:
-            raise last_error
+        built, last_error = self._available_models()
+        if not built:
+            if last_error is not None:
+                raise last_error
+            primary_env = self._PROVIDER_API_KEY_ENV.get(self.config.provider)
+            raise ConfigurationError(
+                f"API key not found. Set {primary_env} environment variable.",
+                details={
+                    "chain": [p.value for p in self._effective_providers()],
+                    "env_var": primary_env,
+                },
+            )
 
-        primary_env = self._PROVIDER_API_KEY_ENV.get(self.config.provider)
-        raise ConfigurationError(
-            f"API key not found. Set {primary_env} environment variable.",
-            details={
-                "chain": [p.value for p in chain],
-                "env_var": primary_env,
-            },
+        models = [model for _, model in built]
+        self._model_instance = models[0] if len(models) == 1 else FallbackModel(models=models)
+        logger.info(
+            "Agno LLM chain resolved: providers=%s",
+            [provider.value for provider, _ in built],
         )
+        return self._model_instance
+
+    def create_model(self) -> Any:
+        """Create and return the primary LLM model instance.
+
+        Providers are tried in order — the configured provider first, then
+        each entry of ``fallback_providers``. The first provider with
+        usable credentials wins, so a missing MiniMax key degrades to the
+        local llama-server instead of failing the adapter.
+
+        Returns:
+            LLM model instance (OpenAIChat or Claude)
+
+        Raises:
+            AgnoError: If the configured provider is not supported, or if
+                every provider in the chain failed to initialize.
+            ConfigurationError: If no provider in the chain has a usable
+                credential.
+        """
+        chain = self.create_model_chain()
+        if isinstance(chain, FallbackModel):
+            return chain.models[0]
+        return chain
 
     def _create_openai_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
         """Create OpenAI model instance.
@@ -467,7 +549,7 @@ class LLMProviderFactory:
 
         api_key = self._get_api_key(endpoint.api_key_env)
 
-        # Use id= parameter (NOT model=) per Agno v2.5.3 API
+        # Use id= parameter (NOT model=) per the Agno v3.1.x API
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
@@ -924,7 +1006,7 @@ class AgnoAdapter(OrchestratorAdapter):
     """Production Agno adapter for multi-agent AI orchestration.
 
     This adapter implements the OrchestratorAdapter interface using the
-    real Agno SDK (v2.5.3+) for multi-agent team workflows.
+    real Agno SDK (v3.1.2+) for multi-agent team workflows.
 
     Key Capabilities:
     - Multi-agent team orchestration (supports_multi_agent=True)
@@ -966,7 +1048,7 @@ class AgnoAdapter(OrchestratorAdapter):
 
     # Class-level constants
     ADAPTER_VERSION: ClassVar[str] = "1.0.0"
-    MIN_AGNO_VERSION: ClassVar[str] = "2.5.0"
+    MIN_AGNO_VERSION: ClassVar[str] = "3.1.2"
 
     def __init__(self, config: Any | None = None, api_url: str | None = None) -> None:
         """Initialize Agno adapter with configuration.
@@ -1196,7 +1278,7 @@ class AgnoAdapter(OrchestratorAdapter):
 
         except ImportError as e:
             raise AgnoError(
-                "Agno SDK not installed. Install with: pip install agno>=2.5.0",
+                "Agno SDK not installed. Install with: pip install agno>=3.1.2",
                 error_code=ErrorCode.CONFIGURATION_ERROR,
                 details={"import_error": str(e)},
             ) from e
@@ -1576,7 +1658,7 @@ class AgnoAdapter(OrchestratorAdapter):
             )
 
         try:
-            return self._llm_factory.create_model()
+            return self._llm_factory.create_model_chain()
         except AgnoError as exc:
             message = str(exc)
             if "Unsupported LLM provider" in message:

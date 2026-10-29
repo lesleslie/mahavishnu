@@ -192,7 +192,9 @@ class TestAgnoToolsConfig:
         # AgnoToolsConfig was migrated from 8677 (a stale session-buddy port)
         # to align with the Mahavishnu MCP server.
         assert config.mcp_server_url == "http://localhost:8680/mcp"
-        assert config.mcp_transport == "sse"
+        # The transport flipped sse -> streamable-http on 2026-10-05 (the
+        # upstream deprecation warning drove it).
+        assert config.mcp_transport == "streamable-http"
         assert len(config.enabled_tools) == 6
         assert config.tool_timeout_seconds == 60
 

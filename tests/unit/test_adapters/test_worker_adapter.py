@@ -166,10 +166,15 @@ async def test_health_and_lifecycle_methods() -> None:
 def test_worker_adapter_entries_shape() -> None:
     entries = wa.worker_adapter_entries()
     assert len(entries) == 1
+    # The entry point returns ``AdapterMetadata`` models (oneiric's
+    # plugin-discovery shape), so the fields are attribute access, not
+    # subscript access.
     e = entries[0]
-    assert e["provider"] == "worker"
-    assert e["domain"] == "orchestration"
-    assert "parallel_execution" in e["capabilities"]
+    assert e.provider == "worker"
+    assert e.category == "orchestration"
+    assert "parallel_execution" in e.capabilities
+    # ``domain`` is hard-coded to "adapter" by AdapterMetadata.to_candidate().
+    assert e.to_candidate().domain == "adapter"
 
 
 def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.MonkeyPatch) -> None:

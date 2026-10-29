@@ -477,7 +477,9 @@ class TestAgnoToolsConfigModel:
         """Test default tools config values."""
         config = ImplAgnoToolsConfig()
         assert config.mcp_server_url == "http://localhost:8680/mcp"
-        assert config.mcp_transport == "sse"
+        # The transport flipped sse -> streamable-http on 2026-10-05 (the
+        # upstream deprecation warning drove it).
+        assert config.mcp_transport == "streamable-http"
         assert len(config.enabled_tools) == 6
         assert config.tool_timeout_seconds == 60
         assert config.enable_native_tools is True
@@ -910,6 +912,50 @@ class TestLLMProviderChain:
         assert endpoint.base_url == "http://localhost:8081"
         assert endpoint.via_gateway is False
         assert endpoint.api_key_env is None
+
+    def test_fallback_does_not_inherit_primary_credential(self) -> None:
+        """A fallback provider must not borrow the primary's API key.
+
+        The configured ``api_key_env`` names the credential for the
+        *configured* provider. Reusing it for a fallback would post the
+        primary's key to a different vendor's endpoint — e.g. sending
+        ``MINIMAX_API_KEY`` to OpenAI.
+        """
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX,
+            api_key_env="MINIMAX_API_KEY",
+            fallback_providers=[LLMProvider.OPENAI],
+        )
+        factory = LLMProviderFactory(config)
+
+        primary = factory._resolve_endpoint(LLMProvider.MINIMAX)
+        fallback = factory._resolve_endpoint(LLMProvider.OPENAI)
+
+        assert primary.api_key_env == "MINIMAX_API_KEY"
+        assert fallback.api_key_env == "OPENAI_API_KEY"
+        assert fallback.api_key_env != primary.api_key_env
+
+    def test_fallback_does_not_inherit_primary_base_url(self) -> None:
+        """A fallback provider must not borrow the primary's endpoint.
+
+        An explicit ``base_url`` overrides the gateway only for the
+        provider it was configured for; inheriting it would send the
+        fallback's traffic to the primary's host.
+        """
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX,
+            base_url="https://api.minimax.io/v1",
+            fallback_providers=[LLMProvider.OPENAI, LLMProvider.LLAMA_SERVER],
+        )
+        factory = LLMProviderFactory(config)
+
+        primary = factory._resolve_endpoint(LLMProvider.MINIMAX)
+        openai = factory._resolve_endpoint(LLMProvider.OPENAI)
+        llama = factory._resolve_endpoint(LLMProvider.LLAMA_SERVER)
+
+        assert primary.base_url == "https://api.minimax.io/v1"
+        assert openai.base_url != "https://api.minimax.io/v1"
+        assert llama.base_url == "http://localhost:8081"
 
     def test_agno_block_overrides_top_level_llm_block(self) -> None:
         """The top-level ``llm:`` block must not steer the Agno provider.
@@ -2211,13 +2257,17 @@ class TestAgnoAdapterEntryPoint:
 
         assert len(entries) == 1
         entry = entries[0]
-        assert entry["category"] == "orchestration"
-        assert entry["provider"] == "agno"
-        assert entry["factory_path"] == "mahavishnu.engines.agno_adapter_impl:AgnoAdapter"
-        assert "multi_agent" in entry["capabilities"]
-        assert "tool_use" in entry["capabilities"]
-        assert entry["priority"] == 85
-        assert entry["domain"] == "orchestration"
+        # The entry point returns ``AdapterMetadata`` models (oneiric's
+        # plugin-discovery shape), so the fields are attribute access, not
+        # subscript access.
+        assert entry.category == "orchestration"
+        assert entry.provider == "agno"
+        assert entry.factory == "mahavishnu.engines.agno_adapter_impl.AgnoAdapter"
+        assert "multi_agent" in entry.capabilities
+        assert "tool_use" in entry.capabilities
+        assert entry.priority == 85
+        # ``domain`` is hard-coded to "adapter" by AdapterMetadata.to_candidate().
+        assert entry.to_candidate().domain == "adapter"
 
 
 # ============================================================================
@@ -2561,7 +2611,7 @@ class TestRetryBehavior:
         async def mock_run(agent, message, context=None, session_id=None):
             # Fail first two times
             if call_count < 3:
-                raise Exception("Transient error")
+                raise AgnoError("Transient error")
             return AgentRunResult(
                 agent_name="test_agent",
                 content="Success after retry",

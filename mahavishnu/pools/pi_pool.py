@@ -65,6 +65,8 @@ from mahavishnu.core.errors import (
     PiUnavailable,
 )
 
+from ..bifrost.gateway import load_secrets_env
+from ..bifrost.models import VIRTUAL_KEY_ENV
 from . import pi_observability
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
@@ -72,6 +74,40 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 logger = get_logger(__name__)
+
+
+#: Env var the Pi subprocess resolves for the Bifrost virtual key.
+#:
+#: ``~/.pi/agent/models.json`` declares ``apiKey: "$BODAI_BIFROST_VK"`` for
+#: the ``minimax-via-bifrost`` provider, and Pi interpolates ``$NAME`` from
+#: its own environment (see the agent's ``docs/custom-provider.md``). The
+#: name is intentionally NOT ``BIFROST_*`` prefixed — the runtime denylist
+#: (:data:`_FORBIDDEN_ENV_PREFIXES`, REQ-BIFROST-014) strips any var
+#: matching ``BIFROST_*`` regardless of explicit allowlist entries, and
+#: that rule wins.
+BODAI_VIRTUAL_KEY_ENV = "BODAI_BIFROST_VK"
+
+
+def resolve_gateway_credential() -> str | None:
+    """Return the Bifrost virtual key, or ``None`` when it is unavailable.
+
+    Read from the environment first, then from the operator credential
+    store (``~/.config/secrets.env``). A Mahavishnu spawned by launchd
+    inherits no interactive environment, so the environment alone is not
+    a reliable source.
+
+    Returns:
+        The virtual key, or ``None``.
+    """
+    value = os.environ.get(VIRTUAL_KEY_ENV, "").strip()
+    if value:
+        return value
+    try:
+        value = load_secrets_env(keys=(VIRTUAL_KEY_ENV,)).get(VIRTUAL_KEY_ENV, "").strip()
+    except OSError:
+        logger.debug("Could not read the operator credential store", exc_info=True)
+        return None
+    return value or None
 
 
 # Default keys always passed through to the subprocess, in addition to the
@@ -249,6 +285,15 @@ def _build_subprocess_env(env_allowlist: tuple[str, ...]) -> dict[str, str]:
     Sensitive parent env vars (see :data:`_FORBIDDEN_ENV_PREFIXES`)
     are NEVER copied — a denylist match is logged at WARNING and the
     key is dropped, even if the caller's allowlist included it.
+
+    The Bifrost gateway credential is additionally resolved from the
+    canonical source (the environment, then the operator credential
+    store) and exposed to the subprocess under
+    :data:`BODAI_VIRTUAL_KEY_ENV`. A Mahavishnu spawned by launchd
+    inherits no interactive environment, so the pool would otherwise hand
+    Pi no key at all and every task would fail authentication — the
+    subprocess resolves ``$BODAI_BIFROST_VK`` from its own environment,
+    and Pi's ``models.json`` points the default provider at the gateway.
     """
     env: dict[str, str] = {}
     for key in _REQUIRED_PASSTHROUGH_KEYS:
@@ -260,6 +305,10 @@ def _build_subprocess_env(env_allowlist: tuple[str, ...]) -> dict[str, str]:
             continue
         if key in os.environ:
             env[key] = os.environ[key]
+    if BODAI_VIRTUAL_KEY_ENV not in env:
+        virtual_key = resolve_gateway_credential()
+        if virtual_key:
+            env[BODAI_VIRTUAL_KEY_ENV] = virtual_key
     return env
 
 
@@ -363,7 +412,11 @@ class PiPool(BasePool):
             # any var matching ``BIFROST_*`` regardless of explicit
             # allowlist entries, and that rule wins. Use
             # ``BODAI_*`` instead.
-            "BODAI_BIFROST_VK",
+            # When the parent env does not carry it (launchd spawns the
+            # server without an interactive environment), the value is
+            # resolved from the canonical source instead — see
+            # :func:`_build_subprocess_env`.
+            BODAI_VIRTUAL_KEY_ENV,
         )
         # Pool state — populated by start() (version probe) and
         # execute_task (last task telemetry). The pool is otherwise
