@@ -134,7 +134,13 @@
         "cache_by_model": true,
         "cache_by_provider": true,
         "cleanup_on_shutdown": true,
-        "dimension": 1,
+        "conversation_history_threshold": 8,
+        "default_cache_key": "default",
+        "dimension": 1536,
+        "embedding_model": "text-embedding-3-small",
+        "exclude_system_prompt": true,
+        "provider": "openai",
+        "threshold": 0.86,
         "ttl": "30m"
       },
       "enabled": true,
@@ -226,7 +232,8 @@
           "models": [
             "gpt-5.4",
             "gpt-5.4-mini",
-            "gpt-5.3-codex"
+            "gpt-5.3-codex",
+            "text-embedding-3-small"
           ],
           "name": "openai-primary",
           "value": "env.OPENAI_API_KEY",

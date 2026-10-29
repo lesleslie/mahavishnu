@@ -40,7 +40,22 @@ TEMPLATE_CONFIG: Path = REPO_ROOT / "config" / "bifrost" / "config.template.json
 TARGET_CONFIG: Path = APP_DIR / "config.json"
 
 #: Secret IDs the gateway requires at startup. Resolved through Oneiric.
-NEEDED_KEYS: tuple[str, ...] = ("MINIMAX_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")
+#:
+#: ``LLAMA_SERVER_API_KEY`` is here because the Bifrost config declares
+#: the local provider's key as ``env.LLAMA_SERVER_API_KEY``. Without the
+#: variable in the gateway's environment the key cannot resolve, Bifrost
+#: drops it, and every request for the local model fails with
+#: ``no_key_supports_model`` -- which silently pushed the
+#: ``background`` / ``classify`` governance rules onto the cloud
+#: provider. The value is a placeholder, not a secret: the local
+#: llama-server does not verify it.
+# req: REQ-BIFROST-036
+NEEDED_KEYS: tuple[str, ...] = (
+    "MINIMAX_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "LLAMA_SERVER_API_KEY",
+)
 
 #: ``~/.config/secrets.env`` -- the operator's credential store. Read directly
 #: because launchd spawns this process without a shell, so it inherits none of

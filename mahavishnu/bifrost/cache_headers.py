@@ -1,0 +1,280 @@
+"""Translate the operator's ``cache_mode`` setting into Bifrost request headers.
+
+# Implements: REQ-BIFROST-037
+
+``BifrostLLMSettings.cache_mode`` (``off`` | ``direct`` | ``semantic``) had no
+consumer: the ``mahavishnu/llm_gateway`` package that read it was deleted in
+commit ``03146be0``, leaving the setting advisory-only while the gateway
+cached everything that reached it.
+
+The gateway expresses the same three choices as request headers, mapped in
+``transports/bifrost-http/lib/ctx.go`` and honoured by
+``plugins/semanticcache``:
+
+======================  =====================================================
+Header                  Effect
+======================  =====================================================
+``x-bf-cache-key``      Selects the cache bucket. Without it *and* without the
+                        plugin's ``default_cache_key``, caching never engages.
+``x-bf-cache-type``     Narrows the lookup to one path: ``direct`` (exact
+                        match) or ``semantic`` (vector similarity).
+``x-bf-cache-no-store`` Suppresses the cache **write**. Reads still happen.
+======================  =====================================================
+
+Each mapping was confirmed empirically against the running gateway before
+being encoded here; see
+``docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`` §4.4.
+
+Note the asymmetry in ``off``: Bifrost v1.5/v1.6 exposes no header that
+suppresses the *read*, so ``off`` means "do not populate the cache" rather
+than "do not use the cache". The gateway can still serve a previously cached
+response to an ``off`` request.
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Literal, cast
+from urllib.parse import urlparse
+
+from oneiric.core.logging import get_logger
+
+from .models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER
+
+logger = get_logger(__name__)
+
+CacheMode = Literal["off", "direct", "semantic"]
+
+#: Header selecting the cache bucket.
+CACHE_KEY_HEADER = "x-bf-cache-key"
+#: Header narrowing the lookup to the direct or semantic path.
+CACHE_TYPE_HEADER = "x-bf-cache-type"
+#: Header suppressing the cache write.
+CACHE_NO_STORE_HEADER = "x-bf-cache-no-store"
+
+#: Bucket used when the caller does not name one.
+DEFAULT_CACHE_BUCKET = "default"
+
+#: The mode assumed when the router settings cannot be read.
+DEFAULT_CACHE_MODE: CacheMode = "off"
+
+#: Hosts that are trusted with the gateway virtual key over plain HTTP.
+#:
+#: The virtual key can spend money through the gateway's provider keys and
+#: read the shared cache, so it must not cross a network hop in cleartext.
+#: Loopback is the deployment this project ships (the gateway listens on
+#: 127.0.0.1:8471); everything else needs TLS.
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+#: Errors that mean "the operator credential store is not readable".
+#:
+#: Held in a tuple constant rather than written inline: ruff-format on
+#: Python 3.14 rewrites ``except (A, B):`` into the unparenthesised
+#: PEP 758 form, which semgrep cannot parse. The constant form is left
+#: alone.
+_CREDENTIAL_ERRORS = (ImportError, OSError, RuntimeError, TypeError, ValueError)
+
+VALID_CACHE_MODES: frozenset[str] = frozenset({"off", "direct", "semantic"})
+
+
+def resolve_cache_mode() -> CacheMode:
+    """Read ``cache_mode`` from the Oneiric Bifrost settings.
+
+    Falls back to ``"off"`` when the settings cannot be loaded -- a
+    missing configuration must not silently turn caching on.
+
+    The settings class is read directly rather than through
+    ``get_router()._settings``: the router's ``_settings`` attribute is
+    private, and the router constructs it as
+    ``settings or BifrostLLMSettings()`` -- so in the default
+    configuration the two are the same object. Reading the settings
+    class also re-reads the environment on every call rather than
+    freezing the mode at router-construction time, so a mode change
+    does not need a process restart to take effect.
+
+    Returns:
+        The configured cache mode.
+    """
+    try:
+        from oneiric.adapters.llm.bifrost import BifrostLLMSettings
+
+        raw = str(BifrostLLMSettings().cache_mode)
+    except ImportError, AttributeError, TypeError, ValueError:
+        # The settings are optional and may be unconfigured. Falling back
+        # to "off" is the safe direction: a missing configuration must
+        # never turn caching on.
+        #
+        # Logged at WARNING, not DEBUG: this is the only failure in the
+        # module that fails *silent*. A missing virtual key logs a
+        # warning, a missing cache-mode source does not -- so cache
+        # population stops with nothing visible and the operator sees a
+        # cache that never hits and no explanation.
+        logger.warning(
+            "Could not read the Bifrost cache mode; falling back to %r. "
+            "Cache population is disabled until the settings load.",
+            DEFAULT_CACHE_MODE,
+            exc_info=True,
+        )
+        return DEFAULT_CACHE_MODE
+    if raw not in VALID_CACHE_MODES:
+        logger.warning("Unknown Bifrost cache mode %r; falling back to %r", raw, DEFAULT_CACHE_MODE)
+        return DEFAULT_CACHE_MODE
+    return cast("CacheMode", raw)
+
+
+def build_cache_headers(mode: CacheMode, bucket: str | None = None) -> dict[str, str]:
+    """Build the ``x-bf-cache-*`` headers for a cache mode.
+
+    Args:
+        mode: One of ``off``, ``direct``, ``semantic``.
+        bucket: Cache bucket to scope entries to. Defaults to
+            ``DEFAULT_CACHE_BUCKET``.
+
+    Returns:
+        Headers to attach to the outbound request. Never empty: every mode
+        carries the cache-bucket header, and the mode-specific header
+        selects the write behaviour. See the module docstring for the
+        asymmetry in ``off``, which suppresses the *write* and not the
+        read.
+    """
+    key = (bucket or DEFAULT_CACHE_BUCKET).strip() or DEFAULT_CACHE_BUCKET
+    headers: dict[str, str] = {CACHE_KEY_HEADER: key}
+    if mode == "direct":
+        headers[CACHE_TYPE_HEADER] = "direct"
+    elif mode == "semantic":
+        headers[CACHE_TYPE_HEADER] = "semantic"
+    else:
+        # "off": do not populate the cache. The gateway still serves reads.
+        headers[CACHE_NO_STORE_HEADER] = "true"
+    return headers
+
+
+def resolve_virtual_key() -> str | None:
+    """Return the Bifrost virtual key, or ``None`` when it is unavailable.
+
+    Read from the environment first, then from the operator credential
+    store (``~/.config/secrets.env``) via the gateway's own loader -- a
+    process launched by launchd inherits no interactive environment.
+
+    Returns:
+        The virtual key, or ``None``.
+    """
+    value = os.environ.get(VIRTUAL_KEY_ENV, "").strip()
+    if value:
+        return value
+    try:
+        from .gateway import load_secrets_env
+
+        # Narrowed to the one key: the loader parses the whole file
+        # regardless, but returning only this key keeps the other
+        # credentials out of the caller's hands.
+        value = load_secrets_env((VIRTUAL_KEY_ENV,)).get(VIRTUAL_KEY_ENV, "").strip()
+    except _CREDENTIAL_ERRORS:
+        logger.debug("Could not read the operator credential store", exc_info=True)
+        return None
+    return value or None
+
+
+def gateway_host_is_trusted(base_url: str) -> bool:
+    """True when ``base_url`` is safe to carry a gateway credential to.
+
+    The virtual key can spend money through the gateway's provider keys
+    and read the shared cache. Sending it over plain HTTP to a non-local
+    host would put it on the wire in cleartext, so that combination is
+    refused. HTTPS is trusted regardless of host; plain HTTP is trusted
+    only for loopback, which is the deployment the gateway ships in.
+
+    Args:
+        base_url: The gateway base URL the request will be sent to.
+
+    Returns:
+        True when the credential may be attached to this URL.
+    """
+    try:
+        parsed = urlparse(base_url)
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").lower()
+    if not host:
+        # A URL with no host is malformed; it cannot be a trustworthy
+        # destination for a credential.
+        return False
+    scheme = (parsed.scheme or "").lower()
+    if scheme == "https":
+        return True
+    return scheme == "http" and host in LOOPBACK_HOSTS
+
+
+def build_gateway_headers(
+    base_url: str,
+    mode: CacheMode | None = None,
+    bucket: str | None = None,
+) -> dict[str, str]:
+    """Build the full header set for a Bifrost-routed request.
+
+    Carries the cache headers for the resolved cache mode plus -- when one
+    is available and the transport can carry it -- the gateway virtual key.
+    Bifrost rejects a provider key with ``401 virtual key is required``.
+
+    The cache headers are emitted unconditionally. They express the
+    operator's ``cache_mode``, and coupling them to the presence of a
+    credential would mean a missing key silently inverted ``off`` into
+    "cache everything": without ``x-bf-cache-no-store`` the gateway
+    resolves the bucket from its own ``default_cache_key`` and writes the
+    prompt and response into the shared cache. A missing credential must
+    not change what gets retained.
+
+    The virtual key is attached only when the target URL is trusted (see
+    :func:`gateway_host_is_trusted`). An untrusted target gets the cache
+    headers and no credential; the caller can tell the difference by the
+    absence of ``x-bf-vk``.
+
+    Args:
+        base_url: The gateway base URL the request will be sent to. Used
+            to decide whether the credential may cross this hop.
+        mode: Cache mode. Resolved from the router settings when omitted.
+        bucket: Cache bucket to scope entries to.
+
+    Returns:
+        Headers to attach to the outbound request.
+    """
+    headers = build_cache_headers(mode or resolve_cache_mode(), bucket)
+
+    virtual_key = resolve_virtual_key()
+    if not virtual_key:
+        logger.warning(
+            "No Bifrost virtual key is available (set %s); the request will "
+            "not carry x-bf-vk and the gateway will reject it",
+            VIRTUAL_KEY_ENV,
+        )
+        return headers
+
+    if not gateway_host_is_trusted(base_url):
+        logger.error(
+            "Refusing to send the Bifrost virtual key to %s: the target is "
+            "neither https nor loopback, so the credential would cross the "
+            "network in cleartext",
+            base_url,
+        )
+        return headers
+
+    headers[VIRTUAL_KEY_HEADER] = virtual_key
+    return headers
+
+
+__all__ = [
+    "CACHE_KEY_HEADER",
+    "CACHE_NO_STORE_HEADER",
+    "CACHE_TYPE_HEADER",
+    "DEFAULT_CACHE_BUCKET",
+    "DEFAULT_CACHE_MODE",
+    "LOOPBACK_HOSTS",
+    "VALID_CACHE_MODES",
+    "VIRTUAL_KEY_HEADER",
+    "CacheMode",
+    "build_cache_headers",
+    "build_gateway_headers",
+    "gateway_host_is_trusted",
+    "resolve_cache_mode",
+    "resolve_virtual_key",
+]

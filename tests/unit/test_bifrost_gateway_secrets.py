@@ -21,6 +21,7 @@ assertion compared against a live secret. Hermetic by construction.
 
 from __future__ import annotations
 
+import json
 import os
 from typing import TYPE_CHECKING
 
@@ -31,12 +32,18 @@ from mahavishnu.bifrost import gateway
 if TYPE_CHECKING:
     from pathlib import Path
 
-CREDENTIAL_NAMES = ("MINIMAX_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")
+CREDENTIAL_NAMES = (
+    "MINIMAX_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "LLAMA_SERVER_API_KEY",
+)
 
 FIXTURE_STORE = """# a comment
 MINIMAX_API_KEY=upstream-minimax
 export OPENAI_API_KEY="upstream-openai"
 ANTHROPIC_API_KEY=upstream-anthropic
+LLAMA_SERVER_API_KEY=local-llama-server
 BIFROST_SETUP_TOKEN=local-setup-token
 BIFROST_VIRTUAL_KEY=local-virtual-key
 SOME_OTHER_KEY=not-ours
@@ -60,7 +67,7 @@ def secrets_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_provider_keys_are_provisioned_from_secrets_env(secrets_file: Path) -> None:
-    """The three upstream keys must be in the provisioned set.
+    """Every upstream key must be in the provisioned set.
 
     They are currently reaching the gateway by a path this module cannot
     observe. Reading them here makes the guarantee explicit instead of
@@ -72,6 +79,37 @@ def test_provider_keys_are_provisioned_from_secrets_env(secrets_file: Path) -> N
         assert key in found, f"{key} must be read from the credential store"
     assert found["MINIMAX_API_KEY"] == "upstream-minimax"
     assert found["OPENAI_API_KEY"] == "upstream-openai", "quotes are shell syntax"
+
+
+def test_every_configured_provider_key_is_resolved_by_the_gateway() -> None:
+    """Every ``env.X`` provider key the config declares must be in ``NEEDED_KEYS``.
+
+    The gateway resolves a provider's key from its own environment. A key
+    the config declares but the gateway never resolves is dropped at
+    startup, and every request for that provider then fails with
+    ``no_key_supports_model`` -- which is exactly how the local
+    ``llama-server`` provider became unservable.
+
+    The requirement is derived from the shipped template rather than
+    restated as a literal, so a new provider key cannot be added to the
+    config without also being resolvable. A test that merely iterated
+    ``NEEDED_KEYS`` would have passed with the key left out.
+    """
+    template = json.loads(gateway.TEMPLATE_CONFIG.read_text(encoding="utf-8"))
+
+    declared: set[str] = set()
+    for provider in template.get("providers", {}).values():
+        for key in provider.get("keys", []):
+            value = key.get("value", "")
+            if isinstance(value, str) and value.startswith("env."):
+                declared.add(value.removeprefix("env."))
+
+    assert declared, "the template declares no env-backed provider keys"
+    missing = declared - set(gateway.NEEDED_KEYS)
+    assert not missing, (
+        f"provider keys the gateway never resolves: {sorted(missing)}. "
+        f"Add them to NEEDED_KEYS or the provider is unservable."
+    )
 
 
 def test_bifrost_local_credentials_are_provisioned(secrets_file: Path) -> None:

@@ -21,6 +21,7 @@ from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
 
+from ..bifrost.cache_headers import VIRTUAL_KEY_HEADER, build_gateway_headers
 from ..core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
@@ -79,8 +80,8 @@ class CloudWorkerConfig:
         return routing.get(category, self.model)
 
 
-def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
-    """Resolve the MiniMax provider's base_url through the oneiric router.
+def _resolve_minimax_endpoint(config: CloudWorkerConfig) -> tuple[str, bool]:
+    """Resolve the MiniMax provider's base_url and whether it is the gateway.
 
     Phase 2 of the bifrost plan (2026-10-17, REQ-BIFROST-008):
     when the oneiric ``BifrostLLMRouter`` returns a URL for the
@@ -94,23 +95,55 @@ def _resolve_minimax_base_url(config: CloudWorkerConfig) -> str:
     Falls back to ``config.minimax_url`` (from the ``MINIMAX_BASE_URL``
     env var or the public default) when the router is not enabled
     or the OPENAI route is not configured.
+
+    Returns:
+        ``(base_url, via_gateway)``. The flag is ``True`` only when the
+        URL came from the router, i.e. when the request will hit the
+        Bifrost gateway and therefore needs the gateway virtual key.
     """
     from oneiric.adapters.llm.bifrost import get_router
     from oneiric.adapters.llm.llm_interface import LLMProvider
 
     resolved = get_router().resolve(LLMProvider.OPENAI)
     if resolved is not None:
-        return gateway_openai_base_url(resolved)
-    return config.minimax_url
+        return gateway_openai_base_url(resolved), True
+    return config.minimax_url, False
 
 
 def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     minimax_routing = routing_to_task_map(config.model_routing or DEFAULT_MINIMAX_ROUTING)
+    minimax_base_url, via_gateway = _resolve_minimax_endpoint(config)
+    # req: REQ-BIFROST-035
+    #
+    # A Bifrost-routed call authenticates with the gateway virtual key,
+    # not the provider's own key -- the gateway rejects a provider key
+    # with "401 - virtual key is required". The virtual key travels in
+    # ``x-bf-vk``; the provider key stays in ``Authorization`` and is
+    # ignored by the gateway (it selects upstream keys from its own
+    # config store). The same header set carries the cache headers that
+    # make ``cache_mode`` effective.
+    #
+    # The cache headers are emitted even when the virtual key is missing:
+    # ``cache_mode`` is an operator retention control, and a missing
+    # credential must not invert it. build_gateway_headers owns that
+    # decision and logs why it withheld the credential.
+    gateway_headers = build_gateway_headers(minimax_base_url) if via_gateway else {}
+    if via_gateway and VIRTUAL_KEY_HEADER not in gateway_headers:
+        # Fail loud: without the virtual key every gateway call returns
+        # "401 - virtual key is required". Logging it here points at the
+        # credential rather than at a confusing downstream auth error.
+        # build_gateway_headers has already logged the specific reason
+        # (missing credential, or a target the credential may not cross).
+        logger.warning(
+            "Routing through the Bifrost gateway without a virtual key; "
+            "set BIFROST_VIRTUAL_KEY (the gateway will reject these calls)"
+        )
     providers: dict[str, dict[str, object]] = {
         "minimax": {
             "name": "minimax",
-            "base_url": _resolve_minimax_base_url(config),
+            "base_url": minimax_base_url,
             "api_key": "${MINIMAX_API_KEY}",
+            "default_headers": gateway_headers,
             "require_auth": True,
             "task_routing": minimax_routing,
             "timeout_seconds": config.timeout,

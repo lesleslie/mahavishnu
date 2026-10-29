@@ -32,6 +32,7 @@ import httpx2 as httpx
 from oneiric.adapters.metadata import AdapterMetadata
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ..bifrost.cache_headers import build_gateway_headers
 from ..bifrost.models import VIRTUAL_KEY_ENV
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..core.capabilities import (
@@ -549,11 +550,24 @@ class LLMProviderFactory:
 
         api_key = self._get_api_key(endpoint.api_key_env)
 
+        # req: REQ-BIFROST-035, REQ-BIFROST-037
+        #
+        # When the request is routed through the Bifrost gateway it needs
+        # the gateway's ``x-bf-vk`` header -- the gateway rejects a
+        # provider key -- and the ``x-bf-cache-*`` headers that make the
+        # operator's ``cache_mode`` setting mean something. The same
+        # header builder the cloud worker uses serves both callers, so
+        # there is one definition of what a gateway request carries.
+        default_headers: dict[str, str] = {}
+        if endpoint.via_gateway and endpoint.base_url:
+            default_headers = build_gateway_headers(endpoint.base_url)
+
         # Use id= parameter (NOT model=) per the Agno v3.1.x API
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
             base_url=endpoint.base_url,
+            default_headers=default_headers,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
@@ -585,6 +599,13 @@ class LLMProviderFactory:
         from agno.models.anthropic import Claude
 
         api_key = self._get_api_key(endpoint.api_key_env)
+        # req: REQ-BIFROST-035, REQ-BIFROST-037
+        #
+        # Same gateway header set as the OpenAI path -- the gateway's
+        # anthropic surface authenticates the same way.
+        default_headers: dict[str, str] = {}
+        if endpoint.via_gateway and endpoint.base_url:
+            default_headers = build_gateway_headers(endpoint.base_url)
         # Claude (Anthropic) is constructed via the Anthropic SDK which
         # reads ``ANTHROPIC_BASE_URL`` at client init. The oneiric
         # Bifrost router's anthropic_base_url is pre-formatted
@@ -593,6 +614,7 @@ class LLMProviderFactory:
             return Claude(
                 id=model_id,
                 api_key=api_key,
+                default_headers=default_headers,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
             )
