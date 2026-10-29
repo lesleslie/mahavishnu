@@ -139,9 +139,7 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_kind) -> Non
     if call_site_kind == "workers_spawn":
         # The local-variable form: the call is on its own statement.
         candidates = [
-            (number, line)
-            for number, line in matches
-            if line.strip().startswith("crow_client = ")
+            (number, line) for number, line in matches if line.strip().startswith("crow_client = ")
         ]
     else:
         # The inline keyword-argument form.
@@ -151,10 +149,7 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_kind) -> Non
             if "mcp_client=_resolve_crow_mcp_client" in line.replace(" ", "")
         ]
 
-    assert candidates, (
-        f"no {call_site_kind} call site routes through the helper; "
-        f"found {matches}"
-    )
+    assert candidates, f"no {call_site_kind} call site routes through the helper; found {matches}"
     for number, line in candidates:
         assert "mcp_client=None" not in line, (
             f"call site at line {number} still hardcodes mcp_client=None: {line!r}"

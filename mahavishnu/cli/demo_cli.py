@@ -324,9 +324,7 @@ def _check_prefect_work_pool(
             timeout=timeout,
         )
     except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure, not a stack trace  # noqa: BLE001, RUF100
-        return [
-            f"Prefect work-pool lookup failed at {api_url}/work_pools/filter: {exc}"
-        ]
+        return [f"Prefect work-pool lookup failed at {api_url}/work_pools/filter: {exc}"]
     if resp.status_code >= 400:
         return [
             (
@@ -451,13 +449,7 @@ def _pi_scratch_workspace(pool_name: str) -> Iterator[Path]:
         The scratch directory the agent runs in.
     """
     workspace = (
-        Path.home()
-        / ".local"
-        / "state"
-        / "mahavishnu"
-        / "worktrees"
-        / pool_name
-        / "pi-workspace"
+        Path.home() / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "pi-workspace"
     )
     workspace.mkdir(parents=True, exist_ok=True)
     previous = Path.cwd()
@@ -643,7 +635,9 @@ async def _run_prefect_demo(
         try:
             flow_run_id = UUID(str(raw_flow_run_id))
         except ValueError as exc:
-            raise ValueError(f"Prefect returned a non-UUID flow run id: {raw_flow_run_id!r}") from exc
+            raise ValueError(
+                f"Prefect returned a non-UUID flow run id: {raw_flow_run_id!r}"
+            ) from exc
 
         async with get_client():
             polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
@@ -2052,9 +2046,7 @@ def _check_hatchet_preconditions(
             "(set MAHAVISHNU_HATCHET__SERVER_URL, e.g. 'localhost:7077')"
         )
     else:
-        failures.extend(
-            _check_hatchet_server_reachable(str(hatchet_cfg.server_url), timeout)
-        )
+        failures.extend(_check_hatchet_server_reachable(str(hatchet_cfg.server_url), timeout))
 
     if not env_getter("HATCHET_CLIENT_TOKEN"):
         failures.append(
@@ -4109,9 +4101,7 @@ VERDICT_PARTIAL = "PARTIAL"
 VERDICT_STUB = "STUB"
 
 #: Statuses a demo's own JSON result may carry that count as success.
-_SUCCESS_STATUSES = frozenset(
-    {"success", "ok", "completed", "completed_successfully", "healthy"}
-)
+_SUCCESS_STATUSES = frozenset({"success", "ok", "completed", "completed_successfully", "healthy"})
 
 #: Terminal states that count as success for the Prefect demo, which
 #: reports its verdict under ``state`` rather than ``status``.
@@ -4392,7 +4382,9 @@ def _print_sweep_summary(rows: Sequence[dict[str, Any]]) -> None:
         typer.echo("Failures (logs under the --log-dir):")
         for row in failures:
             typer.echo(f"  - {row['name']}: {row['verdict']} (exit={row['exit_code']})")
-            typer.echo(f"      {row['tail'].strip().splitlines()[-1][:160] if row['tail'].strip() else ''}")
+            typer.echo(
+                f"      {row['tail'].strip().splitlines()[-1][:160] if row['tail'].strip() else ''}"
+            )
 
 
 @demo_app.command("all")

@@ -164,7 +164,7 @@ def _node_belongs_to_repo(node: Any, repo_root: str) -> bool:
         return False
     try:
         resolved = str(Path(str(file_path)).resolve())
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
     root = repo_root.rstrip("/")
     return resolved == root or resolved.startswith(f"{root}/")
@@ -691,9 +691,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             from llama_index.core import StorageContext, VectorStoreIndex
 
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
-            return VectorStoreIndex.from_vector_store(
-                vector_store, storage_context=storage_context
-            )
+            return VectorStoreIndex.from_vector_store(vector_store, storage_context=storage_context)
         except Exception as exc:  # noqa: BLE001, RUF100
             # A store that cannot be reopened is not fatal on its own --
             # the caller falls back to the "no index" error path.
@@ -1351,9 +1349,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # too few results, never results from the wrong repo.
                 repo_root = str(Path(repo_path).resolve())
                 scoped_nodes = [
-                    node
-                    for node in response.source_nodes
-                    if _node_belongs_to_repo(node, repo_root)
+                    node for node in response.source_nodes if _node_belongs_to_repo(node, repo_root)
                 ]
                 exec_span.set_attribute("response.scoped_sources_count", len(scoped_nodes))
                 exec_span.set_attribute(

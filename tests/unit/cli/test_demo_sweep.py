@@ -28,8 +28,8 @@ from mahavishnu.cli.demo_cli import (
     VERDICT_PRECONDITION,
     VERDICT_STUB,
     VERDICT_TIMEOUT,
-    _classify_sweep_output,
     _check_hatchet_server_reachable,
+    _classify_sweep_output,
     _default_demo_repos,
     _deployment_entrypoint,
     _effective_prefect_api_url,
@@ -301,4 +301,3 @@ def test_hatchet_server_reachable_accepts_a_listening_port() -> None:
 def test_hatchet_server_reachable_ignores_unparseable_url() -> None:
     """A URL shape the probe cannot interpret is left to the SDK."""
     assert _check_hatchet_server_reachable("not-a-host-port", 0.5) == []
-

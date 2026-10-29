@@ -35,6 +35,7 @@ def test_tmux_subcommand_present() -> None:
 def test_tmux_precondition_failure_lists_each(monkeypatch) -> None:
     """Missing tmux binary → nonzero exit, names the binary, prints
     ``Precondition failure`` header."""
+
     # Stub shutil.which to return None for "tmux" but a path for "claude".
     def fake_which(name: str) -> str | None:
         return None if name == "tmux" else "/usr/bin/claude"
@@ -53,14 +54,18 @@ def test_tmux_precondition_failure_lists_each(monkeypatch) -> None:
 
 def test_tmux_spawns_three_workers_by_default(monkeypatch, tmp_path) -> None:
     """Default ``workers=3`` is passed through."""
-    monkeypatch.setattr(demo_cli.shutil, "which", lambda n: "/usr/bin/x" if n in ("tmux", "claude") else None)
+    monkeypatch.setattr(
+        demo_cli.shutil, "which", lambda n: "/usr/bin/x" if n in ("tmux", "claude") else None
+    )
     tm = MagicMock()
     monkeypatch.setattr(demo_cli, "_build_terminal_manager", lambda: tm)
     # Inject tmp_path as the socket dir — see test_custom_workers for rationale.
     real_check = demo_cli._check_tmux_preconditions
+
     def patched_preconditions(**kwargs: object) -> list[str]:
         kwargs.pop("socket_dir", None)
         return real_check(socket_dir=tmp_path, **kwargs)
+
     monkeypatch.setattr(demo_cli, "_check_tmux_preconditions", patched_preconditions)
     called_kwargs: dict = {}
 
@@ -177,7 +182,10 @@ def test_prefect_runs_with_default_flow_when_server_up(monkeypatch) -> None:
 
     result = runner.invoke(demo_app, ["prefect", "--repos", "/tmp/x"])
     assert result.exit_code == 0, result.output + result.stderr
-    assert captured["flow_dotted"] == "mahavishnu.engines.prefect_adapter_impl:process_repositories_flow"
+    assert (
+        captured["flow_dotted"]
+        == "mahavishnu.engines.prefect_adapter_impl:process_repositories_flow"
+    )
     assert list(captured["repos"]) == ["/tmp/x"]
     assert captured["keep"] is False
 
@@ -191,9 +199,18 @@ def test_prefect_keep_flag_propagates(monkeypatch) -> None:
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
     monkeypatch.setattr(demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200))
     captured: dict = {}
+
     async def fake_run(**kwargs: object) -> dict[str, object]:
         captured.update(kwargs)
-        return {"flow_run_id": "fr-1", "flow_run_url": "x", "state": "COMPLETED", "state_name": "Completed", "repos_processed": 0, "results_count": 0}
+        return {
+            "flow_run_id": "fr-1",
+            "flow_run_url": "x",
+            "state": "COMPLETED",
+            "state_name": "Completed",
+            "repos_processed": 0,
+            "results_count": 0,
+        }
+
     monkeypatch.setattr(demo_cli, "_run_prefect_demo", fake_run)
     result = runner.invoke(demo_app, ["prefect", "--keep"])
     assert result.exit_code == 0
@@ -210,9 +227,18 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
     monkeypatch.setattr(demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200))
     captured: dict = {}
+
     async def fake_run(**kwargs: object) -> dict[str, object]:
         captured.update(kwargs)
-        return {"flow_run_id": "x", "flow_run_url": "x", "state": "COMPLETED", "state_name": "Completed", "repos_processed": 0, "results_count": 0}
+        return {
+            "flow_run_id": "x",
+            "flow_run_url": "x",
+            "state": "COMPLETED",
+            "state_name": "Completed",
+            "repos_processed": 0,
+            "results_count": 0,
+        }
+
     monkeypatch.setattr(demo_cli, "_run_prefect_demo", fake_run)
     result = runner.invoke(
         demo_app,
