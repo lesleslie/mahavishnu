@@ -292,8 +292,17 @@ ai = [
 # ``>=2.0`` because only pre-release 2.0.x exists on PyPI as of
 # 2026-10-17.
 #
-# Operators who want the RunPod serverless provider install it themselves:
-#     uv pip install "runpod>=2.0.0rc1"
+# Operators who want the RunPod serverless provider install it themselves.
+# Use --no-deps: a plain install pulls boto3>=1.43.111, which breaks the
+# aiobotocore==2.25.1 pin that oneiric requires. Only the S3 *handler*
+# helper (runpod/serverless/utils/rp_upload.py) imports boto3 -- the
+# Endpoint client never does -- so skipping that one dependency is safe:
+#     uv pip install --no-deps "runpod>=2.0.0rc1"
+#     uv pip install aiohttp-retry backoff paramiko py-cpuinfo inquirerpy tqdm-loggable
+# Note: without --prerelease=allow, uv resolves "runpod" to the stable
+# 1.12.0, which needs run_pod.api_key set as a module global instead of
+# reading RUNPOD_API_KEY natively (SDK 2.0 does read it natively, which
+# is why this project migrated to 2.0).
 gpu = [
 ]
 

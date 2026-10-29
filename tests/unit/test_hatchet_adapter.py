@@ -165,3 +165,81 @@ def test_initialize_adapters_skips_hatchet_when_disabled():
     app._initialize_adapters()
 
     assert "hatchet" not in app.adapters
+
+
+# ============================================================================
+# The run-result shape, and the embedded engine
+# ============================================================================
+
+
+def test_hatchet_config_use_embedded_defaults_to_false():
+    """The embedded engine is opt-in, so a configured server still wins."""
+    cfg = HatchetConfig()
+    assert cfg.use_embedded is False
+
+
+def test_hatchet_run_id_reads_the_nested_run_display_name():
+    """``V1WorkflowRunDetails`` carries the id on ``.run.display_name``.
+
+    The SDK's pydantic models expose snake_case field names even though
+    the wire format is camelCase. Reading only ``run_id``/``id`` at the
+    top level reported an empty run id for every dispatch.
+    """
+    from types import SimpleNamespace
+
+    from mahavishnu.engines.hatchet_adapter_impl import _hatchet_run_id
+
+    details = SimpleNamespace(run=SimpleNamespace(display_name="agent-loop-abc123"))
+
+    assert _hatchet_run_id(details) == "agent-loop-abc123"
+
+
+def test_hatchet_run_id_still_reads_the_flat_shape():
+    from types import SimpleNamespace
+
+    from mahavishnu.engines.hatchet_adapter_impl import _hatchet_run_id
+
+    assert _hatchet_run_id(SimpleNamespace(run_id="flat-1")) == "flat-1"
+    assert _hatchet_run_id({"run_id": "dict-1"}) == "dict-1"
+
+
+def test_hatchet_run_output_reads_the_nested_run_output():
+    from types import SimpleNamespace
+
+    from mahavishnu.engines.hatchet_adapter_impl import _hatchet_run_output
+
+    details = SimpleNamespace(run=SimpleNamespace(output={"text": "hi"}))
+
+    assert _hatchet_run_output(details) == "{'text': 'hi'}"
+
+
+def test_initialize_uses_the_embedded_engine_when_configured(monkeypatch):
+    """``use_embedded`` selects the SDK's embedded engine.
+
+    It needs neither Docker nor an API token, and issues its own
+    address and token at startup.
+    """
+    from unittest.mock import MagicMock
+
+    hatchet_sdk = pytest.importorskip("hatchet_sdk")
+
+    from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
+
+    calls: dict = {}
+
+    def fake_from_embedded(config=None):
+        calls["from_embedded"] = True
+        return MagicMock()
+
+    monkeypatch.setattr(hatchet_sdk.Hatchet, "from_embedded", staticmethod(fake_from_embedded))
+    monkeypatch.delenv("HATCHET_CLIENT_TOKEN", raising=False)
+
+    cfg = HatchetConfig(use_embedded=True)
+    adapter = HatchetAdapterImpl(config=cfg)
+
+    import asyncio
+
+    asyncio.run(adapter.initialize())
+
+    assert calls["from_embedded"] is True
+    assert adapter.client is not None

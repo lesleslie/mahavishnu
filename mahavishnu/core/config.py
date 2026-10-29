@@ -1964,6 +1964,15 @@ class HatchetConfig(BaseModel):
         le=3600,
         description="Maximum seconds to wait for a single Hatchet task",
     )
+    use_embedded: bool = Field(
+        default=False,
+        description=(
+            "Run Hatchet's embedded engine in-process instead of connecting to "
+            "a server. The embedded engine needs neither Docker nor an API "
+            "token, and issues its own address and token at startup, so it "
+            "is the self-contained local path."
+        ),
+    )
 
     model_config = ConfigDict(extra="forbid")
 

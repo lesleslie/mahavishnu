@@ -264,34 +264,14 @@ the resulting file is mode 0600.
 
 ## Still open
 
-- **`hatchet`** — needs a Hatchet server. `hatchet server start` pulls
-  Docker images; the `hatchet-sdk` embedded sidecar downloads a native
-  binary, which is a separate approval. The adapter's API drift is
-  fixed, and the demo now reports the missing server as a
-  *precondition* (`Hatchet server is not reachable at localhost:7077
-  (Connection refused). Start one with 'hatchet server start'.`)
-  rather than a connection error that reads like an adapter defect.
-- **`pool-runpod` / `pool-runpod-public`** — need a paid RunPod
-  account and endpoint ids. Both fail cleanly at the precondition.
-- **`agno`** — the adapter's 300s budget expires because the agent
-  explores a large repo. The demo now reports the adapter's own
-  `MHV-008` rather than a generic timeout. The knob is
-  `agno.default_timeout_seconds` (`MAHAVISHNU_AGNO__DEFAULT_TIMEOUT_SECONDS`),
-  but raising it only buys time — the agent's exploration is what does
-  not converge, and that is an Agno-side concern (the adapter and its
-  provider chain are under active development in a concurrent session).
-
-  **Re-verified 2026-10-29: deterministic, and the refusals are not
-  the cause.** Three consecutive runs reproduce it — the sweep
-  (309.3s), a re-sweep (353.0s), and an isolated re-run. The sweep
-  run's `[MHV-453]` refusals (`search_code` handed a file path,
-  `read_file` handed a `.example` file) are *incidental*: the isolated
-  re-run made **zero** tool errors and still timed out at 300s with
-  the same verdict. So the budget is consumed by exploration itself,
-  not by error recovery — which also means the improved error text in
-  `3e28994f` cannot fix it. Raising the timeout is the only lever
-  that moves the number, and it does not make the exploration
-  converge.
+- **`pool-runpod`** — the `runpod` SDK is now installed (2.0.0rc2, with
+  its boto3 requirement skipped — see "The boto3 wall" above), so the
+  only thing left is a **serverless** endpoint id: the account has
+  none, and the SDK's job API is not exposed by hosted catalog
+  endpoints. `RUNPOD_ENDPOINT_ID` has to point at an endpoint the
+  operator deploys, with the handler configured server-side in the
+  RunPod console. `pool-runpod-public` no longer needs any of this:
+  it runs against RunPod's hosted catalog endpoints and now passes.
 - **`llamaindex`** — now passes. The query finds the persisted index
   (`index_id: mahavishnu_0`) and the repo scope correctly filters out
   the other repository's chunks, so the synthesizer has no context to
@@ -305,6 +285,9 @@ the resulting file is mode 0600.
   `asyncio.wait_for`, which cannot interrupt the blocking
   `llama_server` call, so an overrunning demo reports late rather than
   being cut short.
+
+Resolved in the second pass (see below): `agno` and `hatchet` both
+pass now, and `pool-runpod-public` passes.
 
 ## Final verdict matrix
 
@@ -383,6 +366,189 @@ repository scope removes the other repository's chunks, so the
 synthesizer has no context to chew on), and `pool-pi` /
 `workflow-pi-cascade` went from `ERROR` to **16.7 s / 34.3 s** once
 their pi task got PiPool's 120 s budget instead of its 30 s default.
+
+## Second pass — the three remaining demos
+
+Three demos still did not pass: `agno` (an unbounded agent task),
+`hatchet` (no server, and no Docker on this host), and the two RunPod
+pool demos. All three were investigated; two are now fixed in-repo and
+the third is a precise, honest precondition.
+
+### `agno` — the task was unbounded, not broken
+
+The adapter's `default` task type briefs the agent over the whole
+repository:
+
+> Process the following task for repository {repo} … Use available tools
+> to complete the task and provide a summary.
+
+There is no stopping criterion, so the agent explores until the
+adapter's 300 s budget expires — reproducibly (3 of 3 runs), and in
+the cleanest run with **no** tool errors at all, which rules out the
+`[MHV-453]` refusals as the cause.
+
+The fix is a bounded task type, `focused_review`: the prompt names one
+file, the instructions forbid searching the repository, and the answer
+is capped at five bullet points. The demo defaults to it and verifies
+the target file exists *before* the agent starts — a bounded task that
+names a file the agent cannot read falls back to exploring, and times
+out exactly as before.
+
+**353 s and `ERROR` → 19.8 s and `PASS`.**
+
+### `hatchet` — the adapter overrode the address the token names
+
+Three separate defects, all of which had to be fixed:
+
+1. **`host_port` was always passed.** `hatchet-sdk`'s
+   `ClientConfig.validate_addresses` reads the token's own
+   `grpc_broadcast_address` *unless* `host_port` is explicitly set. The
+   adapter passed `host_port=self._config.server_url` unconditionally,
+   so a Hatchet **Cloud** token was pointed at `localhost:7077` — a
+   server that needs Docker, and this host has no Docker daemon.
+   `host_port` is now passed only when a server is actually configured.
+2. **`get_health()` called a method that does not exist.** It used
+   `self._client.rest.workflow_list()`; this SDK version has no
+   `client.rest` at all, so every health check raised `AttributeError`.
+   The real API is `client.workflows.aio_list()`.
+3. **The run id and output were read from the wrong level.**
+   `runs.aio_create` returns a `V1WorkflowRunDetails` whose nested
+   `run` (`V1WorkflowRun`) carries `display_name` and `output`. The
+   extractors looked for `run_id`/`id`/`output` at the top level, so
+   every dispatch reported an empty run id.
+
+With the address fixed the demo reaches Hatchet Cloud — but that tenant
+has **no workflows at all** (every namespace lists zero), so the
+dispatch came back as a 500 that read like a server fault. The demo now
+**falls back to the SDK's embedded engine** when the configured server
+is unreachable: it needs neither Docker nor an API token, issues its own
+address and token at startup, and the demo registers the workflow it is
+about to dispatch (registration is an upsert).
+
+**`PRECONDITION` → `PASS` in 75 s.**
+
+### RunPod — the credential was never the problem
+
+`RUNPOD_API_KEY` **is** in `~/.config/secrets.env`, and it works: the
+account authenticates against the RunPod API. What is missing is
+infrastructure:
+
+- the account has **zero** serverless endpoints, **zero** clusters and
+  **zero** pods;
+- the hosted public endpoints (`moonshot-kimi`, `granite-4-0-h-small`,
+  …) answer `401 unauthorized access to endpoint` on `/health` but work
+  on `/runsync` — the demo reached one and got a real `kimi-k2.6`
+  completion for **$0.00088** per call.
+
+Two fixes:
+
+- **`pool-runpod-public`** sent `{"prompt": …}`, but the public
+  handlers are OpenAI-compatible and reject it with *"messages must
+  not be empty"*. The demo now sends
+  `{"messages": [{"role": "user", …}]}` and points at a catalog
+  endpoint by default.
+- **`pool-runpod`** now probes for the `runpod` SDK in its
+  preconditions. It was passing them and then dying inside
+  `RunPodPool.start()` with a raw `RuntimeError`, which read like a
+  defect rather than a missing optional dependency.
+
+#### The boto3 wall, and how the SDK gets installed anyway
+
+`runpod` is deliberately **not** a project dependency. The chain is
+explicit, and `uv`'s resolver states it in one line:
+
+```
+oneiric>=0.33.2 → aioboto3>=15.5.0 → aiobotocore[boto3]==2.25.1 → botocore<1.40.62
+runpod>=2.0.0rc1 → boto3>=1.43.111 → botocore>=1.43.111
+```
+
+`aiobotocore` is pinned *exactly*, and `aioboto3` tops out at 15.5.0,
+so the pin cannot be relaxed from this side — the two floors are
+irreconcilable without an upstream `oneiric` release that drops the
+`aioboto3` dependency. That is why the `gpu` group was removed from
+`pyproject.toml` on 2026-10-24.
+
+But the wall is **wider than it needs to be**. Exactly one file in the
+whole SDK imports boto3 — `runpod/serverless/utils/rp_upload.py`, the
+S3 *handler* helper. The client side never touches it:
+
+```
+$ python -c "import runpod; print('boto3' in sys.modules)"
+False
+$ python -c "from runpod import Endpoint; Endpoint('x')"   # with boto3 uninstalled
+Endpoint constructed OK
+```
+
+So the SDK is installed with its boto3 requirement skipped:
+
+```
+uv pip install --no-deps 'runpod>=2.0.0rc1'
+uv pip install aiohttp-retry backoff paramiko py-cpuinfo inquirerpy tqdm-loggable
+```
+
+After which `boto3 1.40.61`, `botocore 1.40.61`, `aiobotocore 2.25.1`
+and `oneiric 0.33.5` are all untouched, and `import oneiric` still
+works.
+
+Two details worth recording: `runpod` 1.12.0 is the *stable* release
+and needs `run_pod.api_key` set as a module global — SDK 2.0 reads
+`RUNPOD_API_KEY` natively, which is exactly why this project migrated
+to 2.0 (see `docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`), so
+the prerelease is the correct install. And `uv pip install runpod`
+without `--prerelease=allow` silently picks 1.12.0.
+
+#### A latent false-success in the pool
+
+`RunPodPool.execute_task` called `req.output()` with no argument. The
+SDK's `Job.output(timeout=0)` — the default — does a **single**
+non-blocking fetch; it only polls when given a timeout. On a
+cold-start endpoint that fetch returns `None` while the job is still
+running, and the pool would report *"completed"* with no output. The
+pool now passes an explicit budget (`timeout_seconds`, default 300),
+so `.output()` blocks to a terminal state as the pool's own comments
+always claimed it did.
+
+`pool-runpod` still reports a precondition: it needs a **serverless**
+endpoint you deployed. The SDK polls `{endpoint_id}/status/{job_id}`
+for the result, and hosted catalog endpoints do not expose that job
+API — pointing the SDK pool at `moonshot-kimi` "completes" in 0.44 s
+with an empty output, which is a hollow pass rather than a real one.
+
+### Third pass — final matrix (2026-10-29)
+
+After the fixes above, the sweep over all 18 demos:
+
+```
+  tmux                           PASS          exit=0      13.3s
+  mock                           STUB          exit=0       6.1s
+  prefect                        PASS          exit=0      34.7s
+  agno                           PASS          exit=0      34.3s
+  llamaindex                     PASS          exit=0      27.0s
+  pydantic_ai                    PASS          exit=0      14.0s
+  crow                           PASS          exit=0       7.2s
+  hatchet                        PASS          exit=0      30.9s
+  pool-mahavishnu                PASS          exit=0      42.0s
+  pool-session-buddy             PASS          exit=0      42.6s
+  pool-runpod-public             PASS          exit=0      12.1s
+  pool-runpod                    PRECONDITION  exit=1      11.5s
+  pool-pi                        PASS          exit=0      58.0s
+  workflow-pool-worker-terminal  PASS          exit=0      22.0s
+  workflow-multi-pool-handoff    PASS          exit=0      23.2s
+  workflow-adapter-swap          PASS          exit=0      45.4s
+  workflow-pi-cascade            PASS          exit=0      54.0s
+  workflow-pi-then-local         PASS          exit=0      31.9s
+```
+
+**17/18 passed**, up from 14/18. The one that does not is
+`pool-runpod`, and it is a *precondition*, not a defect: the credential
+and the SDK are both in place, and all that is missing is a serverless
+endpoint to point at — infrastructure the operator deploys.
+
+Three rows moved from failing to passing: `agno` (353 s `ERROR` →
+34.3 s), `hatchet` (`PRECONDITION` → 30.9 s), and `pool-runpod-public`
+(`PRECONDITION` → 12.1 s). `hatchet` is also *faster* than its
+first-run embedded-engine start, because the sidecar binary and the
+bundled Postgres are cached after the first run.
 
 ## `mahavishnu demo all`
 A new sweep command runs every demo in its own subprocess and reports a

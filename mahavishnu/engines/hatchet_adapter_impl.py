@@ -31,24 +31,43 @@ def _hatchet_run_output(run_result: object) -> str:
     """Extract the run's output text from whatever shape the SDK returned.
 
     ``hatchet-sdk`` 1.43's ``runs.aio_create`` returns a pydantic
-    ``V1WorkflowRunDetails``; older ``Hatchet.run`` returned a plain
-    dict. Normalize both to a string.
+    ``V1WorkflowRunDetails``, whose output lives on the nested ``run``
+    (``V1WorkflowRun``); older ``Hatchet.run`` returned a plain dict.
+    Normalize both to a string.
     """
     if isinstance(run_result, dict):
         value = run_result.get("output", "")
     else:
         value = getattr(run_result, "output", None)
+        if value is None:
+            nested = getattr(run_result, "run", None)
+            value = getattr(nested, "output", None)
     if value is None:
         return ""
     return value if isinstance(value, str) else str(value)
 
 
 def _hatchet_run_id(run_result: object) -> str:
-    """Extract the run id from whatever shape the SDK returned."""
+    """Extract the run id from whatever shape the SDK returned.
+
+    ``V1WorkflowRunDetails`` carries the id on the nested ``run`` as
+    ``displayName`` -- Hatchet v1 uses the display name as the run id.
+    Without this the demo reported an empty run id for every dispatch.
+    """
     if isinstance(run_result, dict):
         value = run_result.get("run_id") or run_result.get("id")
     else:
         value = getattr(run_result, "run_id", None) or getattr(run_result, "id", None)
+        if value is None:
+            nested = getattr(run_result, "run", None)
+            # The SDK's pydantic models expose snake_case field names
+            # (``display_name``) even though the wire format is camelCase.
+            value = (
+                getattr(nested, "display_name", None)
+                or getattr(nested, "displayName", None)
+                or getattr(nested, "workflow_version_id", None)
+                or getattr(nested, "workflowVersionId", None)
+            )
     return "" if value is None else str(value)
 
 
@@ -104,12 +123,14 @@ class HatchetAdapterImpl(OrchestratorAdapter):
         ]
 
     async def initialize(self) -> None:
-        """Connect to Hatchet server using HATCHET_CLIENT_TOKEN."""
-        token = os.environ.get("HATCHET_CLIENT_TOKEN", "")
-        if not token:
-            raise RuntimeError(
-                "HatchetAdapterImpl requires HATCHET_CLIENT_TOKEN environment variable."
-            )
+        """Connect to Hatchet -- the embedded engine, or a server.
+
+        With ``config.use_embedded`` the SDK's embedded engine runs
+        in-process (no Docker, no API token). Otherwise the client
+        connects to ``config.server_url`` using ``HATCHET_CLIENT_TOKEN``;
+        with no ``server_url`` configured, the SDK derives the address
+        from the token itself.
+        """
         try:
             from hatchet_sdk import Hatchet
             from hatchet_sdk.config import ClientConfig
@@ -119,20 +140,54 @@ class HatchetAdapterImpl(OrchestratorAdapter):
                 "(or pull it transitively via: uv sync --group dev)"
             ) from None
 
+        if self._config.use_embedded:
+            # The embedded engine runs in-process and issues its own
+            # address and token at startup, so neither HATCHET_CLIENT_TOKEN
+            # nor a reachable server is required. It is also the only path
+            # that needs no Docker.
+            self._client = Hatchet.from_embedded()
+            logger.info(
+                "HatchetAdapter initialized: embedded engine namespace=%s",
+                self._config.namespace,
+            )
+            return
+
+        token = os.environ.get("HATCHET_CLIENT_TOKEN", "")
+        if not token:
+            raise RuntimeError(
+                "HatchetAdapterImpl requires HATCHET_CLIENT_TOKEN environment variable."
+            )
+
         # hatchet-sdk exposes a Pydantic ClientConfig; the Hatchet() constructor
         # does not accept token/host_port/namespace as kwargs directly.
-        self._client = Hatchet(
-            config=ClientConfig(
-                token=token,
-                host_port=self._config.server_url,
-                namespace=self._config.namespace,
-            ),
-        )
+        #
+        # ``host_port`` is passed only when a server is actually configured.
+        # The SDK derives it from the token otherwise (``ClientConfig``'s
+        # ``validate_addresses`` reads the token's own broadcast address when
+        # the field is not explicitly set), and passing it unconditionally
+        # overrode the address the credential was issued for.
+        config_kwargs: dict[str, Any] = {
+            "token": token,
+            "namespace": self._config.namespace,
+        }
+        if self._config.server_url:
+            config_kwargs["host_port"] = self._config.server_url
+        self._client = Hatchet(config=ClientConfig(**config_kwargs))
         logger.info(
             "HatchetAdapter initialized: server=%s namespace=%s",
-            self._config.server_url,
+            self._config.server_url or "(derived from token)",
             self._config.namespace,
         )
+
+    @property
+    def client(self) -> Any:
+        """The underlying Hatchet client, or ``None`` before ``initialize()``.
+
+        Exposed so a caller can act on the engine directly -- registering
+        a workflow definition, for instance -- without reaching into the
+        adapter's private state.
+        """
+        return self._client
 
     async def cleanup(self) -> None:
         """Close Hatchet client connection.
@@ -240,11 +295,15 @@ class HatchetAdapterImpl(OrchestratorAdapter):
                 "details": {"reason": "client not initialized"},
             }
         try:
-            await asyncio.wait_for(self._client.rest.workflow_list(), timeout=5.0)
+            # The installed hatchet-sdk exposes the workflow list on
+            # ``client.workflows`` (an async ``aio_list``); there is no
+            # ``client.rest`` attribute, so the old call raised
+            # AttributeError and every health check reported unhealthy.
+            await asyncio.wait_for(self._client.workflows.aio_list(), timeout=5.0)
             return {
                 "status": "healthy",
                 "details": {
-                    "server_url": self._config.server_url,
+                    "server_url": self._config.server_url or "(embedded engine)",
                     "namespace": self._config.namespace,
                 },
             }

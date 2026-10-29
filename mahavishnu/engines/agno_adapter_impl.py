@@ -1898,6 +1898,17 @@ repository against quality standards. Check for:
 - Maintainability concerns
 
 Use available tools to examine code files and provide a detailed assessment.""",
+            "focused_review": """You are a code analysis agent working on a
+strictly bounded task. The task names one exact file to read.
+
+Rules:
+- Read ONLY the file named in the task.
+- Do NOT list directories, do NOT search the repository, and do NOT
+  follow imports into other files.
+- Answer in at most 5 bullet points, then stop.
+
+Your job is to finish, not to explore. Once you have read the named
+file, answer immediately.""",
             "default": """You are a helpful AI assistant. Process the given task
 using available tools and provide clear, actionable responses.
 
@@ -1987,6 +1998,28 @@ actionable recommendations."""
 Evaluate against: {params.get("standards", "Python best practices")}.
 
 Use available tools to examine the code and provide a compliance score and list any issues found."""
+
+        if task_type == "focused_review":
+            # A bounded task: one named file, one question, one answer.
+            # The whole-repository task types ("code_sweep",
+            # "quality_check", "default") hand the agent an open-ended
+            # brief over a whole repo, and the agent explores until the
+            # adapter's own budget expires -- the run reports a top-level
+            # "completed" while every repo underneath timed out.
+            target = str(params.get("target", "")).strip()
+            question = str(
+                params.get("focus")
+                or "Summarise what this file does and list its public functions."
+            )
+            if target and not Path(target).is_absolute():
+                target = str(Path(repo) / target)
+            return f"""Review the file {target}.
+
+{question}
+
+Read ONLY that file. Do not list directories, do not search the
+repository, and do not read any other file. Answer with at most 5
+bullet points."""
 
         # Default prompt
         return f"""Process the following task for repository {repo}:

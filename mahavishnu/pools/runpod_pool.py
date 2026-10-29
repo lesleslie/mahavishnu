@@ -100,6 +100,12 @@ class RunPodPool(BasePool):
         self._dependencies: list[str] = config.get("dependencies", [])
         self._num_workers: int = config.get("num_workers", 3)
 
+        # Budget for a single job, in seconds. A cold-start serverless
+        # endpoint needs 30-60s to provision its worker, so the default
+        # is generous; it bounds how long ``Job.output()`` waits for a
+        # terminal state.
+        self._timeout_seconds: float = float(config.get("timeout_seconds", 300))
+
     async def start(self) -> str:
         """Construct the ``runpod.Endpoint`` client handle.
 
@@ -165,7 +171,14 @@ class RunPodPool(BasePool):
             # for log/telemetry. ``.output()`` returning without
             # raising is the sole source of truth for "the job
             # completed".
-            final_output = req.output()
+            #
+            # The ``timeout`` argument is load-bearing: the SDK's
+            # ``output()`` only blocks when given one. Called with the
+            # default of 0 it does a *single* fetch, which on a
+            # cold-start endpoint returns ``None`` while the job is
+            # still running — the pool would then report "completed"
+            # with no output.
+            final_output = req.output(timeout=int(self._timeout_seconds))
             final_status = req.status()
             return {"id": job_id, "status": final_status, "output": final_output}
 

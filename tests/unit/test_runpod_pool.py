@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,7 +23,9 @@ def _make_pool_config(**overrides) -> PoolConfig:
     return PoolConfig(**defaults)  # type: ignore[arg-type]
 
 
-def _fake_run_request(status_value: str = "COMPLETED", output_value: object = None, job_id: str = "job-1"):
+def _fake_run_request(
+    status_value: str = "COMPLETED", output_value: object = None, job_id: str = "job-1"
+):
     """Return a MagicMock shaped like the runpod SDK 2.0 RunRequest handle.
 
     The handle exposes ``.id`` / ``.job_id`` (job uuid), ``.status()`` (returns
@@ -185,6 +187,45 @@ class TestExecuteTask:
         endpoint_mock.run.assert_called_once_with({"prompt": "say hello"})
 
     @pytest.mark.asyncio
+    async def test_output_is_asked_to_block_with_a_timeout(self):
+        """``.output()`` must be given a timeout, or it does not block.
+
+        The SDK's ``Job.output(timeout=0)`` -- the default -- performs a
+        *single* non-blocking fetch. On a cold-start endpoint that fetch
+        returns ``None`` while the job is still running, and the pool
+        would report "completed" with no output.
+        """
+        cfg = _make_pool_config()
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+
+        req = _fake_run_request(status_value="COMPLETED", output_value={"ok": True}, job_id="job-1")
+        endpoint_mock = MagicMock()
+        endpoint_mock.run = MagicMock(return_value=req)
+        pool._endpoint = endpoint_mock
+
+        result = await pool.execute_task({"prompt": "hi"})
+
+        assert result["status"] == "completed"
+        assert req.output.call_args.kwargs.get("timeout", 0) > 0
+
+    @pytest.mark.asyncio
+    async def test_output_timeout_is_configurable(self):
+        """The budget is a pool config knob, not a constant."""
+        cfg = _make_pool_config(extra_config={"endpoint_id": "ep-1", "timeout_seconds": 42})
+        pool = RunPodPool(config=cfg)
+        pool._status = PoolStatus.RUNNING
+
+        req = _fake_run_request(status_value="COMPLETED", output_value={"ok": True}, job_id="job-1")
+        endpoint_mock = MagicMock()
+        endpoint_mock.run = MagicMock(return_value=req)
+        pool._endpoint = endpoint_mock
+
+        await pool.execute_task({"prompt": "hi"})
+
+        assert req.output.call_args.kwargs["timeout"] == 42
+
+    @pytest.mark.asyncio
     async def test_output_raising_maps_to_pool_failed(self):
         # FAILED is signalled by ``.output()`` raising an exception,
         # NOT by ``.status()`` returning "FAILED". The pool catches
@@ -257,9 +298,7 @@ class TestExecuteTask:
 
         assert result["status"] == "completed"
         assert any("UNKNOWN_STATE" in rec.message for rec in caplog.records)
-        assert any(
-            "SDK contract compatibility" in rec.message for rec in caplog.records
-        )
+        assert any("SDK contract compatibility" in rec.message for rec in caplog.records)
 
     @pytest.mark.asyncio
     async def test_empty_status_with_output_returning_means_completed(self):
@@ -351,9 +390,7 @@ class TestExecuteBatch:
         endpoint_mock = MagicMock(run=MagicMock(side_effect=by_prompt))
         pool._endpoint = endpoint_mock
 
-        results = await pool.execute_batch(
-            [{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}]
-        )
+        results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}])
         assert len(results) == 3
         # asyncio.gather preserves input order in the returned list,
         # so index → submission order.

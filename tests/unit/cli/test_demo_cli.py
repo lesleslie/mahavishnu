@@ -10,6 +10,8 @@ precedent established).
 
 from __future__ import annotations
 
+import asyncio
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx2 as httpx
@@ -376,3 +378,163 @@ def test_demo_app_exposes_expected_commands() -> None:
         # Sweep (1) — runs every demo above and reports a verdict matrix.
         "all",
     }
+
+
+# ============================================================================
+# agno — the demo's task must be bounded
+# ============================================================================
+
+
+def _agno_settings_mock() -> MagicMock:
+    """Settings stub exposing just what the agno demo reads."""
+    settings_mock = MagicMock()
+    settings_mock.agno.llm.provider.value = "minimax"
+    settings_mock.agno.llm.model_id = "MiniMax-M3"
+    return settings_mock
+
+
+def test_agno_demo_defaults_to_the_bounded_task_type(monkeypatch) -> None:
+    """The default task type must be the bounded one.
+
+    The ``default`` task type briefs the agent over the whole repository
+    with no stopping criterion, so the agent explores until the
+    adapter's 300s budget expires and the run reports a timeout.
+    """
+    captured: dict = {}
+
+    async def fake_run(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"status": "completed", "success_count": 1, "failure_count": 0}
+
+    monkeypatch.setattr(demo_cli, "_check_agno_preconditions", lambda **kw: [])
+    monkeypatch.setattr(demo_cli, "_run_agno_demo", fake_run)
+    monkeypatch.setattr(demo_cli, "_default_settings_getter", _agno_settings_mock)
+
+    result = runner.invoke(demo_app, ["agno"])
+    assert result.exit_code == 0, result.output + result.stderr
+    assert captured["task_type"] == "focused_review"
+    assert captured["params"]["target"] == "mahavishnu/cli/demo_cli.py"
+
+
+def test_agno_demo_rejects_a_target_file_that_does_not_exist(monkeypatch, tmp_path) -> None:
+    """A bounded task naming an unreadable file is worse than an unbounded one.
+
+    The agent has nothing to read, falls back to exploring the
+    repository, and times out exactly as it did before the task was
+    scoped. The target is verified before the agent starts.
+    """
+    monkeypatch.setattr(demo_cli, "_check_agno_preconditions", lambda **kw: [])
+    monkeypatch.setattr(demo_cli, "_default_settings_getter", _agno_settings_mock)
+
+    result = runner.invoke(demo_app, ["agno", "--repos", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "target file not found" in (result.output + result.stderr)
+
+
+# ============================================================================
+# hatchet — server mode vs. the SDK's embedded engine
+# ============================================================================
+
+
+def test_hatchet_uses_the_configured_server_when_it_answers(monkeypatch) -> None:
+    monkeypatch.setattr(demo_cli, "_check_hatchet_server_reachable", lambda url, t: [])
+    cfg = SimpleNamespace(server_url="localhost:7077", use_embedded=False)
+
+    mode, detail = demo_cli._resolve_hatchet_mode(cfg, timeout=1.0)
+
+    assert mode == "server"
+    assert detail == "localhost:7077"
+
+
+def test_hatchet_falls_back_to_the_embedded_engine_when_the_server_is_down(
+    monkeypatch,
+) -> None:
+    """A local Hatchet engine needs Docker; the embedded engine needs neither.
+
+    The fallback keeps the demo honest -- it still drives the real
+    adapter against a real Hatchet engine -- instead of reporting a
+    missing substrate.
+    """
+    monkeypatch.setattr(demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"])
+    cfg = SimpleNamespace(server_url="localhost:7077", use_embedded=False)
+
+    mode, detail = demo_cli._resolve_hatchet_mode(cfg, timeout=1.0)
+
+    assert mode == "embedded"
+    assert "unreachable" in detail
+
+
+def test_hatchet_precondition_does_not_demand_a_token_in_embedded_mode(
+    monkeypatch,
+) -> None:
+    """The embedded engine issues its own token, so none is required."""
+    monkeypatch.setattr(demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"])
+    settings_mock = MagicMock()
+    settings_mock.adapters.hatchet_enabled = True
+    settings_mock.hatchet = SimpleNamespace(server_url="localhost:7077", use_embedded=False)
+    monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
+
+    failures = demo_cli._check_hatchet_preconditions(
+        settings_getter=lambda: settings_mock,
+        import_probe=lambda name: object(),
+        env_getter=lambda name: None,
+    )
+
+    assert not any("HATCHET_CLIENT_TOKEN" in failure for failure in failures)
+
+
+# ============================================================================
+# RunPod — the credential, the SDK, and the payload shape
+# ============================================================================
+
+
+def test_pool_runpod_reports_a_missing_runpod_sdk() -> None:
+    """The SDK is an operator-installed optional dependency.
+
+    Without the probe the demo passed its preconditions and then died
+    inside ``RunPodPool.start()`` with a raw RuntimeError, which reads
+    like a defect rather than a missing optional dependency.
+    """
+    failures = demo_cli._check_pool_runpod_preconditions(
+        endpoint_id="ep-1",
+        env_getter=lambda name: "a-key",
+        import_probe=lambda name: None,
+    )
+
+    assert any("runpod" in failure for failure in failures)
+    assert not any("endpoint_id" in failure for failure in failures)
+
+
+def test_pool_runpod_public_sends_an_openai_shaped_payload(monkeypatch) -> None:
+    """The hosted public endpoints are OpenAI-compatible.
+
+    They want a ``messages`` list and reject a flat ``{"prompt": ...}``
+    with *"messages must not be empty"*.
+    """
+    captured: dict = {}
+
+    class _FakePool:
+        def __init__(self, config):
+            captured["config"] = config
+
+        async def start(self):
+            return "pool-1"
+
+        async def execute_task(self, task):
+            captured["task"] = task
+            return {"worker_id": "w", "status": "completed", "duration": 0.1}
+
+        async def stop(self):
+            return None
+
+    import mahavishnu.pools.runpod_public_pool as public_pool_mod
+
+    monkeypatch.setattr(public_pool_mod, "RunPodPublicEndpointPool", _FakePool)
+
+    asyncio.run(
+        demo_cli._run_pool_runpod_public_demo(
+            pool_name="demo", endpoint_id="ep-1", prompt="hello", keep=False
+        )
+    )
+
+    assert captured["task"] == {"messages": [{"role": "user", "content": "hello"}]}

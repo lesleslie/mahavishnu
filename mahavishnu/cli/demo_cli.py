@@ -823,6 +823,26 @@ def _default_import_probe(module_name: str) -> Any | None:
         return None
 
 
+def _check_agno_target_precondition(repos: Sequence[str], target: str) -> list[str]:
+    """Return failures when a ``focused_review`` target is missing.
+
+    A bounded task that names a file the agent cannot read is worse than
+    an unbounded one: the agent has nothing to read, falls back to
+    exploring the repository, and the run times out exactly as it did
+    before the task was scoped. So the target is verified *before* the
+    agent starts, where the failure is cheap and legible.
+    """
+    failures: list[str] = []
+    for repo in repos:
+        candidate = Path(repo) / target
+        if not candidate.is_file():
+            failures.append(
+                f"target file not found for repo {repo}: {candidate}. "
+                "Pass --target with a path relative to the repo."
+            )
+    return failures
+
+
 async def _run_agno_demo(
     *,
     repos: Sequence[str],
@@ -896,10 +916,18 @@ def demo_agno(
         help="Repos to pass to AgnoAdapter.execute. Defaults to the Mahavishnu repo itself.",
     ),
     task_type: str = typer.Option(
-        "default",
+        "focused_review",
         "--task-type",
         "-t",
-        help="Agno task type (e.g. code_sweep, quality_check, default).",
+        help="Agno task type. The default, focused_review, is bounded to a "
+        "single named file so the agent converges inside the adapter's "
+        "budget; code_sweep, quality_check and default brief the agent "
+        "over the whole repository and can exhaust it.",
+    ),
+    target: str = typer.Option(
+        "mahavishnu/cli/demo_cli.py",
+        "--target",
+        help="File to review, relative to each repo (focused_review only).",
     ),
     prompt: str | None = typer.Option(
         None,
@@ -937,9 +965,18 @@ def demo_agno(
 
     settings = _default_settings_getter()
     effective_repos: list[str] = list(repos) or _default_demo_repos()
+    if task_type == "focused_review":
+        target_failures = _check_agno_target_precondition(effective_repos, target)
+        if target_failures:
+            typer.echo("Precondition failure(s):", err=True)
+            for failure in target_failures:
+                typer.echo(f"  - {failure}", err=True)
+            raise typer.Exit(code=1)
     params: dict[str, object] = {}
     if prompt:
         params["focus"] = prompt
+    if task_type == "focused_review":
+        params["target"] = target
 
     typer.echo(f"LLM provider: {settings.agno.llm.provider.value}")
     typer.echo(f"LLM model:    {settings.agno.llm.model_id}")
@@ -1987,6 +2024,39 @@ def _check_hatchet_server_reachable(server_url: str, timeout: float) -> list[str
         ]
 
 
+def _resolve_hatchet_mode(hatchet_cfg: Any, *, timeout: float) -> tuple[str, str]:
+    """Return ``(mode, detail)`` for how the demo should reach Hatchet.
+
+    ``server``   -- the configured server answered; talk to it.
+    ``embedded`` -- run the SDK's embedded engine in-process. It needs
+                   neither Docker nor an API token, and it issues its own
+                   address and token at startup, so it is the only path
+                   that works on a host with no Hatchet server.
+
+    The fallback matters because the configured server is usually a local
+    engine (``localhost:7077``) that needs Docker to run, and a host
+    without a Docker daemon cannot start one. Falling back keeps the
+    demo honest -- it still drives the real adapter against a real
+    Hatchet engine -- instead of reporting a missing substrate.
+    """
+    if getattr(hatchet_cfg, "use_embedded", False):
+        return "embedded", "settings.hatchet.use_embedded is set"
+
+    server_url = str(getattr(hatchet_cfg, "server_url", "") or "")
+    if not server_url:
+        return "embedded", "no Hatchet server is configured"
+
+    if _check_hatchet_server_reachable(server_url, timeout):
+        # The probe returns *failures*, so a non-empty list means the
+        # configured server did not answer.
+        return "embedded", (
+            f"the configured server {server_url} is unreachable — using the "
+            "SDK's embedded engine, which needs neither Docker nor an API token"
+        )
+
+    return "server", server_url
+
+
 def _check_hatchet_preconditions(
     *,
     settings_getter: Callable[[], Any] | None = None,
@@ -2040,19 +2110,16 @@ def _check_hatchet_preconditions(
         failures.append(f"settings.hatchet not configured: {exc}")
         return failures
 
-    if not getattr(hatchet_cfg, "server_url", None):
-        failures.append(
-            "settings.hatchet.server_url is empty "
-            "(set MAHAVISHNU_HATCHET__SERVER_URL, e.g. 'localhost:7077')"
-        )
-    else:
-        failures.extend(_check_hatchet_server_reachable(str(hatchet_cfg.server_url), timeout))
+    mode, _detail = _resolve_hatchet_mode(hatchet_cfg, timeout=timeout)
 
-    if not env_getter("HATCHET_CLIENT_TOKEN"):
-        failures.append(
-            "HATCHET_CLIENT_TOKEN env var unset — the Hatchet SDK raises "
-            "RuntimeError at initialize() without it"
-        )
+    if mode == "server":
+        # A reachable server still needs a client token: the SDK raises
+        # RuntimeError at initialize() without one.
+        if not env_getter("HATCHET_CLIENT_TOKEN"):
+            failures.append(
+                "HATCHET_CLIENT_TOKEN env var unset — the Hatchet SDK raises "
+                "RuntimeError at initialize() without it"
+            )
 
     return failures
 
@@ -2063,6 +2130,7 @@ async def _run_hatchet_demo(
     prompt: str,
     workflow_name: str,
     keep: bool = False,
+    mode: str = "server",
 ) -> dict[str, object]:
     """Drive the Hatchet engine end-to-end against one or more repositories.
 
@@ -2073,6 +2141,12 @@ async def _run_hatchet_demo(
     ``adapter.cleanup()``. On the exception path ``adapter.cleanup()``
     is best-effort called before re-raising, mirroring the
     ``_run_tmux_demo`` reap-on-error pattern at ``_run_tmux_demo:174-178``.
+
+    In ``embedded`` mode the adapter runs the SDK's embedded engine, and
+    the demo registers the workflow it is about to dispatch: a dispatch
+    against a workflow the engine does not know comes back as a 500 from
+    the Hatchet API, which reads like a server fault rather than a
+    missing definition.
     """
     from mahavishnu.engines.hatchet_adapter_impl import HatchetAdapterImpl
 
@@ -2083,12 +2157,19 @@ async def _run_hatchet_demo(
         "workflow_name": workflow_name,
     }
 
-    adapter = HatchetAdapterImpl(config=settings.hatchet)
+    hatchet_cfg = settings.hatchet
+    if mode == "embedded":
+        hatchet_cfg = hatchet_cfg.model_copy(update={"use_embedded": True})
+
+    adapter = HatchetAdapterImpl(config=hatchet_cfg)
     try:
         await adapter.initialize()
     except Exception:  # cleanup is best-effort on init failure — never mask the original error  # noqa: BLE001, RUF100
         await _best_effort_hatchet_cleanup(adapter)
         raise
+
+    if mode == "embedded":
+        await _ensure_hatchet_workflow(adapter, workflow_name)
 
     try:
         result = await adapter.execute(task=task, repos=list(repos))
@@ -2108,6 +2189,40 @@ async def _run_hatchet_demo(
         "error": result.get("error"),
         "repos": list(repos),
     }
+
+
+async def _ensure_hatchet_workflow(adapter: Any, workflow_name: str) -> bool:
+    """Register ``workflow_name`` with the engine if it is not there yet.
+
+    Returns True when the workflow was registered, False when it already
+    existed. Registration is an upsert, so repeating it is harmless.
+    """
+    client = adapter.client
+    if client is None:
+        return False
+
+    listed = await client.workflows.aio_list()
+    for workflow in getattr(listed, "rows", None) or []:
+        if getattr(workflow, "name", None) == workflow_name:
+            return False
+
+    definition = client.workflow(
+        name=workflow_name,
+        description=f"Registered by `mahavishnu demo hatchet` ({workflow_name}).",
+    )
+
+    @definition.task()
+    async def _step(input: Any, ctx: Any) -> None:
+        # The demo proves the *dispatch* path; a worker is not needed for
+        # the trigger to succeed.
+        return None
+
+    # The admin client (workflow registration) is not reachable from the
+    # ``Hatchet`` facade -- it hangs off the lower-level ``Client``.
+    from hatchet_sdk.client import Client
+
+    await Client(config=client.config).admin.aio_put_workflow(definition.to_proto())
+    return True
 
 
 async def _best_effort_hatchet_cleanup(adapter: Any) -> None:
@@ -2143,9 +2258,11 @@ def demo_hatchet(
         help="Leave the HatchetAdapter initialized after the demo (mainly for debugging).",
     ),
     timeout: int = typer.Option(
-        180,
+        300,
         "--timeout",
-        help="Max seconds to wait for HatchetAdapterImpl.execute.",
+        help="Max seconds to wait for HatchetAdapterImpl.execute. The embedded "
+        "engine needs headroom on its first run: it downloads the sidecar "
+        "binary and initializes a bundled Postgres.",
     ),
 ) -> None:
     """Run the Hatchet engine end-to-end against the live Hatchet server.
@@ -2171,7 +2288,11 @@ def demo_hatchet(
 
     settings = _default_settings_getter()
     effective_repos: list[str] = list(repos) or _default_demo_repos()
-    typer.echo(f"Hatchet server: {settings.hatchet.server_url}")
+    mode, mode_detail = _resolve_hatchet_mode(
+        settings.hatchet, timeout=DEFAULT_HATCHET_PRECONDITION_TIMEOUT
+    )
+    typer.echo(f"Hatchet mode:   {mode} ({mode_detail})")
+    typer.echo(f"Hatchet server: {settings.hatchet.server_url or '(embedded engine)'}")
     typer.echo(f"Namespace:     {settings.hatchet.namespace}")
     typer.echo(f"Workflow:      {workflow_name}")
     typer.echo(f"Prompt:        {prompt}")
@@ -2183,6 +2304,7 @@ def demo_hatchet(
             prompt=prompt,
             workflow_name=workflow_name,
             keep=keep,
+            mode=mode,
         )
 
     try:
@@ -2215,6 +2337,18 @@ def demo_hatchet(
 
 
 DEFAULT_POOL_DEMO_COMMAND = "echo hello from {pool_type} pool"
+
+#: Default prompt for the RunPod *public* endpoint demo. Unlike the other
+#: pool demos -- which dispatch a shell command to a worker -- a public
+#: endpoint is a hosted model, so the demo sends natural language.
+DEFAULT_RUNPOD_PUBLIC_PROMPT = "Reply with one short sentence confirming you received this."
+
+#: Default RunPod *public* endpoint id. RunPod hosts a catalog of pay-per-use
+#: models behind stable slugs (see ``mcp__runpod__list-public-endpoints``);
+#: ``moonshot-kimi`` is an OpenAI-compatible chat endpoint, so the demo can
+#: exercise the pool without any deployment. Override it with
+#: ``RUNPOD_PUBLIC_ENDPOINT_ID``.
+DEFAULT_RUNPOD_PUBLIC_ENDPOINT_ID = "moonshot-kimi"
 DEFAULT_SESSION_BUDDY_URL = "http://localhost:8678/mcp"
 DEFAULT_RUNPOD_PROBE_TIMEOUT_S = 5.0
 DEFAULT_PI_RUNTIME_PROBE_TIMEOUT_S = 5.0
@@ -2621,17 +2755,37 @@ def _check_pool_runpod_preconditions(
     *,
     endpoint_id: str,
     env_getter: Callable[[str], str | None] | None = None,
+    import_probe: Callable[[str], Any] | None = None,
 ) -> list[str]:
-    """Verify ``RUNPOD_API_KEY`` is set and ``endpoint_id`` is non-empty.
+    """Verify the ``runpod`` SDK is importable, the key is set, and the id is set.
 
     SDK 2.0 reads ``RUNPOD_API_KEY`` natively (per the post-2026-10-17
     migration — see ``docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md``).
     The legacy ``api_key`` config field is no longer required; the
     endpoint_id IS required (points at a pre-configured serverless
     endpoint — handler logic lives in the RunPod console, not here).
+
+    The ``runpod`` SDK is deliberately *not* a dependency of this project
+    (it was removed from the ``gpu`` group on 2026-10-24 because it
+    conflicts with the oneiric dependency floor; see ``pyproject.toml``).
+    Without the import probe the demo passed its preconditions and then
+    died inside ``RunPodPool.start()`` with a raw RuntimeError, which
+    reads like a defect rather than a missing optional dependency.
     """
     env_getter = env_getter or os.getenv
+    import_probe = import_probe or _default_import_probe
     failures: list[str] = []
+    if import_probe("runpod") is None:
+        failures.append(
+            "the 'runpod' SDK is not installed. It is deliberately not a "
+            "project dependency (removed from the 'gpu' group on 2026-10-24). "
+            "Install it with `uv pip install --no-deps runpod` plus its "
+            "remaining requirements (aiohttp-retry, backoff, paramiko, "
+            "py-cpuinfo, inquirerpy, tqdm-loggable): a plain `uv pip install "
+            "runpod` would pull boto3>=1.43.66 and break the "
+            "aiobotocore==2.25.1 pin that oneiric requires. The SDK's "
+            "Endpoint client never imports boto3."
+        )
     if not env_getter("RUNPOD_API_KEY"):
         failures.append(
             "RUNPOD_API_KEY env var is unset. Set it in your shell "
@@ -2659,6 +2813,11 @@ async def _run_pool_runpod_demo(
     ``endpoint.run(payload) → req.output()`` in ``asyncio.to_thread``,
     so the orchestrator's event loop stays unblocked during the
     30-60s cold start and 2-3s warm call.
+
+    The payload is a flat ``{"prompt": ...}``, which is the neutral
+    shape for an endpoint whose handler you control. (The *hosted
+    catalog* endpoints are OpenAI-compatible and want a ``messages``
+    list instead — that is what ``pool-runpod-public`` sends.)
     """
     from mahavishnu.pools import PoolConfig
     from mahavishnu.pools.runpod_pool import RunPodPool
@@ -2733,9 +2892,14 @@ async def _run_pool_runpod_public_demo(
 
     Wraps POST ``/v2/{endpoint_id}/runsync`` with ``{"input": payload}``
     in ``asyncio.to_thread`` so the orchestrator's event loop stays
-    unblocked. The handler contract is endpoint-specific; the demo
-    passes the prompt through as the ``prompt`` field by default but
-    accepts any nested shape via the same input dict.
+    unblocked.
+
+    The payload is an OpenAI-style chat request -- ``{"messages": [...]}``
+    -- because that is the contract of the public text endpoints the demo
+    is pointed at (``moonshot-kimi``, ``granite-4-0-h-small``). A flat
+    ``{"prompt": ...}`` is rejected by the handler with *"messages must
+    not be empty"*. The pool itself stays shape-agnostic: it posts
+    whatever task dict it is given as the endpoint's ``input``.
     """
     from mahavishnu.pools import PoolConfig
     from mahavishnu.pools.runpod_public_pool import RunPodPublicEndpointPool
@@ -2748,7 +2912,7 @@ async def _run_pool_runpod_public_demo(
     pool = RunPodPublicEndpointPool(config=config)
     pool_id = await pool.start()
     try:
-        result = await pool.execute_task({"prompt": prompt})
+        result = await pool.execute_task({"messages": [{"role": "user", "content": prompt}]})
     finally:
         if not keep:
             await pool.stop()
@@ -2771,17 +2935,18 @@ def demo_pool_runpod_public(
         help="Pool name (informational; used in the pool_id).",
     ),
     endpoint_id: str = typer.Option(
-        os.getenv("RUNPOD_PUBLIC_ENDPOINT_ID", ""),
+        os.getenv("RUNPOD_PUBLIC_ENDPOINT_ID", DEFAULT_RUNPOD_PUBLIC_ENDPOINT_ID),
         "--endpoint-id",
         "-e",
         help="RunPod Public Endpoint id (e.g. moonshot-kimi, granite-4-0-h-small; "
         "or set RUNPOD_PUBLIC_ENDPOINT_ID).",
     ),
     prompt: str = typer.Option(
-        DEFAULT_POOL_DEMO_COMMAND.format(pool_type="runpod_public"),
+        DEFAULT_RUNPOD_PUBLIC_PROMPT,
         "--prompt",
         "-p",
-        help="Prompt dispatched to the public endpoint.",
+        help="Prompt dispatched to the public endpoint (sent as the content "
+        "of a single user message).",
     ),
     keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
     timeout: int = typer.Option(
@@ -2840,7 +3005,10 @@ def demo_pool_runpod(
         os.getenv("RUNPOD_ENDPOINT_ID", ""),
         "--endpoint-id",
         "-e",
-        help="RunPod serverless endpoint id (or set RUNPOD_ENDPOINT_ID).",
+        help="RunPod serverless endpoint id (or set RUNPOD_ENDPOINT_ID). "
+        "This pool drives an endpoint you deployed -- the SDK polls that "
+        "endpoint's job API for the result, which hosted catalog endpoints "
+        "do not expose.",
     ),
     prompt: str = typer.Option(
         DEFAULT_POOL_DEMO_COMMAND.format(pool_type="runpod"),
