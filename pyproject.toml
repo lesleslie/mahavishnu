@@ -761,14 +761,21 @@ ignore = [
 # ``follow_imports`` defaults to ``normal``: Mypy type-checks every import
 # transitively, and any dependency shipping ``py.typed`` gets analyzed as if
 # it were first-party source. That drags in the whole third-party graph to
-# lint this package and costs ~120s per run -- warm cache included, because
+# lint this package and costs ~670s per run -- warm cache included, because
 # Refurb forces fine-grained incremental mode on, which does not help when
 # the entire third-party graph is re-verified each time.
 #
-# ``skip`` leaves imported modules unanalyzed (``Any``) while keeping the
-# scanned package's own types precise, so in-package type-aware rules still
-# fire. Verified on this repo: the same finding was reported identically with
-# and without the flag, at the same line:column, in 75s instead of 667s.
+# ``skip`` leaves imported modules unanalyzed (``Any``). The scanned
+# package's own modules stay in Mypy's build set, so their types stay
+# precise and rules that depend on in-package types still fire. What is
+# lost is anything whose "correct" answer comes from a third-party
+# library's default value: FURB120 (redundant default argument) compares
+# the argument against the callee's default, and a skipped library has no
+# default to compare against. Measured on mcp-common, ``--enable-all``
+# drops from 30 findings to 21 -- the skipped set is a strict subset, no
+# new findings appear, and this repo's default check set is unaffected.
+# Verified here: the same finding was reported identically with and
+# without the flag, at the same line:column, in 75s instead of 667s.
 #
 # NOTE: this is safe only because the scan covers the whole package. A
 # single-file scan puts no sibling modules in Mypy's build set, so their
