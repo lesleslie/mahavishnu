@@ -68,10 +68,11 @@ async def test_agno_adapter_with_anthropic_llm():
 
     adapter = AgnoAdapter(config)
 
-    # Test _get_llm requires API key
+    # Without an API key the chain degrades to the local llama-server
+    # rather than failing outright.
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ConfigurationError, match="ANTHROPIC_API_KEY"):
-            adapter._get_llm()
+        model = adapter._get_llm()
+        assert model is not None
 
     # With API key, should try to import
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
@@ -84,6 +85,21 @@ async def test_agno_adapter_with_anthropic_llm():
 
 
 @pytest.mark.asyncio
+async def test_agno_adapter_missing_api_key_without_fallback_raises():
+    """With no fallback configured, a missing API key is a hard error."""
+    config = MagicMock()
+    config.llm_provider = "anthropic"
+    config.llm.model = "claude-sonnet-4-20250514"
+
+    adapter = AgnoAdapter(config)
+    adapter.agno_config.llm.fallback_providers = []
+
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(ConfigurationError, match="ANTHROPIC_API_KEY"):
+            adapter._get_llm()
+
+
+@pytest.mark.asyncio
 async def test_agno_adapter_with_openai_llm():
     """Test Agno adapter with OpenAI/GPT LLM configuration."""
     # Mock config
@@ -93,10 +109,11 @@ async def test_agno_adapter_with_openai_llm():
 
     adapter = AgnoAdapter(config)
 
-    # Test _get_llm requires API key
+    # Without an API key the chain degrades to the local llama-server
+    # rather than failing outright.
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ConfigurationError, match="OPENAI_API_KEY"):
-            adapter._get_llm()
+        model = adapter._get_llm()
+        assert model is not None
 
     # With API key, should try to import
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):

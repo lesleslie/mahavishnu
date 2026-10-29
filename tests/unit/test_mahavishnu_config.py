@@ -449,10 +449,11 @@ class TestAgnoLLMConfig:
     def test_default_values(self):
         """Test AgnoLLMConfig defaults."""
         config = AgnoLLMConfig()
-        assert config.provider == LLMProvider.LLAMA_SERVER
-        assert config.model_id == "qwen2.5:7b"
-        assert config.api_key_env is None
-        assert config.base_url == "http://localhost:8081"
+        assert config.provider == LLMProvider.MINIMAX
+        assert config.model_id == "MiniMax-M3"
+        assert config.api_key_env == "MINIMAX_API_KEY"
+        assert config.base_url is None
+        assert config.fallback_providers == [LLMProvider.LLAMA_SERVER]
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
@@ -575,7 +576,7 @@ class TestAgnoAdapterConfig:
         """Test AgnoAdapterConfig defaults."""
         config = AgnoAdapterConfig()
         assert config.enabled is True
-        assert config.llm.provider == LLMProvider.LLAMA_SERVER
+        assert config.llm.provider == LLMProvider.MINIMAX
         assert config.memory.backend == MemoryBackend.NONE
         # See TestAgnoToolsConfig::test_default_values for the
         # 2026-10-05 ``sse`` → ``streamable-http`` flip and the

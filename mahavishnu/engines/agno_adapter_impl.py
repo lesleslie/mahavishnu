@@ -32,6 +32,7 @@ import httpx2 as httpx
 from oneiric.adapters.metadata import AdapterMetadata
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ..bifrost.models import VIRTUAL_KEY_ENV
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..core.capabilities import (
     Capability,
@@ -54,6 +55,7 @@ from ..core.config import (
     AgnoToolsConfig,
     LLMProvider,
     MemoryBackend,
+    default_model_for,
 )
 from ..core.errors import (
     AgnoError,
@@ -87,7 +89,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _anthropic_base_url_ctx() -> Generator[None]:
+def _anthropic_base_url_ctx(explicit_base_url: str | None = None) -> Generator[None]:
     """Module-level helper backing
     :meth:`LLMProviderFactory._anthropic_base_url_ctx`.
 
@@ -95,6 +97,11 @@ def _anthropic_base_url_ctx() -> Generator[None]:
     sets it for the duration of the ``with`` block, and restores
     the prior value on exit (or removes the env var if it was
     previously unset). No-op when the router is not routed.
+
+    Args:
+        explicit_base_url: An operator-supplied endpoint, used verbatim
+            and taking precedence over the router. When None the router
+            is consulted.
 
     The Anthropic SDK reads ``ANTHROPIC_BASE_URL`` at client
     ``__init__`` time. Scoping the mutation to the ``Claude(...)``
@@ -110,7 +117,10 @@ def _anthropic_base_url_ctx() -> Generator[None]:
     from oneiric.adapters.llm.bifrost import get_router
     from oneiric.adapters.llm.llm_interface import LLMProvider
 
-    resolved = get_router().resolve(LLMProvider.ANTHROPIC)
+    if explicit_base_url is not None:
+        resolved: str | None = explicit_base_url
+    else:
+        resolved = get_router().resolve(LLMProvider.ANTHROPIC)
     if resolved is None:
         yield
         return
@@ -149,6 +159,27 @@ class AgentRunResult:
 # ============================================================================
 
 
+@dataclass(frozen=True)
+class _ResolvedEndpoint:
+    """Where a provider's LLM calls should go, and how to authenticate.
+
+    Attributes:
+        base_url: The endpoint base URL, or ``None`` to use the Agno SDK
+            provider's own default (e.g. ``https://api.openai.com/v1``).
+        via_gateway: True when the URL came from the oneiric Bifrost
+            router rather than an operator override. The gateway
+            authenticates with a *virtual key* — it rejects a provider's
+            own API key with ``401 virtual_key_required`` — so the
+            credential differs from the direct-provider case.
+        api_key_env: Environment variable holding the credential.
+            ``None`` for local providers that need no authentication.
+    """
+
+    base_url: str | None
+    via_gateway: bool
+    api_key_env: str | None
+
+
 class LLMProviderFactory:
     """Factory for creating LLM model instances for Agno agents.
 
@@ -158,6 +189,11 @@ class LLMProviderFactory:
     - Claude from agno.models.anthropic
 
     IMPORTANT: Model instantiation uses `id=` parameter, NOT `model=`.
+
+    Providers are tried in order: the configured provider first, then each
+    entry of ``AgnoLLMConfig.fallback_providers``. The first provider with
+    usable credentials wins, so a missing MiniMax key degrades to the
+    local llama-server rather than failing the adapter outright.
     """
 
     def __init__(
@@ -187,9 +223,26 @@ class LLMProviderFactory:
         LLMProvider.MINIMAX: "_create_minimax_model",
     }
 
-    def _instantiate_model(self, provider: str, model_id: str, factory_name: str) -> Any:
+    #: Standard credential env var per provider. Mirrors
+    #: ``AgnoLLMConfig._default_api_key_env``; kept here so the factory can
+    #: resolve a *fallback* provider's credential without reconstructing a
+    #: whole config for it.
+    _PROVIDER_API_KEY_ENV: ClassVar[dict[str, str | None]] = {
+        LLMProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+        LLMProvider.OPENAI: "OPENAI_API_KEY",
+        LLMProvider.MINIMAX: "MINIMAX_API_KEY",
+        LLMProvider.LLAMA_SERVER: None,  # local, no key required
+    }
+
+    def _instantiate_model(
+        self,
+        provider: str,
+        model_id: str,
+        factory_name: str,
+        endpoint: _ResolvedEndpoint,
+    ) -> Any:
         try:
-            instance = getattr(self, factory_name)(model_id)
+            instance = getattr(self, factory_name)(model_id, endpoint)
             logger.info(f"Created LLM model: provider={provider}, model_id={model_id}")
             return instance
         except ImportError as e:
@@ -199,78 +252,234 @@ class LLMProviderFactory:
                 details={"provider": provider, "import_error": str(e)},
             ) from e
 
+    def _effective_providers(self) -> list[LLMProvider]:
+        """The ordered provider chain: configured provider, then fallbacks.
+
+        Duplicates are dropped so a provider listed both as the primary and
+        as a fallback is only tried once.
+        """
+        chain: list[LLMProvider] = [self.config.provider]
+        for provider in self.config.fallback_providers:
+            if provider not in chain:
+                chain.append(provider)
+        return chain
+
+    def _model_id_for(self, provider: LLMProvider) -> str:
+        """Model id to use for ``provider``.
+
+        The configured provider keeps whatever the operator pinned. A
+        *fallback* uses its own default, because model ids are
+        provider-scoped — ``MiniMax-M3`` is meaningless to llama-server and
+        the MiniMax API rejects unknown model names outright.
+        """
+        if provider == self.config.provider:
+            return self.config.model_id
+        return default_model_for(provider)
+
+    def _gateway_url(self, provider: LLMProvider) -> str | None:
+        """The Bifrost gateway URL for ``provider``, or None when not routed.
+
+        Returns None when the router is disabled or the provider's route is
+        not configured — in which case the caller falls back to the
+        provider's own public endpoint.
+        """
+        from oneiric.adapters.llm.bifrost import get_router
+        from oneiric.adapters.llm.llm_interface import LLMProvider as OneiricLLMProvider
+
+        if provider is LLMProvider.ANTHROPIC:
+            resolved = get_router().resolve(OneiricLLMProvider.ANTHROPIC)
+            return str(resolved) if resolved is not None else None
+
+        resolved = get_router().resolve(OneiricLLMProvider.OPENAI)
+        if resolved is None:
+            return None
+        return gateway_openai_base_url(resolved)
+
+    def _resolve_endpoint(self, provider: LLMProvider) -> _ResolvedEndpoint:
+        """Resolve the endpoint and credential for ``provider``.
+
+        Resolution order:
+
+        1. ``self.config.base_url`` — explicit operator override. Not
+           treated as a gateway URL, so the provider's own API key is used.
+        2. The oneiric Bifrost router — when enabled and the matching
+           route is configured. The gateway validates a *virtual key*
+           (``BIFROST_VIRTUAL_KEY``), not the provider's own key, so this
+           resolves the credential to the virtual key.
+        3. The provider's public API — ``base_url=None`` lets the Agno SDK
+           use its own default endpoint.
+
+        llama-server is local: it always targets ``http://localhost:8081``
+        (or an operator override) and needs no credential.
+        """
+        if provider is LLMProvider.LLAMA_SERVER:
+            return _ResolvedEndpoint(
+                base_url=self.config.base_url or "http://localhost:8081",
+                via_gateway=False,
+                api_key_env=None,
+            )
+
+        api_key_env = self.config.api_key_env or self._PROVIDER_API_KEY_ENV.get(provider)
+
+        if self.config.base_url:
+            return _ResolvedEndpoint(self.config.base_url, False, api_key_env)
+
+        gateway_url = self._gateway_url(provider)
+        if gateway_url is not None:
+            return _ResolvedEndpoint(gateway_url, True, VIRTUAL_KEY_ENV)
+
+        return _ResolvedEndpoint(None, False, api_key_env)
+
+    def _provider_available(self, provider: LLMProvider, endpoint: _ResolvedEndpoint) -> bool:
+        """Whether ``provider`` can serve a request in the current environment.
+
+        Availability is credential presence: a cloud provider without its
+        key (or without the gateway virtual key when routed through
+        Bifrost) cannot be used. llama-server is local and is always
+        considered available.
+        """
+        if provider is LLMProvider.LLAMA_SERVER:
+            return True
+        if endpoint.api_key_env is None:
+            return False
+        return bool(os.getenv(endpoint.api_key_env))
+
     def create_model(self) -> Any:
         """Create and return an LLM model instance.
+
+        Providers are tried in order — the configured provider first, then
+        each entry of ``fallback_providers``. The first provider with
+        usable credentials wins, so a missing MiniMax key degrades to the
+        local llama-server instead of failing the adapter.
 
         Returns:
             LLM model instance (OpenAIChat or Claude)
 
         Raises:
-            AgnoError: If LLM provider is not available or misconfigured
+            AgnoError: If the configured provider is not supported, or if
+                every provider in the chain failed to initialize.
+            ConfigurationError: If no provider in the chain has a usable
+                credential.
         """
         if self._model_instance is not None:
             return self._model_instance
 
-        provider = self.config.provider
-        model_id = self.config.model_id
-        factory_name = self._PROVIDER_FACTORY_METHODS.get(provider)
-        if factory_name is None:
-            raise AgnoError(
-                f"Unsupported LLM provider: {provider}",
-                error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
-                details={"provider": provider},
+        chain = self._effective_providers()
+        last_error: Exception | None = None
+
+        for provider in chain:
+            factory_name = self._PROVIDER_FACTORY_METHODS.get(provider)
+            if factory_name is None:
+                if provider == self.config.provider:
+                    raise AgnoError(
+                        f"Unsupported LLM provider: {provider}",
+                        error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
+                        details={"provider": provider},
+                    )
+                logger.warning("Skipping unsupported Agno LLM fallback provider: %s", provider)
+                continue
+
+            endpoint = self._resolve_endpoint(provider)
+            if not self._provider_available(provider, endpoint):
+                logger.warning(
+                    "Agno LLM provider %s unavailable (no usable credential for %s); "
+                    "trying next provider in the chain",
+                    provider,
+                    endpoint.api_key_env or "<none>",
+                )
+                continue
+
+            model_id = self._model_id_for(provider)
+            try:
+                self._model_instance = self._instantiate_model(
+                    provider, model_id, factory_name, endpoint
+                )
+            except (AgnoError, ConfigurationError) as exc:  # fmt: skip
+                # An ImportError means the Agno SDK integration itself is
+                # broken — a missing optional dependency, not a provider
+                # outage. Failing over would hide a broken environment
+                # behind a working fallback, so it propagates.
+                if "import_error" in getattr(exc, "details", {}):
+                    raise
+                last_error = exc
+                logger.warning(
+                    "Agno LLM provider %s failed to initialize (%s); trying next provider",
+                    provider,
+                    exc,
+                )
+                continue
+            # A provider-side failure must not abort the chain — the next
+            # provider in the chain gets its turn.
+            except Exception as e:  # noqa: BLE001, RUF100
+                last_error = AgnoError(
+                    f"Failed to create LLM model: {e}",
+                    error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
+                    details={"provider": provider, "model_id": model_id, "error": str(e)},
+                )
+                logger.warning(
+                    "Agno LLM provider %s failed to initialize (%s); trying next provider",
+                    provider,
+                    e,
+                )
+                continue
+
+            logger.info(
+                "Agno LLM provider selected: provider=%s model_id=%s base_url=%s gateway=%s",
+                provider,
+                model_id,
+                endpoint.base_url or "<sdk default>",
+                endpoint.via_gateway,
             )
-
-        try:
-            self._model_instance = self._instantiate_model(provider, model_id, factory_name)
             return self._model_instance
-        except (AgnoError, ConfigurationError):  # fmt: skip
-            raise
-        except Exception as e:  # translate any factory/network error to typed AgnoError
-            raise AgnoError(
-                f"Failed to create LLM model: {e}",
-                error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
-                details={"provider": provider, "model_id": model_id, "error": str(e)},
-            ) from e
 
-    def _create_openai_model(self, model_id: str) -> Any:
+        if last_error is not None:
+            raise last_error
+
+        primary_env = self._PROVIDER_API_KEY_ENV.get(self.config.provider)
+        raise ConfigurationError(
+            f"API key not found. Set {primary_env} environment variable.",
+            details={
+                "chain": [p.value for p in chain],
+                "env_var": primary_env,
+            },
+        )
+
+    def _create_openai_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
         """Create OpenAI model instance.
 
-        Routing:
+        Routing (resolved by :meth:`_resolve_endpoint`):
         - ``self.config.base_url`` (explicit) wins always.
         - Else if the oneiric Bifrost router is enabled+routed
           (REQ-BIFROST-002), routes through the gateway at
           ``<router.base_url>/v1`` (the Bifrost OpenAI-compatible
-          provider).
+          provider) and authenticates with the gateway virtual key.
         - Else falls back to the SDK default (no base_url — the
           Agno OpenAIChat resolves to ``https://api.openai.com/v1``).
 
         Args:
             model_id: OpenAI model identifier (e.g., 'gpt-4o', 'gpt-4o-mini')
+            endpoint: Resolved endpoint and credential.
 
         Returns:
             OpenAIChat model instance
         """
         from agno.models.openai import OpenAIChat
 
-        api_key = self._get_api_key("OPENAI_API_KEY", self.config.api_key_env)
-        base_url = self._resolve_openai_base_url(
-            default_base="https://api.openai.com",
-        )
+        api_key = self._get_api_key(endpoint.api_key_env)
 
         # Use id= parameter (NOT model=) per Agno v2.5.3 API
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
-            base_url=base_url,
+            base_url=endpoint.base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
 
-    def _create_anthropic_model(self, model_id: str) -> Any:
+    def _create_anthropic_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
         """Create Anthropic Claude model instance.
 
-        Routing:
+        Routing (resolved by :meth:`_resolve_endpoint`):
         - ``self.config.base_url`` (explicit) wins always.
         - Else if the oneiric Bifrost router is enabled+routed
           (REQ-BIFROST-002), sets ``ANTHROPIC_BASE_URL`` from
@@ -286,18 +495,19 @@ class LLMProviderFactory:
 
         Args:
             model_id: Claude model identifier (e.g., 'claude-sonnet-4-6')
+            endpoint: Resolved endpoint and credential.
 
         Returns:
             Claude model instance
         """
         from agno.models.anthropic import Claude
 
-        api_key = self._get_api_key("ANTHROPIC_API_KEY", self.config.api_key_env)
+        api_key = self._get_api_key(endpoint.api_key_env)
         # Claude (Anthropic) is constructed via the Anthropic SDK which
         # reads ``ANTHROPIC_BASE_URL`` at client init. The oneiric
         # Bifrost router's anthropic_base_url is pre-formatted
         # ``<base>/anthropic`` (matches the v1.5 spec).
-        with self._anthropic_base_url_ctx():
+        with self._anthropic_base_url_ctx(explicit_base_url=endpoint.base_url):
             return Claude(
                 id=model_id,
                 api_key=api_key,
@@ -305,20 +515,21 @@ class LLMProviderFactory:
                 max_tokens=self.config.max_tokens,
             )
 
-    def _create_llama_server_model(self, model_id: str) -> Any:
+    def _create_llama_server_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
         """Create llama.cpp server (llama_server) model instance for local LLM.
 
         Uses Agno's OpenAIChat in OpenAI-compatible mode against a llama.cpp
         HTTP server. The server requires no auth, so ``api_key="no-auth"`` is
         passed to satisfy the OpenAIChat client.
 
-        llama-server is the canonical local LLM provider
+        llama-server is the canonical *local fallback* provider
         (default ``http://localhost:8081``); it is not part of the Bifrost
         cloud-tier routing, and the Bifrost router is intentionally
         ignored here.
 
         Args:
-            model_id: llama.cpp model identifier (e.g., 'qwen2.5:7b', 'llama2')
+            model_id: llama.cpp model identifier (e.g., 'qwen3.5', 'llama2')
+            endpoint: Resolved endpoint and credential.
 
         Returns:
             OpenAIChat model instance pointed at the local llama.cpp server
@@ -327,94 +538,50 @@ class LLMProviderFactory:
 
         return OpenAIChat(
             id=model_id,
-            base_url=self.config.base_url or "http://localhost:8081",
+            base_url=endpoint.base_url,
             api_key="no-auth",
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
 
-    def _create_minimax_model(self, model_id: str) -> Any:
+    def _create_minimax_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
         """Create MiniMax model instance using the OpenAI-compatible endpoint.
 
-        Routing:
+        Routing (resolved by :meth:`_resolve_endpoint`):
         - ``self.config.base_url`` (explicit) wins always — used by
           the Phase G local llama-server path.
         - Else if the oneiric Bifrost router is enabled+routed,
-          routes through the gateway at ``<router.base_url>/v1``.
+          routes through the gateway at ``<router.base_url>/v1`` and
+          authenticates with the gateway virtual key.
         - Else falls back to the public MiniMax OpenAI-compatible
           endpoint (the SDK's built-in default; no ``base_url``
           is passed).
 
         Args:
             model_id: MiniMax model identifier (e.g., 'MiniMax-M3'). Note: 'MiniMax-M3-highspeed' is not a valid model name on minimax's API — use 'MiniMax-M3' or 'MiniMax-M2.7-highspeed' instead.
+            endpoint: Resolved endpoint and credential.
 
         Returns:
             OpenAIChat model instance configured for MiniMax
         """
         from agno.models.openai import OpenAIChat
 
-        api_key = self._get_api_key("MINIMAX_API_KEY", self.config.api_key_env)
-        base_url = self._resolve_openai_base_url(
-            default_base="https://api.minimax.io",
-        )
+        api_key = self._get_api_key(endpoint.api_key_env)
 
         return OpenAIChat(
             id=model_id,
             api_key=api_key,
-            base_url=base_url,
+            base_url=endpoint.base_url,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
 
-    def _resolve_openai_base_url(self, *, default_base: str) -> str | None:
-        """Resolve the OpenAI-compatible base URL for an LLM factory call.
-
-        Resolution order (precedence: high to low):
-        1. ``self.config.base_url`` — explicit operator override.
-           Used by Phase G local llama-server wiring
-           (``base_url: http://127.0.0.1:8081``) and any per-adapter
-           test that points the LLM at a specific URL.
-        2. The oneiric Bifrost router's
-           ``resolve(LLMProvider.OPENAI)`` — when ``enabled`` and
-           the OPENAI route is in the configured ``routes`` set.
-           The OpenAI-compatible gateway path is ``<gateway>/v1``;
-           the suffix is applied idempotently by
-           :func:`mahavishnu.core.model_routing.gateway_openai_base_url`,
-           because the router's own default already carries it.
-        3. None — the SDK falls back to its own default endpoint
-           (e.g. ``https://api.openai.com/v1``).
-
-        Args:
-            default_base: The provider's public upstream base URL.
-                Kept for clarity and for future per-provider
-                explicit-fallback paths; the OpenAI SDK default
-                (``https://api.openai.com/v1``) takes over when
-                the resolution returns ``None``.
-
-        Returns:
-            The resolved base URL string (with ``/v1`` suffix if
-            from the gateway), or ``None`` to let the SDK use its
-            built-in default.
-        """
-        from oneiric.adapters.llm.bifrost import get_router
-        from oneiric.adapters.llm.llm_interface import LLMProvider
-
-        # 1. Explicit operator override.
-        if self.config.base_url:
-            return self.config.base_url
-        # 2. Oneiric Bifrost router (REQ-BIFROST-002): URL-rewriter, not
-        # chain-member. The OpenAI-compatible root is <gateway>/v1.
-        resolved = get_router().resolve(LLMProvider.OPENAI)
-        if resolved is not None:
-            return gateway_openai_base_url(resolved)
-        # 3. SDK default.
-        return None
-
-    def _anthropic_base_url_ctx(self) -> AbstractContextManager[None]:
-        """Context manager that sets ``ANTHROPIC_BASE_URL`` from the
-        oneiric router for the duration of the ``with`` block, then
-        restores the prior value (or removes the env var if it was
-        previously unset).
+    def _anthropic_base_url_ctx(
+        self, explicit_base_url: str | None = None
+    ) -> AbstractContextManager[None]:
+        """Context manager that sets ``ANTHROPIC_BASE_URL`` for the duration
+        of the ``with`` block, then restores the prior value (or removes the
+        env var if it was previously unset).
 
         The Anthropic SDK reads ``ANTHROPIC_BASE_URL`` at client
         ``__init__`` time. Scoping the mutation to the ``Claude(...)``
@@ -428,18 +595,24 @@ class LLMProviderFactory:
           ``__exit__`` so other test classes are not affected by
           a test that set the env var.
 
-        If the router is not enabled or the ANTHROPIC route is not
-        configured, the context manager is a no-op and the SDK
-        default (``https://api.anthropic.com``) takes over.
-        """
-        return _anthropic_base_url_ctx()
+        Args:
+            explicit_base_url: An operator-supplied endpoint, used
+                verbatim. When None the oneiric Bifrost router is
+                consulted instead.
 
-    def _get_api_key(self, default_env: str, custom_env: str | None) -> str:
+        If neither an explicit URL nor a routed gateway is available, the
+        context manager is a no-op and the SDK default
+        (``https://api.anthropic.com``) takes over.
+        """
+        return _anthropic_base_url_ctx(explicit_base_url)
+
+    def _get_api_key(self, env_var: str | None) -> str:
         """Get API key from environment.
 
         Args:
-            default_env: Default environment variable name
-            custom_env: Custom environment variable name (takes precedence)
+            env_var: Environment variable name holding the credential.
+                ``None`` means the provider needs no authentication (the
+                local llama-server).
 
         Returns:
             API key string
@@ -447,7 +620,11 @@ class LLMProviderFactory:
         Raises:
             ConfigurationError: If API key is not set
         """
-        env_var = custom_env or default_env
+        if env_var is None:
+            raise ConfigurationError(
+                "No API key environment variable configured for this provider.",
+                details={"env_var": env_var},
+            )
         api_key = os.getenv(env_var)
 
         if not api_key:
@@ -1273,8 +1450,45 @@ class AgnoAdapter(OrchestratorAdapter):
 
         return SimpleNamespace(name=f"{task_type}_mock_agent", arun=arun)
 
+    def _has_agno_block(self) -> bool:
+        """Whether the caller's config carries a real ``agno`` block.
+
+        A ``MahavishnuSettings`` object always exposes ``.agno`` as an
+        ``AgnoAdapterConfig``, which makes that block authoritative. A
+        ``MagicMock`` or a plain namespace does not, so the legacy flat
+        shapes stay in play for those callers.
+        """
+        if isinstance(self.config, AgnoAdapterConfig):
+            return True
+        return isinstance(getattr(self.config, "agno", None), AgnoAdapterConfig)
+
     def _resolve_legacy_llm_config(self) -> AgnoLLMConfig:
-        """Resolve LLM settings from legacy flat config shapes."""
+        """Resolve the Agno LLM configuration.
+
+        Precedence, highest first:
+
+        1. An explicit legacy ``llm_provider`` on the config marks the
+           caller as a pre-``agno``-block caller, so the legacy flat
+           shapes (``llm.model``, ``llm.base_url``) are honoured with it.
+        2. Otherwise a real ``agno.llm`` block is authoritative and is
+           used verbatim.
+        3. Otherwise the legacy flat shapes are consulted on their own,
+           falling back to the ``agno.llm`` defaults.
+
+        Rule 2 is what keeps the *top-level* ``llm:`` block — the
+        llama-server endpoint that exists for LlamaIndex — from hijacking
+        the Agno provider. Before it, every Agno call went to
+        ``localhost:8081`` even with ``agno.llm.provider: minimax``
+        configured: 146 s per call, against 1.8 s via MiniMax.
+        """
+        legacy_provider = getattr(self.config, "llm_provider", None)
+        # A MagicMock auto-creates any attribute, so only a real string
+        # counts as an explicit legacy directive.
+        explicit_legacy_provider = legacy_provider if isinstance(legacy_provider, str) else None
+
+        if explicit_legacy_provider is None and self._has_agno_block():
+            return self.agno_config.llm
+
         llm_config = getattr(self.config, "llm", None)
 
         def _clean_str(value: Any) -> str | None:
@@ -1330,11 +1544,22 @@ class AgnoAdapter(OrchestratorAdapter):
                 details={"provider": provider_value},
             ) from exc
 
+        # The model id, credential, and endpoint are all provider-scoped.
+        # Only inherit them from the parent config when the legacy shape
+        # resolves to the *same* provider — otherwise the MiniMax model id
+        # would be sent to llama-server (or the MiniMax endpoint to the
+        # Anthropic SDK), and the derived credential would name the wrong
+        # env var.
+        parent_llm = self.agno_config.llm
+        same_provider = provider == parent_llm.provider
+
         return AgnoLLMConfig(
             provider=provider,
-            model_id=model_id or self.agno_config.llm.model_id,
-            api_key_env=api_key_env or self.agno_config.llm.api_key_env,
-            base_url=base_url or self.agno_config.llm.base_url,
+            model_id=model_id
+            or (parent_llm.model_id if same_provider else default_model_for(provider)),
+            api_key_env=api_key_env or (parent_llm.api_key_env if same_provider else None),
+            base_url=base_url or (parent_llm.base_url if same_provider else None),
+            fallback_providers=list(parent_llm.fallback_providers),
             temperature=temperature,
             max_tokens=int(max_tokens),
         )

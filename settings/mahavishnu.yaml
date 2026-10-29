@@ -44,6 +44,21 @@ llm:
   model: qwen3.5  # Embedding model for llama-server
   base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
+# Agno adapter LLM routing.
+# MiniMax is the primary provider (matching settings/models.yaml
+# `default_provider`); the local llama-server is only the fallback, so a
+# machine without MiniMax credentials degrades to local instead of failing.
+# `base_url` is deliberately unset — each provider resolves its own endpoint
+# (llama-server -> :8081; cloud providers -> the Bifrost gateway when it is
+# routed, otherwise their public API).
+agno:
+  llm:
+    provider: minimax
+    fallback_providers:
+      - llama_server
+    temperature: 0.7
+    max_tokens: 4096
+
 # Bifrost LLM gateway (Phase A scaffolding + Phase G local provider).
 # Schema is defined by ``mahavishnu.core.config.BifrostConfig`` (BaseModel,
 # ConfigDict(extra="forbid")). Env var override pattern:

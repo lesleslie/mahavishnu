@@ -122,6 +122,40 @@ class LLMProvider(StrEnum):
     LLAMA_SERVER = "llama_server"
 
 
+#: Default model identifier per LLM provider.
+#:
+#: ``AgnoLLMConfig.model_id`` is *provider-scoped*: ``MiniMax-M3`` is
+#: meaningless to llama-server and ``qwen3.5`` is meaningless to the
+#: MiniMax API (its endpoint rejects unknown model names). A single shared
+#: default therefore cannot serve a provider chain, so the default is
+#: derived from the provider instead.
+#:
+#: The llama-server entry matches the repo-wide ``qwen3.5`` label
+#: (``core.model_routing.DEFAULT_LLAMA_SERVER_ROUTING`` and
+#: ``settings/models.yaml`` ``llama_server.task_routing``). llama.cpp
+#: ignores the id when a single model is loaded, so this is a label
+#: rather than a selector.
+PROVIDER_DEFAULT_MODEL: dict[LLMProvider, str] = {
+    LLMProvider.MINIMAX: "MiniMax-M3",
+    LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
+    LLMProvider.OPENAI: "gpt-4o",
+    LLMProvider.LLAMA_SERVER: "qwen3.5",
+}
+
+
+def default_model_for(provider: LLMProvider) -> str:
+    """Return the default model identifier for ``provider``.
+
+    Args:
+        provider: The LLM provider to look up.
+
+    Returns:
+        The provider's default model id. Falls back to the MiniMax default
+        for a provider with no explicit entry.
+    """
+    return PROVIDER_DEFAULT_MODEL.get(provider, PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX])
+
+
 class MemoryBackend(StrEnum):
     """Memory backend storage types for Agno agents."""
 
@@ -141,27 +175,44 @@ class AgnoLLMConfig(BaseModel):
     Example YAML:
         agno:
           llm:
-            provider: llama_server
-            model_id: qwen2.5:7b
-            base_url: http://localhost:8081
+            provider: minimax
+            model_id: MiniMax-M3
+            fallback_providers: [llama_server]
             temperature: 0.7
     """
 
     provider: LLMProvider = Field(
-        default=LLMProvider.LLAMA_SERVER,
+        default=LLMProvider.MINIMAX,
         description="LLM provider (anthropic, openai, minimax, llama_server)",
     )
     model_id: str = Field(
-        default="qwen2.5:7b",
-        description="Model identifier (e.g., claude-sonnet-4-6, gpt-4o, qwen2.5:7b)",
+        default=PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX],
+        description=(
+            "Model identifier for the selected provider (e.g., claude-sonnet-4-6, "
+            "gpt-4o, MiniMax-M3, qwen3.5). Defaults to the provider's own model "
+            "when not set explicitly."
+        ),
     )
     api_key_env: str | None = Field(
         default=None,
         description="Environment variable name for API key",
     )
     base_url: str | None = Field(
-        default="http://localhost:8081",
-        description="Base URL for llama_server or custom OpenAI-compatible endpoints",
+        default=None,
+        description=(
+            "Base URL override for the provider. None means each provider "
+            "resolves its own endpoint: llama-server uses "
+            "http://localhost:8081, cloud providers use the Bifrost gateway "
+            "when it is routed and their public API otherwise."
+        ),
+    )
+    fallback_providers: list[LLMProvider] = Field(
+        default_factory=lambda: [LLMProvider.LLAMA_SERVER],
+        description=(
+            "Ordered providers to try when the primary provider is unavailable. "
+            "The first available provider wins; llama-server is the local "
+            "last resort."
+        ),
     )
     temperature: float = Field(
         default=0.7,
@@ -203,6 +254,23 @@ class AgnoLLMConfig(BaseModel):
         }.get(self.provider)
         if default_env is not None:
             object.__setattr__(self, "api_key_env", default_env)
+        return self
+
+    @model_validator(mode="after")
+    def _default_model_id(self) -> AgnoLLMConfig:
+        """Resolve ``model_id`` from the provider when the operator did not pin one.
+
+        ``model_id`` is provider-scoped, so a shared default would send
+        ``MiniMax-M3`` to llama-server (or ``qwen3.5`` to the MiniMax API,
+        which rejects unknown model names). When the model id is left
+        unset, it is derived from ``provider`` instead.
+
+        ``model_fields_set`` distinguishes "operator pinned a model id"
+        from "the default was used", so an explicit value always survives
+        re-validation — the same pattern as :meth:`_default_api_key_env`.
+        """
+        if "model_id" not in self.model_fields_set:
+            object.__setattr__(self, "model_id", default_model_for(self.provider))
         return self
 
 
@@ -336,8 +404,9 @@ class AgnoAdapterConfig(BaseModel):
         agno:
           enabled: true
           llm:
-            provider: llama_server
-            model_id: qwen2.5:7b
+            provider: minimax
+            model_id: MiniMax-M3
+            fallback_providers: [llama_server]
           memory:
             enabled: true
             backend: sqlite
@@ -2834,8 +2903,9 @@ class MahavishnuSettings(BaseSettings):
         agno:
             enabled: true
             llm:
-                provider: llama_server
-                model_id: qwen2.5:7b
+                provider: minimax
+                model_id: MiniMax-M3
+                fallback_providers: [llama_server]
 
     Example Environment Variables:
         MAHAVISHNU_POOLS__ENABLED=true

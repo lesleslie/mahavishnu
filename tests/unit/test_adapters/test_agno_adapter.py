@@ -30,6 +30,21 @@ from mahavishnu.engines.agno_adapter_impl import (
 # ============================================================================
 
 
+@pytest.fixture(autouse=True)
+def _disable_bifrost_router(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the oneiric Bifrost router out of this module's tests.
+
+    The router reads ``ONEIRIC_BIFROST_*`` from the ambient environment, so
+    on a developer machine with Bifrost enabled the factory would resolve a
+    gateway URL and swap the provider's API key for the gateway virtual key
+    — making the "no API key" assertions depend on the developer's shell.
+    """
+    from oneiric.adapters.llm.bifrost import BifrostLLMRouter, BifrostLLMSettings
+
+    disabled = BifrostLLMRouter(BifrostLLMSettings(enabled=False))
+    monkeypatch.setattr("oneiric.adapters.llm.bifrost.get_router", lambda: disabled)
+
+
 @pytest.fixture
 def mock_config():
     """Create mock configuration that provides AgnoAdapterConfig via .agno attribute."""
@@ -37,7 +52,7 @@ def mock_config():
     agno_config = AgnoAdapterConfig(
         llm=AgnoLLMConfig(
             provider=LLMProvider.LLAMA_SERVER,
-            model_id="qwen2.5:7b",
+            model_id="qwen3.5",
             base_url="http://localhost:11434",
         ),
     )
@@ -105,7 +120,7 @@ async def test_agno_adapter_initialization(mock_config):
     assert adapter.config is not None
     assert adapter.agno_config is not None
     assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
-    assert adapter.agno_config.llm.model_id == "qwen2.5:7b"
+    assert adapter.agno_config.llm.model_id == "qwen3.5"
 
 
 @pytest.mark.asyncio
@@ -143,6 +158,10 @@ async def test_get_llm_anthropic_no_key(mock_config_anthropic, monkeypatch):
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
+    # No fallback: the chain would otherwise degrade to the local
+    # llama-server and the "no credential" error would never surface.
+    adapter.agno_config.llm.fallback_providers = []
+
     factory = LLMProviderFactory(adapter.agno_config.llm)
 
     with pytest.raises(ConfigurationError) as exc_info:
@@ -157,6 +176,10 @@ async def test_get_llm_openai_no_key(mock_config_openai, monkeypatch):
     adapter = AgnoAdapter(config=mock_config_openai)
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    # No fallback: the chain would otherwise degrade to the local
+    # llama-server and the "no credential" error would never surface.
+    adapter.agno_config.llm.fallback_providers = []
 
     factory = LLMProviderFactory(adapter.agno_config.llm)
 

@@ -345,6 +345,28 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is ret
 
 For local fallback (`llama_server`), see `settings/models.yaml`.
 
+**Agno adapter provider chain** (added 2026-10-29): the Agno adapter uses the
+same MiniMax-first ordering as the cloud worker. `agno.llm.provider` defaults
+to `minimax`, with `agno.llm.fallback_providers: [llama_server]` — the local
+llama-server is only reached when the primary has no usable credential.
+`LLMProviderFactory.create_model()` walks the chain and picks the first
+available provider.
+
+Two resolution rules matter when editing this code:
+
+- **`agno.llm.base_url` must not be defaulted to the llama-server URL.** It is
+  `None` by default so each provider resolves its own endpoint; a
+  provider-agnostic default silently redirected MiniMax traffic to
+  `localhost:8081` (the bug this change fixed).
+- **A Bifrost-routed call authenticates with the gateway virtual key**
+  (`BIFROST_VIRTUAL_KEY`), not the provider's own API key — the gateway
+  rejects a provider key with `401 virtual_key_required`.
+
+Model ids are provider-scoped: `AgnoLLMConfig.model_id` defaults per provider
+(`MiniMax-M3`, `claude-sonnet-4-6`, `gpt-4o`, `qwen3.5`), and a fallback
+provider uses its own default rather than inheriting the primary's.
+Plan: `docs/plans/2026-10-29-agno-llm-provider-chain.md`.
+
 **Key files**:
 
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible worker for MiniMax

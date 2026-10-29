@@ -45,7 +45,7 @@ def agno_llm_config() -> AgnoLLMConfig:
     """Create default LLM config for testing."""
     return AgnoLLMConfig(
         provider=LLMProvider.LLAMA_SERVER,
-        model_id="qwen2.5:7b",
+        model_id="qwen3.5",
         base_url="http://localhost:11434",
         temperature=0.7,
         max_tokens=4096,
@@ -111,9 +111,10 @@ class TestAgnoLLMConfig:
     def test_default_config(self) -> None:
         """Test default LLM configuration values."""
         config = AgnoLLMConfig()
-        assert config.provider == LLMProvider.LLAMA_SERVER
-        assert config.model_id == "qwen2.5:7b"
-        assert config.base_url == "http://localhost:8081"
+        assert config.provider == LLMProvider.MINIMAX
+        assert config.model_id == "MiniMax-M3"
+        assert config.base_url is None
+        assert config.fallback_providers == [LLMProvider.LLAMA_SERVER]
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
 
@@ -213,7 +214,7 @@ class TestAgnoAdapterConfig:
         """Test nested configuration."""
         config = AgnoAdapterConfig(llm=agno_llm_config)
         assert config.llm.provider == LLMProvider.LLAMA_SERVER
-        assert config.llm.model_id == "qwen2.5:7b"
+        assert config.llm.model_id == "qwen3.5"
 
 
 # ============================================================================
@@ -296,7 +297,7 @@ class TestLLMProviderFactory:
     def test_create_llama_server_model(self, agno_llm_config: AgnoLLMConfig) -> None:
         """Test llama-server (llama.cpp) model creation via OpenAI-compatible shim."""
         agno_llm_config.provider = LLMProvider.LLAMA_SERVER
-        agno_llm_config.model_id = "qwen2.5:7b"
+        agno_llm_config.model_id = "qwen3.5"
         agno_llm_config.base_url = "http://localhost:8081"
 
         factory = LLMProviderFactory(agno_llm_config)
@@ -309,7 +310,7 @@ class TestLLMProviderFactory:
 
             mock_chat.assert_called_once()
             call_kwargs = mock_chat.call_args[1]
-            assert call_kwargs["id"] == "qwen2.5:7b"
+            assert call_kwargs["id"] == "qwen3.5"
             assert call_kwargs["base_url"] == "http://localhost:8081"
             assert call_kwargs["api_key"] == "no-auth"
             assert model == mock_model
@@ -331,8 +332,9 @@ class TestLLMProviderFactory:
             assert model1 is model2
 
     def test_missing_api_key(self, agno_llm_config: AgnoLLMConfig) -> None:
-        """Test error when API key is missing."""
+        """Test error when API key is missing and no fallback is allowed."""
         agno_llm_config.provider = LLMProvider.OPENAI
+        agno_llm_config.fallback_providers = []
 
         # Ensure no API key is set
         os.environ.pop("OPENAI_API_KEY", None)
@@ -643,7 +645,7 @@ class TestAgnoAdapter:
         assert adapter.agno_config.enabled is True
         assert adapter.agno_config.memory.enabled is True
         assert adapter.agno_config.memory.backend == MemoryBackend.NONE
-        assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
+        assert adapter.agno_config.llm.provider == LLMProvider.MINIMAX
         assert adapter.agno_config.default_timeout_seconds == 300
 
     @pytest.mark.asyncio

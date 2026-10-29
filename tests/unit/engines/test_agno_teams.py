@@ -47,7 +47,7 @@ def member_config() -> MemberConfig:
     return MemberConfig(
         name="test_member",
         role="Test role",
-        model="qwen2.5:7b",
+        model="qwen3.5",
         instructions="Test instructions for the member",
         tools=["search_code", "read_file"],
         temperature=0.7,
@@ -94,7 +94,7 @@ def route_team_config(member_config: MemberConfig) -> TeamConfig:
 def mock_llm_factory() -> MagicMock:
     """Create a mock LLM provider factory."""
     factory = MagicMock()
-    factory.config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="qwen2.5:7b")
+    factory.config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="qwen3.5")
     factory._model_instance = None
 
     def create_model():
@@ -128,7 +128,7 @@ class TestMemberConfig:
         """Test that a valid member config is created correctly."""
         assert member_config.name == "test_member"
         assert member_config.role == "Test role"
-        assert member_config.model == "qwen2.5:7b"
+        assert member_config.model == "qwen3.5"
         assert member_config.instructions == "Test instructions for the member"
         assert member_config.tools == ["search_code", "read_file"]
         assert member_config.temperature == 0.7
@@ -141,7 +141,7 @@ class TestMemberConfig:
             role="role",
             instructions="instructions",
         )
-        assert config.model == "qwen2.5:7b"
+        assert config.model == "qwen3.5"
         assert config.tools == []
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
@@ -376,12 +376,12 @@ team:
   leader:
     name: yaml_leader
     role: Leader
-    model: qwen2.5:7b
+    model: qwen3.5
     instructions: Lead the team
   members:
     - name: yaml_member
       role: Member
-      model: qwen2.5:7b
+      model: qwen3.5
       instructions: Help the team
 """
         yaml_path = tmp_path / "test_team.yaml"

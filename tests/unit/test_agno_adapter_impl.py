@@ -28,6 +28,7 @@ from mahavishnu.core.config import (
     AgnoLLMConfig,
     AgnoMemoryConfig,
     AgnoToolsConfig,
+    LLMConfig,
     LLMProvider,
 )
 from mahavishnu.core.errors import (
@@ -59,6 +60,46 @@ from mahavishnu.engines.agno_adapter_impl import (
 # ============================================================================
 # Fixtures
 # ============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _disable_bifrost_router(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the oneiric Bifrost router out of this module's tests.
+
+    The router reads ``ONEIRIC_BIFROST_*`` from the ambient environment, so
+    on a developer machine with Bifrost enabled the factory would resolve a
+    gateway URL and swap the provider's API key for the gateway virtual key
+    — making these assertions depend on the developer's shell. Pinning a
+    disabled router keeps the suite hermetic; the gateway path is covered
+    explicitly by ``TestBifrostGatewayRouting``.
+    """
+    from oneiric.adapters.llm.bifrost import BifrostLLMRouter, BifrostLLMSettings
+
+    disabled = BifrostLLMRouter(BifrostLLMSettings(enabled=False))
+    monkeypatch.setattr("oneiric.adapters.llm.bifrost.get_router", lambda: disabled)
+
+
+class _ConfigWithBothBlocks:
+    """A settings-like object carrying both an ``agno`` block and a top-level ``llm`` block.
+
+    Mirrors ``MahavishnuSettings``: the top-level ``llm:`` block points at
+    llama-server (it is the LlamaIndex/embedding endpoint), while the
+    ``agno:`` block selects the Agno provider.
+    """
+
+    def __init__(self) -> None:
+        self.agno = AgnoAdapterConfig(
+            llm=AgnoLLMConfig(provider=LLMProvider.MINIMAX),
+        )
+        self.llm = LLMConfig(model="qwen3.5", base_url="http://localhost:8081")
+
+
+class _LegacyFlatConfig:
+    """A pre-``agno``-block config using the legacy flat shapes."""
+
+    def __init__(self) -> None:
+        self.llm_provider = LLMProvider.LLAMA_SERVER
+        self.llm = LLMConfig(model="qwen3.5", base_url="http://localhost:8081")
 
 
 @pytest.fixture
@@ -242,14 +283,44 @@ class TestAgnoLLMConfigModel:
     """Tests for AgnoLLMConfig model validation."""
 
     def test_default_values(self) -> None:
-        """Test default LLM config values."""
+        """Test default LLM config values.
+
+        The default provider is MiniMax with llama-server as the ordered
+        fallback, and ``base_url`` is unset so each provider resolves its
+        own endpoint (a llama-server URL default would silently redirect
+        MiniMax traffic to localhost).
+        """
         config = ImplAgnoLLMConfig()
-        assert config.provider == LLMProvider.LLAMA_SERVER
-        assert config.model_id == "qwen2.5:7b"
-        assert config.api_key_env is None
-        assert config.base_url == "http://localhost:8081"
+        assert config.provider == LLMProvider.MINIMAX
+        assert config.model_id == "MiniMax-M3"
+        assert config.api_key_env == "MINIMAX_API_KEY"
+        assert config.base_url is None
+        assert config.fallback_providers == [LLMProvider.LLAMA_SERVER]
         assert config.temperature == 0.7
         assert config.max_tokens == 4096
+
+    def test_model_id_defaults_per_provider(self) -> None:
+        """Model ids are provider-scoped, so the default follows the provider."""
+        expected = {
+            LLMProvider.MINIMAX: "MiniMax-M3",
+            LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
+            LLMProvider.OPENAI: "gpt-4o",
+            LLMProvider.LLAMA_SERVER: "qwen3.5",
+        }
+        for provider, model_id in expected.items():
+            config = ImplAgnoLLMConfig(provider=provider)
+            assert config.model_id == model_id, f"{provider} should default to {model_id}"
+
+    def test_explicit_model_id_survives_provider_change(self) -> None:
+        """An operator-pinned model id is never overwritten by the default."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="custom-model")
+        assert config.model_id == "custom-model"
+
+    def test_fallback_providers_default_to_llama_server(self) -> None:
+        """llama-server is the local last resort, never the default target."""
+        config = ImplAgnoLLMConfig()
+        assert LLMProvider.LLAMA_SERVER in config.fallback_providers
+        assert config.provider != LLMProvider.LLAMA_SERVER
 
     def test_custom_values(self) -> None:
         """Test custom LLM config values."""
@@ -330,9 +401,7 @@ class TestAgnoLLMConfigModel:
         assert config.api_key_env is None
 
     def test_api_key_env_explicit_override_wins(self) -> None:
-        config = ImplAgnoLLMConfig(
-            provider=LLMProvider.MINIMAX, api_key_env="MY_CUSTOM_KEY"
-        )
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, api_key_env="MY_CUSTOM_KEY")
         assert config.api_key_env == "MY_CUSTOM_KEY"
 
 
@@ -596,7 +665,7 @@ class TestLLMProviderFactory:
         """Test llama-server (llama.cpp) model creation via OpenAI-compatible shim."""
         config = ImplAgnoLLMConfig(
             provider=LLMProvider.LLAMA_SERVER,
-            model_id="qwen2.5:7b",
+            model_id="qwen3.5",
             base_url="http://localhost:8081",
             temperature=0.7,
             max_tokens=4096,
@@ -611,7 +680,7 @@ class TestLLMProviderFactory:
 
             mock_cls.assert_called_once()
             call_kwargs = mock_cls.call_args[1]
-            assert call_kwargs["id"] == "qwen2.5:7b"
+            assert call_kwargs["id"] == "qwen3.5"
             assert call_kwargs["base_url"] == "http://localhost:8081"
             assert call_kwargs["api_key"] == "no-auth"
             assert call_kwargs["temperature"] == 0.7
@@ -649,7 +718,7 @@ class TestLLMProviderFactory:
         """Test that model is cached after first creation."""
         config = ImplAgnoLLMConfig(
             provider=LLMProvider.LLAMA_SERVER,
-            model_id="qwen2.5:7b",
+            model_id="qwen3.5",
         )
         factory = LLMProviderFactory(config)
 
@@ -666,8 +735,8 @@ class TestLLMProviderFactory:
 
     @patch.dict(os.environ, {}, clear=True)
     def test_missing_api_key_openai(self) -> None:
-        """Test error when OpenAI API key is missing."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI)
+        """Test error when OpenAI API key is missing and no fallback is allowed."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI, fallback_providers=[])
         factory = LLMProviderFactory(config)
 
         with pytest.raises(ConfigurationError, match="API key not found"):
@@ -675,8 +744,8 @@ class TestLLMProviderFactory:
 
     @patch.dict(os.environ, {}, clear=True)
     def test_missing_api_key_anthropic(self) -> None:
-        """Test error when Anthropic API key is missing."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.ANTHROPIC)
+        """Test error when Anthropic API key is missing and no fallback is allowed."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.ANTHROPIC, fallback_providers=[])
         factory = LLMProviderFactory(config)
 
         with pytest.raises(ConfigurationError, match="API key not found"):
@@ -684,12 +753,34 @@ class TestLLMProviderFactory:
 
     @patch.dict(os.environ, {}, clear=True)
     def test_missing_api_key_minimax(self) -> None:
-        """Test error when MiniMax API key is missing."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        """Test error when MiniMax API key is missing and no fallback is allowed."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, fallback_providers=[])
         factory = LLMProviderFactory(config)
 
         with pytest.raises(ConfigurationError, match="API key not found"):
             factory.create_model()
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_missing_api_key_falls_back_to_llama_server(self) -> None:
+        """A missing primary credential degrades to the local fallback.
+
+        This is the point of the provider chain: a machine with no MiniMax
+        key must still get an LLM, and llama-server is local.
+        """
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch("agno.models.openai.like.OpenAIChat") as mock_cls:
+            mock_model = MagicMock()
+            mock_cls.return_value = mock_model
+
+            model = factory.create_model()
+
+            mock_cls.assert_called_once()
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["id"] == "qwen3.5"
+            assert call_kwargs["base_url"] == "http://localhost:8081"
+            assert model is mock_model
 
     def test_custom_api_key_env(self) -> None:
         """Test custom API key environment variable."""
@@ -727,6 +818,228 @@ class TestLLMProviderFactory:
         with patch("agno.models.openai.like.OpenAIChat", side_effect=Exception("Unknown error")):
             with pytest.raises(AgnoError, match="Failed to create LLM model"):
                 factory.create_model()
+
+
+# ============================================================================
+# Test LLM Provider Chain
+# ============================================================================
+
+
+class TestLLMProviderChain:
+    """Tests for the ordered provider chain and its per-provider resolution."""
+
+    def test_primary_provider_wins_when_credential_present(self) -> None:
+        """The configured provider is used when its credential is available."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(os.environ, {"MINIMAX_API_KEY": "minimax-key"}):
+            with patch("agno.models.openai.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["id"] == "MiniMax-M3"
+                assert call_kwargs["api_key"] == "minimax-key"
+
+    def test_fallback_uses_its_own_default_model_id(self) -> None:
+        """A fallback must not inherit the primary provider's model id.
+
+        Model ids are provider-scoped: sending ``MiniMax-M3`` to
+        llama-server (or ``qwen3.5`` to the MiniMax API) is meaningless.
+        """
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("agno.models.openai.like.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["id"] == "qwen3.5"
+
+    def test_explicit_model_id_is_kept_for_the_primary_provider(self) -> None:
+        """An operator-pinned model id survives the chain resolution."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, model_id="MiniMax-M2.7")
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(os.environ, {"MINIMAX_API_KEY": "minimax-key"}):
+            with patch("agno.models.openai.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                assert mock_cls.call_args[1]["id"] == "MiniMax-M2.7"
+
+    def test_duplicate_provider_is_only_tried_once(self) -> None:
+        """A provider listed as both primary and fallback appears once."""
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.LLAMA_SERVER,
+            fallback_providers=[LLMProvider.LLAMA_SERVER],
+        )
+        factory = LLMProviderFactory(config)
+
+        assert factory._effective_providers() == [LLMProvider.LLAMA_SERVER]
+
+    def test_chain_order_is_primary_then_fallbacks(self) -> None:
+        """The chain preserves the configured order."""
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX,
+            fallback_providers=[LLMProvider.LLAMA_SERVER, LLMProvider.OPENAI],
+        )
+        factory = LLMProviderFactory(config)
+
+        assert factory._effective_providers() == [
+            LLMProvider.MINIMAX,
+            LLMProvider.LLAMA_SERVER,
+            LLMProvider.OPENAI,
+        ]
+
+    def test_base_url_defaults_to_none_not_llama_server(self) -> None:
+        """A llama-server URL default would redirect cloud traffic to localhost."""
+        assert ImplAgnoLLMConfig().base_url is None
+
+    def test_llama_server_base_url_still_defaults_to_local(self) -> None:
+        """The llama-server provider resolves the local endpoint on its own."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
+        endpoint = LLMProviderFactory(config)._resolve_endpoint(LLMProvider.LLAMA_SERVER)
+
+        assert endpoint.base_url == "http://localhost:8081"
+        assert endpoint.via_gateway is False
+        assert endpoint.api_key_env is None
+
+    def test_agno_block_overrides_top_level_llm_block(self) -> None:
+        """The top-level ``llm:`` block must not steer the Agno provider.
+
+        That block points at llama-server for LlamaIndex. When it was
+        allowed to override ``agno.llm``, every Agno call went to the
+        local server even with ``agno.llm.provider: minimax`` configured —
+        a 146 s round trip where MiniMax via Bifrost takes under 2 s.
+        """
+        adapter = AgnoAdapter(
+            _ConfigWithBothBlocks(),
+        )
+
+        resolved = adapter._resolve_legacy_llm_config()
+
+        assert resolved.provider == LLMProvider.MINIMAX
+        assert resolved.model_id == "MiniMax-M3"
+        assert resolved.base_url is None
+
+    def test_legacy_flat_shapes_still_work_without_an_agno_block(self) -> None:
+        """Callers that predate the ``agno`` block keep the legacy shapes."""
+        adapter = AgnoAdapter(_LegacyFlatConfig())
+
+        resolved = adapter._resolve_legacy_llm_config()
+
+        assert resolved.provider == LLMProvider.LLAMA_SERVER
+        assert resolved.model_id == "qwen3.5"
+        assert resolved.base_url == "http://localhost:8081"
+
+
+# ============================================================================
+# Test Bifrost Gateway Routing
+# ============================================================================
+
+
+class TestBifrostGatewayRouting:
+    """Routing through Bifrost changes both the URL and the credential.
+
+    Bifrost validates a *virtual key* — a provider's own API key is
+    rejected with ``401 virtual_key_required`` — so a gateway-routed call
+    must authenticate with the gateway virtual key, not the provider key.
+    """
+
+    @staticmethod
+    def _enable_gateway(monkeypatch: pytest.MonkeyPatch, base_url: str) -> None:
+        """Route the oneiric Bifrost router at ``base_url``."""
+        from oneiric.adapters.llm.bifrost import BifrostLLMRouter, BifrostLLMSettings, RouteKind
+
+        router = BifrostLLMRouter(
+            BifrostLLMSettings(
+                enabled=True,
+                base_url=base_url,
+                routes={RouteKind.QWEN_ROUTE},
+            )
+        )
+        monkeypatch.setattr("oneiric.adapters.llm.bifrost.get_router", lambda: router)
+
+    def test_gateway_routes_url_and_virtual_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A gateway-routed call targets the gateway and uses the virtual key."""
+        self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
+
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(
+            os.environ,
+            {"MINIMAX_API_KEY": "provider-key", "BIFROST_VIRTUAL_KEY": "virtual-key"},
+        ):
+            with patch("agno.models.openai.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["base_url"] == "http://127.0.0.1:8471/v1"
+                assert call_kwargs["api_key"] == "virtual-key"
+
+    def test_missing_virtual_key_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Without the gateway virtual key the gateway is unusable."""
+        self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
+
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(os.environ, {"MINIMAX_API_KEY": "provider-key"}, clear=True):
+            with patch("agno.models.openai.like.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["base_url"] == "http://localhost:8081"
+
+    def test_explicit_base_url_overrides_the_gateway(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An operator base_url wins over the router and keeps the provider key."""
+        self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
+
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX,
+            base_url="https://api.minimax.io/v1",
+        )
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(
+            os.environ,
+            {"MINIMAX_API_KEY": "provider-key", "BIFROST_VIRTUAL_KEY": "virtual-key"},
+        ):
+            with patch("agno.models.openai.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["base_url"] == "https://api.minimax.io/v1"
+                assert call_kwargs["api_key"] == "provider-key"
+
+    def test_no_router_leaves_sdk_default_endpoint(self) -> None:
+        """With no router and no override, the SDK default endpoint is used."""
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX)
+        factory = LLMProviderFactory(config)
+
+        with patch.dict(os.environ, {"MINIMAX_API_KEY": "provider-key"}):
+            with patch("agno.models.openai.OpenAIChat") as mock_cls:
+                mock_cls.return_value = MagicMock()
+
+                factory.create_model()
+
+                call_kwargs = mock_cls.call_args[1]
+                assert call_kwargs["base_url"] is None
+                assert call_kwargs["api_key"] == "provider-key"
 
 
 # ============================================================================
@@ -983,7 +1296,7 @@ class TestAgnoAdapterInitialization:
 
         assert adapter.agno_config is not None
         assert adapter.agno_config.enabled is True
-        assert adapter.agno_config.llm.provider == LLMProvider.LLAMA_SERVER
+        assert adapter.agno_config.llm.provider == LLMProvider.MINIMAX
 
     @pytest.mark.asyncio
     async def test_initialize(self, mock_settings: MagicMock) -> None:

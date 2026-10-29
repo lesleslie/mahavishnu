@@ -348,7 +348,7 @@ class TestSkillMapping:
         )
 
         assert config.tools == []
-        assert config.model == "qwen2.5:7b"
+        assert config.model == "qwen3.5"
         assert config.temperature == 0.7
 
     def test_skill_mapping_completeness(self) -> None:

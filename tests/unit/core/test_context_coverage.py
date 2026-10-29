@@ -30,7 +30,7 @@ class _FakeLLMFactory:
         return "llama_server"
 
     def get_default_model(self) -> str:
-        return "qwen2.5:7b"
+        return "qwen3.5"
 
     def create_embedding(
         self,
@@ -54,7 +54,7 @@ def test_llm_factory_protocol_body_is_exercised() -> None:
     factory = _FakeLLMFactory()
     assert factory.create_llm() == {"provider": None, "model_id": None}
     assert factory.get_default_provider() == "llama_server"
-    assert factory.get_default_model() == "qwen2.5:7b"
+    assert factory.get_default_model() == "qwen3.5"
     assert factory.create_embedding(provider="openai") == {
         "embed": True,
         "provider": "openai",

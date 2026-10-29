@@ -383,10 +383,11 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 **`agno`**:
 
 - `enabled` — `bool`, default `True`; enables the Agno adapter.
-- `llm.provider` — `LLMProvider`, default `llama_server`; provider enum.
-- `llm.model_id` — `str`, default `qwen2.5:7b`; provider model.
-- `llm.api_key_env` — `str | null`, default `None`; environment variable containing the provider key.
-- `llm.base_url` — `str | null`, default `http://localhost:8081`; llama-server (llama.cpp) endpoint.
+- `llm.provider` — `LLMProvider`, default `minimax`; provider enum (`anthropic`, `openai`, `minimax`, `llama_server`).
+- `llm.model_id` — `str`; provider model. Defaults per provider: `MiniMax-M3`, `claude-sonnet-4-6`, `gpt-4o`, `qwen3.5`.
+- `llm.api_key_env` — `str | null`, default `None`; environment variable containing the provider key. Derived per provider when unset.
+- `llm.base_url` — `str | null`, default `None`; endpoint override. `None` lets each provider resolve its own endpoint (llama-server → `http://localhost:8081`; cloud providers → the Bifrost gateway when routed, otherwise their public API).
+- `llm.fallback_providers` — `list[LLMProvider]`, default `[llama_server]`; ordered providers tried when the primary has no usable credential. The first available provider wins.
 - `llm.temperature` — `float`, default `0.7`; sampling temperature.
 - `llm.max_tokens` — `int`, default `4096`; response token limit.
 - `memory.enabled` — `bool`, default `True`; enables Agno memory.
