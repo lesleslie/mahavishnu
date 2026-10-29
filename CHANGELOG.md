@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bifrost: Stop rebootstrap and the test suite destroying config.db
 - cli,workers: Refresh spawn allowlist + enrich validate_required_tool error
 - cli: Wire `mahavishnu status` and `mahavishnu pool reap` subcommands
-- config: Let MAHAVISHNU_* env vars beat the YAML in the app loader
+- config: Let MAHAVISHNU\_\* env vars beat the YAML in the app loader
 - crow: Switch adapter to one-shot terminal tool + wire live demo
 - demo: Dispatch a command, not a prompt, to MahavishnuPool
 - demo: Harden Shepherd workspace precondition against path-traversal gate-parity
@@ -91,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Rewrite OTel v7 akosha tasks against verified source
 - plans: Runtime defects found by execution — proto, insert binding, ports
 - plans: Sanitize span attributes via oneiric's data.sanitize kit
-- plans: Specify _iter_spans/_dlq_insert, build the heartbeat loop, Event.wait
+- plans: Specify \_iter_spans/\_dlq_insert, build the heartbeat loop, Event.wait
 - plans: Task 11 path arithmetic points one level too deep
 - plans: Task 6 CLI, dangling symbols, cross-references, false claims
 - pools: Use req.output() as terminal oracle in RunPodPool
@@ -108,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - specs: Read-path review findings; DuckDB version split reaches v7
 - terminal: Shape B (shell-chain with word-boundary) for validate_command_safety
 - tests: Complete phantom-import migration from db06fc87
-- tests: Delete dead AdapterDiscovery* test classes
+- tests: Delete dead AdapterDiscovery\* test classes
 - The health aggregator's metrics must reach the live /metrics
 - workers: A private stderr file per worker invocation
 - workers: Apply the gateway's /v1 suffix idempotently
