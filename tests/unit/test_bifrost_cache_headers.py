@@ -100,19 +100,33 @@ def test_every_mode_carries_a_cache_bucket() -> None:
     """The cache key header is always present -- it selects the bucket."""
     for mode in ("off", "direct", "semantic"):
         headers = build_cache_headers(mode)  # type: ignore[arg-type]
-        assert headers[CACHE_KEY_HEADER] == DEFAULT_CACHE_BUCKET
+        assert CACHE_KEY_HEADER in headers
 
 
-def test_explicit_bucket_overrides_the_default() -> None:
-    """A named bucket scopes the entries to that tenant or feature."""
-    headers = build_cache_headers("semantic", "tenant-a")
-    assert headers[CACHE_KEY_HEADER] == "tenant-a"
+def test_the_bucket_cannot_be_chosen_by_the_caller() -> None:
+    """A caller-chosen bucket is a caller-chosen *selector*.
+
+    Whoever holds a credential could name another bucket and read what
+    is in it, so the bucket is derived rather than passed in. The
+    keyword-only signature is what enforces that.
+    """
+    with pytest.raises(TypeError):
+        build_cache_headers("semantic", "tenant-a")  # type: ignore[call-arg]
 
 
-def test_blank_bucket_falls_back_to_the_default() -> None:
-    """A whitespace-only bucket is not a bucket."""
-    headers = build_cache_headers("direct", "   ")
-    assert headers[CACHE_KEY_HEADER] == DEFAULT_CACHE_BUCKET
+def test_the_traffic_class_separates_the_buckets() -> None:
+    """Two protocol surfaces must not share a bucket."""
+    worker = build_cache_headers("semantic", traffic_class=TRAFFIC_CLASS_WORKER)
+    agno = build_cache_headers("semantic", traffic_class=TRAFFIC_CLASS_AGNO_OPENAI)
+    assert worker[CACHE_KEY_HEADER] != agno[CACHE_KEY_HEADER]
+    assert worker[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
+
+
+def test_a_blank_traffic_class_still_yields_a_bucket() -> None:
+    """A missing traffic class does not fall back to the shared bucket."""
+    headers = build_cache_headers("direct", traffic_class="   ")
+    assert CACHE_KEY_HEADER in headers
+    assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
 
 
 def test_resolve_cache_mode_reads_the_settings(cache_mode: Any) -> None:

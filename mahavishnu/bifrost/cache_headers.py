@@ -170,13 +170,17 @@ def resolve_cache_mode() -> CacheMode:
     return cast("CacheMode", raw)
 
 
-def build_cache_headers(mode: CacheMode, bucket: str | None = None) -> dict[str, str]:
-    """Build the ``x-bf-cache-*`` headers for a cache mode.
+def _cache_headers_for(mode: CacheMode, bucket: str) -> dict[str, str]:
+    """Assemble the cache headers for a mode and an already-chosen bucket.
+
+    Private because the bucket is a *selector*: a caller that can name a
+    bucket can read what is in it. Only :func:`build_cache_headers` and
+    :func:`build_gateway_headers` may call this, and both derive the
+    bucket rather than accepting one.
 
     Args:
         mode: One of ``off``, ``direct``, ``semantic``.
-        bucket: Cache bucket to scope entries to. Defaults to
-            ``DEFAULT_CACHE_BUCKET``.
+        bucket: The bucket to scope entries to.
 
     Returns:
         Headers to attach to the outbound request. Never empty: every mode
@@ -185,7 +189,7 @@ def build_cache_headers(mode: CacheMode, bucket: str | None = None) -> dict[str,
         asymmetry in ``off``, which suppresses the *write* and not the
         read.
     """
-    key = (bucket or DEFAULT_CACHE_BUCKET).strip() or DEFAULT_CACHE_BUCKET
+    key = bucket.strip() or DEFAULT_CACHE_BUCKET
     headers: dict[str, str] = {CACHE_KEY_HEADER: key}
     if mode == "direct":
         headers[CACHE_TYPE_HEADER] = "direct"
@@ -195,6 +199,32 @@ def build_cache_headers(mode: CacheMode, bucket: str | None = None) -> dict[str,
         # "off": do not populate the cache. The gateway still serves reads.
         headers[CACHE_NO_STORE_HEADER] = "true"
     return headers
+
+
+def build_cache_headers(mode: CacheMode, *, traffic_class: str = "") -> dict[str, str]:
+    """Build the ``x-bf-cache-*`` headers for a cache mode.
+
+    The bucket is derived from the traffic class and the credential the
+    request presents (see :func:`resolve_cache_bucket`). It cannot be
+    passed in: a caller-chosen bucket is a caller-chosen *selector*, so
+    whoever holds a credential could name another bucket and read what
+    is in it.
+
+    Args:
+        mode: One of ``off``, ``direct``, ``semantic``.
+        traffic_class: What kind of traffic this is. Separates protocol
+            surfaces within one principal's namespace.
+
+    Returns:
+        Headers to attach to the outbound request. Never empty: every mode
+        carries the cache-bucket header, and the mode-specific header
+        selects the write behaviour. See the module docstring for the
+        asymmetry in ``off``, which suppresses the *write* and not the
+        read.
+    """
+    return _cache_headers_for(
+        mode, resolve_cache_bucket(traffic_class, resolve_virtual_key())
+    )
 
 
 def resolve_virtual_key() -> str | None:
@@ -303,7 +333,6 @@ def resolve_cache_bucket(traffic_class: str, principal: str | None = None) -> st
 def build_gateway_headers(
     base_url: str,
     mode: CacheMode | None = None,
-    bucket: str | None = None,
     *,
     traffic_class: str = "",
 ) -> dict[str, str]:
@@ -322,9 +351,13 @@ def build_gateway_headers(
     not change what gets retained.
 
     The bucket is **derived** from the traffic class and the credential
-    the request presents (see :func:`resolve_cache_bucket`), so it is
-    never the shared :data:`DEFAULT_CACHE_BUCKET` and never a bucket a
-    caller chose. Pass ``bucket`` only to override that deliberately.
+    the request presents (see :func:`resolve_cache_bucket`). There is
+    deliberately no way to pass one in: a caller-supplied bucket is a
+    caller-supplied *selector*, so whoever holds a credential could name
+    another bucket and read what is in it. Deriving it from the
+    credential the request actually presents closes that -- a caller
+    cannot select a bucket it does not hold the key for -- and it means
+    the bucket is never the shared :data:`DEFAULT_CACHE_BUCKET`.
 
     The virtual key is attached only when the target URL is trusted (see
     :func:`gateway_host_is_trusted`). An untrusted target gets the cache
@@ -335,8 +368,6 @@ def build_gateway_headers(
         base_url: The gateway base URL the request will be sent to. Used
             to decide whether the credential may cross this hop.
         mode: Cache mode. Resolved from the router settings when omitted.
-        bucket: Cache bucket to scope entries to. Overrides the derived
-            bucket.
         traffic_class: What kind of traffic this is. Separates protocol
             surfaces within one principal's namespace.
 
@@ -344,9 +375,8 @@ def build_gateway_headers(
         Headers to attach to the outbound request.
     """
     virtual_key = resolve_virtual_key()
-    if bucket is None:
-        bucket = resolve_cache_bucket(traffic_class, virtual_key)
-    headers = build_cache_headers(mode or resolve_cache_mode(), bucket)
+    bucket = resolve_cache_bucket(traffic_class, virtual_key)
+    headers = _cache_headers_for(mode or resolve_cache_mode(), bucket)
 
     if not virtual_key:
         logger.warning(
