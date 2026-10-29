@@ -41,8 +41,18 @@ both directions, permanently:
   format, rewriting a 394-insertion file back to the bare store table.
 
 The fork's own docstring reads *"Walk the six stores"* while `DEFAULT_STORES`
-has five entries — the tell that it was copied before the auto-discovery
-rewrite and never re-synced.
+has five entries — the tell that it was copied from an older revision of the
+renderer and never re-synced.
+
+**Fleet scope.** Auto-discovery is *not* the fleet baseline. All six Bodai
+repositories ship a `scripts/regenerate_plan_index.py`, but only mahavishnu's
+has evolved past the 16-function fixed-store-list version — oneiric,
+crackerjack, session-buddy, akosha, and mcp-common each still have the
+16-function version with no `discover_stores`. So this repository's script and
+the tool's fork sit on opposite sides of that evolution, and the other five
+repositories' copies still carry the older behavior. Delegation alone
+therefore fixes the *tool*; propagating auto-discovery to the other five
+repositories' copies is a separate task.
 
 ## What was done here (mahavishnu)
 
