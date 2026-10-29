@@ -3,30 +3,36 @@
 Per Plan Task 1.1, the per-repo inventory dispatch uses this prompt
 template (one per Core 7 repo, with `<name>` substituted).
 
+> **Paths:** this file is tracked in a public repository, so it carries no
+> absolute path. `$BODAI_PROJECTS_ROOT` is the directory that holds the
+> fleet checkouts — export it before running the commands below. The
+> inventory script resolves the same value on its own when the flag is
+> omitted.
+
 ## Subagent Prompt
 
 ```
 You are auditing the Bodai CLI surface for `<name>`.
 
 Read:
-- `/Users/les/Projects/mahavishnu/docs/plans/2026-08-25-bodai-cli-audit.md` §11 (per-repo shell status)
-- `/Users/les/Projects/mahavishnu/scripts/audit_cli_inventory.py` (the tool)
+- `$BODAI_PROJECTS_ROOT/mahavishnu/docs/plans/2026-08-25-bodai-cli-audit.md` §11 (per-repo shell status)
+- `$BODAI_PROJECTS_ROOT/mahavishnu/scripts/audit_cli_inventory.py` (the tool)
 
 Tasks:
 1. Run from the per-repo worktree (NOT the main checkout):
-     cd /Users/les/Projects/<name>/.claude/worktrees/bodai-cli-audit-phase-1-<name> \
+     cd "$BODAI_PROJECTS_ROOT/<name>/.claude/worktrees/bodai-cli-audit-phase-1-<name>" \
        && uv sync \
-       && uv run python /Users/les/Projects/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/scripts/audit_cli_inventory.py \
+       && uv run python "$BODAI_PROJECTS_ROOT/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/scripts/audit_cli_inventory.py" \
             repo --repo <name> --repo-path "$PWD" \
-            --out-dir /Users/les/Projects/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory
+            --out-dir "$BODAI_PROJECTS_ROOT/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory"
 
 2. Verify the JSON in
-   `/Users/les/Projects/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory/<name>-cli-inventory.json`:
+   `$BODAI_PROJECTS_ROOT/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory/<name>-cli-inventory.json`:
    - `command_count` matches `<name> --help 2>&1 | awk '/^  [A-Za-z]/ {print $1}' | sort -u | wc -l`
    - No `notes` field contains `inventory_failed`
 
 3. Write
-   `/Users/les/Projects/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory/<name>-cli-inventory.md`:
+   `$BODAI_PROJECTS_ROOT/mahavishnu/.claude/worktrees/bodai-cli-audit-phase-0/docs/audit-inventory/<name>-cli-inventory.md`:
    - One paragraph summary (total commands, surface character, notable groupings)
    - Table of commands (command_path | short_help | staleness_verdict | notes)
    - Drift observations vs the per-repo README and CLAUDE.md
@@ -45,7 +51,7 @@ the JSON (written by the inventory script) and the MD summary.
 Per-repo worktrees live at:
 
 ```
-/Users/les/Projects/<repo>/.claude/worktrees/bodai-cli-audit-phase-1-<repo>
+"$BODAI_PROJECTS_ROOT/<repo>/.claude/worktrees/bodai-cli-audit-phase-1-<repo>"
 ```
 
 Already created for: oneiric, dhara, session-buddy, akosha, crackerjack.

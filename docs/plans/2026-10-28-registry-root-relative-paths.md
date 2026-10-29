@@ -36,10 +36,11 @@ evidence.
 1. **Not** sweeping the remaining ~211 tracked files in this repo that
    contain an operator's home path (106 docs, 38 tests, 31 scripts, …).
    Separate pass.
-   Two of those scripts are worth calling out for the follow-up:
-   `scripts/audit_cli_inventory.py` hardcodes an absolute home path as
-   its repo-root default, and `docs/mcp/SERVER_MIGRATION_TRACKER.md` still holds
-   37 absolute paths from an older audit run.
+   Two of those were worth calling out, and were pulled forward into a
+   follow-up pass on 2026-10-28: `scripts/audit_cli_inventory.py`, which
+   hardcoded an absolute home path as its repo-root default, and
+   `docs/mcp/SERVER_MIGRATION_TRACKER.md`, which held 37 absolute paths
+   from an older audit run. See §11.
 2. **Not** promoting path redaction into a shared `oneiric` action kit.
    Crackerjack does not depend on `oneiric`; adding that dependency is a
    larger decision than this change.
@@ -322,6 +323,108 @@ out of scope and is a separate plan.
   rejected by `crackerjack/checks/bodai_registry.py::_resolve_under_root`
   (traversal segments, escaping symlinks, and absolute paths outside the
   root). Covered by three tests in `tests/unit/test_bodai_registry.py`.
+
+---
+
+## 11. Follow-up pass: the two deferred items (2026-10-28)
+
+The two items §3.1 singled out were pulled forward into their own pass.
+They share this plan's premise — the repo is public, so no tracked file
+carries an absolute path — and they reuse the resolution chain this plan
+published.
+
+**Goal:** `scripts/audit_cli_inventory.py` resolves repos through the
+declared chain instead of a hardcoded home path, and the migration
+tracker publishes root-relative paths.
+
+**Tasks:**
+
+- New `scripts/bodai_paths.py` — the single implementation of the
+  resolution chain (`$BODAI_PROJECTS_ROOT` → the repo's own location →
+  `~/Projects`) and of the root-relative rendering. `audit_cli_inventory.py`
+  and `audit_mcp_launchers.py` both import it, so the two consumers cannot
+  drift apart. The registry's generator keeps its own copy so it stays
+  standalone-runnable (stdlib plus PyYAML);
+  `tests/unit/test_bodai_paths.py` pins the two renderers to agree.
+- The resolver refuses to treat a git **worktree** as a projects root. The
+  fleet's worktree bucket (`~/.local/state/mahavishnu/worktrees/`) holds
+  directories named after fleet repos, so the name alone cannot tell it
+  apart from a projects root — but a worktree's `.git` is a *file* while a
+  primary checkout's is a *directory*. Without that check the root resolved
+  to the bucket and every repo resolved to a worktree instead of the
+  primary checkout. The same guard was added to crackerjack's copy of the
+  chain, so the two behave identically.
+- `scripts/audit_cli_inventory.py`:
+  - `--repo-path` and `--projects-root` default to the resolved projects
+    root; the help text and the source no longer name a home directory.
+  - The repo list becomes `CORE_REPOS` — the six core repositories.
+    It previously named `"mcp"`, a repo that does not exist. That name was
+    not a crash: `~/Projects/mcp` is absent, so the import fell through to
+    the installed FastMCP SDK and the script recorded *the SDK's* CLI as a
+    fleet repo's surface. The same "Core 7" framing is gone.
+  - `ENTRY_POINTS` moves to module scope, so the entry-point map and the
+    repo list can be checked against each other.
+  - `write_phase_0_baseline()` drops an unused parameter and writes its
+    keys in alphabetical order, so the artifact's key order no longer
+    depends on the repo list's order.
+- `scripts/audit_mcp_launchers.py` — the private copies of the resolver and
+  the renderer are replaced by the shared ones. The renderer now emits the
+  trailing slash the registry publishes, so the audit's output can be
+  pasted straight into the tracker's path column.
+- `docs/mcp/SERVER_MIGRATION_TRACKER.md` — all 37 absolute paths become
+  root-relative, and the document declares the resolution rule.
+- `docs/audit-inventory/PHASE_1_DISPATCH.md` — the dispatch template's
+  absolute paths become `$BODAI_PROJECTS_ROOT` expansions, so the shell
+  commands still run and the file stays publishable.
+- `docs/audit-inventory/PHASE_0_BASELINE.json` — regenerated. It was
+  already stale (it predated the current repo list); regenerating drops
+  the entry for a repo that is no longer in the core set.
+
+**Exit criteria:** the tracker, the dispatch template, and the inventory
+script carry no absolute path; the tracker declares the resolution rule;
+the inventory script resolves a real repo without a flag.
+
+#### Integration Contract
+
+- **Triggered from**: `.venv/bin/python scripts/audit_cli_inventory.py repo
+  --repo <name>`, `... all`, and
+  `.venv/bin/python scripts/audit_mcp_launchers.py`.
+- **Returns to / updates**: `docs/audit-inventory/PHASE_0_BASELINE.json`
+  (via `write_phase_0_baseline`) and
+  `docs/mcp/SERVER_MIGRATION_TRACKER.md`'s path column (via the launcher
+  audit's output).
+- **Demonstrable by**:
+  `.venv/bin/python -m pytest tests/unit/test_bodai_paths.py
+  tests/unit/test_audit_cli_inventory.py
+  tests/unit/test_published_docs_path_hygiene.py -q` → `24 passed`;
+  `.venv/bin/python scripts/audit_cli_inventory.py repo --repo mcp-common
+  --out-dir <tmp>` → resolves the checkout with no `--repo-path` flag.
+- **Rollback signal**: `resolve_projects_root()` returns a directory that
+  does not hold the fleet checkouts — every inventory resolves to a
+  non-existent path and each repo reports `FAIL`. Setting
+  `$BODAI_PROJECTS_ROOT` is the immediate workaround.
+- **Observability added**: the launcher audit's emitted `path` column is
+  now byte-identical in form to the registry's, so a mismatch between the
+  two artifacts is visible in a diff rather than silently tolerated.
+
+**Evidence:**
+
+- `docs/mcp/SERVER_MIGRATION_TRACKER.md`: `grep -c "/Users/"` → `0`; 37
+  path cells converted; the "Path resolution" section names
+  `$BODAI_PROJECTS_ROOT`, the repository's own location, and `~/Projects`.
+- `docs/audit-inventory/PHASE_1_DISPATCH.md`: `grep -c "/Users/"` → `0`;
+  8 occurrences replaced with `$BODAI_PROJECTS_ROOT` expansions.
+- `scripts/audit_cli_inventory.py`: `grep -c "/Users/"` → `0`.
+- `scripts/audit_mcp_launchers.py` → exit 0, 26 repos audited, path column
+  rendered as `akosha/` (was `akosha`) — the registry's form.
+- `tests/unit/test_bodai_paths.py` → `13 passed`;
+  `tests/unit/test_audit_cli_inventory.py` → `9 passed`;
+  `tests/unit/test_published_docs_path_hygiene.py` → `4 passed`.
+- `python3 scripts/regen_bodai_registry.py --check` → `OK` (unchanged).
+
+**Still deferred:** the other 205 tracked files that carry an operator's
+home path. `scripts/audit_cli_inventory.py` and the tracker are no longer
+among them.
 
 ---
 
