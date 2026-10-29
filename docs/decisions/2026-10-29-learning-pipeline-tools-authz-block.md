@@ -87,6 +87,72 @@ So `MAHAVISHNU_TOOL_PROFILE=minimal` — documented in CLAUDE.md as
 one is a defect the branch introduces, and it is fixed inside the
 branch's own diff.
 
+### The correctness review found four more blockers
+
+Three are mechanical; the fourth is a decision.
+
+**It breaks 19 pre-existing tests it never touched.**
+`tests/unit/test_learning_pipeline_tools.py:133` calls
+`register_learning_tools(fake_mcp, pipeline, evidence, registry)` with
+four positional arguments and no `rbac_manager`. The branch's
+`@require_mcp_auth` fails closed on a `None` manager
+(`mahavishnu/mcp/auth.py:94-99`), so every tool returns
+`{"status": "error", "error_code": "AUTH_NOT_CONFIGURED"}` — a dict with
+no `"available"` key — and the assertions fail with `KeyError`. Verified:
+19 pass on `main`, 19 fail on the branch. The branch's own test file
+passes, which is why it was missed.
+
+**The merge gate is red on formatting.** `ruff format --check` reports
+two files the branch itself added lines to. The gate fails; a merge does
+not fix it.
+
+**Two of the five tools have no data producer.**
+`LearningPipelineService._run_cycle` synthesizes drafts and runs the
+review gate but never writes to `SkillRegistry`, and
+`SkillRegistry.register()` — the only writer — has zero production
+callers. So `list_pending_drafts` and `get_promotion_history` can only
+ever return `{"count": 0, ...}`, however many cycles have run. That is
+the failure mode CLAUDE.md's "MCP backend wiring discipline" calls out:
+*"every registered tool must have a working data feed."* Two of the five
+newly-live tools are permanently empty, and the commit message's
+"the tools observe the same live state the pipeline mutates" is false.
+
+**The branch is 357 commits behind `main`.** The merge itself is
+conflict-free, but the branch's `bootstrap.py` and `profiles.py`
+predate main's current `# noqa: BLE001, RUF100` additions.
+
+### The generalist review added three more
+
+**`SkillRegistry` cannot represent a "pending draft" at all.** Its only
+mutator, `register()`, calls `promote_draft()` and stores
+`state=ACTIVE`; `list_active()` returns only ACTIVE records. The
+`DRAFT` and `REVIEW` states exist in `skill_governance.py` but the
+registry has no API to insert them. So `list_pending_drafts` — whose
+docstring says "list all *active skill drafts*" — would return `[]`
+even after drafts are written, and would list an already-approved skill
+as a "pending draft" if one were. The registry needs a draft-state API
+before that tool can mean anything.
+
+**The pipeline creates a shadow registry.** `core/bootstrap.py:524`
+already builds `app.skill_registry`, which the TUI reads
+(`mahavishnu/tui/app.py:221-224`). The branch creates a *second*
+instance at `learning_pipeline.py:87`; the MCP tools read the
+pipeline's, the TUI reads the app's. The branch's own new test warns
+about exactly this hazard — "a copy / shadow registry would silently
+diverge from activation events" — while the branch introduces the
+shadow.
+
+**`trigger_synthesis`'s effect is invisible to `get_pipeline_status`.**
+`run_once()` does not set `_last_result` or bump `_cycle_count`; only
+the `_run_loop` path does. After a manual cycle the status tool still
+reports `cycle_count: 0, last_result: None`.
+
+Two facts that make the surface smaller than it looks: `LearningConfig.enabled`
+defaults to `False`, and `start_learning_pipeline` — which starts the
+periodic loop ADR 012 ties to app startup — has no production caller.
+So on a default install every one of the five tools returns
+`{"available": False, ...}`.
+
 ## Decision rule
 
 **The branch does not merge as it stands.** The ensemble returned BLOCK,
@@ -115,6 +181,14 @@ fleet. That is its own piece of work: its own branch, its own ensemble
 review, its own sign-off. Bundling it into a fifteen-day-old feature
 merge, at the end of a long session, with no second pair of eyes on the
 auth change specifically, is how an authz regression reaches production.
+
+All three reviewers returned **BLOCK**, and they converged: two of them
+found the permanently-empty registry independently, and all three found
+the profile-gating defect. The mechanical items — the 19 broken tests,
+the format gate, the profile gate, the docs and fixtures — are each
+small. The two that need a decision rather than an edit are the
+registry's draft representation and the per-caller cache bucket, and
+both are product questions rather than implementation ones.
 
 ## Status
 
