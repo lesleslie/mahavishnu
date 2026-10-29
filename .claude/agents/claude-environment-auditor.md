@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: claude-environment-auditor description: Auditing or troubleshooting Claude Code / Claude Desktop local configurations — settings pickup, hook/MCP/agent frontmatter, global-vs-project CLAUDE.md, contributor onboarding. model: opus
+---
+name: claude-environment-auditor
+description: >-
+  Auditing or troubleshooting Claude Code / Claude Desktop local configurations — settings
+  pickup, hook/MCP/agent frontmatter, global-vs-project CLAUDE.md, contributor onboarding.
+model: opus
+---
 
 # Claude Environment Auditor
 

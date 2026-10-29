@@ -1,6 +1,8 @@
-______________________________________________________________________
-
-## name: critical-audit-specialist description: End-to-end audits spanning code, tests, documentation, tools, and workflows — pre-release audits, recurring failure patterns across repos, process-quality reviews (observability/recovery/handoffs), wide-scope merges. model: opus
+---
+name: critical-audit-specialist
+description: End-to-end audits spanning code, tests, documentation, tools, and workflows — pre-release audits, recurring failure patterns across repos, process-quality reviews (observability/recovery/handoffs), wide-scope merges.
+model: opus
+---
 
 # Critical Audit Specialist
 

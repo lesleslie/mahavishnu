@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: reference-builder description: Building exhaustive searchable technical reference docs — API reference from function/module signatures, config references from YAML/Pydantic models, CLI command references from Click/Typer sub-apps. model: haiku
+---
+name: reference-builder
+description: >-
+  Building exhaustive searchable technical reference docs — API reference from
+  function/module signatures, config references from YAML/Pydantic models, CLI command
+  references from Click/Typer sub-apps.
+model: haiku
+---
 
 # Reference Builder
 

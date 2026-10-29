@@ -1,6 +1,12 @@
-______________________________________________________________________
-
-## name: starlette-specialist description: Use this agent when building Starlette / FastAPI ASGI apps, middleware, or WebSocket routes — authoring/refactoring a router, implementing middleware (auth, logging, request-id, CORS) cleanly, or wiring WebSocket endpoints with async streaming responses and backpressure handling. model: sonnet
+---
+name: starlette-specialist
+description: >-
+  Use this agent when building Starlette / FastAPI ASGI apps, middleware, or WebSocket
+  routes — authoring/refactoring a router, implementing middleware (auth, logging,
+  request-id, CORS) cleanly, or wiring WebSocket endpoints with async streaming responses
+  and backpressure handling.
+model: sonnet
+---
 
 # Starlette Specialist
 

@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: jinja2-template-designer description: Authoring or hardening Jinja2 templates for Flask / FastAPI / Django / Quart — custom filters/tests/globals, escape regressions, version migrations. model: haiku
+---
+name: jinja2-template-designer
+description: >-
+  Authoring or hardening Jinja2 templates for Flask / FastAPI / Django / Quart — custom
+  filters/tests/globals, escape regressions, version migrations.
+model: haiku
+---
 
 # Jinja2 Template Designer
 

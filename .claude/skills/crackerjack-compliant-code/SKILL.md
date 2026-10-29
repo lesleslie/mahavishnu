@@ -1,4 +1,8 @@
-## name: crackerjack-compliant-code description: Use when writing Python code that should pass quality gates on the first run.
+---
+name: crackerjack-compliant-code
+description: >-
+  Use when writing Python code that should pass quality gates on the first run.
+---
 
 # Crackerjack-Compliant Code
 

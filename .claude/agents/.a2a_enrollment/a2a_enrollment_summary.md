@@ -1,6 +1,9 @@
-______________________________________________________________________
-
-## name: a2a-enrollment-summary description: A2A Agent Enrollment Summary Report (generated documentation) version: 1.0.0
+---
+name: a2a-enrollment-summary
+description: >-
+  A2A Agent Enrollment Summary Report (generated documentation)
+version: 1.0.0
+---
 
 # A2A Agent Enrollment Summary
 

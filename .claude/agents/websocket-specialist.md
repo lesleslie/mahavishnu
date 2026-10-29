@@ -1,6 +1,12 @@
-______________________________________________________________________
-
-## name: websocket-specialist description: Use this agent when designing or implementing WebSocket transports, servers, and clients — wiring a new WS server or upgrading an HTTP route to WS, authoring Socket.IO rooms/namespaces/pubsub bridges, or diagnosing dropped frames / reconnection storms / backpressure. model: sonnet
+---
+name: websocket-specialist
+description: >-
+  Use this agent when designing or implementing WebSocket transports, servers, and clients
+  — wiring a new WS server or upgrading an HTTP route to WS, authoring Socket.IO
+  rooms/namespaces/pubsub bridges, or diagnosing dropped frames / reconnection storms /
+  backpressure.
+model: sonnet
+---
 
 # WebSocket Specialist
 

@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: documentation-review-specialist description: Reviewing documentation before merge — README / docs-site / tutorial proofreading, docstring and module-comment staleness audits, or API-reference coverage validation against the public surface. model: haiku
+---
+name: documentation-review-specialist
+description: >-
+  Reviewing documentation before merge — README / docs-site / tutorial proofreading,
+  docstring and module-comment staleness audits, or API-reference coverage validation
+  against the public surface.
+model: haiku
+---
 
 # Documentation Review Specialist
 

@@ -1,4 +1,10 @@
-## name: bodai-status description: Check current Bodai-wide activity (Mahavishnu, Akosha, Crackerjack) — reads recent envelopes from the Oneiric bus (Redis Streams via mahavishnu.core.events.bodai_subscriber.read_bodai_events_since).
+---
+name: bodai-status
+description: >-
+  Check current Bodai-wide activity (Mahavishnu, Akosha, Crackerjack) — reads recent
+  envelopes from the Oneiric bus (Redis Streams via
+  mahavishnu.core.events.bodai_subscriber.read_bodai_events_since).
+---
 
 Check current Bodai-wide activity across Mahavishnu, Akosha, and Crackerjack.
 

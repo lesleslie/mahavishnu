@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: authentication-specialist description: Designing, auditing, or hardening authentication flows across OAuth 2.1, OIDC, SAML, passkeys, or sessions — protocol selection, SSO migration, MFA/cookie/session/token review, replay-fixation regression debugging. model: sonnet
+---
+name: authentication-specialist
+description: >-
+  Designing, auditing, or hardening authentication flows across OAuth 2.1, OIDC, SAML,
+  passkeys, or sessions — protocol selection, SSO migration, MFA/cookie/session/token
+  review, replay-fixation regression debugging.
+model: sonnet
+---
 
 # Authentication Specialist
 

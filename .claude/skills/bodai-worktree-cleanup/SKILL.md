@@ -1,4 +1,11 @@
-## name: bodai-worktree-cleanup description: "Scan Bodai repos for stale worktrees and surface a tier-grouped report. Triggers on 'scan worktrees', 'find stale worktrees', 'audit bodai worktrees', 'list orphaned worktrees' (worktree-context-only — does NOT fire on generic 'low on disk space' or non-worktree cleanup)."
+---
+name: bodai-worktree-cleanup
+description: >-
+  "Scan Bodai repos for stale worktrees and surface a tier-grouped report. Triggers on
+  'scan worktrees', 'find stale worktrees', 'audit bodai worktrees', 'list orphaned
+  worktrees' (worktree-context-only — does NOT fire on generic 'low on disk space' or
+  non-worktree cleanup)."
+---
 
 # Bodai Worktree Cleanup
 

@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: css-architect description: Architecting modern CSS — design-token systems, layout-primitive selection (Grid vs Flexbox), cascade / specificity review, utility-first or BEM migration. model: haiku
+---
+name: css-architect
+description: >-
+  Architecting modern CSS — design-token systems, layout-primitive selection (Grid vs
+  Flexbox), cascade / specificity review, utility-first or BEM migration.
+model: haiku
+---
 
 # CSS Architect
 

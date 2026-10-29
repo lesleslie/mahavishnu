@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: mermaid-expert description: Generating Mermaid diagrams — flowcharts, sequence, ER, class, state, journey, pie; embedding render-ready into markdown; converting ASCII designs into stable, version-controlled diagrams. model: sonnet
+---
+name: mermaid-expert
+description: >-
+  Generating Mermaid diagrams — flowcharts, sequence, ER, class, state, journey, pie;
+  embedding render-ready into markdown; converting ASCII designs into stable,
+  version-controlled diagrams.
+model: sonnet
+---
 
 # Mermaid Expert
 

@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: api-security-specialist description: Auditing or hardening API surfaces — pre-launch OWASP API Top 10 review, authn/authz bypass investigation (BOLA, BFLA, mass-assignment), token issuance/revocation flows, OAuth 2.1 / OIDC conformance. model: sonnet
+---
+name: api-security-specialist
+description: >-
+  Auditing or hardening API surfaces — pre-launch OWASP API Top 10 review, authn/authz
+  bypass investigation (BOLA, BFLA, mass-assignment), token issuance/revocation flows,
+  OAuth 2.1 / OIDC conformance.
+model: sonnet
+---
 
 # API Security Specialist
 

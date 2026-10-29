@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: orchestration-specialist description: Coordinating multi-agent workflows or designing plan-then-execute patterns with discrete phase separation in complex development tasks. model: opus
+---
+name: orchestration-specialist
+description: >-
+  Coordinating multi-agent workflows or designing plan-then-execute patterns with discrete
+  phase separation in complex development tasks.
+model: opus
+---
 
 # Orchestration Specialist
 

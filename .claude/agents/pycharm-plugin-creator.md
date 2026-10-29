@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: pycharm-plugin-creator description: Authoring or refactoring IntelliJ / PyCharm plugins via the Platform SDK — plugin.xml + actions/services/extensions, PSI inspections/intentions/refactorings, editor UI wiring. model: sonnet
+---
+name: pycharm-plugin-creator
+description: >-
+  Authoring or refactoring IntelliJ / PyCharm plugins via the Platform SDK — plugin.xml +
+  actions/services/extensions, PSI inspections/intentions/refactorings, editor UI wiring.
+model: sonnet
+---
 
 # PyCharm Plugin Creator
 

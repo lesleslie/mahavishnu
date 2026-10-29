@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: tui-designer description: Designing or building Rich / Textual / blessed terminal UIs — prompts, tables, progress views, Textual apps with widgets and screens, keyboard-first navigation for CLI tools. model: sonnet
+---
+name: tui-designer
+description: >-
+  Designing or building Rich / Textual / blessed terminal UIs — prompts, tables, progress
+  views, Textual apps with widgets and screens, keyboard-first navigation for CLI tools.
+model: sonnet
+---
 
 # TUI Designer
 

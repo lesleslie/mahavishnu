@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: data-pipeline-engineer description: Architecting or operating batch, stream, or lakehouse data pipelines — choosing between Airflow / Dagster / Kafka Streams / Spark; backpressure or exactly-once review; schema-evolution strategy; orchestrator migration. model: sonnet
+---
+name: data-pipeline-engineer
+description: >-
+  Architecting or operating batch, stream, or lakehouse data pipelines — choosing between
+  Airflow / Dagster / Kafka Streams / Spark; backpressure or exactly-once review;
+  schema-evolution strategy; orchestrator migration.
+model: sonnet
+---
 
 # Data Pipeline Engineer
 

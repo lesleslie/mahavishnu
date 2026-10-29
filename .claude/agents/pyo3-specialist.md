@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: pyo3-specialist description: Building PyO3 Rust extensions callable from Python — accelerating a Python hot path, exposing a Rust library to Python with safe ownership, GIL/async-bridge/type-stub debugging. model: sonnet
+---
+name: pyo3-specialist
+description: >-
+  Building PyO3 Rust extensions callable from Python — accelerating a Python hot path,
+  exposing a Rust library to Python with safe ownership, GIL/async-bridge/type-stub
+  debugging.
+model: sonnet
+---
 
 # PyO3 Specialist
 

@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: playwright-specialist description: Building or maintaining Playwright E2E suites — authoring real-UI tests, visual regression or a11y audit suites, debugging flaky tests across Chromium / Firefox / WebKit. model: sonnet
+---
+name: playwright-specialist
+description: >-
+  Building or maintaining Playwright E2E suites — authoring real-UI tests, visual
+  regression or a11y audit suites, debugging flaky tests across Chromium / Firefox /
+  WebKit.
+model: sonnet
+---
 
 # Playwright Specialist
 

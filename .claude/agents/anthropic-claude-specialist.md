@@ -1,6 +1,12 @@
-______________________________________________________________________
-
-## name: anthropic-claude-specialist description: Anthropic Claude integration via the project's multi-auth setup (Claude Code subscription, Qwen fallback, custom JWT). Use PROACTIVELY for Claude features, prompt caching, function/tool use, choosing between subscription and direct API, and migrating between Claude model versions. model: opus
+---
+name: anthropic-claude-specialist
+description: >-
+  Anthropic Claude integration via the project's multi-auth setup (Claude Code
+  subscription, Qwen fallback, custom JWT). Use PROACTIVELY for Claude features, prompt
+  caching, function/tool use, choosing between subscription and direct API, and migrating
+  between Claude model versions.
+model: opus
+---
 
 # Scope
 
