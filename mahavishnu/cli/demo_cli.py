@@ -35,12 +35,14 @@ failing CI is the load-bearing signal — do not remove any of the three.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import os
 from pathlib import Path
 import shutil
 import time
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import httpx2 as httpx
 import typer
@@ -302,19 +304,19 @@ async def _run_prefect_demo(
     """Drive the Prefect engine end-to-end. Returns a structured result dict.
 
     2026-10-19: rewritten to use ``flow.from_source(...).deploy()``
-    with a ``GitHubRepository`` storage, instead of the historical
+    with a ``GitRepository`` storage, instead of the historical
     ``client.create_flow_run(flow=fn, work_pool_name=...)`` ad-hoc
     pattern. The historical path silently failed against Prefect 3.x
     process worker pools — the worker subprocess couldn't import
     the in-memory flow object (no source path serialized), so the
     run sat PENDING until the demo's 120s poll timeout.
 
-    Why ``GitHubRepository``: Prefect 3.x requires *image OR remote
+    Why ``GitRepository``: Prefect 3.x requires *image OR remote
     storage* when deploying via a process work pool (per the
     ``Either an image or remote storage location must be provided``
     guard). Local filesystems don't satisfy the "remote" predicate.
-    ``prefect-github`` was added to ``[project].dependencies`` on
-    2026-10-19 (operator-approved) so the demo can persist the
+    Prefect Core's own ``prefect.runner.storage.GitRepository``
+    provides that remote storage, so the demo can persist the
     source location to the worker's subprocess via a real remote
     (the project's ``lesleslie/mahavishnu`` GitHub remote, branch
     ``main``). The worker subprocess clones, imports the module
@@ -398,14 +400,38 @@ async def _run_prefect_demo(
     )
 
     # Submit a run against the persisted deployment. The worker
-    # subprocess pulls the source from the GitHubRepository and
+    # subprocess pulls the source from the GitRepository and
     # imports the entrypoint module from the cloned tree.
-    flow_run = await run_deployment(
+    #
+    # ``run_deployment`` is wrapped in Prefect's ``async_dispatch``
+    # decorator: inside a running event loop it returns the
+    # ``arun_deployment`` coroutine, and in a sync context it returns
+    # an already-resolved ``FlowRun``. This helper is async, so the
+    # coroutine branch is what fires at runtime — but await only when
+    # the value is genuinely awaitable, because awaiting a resolved
+    # ``FlowRun`` would raise ``TypeError``.
+    deployment_run = run_deployment(
         name=f"{flow_name}/mahavishnu-demo-flow",
         parameters=parameters,
         timeout=prefect_cfg.timeout_seconds,
     )
-    flow_run_id = getattr(flow_run, "id", None) or str(flow_run)
+    if inspect.isawaitable(deployment_run):
+        flow_run = await deployment_run
+    else:
+        flow_run = deployment_run
+
+    # ``prefect.flow_runs.wait_for_flow_run`` requires a ``UUID``.
+    # ``FlowRun.id`` is already a ``UUID`` at runtime; the explicit
+    # conversion keeps the contract honest for any string-shaped id
+    # and turns a malformed id into a readable failure instead of a
+    # raw ``ValueError`` from inside Prefect.
+    raw_flow_run_id = getattr(flow_run, "id", None)
+    if raw_flow_run_id is None:
+        raise ValueError("Prefect run_deployment returned a flow run without an id")
+    try:
+        flow_run_id = UUID(str(raw_flow_run_id))
+    except ValueError as exc:
+        raise ValueError(f"Prefect returned a non-UUID flow run id: {raw_flow_run_id!r}") from exc
 
     async with get_client():
         polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
@@ -1002,10 +1028,21 @@ def _check_pydantic_ai_preconditions(
     }
 
     if not llama_reachable and not cloud_keys:
+        # The mapping carries ``None`` for key-less local providers
+        # (``llama_server``). The three cloud providers below always
+        # map to a real env-var name, so dropping the ``None`` entries
+        # keeps the rendered hint identical.
+        provider_key_envs = sorted(
+            env_name
+            for env_name in (
+                _PYDANTIC_AI_PROVIDER_KEY_ENV[p] for p in ("anthropic", "minimax", "openai")
+            )
+            if env_name is not None
+        )
         failures.append(
             f"no LLM provider reachable. Start llama_server at {llama_url} "
             f"(with --embeddings) or set one of: "
-            f"{', '.join(sorted(_PYDANTIC_AI_PROVIDER_KEY_ENV[p] for p in ('anthropic', 'minimax', 'openai')))}"
+            f"{', '.join(provider_key_envs)}"
         )
 
     return failures
@@ -1064,7 +1101,14 @@ async def _run_pydantic_ai_demo(
         # is the simplest shape and yields plain text the demo can
         # print. A future demo could parameterize a Pydantic model
         # here to show the structured-output story.
-        output_type=str,
+        #
+        # The ``ty: ignore`` is a genuine false positive: the
+        # adapter's ``OutputT`` TypeVar is bound to ``BaseModel``, but
+        # the value is forwarded verbatim to pydantic-ai's
+        # ``Agent(output_type=...)``, whose ``OutputSpec`` accepts
+        # ``type[str]`` (verified against pydantic-ai 2.63.0). The
+        # adapter's own bound is over-tight for this call site.
+        output_type=str,  # ty: ignore[invalid-argument-type]
     )
     try:
         await adapter.initialize()
@@ -1424,11 +1468,16 @@ class _CrowMCPClient:
         body = _parse_sse_or_json(resp.text)
         if "error" in body:
             err = body["error"]
-            raise RuntimeError(f"crow-mcp JSON-RPC error {err.get('code')}: {err.get('message')}")
+            if isinstance(err, dict):
+                raise RuntimeError(
+                    f"crow-mcp JSON-RPC error {err.get('code')}: {err.get('message')}"
+                )
+            raise RuntimeError(f"crow-mcp JSON-RPC error {err}")
         # Return the raw ``result`` envelope (the MCP ``CallToolResult``
         # shape). The adapter's ``_extract_output`` reads ``content[0].text``
         # from this directly — no client-side reshaping needed.
-        return body.get("result", {})
+        result = body.get("result")
+        return result if isinstance(result, dict) else {}
 
 
 def _check_crow_preconditions(

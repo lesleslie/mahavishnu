@@ -206,4 +206,3 @@ tests:
                   grep -A 8 'known_mcp_servers' \
                     /Users/les/Projects/akosha/settings/akosha.yaml
               runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/OTEL_HEARTBEAT.md#scenario-3-otelheartbeatrosterempty"
-

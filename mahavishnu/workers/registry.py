@@ -169,7 +169,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         # being ready to read it and on its Enter semantics -- both of
         # which the tmux keystroke path got wrong.
         command=(
-            'sh -lc \'qwen -o stream-json --approval-mode {permission_mode} '
+            "sh -lc 'qwen -o stream-json --approval-mode {permission_mode} "
             '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
@@ -190,7 +190,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         # One-shot, like terminal-qwen: the prompt rides the command line
         # and the shell prints the completion marker when the CLI exits.
         command=(
-            'sh -lc \'claude --output-format stream-json '
+            "sh -lc 'claude --output-format stream-json "
             '--permission-mode {permission_mode} "$MAHAVISHNU_PROMPT" '
             '2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; '
             'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
@@ -211,7 +211,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         name="Codex CLI",
         worker_type="terminal-codex",
         command=(
-            'sh -lc \'codex exec --json --sandbox {permission_mode} '
+            "sh -lc 'codex exec --json --sandbox {permission_mode} "
             '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,

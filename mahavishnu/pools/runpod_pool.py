@@ -37,21 +37,31 @@ but unused at dispatch time.
 
 import asyncio
 import collections
+import importlib
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    import runpod
-else:
-    try:
-        import runpod
-    except ImportError:
-        runpod = None  # type: ignore[misc]
+# The ``runpod`` SDK 2.0 is an OPTIONAL dependency — deliberately NOT a
+# project dependency. The ``gpu`` dependency group was emptied on
+# 2026-10-24 because the SDK pins ``boto3`` versions that conflict with
+# oneiric's ``aiobotocore`` floor; operators who want the RunPod
+# provider install it themselves (``uv pip install "runpod>=2.0.0rc1"``).
+#
+# The module is therefore resolved dynamically: this file imports cleanly
+# with or without the SDK, and static analysis does not demand a package
+# that is intentionally absent from the dependency graph. ``runpod``
+# stays a module-level name so a stub can be injected (tests, operators)
+# without touching the import machinery.
+runpod: Any
+try:
+    runpod = importlib.import_module("runpod")
+except ImportError:
+    runpod = None
 
 
 class RunPodPool(BasePool):
@@ -101,7 +111,7 @@ class RunPodPool(BasePool):
             if runpod is None:
                 raise RuntimeError(
                     "RunPodPool requires the 'runpod' SDK 2.0+. "
-                    "Install with: uv add 'runpod>=2.0,<3'"
+                    "Install with: uv pip install 'runpod>=2.0.0rc1'"
                 )
             self._endpoint = runpod.Endpoint(self._endpoint_id)
             self._status = PoolStatus.RUNNING

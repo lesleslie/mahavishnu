@@ -142,9 +142,7 @@ class ObservabilityManager:
         # though traces were still wanted (akosha's receiver consumes them).
         # Both off is the only case that legitimately wants the fallback.
         obs = config.observability
-        if OTEL_AVAILABLE and (
-            obs.metrics_enabled or getattr(obs, "tracing_enabled", True)
-        ):
+        if OTEL_AVAILABLE and (obs.metrics_enabled or getattr(obs, "tracing_enabled", True)):
             self._init_otel_components()
         else:
             self._init_fallback_components()
@@ -232,9 +230,7 @@ class ObservabilityManager:
                     or self.config.observability.otlp_endpoint
                 )
                 metric_readers.append(
-                    PeriodicExportingMetricReader(
-                        OTLPMetricExporter(endpoint=metrics_endpoint)
-                    )
+                    PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=metrics_endpoint))
                 )
                 self.logger.info(
                     "OTLP metric export enabled",

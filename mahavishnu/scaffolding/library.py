@@ -121,5 +121,5 @@ def atomic_write(path: Path, content: str) -> None:
         os.replace(temp_name, path)
     except BaseException:
         with suppress(OSError):
-            os.unlink(temp_name)
+            Path(temp_name).unlink()
         raise

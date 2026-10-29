@@ -140,7 +140,9 @@ def _is_bifrost_endpoint(endpoint: str) -> bool:
     return _is_loopback(parsed.hostname) and parsed.port == DEFAULT_BIFROST_PORT
 
 
-def _probe_auth_headers(provider: str, env_var: str, endpoint: str) -> tuple[dict[str, str] | None, str]:
+def _probe_auth_headers(
+    provider: str, env_var: str, endpoint: str
+) -> tuple[dict[str, str] | None, str]:
     """Build the headers for a provider probe, or explain why we cannot.
 
     Returns ``(headers, "")`` on success and ``(None, reason)`` when the
@@ -200,9 +202,10 @@ def resolve_probe_endpoint(
     inspection).
 
     The ``settings`` parameter is preserved for API stability; the
-    oneiric router reads its own config from the environment. The
-    ``settings.bifrost`` check is honored as a precedence override —
-    if it's explicitly disabled, the probe stays direct.
+    oneiric router reads its own config from the environment. A
+    ``settings.bifrost`` section, when present, is honored as a
+    precedence override — if it is explicitly disabled, the probe
+    stays direct.
 
     The provider set is the four in ``PROVIDER_PROBES``: ``minimax``,
     ``anthropic``, ``openai``, ``qwen``. For non-minimax providers
@@ -213,10 +216,17 @@ def resolve_probe_endpoint(
     from oneiric.adapters.llm.bifrost import get_router
     from oneiric.adapters.llm.llm_interface import LLMProvider
 
+    # ``MahavishnuSettings`` no longer carries a ``bifrost`` section —
+    # the legacy ``BifrostConfig`` Pydantic shadow was deleted in Phase 7
+    # and the oneiric ``BifrostLLMSettings`` (behind ``get_router()``) is
+    # the single source of truth. Read the operator override defensively
+    # so a missing section — or one without an ``enabled`` flag — means
+    # "not explicitly disabled" and the probe keeps its normal routing.
+    bifrost_section = getattr(settings, "bifrost", None)
     settings_disables_bifrost = (
         settings is not None
-        and getattr(settings, "bifrost", None) is not None
-        and not settings.bifrost.enabled
+        and bifrost_section is not None
+        and not getattr(bifrost_section, "enabled", True)
     )
     if settings_disables_bifrost or provider != "minimax":
         return PROVIDER_PROBES[provider][1]

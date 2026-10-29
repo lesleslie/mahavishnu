@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from collections.abc import Iterator  # noqa: TC003
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -67,7 +66,8 @@ from ..core.errors import (
 from ..core.model_routing import gateway_openai_base_url
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
+    from contextlib import AbstractContextManager
 
     from agno.agent import Agent
     from agno.run.agent import RunOutput
@@ -87,7 +87,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _anthropic_base_url_ctx() -> Iterator[None]:
+def _anthropic_base_url_ctx() -> Generator[None]:
     """Module-level helper backing
     :meth:`LLMProviderFactory._anthropic_base_url_ctx`.
 
@@ -410,7 +410,7 @@ class LLMProviderFactory:
         # 3. SDK default.
         return None
 
-    def _anthropic_base_url_ctx(self) -> Iterator[None]:
+    def _anthropic_base_url_ctx(self) -> AbstractContextManager[None]:
         """Context manager that sets ``ANTHROPIC_BASE_URL`` from the
         oneiric router for the duration of the ``with`` block, then
         restores the prior value (or removes the env var if it was

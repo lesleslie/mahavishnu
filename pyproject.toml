@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.36.0"
+version = "0.37.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -132,7 +132,6 @@ dependencies = [
     # Pinned to ~=1.2 to satisfy oneiric>=0.19.0's watchfiles>=1.2.0
     # constraint while still gating major-version drift.
     "watchfiles>=1.3.0",
-    "prefect-github",
 ]
 
 [project.scripts]
@@ -169,7 +168,6 @@ dev = [
     "pyright>=1.1.414",
     "pylint>=4.1.2",
     "bandit>=1.9.4",
-    "safety>=3.7.0",
     "creosote>=5.2.0",
     "detect-secrets>=1.5.0",
     "refurb>=2.3.1",
@@ -654,12 +652,6 @@ max-complexity = 15
 # vector does not apply to our deployment surface. Re-evaluate on every
 # crackerjack run that surfaces a new advisory.
 ignore-vuln = [
-    # nltk 3.10.3 — OSV records ``fixed: 3.10.3`` as the patch
-    # version; we ARE on the patched release. pip-audit flags it
-    # because the OSV ``versions`` array includes the patched version
-    # alongside the vulnerable ones. Resolved: 2026-09-04 against
-    # api.osv.dev/v1/vulns/PYSEC-2026-3740.
-    "PYSEC-2026-3740",
     # diskcache 5.6.3 — pickle-deserialization RCE; no patch released
     # yet (latest PyPI version is 5.6.3, which is the vulnerable
     # release per OSV ``last_affected: 5.6.3``). Transitive via
@@ -692,7 +684,6 @@ exclude_deps = [
     "pyright",
     "refurb",
     "ruff",
-    "safety",
     "tree-sitter-go",
     "tree-sitter-python",
     "zensical",
@@ -816,7 +807,6 @@ unused-ignore-comment = "ignore"
 # Mitigation: run the prefect-adapter tests + a PrefectClient smoke test
 # after the override; revert if anything breaks.
 # TODO: remove once crackerjack loosens its pin OR prefect lifts its cap.
-# ---------------------------------------------------------------------------
 [tool.uv]
 override-dependencies = [
     "websockets>=17.1,<18.0",

@@ -23,11 +23,11 @@ Current status (verified live, 2026-10-20):
 Before any cutover, run these checks in order. Any failure = pause and investigate.
 
 1. `lsof -tiTCP:8471 -sTCP:LISTEN` — non-empty means a listener is bound.
-2. `curl -fsS http://127.0.0.1:8471/health` — must return
+1. `curl -fsS http://127.0.0.1:8471/health` — must return
    `{"components":{"db_pings":"ok"},"status":"ok"}` (or equivalent).
-3. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
+1. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
    by `mahavishnu bifrost foreground` only after the listener probe succeeds.
-4. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
+1. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
 
 ## Files
 

@@ -31,11 +31,8 @@ wider mode than requested, even momentarily.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import tempfile
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 __all__ = ["atomic_write_bytes", "atomic_write_text"]
 
@@ -67,7 +64,7 @@ def atomic_write_bytes(path: Path, data: bytes, *, mode: int = 0o600) -> None:
         os.replace(temp_name, path)
     except BaseException:
         try:
-            os.unlink(temp_name)
+            Path(temp_name).unlink()
         except OSError:
             pass
         raise

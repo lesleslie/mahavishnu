@@ -169,8 +169,7 @@ def sync_config(drop_db: bool = False) -> None:
     shutil.copy(SOURCE_CONFIG, TARGET_CONFIG)
 
     db_files = [
-        BIFROST_CONFIG_DIR / name
-        for name in ("config.db", "config.db-shm", "config.db-wal")
+        BIFROST_CONFIG_DIR / name for name in ("config.db", "config.db-shm", "config.db-wal")
     ]
     present = [path for path in db_files if path.exists()]
     if not present:

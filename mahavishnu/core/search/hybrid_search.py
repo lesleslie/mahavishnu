@@ -50,8 +50,6 @@ from mahavishnu.core.database import Database, get_database
 from mahavishnu.core.embeddings import EmbeddingProvider, EmbeddingService
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from asyncpg import Pool
 
 logger = logging.getLogger(__name__)

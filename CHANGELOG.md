@@ -5,6 +5,244 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-10-28
+
+### Added
+
+- Add Shepherd workspace precondition to MahavishnuPool demos
+- alerting: Rules for the heartbeat watcher's three P0 conditions
+- bifrost: Port the launchd lifecycle into the Typer sub-app
+- bifrost: Retire the standalone scripts, complete CLI consolidation
+- Consolidate Bifrost tooling into a wired Typer sub-app
+- cutover: Bifrost ↔ Claude Code & Qwen CLI URL toggle surface
+- demo,docs: 2 PiPool workflow demos + workflow cookbook
+- Expand /jot slash command to 10 subcommands
+- mahavishnu/cli: Wire hatchet demo (stub → live)
+- mahavishnu/cli: Wire pydantic_ai demo (stub → live) + fix RunUsage extraction
+- mahavishnu: Agno + CloudWorker + probe + terminal — oneiric Bifrost router (plan 6, phases 2 + 3)
+- mahavishnu: Delete BifrostConfig class + llm_gateway package (plan 6, phase 7)
+- mahavishnu: Phase 8 — bifrost plan end-to-end verification (audit + routing doc + plan index)
+- mahavishnu: PiPool demo operator setup — extend env_allowlist + precondition check
+- mahavishnu: PiPool per-task CLI surface (rewrite for @earendil-works/pi-coding-agent v1.3.0)
+- mahavishnu: RunPodPublicEndpointPool — REST substrate for Public Endpoints
+- pools: Migrate RunPodPool from runpod-flash to runpod SDK 2.0
+- Publish root-relative paths in BODAI_REPO_REGISTRY.md
+- scripts: Resolve fleet repos against a projects root
+- scripts: Verify_plan_blocks — extract-and-execute gate for plan code
+- Wire 3 cross-substrate workflow demos into mahavishnu demo CLI
+- Wire 4 pool demos into mahavishnu demo CLI
+- Wire workers execute to real dispatch; serialise staged commands
+- workers: Gate dispatch to host-privileged agent types
+- workers: Make ShellWorker.execute actually execute
+- workers: Pass the prompt as data; make the permission mode configurable
+
+### Changed
+
+- core: Delete tombstone fields from IntegrationConfig
+- observability: Default OTLP metric export off
+- scripts: Ruff format normalization in audit_bifrost_callers.py
+- Session-start working tree captured
+- terminal: Remove goose adapter (Block never shipped matching server)
+
+### Fixed
+
+- audit: Drop dead-plan declarations + stale # req: markers
+- Authenticate capability probes against Bifrost correctly
+- bifrost-gateway: Bump READY_TIMEOUT_SECONDS to 180s
+- bifrost: Attribute verify-gate evidence to the Qwen route's endpoint
+- bifrost: Correct the gate's dispatch command and precondition check
+- bifrost: Make the config-store backup private and consistent
+- bifrost: Make the URL-rewrite gate honor shell-local assignments
+- bifrost: Match Qwen endpoints exactly, not by substring
+- bifrost: One helper for the gateway's OpenAI-compatible root
+- bifrost: Provision provider keys from secrets.env, not by accident
+- bifrost: Read verify-gate evidence from the log store, not stdout
+- bifrost: Source the dashboard setup token from secrets.env
+- bifrost: Stop rebootstrap and the test suite destroying config.db
+- cli,workers: Refresh spawn allowlist + enrich validate_required_tool error
+- cli: Wire `mahavishnu status` and `mahavishnu pool reap` subcommands
+- config: Let MAHAVISHNU_* env vars beat the YAML in the app loader
+- crow: Switch adapter to one-shot terminal tool + wire live demo
+- demo: Dispatch a command, not a prompt, to MahavishnuPool
+- demo: Harden Shepherd workspace precondition against path-traversal gate-parity
+- deps: Uv 0.13.3 -> 0.13.5 (PYSEC-2026-4321)
+- Drop a stranded virtual key when the URL is not Bifrost-managed
+- events: Write the activity path through a uniquely named temp file
+- examples: Repair demo sweep for vish cli + Bifrost routing
+- Keep the YAML registry in step with the code registry
+- llamaindex: Make the OpenSearch index creatable and writable
+- llamaindex: Size embedding batches to the server's real limits
+- logging: Restore the process log level after third-party downgrades
+- mahavishnu: Pydantic forward-ref init + demo_cli pool race
+- mcp: Use oneiric's logger in the server lifecycle
+- monitoring: The scrape targets and the inventory described a fleet that
+- observability: A top-level metrics toggle, and working mock fallbacks
+- observability: Actually start the change-point tick loop
+- observability: Decouple metric export from trace export
+- observability: Make the change-point detector's liveness observable
+- observability: Send OTLP metrics to a receiver that implements MetricsService
+- observability: Stamp service.namespace on mahavishnu's Resource
+- plans: Bind span columns with row[col], complete the insert fixture
+- plans: Canary emits a real OTLP request; bridge tests use public API
+- plans: Declare all 15 receiver metrics; repair the sweep advisory lock
+- plans: Embedding_dim in fixtures, span-counted metric, per-task gate
+- plans: Heartbeat `worst` verdict, validator sustained rate, get_config
+- plans: OTLP fixture, ON CONFLICT arbiter, co-author trailers
+- plans: Rewrite OTel v7 akosha tasks against verified source
+- plans: Runtime defects found by execution — proto, insert binding, ports
+- plans: Sanitize span attributes via oneiric's data.sanitize kit
+- plans: Specify _iter_spans/_dlq_insert, build the heartbeat loop, Event.wait
+- plans: Task 11 path arithmetic points one level too deep
+- plans: Task 6 CLI, dangling symbols, cross-references, false claims
+- pools: Use req.output() as terminal oracle in RunPodPool
+- prefect-demo,deps: Use GitRepository storage + trace CWD mismatch
+- Route Qwen through Bifrost by provider, and discriminate by agent
+- ruff: Phase 0 baseline + Phase 1 BLE001 for post-regrowth cleanup
+- scaffolding: Write patterns through a uniquely named temp file
+- scripts: Point the MCP helpers at the renamed session-buddy
+- security: Close fail-open verification gate in both smoke scripts
+- serverless-phase1: Phase 1 REQ-CLEAN-001..007 (wire-up gap closure)
+- Ship nested-extra Oneiric fields through to MahavishnuSettings
+- spec: Re-baseline OTel DDL on DuckDB 2.0.0-dev, not 1.5.6
+- specs+regenerator: Wire event-sourced-otel spec + fix shebang
+- specs: Read-path review findings; DuckDB version split reaches v7
+- terminal: Shape B (shell-chain with word-boundary) for validate_command_safety
+- tests: Complete phantom-import migration from db06fc87
+- tests: Delete dead AdapterDiscovery* test classes
+- The health aggregator's metrics must reach the live /metrics
+- workers: A private stderr file per worker invocation
+- workers: Apply the gateway's /v1 suffix idempotently
+- workers: Derive the host-agent gate from the registry, not a hand list
+- workers: Drop the unrestricted permission modes from the allowlists
+- workers: Give the worker manager its settings
+- workers: Keep the CLI's stderr out of the pane
+- workers: Make the agent prompt actually reach the model
+- workers: Make the shell-command task registerable with Shepherd
+- workers: Map Shepherd's real run-status vocabulary onto WorkerResult
+- workers: The sentinel must mean the model replied, not that we echoed
+
+### Documentation
+
+- Add ADR 019 — Dhara decommissioning from Bodai core fleet
+- architecture: Correct eight tool counts in the registration-group table
+- architecture: Correct the adapter CLI claim
+- Archive 10 completed plans + decision file establishing archive policy (2026-10-18)
+- Correct profile counts and enumerations in MEMORY_ARCHITECTURE
+- decision: Record R-6 as implemented, with its two behaviour changes
+- decision: Record six spec corrections found building PR-A3
+- decision: Resolve read-path Q1 — declared ∪ observed pair inventory
+- decisions: Prefect 3.x process-pool worker can't import in-memory flow
+- deps: Record why the oneiric floor cannot move to 0.33.2
+- Drop stale adapter-registry references from MEMORY_ARCHITECTURE
+- Flip 4 partial plans to complete (2026-10-17 audit)
+- followups: Close terminal-fixes-batch Section 3 (status -> complete)
+- followups: Flip spawn-cli-stale-worker-allowlist to complete (orphan merged via 7b66eb1b)
+- followups: Mark validator-move consumer followup complete (2026-10-18)
+- followups: Reclassify ai-dep-group-transitive-bloat to shipped
+- followups: Reclassify convergence-control-plane-v1-sop-deferrals to shipped
+- Mark 4 Tier 2 followups as deferred per trigger-spec; fix runpod migration frontmatter
+- otel: An operator runbook for the heartbeat watcher's three alerts
+- otel: Pin PR-A4's canary to what actually ships
+- otel: Point the runbooks at what actually exists
+- otel: Reconcile the v7 plan and spec on PR-A8's rollback mechanism
+- otel: The sweep trigger is an MCP tool, and here is why it cannot be a CLI
+- otel: What "reporting" means, and who actually reports it
+- plan: The heartbeat roster has no producers behind it
+- plan: The OTLP MetricsService belongs in the substrate, not in Alloy
+- plan: The substrate has two metric exporters, not one
+- plans: 3rd rewrite of bifrost-oneiric-gateway-adapter after final review
+- plans: Activate eval-adapter Phase 1 (model evaluation foundation)
+- plans: Activate mcp-common test backfill plan (Phase 1b)
+- plans: Activate native macOS automation backend refactor
+- plans: Add 2026-10-17-bifrost-oneiric-gateway-adapter (draft)
+- plans: Add Phase 0/Phase 1 status update to ruff-cleanup-post-regrowth
+- plans: Add Phase 1 status update to serverless-readiness-and-substitution
+- plans: Add tier 1.5 — Bodai core fastmcp 4.x pin floors (akosha, session-buddy, crackerjack)
+- plans: Archive 3 stale drafts per triage walkthrough
+- plans: Archive drop-ollama-favor-llama-server (plan 5) — all B-list deliverables landed across 6 repos
+- plans: Archive mcp-server-fleet (23 fastmcp pin migrations landed); reclassify oneiric-substrate (3 Bodai stragglers migrated, rest still open) (2026-10-18)
+- plans: Archive oneiric-substrate umbrella — all deliverables landed (3 CLI hooks + SessionBuddySettings migration) (2026-10-18)
+- plans: Archive session-buddy wrapper-cleanup (plan 4) and autocheckpoint-loop-move (plan 4b) — all deliverables landed
+- plans: Archive stale shared-foundation-adoption-matrix (5-month draft; absorbed by 2026-10-15 umbrellas)
+- plans: Cross-plan compatibility fixes + frontmatter conformance
+- plans: Date-prefix native-macos-automation plan filename; sync PLAN_INDEX + orphan-sweep (2026-10-18)
+- plans: Delete trace_ingester_poller instead of flipping it (Task 13)
+- plans: Exclude worktree-snapshots from PLAN_INDEX discovery
+- plans: Extend Task 5 with Phase 3 per-sibling fork-deletion sub-steps
+- plans: Flip CommonMCPClient transport unification to complete (Phase 3 verified)
+- plans: Mark bifrost plan complete (Phase 8 status flip)
+- plans: Master plan index + centralized regenerator implementation plan
+- plans: OTel substrate read-path implementation plan (draft)
+- plans: OTel substrate v7 implementation plan — 14 tasks, PR-0a → PR-A8
+- plans: Promote 2026-10-17-bifrost-oneiric-gateway-adapter from draft to active
+- plans: Regen PLAN_INDEX.md after pruning pass
+- plans: Regenerate PLAN_INDEX (partial count 3 -> 0; added 1 superseded)
+- plans: Regenerate PLAN_INDEX (partial count 5 -> 3)
+- plans: Regenerate PLAN_INDEX (terminal-fixes-batch -> complete)
+- plans: Regenerate PLAN_INDEX (validator-move followup -> complete)
+- plans: Revision — Task 0 pin floors + crackjack fixes + T5-T12 carve-out
+- plans: Rewrite 2026-10-17-bifrost-oneiric-gateway-adapter after 5-agent review
+- plans: Supersede serverless-readiness-and-component-substitution
+- plans: V3 drift pass — M2.7-highspeed → M3 swap + 15d line-number refresh (2026-10-18)
+- Pruning pass on two partial specs — add superseded_by chains
+- Ratify ADR 018 — Option C (hybrid gateway) adopted
+- Reclassify 3 stale plans — serverless-readiness (vocab fix to complete, superseded), native-macos (stale-active → shipped), phase-6 observability (stale-draft with met precondition → complete) (2026-10-18)
+- registry: Publish the migration tracker's paths relative to the projects root
+- runbook: The plist comment trap is fixed, not just documented
+- settings: Update local.yaml.example to crow port 8693
+- spec: Amend v7 for the six corrections PR-A3 found
+- spec: Correct v7 13.1 to name Grafana Alloy as the OTLP port owner
+- spec: Fix six factual errors in the 13.1 Alloy correction
+- specs: Add frontmatter to bodai OTel substrate v3
+- specs: Bifrost ↔ Claude Code ANTHROPIC_BASE_URL cutover
+- specs: Bodai OTel substrate v3
+- specs: Bodai OTel substrate v4 (closes 7 P0 + 3 P1 from v3 review)
+- specs: Bodai OTel substrate v5 (closes 4 P0 + 4 P1 from v4 review)
+- specs: Bodai OTel substrate v6 (closes 7 P0 from v5 review)
+- specs: Bodai OTel substrate v7 (closes 3 P1 + 4 P2 + 1 P3 from v6 akosha review)
+- specs: Flip dhara-mcp-decomposition-design to complete (ADR 019 retired strategic goal)
+- specs: Flip shared-bodai-substrate-design to complete (active plans own remainder)
+- specs: Flip two stale partial statuses to complete
+- specs: Master plan index + centralized regenerator (round 2)
+- specs: Master plan index + centralized regenerator design
+- specs: OTel substrate read path — query surface, MCP tools, rewiring
+- specs: Record observability-incident-lead review on v3 (2 P0, 3 P1, 1 P2)
+- Supersede bifrost-gateway-wiring by oneiric adapter plan; refresh 2 umbrellas per child status updates (2026-10-18)
+- terminal: Mark Shape B trade-off with REVIEW: blocks for security gate
+- The observability block is usable again
+- Triage 4 stale-active plans — 3 superseded by 2026-10-15 umbrellas, 1 partial
+
+### Testing
+
+- Align fixtures with real production shapes after Oneiric migration
+- Align test_main_cli with the post-migration CLI surface
+- config: Drop stale health/auth assertions; document upstream limit
+- config: Fix Bifrost env-var + mount tests; drop tautology
+- config_sections: Track 2026-09-27 audit deletions + enum-keyed dict
+- mcp-common: Restore the evicted modules after the source-tree re-import
+- mcp: Pin profile registrations and guard the adapter-registry removal
+- observability: The metric-export default is off, so say so
+- Pin IntegrationConfig tombstone-flag cleanup state
+- Track AgnoToolsConfig mcp_transport default flip
+
+### Build
+
+- deps: Pin oneiric>=0.33.2 and drop the gpu group
+- deps: Raise the mcp-common floor to 0.33.0
+- deps: Raise the mcp-common floor to 0.33.1 for the ownership API
+
+### Internal
+
+- Add reference plan + canonical CC URL cutover smoke
+- Auto-format follow-up from session-close hooks
+- Commit 3 pre-existing dirty files (formatter + new /jot vitals)
+- deps: Bump crackerjack pin to >=0.89.2
+- ollama: Mahavishnu slice — B-list + doc sweep + follow-ups (plan 5)
+- ollama: PR #0 — config comments + dict literal + docs
+- perms: Allow Read on top-level and docs/archive paths
+- settings: Remove write_mode: dual from persistence block
+- substrate: Flip HotStore import to oneiric.adapters.vector.hot_store
+
 ## [0.36.0] - 2026-10-16
 
 ### Added

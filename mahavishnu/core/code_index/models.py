@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class CodeGraphNode(BaseModel):

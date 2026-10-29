@@ -43,7 +43,7 @@ This spec defines the design for the stage-1 delivery.
 
 - Replace `run_fitness_analysis` with FSMs. Coexist with explicit partitioning rules (§4.7).
 - Touch `bifrost-mcp` (out of scope per user direction).
-- Close a feedback loop inside the OTel collector ([Hynek 2024](https://hynek.me/articles/otel-collector-loop/), [OTel routing connector docs](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/connector/routingconnector/README.md)). The collector is never on the read path (§5.2).
+- Close a feedback loop inside the OTel collector ([OTel Collector architecture](https://opentelemetry.io/docs/collector/architecture/), [OTel routing connector docs](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/connector/routingconnector/README.md)). The collector is never on the read path (§5.2).
 - Ship non-selector FSMs in stage 1 (model-effectiveness, drift, cost, quality-judge). Stage 2 (§9).
 - Adopt a SaaS backend in stage 1. Tempo + Grafana-stack mirrors as stage-2 only.
 - Build a SaaS-only intelligence alternative. Akosha HotStore is the canonical event log for projections.
@@ -563,7 +563,7 @@ The following are stage-2 candidates, not in this spec's scope. Each is a small 
 - GenAI conventions repo: <https://github.com/open-telemetry/semantic-conventions-genai>
 - GenAI conventions blog (May 2026): <https://opentelemetry.io/blog/2026/genai-observability/>
 - OTel Collector routing-connector README: <https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/connector/routingconnector/README.md>
-- OTel Collector feedback-loop anti-pattern (Hynek): <https://hynek.me/articles/otel-collector-loop/>
+- OTel Collector architecture (the collector is a telemetry data plane, not a feedback loop): <https://opentelemetry.io/docs/collector/architecture/>
 - Circuit breaker reference (Resilience4j): <https://resilience4j.readme.io/docs/circuitbreaker>
 - Circuit breaker reference (Microsoft Azure pattern catalog): <https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker>
 - OpenTelemetry Python SDK docs (target-pinned, fetched fresh at PR write time)

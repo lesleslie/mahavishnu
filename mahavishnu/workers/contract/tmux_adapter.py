@@ -81,6 +81,87 @@ def _run(socket: str, *args: str, check: bool = True) -> subprocess.CompletedPro
     return proc
 
 
+def _prepare_socket_path(socket: str) -> Path:
+    """Create the socket's parent directory and lock it down to 0700."""
+    socket_path = Path(socket)
+    socket_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(socket_path.parent, 0o700)
+    except PermissionError as e:
+        raise TmuxAdapterError(
+            f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
+        ) from e
+    return socket_path
+
+
+def _build_env_args(env: Mapping[str, str] | None) -> list[str]:
+    """Build the ``-e KEY=VAL`` argv pairs for ``tmux new-session``.
+
+    The env is applied to the SESSION at creation, so the command that
+    ``new-session`` starts immediately inherits it. Injecting it afterwards
+    with ``set-environment`` is too late: the command has already started
+    and captured its environment, so the variables never arrive.
+
+    Keys are checked against the project's safe-name policy (alphanumeric
+    + underscore). Values are passed verbatim: tmux reads them from argv,
+    so no shell quoting applies (shlex.quote would bake the quotes into
+    the value).
+    """
+    env_args: list[str] = []
+    if not env:
+        return env_args
+    for key, value in env.items():
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+            raise TmuxAdapterError(f"refusing to inject unsafe env-var name: {key!r}")
+        env_args.extend(["-e", f"{key}={value}"])
+    return env_args
+
+
+def _parse_new_session_output(stdout: str) -> tuple[str, str, str]:
+    """Parse the ``#{session_name}:#{window_id}:#{pane_id}`` format line."""
+    stripped = stdout.strip()
+    line = stripped.splitlines()[-1] if stripped else ""
+    parts = line.split(":")
+    if len(parts) != 3:
+        raise TmuxAdapterError(f"unexpected tmux new-session -P output: {stdout!r}")
+    session_name, window_id, pane_id = parts
+    _validate_session_name(session_name)
+    return session_name, window_id, pane_id
+
+
+def _harden_socket_file(socket: str, socket_path: Path) -> None:
+    """Restrict the created socket file to 0600 (owner read/write only)."""
+    if not socket_path.exists():
+        return
+    try:
+        os.chmod(socket, 0o600)
+    except PermissionError as e:
+        raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
+
+
+def _apply_session_environment(
+    socket: str,
+    session_name: str,
+    env: Mapping[str, str] | None,
+) -> None:
+    """Set the session env so panes spawned LATER inherit the variables.
+
+    The value is passed verbatim: tmux reads it from argv, so quoting
+    would bake the quotes into it.
+    """
+    if not env:
+        return
+    for key, value in env.items():
+        _run(
+            socket,
+            "set-environment",
+            "-t",
+            session_name,
+            key,
+            str(value),
+        )
+
+
 def create_session(
     *,
     socket: str,
@@ -114,30 +195,8 @@ def create_session(
     _validate_socket_path(socket)
     _validate_session_name(session)
     _validate_session_name(window_name)
-    socket_path = Path(socket)
-    socket_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        os.chmod(socket_path.parent, 0o700)
-    except PermissionError as e:
-        raise TmuxAdapterError(
-            f"cannot chmod socket parent {socket_path.parent!s} to 0700: {e}"
-        ) from e
-
-    # The env is applied to the SESSION at creation, so the command that
-    # ``new-session`` starts immediately inherits it. Injecting it
-    # afterwards with ``set-environment`` is too late: the command has
-    # already started and captured its environment, so the variables
-    # never arrive. ``set-environment`` is still used below so that panes
-    # spawned LATER from this session also inherit them.
-    env_args: list[str] = []
-    if env:
-        for key, value in env.items():
-            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
-                raise TmuxAdapterError(f"refusing to inject unsafe env-var name: {key!r}")
-            # tmux takes the value verbatim from argv -- no shell is
-            # involved, so no quoting (shlex.quote would bake the quotes
-            # into the value).
-            env_args.extend(["-e", f"{key}={value}"])
+    socket_path = _prepare_socket_path(socket)
+    env_args = _build_env_args(env)
 
     proc = subprocess.run(
         [
@@ -165,32 +224,9 @@ def create_session(
         raise TmuxAdapterError(
             f"tmux new-session failed: rc={proc.returncode} stderr={_safe_stderr(proc.stderr)}"
         )
-    stdout = proc.stdout.strip()
-    line = stdout.splitlines()[-1] if stdout else ""
-    parts = line.split(":")
-    if len(parts) != 3:
-        raise TmuxAdapterError(f"unexpected tmux new-session -P output: {proc.stdout!r}")
-    session_name, window_id, pane_id = parts
-    _validate_session_name(session_name)
-    if socket_path.exists():
-        try:
-            os.chmod(socket, 0o600)
-        except PermissionError as e:
-            raise TmuxAdapterError(f"cannot chmod socket {socket} to 0600: {e}") from e
-
-    # Also set the session environment, so panes spawned LATER from this
-    # session inherit the same variables. The value is passed verbatim:
-    # tmux reads it from argv, so quoting would bake the quotes into it.
-    if env:
-        for key, value in env.items():
-            _run(
-                socket,
-                "set-environment",
-                "-t",
-                session_name,
-                key,
-                str(value),
-            )
+    session_name, window_id, pane_id = _parse_new_session_output(proc.stdout)
+    _harden_socket_file(socket, socket_path)
+    _apply_session_environment(socket, session_name, env)
 
     return TmuxSessionInfo(
         socket=socket,

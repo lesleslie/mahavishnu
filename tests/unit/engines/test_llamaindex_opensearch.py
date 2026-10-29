@@ -16,7 +16,6 @@ adapter's own code:
 
 from __future__ import annotations
 
-import json
 from typing import Any, Self
 from unittest.mock import patch
 
@@ -86,20 +85,14 @@ def test_the_dimension_comes_from_the_model_not_a_constant(
     adapter._llm_model = "some-model"
 
     responses = {
-        "http://localhost:9200/mahavishnu_code/_mapping": urllib_error(404),
+        "http://localhost:9200/mahavishnu_code/_mapping": http_status_error(
+            404, "http://localhost:9200/mahavishnu_code/_mapping"
+        ),
         "http://localhost:8081/v1/embeddings": embedding_response(4096),
     }
 
-    def _open(url: Any, *args: Any, **kwargs: Any) -> Any:
-        for key, value in responses.items():
-            if url == key or getattr(url, "full_url", None) == key:
-                return value
-        raise AssertionError(f"unexpected url {url!r}")
-
-    with patch.object(impl.urllib.request, "urlopen", _open):
-        assert adapter._resolve_embedding_dim(
-            "http://localhost:9200", "mahavishnu_code"
-        ) == 4096
+    with patch.object(impl.httpx, "Client", _fake_client(responses)):
+        assert adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code") == 4096
 
 
 def test_the_existing_index_mapping_wins(captured_client: dict[str, Any]) -> None:
@@ -112,15 +105,12 @@ def test_the_existing_index_mapping_wins(captured_client: dict[str, Any]) -> Non
     adapter._embeddings_base_url = "http://localhost:8081/v1"
     adapter._llm_model = "some-model"
 
-    def _open(url: Any, *args: Any, **kwargs: Any) -> Any:
-        if getattr(url, "full_url", None) == "http://localhost:9200/mahavishnu_code/_mapping":
-            return mapping_response(768)
-        raise AssertionError(f"the model must not be asked: {url!r}")
+    responses = {
+        "http://localhost:9200/mahavishnu_code/_mapping": mapping_response(768),
+    }
 
-    with patch.object(impl.urllib.request, "urlopen", _open):
-        assert adapter._resolve_embedding_dim(
-            "http://localhost:9200", "mahavishnu_code"
-        ) == 768
+    with patch.object(impl.httpx, "Client", _fake_client(responses)):
+        assert adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code") == 768
 
 
 # ---------------------------------------------------------------------------
@@ -128,22 +118,49 @@ def test_the_existing_index_mapping_wins(captured_client: dict[str, Any]) -> Non
 # ---------------------------------------------------------------------------
 
 
-class _Response:
-    def __init__(self, payload: Any) -> None:
+class _FakeResponse:
+    """The slice of ``httpx.Response`` the adapter's HTTP helper uses."""
+
+    def __init__(self, payload: Any = None, error: Exception | None = None) -> None:
         self._payload = payload
+        self._error = error
 
-    def read(self) -> bytes:
-        return json.dumps(self._payload).encode()
+    def raise_for_status(self) -> None:
+        if self._error is not None:
+            raise self._error
 
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        return None
+    def json(self) -> Any:
+        return self._payload
 
 
-def mapping_response(dimension: int) -> _Response:
-    return _Response(
+def _fake_client(responses: dict[str, Any]) -> Any:
+    """A stand-in for ``httpx.Client`` that answers from ``responses``.
+
+    The adapter fetches through ``httpx.Client.request``, so the URL it
+    asked for is the URL the test asserts on -- an unexpected one is a
+    test failure rather than a silent pass.
+    """
+
+    class _Client:
+        def __init__(self, **kwargs: Any) -> None:
+            self._kwargs = kwargs
+
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def request(self, method: str, url: str, **kwargs: Any) -> Any:
+            if url not in responses:
+                raise AssertionError(f"unexpected url {url!r}")
+            return responses[url]
+
+    return _Client
+
+
+def mapping_response(dimension: int) -> _FakeResponse:
+    return _FakeResponse(
         {
             "mahavishnu_code": {
                 "mappings": {
@@ -156,9 +173,14 @@ def mapping_response(dimension: int) -> _Response:
     )
 
 
-def embedding_response(dimension: int) -> _Response:
-    return _Response({"data": [{"embedding": [0.0] * dimension}]})
+def embedding_response(dimension: int) -> _FakeResponse:
+    return _FakeResponse({"data": [{"embedding": [0.0] * dimension}]})
 
 
-def urllib_error(status: int) -> Exception:
-    return OSError(f"HTTP Error {status}: Not Found")
+def http_status_error(status: int, url: str) -> _FakeResponse:
+    """A response whose ``raise_for_status`` fails -- an index that is absent."""
+    request = impl.httpx.Request("GET", url)
+    response = impl.httpx.Response(status, request=request)
+    return _FakeResponse(
+        error=impl.httpx.HTTPStatusError(f"HTTP Error {status}", request=request, response=response)
+    )

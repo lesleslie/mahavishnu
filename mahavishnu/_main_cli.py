@@ -1666,8 +1666,7 @@ async def _dispatch_dag_nodes(
     nodes = [n for n in dag.nodes if n.capability_id == TERMINAL_EXECUTION_CAPABILITY]
     if not nodes:
         typer.echo(
-            f"WARNING: DAG has no {TERMINAL_EXECUTION_CAPABILITY} node; "
-            "nothing was dispatched.",
+            f"WARNING: DAG has no {TERMINAL_EXECUTION_CAPABILITY} node; nothing was dispatched.",
             err=True,
         )
         raise typer.Exit(code=1)

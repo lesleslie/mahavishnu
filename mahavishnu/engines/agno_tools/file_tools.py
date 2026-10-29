@@ -512,18 +512,11 @@ def _is_match_allowed(match_path: Path) -> bool:
     return False
 
 
-def _search_files_impl(pattern: str, directory: str) -> list[str]:
-    """Search for files matching a pattern - implementation.
-
-    Args:
-        pattern: Glob pattern to match (e.g., '*.py', 'test_*.txt')
-        directory: Directory to search in
-
-    Returns:
-        List of matching file paths (relative to directory)
+def _require_search_directory(directory: str) -> Path:
+    """Validate that ``directory`` exists and is a directory.
 
     Raises:
-        AgnoError: If search fails
+        AgnoError: If the path is missing or is not a directory.
     """
     validated_path = _validate_path(directory)
 
@@ -541,6 +534,77 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
             details={"directory": directory},
         )
 
+    return validated_path
+
+
+def _prune_walk_dirnames(dirnames: list[str], dirpath: str, root_depth: int) -> None:
+    """Prune blocked subdirectories in-place and cap traversal depth.
+
+    ``os.walk`` honours in-place mutation of the ``dirnames`` list it
+    yields, so clearing it stops descent into that subtree. The blocked
+    filter and the depth cap are mutually exclusive: a subtree that is
+    already past ``MAX_SEARCH_DEPTH`` is dropped wholesale rather than
+    filtered.
+    """
+    depth = len(Path(dirpath).parts) - root_depth
+    if depth + 1 > MAX_SEARCH_DEPTH:
+        dirnames.clear()
+    else:
+        dirnames[:] = [d for d in dirnames if d not in BLOCKED_PATHS]
+
+
+def _collect_dir_matches(
+    dirpath: str,
+    filenames: list[str],
+    root: Path,
+    pattern: str,
+    limit: int,
+) -> list[str]:
+    """Return up to ``limit`` repo-relative matches from one directory.
+
+    The repo-relative path is matched with pathlib glob semantics so
+    path-qualified patterns ("src/*.py", "*/main.py") behave as they did
+    under rglob. fnmatch() against the bare filename would silently return
+    nothing for those.
+    """
+    found: list[str] = []
+    for filename in filenames:
+        # Skip blocked names at the leaf as well (e.g. `.env` files).
+        if filename in BLOCKED_PATHS:
+            continue
+
+        match_path = Path(dirpath) / filename
+        if not match_path.is_file():
+            continue
+        if not _is_match_allowed(match_path):
+            continue
+
+        rel_path = match_path.relative_to(root)
+        if not rel_path.match(pattern):
+            continue
+
+        found.append(str(rel_path))
+
+        if len(found) >= limit:
+            break
+    return found
+
+
+def _search_files_impl(pattern: str, directory: str) -> list[str]:
+    """Search for files matching a pattern - implementation.
+
+    Args:
+        pattern: Glob pattern to match (e.g., '*.py', 'test_*.txt')
+        directory: Directory to search in
+
+    Returns:
+        List of matching file paths (relative to directory)
+
+    Raises:
+        AgnoError: If search fails
+    """
+    validated_path = _require_search_directory(directory)
+
     # Search recursively via os.walk so BLOCKED_PATHS can prune subdirectories
     # at descent time. Path.rglob() descends before yielding, which made the
     # BLOCKED_PATHS result filter a no-op for traversal cost — a typical repo
@@ -551,44 +615,25 @@ def _search_files_impl(pattern: str, directory: str) -> list[str]:
     root_depth = len(validated_path.parts)
 
     for dirpath, dirnames, filenames in os.walk(validated_path):
-        # Prune blocked subdirectories in-place (see os.walk docs) and cap
-        # traversal depth at the same time.
-        depth = len(Path(dirpath).parts) - root_depth
-        if depth + 1 > MAX_SEARCH_DEPTH:
-            dirnames[:] = []
-        else:
-            dirnames[:] = [d for d in dirnames if d not in BLOCKED_PATHS]
+        _prune_walk_dirnames(dirnames, dirpath, root_depth)
 
-        for filename in filenames:
-            # Skip blocked names at the leaf as well (e.g. `.env` files).
-            if filename in BLOCKED_PATHS:
-                continue
+        matches.extend(
+            _collect_dir_matches(
+                dirpath,
+                filenames,
+                validated_path,
+                pattern,
+                MAX_SEARCH_RESULTS - len(matches),
+            )
+        )
 
-            match_path = Path(dirpath) / filename
-            if not match_path.is_file():
-                continue
-            if not _is_match_allowed(match_path):
-                continue
-
-            rel_path = match_path.relative_to(validated_path)
-            # Match the repo-relative path with pathlib glob semantics so
-            # path-qualified patterns ("src/*.py", "*/main.py") behave as
-            # they did under rglob. fnmatch() against the bare filename
-            # would silently return nothing for those.
-            if not rel_path.match(pattern):
-                continue
-
-            matches.append(str(rel_path))
-
-            if len(matches) >= MAX_SEARCH_RESULTS:
-                logger.warning(
-                    f"search_files hit MAX_SEARCH_RESULTS={MAX_SEARCH_RESULTS}; truncating",
-                    extra={"directory": str(validated_path), "pattern": pattern},
-                )
-                # Stop descending so os.walk exits quickly.
-                dirnames[:] = []
-                break
         if len(matches) >= MAX_SEARCH_RESULTS:
+            logger.warning(
+                f"search_files hit MAX_SEARCH_RESULTS={MAX_SEARCH_RESULTS}; truncating",
+                extra={"directory": str(validated_path), "pattern": pattern},
+            )
+            # Stop descending so os.walk exits quickly.
+            dirnames.clear()
             break
 
     matches.sort()

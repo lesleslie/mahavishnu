@@ -222,13 +222,30 @@ class RunPodPublicEndpointPool(BasePool):
         except HTTPStatusError as e:
             self._tasks_failed += 1
             duration = time.time() - start_time
-            logger.error("RunPod public-endpoint HTTP %s: %s", e.response.status_code, e)
+            # ``HTTPStatusError`` is bound at import time to the real
+            # ``httpx2`` class, so the branch is genuinely narrow in
+            # production. The ``Exception`` fallback (httpx2 not
+            # importable) has no ``response`` — report the underlying
+            # failure instead of raising ``AttributeError`` out of the
+            # handler and masking the real error.
+            response = getattr(e, "response", None)
+            if response is None:
+                logger.error("RunPod public-endpoint task failed: %s", e)
+                return {
+                    "pool_id": self.pool_id,
+                    "worker_id": worker_id,
+                    "status": "failed",
+                    "output": None,
+                    "error": str(e),
+                    "duration": duration,
+                }
+            logger.error("RunPod public-endpoint HTTP %s: %s", response.status_code, e)
             return {
                 "pool_id": self.pool_id,
                 "worker_id": worker_id,
                 "status": "failed",
                 "output": None,
-                "error": f"HTTP {e.response.status_code}: {e.response.text[:500]}",
+                "error": f"HTTP {response.status_code}: {response.text[:500]}",
                 "duration": duration,
             }
         except Exception as e:  # Pool task execution converts every failure into a structured failed-result envelope  # noqa: BLE001, RUF100

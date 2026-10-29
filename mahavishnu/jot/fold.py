@@ -30,6 +30,16 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 
+# Malformed log lines are skipped, not raised (UD7). ``json.JSONDecodeError``
+# is a ``ValueError`` subclass, so the tuple already covers it; it is named
+# explicitly for self-documentation.
+_DESERIALIZE_ERRORS = (ValueError, KeyError, TypeError, json.JSONDecodeError)
+
+# The git calls fail open rather than propagating. ``FileNotFoundError`` is
+# an ``OSError`` subclass, so the tuple already covers it; it is named
+# explicitly for self-documentation.
+_GIT_ERRORS = (FileNotFoundError, subprocess.SubprocessError, OSError)
+
 # Public re-export so callers do `from mahavishnu.jot.fold import JotSummary`.
 __all__ = [
     "DispatchState",
@@ -130,7 +140,7 @@ def parse_events(log_path: Path) -> list[JotEvent]:
             continue
         try:
             events.append(deserialize(stripped))
-        except ValueError, KeyError, TypeError, json.JSONDecodeError:
+        except _DESERIALIZE_ERRORS:
             # Fail-open: skip malformed lines (UD7 — no crash on bad data).
             # Caller can check errors.log if diagnostics are needed.
             continue
@@ -174,7 +184,7 @@ def _enrich_ctx(
     binary OR a non-git directory OR a stalled git (timeout) each return
     None rather than raising.
 
-    Catch tuple: `subprocess.SubprocessError` covers both
+    Catch tuple (`_GIT_ERRORS`): `subprocess.SubprocessError` covers both
     `CalledProcessError` (non-zero exit, constructed by `_git`) and
     `TimeoutExpired` (5s timeout hit before git returned) plus any future
     SubprocessError subclass. `OSError` and `FileNotFoundError` are kept
@@ -184,15 +194,15 @@ def _enrich_ctx(
     enriched: dict[str, str | list[str] | None] = dict(ctx)
     try:
         enriched["repo"] = _git(current_dir, "rev-parse", "--show-toplevel")
-    except FileNotFoundError, subprocess.SubprocessError, OSError:
+    except _GIT_ERRORS:
         enriched["repo"] = None
     try:
         enriched["branch"] = _git(current_dir, "rev-parse", "--abbrev-ref", "HEAD")
-    except FileNotFoundError, subprocess.SubprocessError, OSError:
+    except _GIT_ERRORS:
         enriched["branch"] = None
     try:
         enriched["sha"] = _git(current_dir, "rev-parse", "HEAD")
-    except FileNotFoundError, subprocess.SubprocessError, OSError:
+    except _GIT_ERRORS:
         enriched["sha"] = None
     return enriched
 
@@ -270,46 +280,60 @@ def build_states(
             deleted=d_deleted,
         )
 
+    def _apply_event(
+        ev: JotEvent,
+        *,
+        text: str,
+        status: Literal["open", "done"],
+        wall_ms: int,
+    ) -> None:
+        """Fold one event into the per-id bucket.
+
+        Writes the derived summary for ``ev`` and, when enriching, the
+        event's context. Every pass-1 and pass-2 arm used to repeat
+        this pair of writes verbatim; hoisting them here keeps the
+        ``match`` arms to a single call each.
+
+        ``base_id`` is ``ev.id``: the ``states_by_id`` invariant is that
+        an entry's ``id`` equals its dict key, so ``states_by_id[ev.id].id
+        == ev.id`` always held at the former call sites too.
+        """
+        states_by_id[ev.id] = _make_summary(
+            base_id=ev.id,
+            text=text,
+            status=status,
+            wall_ms=wall_ms,
+            id_events=events_by_id[ev.id],
+        )
+        if enrich:
+            ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+
     for ev in sorted_events:
         match ev.op:
             case "capture":
-                states_by_id[ev.id] = _make_summary(
-                    base_id=ev.id,
-                    text=ev.text,
-                    status="open",
-                    wall_ms=ev.hlc.wall_ms,
-                    id_events=events_by_id[ev.id],
-                )
-                if enrich:
-                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+                _apply_event(ev, text=ev.text, status="open", wall_ms=ev.hlc.wall_ms)
             case "edit":
                 if ev.id not in states_by_id:
                     parked.append(ev)
                 else:
                     s = states_by_id[ev.id]
-                    states_by_id[ev.id] = _make_summary(
-                        base_id=s.id,
+                    _apply_event(
+                        ev,
                         text=ev.text,
                         status=s.status,
                         wall_ms=ev.hlc.wall_ms,
-                        id_events=events_by_id[ev.id],
                     )
-                    if enrich:
-                        ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
             case "done" | "reopen":
                 if ev.id not in states_by_id:
                     parked.append(ev)
                 else:
                     s = states_by_id[ev.id]
-                    states_by_id[ev.id] = _make_summary(
-                        base_id=s.id,
+                    _apply_event(
+                        ev,
                         text=s.text,
                         status="done" if ev.op == "done" else "open",
                         wall_ms=ev.hlc.wall_ms,
-                        id_events=events_by_id[ev.id],
                     )
-                    if enrich:
-                        ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
 
     errors: list[JotEvent] = []
     for ev in parked:
@@ -319,25 +343,19 @@ def build_states(
         s = states_by_id[ev.id]
         match ev.op:
             case "edit":
-                states_by_id[ev.id] = _make_summary(
-                    base_id=s.id,
+                _apply_event(
+                    ev,
                     text=ev.text,
                     status=s.status,
                     wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
-                    id_events=events_by_id[ev.id],
                 )
-                if enrich:
-                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
             case "done" | "reopen":
-                states_by_id[ev.id] = _make_summary(
-                    base_id=s.id,
+                _apply_event(
+                    ev,
                     text=s.text,
                     status="done" if ev.op == "done" else "open",
                     wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
-                    id_events=events_by_id[ev.id],
                 )
-                if enrich:
-                    ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
 
     final_states = sorted(
         states_by_id.values(),

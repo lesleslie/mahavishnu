@@ -154,6 +154,66 @@ class SubprocessRunner(Protocol):
     ) -> tuple[int, str, str]: ...
 
 
+def _spawn_error_to_unavailable(error: OSError, argv: tuple[str, ...]) -> PiUnavailable:
+    """Map a spawn-time ``OSError`` to the matching :class:`PiUnavailable`.
+
+    The pool's public contract is uniform: any spawn failure surfaces as
+    ``PiUnavailable``. ``FileNotFoundError`` and ``PermissionError`` are
+    both ``OSError`` subclasses, so they are checked first to preserve the
+    more specific diagnostics.
+    """
+    if isinstance(error, FileNotFoundError):
+        return PiUnavailable(
+            "`npx` binary not found on PATH",
+            install_hint="install Node.js (https://nodejs.org) which bundles npx",
+        )
+    if isinstance(error, PermissionError):
+        return PiUnavailable(
+            f"subprocess executable not executable: {argv[0]!r}",
+            install_hint="check filesystem permissions on the npx binary",
+        )
+    return PiUnavailable(
+        f"failed to spawn Pi subprocess: {error}",
+        install_hint="check PATH and filesystem permissions",
+    )
+
+
+async def _spawn_pi_process(
+    argv: tuple[str, ...],
+    env: dict[str, str],
+) -> asyncio.subprocess.Process:
+    """Spawn the Pi subprocess, mapping spawn-time errors to ``PiUnavailable``."""
+    try:
+        return await asyncio.create_subprocess_exec(
+            *argv,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
+    except OSError as e:
+        raise _spawn_error_to_unavailable(e, argv) from e
+
+
+async def _communicate_with_timeout(
+    proc: asyncio.subprocess.Process,
+    timeout: float,
+) -> tuple[bytes, bytes]:
+    """Await ``proc.communicate()``, killing the process if it overruns.
+
+    Runtime timeouts raise :class:`asyncio.TimeoutError`; the pool
+    catches and maps those to :class:`PiRPCTimeout`.
+    """
+    try:
+        return await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except TimeoutError:
+        proc.kill()
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=2.0)
+        except TimeoutError:
+            logger.warning("Pi subprocess did not exit after SIGKILL")
+        raise
+
+
 async def _default_subprocess_runner(
     *,
     argv: tuple[str, ...],
@@ -162,43 +222,12 @@ async def _default_subprocess_runner(
 ) -> tuple[int, str, str]:
     """Default runner — spawn via ``asyncio.create_subprocess_exec``.
 
-    Maps spawn-time errors (``FileNotFoundError``, ``PermissionError``,
-    ``OSError``) to :class:`PiUnavailable` so the pool's public
-    contract is uniform: any spawn failure surfaces as ``PiUnavailable``.
-    Runtime timeouts raise :class:`asyncio.TimeoutError`; the pool
-    catches and maps those to :class:`PiRPCTimeout`.
+    Spawn failures surface as :class:`PiUnavailable`; runtime timeouts
+    raise :class:`asyncio.TimeoutError`; the pool catches and maps those
+    to :class:`PiRPCTimeout`.
     """
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *argv,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-        )
-    except FileNotFoundError as e:
-        raise PiUnavailable(
-            "`npx` binary not found on PATH",
-            install_hint="install Node.js (https://nodejs.org) which bundles npx",
-        ) from e
-    except PermissionError as e:
-        raise PiUnavailable(
-            f"subprocess executable not executable: {argv[0]!r}",
-            install_hint="check filesystem permissions on the npx binary",
-        ) from e
-    except OSError as e:
-        raise PiUnavailable(
-            f"failed to spawn Pi subprocess: {e}",
-            install_hint="check PATH and filesystem permissions",
-        ) from e
-    try:
-        stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except TimeoutError:
-        proc.kill()
-        try:
-            await asyncio.wait_for(proc.wait(), timeout=2.0)
-        except TimeoutError:
-            logger.warning("Pi subprocess did not exit after SIGKILL")
-        raise
+    proc = await _spawn_pi_process(argv, env)
+    stdout_b, stderr_b = await _communicate_with_timeout(proc, timeout)
     return (
         proc.returncode if proc.returncode is not None else 0,
         stdout_b.decode("utf-8", errors="replace"),

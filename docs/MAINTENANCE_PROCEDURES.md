@@ -223,7 +223,7 @@ fi
 # 3. Run security scans
 echo "[3/5] Running security scans..."
 bandit -r mahavishnu/ -f json -o /tmp/security_scan.json
-safety check --json > /tmp/safety_check.json
+osv-scanner scan source --lockfile=uv.lock --format=json > /tmp/osv_scan_check.json
 
 # 4. Check for unused dependencies
 echo "[4/5] Checking for unused dependencies..."
@@ -687,7 +687,7 @@ echo ""
 
 # 1. Check for vulnerable dependencies
 echo "[1/4] Checking for vulnerabilities..."
-safety check --json > /tmp/safety_report.json
+osv-scanner scan source --lockfile=uv.lock --format=json > /tmp/osv_scan_report.json
 
 # 2. Update Python packages
 echo "[2/4] Updating Python packages..."

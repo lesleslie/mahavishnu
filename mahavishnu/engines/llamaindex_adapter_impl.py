@@ -12,14 +12,14 @@ This adapter provides:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 import time
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
-import urllib.request
+from urllib.parse import urlparse
 import uuid
 
+import httpx2 as httpx
 from oneiric.core.logging import get_logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -256,6 +256,67 @@ class LlamaIndexEmbeddingError(ExternalServiceError):
         self.original_error = original_error
 
 
+def _require_http_url(url: str) -> str:
+    """Return ``url`` unchanged when it uses an HTTP(S) scheme.
+
+    The stdlib opener honours ``file://`` and ``ftp://`` URLs, so an
+    endpoint that resolves to ``file:///etc/passwd`` turns a health probe
+    into an arbitrary local-file read (CWE-939). Only HTTP(S) is allowed
+    here; any other scheme is a misconfiguration and is rejected before a
+    request is attempted.
+
+    Args:
+        url: The URL about to be fetched.
+
+    Returns:
+        The URL, unchanged.
+
+    Raises:
+        ValueError: If the scheme is not ``http`` or ``https``.
+    """
+    scheme = urlparse(url).scheme.lower()
+    if scheme not in ("http", "https"):
+        raise ValueError(f"refusing to use a non-HTTP(S) URL (scheme {scheme!r})")
+    return url
+
+
+def _http_json_request(
+    url: str,
+    *,
+    timeout: float,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Perform an HTTP request against ``url`` and decode the JSON it returns.
+
+    The scheme of ``url`` is checked first -- see :func:`_require_http_url`
+    for why that matters. Redirects are followed (the stdlib opener did the
+    same), and a non-2xx status is raised rather than decoded.
+
+    Args:
+        url: The absolute URL to request.
+        timeout: Per-request timeout in seconds.
+        method: The HTTP method to use.
+        body: Optional JSON object to send as the request body.
+
+    Returns:
+        The decoded JSON object.
+
+    Raises:
+        ValueError: If ``url`` is not an HTTP(S) URL.
+        TypeError: If the response body is not a JSON object.
+        httpx.HTTPError: On a transport failure or a non-2xx status code.
+    """
+    _require_http_url(url)
+    with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        response = client.request(method, url, json=body)
+        response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise TypeError(f"expected a JSON object from {url}, got {type(payload).__name__}")
+    return payload
+
+
 class LlamaIndexAdapter(OrchestratorAdapter):
     """Adapter for LlamaIndex RAG pipelines with OpenTelemetry instrumentation.
 
@@ -388,17 +449,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         # `AttributeError: 'list' object has no attribute 'data'`.
         if llama_server_model in {"qwen3.5", "llama-server-default"}:
             try:
-                import json
-                import urllib.request
-
-                with (
-                    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-                    urllib.request.urlopen(
-                        f"{llama_server_url.rstrip('/')}/v1/models",
-                        timeout=5,
-                    ) as resp
-                ):
-                    payload = json.loads(resp.read().decode("utf-8"))
+                payload = _http_json_request(
+                    f"{llama_server_url.rstrip('/')}/v1/models",
+                    timeout=5,
+                )
                 models = payload.get("data") or []
                 if models and isinstance(models[0], dict) and models[0].get("id"):
                     discovered = models[0]["id"]
@@ -538,15 +592,14 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         index creation, and not on every startup.
         """
         try:
-            with urllib.request.urlopen(
+            mapping = _http_json_request(
                 f"{endpoint.rstrip('/')}/{index_name}/_mapping",
                 timeout=5,
-            ) as resp:
-                mapping = json.loads(resp.read().decode("utf-8"))
+            )
             for body in mapping.values():
-                field = (
-                    (body.get("mappings", {}) or {}).get("properties", {}) or {}
-                ).get("embedding", {})
+                field = ((body.get("mappings", {}) or {}).get("properties", {}) or {}).get(
+                    "embedding", {}
+                )
                 dimension = field.get("dimension")
                 if isinstance(dimension, int) and dimension > 0:
                     logger.info(
@@ -570,16 +623,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             )
             return 768
         try:
-            with urllib.request.urlopen(
-                urllib.request.Request(
-                    f"{base_url.rstrip('/')}/embeddings",
-                    data=json.dumps({"model": model, "input": "dimension"}).encode(),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                ),
+            payload = _http_json_request(
+                f"{base_url.rstrip('/')}/embeddings",
                 timeout=60,
-            ) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+                method="POST",
+                body={"model": model, "input": "dimension"},
+            )
             dimension = len(payload["data"][0]["embedding"])
             logger.info(
                 "embedding dimension discovered from the model",

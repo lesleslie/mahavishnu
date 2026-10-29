@@ -7,14 +7,30 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
 
+import httpx2 as httpx
 import yaml
 
 PROMETHEUS_CONTENT_TYPES = ("text/plain", "application/openmetrics-text")
 PROMETHEUS_MARKERS = ("# HELP", "# TYPE")
+ACCEPT_HEADER = "text/plain, application/openmetrics-text;q=0.9, */*;q=0.1"
+
+
+def require_http_url(url: str) -> str:
+    """Reject non-HTTP(S) URLs before any client is constructed.
+
+    ``urllib.request.urlopen`` honours the ``file://`` and ``ftp://``
+    schemes, so a probe URL sourced from an inventory file could be
+    turned into an arbitrary local-file read (CWE-939). Restricting the
+    scheme to http/https closes that hole. The HTTP client is
+    ``httpx2``, which refuses non-HTTP schemes on its own — this check
+    makes the refusal explicit and happens first.
+    """
+    scheme = urlparse(url).scheme.lower()
+    if scheme not in {"http", "https"}:
+        raise ValueError(f"refusing to probe non-HTTP URL scheme: {url!r}")
+    return url
 
 
 def load_inventory(path: Path) -> list[dict[str, Any]]:
@@ -73,20 +89,24 @@ def probe_service(
 
     for probe_url in probe_urls:
         result["probe_url"] = probe_url
-        request = Request(
-            probe_url,
-            headers={"Accept": "text/plain, application/openmetrics-text;q=0.9, */*;q=0.1"},
-        )
         try:
-            with urlopen(request, timeout=timeout) as response:
-                body = response.read().decode("utf-8", errors="replace")
+            require_http_url(probe_url)
+            with httpx.Client(follow_redirects=True, timeout=timeout) as client:
+                response = client.get(probe_url, headers={"Accept": ACCEPT_HEADER})
+                body = response.content.decode("utf-8", errors="replace")
                 content_type = response.headers.get("Content-Type", "")
-                result["status_code"] = response.status
+                status = response.status_code
+                result["status_code"] = status
                 result["content_type"] = content_type
-                if response.status != 200:
-                    failure_reasons.append(
-                        f"{probe_url} -> unexpected HTTP status {response.status}"
-                    )
+                # ``urlopen`` raised ``HTTPError`` for every status
+                # outside 2xx, so anything non-2xx is reported the
+                # same way here. httpx does not raise on error
+                # statuses unless ``raise_for_status()`` is called.
+                if not 200 <= status < 300:
+                    failure_reasons.append(f"{probe_url} -> http_error: {status}")
+                    continue
+                if status != 200:
+                    failure_reasons.append(f"{probe_url} -> unexpected HTTP status {status}")
                     continue
                 if not is_prometheus_text(content_type, body):
                     failure_reasons.append(
@@ -106,10 +126,8 @@ def probe_service(
                         )
                         result["scrape_target"] = f"{host}:{parsed.port}"
                 return result
-        except HTTPError as exc:
-            failure_reasons.append(f"{probe_url} -> http_error: {exc.code}")
-        except URLError as exc:
-            failure_reasons.append(f"{probe_url} -> url_error: {exc.reason}")
+        except httpx.RequestError as exc:
+            failure_reasons.append(f"{probe_url} -> url_error: {exc}")
         except Exception as exc:  # pragma: no cover - defensive guard
             failure_reasons.append(f"{probe_url} -> error: {exc}")
 
@@ -214,9 +232,7 @@ def main() -> int:
     if selected:
         services = [service for service in services if service["name"] in selected]
 
-    results = [
-        probe_service(service, args.timeout, args.scrape_host) for service in services
-    ]
+    results = [probe_service(service, args.timeout, args.scrape_host) for service in services]
 
     if args.write_verified_file:
         write_verified_targets(results, args.write_verified_file)

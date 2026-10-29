@@ -115,7 +115,7 @@ def expected_qwen_model() -> str:
     """
     try:
         loaded = json.loads(QWEN_SETTINGS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return QWEN_ROUTE_MODEL
     if not isinstance(loaded, dict):
         return QWEN_ROUTE_MODEL
@@ -210,7 +210,9 @@ def log_baseline() -> int:
     return _as_int(rows[0][0])
 
 
-def find_routed_rows(baseline: int, virtual_key_name: str = VIRTUAL_KEY_NAME) -> list[RoutedRequest]:
+def find_routed_rows(
+    baseline: int, virtual_key_name: str = VIRTUAL_KEY_NAME
+) -> list[RoutedRequest]:
     """Successful requests attributed to ``virtual_key_name`` after ``baseline``.
 
     Ordered by ``rowid`` so the first match is the oldest qualifying request,
@@ -319,7 +321,7 @@ def wait_for_qwen_row(
 def _run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return subprocess.CompletedProcess(cmd, 127, "", "")
 
 
@@ -408,7 +410,9 @@ def run_gate(timeout: int = WAIT_SECONDS) -> int:
     expected_model = expected_qwen_model()
     expected_agent = expected_qwen_user_agent()
     if expected_agent is None:
-        typer.echo("FAIL: could not read 'qwen --version'; refusing to guess a user agent", err=True)
+        typer.echo(
+            "FAIL: could not read 'qwen --version'; refusing to guess a user agent", err=True
+        )
         return EXIT_PRECONDITION
     typer.echo(f"INFO: expecting rows from {expected_model!r} via {expected_agent!r}")
 

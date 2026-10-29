@@ -286,7 +286,18 @@ def register_otel_tools(server, app, mcp_client):
         try:
             from datetime import UTC, datetime, timedelta
 
-            from oneiric.adapters.vector.hot_store import HotStore
+            # ``oneiric.adapters.vector.hot_store.HotStore`` is the substrate
+            # *Protocol* (ADR 017) — a typing contract with no ``query_traces``
+            # member, so instantiating it yields a handle that can never run
+            # the SQL trace query (the call below raised ``AttributeError`` and
+            # the tool silently returned ``[]`` for every request).
+            #
+            # ``akosha.storage.HotStore`` is the concrete DuckDB-backed
+            # implementation of that protocol and owns the ``query_traces``
+            # JSON-path CTE used here. It subclasses the substrate
+            # ``DuckdbHotStore``, so it reads the same ``conversations`` table
+            # that ``OtelIngester`` writes into.
+            from akosha.storage import HotStore
 
             # Calculate start_time from time_range_minutes
             end_time = datetime.now(UTC)
@@ -358,8 +369,19 @@ def register_otel_tools(server, app, mcp_client):
         try:
             from oneiric.adapters.vector.hot_store import HotStore
 
+            # ``HotStore`` is the substrate *Protocol* (ADR 017), i.e. a typing
+            # contract rather than a concrete backend. This probe only opens
+            # and closes a store handle to confirm the configured DuckDB path
+            # is reachable; the reported statistics themselves come from
+            # configuration. The class is therefore resolved through an
+            # ``Any``-typed alias: the module attribute is looked up at call
+            # time (so an installed concrete implementation or a test double
+            # is honoured) while the protocol instantiation itself is not
+            # statically checked.
+            store_factory: Any = HotStore
+
             # Initialize HotStore to query statistics
-            hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
+            hot_store = store_factory(database_path=app.config.otel_ingester.hot_store_path)
             await hot_store.initialize()
 
             # Query total traces (basic implementation)

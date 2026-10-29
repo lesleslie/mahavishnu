@@ -1,9 +1,9 @@
 ---
 status: draft
-role: operational
+role: implementation
 kind: spec
 date: 2026-10-20
-last_reviewed: 2026-10-20
+last_reviewed: 2026-10-28
 topic: bifrost-anthropic-baseurl-cutover
 revision: v0.1
 owner: platform-team

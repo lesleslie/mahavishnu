@@ -20,12 +20,3 @@
 [[IgnoredVulns]]
 id = "PYSEC-2026-2447"
 reason = "Transitive diskcache 5.6.3 pickle-deserialization RCE; no patch; attack vector requires local cache-dir write access (not exposed in our deployment surface)."
-
-# nltk 3.10.3 — OSV records ``fixed: 3.10.3`` as the patch
-# version; we ARE on the patched release. pip-audit flags it
-# because the OSV ``versions`` array includes the patched version
-# alongside the vulnerable ones. Resolved: 2026-09-04 against
-# api.osv.dev/v1/vulns/PYSEC-2026-3740.
-[[IgnoredVulns]]
-id = "PYSEC-2026-3740"
-reason = "nltk 3.10.3 — running patched version; OSV versions array includes the patch release alongside vulnerable ones, causing false-positive flags."

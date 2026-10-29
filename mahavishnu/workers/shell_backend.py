@@ -27,6 +27,7 @@ import asyncio
 import contextlib
 import logging
 import os
+from pathlib import Path
 import re
 import tempfile
 import time
@@ -169,7 +170,7 @@ def _resolve_timeout(task: dict[str, Any], config: WorkerConfig) -> float:
             continue
         try:
             value = float(source)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         if value > 0:
             return value
@@ -465,7 +466,7 @@ class ShellWorker(BaseWorker):
             return ""
         finally:
             with contextlib.suppress(OSError):
-                os.unlink(path)
+                Path(path).unlink()
         text = text.strip()
         return text[-limit:] if len(text) > limit else text
 

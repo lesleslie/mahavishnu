@@ -45,6 +45,11 @@ worker-pool dispatch path.
    - ``prefect-github==0.4.4`` was installed via ``uv pip install``.
      This unblocks the Git storage pattern but does NOT fix the
      underlying CWD-vs-destination mismatch (attempt 4 above).
+   - **Reverted 2026-10-28**: the dependency was removed from
+     ``pyproject.toml`` once the demo settled on Prefect Core's own
+     ``prefect.runner.storage.GitRepository`` (attempt 4). Nothing in
+     the repo imported ``prefect_github``; it was a dead dependency
+     that only the ``creosote`` unused-dependency check reported.
 
 ## Root cause (final)
 
@@ -99,9 +104,11 @@ a ``working_directory`` argument and the executor should pass
   (Pattern 4) — it's aligned with the recommended Prefect 3.x path.
   The worker subprocess clones the repo correctly but fails the
   import for the reason above.
-- ``prefect-github==0.4.4`` is installed in the venv
-  (``pyproject.toml`` updated; pyproject.toml dep bump authorized by
-  operator).
+- ``prefect-github`` was **removed** from ``pyproject.toml`` on
+  2026-10-28. The demo never imported it — the implementation uses
+  Prefect Core's ``prefect.runner.storage.GitRepository`` (attempt 4),
+  and ``prefect-github`` was a dead dependency that only the
+  ``creosote`` unused-dependency check was reporting.
 - All observed swallows + paths are documented here for the next
   reader.
 
