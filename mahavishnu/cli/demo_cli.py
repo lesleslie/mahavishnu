@@ -4073,7 +4073,6 @@ VERDICT_TIMEOUT = "TIMEOUT"
 VERDICT_ERROR = "ERROR"
 VERDICT_PARTIAL = "PARTIAL"
 VERDICT_STUB = "STUB"
-VERDICT_SKIPPED = "SKIPPED"
 
 #: Statuses a demo's own JSON result may carry that count as success.
 _SUCCESS_STATUSES = frozenset(

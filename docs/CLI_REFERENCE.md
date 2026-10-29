@@ -156,7 +156,9 @@ Verdicts distinguish the two failure modes that matter:
 
 The exit code is `0` when every demo passed (or was a stub) and `1`
 otherwise. Per-demo logs land in the `--log-dir` (a temp directory by
-default).
+default). The default directory is created with mode `0700` and each
+log with `0600` — demo output can carry prompt text and tool payloads,
+so it is readable only by the user who ran the sweep.
 
 The workflow demos are designed to fail fast when a substrate is
 unreachable — see `mahavishnu demo <name> --help` for the full flag
