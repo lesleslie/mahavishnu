@@ -642,6 +642,40 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             )
             return 768
 
+    def _open_persisted_index(self) -> Any | None:
+        """Open a queryable index over the already-configured vector store.
+
+        The ingest path builds a ``VectorStoreIndex`` and keeps it in
+        ``self.indices`` keyed by ``<repo>_<n>``. That map lives only in
+        the process that ingested, so a *query* in a later process has
+        no entry to find -- even though the same adapter is pointed at a
+        persistent store (OpenSearch, or TurboVec as the fallback) that
+        already holds the embeddings.
+
+        Rebuilding a ``VectorStoreIndex`` over that store costs no
+        embedding work: the vectors are already written, so this is a
+        metadata-only operation.
+
+        Returns:
+            The reopened index, or ``None`` when no vector store is
+            configured or it cannot be opened.
+        """
+        vector_store = getattr(self, "vector_store", None)
+        if not vector_store:
+            return None
+        try:
+            from llama_index.core import StorageContext, VectorStoreIndex
+
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+            return VectorStoreIndex.from_vector_store(
+                vector_store, storage_context=storage_context
+            )
+        except Exception as exc:  # noqa: BLE001, RUF100
+            # A store that cannot be reopened is not fatal on its own --
+            # the caller falls back to the "no index" error path.
+            logger.debug("Could not open persisted vector store index: %s", exc)
+            return None
+
     def _setup_vector_store(self) -> None:
         """Set up the vector store backend with a two-tier fallback.
 
@@ -1228,25 +1262,40 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         repo_name = Path(repo_path).name
                         index_id = f"{repo_name}_0"
                         if index_id not in self.indices:
-                            error_msg = f"No index found for repository: {repo_path}"
-                            find_span.set_attribute("index.found", False)
-                            find_span.set_attribute("error.message", error_msg)
-                            span.set_status(cast("_StatusCodeT", "ERROR"))
-                            self.error_counter.add(
-                                1,
-                                attributes={
-                                    "operation": "query",
-                                    "error_type": "index_not_found",
-                                    "repo.path": repo_path,
-                                },
-                            )
-                            return {
-                                "repo": repo_path,
-                                "status": "failed",
-                                "error": error_msg,
-                                "error_code": ErrorCode.RESOURCE_NOT_FOUND.value,
-                                "task_id": task_params.get("id", "unknown"),
-                            }
+                            # The in-memory map is only populated by an
+                            # ingest *in this process*. A query against
+                            # an index built earlier therefore finds
+                            # nothing and reports MHV-009 even though
+                            # the persisted vector store is right there
+                            # -- the adapter already read its embedding
+                            # dimension from it during initialize().
+                            # Open the configured store directly so a
+                            # standalone query works.
+                            persisted = self._open_persisted_index()
+                            if persisted is None:
+                                error_msg = f"No index found for repository: {repo_path}"
+                                find_span.set_attribute("index.found", False)
+                                find_span.set_attribute("error.message", error_msg)
+                                span.set_status(cast("_StatusCodeT", "ERROR"))
+                                self.error_counter.add(
+                                    1,
+                                    attributes={
+                                        "operation": "query",
+                                        "error_type": "index_not_found",
+                                        "repo.path": repo_path,
+                                    },
+                                )
+                                return {
+                                    "repo": repo_path,
+                                    "status": "failed",
+                                    "error": error_msg,
+                                    "error_code": ErrorCode.RESOURCE_NOT_FOUND.value,
+                                    "task_id": task_params.get("id", "unknown"),
+                                }
+                            self.indices[index_id] = persisted
+                            find_span.set_attribute("index.found", True)
+                            find_span.set_attribute("index.id", index_id)
+                            find_span.set_attribute("index.source", "persisted_store")
                         index = self.indices[index_id]
                         find_span.set_attribute("index.found", True)
                         find_span.set_attribute("index.id", index_id)

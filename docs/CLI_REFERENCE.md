@@ -126,6 +126,38 @@ mahavishnu demo workflow-pi-cascade --prompt "what is 2+2" --followup "explain t
 mahavishnu demo workflow-pi-then-local --pi-prompt "write a hello-world in Python" --local-prompt "test it"
 ```
 
+### Sweeping every demo
+
+`mahavishnu demo all` runs every demo above and prints a verdict
+matrix. Each demo runs in its own subprocess, so one demo's crash,
+timeout, or orphaned subprocess cannot take the sweep down with it.
+
+```bash
+# Run everything and print the verdict matrix
+mahavishnu demo all
+
+# Only some demos (repeatable), skipping others
+mahavishnu demo all --only prefect --only llamaindex --skip pool-runpod
+
+# Override each demo's own --timeout budget, and emit JSON
+mahavishnu demo all --timeout 300 --json
+```
+
+Verdicts distinguish the two failure modes that matter:
+
+| Verdict | Meaning |
+|---|---|
+| `PASS` | The demo reached its success path. |
+| `STUB` | The demo is a documented stub (not implemented). |
+| `PRECONDITION` | A substrate was missing — start the server, enable the flag, export the credential. **Not a demo bug.** |
+| `TIMEOUT` | The demo's own `--timeout` budget expired. |
+| `ERROR` | The demo itself is broken (a traceback, a failed status, or an all-repos-failed result). |
+| `PARTIAL` | Some repos succeeded and some failed. |
+
+The exit code is `0` when every demo passed (or was a stub) and `1`
+otherwise. Per-demo logs land in the `--log-dir` (a temp directory by
+default).
+
 The workflow demos are designed to fail fast when a substrate is
 unreachable — see `mahavishnu demo <name> --help` for the full flag
 set and `docs/cookbook/workflows.md` for worked examples

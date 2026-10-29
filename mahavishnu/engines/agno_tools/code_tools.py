@@ -286,18 +286,28 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
             details={"repo_path": repo_path},
         )
 
-    if not path.is_dir():
-        raise AgnoError(
-            f"Not a directory: {repo_path}",
-            error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
-            details={"repo_path": repo_path},
-        )
+    if path.is_file():
+        # An agent routinely hands this tool a file it just read
+        # instead of the repository root. Searching that file is the
+        # closest reading of the request; rejecting the call aborts the
+        # agent's turn over a recoverable argument mistake.
+        base = path.parent
+        files = [path]
+    else:
+        if not path.is_dir():
+            raise AgnoError(
+                f"Not a directory: {repo_path}",
+                error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
+                details={"repo_path": repo_path},
+            )
+        base = path
+        files = _get_python_files(path)
 
     results = []
     query_lower = query.lower()
 
     # Search Python files
-    for py_file in _get_python_files(path):
+    for py_file in files:
         try:
             content = py_file.read_text(encoding="utf-8")
             lines = content.splitlines()
@@ -311,7 +321,7 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
 
                     results.append(
                         {
-                            "file": str(py_file.relative_to(path)),
+                            "file": str(py_file.relative_to(base)),
                             "line": line_num,
                             "match": line.strip(),
                             "context": context,

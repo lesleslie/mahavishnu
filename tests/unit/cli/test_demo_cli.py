@@ -316,13 +316,13 @@ def test_demo_agno_is_no_longer_a_stub(monkeypatch) -> None:
 
 
 def test_demo_app_exposes_expected_commands() -> None:
-    """Sanity: the module exposes ``demo_app`` and it has the expected 18
+    """Sanity: the module exposes ``demo_app`` and it has the expected 19
     registered commands (8 adapter/terminal demos + 5 pool demos +
-    5 workflow demos). Test pin for accidental stub deletion: any
-    addition or removal of a wire-up entry must be reflected here so the
-    pin's exact-equality contract still catches regressions. The set is
-    the wire-up inventory — update it together with the registration in
-    ``mahavishnu/cli/demo_cli.py``.
+    5 workflow demos + the ``all`` sweep). Test pin for accidental stub
+    deletion: any addition or removal of a wire-up entry must be
+    reflected here so the pin's exact-equality contract still catches
+    regressions. The set is the wire-up inventory — update it together
+    with the registration in ``mahavishnu/cli/demo_cli.py``.
     """
     cmd_names = {cmd.name for cmd in demo_app.registered_commands}
     assert cmd_names == {
@@ -347,4 +347,6 @@ def test_demo_app_exposes_expected_commands() -> None:
         "workflow-pi-cascade",
         "workflow-pi-then-local",
         "workflow-pool-worker-terminal",
+        # Sweep (1) — runs every demo above and reports a verdict matrix.
+        "all",
     }

@@ -27,6 +27,31 @@ logger = logging.getLogger(__name__)
 _APPROVAL_EVENT_PREFIX = "mahavishnu.approval"
 
 
+def _hatchet_run_output(run_result: object) -> str:
+    """Extract the run's output text from whatever shape the SDK returned.
+
+    ``hatchet-sdk`` 1.43's ``runs.aio_create`` returns a pydantic
+    ``V1WorkflowRunDetails``; older ``Hatchet.run`` returned a plain
+    dict. Normalize both to a string.
+    """
+    if isinstance(run_result, dict):
+        value = run_result.get("output", "")
+    else:
+        value = getattr(run_result, "output", None)
+    if value is None:
+        return ""
+    return value if isinstance(value, str) else str(value)
+
+
+def _hatchet_run_id(run_result: object) -> str:
+    """Extract the run id from whatever shape the SDK returned."""
+    if isinstance(run_result, dict):
+        value = run_result.get("run_id") or run_result.get("id")
+    else:
+        value = getattr(run_result, "run_id", None) or getattr(run_result, "id", None)
+    return "" if value is None else str(value)
+
+
 class HatchetAdapterImpl(OrchestratorAdapter):
     """Adapter that dispatches durable agent-loop workflows to Hatchet.
 
@@ -110,10 +135,25 @@ class HatchetAdapterImpl(OrchestratorAdapter):
         )
 
     async def cleanup(self) -> None:
-        """Close Hatchet client connection."""
+        """Close Hatchet client connection.
+
+        ``hatchet-sdk`` 1.43 dropped ``Hatchet.close()`` -- the client
+        no longer owns a closable handle -- so calling it unconditionally
+        raised ``AttributeError: 'Hatchet' object has no attribute
+        'close'``. Close only when the installed SDK actually exposes a
+        closer, and stay quiet when it does not.
+        """
         if self._client is not None:
+            closer = getattr(self._client, "close", None)
+            if not callable(closer):
+                closer = getattr(self._client, "aclose", None)
+            if not callable(closer):
+                self._client = None
+                return
             try:
-                await self._client.close()
+                result = closer()
+                if asyncio.iscoroutine(result):
+                    await result
             except Exception as exc:  # engine adapter wrapping third-party Hatchet client call — broad catch isolates external failures from adapter caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning("Error closing Hatchet client: %s", exc)
             finally:
@@ -138,12 +178,33 @@ class HatchetAdapterImpl(OrchestratorAdapter):
         timeout = task.get("timeout", self._config.task_timeout_seconds)
 
         try:
-            # hatchet-sdk >=1.0: Hatchet.run() is async (returns a coroutine).
-            # Guard against SDK variants that return a WorkflowRunRef requiring .result().
-            coro_or_ref = self._client.run(
-                workflow_name,
-                input={"prompt": prompt, "repos": repos},
-            )
+            # The trigger API moved across hatchet-sdk majors:
+            #   - older:  ``Hatchet.run(workflow_name, input=...)``
+            #   - >=1.43: ``Hatchet.runs.aio_create(workflow_name, input=...)``
+            # ``Hatchet.run`` was removed in 1.43, so the old call raised
+            # ``AttributeError: 'Hatchet' object has no attribute 'run'``.
+            # Probe for the legacy attribute *first*: a client that still
+            # has ``run`` uses it, and a 1.43+ client (which has no
+            # ``run`` at all) falls through to ``runs.aio_create``.
+            legacy_run = getattr(self._client, "run", None)
+            if callable(legacy_run):
+                coro_or_ref = legacy_run(
+                    workflow_name,
+                    input={"prompt": prompt, "repos": repos},
+                )
+            else:
+                runs_client = getattr(self._client, "runs", None)
+                aio_create = getattr(runs_client, "aio_create", None)
+                if not callable(aio_create):
+                    raise TypeError(
+                        "the installed hatchet-sdk exposes neither "
+                        "Hatchet.run() nor Hatchet.runs.aio_create() -- "
+                        "unsupported hatchet-sdk version"
+                    )
+                coro_or_ref = aio_create(
+                    workflow_name,
+                    input={"prompt": prompt, "repos": repos},
+                )
             if asyncio.iscoroutine(coro_or_ref):
                 awaitable = coro_or_ref
             elif hasattr(coro_or_ref, "result"):
@@ -154,8 +215,8 @@ class HatchetAdapterImpl(OrchestratorAdapter):
 
             return {
                 "status": "completed",
-                "output": run_result.get("output", ""),
-                "run_id": run_result.get("run_id", ""),
+                "output": _hatchet_run_output(run_result),
+                "run_id": _hatchet_run_id(run_result),
                 "adapter": self.name,
                 "workflow": workflow_name,
             }

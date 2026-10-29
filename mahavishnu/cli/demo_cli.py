@@ -35,11 +35,20 @@ failing CI is the load-bearing signal — do not remove any of the three.
 from __future__ import annotations
 
 import asyncio
+from contextlib import contextmanager
+from dataclasses import dataclass
+import importlib
+import importlib.util
 import inspect
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import shutil
+import subprocess
+import sys
+import tempfile
 import time
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -48,7 +57,7 @@ import httpx2 as httpx
 import typer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
 
 # Module-level Typer app. ``_main_cli.py`` wires it as ``mahavishnu demo ...``.
@@ -240,6 +249,7 @@ def _check_prefect_preconditions(
     settings_getter: Callable[[], Any] | None = None,
     api_url_override: str | None = None,
     http_probe: Callable[..., Any] | None = None,
+    post_probe: Callable[..., Any] | None = None,
     which: Callable[[str], str | None] | None = None,
     timeout: float = DEFAULT_PRECONDITION_TIMEOUT,
 ) -> list[str]:
@@ -253,6 +263,7 @@ def _check_prefect_preconditions(
     """
     which = which or shutil.which
     http_probe = http_probe or httpx.get
+    post_probe = post_probe or httpx.post
     settings_getter = settings_getter or _default_settings_getter
 
     failures: list[str] = []
@@ -268,7 +279,7 @@ def _check_prefect_preconditions(
         return failures
 
     prefect_cfg = settings.prefect  # type: ignore[attr-defined]
-    api_url = (api_url_override or str(prefect_cfg.api_url)).rstrip("/")
+    api_url = (api_url_override or _effective_prefect_api_url()).rstrip("/")
     if not api_url.endswith("/api"):
         api_url = api_url + "/api"
     health_url = api_url + "/health"
@@ -283,7 +294,65 @@ def _check_prefect_preconditions(
     work_pool = getattr(prefect_cfg, "work_pool", None)
     if not work_pool:
         failures.append("prefect.work_pool is unset (set MAHAVISHNU_PREFECT__WORK_POOL)")
+        return failures
+
+    # A work pool with no worker polling it accepts the deployment but
+    # never picks the run up -- the flow run sits SCHEDULED until the
+    # demo's timeout expires, with no hint about the missing worker.
+    # The pool's own ``status`` is READY only while a worker is polling.
+    failures.extend(_check_prefect_work_pool(post_probe, api_url, work_pool, timeout))
     return failures
+
+
+def _check_prefect_work_pool(
+    post_probe: Callable[..., Any],
+    api_url: str,
+    work_pool: str,
+    timeout: float,
+) -> list[str]:
+    """Return failures when the Prefect work pool cannot accept the demo.
+
+    Two distinct problems share one probe: the pool may not exist at
+    all, or it may exist with no worker polling it. Prefect reports the
+    latter as a pool status other than ``READY``.
+    """
+    try:
+        resp = post_probe(
+            f"{api_url}/work_pools/filter",
+            json={"work_pool_names": [work_pool]},
+            timeout=timeout,
+        )
+    except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure, not a stack trace  # noqa: BLE001, RUF100
+        return [
+            f"Prefect work-pool lookup failed at {api_url}/work_pools/filter: {exc}"
+        ]
+    if resp.status_code >= 400:
+        return [
+            (
+                f"Prefect work-pool lookup returned HTTP {resp.status_code} at "
+                f"{api_url}/work_pools/filter"
+            )
+        ]
+    try:
+        pools = resp.json()
+    except Exception:  # CLI entry point — a non-JSON body means the probe cannot answer the question  # noqa: BLE001, RUF100
+        return []
+    if not pools:
+        return [
+            (
+                f"Prefect work pool {work_pool!r} does not exist on the server "
+                f"(create it: prefect work-pool create --type process {work_pool})"
+            )
+        ]
+    status = str(pools[0].get("status") or "").upper()
+    if status and status != "READY":
+        return [
+            (
+                f"Prefect work pool {work_pool!r} has no worker polling it "
+                f"(status={status}; start one: prefect worker start --pool {work_pool})"
+            )
+        ]
+    return []
 
 
 def _default_settings_getter() -> Any:
@@ -292,6 +361,132 @@ def _default_settings_getter() -> Any:
     from mahavishnu.core.config import get_settings
 
     return get_settings()
+
+
+def _effective_prefect_api_url() -> str:
+    """Return the Prefect API URL the demo will actually talk to.
+
+    Prefect's own client resolves its server from ``PREFECT_API_URL``
+    and, when that is unset, spins up an **ephemeral** server on a
+    random port. The demo's precondition probe used
+    ``settings.prefect.api_url`` instead, so the probe checked one
+    server while the client used another -- the probe passed against
+    the configured server on :4200 while the run went to an ephemeral
+    instance with no worker to pick it up.
+
+    One resolver for both sides keeps them in agreement. ``PREFECT_API_URL``
+    wins when set (an explicit operator override), otherwise the
+    configured ``settings.prefect.api_url`` is used.
+    """
+    env_url = os.environ.get("PREFECT_API_URL")
+    if env_url:
+        return _with_api_suffix(env_url.rstrip("/"))
+    settings = _default_settings_getter()
+    return _with_api_suffix(str(settings.prefect.api_url).rstrip("/"))  # type: ignore[attr-defined]
+
+
+def _with_api_suffix(api_url: str) -> str:
+    """Return ``api_url`` with Prefect's ``/api`` path suffix.
+
+    Prefect's client expects the full API root (``.../api``), while
+    ``settings.prefect.api_url`` is configured with the bare host
+    (``http://localhost:4200``). Prefixing the suffix here keeps one
+    resolver usable for both the health probe and the client.
+    """
+    if api_url.endswith("/api"):
+        return api_url
+    return f"{api_url}/api"
+
+
+def _deployment_entrypoint(module_dotted: str, attr_name: str) -> str:
+    """Build a colon-free (module-path) deployment entrypoint.
+
+    Prefect decides how to load a deployment's entrypoint by looking for
+    a colon in it (``prefect.deployments.runner.RunnerDeployment``):
+
+    - **colon present** -> ``EntrypointType.FILE_PATH`` ->
+      ``import_object`` calls ``load_script_as_module``, which loads the
+      file *outside* its package. Any relative import in that module
+      then dies with ``attempted relative import beyond top-level
+      package``.
+    - **colon absent** -> ``EntrypointType.MODULE_PATH`` ->
+      ``import_object`` calls ``load_module``, a normal package import
+      that keeps the package context (and the relative imports) intact.
+
+    The demo's ``--flow`` option is written in the ``pkg.module:func``
+    shape, and that colon is exactly what selects the broken branch.
+    ``Flow.afrom_source`` goes further and prepends the storage
+    destination to the whole string, producing ``<clone>/pkg.module``
+    as a bogus module name -- which the worker reported as
+    ``ModuleNotFoundError: No module named '<tmpdir>/mahavishnu-main/
+    mahavishnu'``.
+
+    Dropping the colon (and using ``pkg.module.func``) selects the
+    module-path branch end to end: at deploy time Prefect puts the
+    cloned tree on ``sys.path`` and imports the package, and in the
+    worker it imports the same package from the clone the git pull step
+    produced.
+    """
+    return f"{module_dotted}.{attr_name}"
+
+
+@contextmanager
+def _pi_scratch_workspace(pool_name: str) -> Iterator[Path]:
+    """Run a PiPool agent inside an isolated scratch directory.
+
+    The ``pi-coding-agent`` subprocess inherits the parent's working
+    directory, and it is a *coding* agent -- it writes files. Spawning
+    it from the repository root therefore lets the demo drop files
+    straight into the operator's checkout: this sweep left
+    ``examples/hello_world.py`` and ``tests/unit/test_hello_world.py``
+    behind in the repo after a ``workflow-pi-then-local`` run.
+
+    Giving the agent a scratch directory keeps its writes out of the
+    repo while still exercising the real substrate. The path follows
+    the same convention as ``MahavishnuPool``'s workspace
+    (``~/.local/state/mahavishnu/worktrees/<pool>/...``).
+
+    Yields:
+        The scratch directory the agent runs in.
+    """
+    workspace = (
+        Path.home()
+        / ".local"
+        / "state"
+        / "mahavishnu"
+        / "worktrees"
+        / pool_name
+        / "pi-workspace"
+    )
+    workspace.mkdir(parents=True, exist_ok=True)
+    previous = Path.cwd()
+    os.chdir(workspace)
+    try:
+        yield workspace
+    finally:
+        os.chdir(previous)
+
+
+def _default_demo_repos() -> list[str]:
+    """Return the default repo list for a demo: the Mahavishnu checkout.
+
+    This module lives at ``<repo>/mahavishnu/cli/demo_cli.py``, so the
+    repo root is ``parents[2]``:
+
+    ==============  =========================================
+    ``parents[0]``  ``<repo>/mahavishnu/cli``
+    ``parents[1]``  ``<repo>/mahavishnu``
+    ``parents[2]``  ``<repo>``            <- the repo root
+    ``parents[3]``  the *projects* root    <- one level too high
+    ==============  =========================================
+
+    Using ``parents[3]`` pointed every engine demo at the projects
+    root instead of the repo. LlamaIndex surfaced it as
+    ``MHV-009 No index found for repository: /Users/les/Projects``
+    while still reporting a top-level ``status: "completed"`` -- a
+    false success that hid the real failure.
+    """
+    return [str(Path(__file__).resolve().parents[2])]
 
 
 async def _run_prefect_demo(
@@ -328,8 +523,6 @@ async def _run_prefect_demo(
     configured pool's worker hardware and passing ``image`` to
     ``adeploy``.
     """
-    import importlib
-
     from prefect.client.orchestration import get_client
     from prefect.deployments import run_deployment
     from prefect.flow_runs import wait_for_flow_run
@@ -384,62 +577,100 @@ async def _run_prefect_demo(
     # blocker; operators handling it from the running side should
     # verify the executor's CWD matches the storage's
     # ``destination`` path before granting the demo \"passes\" status.
+    # RESOLVED (2026-10-29): the join happened inside Prefect's own
+    # ``Flow.afrom_source``, which prepends the storage destination to
+    # any entrypoint *containing a colon* -- and every dotted-module
+    # entrypoint contains the ``module:func`` colon. The result was
+    # ``<clone>/mahavishnu.engines.prefect_adapter_impl``, a path that
+    # does not exist. Passing a real file path keeps that branch but
+    # produces a path that does exist in the cloned tree. See
+    # ``_deployment_entrypoint``.
     storage = GitRepository(
         url="https://github.com/lesleslie/mahavishnu.git",
         branch="main",
     )
 
-    src_with_flow = await flow_func.afrom_source(
-        source=storage,
-        entrypoint=f"{module_dotted}:{attr_name}",
-    )
-    deployment_id = await src_with_flow.adeploy(
-        name="mahavishnu-demo-flow",
-        work_pool_name=work_pool,
-        tags=["mahavishnu", "demo"],
-    )
+    # Prefect resolves its server from a *cached* ``PREFECT_API_URL``
+    # setting object, so setting the env var after ``prefect`` is
+    # imported has no effect -- the client keeps resolving to the
+    # ephemeral server, and the run then sits SCHEDULED forever because
+    # no worker watches that instance's work pool.
+    # ``temporary_settings`` overrides the resolved value for the
+    # duration of the block, which is what actually redirects the
+    # client at the server the precondition probed.
+    from prefect.settings import PREFECT_API_URL, temporary_settings
 
-    # Submit a run against the persisted deployment. The worker
-    # subprocess pulls the source from the GitRepository and
-    # imports the entrypoint module from the cloned tree.
-    #
-    # ``run_deployment`` is wrapped in Prefect's ``async_dispatch``
-    # decorator: inside a running event loop it returns the
-    # ``arun_deployment`` coroutine, and in a sync context it returns
-    # an already-resolved ``FlowRun``. This helper is async, so the
-    # coroutine branch is what fires at runtime — but await only when
-    # the value is genuinely awaitable, because awaiting a resolved
-    # ``FlowRun`` would raise ``TypeError``.
-    deployment_run = run_deployment(
-        name=f"{flow_name}/mahavishnu-demo-flow",
-        parameters=parameters,
-        timeout=prefect_cfg.timeout_seconds,
-    )
-    if inspect.isawaitable(deployment_run):
-        flow_run = await deployment_run
-    else:
-        flow_run = deployment_run
+    with temporary_settings({PREFECT_API_URL: _effective_prefect_api_url()}):
+        src_with_flow = await flow_func.afrom_source(
+            source=storage,
+            entrypoint=_deployment_entrypoint(module_dotted, attr_name),
+        )
+        deployment_id = await src_with_flow.adeploy(
+            name="mahavishnu-demo-flow",
+            work_pool_name=work_pool,
+            tags=["mahavishnu", "demo"],
+        )
+        # Submit a run against the persisted deployment. The worker
+        # subprocess pulls the source from the GitRepository and
+        # imports the entrypoint module from the cloned tree.
+        #
+        # ``run_deployment`` is wrapped in Prefect's ``async_dispatch``
+        # decorator: inside a running event loop it returns the
+        # ``arun_deployment`` coroutine, and in a sync context it returns
+        # an already-resolved ``FlowRun``. This helper is async, so the
+        # coroutine branch is what fires at runtime — but await only when
+        # the value is genuinely awaitable, because awaiting a resolved
+        # ``FlowRun`` would raise ``TypeError``.
+        deployment_run = run_deployment(
+            name=f"{flow_name}/mahavishnu-demo-flow",
+            parameters=parameters,
+            timeout=prefect_cfg.timeout_seconds,
+        )
+        if inspect.isawaitable(deployment_run):
+            flow_run = await deployment_run
+        else:
+            flow_run = deployment_run
 
-    # ``prefect.flow_runs.wait_for_flow_run`` requires a ``UUID``.
-    # ``FlowRun.id`` is already a ``UUID`` at runtime; the explicit
-    # conversion keeps the contract honest for any string-shaped id
-    # and turns a malformed id into a readable failure instead of a
-    # raw ``ValueError`` from inside Prefect.
-    raw_flow_run_id = getattr(flow_run, "id", None)
-    if raw_flow_run_id is None:
-        raise ValueError("Prefect run_deployment returned a flow run without an id")
-    try:
-        flow_run_id = UUID(str(raw_flow_run_id))
-    except ValueError as exc:
-        raise ValueError(f"Prefect returned a non-UUID flow run id: {raw_flow_run_id!r}") from exc
+        # ``prefect.flow_runs.wait_for_flow_run`` requires a ``UUID``.
+        # ``FlowRun.id`` is already a ``UUID`` at runtime; the explicit
+        # conversion keeps the contract honest for any string-shaped id
+        # and turns a malformed id into a readable failure instead of a
+        # raw ``ValueError`` from inside Prefect.
+        raw_flow_run_id = getattr(flow_run, "id", None)
+        if raw_flow_run_id is None:
+            raise ValueError("Prefect run_deployment returned a flow run without an id")
+        try:
+            flow_run_id = UUID(str(raw_flow_run_id))
+        except ValueError as exc:
+            raise ValueError(f"Prefect returned a non-UUID flow run id: {raw_flow_run_id!r}") from exc
 
-    async with get_client():
-        polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
-        state = polled_run.state
-        is_completed = bool(state and state.is_completed())
-        results = state.result() if is_completed else []
-        if results is None:
-            results = []
+        async with get_client():
+            polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
+            state = polled_run.state
+            is_completed = bool(state and state.is_completed())
+            # ``State.result`` is ``@async_dispatch(aresult)``: inside a
+            # running event loop it hands back the coroutine rather than
+            # the value, so the sync call left an un-awaited coroutine
+            # behind and ``len(results)`` raised ``TypeError: object of
+            # type 'coroutine' has no len()``. ``aresult`` is the
+            # explicitly-async entry point. ``raise_on_failure=False``
+            # keeps a crashed run's exception as a value instead of
+            # raising it out of the demo.
+            results: list[Any] = []
+            if is_completed:
+                try:
+                    fetched = await state.aresult(raise_on_failure=False)
+                except Exception:  # CLI entry point — a missing result must not fail the demo  # noqa: BLE001, RUF100
+                    # Result persistence is not guaranteed: Prefect's
+                    # local SQLite setup does not always retain state
+                    # data, and Prefect then raises ``MissingResult``.
+                    # The run's *state* is the signal that matters --
+                    # a COMPLETED run means the flow executed.
+                    fetched = None
+                if isinstance(fetched, list):
+                    results = fetched
+                elif fetched is not None:
+                    results = [fetched]
 
     return {
         "flow_run_id": str(flow_run_id),
@@ -485,7 +716,7 @@ def demo_prefect(
             err=True,
         )
         raise typer.Exit(code=1)
-    effective_repos = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    effective_repos = list(repos) or _default_demo_repos()
     typer.echo(f"Dispatching to work_pool: {_default_settings_getter().prefect.work_pool}")
     typer.echo(f"Flow: {flow_dotted}")
     typer.echo(f"Repos: {effective_repos}")
@@ -687,7 +918,11 @@ def demo_agno(
         help="Leave the AgnoAdapter initialized after the demo (rarely useful; mainly for debugging).",
     ),
     timeout: int = typer.Option(
-        120, "--timeout", help="Max seconds to wait for AgnoAdapter.execute."
+        420,
+        "--timeout",
+        help="Max seconds to wait for AgnoAdapter.execute. Must exceed the adapter's "
+        "own budget (agno.default_timeout_seconds, 300s by default) so the demo "
+        "surfaces the adapter's MHV-008 rather than a generic timeout.",
     ),
 ) -> None:
     """Run the Agno engine end-to-end against the live LLM provider.
@@ -706,7 +941,7 @@ def demo_agno(
         raise typer.Exit(code=1)
 
     settings = _default_settings_getter()
-    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    effective_repos: list[str] = list(repos) or _default_demo_repos()
     params: dict[str, object] = {}
     if prompt:
         params["focus"] = prompt
@@ -883,7 +1118,11 @@ def demo_llamaindex(
         False, "--keep", help="Leave the adapter initialized after the demo (mainly for debugging)."
     ),
     timeout: int = typer.Option(
-        120, "--timeout", help="Max seconds to wait for LlamaIndexAdapter.execute."
+        900,
+        "--timeout",
+        help="Max seconds to wait for LlamaIndexAdapter.execute. A `query` task "
+        "embeds the query, retrieves, and then *synthesizes* an answer with the "
+        "local llama_server -- on a CPU-only host that is minutes, not seconds.",
     ),
 ) -> None:
     """Run the LlamaIndex engine end-to-end against the live llama_server.
@@ -909,7 +1148,7 @@ def demo_llamaindex(
         raise typer.Exit(code=1)
 
     settings = _default_settings_getter()
-    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    effective_repos: list[str] = list(repos) or _default_demo_repos()
     llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
     typer.echo(f"llama_server URL: {llama_url}")
     typer.echo(f"Task type:        {task_type}")
@@ -1078,10 +1317,20 @@ async def _run_pydantic_ai_demo(
     )
 
     model_config, env_overrides = _resolve_demo_pydantic_ai_model_config()
-    # pydantic-ai's SDK reads these env vars directly. Set them only
-    # if the user hasn't already exported a value (setdefault semantics).
+    # pydantic-ai's SDK reads these env vars directly.
     for key, value in env_overrides.items():
-        os.environ.setdefault(key, value)
+        if key == "OPENAI_BASE_URL":
+            # The demo *derived* this endpoint from the provider it just
+            # selected, and took the model id from that same server's
+            # ``/v1/models``. A pre-existing ``OPENAI_BASE_URL`` belongs
+            # to a different provider -- letting it win pairs
+            # llama_server's model id with a foreign gateway, which then
+            # rejects it with "could not auto resolve a provider for the
+            # request". The provider and its endpoint must agree.
+            os.environ[key] = value
+        else:
+            # An API key the operator exported is theirs to keep.
+            os.environ.setdefault(key, value)
 
     task = {
         "id": f"demo-pydantic-ai-{int(time.time())}",
@@ -1262,7 +1511,7 @@ def demo_pydantic_ai(
             typer.echo(f"  - {failure}", err=True)
         raise typer.Exit(code=1)
 
-    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    effective_repos: list[str] = list(repos) or _default_demo_repos()
     # Resolve the model once for display (re-resolved inside the runner
     # to build the actual ModelConfig). Cheap, single HTTP probe.
     model_config_preview, _ = _resolve_demo_pydantic_ai_model_config()
@@ -1878,7 +2127,7 @@ def demo_hatchet(
         raise typer.Exit(code=1)
 
     settings = _default_settings_getter()
-    effective_repos: list[str] = list(repos) or [str(Path(__file__).resolve().parents[3])]
+    effective_repos: list[str] = list(repos) or _default_demo_repos()
     typer.echo(f"Hatchet server: {settings.hatchet.server_url}")
     typer.echo(f"Namespace:     {settings.hatchet.namespace}")
     typer.echo(f"Workflow:      {workflow_name}")
@@ -2666,12 +2915,13 @@ async def _run_pool_pi_demo(
         max_workers=1,  # PiPool rejects max_workers > 1 at construction
     )
     pool = PiPool(config=config)
-    pool_id = await pool.start()
-    try:
-        result = await pool.execute_task({"prompt": prompt})
-    finally:
-        if not keep:
-            await pool.stop()
+    with _pi_scratch_workspace(pool_name):
+        pool_id = await pool.start()
+        try:
+            result = await pool.execute_task({"prompt": prompt})
+        finally:
+            if not keep:
+                await pool.stop()
     return {
         "pool_id": pool_id,
         "pool_type": "pi",
@@ -2763,6 +3013,17 @@ DEFAULT_WORKFLOW_ADAPTER_B = "mock"
 DEFAULT_WORKFLOW_SOURCE_POOL = "session-buddy"
 DEFAULT_WORKFLOW_TARGET_POOL = "mahavishnu"
 
+#: Per-task budget for the pi demos.
+#:
+#: ``PiPool`` defaults to a 30-second task timeout. That is enough for
+#: a one-line "echo" prompt (the cascade turns finish in ~8s) but not
+#: for a prompt that asks the agent to *write code* -- the
+#: pi-then-local demo's "write a hello-world function in Python" hit
+#: the 30s ceiling and the run came back ``status: timeout``. The pool
+#: reads the budget from the task payload, so the demos pass it
+#: explicitly.
+PI_TASK_TIMEOUT_SECONDS = 120
+
 
 def _emit_workflow_stage(stage: int, total: int, message: str) -> None:
     """Print a single ``[stage N/M] message`` line to stdout.
@@ -2832,6 +3093,33 @@ def _check_workflow_pool_worker_terminal_preconditions(
     return failures
 
 
+def _task_payload(pool_type: str, command: str) -> dict[str, str]:
+    """Build the dispatch payload that ``pool_type`` accepts.
+
+    ``MahavishnuPool`` runs the Shepherd backend, whose ``execute()``
+    contract is ``task_ref`` XOR ``command`` -- it raises
+    ``ValueError("Task must specify 'task_ref' or 'command'")`` for a
+    payload carrying neither (see
+    ``mahavishnu/workers/shepherd_backend.py``). The other pool types
+    are prompt-shaped: ``SessionBuddyPool`` forwards the payload to
+    remote Session-Buddy workers, and ``PiPool`` hands the text to the
+    pi-coding-agent subprocess.
+
+    Dispatching ``{"prompt": ...}`` to a ``MahavishnuPool`` therefore
+    fails before the task ever reaches the substrate, which is why the
+    workflow demos that target a MahavishnuPool used to abort with a
+    bare ``ValueError`` traceback.
+
+    Note the "prompt" options on these demos are shell commands in
+    practice -- ``DEFAULT_WORKFLOW_DEMO_PROMPT`` is
+    ``"echo hello from workflow demo (<stage>)"`` and the Shepherd
+    exec guard allowlists ``echo``.
+    """
+    if pool_type == "mahavishnu":
+        return {"command": command}
+    return {"prompt": command}
+
+
 async def _run_workflow_pool_worker_terminal_demo(
     *,
     prompt: str,
@@ -2870,7 +3158,7 @@ async def _run_workflow_pool_worker_terminal_demo(
     pool_id = await pool.start()
     _emit_workflow_stage(2, total_stages, f"pool {pool_id} started; dispatching task")
     try:
-        result = await pool.execute_task({"prompt": prompt})
+        result = await pool.execute_task(_task_payload("mahavishnu", prompt))
     finally:
         if not keep:
             await pool.stop()
@@ -3018,10 +3306,10 @@ async def _run_workflow_multi_pool_handoff_demo(
         await source_pool_obj.start()
         await target_pool_obj.start()
         typer.echo(f"  ✓ source pool ({source_pool}) started: {source_pool_obj.pool_id}")
-        source_result = await source_pool_obj.execute_task({"prompt": prompt})
+        source_result = await source_pool_obj.execute_task(_task_payload(source_pool, prompt))
         typer.echo(f"  ✓ source task complete: status={source_result.get('status')}")
-        followup = f"echo 'received from {source_pool}: ' \"{source_result.get('output', '')}\""
-        target_result = await target_pool_obj.execute_task({"prompt": followup})
+        followup = f"echo 'received from {source_pool}: ' {shlex.quote(str(source_result.get('output', '')))}"
+        target_result = await target_pool_obj.execute_task(_task_payload(target_pool, followup))
         typer.echo(
             f"  ✓ target pool ({target_pool}) task complete: status={target_result.get('status')}"
         )
@@ -3229,7 +3517,7 @@ async def _run_workflow_adapter_swap_demo(
         )
         pool_id = await pool.start()
         try:
-            result = await pool.execute_task({"prompt": prompt})
+            result = await pool.execute_task(_task_payload("mahavishnu", prompt))
         finally:
             if not keep:
                 await pool.stop()
@@ -3372,20 +3660,21 @@ async def _run_workflow_pi_cascade_demo(
             max_workers=1,
         )
     )
-    pool_id = await pool.start()
-    try:
-        typer.echo(f"  ✓ pi pool started: {pool_id}")
-        turn1_result = await pool.execute_task({"prompt": prompt})
-        typer.echo(f"  ✓ turn 1 complete: status={turn1_result.get('status')}")
-        cascade_prompt = (
-            f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
-        )
-        turn2_result = await pool.execute_task({"prompt": cascade_prompt})
-        typer.echo(f"  ✓ turn 2 complete: status={turn2_result.get('status')}")
-    finally:
-        if not keep:
-            await pool.stop()
-            typer.echo("  ✓ pi pool stopped")
+    with _pi_scratch_workspace("demo-pi-cascade"):
+        pool_id = await pool.start()
+        try:
+            typer.echo(f"  ✓ pi pool started: {pool_id}")
+            turn1_result = await pool.execute_task({"prompt": prompt})
+            typer.echo(f"  ✓ turn 1 complete: status={turn1_result.get('status')}")
+            cascade_prompt = (
+                f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
+            )
+            turn2_result = await pool.execute_task({"prompt": cascade_prompt})
+            typer.echo(f"  ✓ turn 2 complete: status={turn2_result.get('status')}")
+        finally:
+            if not keep:
+                await pool.stop()
+                typer.echo("  ✓ pi pool stopped")
     return {
         "workflow": "pi-cascade",
         "pool_id": pool_id,
@@ -3532,14 +3821,17 @@ async def _run_workflow_pi_then_local_demo(
             max_workers=1,
         )
     )
-    pi_pool_id = await pi_pool.start()
-    try:
-        typer.echo(f"  ✓ pi pool started: {pi_pool_id}")
-        pi_result = await pi_pool.execute_task({"prompt": pi_prompt})
-        typer.echo(f"  ✓ pi task complete: status={pi_result.get('status')}")
-    finally:
-        if not keep:
-            await pi_pool.stop()
+    with _pi_scratch_workspace("demo-pi-then-local-pi"):
+        pi_pool_id = await pi_pool.start()
+        try:
+            typer.echo(f"  ✓ pi pool started: {pi_pool_id}")
+            pi_result = await pi_pool.execute_task(
+                {"prompt": pi_prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
+            )
+            typer.echo(f"  ✓ pi task complete: status={pi_result.get('status')}")
+        finally:
+            if not keep:
+                await pi_pool.stop()
     typer.echo("  → starting local pool with pi output as context")
     local_pool = MahavishnuPool(
         config=PoolConfig(
@@ -3555,7 +3847,14 @@ async def _run_workflow_pi_then_local_demo(
         followup_prompt = (
             f"received from pi pool: {pi_result.get('output', '')}\n\ntask: {local_prompt}"
         )
-        local_result = await local_pool.execute_task({"prompt": followup_prompt})
+        # The local pool is a MahavishnuPool (Shepherd backend), whose
+        # contract is a shell *command*, not free text. The handoff text
+        # is natural language, so it is wrapped in ``echo`` -- the only
+        # allowlisted command that can carry arbitrary text safely --
+        # and the payload key follows the pool type (see
+        # ``_task_payload``).
+        followup_command = f"echo {shlex.quote(followup_prompt)}"
+        local_result = await local_pool.execute_task(_task_payload("mahavishnu", followup_command))
         typer.echo(f"  ✓ local task complete: status={local_result.get('status')}")
     finally:
         if not keep:
@@ -3595,7 +3894,12 @@ def demo_workflow_pi_then_local(
     keep: bool = typer.Option(
         False, "--keep", help="Leave both pools running after the demo (for debugging)."
     ),
-    timeout: int = typer.Option(90, "--timeout", help="Max seconds for the 2-pool handoff."),
+    timeout: int = typer.Option(
+        240,
+        "--timeout",
+        help="Max seconds for the 2-pool handoff. Must exceed the pi task budget "
+        f"({PI_TASK_TIMEOUT_SECONDS}s) plus both pool start/stop cycles.",
+    ),
 ) -> None:
     """Run PiPool, then hand the result to MahavishnuPool for follow-up.
 
@@ -3690,6 +3994,388 @@ for _stub_name in ("mock",):
     _cmd = _stub_command(_stub_name)
     demo_app.command(_stub_name)(_cmd)
 del _stub_name, _cmd  # hygiene
+
+
+# ============================================================================
+# demo all — sweep every demo subcommand and report a verdict matrix
+# ============================================================================
+
+
+@dataclass(frozen=True)
+class DemoSweepSpec:
+    """One row of the ``demo all`` sweep table.
+
+    Attributes:
+        name: The demo subcommand name (as registered on ``demo_app``).
+        ceiling: Hard wall-clock kill switch for this demo, in seconds.
+            This is the harness's backstop -- it is deliberately larger
+            than the demo's own ``--timeout`` default so that a demo
+            tripping its *own* budget is reported as ``TIMEOUT`` (a
+            signal about the demo) rather than being killed silently.
+        takes_timeout: Whether the demo exposes its own ``--timeout``
+            flag. ``tmux`` and ``mock`` do not.
+    """
+
+    name: str
+    ceiling: int
+    takes_timeout: bool = True
+
+
+#: The sweep table. Order is the operator-facing narrative order: cheap
+#: local substrates first, then engines, then pools, then multi-stage
+#: workflows. ``ceiling`` values are sized from observed runtimes on a
+#: CPU-only host, where ``llama_server`` needs minutes per embedding
+#: batch -- the demos' own 120 s defaults are too tight there.
+DEMO_SWEEP_SPECS: tuple[DemoSweepSpec, ...] = (
+    DemoSweepSpec("tmux", 120, takes_timeout=False),
+    DemoSweepSpec("mock", 60, takes_timeout=False),
+    DemoSweepSpec("prefect", 420),
+    DemoSweepSpec("agno", 600),
+    DemoSweepSpec("llamaindex", 1200),
+    DemoSweepSpec("pydantic_ai", 1200),
+    DemoSweepSpec("crow", 180),
+    DemoSweepSpec("hatchet", 420),
+    DemoSweepSpec("pool-mahavishnu", 240),
+    DemoSweepSpec("pool-session-buddy", 240),
+    DemoSweepSpec("pool-runpod-public", 420),
+    DemoSweepSpec("pool-runpod", 420),
+    DemoSweepSpec("pool-pi", 420),
+    DemoSweepSpec("workflow-pool-worker-terminal", 240),
+    DemoSweepSpec("workflow-multi-pool-handoff", 240),
+    DemoSweepSpec("workflow-adapter-swap", 300),
+    DemoSweepSpec("workflow-pi-cascade", 420),
+    DemoSweepSpec("workflow-pi-then-local", 420),
+)
+
+# Verdicts. ``PRECONDITION`` means the substrate was missing, not that
+# the demo is broken -- the demo module already encodes that distinction
+# in its exit convention (see ``_classify_sweep_output``).
+VERDICT_PASS = "PASS"
+VERDICT_PRECONDITION = "PRECONDITION"
+VERDICT_TIMEOUT = "TIMEOUT"
+VERDICT_ERROR = "ERROR"
+VERDICT_PARTIAL = "PARTIAL"
+VERDICT_STUB = "STUB"
+VERDICT_SKIPPED = "SKIPPED"
+
+#: Statuses a demo's own JSON result may carry that count as success.
+_SUCCESS_STATUSES = frozenset(
+    {"success", "ok", "completed", "completed_successfully", "healthy"}
+)
+
+#: Terminal states that count as success for the Prefect demo, which
+#: reports its verdict under ``state`` rather than ``status``.
+_SUCCESS_STATES = frozenset({"COMPLETED", "SUCCESS"})
+
+# Line-anchored matchers for the demo module's stderr headers. See
+# ``_classify_sweep_output`` for why these are anchored rather than
+# plain substring searches.
+_PRECONDITION_RE = re.compile(r"^\s*Precondition failure\(s\):", re.MULTILINE)
+_TIMEOUT_RE = re.compile(r"^\s*Timed out after \d+s", re.MULTILINE)
+_STUB_RE = re.compile(r"^\s*not implemented\b", re.MULTILINE)
+
+#: Matches the demos' result headers -- ``Agno demo result:``,
+#: ``Workflow result:``, ``MahavishnuPool demo result:``, and friends.
+_RESULT_HEADER_RE = re.compile(r"^\s*\S[^\n:]*result:\s*$", re.MULTILINE)
+
+
+def _collect_statuses(payload: Any) -> list[str]:
+    """Collect every ``status`` string in a result payload, nested included.
+
+    The workflow demos report per-stage verdicts in nested dicts
+    (``{"pi": {"status": "timeout"}, "local": {"status": "completed"}}``)
+    and carry no top-level ``status`` at all, so a top-level-only check
+    would score a half-failed workflow as a pass.
+    """
+    found: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if key == "status" and isinstance(value, str):
+                found.append(value.lower())
+            else:
+                found.extend(_collect_statuses(value))
+    elif isinstance(payload, list):
+        for item in payload:
+            found.extend(_collect_statuses(item))
+    return found
+
+
+def _extract_demo_payload(output: str) -> dict[str, Any] | None:
+    """Return the result JSON object a demo printed, if any.
+
+    The demos print a header line (``... demo result:``, ``Workflow
+    result:``) followed by ``json.dumps(result, indent=2)``.
+
+    The JSON is parsed with ``raw_decode`` over the whole remaining
+    text rather than line-by-line, because ``indent=2`` spreads the
+    object across many lines and a line-oriented scan would only ever
+    see the opening brace.
+    """
+    decoder = json.JSONDecoder()
+    for match in _RESULT_HEADER_RE.finditer(output):
+        tail = output[match.end() :].lstrip()
+        if not tail.startswith("{"):
+            continue
+        try:
+            payload, _ = decoder.raw_decode(tail)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
+
+
+def _extract_demo_status(output: str) -> str | None:
+    """Return the ``status`` field from a demo's printed result JSON.
+
+    Reading the status out of it catches the *false success* case -- the
+    LlamaIndex and Hatchet adapters return a top-level ``status`` of
+    ``completed``/``unhealthy`` even when every repo failed underneath.
+    """
+    payload = _extract_demo_payload(output)
+    if payload is None:
+        return None
+    status = payload.get("status")
+    return status.lower() if isinstance(status, str) else None
+
+
+def _classify_sweep_output(output: str, returncode: int) -> str:
+    """Classify one demo's combined stdout+stderr into a verdict.
+
+    The demo module already distinguishes its failure modes through a
+    stderr header plus an exit code, so the sweep reads that convention
+    rather than re-deriving it:
+
+    - ``Precondition failure(s):`` + exit 1 -> missing infra or config
+    - ``Timed out after Ns`` + exit 2      -> the demo's own budget expired
+    - a bare traceback + exit 1           -> a defect in the demo
+    - exit 0                              -> the demo reached its success path
+
+    The header match is **line-anchored**, not a substring match. Rich's
+    traceback renderer prints the offending source line inside a panel
+    (``| 510 |   |   typer.echo(f"Timed out after {timeout}s ...``) --
+    a substring search for ``Timed out after`` therefore fires on the
+    *source* of the timeout branch and mislabels a crash as a timeout.
+    """
+    if _PRECONDITION_RE.search(output):
+        return VERDICT_PRECONDITION
+    if _TIMEOUT_RE.search(output):
+        return VERDICT_TIMEOUT
+    if _STUB_RE.search(output):
+        return VERDICT_STUB
+    if returncode != 0:
+        return VERDICT_ERROR
+    payload = _extract_demo_payload(output)
+    if payload is not None:
+        # The Prefect demo reports its verdict as ``state`` rather than
+        # ``status`` ("COMPLETED" / "CRASHED" / "FAILED").
+        prefect_state = payload.get("state")
+        if isinstance(prefect_state, str) and prefect_state.upper() not in _SUCCESS_STATES:
+            return VERDICT_ERROR
+        statuses = _collect_statuses(payload)
+        if any(status not in _SUCCESS_STATUSES for status in statuses):
+            return VERDICT_ERROR
+        failures = payload.get("failure_count")
+        successes = payload.get("success_count")
+        if isinstance(failures, int) and failures > 0:
+            # The engine adapters report a top-level ``completed`` even
+            # when every repo failed underneath. The per-repo counters
+            # are the honest signal.
+            if successes == 0:
+                return VERDICT_ERROR
+            return VERDICT_PARTIAL
+    return VERDICT_PASS
+
+
+def _decode_timeout_output(raw: str | bytes | None) -> str:
+    """Normalize ``TimeoutExpired`` output to text.
+
+    ``subprocess.TimeoutExpired.stdout``/``.stderr`` are ``bytes`` even
+    when the parent was opened with ``text=True`` on some platforms --
+    the captured buffers are what the child had flushed at kill time.
+    """
+    if raw is None:
+        return ""
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8", "replace")
+    return raw
+
+
+def _sweep_argv(spec: DemoSweepSpec, demo_timeout: int) -> list[str]:
+    """Build the argv for one demo subprocess.
+
+    Uses ``sys.executable -m mahavishnu`` rather than the ``mahavishnu``
+    console script so the sweep runs against the *same* interpreter that
+    is running the sweep -- no PATH lookup, no risk of hitting a
+    different venv's entry point.
+    """
+    argv = [sys.executable, "-m", "mahavishnu", "demo", spec.name]
+    if demo_timeout and spec.takes_timeout:
+        argv += ["--timeout", str(demo_timeout)]
+    return argv
+
+
+def _run_sweep_demo(
+    spec: DemoSweepSpec,
+    *,
+    demo_timeout: int,
+    log_dir: Path,
+) -> dict[str, Any]:
+    """Run one demo in an isolated subprocess and collect its verdict.
+
+    Subprocess isolation is deliberate: a demo that raises an uncaught
+    exception must not abort the sweep, and several demos spawn
+    long-lived subprocesses (tmux panes, ``npx pi-coding-agent``) that
+    are cleaned up by the demo itself only on its own happy path.
+    """
+    argv = _sweep_argv(spec, demo_timeout)
+    ceiling = spec.ceiling
+    if demo_timeout:
+        ceiling = max(ceiling, demo_timeout + 120)
+    started = time.monotonic()
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=ceiling,
+            check=False,
+            cwd=str(Path.cwd()),
+        )
+        output = completed.stdout + completed.stderr
+        returncode = completed.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        returncode = -1
+        output = _decode_timeout_output(exc.stdout) + _decode_timeout_output(exc.stderr)
+        output += f"\n[sweep] hard ceiling {ceiling}s reached -- process killed\n"
+    duration = round(time.monotonic() - started, 1)
+
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{spec.name}.log"
+    log_path.write_text(output, encoding="utf-8")
+
+    verdict = VERDICT_TIMEOUT if timed_out else _classify_sweep_output(output, returncode)
+    return {
+        "name": spec.name,
+        "verdict": verdict,
+        "exit_code": returncode,
+        "duration_s": duration,
+        "timed_out": timed_out,
+        "log": str(log_path),
+        "status": _extract_demo_status(output),
+        "tail": output[-1200:],
+    }
+
+
+def _select_sweep_specs(
+    only: Sequence[str],
+    skip: Sequence[str],
+) -> list[DemoSweepSpec]:
+    """Resolve the ``--only`` / ``--skip`` filters against the sweep table."""
+    known = {spec.name for spec in DEMO_SWEEP_SPECS}
+    unknown = (set(only) | set(skip)) - known
+    if unknown:
+        raise typer.BadParameter(
+            f"unknown demo(s): {', '.join(sorted(unknown))}. "
+            f"Known demos: {', '.join(sorted(known))}"
+        )
+    only_set = set(only)
+    skip_set = set(skip)
+    return [
+        spec
+        for spec in DEMO_SWEEP_SPECS
+        if (not only_set or spec.name in only_set) and spec.name not in skip_set
+    ]
+
+
+def _print_sweep_summary(rows: Sequence[dict[str, Any]]) -> None:
+    """Print the verdict matrix as an aligned table."""
+    typer.echo("")
+    typer.echo("=== demo all — verdict matrix ===")
+    width = max((len(row["name"]) for row in rows), default=10)
+    for row in rows:
+        typer.echo(
+            f"  {row['name']:<{width}}  {row['verdict']:<13} "
+            f"exit={row['exit_code']:<3} {row['duration_s']:>7}s"
+        )
+    failures = [row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)]
+    typer.echo("")
+    typer.echo(f"{len(rows) - len(failures)}/{len(rows)} passed")
+    if failures:
+        typer.echo("")
+        typer.echo("Failures (logs under the --log-dir):")
+        for row in failures:
+            typer.echo(f"  - {row['name']}: {row['verdict']} (exit={row['exit_code']})")
+            typer.echo(f"      {row['tail'].strip().splitlines()[-1][:160] if row['tail'].strip() else ''}")
+
+
+@demo_app.command("all")
+def demo_all(
+    only: list[str] = typer.Option(
+        [],
+        "--only",
+        help="Run only these demos (repeatable).",
+    ),
+    skip: list[str] = typer.Option(
+        [],
+        "--skip",
+        help="Skip these demos (repeatable).",
+    ),
+    timeout: int = typer.Option(
+        0,
+        "--timeout",
+        help="Override each demo's own --timeout budget in seconds (0 = shipped default).",
+    ),
+    log_dir: Path = typer.Option(
+        None,  # type: ignore[arg-type]
+        "--log-dir",
+        help="Directory for per-demo logs (default: a temp dir under the system temp root).",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON instead of the verdict table.",
+    ),
+) -> None:
+    """Run every demo subcommand and report a verdict matrix.
+
+    Each demo runs in its own subprocess so that one demo's uncaught
+    exception, timeout, or orphaned subprocess cannot take the sweep
+    down with it. The verdict for each demo is derived from the exit
+    convention the demo module already uses:
+
+    ``PRECONDITION`` means the substrate was missing (start the server);
+    ``ERROR`` means the demo itself is broken.
+    """
+    try:
+        specs = _select_sweep_specs(only, skip)
+    except typer.BadParameter as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=2) from None
+
+    if not specs:
+        typer.echo("no demos selected", err=True)
+        raise typer.Exit(code=2)
+
+    resolved_log_dir = log_dir or (Path(tempfile.gettempdir()) / "mahavishnu-demo-logs")
+    typer.echo(f"sweeping {len(specs)} demo(s); logs -> {resolved_log_dir}")
+
+    rows: list[dict[str, Any]] = []
+    for spec in specs:
+        typer.echo(f"[run ] {spec.name} ...")
+        row = _run_sweep_demo(spec, demo_timeout=timeout, log_dir=resolved_log_dir)
+        rows.append(row)
+        typer.echo(f"[done] {spec.name}: {row['verdict']} ({row['duration_s']}s)")
+
+    if json_output:
+        typer.echo(json.dumps(rows, indent=2, default=str))
+    else:
+        _print_sweep_summary(rows)
+
+    failures = [row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)]
+    raise typer.Exit(code=1 if failures else 0)
 
 
 __all__ = ["demo_app"]

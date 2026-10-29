@@ -104,35 +104,58 @@ def test_resolve_crow_mcp_client_uses_defaults_when_no_settings() -> None:
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "call_site_line",
-    [1543, 2059],
-    ids=["workers_spawn", "pool_spawn"],
+    "call_site_kind",
+    ["workers_spawn", "pool_spawn"],
 )
-def test_call_sites_route_through_helper(reload_main_cli, call_site_line) -> None:
+def test_call_sites_route_through_helper(reload_main_cli, call_site_kind) -> None:
     """Both ``TerminalManager.create(..., mcp_client=...)`` call sites in
     ``_main_cli.py`` must read ``mcp_client`` from ``_resolve_crow_mcp_client``
     rather than hardcoding ``None``. We verify the wiring by inspecting the
     source — a regression here means the symmetric wiring has drifted.
 
-    Line numbers pinned to the actual call sites (updated 2026-10-17 after
-    the status + reap Typer sub-apps were wired into ``_main_cli``):
-    - ``workers_spawn`` resolves the crow client into a local variable
-      on line 1586 (``crow_client = _resolve_crow_mcp_client(...)``),
-      then passes it to ``TerminalManager.create``.
-    - ``pool_spawn`` calls ``_resolve_crow_mcp_client`` inline on
-      line 2040 (``mcp_client=_resolve_crow_mcp_client(...)``).
+    The call sites are located by *searching* the source for the helper
+    call, not by a pinned line number. A previous version of this test
+    hardcoded the line numbers, which broke every time an unrelated
+    commit added a line to ``_main_cli.py`` — the drift read as a real
+    wiring regression when nothing had changed.
 
-    If you add new wire-ups in ``_main_cli`` and these shift, update
-    both numbers here.
+    Two call shapes exist:
+    - ``workers_spawn`` resolves the crow client into a local variable
+      (``crow_client = _resolve_crow_mcp_client(...)``), then passes it
+      to ``TerminalManager.create``.
+    - ``pool_spawn`` calls ``_resolve_crow_mcp_client`` inline
+      (``mcp_client=_resolve_crow_mcp_client(...)``).
     """
     import inspect
 
     source_lines = inspect.getsource(reload_main_cli).splitlines()
-    # The line index in the *file* (1-based) corresponds to list index minus 1.
-    target = source_lines[call_site_line - 1]
-    assert "_resolve_crow_mcp_client(maha_app.config)" in target, (
-        f"call site at line {call_site_line} no longer routes through the helper: {target!r}"
+    matches = [
+        (number, line)
+        for number, line in enumerate(source_lines, start=1)
+        if "_resolve_crow_mcp_client(maha_app.config)" in line
+    ]
+    assert matches, "no call site routes through _resolve_crow_mcp_client"
+
+    if call_site_kind == "workers_spawn":
+        # The local-variable form: the call is on its own statement.
+        candidates = [
+            (number, line)
+            for number, line in matches
+            if line.strip().startswith("crow_client = ")
+        ]
+    else:
+        # The inline keyword-argument form.
+        candidates = [
+            (number, line)
+            for number, line in matches
+            if "mcp_client=_resolve_crow_mcp_client" in line.replace(" ", "")
+        ]
+
+    assert candidates, (
+        f"no {call_site_kind} call site routes through the helper; "
+        f"found {matches}"
     )
-    assert "mcp_client=None" not in target, (
-        f"call site at line {call_site_line} still hardcodes mcp_client=None: {target!r}"
-    )
+    for number, line in candidates:
+        assert "mcp_client=None" not in line, (
+            f"call site at line {number} still hardcodes mcp_client=None: {line!r}"
+        )
