@@ -1,8 +1,12 @@
-"""Typer CLI surface inventory for Bodai Core 7.
+"""Typer CLI surface inventory for the Bodai core repositories.
 
-Walks each Core 7 repo's Typer app recursively and captures per-command
+Walks each core repo's Typer app recursively and captures per-command
 schema for the audit. Used by Phase 1 inventory subagents and the
 quarterly staleness re-audit cadence (Phase 7.5).
+
+This repo is public, so the script must not hardcode one machine's
+directory layout: a repo's location is resolved against the projects root
+(see ``scripts.bodai_paths``) rather than written into the source.
 
 Usage:
     python scripts/audit_cli_inventory.py --repo mahavishnu
@@ -24,7 +28,39 @@ from typing import Any
 
 import typer
 
+# The repo root has to be importable so this script can share the projects
+# root resolution with the rest of the fleet tooling. ``scripts`` is a
+# repo-local package (it is not shipped in the wheel), so a script run
+# directly -- ``python scripts/audit_cli_inventory.py`` -- has
+# ``scripts/`` rather than the repo root on ``sys.path``.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from scripts.bodai_paths import resolve_projects_root
+
 app = typer.Typer(help="Bodai CLI surface inventory")
+
+# The Bodai core set -- six repositories. Every one of them is inventoried
+# by the ``all`` subcommand.
+CORE_REPOS: tuple[str, ...] = (
+    "mahavishnu",
+    "akosha",
+    "session-buddy",
+    "crackerjack",
+    "oneiric",
+    "mcp-common",
+)
+
+# Where each inventoried repo's Typer app lives. ``mcp-common`` is
+# library-only and short-circuits in ``inventory_one_repo``.
+ENTRY_POINTS: dict[str, tuple[str, str]] = {
+    "oneiric": ("oneiric.cli", "app"),
+    "session-buddy": ("session_buddy.cli", "app"),
+    "akosha": ("akosha.cli", "app"),
+    "crackerjack": ("crackerjack.__main__", "app"),
+    "mahavishnu": ("mahavishnu._main_cli", "app"),
+}
 
 
 @dataclass
@@ -165,15 +201,7 @@ def inventory_one_repo(repo: str, repo_path: str, out_path: Path) -> dict[str, A
             }
             out_path.write_text(json.dumps(data, indent=2))
             return data
-        entry_points = {
-            "oneiric": ("oneiric.cli", "app"),
-            "mcp": ("mcp.cli", "app"),
-            "session-buddy": ("session_buddy.cli", "app"),
-            "akosha": ("akosha.cli", "app"),
-            "crackerjack": ("crackerjack.__main__", "app"),
-            "mahavishnu": ("mahavishnu._main_cli", "app"),
-        }
-        mod_name, attr_name = entry_points[repo]
+        mod_name, attr_name = ENTRY_POINTS[repo]
         mod = __import__(mod_name, fromlist=[attr_name])
         typer_app = getattr(mod, attr_name)
         # Typer instances: the imported object IS the app (it's already
@@ -209,13 +237,38 @@ def _safe_version(repo: str) -> str:
         return "(not installed)"
 
 
-def write_phase_0_baseline(repos: list[str], repo_root: str, out_path: Path) -> None:
+def write_phase_0_baseline(repos: list[str], out_path: Path) -> None:
+    """Repackage the per-repo inventories into the Phase 0 baseline.
+
+    The repos are written in alphabetical order so the artifact's key order
+    does not depend on the order they are declared in.
+    """
     baseline = {"phase": 0, "repos": {}}
-    for repo in repos:
+    for repo in sorted(repos):
         json_path = out_path.parent / f"{repo}-cli-inventory.json"
         if json_path.exists():
             baseline["repos"][repo] = json.loads(json_path.read_text())
     out_path.write_text(json.dumps(baseline, indent=2, default=str))
+
+
+def resolve_repo_path(repo_name: str, repo_path: str | None) -> Path:
+    """Resolve where a repo's checkout lives.
+
+    An explicit ``--repo-path`` wins; otherwise the repo is looked for
+    under the projects root. The root is never written into this script --
+    it is resolved at run time from ``$BODAI_PROJECTS_ROOT``, the repo's own
+    location, or ``~/Projects`` (see ``scripts.bodai_paths``).
+
+    Args:
+        repo_name: The repo's name, e.g. ``oneiric``.
+        repo_path: An explicit override, or None to derive the location.
+
+    Returns:
+        The repo's location on disk.
+    """
+    if repo_path:
+        return Path(repo_path).expanduser()
+    return resolve_projects_root() / repo_name
 
 
 @app.command()
@@ -226,7 +279,7 @@ def repo(
         None,
         "--repo-path",
         help=(
-            "Path to the repo root (defaults to /Users/les/Projects/<repo>). "
+            "Path to the repo root (defaults to <projects root>/<repo>). "
             "Override when running from a clean worktree while main has "
             "uncommitted modifications."
         ),
@@ -237,16 +290,16 @@ def repo(
         help=(
             "Output directory for the JSON inventory file "
             "(defaults to ./docs/audit-inventory). Subagents writing to "
-            "the centralized mahavishnu location should pass "
-            "/Users/les/Projects/mahavishnu/docs/audit-inventory."
+            "the centralized location should pass "
+            "<projects root>/mahavishnu/docs/audit-inventory."
         ),
     ),
 ) -> None:
-    resolved_repo_path = repo_path or f"/Users/les/Projects/{repo_name}"
+    resolved_repo_path = resolve_repo_path(repo_name, repo_path)
     resolved_out_dir = Path(out_dir) if out_dir else Path("docs/audit-inventory")
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
     out_path = resolved_out_dir / f"{repo_name}-cli-inventory.json"
-    data = inventory_one_repo(repo_name, resolved_repo_path, out_path)
+    data = inventory_one_repo(repo_name, str(resolved_repo_path), out_path)
     typer.echo(f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}")
 
 
@@ -263,29 +316,24 @@ def all_repos(
             "PHASE_0_BASELINE.json (defaults to ./docs/audit-inventory)."
         ),
     ),
-    projects_root: str = typer.Option(
-        "/Users/les/Projects",
+    projects_root: str | None = typer.Option(
+        None,
         "--projects-root",
         help=(
-            "Root directory containing the Core 7 repos. Each repo's "
-            "inventory is fetched as <projects-root>/<repo>."
+            "Root directory containing the core repos. Each repo's "
+            "inventory is fetched as <projects-root>/<repo>. Defaults to "
+            "the resolved projects root ($BODAI_PROJECTS_ROOT, this "
+            "repo's parent directory, or ~/Projects)."
         ),
     ),
 ) -> None:
-    repos = [
-        "mcp-common",
-        "oneiric",
-        "mcp",
-        "session-buddy",
-        "akosha",
-        "crackerjack",
-        "mahavishnu",
-    ]
+    repos = list(CORE_REPOS)
+    root = Path(projects_root).expanduser() if projects_root else resolve_projects_root()
     resolved_out_dir = Path(out_dir) if out_dir else Path("docs/audit-inventory")
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
     any_stale = False
     for repo in repos:
-        repo_path = f"{projects_root}/{repo}"
+        repo_path = str(root / repo)
         out_path = resolved_out_dir / f"{repo}-cli-inventory.json"
         try:
             data = inventory_one_repo(repo, repo_path, out_path)
@@ -300,7 +348,7 @@ def all_repos(
             if stale:
                 any_stale = True
                 typer.echo(f"  [yellow]{len(stale)} stale/deprecated commands[/yellow]")
-    write_phase_0_baseline(repos, projects_root, resolved_out_dir / "PHASE_0_BASELINE.json")
+    write_phase_0_baseline(repos, resolved_out_dir / "PHASE_0_BASELINE.json")
     if check_stale and any_stale:
         raise typer.Exit(code=1)
 
