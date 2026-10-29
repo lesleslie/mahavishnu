@@ -21,7 +21,11 @@ from mcp_common.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
 
-from ..bifrost.cache_headers import VIRTUAL_KEY_HEADER, build_gateway_headers
+from ..bifrost.cache_headers import (
+    TRAFFIC_CLASS_WORKER,
+    VIRTUAL_KEY_HEADER,
+    build_gateway_headers,
+)
 from ..core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
     DEFAULT_MINIMAX_ROUTING,
@@ -127,7 +131,18 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     # ``cache_mode`` is an operator retention control, and a missing
     # credential must not invert it. build_gateway_headers owns that
     # decision and logs why it withheld the credential.
-    gateway_headers = build_gateway_headers(minimax_base_url) if via_gateway else {}
+    #
+    # The traffic class scopes the cache bucket. The worker is one
+    # traffic class; the Agno adapter's OpenAI and Anthropic surfaces
+    # are others, so a prompt carried over one protocol cannot be served
+    # a response cached under the other.
+    gateway_headers = (
+        build_gateway_headers(
+            minimax_base_url, traffic_class=TRAFFIC_CLASS_WORKER
+        )
+        if via_gateway
+        else {}
+    )
     if via_gateway and VIRTUAL_KEY_HEADER not in gateway_headers:
         # Fail loud: without the virtual key every gateway call returns
         # "401 - virtual key is required". Logging it here points at the

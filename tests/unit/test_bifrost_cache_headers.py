@@ -29,10 +29,13 @@ from mahavishnu.bifrost.cache_headers import (
     CACHE_NO_STORE_HEADER,
     CACHE_TYPE_HEADER,
     DEFAULT_CACHE_BUCKET,
+    TRAFFIC_CLASS_AGNO_OPENAI,
+    TRAFFIC_CLASS_WORKER,
     VIRTUAL_KEY_HEADER,
     build_cache_headers,
     build_gateway_headers,
     gateway_host_is_trusted,
+    resolve_cache_bucket,
     resolve_cache_mode,
     resolve_virtual_key,
 )
@@ -190,13 +193,108 @@ def test_cache_headers_survive_a_missing_virtual_key(
     the gateway resolved the bucket from its own ``default_cache_key`` and
     wrote the prompt and response into the shared cache -- the exact
     opposite of ``cache_mode: off``.
+
+    The bucket is still derived rather than shared, so a deployment with
+    no credential configured does not fall back into the fleet-wide
+    namespace.
     """
     monkeypatch.delenv("BIFROST_VIRTUAL_KEY", raising=False)
     cache_mode("off")
     headers = build_gateway_headers(LOOPBACK_URL)
     assert VIRTUAL_KEY_HEADER not in headers
     assert headers[CACHE_NO_STORE_HEADER] == "true"
-    assert headers[CACHE_KEY_HEADER] == DEFAULT_CACHE_BUCKET
+    assert headers[CACHE_KEY_HEADER] == resolve_cache_bucket("", None)
+    assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
+
+
+# ---------------------------------------------------------------------------
+# The bucket is derived, not chosen
+# ---------------------------------------------------------------------------
+
+
+def test_the_bucket_is_never_the_shared_default(
+    cache_mode: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Production traffic must not share the fleet-wide namespace.
+
+    The shared ``default`` bucket puts every request in one namespace.
+    With the semantic cache's ``exclude_system_prompt: true`` -- which
+    drops the system prompt from the cache key -- two agents with
+    different personas but the same user turn collide, and one is served
+    the other's cached response.
+    """
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
+    cache_mode("semantic")
+    headers = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
+
+
+def test_different_traffic_classes_get_different_buckets(
+    cache_mode: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same user turn over two protocol surfaces must not collide."""
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
+    cache_mode("semantic")
+    worker = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    agno = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_AGNO_OPENAI
+    )
+    assert worker[CACHE_KEY_HEADER] != agno[CACHE_KEY_HEADER]
+
+
+def test_different_principals_get_different_buckets(
+    cache_mode: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second virtual key gets its own namespace, with no code change."""
+    cache_mode("semantic")
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-key-one")
+    first = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-key-two")
+    second = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    assert first[CACHE_KEY_HEADER] != second[CACHE_KEY_HEADER]
+
+
+def test_the_bucket_is_stable_for_one_principal(
+    cache_mode: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A derived bucket still has to be stable, or the cache never hits."""
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
+    cache_mode("semantic")
+    first = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    second = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    assert first[CACHE_KEY_HEADER] == second[CACHE_KEY_HEADER]
+
+
+def test_the_credential_does_not_appear_in_the_bucket(
+    cache_mode: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bucket travels in a header that gets logged."""
+    monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-super-secret-key")
+    cache_mode("semantic")
+    headers = build_gateway_headers(
+        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
+    )
+    assert "sk-bf-super-secret-key" not in headers[CACHE_KEY_HEADER]
+
+
+def test_the_traffic_class_is_sanitised() -> None:
+    """A traffic class is an inert token, not a header injection."""
+    bucket = resolve_cache_bucket("Worker Pool; DROP", "sk-bf-test-key")
+    assert bucket.startswith("worker-pool-drop:")
+    assert ";" not in bucket
+    assert " " not in bucket
 
 
 def test_virtual_key_is_withheld_from_an_untrusted_transport(

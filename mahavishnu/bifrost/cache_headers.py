@@ -30,19 +30,33 @@ suppresses the *read*, so ``off`` means "do not populate the cache" rather
 than "do not use the cache". The gateway can still serve a previously cached
 response to an ``off`` request.
 
-Note the scope of the bucket: every caller sends ``x-bf-cache-key:
-default``, and the gateway's own ``default_cache_key`` is ``"default"``, so
-there is one shared bucket across the fleet. Combined with the semantic
-cache's ``exclude_system_prompt: true`` -- which drops the system prompt
-from the cache key -- two agents with different personas but the same user
-turn can collide, and one can be served the other's cached response.
-Scoping the bucket per caller needs a tenant identity at the point the
-headers are built, which the provider-construction site does not have.
+Note the scope of the bucket. It used to be ``default`` for every caller,
+and the gateway's own ``default_cache_key`` is ``"default"``, so there was
+one shared bucket across the fleet. Combined with the semantic cache's
+``exclude_system_prompt: true`` -- which drops the system prompt from the
+cache key -- two agents with different personas but the same user turn
+could collide, and one could be served the other's cached response.
+
+The bucket is now **derived** (see :func:`resolve_cache_bucket`) from the
+traffic class and the credential the request presents, so it is never the
+shared default and never a bucket the caller chose. The credential is the
+gateway virtual key -- the identity the gateway authenticates the request
+as -- hashed rather than used verbatim, because the bucket travels in a
+logged header. A second principal gets a second bucket with no code
+change.
+
+What this does **not** do is separate two agents of the same principal.
+The bucket is chosen when the client is constructed, and the client is
+reused across requests, so a per-agent bucket would need a per-request
+header. The gateway would also have to refuse a bucket the presented
+credential does not own -- a change in Bifrost itself, not here.
 """
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 from typing import Literal, cast
 from urllib.parse import urlparse
 
@@ -84,6 +98,31 @@ LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 _CREDENTIAL_ERRORS = (ImportError, OSError, RuntimeError, TypeError, ValueError)
 
 VALID_CACHE_MODES: frozenset[str] = frozenset({"off", "direct", "semantic"})
+
+#: Traffic classes used to separate protocol surfaces within one
+#: principal's cache namespace. Two surfaces can carry the same user
+#: turn -- the same prompt over the OpenAI protocol and over the
+#: Anthropic one -- so without this they would share a bucket.
+TRAFFIC_CLASS_WORKER = "worker"
+TRAFFIC_CLASS_AGNO_OPENAI = "agno-openai"
+TRAFFIC_CLASS_AGNO_ANTHROPIC = "agno-anthropic"
+
+#: Characters allowed in a bucket name. The bucket travels in a header,
+#: so it is restricted to an unambiguous, inert alphabet.
+_BUCKET_PART = re.compile(r"[^a-z0-9_-]+")
+
+
+def _sanitise_bucket_part(value: str) -> str:
+    """Reduce a traffic class to an inert, bounded token.
+
+    Args:
+        value: The raw traffic class.
+
+    Returns:
+        A lowercase token of at most 32 characters.
+    """
+    cleaned = _BUCKET_PART.sub("-", value.strip().lower()).strip("-")
+    return cleaned[:32]
 
 
 def resolve_cache_mode() -> CacheMode:
@@ -214,10 +253,59 @@ def gateway_host_is_trusted(base_url: str) -> bool:
     return scheme == "http" and host in LOOPBACK_HOSTS
 
 
+def resolve_cache_bucket(traffic_class: str, principal: str | None = None) -> str:
+    """Derive the cache bucket for a request.
+
+    The bucket is **derived**, never taken from the caller. Two things
+    make that matter:
+
+    * The shared :data:`DEFAULT_CACHE_BUCKET` puts every request in the
+      fleet into one namespace. With the semantic cache's
+      ``exclude_system_prompt: true`` -- which drops the system prompt
+      from the cache key -- two agents with different personas but the
+      same user turn collide, and one is served the other's cached
+      response.
+    * A caller-supplied bucket is a caller-supplied *selector*. Whoever
+      holds a credential could name another bucket and read what is in
+      it. Deriving the bucket from the credential the request actually
+      presents closes that: a caller cannot select a bucket it does not
+      hold the key for.
+
+    The principal is the gateway virtual key -- the identity the gateway
+    authenticates the request as. It is hashed rather than used
+    verbatim, because the bucket travels in a header that gets logged.
+    Two principals therefore get separate buckets automatically, with no
+    code change when a second key is issued.
+
+    Args:
+        traffic_class: What kind of traffic this is (for example
+            ``"worker"`` or ``"agno-openai"``). It separates protocol
+            surfaces, which can otherwise collide on an identical user
+            turn.
+        principal: The authenticated principal -- the gateway virtual
+            key. ``None`` when no credential is available.
+
+    Returns:
+        A bucket name that is never the shared default.
+    """
+    scope = _sanitise_bucket_part(traffic_class) or "unknown"
+    if principal:
+        digest = hashlib.sha256(principal.encode("utf-8")).hexdigest()[:12]
+    else:
+        # No credential means the gateway will reject the request
+        # anyway. The bucket is still not the shared one, so a
+        # misconfigured deployment cannot fall back into the fleet-wide
+        # namespace.
+        digest = "nokey"
+    return f"{scope}:{digest}"
+
+
 def build_gateway_headers(
     base_url: str,
     mode: CacheMode | None = None,
     bucket: str | None = None,
+    *,
+    traffic_class: str = "",
 ) -> dict[str, str]:
     """Build the full header set for a Bifrost-routed request.
 
@@ -233,6 +321,11 @@ def build_gateway_headers(
     prompt and response into the shared cache. A missing credential must
     not change what gets retained.
 
+    The bucket is **derived** from the traffic class and the credential
+    the request presents (see :func:`resolve_cache_bucket`), so it is
+    never the shared :data:`DEFAULT_CACHE_BUCKET` and never a bucket a
+    caller chose. Pass ``bucket`` only to override that deliberately.
+
     The virtual key is attached only when the target URL is trusted (see
     :func:`gateway_host_is_trusted`). An untrusted target gets the cache
     headers and no credential; the caller can tell the difference by the
@@ -242,14 +335,19 @@ def build_gateway_headers(
         base_url: The gateway base URL the request will be sent to. Used
             to decide whether the credential may cross this hop.
         mode: Cache mode. Resolved from the router settings when omitted.
-        bucket: Cache bucket to scope entries to.
+        bucket: Cache bucket to scope entries to. Overrides the derived
+            bucket.
+        traffic_class: What kind of traffic this is. Separates protocol
+            surfaces within one principal's namespace.
 
     Returns:
         Headers to attach to the outbound request.
     """
+    virtual_key = resolve_virtual_key()
+    if bucket is None:
+        bucket = resolve_cache_bucket(traffic_class, virtual_key)
     headers = build_cache_headers(mode or resolve_cache_mode(), bucket)
 
-    virtual_key = resolve_virtual_key()
     if not virtual_key:
         logger.warning(
             "No Bifrost virtual key is available (set %s); the request will "
@@ -277,6 +375,9 @@ __all__ = [
     "CACHE_TYPE_HEADER",
     "DEFAULT_CACHE_BUCKET",
     "DEFAULT_CACHE_MODE",
+    "TRAFFIC_CLASS_AGNO_ANTHROPIC",
+    "TRAFFIC_CLASS_AGNO_OPENAI",
+    "TRAFFIC_CLASS_WORKER",
     "LOOPBACK_HOSTS",
     "VALID_CACHE_MODES",
     "VIRTUAL_KEY_HEADER",
@@ -284,6 +385,7 @@ __all__ = [
     "build_cache_headers",
     "build_gateway_headers",
     "gateway_host_is_trusted",
+    "resolve_cache_bucket",
     "resolve_cache_mode",
     "resolve_virtual_key",
 ]

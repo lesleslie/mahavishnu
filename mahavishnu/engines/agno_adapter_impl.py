@@ -32,7 +32,11 @@ import httpx2 as httpx
 from oneiric.adapters.metadata import AdapterMetadata
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from ..bifrost.cache_headers import build_gateway_headers
+from ..bifrost.cache_headers import (
+    TRAFFIC_CLASS_AGNO_ANTHROPIC,
+    TRAFFIC_CLASS_AGNO_OPENAI,
+    build_gateway_headers,
+)
 from ..bifrost.models import VIRTUAL_KEY_ENV
 from ..core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
 from ..core.capabilities import (
@@ -560,7 +564,9 @@ class LLMProviderFactory:
         # there is one definition of what a gateway request carries.
         default_headers: dict[str, str] = {}
         if endpoint.via_gateway and endpoint.base_url:
-            default_headers = build_gateway_headers(endpoint.base_url)
+            default_headers = build_gateway_headers(
+                endpoint.base_url, traffic_class=TRAFFIC_CLASS_AGNO_OPENAI
+            )
 
         # Use id= parameter (NOT model=) per the Agno v3.1.x API
         return OpenAIChat(
@@ -605,7 +611,9 @@ class LLMProviderFactory:
         # anthropic surface authenticates the same way.
         default_headers: dict[str, str] = {}
         if endpoint.via_gateway and endpoint.base_url:
-            default_headers = build_gateway_headers(endpoint.base_url)
+            default_headers = build_gateway_headers(
+                endpoint.base_url, traffic_class=TRAFFIC_CLASS_AGNO_ANTHROPIC
+            )
         # Claude (Anthropic) is constructed via the Anthropic SDK which
         # reads ``ANTHROPIC_BASE_URL`` at client init. The oneiric
         # Bifrost router's anthropic_base_url is pre-formatted

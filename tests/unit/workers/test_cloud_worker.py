@@ -14,6 +14,10 @@ from unittest.mock import patch
 
 import pytest
 
+from mahavishnu.bifrost.cache_headers import (
+    TRAFFIC_CLASS_WORKER,
+    resolve_cache_bucket,
+)
 from mahavishnu.workers.cloud_worker import (
     CloudWorkerConfig,
     _build_fallback_chain,
@@ -259,7 +263,12 @@ class TestBuildFallbackChainGatewayHeaders:
         captured = self._capture(monkeypatch)
         headers = captured[0].providers["minimax"]["default_headers"]
         assert headers["x-bf-cache-type"] == "semantic"
-        assert headers["x-bf-cache-key"] == "default"
+        # The bucket is derived from the traffic class and the credential
+        # the request presents, so it is not the shared default.
+        assert headers["x-bf-cache-key"] == resolve_cache_bucket(
+            TRAFFIC_CLASS_WORKER, "sk-bf-test-key"
+        )
+        assert headers["x-bf-cache-key"] != "default"
 
     def test_off_mode_suppresses_the_cache_write(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """``cache_mode: off`` becomes ``x-bf-cache-no-store``."""
@@ -293,5 +302,10 @@ class TestBuildFallbackChainGatewayHeaders:
         captured = self._capture(monkeypatch)
         headers = captured[0].providers["minimax"]["default_headers"]
         assert "x-bf-vk" not in headers
-        assert headers["x-bf-cache-key"] == "default"
+        # No credential means the gateway rejects the request anyway, but
+        # the bucket is still derived rather than shared.
+        assert headers["x-bf-cache-key"] == resolve_cache_bucket(
+            TRAFFIC_CLASS_WORKER, None
+        )
+        assert headers["x-bf-cache-key"] != "default"
         assert headers["x-bf-cache-type"] == "semantic"
