@@ -3242,6 +3242,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- deps: the `mcp-common` floor moves to `>=0.33.0`. mcp-common's producer
+  telemetry builds its span exporter with the OTLP/HTTP exporter (the default
+  protocol is `http/protobuf`), and this project declares the gRPC exporter
+  for its own metrics and spans but not the HTTP one -- so the HTTP exporter
+  arrives with mcp-common, and the floor is what guarantees it arrives.
+- deps: the OpenTelemetry packages this project declares stay declared.
+  `core/observability.py` imports the API, the SDK and the gRPC exporters by
+  name, and a direct import is a direct dependency. The instrumentation pair
+  is not declared by mcp-common at all, so nothing else would provide it.
+  What changed is that mcp-common now declares the SDK and the exporters as
+  its own runtime dependencies, so a consumer that only calls its producer
+  API no longer has to repeat the pins.
+
 ### Removed
 
 - **BREAKING:** Mcpretentious terminal adapter removed in favour of the pluggable
