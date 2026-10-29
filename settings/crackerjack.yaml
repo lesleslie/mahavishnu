@@ -1,0 +1,24 @@
+# Crackerjack settings for Mahavishnu
+#
+# Oneiric resolves this file as "<project_root>/settings/{project_name}.yaml"
+# for project_name="crackerjack" (see crackerjack/config/loader.py:
+# load_settings_for_project). Values here are overridden by
+# settings/local.yaml and then by CRACKERJACK_* env vars.
+
+# Documentation tooling.
+#
+# Crackerjack's `plan_index_sync` phase carries a stale fork of the plan
+# index renderer: it walks a hardcoded 5-store list instead of
+# auto-discovering stores, so it drops the 77 rows that live in
+# docs/decisions/ and docs/audits/ and re-renders the index in a plainer
+# format. scripts/regenerate_plan_index.py is the authoritative renderer
+# here (scripts/audit_plan_index.py delegates store discovery to it), so
+# the phase is disabled to stop it clobbering the committed index.
+#
+# Regenerate with: python scripts/regenerate_plan_index.py
+# Verify with:     python scripts/audit_plan_index.py
+#
+# Interim guard until the tool defers to the repo's own script. Tracked in
+# crackerjack docs/plans/2026-10-29-plan-index-sync-delegate-to-repo-script.md
+documentation:
+  auto_plan_index_sync_on_publish: false

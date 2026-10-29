@@ -248,6 +248,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`](2026-10-29-bifrost-bodai-cache-wiring.md) | 2026-10-29 | `active` | `canonical` |  | `bifrost-cache-wiring` | Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring |
 | [`docs/plans/2026-10-29-demo-surface-sweep.md`](2026-10-29-demo-surface-sweep.md) | 2026-10-29 | `shipped` | `implementation` |  | `demo-surface` | Demo surface sweep — 2026-10-29 |
 | [`docs/plans/2026-10-29-oneiric-resolver-plans.md`](2026-10-29-oneiric-resolver-plans.md) | 2026-10-29 | `active` | `implementation` |  | `resolver` | Oneiric Resolver — Precedence Contract and Scope Deferrals |
+| [`docs/plans/2026-10-29-plan-index-store-drift.md`](2026-10-29-plan-index-store-drift.md) | 2026-10-29 | `active` | `implementation` |  | `documentation-tooling` | Plan Index Store Drift — Index Regenerated, Tool-Side Fix Pending |
 | [`docs/plans/2026-10-28-registry-root-relative-paths.md`](2026-10-28-registry-root-relative-paths.md) | 2026-10-28 | `complete` | `implementation` |  | `registry-paths` | Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md` |
 | [`docs/plans/2026-10-27-bodai-producer-span-reporting.md`](2026-10-27-bodai-producer-span-reporting.md) | 2026-10-27 | `active` | `canonical` |  | `otel-producer-reporting` | Producer Span Reporting — make the heartbeat roster mean something |
 | [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `draft` | `implementation` |  | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
@@ -381,7 +382,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (101 entries)
+### `plan` (102 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -394,9 +395,9 @@ Counts of entries per (lifecycle, role) cell across all 11 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 47 | 1 | 1 | 14 | **70** |
-| `implementation` | 3 | 6 | 2 | 5 | 16 | **32** |
+| `implementation` | 3 | 7 | 2 | 5 | 16 | **33** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **10** | **53** | **3** | **6** | **69** | **141** |
+| **Total** | **10** | **54** | **3** | **6** | **69** | **142** |
