@@ -1317,20 +1317,19 @@ async def _run_pydantic_ai_demo(
     )
 
     model_config, env_overrides = _resolve_demo_pydantic_ai_model_config()
-    # pydantic-ai's SDK reads these env vars directly.
+    # pydantic-ai's SDK reads these env vars directly, and its
+    # ``Agent(model="openai:<name>")`` form ignores the ModelConfig's
+    # own base_url and api_key -- the endpoint and credential come from
+    # the environment. Every override here is *derived from the
+    # provider the demo just selected*, so it must replace whatever was
+    # ambient: an inherited ``OPENAI_BASE_URL`` (e.g. the Bifrost
+    # gateway) paired with the selected provider's model id sends the
+    # request to a foreign endpoint, which then answers "could not
+    # auto resolve a provider for the request" or "virtual key is
+    # required". The provider, its endpoint, and its credential have to
+    # agree.
     for key, value in env_overrides.items():
-        if key == "OPENAI_BASE_URL":
-            # The demo *derived* this endpoint from the provider it just
-            # selected, and took the model id from that same server's
-            # ``/v1/models``. A pre-existing ``OPENAI_BASE_URL`` belongs
-            # to a different provider -- letting it win pairs
-            # llama_server's model id with a foreign gateway, which then
-            # rejects it with "could not auto resolve a provider for the
-            # request". The provider and its endpoint must agree.
-            os.environ[key] = value
-        else:
-            # An API key the operator exported is theirs to keep.
-            os.environ.setdefault(key, value)
+        os.environ[key] = value
 
     task = {
         "id": f"demo-pydantic-ai-{int(time.time())}",
@@ -1388,14 +1387,63 @@ async def _run_pydantic_ai_demo(
 def _resolve_demo_pydantic_ai_model_config() -> tuple[Any, dict[str, str]]:
     """Return ``(ModelConfig, env_overrides)`` for the detected provider.
 
-    Walks the same provider order as ``_resolve_demo_pydantic_ai_model``:
-    local ``llama_server`` first (no key), then cloud providers in
-    ``minimax → anthropic → openai`` order. Returns the env-var
-    overrides the caller should set so pydantic-ai's SDK can find
-    them (``OPENAI_API_KEY``/``OPENAI_BASE_URL`` for llama_server;
-    cloud providers rely on whatever the user already exported).
+    Provider order is **cloud first, local last**:
+    ``minimax → anthropic → openai → llama_server``. That matches the
+    project's MiniMax-first posture (see ``CLAUDE.md``) and the Agno
+    adapter's provider chain, and it matters in practice: the local
+    ``llama_server`` is a CPU-only 8B model on this host, so a
+    paragraph of prose from it takes *minutes* -- long enough that the
+    demo's own budget expires first. The cloud providers answer in
+    seconds.
+
+    ``llama_server`` stays last as the no-credential fallback: it needs
+    no API key, so it is the only option when nothing is exported.
+
+    Returns the env-var overrides the caller should set so pydantic-ai's
+    SDK can find them (``OPENAI_API_KEY``/``OPENAI_BASE_URL`` for
+    llama_server; cloud providers rely on whatever the user already
+    exported).
     """
     from mahavishnu.adapters.ai.pydantic_ai_adapter import ModelConfig, PydanticAIAdapterError
+
+    if os.getenv("MINIMAX_API_KEY"):
+        # minimax uses an OpenAI-compatible endpoint but pydantic-ai
+        # doesn't have a first-class "minimax" provider, so route via
+        # the OpenAI provider with a custom base_url.
+        return (
+            ModelConfig(
+                provider="openai",
+                model_name="MiniMax-M3",
+                base_url="https://api.minimax.io/v1",
+                api_key=os.getenv("MINIMAX_API_KEY"),
+            ),
+            {
+                "OPENAI_BASE_URL": "https://api.minimax.io/v1",
+                "OPENAI_API_KEY": os.getenv("MINIMAX_API_KEY", ""),
+            },
+        )
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return (
+            ModelConfig(
+                provider="anthropic",
+                model_name="claude-sonnet-4-5",
+                api_key=os.getenv("ANTHROPIC_API_KEY"),
+            ),
+            {},
+        )
+    if os.getenv("OPENAI_API_KEY"):
+        return (
+            ModelConfig(
+                provider="openai",
+                model_name="gpt-4o-mini",
+                base_url="https://api.openai.com/v1",
+                api_key=os.getenv("OPENAI_API_KEY"),
+            ),
+            {
+                "OPENAI_BASE_URL": "https://api.openai.com/v1",
+                "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+            },
+        )
 
     settings = _default_settings_getter()
     llama_url = getattr(settings, "llama_server_url", None) or "http://localhost:8081"
@@ -1422,40 +1470,9 @@ def _resolve_demo_pydantic_ai_model_config() -> tuple[Any, dict[str, str]]:
                             "OPENAI_BASE_URL": llama_url.rstrip("/") + "/v1",
                         },
                     )
-    except Exception as _exc:  # CLI entry point — llama_server probe failure is non-fatal, fall through to cloud providers  # noqa: BLE001, S110, RUF100
+    except Exception as _exc:  # CLI entry point — llama_server probe failure is non-fatal, fall through to the no-provider error  # noqa: BLE001, S110, RUF100
         pass
 
-    if os.getenv("MINIMAX_API_KEY"):
-        # minimax uses an OpenAI-compatible endpoint but pydantic-ai
-        # doesn't have a first-class "minimax" provider, so route via
-        # the OpenAI provider with a custom base_url.
-        return (
-            ModelConfig(
-                provider="openai",
-                model_name="MiniMax-M3",
-                base_url="https://api.minimax.io/v1",
-                api_key=os.getenv("MINIMAX_API_KEY"),
-            ),
-            {},
-        )
-    if os.getenv("ANTHROPIC_API_KEY"):
-        return (
-            ModelConfig(
-                provider="anthropic",
-                model_name="claude-sonnet-4-5",
-                api_key=os.getenv("ANTHROPIC_API_KEY"),
-            ),
-            {},
-        )
-    if os.getenv("OPENAI_API_KEY"):
-        return (
-            ModelConfig(
-                provider="openai",
-                model_name="gpt-4o-mini",
-                api_key=os.getenv("OPENAI_API_KEY"),
-            ),
-            {},
-        )
     raise PydanticAIAdapterError(
         "No LLM provider available — set MINIMAX/ANTHROPIC/OPENAI_API_KEY or start llama_server",
     )
@@ -4215,6 +4232,32 @@ def _sweep_argv(spec: DemoSweepSpec, demo_timeout: int) -> list[str]:
     return argv
 
 
+def _write_sweep_log(path: Path, content: str) -> None:
+    """Write a sweep log file with restrictive permissions.
+
+    The sweep writes into a shared temp directory, and a demo's output
+    can carry prompt text, tool output, and error payloads. Two
+    protections:
+
+    - ``O_NOFOLLOW`` so a symlink pre-planted at the log path cannot
+      redirect the write to a file the operator did not intend to
+      touch.
+    - mode ``0600`` so the log is readable only by its owner (an
+      existing file keeps its own mode, so ``chmod`` after the write
+      re-asserts it).
+    """
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    try:
+        handle = os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with handle:
+        handle.write(content)
+    os.chmod(path, 0o600)
+
+
 def _run_sweep_demo(
     spec: DemoSweepSpec,
     *,
@@ -4254,7 +4297,7 @@ def _run_sweep_demo(
 
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{spec.name}.log"
-    log_path.write_text(output, encoding="utf-8")
+    _write_sweep_log(log_path, output)
 
     verdict = VERDICT_TIMEOUT if timed_out else _classify_sweep_output(output, returncode)
     return {
@@ -4359,7 +4402,15 @@ def demo_all(
         typer.echo("no demos selected", err=True)
         raise typer.Exit(code=2)
 
-    resolved_log_dir = log_dir or (Path(tempfile.gettempdir()) / "mahavishnu-demo-logs")
+    resolved_log_dir = (
+        Path(log_dir).expanduser()
+        if log_dir is not None
+        # ``mkdtemp`` creates the directory with mode 0700, so the
+        # sweep's logs are not readable by other users on a shared
+        # host. A fixed name under the temp root would be world-readable
+        # and could be pre-created by another user.
+        else Path(tempfile.mkdtemp(prefix="mahavishnu-demo-logs-"))
+    )
     typer.echo(f"sweeping {len(specs)} demo(s); logs -> {resolved_log_dir}")
 
     rows: list[dict[str, Any]] = []

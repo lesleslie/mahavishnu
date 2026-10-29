@@ -96,9 +96,23 @@ The demo detected `llama_server` and took the model id from that
 server's `/v1/models`, but applied `OPENAI_BASE_URL` with
 `setdefault` semantics — so a pre-existing value (here: the Bifrost
 gateway) won. The gateway then received a llama_server model id and
-answered `could not auto resolve a provider for the request`. The
-demo now sets the endpoint it derived from the selected provider, and
-leaves an operator-exported API key alone.
+answered `could not auto resolve a provider for the request`.
+
+The deeper problem: `PydanticAIAdapter` builds its agent as
+`Agent(model="openai:<name>")`, and pydantic-ai resolves the endpoint
+and credential from the **environment** — the adapter's own
+`ModelConfig.base_url` / `.api_key` are decorative. So the demo, not
+the adapter, is the only place where the provider, its endpoint, and
+its credential can be made to agree. The demo now sets both from the
+provider it selected.
+
+The provider order also changed to **cloud first, local last**
+(`minimax → anthropic → openai → llama_server`), matching the
+project's MiniMax-first posture and the Agno adapter's chain. The
+local `llama_server` is a CPU-only 8B model here, so a paragraph of
+prose from it takes *minutes* — long enough that the demo's own budget
+expired first (900 s and still running). With MiniMax the same demo
+answers in **3.8 s**.
 
 ### 8. Hatchet adapter: `hatchet-sdk` 1.43 removed `Hatchet.run`/`close`
 
@@ -140,6 +154,49 @@ agent in a scratch directory under
 | `llamaindex` | 120s | 900s | a `query` embeds, retrieves, and *synthesizes* — minutes on a CPU-only host |
 | `workflow-pi-then-local` | 90s | 240s | the pi task now gets 120s (`PiPool` defaults to 30s, too short for a code-writing prompt) |
 
+## Security hardening
+
+The commit's automated security review flagged three issues in the
+changes above. All three were real and are fixed.
+
+### `search_code` could read arbitrary files
+
+Accepting a file path widened the tool from "search a directory" to
+"read this file" — and `_search_code_impl` had **no** path validation
+at all, so an agent could name any path on the host (the directory
+form was already unguarded; the file form added non-Python files to
+it). The tool now runs the same `_validate_path` guard the file tools
+use: raw-traversal detection, symlink-resolving normalization, an
+allowed-base-directory check, and the blocked sensitive-directory
+list. `/etc/passwd` is now refused with
+`Access denied: path is outside allowed directories`.
+
+### The persisted vector store is shared across repositories
+
+The vector store is a *single* index — every repo ingested into it
+lands in the same collection — so a similarity search returns the
+globally closest chunks regardless of which repo was asked for. On the
+sweep host the persisted index turned out to hold a different repo's
+content outright (`www-mcp-servers`), so a query for mahavishnu would
+have answered with another project's code.
+
+Retrieved nodes are now scoped to the requested repository by their
+`file_path` metadata before they reach the answer. The filter is
+applied *after* retrieval rather than pushed into the retriever:
+LlamaIndex's metadata filters have no prefix operator, and a
+post-filter is backend-agnostic. The failure mode is the safe one —
+too few results, never results from the wrong repo. This also closes
+the same gap on the pre-existing ingest-then-query path.
+
+### Sweep logs were written without permission or symlink protection
+
+The sweep wrote logs into a shared temp directory with default
+permissions, and a symlink pre-planted at the log path could redirect
+the write. The default log directory is now created with
+`tempfile.mkdtemp` (mode 0700), and each log is opened with
+`O_NOFOLLOW` and mode 0600. A symlink at the log path now fails with
+`ELOOP` instead of writing through it.
+
 ## Still open
 
 - **`hatchet`** — needs a Hatchet server. `hatchet server start` pulls
@@ -153,11 +210,15 @@ agent in a scratch directory under
   correctly refuses). The demo now reports the adapter's own
   `MHV-008` rather than a generic timeout. Converging the agent's
   exploration is an Agno-side concern.
-- **`llamaindex`** — works, but on a CPU-only host the synthesis
-  exceeds the demo's budget. Note that the demo's timeout uses
-  `asyncio.wait_for`, which cannot interrupt the blocking
-  `llama_server` call, so the run overruns its budget rather than
-  being cut short.
+- **`llamaindex`** — the query now finds the persisted index
+  (`index_id: mahavishnu_0`), but the *answer* is slow on a CPU-only
+  host: the RAG synthesis is a full generation pass over the local
+  8B model. Note that the demo's timeout uses `asyncio.wait_for`,
+  which cannot interrupt the blocking `llama_server` call, so the run
+  overruns its budget rather than being cut short. The persisted index
+  on this host also holds a *different* repo's content, so a query for
+  mahavishnu legitimately returns no in-repo sources — build the right
+  index with `--task-type ingest_and_query`.
 
 ## `mahavishnu demo all`
 

@@ -146,6 +146,30 @@ class MockMeter:
         return MockHistogram()
 
 
+def _node_belongs_to_repo(node: Any, repo_root: str) -> bool:
+    """Return True when a retrieved node's file lives under ``repo_root``.
+
+    The shared vector store records each chunk's absolute source path
+    in the ``file_path`` metadata field. A node whose path is outside
+    the requested repository belongs to a different repo and must not
+    appear in the answer.
+
+    A node with no usable ``file_path`` is treated as *not* belonging
+    to the repo: the index is shared, so an unattributable chunk
+    cannot be assumed to be in scope.
+    """
+    metadata = getattr(node, "metadata", None) or {}
+    file_path = metadata.get("file_path")
+    if not file_path:
+        return False
+    try:
+        resolved = str(Path(str(file_path)).resolve())
+    except (OSError, ValueError):
+        return False
+    root = repo_root.rstrip("/")
+    return resolved == root or resolved.startswith(f"{root}/")
+
+
 class LlamaIndexIngestionError(AdapterError):
     """Error during document ingestion operations.
 
@@ -1310,9 +1334,36 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     response = query_engine.query(query_text)
                     exec_span.set_attribute("response.sources_count", len(response.source_nodes))
 
+                # Scope the answer to the requested repository.
+                #
+                # The vector store is a single shared index: every repo
+                # ingested into it lands in the same collection, so a
+                # similarity search returns the globally closest chunks
+                # regardless of which repo was asked for. Without this
+                # filter a query for repo A can answer with repo B's
+                # code -- the persisted index on a developer host
+                # routinely holds several repos at once.
+                #
+                # The filter is applied to the retrieved nodes rather
+                # than pushed into the retriever: LlamaIndex's metadata
+                # filters have no prefix operator, and a post-filter is
+                # backend-agnostic. The failure mode is the safe one --
+                # too few results, never results from the wrong repo.
+                repo_root = str(Path(repo_path).resolve())
+                scoped_nodes = [
+                    node
+                    for node in response.source_nodes
+                    if _node_belongs_to_repo(node, repo_root)
+                ]
+                exec_span.set_attribute("response.scoped_sources_count", len(scoped_nodes))
+                exec_span.set_attribute(
+                    "response.dropped_out_of_repo_count",
+                    len(response.source_nodes) - len(scoped_nodes),
+                )
+
                 # Process sources with enhanced code graph context
                 sources = []
-                for source in response.source_nodes:
+                for source in scoped_nodes:
                     source_info = {
                         "file": source.metadata.get("file_name", "unknown"),
                         "content": source.node.get_content(),

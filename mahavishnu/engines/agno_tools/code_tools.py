@@ -17,6 +17,7 @@ from typing import Any
 from agno.tools import tool
 
 from mahavishnu.core.errors import AgnoError, ErrorCode
+from mahavishnu.engines.agno_tools.file_tools import _validate_path
 
 logger = logging.getLogger(__name__)
 
@@ -269,15 +270,23 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
 
     Args:
         query: Search query (keyword or pattern)
-        repo_path: Path to the repository root
+        repo_path: Path to the repository root, or to a single file
+            within it
 
     Returns:
         List of matches with file, line number, and context
 
     Raises:
-        AgnoError: If search fails
+        AgnoError: If search fails, or the path is outside the
+            configured allowed base directories
     """
-    path = Path(repo_path).resolve()
+    # ``_validate_path`` is the same defense-in-depth guard the file
+    # tools use: raw-traversal detection, symlink-resolving
+    # normalization, an allowed-base-directory check, and the blocked
+    # sensitive-directory list. Without it this tool would let an agent
+    # read any file on the host by naming it -- and the file-path case
+    # below widened that to non-Python files too.
+    path = _validate_path(repo_path)
 
     if not path.exists():
         raise AgnoError(
@@ -290,7 +299,8 @@ def _search_code_impl(query: str, repo_path: str) -> list[dict[str, Any]]:
         # An agent routinely hands this tool a file it just read
         # instead of the repository root. Searching that file is the
         # closest reading of the request; rejecting the call aborts the
-        # agent's turn over a recoverable argument mistake.
+        # agent's turn over a recoverable argument mistake. The path is
+        # already inside an allowed base directory (validated above).
         base = path.parent
         files = [path]
     else:
