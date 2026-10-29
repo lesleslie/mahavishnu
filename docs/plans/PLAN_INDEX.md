@@ -54,6 +54,7 @@ _Regenerated 2026-10-29 by `crackerjack.tools.plan_index_sync` (phase)._
 | [`docs/plans/2026-10-29-agno-failover-and-gateway-repairs.md`](2026-10-29-agno-failover-and-gateway-repairs.md) | 2026-10-29 | `active` | `implementation` | `agno-failover-gateway` | Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key |
 | [`docs/plans/2026-10-29-agno-llm-provider-chain.md`](2026-10-29-agno-llm-provider-chain.md) | 2026-10-29 | `complete` | `implementation` | `agno-llm-routing` | Agno LLM provider chain — MiniMax primary, llama-server as fallback |
 | [`docs/plans/2026-10-29-demo-surface-sweep.md`](2026-10-29-demo-surface-sweep.md) | 2026-10-29 | `shipped` | `implementation` | `demo-surface` | Demo surface sweep — 2026-10-29 |
+| [`docs/plans/2026-10-29-oneiric-resolver-plans.md`](2026-10-29-oneiric-resolver-plans.md) | 2026-10-29 | `active` | `implementation` | `resolver` | Oneiric Resolver — Precedence Contract and Scope Deferrals |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `routing-composition` | Plan Template — Integration-Contract Required |
 
@@ -115,11 +116,12 @@ _Regenerated 2026-10-29 by `crackerjack.tools.plan_index_sync` (phase)._
 
 ## Lifecycle × Role Distribution
 
-| Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
+| Role \ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 14 | 1 | · | 14 | **36** |
-| `implementation` | 3 | 5 | 2 | 5 | 12 | **27** |
+| `implementation` | 3 | 6 | 2 | 5 | 12 | **28** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 16 | **16** |
 | `superseded` | · | · | · | · | 5 | **5** |
-| **Total** | **10** | **19** | **3** | **5** | **48** | **85** |
+| **Total** | **10** | **20** | **3** | **5** | **48** | **86** |
+
