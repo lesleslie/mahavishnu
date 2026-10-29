@@ -193,6 +193,16 @@ translated into the request headers by
 Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 (`default` unless a caller names another).
 
+> **Every Bodai caller shares the `default` bucket.** The gateway's
+> `default_cache_key` is also `"default"`, so there is one shared bucket
+> across the fleet. The semantic cache's `exclude_system_prompt: true`
+> drops the system prompt from the cache key, so two agents with
+> different personas but the same user turn can collide, and one can be
+> served the other's cached response. Scoping the bucket per caller needs
+> a tenant identity at the point the request headers are built, which is a
+> design change rather than a config one — recorded as an open risk in
+> the plan.
+
 > **`off` is not "no cache".** It means "do not populate the cache". A
 > request in `off` mode can still be *served* from a previously cached
 > response.

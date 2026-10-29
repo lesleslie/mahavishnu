@@ -29,6 +29,15 @@ Note the asymmetry in ``off``: Bifrost v1.5/v1.6 exposes no header that
 suppresses the *read*, so ``off`` means "do not populate the cache" rather
 than "do not use the cache". The gateway can still serve a previously cached
 response to an ``off`` request.
+
+Note the scope of the bucket: every caller sends ``x-bf-cache-key:
+default``, and the gateway's own ``default_cache_key`` is ``"default"``, so
+there is one shared bucket across the fleet. Combined with the semantic
+cache's ``exclude_system_prompt: true`` -- which drops the system prompt
+from the cache key -- two agents with different personas but the same user
+turn can collide, and one can be served the other's cached response.
+Scoping the bucket per caller needs a tenant identity at the point the
+headers are built, which the provider-construction site does not have.
 """
 
 from __future__ import annotations
