@@ -274,13 +274,24 @@ the resulting file is mode 0600.
 - **`pool-runpod` / `pool-runpod-public`** — need a paid RunPod
   account and endpoint ids. Both fail cleanly at the precondition.
 - **`agno`** — the adapter's 300s budget expires because the agent
-  explores a large repo (including blocked directories, which the tool
-  correctly refuses). The demo now reports the adapter's own
+  explores a large repo. The demo now reports the adapter's own
   `MHV-008` rather than a generic timeout. The knob is
   `agno.default_timeout_seconds` (`MAHAVISHNU_AGNO__DEFAULT_TIMEOUT_SECONDS`),
   but raising it only buys time — the agent's exploration is what does
   not converge, and that is an Agno-side concern (the adapter and its
   provider chain are under active development in a concurrent session).
+
+  **Re-verified 2026-10-29: deterministic, and the refusals are not
+  the cause.** Three consecutive runs reproduce it — the sweep
+  (309.3s), a re-sweep (353.0s), and an isolated re-run. The sweep
+  run's `[MHV-453]` refusals (`search_code` handed a file path,
+  `read_file` handed a `.example` file) are *incidental*: the isolated
+  re-run made **zero** tool errors and still timed out at 300s with
+  the same verdict. So the budget is consumed by exploration itself,
+  not by error recovery — which also means the improved error text in
+  `3e28994f` cannot fix it. Raising the timeout is the only lever
+  that moves the number, and it does not make the exploration
+  converge.
 - **`llamaindex`** — now passes. The query finds the persisted index
   (`index_id: mahavishnu_0`) and the repo scope correctly filters out
   the other repository's chunks, so the synthesizer has no context to
@@ -324,6 +335,47 @@ account and endpoint ids):
 
 - `hatchet` → `PRECONDITION` (no Hatchet server; no Docker images here).
 - `agno` → `ERROR`, the adapter's own `MHV-008` at its 300 s budget.
+
+### Re-verification (2026-10-29, later the same day)
+
+A second full sweep over **all 18** demos — this time including the
+RunPod pair the first run had excluded — reproduced every verdict
+exactly:
+
+```
+  tmux                           PASS          exit=0      24.0s
+  mock                           STUB          exit=0      10.5s
+  prefect                        PASS          exit=0      46.6s
+  agno                           ERROR         exit=0     353.0s
+  llamaindex                     PASS          exit=0      30.7s
+  pydantic_ai                    PASS          exit=0      12.6s
+  crow                           PASS          exit=0       7.4s
+  hatchet                        PRECONDITION  exit=1       8.2s
+  pool-mahavishnu                PASS          exit=0      20.1s
+  pool-session-buddy             PASS          exit=0      34.5s
+  pool-runpod-public             PRECONDITION  exit=1       6.7s
+  pool-runpod                    PRECONDITION  exit=1       6.0s
+  pool-pi                        PASS          exit=0      45.1s
+  workflow-pool-worker-terminal  PASS          exit=0      18.7s
+  workflow-multi-pool-handoff    PASS          exit=0      19.6s
+  workflow-adapter-swap          PASS          exit=0      28.6s
+  workflow-pi-cascade            PASS          exit=0      48.0s
+  workflow-pi-then-local         PASS          exit=0      45.3s
+```
+
+**14/18 passed, with zero verdict changes among the 16 demos both
+sweeps ran.** The count drops from 14/16 only because the denominator
+grew: the two RunPod demos join the table and both fail cleanly at the
+precondition (a billed account and endpoint ids are needed), which is
+the disposition already recorded for them below.
+
+The `agno` row is the one that needs reading carefully, because the
+demo *exits 0* while the verdict is `ERROR`. That is the classifier
+working as designed, not a reporting bug: the Agno adapter returns a
+top-level `status: "completed"` even when every repo failed
+underneath, so `_classify_sweep_output` reads the per-repo counters
+(`success_count: 0`, `failure_count: 1`) instead of the top-level
+field.
 
 Two rows are worth calling out because they got *faster* while getting
 correct: `llamaindex` went from a 1200 s ceiling to **20.5 s** (the
