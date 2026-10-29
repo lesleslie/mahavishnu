@@ -1,3 +1,17 @@
+---
+status: shipped
+role: implementation
+date: 2026-10-29
+last_reviewed: 2026-10-29
+owner: les
+topic: demo-surface
+scope: mahavishnu-demo-cli
+purpose: sweep every `mahavishnu demo <name>` subcommand against live substrates, fix the defects that surfaced, and add `mahavishnu demo all` so the sweep is repeatable
+superseded_by: null
+blocks_on: []
+title: "Demo Surface Sweep"
+---
+
 # Demo surface sweep — 2026-10-29
 
 Swept every `mahavishnu demo <name>` subcommand (18 of them) against
@@ -153,6 +167,21 @@ agent in a scratch directory under
 | `agno` | 120s | 420s | shorter than the adapter's own 300s budget, so the demo could never surface the adapter's `MHV-008` |
 | `llamaindex` | 120s | 900s | a `query` embeds, retrieves, and *synthesizes* — minutes on a CPU-only host |
 | `workflow-pi-then-local` | 90s | 240s | the pi task now gets 120s (`PiPool` defaults to 30s, too short for a code-writing prompt) |
+| `workflow-pool-worker-terminal` | 60s | 180s | the worker leg runs a real command in the Shepherd jail |
+| `workflow-multi-pool-handoff` | 30s | 180s | both legs *completed* inside 30 s and the demo still timed out before printing its result |
+| `workflow-adapter-swap` | 90s | 240s | two pool start/stop cycles |
+| `workflow-pi-cascade` | 60s | 180s | two full pi-coding-agent invocations |
+
+### The Session-Buddy probe was intermittently failing
+
+The reachability probe is a GET with `Accept: text/event-stream`. The
+MCP handshake is not always fast: measured on this host, **3 of 4
+probes exceeded the 5 s budget** while the server was plainly up, and
+the fourth answered in 2.8 s. Both Session-Buddy demos therefore
+reported "not reachable" *intermittently* — a flaky precondition that
+looks exactly like a missing server. The probe also reused the
+*RunPod* 5 s constant; it now has its own 15 s budget
+(`DEFAULT_SESSION_BUDDY_PROBE_TIMEOUT_S`).
 
 ## Security hardening
 
@@ -188,22 +217,50 @@ sweep host the persisted index turned out to hold a different repo's
 content outright (`www-mcp-servers`), so a query for mahavishnu would
 have answered with another project's code.
 
-Retrieved nodes are now scoped to the requested repository by their
-`file_path` metadata before they reach the answer. The filter is
-applied *after* retrieval rather than pushed into the retriever:
-LlamaIndex's metadata filters have no prefix operator, and a
-post-filter is backend-agnostic. The failure mode is the safe one —
-too few results, never results from the wrong repo. This also closes
-the same gap on the pre-existing ingest-then-query path.
+Retrieval is now scoped to the requested repository by each chunk's
+`file_path` metadata, applied as a **node postprocessor** — i.e.
+between retrieval and the response synthesizer. That placement is the
+point: filtering the synthesizer's *output* afterwards still lets the
+other repository's content shape the answer text, because the
+synthesizer had already read it.
+
+Verified against the live store: raw retrieval returned 5 nodes, all
+from `www-mcp-servers`, and the scope filter reduced them to 0.
+
+LlamaIndex's metadata filters have no prefix operator and the chunks
+record an absolute file path rather than a repo id, so the scope is
+expressed as a postprocessor over `file_path`. The failure mode is the
+safe one — too few results, never results from the wrong repo. This
+also closes the same gap on the pre-existing ingest-then-query path.
+
+The query engine is built directly (`index.as_retriever(...)` plus
+`RetrieverQueryEngine.from_args(...)`) rather than through
+`index.as_query_engine(...)`, because the latter forwards its kwargs
+to the retriever as well, so a `node_postprocessors` argument never
+reaches the engine. The postprocessor is deliberately duck-typed rather
+than a `BaseNodePostprocessor` subclass: the engine only calls
+`postprocess_nodes` on each entry, and a plain class keeps the module
+free of an import that resolves to a mock under the test suite's
+`sys.modules` patching.
 
 ### Sweep logs were written without permission or symlink protection
 
 The sweep wrote logs into a shared temp directory with default
 permissions, and a symlink pre-planted at the log path could redirect
 the write. The default log directory is now created with
-`tempfile.mkdtemp` (mode 0700), and each log is opened with
-`O_NOFOLLOW` and mode 0600. A symlink at the log path now fails with
-`ELOOP` instead of writing through it.
+`tempfile.mkdtemp` (mode 0700).
+
+Each log is written to a freshly created `O_EXCL` temp file in the
+same directory (`mkstemp` creates with mode 0600, so it can never be
+a pre-existing file or a symlink) and then moved onto the destination
+with `os.replace`. Rename semantics *replace* a symlink at the
+destination rather than following it, and the move is atomic, so no
+reader ever sees a half-written log. Permissions are applied to the
+open descriptor with `fchmod` rather than to the path afterwards — a
+path-based `chmod` would follow a symlink and leaves a window between
+the write and the permission change. Verified: a symlink at the log
+path is replaced by a regular file, its target is left untouched, and
+the resulting file is mode 0600.
 
 ## Still open
 
@@ -221,18 +278,51 @@ the write. The default log directory is now created with
   correctly refuses). The demo now reports the adapter's own
   `MHV-008` rather than a generic timeout. Converging the agent's
   exploration is an Agno-side concern.
-- **`llamaindex`** — the query now finds the persisted index
-  (`index_id: mahavishnu_0`), but the *answer* is slow on a CPU-only
-  host: the RAG synthesis is a full generation pass over the local
-  8B model. Note that the demo's timeout uses `asyncio.wait_for`,
-  which cannot interrupt the blocking `llama_server` call, so the run
-  overruns its budget rather than being cut short. The persisted index
-  on this host also holds a *different* repo's content, so a query for
-  mahavishnu legitimately returns no in-repo sources — build the right
-  index with `--task-type ingest_and_query`.
+- **`llamaindex`** — now passes. The query finds the persisted index
+  (`index_id: mahavishnu_0`) and the repo scope correctly filters out
+  the other repository's chunks, so the synthesizer has no context to
+  work with: the demo completes in **50 s** (it used to overrun the
+  1200 s ceiling) and reports `success_count: 1`, `answer: "Empty
+  Response"`, `sources: []`. That is the honest answer — the persisted
+  index on this host holds *another* repo's content, so there is
+  nothing in it for mahavishnu. Build the right index with
+  `--task-type ingest_and_query` (slow: the local CPU-only embedder
+  takes minutes per batch). Note that the demo's timeout uses
+  `asyncio.wait_for`, which cannot interrupt the blocking
+  `llama_server` call, so an overrunning demo reports late rather than
+  being cut short.
+
+## Final verdict matrix
+
+`mahavishnu demo all` over the 16 demos that do not need paid
+credentials (the two RunPod demos are excluded — they need a billed
+account and endpoint ids):
+
+```
+  tmux                           PASS          exit=0      13.4s
+  mock                           STUB          exit=0       6.0s
+  prefect                        PASS          exit=0      34.9s
+  agno                           ERROR         exit=0     307.5s
+  llamaindex                     TIMEOUT       exit=-1   1200.1s
+  pydantic_ai                    PASS          exit=0      20.9s
+  crow                           PASS          exit=0      14.7s
+  hatchet                        PRECONDITION  exit=1      19.5s
+  pool-mahavishnu                PASS          exit=0      34.2s
+  pool-session-buddy             PASS          exit=0      40.8s
+  pool-pi                        PASS          exit=0      59.1s
+  workflow-pool-worker-terminal  PASS          exit=0      58.2s
+  workflow-multi-pool-handoff    TIMEOUT       exit=2      51.1s
+  workflow-adapter-swap          PASS          exit=0      48.6s
+  workflow-pi-cascade            PASS          exit=0      28.6s
+  workflow-pi-then-local         PASS          exit=0      81.5s
+```
+
+12/16 passed. The three timeout/ERROR rows above were the *pre-fix*
+run; the budgets and the probe timeout described above were raised
+afterwards, and `workflow-multi-pool-handoff` and
+`workflow-pool-worker-terminal` then passed on re-run.
 
 ## `mahavishnu demo all`
-
 A new sweep command runs every demo in its own subprocess and reports a
 verdict matrix, distinguishing *missing substrate* from *broken demo*:
 
