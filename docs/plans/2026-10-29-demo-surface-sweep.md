@@ -550,6 +550,13 @@ Three rows moved from failing to passing: `agno` (353 s `ERROR` →
 first-run embedded-engine start, because the sidecar binary and the
 bundled Postgres are cached after the first run.
 
+**Re-verified against the committed tree** (commit `6d6cbfc7`, a
+sweep run with no source edits in flight): **17/18 again**, every
+verdict identical — `agno` 22.7 s, `hatchet` 28.2 s,
+`pool-runpod-public` 12.6 s, `pool-runpod` `PRECONDITION`. Earlier
+sweeps in this session were run while the tree was being edited, so
+this run is the one that establishes the committed state.
+
 ## `mahavishnu demo all`
 A new sweep command runs every demo in its own subprocess and reports a
 verdict matrix, distinguishing *missing substrate* from *broken demo*:
