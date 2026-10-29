@@ -761,9 +761,9 @@ ignore = [
 # ``follow_imports`` defaults to ``normal``: Mypy type-checks every import
 # transitively, and any dependency shipping ``py.typed`` gets analyzed as if
 # it were first-party source. That drags in the whole third-party graph to
-# lint this package and costs ~670s per run -- warm cache included, because
-# Refurb forces fine-grained incremental mode on, which does not help when
-# the entire third-party graph is re-verified each time.
+# lint this package and costs ~13 minutes per run -- and a warm cache does
+# not help, because Refurb forces fine-grained incremental mode on, which
+# does not help when the entire third-party graph is re-verified each time.
 #
 # ``skip`` leaves imported modules unanalyzed (``Any``). The scanned
 # package's own modules stay in Mypy's build set, so their types stay
@@ -775,7 +775,8 @@ ignore = [
 # drops from 30 findings to 21 -- the skipped set is a strict subset, no
 # new findings appear, and this repo's default check set is unaffected.
 # Verified here: the same finding was reported identically with and
-# without the flag, at the same line:column, in 75s instead of 667s.
+# without the flag, at the same line:column, in 77s instead of ~780s
+# (765s cold and 795s warm -- the warm cache buys nothing on this path).
 #
 # NOTE: this is safe only because the scan covers the whole package. A
 # single-file scan puts no sibling modules in Mypy's build set, so their
