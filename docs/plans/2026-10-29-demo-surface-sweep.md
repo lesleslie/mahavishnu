@@ -276,8 +276,11 @@ the resulting file is mode 0600.
 - **`agno`** — the adapter's 300s budget expires because the agent
   explores a large repo (including blocked directories, which the tool
   correctly refuses). The demo now reports the adapter's own
-  `MHV-008` rather than a generic timeout. Converging the agent's
-  exploration is an Agno-side concern.
+  `MHV-008` rather than a generic timeout. The knob is
+  `agno.default_timeout_seconds` (`MAHAVISHNU_AGNO__DEFAULT_TIMEOUT_SECONDS`),
+  but raising it only buys time — the agent's exploration is what does
+  not converge, and that is an Agno-side concern (the adapter and its
+  provider chain are under active development in a concurrent session).
 - **`llamaindex`** — now passes. The query finds the persisted index
   (`index_id: mahavishnu_0`) and the repo scope correctly filters out
   the other repository's chunks, so the synthesizer has no context to
@@ -299,28 +302,35 @@ credentials (the two RunPod demos are excluded — they need a billed
 account and endpoint ids):
 
 ```
-  tmux                           PASS          exit=0      13.4s
-  mock                           STUB          exit=0       6.0s
-  prefect                        PASS          exit=0      34.9s
-  agno                           ERROR         exit=0     307.5s
-  llamaindex                     TIMEOUT       exit=-1   1200.1s
-  pydantic_ai                    PASS          exit=0      20.9s
-  crow                           PASS          exit=0      14.7s
-  hatchet                        PRECONDITION  exit=1      19.5s
-  pool-mahavishnu                PASS          exit=0      34.2s
-  pool-session-buddy             PASS          exit=0      40.8s
-  pool-pi                        PASS          exit=0      59.1s
-  workflow-pool-worker-terminal  PASS          exit=0      58.2s
-  workflow-multi-pool-handoff    TIMEOUT       exit=2      51.1s
-  workflow-adapter-swap          PASS          exit=0      48.6s
-  workflow-pi-cascade            PASS          exit=0      28.6s
-  workflow-pi-then-local         PASS          exit=0      81.5s
+  tmux                           PASS          exit=0      13.8s
+  mock                           STUB          exit=0       6.3s
+  prefect                        PASS          exit=0      47.3s
+  agno                           ERROR         exit=0     309.3s
+  llamaindex                     PASS          exit=0      20.5s
+  pydantic_ai                    PASS          exit=0       9.6s
+  crow                           PASS          exit=0       7.0s
+  hatchet                        PRECONDITION  exit=1       8.5s
+  pool-mahavishnu                PASS          exit=0      22.0s
+  pool-session-buddy             PASS          exit=0      12.7s
+  pool-pi                        PASS          exit=0      16.7s
+  workflow-pool-worker-terminal  PASS          exit=0      19.3s
+  workflow-multi-pool-handoff    PASS          exit=0      20.0s
+  workflow-adapter-swap          PASS          exit=0      26.4s
+  workflow-pi-cascade            PASS          exit=0      34.3s
+  workflow-pi-then-local         PASS          exit=0      33.3s
 ```
 
-12/16 passed. The three timeout/ERROR rows above were the *pre-fix*
-run; the budgets and the probe timeout described above were raised
-afterwards, and `workflow-multi-pool-handoff` and
-`workflow-pool-worker-terminal` then passed on re-run.
+**14/16 passed.** The two that do not are the ones that *should* not:
+
+- `hatchet` → `PRECONDITION` (no Hatchet server; no Docker images here).
+- `agno` → `ERROR`, the adapter's own `MHV-008` at its 300 s budget.
+
+Two rows are worth calling out because they got *faster* while getting
+correct: `llamaindex` went from a 1200 s ceiling to **20.5 s** (the
+repository scope removes the other repository's chunks, so the
+synthesizer has no context to chew on), and `pool-pi` /
+`workflow-pi-cascade` went from `ERROR` to **16.7 s / 34.3 s** once
+their pi task got PiPool's 120 s budget instead of its 30 s default.
 
 ## `mahavishnu demo all`
 A new sweep command runs every demo in its own subprocess and reports a

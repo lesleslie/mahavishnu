@@ -2972,7 +2972,7 @@ async def _run_pool_pi_demo(
     with _pi_scratch_workspace(pool_name):
         pool_id = await pool.start()
         try:
-            result = await pool.execute_task({"prompt": prompt})
+            result = await pool.execute_task({"prompt": prompt, "timeout": PI_TASK_TIMEOUT_SECONDS})
         finally:
             if not keep:
                 await pool.stop()
@@ -3730,12 +3730,16 @@ async def _run_workflow_pi_cascade_demo(
         pool_id = await pool.start()
         try:
             typer.echo(f"  ✓ pi pool started: {pool_id}")
-            turn1_result = await pool.execute_task({"prompt": prompt})
+            turn1_result = await pool.execute_task(
+                {"prompt": prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
+            )
             typer.echo(f"  ✓ turn 1 complete: status={turn1_result.get('status')}")
             cascade_prompt = (
                 f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
             )
-            turn2_result = await pool.execute_task({"prompt": cascade_prompt})
+            turn2_result = await pool.execute_task(
+                {"prompt": cascade_prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
+            )
             typer.echo(f"  ✓ turn 2 complete: status={turn2_result.get('status')}")
         finally:
             if not keep:
