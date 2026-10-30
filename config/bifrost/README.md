@@ -193,15 +193,21 @@ translated into the request headers by
 Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 (`default` unless a caller names another).
 
-> **Every Bodai caller shares the `default` bucket.** The gateway's
-> `default_cache_key` is also `"default"`, so there is one shared bucket
-> across the fleet. The semantic cache's `exclude_system_prompt: true`
-> drops the system prompt from the cache key, so two agents with
-> different personas but the same user turn can collide, and one can be
-> served the other's cached response. Scoping the bucket per caller needs
-> a tenant identity at the point the request headers are built, which is a
-> design change rather than a config one — recorded as an open risk in
-> the plan.
+> **Callers within a traffic class still share a bucket.** The bucket
+> is derived — `<traffic-class>:<hash of the gateway virtual key>` — so it
+> is never the fleet-wide `default`, and a second virtual key would split
+> it again with no code change. But this deployment issues exactly one
+> `BIFROST_VIRTUAL_KEY`, so the hash is the same for every caller: the
+> namespace is split by protocol surface (`worker`, `agno-openai`,
+> `agno-anthropic`), not by tenant. Within a class, two agents with
+> different personas but the same user turn can collide — the semantic
+> cache's `exclude_system_prompt: true` drops the system prompt from the
+> key — and one can be served the other's cached response.
+>
+> Real per-tenant isolation means a distinct virtual key per tenant:
+> Bifrost issues keys per key, so giving each tenant its own
+> `BIFROST_VIRTUAL_KEY` separates the buckets without a code change.
+> Recorded as an open risk in the plan.
 
 > **`off` is not "no cache".** It means "do not populate the cache". A
 > request in `off` mode can still be *served* from a previously cached
