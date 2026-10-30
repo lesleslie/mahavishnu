@@ -426,13 +426,15 @@ Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 > `BIFROST_VIRTUAL_KEY` separates the buckets without a code change.
 > Recorded as an open risk in the plan.
 
-**Claude Code's bucket.** `mahavishnu bifrost cc-url bifrost` writes
+**The harnesses' buckets.** `mahavishnu bifrost cc-url bifrost` writes
 `x-bf-cache-key: claude-code:<hash>` into Claude Code's
-`ANTHROPIC_CUSTOM_HEADERS`, alongside `x-bf-vk` and `x-bf-route`. Without
-it, Claude Code's requests carry no bucket header and the gateway resolves
-the plugin's shared `default_cache_key` — the same namespace the rest of
-the fleet falls back into, and one in which Claude Code's own sessions
-share entries.
+`ANTHROPIC_CUSTOM_HEADERS`, and `mahavishnu bifrost qwen-url bifrost`
+writes `x-bf-cache-key: qwen-code:<hash>` into the matching Qwen provider
+entry's `generationConfig.customHeaders`. Both sit alongside `x-bf-vk` and
+`x-bf-route`. Without them, a harness's requests carry no bucket header and
+the gateway resolves the plugin's shared `default_cache_key` — the same
+namespace the rest of the fleet falls back into, and one in which a
+harness's own sessions share entries.
 
 That last part is the reason it exists. Reproduced live on 2026-10-30: two
 requests with the *same* user turn and *different* system prompts — the
@@ -542,7 +544,15 @@ Notes:
   excludes the system prompt from the cache key, so two agents with the same
   user turn would collide. **Done** — `cc-url bifrost` now sends
   `x-bf-cache-key: claude-code:<hash>`; see "Semantic Cache" above for what
-  that does and does not separate.
+  that does and does not separate. Qwen Code gets the same treatment
+  (`qwen-code:<hash>`).
+- **Qwen Code goes to the Anthropic surface, not the OpenAI one.** Its active
+  model resolves to the `anthropic` provider entry, and that entry is what
+  the toggle points at `http://127.0.0.1:8471/anthropic` — so Qwen reaches
+  MiniMax's Anthropic-native endpoint and gets signed thinking blocks, the
+  same as Claude Code. It also gets `x-bf-route: anthropic_native`, so the
+  provider choice is explicit rather than left to bare model-name
+  resolution. The `openai` provider entry (DashScope) is left alone.
 
 ## Verified Bootstrap State
 

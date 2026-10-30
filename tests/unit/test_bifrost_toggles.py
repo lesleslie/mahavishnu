@@ -559,8 +559,15 @@ def test_cc_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -
     assert f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}" in _header_lines(raw)
 
 
-def test_qwen_does_not_write_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
-    """Qwen speaks the OpenAI protocol and keeps the OpenAI-compatible path."""
+def test_qwen_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Qwen's active model resolves to the Anthropic provider entry.
+
+    That entry is what the toggle points at the gateway's Anthropic
+    surface, so Qwen reaches MiniMax's Anthropic-native endpoint and gets
+    signed thinking blocks rather than inline reasoning. The route header
+    makes that provider choice explicit instead of leaving it to bare
+    model-name resolution -- two providers claim ``MiniMax-M3``.
+    """
     settings = tmp_path / "settings.json"
     _write(settings, _qwen_settings())
 
@@ -570,7 +577,41 @@ def test_qwen_does_not_write_the_route_header(tmp_path: Path, backup_dir: Path, 
     # lands on that entry rather than on the runtime model.
     entry = _read(settings)["modelProviders"]["anthropic"][0]
     headers = entry["generationConfig"]["customHeaders"]
+    assert headers[models.ROUTE_HEADER] == models.ROUTE_ANTHROPIC_NATIVE
+
+
+def test_qwen_writes_its_own_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Qwen must not land in the gateway's shared cache namespace either.
+
+    Same reason as Claude Code's bucket: without one, Qwen's entries share
+    the plugin's ``default_cache_key`` with the rest of the fleet.
+    """
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+
+    entry = _read(settings)["modelProviders"]["anthropic"][0]
+    headers = entry["generationConfig"]["customHeaders"]
+    expected = resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_QWEN_CODE, "sk-vk-TEST")
+    assert headers["x-bf-cache-key"] == expected
+    assert expected.startswith("qwen-code:")
+    assert expected != "default"
+
+
+def test_qwen_direct_removes_its_headers(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """``direct`` takes the route header and the bucket with it."""
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+    toggles.apply(_harness("qwen", settings), "direct")
+
+    entry = _read(settings)["modelProviders"]["anthropic"][0]
+    headers = entry.get("generationConfig", {}).get("customHeaders", {})
     assert models.ROUTE_HEADER not in headers
+    assert "x-bf-cache-key" not in headers
+    assert models.VIRTUAL_KEY_HEADER not in headers
 
 
 def test_direct_removes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
@@ -873,19 +914,25 @@ def test_direct_removes_the_cache_bucket(tmp_path: Path, backup_dir: Path, vk: s
     assert models.VIRTUAL_KEY_HEADER not in headers
 
 
-def test_qwen_does_not_write_a_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
-    """Only a harness with a traffic class gets a bucket.
+def test_qwen_writes_to_the_generic_block_without_a_provider_entry(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """With no ``modelProviders`` entry, the headers land on the model block.
 
-    The bucket is a per-protocol-surface namespace; a harness that has not
-    been given a class keeps the gateway's own resolution.
+    Qwen only reads ``customHeaders`` from the generic
+    ``model.generationConfig`` when the runtime model has **no** matching
+    provider entry; with one, it reads that entry's block instead. Both
+    sinks have to work.
     """
     settings = tmp_path / "settings.json"
     _write(settings, {"model": {"generationConfig": {"customHeaders": {}}}})
 
     toggles.apply(_harness("qwen", settings), "bifrost")
 
-    generation = _read(settings)["model"].get("generationConfig", {})
-    assert "x-bf-cache-key" not in generation.get("customHeaders", {})
+    headers = _read(settings)["model"]["generationConfig"]["customHeaders"]
+    assert models.VIRTUAL_KEY_HEADER in headers
+    assert headers[models.ROUTE_HEADER] == models.ROUTE_ANTHROPIC_NATIVE
+    assert headers["x-bf-cache-key"].startswith("qwen-code:")
 
 
 def test_status_reports_the_cache_bucket(

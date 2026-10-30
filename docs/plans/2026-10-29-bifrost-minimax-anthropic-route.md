@@ -546,7 +546,16 @@ dropped:
 **The cache bucket is now wired** (2026-10-30). `cc-url bifrost` writes
 `x-bf-cache-key: claude-code:<hash>` alongside the credential and the route
 header, derived from the traffic class and the credential the request will
-present — never the shared `default` namespace. The collision it prevents
+present — never the shared `default` namespace. `qwen-url bifrost` does the
+same for Qwen Code (`qwen-code:<hash>`), and gives Qwen the
+`x-bf-route: anthropic_native` header too: its active model resolves to the
+`anthropic` provider entry, which the toggle points at the gateway's
+Anthropic surface — so Qwen reaches MiniMax's Anthropic-native endpoint and
+gets signed thinking blocks rather than inline reasoning. The route header
+makes that choice explicit instead of leaving it to bare model-name
+resolution, which is how Qwen's historical route ended up on
+`minimax-openai` (the OpenAI-compatible surface) rather than the
+Anthropic-native one. The collision it prevents
 was reproduced live first: two requests with the same user turn and
 different system prompts (the shape of two Claude Code sessions in two
 directories) both came back `cache_hit: true` on the same `cache_id`, in

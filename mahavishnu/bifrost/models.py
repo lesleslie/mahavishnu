@@ -47,6 +47,11 @@ ROUTE_ANTHROPIC_NATIVE = "anthropic_native"
 #: rest of the fleet shares.
 CACHE_TRAFFIC_CLASS_CLAUDE_CODE = "claude-code"
 
+#: Traffic class for Qwen Code's cache bucket. Same reasoning as
+#: :data:`CACHE_TRAFFIC_CLASS_CLAUDE_CODE`: a namespace of its own, so
+#: Qwen's entries do not sit in the gateway's shared default.
+CACHE_TRAFFIC_CLASS_QWEN_CODE = "qwen-code"
+
 #: Env var holding the Bifrost virtual key. Never inlined into settings.
 VIRTUAL_KEY_ENV = "BIFROST_VIRTUAL_KEY"
 
@@ -127,6 +132,17 @@ QWEN_HARNESS = HarnessDescriptor(
     url_suffix="/v1",
     credential_sink="model",
     restart_note="restart any running Qwen Code session for this to take effect",
+    # Qwen's active model resolves to the ``anthropic`` provider entry, so
+    # the toggle points that entry at the gateway's Anthropic surface --
+    # which is what gets it MiniMax's Anthropic-native responses with
+    # signed thinking blocks, rather than the OpenAI-compatible surface
+    # where the reasoning arrives inline. The route header then makes the
+    # provider choice explicit instead of leaving it to bare model-name
+    # resolution.
+    route_header=(ROUTE_HEADER, ROUTE_ANTHROPIC_NATIVE),
+    # A bucket of its own, so Qwen's cache entries do not share the
+    # gateway's default namespace with the rest of the fleet.
+    cache_traffic_class=CACHE_TRAFFIC_CLASS_QWEN_CODE,
 )
 
 HARNESSES: dict[str, HarnessDescriptor] = {
