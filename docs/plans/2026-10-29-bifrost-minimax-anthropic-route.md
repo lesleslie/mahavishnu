@@ -192,9 +192,15 @@ Upstream's routing target schema is explicit: *"Target model (omit or empty
 to use the incoming request model)"*. A target that names a model **overwrites**
 the caller's model outright (`plugins/routing/rules/engine.go:288-294`, applied
 by `req.SetModel(...)`). Claude Code selects the model per request class —
-`MiniMax-M3`, `MiniMax-M3[1m]` for the 1M-context variant,
-`MiniMax-M3.1-Flash` for the fast slot — so a pinned `MiniMax-M3` silently
-downgraded the 1M-context variant, with no error and no log line.
+`MiniMax-M3` for the opus and sonnet slots, `MiniMax-M3.1-Flash` for the
+haiku slot — so a pinned `MiniMax-M3` silently moved the fast slot onto the
+heavy model, with no error and no log line.
+
+> **Corrected 2026-10-30.** This originally read that the pin "downgraded the
+> 1M-context variant". It did not: Claude Code strips the `[1m]` suffix
+> before the request leaves the client (see below), so the gateway never
+> saw a 1M-spelled model to downgrade. The pin's real effect was on the
+> *fast* slot.
 
 > **The plan's earlier claim was wrong.** It said a provider-only target
 > "leaves the model identifier unresolved and the provider is then re-derived
@@ -221,6 +227,19 @@ it could not serve the request, so the request failed hard rather than
 degrading. The fallback now names the same provider on a different model
 (`minimax-anthropic/MiniMax-M3.1-Flash`), which speaks the same Anthropic
 protocol and can actually serve the request.
+
+**The `[1m]` suffix is Claude Code-side, and never reaches the gateway.**
+Claude Code documents that it *"strips the suffix before sending the model
+ID to your provider"*; the shipped binary carries the same logic
+(`strip1mTag`, `toProviderWireModelId`), and a control probe with a
+deliberately bogus id returned MiniMax's error naming the id *without* the
+suffix. `MiniMax-M3[1m]` is not a MiniMax model id -- MiniMax has no
+1M-suffixed variant, and `MiniMax-M3` already has a 1M-token window with a
+guaranteed 512K floor -- so sending the literal string is a 400. The suffix
+still matters inside Claude Code: it is how Claude Code learns the model has
+a 1M window and suppresses proactive compaction for that alias. **This
+retires the planned `[1m]` -> `MiniMax-M3` routing rule** -- the gateway
+never sees a model the rule would have to catch.
 
 **Also recorded, not changed:**
 
@@ -523,6 +542,22 @@ dropped:
 2. The **semantic-cache bucket** for Claude Code (see
    `config/bifrost/README.md`) is a prerequisite for that cutover, not part
    of it.
+
+**The cache bucket is now wired** (2026-10-30). `cc-url bifrost` writes
+`x-bf-cache-key: claude-code:<hash>` alongside the credential and the route
+header, derived from the traffic class and the credential the request will
+present — never the shared `default` namespace. The collision it prevents
+was reproduced live first: two requests with the same user turn and
+different system prompts (the shape of two Claude Code sessions in two
+directories) both came back `cache_hit: true` on the same `cache_id`, in
+1–47 ms instead of ~700 ms.
+
+What the bucket does **not** do is separate two Claude Code sessions from
+each other: it is written once into `~/.claude/settings.json`, so every
+session on the host shares it. What keeps them apart in practice is the
+conversation history the cache key also carries, plus the gateway's
+`conversation_history_threshold: 8`, which stops caching entirely past
+eight messages — so a long session is not cached at all.
 
 **One thing outstanding, and it is not a design question.** The ensemble
 review's corrections (§4.6) are in the repo's template, but the **live store

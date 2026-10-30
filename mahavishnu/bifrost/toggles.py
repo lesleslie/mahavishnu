@@ -26,6 +26,7 @@ from typing import Any
 
 import typer
 
+from .cache_headers import CACHE_KEY_HEADER, resolve_cache_bucket
 from .models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER, HarnessDescriptor
 from .paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
 
@@ -192,18 +193,19 @@ def _upsert_header_line(raw: str | None, header: str, value: str) -> str:
     return "\n".join(kept)
 
 
-def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
-    """Write this harness's route header to the sink it reads.
+def _upsert_custom_header(
+    settings: dict[str, Any], harness: HarnessDescriptor, header: str, value: str
+) -> None:
+    """Write one custom header to the sink this harness reads.
 
-    The route header is a routing *signal*, not a credential, so it is
-    installed independently of the virtual key. A host that was already
-    pointed at Bifrost before the route existed must still receive it, and
-    the gateway rule it selects is what makes the provider choice
-    unambiguous.
+    Claude Code takes ``ANTHROPIC_CUSTOM_HEADERS`` in ``Name: Value`` form
+    (requires >= 2.1.227). Qwen Code takes ``customHeaders`` under
+    ``model.generationConfig`` -- but only for a runtime model with **no**
+    matching ``modelProviders`` entry. When the active model resolves to a
+    provider, Qwen ignores that block and reads the header from the matching
+    provider's own ``generationConfig``, so the header is written there. See
+    :func:`_active_provider`.
     """
-    if harness.route_header is None:
-        return
-    header, value = harness.route_header
     if harness.credential_sink == "env":
         env = _env_block(settings)
         raw = env.get(CC_CUSTOM_HEADERS_VAR)
@@ -224,15 +226,10 @@ def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> N
     headers[header] = value
 
 
-def _read_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
-    """Read this harness's route header value, or ``None`` if it is absent.
-
-    ``None`` is ambiguous for a harness that has no route header at all;
-    callers distinguish that with ``harness.route_header`` itself.
-    """
-    if harness.route_header is None:
-        return None
-    header, _ = harness.route_header
+def _read_custom_header(
+    settings: dict[str, Any], harness: HarnessDescriptor, header: str
+) -> str | None:
+    """Read one custom header's value, or ``None`` if it is absent."""
     if harness.credential_sink == "env":
         raw = _env_block(settings).get(CC_CUSTOM_HEADERS_VAR)
         if not isinstance(raw, str):
@@ -258,85 +255,114 @@ def _read_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> 
     return value if isinstance(value, str) else None
 
 
+def _harness_header_prefixes(harness: HarnessDescriptor) -> list[str]:
+    """The custom-header prefixes this toggle owns for ``harness``.
+
+    Everything listed here is written by the toggle, so ``direct`` removes
+    all of it: the virtual key, the route signal, and the cache bucket.
+    Leaving any of them behind points at a gateway the harness is no longer
+    talking to.
+    """
+    prefixes = [f"{VIRTUAL_KEY_HEADER}:"]
+    if harness.route_header is not None:
+        prefixes.append(f"{harness.route_header[0]}:")
+    if harness.cache_traffic_class is not None:
+        prefixes.append(f"{CACHE_KEY_HEADER}:")
+    return prefixes
+
+
+def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Write this harness's route header to the sink it reads.
+
+    The route header is a routing *signal*, not a credential, so it is
+    installed independently of the virtual key. A host that was already
+    pointed at Bifrost before the route existed must still receive it, and
+    the gateway rule it selects is what makes the provider choice
+    unambiguous.
+    """
+    if harness.route_header is None:
+        return
+    header, value = harness.route_header
+    _upsert_custom_header(settings, harness, header, value)
+
+
+def _read_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    """Read this harness's route header value, or ``None`` if it is absent.
+
+    ``None`` is ambiguous for a harness that has no route header at all;
+    callers distinguish that with ``harness.route_header`` itself.
+    """
+    if harness.route_header is None:
+        return None
+    header, _ = harness.route_header
+    return _read_custom_header(settings, harness, header)
+
+
+def _set_cache_header(
+    settings: dict[str, Any], harness: HarnessDescriptor, principal: str | None
+) -> None:
+    """Write the cache-bucket header for this harness.
+
+    The bucket is **derived** from the traffic class and the credential the
+    request will present -- never chosen by the caller -- so it is never the
+    gateway's shared ``default`` namespace. Without the header, a request
+    falls back to the plugin's ``default_cache_key``, where Claude Code's
+    sessions share a namespace with the rest of the fleet and with each
+    other.
+
+    Args:
+        settings: The harness settings to write into.
+        harness: The harness whose sink and traffic class to use.
+        principal: The credential the request will present. The virtual key
+            when the toggle is writing one, otherwise the credential already
+            in the settings -- the bucket must follow the credential that
+            actually authenticates the request.
+    """
+    if harness.cache_traffic_class is None:
+        return
+    bucket = resolve_cache_bucket(harness.cache_traffic_class, principal)
+    _upsert_custom_header(settings, harness, CACHE_KEY_HEADER, bucket)
+
+
+def _read_cache_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    """Read this harness's cache-bucket header value, or ``None``."""
+    if harness.cache_traffic_class is None:
+        return None
+    return _read_custom_header(settings, harness, CACHE_KEY_HEADER)
+
+
 def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtual_key: str) -> None:
     """Write the ``x-bf-vk`` header to the sink this harness actually reads.
 
-    Claude Code takes ``ANTHROPIC_CUSTOM_HEADERS`` in ``Name: Value`` form
-    (requires >= 2.1.227). Qwen Code takes ``customHeaders`` under
-    ``model.generationConfig`` -- but only for a runtime model with **no**
-    matching ``modelProviders`` entry. When the active model resolves to a
-    provider, Qwen ignores that block and reads the header from the matching
-    provider's own ``generationConfig``, so the header is written there. See
-    :func:`_active_provider`.
-
-    The route header is deliberately **not** written here. It is a routing
-    signal rather than a credential, and coupling the two meant a host with
-    no virtual key available never received it -- see :func:`_set_route_header`.
+    The route header and the cache bucket are deliberately **not** written
+    here. Neither is a credential: the route header is a routing signal and
+    the cache bucket is a derived namespace, and coupling them to the
+    credential meant a host with no virtual key available never received
+    them -- see :func:`_set_route_header` and :func:`_set_cache_header`.
     """
-    if harness.credential_sink == "env":
-        env = _env_block(settings)
-        existing = env.get(CC_CUSTOM_HEADERS_VAR)
-        env[CC_CUSTOM_HEADERS_VAR] = _upsert_header_line(
-            existing if isinstance(existing, str) else None,
-            VIRTUAL_KEY_HEADER,
-            virtual_key,
-        )
-        return
-
-    model = settings.setdefault("model", {})
-    if not isinstance(model, dict):
-        typer.echo("error: settings 'model' is not an object", err=True)
-        raise typer.Exit(EXIT_ERROR)
-
-    _, entry = _active_provider(settings)
-    target = entry if entry is not None else model
-    generation = target.setdefault("generationConfig", {})
-    headers = generation.setdefault("customHeaders", {})
-    headers[VIRTUAL_KEY_HEADER] = virtual_key
+    _upsert_custom_header(settings, harness, VIRTUAL_KEY_HEADER, virtual_key)
 
 
 def _read_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
     """Return the currently-configured virtual key for ``harness``, if any."""
-    if harness.credential_sink == "env":
-        raw = _env_block(settings).get(CC_CUSTOM_HEADERS_VAR)
-        if not isinstance(raw, str):
-            return None
-        prefix = f"{VIRTUAL_KEY_HEADER}:"
-        for line in raw.splitlines():
-            if line.strip().startswith(prefix):
-                return line.strip()[len(prefix) :].strip()
-        return None
-
-    model = settings.get("model")
-    if not isinstance(model, dict):
-        return None
-    _, entry = _active_provider(settings)
-    target = entry if entry is not None else model
-    generation = target.get("generationConfig")
-    if not isinstance(generation, dict):
-        return None
-    headers = generation.get("customHeaders")
-    if not isinstance(headers, dict):
-        return None
-    value = headers.get(VIRTUAL_KEY_HEADER)
-    return value if isinstance(value, str) else None
+    return _read_custom_header(settings, harness, VIRTUAL_KEY_HEADER)
 
 
 def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
     """Remove only our headers, leaving any other custom headers intact.
 
-    Both the virtual key **and** the route header are ours. The route header
-    is a signal that selects a provider on the gateway; leaving it behind
-    after ``direct`` would keep pointing at a gateway the harness is no
-    longer talking to.
+    The virtual key, the route header and the cache bucket are all ours.
+    The route header is a signal that selects a provider on the gateway, and
+    the cache bucket names a namespace on it; leaving either behind after
+    ``direct`` keeps pointing at a gateway the harness is no longer talking
+    to.
     """
+    prefixes = _harness_header_prefixes(harness)
+
     if harness.credential_sink == "env":
         env = _env_block(settings)
         raw = env.get(CC_CUSTOM_HEADERS_VAR)
         if isinstance(raw, str):
-            prefixes = [f"{VIRTUAL_KEY_HEADER}:"]
-            if harness.route_header is not None:
-                prefixes.append(f"{harness.route_header[0]}:")
             kept = [
                 ln
                 for ln in raw.splitlines()
@@ -359,9 +385,8 @@ def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> Non
     headers = generation.get("customHeaders")
     if not isinstance(headers, dict):
         return
-    headers.pop(VIRTUAL_KEY_HEADER, None)
-    if harness.route_header is not None:
-        headers.pop(harness.route_header[0], None)
+    for prefix in prefixes:
+        headers.pop(prefix.removesuffix(":"), None)
     if not headers:
         generation.pop("customHeaders", None)
 
@@ -518,24 +543,45 @@ def _action_bifrost(
     route_installed = (
         route_header is None or _read_route_header(settings, harness) == route_header[1]
     )
+    # The credential the request will present: the virtual key when the
+    # toggle is writing one, otherwise the one already in the settings.
+    # The cache bucket is derived from it, so it has to be the credential
+    # that actually authenticates the request.
+    principal = virtual_key or _read_credential(settings, harness)
+    expected_bucket = (
+        resolve_cache_bucket(harness.cache_traffic_class, principal)
+        if harness.cache_traffic_class is not None
+        else None
+    )
+    cache_installed = (
+        harness.cache_traffic_class is None
+        or _read_cache_header(settings, harness) == expected_bucket
+    )
     already_configured = existing == url and _read_credential(settings, harness) == virtual_key
 
-    if already_configured and route_installed:
+    if already_configured and route_installed and cache_installed:
         typer.echo(f"{harness.label} already points at {url} with a matching key; no-op")
         return
 
-    if already_configured and route_header is not None:
-        # Only the route header is missing. Install it without touching the
-        # URL, the credential, or the backup: the backup holds the
-        # pre-toggle upstream that `direct` restores, and overwriting it
+    if already_configured and (not route_installed or not cache_installed):
+        # Only the routing concerns are missing. Install them without
+        # touching the URL, the credential, or the backup: the backup holds
+        # the pre-toggle upstream that `direct` restores, and overwriting it
         # with the Bifrost URL would strand the harness on the gateway.
-        header, value = route_header
-        _set_route_header(settings, harness)
+        installed: list[str] = []
+        if route_header is not None and not route_installed:
+            header, value = route_header
+            _set_route_header(settings, harness)
+            installed.append(f"{header}: {value}")
+        if harness.cache_traffic_class is not None and not cache_installed:
+            _set_cache_header(settings, harness, principal)
+            installed.append(f"{CACHE_KEY_HEADER}: {_read_cache_header(settings, harness)}")
         if dry_run:
-            typer.echo(f"[dry-run] would install {header}: {value} in {harness.settings_path}")
+            typer.echo(f"[dry-run] would install {', '.join(installed)} in {harness.settings_path}")
             return
         _write_settings(harness.settings_path, settings)
-        typer.echo(f"installed {header}: {value} in {harness.settings_path}")
+        for item in installed:
+            typer.echo(f"installed {item} in {harness.settings_path}")
         if virtual_key is None:
             _warn_no_virtual_key(harness)
         typer.echo(f"note: {harness.restart_note}")
@@ -576,6 +622,15 @@ def _action_bifrost(
     if route_header is not None and not route_installed:
         _set_route_header(settings, harness)
 
+    # The cache bucket is derived, not chosen, and it belongs to this
+    # harness's own namespace rather than the gateway's shared default.
+    # It travels with the route header because both are routing concerns
+    # rather than credentials. The bucket follows the credential that will
+    # actually authenticate the request: the virtual key when the toggle is
+    # writing one, otherwise the one already in the settings.
+    if harness.cache_traffic_class is not None and not cache_installed:
+        _set_cache_header(settings, harness, principal)
+
     if dry_run:
         typer.echo(
             f"[dry-run] would point {_endpoint_label(settings, harness)} at {url} "
@@ -588,12 +643,31 @@ def _action_bifrost(
     typer.echo(f"note: {harness.restart_note}")
 
 
+def _present_harness_headers(settings: dict[str, Any], harness: HarnessDescriptor) -> list[str]:
+    """The harness-owned custom headers currently set, by header name.
+
+    Everything here is something the toggle wrote, so ``direct`` removes all
+    of it: the virtual key, the route signal, and the cache bucket.
+    """
+    present: list[str] = []
+    if _read_credential(settings, harness) is not None:
+        present.append(VIRTUAL_KEY_HEADER)
+    if harness.route_header is not None and _read_route_header(settings, harness) is not None:
+        present.append(harness.route_header[0])
+    if (
+        harness.cache_traffic_class is not None
+        and _read_cache_header(settings, harness) is not None
+    ):
+        present.append(CACHE_KEY_HEADER)
+    return present
+
+
 def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     settings = _read_settings(harness.settings_path)
     url = _get_url(settings, harness)
     existing_key = _read_credential(settings, harness)
 
-    if url is None and existing_key is None:
+    if url is None and existing_key is None and _read_cache_header(settings, harness) is None:
         typer.echo(f"{_endpoint_label(settings, harness)} is unset; no-op")
         return
 
@@ -611,18 +685,10 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
         # like api.minimax.io, which has no use for it. Leaving it behind
         # because the URL no longer matches turns a Bifrost-specific secret
         # into a third party's traffic. Drop it either way.
-        route_header = harness.route_header
-        stranded_route = (
-            route_header is not None and _read_route_header(settings, harness) is not None
-        )
-        if existing_key is None and not stranded_route:
+        stranded = _present_harness_headers(settings, harness)
+        if not stranded:
             typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
             return
-        stranded = []
-        if existing_key is not None:
-            stranded.append(VIRTUAL_KEY_HEADER)
-        if stranded_route:
-            stranded.append(route_header[0])
         if dry_run:
             typer.echo(
                 f"[dry-run] would remove the stranded {', '.join(stranded)} header(s) "
@@ -708,6 +774,9 @@ def _action_status(harness: HarnessDescriptor) -> None:
         header, value = harness.route_header
         current = _read_route_header(settings, harness)
         typer.echo(f"{header} header: {current if current else 'absent'} (expected {value!r})")
+    if harness.cache_traffic_class is not None:
+        bucket = _read_cache_header(settings, harness)
+        typer.echo(f"{CACHE_KEY_HEADER} header: {bucket if bucket else 'absent'}")
     typer.echo(
         f"backup at {harness.backup_path}: {'yes' if harness.backup_path.exists() else 'no'}"
     )

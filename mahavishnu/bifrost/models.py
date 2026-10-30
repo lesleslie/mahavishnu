@@ -34,6 +34,19 @@ ROUTE_HEADER = "x-bf-route"
 #: between them -- this header makes the choice explicit.
 ROUTE_ANTHROPIC_NATIVE = "anthropic_native"
 
+#: Traffic class for Claude Code's cache bucket.
+#:
+#: The gateway's semantic cache resolves a request's bucket from the
+#: ``x-bf-cache-key`` header, falling back to the plugin's shared
+#: ``default_cache_key`` when the header is absent. Claude Code's system
+#: prompt carries the current date, working directory, and environment
+#: details, and the plugin is configured to exclude the system prompt from
+#: the cache key -- so in the shared bucket two Claude Code sessions that
+#: start from the same instruction can be served each other's cached
+#: response. A class of its own keeps Claude Code out of the namespace the
+#: rest of the fleet shares.
+CACHE_TRAFFIC_CLASS_CLAUDE_CODE = "claude-code"
+
 #: Env var holding the Bifrost virtual key. Never inlined into settings.
 VIRTUAL_KEY_ENV = "BIFROST_VIRTUAL_KEY"
 
@@ -59,6 +72,10 @@ class HarnessDescriptor:
         route_header: ``(header, value)`` written alongside the virtual key to
             pin this harness to one gateway provider. ``None`` means the
             harness follows the gateway's own model-name resolution.
+        cache_traffic_class: Traffic class whose derived cache bucket this
+            harness uses, or ``None`` to leave the bucket to the gateway's
+            default. See
+            :func:`mahavishnu.bifrost.cache_headers.resolve_cache_bucket`.
     """
 
     key: str
@@ -69,6 +86,7 @@ class HarnessDescriptor:
     credential_sink: str
     restart_note: str
     route_header: tuple[str, str] | None = None
+    cache_traffic_class: str | None = None
 
     @property
     def backup_path(self) -> Path:
@@ -95,6 +113,10 @@ CC_HARNESS = HarnessDescriptor(
     # Anthropic responses. The route header tells the gateway which provider
     # to use; without it the bare model name is ambiguous.
     route_header=(ROUTE_HEADER, ROUTE_ANTHROPIC_NATIVE),
+    # Claude Code gets its own cache bucket. It shares neither the fleet's
+    # namespace nor another harness's, and the bucket is derived from the
+    # credential rather than chosen, so it is never the shared default.
+    cache_traffic_class=CACHE_TRAFFIC_CLASS_CLAUDE_CODE,
 )
 
 QWEN_HARNESS = HarnessDescriptor(

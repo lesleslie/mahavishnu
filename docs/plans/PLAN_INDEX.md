@@ -307,6 +307,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-10-30-task-workflow-backlink.md`](2026-10-30-task-workflow-backlink.md) | 2026-10-30 | `active` | `implementation` |  | `task-workflow-backlink` | Task → Workflow Back-Link — typed channel, durable dispatch, and wiring |
 | [`docs/plans/2026-10-29-agno-failover-and-gateway-repairs.md`](2026-10-29-agno-failover-and-gateway-repairs.md) | 2026-10-29 | `active` | `implementation` |  | `agno-failover-gateway` | Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key |
 | [`docs/plans/2026-10-29-agno-llm-provider-chain.md`](2026-10-29-agno-llm-provider-chain.md) | 2026-10-29 | `complete` | `implementation` |  | `agno-llm-routing` | Agno LLM provider chain — MiniMax primary, llama-server as fallback |
 | [`docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`](2026-10-29-bifrost-bodai-cache-wiring.md) | 2026-10-29 | `active` | `canonical` |  | `bifrost-cache-wiring` | Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring |
@@ -448,7 +449,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (156 entries)
+### `plan` (157 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -461,9 +462,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 48 | 1 | 1 | 14 | **71** |
-| `implementation` | 3 | 7 | 3 | 5 | 16 | **34** |
+| `implementation` | 3 | 8 | 3 | 5 | 16 | **35** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **10** | **55** | **4** | **6** | **69** | **144** |
+| **Total** | **10** | **56** | **4** | **6** | **69** | **145** |

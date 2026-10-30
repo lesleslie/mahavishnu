@@ -153,12 +153,29 @@ model.** Upstream keeps the incoming model when the target omits it:
 > `model` — *Target model (omit or empty to use the incoming request model)*
 
 So a target that pins `MiniMax-M3` rewrites every request that asked for
-something else. Claude Code picks the model per request class
-(`MiniMax-M3`, `MiniMax-M3[1m]` for the 1M-context variant,
-`MiniMax-M3.1-Flash` for the fast slot), and a pinned model silently
-downgrades the 1M-context variant — no error, no log line. Pin the
-**provider**; let the model through. The provider's key must then list every
-model id the caller actually sends.
+something else. Claude Code picks the model per request class — the
+`MiniMax-M3` slots (opus and sonnet) and `MiniMax-M3.1-Flash` (haiku) — so
+a pinned model silently moved the fast slot onto the heavy model: no
+error, no log line, and a different price. Pin the **provider**; let the
+model through. The provider's key must then list every model id the caller
+actually sends.
+
+> **The `[1m]` suffix never reaches the gateway.** It is a Claude Code-side
+> convention: *"Claude Code strips the suffix before sending the model ID to
+> your provider"* (code.claude.com/docs/en/model-config). The shipped
+> binary carries the same logic (`strip1mTag`, `toProviderWireModelId`), and
+> a control probe with a deliberately bogus id returned MiniMax's error
+> naming the id *without* the suffix. `MiniMax-M3[1m]` is therefore not a
+> model id at all — MiniMax has no 1M-suffixed variant, and
+> `MiniMax-M3` already has a 1M-token window with a guaranteed 512K floor.
+> Sending the literal string to MiniMax is a 400
+> (`invalid params, unknown model 'MiniMax-M3[1m]' (2013)`).
+>
+> The suffix still matters *inside* Claude Code: it is how Claude Code
+> learns the model has a 1M window, and it suppresses proactive compaction
+> for that model alias. The key's model list carries the `[1m]` spelling so
+> that a client which does forward it still resolves a key and falls
+> through to the fallback, rather than failing at key resolution.
 
 **How to tell whether a provider actually landed:** the config store is
 authoritative, so compare it against the template rather than trusting the
@@ -399,15 +416,44 @@ Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 > it again with no code change. But this deployment issues exactly one
 > `BIFROST_VIRTUAL_KEY`, so the hash is the same for every caller: the
 > namespace is split by protocol surface (`worker`, `agno-openai`,
-> `agno-anthropic`), not by tenant. Within a class, two agents with
-> different personas but the same user turn can collide — the semantic
-> cache's `exclude_system_prompt: true` drops the system prompt from the
-> key — and one can be served the other's cached response.
+> `agno-anthropic`, `claude-code`), not by tenant. Within a class, two
+> agents with different personas but the same user turn can collide — the
+> semantic cache's `exclude_system_prompt: true` drops the system prompt
+> from the key — and one can be served the other's cached response.
 >
 > Real per-tenant isolation means a distinct virtual key per tenant:
 > Bifrost issues keys per key, so giving each tenant its own
 > `BIFROST_VIRTUAL_KEY` separates the buckets without a code change.
 > Recorded as an open risk in the plan.
+
+**Claude Code's bucket.** `mahavishnu bifrost cc-url bifrost` writes
+`x-bf-cache-key: claude-code:<hash>` into Claude Code's
+`ANTHROPIC_CUSTOM_HEADERS`, alongside `x-bf-vk` and `x-bf-route`. Without
+it, Claude Code's requests carry no bucket header and the gateway resolves
+the plugin's shared `default_cache_key` — the same namespace the rest of
+the fleet falls back into, and one in which Claude Code's own sessions
+share entries.
+
+That last part is the reason it exists. Reproduced live on 2026-10-30: two
+requests with the *same* user turn and *different* system prompts — the
+shape of two Claude Code sessions in two directories — came back
+`cache_hit: true`, `hit_type: "direct"`, the same `cache_id`, served in
+1–47 ms instead of ~700 ms. The system prompt carries the date, working
+directory and environment, and the cache is configured to exclude it, so
+without a bucket of its own one session can be served another's cached
+response.
+
+Two limits worth stating plainly:
+
+- **It separates Claude Code from the fleet, not from itself.** The bucket
+  is written once into `~/.claude/settings.json`, so every Claude Code
+  session on the host shares it. What keeps two sessions apart in practice
+  is the conversation history the cache key also carries — and the
+  gateway's `conversation_history_threshold: 8`, which stops caching
+  entirely past eight messages, so a long session is not cached at all.
+- **A bucket is not an authorisation boundary.** The gateway does not check
+  that the presented credential owns the bucket it names; the derivation is
+  a convention that keeps this deployment honest, not an enforcement.
 
 > **`off` is not "no cache".** It means "do not populate the cache". A
 > request in `off` mode can still be *served* from a previously cached
@@ -494,9 +540,9 @@ Notes:
   must not share the semantic cache's shared `default` bucket. Its system
   prompt carries the date, working directory and environment, and the plugin
   excludes the system prompt from the cache key, so two agents with the same
-  user turn would collide. The toggle does not yet send a distinct
-  `x-bf-cache-key` for Claude Code, so that has to be added **before** the
-  Claude Code cutover, not after it.
+  user turn would collide. **Done** — `cc-url bifrost` now sends
+  `x-bf-cache-key: claude-code:<hash>`; see "Semantic Cache" above for what
+  that does and does not separate.
 
 ## Verified Bootstrap State
 
