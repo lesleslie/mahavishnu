@@ -78,13 +78,20 @@ class _FakeSB:
     async def tasks_get(self, task_id: str) -> dict[str, Any]:
         return dict(self._payloads.get(task_id, {"status": "in_progress"}))
 
-    async def tasks_update(
+    async def tasks_link_workflow(
         self,
         task_id: str,
-        **kw: Any,
+        workflow_id: str,
     ) -> dict[str, Any]:
-        self.updates.append((task_id, kw))
-        return {"id": task_id, **kw}
+        """The typed channel — the only writer of ``Task.workflow_id``.
+
+        The sweeper used to call ``tasks_update(metadata={...})``, which
+        wrote into the caller's metadata bag and never reached the
+        server-set field. The sweeper therefore re-linked forever and
+        the task's ``workflow_id`` stayed ``None``.
+        """
+        self.updates.append((task_id, {"workflow_id": workflow_id}))
+        return {"id": task_id, "workflow_id": workflow_id}
 
 
 def _orphan_entry(
@@ -219,7 +226,9 @@ async def test_sweeper_processes_orphan_event(monkeypatch: pytest.MonkeyPatch) -
     assert len(sb.updates) == 1
     task_id, update_kw = sb.updates[0]
     assert task_id == "t-x"
-    assert update_kw["metadata"]["workflow_id"] == "w-z"
+    # The link goes through the typed channel, with the workflow id as
+    # a first-class argument — not through the generic metadata bag.
+    assert update_kw["workflow_id"] == "w-z"
     # Synthetic handoff_completed event was emitted.
     assert len(adapter.xadds) == 1
     assert adapter.xadds[0]["channel"] == "task.handoff_completed"

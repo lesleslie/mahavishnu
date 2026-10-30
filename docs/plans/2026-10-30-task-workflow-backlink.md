@@ -328,3 +328,83 @@ quo this plan exists to end.
 - `docs/decisions/wire-up-contract.md` — the policy this plan implements.
 - `session-buddy/session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md` —
   the session-buddy-side contract doc.
+
+---
+
+## 8. Implementation status (2026-10-30)
+
+The plan shipped with revisions. An independent review of the design
+against the source found the mahavishnu half needed more than the plan
+assumed, and the operator chose a fire-and-forget dispatch. The full
+revision log is in the design doc §7; this is the build summary.
+
+### Phase 1 — session-buddy: the typed link channel — **DONE**
+
+- `tasks_link_workflow` is the single writer of `Task.workflow_id`.
+  Owner-scoped (plus a `task_system.link_service_principals` allowlist
+  for the sweeper); link-once and **atomic** (a conditional `UPDATE`,
+  not a read-then-write); provenance in `workflow_linked_at` /
+  `workflow_linked_by`; the workflow id validated against the shared
+  pattern, with dot-segments rejected.
+- The metadata bag still cannot reach a server-set field — pinned.
+- The update path re-reads the sidecar row before writing, so an
+  ordinary `tasks_update` cannot erase a link written in flight.
+- Commits: `e642d6d4`, `023c7cd2`.
+
+### Phase 2 — mahavishnu: the dispatch edge — **DONE**
+
+- `dispatch_workflow_async` in `core/workflow_execution.py`: creates the
+  workflow id and state, validates QC inline, schedules the execution in
+  the background, returns `{"workflow_id", "status": "running"}`. The
+  workflow is still RUNNING when the binding is written — which is what
+  makes the orphan case recoverable. `trigger_workflow` is untouched
+  and still blocks.
+- `tasks_handoff_to_workflow` now: resolves the repo scope (refusing an
+  unscoped dispatch with `NoRepoScopeError`), dispatches, rejects the
+  literal `"unknown"` workflow id, and links through
+  `tasks_link_workflow`.
+- `SessionBuddyTaskClient` — a narrow adapter over
+  `BodaiComponentMCPClient` exposing `tasks_get` and
+  `tasks_link_workflow` (and deliberately NOT `tasks_update`).
+- The contract gate compares the two repos' envelopes field-for-field
+  and the caller SKIPS registration instead of raising — a version skew
+  must not take the orchestrator down.
+
+### Phase 3 — the sweeper converges — **DONE**
+
+- `get_session_buddy_client()` returns the real client instead of
+  `None`. The sweeper was consuming every orphan event and dropping it.
+- The sweeper re-links through `tasks_link_workflow` — the previous
+  `tasks_update(metadata={...})` shape never reached the field.
+- mahavishnu publishes the orphan event ITSELF. It used to call
+  session-buddy's `publish_task_event_raw`, which writes through a
+  publisher singleton assigned only inside the session-buddy process —
+  so from mahavishnu it was a silent no-op and the sweeper had nothing
+  to consume.
+
+### Phase 4 — docs and live verification — **PARTIAL**
+
+- The design doc carries the revision log; the v1.1 spec's sweeper
+  section is amended; session-buddy's skill catalog documents the
+  channel.
+- **Live-verified**: `tasks_link_workflow` is registered on the running
+  session-buddy (225 tools, 8 task tools); a task created and linked
+  comes back with `workflow_id`, `workflow_linked_at` and
+  `workflow_linked_by`; a conflicting link is refused
+  (`workflow_already_linked`); the same link is idempotent; a
+  `metadata` forgery attempt does not move the field; a dot-segment id
+  is refused (`invalid_workflow_id`).
+- **Blocked on an operator step**: mahavishnu depends on the PUBLISHED
+  session-buddy, and the gate compares the two repos' envelopes. Until
+  session-buddy ships the new contract, the gate correctly reports the
+  contract unavailable and the handoff tool is simply not registered.
+  The live END-TO-END handoff needs (a) session-buddy published, (b)
+  mahavishnu's venv re-synced, (c) the `session-buddy>=0.33.1` pin
+  bumped — operator-owned, per `feedback-mcp-common-version-bump-is-user`.
+
+### What was NOT done
+
+- The auth gate was not turned on and no new `mcp_common` scope was
+  added — the non-owner link path is closed by default instead.
+- `metadata`'s replace-not-merge semantics are unchanged.
+- The `uuid_alias` display-id gap is unchanged.

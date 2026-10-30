@@ -485,19 +485,23 @@ async def handle_workflow_execution_error(
     ) from error
 
 
-async def execute_workflow_parallel(
+async def _run_initialized_workflow(
     app: Any,
     task: dict[str, Any],
     adapter_name: str,
-    repos: list[str] | None = None,
+    adapter: Any,
+    validated_repos: list[str],
+    workflow_id: str,
+    checkpoint_id: str | None,
     progress_callback=None,
-    user_id: str | None = None,
 ) -> dict[str, Any] | None:
-    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
-    workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
-    await validate_pre_execution_qc(app, workflow_id, validated_repos)
-    checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)
+    """Run an ALREADY-INITIALIZED workflow to completion.
 
+    Split out of :func:`execute_workflow_parallel` so the same execution
+    body can be driven two ways: inline (the caller waits) and scheduled
+    in the background (:func:`dispatch_workflow_async`). Both share one
+    implementation, so the two paths cannot drift.
+    """
     try:
         execution_time, successful_results, errors = await execute_parallel_workflow(
             app=app,
@@ -534,6 +538,98 @@ async def execute_workflow_parallel(
             checkpoint_id=checkpoint_id,
         )
         return result  # type: ignore[no-any-return]
+
+
+async def execute_workflow_parallel(
+    app: Any,
+    task: dict[str, Any],
+    adapter_name: str,
+    repos: list[str] | None = None,
+    progress_callback=None,
+    user_id: str | None = None,
+) -> dict[str, Any] | None:
+    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
+    workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+    await validate_pre_execution_qc(app, workflow_id, validated_repos)
+    checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)
+
+    return await _run_initialized_workflow(
+        app=app,
+        task=task,
+        adapter_name=adapter_name,
+        adapter=adapter,
+        validated_repos=validated_repos,
+        workflow_id=workflow_id,
+        checkpoint_id=checkpoint_id,
+        progress_callback=progress_callback,
+    )
+
+
+#: Strong references to scheduled workflow tasks. ``asyncio.create_task``
+#: keeps only a weak reference, so without this a background workflow can
+#: be garbage-collected mid-flight and silently never finish.
+_BACKGROUND_WORKFLOW_TASKS: set[asyncio.Task[Any]] = set()
+
+
+async def dispatch_workflow_async(
+    app: Any,
+    task: dict[str, Any],
+    adapter_name: str,
+    repos: list[str] | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
+    """Create a durable workflow and schedule its execution.
+
+    Returns IMMEDIATELY with the workflow id and status ``"running"``;
+    the execution continues in the background. The outcome is polled with
+    ``get_workflow_status(workflow_id=...)``.
+
+    This is the fire-and-forget counterpart to
+    :func:`execute_workflow_parallel`, which blocks for the whole
+    workflow. The task system's handoff needs the former: it binds a
+    task to a workflow that is still RUNNING, so that a failure to
+    record the binding leaves a recoverable orphan rather than a
+    finished workflow nobody is waiting on.
+
+    ``repos`` MUST be an explicit scope. Callers that pass ``None`` get
+    the whole repository catalog, which for a single task dispatch is a
+    fleet-wide fan-out — see the handoff's ``no_repo_scope`` guard.
+
+    Implements: REQ-007
+    """
+    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
+    workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+    # QC runs inline so a pre-execution failure is reported to the
+    # caller instead of leaving a "running" workflow that never runs.
+    # It marks the workflow state failed and re-raises.
+    await validate_pre_execution_qc(app, workflow_id, validated_repos)
+    checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)
+
+    scheduled = asyncio.create_task(
+        _run_initialized_workflow(
+            app=app,
+            task=task,
+            adapter_name=adapter_name,
+            adapter=adapter,
+            validated_repos=validated_repos,
+            workflow_id=workflow_id,
+            checkpoint_id=checkpoint_id,
+        ),
+        name=f"workflow-{workflow_id}",
+    )
+    _BACKGROUND_WORKFLOW_TASKS.add(scheduled)
+    scheduled.add_done_callback(_BACKGROUND_WORKFLOW_TASKS.discard)
+
+    return {
+        "workflow_id": workflow_id,
+        "status": "running",
+        "adapter": adapter_name,
+        "repos_processed": len(validated_repos),
+        "successful_repos": 0,
+        "failed_repos": 0,
+        "result": {},
+        "errors": [],
+    }
 
 
 async def execute_workflow_with_fallback(

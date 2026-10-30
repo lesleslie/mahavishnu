@@ -21,13 +21,26 @@ logger = get_logger(__name__)
 def get_session_buddy_client() -> Any:
     """Return the session-buddy client to bind to the task-orphan sweeper.
 
-    Inline fallback for the v1.1 task-system wire-up (Task 10): the
-    full session-buddy client wiring is out of scope here, so the
-    sweeper's ``_recover_orphan`` body sees ``None`` and logs
-    "no session_buddy client; skipping" — the stream loop stays alive
-    but no tasks are re-linked. A follow-up wires the real client.
+    The sweeper recovers tasks whose workflow binding was lost: it reads
+    the task, and re-links it through session-buddy's
+    ``tasks_link_workflow`` — the typed channel that is the only writer
+    of ``Task.workflow_id``.
+
+    This used to return ``None``, which meant the sweeper consumed every
+    ``task.handoff_orphan`` event off the Redis stream and dropped it
+    with a log line. The v1.1 error-handling matrix was therefore never
+    exercised: the orphan event was published, consumed, and discarded.
+
+    Returns:
+        The process-wide session-buddy task client. The same instance the
+        handoff tool uses, so the two cannot drift onto different
+        session-buddy instances.
     """
-    return None
+    from mahavishnu.mcp.tools.tasks_session_buddy_client import (
+        get_session_buddy_task_client,
+    )
+
+    return get_session_buddy_task_client()
 
 
 async def start_change_point_tick_loop(server: Any) -> None:

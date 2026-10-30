@@ -423,7 +423,7 @@ mode; mahavishnu should clean up after itself.
 class TaskOrphanSweeper:
     """Subscribes to ``bodai:events`` Redis Stream (consumer group
     ``bodai-task-orphan-sweeper``), filters on channel=task.handoff_orphan,
-    re-links tasks via session-buddy's ``tasks_update``.
+    re-links tasks via session-buddy's ``tasks_link_workflow``.
 
     One instance per mahavishnu process. Started by ``start_server()``
     in ``mahavishnu/mcp/lifecycle.py`` (mirrors the ``plan_index``
@@ -435,11 +435,8 @@ class TaskOrphanSweeper:
       2. ``_is_already_handed_off(task)`` — skip if already linked
          OR status is ``done``/``cancelled`` (no point re-linking
          a finished task).
-      3. Else, ``session_buddy.tasks_update(task_id, metadata={
-           "workflow_id": event.workflow_id,
-           "re_linked_at": datetime.now(UTC).isoformat(),
-           "re_link_reason": event.reason,
-         })``.
+      3. Else, ``session_buddy.tasks_link_workflow(task_id,
+           event.workflow_id)``.
       4. Emit a synthetic ``task.handoff_completed`` event on
          ``bodai:events`` for the re-link (per Decision #3 — we
          reuse the existing event type, accepting the semantic
@@ -449,6 +446,17 @@ class TaskOrphanSweeper:
          XREADGROUP PEL entry. Acks happen AFTER synthetic emit so
          a crash between steps 4 and 5 leads to reprocessing
          (idempotent — step 2 short-circuits).
+
+    > **Amended 2026-10-30.** Step 3 originally said
+    > ``tasks_update(task_id, metadata={"workflow_id": ...})``. That
+    > never worked: ``metadata`` is caller-supplied content and
+    > ``Task.workflow_id`` is a server-set field, so the value landed
+    > in the metadata bag and the task's ``workflow_id`` stayed
+    > ``None`` — the sweeper re-linked forever and its own
+    > idempotency check could never be satisfied. The link now goes
+    > through ``tasks_link_workflow``, the dedicated typed channel that
+    > is the only writer of the field. See
+    > ``docs/specs/2026-10-30-task-workflow-backlink-design.md``.
 
     Idempotency: step 2 ensures no double-write.
 

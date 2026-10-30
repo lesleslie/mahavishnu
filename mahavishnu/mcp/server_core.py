@@ -1558,15 +1558,65 @@ class FastMCPServer:
         from .tools.tasks_handoff_gate import (
             tasks_handoff_to_workflow_available,
         )
+        from .tools.tasks_session_buddy_client import (
+            get_session_buddy_task_client,
+        )
 
         if tasks_handoff_to_workflow_available():
-            register_tasks_handoff_tools(self.server)
+            register_tasks_handoff_tools(
+                self.server,
+                session_buddy_client=get_session_buddy_task_client(),
+                workflow_dispatch_fn=self._dispatch_task_workflow,
+            )
         else:
             logger.warning(
                 "tasks_handoff_to_workflow NOT wired — session-buddy PR #1 "
                 "not yet merged. PR #2 will activate this once "
                 "session-buddy>=0.30.0 is pinned."
             )
+
+    async def _dispatch_task_workflow(
+        self,
+        *,
+        prompt: str,
+        adapter: str = "prefect",
+        repo: str | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """Start a durable workflow for the task handoff, fire-and-forget.
+
+        The workflow runs in the BACKGROUND: this returns as soon as the
+        workflow id exists, while the workflow is still running. That is
+        what makes the orphan case recoverable — the workflow is alive
+        when the task's binding is written, so a failure to write it
+        leaves something the sweeper can re-link.
+
+        ``repo`` scopes the run to ONE repository. An unscoped durable
+        workflow fans out over every repository in the catalog, which
+        for a single task is a fleet-wide run; the handoff refuses an
+        unscoped dispatch rather than doing that.
+
+        Implements: REQ-007, REQ-008
+        """
+        import uuid
+
+        from mahavishnu.core.workflow_execution import dispatch_workflow_async
+
+        task = {
+            # ``ai_task`` is the generic workflow category. It also
+            # becomes the trailing fragment of the workflow id
+            # (``wf_<hex>_ai_task``), so it must stay a safe identifier
+            # -- the id is spliced into substrate key paths.
+            "type": "ai_task",
+            "id": f"task_handoff_{uuid.uuid4().hex[:8]}",
+            "params": {"prompt": prompt},
+        }
+        return await dispatch_workflow_async(
+            self.app,
+            task,
+            adapter,
+            repos=[repo] if repo else None,
+        )
 
     async def start(
         self,

@@ -20,10 +20,28 @@ import re
 
 WORKFLOW_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 
+#: Path-traversal segments. The character class above admits "." and
+#: ".." — both match it — but a workflow id is spliced into a substrate
+#: key path (``workflow-results/{workflow_id}/``), where a dot-segment
+#: would traverse out of it. They are rejected separately.
+#:
+#: The same rule is applied on the session-buddy side, which is the
+#: other end of the contract:
+#: ``session_buddy.mcp.tools.tasks_models.WORKFLOW_ID_FORBIDDEN_SEGMENTS``.
+FORBIDDEN_WORKFLOW_ID_SEGMENTS = frozenset({".", ".."})
+
 
 def validate_workflow_id(workflow_id: str) -> bool:
-    """Return True iff ``workflow_id`` is a safe MCP key fragment."""
-    return bool(WORKFLOW_ID_PATTERN.match(workflow_id))
+    """Return True iff ``workflow_id`` is a safe MCP key fragment.
+
+    ``fullmatch`` rather than ``match``: the pattern is anchored with
+    ``$``, which Python also accepts immediately before a trailing
+    newline, so ``re.match`` would let ``"wf_abc\\n"`` through — and
+    that value is spliced into a key path.
+    """
+    if workflow_id in FORBIDDEN_WORKFLOW_ID_SEGMENTS:
+        return False
+    return bool(WORKFLOW_ID_PATTERN.fullmatch(workflow_id))
 
 
 def validate_approval_id(approval_id: str) -> bool:

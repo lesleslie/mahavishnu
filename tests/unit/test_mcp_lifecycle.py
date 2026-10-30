@@ -126,8 +126,20 @@ async def test_lifespan_spawns_task_orphan_sweeper(
                 "lifespan teardown raised during test cleanup: %s", exc
             )
 
-    # The sweeper factory was called with the inline stub's None return.
-    assert created_kwargs == {"session_buddy_client": None}
+    # The sweeper factory is called with a REAL session-buddy client.
+    #
+    # It used to be called with None — an inline stub — which meant the
+    # sweeper consumed every ``task.handoff_orphan`` event off the Redis
+    # stream and dropped it with a log line, so the v1.1 error-handling
+    # matrix never ran. The client is now the same one the handoff tool
+    # uses, so the two cannot drift onto different session-buddy
+    # instances.
+    from mahavishnu.mcp.tools.tasks_session_buddy_client import (
+        SessionBuddyTaskClient,
+    )
+
+    assert set(created_kwargs) == {"session_buddy_client"}
+    assert isinstance(created_kwargs["session_buddy_client"], SessionBuddyTaskClient)
     # init() awaited once before the loop started; run_forever() is
     # the body of the scheduled background task (we can't directly
     # observe the call from here, but the task attribute below proves

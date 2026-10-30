@@ -24,7 +24,6 @@ and exercised end-to-end by T12.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
 import logging
 import os
 import time
@@ -176,12 +175,21 @@ class TaskOrphanSweeper:
         return bool(task.get("workflow_id") or task.get("status") in {"done", "cancelled"})
 
     async def _recover_orphan(self, entry: dict[str, Any]) -> str:
-        """Process one orphan entry: idempotency check → tasks_update →
+        """Process one orphan entry: idempotency check → link →
         synthetic emit → return outcome string for the OTel span.
+
+        The link goes through session-buddy's ``tasks_link_workflow`` —
+        the typed channel that is the only writer of ``Task.workflow_id``.
+        The generic ``tasks_update`` metadata bag cannot reach the field,
+        so the previous ``tasks_update(metadata={"workflow_id": ...})``
+        shape never actually bound anything; the sweeper re-linked
+        forever and the task's ``workflow_id`` stayed ``None``.
 
         Acking the source entry is the caller's responsibility (so a
         transport failure between recovery and ack can be retried as a
         whole).
+
+        Implements: REQ-009, REQ-006
         """
         # Adapter entry shape: {"message_id": ..., "payload": <XADD-fields-dict>}.
         payload = entry.get("payload", {})
@@ -196,16 +204,21 @@ class TaskOrphanSweeper:
                 orphan.task_id,
             )
             return "skipped"
+        if not orphan.workflow_id:
+            # A step-2 orphan has no workflow to re-link -- the dispatch
+            # never produced one. Re-linking would bind the task to
+            # nothing.
+            logger.warning(
+                "task_orphan_sweeper: orphan %s carries no workflow_id; nothing to re-link",
+                orphan.task_id,
+            )
+            return "skipped"
         task = await self._session_buddy.tasks_get(orphan.task_id)
         if await self._is_already_handed_off(task):
             return "skipped"
-        await self._session_buddy.tasks_update(
+        await self._session_buddy.tasks_link_workflow(
             orphan.task_id,
-            metadata={
-                "workflow_id": orphan.workflow_id,
-                "re_linked_at": datetime.now(UTC).isoformat(),
-                "re_link_reason": orphan.reason,
-            },
+            orphan.workflow_id,
         )
         # Synthetic emit on the same stream so downstream consumers
         # observe a clean handoff_completed alongside the orphan.

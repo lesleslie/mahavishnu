@@ -269,3 +269,150 @@ supposed to consume the step-3 orphan has no client.
 5. A live task is created, handed off, and comes back with a populated `workflow_id`;
    the task survives a session-buddy restart with the link intact.
 6. The sweeper skips an already-linked orphan and re-links an unlinked one exactly once.
+
+---
+
+## 7. Revisions (2026-10-30, after independent review)
+
+An independent reviewer read this document against the source and found
+several claims wrong or incomplete, and the implementation surfaced two
+more. The corrections are recorded here rather than silently folded in,
+because several of them change what the contract promises.
+
+### 7.1 Corrections to §1
+
+- **B2 was stale.** `tasks_update` DID persist `metadata` as of
+  session-buddy `086a64c1` (same day). The operative conclusion stands —
+  `_build_task` reads `workflow_id` from the **top-level** sidecar key,
+  and `tasks_create` already writes `metadata["workflow_id"] = None`
+  there, so the top-level channel C1 assumes already existed.
+- **B6 was missing: mahavishnu never published the orphan event.**
+  `session_buddy.mcp.tools.tasks_events._publisher` is assigned in
+  exactly one place in the whole fleet — `session_buddy/server_optimized.py:346`,
+  inside the session-buddy server process. `publish_task_event_raw`
+  returns early when it is `None`, and mahavishnu never sets it. So
+  `_publish_task_handoff_orphan` was a silent no-op: **the sweeper had
+  nothing to consume.** Binding a client to the sweeper (C9) would not
+  have made it work. Mahavishnu now publishes onto `bodai:events`
+  itself, in the flat-fields XADD shape the stream adapter expects.
+- **B7 was missing: the gate took the whole server down.**
+  `register_tasks_handoff_tools` raised `RuntimeError` when the contract
+  was unavailable, and it is called from `_register_tools()` →
+  `FastMCPServer.__init__`. A version skew cost the fleet the
+  orchestrator, not just the handoff edge. The gate now SKIPS
+  registration.
+
+### 7.2 C2 — owner-scoped, with a service-principal allowlist
+
+C2 originally said the link was gated on "the same visibility filter as
+`tasks_update`". That is wrong, and the user's chosen option said
+"owner-scoped" while the implementation said "visibility-filtered".
+
+The visibility filter lets **any** caller read — and write — a `public`
+task. `workflow_id` is a server-set field: a link asserts "this task is
+running under that workflow", and the orphan sweeper trusts that
+assertion. A stranger could bind someone else's public task to a
+workflow it never dispatched.
+
+**Revised C2:** the gate is the task's **owner**, the same check
+`tasks_complete` uses, plus an explicit allowlist of service
+principals (`task_system.link_service_principals`, empty by default).
+The allowlist is how mahavishnu's orphan sweeper recovers a task it
+does not own without opening the channel to every caller. The
+visibility filter is *replaced*, not added to: the owner passes it
+anyway, and an allow-listed principal has to be able to see the task it
+is recovering.
+
+### 7.3 C3 — the link-once decision is atomic
+
+C3 originally described a read-check-then-write. Two concurrent linkers
+could both observe an unlinked task and both write, and the second
+write won silently. That is not hypothetical: the handoff's step 3 and
+the sweeper's recovery are two independent attempts at the same link,
+and the sweeper exists to retry a link that failed.
+
+**Revised C3:** the decision is a single conditional `UPDATE`:
+
+```sql
+UPDATE reflections
+   SET metadata = json_patch(COALESCE(metadata, '{}'), :patch)
+ WHERE id = :id
+   AND (json_extract(metadata, '$.workflow_id') IS NULL
+        OR json_extract(metadata, '$.workflow_id') = :workflow_id)
+```
+
+The `WHERE` clause *is* the invariant — a conflicting link matches zero
+rows and the first binding stands. `json_patch` is RFC 7386
+merge-patch, so the write touches only the keys it carries and a
+concurrent update to the task's priority or status is not clobbered.
+
+### 7.4 C5 — the pattern admits dot-segments
+
+`^[A-Za-z0-9._-]{1,128}$` admits `.` and `..`. They match the character
+class but are path-traversal segments where the id is consumed
+(`workflow-results/{workflow_id}/`). They are now rejected separately,
+on **both** sides, and the pattern is applied to the model fields so a
+value that reached the row by another route is not served as a valid
+task. The validation uses `fullmatch`, not `match`: `$` also matches
+immediately before a trailing newline.
+
+### 7.5 C6 — the dispatch is fire-and-forget, and repo-scoped
+
+C6 originally said the dispatch goes through `trigger_workflow`. That
+path is wrong in two ways, both verified against the source:
+
+- `trigger_workflow`'s docstring claims "Returns a `workflow_id`
+  immediately (fire-and-forget)" but its body **awaits**
+  `execute_workflow_parallel` — it blocks for the whole workflow. The
+  docstring describes the intent; the body does not implement it.
+- With `repos=None` and `tag=None` it resolves **every repository in
+  the catalog** and runs the workflow over all of them.
+
+**Revised C6:** the handoff dispatches through a new
+`dispatch_workflow_async`, which creates the workflow id and state,
+validates pre-execution QC inline (so a QC failure is reported rather
+than leaving a phantom running workflow), schedules the execution in
+the background, and returns `{"workflow_id", "status": "running"}`
+immediately. The workflow is therefore still **running** when the
+binding is written — which is what makes the orphan case recoverable.
+
+The dispatch is scoped to **one repository**, from `params.repo` or the
+task's `metadata["repo"]`. A task with neither is refused
+(`NoRepoScopeError`, MHV-103) rather than fanned out over the catalog.
+
+`trigger_workflow` itself is untouched: it still blocks, and its two
+callers (`jot/drain.py`) still get a blocking dispatch.
+
+### 7.6 C9 — the client, and the gate
+
+C9 named the class `BodaiComponentClient`; the real name is
+`BodaiComponentMCPClient`. The adapter over it lives in
+`mahavishnu/mcp/tools/tasks_session_buddy_client.py` and exposes
+`tasks_get` and `tasks_link_workflow` — and deliberately NOT
+`tasks_update`, so the generic metadata path is not part of the
+back-link client at all.
+
+The gate (`tasks_handoff_gate.py`) now compares the two repos' shared
+envelopes field-for-field instead of only checking importability, and
+the caller skips registration rather than raising.
+
+### 7.7 §5 — the operator steps are different
+
+- The pin is `session-buddy>=0.33.1` (installed 0.37.1), not 0.30.0.
+- **session-buddy must be PUBLISHED and installed into mahavishnu's
+  venv before the handoff edge activates.** mahavishnu depends on the
+  published wheel, and the gate compares the two repos' envelopes — so
+  until session-buddy ships the new contract, the gate correctly
+  reports "unavailable" and the handoff tool is simply not registered.
+  That is the cross-repo publish dependency working as intended, not a
+  regression.
+- The version bump in `pyproject.toml` remains operator-owned.
+
+### 7.8 Still open
+
+- `HandoffParams` in session-buddy and mahavishnu keep inline copies.
+  The gate now compares them, but the duplication is still duplication.
+- The `metadata` bag's replace-not-merge semantics are unchanged (out
+  of scope, §3).
+- `Task.metadata["uuid_alias"]` still lives in the blob's top-level
+  `uuid_alias` key — unrelated to this contract.

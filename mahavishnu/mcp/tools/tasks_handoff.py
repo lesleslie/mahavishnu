@@ -63,22 +63,36 @@ _ADAPTER = Literal["prefect", "llamaindex", "agno"]
 
 class HandoffParams(BaseModel):
     """Typed parameters for dispatch. Replaces free-form ``dict`` so the
-    MCP schema advertises valid values to clients."""
+    MCP schema advertises valid values to clients.
+
+    ``repo`` scopes the dispatch to ONE repository. It is required
+    (directly or via the task's ``metadata["repo"]``): a durable
+    workflow with no repo scope fans out over the whole repository
+    catalog, which for a single task dispatch is a fleet-wide run.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=False)
 
     timeout_seconds: int | None = None
-    pool_selector: Literal["least_loaded", "round_robin", "affinity"] = "least_loaded"
-    pool_name: str | None = None
+    repo: str | None = None
     idempotency_key: str | None = None
     extra_metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class HandoffResult(BaseModel):
     """Result envelope returned by ``tasks_handoff_to_workflow`` after
-    step 2 (dispatch) succeeds. ``workflow_id`` is the upstream
-    ``dispatch_to_pool`` identifier; step 3 (session-buddy update) stores
-    it on the task via ``UpdateTaskRequest(metadata__workflow_id=...)``."""
+    step 2 (dispatch) succeeds.
+
+    ``workflow_id`` is the identifier of the durable mahavishnu workflow
+    the task was dispatched to; step 3 stores it on the task through
+    session-buddy's ``tasks_link_workflow`` tool (the dedicated typed
+    channel — NOT ``UpdateTaskRequest.metadata``).
+
+    ``pool_name`` was dropped when the dispatch edge moved from the pool
+    router to the durable-workflow path: a durable workflow has no pool.
+    ``status`` and ``repos_processed`` are the fields that path returns.
+    See ``docs/specs/2026-10-30-task-workflow-backlink-design.md``.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=False)
 
@@ -86,7 +100,8 @@ class HandoffResult(BaseModel):
     workflow_id: str
     adapter: _ADAPTER
     started_at: datetime
-    pool_name: str
+    status: str = "running"
+    repos_processed: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +130,7 @@ class TaskNotFoundError(Exception):
 
 
 class WorkflowNotReturnedError(Exception):
-    """Raised when ``pool_route_execute`` succeeded but did not return a
+    """Raised when the dispatch succeeded but did not return a
     ``workflow_id``. The v1.1 sweeper would chase a phantom orphan if we
     emitted one here, so this surfaces as a typed caller-visible failure
     instead. Carries the raw dispatch envelope for diagnostics.
@@ -137,8 +152,31 @@ class WorkflowNotReturnedError(Exception):
             **(details or {}),
         }
         super().__init__(
-            f"[MHV-102] pool_route_execute did not return a workflow_id "
+            f"[MHV-102] the dispatch did not return a workflow_id "
             f"for task {self.task_id}: {self.dispatch_result!r}"
+        )
+
+
+class NoRepoScopeError(Exception):
+    """Raised when the handoff cannot scope the dispatch to a repository.
+
+    A durable workflow with no repository scope runs over EVERY
+    repository in the catalog. For a single task dispatch that is a
+    fleet-wide run, so the handoff refuses rather than fanning out.
+
+    The scope comes from ``params.repo`` or the task's
+    ``metadata["repo"]``.
+    """
+
+    code: str = "MHV-103"
+
+    def __init__(self, task_id: str, details: dict[str, Any] | None = None) -> None:
+        self.task_id = str(task_id)
+        self.details = {"task_id": self.task_id, **(details or {})}
+        super().__init__(
+            f"[MHV-103] Task {self.task_id} has no repository scope. Pass "
+            f"params.repo, or set metadata['repo'] on the task -- an unscoped "
+            f"dispatch would run over every repository in the catalog."
         )
 
 
@@ -247,28 +285,60 @@ def _derive_caller_key() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Publisher shims — typed no-ops that call session-buddy's stub publisher
-# if it is importable. We deliberately do NOT make module-level imports
-# from session_buddy so this module can be imported in test environments
-# where session_buddy is not installed (the gate handles that case at
-# registration time).
+# Publisher — mahavishnu publishes its own task.* events
 # ---------------------------------------------------------------------------
+#
+# These events used to be published through session-buddy's
+# ``publish_task_event_raw``, which writes through a module-level
+# publisher singleton that is assigned in EXACTLY one place in the fleet:
+# inside the session-buddy server process. From mahavishnu it was
+# therefore a silent no-op — every ``task.handoff_orphan`` event was
+# never written, so the sweeper had nothing to consume and the v1.1
+# error-handling matrix never ran.
+#
+# Mahavishnu now publishes onto the same ``bodai:events`` Redis stream
+# itself, in the flat-fields XADD shape the stream adapter expects and
+# the sweeper filters on (``payload["channel"]``).
+
+
+#: The Redis Stream the task system's events live on. The same stream
+#: the orphan sweeper consumes.
+_BODAI_EVENTS_STREAM = "bodai:events"
+
+_PUBLISHER_ADAPTER: Any | None = None
+
+
+def _get_publisher_adapter() -> Any:
+    """Return the process-wide Redis Streams publisher adapter."""
+    global _PUBLISHER_ADAPTER
+    if _PUBLISHER_ADAPTER is None:
+        from oneiric.adapters.queue.redis_streams import (
+            RedisStreamsQueueAdapter,
+            RedisStreamsQueueSettings,
+        )
+
+        _PUBLISHER_ADAPTER = RedisStreamsQueueAdapter(
+            settings=RedisStreamsQueueSettings(stream=_BODAI_EVENTS_STREAM),
+        )
+    return _PUBLISHER_ADAPTER
 
 
 async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
-    """Publish a task.* event. No-op when session-buddy is not importable.
+    """Publish a ``task.*`` event onto the ``bodai:events`` stream.
 
-    The publisher itself is a stub upstream (T2 deferred Redis wiring),
-    so this is typed-but-side-effect-free in the current environment.
+    Best-effort: a failed audit publish must never block the caller.
+    The event carries a ``channel`` field — the stream adapter writes
+    flat fields, and consumers filter on ``payload["channel"]``.
     """
     try:
-        from session_buddy.mcp.tools.tasks_events import (
-            publish_task_event_raw,
-        )
-    except ImportError:
+        adapter = _get_publisher_adapter()
+    except (
+        Exception
+    ) as exc:  # publisher unavailable — best-effort audit event  # noqa: BLE001, RUF100
+        logger.warning("tasks_handoff: no event publisher available: %s", exc)
         return
     try:
-        await publish_task_event_raw(event_type, payload)
+        await adapter.enqueue({"channel": event_type, **payload})
     except Exception as exc:  # best-effort event publish — broad catch so a fire-and-forget audit event never blocks the caller  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("tasks_handoff: publish %s failed: %s", event_type, exc)
 
@@ -326,31 +396,42 @@ async def _session_buddy_get_task(task_id: str) -> dict[str, Any]:
     )
 
 
-async def _session_buddy_update_task(
+async def _session_buddy_link_workflow(
     task_id: str,
-    *,
-    metadata: dict[str, Any] | None = None,
+    workflow_id: str,
 ) -> dict[str, Any]:
-    """Call session-buddy's ``tasks_update`` MCP tool with the supplied
-    ``metadata`` patch (the only field step 3 needs to write)."""
+    """Call session-buddy's ``tasks_link_workflow`` MCP tool.
+
+    This is the ONLY channel that writes ``Task.workflow_id``. The
+    generic ``tasks_update`` metadata bag cannot reach the field — a
+    metadata dict is caller-supplied content whatever key it carries.
+    """
     raise NotImplementedError(
         "tasks_handoff: no session_buddy_client bound — pass one via "
         "register_tasks_handoff_tools(..., session_buddy_client=...)"
     )
 
 
-async def _pool_route_execute(
+async def _dispatch_workflow(
     prompt: str,
     *,
-    pool_selector: str = "least_loaded",
+    adapter: str = "prefect",
+    repo: str | None = None,
     timeout: float | None = None,
 ) -> dict[str, Any]:
-    """Wrap mahavishnu's pool_route_execute MCP tool. Module-level so
-    tests can monkeypatch it. Returns the dispatch envelope
-    (``workflow_id``, ``pool_id``, ``status``, ...)."""
+    """Start a durable workflow for ``prompt`` and return immediately.
+
+    Module-level so tests can monkeypatch it. Returns the dispatch
+    envelope (``workflow_id``, ``status``, ``repos_processed``, ...).
+
+    The workflow is FIRE-AND-FORGET: the call returns while the workflow
+    is still running. That is what makes the orphan case meaningful — a
+    failure to record the binding leaves a workflow that is alive but
+    unlinked, which the sweeper can recover.
+    """
     raise NotImplementedError(
-        "tasks_handoff: no pool_route_execute_fn bound — pass one via "
-        "register_tasks_handoff_tools(..., pool_route_execute_fn=...)"
+        "tasks_handoff: no workflow_dispatch_fn bound — pass one via "
+        "register_tasks_handoff_tools(..., workflow_dispatch_fn=...)"
     )
 
 
@@ -363,38 +444,44 @@ def register_tasks_handoff_tools(
     mcp: FastMCP,
     *,
     session_buddy_client: Any | None = None,
-    pool_route_execute_fn: Any | None = None,
-) -> None:
+    workflow_dispatch_fn: Any | None = None,
+) -> bool:
     """Register ``tasks_handoff_to_workflow`` with the FastMCP server.
 
     Args:
         mcp: FastMCP server instance (T18 wires this via profiles.py).
         session_buddy_client: Optional object exposing ``tasks_get`` and
-            ``tasks_update`` awaitables (any duck-type — typically the
-            session-buddy MCP client wired through MahavishnuSettings).
-            When ``None``, the tool body raises a clear
-            ``NotImplementedError`` rather than crashing on import.
-        pool_route_execute_fn: Optional callable wrapping mahavishnu's
-            ``pool_route_execute`` MCP tool. When ``None``, the tool
-            body raises a clear ``NotImplementedError``.
+            ``tasks_link_workflow`` awaitables (any duck-type —
+            typically the session-buddy MCP client wired through
+            MahavishnuSettings). When ``None``, the tool body raises a
+            clear ``NotImplementedError`` rather than crashing on import.
+        workflow_dispatch_fn: Optional callable that starts a durable
+            workflow and returns its dispatch envelope. When ``None``,
+            the tool body raises a clear ``NotImplementedError``.
 
     Both arguments are intentionally optional so this module can be
     imported by test suites that exercise just the validation /
     rate-limit / event-publish branches without binding the upstream
     clients.
 
-    Raises:
-        RuntimeError: If the T16 gate reports session-buddy 0.30+ with
-            PR #1 tools is not importable. This is a registration-time
-            check (per Fix Round 1) so failures surface immediately
-            rather than at first dispatch.
+    Returns:
+        ``True`` when the tool was registered, ``False`` when the
+        session-buddy contract is not available.
+
+        This does NOT raise on a contract mismatch. The registration
+        runs inside ``FastMCPServer.__init__``, so raising here would
+        take the WHOLE mahavishnu MCP server down over one missing
+        tool. A version skew should cost the fleet the handoff edge, not
+        the orchestrator.
     """
     # Registration-time gate (Fix Round 1 #2): surface session-buddy
     # absence once, at registration, not on every call.
     if not tasks_handoff_to_workflow_available():
-        raise RuntimeError(
-            "tasks_handoff_to_workflow requires session-buddy>=0.30.0 with PR #1 tools"
+        logger.warning(
+            "tasks_handoff_to_workflow NOT registered — the installed "
+            "session-buddy does not expose the task-system contract"
         )
+        return False
 
     @mcp.tool()
     async def tasks_handoff_to_workflow(
@@ -405,10 +492,18 @@ def register_tasks_handoff_tools(
     ) -> HandoffResult:
         """Dispatch a session-buddy task to a Mahavishnu workflow.
 
-        Single dispatch edge: looks up the task, dispatches via the pool
-        router, then writes the resulting ``workflow_id`` back onto the
-        task as metadata. A failure between steps 2 and 3 emits
-        ``task.handoff_orphan`` so the v1.1 sweeper can re-link later.
+        Single dispatch edge: looks up the task, starts a durable
+        workflow, then binds the resulting ``workflow_id`` to the task
+        through session-buddy's ``tasks_link_workflow``. The workflow
+        runs FIRE-AND-FORGET, so the task is bound to a workflow that is
+        still running; a failure between steps 2 and 3 emits
+        ``task.handoff_orphan`` so the sweeper can re-link later.
+
+        The dispatch is scoped to ONE repository. Without an explicit
+        scope the durable path fans out over the whole repository
+        catalog, which for a single task is a fleet-wide run — so the
+        scope comes from ``params.repo`` or the task's
+        ``metadata["repo"]``, and a task with neither is refused.
 
         Rate limit: 10 calls/minute per caller.
         """
@@ -431,14 +526,12 @@ def register_tasks_handoff_tools(
             if session_buddy_client is not None
             else _session_buddy_get_task
         )
-        update_task = (
-            session_buddy_client.tasks_update
+        link_workflow = (
+            session_buddy_client.tasks_link_workflow
             if session_buddy_client is not None
-            else _session_buddy_update_task
+            else _session_buddy_link_workflow
         )
-        pool_dispatch = (
-            pool_route_execute_fn if pool_route_execute_fn is not None else _pool_route_execute
-        )
+        dispatch = workflow_dispatch_fn if workflow_dispatch_fn is not None else _dispatch_workflow
 
         # ---- Step 1: lookup ----
         try:
@@ -449,19 +542,32 @@ def register_tasks_handoff_tools(
         # Content must be dispatch-safe (mirrors session-buddy's sanitizer).
         task_content = _validate_task_content_for_dispatch(str(task.get("content", "")))
 
+        # Repo scope. A durable workflow with no scope runs over every
+        # repository in the catalog, so an unscoped dispatch is refused
+        # rather than fanned out.
+        repo = params.repo if params else None
+        if repo is None:
+            task_metadata = task.get("metadata")
+            if isinstance(task_metadata, dict):
+                candidate = task_metadata.get("repo")
+                if isinstance(candidate, str) and candidate:
+                    repo = candidate
+        if repo is None:
+            raise NoRepoScopeError(task_id)
+
         # ---- Event: handoff_started ----
         started_at = datetime.now(UTC)
         _publish_task_handoff_started(task_id=task_id, actor=caller_key)
 
         # ---- Steps 2 + 3 in try/finally so orphan is emitted on disconnect ----
         workflow_id: str | None = None
-        pool_name: str = ""
+        dispatch_status = "running"
+        repos_processed = 0
         # Set to True by any inner ``except`` that has already emitted an
         # orphan event. The outer ``except Exception`` checks this flag
         # to avoid double-emission when step 3's failure bubbles up.
         orphan_handled = False
         try:
-            dispatch_selector = params.pool_selector if params else "least_loaded"
             dispatch_timeout = (
                 params.timeout_seconds
                 if (params and params.timeout_seconds is not None)
@@ -469,9 +575,10 @@ def register_tasks_handoff_tools(
             )
 
             try:
-                dispatch_result = await pool_dispatch(
+                dispatch_result = await dispatch(
                     prompt=task_content,
-                    pool_selector=dispatch_selector,
+                    adapter=adapter,
+                    repo=repo,
                     timeout=float(dispatch_timeout) if dispatch_timeout is not None else None,
                 )
             except Exception:  # step-2 dispatch failure — broad catch to emit orphan marker then re-raise as typed HandoffError
@@ -486,27 +593,34 @@ def register_tasks_handoff_tools(
                 orphan_handled = True
                 raise
 
-            workflow_id = str(dispatch_result.get("workflow_id", ""))
-            pool_name = str(dispatch_result.get("pool_id", ""))
+            workflow_id = str(dispatch_result.get("workflow_id", "") or "")
+            dispatch_status = str(dispatch_result.get("status", "running") or "running")
+            repos_processed = int(dispatch_result.get("repos_processed", 0) or 0)
 
-            if not workflow_id:
-                # The router succeeded but didn't give us a usable
-                # workflow_id. Don't emit an orphan — the v1.1 sweeper
-                # would chase a phantom (Fix Round 1 #5). Surface as a
-                # typed caller-visible error instead.
+            if not workflow_id or workflow_id == "unknown":
+                # The dispatch succeeded but didn't give us a usable
+                # workflow_id. Don't emit an orphan — the sweeper would
+                # chase a phantom (Fix Round 1 #5). Surface as a typed
+                # caller-visible error instead.
+                #
+                # ``"unknown"`` is the literal the durable path returns
+                # when the adapter produced no id, so it has to be
+                # rejected here or every task would end up bound to a
+                # workflow called "unknown".
                 raise WorkflowNotReturnedError(
                     task_id=task_id,
                     dispatch_result=dispatch_result,
                 )
 
-            # ---- Step 3: write workflow_id back onto the task ----
+            # ---- Step 3: bind the workflow to the task ----
+            # req: REQ-006, REQ-001
             try:
-                await update_task(
+                await link_workflow(
                     task_id=task_id,
-                    metadata={"workflow_id": workflow_id},
+                    workflow_id=workflow_id,
                 )
             except Exception:  # step-3 back-link failure — broad catch to emit orphan marker then re-raise (workflow is alive, just task not updated)
-                # Workflow is running, task not updated → orphan
+                # Workflow is running, task not linked → orphan
                 # with the canonical step-3 reason (Fix Round 1 #4).
                 _publish_task_handoff_orphan(
                     task_id=task_id,
@@ -529,7 +643,8 @@ def register_tasks_handoff_tools(
                 workflow_id=workflow_id,
                 adapter=adapter,
                 started_at=started_at,
-                pool_name=pool_name,
+                status=dispatch_status,
+                repos_processed=repos_processed,
             )
         except asyncio.CancelledError:
             # Caller disconnected between step 2 and step 3 — workflow is

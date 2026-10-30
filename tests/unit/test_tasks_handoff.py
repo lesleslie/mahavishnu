@@ -74,49 +74,76 @@ def stub_mcp() -> _StubMCP:
 
 @pytest.fixture
 def fake_sb_client() -> MagicMock:
-    """AsyncMock-backed session-buddy client with sensible defaults."""
+    """AsyncMock-backed session-buddy client with sensible defaults.
+
+    ``tasks_link_workflow`` is the ONLY channel that writes
+    ``Task.workflow_id``; the generic ``tasks_update`` metadata bag
+    cannot reach the field.
+    """
     client = MagicMock(name="session_buddy_client")
     client.tasks_get = AsyncMock(
         return_value={
             "id": _VALID_TASK_ID,
             "content": "do the thing",
             "owner": "user-1",
-            "metadata": {},
+            # The repo scope: a durable workflow with no scope runs over
+            # every repository in the catalog.
+            "metadata": {"repo": "/repo"},
             "status": "pending",
         }
     )
-    client.tasks_update = AsyncMock(
-        return_value={"id": _VALID_TASK_ID, "metadata": {"workflow_id": "wf-1"}}
+    client.tasks_link_workflow = AsyncMock(
+        return_value={"id": _VALID_TASK_ID, "workflow_id": "wf-1"}
     )
     return client
 
 
 @pytest.fixture
-def fake_pool_dispatch() -> AsyncMock:
-    """AsyncMock standing in for mahavishnu's ``pool_route_execute``."""
+def fake_workflow_dispatch() -> AsyncMock:
+    """AsyncMock standing in for the fire-and-forget durable dispatch."""
     return AsyncMock(
         return_value={
             "workflow_id": "wf-1",
-            "pool_id": "pool-a",
-            "status": "active",
+            "status": "running",
+            "repos_processed": 1,
         }
     )
+
+
+@pytest.fixture(autouse=True)
+def _stub_contract_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stub the session-buddy contract gate for this module.
+
+    mahavishnu depends on the PUBLISHED session-buddy, so until
+    session-buddy ships the new contract the installed wheel is drifted
+    and the gate correctly refuses to register the tool. These tests
+    exercise the handoff TOOL; the gate has its own test file.
+    """
+    monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
 
 
 @pytest.fixture
 def registered_tool(
     stub_mcp: _StubMCP,
     fake_sb_client: MagicMock,
-    fake_pool_dispatch: AsyncMock,
+    fake_workflow_dispatch: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """Register the tool with mocked dependencies + isolated rate limiter."""
+    """Register the tool with mocked dependencies + isolated rate limiter.
+
+    The contract gate is stubbed to True: mahavishnu depends on the
+    PUBLISHED session-buddy, so until session-buddy ships the new
+    contract the installed wheel is drifted and the gate correctly
+    refuses to register the tool. These tests exercise the handoff
+    TOOL, and the gate has its own test file.
+    """
     _reset_rate_limiter()
     _capture_orphan_events(monkeypatch)
+    monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
     register_tasks_handoff_tools(
         stub_mcp,
         session_buddy_client=fake_sb_client,
-        pool_route_execute_fn=fake_pool_dispatch,
+        workflow_dispatch_fn=fake_workflow_dispatch,
     )
     return stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -155,7 +182,7 @@ class TestHappyPath:
         self,
         registered_tool,
         fake_sb_client: MagicMock,
-        fake_pool_dispatch: AsyncMock,
+        fake_workflow_dispatch: AsyncMock,
     ) -> None:
         result = await registered_tool(task_id=_VALID_TASK_ID, adapter="prefect")
 
@@ -163,21 +190,25 @@ class TestHappyPath:
         assert result.task_id == _VALID_TASK_ID
         assert result.workflow_id == "wf-1"
         assert result.adapter == "prefect"
-        assert result.pool_name == "pool-a"
+        assert result.status == "running"
+        assert result.repos_processed == 1
         assert isinstance(result.started_at, datetime)
         # started_at must be timezone-aware (UTC).
         assert result.started_at.tzinfo is not None
         assert result.started_at <= datetime.now(UTC)
 
         fake_sb_client.tasks_get.assert_awaited_once_with(task_id=_VALID_TASK_ID)
-        fake_sb_client.tasks_update.assert_awaited_once_with(
+        # The back-link goes through the typed channel, NOT through the
+        # generic metadata bag.
+        fake_sb_client.tasks_link_workflow.assert_awaited_once_with(
             task_id=_VALID_TASK_ID,
-            metadata={"workflow_id": "wf-1"},
+            workflow_id="wf-1",
         )
-        fake_pool_dispatch.assert_awaited_once()
-        kwargs = fake_pool_dispatch.await_args.kwargs
+        fake_workflow_dispatch.assert_awaited_once()
+        kwargs = fake_workflow_dispatch.await_args.kwargs
         assert kwargs["prompt"] == "do the thing"
-        assert kwargs["pool_selector"] == "least_loaded"
+        assert kwargs["adapter"] == "prefect"
+        assert kwargs["repo"] == "/repo", "the dispatch must be repo-scoped"
 
 
 class TestSessionBuddyDown:
@@ -187,7 +218,7 @@ class TestSessionBuddyDown:
     async def test_tasks_handoff_fails_fast_on_session_buddy_down(
         self,
         stub_mcp: _StubMCP,
-        fake_pool_dispatch: AsyncMock,
+        fake_workflow_dispatch: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _reset_rate_limiter()
@@ -196,10 +227,10 @@ class TestSessionBuddyDown:
         # tasks_get raises — the production tool should translate this to TaskNotFoundError.
         sb = MagicMock()
         sb.tasks_get = AsyncMock(side_effect=ConnectionError("session-buddy unreachable"))
-        sb.tasks_update = AsyncMock()
+        sb.tasks_link_workflow = AsyncMock()
 
         register_tasks_handoff_tools(
-            stub_mcp, session_buddy_client=sb, pool_route_execute_fn=fake_pool_dispatch
+            stub_mcp, session_buddy_client=sb, workflow_dispatch_fn=fake_workflow_dispatch
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -209,8 +240,8 @@ class TestSessionBuddyDown:
         assert exc_info.value.code == "MHV-101"
         assert exc_info.value.task_id == _VALID_TASK_ID
         # Step 2 + 3 must NOT run.
-        fake_pool_dispatch.assert_not_awaited()
-        sb.tasks_update.assert_not_awaited()
+        fake_workflow_dispatch.assert_not_called()
+        sb.tasks_link_workflow.assert_not_called()
 
 
 class TestDispatchFailure:
@@ -231,7 +262,7 @@ class TestDispatchFailure:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=pool_dispatch,
+            workflow_dispatch_fn=pool_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -239,7 +270,7 @@ class TestDispatchFailure:
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
 
         # Step 3 must NOT have been called — there is no workflow_id to write back.
-        fake_sb_client.tasks_update.assert_not_awaited()
+        fake_sb_client.tasks_link_workflow.assert_not_called()
 
 
 class TestStep3Failure:
@@ -250,19 +281,19 @@ class TestStep3Failure:
         self,
         stub_mcp: _StubMCP,
         fake_sb_client: MagicMock,
-        fake_pool_dispatch: AsyncMock,
+        fake_workflow_dispatch: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _reset_rate_limiter()
         orphan_calls = _capture_orphan_events(monkeypatch)
 
         # Step 2 succeeds, step 3 fails.
-        fake_sb_client.tasks_update = AsyncMock(side_effect=ConnectionError("session-buddy gone"))
+        fake_sb_client.tasks_link_workflow = AsyncMock(side_effect=ConnectionError("session-buddy gone"))
 
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=fake_pool_dispatch,
+            workflow_dispatch_fn=fake_workflow_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -299,7 +330,7 @@ class TestCancellation:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=pool_dispatch,
+            workflow_dispatch_fn=pool_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -314,7 +345,7 @@ class TestCancellation:
         # produced a workflow_id yet — caller_disconnected reason covers it.
         assert any(c["reason"] == "caller_disconnected" for c in orphan_calls)
         # tasks_update MUST NOT have run.
-        fake_sb_client.tasks_update.assert_not_awaited()
+        fake_sb_client.tasks_link_workflow.assert_not_called()
 
 
 class TestEmptyWorkflowId:
@@ -338,7 +369,7 @@ class TestEmptyWorkflowId:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=pool_dispatch,
+            workflow_dispatch_fn=pool_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -354,7 +385,7 @@ class TestEmptyWorkflowId:
         assert orphan_calls == []
 
         # Step 3 MUST NOT have run — there is no workflow_id to back-link.
-        fake_sb_client.tasks_update.assert_not_awaited()
+        fake_sb_client.tasks_link_workflow.assert_not_called()
 
 
 class TestOrphanReasonDisambiguation:
@@ -376,7 +407,7 @@ class TestOrphanReasonDisambiguation:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=pool_a,
+            workflow_dispatch_fn=pool_a,
         )
         tool_a = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -396,15 +427,15 @@ class TestOrphanReasonDisambiguation:
                 "id": _VALID_TASK_ID,
                 "content": "do it",
                 "owner": "user-1",
-                "metadata": {},
+                "metadata": {"repo": "/repo"},
                 "status": "pending",
             }
         )
-        sb_b.tasks_update = AsyncMock(side_effect=ConnectionError("step-3 boom"))
+        sb_b.tasks_link_workflow = AsyncMock(side_effect=ConnectionError("step-3 boom"))
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=sb_b,
-            pool_route_execute_fn=pool_b,
+            workflow_dispatch_fn=pool_b,
         )
         tool_b = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -427,7 +458,7 @@ class TestContentValidation:
         self,
         stub_mcp: _StubMCP,
         fake_sb_client: MagicMock,
-        fake_pool_dispatch: AsyncMock,
+        fake_workflow_dispatch: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _reset_rate_limiter()
@@ -442,7 +473,7 @@ class TestContentValidation:
                 "id": _VALID_TASK_ID,
                 "content": oversized_content,
                 "owner": "user-1",
-                "metadata": {},
+                "metadata": {"repo": "/repo"},
                 "status": "pending",
             }
         )
@@ -450,7 +481,7 @@ class TestContentValidation:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=fake_pool_dispatch,
+            workflow_dispatch_fn=fake_workflow_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -458,8 +489,8 @@ class TestContentValidation:
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
 
         # Pool router MUST NOT have been touched.
-        fake_pool_dispatch.assert_not_awaited()
-        fake_sb_client.tasks_update.assert_not_awaited()
+        fake_workflow_dispatch.assert_not_called()
+        fake_sb_client.tasks_link_workflow.assert_not_called()
 
 
 class TestRateLimit:
@@ -470,7 +501,7 @@ class TestRateLimit:
         self,
         stub_mcp: _StubMCP,
         fake_sb_client: MagicMock,
-        fake_pool_dispatch: AsyncMock,
+        fake_workflow_dispatch: AsyncMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _reset_rate_limiter()
@@ -482,7 +513,7 @@ class TestRateLimit:
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,
-            pool_route_execute_fn=fake_pool_dispatch,
+            workflow_dispatch_fn=fake_workflow_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -496,7 +527,7 @@ class TestRateLimit:
 
         assert exc_info.value.retry_after_seconds > 0
         # Dispatch MUST NOT have run on the rate-limited call. (count = 10)
-        assert fake_pool_dispatch.await_count == 10
+        assert fake_workflow_dispatch.await_count == 10
 
 
 # =============================================================================
@@ -526,14 +557,26 @@ class TestHandoffEnvelopes:
     def test_handoff_params_round_trips_through_pydantic(self) -> None:
         params = HandoffParams(
             timeout_seconds=30,
-            pool_selector="affinity",
-            pool_name="primary",
+            repo="/Users/les/Projects/mahavishnu",
             idempotency_key="abc",
             extra_metadata={"foo": "bar", "n": 1},
         )
         dumped = params.model_dump()
         restored = HandoffParams.model_validate(dumped)
         assert restored == params
+
+    def test_handoff_params_rejects_the_retired_pool_fields(self) -> None:
+        """``pool_selector`` / ``pool_name`` are gone, not merely unused.
+
+        The dispatch edge moved from the pool router to the durable
+        workflow path, so the pool-specific knobs no longer describe
+        anything. ``extra="forbid"`` turns a stale caller into a loud
+        error instead of a silently ignored field.
+        """
+        with pytest.raises(ValueError):
+            HandoffParams(pool_selector="affinity")  # type: ignore[call-arg]
+        with pytest.raises(ValueError):
+            HandoffParams(pool_name="primary")  # type: ignore[call-arg]
 
     def test_handoff_result_rejects_unknown_field(self) -> None:
         with pytest.raises(ValueError):
@@ -543,7 +586,103 @@ class TestHandoffEnvelopes:
                     "workflow_id": "wf-1",
                     "adapter": "prefect",
                     "started_at": datetime.now(UTC).isoformat(),
-                    "pool_name": "p",
+                    "status": "running",
+                    "repos_processed": 1,
                     "bogus": "field",
                 }
             )
+
+
+# =============================================================================
+# Repo scope + the "unknown" workflow id
+# =============================================================================
+
+
+class TestRepoScope:
+    """A durable workflow with no repo scope runs over EVERY repo.
+
+    For a single task dispatch that is a fleet-wide run, so the handoff
+    refuses rather than fanning out.
+    """
+
+    @pytest.mark.asyncio
+    async def test_handoff_refuses_an_unscoped_dispatch(
+        self,
+        stub_mcp: _StubMCP,
+        fake_sb_client: MagicMock,
+        fake_workflow_dispatch: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from mahavishnu.mcp.tools.tasks_handoff import NoRepoScopeError
+
+        _reset_rate_limiter()
+        _capture_orphan_events(monkeypatch)
+        monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
+        fake_sb_client.tasks_get = AsyncMock(
+            return_value={
+                "id": _VALID_TASK_ID,
+                "content": "do the thing",
+                "owner": "user-1",
+                "metadata": {},
+                "status": "pending",
+            }
+        )
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=fake_sb_client,
+            workflow_dispatch_fn=fake_workflow_dispatch,
+        )
+        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(NoRepoScopeError) as exc:
+            await tool(task_id=_VALID_TASK_ID, adapter="prefect")
+
+        assert exc.value.code == "MHV-103"
+        fake_workflow_dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_params_repo_overrides_the_task_metadata(
+        self,
+        registered_tool,
+        fake_workflow_dispatch: AsyncMock,
+    ) -> None:
+        from mahavishnu.mcp.tools.tasks_handoff import HandoffParams
+
+        await registered_tool(
+            task_id=_VALID_TASK_ID,
+            adapter="prefect",
+            params=HandoffParams(repo="/explicit/repo"),
+        )
+        assert fake_workflow_dispatch.await_args.kwargs["repo"] == "/explicit/repo"
+
+
+class TestUnknownWorkflowId:
+    """The durable path returns the literal ``"unknown"`` when the
+    adapter produced no id. Linking that would bind the task to a
+    workflow called "unknown".
+    """
+
+    @pytest.mark.asyncio
+    async def test_handoff_rejects_the_literal_unknown_workflow_id(
+        self,
+        stub_mcp: _StubMCP,
+        fake_sb_client: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from mahavishnu.mcp.tools.tasks_handoff import WorkflowNotReturnedError
+
+        _reset_rate_limiter()
+        _capture_orphan_events(monkeypatch)
+        monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
+        dispatch = AsyncMock(return_value={"workflow_id": "unknown", "status": "running"})
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=fake_sb_client,
+            workflow_dispatch_fn=dispatch,
+        )
+        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(WorkflowNotReturnedError):
+            await tool(task_id=_VALID_TASK_ID, adapter="prefect")
+
+        fake_sb_client.tasks_link_workflow.assert_not_called()
