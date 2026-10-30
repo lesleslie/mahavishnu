@@ -288,7 +288,9 @@ class TestStep3Failure:
         orphan_calls = _capture_orphan_events(monkeypatch)
 
         # Step 2 succeeds, step 3 fails.
-        fake_sb_client.tasks_link_workflow = AsyncMock(side_effect=ConnectionError("session-buddy gone"))
+        fake_sb_client.tasks_link_workflow = AsyncMock(
+            side_effect=ConnectionError("session-buddy gone")
+        )
 
         register_tasks_handoff_tools(
             stub_mcp,
@@ -654,6 +656,71 @@ class TestRepoScope:
             params=HandoffParams(repo="/explicit/repo"),
         )
         assert fake_workflow_dispatch.await_args.kwargs["repo"] == "/explicit/repo"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("blank_repo", ["", "   ", "\t\n"])
+    async def test_a_blank_repo_is_refused_rather_than_unscoped(
+        self,
+        stub_mcp: _StubMCP,
+        fake_sb_client: MagicMock,
+        fake_workflow_dispatch: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
+        blank_repo: str,
+    ) -> None:
+        """A blank repo scope must not become an unscoped dispatch.
+
+        The dispatch call site turns a falsy repo into ``repos=None``,
+        which is the fleet-wide run this check exists to refuse. A blank
+        string is falsy, so it has to be refused *here* -- by the scope
+        check -- rather than pass through to the call site.
+        """
+        from mahavishnu.mcp.tools.tasks_handoff import HandoffParams, NoRepoScopeError
+
+        # A task with no repo scope in its metadata, so the blank param
+        # scope has nowhere to fall back to.
+        fake_sb_client.tasks_get = AsyncMock(
+            return_value={
+                "id": _VALID_TASK_ID,
+                "content": "do the thing",
+                "owner": "user-1",
+                "metadata": {},
+                "status": "pending",
+            }
+        )
+        _reset_rate_limiter()
+        _capture_orphan_events(monkeypatch)
+        monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
+        register_tasks_handoff_tools(
+            stub_mcp,
+            session_buddy_client=fake_sb_client,
+            workflow_dispatch_fn=fake_workflow_dispatch,
+        )
+        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+
+        with pytest.raises(NoRepoScopeError):
+            await tool(
+                task_id=_VALID_TASK_ID,
+                adapter="prefect",
+                params=HandoffParams(repo=blank_repo),
+            )
+
+        fake_workflow_dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_a_blank_repo_falls_back_to_the_task_metadata(
+        self,
+        registered_tool,
+        fake_workflow_dispatch: AsyncMock,
+    ) -> None:
+        """A blank param scope falls back to the task's metadata scope."""
+        from mahavishnu.mcp.tools.tasks_handoff import HandoffParams
+
+        await registered_tool(
+            task_id=_VALID_TASK_ID,
+            adapter="prefect",
+            params=HandoffParams(repo="  "),
+        )
+        assert fake_workflow_dispatch.await_args.kwargs["repo"] == "/repo"
 
 
 class TestUnknownWorkflowId:

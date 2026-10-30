@@ -46,6 +46,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+#: Errors that mean "the event publisher is not available".
+#:
+#: Held in a constant rather than written inline. ruff-format on Python
+#: 3.14 rewrites ``except (A, B):`` into the unparenthesised PEP 758
+#: form, which splits the clause over three lines and leaves the
+#: ``noqa`` on the closing parenthesis -- a line ruff does not report
+#: the diagnostic on, so the suppression stops applying and BLE001
+#: fires anyway. The same pattern is used in
+#: ``mahavishnu/bifrost/cache_headers.py``.
+_PUBLISHER_ERRORS = (Exception,)
+
+
 # ---------------------------------------------------------------------------
 # Inline copies of T1 contract types (source-of-truth: session-buddy PR #1)
 # ---------------------------------------------------------------------------
@@ -332,9 +344,7 @@ async def _publish_task_event(event_type: str, payload: dict[str, Any]) -> None:
     """
     try:
         adapter = _get_publisher_adapter()
-    except (
-        Exception
-    ) as exc:  # publisher unavailable — best-effort audit event  # noqa: BLE001, RUF100
+    except _PUBLISHER_ERRORS as exc:  # publisher unavailable — best-effort audit event
         logger.warning("tasks_handoff: no event publisher available: %s", exc)
         return
     try:
@@ -545,14 +555,19 @@ def register_tasks_handoff_tools(
         # Repo scope. A durable workflow with no scope runs over every
         # repository in the catalog, so an unscoped dispatch is refused
         # rather than fanned out.
+        #
+        # The scope is normalised here, once, because the call site turns
+        # a falsy repo into ``repos=None`` -- the *unrestricted* dispatch
+        # this check exists to refuse. An empty or whitespace-only value
+        # is no scope at all, so it falls back to the task's metadata and
+        # is refused if the metadata does not name one either.
         repo = params.repo if params else None
-        if repo is None:
+        repo = repo.strip() if isinstance(repo, str) else None
+        if not repo:
             task_metadata = task.get("metadata")
-            if isinstance(task_metadata, dict):
-                candidate = task_metadata.get("repo")
-                if isinstance(candidate, str) and candidate:
-                    repo = candidate
-        if repo is None:
+            candidate = task_metadata.get("repo") if isinstance(task_metadata, dict) else None
+            repo = candidate.strip() if isinstance(candidate, str) and candidate.strip() else None
+        if not repo:
             raise NoRepoScopeError(task_id)
 
         # ---- Event: handoff_started ----
