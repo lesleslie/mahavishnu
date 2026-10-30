@@ -4,8 +4,9 @@
 Background
 ----------
 
-Session-Buddy holds an exclusive write lock on
-``~/.claude/data/reflection.duckdb`` for as long as its process is alive.
+Session-Buddy holds an exclusive write lock on its reflection store
+(``reflection.duckdb`` under Session-Buddy's XDG data directory) for as
+long as its process is alive.
 DuckDB records the holder's PID inside the file's internal lock metadata.
 When Session-Buddy is killed unceremoniously (or the previous holder
 crashed mid-transaction), DuckDB keeps the stale PID in the file. The
@@ -54,10 +55,14 @@ import time
 from typing import NamedTuple
 from urllib.parse import urlparse
 
+from mahavishnu.core.xdg_paths import data_dir
+
 # Default location of the Session-Buddy reflection store. Override with
 # --db-path. The HNSW index requirement means we always need the ``vss``
-# DuckDB extension when this file contains vector search indexes.
-DEFAULT_DB_PATH = Path.home() / ".claude" / "data" / "reflection.duckdb"
+# DuckDB extension when this file contains vector search indexes. The
+# file is owned by Session-Buddy, so it resolves under the XDG data root
+# with the "session-buddy" app name.
+DEFAULT_DB_PATH = data_dir("session-buddy") / "reflection.duckdb"
 
 # How Session-Buddy is started. The default assumes the standard install
 # location at ``~/Projects/session-buddy`` and the project's venv.

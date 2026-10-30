@@ -8,7 +8,7 @@ Mahavishnu maintains code graphs for all Bodai ecosystem repositories, enabling 
 
 **Storage backend**: Session-Buddy via MCP at `localhost:8678`
 
-**Fallback**: Local queue at `~/.claude/data/mahavishnu-index-queue/` when Session-Buddy is unavailable
+**Fallback**: Local queue at `~/.local/state/mahavishnu/mahavishnu-index-queue/` when Session-Buddy is unavailable
 
 ## Architecture
 
@@ -27,7 +27,7 @@ mahavishnu index repo --trigger git-event --repo /path/to/repo &
     │
     ├──► _upsert_to_session_buddy() → POST to localhost:8678/mcp
     │
-    └───► [on failure] _queue_locally() → ~/.claude/data/mahavishnu-index-queue/
+    └───► [on failure] _queue_locally() → ~/.local/state/mahavishnu/mahavishnu-index-queue/
 ```
 
 ## Key Files
@@ -103,7 +103,7 @@ The `&` runs indexing in the background so git operations aren't blocked.
 When Session-Buddy is unavailable, indexed data is queued locally:
 
 ```bash
-ls ~/.claude/data/mahavishnu-index-queue/
+ls ~/.local/state/mahavishnu/mahavishnu-index-queue/
 ```
 
 To flush the queue, ensure Session-Buddy is running then re-index:

@@ -54,8 +54,12 @@ def test_index_repo_already_locked(tmp_path: Path) -> None:
 
 
 def test_queue_dir_path() -> None:
+    """The queue lives under the XDG state root scoped to the mahavishnu app."""
+    from mahavishnu.core.xdg_paths import state_dir
+
     assert QUEUE_DIR.name == "mahavishnu-index-queue"
-    assert QUEUE_DIR.parent.name == "data"
+    assert QUEUE_DIR.parent.name == "mahavishnu"
+    assert QUEUE_DIR.parent == state_dir("mahavishnu")
 
 
 def test_index_repo_full_with_changes(

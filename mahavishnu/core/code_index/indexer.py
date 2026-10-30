@@ -11,10 +11,14 @@ import subprocess
 from mahavishnu.core.code_index.lock import RepoIndexLock
 from mahavishnu.core.code_index.models import IndexWorkItem
 from mahavishnu.core.code_index.parser import filter_changed_files, parse_file
+from mahavishnu.core.xdg_paths import state_dir
 
 logger = logging.getLogger(__name__)
 
-QUEUE_DIR = Path.home() / ".claude" / "data" / "mahavishnu-index-queue"
+# Local fallback queue used when Session-Buddy is unavailable. This is
+# Mahavishnu's own state, so it lives under the XDG state root scoped to
+# the "mahavishnu" app name.
+QUEUE_DIR = state_dir("mahavishnu") / "mahavishnu-index-queue"
 
 
 def get_last_indexed_commit(repo_path: str) -> str | None:

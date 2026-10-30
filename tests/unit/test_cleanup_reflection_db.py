@@ -144,7 +144,7 @@ class TestProbeLock:
         """When duckdb.connect raises, we parse (PID N) out of the message."""
         msg = (
             "IO Error: Could not set lock on file "
-            '"/Users/les/.claude/data/reflection.duckdb": Conflicting '
+            '"/Users/les/.local/share/session-buddy/reflection.duckdb": Conflicting '
             "lock is held in /usr/bin/python3 (PID 99935) by user les."
         )
         with patch("cleanup_reflection_db._import_duckdb") as mock_import:
