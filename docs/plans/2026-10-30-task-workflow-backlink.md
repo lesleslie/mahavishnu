@@ -351,7 +351,8 @@ revision log is in the design doc §7; this is the build summary.
   ordinary `tasks_update` cannot erase a link written in flight.
 - Commits: `e642d6d4`, `023c7cd2`, `40d91324` (re-pins two
   `HandoffParams` tests that still asserted the old pool-scoped
-  envelope — one failing, one passing for the wrong reason).
+  envelope — one failing, one passing for the wrong reason),
+  `ed16d315` (makes the channel type-clean under `ty`).
 
 ### Phase 2 — mahavishnu: the dispatch edge — **DONE**
 
@@ -401,6 +402,23 @@ revision log is in the design doc §7; this is the build summary.
   `workflow_id=wf_verify1a2b3c4d_ai_task`,
   `workflow_linked_at=2026-10-30T10:54:24.645688Z`,
   `workflow_linked_by=user:les`.
+- **Regression evidence (2026-10-30)**:
+  - session-buddy task-system scope — 276 passed, 0 failed
+    (`test_tasks_link_workflow`, `test_tasks_models`, `test_tasks_tools`,
+    `test_tasks_events`, `test_tasks_identity`, `test_tasks_legacy`,
+    `test_tasks_persistence`, `test_tasks_security`, `test_tasks_storage`,
+    `test_mcp_server_core`).
+  - session-buddy FULL unit suite — 263 failed, 13521 passed, 13 skipped,
+    1 xfailed, 35 errors (31m53s). The 263 failures are the pre-existing
+    baseline; **zero** of them are in the task system. 18 tests hit the
+    per-test timeout (pre-existing hangs, e.g. `test_pools.py`).
+  - mahavishnu task-system scope — 66 passed, 1 skipped (the skip is the
+    guard test declining to run because the installed session-buddy does
+    not expose the new models — the drift, by design), plus 37 in
+    `test_mcp_server_core.py` and 10 in `test_mcp_lifecycle.py`.
+  - `ruff check` clean on every changed file in both repos; `ty check`
+    clean on session-buddy (it was NOT: six diagnostics, all in the two
+    files this channel lives in — fixed in `ed16d315`).
 - **Blocked on an operator step**: mahavishnu depends on the PUBLISHED
   session-buddy, and the gate compares the two repos' envelopes. Until
   session-buddy ships the new contract, the gate correctly reports the
