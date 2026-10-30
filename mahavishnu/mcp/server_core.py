@@ -1552,8 +1552,11 @@ class FastMCPServer:
             return response
 
         # T18: Wire tasks_handoff_to_workflow (Bodai task system dispatch edge).
-        # The T16 gate is informational; registration activates automatically
-        # once session-buddy PR #1 ships and the operator bumps the version pin.
+        # The gate compares the two repos' shared envelopes field-for-field
+        # and SKIPS registration on drift — a version skew must cost the
+        # fleet the handoff edge, not the orchestrator. Registration
+        # activates automatically once the installed session-buddy carries
+        # the link channel.
         from .tools.tasks_handoff import register_tasks_handoff_tools
         from .tools.tasks_handoff_gate import (
             tasks_handoff_to_workflow_available,
@@ -1570,9 +1573,11 @@ class FastMCPServer:
             )
         else:
             logger.warning(
-                "tasks_handoff_to_workflow NOT wired — session-buddy PR #1 "
-                "not yet merged. PR #2 will activate this once "
-                "session-buddy>=0.30.0 is pinned."
+                "tasks_handoff_to_workflow NOT wired — the task-system "
+                "contract with the installed session-buddy does not match. "
+                "The gate logs the exact drift; publish a session-buddy "
+                "that carries the link channel and install it into this "
+                "venv, and registration activates on the next start."
             )
 
     async def _dispatch_task_workflow(
