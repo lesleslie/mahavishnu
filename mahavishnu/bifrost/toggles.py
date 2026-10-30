@@ -309,6 +309,40 @@ def _strip_generic_model_headers(settings: dict[str, Any], harness: HarnessDescr
     _strip_harness_headers(generation, harness)
 
 
+def _stray_headers(settings: dict[str, Any], harness: HarnessDescriptor) -> list[str]:
+    """Harness-owned headers sitting in a block the harness does not read.
+
+    The generic ``model.generationConfig`` block is only read for a runtime
+    model with no matching ``modelProviders`` entry, so when the active
+    model *does* resolve to a provider entry, anything the toggle left in
+    the generic block is a copy nobody reads -- and, for the credential, a
+    second copy of a secret.
+
+    Returns:
+        The stray header names, empty when there are none.
+    """
+    if harness.credential_sink != "model":
+        return []
+    _, entry = _active_provider(settings)
+    if entry is None:
+        # The generic block is where this harness reads them.
+        return []
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return []
+    generation = model.get("generationConfig")
+    if not isinstance(generation, dict):
+        return []
+    headers = generation.get("customHeaders")
+    if not isinstance(headers, dict):
+        return []
+    return [
+        prefix.removesuffix(":")
+        for prefix in _harness_header_prefixes(harness)
+        if prefix.removesuffix(":") in headers
+    ]
+
+
 def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
     """Write this harness's route header to the sink it reads.
 
@@ -595,9 +629,29 @@ def _action_bifrost(
         or _read_cache_header(settings, harness) == expected_bucket
     )
     already_configured = existing == url and _read_credential(settings, harness) == virtual_key
+    strays = _stray_headers(settings, harness)
 
-    if already_configured and route_installed and cache_installed:
+    if already_configured and route_installed and cache_installed and not strays:
         typer.echo(f"{harness.label} already points at {url} with a matching key; no-op")
+        return
+
+    if already_configured and route_installed and cache_installed and strays:
+        # Configured correctly, but a copy of these headers is stranded in a
+        # block the harness does not read. That is not a no-op: for the
+        # credential it is a second copy of a secret, in the one block that
+        # would send it to whatever endpoint an unmatched model uses.
+        if dry_run:
+            typer.echo(
+                f"[dry-run] would remove the stray {', '.join(strays)} header(s) from the "
+                f"generic model block in {harness.settings_path}"
+            )
+            return
+        _strip_generic_model_headers(settings, harness)
+        _write_settings(harness.settings_path, settings)
+        typer.echo(
+            f"removed the stray {', '.join(strays)} header(s) from the generic model block "
+            f"in {harness.settings_path}"
+        )
         return
 
     if already_configured and (not route_installed or not cache_installed):

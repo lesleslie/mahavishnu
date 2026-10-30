@@ -514,6 +514,35 @@ def test_qwen_direct_clears_the_generic_block_too(
     assert "x-bf-vk" not in entry.get("generationConfig", {}).get("customHeaders", {})
 
 
+def test_qwen_removes_a_stranded_credential_on_an_already_configured_host(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """An already-correct configuration is not a no-op if a copy is stranded.
+
+    The host is pointed at the gateway and the credential matches, so the
+    toggle would normally report a no-op and change nothing. The stray copy
+    in the generic block would survive that -- and it is a second copy of
+    the gateway credential, in the block Qwen consults for a model with no
+    provider entry.
+    """
+    settings = tmp_path / "settings.json"
+    body = _qwen_settings()
+    body["model"]["generationConfig"] = {"customHeaders": {"x-bf-vk": "sk-bf-stranded"}}
+    _write(settings, body)
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+    # Put the stray back, the way an earlier version of the toggle left it.
+    written = _read(settings)
+    written["model"]["generationConfig"] = {"customHeaders": {"x-bf-vk": "sk-bf-stranded"}}
+    _write(settings, written)
+
+    toggles.apply(harness, "bifrost")
+
+    generic = _read(settings)["model"].get("generationConfig", {}).get("customHeaders", {})
+    assert "x-bf-vk" not in generic
+
+
 def test_qwen_direct_restores_the_upstream_provider(
     tmp_path: Path, backup_dir: Path, vk: str
 ) -> None:
