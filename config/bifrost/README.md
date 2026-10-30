@@ -19,16 +19,23 @@ Current status (verified live, 2026-10-30):
   (MiniMax's OpenAI-compatible `/v1/chat/completions` — the path the
   Mahavishnu worker uses), `llama-server` (`qwen3-8b-q4_k_m` local), `openai`
   (`gpt-5.4` family).
-- **The live store still carries the first version of the
-  `route-anthropic-native` rule** (model pinned to `MiniMax-M3`, fallback
-  `minimax-openai/MiniMax-M3`, no `count_tokens` permission). The template in
-  this directory carries the corrected rule — see "Custom Providers: Three
-  Silent Traps" — but the store is a separate artifact and is only re-seeded
-  from the template when it is explicitly synced. Until that happens the live
-  gateway still downgrades the 1M-context model, refuses the token-count
-  call, and has an inert fallback.
-- Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` is currently
-  `https://api.minimax.io/anthropic` (direct-to-MiniMax, not via Bifrost).
+- **The `route-anthropic-native` rule is live and corrected.** The store's
+  target names the provider only (`model` is NULL, so the caller's model
+  passes through), the fallback is `minimax-anthropic/MiniMax-M3.1-Flash`
+  (the same protocol, so it can actually serve the request), `count_tokens`
+  is allowed with its own path override, and the key lists `MiniMax-M3`,
+  `MiniMax-M3[1m]` and `MiniMax-M3.1-Flash`. The store is authoritative and
+  the template is only its seed — see "Custom Providers: Three Silent Traps".
+- **Both harnesses route through the gateway, and both are verified.**
+  `mahavishnu bifrost verify-gate` passes for Qwen Code
+  (`provider=minimax-anthropic status=success via claude-cli/0.26.1`), and a
+  Claude Code-shaped request returns a **signed** `thinking` block with the
+  route rule firing on both.
+- Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` is now
+  `http://127.0.0.1:8471/anthropic` (via Bifrost), with `x-bf-vk`,
+  `x-bf-route: anthropic_native` and `x-bf-cache-key: claude-code:<hash>` in
+  `ANTHROPIC_CUSTOM_HEADERS`. Qwen Code's `modelProviders.anthropic` entry
+  carries the same three, with `qwen-code:<hash>` as its bucket.
 - The wired-worker opt-ins (`terminal-claude`, `terminal-qwen`, `terminal-codex`)
   remain in their historical reverted state — see "Mahavishnu Worker Defaults" below.
 
@@ -317,11 +324,12 @@ bifrost:
 > `MAHAVISHNU_BIFROST__*` prefix is still honoured by Oneiric as a
 > back-compat shim, but `ONEIRIC_BIFROST_*` is the canonical spelling.
 
-`BifrostLLMSettings.cache_mode` (`off` | `direct` | `semantic`) is **advisory
-only**: the `mahavishnu/llm_gateway` package that consumed it was deleted in
-commit `03146be0`, and no remaining code reads it. Caching is engaged by the
-gateway itself, through the plugin's `default_cache_key` and the
-`x-bf-cache-*` request headers.
+`BifrostLLMSettings.cache_mode` (`off` | `direct` | `semantic`) is consumed by
+`mahavishnu/bifrost/cache_headers.py`, which turns it into the gateway's
+`x-bf-cache-*` request headers. It was advisory-only for a while — the
+`mahavishnu/llm_gateway` package that consumed it was deleted in commit
+`03146be0`, and nothing read the setting again until REQ-BIFROST-037
+restored the wiring.
 
 Current in-repo wiring:
 
@@ -339,8 +347,11 @@ The two are routed differently, on purpose:
 - **Bodai components** (mahavishnu, akosha, session-buddy, crackerjack,
   oneiric, mcp-common) route their LLM and worker calls through Bifrost via
   `BifrostLLMRouter` — see "Client Opt-In" above.
-- **Claude Code** talks to `https://api.minimax.io/anthropic` **directly**,
-  bypassing Bifrost. Qwen Code stays pointed at the gateway.
+- **Claude Code** and **Qwen Code** are both pointed at the gateway
+  (`http://127.0.0.1:8471/anthropic`) by `mahavishnu bifrost cc-url bifrost`
+  and `mahavishnu bifrost qwen-url bifrost`. Both carry the gateway virtual
+  key, the `anthropic_native` route header, and a cache bucket of their own.
+  `qwen-url direct` / `cc-url direct` put them back.
 
 > **Gotcha:** every gateway command that brings the service up re-points
 > Claude Code at the gateway — `mahavishnu bifrost start`, `restart`, and
@@ -416,10 +427,7 @@ Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 > it again with no code change. But this deployment issues exactly one
 > `BIFROST_VIRTUAL_KEY`, so the hash is the same for every caller: the
 > namespace is split by protocol surface (`worker`, `agno-openai`,
-> `agno-anthropic`, `claude-code`), not by tenant. Within a class, two
-> agents with different personas but the same user turn can collide — the
-> semantic cache's `exclude_system_prompt: true` drops the system prompt
-> from the key — and one can be served the other's cached response.
+> `agno-anthropic`, `claude-code`), not by tenant.
 >
 > Real per-tenant isolation means a distinct virtual key per tenant:
 > Bifrost issues keys per key, so giving each tenant its own
@@ -432,40 +440,46 @@ Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 writes `x-bf-cache-key: qwen-code:<hash>` into the matching Qwen provider
 entry's `generationConfig.customHeaders`. Both sit alongside `x-bf-vk` and
 `x-bf-route`. Without them, a harness's requests carry no bucket header and
-the gateway resolves the plugin's shared `default_cache_key` — the same
-namespace the rest of the fleet falls back into, and one in which a
-harness's own sessions share entries.
+the plugin has no key to resolve — so with `default_cache_key` unset
+(upstream's default) the request does not reach the cache at all.
 
 That last part is the reason it exists. Reproduced live on 2026-10-30: two
 requests with the *same* user turn and *different* system prompts — the
 shape of two Claude Code sessions in two directories — came back
 `cache_hit: true`, `hit_type: "direct"`, the same `cache_id`, served in
 1–47 ms instead of ~700 ms. The system prompt carries the date, working
-directory and environment, and the cache is configured to exclude it, so
-without a bucket of its own one session can be served another's cached
-response.
+directory and environment, and the cache was configured to exclude it from
+the key, so without a bucket of its own one session could be served
+another's cached response.
 
 Two limits worth stating plainly:
 
 - **It separates Claude Code from the fleet, not from itself.** The bucket
   is written once into `~/.claude/settings.json`, so every Claude Code
-  session on the host shares it. What keeps two sessions apart in practice
-  is the conversation history the cache key also carries — and the
-  gateway's `conversation_history_threshold: 8`, which stops caching
-  entirely past eight messages, so a long session is not cached at all.
+  session on the host shares it. What keeps two sessions apart is the
+  system prompt, which the cache key now carries: it holds the working
+  directory, the date and the project instructions, so two sessions in
+  two directories hash to two different keys. The conversation history the
+  key also carries helps, and the gateway's
+  `conversation_history_threshold: 8` stops caching entirely past eight
+  messages, so a long session is not cached at all.
 - **A bucket is not an authorisation boundary.** The gateway does not check
   that the presented credential owns the bucket it names; the derivation is
   a convention that keeps this deployment honest, not an enforcement.
 
-> **`off` is not "no cache".** It means "do not populate the cache". A
-> request in `off` mode can still be *served* from a previously cached
-> response.
+> **`off` means off.** It suppresses the cache *read* as well as the write.
+> Bifrost v2.4.0 has no header that suppresses a read —
+> `x-bf-cache-no-store` is documented upstream as "skip writing the response
+> to cache (still served from cache on hit)" — so the repo's `off` mode
+> points at a bucket nothing was ever written to. The cache key is encoded
+> into the direct cache ID and is an equality filter on the semantic
+> search, so a bucket with no entries cannot be hit on either path.
 
 **The cache headers are sent even when the virtual key is missing.** They
 express an operator retention control, and a missing credential must not
-invert it: without `x-bf-cache-no-store` the gateway resolves the bucket
-from its own `default_cache_key` and writes the prompt and response into
-the shared cache — the opposite of `cache_mode: off`. A missing key
+invert it: without `x-bf-cache-no-store` the gateway could resolve the
+bucket from its own `default_cache_key` and write the prompt and response
+into a shared cache — the opposite of `cache_mode: off`. A missing key
 removes `x-bf-vk` and nothing else.
 
 The setting is read by the **environment**, not by
@@ -540,12 +554,13 @@ Notes:
 - the `image` route is currently disabled in the template until the gateway has a supported multimodal adapter
 - **prerequisite for routing Claude Code through the gateway**: Claude Code
   must not share the semantic cache's shared `default` bucket. Its system
-  prompt carries the date, working directory and environment, and the plugin
-  excludes the system prompt from the cache key, so two agents with the same
-  user turn would collide. **Done** — `cc-url bifrost` now sends
-  `x-bf-cache-key: claude-code:<hash>`; see "Semantic Cache" above for what
-  that does and does not separate. Qwen Code gets the same treatment
-  (`qwen-code:<hash>`).
+  prompt carries the date, working directory and environment, and it used to
+  be excluded from the cache key, so two agents with the same user turn
+  would collide. **Done twice over** — `cc-url bifrost` now sends
+  `x-bf-cache-key: claude-code:<hash>`, and the plugin keeps the system
+  prompt in the key (`exclude_system_prompt: false`, upstream's default).
+  See "Semantic Cache" above for what that does and does not separate.
+  Qwen Code gets the same treatment (`qwen-code:<hash>`).
 - **Qwen Code goes to the Anthropic surface, not the OpenAI one.** Its active
   model resolves to the `anthropic` provider entry, and that entry is what
   the toggle points at `http://127.0.0.1:8471/anthropic` — so Qwen reaches
@@ -618,8 +633,8 @@ Configured values and why each one is what it is:
 | `dimension` | `1536` | **Must** equal the model's native output size. The Redis `VECTOR` attribute is created with a fixed `dim` and RediSearch cannot resize it in place. |
 | `threshold` | `0.86` | Cosine floor for a similarity hit. `0.8` is Bifrost's generic default, tuned for single short prompts; here the embedding covers a whole conversation, so it is loose. `resolveCacheThreshold` takes `max(config, per-request)`, so a higher floor can only be raised. |
 | `conversation_history_threshold` | `8` | Bifrost skips caching **entirely** — both layers — for requests with more than this many messages. Its default of `3` disables the cache for nearly all agentic traffic, which resends the full transcript every turn. |
-| `exclude_system_prompt` | `true` | Drops the shared system prompt from the embedded text, which otherwise inflates similarity between unrelated tasks (a large common prefix). **Trade-off:** it also drops the system prompt from the *direct* cache key, so two requests with identical messages but different system prompts can share an entry. Set it to `false` if you run multiple agent personas through one cache key. |
-| `default_cache_key` | `default` | Without it, `resolveCacheKey` returns false and caching is disabled for every request that does not send an explicit `x-bf-cache-key` header. |
+| `exclude_system_prompt` | `false` | **Upstream's default, and it is the safe one.** The system prompt carries the persona, the working directory, the date and the project instructions — the things that distinguish one session from another. Dropping it from the key lets two requests with identical messages but different system prompts share an entry, and one be served the other's cached response. That collision was reproduced live against this gateway before the setting was reverted. **Cost:** the system prompt now counts against the embedding model's input budget (see the 8192-token limit below), so a long session can fall off the *semantic* path sooner. The *direct* path hashes the input rather than embedding it, so it is unaffected. |
+| `default_cache_key` | *unset* | Upstream's default is empty, and it is the safe one: with no per-request `x-bf-cache-key` and no default, `resolveCacheKey` returns false and the plugin's pre-LLM hook exits before any lookup or write. Setting it to a fixed value puts every client that does not name a bucket into one shared namespace. Callers that want the cache name their own. |
 | `cache_by_model` / `cache_by_provider` | `true` | Keep model/provider in the filter so a cached response never crosses providers. |
 
 Two upstream requirements that are easy to miss:

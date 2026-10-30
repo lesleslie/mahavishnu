@@ -18,24 +18,24 @@ Header                  Effect
                         plugin's ``default_cache_key``, caching never engages.
 ``x-bf-cache-type``     Narrows the lookup to one path: ``direct`` (exact
                         match) or ``semantic`` (vector similarity).
-``x-bf-cache-no-store`` Suppresses the cache **write**. Reads still happen.
+``x-bf-cache-no-store`` Suppresses the cache **write**.
 ======================  =====================================================
 
 Each mapping was confirmed empirically against the running gateway before
 being encoded here; see
 ``docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`` §4.4.
 
-Note the asymmetry in ``off``: Bifrost v1.5/v1.6 exposes no header that
-suppresses the *read*, so ``off`` means "do not populate the cache" rather
-than "do not use the cache". The gateway can still serve a previously cached
-response to an ``off`` request.
-
 Note the scope of the bucket. It used to be ``default`` for every caller,
-and the gateway's own ``default_cache_key`` is ``"default"``, so there was
+and the gateway's own ``default_cache_key`` was ``"default"``, so there was
 one shared bucket across the fleet. Combined with the semantic cache's
 ``exclude_system_prompt: true`` -- which drops the system prompt from the
 cache key -- two agents with different personas but the same user turn
-could collide, and one could be served the other's cached response.
+could collide, and one could be served the other's cached response. Both
+halves of that are fixed at the gateway now: the template leaves
+``default_cache_key`` unset, so a request that names no bucket cannot
+engage the cache at all, and it restores ``exclude_system_prompt`` to the
+upstream default of ``false``, so the system prompt -- which carries the
+persona, the working directory and the date -- participates in the key.
 
 The bucket is now **derived** (see :func:`resolve_cache_bucket`) from the
 traffic class and the credential the request presents, so it is never the
@@ -49,7 +49,20 @@ What this does **not** do is separate two agents of the same principal.
 The bucket is chosen when the client is constructed, and the client is
 reused across requests, so a per-agent bucket would need a per-request
 header. The gateway would also have to refuse a bucket the presented
-credential does not own -- a change in Bifrost itself, not here.
+credential does not own -- a change in Bifrost itself, not here. The
+system prompt carrying the discriminator is what closes that gap from
+this side.
+
+``off`` means *off*: neither a read nor a write. Bifrost v2.4.0 has no
+header that suppresses the read directly -- ``x-bf-cache-no-store`` is
+documented upstream as "skip writing the response to cache (still served
+from cache on hit)" -- but the bucket gives the same guarantee. The cache
+key is encoded into the direct cache ID (``generateDirectCacheID``) and is
+an equality filter on the semantic search (``cache_key``), so a bucket
+nothing was ever written to cannot be hit on either path. ``off``
+therefore points at a bucket that is never written, and adds the no-store
+header so the write is suppressed even against a gateway that still
+carries a ``default_cache_key``.
 """
 
 from __future__ import annotations
@@ -57,6 +70,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import secrets
 from typing import Literal, cast
 from urllib.parse import urlparse
 
@@ -147,7 +161,7 @@ def resolve_cache_mode() -> CacheMode:
         from oneiric.adapters.llm.bifrost import BifrostLLMSettings
 
         raw = str(BifrostLLMSettings().cache_mode)
-    except ImportError, AttributeError, TypeError, ValueError:
+    except _CREDENTIAL_ERRORS:
         # The settings are optional and may be unconfigured. Falling back
         # to "off" is the safe direction: a missing configuration must
         # never turn caching on.
@@ -170,6 +184,28 @@ def resolve_cache_mode() -> CacheMode:
     return cast("CacheMode", raw)
 
 
+def _uncacheable_bucket() -> str:
+    """Return a bucket name that no cache entry can ever live in.
+
+    Bifrost v2.4.0 has no header that suppresses a cache *read*: the
+    ``x-bf-cache-no-store`` header is documented upstream as "skip writing
+    the response to cache (still served from cache on hit)". A bucket
+    achieves the same thing, because the cache key participates in both
+    lookup paths -- it is encoded into the direct cache ID
+    (``generateDirectCacheID``) and is an equality filter on the semantic
+    search (``cache_key``). A bucket nothing was written to therefore
+    cannot be hit on either path.
+
+    The name is random per call, so two ``off`` requests never share a
+    bucket and neither can collide with an entry another principal
+    wrote. It carries the same inert alphabet as a derived bucket.
+
+    Returns:
+        A bucket name that no entry has ever been written to.
+    """
+    return f"off-{secrets.token_hex(8)}"
+
+
 def _cache_headers_for(mode: CacheMode, bucket: str) -> dict[str, str]:
     """Assemble the cache headers for a mode and an already-chosen bucket.
 
@@ -185,19 +221,23 @@ def _cache_headers_for(mode: CacheMode, bucket: str) -> dict[str, str]:
     Returns:
         Headers to attach to the outbound request. Never empty: every mode
         carries the cache-bucket header, and the mode-specific header
-        selects the write behaviour. See the module docstring for the
-        asymmetry in ``off``, which suppresses the *write* and not the
-        read.
+        selects the lookup and write behaviour. ``off`` carries a bucket
+        nothing was ever written to, so it neither reads nor writes --
+        see the module docstring.
     """
-    key = bucket.strip() or DEFAULT_CACHE_BUCKET
-    headers: dict[str, str] = {CACHE_KEY_HEADER: key}
-    if mode == "direct":
-        headers[CACHE_TYPE_HEADER] = "direct"
-    elif mode == "semantic":
-        headers[CACHE_TYPE_HEADER] = "semantic"
-    else:
-        # "off": do not populate the cache. The gateway still serves reads.
+    headers: dict[str, str] = {}
+    if mode == "off":
+        # No cache interaction at all. The bucket is one nothing was ever
+        # written to, so the lookup cannot hit; the no-store header
+        # suppresses the write even against a gateway that still carries
+        # a default_cache_key.
+        headers[CACHE_KEY_HEADER] = _uncacheable_bucket()
         headers[CACHE_NO_STORE_HEADER] = "true"
+        return headers
+
+    key = bucket.strip() or DEFAULT_CACHE_BUCKET
+    headers[CACHE_KEY_HEADER] = key
+    headers[CACHE_TYPE_HEADER] = "direct" if mode == "direct" else "semantic"
     return headers
 
 
@@ -218,9 +258,8 @@ def build_cache_headers(mode: CacheMode, *, traffic_class: str = "") -> dict[str
     Returns:
         Headers to attach to the outbound request. Never empty: every mode
         carries the cache-bucket header, and the mode-specific header
-        selects the write behaviour. See the module docstring for the
-        asymmetry in ``off``, which suppresses the *write* and not the
-        read.
+        selects the lookup and write behaviour. ``off`` carries a bucket
+        nothing was ever written to, so it neither reads nor writes.
     """
     return _cache_headers_for(mode, resolve_cache_bucket(traffic_class, resolve_virtual_key()))
 
@@ -288,11 +327,10 @@ def resolve_cache_bucket(traffic_class: str, principal: str | None = None) -> st
     make that matter:
 
     * The shared :data:`DEFAULT_CACHE_BUCKET` puts every request in the
-      fleet into one namespace. With the semantic cache's
-      ``exclude_system_prompt: true`` -- which drops the system prompt
-      from the cache key -- two agents with different personas but the
-      same user turn collide, and one is served the other's cached
-      response.
+      fleet into one namespace. With the semantic cache dropping the
+      system prompt from the cache key, two agents with different
+      personas but the same user turn collide, and one is served the
+      other's cached response.
     * A caller-supplied bucket is a caller-supplied *selector*. Whoever
       holds a credential could name another bucket and read what is in
       it. Deriving the bucket from the credential the request actually

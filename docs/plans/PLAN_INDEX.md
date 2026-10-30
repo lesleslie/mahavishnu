@@ -311,7 +311,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-29-agno-failover-and-gateway-repairs.md`](2026-10-29-agno-failover-and-gateway-repairs.md) | 2026-10-29 | `active` | `implementation` |  | `agno-failover-gateway` | Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key |
 | [`docs/plans/2026-10-29-agno-llm-provider-chain.md`](2026-10-29-agno-llm-provider-chain.md) | 2026-10-29 | `complete` | `implementation` |  | `agno-llm-routing` | Agno LLM provider chain — MiniMax primary, llama-server as fallback |
 | [`docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`](2026-10-29-bifrost-bodai-cache-wiring.md) | 2026-10-29 | `active` | `canonical` |  | `bifrost-cache-wiring` | Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring |
-| [`docs/plans/2026-10-29-bifrost-minimax-anthropic-route.md`](2026-10-29-bifrost-minimax-anthropic-route.md) | 2026-10-29 | `partial` | `implementation` |  | `bifrost-minimax-routing` | Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses |
+| [`docs/plans/2026-10-29-bifrost-minimax-anthropic-route.md`](2026-10-29-bifrost-minimax-anthropic-route.md) | 2026-10-29 | `complete` | `implementation` |  | `bifrost-minimax-routing` | Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses |
 | [`docs/plans/2026-10-29-demo-surface-sweep.md`](2026-10-29-demo-surface-sweep.md) | 2026-10-29 | `shipped` | `implementation` |  | `demo-surface` | Demo surface sweep — 2026-10-29 |
 | [`docs/plans/2026-10-29-oneiric-resolver-plans.md`](2026-10-29-oneiric-resolver-plans.md) | 2026-10-29 | `active` | `implementation` |  | `resolver` | Oneiric Resolver — Precedence Contract and Scope Deferrals |
 | [`docs/plans/2026-10-29-plan-index-store-drift.md`](2026-10-29-plan-index-store-drift.md) | 2026-10-29 | `active` | `implementation` |  | `documentation-tooling` | Plan Index Store Drift — Index Regenerated, Tool-Side Fix Pending |
@@ -462,9 +462,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 7 | 48 | 1 | 1 | 14 | **71** |
-| `implementation` | 3 | 8 | 3 | 5 | 16 | **35** |
+| `implementation` | 3 | 8 | 2 | 5 | 17 | **35** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **10** | **56** | **4** | **6** | **69** | **145** |
+| **Total** | **10** | **56** | **3** | **6** | **70** | **145** |

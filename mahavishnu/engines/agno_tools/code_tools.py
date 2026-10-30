@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import ast
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agno.tools import tool
 
 from mahavishnu.core.errors import AgnoError, ErrorCode
 from mahavishnu.engines.agno_tools.file_tools import _validate_path
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +238,12 @@ def _analyze_code_impl(file_path: str) -> dict[str, Any]:
     Raises:
         AgnoError: If analysis fails
     """
-    path = Path(file_path).resolve()
+    # ``_validate_path`` is the same defense-in-depth guard
+    # ``_search_code_impl`` uses: it detects traversal in the raw input,
+    # resolves symlinks and ``..``, refuses anything outside the allowed
+    # base directories, and refuses the blocked ones. Without it an agent
+    # could name any path on the host and have it read and analysed.
+    path = _validate_path(file_path)
 
     if not path.exists():
         raise AgnoError(
@@ -377,7 +384,10 @@ def _extract_ast_decorators(node: ast.FunctionDef | ast.AsyncFunctionDef) -> lis
 
 def _get_function_signature_impl(file_path: str, function_name: str) -> dict[str, Any]:
     """Get function signature from a code file - implementation."""
-    path = Path(file_path).resolve()
+    # Guarded for the same reason as ``_analyze_code_impl``: an agent-
+    # reachable path argument must go through the traversal, symlink,
+    # allowed-base-dir and blocked-path checks before it is read.
+    path = _validate_path(file_path)
 
     if not path.exists():
         raise AgnoError(

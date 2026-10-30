@@ -42,9 +42,13 @@ What each test pins
   created with a fixed ``dim``; a mismatch makes the vector store
   reject writes, and the index cannot be resized in place.
 - ``test_semantic_cache_threshold_is_a_valid_cosine`` -- in ``(0, 1]``.
-- ``test_semantic_cache_has_default_cache_key`` -- without it,
-  ``resolveCacheKey`` returns ``False`` and caching is disabled for
-  every request that does not send an explicit ``x-bf-cache-key``.
+- ``test_semantic_cache_has_no_default_cache_key`` -- with no default
+  and no per-request key, ``resolveCacheKey`` returns ``False`` and the
+  plugin's pre-LLM hook exits before any lookup or write, so a request
+  that names no bucket can never reach a shared namespace.
+- ``test_semantic_cache_keeps_the_system_prompt_in_the_key`` -- the
+  system prompt carries the persona, the working directory and the
+  date; dropping it from the key lets two sessions collide.
 - ``test_conversation_history_threshold_is_set`` -- the default of 3
   skips caching entirely once a conversation exceeds 3 messages, which
   disables the cache for essentially all agentic traffic.
@@ -227,20 +231,52 @@ def test_semantic_cache_threshold_is_a_valid_cosine(plugin_config: dict[str, Any
     assert 0 < threshold <= 1, f"threshold {threshold} is outside the cosine range (0, 1]"
 
 
-def test_semantic_cache_has_default_cache_key(plugin_config: dict[str, Any]) -> None:
-    """A default cache key is required for the cache to engage unattended.
+def test_semantic_cache_has_no_default_cache_key(plugin_config: dict[str, Any]) -> None:
+    """There must be no default bucket for a request that names none.
 
     Bifrost's ``resolveCacheKey`` falls back to the request's
     ``x-bf-cache-key`` header and then to the plugin's
     ``default_cache_key``. With neither set it returns ``False``, and
     the plugin's pre-LLM hook exits before performing any lookup or
-    write -- so the cache is silently inert for every client that does
-    not know to send the header.
+    write.
+
+    A ``default_cache_key`` therefore does not make the cache "work
+    unattended" -- it makes *every* unscoped client share one bucket,
+    which is the collision this configuration had: a request that names
+    no bucket has no business reaching a namespace it did not choose.
+    Callers that want the cache name their own bucket; the plugin's
+    ``default_cache_key`` is upstream's empty default and this template
+    keeps it that way.
     """
     default_cache_key = plugin_config.get("default_cache_key")
-    assert isinstance(default_cache_key, str) and default_cache_key, (
-        "semantic_cache has no default_cache_key; caching is disabled for every "
-        "request that does not send an explicit x-bf-cache-key header"
+    assert not default_cache_key, (
+        f"semantic_cache sets default_cache_key={default_cache_key!r}; every request "
+        "that does not name a bucket is served from that one namespace. Bifrost "
+        "returns False from resolveCacheKey when neither is set, which disables the "
+        "cache for those requests instead of sharing them"
+    )
+
+
+def test_semantic_cache_keeps_the_system_prompt_in_the_key(plugin_config: dict[str, Any]) -> None:
+    """The system prompt must stay in the cache key.
+
+    Bifrost's upstream default for ``exclude_system_prompt`` is
+    ``false``: the system prompt participates in the cache key. Setting
+    it to ``true`` drops the system messages from the hashed and
+    embedded input, and the system prompt is where an agent harness
+    puts the things that distinguish one session from another -- the
+    persona, the working directory, the date, the project instructions.
+
+    With it dropped, two sessions in two directories that open with the
+    same instruction hash to the same key, and one is served the other's
+    cached response. That collision was reproduced live against this
+    gateway before the setting was reverted.
+    """
+    exclude_system_prompt = plugin_config.get("exclude_system_prompt", False)
+    assert exclude_system_prompt is False, (
+        "semantic_cache sets exclude_system_prompt=true; the system prompt carries "
+        "the persona, working directory and date, so dropping it from the cache key "
+        "lets two different sessions collide and be served each other's responses"
     )
 
 

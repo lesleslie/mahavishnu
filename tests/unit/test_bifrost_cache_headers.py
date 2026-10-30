@@ -96,6 +96,36 @@ def test_off_mode_suppresses_the_write() -> None:
     assert CACHE_TYPE_HEADER not in headers
 
 
+def test_off_mode_cannot_be_served_from_a_cache() -> None:
+    """``off`` must not be answered out of the cache.
+
+    Bifrost v2.4.0 has no header that suppresses a cache *read*:
+    ``x-bf-cache-no-store`` is documented upstream as "skip writing the
+    response to cache (still served from cache on hit)". A mode named
+    ``off`` that still performs cross-session lookups is a retention
+    control that reads as a privacy control and is not one.
+
+    The bucket is what closes it. The cache key is encoded into the
+    direct cache ID (``generateDirectCacheID``) and is an equality
+    filter on the semantic search (``cache_key``), so a bucket nothing
+    was ever written to cannot be hit on either path. ``off`` therefore
+    points at a bucket of its own, and two ``off`` requests never share
+    one.
+    """
+    first = build_cache_headers("off")
+    second = build_cache_headers("off")
+
+    assert first[CACHE_KEY_HEADER] != second[CACHE_KEY_HEADER], (
+        "two 'off' requests shared a bucket; a bucket another request wrote to "
+        "would be served to it"
+    )
+    assert first[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
+    assert first[CACHE_KEY_HEADER] != resolve_cache_bucket("", None), (
+        "'off' pointed at the derived bucket; a response cached under it would be "
+        "served to a request that asked for no cache"
+    )
+
+
 def test_every_mode_carries_a_cache_bucket() -> None:
     """The cache key header is always present -- it selects the bucket."""
     for mode in ("off", "direct", "semantic"):
@@ -210,15 +240,16 @@ def test_cache_headers_survive_a_missing_virtual_key(
 
     The bucket is still derived rather than shared, so a deployment with
     no credential configured does not fall back into the fleet-wide
-    namespace.
+    namespace -- and ``off`` points at a bucket of its own, so it cannot
+    be answered out of a cache at all.
     """
     monkeypatch.delenv("BIFROST_VIRTUAL_KEY", raising=False)
     cache_mode("off")
     headers = build_gateway_headers(LOOPBACK_URL)
     assert VIRTUAL_KEY_HEADER not in headers
     assert headers[CACHE_NO_STORE_HEADER] == "true"
-    assert headers[CACHE_KEY_HEADER] == resolve_cache_bucket("", None)
     assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
+    assert headers[CACHE_KEY_HEADER] != resolve_cache_bucket("", None)
 
 
 # ---------------------------------------------------------------------------

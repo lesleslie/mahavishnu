@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-29
@@ -513,11 +513,18 @@ open questions; both were measured, not assumed.
 | The rule's fallback cannot serve the request | **Fixed.** The fallback moved from `minimax-openai` (chat-completions only, cannot serve the `responses` request type the Anthropic ingress produces) to `minimax-anthropic/MiniMax-M3.1-Flash` |
 | The provider refuses Claude Code's token-count call | **Fixed.** `count_tokens` is now allowed, with the `/anthropic/v1/messages/count_tokens` path override |
 
-**Still open:**
+**Closed on 2026-10-30.** The store was re-seeded from the template and now
+carries every correction from §4.6: the routing target pins the provider
+only (its `model` column is empty), the rule's `fallbacks` reads
+`["minimax-anthropic/MiniMax-M3.1-Flash"]`, and the `minimax-anthropic`
+provider has `count_tokens: true` with the
+`/anthropic/v1/messages/count_tokens` path override.
+
+**Still open (a recurring failure mode, not a current one):**
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| The config store and the template drift apart again | **High — and currently true.** The template carries the corrected rule; the live store still carries the first version (model pinned, inert fallback, no `count_tokens`). The template is the seed and the store is authoritative; a provider or rule that fails to import is invisible until a request misses it. The guard test checks the template's *shape*; it cannot see the store. Worth a runtime check that every template provider exists in `config.db` |
+| The config store and the template drift apart again | **High — the mode is recurring, but it is not happening now.** The template is the seed and the store is authoritative; a provider or rule that fails to import is invisible until a request misses it. The guard test checks the template's *shape*; it cannot see the store. Worth a runtime check that every template provider exists in `config.db` |
 
 ## 9. Decision Rule
 
@@ -533,15 +540,13 @@ fallback, and the worker route still attributed to `minimax-openai`. The
 fallback branch was not needed: the rules do evaluate on the Anthropic
 route.
 
-**Two things deliberately left open**, both documented rather than silently
-dropped:
-
-1. The **Claude Code cutover itself** — pointing Claude Code at the gateway
-   — is not done. The harness stays on direct MiniMax; the toggle
-   (`mahavishnu bifrost cc-url bifrost`) is ready and reversible.
-2. The **semantic-cache bucket** for Claude Code (see
-   `config/bifrost/README.md`) is a prerequisite for that cutover, not part
-   of it.
+**Both are now closed** (2026-10-30). The cutover is done: Claude Code and
+Qwen Code are both pointed at the gateway, and both were verified live —
+`verify-gate` passes for Qwen Code (`provider=minimax-anthropic`,
+`status=success`, `via claude-cli/0.26.1`), and a Claude Code-shaped
+request returns a **signed** `thinking` block with `route-anthropic-native`
+firing. The cache buckets are in place for both harnesses. The toggles
+remain reversible (`cc-url direct`, `qwen-url direct`).
 
 **The cache bucket is now wired** (2026-10-30). `cc-url bifrost` writes
 `x-bf-cache-key: claude-code:<hash>` alongside the credential and the route
@@ -568,29 +573,29 @@ conversation history the cache key also carries, plus the gateway's
 `conversation_history_threshold: 8`, which stops caching entirely past
 eight messages — so a long session is not cached at all.
 
-**One thing outstanding, and it is not a design question.** The ensemble
-review's corrections (§4.6) are in the repo's template, but the **live store
-still runs the first version of the rule**. The store is a separate artifact
-and is only re-seeded from the template when the operator explicitly syncs
-it; a template edit alone changes nothing at runtime. Until that sync
-happens, the live gateway still downgrades the 1M-context model, refuses
-Claude Code's token-count call, and carries a fallback that cannot serve the
-request. The sync is a live-config write and needs the operator's explicit
-go-ahead, so it is left as a named step rather than folded into the merge.
+**The store sync is closed too.** The operator ran the authorised sync and
+restart on 2026-10-30, and the live store now carries every correction from
+§4.6 — the routing target pins the provider only (`model` is empty), the
+rule's `fallbacks` reads `["minimax-anthropic/MiniMax-M3.1-Flash"]`, and the
+`minimax-anthropic` provider has `count_tokens: true` with the
+`/anthropic/v1/messages/count_tokens` path override. Both the provider row
+and the rule row carry the same `updated_at` stamp, which is the store's own
+record that a real import ran. The template and the store agree, so this
+plan's status is **`complete`**.
 
-This is why the plan's status is **`partial`** rather than `complete`: the
-repository side is merged and green, the deployed side is one authorised
-sync away, and the two are not the same thing.
+## 10. Operator Action — Live-Store Sync (Completed 2026-10-30)
 
-## 10. Operator Action — Pending Live-Store Sync
+This section is the record of what the operator ran. It is kept because the
+sync is a **live-config write** that cannot be folded into a merge: the store
+is a separate artifact, it is only re-seeded from the template on an
+explicit sync, and a template edit alone changes nothing at runtime.
 
-The template and the live store disagree as of 2026-10-30. To bring the
-running gateway onto the corrected rule:
+The steps that were run, in order:
 
 1. Re-seed `~/.config/bifrost/config.json` from
    `config/bifrost/config.template.json` (`mahavishnu.bifrost.lifecycle.sync_config()`;
    it backs up the store first and keeps `config.db`).
-2. Restart the gateway so the store re-imports the rule and the provider's
+2. Restart the gateway so the store re-imported the rule and the provider's
    key — the store syncs from `config.json`, not the other way round. Set
    `BIFROST_CTL_NO_CC_URL_REWRITE=1` for the restart so the harnesses are
    left where they are: `restart()` calls `_after_ready("bifrost")`, which
@@ -605,7 +610,97 @@ running gateway onto the corrected rule:
    path was not read from upstream source — so the store is the only place
    this can be confirmed.
 
+Steps 1–4 are confirmed against the live store: the rule's `fallbacks` and
+the empty target `model` were read back from `routing_rules` and
+`routing_targets`, and the provider's `allowed_requests.count_tokens` and
+`request_path_overrides` from `config_providers`. The Phase 3 probes pass,
+and `mahavishnu bifrost status` reports both harnesses on the gateway with
+their route headers and their own cache buckets.
+
+**If the sync ever has to be repeated**, note that
 `mahavishnu bifrost rebootstrap` performs steps 1 and 2 in one command, but
-it also repoints the Claude Code and Qwen harnesses at the gateway — the
-cutover this plan deliberately leaves open. Use `sync_config()` plus a
-gated restart until the cutover is wanted.
+it also repoints the Claude Code and Qwen harnesses at the gateway. Once the
+cutover is wanted that is the right command; until then, use `sync_config()`
+plus a gated restart.
+
+## 11. Security Review Corrections (2026-10-30)
+
+A review of the pushed changes raised three findings. All three were checked
+against the upstream Bifrost v2.4.0 source (`plugins/semanticcache/main.go`,
+`utils.go`, `search.go`) before being acted on, and all three were real.
+
+### 11.1 The cache key dropped the system prompt
+
+**Finding.** `exclude_system_prompt: true` drops the system messages from
+the hashed and embedded input. The system prompt is where a harness puts
+the things that distinguish one session from another — persona, working
+directory, date, project instructions — so two sessions with the same user
+turn hashed to the same key. The per-traffic-class bucket added in §9 does
+not fix this: the bucket is derived from the traffic class and the
+credential, both constant on the host, so it separates Claude Code from the
+fleet but not one Claude Code session from another.
+
+**Upstream.** `ExcludeSystemPrompt` is `*bool` with the documented default
+`false` — the system prompt participates in the key unless the config
+explicitly opts out. The template was opting out.
+
+**Fix.** `exclude_system_prompt` is back to `false` in the template. The
+system prompt now discriminates between sessions, which is what closes the
+gap the bucket could not.
+
+The same review pointed at the plugin's `default_cache_key: "default"`, the
+fleet-wide namespace that a client with no bucket header fell back into.
+`resolveCacheKey` returns `False` when neither a per-request key nor a
+default is set, and the plugin's pre-LLM hook then exits before any lookup
+or write — so removing `default_cache_key` does not disable the cache for
+the callers that name a bucket; it removes the shared namespace for the
+ones that do not. The key is now unset in the template.
+
+### 11.2 `off` still served reads
+
+**Finding.** `cache_mode: off` sent `x-bf-cache-no-store`, which upstream
+documents as "skip writing the response to cache (still served from cache
+on hit)". A mode named `off` that still performs cross-session lookups is a
+retention control that reads as a privacy control and is not one. The
+module docstring disclosed the asymmetry; the name did not.
+
+**Upstream.** There is no read-suppression header in v2.4.0. The cache key
+is, however, encoded into the direct cache ID (`generateDirectCacheID`) and
+is an equality filter on the semantic search (`cache_key`), so a bucket
+nothing was ever written to cannot be hit on either path.
+
+**Fix.** `off` now points at a bucket of its own that is never written,
+plus the no-store header. Two `off` requests never share a bucket, and an
+`off` request cannot be answered out of a bucket another caller wrote to.
+The setting name is unchanged — the vocabulary belongs to Oneiric's
+`BifrostLLMSettings`, not to this repo.
+
+### 11.3 Two agent-reachable paths skipped the traversal guard
+
+**Finding.** `mahavishnu/engines/agno_tools/code_tools.py` ran
+`_search_code_impl`'s path through `_validate_path` (traversal detection,
+symlink resolution, allowed-base-directory check, blocked-path check), but
+`_analyze_code_impl` and `_get_function_signature_impl` resolved whatever
+path the agent named. Both read the file: one returns its imports, classes
+and functions, the other parses it.
+
+**Fix.** Both now call `_validate_path`, and a test pins the parity for
+both tools.
+
+### 11.4 What still needs the operator
+
+The template changes in §11.1 are live-config changes like everything else
+in §10. `config.json` has been re-seeded from the template, so the file on
+disk carries the corrected plugin config. The **store** does not yet: it
+still holds `exclude_system_prompt: true` and `default_cache_key:
+"default"`, because the store re-imports from `config.json` when the
+gateway starts, not when the file changes.
+
+One restart closes that:
+
+```bash
+BIFROST_CTL_NO_CC_URL_REWRITE=1 mahavishnu bifrost restart
+```
+
+Until it runs, the live gateway still drops the system prompt from the key
+and still carries a shared `default_cache_key`.

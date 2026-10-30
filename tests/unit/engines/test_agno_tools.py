@@ -550,6 +550,58 @@ def cached_func(x: int) -> int:
 
 
 # ============================================================================
+# Security Tests
+# ============================================================================
+
+
+class TestCodeToolPathGuards:
+    """Every agent-reachable path must go through the same guard.
+
+    ``_search_code_impl`` runs its path through ``_validate_path`` --
+    traversal detection, symlink resolution, an allowed-base-directory
+    check and a blocked-path check. The other two code tools did not, so
+    an agent could name any path on the host and have it read and
+    analysed: ``analyze_code`` returns the file's imports, classes and
+    functions, and ``get_function_signature`` parses it. These tests pin
+    the parity.
+    """
+
+    @pytest.mark.parametrize(
+        "tool",
+        [
+            pytest.param(lambda path: _analyze_code_impl(path), id="analyze_code"),
+            pytest.param(
+                lambda path: _get_function_signature_impl(path, "any_name"),
+                id="get_function_signature",
+            ),
+        ],
+    )
+    def test_a_path_outside_the_allowed_directories_is_refused(self, tool: object) -> None:
+        """A file outside the allowed base directories is not read."""
+        with pytest.raises(AgnoError) as exc_info:
+            tool("/etc/hosts")  # type: ignore[operator]
+
+        assert exc_info.value.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
+
+    @pytest.mark.parametrize(
+        "tool",
+        [
+            pytest.param(lambda path: _analyze_code_impl(path), id="analyze_code"),
+            pytest.param(
+                lambda path: _get_function_signature_impl(path, "any_name"),
+                id="get_function_signature",
+            ),
+        ],
+    )
+    def test_a_traversal_path_is_refused(self, tool: object) -> None:
+        """``..`` in the raw path is refused before it is resolved."""
+        with pytest.raises(AgnoError) as exc_info:
+            tool("../../../../etc/hosts")  # type: ignore[operator]
+
+        assert exc_info.value.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
+
+
+# ============================================================================
 # Integration Tests
 # ============================================================================
 

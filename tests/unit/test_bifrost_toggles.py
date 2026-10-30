@@ -467,6 +467,53 @@ def test_qwen_header_never_lands_in_the_ignored_generic_block(
     assert "x-bf-vk" not in body["model"].get("generationConfig", {}).get("customHeaders", {})
 
 
+def test_qwen_clears_a_stranded_credential_in_the_generic_block(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """The credential belongs in one place.
+
+    An earlier version of the toggle wrote the virtual key into the
+    generic ``model.generationConfig`` block. Qwen Code ignores that
+    block when the active model resolves to a provider entry, so the
+    copy there was invisible -- but it was still a second copy of the
+    gateway credential, in the one block that *is* consulted for a model
+    with no provider entry. Such a model would send the gateway key to
+    whatever endpoint it does use.
+    """
+    settings = tmp_path / "settings.json"
+    body = _qwen_settings()
+    body["model"]["generationConfig"] = {"customHeaders": {"x-bf-vk": "sk-bf-stranded"}}
+    _write(settings, body)
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+
+    written = _read(settings)
+    generic = written["model"].get("generationConfig", {}).get("customHeaders", {})
+    assert "x-bf-vk" not in generic
+    entry = written["modelProviders"]["anthropic"][0]
+    assert entry["generationConfig"]["customHeaders"]["x-bf-vk"] == vk
+
+
+def test_qwen_direct_clears_the_generic_block_too(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """``direct`` leaves no harness-owned header anywhere."""
+    settings = tmp_path / "settings.json"
+    body = _qwen_settings()
+    body["model"]["generationConfig"] = {"customHeaders": {"x-bf-vk": "sk-bf-stranded"}}
+    _write(settings, body)
+    harness = _harness("qwen", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    written = _read(settings)
+    generic = written["model"].get("generationConfig", {}).get("customHeaders", {})
+    entry = written["modelProviders"]["anthropic"][0]
+    assert "x-bf-vk" not in generic
+    assert "x-bf-vk" not in entry.get("generationConfig", {}).get("customHeaders", {})
+
+
 def test_qwen_direct_restores_the_upstream_provider(
     tmp_path: Path, backup_dir: Path, vk: str
 ) -> None:

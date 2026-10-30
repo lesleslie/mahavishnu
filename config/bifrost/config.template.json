@@ -153,10 +153,9 @@
         "cache_by_provider": true,
         "cleanup_on_shutdown": true,
         "conversation_history_threshold": 8,
-        "default_cache_key": "default",
         "dimension": 1536,
         "embedding_model": "text-embedding-3-small",
-        "exclude_system_prompt": true,
+        "exclude_system_prompt": false,
         "provider": "openai",
         "threshold": 0.86,
         "ttl": "30m"

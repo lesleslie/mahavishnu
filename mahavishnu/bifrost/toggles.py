@@ -221,6 +221,10 @@ def _upsert_custom_header(
 
     _, entry = _active_provider(settings)
     target = entry if entry is not None else model
+    if entry is not None:
+        # The active model reads the provider entry, so the generic block's
+        # copy of these headers is a second copy of the same credential.
+        _strip_generic_model_headers(settings, harness)
     generation = target.setdefault("generationConfig", {})
     headers = generation.setdefault("customHeaders", {})
     headers[header] = value
@@ -269,6 +273,40 @@ def _harness_header_prefixes(harness: HarnessDescriptor) -> list[str]:
     if harness.cache_traffic_class is not None:
         prefixes.append(f"{CACHE_KEY_HEADER}:")
     return prefixes
+
+
+def _strip_harness_headers(generation: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Remove the harness-owned headers from one ``generationConfig`` block.
+
+    Only the headers this toggle writes are removed; anything else in
+    ``customHeaders`` is left alone.
+    """
+    headers = generation.get("customHeaders")
+    if not isinstance(headers, dict):
+        return
+    for prefix in _harness_header_prefixes(harness):
+        headers.pop(prefix.removesuffix(":"), None)
+    if not headers:
+        generation.pop("customHeaders", None)
+
+
+def _strip_generic_model_headers(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Remove the harness-owned headers from the generic ``model`` block.
+
+    Qwen Code reads the generic ``model.generationConfig`` block only for a
+    runtime model with no matching ``modelProviders`` entry. When the active
+    model *does* resolve to a provider entry, that block is ignored for it --
+    so a copy of the gateway credential left there is a second copy of a
+    secret in a block that would send it to whatever endpoint an unmatched
+    model uses. The credential belongs in exactly one place.
+    """
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return
+    generation = model.get("generationConfig")
+    if not isinstance(generation, dict):
+        return
+    _strip_harness_headers(generation, harness)
 
 
 def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
@@ -379,16 +417,15 @@ def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> Non
         return
     _, entry = _active_provider(settings)
     target = entry if entry is not None else model
-    generation = target.get("generationConfig")
-    if not isinstance(generation, dict):
-        return
-    headers = generation.get("customHeaders")
-    if not isinstance(headers, dict):
-        return
-    for prefix in prefixes:
-        headers.pop(prefix.removesuffix(":"), None)
-    if not headers:
-        generation.pop("customHeaders", None)
+    # Both blocks are the toggle's to clean: the provider entry is where the
+    # active model reads them, and the generic block is where an unmatched
+    # model would read them. A credential left in either still points at a
+    # gateway the harness is no longer talking to.
+    candidates = [model] if target is model else [target, model]
+    for candidate in candidates:
+        generation = candidate.get("generationConfig")
+        if isinstance(generation, dict):
+            _strip_harness_headers(generation, harness)
 
 
 # --------------------------------------------------------------------------
