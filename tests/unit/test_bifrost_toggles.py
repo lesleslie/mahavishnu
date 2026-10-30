@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from pathlib import Path  # noqa: TC003 -- used at runtime in the gate regression test
+from pathlib import Path  # used at runtime in the gate regression test
 import subprocess
 from typing import Any
 
@@ -56,6 +56,10 @@ def _harness(key: str, settings_path: Path) -> models.HarnessDescriptor:
     return dataclasses.replace(models.resolve_harness(key), settings_path=settings_path)
 
 
+#: The route line the Claude Code harness carries alongside the virtual key.
+_ROUTE_LINE = f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}"
+
+
 def _write(path: Path, body: dict[str, Any]) -> None:
     path.write_text(json.dumps(body, indent=2), encoding="utf-8")
 
@@ -80,7 +84,7 @@ def test_cc_writes_url_and_appends_virtual_key(tmp_path: Path, backup_dir: Path,
 
     env = _read(settings)["env"]
     assert env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:8471/anthropic"
-    assert env["ANTHROPIC_CUSTOM_HEADERS"] == "X-Other: keepme\nx-bf-vk: sk-vk-TEST"
+    assert env["ANTHROPIC_CUSTOM_HEADERS"] == f"X-Other: keepme\nx-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
 
 
 def test_cc_repeat_does_not_duplicate_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
@@ -92,7 +96,9 @@ def test_cc_repeat_does_not_duplicate_header(tmp_path: Path, backup_dir: Path, v
     toggles.apply(harness, "bifrost")
     toggles.apply(harness, "bifrost")
 
-    assert _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == "x-bf-vk: sk-vk-TEST"
+    assert (
+        _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
+    )
 
 
 def test_direct_restores_url_and_removes_our_header(
@@ -258,7 +264,9 @@ def test_force_overwrites_existing_credential(tmp_path: Path, backup_dir: Path, 
 
     toggles.apply(harness, "bifrost", force=True)
 
-    assert _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == "x-bf-vk: sk-vk-TEST"
+    assert (
+        _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
+    )
 
 
 def test_cli_exposes_no_virtual_key_argv_option() -> None:
@@ -416,7 +424,10 @@ def test_qwen_repoints_the_matching_provider_not_the_env_var(
 
     body = _read(settings)
     entry = body["modelProviders"]["anthropic"][0]
-    assert entry["baseUrl"] == f"http://{toggles.DEFAULT_BIFROST_HOST}:{toggles.DEFAULT_BIFROST_PORT}/anthropic"
+    assert (
+        entry["baseUrl"]
+        == f"http://{toggles.DEFAULT_BIFROST_HOST}:{toggles.DEFAULT_BIFROST_PORT}/anthropic"
+    )
     assert entry["generationConfig"]["customHeaders"]["x-bf-vk"] == vk
     # The OpenAI-protocol provider is a different wire format; repointing it
     # too would be a guess about a model this harness is not using.
@@ -466,9 +477,7 @@ def test_qwen_without_a_provider_uses_the_generic_block(
     assert body["env"]["OPENAI_BASE_URL"].endswith("/v1")
 
 
-def test_provider_url_follows_the_wire_protocol(
-    tmp_path: Path, backup_dir: Path, vk: str
-) -> None:
+def test_provider_url_follows_the_wire_protocol(tmp_path: Path, backup_dir: Path, vk: str) -> None:
     """The ``anthropic`` provider must not be sent to the OpenAI endpoint."""
     settings = tmp_path / "settings.json"
     _write(
@@ -502,3 +511,321 @@ def test_status_names_the_provider_field_it_actually_wrote(
     out = capsys.readouterr().out
     assert "modelProviders.anthropic.baseUrl: Bifrost" in out
     assert "x-bf-vk header: present" in out
+
+
+# ---------------------------------------------------------------------------
+# route header -- req: REQ-BIFROST-038
+# ---------------------------------------------------------------------------
+
+
+def _header_lines(raw: str | None) -> list[str]:
+    return [ln.strip() for ln in (raw or "").splitlines() if ln.strip()]
+
+
+def test_cc_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Claude Code is pinned to the Anthropic-native provider.
+
+    The gateway config defines two providers that both claim ``MiniMax-M3``.
+    Without an explicit route, bare model-name resolution can land on the
+    OpenAI-compatible one, which returns reasoning inline in the assistant
+    text instead of as Anthropic thinking blocks.
+    """
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {}})
+
+    toggles.apply(_harness("cc", settings), "bifrost")
+
+    raw = _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
+    assert f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}" in _header_lines(raw)
+
+
+def test_qwen_does_not_write_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Qwen speaks the OpenAI protocol and keeps the OpenAI-compatible path."""
+    settings = tmp_path / "settings.json"
+    _write(settings, _qwen_settings())
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+
+    # The active model resolves to a modelProviders entry, so the header
+    # lands on that entry rather than on the runtime model.
+    entry = _read(settings)["modelProviders"]["anthropic"][0]
+    headers = entry["generationConfig"]["customHeaders"]
+    assert models.ROUTE_HEADER not in headers
+
+
+def test_direct_removes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Restoring the direct endpoint must not leave the route behind.
+
+    A stranded ``x-bf-route`` header would keep pointing at Bifrost's
+    provider selection on a request that no longer goes to Bifrost.
+    """
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {}})
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    env = _read(settings).get("env", {})
+    assert not any(
+        line.startswith(f"{models.ROUTE_HEADER}:")
+        for line in _header_lines(env.get("ANTHROPIC_CUSTOM_HEADERS"))
+    )
+
+
+def test_direct_keeps_unrelated_headers_when_stripping_the_route(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """Only our own headers are removed; a foreign header survives."""
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {"ANTHROPIC_CUSTOM_HEADERS": "x-team: platform"}})
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    lines = _header_lines(_read(settings).get("env", {}).get("ANTHROPIC_CUSTOM_HEADERS"))
+    assert "x-team: platform" in lines
+    assert not any(line.startswith(f"{models.ROUTE_HEADER}:") for line in lines)
+
+
+def test_route_header_is_installed_on_an_already_configured_host(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """A host already pointed at Bifrost must still get the route header.
+
+    The no-op check used to short-circuit on "the URL matches and the key
+    matches", so the route header was never installed on a host that had
+    been routed through Bifrost *before* the route existed -- which is every
+    host that ran the toggle before this change, and every host that hit
+    the 2026-10-29 outage. The gateway rule then never fires for Claude
+    Code and the provider choice stays ambiguous.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-TEST",
+            }
+        },
+    )
+
+    toggles.apply(_harness("cc", settings), "bifrost")
+
+    lines = _header_lines(_read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"])
+    assert _ROUTE_LINE in lines
+
+
+def test_route_install_does_not_overwrite_the_backup(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """Installing the route header must not clobber the restore point.
+
+    The backup holds the pre-toggle upstream URL that ``direct`` restores.
+    Overwriting it with the Bifrost URL would strand the harness on the
+    gateway when the operator asks to go back to direct.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-TEST",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+    harness.backup_path.parent.mkdir(parents=True, exist_ok=True)
+    original = json.dumps({"url": "https://api.minimax.io/anthropic", "credential_present": False})
+    harness.backup_path.write_text(original + "\n", encoding="utf-8")
+
+    toggles.apply(harness, "bifrost")
+
+    assert harness.backup_path.read_text(encoding="utf-8") == original + "\n"
+
+
+def test_route_header_is_installed_without_a_virtual_key(tmp_path: Path, backup_dir: Path) -> None:
+    """The route header must not depend on a virtual key being available.
+
+    The route header is a routing *signal*, not a credential. Writing it as
+    a side effect of writing the credential meant a host whose settings
+    carried a stale key -- and whose operator had no ``BIFROST_VIRTUAL_KEY``
+    exported -- never received it. The gateway rule then never fires and the
+    provider choice stays ambiguous, which is the whole problem the route
+    exists to solve.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-STALE",
+            }
+        },
+    )
+
+    toggles.apply(_harness("cc", settings), "bifrost")
+
+    lines = _header_lines(_read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"])
+    assert _ROUTE_LINE in lines
+
+
+def test_force_does_not_record_the_bifrost_url_as_the_prior_endpoint(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """The backup must keep the endpoint ``direct`` restores.
+
+    On a host that is already pointed at Bifrost the current URL *is* the
+    Bifrost URL. Recording that as the "prior" endpoint made ``direct``
+    restore the gateway instead of the upstream, stranding the harness on
+    Bifrost while the operator believed they had left.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-OLD",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+    harness.backup_path.parent.mkdir(parents=True, exist_ok=True)
+    harness.backup_path.write_text(
+        json.dumps({"url": "https://api.minimax.io/anthropic", "credential_present": False}) + "\n",
+        encoding="utf-8",
+    )
+
+    toggles.apply(harness, "bifrost", force=True)
+
+    backup = json.loads(harness.backup_path.read_text(encoding="utf-8"))
+    assert backup["url"] == "https://api.minimax.io/anthropic", (
+        "the backup must not record the Bifrost URL as the endpoint to restore"
+    )
+
+
+def test_route_only_install_warns_when_no_virtual_key_is_configured(
+    tmp_path: Path, backup_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Installing the route header must still say the gateway will 401.
+
+    Without a virtual key every request is rejected. A toggle that reports
+    success without mentioning it leaves the operator believing Claude Code
+    is routed when nothing can get through.
+    """
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic"}})
+
+    toggles.apply(_harness("cc", settings), "bifrost")
+
+    captured = capsys.readouterr()
+    assert "no virtual key" in (captured.out + captured.err)
+
+
+def test_direct_removes_a_stranded_route_header_on_a_hand_set_url(
+    tmp_path: Path, backup_dir: Path
+) -> None:
+    """A route header left on a non-Bifrost endpoint is ours to remove.
+
+    The header is a signal that selects a provider on the gateway. Left on
+    a hand-set endpoint it keeps selecting for traffic that no longer goes
+    to the gateway, and it is sent to a third party.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": f"X-Other: keepme\n{_ROUTE_LINE}",
+            }
+        },
+    )
+
+    toggles.apply(_harness("cc", settings), "direct")
+
+    headers = _read(settings)["env"].get("ANTHROPIC_CUSTOM_HEADERS", "")
+    assert models.ROUTE_HEADER not in headers
+    assert "X-Other: keepme" in headers
+
+
+def test_the_model_sink_removes_the_route_header(tmp_path: Path, backup_dir: Path) -> None:
+    """``direct`` must drop the route header from the model sink too.
+
+    The env sink already dropped it; the model sink did not, so a harness
+    that used one would keep a route header selecting the gateway's
+    provider after the operator asked to go direct.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "model": {
+                "generationConfig": {
+                    "customHeaders": {
+                        models.VIRTUAL_KEY_HEADER: "sk-vk-TEST",
+                        models.ROUTE_HEADER: models.ROUTE_ANTHROPIC_NATIVE,
+                    }
+                }
+            }
+        },
+    )
+    harness = dataclasses.replace(
+        _harness("qwen", settings),
+        route_header=(models.ROUTE_HEADER, models.ROUTE_ANTHROPIC_NATIVE),
+    )
+
+    toggles.apply(harness, "direct")
+
+    headers = _read(settings)["model"]["generationConfig"].get("customHeaders", {})
+    assert models.ROUTE_HEADER not in headers
+    assert models.VIRTUAL_KEY_HEADER not in headers
+
+
+def test_status_reports_the_route_header(
+    tmp_path: Path, backup_dir: Path, vk: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``cc-url status`` must be able to show the route it installed."""
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {}})
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "status")
+
+    out = capsys.readouterr().out
+    assert f"{models.ROUTE_HEADER} header:" in out
+    assert models.ROUTE_ANTHROPIC_NATIVE in out
+
+
+def test_template_declares_the_anthropic_native_rule() -> None:
+    """The gateway template must carry the rule the route header matches.
+
+    The template is only a seed -- ``config.db`` is authoritative at runtime
+    -- but the two must not drift, or a fresh deployment routes differently
+    from a live one.
+    """
+    template = Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
+    rules = json.loads(template.read_text(encoding="utf-8"))["governance"]["routing_rules"]
+
+    matches = [r for r in rules if models.ROUTE_ANTHROPIC_NATIVE in (r.get("cel_expression") or "")]
+    assert matches, f"no routing rule matches {models.ROUTE_ANTHROPIC_NATIVE!r}"
+
+    rule = matches[0]
+    assert rule["enabled"] is True
+    # The provider is pinned -- that is what removes the ambiguity between
+    # the two providers that both claim MiniMax-M3. The model is NOT
+    # pinned: upstream keeps the incoming model when a target omits it, and
+    # Claude Code chooses between MiniMax-M3, MiniMax-M3[1m] and
+    # MiniMax-M3.1-Flash per request class. Pinning the model would
+    # overwrite that choice and silently drop the 1M-context variant.
+    assert rule["targets"][0]["provider"] == "minimax-anthropic"
+    assert not rule["targets"][0].get("model"), (
+        "the rule pins a model; upstream overwrites the caller's model "
+        "identifier with it, downgrading Claude Code's 1M-context model"
+    )

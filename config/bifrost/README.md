@@ -2,7 +2,7 @@
 
 This directory contains the bootstrap artifacts for the local Bifrost gateway.
 
-Current status (verified live, 2026-10-20):
+Current status (verified live, 2026-10-30):
 
 - **Bifrost is live on `127.0.0.1:8471`.** Verified by
   `curl -fsS http://127.0.0.1:8471/health` returning `{"status":"ok",...}`
@@ -11,8 +11,22 @@ Current status (verified live, 2026-10-20):
   `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
   launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
   `mahavishnu bifrost status` are healthy.
-- Live providers: `minimax-openai` (M3 primary, M2.7 fallback), `llama-server`
-  (`qwen3-8b-q4_k_m` local), `anthropic`, `openai` (`gpt-5.4` family).
+- The transport binary is pinned to **v2.4.0** (upgraded from v2.3.2 on
+  2026-10-29) — see "Transport Version Pin" below. Verify with
+  `curl -s http://127.0.0.1:8471/api/version`.
+- Live providers: `minimax-anthropic` (MiniMax's Anthropic-native
+  `/anthropic/v1/messages` — the path Claude Code needs), `minimax-openai`
+  (MiniMax's OpenAI-compatible `/v1/chat/completions` — the path the
+  Mahavishnu worker uses), `llama-server` (`qwen3-8b-q4_k_m` local), `openai`
+  (`gpt-5.4` family).
+- **The live store still carries the first version of the
+  `route-anthropic-native` rule** (model pinned to `MiniMax-M3`, fallback
+  `minimax-openai/MiniMax-M3`, no `count_tokens` permission). The template in
+  this directory carries the corrected rule — see "Custom Providers: Three
+  Silent Traps" — but the store is a separate artifact and is only re-seeded
+  from the template when it is explicitly synced. Until that happens the live
+  gateway still downgrades the 1M-context model, refuses the token-count
+  call, and has an inert fallback.
 - Claude Code's `ANTHROPIC_BASE_URL` in `~/.claude/settings.json` is currently
   `https://api.minimax.io/anthropic` (direct-to-MiniMax, not via Bifrost).
 - The wired-worker opt-ins (`terminal-claude`, `terminal-qwen`, `terminal-codex`)
@@ -28,6 +42,192 @@ Before any cutover, run these checks in order. Any failure = pause and investiga
 1. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
    by `mahavishnu bifrost foreground` only after the listener probe succeeds.
 1. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
+
+## Transport Version Pin
+
+The npm package `@maximhq/bifrost` is **only a launcher**. It downloads the
+native `bifrost-http` binary from `downloads.getmaxim.ai` and resolves
+`latest` on every boot. The npm version number (1.6.x) is unrelated to the
+transport version that actually runs.
+
+The transport version is pinned to **v2.4.0** in two places that a CI guard
+test keeps in sync:
+
+- `mahavishnu/bifrost/paths.py` → `BIFROST_TRANSPORT_VERSION`
+- `config/launchd/ai.bifrost.gateway.plist` → `BIFROST_TRANSPORT_VERSION`
+
+The launcher receives `--transport-version=v2.4.0` and strips the flag before
+exec'ing the binary.
+
+**To roll back on the launchd path**, edit `BIFROST_TRANSPORT_VERSION` in
+`config/launchd/ai.bifrost.gateway.plist` and restart the gateway.
+launchd's `EnvironmentVariables` *replace* the inherited environment, so an
+export in your shell never reaches the gateway, and `install_plist()`
+re-copies the repo plist over the installed one on every
+start/restart/rebootstrap — editing the installed plist directly is undone.
+The `BIFROST_TRANSPORT_VERSION` environment variable only affects a
+foreground run (`mahavishnu bifrost foreground`).
+
+Two traps this pin avoids:
+
+- **A silent upstream swap.** Unpinned, the next upstream release replaces the
+  binary on the next restart, with no change on this side.
+- **A launcher too old to parse the flag.** The flag is stripped by the
+  launcher's own argument parser; a launcher that does not know it forwards
+  the flag to the binary, which rejects unknown flags and refuses to boot.
+  `gateway.launcher_supports_transport_version()` checks the cached launcher
+  and falls back to `npx` when it is too old.
+
+**Which cached launcher gets used.** `find_cached_bifrost_bin()` picks the
+**newest** cached `@maximhq/bifrost`, by the version in its `package.json` —
+not by path. npm's `_npx` cache directories are named by an opaque hash, so
+path order is arbitrary: it selected the *older* launcher (1.6.2 rather than
+1.6.3) on this host. The newer launcher validates the arguments it forwards
+to the transport binary against a known-flag list; the older one forwards
+them verbatim, and the binary refuses to boot on a flag it does not know.
+
+Verify what is actually running:
+
+```bash
+curl -s http://127.0.0.1:8471/api/version   # e.g. "v2.4.0"
+```
+
+**Architecture matters.** The launcher picks the build from `node -p process.arch` (`x64` → `darwin/amd64`, `arm64` → `darwin/arm64`). Downloading
+a binary by hand with the wrong architecture fails at exec with
+`spawnSync ... Unknown system error -86` (EBADARCH). This host is Intel
+(x86_64).
+
+## Custom Providers: Three Silent Traps
+
+Adding a provider to `config.template.json` looks like it should just work.
+It often does not, and when it does not, **the gateway starts cleanly, health
+is green, and the request simply does not work**. All three traps below cost
+a Claude Code route that had been silently falling through to the wrong
+provider.
+
+**1. A custom provider may not be named after a standard provider.** Upstream
+refuses such a name outright — the providers API answers HTTP 400, *"Custom
+provider cannot be same as a standard provider"* — and the config-file import
+on this deployment did not register the provider either: the store held no
+`anthropic` row and every Claude Code request failed with `failed to get config for provider anthropic: not found`. Name custom providers distinctly:
+`minimax-anthropic`, not `anthropic`. The key name is a good hint — a key
+called `minimax-anthropic-primary` implies a provider called
+`minimax-anthropic`.
+
+**2. `allowed_requests` and `request_path_overrides` are keyed by request
+type, and `messages` is not one of them.** Bifrost's Anthropic HTTP route
+(`/anthropic/v1/messages`) bridges to the generic `responses` request type.
+So:
+
+```json
+"custom_provider_config": {
+  "allowed_requests": {
+    "count_tokens": true,
+    "responses": true,
+    "responses_stream": true
+  },
+  "base_provider_type": "anthropic",
+  "request_path_overrides": {
+    "count_tokens": "/anthropic/v1/messages/count_tokens",
+    "responses": "/anthropic/v1/messages",
+    "responses_stream": "/anthropic/v1/messages"
+  }
+}
+```
+
+An unknown key is ignored, and because unspecified `allowed_requests` fields
+default to `false`, a single wrong key leaves the provider allowing
+*nothing*.
+
+`count_tokens` is its own request type and its own HTTP route
+(`POST /v1/messages/count_tokens`). It needs both the permission *and* the
+path override: the default Anthropic path does not exist on MiniMax, whose
+Anthropic surface lives under `/anthropic/`. Claude Code sends the
+token-count call with the same `x-bf-route` header as everything else, so
+the provider has to allow it or the call fails with an operation-not-allowed
+error.
+
+**3. A routing-rule target that names a `model` overwrites the caller's
+model.** Upstream keeps the incoming model when the target omits it:
+
+> `model` — *Target model (omit or empty to use the incoming request model)*
+
+So a target that pins `MiniMax-M3` rewrites every request that asked for
+something else. Claude Code picks the model per request class
+(`MiniMax-M3`, `MiniMax-M3[1m]` for the 1M-context variant,
+`MiniMax-M3.1-Flash` for the fast slot), and a pinned model silently
+downgrades the 1M-context variant — no error, no log line. Pin the
+**provider**; let the model through. The provider's key must then list every
+model id the caller actually sends.
+
+**How to tell whether a provider actually landed:** the config store is
+authoritative, so compare it against the template rather than trusting the
+file:
+
+```bash
+python3 -c "
+import pathlib, sqlite3
+db = pathlib.Path.home()/'.config'/'bifrost'/'config.db'
+con = sqlite3.connect(f'file:{db}?mode=ro', uri=True)
+print([r[0] for r in con.execute('SELECT name FROM config_providers')])
+"
+```
+
+`tests/unit/test_bifrost_config_template.py` pins all three against the
+template. It cannot see the live store — a store that was never re-seeded
+keeps serving the old configuration no matter what the template says.
+
+## The Anthropic-Native Path and the Thinking Budget
+
+The `minimax-anthropic` provider serves MiniMax's Anthropic-native
+`/anthropic/v1/messages`, which returns genuine Anthropic responses —
+reasoning as a **signed `thinking` block**, not inline in the assistant text.
+
+It also enforces Anthropic's thinking floor: with `thinking` enabled, the
+budget must be **at least 1024 tokens**. A request below that is rejected
+with `400 invalid_request_error: reasoning.max_tokens must be >= 1024 for anthropic`.
+
+**The `route-anthropic-native` rule's fallback is
+`minimax-anthropic/MiniMax-M3.1-Flash`** — the same provider on a different
+model. It has to be: the Anthropic ingress bridges every request to the
+`responses` request type, and the OpenAI-compatible `minimax-openai` provider
+only allows `chat_completion`, so it cannot serve this request at all. A
+chat-completions fallback there is inert, and the request fails hard instead
+of degrading.
+
+A fallback on the same provider also means a below-1024 thinking budget
+still fails, rather than silently degrading to inline reasoning: both models
+speak the Anthropic protocol and enforce the same floor. Claude Code's own
+thinking budgets are 1024 and above, so it does not hit this.
+
+If reasoning appears inline in the assistant text, check the gateway's
+request log for the request's provider attribution before assuming the route
+is misconfigured:
+
+```bash
+python3 -c "
+import pathlib, sqlite3
+l = sqlite3.connect(f\"file:{pathlib.Path.home()/'.config'/'bifrost'/'logs.db'}?mode=ro\", uri=True)
+l.execute('PRAGMA query_only = ON')
+for ts, prov, rule, key, status in l.execute(
+    'SELECT timestamp, provider, routing_rule_id, selected_key_name, status '
+    'FROM logs ORDER BY timestamp DESC LIMIT 5'):
+    print(f'{ts[:23]} {prov!r:20} rule={rule!r} key={key!r} status={status!r}')
+"
+```
+
+### The route is a bridge, not a wire
+
+`minimax-anthropic` is a *custom* provider, and upstream's Anthropic raw
+passthrough only fires for the standard provider name `anthropic` — a custom
+name falls through to the typed conversion path. So the request is
+re-serialised into Bifrost's internal Responses shape and re-encoded on the
+way back. The **shape** is what Claude Code needs (a signed `thinking`
+block, real Anthropic content blocks), but it is not byte-for-byte
+forwarding: Anthropic fields with no representation in the Responses schema
+are dropped by the bridge rather than passed through, and raw request/response
+capture is not populated. That trade-off is unavoidable while the provider
+must carry a non-standard name — see trap 1 above.
 
 ## Files
 
@@ -267,13 +467,36 @@ Current task mappings:
 - `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3`
 - `image` -> deferred until a supported MiniMax multimodal route exists
 - `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3`
+- `x-bf-route: anthropic_native` -> provider `minimax-anthropic`, model as sent by the caller (fallback `minimax-anthropic/MiniMax-M3.1-Flash`)
+
+The `anthropic_native` route is the **only one that can currently fire**.
+No production code in this repo emits `x-bf-task` — the package that used to
+(`mahavishnu/llm_gateway/`) has been deleted — so the five task-keyed rules
+above are unreachable in production. `x-bf-route` is sent by the Claude Code
+harness: `mahavishnu bifrost cc-url bifrost` writes
+`x-bf-route: anthropic_native` into Claude Code's `ANTHROPIC_CUSTOM_HEADERS`,
+and `cc-url direct` removes it again. `cc-url status` reports whether it is
+present.
+
+Two providers claim `MiniMax-M3`, so the route is what makes the choice
+unambiguous: `minimax-anthropic` reaches MiniMax over its Anthropic-native
+`/anthropic/v1/messages` (genuine Anthropic responses, signed `thinking`
+blocks), while `minimax-openai` reaches it over the OpenAI-compatible
+`/v1/chat/completions` (reasoning inline in the assistant text).
 
 Notes:
 
 - these rules are intentionally header-driven for now
 - they are meant to reproduce the useful routing buckets from CCR without introducing a second router
-- all M3 fallbacks are M3-highspeed (same generation); M2.7 variants are reserved as the documented offline fallback chain
+- all M3 fallbacks are M3.1-Flash (same generation); the M2.x line is retired upstream (2026-11-18) and no longer referenced
 - the `image` route is currently disabled in the template until the gateway has a supported multimodal adapter
+- **prerequisite for routing Claude Code through the gateway**: Claude Code
+  must not share the semantic cache's shared `default` bucket. Its system
+  prompt carries the date, working directory and environment, and the plugin
+  excludes the system prompt from the cache key, so two agents with the same
+  user turn would collide. The toggle does not yet send a distinct
+  `x-bf-cache-key` for Claude Code, so that has to be added **before** the
+  Claude Code cutover, not after it.
 
 ## Verified Bootstrap State
 

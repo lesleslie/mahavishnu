@@ -44,6 +44,7 @@ def _no_launchd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(lifecycle, "SOURCE_PLIST", tmp_path / "source.plist")
     monkeypatch.setattr(lifecycle, "READY_FILE", tmp_path / "bifrost.ready")
     monkeypatch.setattr(lifecycle, "PORT", 18471)
+    monkeypatch.setattr(lifecycle, "port_is_listening", lambda _port=None: True)
     monkeypatch.setattr(lifecycle, "kill_listener", lambda: None)
     monkeypatch.setattr(lifecycle, "install_plist", lambda: None)
     monkeypatch.setattr(lifecycle, "bootstrap", lambda: None)
@@ -92,6 +93,74 @@ def test_start_leaves_harness_untouched_when_never_ready(
     lifecycle.start()
 
     assert _calls() == []
+
+
+def test_start_leaves_harness_untouched_when_port_is_dead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stale ready file must not point the harnesses at a dead port.
+
+    Regression for the outage of 2026-10-29: the ready file outlived a boot
+    that failed, ``_after_ready`` trusted it, and Claude Code was repointed
+    at a gateway that never bound 8471 -- which took the live session down.
+
+    The readiness contract needs two signals to agree: the ready file *and*
+    the port actually listening.
+    """
+    monkeypatch.setattr(lifecycle, "port_is_listening", lambda _port=None: False)
+
+    lifecycle.start()
+
+    assert _calls() == []
+
+
+def test_start_retracts_a_stale_ready_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The ready file is retracted before the relaunch, not after it.
+
+    ``gateway.launch_bifrost`` unlinks the file inside the child, which
+    starts only after ``kickstart`` returns -- so ``_after_ready`` would
+    otherwise poll and find the previous run's file.
+    """
+    ready = tmp_path / "bifrost.ready"
+    ready.touch()
+    monkeypatch.setattr(lifecycle, "READY_FILE", ready)
+
+    lifecycle.start()
+
+    assert not ready.exists()
+
+
+@pytest.mark.parametrize("command", ["start", "restart", "rebootstrap"])
+def test_every_relaunch_command_retracts_the_ready_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, command: str
+) -> None:
+    """Every command that relaunches the gateway retracts the ready file.
+
+    Asserting this for ``start`` alone left ``restart`` and ``rebootstrap``
+    free to reintroduce the outage the gate exists to prevent: a stale
+    ready file from the previous run survives, ``_after_ready`` trusts it,
+    and the harnesses are repointed at a gateway that never bound.
+    """
+    ready = tmp_path / "bifrost.ready"
+    ready.touch()
+    monkeypatch.setattr(lifecycle, "READY_FILE", ready)
+
+    getattr(lifecycle, command)()
+
+    assert not ready.exists()
+
+
+def test_readiness_budget_outlasts_the_gateway_bind_timeout() -> None:
+    """The parent's wait must outlast the child's own bind timeout.
+
+    The supervisor writes the ready file only *after* the child binds, and
+    Bifrost >= 2.3.0 syncs its MCP library catalog at startup, so a cold
+    cache can take 60-180s. A budget at the low end of that window made the
+    gate give up on a gateway that was about to come up -- the failure is
+    safe (the client is left alone rather than aimed at a dead port) but it
+    reports a healthy gateway as missing.
+    """
+    assert lifecycle.READY_BUDGET_SECONDS > gateway.READY_TIMEOUT_SECONDS
 
 
 def test_stop_restores_before_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -262,9 +331,7 @@ def test_backup_survives_a_rough_umask(tmp_path, monkeypatch: pytest.MonkeyPatch
     assert (backup_dir / "config.db").stat().st_mode & 0o777 == 0o600
 
 
-def test_rebootstrap_does_not_double_delete(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> None:
+def test_rebootstrap_does_not_double_delete(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     """``rebootstrap`` seeds once, not twice.
 
     The Typer command used to call ``sync_config()`` and then

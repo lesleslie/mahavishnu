@@ -224,8 +224,10 @@ DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(TaskCatego
 # multimodal input). The remaining categories stay on MiniMax-M3, the
 # stable production model.
 # MiniMax-M3-highspeed does not exist (verified 2026-09-16, error 2013);
-# do not reintroduce that name. M2.7 / M2.7-highspeed remain available
-# as the final fallback in CloudWorkerConfig.model.
+# do not reintroduce that name. M2.7 / M2.7-highspeed are retired
+# (MiniMax closes them to new users 2026-10-19 and retires them
+# 2026-11-18), so the fallback chain is M3 / M3.1-Flash with the local
+# llama_server provider as the last resort.
 DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
     TaskCategory.CODE_GENERATION: "MiniMax-M3",
     TaskCategory.CODE_REVIEW: "MiniMax-M3",

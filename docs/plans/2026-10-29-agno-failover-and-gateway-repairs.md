@@ -208,7 +208,12 @@ requirements:
 **Goal:** a gateway-routed Anthropic provider asks for a served model.
 
 **Tasks:**
-- `core/config.py`: `GATEWAY_ANTHROPIC_MODEL_ID = "anthropic/MiniMax-M3"`.
+- `core/config.py`: `GATEWAY_ANTHROPIC_MODEL_ID = "minimax-anthropic/MiniMax-M3"`.
+  The provider id must be the *custom* provider's name, not the base type:
+  a config entry named after a standard provider (`anthropic`) is dropped by
+  the gateway's config-store import, and the gateway then answers
+  `failed to get config for provider anthropic: not found`. See
+  `docs/plans/2026-10-29-bifrost-minimax-anthropic-route.md` §4.1.
 - `_ResolvedEndpoint` carries an optional `gateway_model_id`;
   `_model_id_for` prefers it unless the operator pinned `model_id`.
 
@@ -299,6 +304,23 @@ llama-server]`.
 Restoring Bifrost's `anthropic` provider to the live store (§4.6) was
 put to the operator on 2026-10-29. **Decision: leave the live store
 alone.**
+
+> **Superseded 2026-10-30.** The provider is now in the live store — under
+> the name `minimax-anthropic`, not `anthropic`. The template had used a
+> standard provider name, which the gateway's config-store import silently
+> drops, so the `anthropic` provider this decision was about had never
+> existed. The store now holds `llama-server`, `minimax-anthropic`,
+> `minimax-openai` and `openai`, and the routing rule that sends Claude
+> Code to the Anthropic-native provider is live. `GATEWAY_ANTHROPIC_MODEL_ID`
+> is updated to match. See
+> `docs/plans/2026-10-29-bifrost-minimax-anthropic-route.md`.
+>
+> The reasoning below still stands as the record of why the store was left
+> alone *at that point* — the risk was a concurrent session writing to
+> `config/bifrost/*`, and the sanctioned `--drop-db` repair would have
+> regenerated the virtual key. What changed is that the provider was
+> restored by a safe path (a `config.json` edit plus a restart, which
+> preserves the store's keys) rather than by rebuilding it.
 
 Rationale:
 

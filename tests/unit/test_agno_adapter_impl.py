@@ -131,7 +131,7 @@ def minimax_llm_config() -> ImplAgnoLLMConfig:
     """Create MiniMax LLM config for testing."""
     return ImplAgnoLLMConfig(
         provider=LLMProvider.MINIMAX,
-        model_id="MiniMax-M2.7",
+        model_id="MiniMax-M3.1-Flash",
         api_key_env="MINIMAX_API_KEY",
         base_url="https://api.minimax.io/v1",
         temperature=0.7,
@@ -694,7 +694,7 @@ class TestLLMProviderFactory:
         """Test MiniMax model creation via OpenAI-compatible endpoint."""
         config = ImplAgnoLLMConfig(
             provider=LLMProvider.MINIMAX,
-            model_id="MiniMax-M2.7",
+            model_id="MiniMax-M3.1-Flash",
             base_url="https://api.minimax.io/v1",
             temperature=0.7,
             max_tokens=4096,
@@ -709,7 +709,7 @@ class TestLLMProviderFactory:
 
             mock_cls.assert_called_once()
             call_kwargs = mock_cls.call_args[1]
-            assert call_kwargs["id"] == "MiniMax-M2.7"
+            assert call_kwargs["id"] == "MiniMax-M3.1-Flash"
             assert call_kwargs["api_key"] == "test-minimax-key"
             assert call_kwargs["base_url"] == "https://api.minimax.io/v1"
             assert call_kwargs["temperature"] == 0.7
@@ -865,7 +865,7 @@ class TestLLMProviderChain:
 
     def test_explicit_model_id_is_kept_for_the_primary_provider(self) -> None:
         """An operator-pinned model id survives the chain resolution."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, model_id="MiniMax-M2.7")
+        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, model_id="MiniMax-M3.1-Flash")
         factory = LLMProviderFactory(config)
 
         with patch.dict(os.environ, {"MINIMAX_API_KEY": "minimax-key"}):
@@ -874,7 +874,7 @@ class TestLLMProviderChain:
 
                 factory.create_model()
 
-                assert mock_cls.call_args[1]["id"] == "MiniMax-M2.7"
+                assert mock_cls.call_args[1]["id"] == "MiniMax-M3.1-Flash"
 
     def test_duplicate_provider_is_only_tried_once(self) -> None:
         """A provider listed as both primary and fallback appears once."""

@@ -13,6 +13,24 @@
   "governance": {
     "routing_rules": [
       {
+        "cel_expression": "headers[\"x-bf-route\"] == \"anthropic_native\"",
+        "description": "Pin Claude Code to the Anthropic-native MiniMax provider. The gateway config defines two providers that both claim MiniMax-M3, and bare model-name resolution cannot choose between them: the OpenAI-compatible one returns reasoning inline in the assistant text, while this one returns genuine Anthropic responses with thinking blocks. The target pins the provider only -- upstream keeps the incoming model when a target omits it -- because Claude Code picks the model per request class (MiniMax-M3, MiniMax-M3[1m], MiniMax-M3.1-Flash) and a pinned model would silently downgrade the 1M-context variant. The fallback stays on the Anthropic-native provider: the Anthropic ingress bridges every request to the 'responses' request type, which the chat-completions-only 'minimax-openai' provider cannot serve.",
+        "enabled": true,
+        "fallbacks": [
+          "minimax-anthropic/MiniMax-M3.1-Flash"
+        ],
+        "id": "route-anthropic-native",
+        "name": "Anthropic-Native Claude Code Route",
+        "priority": 5,
+        "scope": "global",
+        "targets": [
+          {
+            "provider": "minimax-anthropic",
+            "weight": 1
+          }
+        ]
+      },
+      {
         "cel_expression": "headers[\"x-bf-task\"] == \"think\" || headers[\"x-bf-route\"] == \"think\"",
         "description": "Route high-reasoning tasks to MiniMax's strongest text model.",
         "enabled": true,
@@ -148,31 +166,6 @@
     }
   ],
   "providers": {
-    "anthropic": {
-      "custom_provider_config": {
-        "allowed_requests": {
-          "messages": true
-        },
-        "base_provider_type": "anthropic",
-        "request_path_overrides": {
-          "messages": "/anthropic/v1/messages"
-        }
-      },
-      "keys": [
-        {
-          "models": [
-            "MiniMax-M3",
-            "MiniMax-M3.1-Flash"
-          ],
-          "name": "minimax-anthropic-primary",
-          "value": "env.MINIMAX_API_KEY",
-          "weight": 1.0
-        }
-      ],
-      "network_config": {
-        "base_url": "https://api.minimax.io"
-      }
-    },
     "llama-server": {
       "custom_provider_config": {
         "allowed_requests": {
@@ -197,6 +190,36 @@
       ],
       "network_config": {
         "base_url": "http://127.0.0.1:8081"
+      }
+    },
+    "minimax-anthropic": {
+      "custom_provider_config": {
+        "allowed_requests": {
+          "count_tokens": true,
+          "responses": true,
+          "responses_stream": true
+        },
+        "base_provider_type": "anthropic",
+        "request_path_overrides": {
+          "count_tokens": "/anthropic/v1/messages/count_tokens",
+          "responses": "/anthropic/v1/messages",
+          "responses_stream": "/anthropic/v1/messages"
+        }
+      },
+      "keys": [
+        {
+          "models": [
+            "MiniMax-M3",
+            "MiniMax-M3[1m]",
+            "MiniMax-M3.1-Flash"
+          ],
+          "name": "minimax-anthropic-primary",
+          "value": "env.MINIMAX_API_KEY",
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "https://api.minimax.io"
       }
     },
     "minimax-openai": {

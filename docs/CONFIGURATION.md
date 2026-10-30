@@ -562,7 +562,7 @@ See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH 
 
 ## LLM Provider Configuration
 
-See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M2.7 and M2.7-highspeed are fallback models. Local `llama_server` (qwen3.5) remains a secondary fallback.
+See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M3.1-Flash is the fallback model (M2.7/M2.7-highspeed retired 2026-11-18). Local `llama_server` (qwen3.5) remains a secondary fallback.
 
 Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`); the YAML and in-code routing are intentionally pinned together.
 

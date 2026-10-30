@@ -278,7 +278,7 @@ class TestLLMProviderFactory:
     def test_create_minimax_model(self, agno_llm_config: AgnoLLMConfig) -> None:
         """Test MiniMax model creation."""
         agno_llm_config.provider = LLMProvider.MINIMAX
-        agno_llm_config.model_id = "MiniMax-M2.7"
+        agno_llm_config.model_id = "MiniMax-M3.1-Flash"
         agno_llm_config.base_url = "https://api.minimax.io/v1"
 
         factory = LLMProviderFactory(agno_llm_config)
@@ -291,7 +291,7 @@ class TestLLMProviderFactory:
 
             mock_openai.assert_called_once()
             call_kwargs = mock_openai.call_args[1]
-            assert call_kwargs["id"] == "MiniMax-M2.7"
+            assert call_kwargs["id"] == "MiniMax-M3.1-Flash"
             assert call_kwargs["api_key"] == "test-key"
             assert call_kwargs["base_url"] == "https://api.minimax.io/v1"
             assert model == mock_model
@@ -477,7 +477,7 @@ class TestLLMProviderFactoryBifrostRouting:
         behavior as the OpenAI factory.
         """
         agno_llm_config.provider = LLMProvider.MINIMAX
-        agno_llm_config.model_id = "MiniMax-M2.7"
+        agno_llm_config.model_id = "MiniMax-M3.1-Flash"
         agno_llm_config.base_url = None
         self._enable_bifrost(monkeypatch, routes=("qwen_route",))
 

@@ -145,16 +145,21 @@ PROVIDER_DEFAULT_MODEL: dict[LLMProvider, str] = {
 #: Model id for the Anthropic provider when the endpoint resolves through
 #: the Bifrost gateway.
 #:
-#: The gateway's ``anthropic`` provider is a *custom* Anthropic-protocol
-#: provider backed by MiniMax (``config/bifrost/config.template.json``), so
-#: its model catalogue is MiniMax's — ``claude-sonnet-4-6`` is not served
-#: and the gateway answers ``failed to get config for provider anthropic:
-#: not found``. The gateway-prefixed id matches the pattern the repo
-#: already uses for the Qwen worker (``zai-openai/glm-5-turbo``).
+#: The gateway's ``minimax-anthropic`` provider is a *custom*
+#: Anthropic-protocol provider backed by MiniMax
+#: (``config/bifrost/config.template.json``), so its model catalogue is
+#: MiniMax's — ``claude-sonnet-4-6`` is not served. The gateway-prefixed id
+#: matches the pattern the repo already uses for the Qwen worker
+#: (``zai-openai/glm-5-turbo``).
+#:
+#: The provider id must be the *custom* provider's name, not the base type:
+#: a config entry named after a standard provider (``anthropic``) is dropped
+#: by the gateway's config-store import, and the gateway then answers
+#: ``failed to get config for provider anthropic: not found``.
 #:
 #: There is no real Anthropic API key in this deployment, so the gateway's
 #: Anthropic surface is the only Anthropic-protocol backend available.
-GATEWAY_ANTHROPIC_MODEL_ID = "anthropic/MiniMax-M3"
+GATEWAY_ANTHROPIC_MODEL_ID = "minimax-anthropic/MiniMax-M3"
 
 
 def default_model_for(provider: LLMProvider) -> str:

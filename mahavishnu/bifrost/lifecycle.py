@@ -30,7 +30,7 @@ import time
 
 import typer
 
-from .gateway import PORT
+from .gateway import PORT, READY_TIMEOUT_SECONDS, port_is_listening
 from .models import HARNESSES, HarnessDescriptor
 from .paths import (
     BIFROST_CONFIG_DIR,
@@ -46,9 +46,16 @@ TARGET_PLIST = Path.home() / "Library" / "LaunchAgents" / f"{LAUNCHD_LABEL}.plis
 SOURCE_CONFIG = REPO_ROOT / "config" / "bifrost" / "config.template.json"
 TARGET_CONFIG = BIFROST_CONFIG_DIR / "config.json"
 
-#: Budget for the ready file to appear after a launch, matching the shell
-#: wrapper. Generous because Bifrost's catalog sync can take a while cold.
-READY_BUDGET_SECONDS = 60
+#: Budget for the ready file to appear after a launch.
+#:
+#: It has to exceed the gateway's own bind timeout: the supervisor writes
+#: the ready file only *after* the child has bound the port, and Bifrost
+#: >= 2.3.0 syncs its MCP library catalog at startup, so a cold cache can
+#: take 60-180s. A budget at the low end of that window made the gate give
+#: up on a gateway that was about to come up -- the failure is safe (the
+#: client is left alone rather than pointed at a dead port) but it leaves a
+#: perfectly healthy gateway unreported.
+READY_BUDGET_SECONDS = READY_TIMEOUT_SECONDS + 30
 
 READY_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -105,6 +112,17 @@ def wait_for_ready_file(timeout: int = READY_BUDGET_SECONDS) -> bool:
             return True
         time.sleep(1)
     return False
+
+
+def clear_ready_file() -> None:
+    """Retract the ready file before a relaunch.
+
+    ``gateway.launch_bifrost`` unlinks the file inside the child process,
+    which only starts *after* ``kickstart`` returns -- while ``_after_ready``
+    is already polling. A file left behind by a previous run therefore
+    satisfies the readiness check for a gateway that never bound the port.
+    """
+    READY_FILE.unlink(missing_ok=True)
 
 
 def _secure_dir(path: Path) -> None:
@@ -214,14 +232,25 @@ def repoint_harnesses(action: str) -> None:
 
 
 def _after_ready(action: str) -> None:
-    """Repoint harnesses only if the gateway actually came up."""
-    if wait_for_ready_file():
-        repoint_harnesses(action)
-    else:
+    """Repoint harnesses only if the gateway actually came up.
+
+    Two independent signals must agree before a client is aimed at the
+    gateway: the ready file the supervisor writes once it binds, and the port
+    actually accepting connections. The ready file alone is not enough -- it
+    outlives a boot that failed (see :func:`clear_ready_file`), and trusting
+    it points the harnesses at a dead endpoint, which takes Claude Code down
+    with it.
+    """
+    if not wait_for_ready_file():
         typer.echo(
             f"warning: {READY_FILE} not seen within {READY_BUDGET_SECONDS}s; "
             f"leaving client URL(s) untouched"
         )
+        return
+    if not port_is_listening(PORT):
+        typer.echo(f"warning: port {PORT} is not listening; leaving client URL(s) untouched")
+        return
+    repoint_harnesses(action)
 
 
 # --------------------------------------------------------------------------
@@ -234,6 +263,7 @@ def start() -> None:
     install_plist()
     bootout()
     kill_listener()
+    clear_ready_file()
     time.sleep(1)
     bootstrap()
     _run(["launchctl", "kickstart", "-k", f"{GUI_DOMAIN}/{LAUNCHD_LABEL}"])
@@ -253,6 +283,7 @@ def restart() -> None:
     install_plist()
     bootout()
     kill_listener()
+    clear_ready_file()
     time.sleep(1)
     bootstrap()
     _run(["launchctl", "kickstart", "-k", f"{GUI_DOMAIN}/{LAUNCHD_LABEL}"])
@@ -269,6 +300,7 @@ def rebootstrap(drop_db: bool = False) -> None:
     bootout()
     kill_listener()
     sync_config(drop_db=drop_db)
+    clear_ready_file()
     time.sleep(1)
     bootstrap()
     _run(["launchctl", "kickstart", "-k", f"{GUI_DOMAIN}/{LAUNCHD_LABEL}"])

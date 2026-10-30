@@ -62,7 +62,7 @@ graph TB
         Terminal[TerminalManager]
         AppleC[AppleContainerWorker<br/>Apple silicon microVMs]
         E2B[E2BSandboxWorker<br/>E2B cloud sandboxes]
-        Cloud[CloudWorker<br/>MiniMax M3 / M2.7]
+        Cloud[CloudWorker<br/>MiniMax M3 / M3.1-Flash]
     end
 
     subgraph "Quality & Operations"

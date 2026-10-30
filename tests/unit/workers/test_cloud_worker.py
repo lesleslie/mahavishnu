@@ -304,8 +304,25 @@ class TestBuildFallbackChainGatewayHeaders:
         assert "x-bf-vk" not in headers
         # No credential means the gateway rejects the request anyway, but
         # the bucket is still derived rather than shared.
-        assert headers["x-bf-cache-key"] == resolve_cache_bucket(
-            TRAFFIC_CLASS_WORKER, None
-        )
+        assert headers["x-bf-cache-key"] == resolve_cache_bucket(TRAFFIC_CLASS_WORKER, None)
         assert headers["x-bf-cache-key"] != "default"
         assert headers["x-bf-cache-type"] == "semantic"
+
+
+class TestDefaultModelIsNotRetired:
+    """``CloudWorkerConfig.model`` must not name a retired MiniMax model.
+
+    It is the fallback for any task category the routing table does not
+    cover, so a retired name here is a silent dead end for exactly the
+    requests nobody thought to route. MiniMax closes M2.7/M2.5 to new users
+    on 2026-10-19 and retires them on 2026-11-18.
+    """
+
+    def test_default_model_is_current(self) -> None:
+        assert CloudWorkerConfig().model == "MiniMax-M3"
+
+    def test_default_model_is_not_a_retired_m2_model(self) -> None:
+        model = CloudWorkerConfig().model
+        assert "M2." not in model, (
+            f"default model {model!r} is on the retired M2.x line (upstream retirement 2026-11-18)"
+        )

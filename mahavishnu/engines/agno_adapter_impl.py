@@ -670,7 +670,7 @@ class LLMProviderFactory:
           is passed).
 
         Args:
-            model_id: MiniMax model identifier (e.g., 'MiniMax-M3'). Note: 'MiniMax-M3-highspeed' is not a valid model name on minimax's API — use 'MiniMax-M3' or 'MiniMax-M2.7-highspeed' instead.
+            model_id: MiniMax model identifier (e.g., 'MiniMax-M3'). Note: 'MiniMax-M3-highspeed' is not a valid model name on minimax's API — use 'MiniMax-M3' or 'MiniMax-M3.1-Flash' instead.
             endpoint: Resolved endpoint and credential.
 
         Returns:

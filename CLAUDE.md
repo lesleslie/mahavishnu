@@ -324,14 +324,13 @@ ingestion:
 
 ### LLM Provider Configuration (MiniMax M3 Primary)
 
-Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. M2.7 is retained as the documented fallback when M3 is unavailable.
+Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. The repo no longer references M2.7: MiniMax closed it to new users on 2026-10-19 and retires it on 2026-11-18, so the documented fallback is M3.1-Flash, with the local `llama_server` provider as the last resort.
 
 - **Primary provider**: `minimax` (OpenAI-compatible API at `https://api.minimax.io/v1`)
 - **Local fallback**: `llama_server` (llama.cpp) at `http://localhost:8081` with `qwen3.5`
 - **Default models**:
   - `MiniMax-M3` — primary for the 10 correctness-sensitive categories (CODE_GENERATION, CODE_REVIEW, DEBUGGING, REFACTORING, TESTING, REASONING, ANALYSIS, DOCUMENTATION, VISION, ML_INFERENCE); minimax's API does not expose a distinct MiniMax-M3-highspeed variant — verified 2026-09-16, model name rejected with error 2013
-  - `MiniMax-M3.1-Flash` — latency-sensitive bucket (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL), moved off `MiniMax-M3` on 2026-10-19: 1M context + multimodal preview model, verified on the MiniMax API
-  - `MiniMax-M2.7` and `MiniMax-M2.7-highspeed` — final fallback when M3 is unavailable
+  - `MiniMax-M3.1-Flash` — latency-sensitive bucket (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL), moved off `MiniMax-M3` on 2026-10-19: 1M context + multimodal preview model, verified on the MiniMax API; also the final fallback when M3 is unavailable (replaced `MiniMax-M2.7` / `MiniMax-M2.7-highspeed` on 2026-10-29 — MiniMax closed the M2.x line to new users on 2026-10-19 and retires it on 2026-11-18)
 - **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
 - **Auth env var**: `MINIMAX_API_KEY` (in the parent shell) is required by both the cloud worker and the `minimax-coding-plan` MCP server in `.mcp.json` — export it in your shell rc, never inline the literal. Region selector `MINIMAX_API_HOST` is already pinned to `https://api.minimax.io` in `.mcp.json`.
 - **Task-based routing**: `TaskRouter` in `mahavishnu/core/model_routing.py` maps task categories to optimal models; the in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml` are pinned in sync by a CI guard test (`tests/unit/test_task_router.py::TestYAMLRoutingSync`). Phase 3b (Plan v3) atomically migrated the routing primitives from `mahavishnu/workers/task_router.py` to `mahavishnu/core/model_routing.py` so the legacy worker surface can drain without breaking the model-routing CI guard.
@@ -376,7 +375,7 @@ Plan: `docs/plans/2026-10-29-agno-llm-provider-chain.md`.
 
 If MiniMax becomes unavailable, operators can temporarily restore `zai` as an optional non-default provider by reintroducing the compatibility settings in `settings/models.yaml` and setting `default_provider` back to `zai` only for the affected environment.
 
-See `docs/plans/2026-05-10-minimax27-provider-migration.md` for the M2.7 → M3 migration history and `docs/adr/` for the full Architecture Decision Records.
+See `docs/plans/.archive/2026-05-10-minimax27-provider-migration.md` for the M2.7 → M3 migration history and `docs/adr/` for the full Architecture Decision Records.
 
 See `docs/adr/` for full Architecture Decision Records:
 

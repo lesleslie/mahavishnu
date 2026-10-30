@@ -17,6 +17,23 @@ from .paths import BIFROST_BACKUP_DIR, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_POR
 
 VIRTUAL_KEY_HEADER = "x-bf-vk"
 
+#: Header the gateway's CEL routing rules match on to pin a harness to one
+#: provider. Bifrost evaluates routing rules against request headers, and
+#: ``ANTHROPIC_CUSTOM_HEADERS`` is how Claude Code sends them.
+ROUTE_HEADER = "x-bf-route"
+
+#: Route value that pins Claude Code to the Anthropic-native MiniMax path.
+#:
+#: The gateway config defines two providers that both claim ``MiniMax-M3``:
+#: ``minimax-anthropic`` (base type ``anthropic`` -> MiniMax's own
+#: ``/anthropic/v1/messages``, which returns genuine Anthropic responses with
+#: signed thinking blocks) and ``minimax-openai`` (base type ``openai`` ->
+#: MiniMax's ``/v1/chat/completions``, which returns reasoning *inline* in
+#: the assistant text, because only Bifrost's native ``minimax`` provider
+#: sends ``reasoning_split``). Bare model-name resolution cannot choose
+#: between them -- this header makes the choice explicit.
+ROUTE_ANTHROPIC_NATIVE = "anthropic_native"
+
 #: Env var holding the Bifrost virtual key. Never inlined into settings.
 VIRTUAL_KEY_ENV = "BIFROST_VIRTUAL_KEY"
 
@@ -39,6 +56,9 @@ class HarnessDescriptor:
             runtime models with no matching ``modelProviders`` entry, and the
             two levels do not merge.
         restart_note: Harness-specific post-toggle reminder.
+        route_header: ``(header, value)`` written alongside the virtual key to
+            pin this harness to one gateway provider. ``None`` means the
+            harness follows the gateway's own model-name resolution.
     """
 
     key: str
@@ -48,6 +68,7 @@ class HarnessDescriptor:
     url_suffix: str
     credential_sink: str
     restart_note: str
+    route_header: tuple[str, str] | None = None
 
     @property
     def backup_path(self) -> Path:
@@ -69,6 +90,11 @@ CC_HARNESS = HarnessDescriptor(
     url_suffix="/anthropic",
     credential_sink="env",
     restart_note="restart any running Claude Code session for this to take effect",
+    # Claude Code speaks the Anthropic Messages protocol, so it must reach
+    # MiniMax over MiniMax's Anthropic-native endpoint to get genuine
+    # Anthropic responses. The route header tells the gateway which provider
+    # to use; without it the bare model name is ambiguous.
+    route_header=(ROUTE_HEADER, ROUTE_ANTHROPIC_NATIVE),
 )
 
 QWEN_HARNESS = HarnessDescriptor(

@@ -14,7 +14,9 @@
 # =============================================================================
 
 # MiniMax - Primary cloud provider (API key required)
-# Updated: 2026-06-02 - M3 is now primary (M2.7 retained as fallback)
+# Updated: 2026-10-29 - M2.7 retired from the fallback chain. MiniMax closes
+# M2.7/M2.5 to new users on 2026-10-19 and retires them on 2026-11-18, so the
+# cloud chain is now M3 / M3.1-Flash only. llama_server is the last resort.
 minimax:
   enabled: true
   require_auth: true
@@ -43,9 +45,15 @@ minimax:
     GENERAL: "MiniMax-M3.1-Flash"
     VISION: "MiniMax-M3"
     ML_INFERENCE: "MiniMax-M3"
-    # M2.7 fallback mappings for backward compatibility
-    FALLBACK: "MiniMax-M2.7"
-    FALLBACK_HIGHSPEED: "MiniMax-M2.7-highspeed"
+    # Fallback mappings. These are operator-facing meta-keys, not
+    # TaskCategory members -- the in-code DEFAULT_MINIMAX_ROUTING does not
+    # carry them, and TestYAMLRoutingSync strips them before comparing.
+    #   FALLBACK          -> the stable model
+    #   FALLBACK_HIGHSPEED -> the fast model
+    # The last resort is the local llama_server provider; see fallback_chain
+    # at the bottom of this file.
+    FALLBACK: "MiniMax-M3"
+    FALLBACK_HIGHSPEED: "MiniMax-M3.1-Flash"
 
 # =============================================================================
 # LOCAL PROVIDERS (no auth required, always available when running)

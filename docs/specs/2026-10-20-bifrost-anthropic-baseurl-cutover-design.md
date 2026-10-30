@@ -42,10 +42,10 @@ After this spec lands:
 | Config store | `~/.config/bifrost/config.{json,db}` | `scripts/bifrost-gateway.py:42-44` |
 | Mahavishnu LLM callers | direct to `https://api.minimax.io/{v1,anthropic}` | `CLAUDE.md` § "LLM Provider Configuration" |
 | Claude Code (host) | direct to `https://api.minimax.io/anthropic` via `minimax-coding-plan-mcp` MCP server | `CLAUDE.md` § "Tool Preferences" |
-| `bifrost-ctl start` | will fail at macOS Gatekeeper on `bifrost-http-0` | `config/bifrost/README.md:11-13`, `scripts/bifrost-ctl:110-128` |
-| `bifrost-toggle-claude-url` | ready; would mutate `~/.claude/settings.json` if invoked | `scripts/bifrost-toggle-claude-url:78-100` |
-| Routing rules in config | 5 rules (think, long-context, web-search, background, classify) | `config/bifrost/config.template.json:16-128` |
-| Provider model set | `MiniMax-M3` primary, `MiniMax-M2.7` fallback, `qwen3-8b-q4_k_m` local | `config/bifrost/config.template.json:144-225`, `settings/models.yaml:28-48` |
+| `mahavishnu bifrost start` | ready; the transport runs (the Gatekeeper blocker of 2026-10-20 is resolved) | `mahavishnu/bifrost/lifecycle.py` |
+| `mahavishnu bifrost cc-url bifrost` | ready; would mutate `~/.claude/settings.json` if invoked | `mahavishnu/bifrost/toggles.py` |
+| Routing rules in config | 6 rules (anthropic-native, think, long-context, web-search, background, classify) | `config/bifrost/config.template.json:16-147` |
+| Provider model set | `MiniMax-M3` primary, `MiniMax-M3.1-Flash` fallback, `qwen3-8b-q4_k_m` local | `config/bifrost/config.template.json:169-268`, `settings/models.yaml:29-56` |
 | `audit_bifrost_callers.py` | ready; exits 0 today (every LLM caller is oneiric-routed or local-allowlisted per the v1.5 spec) | `scripts/audit_bifrost_callers.py` |
 | `verify_qwen_bifrost_gate.sh` | ready; gates the Phase D Qwen cutover | `scripts/verify_qwen_bifrost_gate.sh` |
 | `TestYAMLRoutingSync` guard | green; `DEFAULT_MINIMAX_ROUTING` and `settings/models.yaml` are pinned in sync | `tests/unit/test_task_router.py::TestYAMLRoutingSync` per `CLAUDE.md` |

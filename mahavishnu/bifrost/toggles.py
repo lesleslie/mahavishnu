@@ -192,6 +192,72 @@ def _upsert_header_line(raw: str | None, header: str, value: str) -> str:
     return "\n".join(kept)
 
 
+def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Write this harness's route header to the sink it reads.
+
+    The route header is a routing *signal*, not a credential, so it is
+    installed independently of the virtual key. A host that was already
+    pointed at Bifrost before the route existed must still receive it, and
+    the gateway rule it selects is what makes the provider choice
+    unambiguous.
+    """
+    if harness.route_header is None:
+        return
+    header, value = harness.route_header
+    if harness.credential_sink == "env":
+        env = _env_block(settings)
+        raw = env.get(CC_CUSTOM_HEADERS_VAR)
+        env[CC_CUSTOM_HEADERS_VAR] = _upsert_header_line(
+            raw if isinstance(raw, str) else None, header, value
+        )
+        return
+
+    model = settings.setdefault("model", {})
+    if not isinstance(model, dict):
+        typer.echo("error: settings 'model' is not an object", err=True)
+        raise typer.Exit(EXIT_ERROR)
+
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    generation = target.setdefault("generationConfig", {})
+    headers = generation.setdefault("customHeaders", {})
+    headers[header] = value
+
+
+def _read_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+    """Read this harness's route header value, or ``None`` if it is absent.
+
+    ``None`` is ambiguous for a harness that has no route header at all;
+    callers distinguish that with ``harness.route_header`` itself.
+    """
+    if harness.route_header is None:
+        return None
+    header, _ = harness.route_header
+    if harness.credential_sink == "env":
+        raw = _env_block(settings).get(CC_CUSTOM_HEADERS_VAR)
+        if not isinstance(raw, str):
+            return None
+        prefix = f"{header}:"
+        for line in raw.splitlines():
+            if line.strip().startswith(prefix):
+                return line.strip()[len(prefix) :].strip()
+        return None
+
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return None
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    generation = target.get("generationConfig")
+    if not isinstance(generation, dict):
+        return None
+    headers = generation.get("customHeaders")
+    if not isinstance(headers, dict):
+        return None
+    value = headers.get(header)
+    return value if isinstance(value, str) else None
+
+
 def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtual_key: str) -> None:
     """Write the ``x-bf-vk`` header to the sink this harness actually reads.
 
@@ -202,6 +268,10 @@ def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtua
     provider, Qwen ignores that block and reads the header from the matching
     provider's own ``generationConfig``, so the header is written there. See
     :func:`_active_provider`.
+
+    The route header is deliberately **not** written here. It is a routing
+    signal rather than a credential, and coupling the two meant a host with
+    no virtual key available never received it -- see :func:`_set_route_header`.
     """
     if harness.credential_sink == "env":
         env = _env_block(settings)
@@ -253,13 +323,24 @@ def _read_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> st
 
 
 def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
-    """Remove only our header, leaving any other custom headers intact."""
+    """Remove only our headers, leaving any other custom headers intact.
+
+    Both the virtual key **and** the route header are ours. The route header
+    is a signal that selects a provider on the gateway; leaving it behind
+    after ``direct`` would keep pointing at a gateway the harness is no
+    longer talking to.
+    """
     if harness.credential_sink == "env":
         env = _env_block(settings)
         raw = env.get(CC_CUSTOM_HEADERS_VAR)
         if isinstance(raw, str):
+            prefixes = [f"{VIRTUAL_KEY_HEADER}:"]
+            if harness.route_header is not None:
+                prefixes.append(f"{harness.route_header[0]}:")
             kept = [
-                ln for ln in raw.splitlines() if not ln.strip().startswith(f"{VIRTUAL_KEY_HEADER}:")
+                ln
+                for ln in raw.splitlines()
+                if not any(ln.strip().startswith(prefix) for prefix in prefixes)
             ]
             if kept:
                 env[CC_CUSTOM_HEADERS_VAR] = "\n".join(kept)
@@ -279,6 +360,8 @@ def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> Non
     if not isinstance(headers, dict):
         return
     headers.pop(VIRTUAL_KEY_HEADER, None)
+    if harness.route_header is not None:
+        headers.pop(harness.route_header[0], None)
     if not headers:
         generation.pop("customHeaders", None)
 
@@ -396,6 +479,21 @@ def _resolve_virtual_key(key_file: Path | None) -> str | None:
 # --------------------------------------------------------------------------
 
 
+def _warn_no_virtual_key(harness: HarnessDescriptor) -> None:
+    """Say plainly that the gateway will reject this harness's requests.
+
+    Without a virtual key every request gets ``401 virtual key is required``,
+    so a toggle that reports success without mentioning it leaves the
+    operator believing the harness is routed.
+    """
+    typer.echo(
+        f"WARNING: no virtual key available (set {VIRTUAL_KEY_ENV} or pass "
+        f"--virtual-key-file). {harness.label} will reach Bifrost but be "
+        f"rejected with 401 until a key is configured.",
+        err=True,
+    )
+
+
 def _action_bifrost(
     harness: HarnessDescriptor,
     host: str,
@@ -411,8 +509,36 @@ def _action_bifrost(
     url = provider_url or harness.bifrost_url(host, port)
     existing = _get_url(settings, harness)
 
-    if existing == url and _read_credential(settings, harness) == virtual_key:
+    # The route header is a routing *signal*, not a credential, so it is
+    # installed independently of the virtual key. A host that was already
+    # pointed at Bifrost before the route existed must still receive it --
+    # otherwise the gateway rule never fires and the provider choice stays
+    # ambiguous.
+    route_header = harness.route_header
+    route_installed = (
+        route_header is None or _read_route_header(settings, harness) == route_header[1]
+    )
+    already_configured = existing == url and _read_credential(settings, harness) == virtual_key
+
+    if already_configured and route_installed:
         typer.echo(f"{harness.label} already points at {url} with a matching key; no-op")
+        return
+
+    if already_configured and route_header is not None:
+        # Only the route header is missing. Install it without touching the
+        # URL, the credential, or the backup: the backup holds the
+        # pre-toggle upstream that `direct` restores, and overwriting it
+        # with the Bifrost URL would strand the harness on the gateway.
+        header, value = route_header
+        _set_route_header(settings, harness)
+        if dry_run:
+            typer.echo(f"[dry-run] would install {header}: {value} in {harness.settings_path}")
+            return
+        _write_settings(harness.settings_path, settings)
+        typer.echo(f"installed {header}: {value} in {harness.settings_path}")
+        if virtual_key is None:
+            _warn_no_virtual_key(harness)
+        typer.echo(f"note: {harness.restart_note}")
         return
 
     if existing != url or virtual_key:
@@ -426,18 +552,29 @@ def _action_bifrost(
                 err=True,
             )
             raise typer.Exit(EXIT_ERROR)
-        _save_backup(harness, existing, existing_key is not None, dry_run)
+        # The backup records the endpoint `direct` restores. On a host that
+        # is already pointed at Bifrost, `existing` *is* the Bifrost URL:
+        # recording it would make `direct` put the harness back on the
+        # gateway instead of the upstream it came from. Keep whatever the
+        # first toggle recorded instead.
+        prior_url = existing
+        if existing == url:
+            prior_url = _load_backup(harness).get("url")
+        _save_backup(harness, prior_url, existing_key is not None, dry_run)
 
     _set_url(settings, harness, url)
     if virtual_key:
         _set_credential(settings, harness, virtual_key)
     else:
-        typer.echo(
-            f"WARNING: no virtual key available (set {VIRTUAL_KEY_ENV} or pass "
-            f"--virtual-key-file). {harness.label} will reach Bifrost but be "
-            f"rejected with 401 until a key is configured.",
-            err=True,
-        )
+        _warn_no_virtual_key(harness)
+
+    # The route header is a routing signal, not a credential, so it is
+    # installed on every path that leaves the harness pointed at Bifrost --
+    # including the one where no virtual key was available. Otherwise a
+    # host with a stale credential in its settings never receives it, the
+    # gateway rule never fires, and the provider choice stays ambiguous.
+    if route_header is not None and not route_installed:
+        _set_route_header(settings, harness)
 
     if dry_run:
         typer.echo(
@@ -474,19 +611,28 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
         # like api.minimax.io, which has no use for it. Leaving it behind
         # because the URL no longer matches turns a Bifrost-specific secret
         # into a third party's traffic. Drop it either way.
-        if existing_key is None:
+        route_header = harness.route_header
+        stranded_route = (
+            route_header is not None and _read_route_header(settings, harness) is not None
+        )
+        if existing_key is None and not stranded_route:
             typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
             return
+        stranded = []
+        if existing_key is not None:
+            stranded.append(VIRTUAL_KEY_HEADER)
+        if stranded_route:
+            stranded.append(route_header[0])
         if dry_run:
             typer.echo(
-                f"[dry-run] would remove the stranded {VIRTUAL_KEY_HEADER} header "
+                f"[dry-run] would remove the stranded {', '.join(stranded)} header(s) "
                 f"(no credential was persisted, so this cannot be undone)"
             )
             return
         _pop_credential(settings, harness)
         _write_settings(harness.settings_path, settings)
         typer.echo(
-            f"removed stranded {VIRTUAL_KEY_HEADER} header; {harness.url_env_var}={url!r} "
+            f"removed stranded {', '.join(stranded)} header(s); {harness.url_env_var}={url!r} "
             f"left untouched"
         )
         typer.echo(f"note: {harness.restart_note}")
@@ -558,6 +704,10 @@ def _action_status(harness: HarnessDescriptor) -> None:
 
     credential = _read_credential(settings, harness)
     typer.echo(f"{VIRTUAL_KEY_HEADER} header: {'present' if credential else 'absent'}")
+    if harness.route_header is not None:
+        header, value = harness.route_header
+        current = _read_route_header(settings, harness)
+        typer.echo(f"{header} header: {current if current else 'absent'} (expected {value!r})")
     typer.echo(
         f"backup at {harness.backup_path}: {'yes' if harness.backup_path.exists() else 'no'}"
     )

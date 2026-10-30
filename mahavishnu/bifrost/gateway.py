@@ -17,6 +17,7 @@ Two subtleties carried over deliberately:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from pathlib import Path
 import re
@@ -25,13 +26,24 @@ import subprocess
 import sys
 import time
 
-from .paths import LOG_DIR, LOG_ERR, LOG_OUT, READY_FILE
+from .paths import (
+    BIFROST_TRANSPORT_VERSION,
+    LOG_DIR,
+    LOG_ERR,
+    LOG_OUT,
+    READY_FILE,
+)
 
 HOST: str = os.environ.get("BIFROST_HOST", "127.0.0.1")
 PORT: int = int(os.environ.get("BIFROST_PORT", "8471"))
 LOG_LEVEL: str = os.environ.get("BIFROST_LOG_LEVEL", "info")
 LOG_STYLE: str = os.environ.get("BIFROST_LOG_STYLE", "json")
 APP_DIR: Path = Path(os.environ.get("BIFROST_APP_DIR", f"{Path.home()}/.config/bifrost"))
+
+#: Transport version handed to the launcher. Pinned rather than tracking
+#: ``latest`` so an upstream release cannot change the binary under a running
+#: deployment; override to roll back to a known-good build.
+TRANSPORT_VERSION: str = os.environ.get("BIFROST_TRANSPORT_VERSION", BIFROST_TRANSPORT_VERSION)
 
 #: Repo root, resolved from this file rather than ``__file__`` of a script in
 #: ``scripts/`` -- the module now lives in the package.
@@ -138,17 +150,70 @@ async def resolve_secrets() -> None:
             os.environ[key] = value
 
 
-def find_cached_bifrost_bin() -> Path | None:
+def _launcher_version(launcher: Path) -> tuple[int, ...]:
+    """The cached launcher's package version, as a comparable tuple.
+
+    npm's ``_npx`` cache directories are named by an opaque hash, so the
+    directory name carries no version information at all. The version lives
+    in the ``package.json`` next to the launcher.
+    """
+    try:
+        data = json.loads((launcher.parent / "package.json").read_text(encoding="utf-8"))
+        version = str(data["version"])
+    except OSError, ValueError, KeyError, TypeError:
+        return ()
+    parts: list[int] = []
+    for chunk in version.split("."):
+        digits = "".join(ch for ch in chunk if ch.isdigit())
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
+def find_cached_bifrost_bin(npm_npx_root: Path | None = None) -> Path | None:
     """Prefer a previously-npx-cached ``@maximhq/bifrost`` install.
 
     Reusing the cached binary avoids the npx install round-trip on every
     launch.
+
+    The candidates are ordered by the **package version**, not by path.
+    npm's cache directories are named by a hash, so sorting by path picks
+    whichever hash happens to sort last -- which on this host was the
+    *older* launcher (1.6.2 instead of 1.6.3). That matters beyond
+    tidiness: the newer launcher validates the arguments it forwards to the
+    transport binary against a known-flag list, while the older one forwards
+    them verbatim, and the binary refuses to boot on a flag it does not
+    know.
     """
-    npm_npx_root = Path.home() / ".npm" / "_npx"
-    if not npm_npx_root.exists():
+    root = npm_npx_root if npm_npx_root is not None else Path.home() / ".npm" / "_npx"
+    if not root.exists():
         return None
-    matches = sorted(npm_npx_root.glob("*/node_modules/@maximhq/bifrost/bin.js"))
-    return matches[-1] if matches else None
+    matches = sorted(root.glob("*/node_modules/@maximhq/bifrost/bin.js"))
+    if not matches:
+        return None
+    return max(matches, key=lambda path: (_launcher_version(path), str(path)))
+
+
+def launcher_supports_transport_version(launcher: Path) -> bool:
+    """Whether a cached launcher understands ``--transport-version``.
+
+    The launcher parses the flag out of its own argv and *removes* it before
+    exec'ing the transport binary. A launcher too old to know the flag would
+    forward it to the binary instead, and the binary rejects unknown flags
+    and refuses to boot. A pinned version must therefore never be handed to a
+    launcher that cannot parse it -- fall back to ``npx`` in that case.
+
+    The check is deliberately conservative: it requires both the flag *and*
+    the argument-removal idiom, because a launcher that merely mentions the
+    flag (a comment, a help string) would forward it. It is a heuristic, not
+    a proof -- the false-positive needs a launcher that mentions the flag
+    and splices arguments for unrelated reasons -- but every uncertainty
+    resolves to ``npx``, which always resolves a current launcher.
+    """
+    try:
+        source = launcher.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return "--transport-version" in source and "splice" in source
 
 
 def wrap_with_line_buffering(cmd: list[str]) -> list[str]:
@@ -201,6 +266,8 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
     READY_FILE.unlink(missing_ok=True)
 
     bifrost_args: list[str] = [
+        # Consumed by the launcher, not the transport binary.
+        f"--transport-version={TRANSPORT_VERSION}",
         "-host",
         HOST,
         "-port",
@@ -214,7 +281,7 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
     ]
 
     cached = find_cached_bifrost_bin()
-    if cached is not None:
+    if cached is not None and launcher_supports_transport_version(cached):
         cmd: list[str] = ["node", str(cached), *bifrost_args]
     else:
         cmd = ["npx", "-y", "@maximhq/bifrost", *bifrost_args]

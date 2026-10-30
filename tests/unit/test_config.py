@@ -47,7 +47,9 @@ def test_default_config_values():
         config.adapters.llamaindex_enabled is True
     )  # Re-enabled 2026-02-23 with llama-index 0.14.x
     assert config.adapters.agno_enabled is True  # Enabled in settings/mahavishnu.yaml
-    assert config.qc.enabled is False  # OFF by default; opt-in for production (see QualityControlConfig docstring)
+    assert (
+        config.qc.enabled is False
+    )  # OFF by default; opt-in for production (see QualityControlConfig docstring)
     assert config.qc.min_score == 80
     assert config.session.enabled is True
     assert config.session.checkpoint_interval == 60
@@ -135,8 +137,7 @@ def test_models_yaml_defaults_to_minimax() -> None:
     # SWARM/QUICK/AGENT_LOOP/CREATIVE/GENERAL all route to MiniMax-M3 —
     # minimax's API does not expose a distinct MiniMax-M3-highspeed variant
     # (verified 2026-09-16; minimax returns error 2013 "unknown model").
-    # For a real speed differential, override these via settings/local.yaml
-    # to point at MiniMax-M2.7-highspeed.
+    # For a real speed differential, override these via settings/local.yaml.
     # Latency-sensitive bucket moved to MiniMax-M3.1-Flash on 2026-10-19.
     # Kept in sync with settings/models.yaml; TestYAMLRoutingSync pins the
     # YAML against the in-code DEFAULT_MINIMAX_ROUTING.

@@ -290,11 +290,11 @@ class TestYAMLRoutingSync:
     """
 
     @staticmethod
-    def _load_yaml_routing() -> dict[str, str]:
-        """Load and normalize the MiniMax task_routing from settings/models.yaml.
+    def _load_raw_yaml_routing() -> dict[str, str]:
+        """Load the raw MiniMax task_routing from settings/models.yaml.
 
-        FALLBACK / FALLBACK_HIGHSPEED are operator-facing meta-keys that the
-        in-code constant doesn't carry, so they are stripped for comparison.
+        Includes the FALLBACK / FALLBACK_HIGHSPEED meta-keys, which the
+        in-code constant does not carry.
         """
         from pathlib import Path
 
@@ -302,7 +302,18 @@ class TestYAMLRoutingSync:
 
         yaml_path = Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
         raw = yaml.safe_load(yaml_path.read_text())["minimax"]["task_routing"]
-        return {k: v for k, v in raw.items() if not k.startswith("FALLBACK")}
+        return dict(raw)
+
+    @classmethod
+    def _load_yaml_routing(cls) -> dict[str, str]:
+        """Load and normalize the MiniMax task_routing from settings/models.yaml.
+
+        FALLBACK / FALLBACK_HIGHSPEED are operator-facing meta-keys that the
+        in-code constant doesn't carry, so they are stripped for comparison.
+        """
+        return {
+            k: v for k, v in cls._load_raw_yaml_routing().items() if not k.startswith("FALLBACK")
+        }
 
     def test_yaml_entries_match_code_constant(self):
         """Every category defined in the YAML must match DEFAULT_MINIMAX_ROUTING."""
@@ -317,6 +328,28 @@ class TestYAMLRoutingSync:
             assert code_routing[cat_key] == yaml_model, (
                 f"Model drift for {cat}: YAML={yaml_model!r} vs CODE={code_routing[cat_key]!r}"
             )
+
+    def test_fallback_keys_avoid_retired_models(self):
+        """The FALLBACK meta-keys must not point at a retired MiniMax model.
+
+        MiniMax closes M2.7/M2.5 to new users on 2026-10-19 and retires them
+        on 2026-11-18, so a fallback entry naming an M2.x model is a routing
+        dead end waiting to happen. Nothing else catches it: the in-code
+        constant does not carry these meta-keys, so the sync guard above
+        never sees them.
+        """
+        raw = self._load_raw_yaml_routing()
+        fallbacks = {k: v for k, v in raw.items() if k.startswith("FALLBACK")}
+
+        assert fallbacks, "the FALLBACK meta-keys must still be present"
+        for key, model in fallbacks.items():
+            assert "M2." not in model, (
+                f"{key} points at retired model {model!r}; "
+                f"MiniMax retires the M2.x line on 2026-11-18"
+            )
+
+        assert fallbacks["FALLBACK"] == "MiniMax-M3"
+        assert fallbacks["FALLBACK_HIGHSPEED"] == "MiniMax-M3.1-Flash"
 
     def test_yaml_covers_high_traffic_categories(self):
         """YAML must cover the categories every prompt hits.
