@@ -222,9 +222,7 @@ def build_cache_headers(mode: CacheMode, *, traffic_class: str = "") -> dict[str
         asymmetry in ``off``, which suppresses the *write* and not the
         read.
     """
-    return _cache_headers_for(
-        mode, resolve_cache_bucket(traffic_class, resolve_virtual_key())
-    )
+    return _cache_headers_for(mode, resolve_cache_bucket(traffic_class, resolve_virtual_key()))
 
 
 def resolve_virtual_key() -> str | None:
@@ -405,10 +403,10 @@ __all__ = [
     "CACHE_TYPE_HEADER",
     "DEFAULT_CACHE_BUCKET",
     "DEFAULT_CACHE_MODE",
+    "LOOPBACK_HOSTS",
     "TRAFFIC_CLASS_AGNO_ANTHROPIC",
     "TRAFFIC_CLASS_AGNO_OPENAI",
     "TRAFFIC_CLASS_WORKER",
-    "LOOPBACK_HOSTS",
     "VALID_CACHE_MODES",
     "VIRTUAL_KEY_HEADER",
     "CacheMode",

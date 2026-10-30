@@ -137,9 +137,7 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     # are others, so a prompt carried over one protocol cannot be served
     # a response cached under the other.
     gateway_headers = (
-        build_gateway_headers(
-            minimax_base_url, traffic_class=TRAFFIC_CLASS_WORKER
-        )
+        build_gateway_headers(minimax_base_url, traffic_class=TRAFFIC_CLASS_WORKER)
         if via_gateway
         else {}
     )
