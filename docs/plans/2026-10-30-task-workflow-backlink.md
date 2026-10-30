@@ -349,7 +349,9 @@ revision log is in the design doc §7; this is the build summary.
 - The metadata bag still cannot reach a server-set field — pinned.
 - The update path re-reads the sidecar row before writing, so an
   ordinary `tasks_update` cannot erase a link written in flight.
-- Commits: `e642d6d4`, `023c7cd2`.
+- Commits: `e642d6d4`, `023c7cd2`, `40d91324` (re-pins two
+  `HandoffParams` tests that still asserted the old pool-scoped
+  envelope — one failing, one passing for the wrong reason).
 
 ### Phase 2 — mahavishnu: the dispatch edge — **DONE**
 
@@ -394,6 +396,11 @@ revision log is in the design doc §7; this is the build summary.
   (`workflow_already_linked`); the same link is idempotent; a
   `metadata` forgery attempt does not move the field; a dot-segment id
   is refused (`invalid_workflow_id`).
+- **The link survived a session-buddy restart.** The link was written at
+  03:54 local; the server restarted at 03:55; the task still reads back
+  `workflow_id=wf_verify1a2b3c4d_ai_task`,
+  `workflow_linked_at=2026-10-30T10:54:24.645688Z`,
+  `workflow_linked_by=user:les`.
 - **Blocked on an operator step**: mahavishnu depends on the PUBLISHED
   session-buddy, and the gate compares the two repos' envelopes. Until
   session-buddy ships the new contract, the gate correctly reports the
@@ -401,6 +408,33 @@ revision log is in the design doc §7; this is the build summary.
   The live END-TO-END handoff needs (a) session-buddy published, (b)
   mahavishnu's venv re-synced, (c) the `session-buddy>=0.33.1` pin
   bumped — operator-owned, per `feedback-mcp-common-version-bump-is-user`.
+
+#### Operator steps, spelled out (2026-10-30)
+
+The published session-buddy is **0.37.1**, which predates the link
+channel: its `HandoffParams` still carries `pool_selector`/`pool_name`,
+its `Task` has no `workflow_linked_at`/`workflow_linked_by`, and it
+exposes no `tasks_link_workflow` at all. The gate says so precisely:
+
+```
+task-system contract mismatch in HandoffParams: missing locally:
+['pool_name', 'pool_selector']; unknown locally: ['repo'] — the
+handoff edge will be skipped until the repos are back in sync
+```
+
+So the sequence is: bump session-buddy past 0.37.1 (0.37.1 is taken on
+PyPI), publish, `uv pip install --upgrade` into mahavishnu's venv, and
+the gate flips to available on its own — no mahavishnu code change.
+The pin `session-buddy>=0.33.1` already admits the new version, so it
+does not need bumping for the gate to pass.
+
+**The live mahavishnu MCP server is still running pre-change code**
+(started 2026-10-29 04:25, before `61f5916a`), so it serves the old
+handoff implementation — the one that wrote `workflow_id` through
+`tasks_update`'s metadata bag. A restart is what puts the new code in
+front of the gate; expect `tasks_handoff_to_workflow` to *disappear*
+from the tool list until session-buddy is published, which is the
+designed fail-safe (no half-working edge), not a regression.
 
 ### What was NOT done
 
