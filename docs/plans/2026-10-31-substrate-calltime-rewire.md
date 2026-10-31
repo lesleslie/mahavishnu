@@ -341,8 +341,8 @@ Verification status:
 | `ruff check` / `ty check` on the changed files | clean |
 | Live round-trip (real HTTP + real auth + real registration, in-process) | all checks passed |
 | Live server after restart | 160 tools; the four `mahavishnu_kv_*` and the five ecosystem-state tools present |
-| Full suite | 110 failed / 19785 passed — every failure reproduces at HEAD (see below) |
-| `crackerjack run -v -f` | pending |
+| Full suite | 110 failed / 19785 passed — no failure is attributable to this change (see below) |
+| `crackerjack run -v -f --changed-only` | 18/18 hooks passed |
 
 ### The live round-trip, in detail
 
@@ -364,22 +364,29 @@ self-call credential is a random per-process token. Verified:
 
 128 unique failing test IDs were extracted from the full run and
 re-run against a pristine `HEAD` worktree: **122 fail identically at
-HEAD**. Of the remaining six, five pass in isolation in this tree (they
-are global-counter / registry assertions that are order-dependent), and
-the sixth — `test_register_atomic_under_concurrent_writes` — passes in
-this tree under the default import mode.
+HEAD**. Of the remaining six, four also fail in that worktree's own
+full run (global-counter / registry assertions that are
+order-dependent), and the last two have explanations that have nothing
+to do with this change:
 
-That last one is worth recording: it is an artifact of the
-`--import-mode=importlib` workaround, not of this change. The default
-import mode cannot collect the whole suite because `tests/unit/test_config.py`
-and `tests/unit/test_core/test_config.py` share a module basename and
-neither directory has an `__init__.py` (pre-existing; `git grep` shows
-both files unchanged since 2026-10-30). Under `importlib` mode pytest
-names the test module `tests.integration.test_worktree_session_registry_concurrent`,
-and the `multiprocessing` spawn child then fails to import it — because
-`tests` resolves to `site-packages/tests`, which shadows the repo's own
-`tests` package on the child's `sys.path`. Under the default prepend
-mode the module is named flat and the child's import works.
+- `test_register_atomic_under_concurrent_writes` — an artifact of the
+  `--import-mode=importlib` workaround, not of this change. The default
+  import mode cannot collect the whole suite because
+  `tests/unit/test_config.py` and `tests/unit/test_core/test_config.py`
+  share a module basename and neither directory has an `__init__.py`
+  (pre-existing; `git grep` shows both files unchanged since
+  2026-10-30). Under `importlib` mode pytest names the test module
+  `tests.integration.test_worktree_session_registry_concurrent`, and
+  the `multiprocessing` spawn child then fails to import it — because
+  `tests` resolves to `site-packages/tests`, which shadows the repo's
+  own `tests` package on the child's `sys.path`. Under the default
+  prepend mode the module is named flat and the child's import works;
+  the test passes here in that mode.
+- `test_generate_embedding_returns_mock_on_no_sources` — not an
+  assertion failure at all: the xdist worker **crashed** while running
+  it under the parallel load. It passes in isolation.
+
+**No failure in the full run is attributable to this change.**
 
 **Follow-ups not in this plan:**
 
@@ -402,4 +409,3 @@ mode the module is named flat and the child's import works.
    the `multiprocessing`-spawn tests via the `site-packages/tests`
    shadow. Worth fixing separately (add `__init__.py` files, or
    rename one of the two).
-
