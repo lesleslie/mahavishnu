@@ -57,7 +57,7 @@ exist for human operators. Both surfaces need to keep working.
    canonical `ecosystem_status` schema gets the field. A matching CLI
    subcommand may follow — and the metrics CLI subcommands added
    2026-07-15 (`verification`, `dispatch`) are the precedent — but the
-   CLI must read from Dhara, not duplicate the aggregation logic.
+   CLI must read from the durable key-value store, not duplicate the aggregation logic.
 
 1. **Future work: optional `--json` mode for `ecosystem_status`.**
    Today, `ecosystem_status` already returns JSON-shaped data via the
@@ -80,7 +80,7 @@ exist for human operators. Both surfaces need to keep working.
 ## Status <!-- legacy status: Active — see YAML frontmatter -->
 
 Active. The 2026-07-15 metrics CLI additions (`verification`,
-`dispatch`) follow this rule: they read Dhara and render summary
+`dispatch`) follow this rule: they read the durable key-value store and render summary
 tables, never claim to be authoritative for component health. The
 existing `mahavishnu metrics bodai` command predates this decision
 but already complies (it reads from the local queue file and does not
@@ -90,7 +90,7 @@ contradict `ecosystem_status.services.akosha`).
 
 - `mahavishnu/mcp/tools/ecosystem_health_tools.py` — `ecosystem_status`
 - `mahavishnu/metrics_cli.py` — `bodai`, `verification`, `dispatch`
-- `mahavishnu/core/state_backends/dhara.py` — Dhara read path
+- `mahavishnu/core/state_backends/mcp_kv.py` — durable key-value read path
 - `docs/decisions/bodai-observability-pattern.md` — single
   subscriber, single bus (related: do not build parallel observability
   surfaces)

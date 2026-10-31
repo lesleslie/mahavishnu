@@ -385,7 +385,7 @@ flowchart TD
     ApplyTimeout --> Execute["PoolManager.route_task<br/>caller_kind=claude_code"]
 
     Execute --> Quota["Per-caller-kind quota<br/>60 req / 60s window"]
-    Quota --> Persist["Persist to Dhara KV<br/>workflow-results/{id}/"]
+    Quota --> Persist["Persist to MCP KV<br/>workflow-results/{id}/"]
     Persist --> Success{Success?}
 
     Success -->|Yes| QC["Run QC Checks"]
@@ -570,7 +570,7 @@ graph TB
         subgraph "Queue Storage"
             Memory[("In-Memory<br/>Fast Access")]
             JSONDeadLetter["JSON files<br/>~/.mahavishnu/async-dead-letter/"]
-            Dhara["Dhara KV<br/>workflow-results/{id}/"]
+            McpKv["MCP KV<br/>workflow-results/{id}/"]
         end
 
         Processor[Retry Processor<br/>Background Task]
@@ -591,11 +591,11 @@ graph TB
     Policy --> Schedule
     Schedule --> Memory
     Schedule --> JSONDeadLetter
-    Schedule --> Dhara
+    Schedule --> McpKv
 
     Memory --> Processor
     JSONDeadLetter --> Processor
-    Dhara --> Processor
+    McpKv --> Processor
 
     Processor --> Check
     Check -->|Yes| Callback
@@ -614,7 +614,7 @@ graph TB
     style Dead fill:#FF6B6B,stroke:#8B0000
     style Memory fill:#87CEEB,stroke:#4682B4
     style JSONDeadLetter fill:#F7DC6F,stroke:#B7950B
-    style Dhara fill:#82E0AA,stroke:#27AE60
+    style McpKv fill:#82E0AA,stroke:#27AE60
 ```
 
 ### Retry Policies

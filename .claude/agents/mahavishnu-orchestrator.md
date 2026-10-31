@@ -48,7 +48,7 @@ the work rather than running it locally. Typical triggers:
 1. **Pick the right entry point:**
 
    - **Capability-driven dispatch** (preferred for new work) →
-     `mcp__mahavishnu__execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits Dhara envelopes; surface the `trace_id` for polling.
+     `mcp__mahavishnu__execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits durable envelopes; surface the `trace_id` for polling.
    - **Legacy pool dispatch** (still supported pre-3b.3; deprecation warning fires) →
      `mcp__mahavishnu__pool_route_execute(prompt=..., pool_selector="least_loaded")` for quick sync work, or
      `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="claude_code", parent_session_id="<session>", async_callback=True)` for long-running work.

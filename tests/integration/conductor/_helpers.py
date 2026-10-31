@@ -6,7 +6,7 @@ or a test-only shim that bypasses the FastMCP server.
 
 The shim mirrors ``execute_capability``'s body without the MCP envelope / auth /
 scope checks. Tests that exercise the public MCP surface should hit
-``tests/unit/mcp/test_capability_tools.py`` instead — those tests mock the Dhara
+``tests/unit/mcp/test_capability_tools.py`` instead — those tests mock the MCP
 adapter and the require_mcp_auth decorator at the FastMCP boundary.
 """
 

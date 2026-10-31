@@ -343,7 +343,7 @@ the eval metric sink:
 
 1. `add_metric()` is in-process only; no MCP write path exists.
 1. `TimeSeriesAnalytics._metrics_cache` is in-memory only; no
-   persistence layer (Dhara was decommissioned).
+   persistence layer (the legacy standalone MCP server was decommissioned 2026-09-20).
 
 Both are captured in the follow-on plan
 `docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md` (drafted as

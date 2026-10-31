@@ -3,14 +3,14 @@
 Focus areas (matching the v2 plan's Phase 3 exit criteria):
 
 * Multi-replica safety: only one replica runs enforcement per cycle.
-* Dhara unavailability does NOT crash the watchdog (fail-open path).
+* Substrate unavailability does NOT crash the watchdog (fail-open path).
 * A wallclock-breaching budget gets transitioned to ``EXCEEDED`` by
   the watchdog within one cycle.
 * ``budget_enforce`` (the MCP-facing tool) round-trips a record to
   the store and exposes the new state.
 
 The store under test is :class:`InMemoryBudgetStore` — a deliberately
-narrow surface that mimics the real :class:`DharaBudgetStore`'s
+narrow surface that mimics the real budget store's
 behavior closely enough to exercise the lease, list, and read paths.
 """
 
@@ -219,7 +219,7 @@ class TestMultiReplicaLease:
         """When the store raises on every op, the cycle returns cleanly.
 
         This is the fail-open exit criterion: never crash the
-        watchdog's host process just because Dhara is unreachable.
+        watchdog's host process just because the store is unreachable.
         """
         store = InMemoryBudgetStore()
         # Mark every op to fail at most once.
@@ -241,12 +241,12 @@ class TestMultiReplicaLease:
 
 
 # =============================================================================
-# Fail-open on Dhara unavailability
+# Fail-open on substrate unavailability
 # =============================================================================
 
 
 class TestMCPFailOpen:
-    """When Dhara is unreachable, the watchdog must NOT raise or stop."""
+    """When the store is unreachable, the watchdog must NOT raise or stop."""
 
     async def test_get_failure_skips_record(self) -> None:
         """A failing ``get`` on a record key logs a warning and continues."""
@@ -267,7 +267,7 @@ class TestMCPFailOpen:
             # The cycle calls get() for the lease (no-op) and then per-record.
             # Surface the first per-record ``get`` as the failure case.
             if key.endswith("/wf-1.json"):
-                raise RuntimeError("simulated Dhara down")
+                raise RuntimeError("simulated store down")
             return await original_get(key)
 
         store.get = flaky_get  # type: ignore[method-assign]
@@ -296,7 +296,7 @@ class TestMCPFailOpen:
             usage_source=_static(BudgetUsage(tokens_used=50)),
             metrics=metrics,
         )
-        # Dhara unavailable path:
+        # Store unavailable path:
         assert result.mcp_unavailable is True
         assert result.lease_acquired is False
         assert metrics.skipped_mcp_unavailable == 1
@@ -323,11 +323,11 @@ class TestMCPFailOpen:
         assert metrics.skipped_mcp_unavailable == 1
 
     async def test_mcp_down_full_loop_does_not_crash(self) -> None:
-        """Even when every Dhara call raises, the loop survives."""
+        """Even when every store call raises, the loop survives."""
         store = _make_store()
         emitter = _RecordingEmitter()
 
-        # Simulate a continuous Dhara outage by replacing
+        # Simulate a continuous substrate outage by replacing
         # ``try_acquire_lease`` with one that always raises.
         outage_calls = {"n": 0}
 
@@ -425,7 +425,7 @@ class TestWallclockBreachEnforcement:
         )
         # Span ``budget.check`` opened.
         assert any(name == "budget.check" for name, _ in emitter.spans)
-        # Persisted record in Dhara reflects ``EXCEEDED``.
+        # Persisted record in the store reflects ``EXCEEDED``.
         persisted = await store.get("mahavishni://budgets/wf-tight.json")
         assert persisted is not None
         restored = BudgetRecord.from_dict(persisted)

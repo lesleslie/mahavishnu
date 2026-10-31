@@ -563,7 +563,7 @@ No schema change. Activity surfaces via:
 - **Structured logs** at INFO/WARNING/ERROR levels with operation name, attempt index, confidence, wire exit code.
 - **L2's Claude session reports** via Spec #1's pipeline (the Claude session itself runs through the publisher).
 
-**No Dhara tables.** Heal activity is ephemeral; consumers needing history use Prometheus + logs.
+**No Oneiric substrate tables.** Heal activity is ephemeral; consumers needing history use Prometheus + logs.
 
 ______________________________________________________________________
 
@@ -635,7 +635,7 @@ ______________________________________________________________________
 
 - **OQ1.** Claude prompt template for L2: project-specific. Out of scope for protocol spec; documented as implementation guidance.
 - **OQ2.** Apply the protocol to worker recovery (MCP tool failures, retry transient errors). Follow-up spec.
-- **OQ3.** Apply the protocol to persistence failures (Dhara write retry). Follow-up spec.
+- **OQ3.** Apply the protocol to persistence failures (substrate write retry). Follow-up spec.
 - **OQ4.** Apply the protocol to MCP tool failures (rate limits, transient errors). Follow-up spec.
 - **OQ5.** L2 Claude session's `metadata.heal_attempt_index` field on its emitted IterationReports. Convention; not enforced. Documented as guidance.
 

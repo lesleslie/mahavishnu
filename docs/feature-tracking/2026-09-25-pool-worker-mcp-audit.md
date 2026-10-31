@@ -62,13 +62,13 @@ The async path (with `async_callback=True`) was **verified failed** on
 - `pool_execute(pool_id=..., timeout=60)` returns timeout with empty
   output ✗
 
-Root cause unclear; most likely candidates: (a) Dhara persistence not
+Root cause unclear; most likely candidates: (a) durable key-value persistence not
 configured for `workflow-results/{workflow_id}/`, or (b) harness not
 capturing worker stdout.
 
 **Decision**: keep `dispatch_to_pool` as-is. The code is correct; the
-failure is environment-level (Dhara substrate). Removing the tool
-would break the 13+ doc references and force an unrelated Dhara fix
+failure is environment-level (durable substrate). Removing the tool
+would break the 13+ doc references and force an unrelated durable-substrate fix
 into scope.
 
 **Forward path**: Plan v3 Phase 2m added `pool_route_execute` (the new
@@ -77,7 +77,7 @@ directly, bypassing the `sh -lc` wrapper bug from memory
 `mahavishnu-dispatch-prompt-mangling.md`. New code should prefer
 `pool_route_execute`. `dispatch_to_pool` remains for callers that
 already depend on its wire shape (notably the async_callback semantics
-when Dhara is working).
+when the durable substrate is working).
 
 **Action**: none for this audit. The Phase 2m `pool_route_execute` is
 already shipped (commit `4090965b`) and is the recommended forward
@@ -169,7 +169,7 @@ the plan parking lot.
 
 | Item | Decision | Action |
 |---|---|---|
-| `dispatch_to_pool` | KEEP — env-failure is Dhara, not code | none |
+| `dispatch_to_pool` | KEEP — env-failure is the durable substrate, not code | none |
 | worker_* tools (18) | KEEP all — all LIVE with tests | none |
 | `mahavishnu_pool.py` docstring | FIXED (commit `dddceca9`) | done |
 | `mahavishnu_pool.py` rewrite | RESOLVED 2026-09-25 as no-op (plan v4) | done |

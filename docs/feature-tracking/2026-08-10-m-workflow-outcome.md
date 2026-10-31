@@ -31,12 +31,12 @@ ______________________________________________________________________
 > **State correction (2026-09-06):** flipped from `built` back to `wired`. All three Critical gaps that prompted the original `built` re-flip have since closed in production code:
 >
 > 1. **`WORKFLOW_OUTCOME_V1_ENABLED` feature flag** — present at `mahavishnu/core/workflow/outcome_writer.py:57` (`_workflow_outcome_v1_enabled()` reads the env var with default 'true'; mirrors `_approval_log_v1_enabled`).
-> 1. **`getattr(dhara, "put", None)` runtime gate in producer body** — present at `mahavishnu/core/workflow/outcome_writer.py:78` (`put = mcp_calltime("put")` from the `_dhara_substrate_compat` helper; `if put is not None:` gates the actual call at line 80; logs `workflow_outcome_persistence_skipped` with `reason='dhara.put_unbound'` on the failure path).
-> 1. **`getattr(dhara, "get", None)` runtime gate in consumer body** — present at `mahavishnu/mcp/tools/workflow_tools.py:52` (`get_fn = getattr(dhara, "get", None)`; `if get_fn is None:` returns `None` and logs `workflow_outcome_read_skipped` with `reason='dhara.get_unbound'`).
+> 1. **`getattr(mcp, "put", None)` runtime gate in producer body** — present at `mahavishnu/core/workflow/outcome_writer.py:78` (`put = mcp_calltime("put")` from the `_mcp_substrate_compat` helper; `if put is not None:` gates the actual call at line 80; logs `workflow_outcome_persistence_skipped` with `reason='mcp.put_unbound'` on the failure path).
+> 1. **`getattr(mcp, "get", None)` runtime gate in consumer body** — present at `mahavishnu/mcp/tools/workflow_tools.py:52` (`get_fn = getattr(mcp, "get", None)`; `if get_fn is None:` returns `None` and logs `workflow_outcome_read_skipped` with `reason='mcp.get_unbound'`).
 >
 > The 2026-08-10 multi-agent-review gaps closed in subsequent commits (between 2026-08-10 and 2026-09-06) without a corresponding tracker update; the tracker was stale. Verified 2026-09-06 by re-reading the current source files.
 >
-> `wired` (now): production gate at `finalize_workflow_execution()` calls `record_workflow_outcome()` when `_workflow_outcome_v1_enabled()`; the consumer side (`workflow_get_outcome_tool`) reads back via `dhara.get` with the runtime gate; both gaps closed. Original ship evidence preserved below for audit.
+> `wired` (now): production gate at `finalize_workflow_execution()` calls `record_workflow_outcome()` when `_workflow_outcome_v1_enabled()`; the consumer side (`workflow_get_outcome_tool`) reads back via `mcp.get` with the runtime gate; both gaps closed. Original ship evidence preserved below for audit.
 
 `wired` (original, pre-flip): reached when Task 3 production-gated `record_workflow_outcome()` inside `finalize_workflow_execution()` (`mahavishnu/core/workflow_execution.py:331`) and registered `workflow_get_outcome_tool` via FastMCP (`mahavishnu/mcp/bootstrap.py`). Task 4 round-trip test (5 passing tests) proves the end-to-end contract between producer and consumer.
 
@@ -44,7 +44,7 @@ ______________________________________________________________________
 
 - [x] Entry point registered (`workflow_get_outcome_tool` registered via `@mcp.tool()` in `mahavishnu/mcp/tools/workflow_tools.py`, surfaced through `mahavishnu/mcp/bootstrap.py`)
 - [x] Trigger path identified (workflow completion boundary in `finalize_workflow_execution()` invokes `record_workflow_outcome()`; `workflow_get_outcome_tool` reads back from any MCP caller)
-- [x] Returns / state updates land in expected destination (`workflow-results/{workflow_id}/` prefix on Dhara, typed `WorkflowOutcome` struct on read)
+- [x] Returns / state updates land in expected destination (`workflow-results/{workflow_id}/` prefix in the durable key-value store, typed `WorkflowOutcome` struct on read)
 - [x] End-to-end smoke check documented (`.venv/bin/python -m pytest tests/unit/workflow/test_outcome_round_trip.py --no-cov` → 5 passed in 7.06s)
 - [x] Observability hook in place (oneiric logger via `oneiric.core.logging.get_logger`; failure path logs `outcome_err` at warn level inside `finalize_workflow_execution()` — see Deferred items for hardening)
 - [x] Rollback signal defined (revert the 4 land commits — see Related)
@@ -60,15 +60,15 @@ yes — Task 4 round-trip test locks the validate-on-write + validate-on-read co
 ## Trigger path
 
 1. Workflow completes (success, failure, or cancellation) inside `finalize_workflow_execution()` at `mahavishnu/core/workflow_execution.py:331`.
-1. Boundary call to `record_workflow_outcome(workflow_id, status, started_at, finished_at, metadata=None)` constructs a `WorkflowOutcome` msgspec Struct, validates via `dhara.schema.validate("workflow_outcome", payload)`, and persists via `dhara.put(f"workflow-results/{workflow_id}/", validated)`.
+1. Boundary call to `record_workflow_outcome(workflow_id, status, started_at, finished_at, metadata=None)` constructs a `WorkflowOutcome` msgspec Struct, validates via `msgspec.convert(payload, WorkflowOutcome)`, and persists via `mcp.put(f"workflow-results/{workflow_id}/", validated)`.
 1. Status mapping at the boundary: `"completed"` → `"succeeded"`, `"partial"` → `"cancelled"` (see `workflow_execution.py:380-388`).
 1. MCP consumer side: any registered FastMCP caller invokes `mcp__mahavishnu__workflow_get_outcome(workflow_id)`.
-1. `validate_workflow_id(workflow_id)` from `mahavishnu/mcp/tools/_workflow_id_guard.py` gates against `^[A-Za-z0-9._-]{1,128}$` before touching Dhara; on mismatch returns `{"workflow_id": workflow_id, "status": "invalid_workflow_id"}` sentinel.
-1. `dhara.get(f"workflow-results/{workflow_id}/")` reads back the persisted dict; `None` propagates as `None` (no record → no validation); otherwise `from_dict("workflow_outcome", payload)` returns a typed `WorkflowOutcome`.
+1. `validate_workflow_id(workflow_id)` from `mahavishnu/mcp/tools/_workflow_id_guard.py` gates against `^[A-Za-z0-9._-]{1,128}$` before touching the durable store; on mismatch returns `{"workflow_id": workflow_id, "status": "invalid_workflow_id"}` sentinel.
+1. `mcp.get(f"workflow-results/{workflow_id}/")` reads back the persisted dict; `None` propagates as `None` (no record → no validation); otherwise `msgspec.convert(payload, WorkflowOutcome)` returns a typed `WorkflowOutcome`.
 
 ## Integration point
 
-- Producer (`record_workflow_outcome`): `mahavishnu/core/workflow/outcome_writer.py` — substrate-compat `if not hasattr(dhara, "put"): dhara.put = None` so test `monkeypatch` lands without a real Dhara binding.
+- Producer (`record_workflow_outcome`): `mahavishnu/core/workflow/outcome_writer.py` — substrate-compat `if not hasattr(mcp, "put"): mcp.put = None` so test `monkeypatch` lands without a real durable-store binding.
 - Boundary call site: `mahavishnu/core/workflow_execution.py:331` (`finalize_workflow_execution`).
 - Consumer (`workflow_get_outcome`): `mahavishnu/mcp/tools/workflow_tools.py` — registered as `workflow_get_outcome_tool` via FastMCP decorator (FastMCP requires coroutines, so the function is `async def`).
 - Path-traversal guard: `mahavishnu/mcp/tools/_workflow_id_guard.py` — extracted from `pool_tools.py` in Task 3 fix round 1 to give sibling parity (`workflow_result` and `dispatch_to_pool` already used this gate).
@@ -121,7 +121,7 @@ Owner: mahavishnu core. Target: v1.1 hardening cycle.
 - Task 2 commit: `c0265696643493b9fce6b4a01c06209c54eb642a` (consumer)
 - Task 3 commits: `788f142a` (wiring) → `3fb597553567ada7dea6f07a11c4203a334912c3` (path-traversal fix)
 - Task 4 commit: pending — round-trip test + this completion report
-- Substrate-compat pattern: `dhara.schema` public re-exports (never `_base` / `_registry`)
+- Substrate-compat pattern: `mcp.schema` public re-exports (never `_base` / `_registry`)
 - Path-traversal guard shared with `pool_tools.workflow_result` and `pool_tools.dispatch_to_pool` via `_workflow_id_guard.py`
 - Rollback: revert the 4 land commits; the only other state is `docs/feature-tracking/2026-08-10-m-workflow-outcome.md` (this file).
 

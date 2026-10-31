@@ -1,6 +1,6 @@
 # CLI Reference
 
-> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+> **Note**: Refreshed on 2026-10-30 after the standalone MCP server component was retired (2026-09-20). Runtime references (ports, CLI flags, config blocks) now describe the current Oneiric-backed substrate.
 
 Quick reference for Mahavishnu CLI commands. Every command listed below is
 verified against `mahavishnu/_main_cli.py` and the per-subsystem CLI source

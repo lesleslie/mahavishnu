@@ -146,8 +146,6 @@ _(Hand-maintained footer. Not generated.)_
 
 ## Excluded from scope (not a fleet member)
 
-- `dhara/` — Decommissioned as a core component (ADR 019, 2026-10-17); still maintained by Bodai, but outside the six-repo fleet release set
-  Removed from `settings/ecosystem.yaml` 2026-10-28.
 - `jinja2-custom-delimiters/` — IntelliJ Platform plugin (Gradle/Kotlin), not a Python package
   Removed from `settings/ecosystem.yaml` 2026-10-28.
 - `www-mcp-servers/` — no pyproject.toml; docs-only

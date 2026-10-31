@@ -16,7 +16,7 @@ Generated for the C5-prep harness.
 1. The same `correlation_id` is present from detection through validation.
 1. Session-Buddy stores the workflow checkpoint for the incident flow.
 1. Crackerjack quality validation is recorded before approval is granted.
-1. Dhara persists workflow, pool, routing, and approval checkpoints.
+1. The persistence substrate stores workflow, pool, routing, and approval checkpoints.
 1. Akosha receives derived incident/fix memory after validation.
 
 ## Mock Service Contracts
@@ -42,7 +42,7 @@ Generated for the C5-prep harness.
 - Preserved surfaces: semantic search, derived-memory indexing
 - Mock strategy: index derived incident/fix memory with the shared correlation ID.
 
-### Dhara
+### Persistence Substrate
 
 - Owner role: `curator`
 - Entry points: `MCPStateBackend.persist_workflow`, `MCPStateBackend.persist_pool`, `MCPStateBackend.persist_routing_decision`, `MCPStateBackend.persist_approval`
@@ -55,6 +55,6 @@ Generated for the C5-prep harness.
 - Quality gate run delegated to Crackerjack and returned a blocking failure.
 - Session-Buddy checkpoint created.
 - Operator approval requested before fix execution resumes.
-- Dhara recovery state shows the same correlation and workflow identifiers.
+- The persistence substrate's recovery state shows the same correlation and workflow identifiers.
 - Akosha indexed the validated fix.
 - Operator cockpit reports the incident resolved and searchable.

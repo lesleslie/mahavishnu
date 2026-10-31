@@ -100,7 +100,10 @@ class TestRegistryIntegrity:
     # Pinned 2026-09-06 by Plan 0a. Raising this requires a matching
     # ecosystem.yaml addition; lowering it requires deleting this assertion
     # deliberately, with a reason in the commit message.
-    LEGACY_PINNED_COUNT = 32
+    # Lowered 32 → 31 on 2026-10-30: the retired standalone MCP server
+    # component was dropped from the legacy catalog along with the rest of
+    # its fleet membership.
+    LEGACY_PINNED_COUNT = 31
 
     def test_legacy_count_has_not_decreased(self) -> None:
         """A one-directional superset assertion passes trivially if entries are
@@ -217,4 +220,6 @@ class TestLegacyDeprecation:
     def test_legacy_entries_unchanged_count(self) -> None:
         """Deprecating must not mutate entries — the guard in Task 9 depends on
         this file staying stable as the migration's reference point."""
-        assert len(_repos(LEGACY_PATH)) == 32
+        # 32 → 31 on 2026-10-30: the retired standalone MCP server component
+        # was removed from the legacy catalog.
+        assert len(_repos(LEGACY_PATH)) == 31

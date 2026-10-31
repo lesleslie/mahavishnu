@@ -1002,7 +1002,7 @@ def test_register_worker_contract_tools_attaches_all_nine(
     assert tools._settle_mcp is None
 
 
-def test_register_worker_contract_tools_with_settle_dhara(
+def test_register_worker_contract_tools_with_settle_mcp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools

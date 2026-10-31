@@ -44,7 +44,7 @@ ______________________________________________________________________
 
 **Decision:** Two-pass: pass 1 groups events by id, parks orphan ops (done/reopen targeting missing ids). Pass 2 applies in HLC order, replays parked ops as parents appear. Genuinely orphan ops (parked through full log scan) get logged to errors.log and surfaced in `FoldResult.errors`.
 **Tiebreaker:** when two events share `(wall_ms, ctr)`, sort lexicographic on `(wall_ms, ctr, node)`; same node breaks ties by `ctr` (UD4). Spec §HLC tiebreaker below makes this explicit.
-**Why:** Required for sub-plan 3 (drain from Dhara may deliver events out of order). Single-pass would silently misapply out-of-order ops.
+**Why:** Required for sub-plan 3 (drain from the substrate may deliver events out of order). Single-pass would silently misapply out-of-order ops.
 **Rejected:** (a) Single-pass — fails under drain. (b) Timestamp-only sort — violates UD4 HLC contract.
 
 ### R4. Git enrichment — lazy subprocess per call (serverless-safe)
@@ -124,7 +124,7 @@ ______________________________________________________________________
 
 ## Non-goals (deferred)
 
-- ❌ Drain to Dhara (sub-plan 3)
+- ❌ Drain to the substrate (sub-plan 3)
 - ❌ Drain-time redaction (sub-plan 3)
 - ❌ Multi-machine sync (sub-plan 3)
 - ❌ Jot → worker dispatch (deferred to follow-on sub-plan after sub-plan 3)
@@ -556,7 +556,7 @@ ______________________________________________________________________
 **Sub-plan 3 (Drain) consumes:**
 
 - All sub-plan 1 + sub-plan 2 deliverables
-- `mahavishnu/jot/fold.py` — drain reads from log, then writes to Dhara
+- `mahavishnu/jot/fold.py` — drain reads from log, then writes to the substrate
 - `mahavishnu/jot/events.py` — drain emits copy events
 - `mahavishnu/jot/redact.py` — drain-time redaction with full Session-Buddy `redact()`
 
@@ -565,7 +565,7 @@ ______________________________________________________________________
 - `mahavishnu/jot/drain_core.py` — pure planner
 - `mahavishnu/jot/drain_sync.py` — urllib, 2s hard limit
 - `mahavishnu/jot/drain_async.py` — httpx2 wrapper
-- `mahavishnu/jot/offsets.py` — Dhara offset bookkeeping
+- `mahavishnu/jot/offsets.py` — substrate offset bookkeeping
 - Drain triggers (SessionStart, SessionEnd, drain-before-read)
 - `MockSessionBuddy` test fixture
 

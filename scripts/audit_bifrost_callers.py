@@ -12,7 +12,7 @@ The check is scoped to *string-literal* base URLs on lines that
 contain a recognized LLM-client keyword
 (``AsyncOpenAI``, ``OpenAI``, ``Anthropic``, ``AsyncAnthropic``,
 ``openai.AsyncClient``, etc.). Generic ``base_url=`` assignments
-on MCP clients, OTel exporters, Dhara clients, and observability
+on MCP clients, OTel exporters, and observability
 adapters are out of scope — those are governed by their own
 audit/decision docs.
 
@@ -70,7 +70,7 @@ FORBIDDEN_LITERAL_HOSTS: frozenset[str] = frozenset(
 # Line-level keywords that mark a line as LLM-client construction.
 # A line that contains one of these AND a ``base_url="..."``
 # literal is the audit target. We intentionally scope narrowly
-# so MCP/OTel/Dhara clients (which also have ``base_url``) are
+# so MCP/OTel clients (which also have ``base_url``) are
 # out of scope.
 LLM_CLIENT_KEYWORDS: tuple[str, ...] = (
     "AsyncOpenAI",

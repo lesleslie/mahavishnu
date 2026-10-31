@@ -26,10 +26,10 @@ The 15 most common invocations:
 mahavishnu worktree prune-merged --dry-run
 
 # Preview one repo by nickname
-mahavishnu worktree prune-merged --repo=dhara --dry-run
+mahavishnu worktree prune-merged --repo=oneiric --dry-run
 
 # Remove merged-clean worktrees in one repo
-mahavishnu worktree prune-merged --repo=dhara
+mahavishnu worktree prune-merged --repo=oneiric
 
 # Apply across every configured repo
 mahavishnu worktree prune-merged
@@ -45,14 +45,14 @@ mahavishnu worktree prune-merged --include-dirty \
     --force-reason "batch cleanup of merged dirty worktrees"
 
 # Single-repo include-dirty with reason
-mahavishnu worktree prune-merged --repo=dhara --include-dirty \
-    --force-reason "dhara batch cleanup"
+mahavishnu worktree prune-merged --repo=oneiric --include-dirty \
+    --force-reason "oneiric batch cleanup"
 
 # Combined TTL + dry-run + JSON
 mahavishnu worktree prune-merged --ttl-days=30 --dry-run --json
 
 # JSON output after an apply
-mahavishnu worktree prune-merged --repo=dhara --json
+mahavishnu worktree prune-merged --repo=oneiric --json
 
 # Pipe JSON to jq for filtering
 mahavishnu worktree prune-merged --dry-run --json | jq '.candidates[].branch'
@@ -61,10 +61,10 @@ mahavishnu worktree prune-merged --dry-run --json | jq '.candidates[].branch'
 grep worktree_prune_merged ~/.local/state/mahavishnu/audit.log | tail -10
 
 # Verify the worktree list shrank after a sweep
-git -C /Users/les/Projects/dhara worktree list
+git -C /Users/les/Projects/oneiric worktree list
 
 # Re-run after sweep to confirm idempotency
-mahavishnu worktree prune-merged --repo=dhara --dry-run
+mahavishnu worktree prune-merged --repo=oneiric --dry-run
 # Expected: ✅ No merged worktrees to remove.
 ```
 
@@ -109,11 +109,11 @@ resolved by `--repo <key>` and will be silently skipped when iterating.
 ```yaml
 # settings/ecosystem.yaml — required shape
 repos:
-  - name: dhara
-    package: dhara           # REQUIRED for prune-merged
-    path: /Users/les/Projects/dhara
-    nickname: dhara
-    nicknames: [dhara]
+  - name: oneiric
+    package: oneiric         # REQUIRED for prune-merged
+    path: /Users/les/Projects/oneiric
+    nickname: oneiric
+    nicknames: [oneiric]
     tags: [storage]
     description: Persistent object storage
 ```
@@ -172,18 +172,18 @@ The branch is still on disk and can be re-attached:
 
 ```bash
 # Find the branch (it's still in `git branch -a`)
-git -C /Users/les/Projects/dhara branch -a | grep <branch-name>
+git -C /Users/les/Projects/oneiric branch -a | grep <branch-name>
 
 # Recreate the worktree pointing at the branch
-git -C /Users/les/Projects/dhara worktree add <original-path> <branch-name>
+git -C /Users/les/Projects/oneiric worktree add <original-path> <branch-name>
 ```
 
 If the branch was already deleted by a subsequent cleanup, reflog can recover
 the commits:
 
 ```bash
-git -C /Users/les/Projects/dhara reflog | grep <branch-name>
-git -C /Users/les/Projects/dhara branch <recovered-branch> <sha>
+git -C /Users/les/Projects/oneiric reflog | grep <branch-name>
+git -C /Users/les/Projects/oneiric branch <recovered-branch> <sha>
 ```
 
 ### Forced-dirty removal (backup created under ~/.local/share/...)
@@ -238,17 +238,17 @@ reason. Common issues:
 
 ```bash
 # Apply dry-run to a single repo
-uv run --quiet mahavishnu worktree prune-merged --repo=dhara --dry-run
+uv run --quiet mahavishnu worktree prune-merged --repo=oneiric --dry-run
 ```
 
-**Expected output**: human-readable list of dhara's merged worktrees. dhara
+**Expected output**: human-readable list of oneiric's merged worktrees. oneiric
 has 5 merged-clean worktrees per the 2026-07-26 audit.
 
 ### Phase 3: Apply to a single repo
 
 ```bash
-# Apply to dhara (a safe target — 5 merged-clean worktrees)
-uv run --quiet mahavishnu worktree prune-merged --repo=dhara
+# Apply to oneiric (a safe target — 5 merged-clean worktrees)
+uv run --quiet mahavishnu worktree prune-merged --repo=oneiric
 ```
 
 **Expected output**: 5 removal lines, each with `✅` icon, branch name,
@@ -271,7 +271,7 @@ plus 1 `worktree_prune_merged_success` event (the sweep-level roll-up).
 ### Phase 5: Spot-check the worktrees
 
 ```bash
-git -C /Users/les/Projects/dhara worktree list
+git -C /Users/les/Projects/oneiric worktree list
 ```
 
 **Expected output**: 5 fewer worktree entries than before Phase 3.
@@ -280,7 +280,7 @@ git -C /Users/les/Projects/dhara worktree list
 
 ```bash
 # After Phase 5, the merged-clean worktrees should be gone
-uv run --quiet mahavishnu worktree prune-merged --repo=dhara --dry-run
+uv run --quiet mahavishnu worktree prune-merged --repo=oneiric --dry-run
 ```
 
 **Expected output**: `✅ No merged worktrees to remove.`

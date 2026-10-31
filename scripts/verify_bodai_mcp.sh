@@ -26,7 +26,7 @@ set -u
 declare -a SERVERS=(
   "mahavishnu:8680"
   "akosha:8682"
-  "dhara:8683"
+  "oneiric:8681"
   "session-buddy:8678"
   "crackerjack:8676"
 )

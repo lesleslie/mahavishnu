@@ -35,8 +35,6 @@ phase_order:
     repo: mcp-common
   - phase: "Phase 0.2"
     repo: oneiric
-  - phase: "Phase 0.3"
-    repo: dhara
   - phase: "Phase 0.4"
     repo: session-buddy
   - phase: "Phase 0.5"
@@ -64,11 +62,6 @@ repos:
     phase: "Phase 0.2"
     provenance: brief
     registry_notes: "needed by Phase A"
-  dhara:
-    phase: "Phase 0.3"
-    provenance: brief
-    fastmcp_pin: ">=4.0.3"
-    fastmcp_pin_as_of: "2026-09-06"
   session-buddy:
     phase: "Phase 0.4"
     provenance: brief
@@ -190,10 +183,6 @@ repos:
 # fleet member and as excluded, which is self-contradictory.
 
 excluded_repos:
-  dhara:
-    exclusion_reason: Decommissioned as a core component (ADR 019, 2026-10-17); still
-      maintained by Bodai, but outside the six-repo fleet release set
-    removed_from_ecosystem_yaml: '2026-10-28'
   jinja2-custom-delimiters:
     exclusion_reason: IntelliJ Platform plugin (Gradle/Kotlin), not a Python package
     removed_from_ecosystem_yaml: '2026-10-28'

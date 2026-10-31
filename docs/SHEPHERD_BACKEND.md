@@ -111,7 +111,7 @@ re-implemented:
   settled view; v2 Phase 2's `worker_settle` MCP tool consumes it
   from `mahavishnu://workers/{worker_id}.json`.
 
-This is a deliberate decision — Dhara mirrors the substrate's
+This is a deliberate decision — the MCP store mirrors the substrate's
 durable record rather than storing a parallel settlement stream.
 See
 [`websocket/WEBSOCKET_CONSUMER_GUIDE.md`](websocket/WEBSOCKET_CONSUMER_GUIDE.md) for

@@ -11,7 +11,7 @@ import mahavishnu.core.oneiric_client as oc
 
 
 class _FakeMCPClient:
-    def __init__(self, base_url: str = "http://mcp:8683/mcp") -> None:
+    def __init__(self, base_url: str = "http://oneiric:8681/mcp") -> None:
         self.base_url = base_url
         self.calls: list[tuple[str, dict]] = []
         self.fail_next = False
@@ -36,13 +36,13 @@ class _FakeMCPClient:
         if self.fail_next:
             self.fail_next = False
             raise RuntimeError("down")
-        if name == "list_adapters":
+        if name == "oneiric_list_adapters":
             return {"success": True, "count": len(self.adapters), "adapters": self.adapters}
-        if name == "get_adapter":
+        if name == "oneiric_get_adapter":
             return {"success": True, "adapter": self.adapters[0]}
-        if name == "get_adapter_health":
+        if name == "oneiric_get_adapter_health":
             return {"success": True, "health": {"healthy": True}}
-        if name == "get_contract_info":
+        if name == "oneiric_get_contract_info":
             return {"ok": True, "tool_groups": {"adapter_registry": ["list_adapters"]}}
         raise AssertionError(name)
 
@@ -61,11 +61,11 @@ def test_get_and_set_mcp_client_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     oc.set_mcp_client_base_url("http://example:9999/mcp/")
     c1 = oc.get_mcp_client()
     c2 = oc.get_mcp_client("http://example:9999/mcp")
-    c3 = oc.get_mcp_client("http://other:8683/mcp")
+    c3 = oc.get_mcp_client("http://other:8681/mcp")
 
     assert c1 is c2
     assert c1 is not c3
-    assert created == ["http://example:9999/mcp", "http://other:8683/mcp"]
+    assert created == ["http://example:9999/mcp", "http://other:8681/mcp"]
 
 
 def test_adapter_entry_from_mcp_and_pb2_compat() -> None:
@@ -137,7 +137,7 @@ async def test_mcp_registry_client_happy_path_and_disabled(
     )
     assert len(adapters_1) == 1
     assert adapters_1 == adapters_2
-    assert fake.calls.count(("list_adapters", {"domain": "adapter", "category": "workflow"})) == 1
+    assert fake.calls.count(("oneiric_list_adapters", {"domain": "adapter", "category": "workflow"})) == 1
 
     adapter = await client.get_adapter("adapter:workflow:prefect")
     assert adapter is not None

@@ -27,7 +27,7 @@ class TestPlanCLI:
         assert "vitals" in result.stdout
         assert "purge" in result.stdout
 
-    def test_list_runs_against_fake_dhara(
+    def test_list_runs_against_fake_mcp(
         self,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,

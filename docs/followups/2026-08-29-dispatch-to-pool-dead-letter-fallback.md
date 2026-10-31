@@ -22,74 +22,74 @@ The bug lives in the worker-registry refactor branch (`refactor/worker-registry-
 currently 38 commits ahead of `main`). It is NOT in `main` yet. The implementation is in
 `mahavishnu/mcp/tools/pool_tools.py` in that worktree (the file on `main` is the 177-line stub).
 
-### Write side: silent no-op when Dhara unavailable
+### Write side: silent no-op when the durable-state backend is unavailable
 
 **`mahavishnu/mcp/tools/pool_tools.py` (worker-registry worktree), lines 181–194**
 
 ```python
-dhara = getattr(pool_manager, "_dhara_state", None)
+state = getattr(pool_manager, "_state_backend", None)
 
 async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
-    if dhara is None:
+    if state is None:
         return                                          # ← bug: silent no-op
-    await dhara.put(
+    await state.put(
         f"workflow-results/{workflow_id}/",
         {"workflow_id": workflow_id, "status": state_value, ...},
     )
 ```
 
-The `if dhara is None: return` branch was **documented as a "non-fatal failure mode"** in the
-docstring at lines 158–171. The author's intent was graceful degradation: if Dhara is down,
-async dispatch still returns a `workflow_id`. But the *caller* then has no way to read back
+The `if state is None: return` branch was **documented as a "non-fatal failure mode"** in the
+docstring at lines 158–171. The author's intent was graceful degradation: if the durable-state
+backend is down, async dispatch still returns a `workflow_id`. But the *caller* then has no way to read back
 the result — `workflow_result` returns `not_found`. Graceful degradation broke the contract.
 
-### Why Dhara is unavailable in this environment
+### Why the durable-state backend is unavailable in this environment
 
 **`mahavishnu/core/bootstrap.py` (worker-registry worktree), lines 389–409**
 
 ```python
-def _init_dhara_state(app: Any) -> Any:
-    if not (app.config.dhara_state.enabled and app.dhara_url):
+def _init_state_backend(app: Any) -> Any:
+    if not (app.config.mcp_state.enabled and app.mcp_url):
         return None                                   # ← returns None when not configured
     ...
 ```
 
-Bootstrap wires `app._dhara_state = _init_dhara_state(app)`. When `dhara_state.enabled=False`
-or `dhara_url` is unset, `app._dhara_state` is `None`, which propagates to
-`PoolManager._dhara_state = None` (via `bootstrap.py:578`), which makes `_persist_state`
+Bootstrap wires `app._state_backend = _init_state_backend(app)`. When `mcp_state.enabled=False`
+or `mcp_url` is unset, `app._state_backend` is `None`, which propagates to
+`PoolManager._state_backend = None` (via `bootstrap.py:578`), which makes `_persist_state`
 silent-no-op, which makes `workflow_result` return `not_found`.
 
-### Read side: only consults Dhara
+### Read side: only consults the durable-state backend
 
 **`mahavishnu/mcp/tools/pool_tools.py` (worker-registry worktree), lines 953–960**
 
 ```python
-dhara = getattr(pool_manager, "_dhara_state", None)
-if dhara is None:
+state = getattr(pool_manager, "_state_backend", None)
+if state is None:
     return {"workflow_id": workflow_id, "status": "not_found"}     # ← same root
-record = await dhara.get(f"workflow-results/{workflow_id}/")
+record = await state.get(f"workflow-results/{workflow_id}/")
 if not record:
     return {"workflow_id": workflow_id, "status": "not_found"}
 ```
 
-`workflow_result` only checks Dhara. Even if we fix the write side to fall back to dead-letter,
-the read side won't find the result unless we also teach `workflow_result` to consult the
-dead-letter file.
+`workflow_result` only checks the durable-state backend. Even if we fix the write side to fall
+back to dead-letter, the read side won't find the result unless we also teach `workflow_result`
+to consult the dead-letter file.
 
 ## Fix design
 
 **Two coordinated changes**, both in the same file (`pool_tools.py`):
 
-### Change 1 — `_persist_state` (write side): fall through to dead-letter when Dhara unavailable
+### Change 1 — `_persist_state` (write side): fall through to dead-letter when the durable-state backend is unavailable
 
 ```python
-dhara = getattr(pool_manager, "_dhara_state", None)
+state = getattr(pool_manager, "_state_backend", None)
 
 async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
-    """Persist workflow state to Dhara, with dead-letter fallback."""
-    if dhara is not None:
+    """Persist workflow state to the durable-state backend, with dead-letter fallback."""
+    if state is not None:
         try:
-            await dhara.put(
+            await state.put(
                 f"workflow-results/{workflow_id}/",
                 {
                     "workflow_id": workflow_id,
@@ -101,7 +101,7 @@ async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
             return
         except Exception as exc:
             logger.exception(
-                "dispatch_to_pool: dhara.put failed for workflow_id=%s "
+                "dispatch_to_pool: state.put failed for workflow_id=%s "
                 "state=%s; falling back to dead-letter",
                 workflow_id, state_value,
             )
@@ -109,20 +109,20 @@ async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
     _dead_letter_append(workflow_id, state_value, payload)
 ```
 
-The existing dead-letter pattern at lines 235–282 already handles Dhara-side failures. This fix
-makes the *unavailable* case use the same recovery path. The `if dhara is None: return` branch
+The existing dead-letter pattern at lines 235–282 already handles backend-side failures. This fix
+makes the *unavailable* case use the same recovery path. The `if state is None: return` branch
 is deleted entirely — silent data loss is no longer a tolerated mode.
 
 ### Change 2 — `workflow_result` (read side): check dead-letter as fallback
 
 ```python
-dhara = getattr(pool_manager, "_dhara_state", None)
+state = getattr(pool_manager, "_state_backend", None)
 record = None
-if dhara is not None:
-    record = await dhara.get(f"workflow-results/{workflow_id}/")
+if state is not None:
+    record = await state.get(f"workflow-results/{workflow_id}/")
 
-# Dead-letter fallback: recover workflows that ran while Dhara was
-# unavailable or when the Dhara write itself failed.
+# Dead-letter fallback: recover workflows that ran while the durable-state
+# backend was unavailable or when the backend write itself failed.
 if not record:
     safe_wid = workflow_id.replace("/", "_").replace("..", "_")[:200]
     dead_letter_path = (
@@ -155,7 +155,7 @@ if not record:
 ### Change 3 — extract `_dead_letter_append` helper
 
 The current dead-letter write logic at lines 235–282 is inline. Extract it as a helper so both
-the new `_persist_state` fallback (Change 1) and the existing Dhara-write-failure path
+the new `_persist_state` fallback (Change 1) and the existing backend-write-failure path
 (lines 230–282) share the same recovery mechanism. Pseudocode:
 
 ```python
@@ -166,7 +166,7 @@ def _dead_letter_append(workflow_id: str, status: str, payload: dict[str, Any]) 
     (preserves the fire-and-forget contract). The dead-letter file is at
     ``~/.mahavishnu/async-dead-letter/{safewid}.json`` and accumulates
     states across calls so the read side can find the latest terminal
-    state when Dhara is unavailable.
+    state when the durable-state backend is unavailable.
     """
     dead_letter_dir = Path.home() / ".mahavishnu" / "async-dead-letter"
     try:
@@ -202,16 +202,16 @@ def _dead_letter_append(workflow_id: str, status: str, payload: dict[str, Any]) 
 
 | Alternative | Why not |
 |---|---|
-| Make Dhara **required** (raise on `dhara is None`) | Breaking change for environments without Dhara. The fire-and-forget contract returns a `workflow_id` before persist runs — even raising wouldn't prevent that, but it would invalidate existing smoke tests. |
-| Fix bootstrap to *always* configure Dhara | Doesn't help when `dhara_state.enabled` is intentionally `False` (e.g., local dev). |
-| Wire Dhara in `PoolManager` after construction | `bootstrap.py:578` already passes `dhara_state=getattr(app, "_dhara_state", None)`. The wiring is correct; the assumption "Dhara is optional" is the bug. |
+| Make the durable-state backend **required** (raise on `state is None`) | Breaking change for environments without the backend. The fire-and-forget contract returns a `workflow_id` before persist runs — even raising wouldn't prevent that, but it would invalidate existing smoke tests. |
+| Fix bootstrap to *always* configure the backend | Doesn't help when `mcp_state.enabled` is intentionally `False` (e.g., local dev). |
+| Wire the backend in `PoolManager` after construction | `bootstrap.py:578` already passes `state_backend=getattr(app, "_state_backend", None)`. The wiring is correct; the assumption "the durable-state backend is optional" is the bug. |
 | In-memory dict fallback | Doesn't survive restart. Dead-letter file gives operators a recoverable record. |
 | Skip the fix entirely | Outcome #1's purpose is to ship this fix. Outcome #2–5 depend on it. |
 | Migrate callers to `get_capability_result(trace_id)` | **Verified unavailable in current MCP server** — see Coordination Notes. Tools exist in source but aren't exposed; the running server only has the deprecated tools. |
 
 The dead-letter fallback is the path of least resistance: existing infrastructure
 (`~/.mahavishnu/async-dead-letter/`), existing JSON shape, just extends it from
-"Dhara-write-failed" to "Dhara-unavailable."
+"backend-write-failed" to "backend-unavailable."
 
 ## Regression test
 
@@ -236,10 +236,10 @@ def tmp_dead_letter_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
-async def test_dispatch_to_pool_async_persists_via_dead_letter_when_dhara_unavailable(
+async def test_dispatch_to_pool_async_persists_via_dead_letter_when_state_backend_unavailable(
     tmp_dead_letter_dir,
 ):
-    """Regression: dispatch_to_pool must persist via dead-letter when Dhara is None.
+    """Regression: dispatch_to_pool must persist via dead-letter when the state backend is None.
 
     Pre-fix: workflow_result(workflow_id) returned {"status": "not_found"} even
     when the workflow completed, because _persist_state silently no-op'd.
@@ -267,7 +267,7 @@ async def test_dispatch_to_pool_async_persists_via_dead_letter_when_dhara_unavai
 
 
 async def test_workflow_result_recovers_from_dead_letter(monkeypatch, tmp_path):
-    """workflow_result must find records in dead-letter when Dhara returns nothing."""
+    """workflow_result must find records in dead-letter when the state backend returns nothing."""
     # Pre-seed the dead-letter file
     workflow_id = "test-uuid-deadletter"
     safe_wid = workflow_id.replace("/", "_").replace("..", "_")[:200]
@@ -291,7 +291,7 @@ async def test_workflow_result_recovers_from_dead_letter(monkeypatch, tmp_path):
         classmethod(lambda cls: tmp_path),
     )
 
-    # Invoke workflow_result against a pool_manager with no Dhara
+    # Invoke workflow_result against a pool_manager with no state backend
     # Asserts: result.status == "completed", result.result == {"answer": 42}
     # (specific call shape depends on MCP tool introspection; left abstract here)
     ...
@@ -364,7 +364,7 @@ add the read-side dead-letter check. ~30 lines net change.
 
 ```diff
 - Outcome #1: Status pending (waiting on worker-registry)
-+ Outcome #1: Bug diagnosed. Root cause: `_dhara_state is None` causes silent
++ Outcome #1: Bug diagnosed. Root cause: `_state_backend is None` causes silent
 + no-op in `_persist_state` (write side) and `workflow_result` returns
 + `not_found` (read side). Fix designed: dead-letter fallback on write side
 + + read-side dead-letter check. Awaiting worker-registry-2026-08-28 merge

@@ -17,7 +17,7 @@ title: "Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design"
 
 > **About this design (2026-09-25)**: Two related tasks that came out of the LangGraph viability spike. The spike concluded that adding a LangGraph engine adapter for `clone_refactor_group` is **not currently justified** because the tool is a stub that never invokes any DAG — neither Prefect nor LangGraph drives it today. This design closes that wire-up gap by (a) replacing the aspirational PR-shaped DAG module with a git-tree-shaped DAG that matches the actual workflow surface, and (b) closing the `dispatch_to_pool` async-callback env-failure so any new engine inherits a working persistence substrate.
 
-> **Headline change**: The `clone_refactor_workflow.py` module is rewritten from a PR-creation DAG to a git-tree DAG (local-main writes via `git apply` + `git commit`). State persists via `MCPStateBackend` (NOT Dhara — Dhara is no longer a Mahavishnu dependency). Wire-up delivers in-process Prefect `@flow` + `asyncio.create_task` for fire-and-forget semantics matching the existing pattern in `prefect_adapter_impl.py:242` and `conductor.py:199`.
+> **Headline change**: The `clone_refactor_workflow.py` module is rewritten from a PR-creation DAG to a git-tree DAG (local-main writes via `git apply` + `git commit`). State persists via `MCPStateBackend` (NOT the legacy standalone MCP server — it is no longer a Mahavishnu dependency). Wire-up delivers in-process Prefect `@flow` + `asyncio.create_task` for fire-and-forget semantics matching the existing pattern in `prefect_adapter_impl.py:242` and `conductor.py:199`.
 
 ## 1. Outcome
 
@@ -70,11 +70,11 @@ References `flow_path="mahavishnu.workflows.clone_refactor_workflow:run"` only a
 
 ### 4.4 `state_backends/mcp.py` — active state substrate
 
-`MCPStateBackend` writes to MCP keys like `workflow/v1/{execution_id}`. Already used by `clone_refactor_status` (line 282) for `clone-handled/*` prefix. **Dhara is no longer a Mahavishnu dependency** (per user direction 2026-09-25 and verified by `git grep -n dhara mahavishnu/` returning only a stale `skill_mcp_validator.py` allowlist).
+`MCPStateBackend` writes to MCP keys like `workflow/v1/{execution_id}`. Already used by `clone_refactor_status` (line 282) for `clone-handled/*` prefix. **The legacy standalone MCP server is no longer a Mahavishnu dependency** (per user direction 2026-09-25 and verified by a repo-wide grep across `mahavishnu/` returning only a stale `skill_mcp_validator.py` allowlist).
 
 ### 4.5 `dispatch_to_pool` async-callback env-failure
 
-Per memory `pool-dispatch-async-default.md`: `dispatch_to_pool(async_callback=True)` returns `workflow_id` immediately, but `workflow_result(workflow_id=...)` returns `not_found`. Root cause: **the MCP substrate for `workflow/v1/{workflow_id}` writes is unconfigured** (not Dhara). The `Phase 2m` `pool_route_execute` (sync alternative) was shipped as a workaround in commit `4090965b`.
+Per memory `pool-dispatch-async-default.md`: `dispatch_to_pool(async_callback=True)` returns `workflow_id` immediately, but `workflow_result(workflow_id=...)` returns `not_found`. Root cause: **the MCP substrate for `workflow/v1/{workflow_id}` writes is unconfigured** (not the legacy standalone MCP server). The `Phase 2m` `pool_route_execute` (sync alternative) was shipped as a workaround in commit `4090965b`.
 
 ### 4.5 Requirements (REQ-XXX traceability)
 
@@ -122,7 +122,7 @@ Each REQ ID gets `# Implements: REQ-CLONE-NNN` markers in code/docstrings and `@
 
 Three corrections shape this design:
 
-1. **No Dhara** — Dhara is no longer a Mahavishnu dependency. State substrate is `MCPStateBackend`. Do not write "Dhara" in any plan, ADR, code comment, or design doc.
+1. **No legacy standalone MCP server** — it is no longer a Mahavishnu dependency. State substrate is `MCPStateBackend`. Do not write the retired component's name in any plan, ADR, code comment, or design doc.
 2. **No PRs in workflows** — PRs are not the delivery surface. Git operations are git-tree operations on local main.
 3. **Merge to local main** — delivery model is commit/merge to local `main`, not via GitHub PR.
 
@@ -938,7 +938,7 @@ This design is "done enough" when:
 4. Git author `les@wedgwoodwebworks.com` (memory `git-author-email-correct-domain.md`).
 5. All Bodai components merge directly to `main` pre-1.0 (memory `bodai-pre-1.0-merge-policy.md`).
 6. Never hardcode `/Users/les/.../python` in any test (memory `mahavishnu-launcher-venv-discovery.md`).
-7. Project-state corrections: no Dhara references; no PR workflow assumptions; merge to local main.
+7. Project-state corrections: no legacy-component references; no PR workflow assumptions; merge to local main.
 
 ## 13. Critical files
 
@@ -973,7 +973,7 @@ This design is "done enough" when:
 
 ## 15. Revision history
 
-- **v1** (2026-09-25) — Initial design. Replaces aspirational PR-shape DAG with git-tree DAG. UUID7 for `refactor_job_id`. MCPStateBackend as state substrate (no Dhara). Pre-DAG verify. No-auto-revert policy.
+- **v1** (2026-09-25) — Initial design. Replaces aspirational PR-shape DAG with git-tree DAG. UUID7 for `refactor_job_id`. MCPStateBackend as state substrate (no legacy standalone MCP server). Pre-DAG verify. No-auto-revert policy.
 - **v4** (2026-09-25, current) — `python-pro` v3-sanity-check feedback applied. **Fixes 4 BLOCKING + 6 MAJOR + 1 wrong-claim MINOR** that v3 carried:
   - **BLOCKING-fix B1** (`class GitCommitTransient(GitCommitFailed)` inheritance): added explicit `__init__(reason, stderr)` to each subclass + matching `__init__(reason, stderr, exit_code)` to `GitCommitPermanent`. Without these, calling `GitCommitTransient(reason, stderr)` silently type-corrupted `stderr`/`exit_code` because subclasses inherited the base's `(stderr, exit_code)` signature. Verified at REPL.
   - **BLOCKING-fix B2** (`MCPStateBackendError` doesn't exist): added the class to `state_backends/mcp.py` and exported from `__init__.py`.

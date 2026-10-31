@@ -25,6 +25,13 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 
 ---
 
+> **Naming note (2026-10-30):** the retired standalone MCP server component is
+> referred to in this document as `legacy-mcp` (its MCP server was retired on
+> 2026-09-20 and dropped from the fleet release set on 2026-10-17). The
+> `LegacyServiceRegistryClient` class, the `MCP_DEFAULT_URL` literal, and the
+> `mcp_http_client.py` / `state_adapter.py` module names are the post-retirement
+> renames of the symbols that carried the retired component's name.
+
 # CommonMCPClient Transport Unification Across Bodai (v2)
 
 > **Status Note (2026-10-12)** — Partially split into focused plans:
@@ -34,7 +41,7 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 > | **Phase 1a** (SDK code: `mcp_common/clients/common_mcp_client.py`, `mcp_common/health/{feed,aggregator}.py`) | ✅ SHIPPED | inline `# Implements: REQ-001…003` markers present (verified in `common_mcp_client.py:15`) |
 > | **Phase 1b** (Phase 1 tests: `tests/unit/clients/test_common_mcp_client.py`, `tests/unit/health/{test_feed,test_aggregator}.py`) | ❌ NOT STARTED | **Split out**: `docs/plans/2026-10-12-mcp-common-test-backfill.md` |
 > | **Phase 2** (per-repo `<COMPONENT>_MCP_URL` default normalization) | ⏸ DEFERRED | Overlaps with `docs/plans/.archive/2026-09-26-mcp-launcher-standardization.md` REQ-007 (`run_with_uvicorn_config` pipeline). Will not be re-tracked here. |
-> | **Phase 3** (84 `/tools/call` production call-site migration + Dhara `/mcp/tools/call` mount removal in same commit) | ❓ UNVERIFIED | Needs a fresh `grep -rn '/tools/call' {session-buddy,mahavishnu,dhara,akosha,crackerjack} --include='*.py'` audit. Dhara `mcp/server_core.py` `_register_tools_call_route` deletion needs the same audit. Not split out — Phase 3 either still belongs to this umbrella or graduates into a new migration plan after the audit. |
+> | **Phase 3** (84 `/tools/call` production call-site migration + the legacy MCP server's `/mcp/tools/call` mount removal in same commit) | ❓ UNVERIFIED | Needs a fresh `grep -rn '/tools/call' {session-buddy,mahavishnu,legacy-mcp,akosha,crackerjack} --include='*.py'` audit. The legacy MCP server's `mcp/server_core.py` `_register_tools_call_route` deletion needs the same audit. Not split out — Phase 3 either still belongs to this umbrella or graduates into a new migration plan after the audit. |
 > | **Phase 4** (per-repo `/health` aggregator migration to `aggregate_feed_states`) | ↗ SUPERSEDED | Now under `docs/plans/2026-10-09-mcp-health-check-enrichment.md` (shipped 2026-10-09). |
 >
 > The frontmatter's `superseded_by` field carries a single value per the v1.1 schema — the table here is the multi-target record. Phase 1b supersession → `docs/plans/2026-10-12-mcp-common-test-backfill.md`; Phase 4 supersession → `docs/plans/2026-10-09-mcp-health-check-enrichment.md`.
@@ -47,16 +54,16 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 > multi-agent review. Major changes from v1:
 > - Phase 1 is now "extract `BodaiComponentMCPClient` from akosha into mcp-common"
 >   rather than "write 120 LOC of new SDK" (saves ~90 LOC of duplicate code).
-> - Phase 3 task explicitly removes the Dhara `/mcp/tools/call` HTTP-style mount
->   in the same commit as the `DharaServiceRegistryClient` caller removal.
+> - Phase 3 task explicitly removes the legacy MCP server's `/mcp/tools/call` HTTP-style mount
+>   in the same commit as the `LegacyServiceRegistryClient` caller removal.
 > - Phase 4 keeps the `register_http_health_route` 200-always contract; the new
 >   `status` enum (`healthy | warming_up | degraded | failed`) lives in the
 >   body, **not** in the HTTP status code (the launchd wrapper relies on 200).
 > - `mcp-common` version target corrected from 0.22.0 → 0.26.0 (current: 0.25.3).
 > - Phase 1 SDK location: `mcp_common/clients/` (not `interfaces/`, which is
 >   populated with `DualUseTool` / `ensure_dual_use`).
-> - Merging order: `mcp-common → dhara → session-buddy → akosha → mahavishnu`
->   (bottom-up DAG; dhara is the deepest leaf).
+> - Merging order: `mcp-common → legacy-mcp → session-buddy → akosha → mahavishnu`
+>   (bottom-up DAG; legacy-mcp is the deepest leaf).
 > - REQ-007 + REQ-008 now have explicit Phase ownership markers in code.
 > - 17+ test fixture sites added to Phase 2 audit.
 > - `warming_up` overclaim split into two distinct success signals.
@@ -93,15 +100,15 @@ sibling servers and the launchd wrapper depend on.
    `reason_codes: list[ReasonCode]` array.
 2. Replace all 84 production `f"{base}/tools/call"` HTTP call sites
    across 5 repos with `await client.call(name=…, arguments=…)`.
-   Merge order: `mcp-common → dhara → session-buddy → akosha →
+   Merge order: `mcp-common → legacy-mcp → session-buddy → akosha →
    mahavishnu` (bottom-up DAG; no repo pulls a consumer before the
    server-2 dep is in place).
-3. Remove the `DharaServiceRegistryClient` class in akosha AND the
-   `@server.custom_route("/mcp/tools/call", ...)` handler in Dhara
-   in the **same commit** (no deprecation window, no flag — project
+3. Remove the `LegacyServiceRegistryClient` class in akosha AND the
+   `@server.custom_route("/mcp/tools/call", ...)` handler in the legacy
+   MCP server in the **same commit** (no deprecation window, no flag — project
    policy is "no backward compat or legacy support"). After Phase 3
-   the `DharaServiceRegistryClient` has zero callers and the
-   `Dhara /mcp/tools/call` mount is removed.
+   the `LegacyServiceRegistryClient` has zero callers and the
+   legacy MCP server's `/mcp/tools/call` mount is removed.
 4. Standardize default URLs: every `<COMPONENT>_MCP_URL` env var
    default ends in `/mcp`. The 4 wrong-default sites (see §4.2) plus
    the 17+ test fixture sites (see §4.5) updated.
@@ -146,12 +153,12 @@ sibling servers and the launchd wrapper depend on.
 ### 4.1 Cross-server HTTP transport drift (84 production references)
 
 ```
-$ grep -rn '/tools/call' session-buddy/ mahavishnu/ dhara/ akosha/ \
+$ grep -rn '/tools/call' session-buddy/ mahavishnu/ legacy-mcp/ akosha/ \
     --include='*.py' | grep -v __pycache__ | wc -l
 84
 mahavishnu: 34 sites
-akosha:     33 sites (incl. 3 in DharaServiceRegistryClient)
-dhara:      12 sites
+akosha:     33 sites (incl. 3 in LegacyServiceRegistryClient)
+legacy-mcp: 12 sites
 session-buddy: 5 sites
 crackerjack: 0 (uses local tools only)
 ```
@@ -161,38 +168,38 @@ Three transports co-exist on Bodai servers today:
 
 ```
 POST http://localhost:8683/tools/call       →  404 (wrong - double-mount leak)
-POST http://localhost:8678/mcp/tools/call   →  404 (wrong - Dhara-only quirk)
-POST http://localhost:8683/mcp/tools/call   →  200 (Dhara default FastMCP mount)
+POST http://localhost:8678/mcp/tools/call   →  404 (wrong - legacy-MCP-only quirk)
+POST http://localhost:8683/mcp/tools/call   →  200 (legacy-mcp default FastMCP mount)
 POST http://localhost:8680/mcp              →  200 (universal, all servers)
 POST http://localhost:8678/mcp              →  200 (universal, all servers)
 ```
 
 Two of five patterns work universally. The 5-repos'd `f"{base}/tools/call"`
-works against Dhara by accident; breaks against every other server.
+works against the legacy MCP server by accident; breaks against every other server.
 
 ### 4.2 Inconsistent default URLs (5 sites in 4 repos)
 
 ```
-akosha/processing/fitness_analyzer.py:34    _DHARA_DEFAULT_URL = "http://localhost:8683"    ← no /mcp
-akosha/mcp/server.py:52                    DHARA_DEFAULT_URL = "http://localhost:8683"    ← no /mcp
+akosha/processing/fitness_analyzer.py:34    _MCP_DEFAULT_URL = "http://localhost:8683"    ← no /mcp
+akosha/mcp/server.py:52                    MCP_DEFAULT_URL = "http://localhost:8683"    ← no /mcp
 akosha/mcp/tools/__init__.py:238           default = "http://localhost:8683/mcp"           ← /mcp
 akosha/mcp/tools/ecosystem_skills.py:115   default = "http://localhost:8683/mcp"           ← /mcp
-akosha/storage/dhara_http_client.py:31     DHARA_DEFAULT_URL = "http://localhost:8683/mcp" ← /mcp
+akosha/storage/mcp_http_client.py:31       MCP_DEFAULT_URL = "http://localhost:8683/mcp"   ← /mcp
 ```
 
-### 4.3 The Dhara `/mcp/tools/call` mount is hand-rolled, not a FastMCP default
+### 4.3 The legacy MCP server's `/mcp/tools/call` mount is hand-rolled, not a FastMCP default
 
 ```
-dhara/dhara/mcp/server_core.py:693-770  @self.server.custom_route("/mcp/tools/call", methods=["POST"])
+<legacy-mcp repo>/mcp/server_core.py:693-770  @self.server.custom_route("/mcp/tools/call", methods=["POST"])
 ```
 
 Docstring at line 693 states: *"REST-style tool call endpoint for
-Akosha client compatibility. Akosha's DharaServiceRegistryClient
+Akosha client compatibility. Akosha's LegacyServiceRegistryClient
 calls `{base_url}/tools/call` where `base_url` ends in `/mcp`,
 producing `/mcp/tools/call`."*
 
 **The active caller is** `akosha/akosha/mcp/client.py:170
-DharaServiceRegistryClient` (3 call sites at lines 202, 226, 240).
+LegacyServiceRegistryClient` (3 call sites at lines 202, 226, 240).
 There is exactly one caller; once Phase 3 deletes that caller, the
 mount becomes dead public surface. Phase 3 commits must delete
 both sides in the same change.
@@ -224,7 +231,7 @@ akosha/tests/unit/test_mcp_server_lifespan.py:96                                
 akosha/tests/unit/mcp/test_client.py:207, 212, 230, 249, 271, 290, 309, 331, 344            — 9 fixtures
 ```
 
-Plus unknowns in mahavishnu/dhara/session-buddy/crackerjack.
+Plus unknowns in mahavishnu/legacy-mcp/session-buddy/crackerjack.
 Phase 2 task list must include a *test-fixture* audit specifically.
 
 ### 4.6 Cumulative counter semantics
@@ -355,7 +362,7 @@ REQ-008` markers in the cited call sites.
   yet. The first production caller is wired in **Phase 3** when
   `akosha/mcp/client.py` (replacing `BodaiComponentMCPClient` with
   `from mcp_common.clients.common_mcp_client import CommonMCPClient`)
-  and `mahavishnu/core/dhara_adapter.py` import from
+  and Mahavishnu's KV adapter module import from
   `mcp_common.clients`. Rationale: SDK deliverable; wiring is a
   downstream Phase 3 task that requires the SDK to exist first.
 
@@ -403,9 +410,9 @@ production code AND test fixtures updated.
 1. Audit (5 repos): `grep -rn 'DEFAULT_URL.*"http://localhost:[0-9]*"\|setenv.*MCP_URL.*"http\|base_url="http://[a-z]*:[0-9]*"' {5 repos} --include='*.py' | grep -v __pycache__`.
 2. Update production sites (4 known): `akosha/processing/fitness_analyzer.py:34`,
    `akosha/mcp/server.py:52`, plus equivalent literals in `mahavishnu/...`,
-   `dhara/...` (lines TBD by Task 1 grep).
+   `legacy-mcp/...` (lines TBD by Task 1 grep).
 3. Update test-fixture sites (17+ known — see §4.5): append `/mcp`
-   to `monkeypatch.setenv("DHARA_MCP_URL", ...)` and `base_url="..."`
+   to `monkeypatch.setenv("MCP_URL", ...)` and `base_url="..."`
    literals. Same-commit rule.
 4. Each update leaves a 2-line marker: `# Implements: REQ-005`.
    See `2026-09-14-common-mcp-client-transport-unification.md` §Phase 2.
@@ -415,17 +422,17 @@ production code AND test fixtures updated.
 **Triggered from**:
 - Boot-time env-var lookup in each repo's Oneiric config loader:
   `mahavishnu.core.config.load_settings()`,
-  `akosha.mcp.server._load_dhara_url()` (line 271 of
+  `akosha.mcp.server._load_mcp_url()` (line 271 of
   `akosha/mcp/server.py`),
   `akosha.processing.fitness_analyzer.__init__` (line 91),
-  `dhara.dhara.config.load_settings()`. These are the existing
+  the legacy MCP server's `config.load_settings()`. These are the existing
   entry points that read `*_MCP_URL` env vars.
 
 **Returns to / updates**:
 - Updated URL strings at the four production literal sites:
   - `akosha/akosha/processing/fitness_analyzer.py:34`
   - `akosha/akosha/mcp/server.py:52`
-  - `mahavishnu/<TBD by audit>` and `dhara/<TBD by audit>`
+  - `mahavishnu/<TBD by audit>` and `legacy-mcp/<TBD by audit>`
 - Test-fixture URLs at the 17+ known sites plus any discovered
   by Task 1 grep (specifically: `akosha/tests/unit/test_mcp_phase0_registration.py`,
   `akosha/tests/unit/test_mcp_server_lifespan.py`,
@@ -447,7 +454,7 @@ $ grep -rn \
 **Rollback signal**:
 - The grep above returns >0.
 - Any Bodai server fails to bind during `launch_with_healthcheck.sh`
-  probe cycle (the new default URL fails the `_load_dhara_url` call).
+  probe cycle (the new default URL fails the `_load_mcp_url` call).
 
 **Observability added**:
 - Structured log line `mcp_common.client.url_normalized` at startup
@@ -463,15 +470,15 @@ $ grep -rn \
    branch (`fix/common-mcp-client-migration`), one commit that
    does the file-by-file replacement. Per
    `feedback-flipping-degraded-feeds-without-fixing-source-causes-bad-signal`,
-   the migration order is bottom-up DAG: dhara → session-buddy →
+   the migration order is bottom-up DAG: legacy-mcp → session-buddy →
    akosha → mahavishnu. (mcp-common itself is Phase 1; published
    0.26.0 before any migration commit lands.)
-2. **Dhara**: delete `DharaServiceRegistryClient`
+2. **Legacy MCP server**: delete `LegacyServiceRegistryClient`
    (`akosha/mcp/client.py:170`) and the three call sites
    (lines 202, 226, 240). After this commit: zero callers of
-   `DharaServiceRegistryClient`. **In the same commit**: also delete
-   the Dhara `_register_tools_call_route` method
-   (`dhara/dhara/mcp/server_core.py:693-770`) and the
+   `LegacyServiceRegistryClient`. **In the same commit**: also delete
+   the legacy MCP server's `_register_tools_call_route` method
+   (its `mcp/server_core.py:693-770`) and the
    `@server.custom_route("/mcp/tools/call", ...)` mount. No flag,
    no deprecation window — project policy is "no backward compat or
    legacy support". A pre-flight `git grep` across all 5 repos
@@ -481,13 +488,13 @@ $ grep -rn \
 4. **Akosha**: replace 33 sites (excluding the 3 already done
    in Task 2): `ingestion/code_graph_ingester.py:157, 208`;
    `processing/fitness_analyzer.py:189`; `mcp/server.py:227`;
-   `storage/dhara_http_client.py:82, 103`; `mcp/tools/ecosystem_skills.py`
+   `storage/mcp_http_client.py:82, 103`; `mcp/tools/ecosystem_skills.py`
    needs no changes (already uses streamable-HTTP).
 5. **Mahavishnu**: replace 34 sites. Mostly 1-to-1 substitutions:
    `evidence_store.py:44, 102`; `evidence_retriever.py:125, 172`;
    `evidence_collector.py:39`; `otel_ingester.py:236, 289, 326`;
    `memory_aggregator.py:366, 568, 640`; `session_buddy_pool.py:97`;
-   `core/dhara_adapter.py` is rewritten in place.
+   `core/state_adapter.py` is rewritten in place.
 6. Each replacement carries a 2-line marker:
    `# Implements: REQ-004`.
 
@@ -495,12 +502,13 @@ $ grep -rn \
 
 **Triggered from**:
 - Bodai boot path: `mahavishnu mcp start`, `akosha mcp start`,
-  `session-buddy mcp start`, `dhara mcp start` (each lifespan
+  `session-buddy mcp start`, the legacy MCP server's own start command
+  (each lifespan
   initializes its MCP-federation clients via `CommonMCPClient`).
 - Runtime: any module that calls cross-server MCP (e.g., akosha's
   `_kg_refresh_loop()` at `akosha/mcp/server.py:630-680`;
   mahavishnu's `memory_aggregator.py:_call_session_buddy()`;
-  session-buddy's `server_optimized.py:_federate_to_dhara()`).
+  session-buddy's `server_optimized.py:_federate_to_legacy_mcp()`).
 
 **Returns to / updates**:
 - Cross-server tool-call JSON-RPC results are returned in-process
@@ -510,8 +518,8 @@ $ grep -rn \
   - `akosha.mcp.server._kg_refresh_loop()` →
     `hot_store.query_traces()` →
     DuckDB at `~/.akosha/local_traces.duckdb`
-  - `mahavishnu.core.dhara_adapter.get/put()` →
-    Dhara KV at `~/.dhara/kv/<namespace>/<key>`
+  - `mahavishnu.core.state_adapter.get/put()` →
+    the shared KV store at `~/.mcp/kv/<namespace>/<key>`
   - `session_buddy.server_optimized` →
     in-memory dispatch table
   - `mahavishnu.otel_ingester.query_remote_spans()` →
@@ -678,8 +686,8 @@ mcp-common:
   - path: mcp-common/mcp_common/interfaces/__init__.py
     change: UNTOUCHED (already exports DualUseTool, ensure_dual_use)
 
-dhara:
-  - path: dhara/dhara/mcp/server_core.py
+legacy-mcp:
+  - path: <legacy-mcp repo>/mcp/server_core.py
     change: REMOVE the `_register_tools_call_route` method
       (lines 693-770) and the `@server.custom_route("/mcp/tools/call", ...)`
       mount. No flag, no deprecation window — project policy is
@@ -687,7 +695,7 @@ dhara:
       across all 5 repos confirms no remaining callers before
       the deletion.
   - path: tests/integration/mcp/test_common_mcp_client.py
-    change: NEW (consumer test for CommonMCPClient → dhara KV)
+    change: NEW (consumer test for CommonMCPClient → legacy KV)
 
 session-buddy:
   - path: session-buddy/session_buddy/server_optimized.py
@@ -703,24 +711,24 @@ akosha:
   - path: akosha/akosha/mcp/client.py
     change: REMOVE `BodaiComponentMCPClient` class (it has been
       moved to mcp-common as `CommonMCPClient`); REMOVE
-      `DharaServiceRegistryClient` class (lines 31-260). All callers
+      `LegacyServiceRegistryClient` class (lines 31-260). All callers
       rewritten to `from mcp_common.clients.common_mcp_client import CommonMCPClient`.
       No re-export shim — project policy is no backward compat.
   - path: akosha/akosha/ingestion/code_graph_ingester.py
     change: replace 2 call sites at lines 157, 208
   - path: akosha/akosha/processing/fitness_analyzer.py
-    change: replace 1 call site at line 189; fix _DHARA_DEFAULT_URL
+    change: replace 1 call site at line 189; fix _MCP_DEFAULT_URL
       literal at line 34 (Phase 2)
   - path: akosha/akosha/mcp/server.py
     change: replace 1 call site at line 227; replace
-      _default_health_probe; fix DHARA_DEFAULT_URL literal at
+      _default_health_probe; fix MCP_DEFAULT_URL literal at
       line 52 (Phase 2)
-  - path: akosha/akosha/storage/dhara_http_client.py
+  - path: akosha/akosha/storage/mcp_http_client.py
     change: replace 2 call sites (lines 82, 103)
   - path: akosha/tests/unit/test_mcp_phase0_registration.py
     change: 8 `monkeypatch.setenv` URLs to end in /mcp (Phase 2)
   - path: akosha/tests/unit/test_mcp_phase0_registration.py
-    change: 1 `setenv("DHARA_MCP_URL", "http://custom-dhara:9999")` → add /mcp (Phase 2)
+    change: 1 `setenv("MCP_URL", "http://custom-mcp:9999")` → add /mcp (Phase 2)
   - path: akosha/tests/unit/test_mcp_server_lifespan.py
     change: 1 fixture URL at line 96 (Phase 2)
   - path: akosha/tests/unit/mcp/test_client.py
@@ -731,9 +739,9 @@ akosha:
     change: NEW
 
 mahavishnu:
-  - path: mahavishnu/mahavishnu/core/dhara_adapter.py
+  - path: mahavishnu/mahavishnu/core/state_adapter.py
     change: REWRITE — delegate get/put/list_prefix/delete to
-      CommonMCPClient; remove DharaClient direct call_tool
+      CommonMCPClient; remove StateClient direct call_tool
   - path: mahavishnu/mahavishnu/core/state_backends/mcp.py
     change: REWRITE get/put/list_prefix/delete to delegate via
       CommonMCPClient
@@ -749,16 +757,16 @@ mahavishnu:
     change: REWRITE _default_health_probe to delegate to
       aggregate_feed_states (Phase 4)
   - path: mahavishnu/mahavishnu/mcp/lifecycle.py
-    change: replace ad-hoc DharaClient construction with
+    change: replace ad-hoc StateClient construction with
       CommonMCPClient; remove MCPKvClient (DONE in
       commit 6da50168 of this session)
   - path: mahavishnu/mahavishnu/pools/session_buddy_pool.py
     change: replace 1 call site at line 97
   - path: mahavishnu/mahavishnu/pools/memory_aggregator.py
     change: replace 3 call sites (lines 366, 568, 640)
-  - path: tests/unit/test_dhara_adapter.py
+  - path: tests/unit/test_state_adapter.py
     change: UPDATE assertions to mock CommonMCPClient instead of
-      mock DharaClient (Phase 3)
+      mock StateClient (Phase 3)
   - path: tests/integration/mcp/test_common_mcp_client.py
     change: NEW
   - path: tests/integration/mcp/test_cross_repo_smoke.py
@@ -783,19 +791,19 @@ crackerjack:
 | `pytest tests/integration/mcp/test_cross_repo_smoke.py -v` (one consumer + one producer + one observer in subprocesses; akosha → session-buddy liveness) | Passes | `pytest -v` stdout | REQ-009 |
 | `pytest tests/integration/mcp/test_health_aggregator.py::test_akosha_health_returns_200_when_errors_outside_halflife -v` | Passes; assertion `.checks.local_traces.reason_codes == ["warming_up_empty_feed"]` and `.status == "warming_up"` | `pytest -v` stdout | REQ-006/007/008 |
 | `curl -fsS http://localhost:8682/health` | HTTP 200 (always), body `status` in `{healthy, warming_up, degraded, failed}` | jq filter | REQ-006 |
-| `python scripts/audit_orphans.py` per repo | Zero `f"{base}/tools/call"` patterns; zero `DharaServiceRegistryClient` references post-Phase 3 | shell exit 0 | REQ-004 |
-| `git grep -n _register_tools_call_route dhara/` | Zero hits (route method and `@server.custom_route("/mcp/tools/call", ...)` mount both deleted in same commit) | grep exit 1 | — |
+| `python scripts/audit_orphans.py` per repo | Zero `f"{base}/tools/call"` patterns; zero `LegacyServiceRegistryClient` references post-Phase 3 | shell exit 0 | REQ-004 |
+| `git grep -n _register_tools_call_route legacy-mcp/` | Zero hits (route method and `@server.custom_route("/mcp/tools/call", ...)` mount both deleted in same commit) | grep exit 1 | — |
 
 ## 8. Risks
 
 | Risk | Likelihood | Mitigation | Realism |
 |---|---|---|---|
-| Merge order: dhara → session-buddy → akosha → mahavishnu but a consumer pulls in a not-yet-merged server dep | medium | Phase 1 lands first and is published as `0.26.0` before any Phase 3 commit. Consumer commits include a `pyproject.toml` constraint `mcp-common>=0.26.0,<0.27.0`. | partially mitigates |
+| Merge order: legacy-mcp → session-buddy → akosha → mahavishnu but a consumer pulls in a not-yet-merged server dep | medium | Phase 1 lands first and is published as `0.26.0` before any Phase 3 commit. Consumer commits include a `pyproject.toml` constraint `mcp-common>=0.26.0,<0.27.0`. | partially mitigates |
 | `CommonMCPClient` session-ID handling differs subtly across FastMCP versions | low | Phase 1 contract tests pin the wire shape (JSON-RPC envelope + header behavior) so any SDK regression is caught at PR time. Plus `fastmcp` constraint locked to `~=3.4` in `mcp-common/pyproject.toml`. | mitigates |
 | Time-bounded `/health` halflife could mask a real recent failure | medium | New alert: `mcp_common_health_feed.errors_within_window{repo, feed} > 5 for 2m` — independent of the body `status`. Decay escape hatch visible via `--health-disable-decay` startup log. | partially mitigates |
 | `HNSW-on-DuckDB` bug initially satisfies warming_up predicate (empty + running + no errors at first cycle) | medium | Phase 4 task 6: warming_up requires `cycles_total > 0 AND last_error_at IS NOT None`. A feed where first cycle raises goes to `degraded: feed_never_populated`. | mitigates |
 | Launchd wrapper treats degraded-but-200 as service ready | low | `launch_with_healthcheck.sh:89` (`curl -fsS`) treats 2xx as success; we keep 200-always. Body `status` carries the operator-facing signal. | mitigates |
-| Existing `/mcp/tools/call` mount on Dhara is needed by an un-enumerated caller | low (now) | Pre-flight `git grep` across all 5 repos during Phase 3 confirms no remaining callers before the route + flag are deleted in a single commit. No deprecation window — project policy is no backward compat. | partially mitigates |
+| Existing `/mcp/tools/call` mount on the legacy MCP server is needed by an un-enumerated caller | low (now) | Pre-flight `git grep` across all 5 repos during Phase 3 confirms no remaining callers before the route + flag are deleted in a single commit. No deprecation window — project policy is no backward compat. | partially mitigates |
 | Per-repo tests rely on literal mock-URL strings | medium | Same-commit rule for both production and test-fixture URLs (Phase 2). 17+ known fixture sites enumerated explicitly in §6. | mitigates |
 | `audit_orphans.py` quirks (`crackerjack-ratchet-cli-defects.md`) | low | Phase 4 §7 Validation Matrix adds `python scripts/audit_orphans.py` per repo as automated acceptance; `audit_requirements.py` enforces REQ traceability via `@pytest.mark.req(["REQ-NNN"])` markers (added in Phase 1 task 7). | partially mitigates |
 | Plan published 0.26.0 with breaking changes vs. 0.25.3 | medium | Phase 1 ships `0.26.0` (additive new public surface; existing mcp-common API unchanged). Public surface (`interfaces/__init__.py:DualUseTool`, etc.) is unaffected. | mitigates |
@@ -805,8 +813,8 @@ crackerjack:
 Plan is "done enough" when:
 
 1. Phases 1-4 merged to main on each of the 5 repos **in the
-   declared bottom-up DAG order**: mcp-common first; then dhara
-   (with the `DharaServiceRegistryClient` + mount removal in one
+   declared bottom-up DAG order**: mcp-common first; then legacy-mcp
+   (with the `LegacyServiceRegistryClient` + mount removal in one
    commit); then session-buddy; then akosha; then mahavishnu.
 2. `mcp-common` published to PyPI as `0.26.0` — **user-initiated**
    per `crackerjack-version-bumping-manual.md`. The user
@@ -824,10 +832,10 @@ Plan is "done enough" when:
 5. `docs/runbooks/HEALTH_REASON_CODES.md` is merged and linked
    from the new alert annotations in
    `mahavishnu/config/alerts/akosha_feed_degradation.yml`.
-6. `git grep -n /mcp/tools/call dhara/` returns zero hits — the
+6. `git grep -n /mcp/tools/call legacy-mcp/` returns zero hits — the
    `_register_tools_call_route` method and `@server.custom_route("/mcp/tools/call", ...)`
    mount are deleted in the same commit as the
-   `DharaServiceRegistryClient` callers (no deprecation window).
+   `LegacyServiceRegistryClient` callers (no deprecation window).
 
 Plan is **not** "done" when:
 - `/health` returns non-2xx (regression — 200-always contract
@@ -853,16 +861,16 @@ Plan is **not** "done" when:
   integration tests mandatory.
 - `akosha/akosha/mcp/client.py:BodaiComponentMCPClient` — the
   class being extracted in Phase 1.
-- `akosha/akosha/mcp/client.py:DharaServiceRegistryClient` — the
-  class being deleted in Phase 3 (with the Dhara mount in same commit).
-- `dhara/dhara/mcp/server_core.py:693-770` — the `_register_tools_call_route`
+- `akosha/akosha/mcp/client.py:LegacyServiceRegistryClient` — the
+  class being deleted in Phase 3 (with the legacy mount in same commit).
+- the legacy MCP server's `mcp/server_core.py:693-770` — the `_register_tools_call_route`
   method being deleted in Phase 3.
 - `mcp-common/mcp_common/health.py:836-839` — the existing
   `register_http_health_route` 200-always contract documentation.
 - `docs/followups/2026-09-14-akosha-hnsw-on-duckdb.md` — out-of-plan
   followup (Phase 5 stub).
 - `mcp-backend-wiring-discipline.md` — Bodai FeedState contract.
-- `dhara-startup-hang-8683.md` (memory) — launchd wrapper unreliability.
+- `standalone-persistent-startup-hang-8683.md` (memory) — launchd wrapper unreliability.
 
 ## 11. Operator Ergonomics (Tier 3 polish — separate section for reviewability)
 

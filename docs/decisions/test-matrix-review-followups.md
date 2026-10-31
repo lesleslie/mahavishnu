@@ -421,24 +421,24 @@ the last two are pre-existing structural issues the review surfaced
 but did not address. Resolutions are noted per-item at the end of the
 group.
 
-### M5 — `mcp__dhara__put` is mislabeled for a SQL-focused agent
+### M5 — `mcp__mahavishnu__mahavishnu_kv_put` is mislabeled for a SQL-focused agent
 
 - **Severity**: MEDIUM
 - **Location**: `.claude/agents/database-operations-specialist.md:3`
 - **Effort**: XS
 - **Why it matters**: The `database-operations-specialist.md` is
   documented as covering "SQL, migrations, and query optimization", but
-  the parenthetical on `mcp__dhara__put` calls it the "persistence
+  the parenthetical on `mcp__mahavishnu__mahavishnu_kv_put` calls it the "persistence
   layer". `put` is a KV-with-TTL primitive, not a SQL tool. A future
   agent caller will look at the frontmatter and conclude this agent
   can run schema migrations through `put`, which it cannot.
 - **Suggested fix**: Either swap the parenthetical to a SQL-appropriate
-  tool (e.g. `mcp__dhara__query` if it exists, or `mcp__dhara__migrate`
-  if applicable) or re-label `put` parenthetically to make clear it is
+  tool (e.g. `mcp__mahavishnu__mahavishnu_kv_get` if it exists, or a
+  migration tool if applicable) or re-label `put` parenthetically to make clear it is
   for non-relational persistence state, not the SQL workflow the
   agent is named for.
 
-### M6 — `mcp__dhara__aggregate_patterns` is time-series telemetry, not architecture
+### M6 — `mcp__mahavishnu__aggregate_patterns` is time-series telemetry, not architecture
 
 - **Severity**: MEDIUM
 - **Location**: `.claude/agents/architecture-council.md:3`
@@ -505,8 +505,8 @@ group.
 
 | Item | Resolution | Where |
 |------|------------|-------|
-| M5 | Relabeled `mcp__dhara__put` parenthetical to make clear it is non-relational persistence state, not a SQL tool. Cleaned up the same pre-existing backslash-underscore file-format bug. | `.claude/agents/database-operations-specialist.md` |
-| M6 | Dropped the `mcp__dhara__aggregate_patterns` reference entirely. Council's primary job is architecture review, not telemetry pattern aggregation. | `.claude/agents/architecture-council.md` |
+| M5 | Relabeled `mcp__mahavishnu__mahavishnu_kv_put` parenthetical to make clear it is non-relational persistence state, not a SQL tool. Cleaned up the same pre-existing backslash-underscore file-format bug. | `.claude/agents/database-operations-specialist.md` |
+| M6 | Dropped the `mcp__mahavishnu__aggregate_patterns` reference entirely. Council's primary job is architecture review, not telemetry pattern aggregation. | `.claude/agents/architecture-council.md` |
 | LOW #8 (pre-existing) | Deleted stray troubleshooting content (lines 64-116): "Verify user is in required groups", "Issue 3: Resource Not Found", "Issue 4: Timeout or Performance Issues", "Getting Help" — all leftovers from an untrimmed template. | `.claude/commands/tools/development/testing/quality-validation.md` |
 | LOW #9 (pre-existing) | Rewrote `extract_frontmatter` in `scripts/agent_metadata_audit.py` to parse the collapsed `## name: ... description: ... model: ...` format. Handles both `description: <text>` and `description: >- <text>` variants. | `scripts/agent_metadata_audit.py` |
 

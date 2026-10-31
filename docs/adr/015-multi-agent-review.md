@@ -23,7 +23,7 @@ This document captures the findings of the 9-agent multi-agent review of `015-wo
 |---|---|---|
 | mahavishnu code integration | mahavishnu-specialist | Existing `WorktreeProvider` hierarchy ignored; 5-default drift; wrong wiring target |
 | Oneiric adapter integration | oneiric-specialist | `CacheBackend` Protocol duplicates Oneiric's existing cache adapters; `MultiTierCacheAdapter` already does L1+L2 |
-| Cross-ecosystem architecture | architecture-council | `CacheBackend` StrEnum collision; ADR-006 Redis contradiction; ADR-013 Dhara boundary violation |
+| Cross-ecosystem architecture | architecture-council | `CacheBackend` StrEnum collision; ADR-006 Redis contradiction; ADR-013 adapter-registry boundary violation |
 | Design pattern validation | architect-reviewer | `LocalWorktreeBackend` defeats worktree performance; bundling is transport not backend; concurrency/health semantics missing |
 | Cache architecture (Redis) | redis-specialist | Stampede prevention missing; `KEYS prefix*` footgun; eviction policy unspecified |
 | Reliability & failure modes | sre-engineer | No SLOs, no rollback, no observability metrics; silent data loss risk for uncommitted changes |
@@ -71,10 +71,10 @@ Referenced in Protocol signatures but never specified. Phase 1 implementation wi
 
 `WorktreeManager` is NOT on the production call path. CLI and MCP both call `app.worktree_coordinator` → `WorktreeProviderRegistry` → `WorktreeProvider`. Wiring into `WorktreeManager` doesn't intercept any production call site.
 
-### B7. `DharaCacheBackend` violates ADR-013 boundary
+### B7. The durable-KV cache backend violates ADR-013 boundary
 **Reviewers:** architecture-council, oneiric-specialist
 
-Dhara is the durable state owner, not a cache. Calling Dhara a cache substrate is exactly what ADR-013 was written to prevent. Either rename to `DharaDurableBackend` and put it in Oneiric, or drop entirely.
+The durable KV store is the durable state owner, not a cache. Calling it a cache substrate is exactly what ADR-013 was written to prevent. Either rename to a `DurableStoreBackend` and put it in Oneiric, or drop entirely.
 
 ### B8. Env vars bypass `MahavishnuSettings`
 **Reviewers:** python-pro, oneiric-specialist
@@ -138,9 +138,9 @@ The ADR claims "XDG `DATA_DIR` is the default" but that's not true anywhere in c
 - Per-MCP venv symlink step lacks TOCTOU guard
 - `S3` eventual consistency not addressed
 - `S3` credentials rotation / IAM lag not addressed
-- Dhara schema migration / replica lag not addressed
+- Durable-KV schema migration / replica lag not addressed
 - No cost model for S3 storage / egress
-- No capacity planning (Redis memory, S3 request rates, Dhara write throughput)
+- No capacity planning (Redis memory, S3 request rates, durable-KV write throughput)
 - No testing strategy (chaos tests, load tests, conformance tests)
 - Cold-start 200-500ms estimate unverified
 
@@ -148,11 +148,11 @@ The ADR claims "XDG `DATA_DIR` is the default" but that's not true anywhere in c
 - Path traversal must route through `WorktreePathValidator`
 - Audit hook preservation not asserted
 - Redis auth/network exposure undefined (no TLS, no AUTH by default)
-- Dhara auth model not specified
+- Durable-KV auth model not specified
 - Bundle integrity verification needed
 
 ### Cross-component (architecture-council, mcp-integration-expert, oneiric-specialist, mahavishnu-specialist)
-- `DharaCacheBackend` should live in Dhara (where `kv_timeseries.py` already provides substrate)
+- The durable-KV cache backend should live in the durable-substrate component (where the persistent-KV adapter already provides substrate)
 - Existing `SessionBuddyWorktreeProvider` not enumerated
 - `worktree_manage` payload schema must change breaking way
 - `quality_tools.py` doesn't exist in mahavishnu (lives in crackerjack)
@@ -212,7 +212,7 @@ The ADR's strategic direction is sound. To get it ratifiable, three structural c
 - SLOs (latency percentiles per backend, error budget, availability targets)
 - Observability metrics with names + dashboards
 - Rollback strategy per phase
-- Runbooks for each failure mode (Redis down, S3 throttled, Dhara unreachable)
+- Runbooks for each failure mode (Redis down, S3 throttled, durable-KV unreachable)
 
 The cache-classification table reshuffle, the bundling-as-transport-not-backend reframe, the path-traversal/audit-preservation assertions, the bundle-integrity SHA-256 verification, and the WorktreePathValidator allow-list update are all fixable in revision v2 without re-architecting.
 

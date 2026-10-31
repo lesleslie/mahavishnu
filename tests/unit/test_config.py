@@ -499,7 +499,7 @@ class TestOneiricMCPConfigValidation:
     def test_defaults(self):
         cfg = OneiricMCPConfig()
         assert cfg.enabled is False
-        assert cfg.base_url == "http://localhost:8683/mcp"
+        assert cfg.base_url == "http://localhost:8681/mcp"
         assert cfg.token is None
 
     def test_custom_base_url_and_token(self):

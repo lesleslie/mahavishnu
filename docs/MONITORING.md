@@ -1,6 +1,6 @@
 # Mahavishnu Monitoring Guide
 
-> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+> **Note**: Refreshed on 2026-10-30 after the standalone MCP server component was retired (2026-09-20). Runtime references (ports, CLI flags, config blocks) now describe the current Oneiric-backed substrate.
 
 This document covers the health surfaces of all running services in the Mahavishnu / Bodai ecosystem, including newly adopted Tier 2 services.
 
@@ -72,7 +72,7 @@ OpenObserve (5080) ← OTel exporter  [from all Bodai services]
 
 ### Cascade failure scenarios
 
-- **Oneiric persistence down**: Mahavishnu writes fail → workflows can't persist state → Akosha reads fail → pattern detection stalls. Critical-path service. *(Dhara was decommissioned 2026-09-20; its role moved into Oneiric.)*
+- **Oneiric persistence down**: Mahavishnu writes fail → workflows can't persist state → Akosha reads fail → pattern detection stalls. Critical-path service. *(the standalone MCP server was retired 2026-09-20; its role moved into Oneiric.)*
 - **Session-Buddy down**: Memory writes fail → distillation can't accumulate evidence → `distilled_skills` and `distilled_workflows` tables empty.
 - **Akosha down**: Pattern detection stalls but other services continue. Read-only dependency for most flows.
 
@@ -134,7 +134,7 @@ When OpenObserve ships to production, register it as a Prometheus datasource in 
 | Alert | Condition | Severity |
 |---|---|---|
 | `BodaiServiceDown` | Any of {8680, 8682, 8678, 8676} `/health` returns non-200 for >2 minutes | Critical |
-| ~~`DharaWriteBacklog`~~ | ~~`dhara_dirty_oids` table > 10,000 rows~~ | *Retired 2026-09-20 — Dhara decommissioned* |
+| ~~`McpWriteBacklog`~~ | ~~`mcp_dirty_oids` table > 10,000 rows~~ | *Retired 2026-09-20 — standalone MCP server retired* |
 | `OpenObserveDiskUsage` | `/data` partition > 80% full | Medium |
 | `SessionBuddyMemoryGrowth` | `conversations_v2` row count > 10M | Medium |
 | `PoolWorkerQueue` | Any pool's worker queue > 50% of max_workers | Medium |

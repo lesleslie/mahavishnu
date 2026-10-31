@@ -22,7 +22,7 @@ Security primitives (non-negotiable, see plan §D1.6):
 
 * ``env_allowlist`` — minimal allowlist of env keys forwarded to the
   subprocess. Sensitive parent env keys (``MAHAVISHNU_*``, ``MINIMAX_*``,
-  ``ZAI_*``, ``DHARA_*``, ``AKOSHA_*``, ``SESSION_BUDDY_*``) are NEVER
+  ``ZAI_*``, ``AKOSHA_*``, ``SESSION_BUDDY_*``) are NEVER
   copied. The default allowlist includes the standard LLM credential
   env vars (``OPENAI_API_KEY``, ``OPENAI_BASE_URL``,
   ``ANTHROPIC_API_KEY``, ``ANTHROPIC_BASE_URL``) so the pi-coding-agent
@@ -142,7 +142,6 @@ _FORBIDDEN_ENV_PREFIXES: tuple[str, ...] = (
     "MAHAVISHNU_",
     "MINIMAX_",
     "ZAI_",
-    "DHARA_",
     "AKOSHA_",
     "SESSION_BUDDY_",
     "BIFROST_",  # covers MAHAVISHNU_BIFROST__*, ONEIRIC_BIFROST_*, BIFROST_ALLOW_REMOTE

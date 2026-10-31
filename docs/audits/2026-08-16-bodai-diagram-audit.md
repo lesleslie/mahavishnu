@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16
 **Scope:** All `.md` files with fenced mermaid/plantuml/dot/image refs in 6 Bodai repos:
-mahavishnu, akosha, dhara, session-buddy, crackerjack, oneiric
+mahavishnu, akosha, legacy-mcp, session-buddy, crackerjack, oneiric
 **Method:** Six parallel read-only audits (one per repo), each cataloguing every diagram, validating
 syntax where possible, and assigning KEEP / UPDATE / REMOVE / ADD verdicts. Synthesis combines
 the six reports and surfaces cross-repo patterns.
@@ -19,7 +19,7 @@ ______________________________________________________________________
 | session-buddy | 77 | 64 | 7 | 4 | 2 | 0 |
 | crackerjack | 24 | 4 | 21 | 0 | 3 | **3** |
 | akosha | 16 | 11 | 4 | 0 | 5 | 0 |
-| dhara | 7 | small repo, mostly accurate | | | | 0 |
+| legacy-mcp | 7 | small repo, mostly accurate | | | | 0 |
 | **TOTAL** | **~360** | **~155 (43%)** | **~58 (16%)** | **~126 (35%)** | **~25 (7%)** | **3** |
 
 Only **3 of 360 diagrams actually fail to render** (all in crackerjack, all 1-line syntax defects).
@@ -47,7 +47,7 @@ The same **permanently-removed** modules leak into multiple repositories' diagra
 | `OpenSearch` DLQ | mahavishnu (VISUAL_GUIDE.md:824) |
 | `sentence-transformers` runtime | akosha (MEMORY_ARCHITECTURE.md:300, 753) |
 | `layered_cache` (Redis L2) | akosha (ARCHITECTURE.md:435, DEPLOYMENT_GUIDE.md:65) |
-| `optparse` legacy CLI | dhara (the wave-6 cleanup may have missed a docstring reference) |
+| `optparse` legacy CLI | legacy-mcp (the wave-6 cleanup may have missed a docstring reference) |
 | 12-agent system | crackerjack (README.md:249 PNG, ADR-002, multiple diagrams) |
 | `FixStrategyStorage` / `AgentCoordinator` | crackerjack (MEMORY_ARCHITECTURE.md:1216) |
 | Prefab/Agno labeled "stub only" | mahavishnu (ARCHITECTURE.md:258) |
@@ -85,7 +85,7 @@ re-edited without removing the visual guide copies. The visual guide is now the 
 - **mahavishnu** `WORKFLOW_DIAGRAMS.md:488` (file archived 2026-10-14 to docs/.archive/) says "49 Total" tools; actual is 174+.
 - **mahavishnu** `WORKFLOW_DIAGRAMS.md:211` (file archived 2026-10-14 to docs/.archive/) says "9 total" repos; actual is 7.
 - **akosha**: `README.md:391-400` lists "25 tools" in the FULL profile; CAPTION says "Cross-System Semantic Search" but BULLETS describe "Core Memory Aggregation".
-- **crackerjack**: `skills-ecosystem-mermaid.md` claims Dhara DB-backed storage; `oneiric-skills-integration.mmd` (same diagram concept) claims local JSON storage. Both are wrong (the code path is gone).
+- **crackerjack**: `skills-ecosystem-mermaid.md` claims DB-backed storage in the persistence substrate; `oneiric-skills-integration.mmd` (same diagram concept) claims local JSON storage. Both are wrong (the code path is gone).
 - **crackerjack**: `MEMORY_ARCHITECTURE.md:79` ER diagram references 5 SQLite files that no longer exist.
 
 **Pattern:** when a subsystem collapses, the two diagram children that described it disagree on
@@ -169,7 +169,7 @@ ______________________________________________________________________
 
 1. **`[^]` footnote convention for diagrams referencing soon-to-be-removed subsystems.** Like `!!! note "Diagram predates 2026-08-10 cleanup — see ADR-NNN."` at the top of the diagram block. Lets the diagram stay useful while flagging that it's not canonical.
 
-1. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ Dhara ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
+1. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ legacy-mcp ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
 
 ______________________________________________________________________
 
@@ -196,4 +196,4 @@ For deeper drill-down per repo, refer to:
 - `session-buddy` — 77 entries
 - `crackerjack` — 24 entries (incl. 3 broken)
 - `akosha` — 16 entries
-- `dhara` — 7 entries
+- `legacy-mcp` — 7 entries

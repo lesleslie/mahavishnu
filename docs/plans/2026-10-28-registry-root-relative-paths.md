@@ -95,18 +95,18 @@ Excluded section without removing those repos from the active tables. So the
 registry listed 36 rows while the guard insisted on 34 — two guards failing
 for a reason nobody could reproduce.
 
-**`dhara` was in the registry's core bucket but not in its core table.**
+**The retired standalone MCP server repo was in the registry's core bucket but not in its core table.**
 `CORE_ORDER` still listed `"mcp"` — the pre-decomposition name — after
-`mcp` was split into `dhara` (2026-09-14). `dhara` therefore fell through
-both render paths: counted in the summary ("Core 7: 7", "Total 37"), absent
+`mcp` was split into its own repo (2026-09-14). That repo therefore fell
+through both render paths: counted in the summary ("Core 7: 7", "Total 37"), absent
 from the tables. ADR 019 then settled the membership question outright:
 
-> as of 2026-10-17, the user explicitly clarified that Dhara is still
-> maintained by Bodai but is no longer a core component. The in-scope set for
+> as of 2026-10-17, the user explicitly clarified that the standalone MCP
+> server repo is still maintained by Bodai but is no longer a core component. The in-scope set for
 > any fleet release probe becomes `{mahavishnu, akosha, session-buddy,
 > crackerjack, oneiric, mcp-common}` — six repos, not seven.
 
-The registry had already dropped `dhara`'s row by hand on 2026-10-09
+The registry had already dropped that repo's row by hand on 2026-10-09
 (commit `84a66f8b`), so the generator was the only thing still disagreeing.
 
 ## 4.5 Requirements
@@ -226,8 +226,8 @@ the generator enforces that rather than leaving it to a per-machine overlay.
     so a repo cannot appear both as an active fleet member and as excluded.
   - `bucket_repos()` is shared by the renderer and the summary, so the
     "Total active Bodai repos" count can no longer disagree with the tables.
-  - `CORE_ORDER` drops the stale `"mcp"` entry (dhara's pre-decomposition
-    name) and the section heading becomes "Core 6", matching ADR 019's
+  - `CORE_ORDER` drops the stale `"mcp"` entry (the retired component's
+    pre-decomposition name) and the section heading becomes "Core 6", matching ADR 019's
     six-repo fleet release set.
 - `settings/registry_metadata.yaml` — populate `excluded_repos` with the
   three exclusions and their reasons. The *reasons* are shared (a property
@@ -297,7 +297,7 @@ registry reports 34 active repos and its summary matches its tables.
 | The inferred root is wrong (repos live in two places) | Low — all 37 share one parent | "Most common parent" plus a leak-free fallback for out-of-root repos |
 | `$BODAI_PROJECTS_ROOT` is set but wrong | Low | Explicit override wins; consumers skip non-existent dirs, as they already do |
 | The local overlay's per-machine entries leak into the published artifact | Medium | Paths render root-relative, so the machine's home directory never appears |
-| Excluding `dhara` drops a still-maintained repo from the roster | Low — ADR 019 and the 2026-10-09 removal agree | The exclusion records ADR 019 and states that Dhara is still maintained by Bodai, just outside the fleet release set |
+| Excluding the retired MCP server repo drops a still-maintained repo from the roster | Low — ADR 019 and the 2026-10-09 removal agree | The exclusion records ADR 019 and states that the repo is still maintained by Bodai, just outside the fleet release set |
 
 ## 9. Decision Rule
 
@@ -431,7 +431,7 @@ among them.
 ## References
 
 - `docs/decisions/wire-up-contract.md` — the policy this plan implements.
-- `docs/adr/019-dhara-decommissioning.md` — the six-repo core fleet set.
+- `docs/adr/019-legacy-mcp-server-decommissioning.md` — the six-repo core fleet set.
 - `docs/plans/TEMPLATE.md` — the plan shape.
 - `crackerjack/docs/plans/2026-10-28-path-disclosure-redaction.md` — the
   crackerjack-side half of the same effort.

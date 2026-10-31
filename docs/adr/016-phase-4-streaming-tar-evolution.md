@@ -21,7 +21,7 @@ related:
 
 Phase 4 has two parallel tracks:
 
-- **Primary track: Python 3.15 ecosystem migration.** Tracked via `BODAI_UPGRADE_WATCH.md`. Triggers when 3.15.0 final releases AND all critical Bodai dependencies have published 3.15 wheels. Sequence: mcp-common → oneiric → dhara → session-buddy → akosha → crackerjack → mahavishnu. 2-week soak between each merge; total window ~3 months from 3.15.0 GA to mahavishnu on 3.15.
+- **Primary track: Python 3.15 ecosystem migration.** Tracked via `BODAI_UPGRADE_WATCH.md`. Triggers when 3.15.0 final releases AND all critical Bodai dependencies have published 3.15 wheels. Sequence: mcp-common → oneiric (adapter framework) → oneiric (curator substrate) → session-buddy → akosha → crackerjack → mahavishnu. 2-week soak between each merge; total window ~3 months from 3.15.0 GA to mahavishnu on 3.15.
 
 - **Secondary track: streaming tar evolution.** The Phase 3 placeholder captured six plausible follow-on work items (chunk-size auto-tuning, bundle dedup, cross-region re-streaming, codec portability, tail validation, multipart-abort observability). All six are **gated on Phase 3 monitoring telemetry** and not in the initial Phase 4 scope.
 
@@ -77,7 +77,7 @@ From the Phase 3 placeholder, six follow-on items. None accepted into initial Ph
 
 2. **oneiric** (adapter framework) — depends on mcp-common. Bump `requires-python` + tool-config + `StreamingCompressionAction` smoke test under 3.15 (zstandard 0.25+ already 3.15-ready). 2-week soak.
 
-3. **dhara** (curator) — depends on mcp-common, oneiric. Bump + smoke test. 2-week soak.
+3. **oneiric** (curator) — depends on mcp-common. Bump + smoke test. 2-week soak.
 
 4. **session-buddy** (builder) — depends on mcp-common, oneiric. Bump + smoke test. 2-week soak.
 
@@ -137,7 +137,7 @@ If Phase 3 7-day monitoring surfaces any of:
 1. **When is 3.15.0 GA expected?** Drives the Phase 4 start date. CPython release schedule (typically October) suggests 2027-Q4, but 3.15's release manager may shift. Track via BODAI_UPGRADE_WATCH weekly.
 2. **Will upstream snob-lib / maturin / pyo3 ship 3.15-compatible wheels in time?** If not, fastblocks PR #6 in Phase 4 will block. Owner action: file upstream issue + follow up monthly.
 3. **Is the streaming-tail-validation MHV-208 actually worth shipping?** Gated on Phase 3 abort-rate telemetry. Need a decision criterion (e.g. "abort rate > 0.1% of fetches → ship").
-4. **Where does the streaming-tar telemetry dashboard live?** Currently metrics are emitted to OTel but not visualized. Need a Grafana dashboard spec (or skip — the OTel exporter in Dhara already collects them).
+4. **Where does the streaming-tar telemetry dashboard live?** Currently metrics are emitted to OTel but not visualized. Need a Grafana dashboard spec (or skip — the OTel exporter in the durable KV store already collects them).
 5. **PEP 750 (t-strings) readiness in fastblocks + jinja2?** Out of scope for the 3.15 bump itself, but if 3.15 GA lands before jinja2 ships t-string support, our template engine migration is delayed.
 6. **Free-threaded (no-GIL) build?** CPython 3.15 may make this default. Currently out of scope, but a Phase 5 ADR should track the readiness of `zstandard`, `pydantic-core`, and `httpx` for free-threaded builds.
 

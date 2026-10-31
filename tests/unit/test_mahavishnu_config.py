@@ -897,7 +897,7 @@ class TestOneiricMCPConfig:
         """Test OneiricMCPConfig defaults."""
         config = OneiricMCPConfig()
         assert config.enabled is False
-        assert config.base_url == "http://localhost:8683/mcp"
+        assert config.base_url == "http://localhost:8681/mcp"
         assert config.timeout_sec == 30
         assert config.cache_ttl_sec == 300
         assert config.token is None

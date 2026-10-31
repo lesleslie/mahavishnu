@@ -55,7 +55,7 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 
 1. **Not implementing the EventBridge envelope itself.** Convergence Plan C2 owns that. Phase 6 reads whatever C2 publishes; if C2's envelope changes, this plan is amended.
 1. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `docs/decisions/bodai-observability-pattern.md`.
-1. **Not changing Dhara or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. Dhara/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
+1. **Not changing the MCP store's or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. MCP-store/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
 1. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
 1. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
 

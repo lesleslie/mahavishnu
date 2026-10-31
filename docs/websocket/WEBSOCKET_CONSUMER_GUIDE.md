@@ -77,7 +77,7 @@ for each channel they consume and re-supply it on reconnect via the
 The server replays all events with `since_offset > captured_offset`
 in order. Replay is bounded by a configurable retention window
 (default: 24 hours). Beyond the retention window, subscribers MUST
-treat the run as orphaned and consult the durable Dhara record
+treat the run as orphaned and consult the durable persistence record
 (via the `get_settle_record(run_ref)` MCP helper) to recover the
 canonical state.
 
@@ -98,10 +98,10 @@ A safe consumer pattern is:
    `proposed`), log and skip — the event is stale or out-of-order
    and must NOT be re-applied.
 
-## When to consult Dhara
+## When to consult the persistence substrate
 
 WebSocket events are best-effort. Subscribers that need durable state
-should consult the Dhara-backed settle record directly:
+should consult the persistence-substrate-backed settle record directly:
 
 ```
 mcp__mahavishnu__get_settle_record(run_ref="settle-abcd1234")

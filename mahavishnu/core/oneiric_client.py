@@ -1,8 +1,11 @@
 """MCP-backed adapter registry client.
 
-The former ``oneiric_mcp`` gRPC package has been folded into MCP's canonical
-FastMCP surface. This module keeps the historic class names as compatibility
-aliases while routing adapter discovery through MCP MCP tools.
+The former ``oneiric_mcp`` gRPC package has been folded into Oneiric's
+canonical FastMCP surface — the Oneiric MCP server (port 8681) exposes the
+adapter-registry tools (``oneiric_list_adapters``, ``oneiric_get_adapter``,
+``oneiric_get_adapter_health``, ``oneiric_get_contract_info``). This module
+keeps the historic class names as compatibility aliases while routing
+adapter discovery through the Oneiric MCP server.
 """
 
 from __future__ import annotations
@@ -19,6 +22,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 _mcp_clients: dict[tuple[str, str | None], MCPClient] = {}
 _default_mcp_base_url = "http://localhost:8683/mcp"
+
+# The Oneiric MCP server is the live home of the adapter registry. The
+# adapter-registry client targets it explicitly so it never falls back to
+# the generic key-value substrate endpoint used by ``get_mcp_client()``.
+ONEIRIC_ADAPTER_REGISTRY_BASE_URL = "http://localhost:8681/mcp"
 
 
 def get_mcp_client(base_url: str | None = None, token: str | None = None) -> MCPClient:
@@ -141,10 +149,14 @@ class AdapterEntry:
 
 @dataclass
 class MCPAdapterRegistryConfig:
-    """Configuration for MCP adapter registry discovery."""
+    """Configuration for MCP adapter registry discovery.
+
+    ``base_url`` defaults to the Oneiric MCP server, which is where the
+    adapter-registry tools live.
+    """
 
     enabled: bool = True
-    base_url: str | None = None
+    base_url: str | None = ONEIRIC_ADAPTER_REGISTRY_BASE_URL
     timeout_sec: int = 30
     cache_ttl_sec: int = 300
     token: str | None = None
@@ -246,11 +258,11 @@ class MCPAdapterRegistryClient:
             del self._cache[cache_key]
 
         payload = await self._call_tool(
-            "list_adapters",
+            "oneiric_list_adapters",
             {"domain": domain, "category": category},
         )
         if isinstance(payload, dict) and payload.get("success") is False:
-            raise ConnectionError(payload.get("error") or "MCP list_adapters failed")
+            raise ConnectionError(payload.get("error") or "MCP oneiric_list_adapters failed")
 
         raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []  # type: ignore[var-annotated]
         adapters = [AdapterEntry.from_mcp(a) for a in raw_adapters if isinstance(a, dict)]
@@ -273,7 +285,7 @@ class MCPAdapterRegistryClient:
         try:
             domain, key, provider = _split_adapter_id(adapter_id)
             payload = await self._call_tool(
-                "get_adapter",
+                "oneiric_get_adapter",
                 {"domain": domain, "key": key, "provider": provider},
             )
             if not isinstance(payload, dict) or not payload.get("success"):
@@ -303,7 +315,7 @@ class MCPAdapterRegistryClient:
         try:
             domain, key, provider = _split_adapter_id(adapter_id)
             payload = await self._call_tool(
-                "get_adapter_health",
+                "oneiric_get_adapter_health",
                 {"domain": domain, "key": key, "provider": provider},
             )
             healthy = bool(
@@ -353,7 +365,7 @@ class MCPAdapterRegistryClient:
         if not self.config.enabled:
             return {"status": "disabled", "connected": False}
         try:
-            contract = await self._call_tool("get_contract_info", {})
+            contract = await self._call_tool("oneiric_get_contract_info", {})
             adapters = await self.list_adapters(use_cache=False)
             return {
                 "status": "healthy",

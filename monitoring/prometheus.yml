@@ -42,7 +42,6 @@ scrape_configs:
   # Candidate services:
   # - session-buddy
   # - akosha
-  # - dhara
   # - crackerjack
 
   # ========================================

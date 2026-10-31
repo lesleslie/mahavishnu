@@ -1,12 +1,12 @@
 """Unit tests for MCPKvClient — string-shape adapter for PlanIndexStore.
 
 PlanIndexStore's _MCPClient Protocol declares string KV (str | None),
-but Dhara's MCP wire shape returns dict envelopes (``{"ok":..., "key":...,
+but the MCP wire shape returns dict envelopes (``{"ok":..., "key":...,
 "value":...}``). This adapter unwraps the envelope so callers see the
-raw string value Dhara actually stored. See state_backends/mcp_kv.py.
+raw string value the store actually persisted. See state_backends/mcp_kv.py.
 
 Tests cover: get/put round-trip, list_prefix tuple shape, delete no-op,
-disabled-mode short-circuit, and the contract that wires Dhara's wire
+disabled-mode short-circuit, and the contract that wires the MCP wire
 envelope ``{"ok": True, "key": K, "value": V}`` to ``str | None``.
 """
 
@@ -41,7 +41,7 @@ def _make_client(
 class TestMCPKvClientGet:
     @pytest.mark.asyncio
     async def test_get_unwraps_wire_envelope_to_string(self):
-        """Dhara MCP returns {'ok':..., 'key':K, 'value':V}; adapter
+        """The MCP store returns {'ok':..., 'key':K, 'value':V}; adapter
         surfaces the raw stored string. Critical for cron_core where
         int(await mcp.get(...)) raises if a dict envelope leaks."""
         envelope = {"ok": True, "key": "plan_index/meta/cycles_total", "value": "42"}
@@ -53,7 +53,7 @@ class TestMCPKvClientGet:
 
     @pytest.mark.asyncio
     async def test_get_returns_none_when_value_missing(self):
-        """When Dhara's wire envelope has value=None, the adapter
+        """When the MCP wire envelope has value=None, the adapter
         surfaces None — matches PlanIndexStore's Protocol contract."""
         envelope = {"ok": True, "key": "plan_index/meta/cycles_total", "value": None}
         client = _make_client(call_tool=AsyncMock(return_value=envelope))
@@ -141,7 +141,7 @@ class TestMCPKvClientListPrefix:
 
 class TestMCPKvClientDelete:
     @pytest.mark.asyncio
-    async def test_delete_calls_dhara(self):
+    async def test_delete_calls_store(self):
         mock_call_tool = AsyncMock()
         client = _make_client(call_tool=mock_call_tool)
 

@@ -47,5 +47,5 @@ Key variables:
 | `MAHAVISHNU_AUTH_SECRET` | — | JWT signing secret (min 32 chars, required when auth enabled) |
 | `MAHAVISHNU_UNIFIED_VALIDATION_ENABLED` | `false` | Enable strict config validation on startup |
 | `RUNPOD_API_KEY` | — | Required before spawning `pool_type=runpod` pools |
-| `MAHAVISHNU_DHARA_STATE__ENABLED` | `true` | Enable Dhara state persistence |
-| `MAHAVISHNU_DHARA_STATE__FLUSH_INTERVAL_SECONDS` | `60` | Routing buffer flush interval |
+| `MAHAVISHNU_MCP_STATE__ENABLED` | `true` | Enable MCP state persistence |
+| `MAHAVISHNU_MCP_STATE__FLUSH_INTERVAL_SECONDS` | `60` | Routing buffer flush interval |

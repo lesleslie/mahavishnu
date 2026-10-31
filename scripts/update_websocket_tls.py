@@ -110,13 +110,6 @@ SERVICES = [
         "config_file": "/Users/les/Projects/crackerjack/crackerjack/websocket/tls_config.py",
     },
     {
-        "name": "mcp",
-        "package": "mcp",
-        "service_upper": "DHARA",
-        "server_file": "/Users/les/Projects/mcp/mcp/websocket/server.py",
-        "config_file": "/Users/les/Projects/mcp/mcp/websocket/tls_config.py",
-    },
-    {
         "name": "excalidraw-mcp",
         "package": "excalidraw_mcp",
         "service_upper": "EXCALIDRAW",

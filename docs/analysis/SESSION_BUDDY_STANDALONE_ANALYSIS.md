@@ -79,7 +79,7 @@ if not REFLECTION_AVAILABLE:
 |-------------|------|--------------|------------------|
 | **Mahavishnu** | Consumer | Always | Consumes session context via MCP tools |
 | **Akosha** | Provider | Configured | Cross-system intelligence, cloud sync |
-| **Dhara** | Optional | Configured | Persistent cloud storage |
+| **Oneiric Substrate** | Optional | Configured | Persistent cloud storage |
 | **Crackerjack** | Optional | Default ON | Quality metrics, test result tracking |
 | **Oneiric** | Configuration | Always | Configuration layer (YAML + env) |
 
@@ -106,12 +106,12 @@ akosha_force_method: t.Literal["auto", "cloud", "http"] = Field(default="auto")
 2. **HTTP Sync** - Fallback to Akosha HTTP endpoints
 3. **Hybrid** - Automatic selection with fallback chain
 
-### 2.3 Dhara Integration
+### 2.3 Oneiric Substrate Integration
 
 **Not directly integrated.** Session-Buddy uses:
 - Local DuckDB for primary storage
 - Optional S3/R2 via Oneiric adapters for cloud sync
-- No direct Dhara MCP client found in codebase
+- No direct MCP client for the persistence substrate found in codebase
 
 ### 2.4 Crackerjack Integration
 
@@ -155,12 +155,12 @@ async def sync_memories(self, force_method: Literal["auto", "cloud", "http"] = "
         # Try sync with this method...
 ```
 
-### 3.2 When Dhara Is Unavailable
+### 3.2 When the Persistence Substrate Is Unavailable
 
 **No direct dependency.** Session-Buddy:
 - Uses local DuckDB for all persistence
 - Has its own file-based session storage
-- Cloud sync uses S3/R2 directly (via Oneiric), not Dhara
+- Cloud sync uses S3/R2 directly (via Oneiric), not the persistence substrate
 
 ### 3.3 Local Storage Alternatives
 
@@ -318,7 +318,7 @@ Session-Buddy is **exceptionally well-designed for standalone operation**:
 
 - Akosha integration has automatic cloud -> HTTP fallback
 - Crackerjack is optional with graceful degradation
-- No hard dependency on Dhara (uses direct S3/R2)
+- No hard dependency on the persistence substrate (uses direct S3/R2)
 - WebSocket is optional enhancement
 
 ### Critical Action Items

@@ -3,8 +3,8 @@ name: oneiric-specialist
 description: >-
   Expert in Oneiric component resolution, adapter lifecycle, and runtime orchestration.
   Handles adapter registration, config loading, and dependency resolution. Ecosystem:
-  mcp__dhara__list_adapters (adapter catalog), mcp__dhara__get_adapter (adapter lookup),
-  mcp__mahavishnu__list_repos (repo catalog).
+  mcp__oneiric__oneiric_list_adapters (catalog), mcp__oneiric__oneiric_get_adapter
+  (lookup), mcp__mahavishnu__list_repos (repos).
 model: sonnet
 ---
 
@@ -20,7 +20,7 @@ Own Oneiric component resolution, adapter lifecycle, and layered config.
 ## How I work
 - Verify `project_root` anchor and source the issue from there.
 - Step through resolver precedence and capture the winning candidate.
-- Pull the catalog via `mcp__dhara__list_adapters` and `get_adapter` for ground truth.
+- Pull the catalog via `mcp__oneiric__oneiric_list_adapters` and `oneiric_get_adapter` for ground truth.
 
 ## What I produce
 - Reproducer with the exact config layers tested.

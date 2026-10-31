@@ -14,7 +14,7 @@ related:
   - "015-worktree-and-cache-storage-v2"
   - "015-worktree-and-cache-storage-v3"
   - "006-simplify-storage-architecture"
-  - "013-mahavishnu-dhara-adapter-tool-boundary"
+  - "013-mahavishnu-adapter-tool-boundary"
   - "001-use-oneiric"
 ---
 
@@ -39,7 +39,7 @@ related:
 | **§12 pre-v2 migration example** | v3's `pre_migration_discover()` snippet didn't supply `worktree_id` to `LocalWorktreeRef`. v4 fixes. | code-reviewer (ambiguity #6) |
 | **Phase 4 pre-spike** | v3 went straight to Phase 4 implementation. v4 adds a 1-2 day spike on 3-5 actual misplaced worktrees before committing to the 83-worktree migration. | general-purpose (top concern #1) |
 | **Oneiric `LifecycleError` sign-off** | v3 listed as Phase 0 sub-task with no explicit maintainer confirmation. v4 flags as a hard prerequisite — must get Oneiric maintainer sign-off before Phase 0. | general-purpose (top concern #2) |
-| **Dhara worktree-registry schema sign-off** | v3 implied Dhara substrate readiness. v4 flags as a hard prerequisite — must get Dhara maintainer sign-off on the schema before Phase 1. | general-purpose (hidden deps) |
+| **Durable KV worktree-registry schema sign-off** | v3 implied durable-substrate readiness. v4 flags as a hard prerequisite — must get the substrate maintainer sign-off on the schema before Phase 1. | general-purpose (hidden deps) |
 | **Open Question #3 (BundleTransport for local)** | v3 had the question open. v4 marks it resolved: BundleTransport is deferred to a follow-up ADR. | general-purpose (minor inconsistency) |
 | **`WorktreeCoordinator` return type** | v3 ambiguous (returns `dict[str, Any]` currently, no spec for new shape). v4 specifies: returns `WorktreeHandle` from new providers, adapts to `WorktreeInfo` for old call sites. | code-reviewer (ambiguity #2) |
 
@@ -68,7 +68,7 @@ The existing `direct_git.py` is renamed to `local.py` and the new `LocalWorktree
 
 ### 2. `StorageSettings` lives in Oneiric, not in `MahavishnuSettings`
 
-`StorageSettings` is relocated to `oneiric/oneiric/config.py` (new module), re-exported by `mahavishnu/mahavishnu/core/config.py` for backward compat. Nested per-adapter fields (matching Oneiric's `LocalStorageSettings` / `S3StorageSettings` / `GCSStorageSettings` / `AzureBlobStorageSettings` / `RedisCacheSettings` / `DharaDurableSettings`).
+`StorageSettings` is relocated to `oneiric/oneiric/config.py` (new module), re-exported by `mahavishnu/mahavishnu/core/config.py` for backward compat. Nested per-adapter fields (matching Oneiric's `LocalStorageSettings` / `S3StorageSettings` / `GCSStorageSettings` / `AzureBlobStorageSettings` / `RedisCacheSettings` / `DurableStoreSettings`).
 
 ### 3. Cache: use Oneiric's `MultiTierCacheAdapter` directly
 
@@ -163,9 +163,9 @@ Hook reads `paths.py::get_worktree_base_path()` (no direct env-var reads). `MAHA
 
 Policy is set globally via `StorageSettings.cleanup_policy_default`. Per-worktree override: `cleanup_policy: CleanupPolicy | None` field on `WorktreeHandle`. Per-principal override: `Principal.cleanup_policy_override`.
 
-### 11. Worktree registry schema (Dhara)
+### 11. Worktree registry schema (durable KV store)
 
-**Hard prerequisite for Phase 1:** explicit Dhara maintainer sign-off on the schema below. Without it, Phase 1 cannot begin.
+**Hard prerequisite for Phase 1:** explicit durable-substrate maintainer sign-off on the schema below. Without it, Phase 1 cannot begin.
 
 ```text
 mahavishnu:worktree-registry:&lt;handle_id&gt;            -&gt; JSON(WorktreeHandle)  [no TTL]
@@ -250,7 +250,7 @@ def pre_migration_discover(main_repo: str) -> list[WorktreeHandle]:
     return handles
 ```
 
-Each synthesized handle is registered in Dhara with `provenance: "pre-v2-migration"`.
+Each synthesized handle is registered in the durable KV store with `provenance: "pre-v2-migration"`.
 
 ### 13. Concrete type definitions
 
@@ -402,7 +402,7 @@ S3 and GCS credentials are managed by Oneiric's `S3StorageSettings` / `GCSStorag
 | S3 | create_worktree | <500ms | <2s | <5s | 99.5% |
 | S3 | fetch (bundle <50MB) | <300ms | <1.5s | <4s | 99.5% |
 | Redis (L1 miss → L2) | cache.get | <5ms | <20ms | <50ms | 99.9% |
-| Dhara | state.set | <20ms | <100ms | <300ms | 99.5% |
+| Durable KV store | state.set | <20ms | <100ms | <300ms | 99.5% |
 
 `S3WorktreeProvider` restricted to repos under 50k commits OR repos where the bundle is <100MB. Larger repos use shallow clone. The 200-500ms p99 SLO applies only to small bundles.
 
@@ -420,7 +420,7 @@ cache_fallback_total{from,to}
 backend_health_check_failed_total{backend}
 bundle_bytes{repo}
 bundle_integrity_failure_total{backend,principal}
-worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
+worktree_registry_drift_total{missing_in_s3,missing_in_durable_kv}
 ```
 
 ### 18. Migration plan (revised, realistic estimates)
@@ -429,7 +429,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 
 **Prerequisites before Phase 0 starts:**
 - [ ] Oneiric maintainer sign-off on `LifecycleError("local-storage-readonly-filesystem")` enhancement (cross-repo PR)
-- [ ] Dhara maintainer sign-off on the worktree-registry schema in §11 (cross-repo PR)
+- [ ] Durable-substrate maintainer sign-off on the worktree-registry schema in §11 (cross-repo PR)
 
 **Phase 0 work:**
 - Use `git revert -n eb247784 2f3649f9 c0b09a06` (preserves history)
@@ -442,7 +442,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 **Phase 1: Provider subclasses + pre-v2 migration (2-3 days)**
 
 **Prerequisites before Phase 1 starts:**
-- [ ] Dhara worktree-registry schema merged (from Phase 0 prerequisite)
+- [ ] Durable-KV worktree-registry schema merged (from Phase 0 prerequisite)
 - [ ] Phase 0 CI guard test passing on main
 
 **Phase 1 work:**
@@ -450,7 +450,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 - Add `S3WorktreeProvider` extending the existing `WorktreeProvider` ABC
 - Add concrete types: `WorktreeHandle`, `WorktreeRef` (ABC), `LocalWorktreeRef`, `S3WorktreeRef`, `BundleRef`, `WorktreeLock`, `WorktreeLocked`, `WorktreeIntegrityError` (all in `mahavishnu/core/worktree_providers/`)
 - Run `pre_migration_discover()` for all 210 existing worktrees
-- Register synthesized handles in Dhara with `provenance: "pre-v2-migration"`
+- Register synthesized handles in the durable KV store with `provenance: "pre-v2-migration"`
 - Update `WorktreeCoordinator` to dispatch via new providers
 - Update `.claude/hooks/worktree-session-isolation.py` to read from `paths.py::get_worktree_base_path()`
 - Implement `lock()` with Redis SETNX + fencing token
@@ -478,7 +478,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 
 **Phase 4: Migration of 83 misplaced worktrees (2-3 days, BLOCKED on Phase 1.5 spike)**
 
-- For each misplaced worktree: read current handle, invoke `git worktree move` (or `WorktreeProvider.materialize` for S3 backend), verify SHA-256 lazily, register in Dhara
+- For each misplaced worktree: read current handle, invoke `git worktree move` (or `WorktreeProvider.materialize` for S3 backend), verify SHA-256 lazily, register in the durable KV store
 - Per-worktree safety check: skip if `git status` shows uncommitted changes
 - Advisory lock per `(main_repo, branch)` during migration; SessionStart hook checks lock before creating new worktree at old path
 
@@ -497,9 +497,9 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 | Phase | Rollback trigger | Procedure |
 |---|---|---|
 | Phase 0 | Approval blocked by maintainer | N/A — abort |
-| Phase 1 | SLO breach > 2x baseline for 24h | `git revert <phase-1-sha>`, redeploy, flush Dhara worktree registry |
+| Phase 1 | SLO breach > 2x baseline for 24h | `git revert <phase-1-sha>`, redeploy, flush the durable-KV worktree registry |
 | Phase 1.5 | Spike fails on sample worktrees | Revise Phase 4 plan; do not proceed to Phase 4 |
-| Phase 2 | Redis or Dhara health check fails for 1h+ | Switch `cache_provider_selection=memory-only`, redeploy |
+| Phase 2 | Redis or durable-KV health check fails for 1h+ | Switch `cache_provider_selection=memory-only`, redeploy |
 | Phase 3 | Venv regression in any repo | Restore from `registry.json.backup`, redeploy |
 | Phase 4 | Worktree migration corrupts state | Per-worktree rollback via `git reflog` + `WorktreeProvider.remove(handle) + recreate` |
 | Phase 5 | Doc-only, low risk | N/A |
@@ -510,24 +510,24 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 |---|---|---|---|
 | Local worktree (filesystem) | 0 (single host) | manual recreation | operator intervention |
 | S3 | 0 (S3 11 9s durable) | DNS/IAM replay | automatic |
-| Dhara | depends on substrate | depends on substrate | reconstruction from S3 inventory |
+| Durable KV store | depends on substrate | depends on substrate | reconstruction from S3 inventory |
 | Redis | acceptable loss on restart | warm from cold | L1 cache hits degraded |
 
-**Reconstruction path for Dhara loss:** List `s3://bucket/worktrees/` keys, derive `(principal, repo, branch)` from path, read `x-amz-meta-sha256` and other metadata, rebuild `WorktreeHandle` records in Dhara from S3 inventory, mark `reconstructed_at` field, require operator confirmation before writes resume.
+**Reconstruction path for durable-KV loss:** List `s3://bucket/worktrees/` keys, derive `(principal, repo, branch)` from path, read `x-amz-meta-sha256` and other metadata, rebuild `WorktreeHandle` records in the durable KV store from S3 inventory, mark `reconstructed_at` field, require operator confirmation before writes resume.
 
-**S3 ↔ Dhara consistency check** (nightly cron): alert on orphans (S3 has, Dhara doesn't) and ghosts (Dhara has, S3 doesn't). Ghosts are more dangerous — flag for manual review, never auto-delete.
+**S3 ↔ durable-KV consistency check** (nightly cron): alert on orphans (S3 has, the durable KV store doesn't) and ghosts (the durable KV store has, S3 doesn't). Ghosts are more dangerous — flag for manual review, never auto-delete.
 
 ### 20. Runbooks (with owners)
 
 | Runbook | Owner | Page-when |
 |---|---|---|
-| `runbooks/storage-backend-failure.md` | Mahavishnu core team | S3/Dhara/Redis health-check failure |
+| `runbooks/storage-backend-failure.md` | Mahavishnu core team | S3/durable-KV/Redis health-check failure |
 | `runbooks/worktree-migration-failure.md` | Migration team | Phase 4 corruption |
 | `runbooks/shared-venv-corruption.md` | MCP infrastructure | Per-MCP venv breakage |
 | `runbooks/bundle-integrity-failure.md` | Mahavishnu core team | SHA-256 mismatch alert |
 | `runbooks/redis-down.md` | SRE | Redis connection failure |
 | `runbooks/s3-throttled.md` | SRE | S3 503 SlowDown alert |
-| `runbooks/dhara-unreachable.md` | SRE | Dhara health check failure |
+| `runbooks/durable-kv-unreachable.md` | SRE | Durable-KV health check failure |
 | `runbooks/lambda-cold-start-slow.md` | DevOps | p99 cold start > 500ms |
 
 ## Consequences
@@ -547,17 +547,17 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 ### Negative
 
 - **Migration effort.** Realistic 8-12 days of focused work.
-- **Phase 0 + 1 prerequisites block start.** Oneiric and Dhara maintainer sign-off required.
+- **Phase 0 + 1 prerequisites block start.** Oneiric and durable-substrate maintainer sign-off required.
 - **New failure modes.** All are observable; each has a runbook with an owner.
 - **Cold start latency.** Serverless: bundle download + clone = 200-500ms p99 for small bundles.
 - **Breaking change.** `worktree_manage` MCP tool v2.0.0 with 2-minor-release deprecation window.
-- **StorageSettings relocation touches mahavishnu, oneiric, and Dhara.**
+- **StorageSettings relocation touches mahavishnu, oneiric, and the durable-substrate owner.**
 
 ### Neutral
 
 - v1, v2, v3 are now superseded. The 3 stale commits on `origin/main` are reverted via `git revert` (Phase 0), not force-push.
 - The `WorktreeProvider` hierarchy is extended, not replaced. `direct_git.py` is renamed to `local.py` with a 1-release alias.
-- Oneiric gains no new cache adapters (DharaCacheAdapter was an error in v2; ADR-013 boundary holds).
+- Oneiric gains no new cache adapters (the durable-KV cache adapter was an error in v2; ADR-013 boundary holds).
 - `StorageSettings` lives in Oneiric for cross-component reuse.
 - `Principal` lives in `mahavishnu/auth.py` (new module).
 - `BundleTransport` decorator is deferred to a follow-up ADR.
@@ -565,18 +565,18 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 ## Open Questions
 
 1. **Phase 0 Oneiric enhancement:** `LifecycleError("local-storage-readonly-filesystem")` requires a Oneiric PR. Confirm the Oneiric maintainer will accept this enhancement before starting Phase 0.
-2. **Dhara worktree-registry schema:** confirm the Dhara maintainer accepts the schema in §11 before starting Phase 1.
+2. **Durable-KV worktree-registry schema:** confirm the durable-substrate maintainer accepts the schema in §11 before starting Phase 1.
 3. **Per-cache TTL defaults:** the 3600s default for `StorageSettings.cache_ttl_seconds` is a guess. Real values depend on workload; set after Phase 2 instrumentation.
 4. **Bundle transport for local:** Should `LocalWorktreeProvider` produce a bundle by default (for portability), or only on explicit request? **Deferred to a follow-up ADR** (was Open Question #3 in v3; resolved by deferral).
-5. **Worktree handle cleanup on rollback:** If Phase 4 rolls back per-worktree, the synthesized `WorktreeHandle` for that worktree is orphaned in Dhara. Should the rollback also clean up the registry entry, or leave it for an explicit GC?
+5. **Worktree handle cleanup on rollback:** If Phase 4 rolls back per-worktree, the synthesized `WorktreeHandle` for that worktree is orphaned in the durable KV store. Should the rollback also clean up the registry entry, or leave it for an explicit GC?
 
 ## Related Decisions
 
 - **ADR-001: Use Oneiric for Configuration and Logging** — v4 extends Oneiric's resolver and (per §2) relocates `StorageSettings` to Oneiric.
 - **ADR-004: Adapter Architecture** — v4 follows the ABC + extensions pattern; new `LocalWorktreeProvider`/`S3WorktreeProvider` extend the existing ABC.
-- **ADR-006: Simplify Storage Architecture** — v4 keeps PostgreSQL as the primary app-data store (via Dhara) and adds Redis as the L2 cache tier.
+- **ADR-006: Simplify Storage Architecture** — v4 keeps PostgreSQL as the primary app-data store (via the durable KV substrate) and adds Redis as the L2 cache tier.
 - **ADR-009: Hybrid Adapter Registry** — v4 uses capability-based routing via `find_by_capabilities`.
-- **ADR-013: Adapter Tool Boundary Between Mahavishnu and Dhara** — v4 strictly preserves the boundary. `DharaCacheAdapter` removed; durable state routes through `dhara_adapter.py`.
+- **ADR-013: Adapter Tool Boundary Between Mahavishnu and the Adapter Registry** — v4 strictly preserves the boundary. The durable-KV cache adapter was removed; durable state routes through the durable-store adapter module.
 - **015-multi-agent-review** — the round-1, round-2, and final-pass reviews that drove v2, v3, and v4.
 
 ## References
@@ -590,7 +590,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_dhara}
 - Existing `WorktreeProviderRegistry`: `mahavishnu/mahavishnu/core/worktree_providers/registry.py:42`
 - Existing `WorktreeError(MahavishnuError)`: `mahavishnu/mahavishnu/core/worktree_manager.py:95`
 - Hook: `mahavishnu/.claude/hooks/worktree-session-isolation.py:53`
-- Dhara cache substrate: `dhara/dhara/mcp/kv_timeseries.py:60`
+- Durable KV cache substrate: `oneiric/oneiric/adapters/cache/persistent_kv.py:102`
 - `MAHAVISHNU_TOOL_PROFILE`, `DEPRECATED_TOOLS`: `mahavishnu/mahavishnu/mcp/tool_versions.py:293-304`
 - Multi-agent review (round 1): `docs/adr/015-multi-agent-review.md`
 - Multi-agent review (round 2): synthesis in commit history of `015-multi-agent-review-round-2.md`

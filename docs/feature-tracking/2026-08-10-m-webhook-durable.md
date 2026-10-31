@@ -21,17 +21,17 @@ role: canonical
 - [ ] **wired** (entry-point exists; integration contract executed end-to-end)
 - [ ] **adopted** (in active use by ≥1 user/workflow/agent)
 
-`built` was reached when Task 1 produced `mahavishnu/webhooks/receiver.py` (commits `cf188d60` + `9dc547c1`), Task 2 produced `mahavishnu/webhooks/replay.py` (commit `7af40ce6`), and Task 3 produced `tests/unit/test_webhooks_roundtrip.py` + this completion report (commit pending). The producer/consumer contract — `dhara.put("webhook-ingress/{webhook_id}/", WebhookIngress)` on write, `dhara.get("webhook-ingress/{webhook_id}/")` on read, with `from_dict("webhook_ingress", payload)` validation — is verified by 3 round-trip tests.
+`built` was reached when Task 1 produced `mahavishnu/webhooks/receiver.py` (commits `cf188d60` + `9dc547c1`), Task 2 produced `mahavishnu/webhooks/replay.py` (commit `7af40ce6`), and Task 3 produced `tests/unit/test_webhooks_roundtrip.py` + this completion report (commit pending). The producer/consumer contract — `mcp.put("webhook-ingress/{webhook_id}/", WebhookIngress)` on write, `mcp.get("webhook-ingress/{webhook_id}/")` on read, with `msgspec.convert(payload, WebhookIngress)` validation — is verified by 3 round-trip tests.
 
 **`wired` is NOT yet reached.** See "Blocker" below — production webhook ingress traffic still flows through `mahavishnu/webhooks/router.py` (OpenClaw-typed Pydantic surface), not through the new `receiver.py`. The receiver is a sibling leaf module that satisfies the plan's substrate-compat + durable-persistence contract but is not mounted in production. A future wiring plan must thread the durable receiver into the live ingress.
 
 ## Wiring checklist
 
 - [x] Entry point registered (`receive_webhook` lives in `mahavishnu/webhooks/receiver.py`; `webhook_replay` lives in `mahavishnu/webhooks/replay.py`; tests cover both)
-- [x] Trigger path identified (inbound HTTP `POST /webhook` on the durable receiver constructs a `WebhookIngress` and persists via `dhara.put(f"webhook-ingress/{webhook_id}/", validated)`)
-- [x] Returns / state updates land in expected destination (`webhook-ingress/{webhook_id}/` prefix on Dhara, typed `WebhookIngress` struct on read with `from_dict("webhook_ingress", payload)`)
+- [x] Trigger path identified (inbound HTTP `POST /webhook` on the durable receiver constructs a `WebhookIngress` and persists via `mcp.put(f"webhook-ingress/{webhook_id}/", validated)`)
+- [x] Returns / state updates land in expected destination (`webhook-ingress/{webhook_id}/` prefix in the durable key-value store, typed `WebhookIngress` struct on read with `msgspec.convert(payload, WebhookIngress)`)
 - [x] End-to-end smoke check documented (`.venv/bin/python -m pytest tests/unit/test_webhooks_receiver.py tests/unit/test_webhooks_replay.py tests/unit/test_webhooks_roundtrip.py --no-cov` → 11 passed in 10.35s)
-- [x] Observability hook in place (oneiric logger via `oneiric.core.logging.get_logger`; `webhook_ingress_recorded` on success, `webhook_persistence_skipped` with distinct `reason` values for `v1_disabled` vs `dhara.put_unbound`, `invalid_webhook` on validation failure — never carries `str(exception)` in `extra`)
+- [x] Observability hook in place (oneiric logger via `oneiric.core.logging.get_logger`; `webhook_ingress_recorded` on success, `webhook_persistence_skipped` with distinct `reason` values for `v1_disabled` vs `mcp.put_unbound`, `invalid_webhook` on validation failure — never carries `str(exception)` in `extra`)
 - [x] Rollback signal defined (set `WEBHOOK_DURABLE_V1_ENABLED=false` env var; legacy in-memory fallback returns `{"status": "accepted_in_memory_only"}` with structured warning)
 
 ## Built (yes/no)
@@ -45,19 +45,19 @@ yes — producer (Task 1), consumer (Task 2), and round-trip test (Task 3) all s
 ## Trigger path (planned, not yet live)
 
 1. Inbound HTTP `POST /webhook` arrives at `mahavishnu/webhooks/receiver.py:57` (`receive_webhook` handler).
-2. Body validated via `dhara.schema.validate("webhook_ingress", payload)` — failure path returns 422 `WEBHOOK_VALIDATION_ERROR` and emits `invalid_webhook` log (no `str(exception)` in `extra`).
+2. Body validated via `msgspec.convert(payload, WebhookIngress)` — failure path returns 422 `WEBHOOK_VALIDATION_ERROR` and emits `invalid_webhook` log (no `str(exception)` in `extra`).
 3. On validation success: `_webhook_durable_v1_enabled()` flag is consulted. When `false`, the receiver short-circuits to `{"status": "accepted_in_memory_only"}` and emits `webhook_persistence_skipped` with `reason='v1_disabled'`.
-4. Substrate-compat gate: `getattr(dhara, "put", None)` — when unbound, the receiver short-circuits to `{"status": "accepted_in_memory_only"}` and emits `webhook_persistence_skipped` with `reason='dhara.put_unbound'` and `v1_enabled=<state>`.
-5. Durable path: `dhara.put(f"webhook-ingress/{webhook_id}/", validated)` — record lands at the producer/consumer durability key. `webhook_ingress_recorded` info log emitted with `{webhook_id, source}`.
+4. Substrate-compat gate: `getattr(mcp, "put", None)` — when unbound, the receiver short-circuits to `{"status": "accepted_in_memory_only"}` and emits `webhook_persistence_skipped` with `reason='mcp.put_unbound'` and `v1_enabled=<state>`.
+5. Durable path: `mcp.put(f"webhook-ingress/{webhook_id}/", validated)` — record lands at the producer/consumer durability key. `webhook_ingress_recorded` info log emitted with `{webhook_id, source}`.
 6. Producer returns 200 with `{"status": "accepted", "webhook_id": ...}` on the durable path; 202 with `{"status": "accepted_in_memory_only"}` on either fallback path.
 7. Consumer side: any caller invokes `webhook_replay(webhook_id)` from `mahavishnu/webhooks/replay.py:37`.
-8. Substrate-compat gate mirrors the receiver: missing `dhara.get` binding → `None` + `webhook_replay_skipped` warning with `reason='dhara.get_unbound'`. Missing record → `None` (no log, per zero-noise contract).
-9. Read path: `dhara.get(f"webhook-ingress/{webhook_id}/")` returns the persisted record; `from_dict("webhook_ingress", payload)` returns the typed `WebhookIngress` struct for the caller.
+8. Substrate-compat gate mirrors the receiver: missing `mcp.get` binding → `None` + `webhook_replay_skipped` warning with `reason='mcp.get_unbound'`. Missing record → `None` (no log, per zero-noise contract).
+9. Read path: `mcp.get(f"webhook-ingress/{webhook_id}/")` returns the persisted record; `msgspec.convert(payload, WebhookIngress)` returns the typed `WebhookIngress` struct for the caller.
 
 ## Integration point
 
-- Producer (`receive_webhook`): `mahavishnu/webhooks/receiver.py` — FastAPI app, `POST /webhook` endpoint, `response_model=None` so the `JSONResponse | dict[str, str]` union is accepted by Pydantic. Substrate-compat `if not hasattr(dhara, "put"): dhara.put = None` at module top.
-- Consumer (`webhook_replay`): `mahavishnu/webhooks/replay.py` — leaf module, no FastAPI app. Substrate-compat `if not hasattr(dhara, "get"): dhara.get = None` at module top.
+- Producer (`receive_webhook`): `mahavishnu/webhooks/receiver.py` — FastAPI app, `POST /webhook` endpoint, `response_model=None` so the `JSONResponse | dict[str, str]` union is accepted by Pydantic. Substrate-compat `if not hasattr(mcp, "put"): mcp.put = None` at module top.
+- Consumer (`webhook_replay`): `mahavishnu/webhooks/replay.py` — leaf module, no FastAPI app. Substrate-compat `if not hasattr(mcp, "get"): mcp.get = None` at module top.
 - Feature flag: `_webhook_durable_v1_enabled()` helper at `mahavishnu/webhooks/receiver.py:36-44` reads `WEBHOOK_DURABLE_V1_ENABLED` env var (default `"true"`, case-insensitive).
 - Persistence key: `f"webhook-ingress/{webhook_id}/"` — producer and consumer both pin this format. The round-trip test `test_webhook_round_trip_uses_matching_persistence_keys` locks the contract.
 
@@ -81,12 +81,12 @@ Tests cover:
 | `test_webhook_round_trip_with_distinct_ids_isolates_records` | `tests/unit/test_webhooks_roundtrip.py` | Per-`webhook_id` substrate-key isolation |
 | `test_post_webhook_emits_validated_struct` | `tests/unit/test_webhooks_receiver.py` | Happy path: 202 + validated struct persisted |
 | `test_post_webhook_rejects_invalid_payload` | `tests/unit/test_webhooks_receiver.py` | Missing `webhook_id` → 422 + no put |
-| `test_post_webhook_emits_warning_when_dhara_put_unbound` | `tests/unit/test_webhooks_receiver.py` | `dhara.put=None` → 202 + structured warn |
+| `test_post_webhook_emits_warning_when_mcp_put_unbound` | `tests/unit/test_webhooks_receiver.py` | `mcp.put=None` → 202 + structured warn |
 | `test_post_webhook_falls_back_to_in_memory_when_v1_disabled` | `tests/unit/test_webhooks_receiver.py` | `WEBHOOK_DURABLE_V1_ENABLED=false` → 202 + warn with `reason='v1_disabled'` |
 | `test_webhook_replay_returns_validated_struct` | `tests/unit/test_webhooks_replay.py` | Happy path: typed `WebhookIngress` round-trips |
 | `test_webhook_replay_uses_persistence_key_format` | `tests/unit/test_webhooks_replay.py` | Read key format |
 | `test_webhook_replay_returns_none_when_record_missing` | `tests/unit/test_webhooks_replay.py` | Missing record → `None` (no spurious struct) |
-| `test_webhook_replay_returns_none_when_dhara_unbound` | `tests/unit/test_webhooks_replay.py` | `dhara.get=None` → `None` + warn |
+| `test_webhook_replay_returns_none_when_mcp_unbound` | `tests/unit/test_webhooks_replay.py` | `mcp.get=None` → `None` + warn |
 
 Pre-existing test count summary:
 
@@ -143,7 +143,7 @@ Owner: mahavishnu core. Target: M-WEBHOOK-DURABLE-WIRED (follow-up plan) before 
 - Task 1 fix commit: `9dc547c1` — `fix(webhooks): add WEBHOOK_DURABLE_V1_ENABLED flag + runtime gate`
 - Task 2 commit: `7af40ce6` — `feat(webhooks): webhook_replay MCP tool — read-back via from_dict`
 - Task 3 commit: pending — `test(webhooks): round-trip + completion report for M-WEBHOOK-DURABLE`
-- Substrate-compat pattern: `dhara.schema` public re-exports (never `_base` / `_registry`)
+- Substrate-compat pattern: `mcp.schema` public re-exports (never `_base` / `_registry`)
 - Sibling precedent: `2026-08-10-m-workflow-outcome.md` and `2026-08-10-m-approval-log.md` (same validate-on-write + validate-on-read contract, same substrate-compat pattern)
 - Rollback: revert the 4 land commits; toggle `WEBHOOK_DURABLE_V1_ENABLED=false` for inline rollback without redeploy
 - **Open follow-up**: M-WEBHOOK-DURABLE-WIRED — Thread `receiver.py` into the live ingress path; replace `router.py` or add a sidecar route

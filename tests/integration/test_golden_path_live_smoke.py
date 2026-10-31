@@ -21,7 +21,7 @@ pytestmark = [
     pytest.mark.skipif(
         os.getenv("MAHAVISHNU_C5_LIVE_SMOKE") != "1"
         or not os.getenv("MAHAVISHNU_SESSION_BUDDY_URL")
-        or not os.getenv("MAHAVISHNU_DHARA_STATE_URL")
+        or not os.getenv("MAHAVISHNU_MCP_STATE_URL")
         or not os.getenv("MAHAVISHNU_AKOSHA_URL"),
         reason=SKIP_REASON,
     ),
@@ -86,7 +86,7 @@ def _mock_config(session_buddy_url: str) -> SimpleNamespace:
 async def test_live_golden_path_smoke_round_trip() -> None:
     fixture = golden_path_incident_fixture()
     session_buddy_url = os.environ["MAHAVISHNU_SESSION_BUDDY_URL"]
-    mcp_state_url = os.environ["MAHAVISHNU_DHARA_STATE_URL"]
+    mcp_state_url = os.environ["MAHAVISHNU_MCP_STATE_URL"]
     akosha_url = os.environ["MAHAVISHNU_AKOSHA_URL"]
 
     session_buddy = SessionBuddy(_mock_config(session_buddy_url))

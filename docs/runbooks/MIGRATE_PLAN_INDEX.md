@@ -1,11 +1,11 @@
-# Operator Runbook — Migrating PLAN_INDEX.md to Dhara-canonical
+# Operator Runbook — Migrating PLAN_INDEX.md to MCP-canonical
 
 This runbook executes the one-shot migration from filesystem-scanned
 `docs/plans/PLAN_INDEX.md` (legacy `scripts/regenerate_plan_index.py`
-filesystem scanner) to the Dhara-canonical `plan_index` layer. The
+filesystem scanner) to the MCP-canonical `plan_index` layer. The
 migration is split across three SDD tasks:
 
-- **Task 18 (this runbook, steps 1-5)** — seed Dhara, snapshot the
+- **Task 18 (this runbook, steps 1-5)** — seed the durable key-value store, snapshot the
   legacy file, run the bootstrap, sanity-check.
 - **Task 19 (step 6)** — wire MCP `plan_*` tools into the production
   profiles (already shipped via Task 12-13).
@@ -16,16 +16,16 @@ The script artifacts referenced here are:
 
 | Script | Purpose |
 |---|---|
-| `scripts/bootstrap_plan_index.py` | One-shot filesystem scan + Dhara upsert. Idempotent. |
+| `scripts/bootstrap_plan_index.py` | One-shot filesystem scan + durable key-value upsert. Idempotent. |
 | `scripts/backup_plan_index.py` | Snapshot `docs/plans/PLAN_INDEX.md` before the first write. |
 | `scripts/restore_plan_index_backup.py` | Roll back to a previous backup. |
 | `scripts/regenerate_plan_index.py` | Legacy filesystem scanner; reads as `PLAN_INDEX.md` for diff. |
-| `scripts/audit_plan_index.py` | Three-way consistency check (PLAN_INDEX.md ↔ filesystem ↔ Dhara). |
+| `scripts/audit_plan_index.py` | Three-way consistency check (PLAN_INDEX.md ↔ filesystem ↔ durable key-value records). |
 
 ## Step 0 — Pre-flight (run before step 1)
 
-Confirm Dhara is reachable and the legacy scanner produces a known-good
-PLAN_INDEX.md before touching anything.
+Confirm the durable key-value store is reachable and the legacy scanner
+produces a known-good PLAN_INDEX.md before touching anything.
 
 ```bash
 cd /Users/les/Projects/mahavishnu
@@ -65,9 +65,9 @@ itself is functional.
 
 ## Step 2 — Audit-only dry-run of the bootstrap
 
-Before pointing the script at a live Dhara, run it in audit-only mode
-(no `--mcp-url`, no `--dry-run` confusion — `--dry-run` here means
-"don't write even if Dhara is reachable"). The bootstrap script
+Before pointing the script at a live durable key-value store, run it in
+audit-only mode (no `--mcp-url`, no `--dry-run` confusion — `--dry-run`
+here means "don't write even if the store is reachable"). The bootstrap script
 defaults to audit-only when `--mcp-url` is omitted.
 
 ```bash
@@ -82,10 +82,10 @@ under `docs/plans/`, `docs/adr/`, `docs/specs/`, and other
 discovered stores with `status:` + `title:` frontmatter. `skipped`
 should be near zero — partial frontmatter is rare.
 
-## Step 3 — Live bootstrap into Dhara
+## Step 3 — Live bootstrap into the durable key-value store
 
-Connect the bootstrap script to a live Dhara (port 8683 in the
-canonical Bodai layout). The script is idempotent — re-running
+Connect the bootstrap script to a live durable key-value store (port
+8683 in the canonical Bodai layout). The script is idempotent — re-running
 overwrites the same records with no duplicates.
 
 ```bash
@@ -100,19 +100,19 @@ uv run python scripts/bootstrap_plan_index.py \
 ```
 
 If the script exits 1 (total failure — every record errored), inspect
-the partial-failure errors in Dhara's
+the partial-failure errors in the store's
 `plan_index/meta/recent_errors` key. Common causes:
 
 | Symptom | Likely cause |
 |---|---|
 | `normalize_repo_url` rejection on every record | Frontmatter `repo:` field uses an unrecognized URL form. |
-| Dhara connection refused | `--mcp-url` points at the wrong port or Dhara is down. |
+| Durable key-value connection refused | `--mcp-url` points at the wrong port or the store is down. |
 | Partial success (some succeed, some error) | A few records have malformed frontmatter; the rebuilder continues. Re-run after fixing the frontmatter. |
 
-## Step 4 — Three-way audit (PLAN_INDEX.md ↔ filesystem ↔ Dhara)
+## Step 4 — Three-way audit (PLAN_INDEX.md ↔ filesystem ↔ durable key-value)
 
 After the bootstrap, the rendered PLAN_INDEX.md (from the legacy
-scanner) and the Dhara records should describe the same set of files.
+scanner) and the durable key-value records should describe the same set of files.
 The three-way audit script surfaces drift.
 
 ```bash
@@ -141,8 +141,8 @@ cd /Users/les/Projects/mahavishnu
 git add scripts/bootstrap_plan_index.py \
         scripts/backup_plan_index.py \
         scripts/restore_plan_index_backup.py \
-        docs/runbooks/MIGRATE_PLAN_INDEX_DHARA.md \
-        docs/feature-tracking/plan-index-dhara.md
+        docs/runbooks/MIGRATE_PLAN_INDEX.md \
+        docs/feature-tracking/plan-index-metadata.md
 
 git -c core.hooksPath=/dev/null commit -m \
     "chore(plan_index): migration run steps 1-5 (operator runbook + scripts)"
@@ -167,9 +167,10 @@ uv run python scripts/restore_plan_index_backup.py --from docs/plans/PLAN_INDEX.
 # stderr ⇒ restored from docs/plans/PLAN_INDEX.20260915T000000Z.backup
 ```
 
-Restoring PLAN_INDEX.md does NOT undo Dhara writes. To roll back
-Dhara, run the bootstrap with an empty `--repo-root` (no records) and
-delete the affected `plan_index/*` keys via Dhara's MCP tooling.
+Restoring PLAN_INDEX.md does NOT undo durable key-value writes. To roll
+back the store, run the bootstrap with an empty `--repo-root` (no
+records) and delete the affected `plan_index/*` keys via the store's
+MCP tooling.
 
 ## Idempotency notes
 
@@ -181,7 +182,7 @@ delete the affected `plan_index/*` keys via Dhara's MCP tooling.
   files only when the timestamp string differs. Manual operators
   rarely trigger this race.
 - The audit script reads from a JSON snapshot of the bootstrap
-  output (`--mcp-records`); it does not hold a live Dhara
+  output (`--mcp-records`); it does not hold a live durable key-value
   connection, so it is safe to re-run any number of times.
 
 ## Observability
@@ -190,7 +191,7 @@ delete the affected `plan_index/*` keys via Dhara's MCP tooling.
   on each successful rebuild, not by the bootstrap script. Operators
   can check `mcp__mahavishnu__plan_rebuild_status` to confirm the
   cycle is alive.
-- `plan_index/meta/entities_count` — total records in Dhara after
+- `plan_index/meta/entities_count` — total records in the durable key-value store after
   bootstrap. Should match `success` from the bootstrap summary
   (modulo records added by the cron cycle since step 3).
 - `plan_index/meta/recent_errors` — bounded list (max 20 entries,

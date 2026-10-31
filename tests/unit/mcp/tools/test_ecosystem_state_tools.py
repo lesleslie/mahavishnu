@@ -1,10 +1,10 @@
-"""Verify the 5 ecosystem-state MCP tools (Phase 3 of Dhara retirement).
+"""Verify the 5 ecosystem-state MCP tools (Phase 3 of the MCP server retirement).
 
 Mirrors the test shape of ``test_workflow_tools.py`` / ``test_webhook_tools.py``:
 
 * Patch ``mahavishnu.core.ecosystem_state.mcp_calltime`` so a host-supplied
   fake ``put`` / ``get`` swap routes into the leaf store without booting a real
-  Dhara server.
+  MCP server.
 * Verify each tool: registers on the FastMCP server, delegates to the leaf
   ``AsyncEcosystemStateStore`` correctly, and enforces the ``@require_mcp_auth``
   contract via the ``rbac_manager`` argument.

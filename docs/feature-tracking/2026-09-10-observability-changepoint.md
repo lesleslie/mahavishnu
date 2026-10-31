@@ -128,7 +128,7 @@ built). Regression coverage:
 * Structured WARNING log line on the same shape
 * `three_sigma_anomaly` log line (when reference detector fires
   in parallel; default config)
-* New Dhara table `mahavishnu.observability.metric_samples` (when
+* New durable key-value table `mahavishnu.observability.metric_samples` (when
   Phase D follow-on lands; for now the sampler is in-process only)
 * Runbook: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (operators
   cross-reference this when `drift_detected` fires)

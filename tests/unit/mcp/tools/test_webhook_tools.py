@@ -8,7 +8,7 @@ happy path (read returns a dict) and the AUTH_REQUIRED gate
 
 The tests patch ``mahavishnu.webhooks.replay.mcp_calltime`` so the
 leaf :func:`webhook_replay` reads from a controlled fake without
-touching the real Dhara substrate. webhook_replay reads
+touching the real MCP substrate. webhook_replay reads
 ``mcp_calltime("get")`` at call time, so the patch is picked up on
 every invocation.
 """
@@ -80,7 +80,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
 
     The leaf ``webhook_replay`` calls ``mcp_calltime("get")`` at
     function-call time; we patch the source-module binding so the leaf
-    sees the fake without needing a real Dhara substrate. The
+    sees the fake without needing a real MCP substrate. The
     msgspec.Struct round-trip then rebuilds ``WebhookIngress`` from the
     payload, and the wrapper calls ``msgspec.to_builtins()``.
     """
@@ -162,7 +162,7 @@ async def test_registered_tool_rejects_without_user_id(
 async def test_registered_tool_rejects_path_traversal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Path-traversal webhook_id is refused by the leaf guard before Dhara is touched."""
+    """Path-traversal webhook_id is refused by the leaf guard before the MCP store is touched."""
     fake_get = MagicMock()
     _patch_mcp_calltime(monkeypatch, get=fake_get)
 

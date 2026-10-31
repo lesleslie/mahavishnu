@@ -59,7 +59,7 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     ("workers", "max_concurrent", "WORKERS__MAX_CONCURRENT", "3"),
     ("llm", "model", "LLM__MODEL", "test-model"),
     ("hatchet", "namespace", "HATCHET__NAMESPACE", "probe-ns"),
-    ("oneiric_mcp", "base_url", "ONEIRIC_MCP__BASE_URL", "http://probe-mcp:8683/mcp"),
+    ("oneiric_mcp", "base_url", "ONEIRIC_MCP__BASE_URL", "http://probe-mcp:8681/mcp"),
     ("adapter_registry", "cache_ttl_seconds", "ADAPTER_REGISTRY__CACHE_TTL_SECONDS", "99"),
     (
         "mcp_state",

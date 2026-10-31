@@ -1,11 +1,12 @@
 # 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state
 
 > **SUPERSEDED CONTEXT (2026-09-25):** the "second persistence substrate alongside
-> Dhara" objection (see "Considered Alt 1 — LangGraph `interrupt()` + checkpointing")
-> is no longer applicable — Dhara is no longer part of the Bodai core. See the
+> the durable key-value store" objection (see "Considered Alt 1 — LangGraph
+> `interrupt()` + checkpointing") is no longer applicable — the legacy standalone
+> MCP server component is no longer part of the Bodai core. See the
 > follow-up ADR `docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`
-> for the re-evaluation under post-Dhara architecture. This ADR's Settle-
-> specific conclusions (overkill, dependency cost) remain in force.
+> for the re-evaluation under the post-decommission architecture. This ADR's
+> Settle-specific conclusions (overkill, dependency cost) remain in force.
 
 ## Status
 
@@ -89,7 +90,7 @@ graph = builder.compile(checkpointer=memory)
 1. **Couples persistence to a `checkpointer` backend.** LangGraph's
    `MemorySaver` is in-memory; the Postgres-backed `PostgresSaver`
    requires a schema (`CREATE TABLE checkpoints`). The Bodai
-   ecosystem already has Dhara for persistence; introducing a second
+   ecosystem already has a durable key-value store for persistence; introducing a second
    persistence substrate just for one feature is unwarranted.
 1. **The state machine is tiny (5 states, 4 transitions).** A graph
    framework is overkill for a transition table of 4 entries.
@@ -138,7 +139,7 @@ def settle_run(run_ref: str):
 1. **Prefect is heavyweight for a CLI/MCP primitive.** Spinning up a
    Prefect flow for every settle run adds 100-300ms of latency
    (Prefect task submission) and creates durable state in the
-   Prefect database, not Dhara.
+   Prefect database, not the durable key-value store.
 1. **The state machine is not flow-shaped.** Settle is a small
    state machine with 5 states and 4 transitions; it has no
    retries, no parallel branches, no dynamic fan-out — none of the
@@ -154,7 +155,7 @@ def settle_run(run_ref: str):
    any external audit pipeline (Grafana, Akosha, Session-Buddy)
    can ingest it directly.
 
-### Alt 3 (chosen) — Hand-rolled state machine with Dhara persistence
+### Alt 3 (chosen) — Hand-rolled state machine with durable key-value persistence
 
 The state machine is 130 lines of Python in
 `mahavishnu/settle/state_machine.py` with three pieces:
@@ -166,7 +167,7 @@ The state machine is 130 lines of Python in
   transitions.
 
 Persistence is a thin wrapper at `mahavishnu/settle/persistence.py`
-that writes the record to Dhara (`settle/v1/{run_ref}`) with a
+that writes the record to the durable key-value store (`settle/v1/{run_ref}`) with a
 local dead-letter fallback (`~/.mahavishnu/settle-dead-letter/`).
 This is the same pattern as
 `docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md` —
@@ -181,7 +182,7 @@ conflict detection.
 
 - Zero new dependencies — uses `asyncio.subprocess` and `git` (which
   is already a hard requirement for the worker-registry worktree).
-- Persistence is in Dhara, consistent with the rest of the
+- Persistence is in the durable key-value store, consistent with the rest of the
   Bodai control-plane state.
 - The state machine is independently testable with property-based
   tests (see `tests/unit/mcp/test_settle_state_machine.py`).
@@ -199,7 +200,7 @@ conflict detection.
 
 ## Decision
 
-Use the hand-rolled state machine + Dhara persistence + `git merge-file`. The cost is ~300 lines; the benefit is a small,
+Use the hand-rolled state machine + durable key-value persistence + `git merge-file`. The cost is ~300 lines; the benefit is a small,
 auditable, framework-independent primitive that all three adapters
 (Prefect, LlamaIndex, Agno) can use without modification, and that
 survives Bodai's adapter-rotation policy (the v1 Shepherd precedent:
@@ -212,7 +213,7 @@ avoid hard-coding primitives to a single engine).
   `mahavishnu/mcp/tools/worker_contract_tools.py`).
 - New WebSocket channels: `settle:`, `run:` (extend
   `MahavishnuWebSocketServer._can_subscribe_to_channel`).
-- New persistence substrate: `settle/v1/{run_ref}` in Dhara with
+- New persistence substrate: `settle/v1/{run_ref}` in the durable key-value store with
   dead-letter fallback to `~/.mahavishnu/settle-dead-letter/`.
 - New WebSocket consumer contract: `docs/websocket/WEBSOCKET_CONSUMER_GUIDE.md`.
 - New property-based tests: `tests/unit/mcp/test_settle_state_machine.py`.
@@ -228,4 +229,4 @@ avoid hard-coding primitives to a single engine).
   Phase 2; Phase 3 candidate.
 - **Cross-tenant isolation.** Settle records are keyed by `run_ref`
   only. If Mahavishnu ever becomes multi-tenant, add a
-  `tenant_id` prefix to the Dhara key schema. Not needed today.
+  `tenant_id` prefix to the durable key-value key schema. Not needed today.

@@ -300,7 +300,7 @@ in production code with `datetime(..., tzinfo=UTC)` (using
 - Verify no callers downstream expect a *naive* datetime — if any do,
   fix the caller (lazily: `.replace(tzinfo=UTC)` on the receive side
   while the call site is migrated).
-- All times stored to `dhara` (DuckDB / PG) must carry timezone.
+- All times stored to the MCP substrate (DuckDB / PG) must carry timezone.
 
 **Exit criteria:**
 - `ruff check ... --select DTZ001` returns 0.
@@ -484,7 +484,7 @@ PR is small and reviewable.
 
 | Phase | Rule | New test file | Test |
 |---|---|---|---|
-| 4 | DTZ001 | `tests/unit/test_ingesters_dt.py` | Round-trip: `datetime.now(UTC).isoformat()` parses back without losing the tz; covers the Dhara column-type gate (TZ-aware `datetime` to `TIMESTAMP WITHOUT TIME ZONE` is the riskiest case — must NOT silently coerce). |
+| 4 | DTZ001 | `tests/unit/test_ingesters_dt.py` | Round-trip: `datetime.now(UTC).isoformat()` parses back without losing the tz; covers the substrate column-type gate (TZ-aware `datetime` to `TIMESTAMP WITHOUT TIME ZONE` is the riskiest case — must NOT silently coerce). |
 | 5 | PLW1510 | `tests/integration/test_subprocess_callers.py` | For each rewrite, `assert_called_with` on the new `subprocess.check_call` / `check=True` form. |
 | 6 | ASYNC221 | `tests/unit/test_async_event_loop.py` | Assert no leftover blocking calls (`asyncio_mode = "auto"` per `CLAUDE.md` is sensitive). |
 

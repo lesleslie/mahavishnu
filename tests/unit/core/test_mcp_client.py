@@ -1,12 +1,12 @@
-"""Tests for core/dhara_client.py — thin Dhara SQL proxy client.
+"""Tests for core/mcp_client.py — thin SQL proxy client.
 
 These tests cover the thin client surface added on top of the existing
-mcp_adapter.py module. The thin client wraps the Dhara MCP SQL proxy
+mcp_adapter.py module. The thin client wraps the MCP SQL proxy
 endpoints with ``execute`` (INSERT/UPDATE/DELETE) and ``query`` (SELECT).
 
 TDD discipline: every test was written before the implementation. The
 tests use ``unittest.mock`` to stub the underlying ``MCPClient`` HTTP
-transport so we don't need a live Dhara instance.
+transport so we don't need a live MCP instance.
 """
 
 from __future__ import annotations

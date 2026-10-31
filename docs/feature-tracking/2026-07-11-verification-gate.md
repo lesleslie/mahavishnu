@@ -34,7 +34,7 @@ no
 
 ## Integration point
 
-New `mahavishnu/core/verification.py` exporting `RefuterStrategy`, `RefuterVerdict`, `VerificationResult`, and `verify_proposal`. New Dhara prefix `verification/{proposal_id}/`. The MCP response dict gains a `verification` field with the serialized result.
+New `mahavishnu/core/verification.py` exporting `RefuterStrategy`, `RefuterVerdict`, `VerificationResult`, and `verify_proposal`. New durable key-value prefix `verification/{proposal_id}/`. The MCP response dict gains a `verification` field with the serialized result.
 
 ## End-to-end check
 

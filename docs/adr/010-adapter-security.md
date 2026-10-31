@@ -159,7 +159,7 @@ class AdapterAuditLogger:
             "adapter_registered",
             extra={
                 "adapter_id": metadata.adapter_id,
-                "source": source,  # "entry_point", "oneiric_mcp", "dhara"
+                "source": source,  # "entry_point", "oneiric_mcp", "durable_kv"
                 "capabilities": metadata.capabilities,
                 "authorization_level": metadata.authorization_level.value,
             }

@@ -47,13 +47,13 @@ New `mcp__mahavishnu__dispatch_to_pool(prompt=..., caller_kind="ultracode", pare
 
 ## Integration point
 
-Extends `PoolManager.route_task` (`mahavishnu/pools/manager.py:460-512`) with `caller_kind` and `parent_session_id` parameters. New per-caller quota tracking via `_caller_quota: dict[str, _QuotaState]` in `PoolManager.__init__`. New Dhara prefix `workflow-results/{workflow_id}/` for async-callback results.
+Extends `PoolManager.route_task` (`mahavishnu/pools/manager.py:460-512`) with `caller_kind` and `parent_session_id` parameters. New per-caller quota tracking via `_caller_quota: dict[str, _QuotaState]` in `PoolManager.__init__`. New durable key-value prefix `workflow-results/{workflow_id}/` for async-callback results.
 
 ## End-to-end check
 
-`pytest tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id -v` — assert that calling `dispatch_to_pool(..., async_callback=True)` returns `{"workflow_id": "...", "status": "queued"}` immediately and that Dhara has a corresponding record.
+`pytest tests/unit/test_pool_tools.py::test_dispatch_to_pool_async_callback_returns_workflow_id -v` — assert that calling `dispatch_to_pool(..., async_callback=True)` returns `{"workflow_id": "...", "status": "queued"}` immediately and that the durable key-value store has a corresponding record.
 
-Plus integration: from an ultracode subagent, call `dispatch_to_pool(prompt="...", caller_kind="ultracode", parent_session_id="ses_abc", async_callback=True)` and verify the response contains `workflow_id` and that Dhara has a `routing-decisions/{workflow_id}/` record with `caller_kind=ultracode`, `parent_session_id=ses_abc`.
+Plus integration: from an ultracode subagent, call `dispatch_to_pool(prompt="...", caller_kind="ultracode", parent_session_id="ses_abc", async_callback=True)` and verify the response contains `workflow_id` and that the durable key-value store has a `routing-decisions/{workflow_id}/` record with `caller_kind=ultracode`, `parent_session_id=ses_abc`.
 
 ## Blocker
 

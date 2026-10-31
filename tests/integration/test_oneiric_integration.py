@@ -1,12 +1,12 @@
-"""Integration tests for the Dhara-backed adapter registry client.
+"""Integration tests for the Oneiric-backed adapter registry client.
 
 The filename is retained for compatibility with existing test selectors. The
-former ``oneiric_mcp`` package has been absorbed into Dhara's adapter registry
+former ``oneiric_mcp`` package has been absorbed into the Oneiric adapter registry
 MCP surface.
 
 Run live-service tests:
-    MAHAVISHNU_DHARA_INTEGRATION=1 \
-    MAHAVISHNU_DHARA_REGISTRY_URL=http://localhost:8683/mcp \
+    MAHAVISHNU_ONEIRIC_INTEGRATION=1 \
+    MAHAVISHNU_ONEIRIC_REGISTRY_URL=http://localhost:8681/mcp \
     uv run pytest tests/integration/test_oneiric_integration.py -v
 """
 
@@ -26,8 +26,8 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.asyncio,
     pytest.mark.skipif(
-        os.getenv("MAHAVISHNU_DHARA_INTEGRATION") != "1",
-        reason="set MAHAVISHNU_DHARA_INTEGRATION=1 to run live MCP registry tests",
+        os.getenv("MAHAVISHNU_ONEIRIC_INTEGRATION") != "1",
+        reason="set MAHAVISHNU_ONEIRIC_INTEGRATION=1 to run live MCP registry tests",
     ),
 ]
 
@@ -35,15 +35,15 @@ pytestmark = [
 def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> MCPAdapterRegistryConfig:
     return MCPAdapterRegistryConfig(
         enabled=True,
-        base_url=os.getenv("MAHAVISHNU_DHARA_REGISTRY_URL", "http://localhost:8683/mcp"),
+        base_url=os.getenv("MAHAVISHNU_ONEIRIC_REGISTRY_URL", "http://localhost:8681/mcp"),
         timeout_sec=timeout_sec,
         cache_ttl_sec=cache_ttl_sec,
-        token=os.getenv("MAHAVISHNU_DHARA_TOKEN"),
+        token=os.getenv("MAHAVISHNU_ONEIRIC_TOKEN"),
     )
 
 
 class TestMCPAdapterRegistryIntegration:
-    """Integration tests with a real Dhara MCP adapter registry."""
+    """Integration tests with a real Oneiric MCP adapter registry."""
 
     async def test_health_check(self) -> None:
         client = MCPAdapterRegistryClient(_config())

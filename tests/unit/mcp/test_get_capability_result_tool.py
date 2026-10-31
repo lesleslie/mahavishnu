@@ -1,6 +1,6 @@
 """Tests for the ``get_capability_result`` MCP tool.
 
-Mocks the Dhara client so no live storage is required.
+Mocks the MCP client so no live storage is required.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
 
 
 async def test_get_capability_result_returns_pending_when_no_envelopes() -> None:
-    """Empty Dhara result surfaces ``status='pending'`` and empty envelope list."""
+    """Empty MCP result surfaces ``status='pending'`` and empty envelope list."""
     mcp = MagicMock()
     mcp.call_tool = AsyncMock(return_value=[])
 
@@ -84,15 +84,15 @@ async def test_get_capability_result_returns_pending_when_no_envelopes() -> None
 
 
 async def test_get_capability_result_fails_loudly_when_mcp_call_raises() -> None:
-    """Dhara-unavailable must surface as an exception, NOT silently return pending.
+    """MCP-unavailable must surface as an exception, NOT silently return pending.
 
     Regression guard for the v0.19.0 contract: the deprecated
     ``dispatch_to_pool``/``workflow_result`` pair had a silent-no-op
-    fallback that returned ``not_found`` whenever Dhara was unavailable,
+    fallback that returned ``not_found`` whenever the MCP store was unavailable,
     breaking the read-back contract (see
     ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``).
     The new ``get_capability_result`` must NOT regress to a silent ``pending``
-    on Dhara failure — operators must see the failure.
+    on MCP failure — operators must see the failure.
     """
     from mahavishnu.core.errors import ErrorCode, MahavishnuError
 

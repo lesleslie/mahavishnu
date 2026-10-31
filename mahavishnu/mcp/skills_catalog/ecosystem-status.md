@@ -14,7 +14,7 @@ component health snapshot of the Bodai ecosystem — the canonical
 publishes. Common cases:
 
 - "Give me the Bodai ecosystem status."
-- "Is Akosha reachable from here? Is Dhara responding?"
+- "Is Akosha reachable from here? Is Oneiric responding?"
 - "Show only the workflow + pool sections of the ecosystem report."
 - "Surface the degraded adapters in the current ecosystem."
 

@@ -37,15 +37,16 @@ on two grounds:
 1. **Heavyweight dependency.** LangGraph pulls in `langchain-core`,
    `langgraph`, `pydantic` v2, async runtime support — a 5-10x cost
    increase for one feature surface.
-2. **Second persistence substrate alongside Dhara.** LangGraph's
-   ``MemorySaver`` / ``PostgresSaver`` introduce a checkpoint storage
-   layer parallel to Dhara, which the Bodai control plane already uses
-   for state.
+2. **Second persistence substrate alongside the durable key-value
+   store.** LangGraph's ``MemorySaver`` / ``PostgresSaver`` introduce a
+   checkpoint storage layer parallel to the durable key-value store,
+   which the Bodai control plane already uses for state.
 
 This re-evaluation is triggered by the user signal this conversation
-turn: **Dhara is no longer part of the Bodai core components or
-ecosystem.** That changes the architectural context materially — the
-"second persistence substrate" objection is **obsolete**.
+turn: **the legacy standalone MCP server component is no longer part of
+the Bodai core components or ecosystem.** That changes the architectural
+context materially — the "second persistence substrate" objection is
+**obsolete**.
 
 ## What's still true (and what changed)
 
@@ -65,14 +66,15 @@ ecosystem.** That changes the architectural context materially — the
   commit `ca1cad18`) confirmed that `dispatch_to_pool(async_callback=True)`
   returns a `workflow_id` immediately but the corresponding
   `workflow_result` lookup returns `not_found` — root cause most likely
-  is the absence of a working Dhara (or alternative) persistence layer
+  is the absence of a working durable key-value (or alternative) persistence layer
   for `workflow-results/{workflow_id}/`. Any LangGraph adapter would
   face the same substrate gap. Prerequisite #2 below is therefore more
   load-bearing than it appeared at Phase 6 ship time.
 
 **No longer applicable:**
 
-- **Second persistence substrate.** With Dhara out of the Bodai core,
+- **Second persistence substrate.** With the legacy standalone MCP server
+  component out of the Bodai core,
   Mahavishnu has no canonical persistence substrate of its own.
   LangGraph's `PostgresSaver` (or any future storage layer) would be
   the *first* substrate in a renewed architecture, not a duplicate.
@@ -121,7 +123,8 @@ hold (none currently do):
    new Python dep with a non-trivial transitive closure requires
    explicit user approval. LangGraph + LangChain is a multi-package
    addition.
-2. **Persistence substrate decision.** With Dhara gone, the plan must
+2. **Persistence substrate decision.** With the legacy standalone MCP
+   server component gone, the plan must
    specify what storage layer backs `PostgresSaver` (or alternative).
    Without a chosen substrate, the implementation has no durability.
 3. **Scope definition.** Per Plan v3 §6 Integration Contract, this
@@ -193,7 +196,7 @@ strengthen the prerequisites and reduce the future work scope.
   `pool-dispatch-async-default.md`, confirmed by audit commit
   `ca1cad18`): async-callback path returns `workflow_id` immediately
   but the corresponding `workflow_result` returns `not_found`. Root
-  cause is most likely Dhara (or alternative) persistence substrate
+  cause is most likely the durable key-value (or alternative) persistence substrate
   not configured for `workflow-results/{workflow_id}/`. **This is the
   same substrate gap any LangGraph `PostgresSaver` (or equivalent)
   would face — prerequisite #2 below is more load-bearing than at
@@ -244,7 +247,7 @@ strengthen the prerequisites and reduce the future work scope.
     reduces breakable surface area for any future LangGraph
     integration
   - `memory/pool-dispatch-async-default.md` — env-failure root
-    cause (Dhara substrate missing for async workflow_results); the
+    cause (durable key-value substrate missing for async workflow_results); the
     same gap LangGraph adapters would face
   - `memory/mahavishnu-dispatch-prompt-mangling.md` — `sh -lc`
     wrapper bug, motivates direct `route_task` calls (relevant

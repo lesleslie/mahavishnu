@@ -1,12 +1,12 @@
-# Example workflows demonstrating Dhara adapter registry integration
+# Example workflows demonstrating Oneiric adapter registry integration
 #
-# These workflows show how to use Dhara adapter registry adapter discovery within
+# These workflows show how to use Oneiric adapter registry adapter discovery within
 # Mahavishnu workflow orchestration.
 #
 # Prerequisites:
-# 1. Dhara adapter registry server running (port 8683)
-# 2. Mahavishnu configured with oneiric_mcp.enabled=true (legacy settings key for Dhara)
-# 3. Adapters registered in the Dhara adapter registry
+# 1. Oneiric MCP server running (port 8681)
+# 2. Mahavishnu configured with oneiric_mcp.enabled=true
+# 3. Adapters registered in the Oneiric adapter registry
 
 workflows:
   # Example 1: Dynamic storage adapter selection
@@ -352,7 +352,7 @@ workflows:
         outputs:
           - coordination_adapters
 
-      # Step 2: Check Dhara adapter registry integration health
+      # Step 2: Check Oneiric adapter registry integration health
       - name: "check-integration-health"
         tool: "adapter_health"
         outputs:

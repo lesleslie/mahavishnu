@@ -20,7 +20,7 @@ existing worktree (silent-fallthrough leak).
 
 ## Context
 
-On 2026-08-26 a 5-way Phase 3 fanout (dhara, session-buddy, akosha,
+On 2026-08-26 a 5-way Phase 3 fanout (oneiric, session-buddy, akosha,
 crackerjack, mahavishnu) was dispatched from a session already inside
 `/Users/les/Projects/mahavishnu/.claude/worktrees/plan-a-review-fixes`.
 The session's CWD was inherited by every child agent. When the agents

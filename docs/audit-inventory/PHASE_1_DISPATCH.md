@@ -54,7 +54,7 @@ Per-repo worktrees live at:
 "$BODAI_PROJECTS_ROOT/<repo>/.claude/worktrees/bodai-cli-audit-phase-1-<repo>"
 ```
 
-Already created for: oneiric, dhara, session-buddy, akosha, crackerjack.
+Already created for: oneiric, session-buddy, akosha, crackerjack.
 
 Mahavishnu reuses `bodai-cli-audit-phase-0` (the same worktree that
 contains the inventory script and the centralized audit-inventory dir).
@@ -76,7 +76,7 @@ for the `all` subcommand (same commit).
 ```bash
 python3 -c "
 import json
-counts = {'mahavishnu': 50, 'oneiric': 30, 'dhara': 15, 'crackerjack': 28,
+counts = {'mahavishnu': 50, 'oneiric': 30, 'legacy-mcp': 15, 'crackerjack': 28,
           'session-buddy': 5, 'akosha': 5, 'mcp-common': 0}
 for r, min_n in counts.items():
     data = json.load(open(f'docs/audit-inventory/{r}-cli-inventory.json'))
@@ -94,7 +94,7 @@ print('OK: all minimum thresholds met')
 | crackerjack | 32 | 28 | OK | |
 | oneiric | 30 | 30 | OK | |
 | session-buddy| 16 | 5 | OK | |
-| dhara | 15 | 15 | OK | dhara/cli.py uses `app = create_cli()` pattern |
+| legacy-mcp | 15 | 15 | OK | legacy_mcp/cli.py uses `app = create_cli()` pattern |
 | akosha | 9 | 5 | OK | Run from akosha's worktree (pyarrow dep) |
 | mcp-common | 0 | 0 | OK | Library-only, branch short-circuits |
 

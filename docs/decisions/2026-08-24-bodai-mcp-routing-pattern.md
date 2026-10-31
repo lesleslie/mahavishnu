@@ -69,7 +69,7 @@ files only when CWD is inside that project (or a descendant).
 
 | Project | `.mcp.json` location | Servers |
 |---|---|---|
-| mahavishnu | `/Users/les/Projects/mahavishnu/.mcp.json` | akosha, crackerjack, dhara, mahavishnu, session-buddy, minimax-coding-plan + project-noise (chart-antv, css, excalidraw, grafana, graphics, langsmith, mermaid, neo4j, penpot-api, pycharm) |
+| mahavishnu | `/Users/les/Projects/mahavishnu/.mcp.json` | akosha, crackerjack, oneiric, mahavishnu, session-buddy, minimax-coding-plan + project-noise (chart-antv, css, excalidraw, grafana, graphics, langsmith, mermaid, neo4j, penpot-api, pycharm) |
 | fastblocks | `/Users/les/Projects/fastblocks/.mcp.json` | crackerjack, mailgun, porkbun-dns, porkbun-domain, session-mgmt, splashstand |
 | splashstand | `/Users/les/Projects/splashstand/.mcp.json` | crackerjack, session-mgmt |
 
@@ -121,7 +121,7 @@ For any Bodai-managed MCP server, package as a Claude Code plugin
 | Disable without delete | ❌ | ✅ toggle |
 | Cross-repo consistency | ❌ | ✅ one install |
 
-**Each `*-mcp` repo under `/Users/les/Projects/`** (akosha, dhara,
+**Each `*-mcp` repo under `/Users/les/Projects/`** (akosha, oneiric,
 session-buddy, crackerjack, css-mcp, graphics-mcp, excalidraw-mcp,
 neo4j-mcp, mailgun-mcp, porkbun-dns-mcp, porkbun-domain-mcp, spline-mcp,
 synxis-crs-mcp, synxis-pms-mcp, unifi-mcp) is already self-contained —
@@ -132,7 +132,7 @@ plugin packaging is the natural extension.
 ### Bodai marketplace plugin bundle
 
 Create a `bodai` marketplace that bundles the 5 core MCP servers
-(mahavishnu, akosha, dhara, session-buddy, crackerjack) into a single
+(mahavishnu, akosha, oneiric, session-buddy, crackerjack) into a single
 plugin. Replace the hand-rolled `mahavishnu/.mcp.json` HTTP URL list
 with one `enabledPlugins: ["bodai-mcp-bundle@local"]`.
 
@@ -141,7 +141,7 @@ with one `enabledPlugins: ["bodai-mcp-bundle@local"]`.
 | MCP server | Current location | Plugin target | Scope |
 |---|---|---|---|
 | akosha | HTTP in mahavishnu/.mcp.json | `akosha-mcp@local` | always (Bodai core) |
-| dhara | HTTP in mahavishnu/.mcp.json | `dhara-mcp@local` | always (Bodai core) |
+| oneiric | HTTP in mahavishnu/.mcp.json | `oneiric-mcp@local` | always (Bodai core) |
 | crackerjack | HTTP in mahavishnu/.mcp.json | `crackerjack-mcp@local` | always (Bodai core) |
 | mahavishnu | HTTP in mahavishnu/.mcp.json | `mahavishnu-mcp@local` | always (Bodai core) |
 | session-buddy | HTTP in mahavishnu/.mcp.json | `session-buddy-mcp@local` | always (Bodai core) |
@@ -154,7 +154,7 @@ with one `enabledPlugins: ["bodai-mcp-bundle@local"]`.
 
 ### Repair 5/9 Bodai core MCP servers
 
-`akosha`, `crackerjack`, `dhara`, `session-buddy` throw
+`akosha`, `crackerjack`, `oneiric`, `session-buddy` throw
 `ModuleNotFoundError: No module named 'fastmcp.server.tasks.routing'`.
 Per-repo fix:
 

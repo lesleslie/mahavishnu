@@ -11,7 +11,7 @@ Focuses on the branches the existing bootstrap suites leave open:
 
 Existing companions (do not duplicate):
 ``test_bootstrap_terminal_adapter.py`` (tmux/mock preference),
-``test_bootstrap_capability_wiring.py`` (capability block + Dhara init
+``test_bootstrap_capability_wiring.py`` (capability block + MCP init
 failure), ``test_bootstrap_durable_wiring.py`` (worker-contract block).
 
 Patching discipline: every patch targets an attribute on a real,
@@ -843,7 +843,7 @@ def test_capability_block_skips_reader_when_registration_fails(
     """A ``get_capability_result`` failure must not lose the four core tools.
 
     Complements ``test_bootstrap_capability_wiring.py``, which covers the
-    *Dhara-init* failure arm; this pins the arm where Dhara constructs fine
+    *MCP-init* failure arm; this pins the arm where MCP constructs fine
     but the reader registration itself blows up.
     """
     from mahavishnu.core import bootstrap as core_bootstrap
@@ -1239,7 +1239,7 @@ class TestW0Registrars:
         module = importlib.import_module(f"mahavishnu.mcp.tools.{module_name}")
         register = MagicMock()
         monkeypatch.setattr(module, attr_name, register)
-        # The capability registrar also reaches for Dhara; make that a no-op
+        # The capability registrar also reaches for the MCP client; make that a no-op
         # so this test stays scoped to argument forwarding.
         monkeypatch.setattr(
             core_bootstrap,

@@ -4,17 +4,17 @@ role: canonical
 date: 2026-09-10
 last_reviewed: 2026-09-10
 superseded_by: null
-topic: plan-index-dhara
+topic: plan-index-metadata
 ---
 
-# Feature: Plan Index Dhara-canonical metadata layer
+# Feature: Plan Index MCP-canonical metadata layer
 
 Status: **adopted**
 
 ## What this tracks
 
-The lifecycle of the plan_index Dhara-canonical layer per
-`docs/specs/2026-09-10-plan-index-dhara-design.md`.
+The lifecycle of the plan_index MCP-canonical layer per
+`docs/feature-tracking/plan-index-metadata.md`.
 
 ## State transitions
 
@@ -39,9 +39,9 @@ yes — `mahavishnu/plan_index/` ships `record.py`, `store.py`, `rebuild.py`,
 
 ## Wired (yes/no)
 
-yes — the MCP tools exposing the Dhara-canonical index are registered
+yes — the MCP tools exposing the MCP-canonical index are registered
 in the FULL profile; smoke tests green; `docs/plans/PLAN_INDEX.md` is
-produced by `mahavishnu/plan_index/render.py` from the Dhara records.
+produced by `mahavishnu/plan_index/render.py` from the durable key-value records.
 
 ## Trigger path
 
@@ -52,7 +52,7 @@ turns the stored records back into `docs/plans/PLAN_INDEX.md`.
 
 ## Integration point
 
-Dhara key namespace `plan_index/*` (primary + status/topic secondary
+Durable key-value namespace `plan_index/*` (primary + status/topic secondary
 indexes, 24h TTL) and the rendered artifact at `docs/plans/PLAN_INDEX.md`.
 
 ## End-to-end check
@@ -62,7 +62,7 @@ python scripts/audit_plan_index.py --repo-root .
 ```
 
 Exits 0 when `PLAN_INDEX.md`, the filesystem, and — when
-`--mcp-records` is supplied — the Dhara records agree.
+`--mcp-records` is supplied — the durable key-value records agree.
 
 ## Drift detection
 
@@ -71,9 +71,9 @@ Failures:
 
 1. a path in `PLAN_INDEX.md` with no file on disk;
 1. a frontmatter-bearing `.md` file missing from `PLAN_INDEX.md`;
-1. a Dhara record missing from `PLAN_INDEX.md`.
+1. a durable key-value record missing from `PLAN_INDEX.md`.
 
-Indexed paths with no Dhara record are reported as a warning, not a
+Indexed paths with no durable key-value record are reported as a warning, not a
 failure — records carry a 24h TTL and the rendered artifact is allowed
 to lag an expiry.
 
@@ -97,6 +97,6 @@ date plus 14 days) *and* this file's `status` is `adopted`.
 
 ## Related
 
-- Plan: `docs/specs/2026-09-10-plan-index-dhara-design.md`
+- Plan: `docs/feature-tracking/plan-index-metadata.md`
 - Audit evidence: `scripts/audit_plan_index.py`
 - Gate: `scripts/check_step8_ready.py`

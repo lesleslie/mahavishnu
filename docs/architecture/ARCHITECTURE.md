@@ -59,9 +59,9 @@ ______________________________________________________________________
 
 ## Persistence Architecture
 
-### Dhara State Backend
+### MCP State Backend
 
-Mahavishnu persists durable operational state to Dhara (the Bodai ecosystem's ACID object store, port 8683) via `MCPStateBackend` in `mahavishnu/core/state_backends/mcp.py`.
+Mahavishnu persists durable operational state to the MCP substrate (the Bodai ecosystem's ACID object store) via `MCPStateBackend` in `mahavishnu/core/state_backends/mcp.py`.
 
 **Key schema:**
 
@@ -72,24 +72,24 @@ Mahavishnu persists durable operational state to Dhara (the Bodai ecosystem's AC
 | `routing/v1/{task_class}/{timestamp_ms}` | Routing decisions (pool_id, selector, reason) | `PoolManager._persist_routing_decision()` on `route_task()` |
 | `approval/v1/{request_id}` | Pending approval records with 24-hour TTL | `ApprovalManager.request_approval()` |
 
-**Degraded-boot mode:** `MCPStateBackend` has an inline circuit breaker (3 consecutive failures → open for 30 s). On startup, `MahavishnuApp.wait_for_dependencies()` recovers last-known workflow and approval state from Dhara before accepting traffic.
+**Degraded-boot mode:** `MCPStateBackend` has an inline circuit breaker (3 consecutive failures → open for 30 s). On startup, `MahavishnuApp.wait_for_dependencies()` recovers last-known workflow and approval state from the MCP substrate before accepting traffic.
 
-**Fire-and-forget writes:** All persistence calls use `asyncio.create_task()` — callers never block on Dhara. If Dhara is unavailable, writes are silently dropped and logged at DEBUG level.
+**Fire-and-forget writes:** All persistence calls use `asyncio.create_task()` — callers never block on the substrate. If the substrate is unavailable, writes are silently dropped and logged at DEBUG level.
 
 **Configuration** (`settings/mahavishnu.yaml`):
 
 ```yaml
-dhara_state:
+mcp_state:
   enabled: true
   flush_interval_seconds: 60
   max_routing_buffer_age_seconds: 3600
 ```
 
-Dhara URL is read from the `DHARA_URL` environment variable (default: `http://localhost:8683`).
+The substrate URL is resolved by `resolve_mcp_url()` in `mahavishnu/core/bootstrap.py` from the `health.dependencies.mcp` entry (host/port); it defaults to `http://localhost:8683/mcp` when no dependency is configured.
 
 ### In-Memory Ring Buffers
 
-`RoutingDecisionBuffer` (in `mahavishnu/core/ecosystem_status.py`) is a bounded in-memory ring buffer (1000 entries per task class) for live query performance. It is **not** the persistence layer — Dhara is. The buffer is populated by the same routing path that triggers Dhara writes.
+`RoutingDecisionBuffer` (in `mahavishnu/core/ecosystem_status.py`) is a bounded in-memory ring buffer (1000 entries per task class) for live query performance. It is **not** the persistence layer — the MCP substrate is. The buffer is populated by the same routing path that triggers substrate writes.
 
 ______________________________________________________________________
 

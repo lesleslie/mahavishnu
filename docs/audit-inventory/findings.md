@@ -1,7 +1,7 @@
 # Bodai CLI Audit — Cross-Repo Synthesis (Phase 2)
 
 **Date:** 2026-08-29
-**Source data:** `docs/audit-inventory/{mcp-common,oneiric,dhara,session-buddy,akosha,crackerjack,mahavishnu}-cli-inventory.json`
+**Source data:** `docs/audit-inventory/{mcp-common,oneiric,session-buddy,akosha,crackerjack,mahavishnu}-cli-inventory.json` and `docs/audit-inventory/legacy-mcp-cli-inventory.json`
 **Baseline:** `docs/audit-inventory/PHASE_0_BASELINE.json`
 
 ## 1. Per-repo command counts
@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | mcp-common | 0 | 0 | 0 | library-only |
 | oneiric | 22 | 0 | 30 | |
-| dhara | 6 | 0 | 15 | |
+| legacy-mcp | 6 | 0 | 15 | |
 | session-buddy | 3 | 0 | 16 | |
 | akosha | 8 | 0 | 9 | |
 | crackerjack | 11 | 0 | 32 | |
@@ -28,16 +28,16 @@ Top-level command names appearing in 2+ repos. Coordinated-by-design duplication
 | `backup` | 1 (mahavishnu) | |
 | `coord` | 1 (mahavishnu) | |
 | `coverage-ratchet` | 1 (crackerjack) | |
-| `db` | 1 (dhara) | |
+| `db` | 1 (legacy-mcp) | |
 | `docs` | 2 (crackerjack, mahavishnu) | |
-| `doctor` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | coordinated (oneiric.cli.base inherited) |
+| `doctor` | 6 (akosha, crackerjack, legacy-mcp, mahavishnu, oneiric, session-buddy) | coordinated (oneiric.cli.base inherited) |
 | `ecosystem` | 1 (mahavishnu) | |
 | `events` | 1 (mahavishnu) | |
-| `health` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | |
+| `health` | 6 (akosha, crackerjack, legacy-mcp, mahavishnu, oneiric, session-buddy) | |
 | `index` | 1 (mahavishnu) | |
 | `ingest` | 1 (mahavishnu) | |
 | `manifest` | 1 (oneiric) | |
-| `mcp` | 4 (akosha, crackerjack, dhara, mahavishnu) | |
+| `mcp` | 4 (akosha, crackerjack, legacy-mcp, mahavishnu) | |
 | `metrics` | 1 (mahavishnu) | |
 | `monitor` | 1 (mahavishnu) | |
 | `pool` | 1 (mahavishnu) | |
@@ -56,7 +56,7 @@ Top-level command names appearing in 2+ repos. Coordinated-by-design duplication
 | `stop` | 2 (crackerjack, oneiric) | |
 | `team` | 1 (mahavishnu) | |
 | `terminal` | 1 (mahavishnu) | |
-| `version` | 6 (akosha, crackerjack, dhara, mahavishnu, oneiric, session-buddy) | |
+| `version` | 6 (akosha, crackerjack, legacy-mcp, mahavishnu, oneiric, session-buddy) | |
 | `workers` | 1 (mahavishnu) | |
 | `workflow` | 2 (mahavishnu, oneiric) | |
 | `worktree` | 1 (mahavishnu) | |
@@ -73,7 +73,7 @@ Modules defining commands that no other module imports. These indicate dead code
 | `crackerjack.cli.coverage_ratchet_cli` | crackerjack | 3 | mono-repo |
 | `crackerjack.cli.docs_cli` | crackerjack | 8 | mono-repo |
 | `crackerjack.cli.mcp_cli` | crackerjack | 5 | mono-repo |
-| `dhara.cli` | dhara | 7 | mono-repo |
+| `legacy_mcp.cli` | legacy-mcp | 7 | mono-repo |
 | `mahavishnu._main_cli` | mahavishnu | 45 | mono-repo |
 | `mahavishnu.backup_cli` | mahavishnu | 6 | mono-repo |
 | `mahavishnu.cli.config_validator` | mahavishnu | 6 | mono-repo |
@@ -89,7 +89,7 @@ Commands with `deprecated: true` or `hidden: true` flags.
 
 | Command | Repo | Flags | Notes |
 |---|---|---|---|
-| [`db server`](../audit-inventory/dhara-cli-inventory.json#L125) | dhara | hidden | — |
+| [`db server`](../audit-inventory/legacy-mcp-cli-inventory.json#L125) | legacy-mcp | hidden | — |
 
 ## 5. Stale commands
 

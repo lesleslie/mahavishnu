@@ -22,7 +22,7 @@ The Bodai ecosystem has five components with activity surfaces:
 |---|---|---|
 | Mahavishnu | `ws://localhost:8690` (workflow/pool/worker/global channels) | workflow + pool lifecycle |
 | Akosha | `akosha/websocket/server.py:431` (metrics channel) | aggregation events |
-| Dhara | REST/pull-only | state, on demand |
+| Oneiric | REST/pull-only | state, on demand |
 | Session-Buddy | Slack/Signal/terminal event_models | channel sessions |
 | Crackerjack | `crackerjack/websocket/server.py:266-281` | test lifecycle |
 
@@ -86,7 +86,7 @@ The five raw streams have:
   A multi-WebSocket subscriber must normalize on the consumer side.
 
 - **Different reliability characteristics.** Mahavishnu's WebSocket
-  has reconnect logic; Crackerjack's has none; Dhara has no
+  has reconnect logic; Crackerjack's has none; Oneiric has no
   WebSocket at all (REST-only). A multi-WebSocket subscriber must
   handle each stream's quirks separately.
 
@@ -102,7 +102,7 @@ Claude Code to consume.
 
 ## How to add a new component's activity events
 
-When Akosha, Crackerjack, Dhara, or Session-Buddy need to surface
+When Akosha, Crackerjack, Oneiric, or Session-Buddy need to surface
 activity to Claude Code:
 
 1. **Publish to EventBridge, not to a new WebSocket.** If the

@@ -4,16 +4,16 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-07-16
-topic: dhara-key-prefixes
+topic: mcp-key-prefixes
 ---
 
-# Dhara Key Prefixes for Ultracode Integration
+# MCP Key Prefixes for Ultracode Integration
 
 ## Context
 
 The ultracode integration wiring plan (see
 `docs/plans/2026-07-11-ultracode-integration-wiring.md`) introduces three
-new Dhara-persisted data domains:
+new durably-persisted data domains:
 
 | Phase | Producer | Reader(s) |
 |---|---|---|
@@ -24,12 +24,12 @@ new Dhara-persisted data domains:
 Each of these domains has its own payload schema and its own consumer
 read-path. Sharing a single key prefix (e.g. dumping everything under
 `ultracode/`) would force readers to filter-by-suffix; isolating each
-domain under its own top-level prefix lets `Dhara.list_prefix(...)`
+domain under its own top-level prefix lets `MCP.list_prefix(...)`
 return exactly the slice a reader needs.
 
 ## Decision rule
 
-Canonical Dhara key prefixes for ultracode-persisted data are:
+Canonical key prefixes for ultracode-persisted data are:
 
 | Prefix | Phase | Payload shape |
 |---|---|---|
@@ -41,7 +41,7 @@ Implementation rules:
 
 1. **One prefix per domain.** Do not co-locate verification records and
    routing decisions under a shared `ultracode/` namespace. The
-   `DharaClient.list_prefix` cost grows linearly with the namespace; a
+   `MCPClient.list_prefix` cost grows linearly with the namespace; a
    shared prefix means each reader pays for every other reader's writes.
 
 1. **No trailing path component in the prefix itself.** Producers must
@@ -52,8 +52,8 @@ Implementation rules:
    reader respect.
 
 1. **Use the existing `list_prefix` MCP tool**, not a custom scanner.
-   The producer side already has `DharaStateBackend.put` /
-   `DharaStateBackend.list_prefix`; readers (CLI, dashboards) must use
+   The producer side already has `MCPStateBackend.put` /
+   `MCPStateBackend.list_prefix`; readers (CLI, dashboards) must use
    the same surface so that circuit-breaker, retry, and config-gating
    semantics stay consistent.
 
@@ -77,9 +77,9 @@ the Phase 4 work and has no reader yet.
 ## References
 
 - `docs/plans/2026-07-11-ultracode-integration-wiring.md` — phases 1, 3, 4
-- `mahavishnu/core/state_backends/dhara.py` — `DharaStateBackend.list_prefix`
-- `mahavishnu/core/dhara_adapter.py` — `DharaClient.call_tool`
+- `mahavishnu/core/state_backends/mcp_kv.py` — `MCPStateBackend.list_prefix`
+- `mahavishnu/core/mcp_client.py` — `MCPClient.call_tool`
 - `mahavishnu/metrics_cli.py` — `VERIFICATION_KEY_PREFIX`,
   `ROUTING_DECISIONS_KEY_PREFIX`, the two subcommands
 - `docs/decisions/bodai-observability-pattern.md` — single-source-of-truth
-  for Dhara as the ecosystem state layer
+  for the durable key-value store as the ecosystem state layer

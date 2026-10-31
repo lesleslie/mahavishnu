@@ -3,7 +3,7 @@
 # Phase 4 of
 # docs/plans/2026-09-14-common-mcp-client-transport-unification.md §11.4:
 # per-feed health aggregator alert rules for the Bodai MCP servers
-# (akosha, session-buddy, mahavishnu, dhara, crackerjack). The alerts
+# (akosha, session-buddy, mahavishnu, oneiric, crackerjack). The alerts
 # surface operator-facing signals — HTTP 503 from /health, recent
 # error rates per feed, and silent decay-disable windows.
 #

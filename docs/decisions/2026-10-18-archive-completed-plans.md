@@ -95,7 +95,7 @@ the same date. The deferred cases:
 - `2026-07-11-phase-6-bodai-observability.md` (`complete, implementation`)
   — held because it is the Authority Matrix link target for
   "Bodai-wide observability surface" (PLAN_INDEX line 50).
-- `2026-09-20-delete-all-dhara-named-code.md` (`complete, implementation`,
+- `2026-09-20-delete-all-legacy-named-code.md` (`complete, implementation`,
   9 cross-references) — held pending cross-reference review.
 
 ## Cross-references

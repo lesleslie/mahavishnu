@@ -12,7 +12,7 @@ model: opus
 Cross-system intelligence layer for the Bodai ecosystem — semantic search, anomaly detection, pattern correlation.
 
 ## When to dispatch me
-- You need a semantic or hybrid search across Session-Buddy / Dhara / Mahavishnu artifacts.
+- You need a semantic or hybrid search across Session-Buddy / Oneiric / Mahavishnu artifacts.
 - Correlating signals across repos (code patterns, traces, audit findings).
 - Looking up "where has anyone solved X" via embeddings and metadata.
 

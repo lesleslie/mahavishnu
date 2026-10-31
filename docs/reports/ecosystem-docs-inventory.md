@@ -20,13 +20,13 @@ The active ecosystem repos have substantial documentation drift. Most repos alre
 | `mcp-common` | `/Users/les/Projects/mcp-common/docs` | 29 | 28 | 18 | 0 |
 | `mdinject` | `/Users/les/Projects/mdinject/docs` | 7 | 7 | 0 | 0 |
 | `akosha` | `/Users/les/Projects/akosha/docs` | 63 | 62 | 26 | 0 |
-| `dhara` | `/Users/les/Projects/dhara/docs` | 43 | 43 | 31 | 0 |
+| `legacy-mcp` | `/Users/les/Projects/legacy-mcp/docs` | 43 | 43 | 31 | 0 |
 
 ## Immediate Observations
 
 - All active ecosystem repos have no immediate structural recommendations in the latest audit.
 - `mdinject` is already compact and should not be over-structured.
-- `mcp-common`, `akosha`, and `dhara` are small enough for one focused cleanup pass after the pattern is proven.
+- `mcp-common`, `akosha`, and `legacy-mcp` are small enough for one focused cleanup pass after the pattern is proven.
 - Backup-like and generated artifacts have been removed from the active ecosystem docs scope.
 - Archive volume is not inherently bad, but each archive needs clear non-authoritative status.
 
@@ -95,13 +95,13 @@ Created missing docs entrypoint/index files using `scripts/standardize_ecosystem
 - `/Users/les/Projects/akosha/docs/README.md`
 - `/Users/les/Projects/akosha/docs/archive/README.md`
 - `/Users/les/Projects/akosha/docs/plans/PLAN_INDEX.md`
-- `/Users/les/Projects/dhara/docs/README.md`
+- `/Users/les/Projects/legacy-mcp/docs/README.md`
 
 The follow-up dry run reported no missing docs structure files.
 
 ## Core Service Cleanup Outcome
 
-Completed structural cleanup for `session-buddy`, `oneiric`, `mcp-common`, `akosha`, and `dhara` after explicit approval:
+Completed structural cleanup for `session-buddy`, `oneiric`, `mcp-common`, `akosha`, and `legacy-mcp` after explicit approval:
 
 - removed generated backup tarballs and coverage JSON artifacts
 - removed `.backup` and `.backup.json` sidecars in `session-buddy` and `oneiric`
@@ -128,7 +128,7 @@ The latest audit reports no immediate structural recommendations for Crackerjack
 1. `session-buddy`
 1. `akosha`
 1. `oneiric`
-1. `dhara`
+1. `legacy-mcp`
 1. `mcp-common`
 1. `crackerjack`
 1. `mdinject`

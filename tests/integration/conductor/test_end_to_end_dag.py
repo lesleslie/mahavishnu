@@ -2,11 +2,11 @@
 
 Drives the conductor (resolve -> plan -> dispatch) against real ``MahavishnuSettings``
 loaded from ``settings/mahavishnu.yaml``. No live services required:
-- Prefect / Dhara are not contacted. The dispatch path is exercised
+- Prefect / MCP are not contacted. The dispatch path is exercised
   through ``_dispatch_dag_waves`` against a ``_FakeMCPClient`` and
   mocked ``OrchestratorAdapter`` instances (per Plan 2026-10-12 Phase 4
   / Phase 5 wiring).
-- The Dhara adapter is not used by the shim path. The shim's envelope
+- The MCP adapter is not used by the shim path. The shim's envelope
   persistence absorbs into the in-memory fake so no ``AsyncMock(mcp.call_tool)``
   is needed for these tests.
 

@@ -89,7 +89,7 @@ Every rejection is logged with:
 - `reason` (human-readable explanation)
 - `reviewer_id`, `source_type` (echoed for forensics)
 
-Use the audit log subscriber (Dhara event bus) to ingest these
+Use the audit log subscriber (durable-store event bus) to ingest these
 events into your SIEM.
 
 ## Tests

@@ -1,6 +1,6 @@
 """Cross-service WebSocket communication integration tests.
 
-Tests all 7 operational WebSocket servers and their ability to:
+Tests all 6 operational WebSocket servers and their ability to:
 - Discover and communicate with each other
 - Route messages between services
 - Correlate events across the ecosystem
@@ -12,7 +12,6 @@ Services Tested:
 - mahavishnu (8690) - Workflow orchestration and pool management
 - akosha (8692) - Knowledge graph and insights
 - crackerjack (8686) - Quality control and testing
-- mcp (8693) - Dependency management
 - excalidraw-mcp (3042) - Diagram collaboration
 - fastblocks (8684) - Application building and UI rendering
 """
@@ -59,12 +58,6 @@ WEBSOCKET_SERVERS = {
         "module_path": "/Users/les/Projects/crackerjack",
         "class_name": "CrackerjackWebSocketServer",
         "description": "Quality control and CI/CD",
-    },
-    "mcp": {
-        "port": 8693,
-        "module_path": "/Users/les/Projects/mcp",
-        "class_name": "DharaWebSocketServer",
-        "description": "Dependency management",
     },
     "excalidraw-mcp": {
         "port": 3042,
@@ -187,16 +180,15 @@ class TestServiceDiscovery:
     """Test service discovery between WebSocket servers."""
 
     def test_all_websocket_servers_configured(self):
-        """Test that all 7 WebSocket servers are configured."""
+        """Test that all 6 WebSocket servers are configured."""
         # Assert
-        assert len(WEBSOCKET_SERVERS) == 7
+        assert len(WEBSOCKET_SERVERS) == 6
 
         required_servers = [
             "session-buddy",
             "mahavishnu",
             "akosha",
             "crackerjack",
-            "mcp",
             "excalidraw-mcp",
             "fastblocks",
         ]
@@ -213,7 +205,7 @@ class TestServiceDiscovery:
         assert len(ports) == len(set(ports)), f"Duplicate ports detected: {ports}"
 
     def test_mahavishnu_can_discover_all_services(self):
-        """Test Mahavishnu can discover all 6 other services."""
+        """Test Mahavishnu can discover all 5 other services."""
         # Arrange
         mahavishnu_config = WEBSOCKET_SERVERS["mahavishnu"]
         other_services = {
@@ -221,7 +213,7 @@ class TestServiceDiscovery:
         }
 
         # Act & Assert
-        assert len(other_services) == 6
+        assert len(other_services) == 5
         for _service_name, config in other_services.items():
             assert "port" in config
             assert "module_path" in config
@@ -254,7 +246,7 @@ class TestServiceDiscovery:
             }
 
         # Assert
-        assert len(service_registry) == 7
+        assert len(service_registry) == 6
         for service in WEBSOCKET_SERVERS:
             assert service in service_registry
             assert "host" in service_registry[service]
@@ -519,8 +511,8 @@ class TestMessageRouting:
         clients = []
         room_members = set()
 
-        # Create 7 mock clients (one for each service)
-        for i in range(7):
+        # Create 6 mock clients (one for each service)
+        for i in range(6):
             client = create_mock_websocket(event_recorder, f"conn{i}", ["global"])
             clients.append(client)
             mahavishnu_server.connections[f"conn{i}"] = client
@@ -537,9 +529,9 @@ class TestMessageRouting:
         )
         await mahavishnu_server.broadcast_to_room("global", event)
 
-        # Assert - all 7 clients should receive
+        # Assert - all 6 clients should receive
         assert "global" in event_recorder
-        assert len(event_recorder["global"]) == 7
+        assert len(event_recorder["global"]) == 6
 
 
 # =============================================================================
@@ -687,11 +679,11 @@ class TestServiceMesh:
 
     @pytest.mark.asyncio
     async def test_simultaneous_connections_to_all_services(self):
-        """Test simultaneous connections to all 7 services."""
+        """Test simultaneous connections to all 6 services."""
         # Arrange
         servers = []
 
-        # Create mock servers for all 7 services
+        # Create mock servers for all 6 services
         for _service_name, config in WEBSOCKET_SERVERS.items():
             mock_pool_mgr = MagicMock()
             mock_pool_mgr.pools = {}
@@ -713,7 +705,7 @@ class TestServiceMesh:
             server.connection_rooms[f"service_{i}"] = {conn_id}
 
         # Assert - all servers should be running with connections
-        assert len(servers) == 7
+        assert len(servers) == 6
         for server in servers:
             assert server.is_running is True
             assert len(server.connections) == 1

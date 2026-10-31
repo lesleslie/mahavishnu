@@ -51,7 +51,7 @@ The seven domain specialists each had a specific question about the spec; the tw
 | C9 | Cross-repo feasibility is HIGH via extending `mahavishnu/pools/fitness_analyzer.py:279` task_classes list (add `"routing_change_point"`) + write `HotRecord` objects. <100 LOC. No new transport. | 9 | §7 cross-repo stub names this as the right mechanism. |
 | C10 | No continuous sample stream exists for change-point detector today. `get_observability_metrics` is request/response; WebSocket channels are event-driven; no `metrics:*` channel; no time-series buffer. | 9, 1 (implicit) | Phase 6 includes explicit `MetricSampler` deliverable (REQ-009). |
 | C11 | No per-pool arrival timestamps recorded anywhere today. `route_task` writes only the routing-decision timestamp. Without new instrumentation, M/M/c can't be fit on real traffic. | 9 | Phase 2 includes arrival-timestamp deliverable (REQ-008). |
-| C12 | Routing-decision persistence already has 4 emission surfaces (in-memory, Dhara, Prometheus counter, WebSocket event). v1's plan to add a new log line would create a 5th parallel path. | 1 | Phase 2 extends the existing Dhara record + 1 OTel span, no parallel emission. |
+| C12 | Routing-decision persistence already has 4 emission surfaces (in-memory, persistence substrate, Prometheus counter, WebSocket event). v1's plan to add a new log line would create a 5th parallel path. | 1 | Phase 2 extends the existing persistence record + 1 OTel span, no parallel emission. |
 
 ### 2.2 Divergent findings
 
@@ -119,7 +119,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Key findings (15 specific)**:
 1. `PoolSelector` has 5 members, not 4 (added `PEER_AFFINITY`).
 2. No `PoolState` class — closest is `PoolMetrics`.
-3. `route_task` already persists to Dhara + publishes to MessageBus; no log line today.
+3. `route_task` already persists to the persistence substrate + publishes to MessageBus; no log line today.
 4. Env-var naming: Oneiric uses double-underscore.
 5. **`mahavishnu/observability/metrics.py` is worktree/storage only** — wiring CUSUM there means it runs on worktree creates and cache hits, NOT workflow duration p99 or pool queue depth.
 6. "3-sigma baseline in Mahavishnu observability" doesn't exist.
@@ -150,7 +150,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 
 **Verbatim on tier 1 inclusion**: *"No — keep Akosha integration out of Tier 1, exactly as the plan already specifies. But with one specific addition."* That addition is the §11 stub.
 
-**Verbatim on pytrendy**: *"Akosha ALREADY has a change-point detector... backed by `pytrendy` (segmented regression, not CUSUM/PH). It returns ranked `TrendSegment`s classified as gradual/abrupt/flat/noise. It queries Dhara directly, not the local cache. It is **not currently registered** in the running instance."*
+**Verbatim on pytrendy**: *"Akosha ALREADY has a change-point detector... backed by `pytrendy` (segmented regression, not CUSUM/PH). It returns ranked `TrendSegment`s classified as gradual/abrupt/flat/noise. It queries the persistence substrate directly, not the local cache. It is **not currently registered** in the running instance."*
 
 **v2 impact**: §4.7 added (Akosha algorithm landscape); §7 stub added; cross-repo question resolved in favor of deferral.
 

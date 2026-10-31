@@ -15,10 +15,10 @@ from mahavishnu.core.oneiric_client import (
 
 
 class _Client:
-    base_url = "http://localhost:8683/mcp"
+    base_url = "http://localhost:8681/mcp"
 
     async def call_tool(self, name: str, arguments: dict):
-        if name == "list_adapters":
+        if name == "oneiric_list_adapters":
             return {
                 "success": True,
                 "adapters": [
@@ -34,7 +34,7 @@ class _Client:
                     }
                 ],
             }
-        if name == "get_adapter":
+        if name == "oneiric_get_adapter":
             return {
                 "success": True,
                 "adapter": {
@@ -47,9 +47,9 @@ class _Client:
                     "metadata": {"category": "storage"},
                 },
             }
-        if name == "get_adapter_health":
+        if name == "oneiric_get_adapter_health":
             return {"success": True, "health": {"healthy": True}}
-        if name == "get_contract_info":
+        if name == "oneiric_get_contract_info":
             return {"ok": True}
         raise AssertionError(name)
 
@@ -97,7 +97,7 @@ async def test_client_mcp_tool_flow(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_config_defaults() -> None:
     config = OneiricMCPConfig()
     assert config.enabled is True
-    assert config.base_url is None
+    assert config.base_url == "http://localhost:8681/mcp"
     assert config.cache_ttl_sec == 300
 
 
@@ -382,35 +382,35 @@ class TestAdapterCircuitBreaker:
 
 
 class _FailingClient:
-    base_url = "http://localhost:8683/mcp"
+    base_url = "http://localhost:8681/mcp"
 
     async def call_tool(self, name: str, arguments: dict):
         raise ConnectionError("MCP unavailable")
 
 
 class _EmptyClient:
-    base_url = "http://localhost:8683/mcp"
+    base_url = "http://localhost:8681/mcp"
 
     async def call_tool(self, name: str, arguments: dict):
         return {"success": True, "adapters": [], "adapter": None}
 
 
 class _ErrorPayloadClient:
-    base_url = "http://localhost:8683/mcp"
+    base_url = "http://localhost:8681/mcp"
 
     async def call_tool(self, name: str, arguments: dict):
-        if name == "list_adapters":
+        if name == "oneiric_list_adapters":
             return {"success": False, "error": "registry error"}
-        if name == "get_adapter":
+        if name == "oneiric_get_adapter":
             return {"success": False, "error": "adapter lookup failed"}
         return {"success": True, "health": {"healthy": False}}
 
 
 class _FallbackLookupClient:
-    base_url = "http://localhost:8683/mcp"
+    base_url = "http://localhost:8681/mcp"
 
     async def call_tool(self, name: str, arguments: dict):
-        if name == "list_adapters":
+        if name == "oneiric_list_adapters":
             return {
                 "success": True,
                 "adapters": [
@@ -426,11 +426,11 @@ class _FallbackLookupClient:
                     }
                 ],
             }
-        if name == "get_adapter":
+        if name == "oneiric_get_adapter":
             return {"success": True, "adapter": None}
-        if name == "get_adapter_health":
+        if name == "oneiric_get_adapter_health":
             return {"success": True, "health": {"healthy": True}}
-        if name == "get_contract_info":
+        if name == "oneiric_get_contract_info":
             return {"ok": True}
         raise AssertionError(name)
 
@@ -483,7 +483,7 @@ class TestClientDisabledPaths:
 
         client = MCPAdapterRegistryClient(MCPAdapterRegistryConfig(enabled=False))
         with pytest.raises(ConnectionError, match="disabled"):
-            await client._call_tool("list_adapters", {})
+            await client._call_tool("oneiric_list_adapters", {})
 
 
 def _mock_get_mcp(client_cls):
@@ -499,7 +499,7 @@ class TestClientErrorPaths:
         client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
 
         with pytest.raises(ConnectionError, match="unavailable"):
-            await client._call_tool("list_adapters", {})
+            await client._call_tool("oneiric_list_adapters", {})
         assert client._connected is False
 
     async def test_list_adapters_error_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -63,7 +63,7 @@ completion?".
 ## Composition with existing routing hooks
 
 Per the spec, the `QueueingScorer` runs between
-`_apply_fitness_aware_routing` (Dhara fitness override) and
+`_apply_fitness_aware_routing` (MCP fitness override) and
 `_apply_gpu_category_override` (runpod swap for vision/ml/embedding).
 The `effective_selector` field in the routing-decision record
 captures what the routing layer actually chose, distinguishing
@@ -97,7 +97,7 @@ The new signal is observable via:
 - `mahavishnu.pool.queueing_prediction_error` Prometheus histogram.
 - `mahavishnu.pool.queueing_warmup_pending` debug log line (one
   per `route_task` invocation while the buffer is in warmup).
-- The Dhara `routing_decision` record extended with
+- The `routing_decision` record extended with
   `predicted_wait_s`, `observed_wait_s`, `effective_selector`.
 
 ## Limitations

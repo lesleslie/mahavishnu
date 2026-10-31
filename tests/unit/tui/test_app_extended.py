@@ -221,7 +221,7 @@ async def test_get_report_builds_service_configs_from_settings(
 
 
 @pytest.mark.unit
-async def test_get_report_picks_up_oneiric_mcp_for_dhara(
+async def test_get_report_picks_up_oneiric_mcp_for_mcp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``oneiric_mcp.url`` populates the mcp service config."""

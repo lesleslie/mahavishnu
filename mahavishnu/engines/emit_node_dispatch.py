@@ -270,7 +270,8 @@ async def emit_pydanticai_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     group (see CLAUDE.md "Optional Dependency Groups"). We lazy-import the
     class on dispatch to preserve that property — if the group isn't installed
     we still return a ``failed`` ``NodeHandle`` AFTER writing a
-    ``status="failed"`` envelope so the failure is observable via Dhara list.
+    ``status="failed"`` envelope so the failure is observable via the
+    event list.
     """
     try:
         from mahavishnu.adapters.ai.pydantic_ai_adapter import (

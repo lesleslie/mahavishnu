@@ -365,11 +365,11 @@ adapter_registry:
   cache_ttl_seconds: 300  # Resolution cache TTL
   discovery_timeout_seconds: 30  # Timeout for adapter discovery
 
-# Dhara adapter registry integration for remote adapter discovery.
+# Oneiric MCP adapter registry integration for remote adapter discovery.
 # The historical oneiric_mcp key is retained for settings compatibility.
 oneiric_mcp:
-  enabled: false  # Enable adapter discovery from Dhara MCP registry tools
-  base_url: "http://localhost:8683/mcp"
+  enabled: false  # Enable adapter discovery from the Oneiric MCP registry tools
+  base_url: "http://localhost:8681/mcp"
   cache_ttl_sec: 300  # Adapter metadata cache TTL
 
 # Feature flags for hybrid registry
@@ -460,7 +460,7 @@ health:
 
 # Ultracode Phase 1 — adversarial diverse-refuter verification gate.
 # See: docs/plans/2026-07-11-ultracode-integration-wiring.md §Phase 1
-# Persists verdict records to Dhara under `verification/{proposal_id}/`.
+# Persists verdict records to MCP under `verification/{proposal_id}/`.
 verification:
   enabled: true  # Run diverse-refuter verification on PROPOSE_APPROVE flows
   alert_threshold: 0.5  # Reject-rate (consensus=reject / total) that triggers an alert

@@ -18,7 +18,7 @@ ______________________________________________________________________
 |--------|------|-------------|---------------|----------------|
 | mahavishnu | 8680 | summary | mcp\_\_mahavishnu\_\_pool_route_execute, mcp\_\_mahavishnu\_\_get_health, mcp\_\_mahavishnu\_\_get_workflow_status | 60s |
 | akosha | 8682 | summary | mcp\_\_akosha\_\_search_all_systems, mcp\_\_akosha\_\_query_knowledge_graph, mcp\_\_akosha\_\_run_fitness_analysis | 60s |
-| dhara | 8683 | summary | mcp\_\_dhara\_\_state_read, mcp\_\_dhara\_\_state_write, mcp\_\_dhara\_\_state_list | 60s |
+| oneiric | 8681 | summary | mcp\_\_oneiric\_\_read_context, mcp\_\_oneiric\_\_write_context, mcp\_\_oneiric\_\_read_progress | 60s |
 | session-buddy | 8678 | summary | mcp\_\_session-buddy\_\_search_conversations, mcp\_\_session-buddy\_\_store_reflection, mcp\_\_session-buddy\_\_quick_search | 60s |
 | crackerjack | 8676 | summary | mcp\_\_crackerjack\_\_crackerjack_run, mcp\_\_crackerjack\_\_get_comprehensive_status, mcp\_\_crackerjack\_\_smart_error_analysis | 120s |
 

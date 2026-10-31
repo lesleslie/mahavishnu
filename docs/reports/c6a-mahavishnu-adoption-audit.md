@@ -68,4 +68,4 @@ Decision:
 
 ## Follow-Up
 
-The Oneiric, mcp-common, Crackerjack, Session-Buddy, Akosha, Dhara, and mdinject rows remain ledgered and matrixed, but their concrete implementation will need to happen in those repos' worktrees.
+The Oneiric, mcp-common, Crackerjack, Session-Buddy, Akosha, and mdinject rows remain ledgered and matrixed, but their concrete implementation will need to happen in those repos' worktrees.

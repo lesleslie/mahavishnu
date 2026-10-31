@@ -37,7 +37,7 @@ Every Bodai MCP server's `/health` endpoint MUST:
 
 A process being alive is not the same as a process being functional. The current `/health` returning `{"status": "ok"}` regardless of backend state is the root cause of "the system looks healthy but isn't producing."
 
-Applies to: **akosha, mahavishnu, dhara, session-buddy, crackerjack, neo4j-mcp, and every other Bodai MCP server.**
+Applies to: **akosha, mahavishnu, oneiric, session-buddy, crackerjack, neo4j-mcp, and every other Bodai MCP server.**
 
 ### 2. End-to-end smoke tests in CI for every MCP server
 
@@ -84,7 +84,7 @@ Replace "registered tool count" with "working tool count" in dashboards, READMEs
 
 ### 7. Consumer-side aggregation (amended 2026-09-06)
 
-**Trigger:** the 6-agent multi-agent review of ADR 0016 (`docs/adr/0016-multi-agent-review.md`) L1 BLOCKER B4 found that the policy as written scopes to "MCP servers" only (per §1: *"Applies to: akosha, mahavishnu, dhara, session-buddy, crackerjack, neo4j-mcp, and every other Bodai MCP server"*). The scapy-mcp enrichment integration in Flowscape v1 is **consumer-side** — Flowscape *calls* scapy-mcp, it does not expose scapy-mcp-shaped tools to other clients. The L1 reviewer's finding: this policy needs an explicit consumer-side coverage, not a bypass.
+**Trigger:** the 6-agent multi-agent review of ADR 0016 (`docs/adr/0016-multi-agent-review.md`) L1 BLOCKER B4 found that the policy as written scopes to "MCP servers" only (per §1: *"Applies to: akosha, mahavishnu, oneiric, session-buddy, crackerjack, neo4j-mcp, and every other Bodai MCP server"*). The scapy-mcp enrichment integration in Flowscape v1 is **consumer-side** — Flowscape *calls* scapy-mcp, it does not expose scapy-mcp-shaped tools to other clients. The L1 reviewer's finding: this policy needs an explicit consumer-side coverage, not a bypass.
 
 **Amendment:** every Bodai component that consumes an external MCP server as an enrichment provider, plugin, or external dependency (Flowscape calling scapy-mcp is the first case; unifi-mcp-in-v2 is the second planned) MUST:
 

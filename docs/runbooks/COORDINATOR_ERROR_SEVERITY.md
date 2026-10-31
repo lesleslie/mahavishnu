@@ -55,7 +55,7 @@ returns MHV-208 (data integrity) plus MHV-222 (handle not found) is
 | `pagerduty` | Page on-call via `mahavishnu-worktree-streaming` PagerDuty service |
 | `slack` | Post to `#mahavishnu-ops` Slack channel |
 | `none` | Log only; no external notification |
-| `audit` | Forwarded to the Dhara audit pipeline for forensic chain-of-custody (no realtime alert) |
+| `audit` | Forwarded to the durable key-value audit pipeline for forensic chain-of-custody (no realtime alert) |
 
 ## Error Code Table
 
@@ -110,7 +110,7 @@ to `mahavishnu.core.worktree_coordination`.
   (ENOSPC, EDQUOT). Retry once; on second failure, surface.
 - **MHV-211 (`PATH_TRAVERSAL`)** — `tarfile.data_filter` rejecting
   a member is a security event, not a transient I/O failure. Propagate
-  and write an audit row in Dhara so the bundle can be quarantined.
+  and write an audit row in the durable key-value store so the bundle can be quarantined.
 - **MHV-212 (`MALFORMED`)** — A malformed bundle is a corruption
   signal. The handle is unsafe to retry against; invalidate it and
   log. Higher-level code should re-create from source.

@@ -29,7 +29,7 @@ on 2026-09-10. Phase 4 staged rollout playbook is in the
       QueueingScorer between the fitness override and the GPU
       category override
 - [x] Returns / state updates land in expected destination:
-      `_dhara_state.persist_routing_decision` extended with
+      `_mcp_state.persist_routing_decision` extended with
       `predicted_wait_s` and `effective_selector`
 - [x] End-to-end smoke check documented: `pytest tests/integration/pools/test_queueing_routing.py`
 - [x] Observability hook in place: OTel span
@@ -66,7 +66,7 @@ populated on every `route_task` call).
 
 ## Integration point
 
-* Dhara `routing_decision` record (extended with
+* Durable key-value `routing_decision` record (extended with
   `predicted_wait_s`, `observed_wait_s`, `effective_selector`)
 * Prometheus counter `mahavishnu_routing_decisions_total`
   (extended with `predicted_wait_bucket`, `effective_selector`)

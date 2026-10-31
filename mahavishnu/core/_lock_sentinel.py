@@ -1,4 +1,4 @@
-"""Local lock sentinel — replaces ``mcp.lock.in_memory.InMemoryDharaLock``.
+"""Local lock sentinel — replaces the retired MCP lock service.
 
 Per Phase 8 Task 5 of the MCP MCP retirement plan: the consumer's
 actual lock-service usage is limited to ``try_acquire(key, owner_token=...,
@@ -20,7 +20,7 @@ in mahavishnu calls them. If a future caller needs them, extend
 the surface here (and document the cross-process-or-not tradeoff in
 the commit message).
 
-Test fixtures that previously mocked ``mcp.lock.in_memory.InMemoryDharaLock``
+Test fixtures that previously mocked the retired MCP lock service
 must now mock ``mahavishnu.core._lock_sentinel.Lock`` (this path).
 The lock module's TYPE_CHECKING import in
 ``mahavishnu/core/precommitment.py`` updates accordingly.
@@ -75,7 +75,7 @@ class LockHandle:
 class Lock:
     """In-process lock service — ``try_acquire`` + ``get`` only.
 
-    Drop-in for ``mcp.lock.in_memory.InMemoryDharaLock`` on the subset
+    Drop-in for the retired MCP lock service on the subset
     of API actually used by ``mahavishnu.core.precommitment.HypothesisLock``.
     See module docstring for the scope decision.
     """

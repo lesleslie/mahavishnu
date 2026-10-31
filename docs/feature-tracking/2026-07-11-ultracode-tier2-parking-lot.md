@@ -60,7 +60,7 @@ ______________________________________________________________________
 
 ### 2.2 Token-budget caps on self-improvement generation (P=0.60)
 
-**What it is:** `self_improvement_generate` is unbounded today. Add a per-deployment cap (default: 100 calls/week, per the session-buddy doc's "planned" ceiling) tracked in Dhara.
+**What it is:** `self_improvement_generate` is unbounded today. Add a per-deployment cap (default: 100 calls/week, per the session-buddy doc's "planned" ceiling) tracked in the durable key-value store.
 
 **Where it would live:** New `mahavishnu/core/budget.py` exporting `Budget` (a counter with weekly reset). `self_improvement_generate` reads before queueing.
 
@@ -108,7 +108,7 @@ ______________________________________________________________________
 
 ### 2.6 Bodai-wide observability surfacing (deferred from plan Phase 6) (P=0.55)
 
-**What it is:** The originally-planned Phase 6 of `docs/plans/2026-07-11-ultracode-integration-wiring.md` — extending the Phase 5 worker-activity surfacing pattern to the rest of the Bodai ecosystem (Dhara, Session-Buddy, Crackerjack, Akosha). Includes `/bodai-status` slash command and a generalized `bodai-activity-stream.py` hook.
+**What it is:** The originally-planned Phase 6 of `docs/plans/2026-07-11-ultracode-integration-wiring.md` — extending the Phase 5 worker-activity surfacing pattern to the rest of the Bodai ecosystem (Oneiric, Session-Buddy, Crackerjack, Akosha). Includes `/bodai-status` slash command and a generalized `bodai-activity-stream.py` hook.
 
 **Where it would live:** New plan at `docs/plans/2026-07-XX-bodai-event-bridge-surfacing.md` (placeholder name). Files: `.claude/commands/bodai-status.md`, `.claude/hooks/bodai-activity-stream.py`, possibly new EventBridge handlers in `mahavishnu/core/events/` (per the unified event spine shipped in Convergence Plan C1b).
 

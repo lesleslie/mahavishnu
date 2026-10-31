@@ -47,7 +47,7 @@ Mahavishnu's adapter architecture was hardcoded with direct imports and manual i
   - Optional Oneiric MCP for remote discovery
   - Composite pattern avoids God Object
   - Capability-based routing with fallback support
-  - Dhara persistence optional (SQLite fallback)
+  - Durable KV persistence optional (SQLite fallback)
 - **Cons:**
   - More complex architecture
   - Multiple components to maintain
@@ -66,7 +66,7 @@ Implement `HybridAdapterRegistry` using the Composite pattern with separate comp
 │  │  Engine         │  │  Layer          │  │  Tracker        │ │
 │  │                 │  │                 │  │                 │ │
 │  │  • Entry Points │  │  • SQLite       │  │  • Prometheus   │ │
-│  │  • Oneiric MCP  │  │  • Dhara MCP   │  │  • Alerts       │ │
+│  │  • Oneiric MCP  │  │  • Durable KV  │  │  • Alerts       │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -98,7 +98,7 @@ class AdapterDiscoveryEngine:
         adapters = []
         adapters.extend(await self.discover_from_entry_points())
         if self.oneiric_mcp_enabled:
-            adapters.extend(await self.discover_from_dhara())
+            adapters.extend(await self.discover_from_registry())
         return adapters
 
     async def discover_from_entry_points(self) -> list[AdapterMetadata]:
@@ -116,19 +116,19 @@ Persists adapter state with SQLite fallback:
 
 ```python
 class AdapterPersistenceLayer:
-    """Persist adapter state to SQLite with Dhara MCP sync."""
+    """Persist adapter state to SQLite with durable KV sync."""
 
     async def save_state(self, state: AdapterState) -> None:
-        """Save state to SQLite, optionally sync to Dhara."""
+        """Save state to SQLite, optionally sync to the durable KV store."""
         await self._sqlite_save(state)
-        if self.dhara_enabled:
-            await self._dhara_sync(state)
+        if self.durable_store_enabled:
+            await self._durable_store_sync(state)
 
     async def load_state(self, adapter_id: str) -> AdapterState | None:
-        """Load state from SQLite (Dhara as backup)."""
+        """Load state from SQLite (durable KV store as backup)."""
         state = await self._sqlite_load(adapter_id)
-        if not state and self.dhara_enabled:
-            state = await self._dhara_load(adapter_id)
+        if not state and self.durable_store_enabled:
+            state = await self._durable_store_load(adapter_id)
         return state
 ```
 
@@ -272,7 +272,7 @@ adapter_registry:
 - **Capability-Based Routing**: Dynamic routing instead of hardcoded mappings
 - **State Persistence**: Adapter state survives restarts
 - **Health Integration**: Prometheus metrics and Grafana dashboards
-- **Fallback Support**: SQLite fallback when Dhara unavailable
+- **Fallback Support**: SQLite fallback when the durable KV store is unavailable
 - **Thread Safety**: RLock protects concurrent access
 - **Resolution Caching**: TTL cache for performance
 
@@ -280,7 +280,7 @@ adapter_registry:
 
 - **Complexity**: Multiple components to understand and maintain
 - **Discovery Overhead**: Entry point discovery adds startup time
-- **Optional Dependencies**: Oneiric MCP and Dhara are optional but add complexity
+- **Optional Dependencies**: Oneiric MCP and the durable KV store are optional but add complexity
 
 ### Risks
 
@@ -290,7 +290,7 @@ adapter_registry:
 - **Risk:** Entry point discovery fails
   **Mitigation:** Cached metadata, fallback to hardcoded initialization
 
-- **Risk:** Dhara unavailable
+- **Risk:** Durable KV store unavailable
   **Mitigation:** SQLite fallback with async sync when available
 
 ## Implementation
@@ -299,7 +299,7 @@ adapter_registry:
 
 - [x] `adapter_registry.py` - HybridAdapterRegistry with composite pattern
 - [x] `adapter_discovery.py` - Entry point + Oneiric MCP discovery
-- [x] `adapter_persistence.py` - SQLite + Dhara persistence
+- [x] `adapter_persistence.py` - SQLite + durable KV persistence
 
 ### Phase 2: Capability Routing (Complete)
 
@@ -326,5 +326,5 @@ adapter_registry:
 
 - [Python Entry Points](https://packaging.python.org/en/latest/specifications/entry-points/)
 - [Oneiric Resolution System](https://github.com/lesleslie/oneiric)
-- [Dhara Persistence Layer](https://github.com/lesleslie/dhara)
+- [Durable KV Persistence Layer](https://github.com/lesleslie/oneiric)
 - ADR 004: Adapter Architecture and Engine Integration

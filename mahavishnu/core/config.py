@@ -838,7 +838,7 @@ class PiPoolSettings(BaseModel):
     the threat model. The runtime env-stripping denylist (in
     :class:`mahavishnu.pools.pi_pool`) excludes every parent environment
     key whose name starts with ``MAHAVISHNU_``, ``MINIMAX_``, ``ZAI_``,
-    ``DHARA_``, ``AKOSHA_``, ``SESSION_BUDDY_``, ``BIFROST_``, or
+    ``AKOSHA_``, ``SESSION_BUDDY_``, ``BIFROST_``, or
     ``ONEIRIC_``.
 
     Req: REQ-PI-001 (npx-command allowlist),
@@ -2053,9 +2053,10 @@ class AdapterRegistryConfig(BaseModel):
 class OneiricMCPConfig(BaseModel):
     """MCP adapter registry integration configuration.
 
-    The old Oneiric MCP gRPC registry was absorbed into MCP's canonical
-    FastMCP adapter-registry tools. The class name is retained for settings
-    compatibility with existing ``oneiric_mcp`` config blocks.
+    The old Oneiric MCP gRPC registry was absorbed into Oneiric's canonical
+    FastMCP adapter-registry tools, served by the Oneiric MCP server. The
+    class name is retained for settings compatibility with existing
+    ``oneiric_mcp`` config blocks.
     """
 
     enabled: bool = Field(
@@ -2063,8 +2064,8 @@ class OneiricMCPConfig(BaseModel):
         description="Enable MCP adapter registry discovery",
     )
     base_url: str = Field(
-        default="http://localhost:8683/mcp",
-        description="MCP MCP base URL for adapter registry tools",
+        default="http://localhost:8681/mcp",
+        description="Oneiric MCP server base URL for adapter registry tools",
     )
     timeout_sec: int = Field(
         default=30,
@@ -2559,8 +2560,8 @@ class MCPStatePersistenceConfig(BaseModel):
           max_routing_buffer_age_seconds: 3600
 
     Example Environment Variables:
-        MAHAVISHNU_DHARA_STATE__ENABLED=true
-        MAHAVISHNU_DHARA_STATE__FLUSH_INTERVAL_SECONDS=30
+        MAHAVISHNU_MCP_STATE__ENABLED=true
+        MAHAVISHNU_MCP_STATE__FLUSH_INTERVAL_SECONDS=30
     """
 
     enabled: bool = Field(

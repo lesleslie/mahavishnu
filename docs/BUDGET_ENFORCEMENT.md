@@ -1,6 +1,6 @@
 # Budget Enforcement (Phase 3, v2 plan)
 
-> **Note**: This document describes the **v1 design** in which the budget watchdog used **Dhara for soft leases and persistent state**. Dhara was **decommissioned 2026-09-20**; the runtime now uses **Oneiric** for the same substrate role (see [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md)). The **design rationale below is preserved as historical context** — the *why* of the per-run/per-turn split is unchanged, but the substrate name has moved from Dhara to Oneiric. The watchdog code (`mahavishnu/core/budget_watchdog.py`) no longer references Dhara.
+> **Note**: This document describes the **v1 design** in which the budget watchdog used the **standalone MCP server for soft leases and persistent state**. That server was **retired 2026-09-20**; the runtime now uses **Oneiric** for the same substrate role (see [the retirement plan](plans/2026-09-20-delete-all-legacy-named-code.md)). The **design rationale below is preserved as historical context** — the *why* of the per-run/per-turn split is unchanged, but the substrate name has moved to Oneiric. The watchdog code (`mahavishnu/core/budget_watchdog.py`) uses the `mcp_unavailable` flag and the `budget.mcp_skip.count` counter.
 
 **One line:** Mahavishnu enforces per-workflow budget shapes (tokens,
 turns, wallclock) on `pool_route_execute` runs by polling a control-plane
@@ -35,13 +35,13 @@ Walking once per minute costs ~60× less storage than walking once per
 turn. For a 20-minute workflow with 1 turn/second, per-run polling
 yields 20 storage writes; per-turn polling would yield 1,200. The
 control plane's job is to be cheap to operate *and* cheap to *not*
-operate (Dhara-unavailable cycles cost zero storage operations).
+operate (MCP-unavailable cycles cost zero storage operations).
 
 ### Per-turn in-process (worker responsibility)
 
 A worker that needs to stop spending tokens mid-run reads its own
-totals and bails out on its own. There is no MCP call, no Dhara
-read, no control-plane round-trip — the worker makes a local
+totals and bails out on its own. There is no MCP call, no
+substrate read, no control-plane round-trip — the worker makes a local
 decision.
 
 This is the part that does NOT live in `mahavishnu/`. It lives in the
@@ -53,35 +53,35 @@ ______________________________________________________________________
 
 ## Failure semantics (the non-obvious bits)
 
-### Fail-open on Dhara unavailability
+### Fail-open on MCP substrate unavailability
 
-The watchdog's `run_watchdog_cycle()` catches every Dhara exception
+The watchdog's `run_watchdog_cycle()` catches every substrate exception
 (transport-level, lease, list, get, put) and converts it into a
-*skip*: the cycle returns with `dhara_unavailable=True`, increments
-the `dhara_skip` counter, logs at `WARNING`, and lets the next 60s
+*skip*: the cycle returns with `mcp_unavailable=True`, increments
+the `budget.mcp_skip.count` counter, logs at `WARNING`, and lets the next 60s
 poll have another attempt.
 
-**Why fail-open, not fail-closed?** Fail-closed means a brief Dhara
+**Why fail-open, not fail-closed?** Fail-closed means a brief substrate
 blip turns every running workflow into an unenforced budget. The
-watchdog exists to catch bad runs; if Dhara is down, every cycle
+watchdog exists to catch bad runs; if the substrate is down, every cycle
 loses its enforcement, but the *individual* worker is still
 self-enforcing its per-turn caps, so the gap is bounded. The plan's
 exit criteria call this out: a successful watchdog is one that never
-makes the situation worse by losing Dhara.
+makes the situation worse by losing the substrate.
 
 ### Multi-replica safety via lease, not via lock services
 
-The watchdog reads a soft lease from Dhara (`put` with TTL) rather
+The watchdog reads a soft lease from the MCP substrate (`put` with TTL) rather
 than reaching for a coordination service like Redis or Etcd. The
 trade-off:
 
-- **Pro:** zero new infrastructure. Reuses Dhara's existing TTL
+- **Pro:** zero new infrastructure. Reuses the substrate's existing TTL
   semantics; one substrate.
 - **Con:** the lease is "soft" — under heavy load, two replicas can
   both observe the lease as absent and both decide they're the
   leader. We mitigate this with the `await asyncio.Lock` in the
   in-memory store (so concurrent attempts serialize) and accept the
-  benign race for the real Dhara path (two replicas running one
+  benign race for the real substrate path (two replicas running one
   cycle is recoverable — the writes are idempotent at the record
   level; the counter increments are best-effort and add noise but
   not data loss).
@@ -100,7 +100,7 @@ re-raises — the supervisor (lifespan context in
 `mahavishnu/core/app.py`) sets the `stop_event` first and only
 cancels the task if the watchdog exceeds the 5s shutdown grace
 window. Cancelling mid-cycle is allowed; cancelling mid-write
-would leave a partial record in Dhara, which is worse than missing
+would leave a partial record in the substrate, which is worse than missing
 one cycle.
 
 ______________________________________________________________________
@@ -139,7 +139,7 @@ ______________________________________________________________________
 |-------------|------|--------|------|
 | span | `budget.check` | — | Every watchdog cycle. |
 | counter | `budget.exceeded.count` | `dimension=tokens\|turns\|wallclock` | One increment per dimension exceeded. |
-| counter | `budget.dhara_skip.count` | — | One increment per cycle skipped because Dhara was unreachable. |
+| counter | `budget.mcp_skip.count` | — | One increment per cycle skipped because the MCP substrate was unreachable. |
 | counter | `budget.lease.lost.count` | — | One increment per cycle where another replica held the lease. |
 
 Grafana panels:
@@ -148,7 +148,7 @@ Grafana panels:
   grouped by 5-minute windows. A spike here means a run hit its
   cap; pair with the workflow logs to confirm whether the budget
   was the cause.
-- *Dhara skip rate* — `rate(budget.dhara_skip.count[5m])`. Anything
+- *MCP skip rate* — `rate(budget.mcp_skip.count[5m])`. Anything
   above 0 means controls are degraded; operators should page on
   sustained >5 skips/minute.
 - *Lease loss rate* — `rate(budget.lease.lost.count[5m])`. Indicates
@@ -178,15 +178,15 @@ on success. The watchdog starts checking on the next poll cycle
 
 ### State on disk
 
-Dhara record at `mahavishni://budgets/{workflow_id}.json` —
+MCP record at `mahavishni://budgets/{workflow_id}.json` —
 the same JSON shape that `BudgetRecord.from_dict()` consumes. Operators
-can `dhara query mahavishni://budgets/` to list them.
+can list them through the `budget_*` MCP tools.
 
 ### Re-capping mid-run
 
 Calling `budget_enforce` again with the same `workflow_id` re-bases
 the cap (state stays `ACTIVE`). This is the documented "pause at N"
-semantics; we do not bump the version because Dhara's TTL semantics
+semantics; we do not bump the version because the substrate's TTL semantics
 mean the next cycle's read sees the latest spec.
 
 ______________________________________________________________________
@@ -198,11 +198,11 @@ Tests live in:
 - `tests/unit/test_budget_state_machine.py` — pure state-machine
   transitions plus hypothesis-driven arithmetic invariants.
 - `tests/integration/test_budget_watchdog_lease.py` — multi-replica
-  lease election, Dhara-down fail-open, wallclock breach → `EXCEEDED`,
+  lease election, substrate-down fail-open, wallclock breach → `EXCEEDED`,
   `budget_enforce` round-trip.
 
 Exit criteria (all green):
 
 1. Budget enforced across `pool_route_execute` runs ✅
 1. Watchdog is multi-replica-safe via lease ✅
-1. Dhara unavailability does not crash the watchdog ✅
+1. MCP substrate unavailability does not crash the watchdog ✅

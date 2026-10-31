@@ -90,7 +90,7 @@ hooks are in place, and the rollback signals are defined.
 ## Adopted (NOT YET)
 
 - Operator has run `mahavishnu dashboard` against a live session-buddy /
-  pool / dhara and used the command palette to perform a real action
+  pool / durable store and used the command palette to perform a real action
   (approve a pending approval, drill into a recovery checkpoint, etc.)
 - Operator has run `mahavishnu monitor watch` and observed a live
   pool/worker feed (not the one-shot metrics fallback)
@@ -118,7 +118,7 @@ now `active`); that gate is unblocked but not yet shipped.
 ## Next action
 
 - [ ] Schedule a 1-week operator trial: `mahavishnu dashboard` +
-  `mahavishnu monitor watch` against a real session-buddy / pool / dhara
+  `mahavishnu monitor watch` against a real session-buddy / pool / durable store
 - [ ] Run the new test suite (`pytest tests/unit/tui/ -v`) and confirm
   the new tests pass on the operator's environment (textual installed)
 - [ ] After the trial + the ACP server build ships, make the Toad

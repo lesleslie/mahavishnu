@@ -250,7 +250,6 @@ Canonical standard:
 | Akosha | canonical port pending cleanup | /metrics (verify before enabling) |
 | Session-Buddy | 8678 | /metrics (legacy exporter deprecated) |
 | Crackerjack | 8676 | /metrics (verify before enabling) |
-| Dhara | 8683 | /metrics (legacy exporter deprecated) |
 
 ## Troubleshooting
 

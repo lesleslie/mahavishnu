@@ -87,7 +87,7 @@ Concrete signal:
    pattern, and the per-component-vs-cross-component TUI split.
 6. **Cross-shell UX standardization** (future phase): align flag
    conventions across the 5 per-repo shells (`oneiric shell`,
-   `dhara admin --confirm`, `akosha shell --mode --verbose`,
+   `oneiric admin --confirm`, `akosha shell --mode --verbose`,
    `mahavishnu shell` config-gated). Out of scope for this plan;
    tracked as Plan B future.
 
@@ -95,7 +95,7 @@ Concrete signal:
 
 - **Adding NEW TUIs** to Core 7 repos that don't already have one
   (mcp-common stays library-only). The 5 existing shells (oneiric,
-  dhara, session-buddy, akosha, mahavishnu) are verified; no new
+  oneiric, session-buddy, akosha, mahavishnu) are verified; no new
   shell is created for crackerjack (its `crackerjack shell` already
   exists).
 - **Replacing any TUI implementation** (e.g., rewriting
@@ -117,7 +117,7 @@ The 2026-08-25 research and audit surfaced these TUI/admin-shell findings:
 |---|---|
 | `bodai/admin/shell.py` and `bodai/tui/dashboard.py` **already exist** with full implementations; the `try/except ImportError` in `bodai/cli.py` is defensive safety, not evidence of missing code. Phase 6 work is verification + polish, not implementation. | high (misframed) |
 | `mahavishnu monitor --tui` command that invokes `MonitorApp` may not be wired (verify). | medium |
-| The `AdminShell` base class (in `oneiric/shell/core.py`) is the foundation for all 5 per-repo shells (`OneiricShell`, `DharaShell`, `SessionBuddyShell`, `AkoshaShell`, `MahavishnuShell`). The `bodai shell` should reuse this pattern (extend `AdminShell`, not roll its own). | medium |
+| The `AdminShell` base class (in `oneiric/shell/core.py`) is the foundation for all 5 per-repo shells (`OneiricShell`, `SessionBuddyShell`, `AkoshaShell`, `MahavishnuShell`). The `bodai shell` should reuse this pattern (extend `AdminShell`, not roll its own). | medium |
 | Defensive `try/except ImportError` in `bodai/cli.py` prints "Shell not yet implemented" / "TUI not yet implemented" — misleading once modules are verified importable. | medium |
 | The dual TUIs (bodai's aggregator + mahavishnu's monitor) have different scopes; both are needed but the spec is unclear about who shows what. Decided 2026-08-25: `bodai dashboard` = cross-component aggregator; `mahavishnu monitor --tui` = mahavishnu-internal pools/workers. | drift |
 
@@ -126,7 +126,7 @@ The 2026-08-25 research and audit surfaced these TUI/admin-shell findings:
 The 5 per-repo shells have different flag conventions:
 
 - `oneiric shell` — no flags
-- `dhara admin --confirm` — confirmation gate
+- `oneiric admin --confirm` — confirmation gate
 - `akosha shell --mode --verbose` — operational mode
 - `crackerjack shell` — no flags
 - `mahavishnu shell` — config-gated by `shell_enabled: bool`
@@ -289,7 +289,7 @@ These are tracked as follow-up work; not delivered in this plan.
 ### Phase B-2 — Cross-shell UX standardization
 
 - Standardize flag conventions across the 5 per-repo shells:
-  - `--confirm` gate where appropriate (currently only `dhara admin`)
+  - `--confirm` gate where appropriate (currently only `oneiric admin`)
   - `--mode lite|standard|full` consistently (currently only
     `akosha shell`)
   - `--json` output mode (uniform across all shells)

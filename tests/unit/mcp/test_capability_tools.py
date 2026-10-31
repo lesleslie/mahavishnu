@@ -11,7 +11,7 @@ Covers:
   ``execute_capability`` returns a CapabilityExecutionResult-shaped dict.
 - ``list_capabilities`` is ungated and always returns the registry.
 
-The Dhara client is mocked; no live storage is required.
+The MCP client is mocked; no live storage is required.
 """
 
 from __future__ import annotations

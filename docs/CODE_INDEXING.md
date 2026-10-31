@@ -82,7 +82,7 @@ Hooks must be installed **per-repo** since `.git/hooks/` is repo-local:
 
 ```bash
 # Install on all Bodai repos
-for repo in mahavishnu crackerjack session-buddy akosha dhara oneiric mcp-common mdinject; do
+for repo in mahavishnu crackerjack session-buddy akosha oneiric mcp-common mdinject; do
   mahavishnu index install-hooks /Users/les/Projects/$repo --force
 done
 ```
@@ -119,7 +119,6 @@ mahavishnu index repo /path/to/repo --full
 |------|--------|---------------|
 | mahavishnu | ✅ Indexed | 833 |
 | akosha | ✅ Indexed | 145 |
-| dhara | ✅ Indexed | 311 |
 | mcp-common | ✅ Indexed | 175 |
 | mdinject | ✅ Indexed | 84 |
 | oneiric | ✅ Indexed | 418 |

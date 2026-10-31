@@ -52,7 +52,7 @@ mahavishnu worktree prune-merged --dry-run
 mahavishnu worktree prune-merged
 
 # Apply to one repo
-mahavishnu worktree prune-merged --repo=dhara
+mahavishnu worktree prune-merged --repo=oneiric
 
 # Apply with TTL gate (only worktrees last touched > N days ago)
 mahavishnu worktree prune-merged --ttl-days=7

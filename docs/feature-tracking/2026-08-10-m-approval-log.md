@@ -28,10 +28,10 @@ role: canonical
 
 - [x] Entry point registered (`record_approval_decision` lives in `mahavishnu/core/approval/decision_writer.py`; called by `ApprovalManager.respond()` under the flag; `list_approval_history` lives in `mahavishnu/cli/approval_cli.py` reachable as `mahavishnu approvals list-history`)
 - [x] Trigger path identified (decision flow boundary in `ApprovalManager.respond()` invokes `record_approval_decision()`; `list_approval_history` reads back from any CLI caller)
-- [x] Returns / state updates land in expected destination (`approval-history/{approval_id}/` prefix on Dhara, typed `ApprovalLog` struct on read with `Literal["approved","denied","requested"]` action)
+- [x] Returns / state updates land in expected destination (`approval-history/{approval_id}/` prefix in the durable key-value store, typed `ApprovalLog` struct on read with `Literal["approved","denied","requested"]` action)
 - [x] End-to-end smoke check documented (`.venv/bin/python -m pytest tests/integration/approval/test_round_trip.py --no-cov` → 4 passed in 5.43s)
 - [x] Observability hook in place (oneiric logger via `oneiric.core.logging.get_logger`; producer emits `warn` log when persistence is skipped per `3fe46719` cross-portfolio consistency fix; skip-bad path in consumer emits `warn` on `SchemaValidationError`)
-- [x] Rollback signal defined (revert the 4 land commits; legacy `_schedule_dhara_delete` available via `APPROVAL_LOG_V1_ENABLED=false` with no redeploy)
+- [x] Rollback signal defined (revert the 4 land commits; legacy `_schedule_mcp_delete` available via `APPROVAL_LOG_V1_ENABLED=false` with no redeploy)
 
 ## Built (yes/no)
 
@@ -44,7 +44,7 @@ yes — Task 4 round-trip test locks the validate-on-write + validate-on-read co
 ## Trigger path
 
 1. Operator approves/denies an approval request via `ApprovalManager.respond()` at `mahavishnu/core/approval_manager.py:261`.
-2. Boundary call to `record_approval_decision(approval_id, decision, rationale, decided_by, metadata)` constructs an `ApprovalLog` msgspec Struct, validates via `dhara.schema.validate("approval_log", payload)`, and persists via `dhara.put(f"approval-history/{approval_id}/", validated)`.
+2. Boundary call to `record_approval_decision(approval_id, decision, rationale, decided_by, metadata)` constructs an `ApprovalLog` msgspec Struct, validates via `msgspec.convert(payload, ApprovalLog)`, and persists via `mcp.put(f"approval-history/{approval_id}/", validated)`.
 3. Field mapping at the boundary (in `ApprovalManager._persist_approval_decision`, `mahavishnu/core/approval_manager.py:188-225`):
    - `request.id` → `approval_id`
    - `approved` (bool) → `decision` ("approved" / "denied")
@@ -53,16 +53,16 @@ yes — Task 4 round-trip test locks the validate-on-write + validate-on-read co
    - `selected_option` / `approval_type` → `metadata` dict
 4. Producer auto-generates `at: datetime.now(UTC)` so callers don't need to pass `decided_at`.
 5. Consumer side: any operator invokes `list_approval_history(approval_id, since, status)` via `mahavishnu approvals list-history`.
-6. `dhara.list(f"approval-history/{approval_id}/", since=..., status=...)` reads back the persisted records; per-payload `from_dict("approval_log", payload)` returns typed `ApprovalLog` structs (skip-bad partial-failure resilience on `SchemaValidationError`).
+6. `mcp.list(f"approval-history/{approval_id}/", since=..., status=...)` reads back the persisted records; per-payload `msgspec.convert(payload, ApprovalLog)` returns typed `ApprovalLog` structs (skip-bad partial-failure resilience on `SchemaValidationError`).
 7. Legacy delete-on-resolve path remains available via `APPROVAL_LOG_V1_ENABLED=false` flag read at module level via `_approval_log_v1_enabled()` helper.
 
 ## Integration point
 
-- Producer (`record_approval_decision`): `mahavishnu/core/approval/decision_writer.py` — substrate-compat `if not hasattr(dhara, "put"): dhara.put = None` so test `monkeypatch` lands without a real Dhara binding.
+- Producer (`record_approval_decision`): `mahavishnu/core/approval/decision_writer.py` — substrate-compat `if not hasattr(mcp, "put"): mcp.put = None` so test `monkeypatch` lands without a real durable-store binding.
 - Boundary call site: `mahavishnu/core/approval_manager.py:261` (`ApprovalManager.respond`) — gated behind `APPROVAL_LOG_V1_ENABLED` feature flag.
-- Consumer (`list_approval_history`): `mahavishnu/cli/approval_cli.py` — substrate-compat `if not hasattr(dhara, "list"): dhara.list = None`; per-payload `from_dict("approval_log", payload)` validation inside try/except `SchemaValidationError` for partial-failure resilience.
+- Consumer (`list_approval_history`): `mahavishnu/cli/approval_cli.py` — substrate-compat `if not hasattr(mcp, "list"): mcp.list = None`; per-payload `msgspec.convert(payload, ApprovalLog)` validation inside try/except `SchemaValidationError` for partial-failure resilience.
 - Feature flag: `_approval_log_v1_enabled()` helper at `mahavishnu/core/approval_manager.py:42-45` reads `APPROVAL_LOG_V1_ENABLED` env var (default `"true"`).
-- Rollback primitive: `_schedule_dhara_delete(request_id)` retained at `mahavishnu/core/approval_manager.py:228-235` (legacy always-delete-when-called; call sites choose between legacy delete and producer persistence).
+- Rollback primitive: `_schedule_mcp_delete(request_id)` retained at `mahavishnu/core/approval_manager.py:228-235` (legacy always-delete-when-called; call sites choose between legacy delete and producer persistence).
 
 ## End-to-end check
 
@@ -94,7 +94,7 @@ None blocking. Two follow-up items from spec section "Observability added" remai
 
 Owner: mahavishnu core. Target: v1.1 hardening cycle.
 
-1. **MEDIUM `async-passthrough-not-verified`** — Task 3 reviewer flagged that `record_approval_decision` calls `dhara.put(...)` sync, but substrate binding may be async-only in production. Task 4 round-trip test uses sync monkeypatches, not the real async binding. Validate against the real substrate under load — if a hang/coroutine warning surfaces, convert `record_approval_decision` to `async def` (mirrors M-WORKFLOW-OUTCOME Task 3 fix).
+1. **MEDIUM `async-passthrough-not-verified`** — Task 3 reviewer flagged that `record_approval_decision` calls `mcp.put(...)` sync, but substrate binding may be async-only in production. Task 4 round-trip test uses sync monkeypatches, not the real async binding. Validate against the real substrate under load — if a hang/coroutine warning surfaces, convert `record_approval_decision` to `async def` (mirrors M-WORKFLOW-OUTCOME Task 3 fix).
 2. **MEDIUM `missing-observability-counters`** — Spec calls for `approval_log_recorded_total{decision}` and `approval_log_invalid_total{reason}` counters. Currently producer uses `logger.info/warn` for v1 visibility; switch to a metrics sink when one stabilizes.
 3. **MEDIUM `missing-migration`** — Pre-v1 approvals remain in `approval/v1/`; new v1 records land in `approval-history/`. The two paths coexist; cleanup is not in scope but a backfill migration is a v1.1 candidate.
 4. **Minor** — Pull the `ApprovalLog` schema test fixture (used in `test_decision_wiring.py` for the `selected_option` carrying test) out of the test file into a shared fixture if a third writer-adjacent test lands.
@@ -125,7 +125,7 @@ Owner: mahavishnu core. Target: v1.1 hardening cycle.
 - Task 2 commits: `d4c0937d` (log error type not str(err)) → `136df375` (consumer)
 - Task 3 commit: `b28ac619` (wire record_approval_decision into decision flow)
 - Task 4 commit: `e091ecea` — round-trip integration test + this completion report
-- Substrate-compat pattern: `dhara.schema` public re-exports (never `_base` / `_registry`)
+- Substrate-compat pattern: `mcp.schema` public re-exports (never `_base` / `_registry`)
 - Sibling precedent: `2026-08-10-m-workflow-outcome.md` (same validate-on-write + validate-on-read contract, same substrate-compat pattern)
 - Rollback: revert the 4 land commits; toggle `APPROVAL_LOG_V1_ENABLED=false` for inline rollback without redeploy
 

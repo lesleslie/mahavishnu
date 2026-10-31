@@ -16,7 +16,7 @@ topic: memory-architecture
 
 <!-- legacy status: **Status:** Accepted — superseded by 2026-09-09 audit -->
 
-**Superseded** on 2026-09-09. The proposed `MahavishnuMemoryIntegration` class was never implemented; the unified memory story was actually built from `mahavishnu.workers.memory`, `mahavishnu.pools.memory_aggregator`, and Session-Buddy reflection storage rather than a single façade. The three-backend architecture (Session-Buddy + Dhara + LlamaIndex) remains valid, but the unification layer specified here does not exist in the codebase.
+**Superseded** on 2026-09-09. The proposed `MahavishnuMemoryIntegration` class was never implemented; the unified memory story was actually built from `mahavishnu.workers.memory`, `mahavishnu.pools.memory_aggregator`, and Session-Buddy reflection storage rather than a single façade. The three-backend architecture (Session-Buddy + the durable key-value store + LlamaIndex) remains valid, but the unification layer specified here does not exist in the codebase.
 
 <!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
 
@@ -70,15 +70,15 @@ collection_name="mahavishnu_global"
   - Solutions discoverable by related projects
 ```
 
-### 2. Dhara + PostgreSQL (Agent Memory)
+### 2. Durable KV Store + PostgreSQL (Agent Memory)
 
 **What:**
 
-- Use Dhara with PostgreSQL backend for agent-specific memory
+- Use the durable key-value store with a PostgreSQL backend for agent-specific memory
 - Store high-volume agent data (conversations, tool usage, reasoning traces)
 - Provide PostgreSQL-backed persistent storage with replication support
   **Why:**
-- **Scalability**: Dhara optimized for agent workloads, handles high-frequency operations
+- **Scalability**: the durable key-value store is optimized for agent workloads, handles high-frequency operations
 - **Persistence**: PostgreSQL provides durable, scalable storage with replication
 - **Vector operations**: Built-in similarity search for agent memory
 - **Separation of concerns**: Agent-specific data separated from project memory
@@ -89,17 +89,17 @@ collection_name="mahavishnu_global"
 - Reasoning traces and decision processes
 - Agent context window management
 
-### 3. LlamaIndex + Dhara (RAG Knowledge Base)
+### 3. LlamaIndex + Durable KV Store (RAG Knowledge Base)
 
 **What:**
 
-- Use LlamaIndex for RAG pipelines with Dhara as vector store backend
+- Use LlamaIndex for RAG pipelines with the durable key-value store as vector store backend
 - Ingest repositories and documents with FastEmbed embeddings
 - Provide large-scale semantic search capabilities
   **Why:**
 - **Purpose-built**: LlamaIndex optimized for RAG and vector operations
 - **FastEmbed integration**: Local embeddings (all-MiniLM-L6-v2), no external APIs
-- **Dhara backend**: Persistent vector storage in PostgreSQL
+- **Durable KV backend**: Persistent vector storage in PostgreSQL
 - **Advanced retrieval**: Hybrid search, re-ranking, filters
 - **Large-scale**: Handles millions of documents efficiently
   **Use Cases:**
@@ -133,8 +133,8 @@ graph TB
         SERVICE[Memory Integration Service]
     end
     subgraph "Memory Storage Backends"
-        AGENTDB[Dhara + pgvector<br/>🤖 Agent Memory]
-        RAG[LlamaIndex + Dhara<br/>📚 RAG Knowledge Base]
+        AGENTDB[Durable KV + pgvector<br/>🤖 Agent Memory]
+        RAG[LlamaIndex + Durable KV<br/>📚 RAG Knowledge Base]
         BUDDY[Session-Buddy<br/>🧠 Reflection DB]
     end
     subgraph "Data Flow"
@@ -166,7 +166,7 @@ graph TB
 ### Positive
 
 - **✅ Leverages existing infrastructure**: Session-Buddy already available and proven
-- **✅ Scales for production**: Dhara + PostgreSQL handles high-volume operations
+- **✅ Scales for production**: the durable key-value store + PostgreSQL handles high-volume operations
 - **✅ Optimized workloads**: Each system does what it's best at
 - **✅ Unified developer experience**: Single API for all memory operations
 - **✅ Cross-project intelligence**: Session-Buddy's unique features fully utilized
@@ -176,7 +176,7 @@ graph TB
 ### Negative
 
 - **❌ Complexity**: More complex than single-system memory (justified by benefits)
-- **❌ Multiple dependencies**: Requires PostgreSQL, Dhara, Session-Buddy, LlamaIndex
+- **❌ Multiple dependencies**: Requires PostgreSQL, the durable key-value store, Session-Buddy, LlamaIndex
 - **❌ Migration effort**: Need to set up all backends and configure integration
 - **❌ Operational overhead**: More systems to monitor and maintain
 
@@ -201,17 +201,17 @@ graph TB
   **Cons:**
 - Not optimized for high-volume agent operations
 - LlamaIndex would need custom vector store adapter
-- No Dhara agent-specific features
+- No agent-specific features in the durable key-value store
   **Decision:** Rejected because Session-Buddy's DuckDB may not scale for high-frequency agent operations and large-scale RAG workloads.
 
-### Alternative 2: Dhara Only
+### Alternative 2: Durable KV Store Only
 
-**Approach:** Use Dhara for all memory storage
+**Approach:** Use the durable key-value store for all memory storage
 **Pros:**
 
 - Single system to manage
 - PostgreSQL backend provides persistence and scalability
-- Dhara optimized for agent workloads
+- The durable key-value store is optimized for agent workloads
   **Cons:**
 - Loses Session-Buddy's cross-project intelligence features
 - Loses automatic insights capture
@@ -226,10 +226,10 @@ graph TB
 - Complete control over architecture
 - Can optimize for Mahavishnu-specific needs
   **Cons:**
-- Reinventing the wheel (Session-Buddy and Dhara already exist)
+- Reinventing the wheel (Session-Buddy and the durable key-value store already exist)
 - High development and maintenance cost
 - Risk of building inferior solution
-  **Decision:** Rejected because existing solutions (Session-Buddy, Dhara) are well-designed and proven.
+  **Decision:** Rejected because existing solutions (Session-Buddy, the durable key-value store) are well-designed and proven.
 
 ## Implementation Plan
 
@@ -239,12 +239,12 @@ graph TB
 
 - Create `MahavishnuMemoryIntegration` class
 - Set up Session-Buddy collections
-- Add Dhara + PostgreSQL
+- Add the durable key-value store + PostgreSQL
 - Implement basic unified search
 
-### Phase 2: LlamaIndex + Dhara Backend
+### Phase 2: LlamaIndex + Durable KV Backend
 
-- Update `llamaindex_adapter.py` with Dhara backend
+- Update `llamaindex_adapter.py` with the durable key-value backend
 - Create RAG ingestion workflows
 - Implement unified search including RAG results
 
@@ -281,9 +281,9 @@ memory_service:
   enable_reflection_search: true
   enable_cross_system_sharing: true
   sync_interval_minutes: 5
-dhara:
+durable_store:
   enabled: true
-  postgres_url: "postgresql://localhost:5432/dhara"
+  postgres_url: "postgresql://localhost:5432/durable_store"
   embedding_dimension: 1536
   connection_pool_size: 10
 llamaindex:
@@ -292,7 +292,7 @@ llamaindex:
   llm_model: "all-MiniLM-L6-v2"
   chunk_size: 1024
   chunk_overlap: 20
-  vector_store_backend: "dhara"
+  vector_store_backend: "durable_store"
 ```
 
 ## Success Metrics
@@ -315,7 +315,7 @@ llamaindex:
 
 - [Session-Buddy Documentation](https://github.com/lesleslie/session-buddy) - Project memory and cross-project intelligence
 - [LlamaIndex Documentation](https://docs.llamaindex.ai) - RAG pipelines and vector operations
-- [Dhara Documentation](https://github.com/dhara/dhara) - Agent memory storage (verify availability)
+- Durable KV store documentation - Agent memory storage (verify availability)
 - [ADR 004: Adapter Architecture](./004-adapter-architecture.md) - Previous architecture decisions
 
 ## Related Decisions

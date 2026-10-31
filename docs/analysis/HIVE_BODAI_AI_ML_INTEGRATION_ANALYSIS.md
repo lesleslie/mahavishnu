@@ -596,7 +596,7 @@ class SharedEmbeddingManager:
 │   │       - TTL: 30 days                                        │   │
 │   │                                                             │   │
 │   │  LAYER 3: Persistent Knowledge (Cold)                       │   │
-│   │  └──> Dhara (S3/R2/PostgreSQL)                             │   │
+│   │  └──> Oneiric (S3/R2/PostgreSQL)                           │   │
 │   │       - Learned team configurations                          │   │
 │   │       - Evolution history                                   │   │
 │   │       - Quality correlations                                │   │

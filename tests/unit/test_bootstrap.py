@@ -294,14 +294,14 @@ class TestLoadRepos:
 
 
 class TestComponentEndpointRegistration:
-    """Tests for Dhara component endpoint registration helpers."""
+    """Tests for component endpoint registration helpers."""
 
     def test_register_component_endpoint_no_mcp_state(self, caplog):
         """No state backend should log and return without error."""
         with caplog.at_level(logging.WARNING):
             bootstrap._register_component_endpoint(None, "mahavishnu", "http://localhost")
 
-        assert "Dhara state not available" in caplog.text
+        assert "MCP state not available" in caplog.text
 
     def test_register_component_endpoint_async_schedules_put(self, monkeypatch):
         """Running loop path should schedule an async put."""
@@ -763,7 +763,7 @@ class TestBootstrapDeepHelpers:
             await bootstrap.recover_approvals_from_mcp(app)
 
     @pytest.mark.asyncio
-    async def test_recover_helpers_return_early_without_dhara(self):
+    async def test_recover_helpers_return_early_without_mcp(self):
         app = SimpleNamespace(_mcp_state=None, active_workflows=set(), approval_manager=None)
 
         await bootstrap.recover_workflow_state_from_mcp(app)

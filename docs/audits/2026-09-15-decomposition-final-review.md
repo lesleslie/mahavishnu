@@ -1,8 +1,8 @@
-# Dhara MCP Decomposition — Final Multi-Agent Review
+# MCP Decomposition — Final Multi-Agent Review
 
 **Date:** 2026-09-15
-**Spec:** `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` (head commit `8badf605`)
-**Plan:** `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md` (head commit `8badf605`)
+**Spec:** `docs/specs/2026-09-14-mcp-decomposition-design.md` (head commit `8badf605`)
+**Plan:** the archived decomposition implementation plan (head commit `8badf605`)
 **Reviewers:** 5 agents across non-overlapping lenses (per `multi-agent-review-catches-blind-spots.md`)
 **Outcome:** PATH A applied — 8 high-convergence fixes committed; ~70 findings logged for follow-up.
 
@@ -85,7 +85,7 @@ Recorded in commit message; reproduced here as a working backlog:
 - `mahavishnu git-hook install` sub-command for per-clone hook installation (data-retention L2)
 - Phase 8 'Tests to update' duplicate block removal (critical-audit H2)
 - ADR-013 reversal single-owner decision (critical-audit H6)
-- Spec §4.3 wording tighten re Dhara exclusion (critical-audit L2)
+- Spec §4.3 wording tighten re exclusion of the retired component (critical-audit L2)
 - `oneiric.adapters.bootstrap.queued_publisher()` factory existence (MCP-integration M1)
 
 **AkoSHA HotStore dedup refactor (post-Phase 5, pre-Phase 10):**
@@ -189,7 +189,7 @@ Conducted following PATH A to verify the spec's assumptions about existing infra
 
 **W12 [LOW] — `oneiric/adapters/cache/persistent_kv.py` does NOT exist (Phase 6 net-new).**
 
-- Spec §5 Phase 6 task 1 + plan Phase 6 task 1 creates `oneiric/oneiric/adapters/cache/persistent_kv.py` (~443 LOC ported from `dhara/mcp/kv_timeseries.py`).
+- Spec §5 Phase 6 task 1 + plan Phase 6 task 1 creates `oneiric/oneiric/adapters/cache/persistent_kv.py` (~443 LOC ported from the retired component's `mcp/kv_timeseries.py`).
 - Verified `ls /Users/les/Projects/oneiric/oneiric/adapters/cache/`: `__init__.py, __pycache__, memory.py, multitier.py, redis.py`. **`persistent_kv.py` does NOT exist.**
 - **Impact:** Phase 6 task 1 creates net-new adapter; same planning as W5. Plan/cross-repo coordination: cut Oneiric PR for the adapter, publish dev tag, then Phase 6 picks it up.
 - **Fix path:** Update Phase 6 plan to make the Oneiric PR cross-cutting coordination explicit.
@@ -209,12 +209,12 @@ When Phase 1 execution starts (after PATH A's commit `8badf605`):
 
 **Pre-Phase-1 (must happen first):**
 
-1. **Cut `mcp-common` PR** adding: `canonical_schemas.{agent,skill}.py` (Phase 4 prerequisites), `signing/skills_signer.py` (Phase 4), `signing/dhara_skills_signer/` (Phase 4); `traces/{endpoint_resolver,__init__}.py` (Phase 12); `discovery.py` + `catalog.py` + `ide/__init__.py` + `ide/pycharm_tools.py` + `health_tools.py` (Phase 1.5); `tools/observed_tool_span.py` (Phase 1).
+1. **Cut `mcp-common` PR** adding: `canonical_schemas.{agent,skill}.py` (Phase 4 prerequisites), `signing/skills_signer.py` (Phase 4), `signing/skills_signer/` (Phase 4); `traces/{endpoint_resolver,__init__}.py` (Phase 12); `discovery.py` + `catalog.py` + `ide/__init__.py` + `ide/pycharm_tools.py` + `health_tools.py` (Phase 1.5); `tools/observed_tool_span.py` (Phase 1).
 1. **Cut Oneiric PR** adding: `mcp/server_core.py` (Phase 1), `mcp/tools/adapter_registry.py` (Phase 1), `mcp/settings/oneiric.yaml` (Phase 1); `adapters/cache/persistent_kv.py` (Phase 6); `http/routes/substrate.py` (Phase 7); fix `adapters/observability/settings.py:9` literal (Phase 10).
 1. **Cut Akosha PR** adding: `mcp/tools/query_local_traces_fitness.py` (Phase 5); decide pgvector fate (Phase 10).
 1. **Cut Mahavishnu PR** adding: `mcp/tools/ecosystem_state.py` (Phase 3); `core/ecosystem_state_store.py` (Phase 3); flip ingesters/otel_ingester.py:38 (Phase 5); commit/decide `adapters/pgvector_adapter.py` (Phase 10); `mahavishnu/bodai_hook_bridge.py` (Phase 12).
 1. **Cut Crackerjack PR** adding: `mcp/tools/agent_registry.py` + `mcp/tools/skill_registry.py` (Phase 4); `mcp/profiles.py` mandatory_groups update (Phase 4).
-1. **Cut Dhara deletions** (Phase 8): `dhara/mcp/`, `dhara/skills_signer/`, slim `pyproject.toml`, CHANGELOG/CLAUDE.md cleanup, MIGRATION.md.
+1. **Cut the retired component's deletions** (Phase 8): its `mcp/` and `skills_signer/` trees, slim `pyproject.toml`, CHANGELOG/CLAUDE.md cleanup, MIGRATION.md.
 
 **Phase 1 execution prerequisites:**
 
@@ -241,7 +241,7 @@ ______________________________________________________________________
 
 **Recommended next session work (in order):**
 
-1. Cut the cross-repo PRs (mcp-common, Oneiric, Akosha, Mahavishnu, Crackerjack, Dhara) — 1-2 sessions
+1. Cut the cross-repo PRs (mcp-common, Oneiric, Akosha, Mahavishnu, Crackerjack) — 1-2 sessions
 1. Regenerate Phases 1-11 TDD scaffold from this spec — 1 session
 1. Begin Phase 1 execution — dependent on (1) and (2)
 

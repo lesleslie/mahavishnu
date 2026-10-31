@@ -27,7 +27,6 @@ def seed_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MAHAVISHNU_AUTH_SECRET", "super-secret-mahavishnu-token-value")
     monkeypatch.setenv("MINIMAX_API_KEY", "sk-minimax-abcdef1234567890XYZ")
     monkeypatch.setenv("ZAI_API_KEY", "sk-zai-abcdef1234567890XYZ")
-    monkeypatch.setenv("DHARA_API_TOKEN", "mcp-secret-token-value")
     monkeypatch.setenv("AKOSHA_AUTH_SECRET", "akosha-secret-token-value")
     monkeypatch.setenv("SESSION_BUDDY_API_KEY", "session-buddy-secret-value")
     monkeypatch.setenv("BIFROST_API_KEY", "bifrost-secret-token-value")
@@ -45,7 +44,6 @@ def test_build_subprocess_env_strips_minimax_and_mahavishnu_secrets(
         "MAHAVISHNU_AUTH_SECRET",
         "MINIMAX_API_KEY",
         "ZAI_API_KEY",
-        "DHARA_API_TOKEN",
         "AKOSHA_AUTH_SECRET",
         "SESSION_BUDDY_API_KEY",
         "BIFROST_API_KEY",
@@ -85,7 +83,6 @@ def test_build_subprocess_env_drops_allowlist_keys_matching_denylist() -> None:
         "MAHAVISHNU_AUTH_SECRET": "supersecret-1234567890",
         "MINIMAX_API_KEY": "minimax-key-abcdef",
         "ZAI_API_KEY": "zai-key-xyz",
-        "DHARA_TOKEN": "mcp-tok-1",
         "AKOSHA_TOKEN": "akosha-tok-1",
         "SESSION_BUDDY_TOKEN": "sb-tok-1",
         "BIFROST_API_KEY": "bifrost-tok-1",

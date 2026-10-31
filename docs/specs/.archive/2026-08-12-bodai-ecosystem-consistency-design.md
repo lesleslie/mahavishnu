@@ -15,7 +15,7 @@ title: Bodai Ecosystem Consistency Mechanisms
 
 ## Background
 
-The 2026-08-12 audit surfaced 5 cross-repo drift patterns affecting all 6 Bodai components (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack, Oneiric):
+The 2026-08-12 audit surfaced 5 cross-repo drift patterns affecting all 6 Bodai components (Mahavishnu, Akosha, Oneiric, Session-Buddy, Crackerjack, mcp-common):
 
 1. **Documented-but-not-wired** — env vars / CLI flags / class names cited in docs but not actually read by code
 2. **Removed-but-referenced** — deleted modules/flags still cited as live
@@ -103,7 +103,7 @@ Two files at top-level `settings/` (per ADR 001 / Oneiric layering):
   ecosystem:
     mahavishnu: 8680
     akosha: 8682
-    dhara: 8683
+    oneiric: 8681
     session_buddy: 8678
     crackerjack: 8676
     oneiric: null  # library, no port
@@ -340,7 +340,7 @@ Each phase deliverable specifies:
 - **Returns to / updates:** which artifact / config / lock file
 - **Demonstrable by:** one CLI/MCP invocation or test name that proves wiring end-to-end
 - **Rollback signal:** log line, metric, or alert
-- **Observability added:** OTel span, Dhara event, or `mahavishnu-activity-stream` line
+- **Observability added:** OTel span, Oneiric substrate event, or `mahavishnu-activity-stream` line
 
 ---
 
@@ -358,7 +358,7 @@ Each phase deliverable specifies:
   - `mahavishnu conformance check --target .` exits 0 against clean mahavishnu HEAD
   - `mahavishnu conformance check --target .` against `akosha` (or other repo with intentional drift) exits with `MHV-512`
 - **Rollback signal:** CI logs `MHV-516` (conformance unavailable) or sustained MHV-515 (primitive crash) for >1 hour
-- **Observability added:** OTel span `bodai.conformance_check`; Dhara event `convention_check_completed` per invocation
+- **Observability added:** OTel span `bodai.conformance_check`; Oneiric substrate event `convention_check_completed` per invocation
 
 **Manual version bump (crackerjack repo):** flagged as `Skipped — user handles manually` per `crackerjack-version-bumping-manual`. The implementer brief does NOT bump crackerjack's `pyproject.toml`. The user handles the version bump + PyPI publish post-merge.
 
@@ -368,7 +368,7 @@ Each phase deliverable specifies:
 
 ### Phase 2: Remaining 5 Bodai rules + adopt in 5 sibling repos
 
-**Deliverable:** `mcp_tool_inventory`, `removed_but_referenced`, `documented_but_not_wired`, `port_consistency`, plus adopt in akosha/dhara/session-buddy/crackerjack/oneiric.
+**Deliverable:** `mcp_tool_inventory`, `removed_but_referenced`, `documented_but_not_wired`, `port_consistency`, plus adopt in akosha/oneiric/session-buddy/crackerjack/mcp-common.
 
 - **Triggered from:** PRs in the 5 sibling repos; PR in mahavishnu.
 - **Returns to / updates:**

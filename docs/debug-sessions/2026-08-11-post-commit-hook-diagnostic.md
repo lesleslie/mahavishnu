@@ -8,7 +8,7 @@ File "/Users/les/.local/share/uv/python/cpython-3.13.11-macos-x86_64-none/lib/py
 TypeError: BaseSettings._settings_restore_init_kwarg_names() missing 1 required positional argument: 'init_state'
 ```
 
-The full stack-trace (in the mahavishnu index repo subprocess) leads through `dhara.schema` symbols and `oneiric.config.settings`.
+The full stack-trace (in the mahavishnu index repo subprocess) leads through the retired MCP server's `schema` symbols and `oneiric.config.settings`.
 
 Two prerequisites to reproduce:
 

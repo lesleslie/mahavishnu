@@ -18,7 +18,7 @@ as the brief's header suggests:
    ``PROFILE_REGISTRATIONS[ToolProfile.*]`` list is Task 12 work; until
    that ships, ``mcp start`` registers zero plan_index tools regardless
    of profile.
-3. The env vars the brief header assumes — ``MAHAVISHNU_PLAN_INDEX_DHARA_URL``
+3. The env vars the brief header assumes — ``MAHAVISHNU_PLAN_INDEX_MCP_URL``
    and ``MAHAVISHNU_DEV_BYPASS_TOKEN`` — are not implemented anywhere in
    this repo (verified by grep).
 4. ``tests/integration/jot/test_read_e2e.py`` documents the same
@@ -74,7 +74,7 @@ class _FakeRBAC:
 def store() -> PlanIndexStore:
     """A fresh ``FakeMCP``-backed :class:`PlanIndexStore` for each test.
 
-    Using ``FakeMCP`` (not a real Dhara subprocess) means each test
+    Using ``FakeMCP`` (not a real MCP subprocess) means each test
     starts with a clean substrate — no rebuilder cycles, no last_rebuild,
     no records. The Round-2 tests at the bottom of the suite depend on
     that contract.

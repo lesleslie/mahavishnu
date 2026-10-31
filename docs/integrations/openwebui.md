@@ -167,9 +167,9 @@ Run each prompt in Arena mode (blind A/B), record which model wins:
 | 4 | "Refactor this function to use a sliding window: `def rate_check(count, window): ...`" | Code model |
 | 5 | "Explain the tradeoffs between SSE and Streamable HTTP for MCP transport" | Reasoning model |
 | 6 | "Generate a Prometheus alerting rule for p99 latency > 500ms" | Code model |
-| 7 | "Summarize the Dhara integration approach in 3 bullet points" | Fast model |
+| 7 | "Summarize the persistence-substrate integration approach in 3 bullet points" | Fast model |
 | 8 | "Route this task to the least-loaded pool and explain the decision" (with tools) | Either, test routing |
-| 9 | "Write pytest tests for an approval manager that uses Dhara persistence" | Code model |
+| 9 | "Write pytest tests for an approval manager that uses durable persistence" | Code model |
 | 10 | "What architectural pattern does `MCPStateBackend` implement and why?" | Reasoning model |
 
 After 10 prompts, export the ELO table from **Admin → Evaluations** and update `settings/models.yaml` task-category routing if the data contradicts current defaults.

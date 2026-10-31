@@ -58,7 +58,7 @@ For each item:
   was written with literal `\_` (backslash + underscore) instead of
   just `__` (double underscore). The character pair is displayed
   correctly in some renderers and as a phantom backslash in others,
-  and it breaks `grep` for tool names (`grep "mcp__dhara__put"`
+  and it breaks `grep` for tool names (`grep "mcp__mahavishnu__mahavishnu_kv_put"`
   misses the files with the bug). The 2 files I edited in Group 3
   (M5 and M6) are clean; the others are not.
 - **Suggested approach**:

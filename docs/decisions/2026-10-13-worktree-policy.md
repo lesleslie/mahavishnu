@@ -229,7 +229,7 @@ the prune commands should be augmented (not replaced) with:
 - A new `principal: Principal` argument for audit attribution
 - A new `--bundle-cleanup` flag for `RemoteWorktreeProvider`-backed
   worktrees (purge the bundle in S3 + remove the `WorktreeHandle`
-  from the Dhara worktree registry, not just `git worktree remove`)
+  from the durable key-value worktree registry, not just `git worktree remove`)
 - Logging to the audit log (v4 §11 keyspace:
   `mahavishnu:audit-log:<date>:<handle_id>:<seq>`)
 
@@ -255,7 +255,7 @@ the prune commands should be augmented (not replaced) with:
 
 5. **Remote-bundle cleanup.** For `RemoteWorktreeProvider`-backed
    worktrees, the prune must also purge the S3 bundle and the
-   `WorktreeHandle` from the Dhara registry. The current CLI
+   `WorktreeHandle` from the durable key-value registry. The current CLI
    `worktree prune-merged` does not know about this; v4 followup
    required.
 

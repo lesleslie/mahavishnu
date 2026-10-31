@@ -224,7 +224,7 @@ def test_init_with_explicit_peer_resolver_does_not_warn() -> None:
 
 
 @pytest.mark.unit
-async def test_persist_pool_state_noop_without_dhara(pool_mgr: PoolManager) -> None:
+async def test_persist_pool_state_noop_without_mcp(pool_mgr: PoolManager) -> None:
     """Without mcp_state, persistence is a no-op (returns None)."""
     result = await pool_mgr._persist_pool_state("pool_x", MagicMock(), "running")
     assert result is None
@@ -271,7 +271,7 @@ async def test_persist_pool_state_swallows_exception() -> None:
 
 
 @pytest.mark.unit
-async def test_persist_routing_decision_noop_without_dhara(pool_mgr: PoolManager) -> None:
+async def test_persist_routing_decision_noop_without_mcp(pool_mgr: PoolManager) -> None:
     """Without mcp_state, routing-decision persistence is a no-op."""
     result = await pool_mgr._persist_routing_decision(
         task={"prompt": "x"},

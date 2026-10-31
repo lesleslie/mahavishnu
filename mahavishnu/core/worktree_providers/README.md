@@ -28,7 +28,7 @@ ______________________________________________________________________
 | `remote.py` | `RemoteWorktreeProvider` — S3/GCS/Azure remote provider with bounded queue handoff |
 | `mock.py` | In-process `MockWorktreeProvider` for unit tests |
 | `session_buddy.py` | `SessionBuddyWorktreeProvider` — delegates to a Session-Buddy instance |
-| `dhara_registry.py` | Dhara-backed registry of worktree handles |
+| `mcp_registry.py` | MCP-backed registry of worktree handles |
 | `registry.py` | Provider factory + capability-based resolver |
 | `cache.py` | Worktree cache layer (L1 memory + L2 storage) |
 | `lock.py` | Distributed locking on `(repo, branch)` |

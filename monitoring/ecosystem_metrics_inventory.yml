@@ -33,21 +33,6 @@ services:
     required: false
     notes: Canonical metrics are exposed on the primary Akosha HTTP/MCP port 8682.
 
-  - name: dhara
-    repo: dhara
-    role: curator
-    probe_urls:
-      - http://localhost:8683/metrics
-    metrics_path: /metrics
-    verification_status: decommissioned
-    required: false
-    notes: >-
-      Dhara was decommissioned on 2026-09-20 and replaced by oneiric. The
-      service is not running and its port refuses connections. It was
-      listed here as `verified`, which the verification script then
-      propagated into the Prometheus file_sd target list -- so Prometheus
-      was configured to scrape a port that has not existed for a month.
-
   - name: crackerjack
     repo: crackerjack
     role: inspector

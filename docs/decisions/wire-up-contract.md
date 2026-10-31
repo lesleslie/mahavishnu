@@ -78,7 +78,7 @@ reviewer fanout. Reviewers flagged these as structural, not cosmetic.
 
 2. **Cross-component imports must show direction of dependency.**
    Every REQ that touches state shared between Bodai components
-   (Mahavishnu, Akosha, Dhara, Session-Buddy, Crackerjack) must
+   (Mahavishnu, Akosha, Session-Buddy, Crackerjack, Oneiric) must
    include a one-line dependency diagram (`A → B (MCP)` or
    `A → B (Oneiric adapter)`). Akosha → Mahavishnu imports (the
    inverted case) are forbidden except via MCP/HTTP. Phase 6 of

@@ -176,7 +176,7 @@ SECTION_ORDER: list[tuple[str, str]] = [
 
 # Core 6 explicit ordering (the streaming-tar rollout phases).
 # This is the fleet release-probe set defined by ADR 019
-# (docs/adr/019-dhara-decommissioning.md): mahavishnu, akosha, session-buddy,
+# (docs/adr/019-legacy-mcp-server-decommissioning.md): mahavishnu, akosha, session-buddy,
 # crackerjack, oneiric, mcp-common -- six repos, not seven.
 CORE_ORDER = [
     "mcp-common",

@@ -1,73 +1,75 @@
 ---
 status: complete
 role: implementation
-topic: dhara-substrate-implementation
+topic: mcp-substrate-implementation
 date: 2026-09-14
 last_reviewed: 2026-10-17
 superseded_by: null
 resolved_at: 2026-10-17
 resolved_by:
-  - "ADR 019 (Dhara Decommissioning from Bodai Core Fleet) — strategic goal retired from Bodai scope"
+  - "ADR 019 (Legacy MCP Server Decommissioning from Bodai Core Fleet) — strategic goal retired from Bodai scope"
   - "Phase 5 task 9 (write_mode: 'dual' removal) shipped via commit 4d6732d0"
   - "Phase 5 task 8 (HotStore import flip on mahavishnu side) shipped via commit f12d1155"
   - "Phases 3, 4, 6, 7, 9, 10 and Phase 1 task 16 verified shipped per drift note 2026-10-17"
 partially_superseded_by:
   - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
-  - docs/plans/2026-09-20-delete-all-dhara-named-code.md  # partial; Phase 4 crackerjack rename/delete
+  - docs/plans/2026-09-20-delete-all-legacy-named-code.md  # partial; Phase 4 crackerjack rename/delete
   - docs/plans/.archive/2026-09-20-bodai-layout-migration-and-registry-onboarding.md  # partial; Phase 1.5 wrapper consolidation
   - docs/adr/018-gateway-pattern-evaluation.md  # draft; Phase 11 gateway evaluation
 blocks_on:
-  - docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md
+  - docs/adr/013-mahavishnu-adapter-tool-boundary.md
   - docs/adr/017-oneiric-shared-persistence-substrate.md
 related:
   - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
   - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md
   - docs/plans/2026-07-26-mahavishnu-acp-server.md
-  - docs/specs/2026-04-27-bodai-auth-standardization-design.md
-  - docs/specs/2026-05-24-dhara-serverless-design.md
-title: "Dhara MCP Decomposition — Design Specification"
+  - docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md
+  - docs/specs/.archive/2026-05-24-mcp-serverless-design.md
+title: "MCP Decomposition — Design Specification"
 
 ---
 
-# Dhara MCP Decomposition — Design Specification
+# MCP Decomposition — Design Specification
 
-**Status:** Partial — Dhara Wave-2 cleanup commits (2026-09-29 to 2026-10-13) shipped ~80% of this spec; outstanding items concentrated in Phases 5 + 8. See `partially_superseded_by:` in frontmatter for successor plans.
+**Status:** Partial — Wave-2 cleanup commits (2026-09-29 to 2026-10-13) shipped ~80% of this spec; outstanding items concentrated in Phases 5 + 8. See `partially_superseded_by:` in frontmatter for successor plans.
 **Date:** 2026-09-14 (last reviewed 2026-10-17)
 **Author:** Claude Code + les
 
-> **Drift note (2026-10-17, refresh 2):** Phase 5 task 9 (`persistence.write_mode: "dual"` removal at `settings/mahavishnu.yaml:190`) **shipped via commit `4d6732d0`** ("chore(settings): remove write_mode: dual from persistence block"). Phase 5 task 8 (HotStore import flip): mahavishnu-side **shipped via commit `f12d1155`** — `mahavishnu/ingesters/otel_ingester.py:41` and `mahavishnu/mcp/tools/otel_tools.py:289, 359` now use `from oneiric.adapters.vector.hot_store import HotStore`; 4 example-file sites in the dhana repo are out of this audit's view. Phase 8 outstanding (dhana-side): `dhara/mcp/*.backup` cleanup + missing `dhara/MIGRATION.md`. Previously shipped: Phases 3 (ecosystem_state — `mahavishnu_*` prefix drift accepted), 4 (agent/skill → Crackerjack via Wave-2 + `2026-09-20-delete-all-dhara-named-code.md`), 6 (sql_proxy dropped; kv_time_series wrap not needed — no consumer), 1 task 16 (dhara_pusher retired), 1 ADR-013 reversal (moot — Dhara MCP decommissioned), 7, 9, 10. **Context (2026-10-17):** ADR 019 ("Dhara Decommissioning from Bodai Core Fleet", commit `afd3e6e9`) now exists; the spec's strategic-level goal (decompose Dhara's MCP, restore Oneiric as canonical) is well-served by the ADR's framing. ~85% shipped by LOC; remaining ~15% is dhana-side work that the ADR has effectively retired from Bodai's scope (DhPaa is no longer a Bodai core component, so the spec's dhana-side cleanup is a dhana-repo concern, not a Bodai control-plane concern).
+> **Drift note (2026-10-17, refresh 2):** Phase 5 task 9 (`persistence.write_mode: "dual"` removal at `settings/mahavishnu.yaml:190`) **shipped via commit `4d6732d0`** ("chore(settings): remove write_mode: dual from persistence block"). Phase 5 task 8 (HotStore import flip): mahavishnu-side **shipped via commit `f12d1155`** — `mahavishnu/ingesters/otel_ingester.py:41` and `mahavishnu/mcp/tools/otel_tools.py:289, 359` now use `from oneiric.adapters.vector.hot_store import HotStore`; 4 example-file sites in the legacy repo are out of this audit's view. Phase 8 outstanding (legacy-repo-side): `mcp/*.backup` cleanup + missing `MIGRATION.md`. Previously shipped: Phases 3 (ecosystem_state — `mahavishnu_*` prefix drift accepted), 4 (agent/skill → Crackerjack via Wave-2 + `2026-09-20-delete-all-legacy-named-code.md`), 6 (sql_proxy dropped; kv_time_series wrap not needed — no consumer), 1 task 16 (the registry-pusher adapter retired), 1 ADR-013 reversal (moot — the standalone MCP server component was decommissioned), 7, 9, 10. **Context (2026-10-17):** ADR 019 ("Legacy MCP Server Decommissioning from Bodai Core Fleet", commit `afd3e6e9`) now exists; the spec's strategic-level goal (decompose the standalone MCP server surface, restore Oneiric as canonical) is well-served by the ADR's framing. ~85% shipped by LOC; remaining ~15% is legacy-repo-side work that the ADR has effectively retired from Bodai's scope (that repo is no longer a Bodai core component, so the legacy-side cleanup is an upstream-repo concern, not a Bodai control-plane concern).
+>
+> **Naming note (2026-10-30):** the standalone MCP server component retired on 2026-09-20 (dropped from the fleet release set on 2026-10-17) is referred to below as **the legacy MCP server**. Its tool namespace is written `mcp__legacy__*` and its tool function names carry a `legacy_` prefix; the `legacy-mcp` token marks the repo slot it occupied in the fleet merge order.
 
 ## 1. Problem
 
-The Dhara package ships two unrelated products bundled in one repo:
+The legacy package shipped two unrelated products bundled in one repo:
 
-1. **The Durus object database engine** (`dhara/core/`, `dhara/storage/`, `dhara/serialize/`, `dhara/collections/`, `dhara/server/`, `dhara/_persistent.c`) — a modernized continuation of CNRI's Durus, BSD-3-licensed, designed as a standalone library.
+1. **The Durus object database engine** (`core/`, `storage/`, `serialize/`, `collections/`, `server/`, `_persistent.c`) — a modernized continuation of CNRI's Durus, BSD-3-licensed, designed as a standalone library.
 
-2. **The Bodai MCP catalog server** (`dhara/mcp/` — 7,580 LOC across 8 tool groups + auth + middleware + substrate routes) — a FastMCP surface that Bodai's other components consume for adapter state queries, KV/time-series, ecosystem events, agent/skill catalogs, OTel trace queries, and SQL proxy.
+2. **The Bodai MCP catalog server** (`mcp/` — 7,580 LOC across 8 tool groups + auth + middleware + substrate routes) — a FastMCP surface that Bodai's other components consume for adapter state queries, KV/time-series, ecosystem events, agent/skill catalogs, OTel trace queries, and SQL proxy.
 
 Bundling these obscures both products and creates three concrete problems:
 
-- **Footprint.** Dhara's MCP server adds 7,580 LOC of MCP-specific code, plus ~10 dependencies (FastMCP, mcp-common, uvicorn, ipython, rich, cryptography, msgspec, schedule, zstandard, aiosqlite) to a package whose actual engine doesn't need any of them.
-- **Identity confusion.** The Durus engine is a general-purpose persistent-object library that anyone could use outside Bodai. The MCP server is Bodai-specific. A new contributor reading the Dhara `CLAUDE.md` sees "modern persistent object system" in the project overview, then `dhara/mcp/` with `dhara_store_adapter`, `dhara_upsert_service`, and `dhara_list_agents` tools — and reasonably wonders which product is which.
-- **Auth/middleware duplication.** Every Bodai MCP server has its own auth implementation. mcp-common already ships `mcp_common.auth.*` (1,570 LOC, 14 files) with JWT, RBAC, middleware, audit, identity, and ASGI integration. Dhara's `dhara/mcp/auth.py` (786 LOC) + `dhara/mcp/fastmcp_auth.py` (99 LOC) + `dhara/mcp/middleware.py` (440 LOC) reimplement this. The active plan's Phase 4 + Phase 6 + the active spec `2026-04-27-bodai-auth-standardization-design.md` already converged on mcp-common as the canonical auth surface; Dhara is the only consumer still on its fork.
+- **Footprint.** The legacy MCP server adds 7,580 LOC of MCP-specific code, plus ~10 dependencies (FastMCP, mcp-common, uvicorn, ipython, rich, cryptography, msgspec, schedule, zstandard, aiosqlite) to a package whose actual engine doesn't need any of them.
+- **Identity confusion.** The Durus engine is a general-purpose persistent-object library that anyone could use outside Bodai. The MCP server is Bodai-specific. A new contributor reading the legacy repo's `CLAUDE.md` sees "modern persistent object system" in the project overview, then `mcp/` with `store_adapter`, `upsert_service`, and `list_agents` tools — and reasonably wonders which product is which.
+- **Auth/middleware duplication.** Every Bodai MCP server has its own auth implementation. mcp-common already ships `mcp_common.auth.*` (1,570 LOC, 14 files) with JWT, RBAC, middleware, audit, identity, and ASGI integration. The legacy MCP server's `mcp/auth.py` (786 LOC) + `mcp/fastmcp_auth.py` (99 LOC) + `mcp/middleware.py` (440 LOC) reimplement this. The active plan's Phase 4 + Phase 6 + the active spec `2026-04-27-bodai-auth-standardization-design.md` already converged on mcp-common as the canonical auth surface; the legacy MCP server is the only consumer still on its fork.
 
-This design addresses all three by **decomposing the MCP surface into the components where each tool group naturally belongs**, restoring the **Oneiric MCP server** (the original Bodai design, briefly consolidated into Dhara), and retiring Dhara as a Bodai component. **The Durus engine stays in Dhara.**
+This design addresses all three by **decomposing the MCP surface into the components where each tool group naturally belongs**, restoring the **Oneiric MCP server** (the original Bodai design, briefly consolidated into the legacy standalone MCP server), and retiring that standalone MCP server as a Bodai component. **The Durus engine stays in the legacy persistence library.**
 
 ## 2. Goals
 
-1. **Dhara becomes a pure library.** Engine code (Durus) survives; MCP code is deleted. Dhara's CLI keeps `dhara db start|client|pack` for the engine; drops `dhara mcp start|stop|status|health`. Pyproject slims to engine-only deps.
+1. **The legacy package becomes a pure library.** Engine code (Durus) survives; MCP code is deleted. The CLI keeps `db start|client|pack` for the engine; drops `mcp start|stop|status|health`. Pyproject slims to engine-only deps.
 2. **Oneiric MCP server is restored.** `oneiric/mcp/server_core.py` ships with the 7 `adapter_registry` tools (`store_adapter`, `get_contract_info`, `get_adapter`, `list_adapters`, `list_adapter_versions`, `validate_adapter`, `get_adapter_health`). This restores the original Bodai design and is ADR-013's "Option C — canonical surface lives where adapters live."
-3. **All 7,580 LOC of Dhara MCP code finds a new home.** No orphan code. Each tool group moves to a Bodai component where the domain naturally lives.
-4. **Auth consolidation completes.** Every Bodai MCP server uses `mcp_common.auth.*`. Dhara's auth fork is deleted. The `2026-04-27-bodai-auth-standardization-design.md` spec's pending migrations for Dhara close out.
-5. **No breaking changes to the Durus engine.** Existing users of `from dhara import Connection, Persistent, PersistentDict` continue to work unchanged. `dhara.connection`, `dhara.persistent_dict`, etc. legacy aliases still resolve.
-6. **Dhara v1.0.0 signal.** With the MCP server gone and the engine proven standalone, Dhara's version stamp moves to 1.0.0 to signal "production-ready standalone library."
+3. **All 7,580 LOC of legacy MCP code finds a new home.** No orphan code. Each tool group moves to a Bodai component where the domain naturally lives.
+4. **Auth consolidation completes.** Every Bodai MCP server uses `mcp_common.auth.*`. The legacy server's auth fork is deleted. The `2026-04-27-bodai-auth-standardization-design.md` spec's pending migrations for the legacy server close out.
+5. **No breaking changes to the Durus engine.** Existing users of the engine's public API (`Connection`, `Persistent`, `PersistentDict`) continue to work unchanged. The `connection`, `persistent_dict`, etc. legacy aliases still resolve.
+6. **Legacy package v1.0.0 signal.** With the MCP server gone and the engine proven standalone, the package's version stamp moves to 1.0.0 to signal "production-ready standalone library."
 
 ## 3. Non-Goals
 
-- **Extracting the Durus engine into a separate package** (e.g. `durus-ng`). The engine stays in Dhara; the name Dhara was chosen as a play on Durus to preserve the lineage.
-- **Removing the C extension** (`dhara/_persistent.c`). The C extension is the engine's hot path. Pure-Python fallback on PyPy remains.
-- **Changes to `dhara.connection` / `dhara.persistent_dict` legacy aliases.** These stay.
-- **Multi-region or horizontal scaling of Dhara's storage server.** Out of scope (covered by `2026-05-24-dhara-serverless-design.md`).
+- **Extracting the Durus engine into a separate package** (e.g. `durus-ng`). The engine stays in the legacy package; its name was chosen as a play on Durus to preserve the lineage.
+- **Removing the C extension** (the engine's `_persistent.c`). The C extension is the engine's hot path. Pure-Python fallback on PyPy remains.
+- **Changes to the engine's `connection` / `persistent_dict` legacy aliases.** These stay.
+- **Multi-region or horizontal scaling of the legacy storage server.** Out of scope (covered by `2026-05-24-mcp-serverless-design.md`).
 - **Replacing the Durus pickle format.** The object-graph serialization stays.
 - **Per-tool granular permissions beyond mcp-common's existing RBAC** (READ/WRITE/DELETE/ADMIN). Out of scope.
 - **OAuth / mTLS / cert-based auth.** Out of scope; covered by future auth enhancement plans.
@@ -78,55 +80,59 @@ This design addresses all three by **decomposing the MCP surface into the compon
 
 | Component | Before | After | Tools gained |
 |-----------|--------|-------|--------------|
-| **Dhara** | Engine + 7,580 LOC MCP server | Engine only | — (loses all `mcp__dhara__*` tools) |
+| **Legacy package** | Engine + 7,580 LOC MCP server | Engine only | — (loses all `mcp__legacy__*` tools) |
 | **Oneiric** | Library + 54 adapters | Library + 54 adapters + MCP server | 7 (adapter_registry) |
 | **Akosha** | Seer/intelligence (32 tools) | Seer + trace query | 1 (`query_local_traces`) |
 | **Mahavishnu** | Orchestrator (141 tools) | Orchestrator + ecosystem state | 5 (ecosystem_state group) |
 | **Crackerjack** | Inspector (47 tools) | Inspector + signed content registry | 5 (skill_registry + agent_registry + signer_feed) |
-| **mcp-common** | Auth, dispatch, profiles | Unchanged surface; absorbed Dhara's auth fork | — (now sole auth source) |
+| **mcp-common** | Auth, dispatch, profiles | Unchanged surface; absorbed the legacy server's auth fork | — (now sole auth source) |
 | **Session-Buddy** | Memory MCP (49 tools) | Unchanged | — (Phase 6 may absorb `kv_time_series`; deferred) |
 
 ### 4.2 Tool-by-tool destination
 
-| Dhara group (current) | Tool name (current) | New tool name | New home | Notes |
+Legacy tool function names below carry a `legacy_` prefix — that is the
+post-retirement name for the identifiers the retired MCP server exposed
+(e.g. its `legacy_put` KV tool, its `legacy_store_adapter` tool).
+
+| Legacy group (current) | Tool name (current) | New tool name | New home | Notes |
 |-----------------------|---------------------|---------------|----------|-------|
-| `kv_time_series` | `dhara_put` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.put` (Phase 6). |
-| `kv_time_series` | `dhara_get` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.get` (Phase 6). |
-| `kv_time_series` | `dhara_list_prefix` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.list_prefix` (Phase 6). |
-| `kv_time_series` | `dhara_record_time_series` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.record_time_series` (Phase 6). |
-| `kv_time_series` | `dhara_query_time_series` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.query_time_series` (Phase 6). |
-| `kv_time_series` | `dhara_aggregate_patterns` | (deleted) | — | Dropped along with other kv_time_series tools (Phase 6). **Correction:** the spec's earlier draft noted an overlap with `akosha_aggregate_patterns`; that claim was incorrect (no such tool exists in Akosha). The tool is deleted with no replacement; consumers needing aggregate-patterns queries use the Oneiric cache adapter directly via the resolver, not via MCP. |
-| `adapter_registry` | `dhara_store_adapter` | `oneiric_store_adapter` | Oneiric | |
-| `adapter_registry` | `dhara_get_contract_info` | `oneiric_get_contract_info` | Oneiric | |
-| `adapter_registry` | `dhara_get_adapter` | `oneiric_get_adapter` | Oneiric | |
-| `adapter_registry` | `dhara_list_adapters` | `oneiric_list_adapters` | Oneiric | |
-| `adapter_registry` | `dhara_list_adapter_versions` | `oneiric_list_adapter_versions` | Oneiric | |
-| `adapter_registry` | `dhara_validate_adapter` | `oneiric_validate_adapter` | Oneiric | |
-| `adapter_registry` | `dhara_get_adapter_health` | `oneiric_get_adapter_health` | Oneiric | |
-| `ecosystem_state` | `dhara_upsert_service` | `mahavishnu_upsert_service` | Mahavishnu | |
-| `ecosystem_state` | `dhara_get_service` | `mahavishnu_get_service` | Mahavishnu | |
-| `ecosystem_state` | `dhara_list_services` | `mahavishnu_list_services` | Mahavishnu | |
-| `ecosystem_state` | `dhara_record_event` | `mahavishnu_record_event` | Mahavishnu | |
-| `ecosystem_state` | `dhara_list_events` | `mahavishnu_list_events` | Mahavishnu | |
-| `sql_proxy` | `dhara_sql_execute` | — (drop) | — | **Phase 6: drop.** The active plan's Phase 6 already strips 22 of 32 Akosha tools; sql_proxy fits the same "off-the-shelf or deleted" pattern. |
-| `sql_proxy` | `dhara_sql_query` | — (drop) | — | Same. |
-| `agent_registry` | `dhara_list_agents` | `crackerjack_list_agents` | Crackerjack | Phase 1.5 of the active ACP plan routes through Crackerjack. |
-| `agent_registry` | `dhara_get_agent` | `crackerjack_get_agent` | Crackerjack | |
-| `skill_registry` | `dhara_list_skills` | `crackerjack_list_skills` | Crackerjack | |
-| `skill_registry` | `dhara_get_skill` | `crackerjack_get_skill` | Crackerjack | |
-| `otel_traces` | `dhara_query_local_traces` | `akosha_query_local_traces_fitness` | Akosha | Drop Akosha's existing general-purpose `akosha_query_local_traces` (Phase 5). Dhara's `akosha>=0.17.1` dep is removed (not moved — circular install hazard). |
+| `kv_time_series` | `legacy_put` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.put` (Phase 6). |
+| `kv_time_series` | `legacy_get` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.get` (Phase 6). |
+| `kv_time_series` | `legacy_list_prefix` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.list_prefix` (Phase 6). |
+| `kv_time_series` | `legacy_record_time_series` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.record_time_series` (Phase 6). |
+| `kv_time_series` | `legacy_query_time_series` | (Oneiric cache adapter, no MCP tool) | Oneiric | Wrapped as `oneiric.adapters.cache.persistent_kv.query_time_series` (Phase 6). |
+| `kv_time_series` | `legacy_aggregate_patterns` | (deleted) | — | Dropped along with other kv_time_series tools (Phase 6). **Correction:** the spec's earlier draft noted an overlap with `akosha_aggregate_patterns`; that claim was incorrect (no such tool exists in Akosha). The tool is deleted with no replacement; consumers needing aggregate-patterns queries use the Oneiric cache adapter directly via the resolver, not via MCP. |
+| `adapter_registry` | `legacy_store_adapter` | `oneiric_store_adapter` | Oneiric | |
+| `adapter_registry` | `legacy_get_contract_info` | `oneiric_get_contract_info` | Oneiric | |
+| `adapter_registry` | `legacy_get_adapter` | `oneiric_get_adapter` | Oneiric | |
+| `adapter_registry` | `legacy_list_adapters` | `oneiric_list_adapters` | Oneiric | |
+| `adapter_registry` | `legacy_list_adapter_versions` | `oneiric_list_adapter_versions` | Oneiric | |
+| `adapter_registry` | `legacy_validate_adapter` | `oneiric_validate_adapter` | Oneiric | |
+| `adapter_registry` | `legacy_get_adapter_health` | `oneiric_get_adapter_health` | Oneiric | |
+| `ecosystem_state` | `legacy_upsert_service` | `mahavishnu_upsert_service` | Mahavishnu | |
+| `ecosystem_state` | `legacy_get_service` | `mahavishnu_get_service` | Mahavishnu | |
+| `ecosystem_state` | `legacy_list_services` | `mahavishnu_list_services` | Mahavishnu | |
+| `ecosystem_state` | `legacy_record_event` | `mahavishnu_record_event` | Mahavishnu | |
+| `ecosystem_state` | `legacy_list_events` | `mahavishnu_list_events` | Mahavishnu | |
+| `sql_proxy` | `legacy_sql_execute` | — (drop) | — | **Phase 6: drop.** The active plan's Phase 6 already strips 22 of 32 Akosha tools; sql_proxy fits the same "off-the-shelf or deleted" pattern. |
+| `sql_proxy` | `legacy_sql_query` | — (drop) | — | Same. |
+| `agent_registry` | `legacy_list_agents` | `crackerjack_list_agents` | Crackerjack | Phase 1.5 of the active ACP plan routes through Crackerjack. |
+| `agent_registry` | `legacy_get_agent` | `crackerjack_get_agent` | Crackerjack | |
+| `skill_registry` | `legacy_list_skills` | `crackerjack_list_skills` | Crackerjack | |
+| `skill_registry` | `legacy_get_skill` | `crackerjack_get_skill` | Crackerjack | |
+| `otel_traces` | `legacy_query_local_traces` | `akosha_query_local_traces_fitness` | Akosha | Drop Akosha's existing general-purpose `akosha_query_local_traces` (Phase 5). The legacy package's `akosha>=0.17.1` dep is removed (not moved — circular install hazard). |
 | `signer_feed` | (cross-cutting) | — | Crackerjack (private) | ed25519 signer, shared by `agent_registry` + `skill_registry`. |
 | `substrate_routes` (HTTP) | (settings/context/progress) | — | Oneiric HTTP API | Move to Oneiric, exposed alongside the new MCP server. |
-| `auth.py` + `fastmcp_auth.py` + `middleware.py` | — | — | mcp-common (already there) | **Delete Dhara's forks.** |
-| `server_core.py` (DharaMCPServer) | — | — | Oneiric (new `oneiric/mcp/server_core.py`) | Restore Oneiric MCP server. |
-| `profiles.py` (Dhara-specific tool profile) | — | — | Each consumer | Each new home has its own profile. |
+| `auth.py` + `fastmcp_auth.py` + `middleware.py` | — | — | mcp-common (already there) | **Delete the legacy server's forks.** |
+| `server_core.py` (`LegacyMCPServer`) | — | — | Oneiric (new `oneiric/mcp/server_core.py`) | Restore Oneiric MCP server. |
+| `profiles.py` (legacy-server-specific tool profile) | — | — | Each consumer | Each new home has its own profile. |
 
 ### 4.3 Auth consolidation
 
 Every Bodai MCP server's auth module collapses to ~20 lines: re-export from `mcp_common.auth.*` with a thin service-specific adapter. The pattern is established by `2026-04-27-bodai-auth-standardization-design.md` §5.2.
 
 ```python
-# After migration — Dhara no longer has an auth.py at all (no MCP server).
+# After migration — the legacy server no longer has an auth.py at all (no MCP server).
 # Akosha's auth.py after migration:
 from mcp_common.auth import (
     AuthConfig,
@@ -141,9 +147,9 @@ from mcp_common.auth import (
 
 This completes the 5-way auth fork consolidation. The `2026-04-27-bodai-auth-standardization-design.md` spec's "Phase 2 engine surface expansion" unblocker closes.
 
-### 4.4 Dhara pyproject.toml slim-down
+### 4.4 Legacy package pyproject.toml slim-down
 
-After decomposition, Dhara's pyproject.toml drops these 10 dependencies. `oneiric` is preserved (it's the configuration substrate — every Bodai component uses Oneiric for config).
+After decomposition, the legacy package's pyproject.toml drops these 10 dependencies. `oneiric` is preserved (it's the configuration substrate — every Bodai component uses Oneiric for config).
 
 ```diff
  dependencies = [
@@ -161,22 +167,22 @@ After decomposition, Dhara's pyproject.toml drops these 10 dependencies. `oneiri
  ]
 ```
 
-**Verification gate (Phase 8 task 2):** Confirm `aiosqlite` is used only by `dhara/mcp/` (MCP server), not by `dhara/core/`, `dhara/storage/`, `dhara/collections/` (engine). If engine uses it, keep it. The active plan's Phase 4 (`REQ-DHARA-STORAGE`) uses async storage backends that may pull `aiosqlite` — verify case-by-case.
+**Verification gate (Phase 8 task 2):** Confirm `aiosqlite` is used only by `mcp/` (MCP server), not by `core/`, `storage/`, `collections/` (engine). If engine uses it, keep it. The active plan's Phase 4 (`REQ-MCP-STORAGE`) uses async storage backends that may pull `aiosqlite` — verify case-by-case.
 
-The `[project.entry-points."bodai.apps"]` block for `dhara.cli:app` remains — Dhara is still a Bodai app, just not an MCP server. The role tag may shift from `mcp_server` to `engine` in `BODAI_REPO_REGISTRY.md` (Phase 8 task 13).
+The `[project.entry-points."bodai.apps"]` block for the engine CLI entry point remains — the legacy package is still a Bodai app, just not an MCP server. The role tag may shift from `mcp_server` to `engine` in `BODAI_REPO_REGISTRY.md` (Phase 8 task 13).
 
-### 4.5 What stays in Dhara (the engine surface)
+### 4.5 What stays in the legacy package (the engine surface)
 
-After decomposition, `dhara/` contains:
+After decomposition, the package contains:
 
 ```
-dhara/
+<legacy package>/
 ├── __init__.py             # Public API: Connection, Persistent, PersistentDict, PersistentList, PersistentSet, BTree, BNode
 ├── __main__.py             # CLI entry
 ├── _persistent.c           # C extension (hot path)
 ├── audit/                  # Engine audit hooks
 ├── backup/                 # Backup/restore
-├── cli.py                  # CLI: dhara db start|client|pack (NO dhara mcp)
+├── cli.py                  # CLI: db start|client|pack (NO mcp subcommands)
 ├── collections/            # PersistentDict, PersistentList, PersistentSet, BTree, BNode
 ├── config/                 # Oneiric config integration
 ├── core/                   # Connection, Persistent, PersistentBase
@@ -194,13 +200,13 @@ dhara/
 └── shell/                  # Admin shell
 ```
 
-`dhara/mcp/`, `dhara/mcp/tools/`, `dhara/mcp/skills_signer/` (if any) — **all deleted**.
+`mcp/`, `mcp/tools/`, `mcp/skills_signer/` (if any) — **all deleted**.
 
-`dhara/skills_signer/` is a recent addition (Phase 1.5 of the active ACP plan). It belongs with the new `crackerjack_list_skills` + `crackerjack_get_skill` tools in Crackerjack. **Move to Crackerjack in Phase 4** (not "delete"), so the signing infrastructure lives where the consumer is.
+`skills_signer/` is a recent addition (Phase 1.5 of the active ACP plan). It belongs with the new `crackerjack_list_skills` + `crackerjack_get_skill` tools in Crackerjack. **Move to Crackerjack in Phase 4** (not "delete"), so the signing infrastructure lives where the consumer is.
 
 ### 4.6 Oneiric MCP server shape
 
-The restored Oneiric MCP server follows the pattern already established by Dhara's MCP server (the only working precedent in the Bodai ecosystem). **Note:** `oneiric/core/cli.py:MCPServerCLIFactory._start_server()` is currently broken — it calls `asyncio.run(server.startup())` then enters a `time.sleep(1)` loop without ever calling a transport. **The spec does NOT use this factory as-is.** The Oneiric server follows Dhara's proven pattern instead:
+The restored Oneiric MCP server follows the pattern already established by the legacy standalone MCP server (the only working precedent in the Bodai ecosystem). **Note:** `oneiric/core/cli.py:MCPServerCLIFactory._start_server()` is currently broken — it calls `asyncio.run(server.startup())` then enters a `time.sleep(1)` loop without ever calling a transport. **The spec does NOT use this factory as-is.** The Oneiric server follows the legacy server's proven pattern instead:
 
 ```python
 # oneiric/mcp/server_core.py
@@ -235,7 +241,7 @@ class OneiricMCPServer:
         self._register_health_route()
 
     def _register_tools(self):
-        # 7 adapter_registry tools ported from dhara/mcp/adapter_tools.py
+        # 7 adapter_registry tools ported from the legacy server's mcp/adapter_tools.py
         # Each uses @server.tool(name="...", auth=require_auth(Permission.READ/WRITE))
         # ...
 
@@ -272,12 +278,12 @@ async def run_server(config=None):
 
 **Why we don't use `MCPServerCLIFactory` directly:** `grep -rn "MCPServerCLIFactory" oneiric/` returns zero call sites and zero subclasses. The factory is dead code (the second-pass oneiric-specialist review flagged this). The actual Oneiric CLI uses `OneiricCLI(OneiricCLIBase)` with `app.add_typer(manifest_app, name="manifest")` / `secrets_app` / `event_app` / `workflow_app` (per `oneiric/cli/__init__.py:271-278`). The new MCP server uses this **Typer sub-app pattern** instead: Phase 1 task 2 adds `app.add_typer(mcp_app, name="mcp")` to `oneiric/cli/__init__.py:271-278` (where `mcp_app` is a `typer.Typer(help="Oneiric MCP server lifecycle.")` defined in `oneiric/mcp/server_core.py`). The unused `MCPServerCLIFactory` (lines 31-162 of `oneiric/core/cli.py`) is left as historical artifact; cleanup is deferred to a follow-up refactor.
 
-**Port choice:** Oneiric claims port **8683** (Dhara's old port, reclaimed). The default `OneiricMCPConfig.http_port` is **8000** today (per `oneiric/core/config.py:231-233`). Phase 1 task 1.5 creates `oneiric/settings/oneiric.yaml` with `mcp: { http_port: 8683, http_host: 127.0.0.1 }` override. The override is required — `oneiric/settings/` currently contains only `lavinmq.yaml`; there is no project-local config file. The Dhara launchd plist on operator machines is retired as part of Phase 8 (R4 mitigation).
+**Port choice:** Oneiric claims port **8681** (the retired server's old port, reclaimed). The default `OneiricMCPConfig.http_port` is **8000** today (per `oneiric/core/config.py:231-233`). Phase 1 task 1.5 creates `oneiric/settings/oneiric.yaml` with `mcp: { http_port: 8681, http_host: 127.0.0.1 }` override. The override is required — `oneiric/settings/` currently contains only `lavinmq.yaml`; there is no project-local config file. The legacy server's launchd plist on operator machines is retired as part of Phase 8 (R4 mitigation).
 
 CLI subcommands (provided by the new Typer sub-app):
 
 ```
-$ oneiric mcp start      # calls run_server() — binds 8683 (or whatever settings/oneiric.yaml configures)
+$ oneiric mcp start      # calls run_server() — binds 8681 (or whatever settings/oneiric.yaml configures)
 $ oneiric mcp stop       # graceful shutdown
 $ oneiric mcp status     # liveness probe
 $ oneiric mcp health     # per-feed aggregator (returns 503 if any feed degraded)
@@ -285,7 +291,7 @@ $ oneiric mcp restart    # stop + start
 $ oneiric mcp config     # show resolved config
 ```
 
-The `mcp-common/mcp_common/health/` module (shipped in v0.26.4, commit 7acdcfb) provides the canonical health primitives: `HealthFeedState` (per-feed state dataclass), `StatusValue` (severity-ordered `StrEnum`: `healthy` < `warming_up` < `degraded` < `failed`), `ReasonCode` (per-feed diagnostic codes including the HNSW-hardening `FEED_NEVER_POPULATED`), `record_success`/`record_error` (mutators), `is_healthy` (per-feed verdict with time-bounded decay predicate), `aggregate_feed_states` (cross-feed worst-case rollup), and `update_health_metrics` (Prometheus metrics emission for Plan §11.4 PromQL alerts). Phase 1 task 6 extension to the legacy oneiric `HealthMonitor` is **obsolete** — the canonical home moved to mcp-common per ADR 017 substrate ownership. Consumers (session-buddy, akosha, dhara) import from `mcp_common.health.aggregator` + `mcp_common.health.metrics` directly. Phase 4 task 7 (`--health-disable-decay` CLI flag on `MCPServerCLIFactory.start`) propagates the decay-disabled sentinel through `HEALTH_FEED_HALFLIFE_SECONDS=0` to `is_healthy(halflife_seconds=0)`. Phase 4 task 6 (HNSW hardening) distinguishes `cycles_total == 0` + `ingester_running=True` as `DEGRADED` with `FEED_NEVER_POPULATED` (broken-before-first-success producer) rather than `WARMING_UP`. The primitives the spec requires are now:
+The `mcp-common/mcp_common/health/` module (shipped in v0.26.4, commit 7acdcfb) provides the canonical health primitives: `HealthFeedState` (per-feed state dataclass), `StatusValue` (severity-ordered `StrEnum`: `healthy` < `warming_up` < `degraded` < `failed`), `ReasonCode` (per-feed diagnostic codes including the HNSW-hardening `FEED_NEVER_POPULATED`), `record_success`/`record_error` (mutators), `is_healthy` (per-feed verdict with time-bounded decay predicate), `aggregate_feed_states` (cross-feed worst-case rollup), and `update_health_metrics` (Prometheus metrics emission for Plan §11.4 PromQL alerts). Phase 1 task 6 extension to the legacy oneiric `HealthMonitor` is **obsolete** — the canonical home moved to mcp-common per ADR 017 substrate ownership. Consumers (session-buddy, akosha, oneiric) import from `mcp_common.health.aggregator` + `mcp_common.health.metrics` directly. Phase 4 task 7 (`--health-disable-decay` CLI flag on `MCPServerCLIFactory.start`) propagates the decay-disabled sentinel through `HEALTH_FEED_HALFLIFE_SECONDS=0` to `is_healthy(halflife_seconds=0)`. Phase 4 task 6 (HNSW hardening) distinguishes `cycles_total == 0` + `ingester_running=True` as `DEGRADED` with `FEED_NEVER_POPULATED` (broken-before-first-success producer) rather than `WARMING_UP`. The primitives the spec requires are now:
 - `record_success(state: HealthFeedState)` / `record_error(state: HealthFeedState)` — mutators; producer-side code calls one of these after each cycle. Direct attribute assignment (`state.entities_count = N`, `state.cycles_total += 1`, `state.last_updated_timestamp = time.time()`) replaces oneiric's `set_entities_count`/`record_invocation` indirection.
 - `is_healthy(state: HealthFeedState, halflife_seconds: float = 300) -> tuple[bool, StatusValue, list[ReasonCode]]` — per-feed predicate; `halflife_seconds <= 0` disables the time-bounded decay (Phase 4 task 7 `--health-disable-decay`).
 - `aggregate_feed_states(states: dict[str, HealthFeedState], halflife_seconds: float = 300) -> HealthSnapshot` — worst-case rollup; `HealthSnapshot.status` is the max severity across feeds.
@@ -305,7 +311,7 @@ Without these primitives, Phase 1 task 8's e2e test ("/health returns 200 with 7
 | `STANDARD` | `MINIMAL` + `get_adapter` + `list_adapter_versions` + `validate_adapter` + `get_adapter_health` (read-only introspection) |
 | `FULL` | `STANDARD` + `store_adapter` + `get_contract_info` (mutation + introspection) |
 
-This mirrors the convention used by other Bodai MCP servers (Dhara's profile definition at `dhara/mcp/profiles.py:122-138` is the reference pattern).
+This mirrors the convention used by other Bodai MCP servers (the legacy server's profile definition at `mcp/profiles.py:122-138` is the reference pattern).
 
 ### 4.8 Observability commitment (cross-phase)
 
@@ -347,36 +353,36 @@ The aggregator's `aggregate_feed_states` returns a `HealthSnapshot` whose top-le
 
 ### 4.9 Migration guide commitment
 
-Phase 8 task 20 creates a top-level `dhara/MIGRATION.md` (not a buried spec section) with:
+Phase 8 task 20 creates a top-level `MIGRATION.md` in the legacy package (not a buried spec section) with:
 1. **Old-name → new-name mapping table** for all 21 tools (lift from §4.2 and §8 of this spec).
 2. **Hard-cutover date and commit boundary** (commit hash for the Phase 8 deletion).
 3. **Notification channels** (resolves R5 / H HIGH):
-   - **Email**: `mailto:nas-dhara@arctrix.com` (already on Dhara's `CHANGELOG.md:871`).
-   - **GitHub Discussions**: pinned issue at `https://github.com/lesleslie/dhara/discussions` (or similar — pin a discussion with the migration guide).
-   - **PyPI long-description**: Dhara's `pyproject.toml` `readme = "README.md"`; ensure the README's first 200 chars lead with "BREAKING: 21 mcp__dhara__* tools removed in v1.0.0; see https://github.com/lesleslie/dhara/blob/v1.0.0/MIGRATION.md".
-   - **PyPI classifier**: add `Development Status :: 7 - Inactive` is wrong (Dhara is active); instead add `Topic :: Software Development :: Libraries :: Python Modules` and a project URL pointing at the migration guide.
+   - **Email**: `mailto:nas-mcp@arctrix.com` (already on the legacy package's `CHANGELOG.md:871`).
+   - **GitHub Discussions**: pinned issue on the legacy repo's Discussions page (or similar — pin a discussion with the migration guide).
+   - **PyPI long-description**: the legacy package's `pyproject.toml` `readme = "README.md"`; ensure the README's first 200 chars lead with "BREAKING: 21 mcp__legacy__* tools removed in v1.0.0; see MIGRATION.md in the v1.0.0 tag".
+   - **PyPI classifier**: add `Development Status :: 7 - Inactive` is wrong (the package is active); instead add `Topic :: Software Development :: Libraries :: Python Modules` and a project URL pointing at the migration guide.
 4. **Per-consumer migration instructions** — for each of the 21 tools, link the new tool's path, the import change, and a one-line code snippet showing old → new.
 
-Phase 9 task 3 (`docs/mcp/MCP_TOOLS_SPECIFICATION.md`) adds a top-of-file breadcrumb: "**Notice: 21 `mcp__dhara__*` tools removed in v1.0.0; see [MIGRATION.md](https://github.com/lesleslie/dhara/blob/v1.0.0/MIGRATION.md).**"
+Phase 9 task 3 (`docs/mcp/MCP_TOOLS_SPECIFICATION.md`) adds a top-of-file breadcrumb: "**Notice: 21 `mcp__legacy__*` tools removed in v1.0.0; see `MIGRATION.md` in the v1.0.0 tag.**"
 
-### 4.10 Historical Dhara state retention
+### 4.10 Historical substrate state retention
 
-Per second-pass data-retention review (MEDIUM #4), each Dhara substrate has a documented fate:
+Per second-pass data-retention review (MEDIUM #4), each legacy substrate has a documented fate:
 
 | Substrate | Phase home | Historical fate |
 |----------|------------|-----------------|
-| `AsyncAdapterRegistry` (Dhara's adapter catalog) | Phase 1: Oneiric | **Migrate on first startup.** One-shot read-and-write task: load existing adapter records from Dhara's on-disk file, write to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install. |
-| `AsyncKVTimeSeriesStore` | Phase 6: Oneiric cache adapter | **Decision needed.** Two options: (a) ship a `dhara migrate kv-timeseries` CLI that bulk-writes historical records to the Oneiric cache adapter; (b) document data as orphaned with a release note. **Default (per user): migrate.** Phase 8 task 19 implements the CLI. |
-| `AsyncEcosystemStateStore` (service registry + event log) | Phase 3: Mahavishnu | **Migrate on first startup.** One-shot read-and-write task: load existing service/event records from Dhara's on-disk file, write to Mahavishnu's ecosystem_state store. Demonstrable by `mahavishnu mcp health.ecosystem_state.entities_count > 0` on a pre-0.20.1 install. |
-| `dhara_query_local_traces` DuckDB file | Phase 5: Akosha | **No migration needed.** The DuckDB file is read through `OtelTracesConfig.component_endpoints` (Phase 5 task 3). Historical traces are read unchanged. Phase 8 documents the no-op. |
+| `AsyncAdapterRegistry` (the legacy server's adapter catalog) | Phase 1: Oneiric | **Migrate on first startup.** One-shot read-and-write task: load existing adapter records from the legacy server's on-disk file, write to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install. |
+| `AsyncKVTimeSeriesStore` | Phase 6: Oneiric cache adapter | **Decision needed.** Two options: (a) ship a `migrate kv-timeseries` CLI in the legacy package that bulk-writes historical records to the Oneiric cache adapter; (b) document data as orphaned with a release note. **Default (per user): migrate.** Phase 8 task 19 implements the CLI. |
+| `AsyncEcosystemStateStore` (service registry + event log) | Phase 3: Mahavishnu | **Migrate on first startup.** One-shot read-and-write task: load existing service/event records from the legacy server's on-disk file, write to Mahavishnu's ecosystem_state store. Demonstrable by `mahavishnu mcp health.ecosystem_state.entities_count > 0` on a pre-0.20.1 install. |
+| `legacy_query_local_traces` DuckDB file | Phase 5: Akosha | **No migration needed.** The DuckDB file is read through `OtelTracesConfig.component_endpoints` (Phase 5 task 3). Historical traces are read unchanged. Phase 8 documents the no-op. |
 
-**§4.10.1 Migration observability commitment (added 2026-09-15, multi-agent review).** Each historical-Dhara migration operation emits an OTel span and an audit event so that "fresh install" and "silent migration failure" are distinguishable in operator dashboards.
+**§4.10.1 Migration observability commitment (added 2026-09-15, multi-agent review).** Each historical-substrate migration operation emits an OTel span and an audit event so that "fresh install" and "silent migration failure" are distinguishable in operator dashboards.
 
 - **OTel span**: name = `bodai.migration.<substrate>` (e.g. `bodai.migration.adapter_registry`, `bodai.migration.ecosystem_state`, `bodai.migration.kv_timeseries`); attributes include `substrate` (string), `source_path` (string), `records_read` (int), `records_written` (int), `outcome` (`success`|`partial`|`failure`), `error_class` (when failure).
 - **Audit event**: `mcp.migration.<substrate>` event_type with the same field set; `INFO` on success, `WARN` on partial / failure. Emitted via `mcp_common.auth.audit.AuditLogger.migration_event(...)` extending the same shape as `tool_invocation`.
 - **Health-feed surface**: each migration's target feed carries a `migration_completed_at` timestamp field on its `HealthFeedState` (mcp-common parlance; legacy oneiric `ComponentHealth` was the same concept). Operators can correlate `entities_count > 0` + `migration_completed_at is None` (fresh install) against `entities_count > 0` + `migration_completed_at not None` (migrated) against `entities_count == 0` + `migration_completed_at not None and outcome == 'failure'` (silent-failure mode). Demonstrable by `oneiric mcp health.adapter_registry.migration_completed_at is not None` on a pre-0.20.1 install after Phase 1.
 
-The hard cutover stance (per spec Phase 12a task 5 + §4.13.4) extends here: migrations are atomic from the operator's perspective — either `migration_completed_at` is set with outcome `success`/`partial`, or it's not set (and the operator inspects OTel + audit logs for the failure). KV-time-series remains the asymmetric case (explicit CLI rather than auto-migrate); its audit event lands when the operator runs `dhara migrate kv-timeseries`.
+The hard cutover stance (per spec Phase 12a task 5 + §4.13.4) extends here: migrations are atomic from the operator's perspective — either `migration_completed_at` is set with outcome `success`/`partial`, or it's not set (and the operator inspects OTel + audit logs for the failure). KV-time-series remains the asymmetric case (explicit CLI rather than auto-migrate); its audit event lands when the operator runs `migrate kv-timeseries`.
 
 ### 4.11 Wrapper consolidation principle (Layer 1)
 
@@ -388,7 +394,7 @@ The four Bodai application components (Mahavishnu, AkoSHA, Session-Buddy, Cracke
 |---|---|---|
 | PyCharm/IDE wrappers (`search_code_patterns`, `find_usages`, `get_ide_diagnostics`, `get_symbol_info`, `pycharm_health`) | 5 tools × 4 components = **20 duplicate slots** | `pycharm` MCP |
 | `discover_tools` | 4 copies | Each component's own tool inventory |
-| `list_*_skills` / `list_*_agents` / `get_*_skill` / `get_*_agent` | 4 tools × 4 components = **16 duplicate slots** | Canonical Dhara substrate (per Phase 4 / mcp-common.canonical_schemas) |
+| `list_*_skills` / `list_*_agents` / `get_*_skill` / `get_*_agent` | 4 tools × 4 components = **16 duplicate slots** | Canonical shared substrate (per Phase 4 / mcp-common.canonical_schemas) |
 | Health probes (`get_liveness`, `get_readiness`, `health_check_service`, `health_check_all`, `wait_for_dependency`) | 5 tools × 4 components = **20 duplicate slots** | `mcp_common.health` |
 | `query_local_traces` | 3 copies (Mahavishnu, AkoSHA, Crackerjack) | Per-component DuckDB files |
 
@@ -398,7 +404,7 @@ Each component **declares its own copy** of these wrappers, all routing to the s
 
 **Layer 1 commitment:** The Phase 1.5 wrapper consolidation phase (added to §5) extracts these wrappers into `mcp-common` modules. Each component mounts them under a local-namespace prefix (e.g., `mcp__mahavishnu__pycharm_*`) via `mcp_common.tools.dispatch` registration. After Layer 1 ships, each component's MCP surface drops from 30-200 tools down to just its domain tools.
 
-**What Layer 1 does NOT do:** It does not fold components together, does not consolidate the storage layers (still per-component DuckDB / SQLite / Dhara), does not change the four-process architecture. Layer 1 is wrapper-extraction only.
+**What Layer 1 does NOT do:** It does not fold components together, does not consolidate the storage layers (still per-component DuckDB / SQLite / shared KV substrate), does not change the four-process architecture. Layer 1 is wrapper-extraction only.
 
 **Pre-flight gate:** the wrapper extraction must use the existing `mcp-common` modules where they exist (`mcp_common.health`, `mcp_common.auth`). New wrappers (`mcp-common.ide.pycharm_tools`, `mcp-common.discovery`, `mcp-common.catalog`, `mcp-common.traces`) live alongside existing modules. Phase 1.5 task 0 enumerates each wrapper's current call sites across all four components before extraction.
 
@@ -420,7 +426,7 @@ The Postgres / pgvector analysis from the topology review surfaces three distinc
 
 **Cross-component Postgres coupling.** `mahavishnu/ingesters/otel_ingester.py:41` does `from akosha.storage import HotStore` — a direct cross-component Python import ADR 017 §Implementation evidence lines 147-148 cite as Phase-5 work to be removed. The replacement path is **Oneiric adapter access** (not AkoSHA's storage). The dependency arrow flips: Mahavishnu → Oneiric, never Mahavishnu → AkoSHA. Phase 5 task 4 implements this flip.
 
-**Mahavishnu dual-write migration debt.** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH Dhara (legacy) AND Postgres simultaneously. Dual-write is a migration state, not a steady state. Phase 5 commits a single-source decision: either Dhara OR Postgres, delete the other write path. **Without this, the spec's "decompose Dhara's MCP" goal is undermined** — Dhara's substrate role is not cleanly retired while Mahavishnu keeps dual-writing.
+**Mahavishnu dual-write migration debt.** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH the legacy KV substrate AND Postgres simultaneously. Dual-write is a migration state, not a steady state. Phase 5 commits a single-source decision: either the legacy substrate OR Postgres, delete the other write path. **Without this, the spec's "decompose the legacy MCP server's surface" goal is undermined** — the legacy substrate role is not cleanly retired while Mahavishnu keeps dual-writing.
 
 ### 4.13 Hook coordination via Oneiric event bus — added 2026-09-14
 
@@ -493,19 +499,21 @@ Adding Codex hooks (or any future harness) is ~15 lines per event. The canonical
 
 - **ADR 017 (proposed)** — Oneiric as the shared persistence substrate. The Oneiric MCP server (Phase 1 of this spec) IS the ADR-013 "canonical surface" for adapter state queries, now owned by Oneiric per ADR-017's "owned by Oneiric" framing. ADR-017 needs a minor amendment noting that Oneiric now ships an MCP server alongside its 54 built-in adapters.
 
-- **Active plan `2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — REQ REDIRECTS.** Phase 4 of the active plan has 5 named REQs that need explicit redirect after Phase 1 of this spec lands. Without this enumeration, the two plans silently conflict on the same Dhara files:
+- **Active plan `2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — REQ REDIRECTS.** Phase 4 of the active plan has 5 named REQs that need explicit redirect after Phase 1 of this spec lands. Without this enumeration, the two plans silently conflict on the same legacy files:
 
   | Active plan REQ | Target file (in active plan) | New target (post-Phase-1) | Rationale |
   |-----------------|-------------------------------|--------------------------|-----------|
-  | `REQ-DHARA-LOCKS` | `dhara/dhara/lock/__init__.py` | unchanged | Lock impl is engine code; stays in Dhara |
-  | `REQ-DHARA-STORAGE` | `dhara/dhara/mcp/server_core.py:141-148` | `oneiric/mcp/server_core.py` | The hardcoded `FileStorage` instantiation lives in the MCP server code; after Phase 1 this code is in Oneiric |
-  | `REQ-DHARA-CACHE` | `dhara/dhara/core/connection.py` | unchanged | Cache is engine code; stays in Dhara |
-  | `REQ-DHARA-CLOUD` | `dhara/dhara/storage/postgres.py` | unchanged | Cloud primary storage is engine code; stays in Dhara |
-  | `REQ-DHARA-ASYNC` | `dhara/dhara/core/connection.py` | unchanged | Async path is engine code; stays in Dhara |
+  | `REQ-MCP-LOCKS` | the legacy repo's `lock/__init__.py` | unchanged | Lock impl is engine code; stays in the legacy package |
+  | `REQ-MCP-STORAGE` | the legacy repo's `mcp/server_core.py:141-148` | `oneiric/mcp/server_core.py` | The hardcoded `FileStorage` instantiation lives in the MCP server code; after Phase 1 this code is in Oneiric |
+  | `REQ-MCP-CACHE` | the legacy repo's `core/connection.py` | unchanged | Cache is engine code; stays in the legacy package |
+  | `REQ-MCP-CLOUD` | the legacy repo's `storage/postgres.py` | unchanged | Cloud primary storage is engine code; stays in the legacy package |
+  | `REQ-MCP-ASYNC` | the legacy repo's `core/connection.py` | unchanged | Async path is engine code; stays in the legacy package |
 
-  Phase 9 of this spec updates the active plan to reflect these redirects. Only `REQ-DHARA-STORAGE` migrates target; the rest are unchanged because they touch engine code that this spec does not move.
+  Phase 9 of this spec updates the active plan to reflect these redirects. Only `REQ-MCP-STORAGE` migrates target; the rest are unchanged because they touch engine code that this spec does not move.
 
-- **Active plan Phase 11 (Harness-agnostic enablement) — REDIRECT.** Phase 11 currently validates Qwen Code / Claude Code against `mcp__dhara__*` tools. After Phase 8 of this spec, those tools are gone. Phase 9 of this spec updates Phase 11's test matrix with an explicit tool-name mapping (see §5 Phase 9 below).
+  **REQ-ID rename note:** the five REQ IDs above were re-prefixed from the retired component's legacy prefix to `REQ-MCP-*`; the active plan's IDs must be updated to match.
+
+- **Active plan Phase 11 (Harness-agnostic enablement) — REDIRECT.** Phase 11 currently validates Qwen Code / Claude Code against `mcp__legacy__*` tools. After Phase 8 of this spec, those tools are gone. Phase 9 of this spec updates Phase 11's test matrix with an explicit tool-name mapping (see §5 Phase 9 below).
 
 ## 5. Phased Delivery Plan
 
@@ -515,33 +523,33 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Goal:** `mcp__oneiric__*` tools exist; Mahavishnu and agents migrate to calling them. Hard cutover — no deprecation window, no `DEPRECATED_TOOLS` entries (user decision 2026-09-14).
 
-**Pre-flight gate (Phase 1 task #0):** Enumerate every `mcp__dhara__*` reference across the Bodai ecosystem. The 86 hits found by `grep -rn "mcp__dhara__" /Users/les/Projects/` span:
+**Pre-flight gate (Phase 1 task #0):** Enumerate every `mcp__legacy__*` reference across the Bodai ecosystem. The 86 hits found by `grep -rn "mcp__legacy__" /Users/les/Projects/` span:
 - `.claude/agents/oneiric-specialist.md:17` (1 hit)
 - `.claude/worktrees/agent-*/docs/adr/013-...md` (5 hits in worktree copies — non-canonical, ignored)
 - `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine)
 - `mahavishnu/core/skill_mcp_validator.py:62` (1 hit)
 - `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088)
-- All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
+- All other matches are registration code in the legacy MCP server, McP-server definitions, or legacy CHANGELOG entries — not consumers.
 
 **Tasks:**
 
-0. **Enumerate all 86 `mcp__dhara__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in Dhara, McP-server definitions, or Dhara CHANGELOG entries — not consumers.
+0. **Enumerate all 86 `mcp__legacy__*` call sites** (verified via grep across `/Users/les/Projects/`). Each consumer updated in the same commit as the tool's deletion. See R5 enumeration: 86 hits span `.claude/agents/oneiric-specialist.md:17`, `.claude/worktrees/agent-*/docs/adr/013-...md` (5 worktree copies — non-canonical, ignored), `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine), `mahavishnu/core/skill_mcp_validator.py:62`, `docs/plans/2026-04-26-agent-skill-modernization.md` (4 hits at lines 275, 685, 1079, 1088). All other matches are registration code in the legacy MCP server, McP-server definitions, or legacy CHANGELOG entries — not consumers.
 
-1. Create `oneiric/mcp/server_core.py` with `OneiricMCPServer` class following Dhara's `run_http_async` pattern (NOT the broken `MCPServerCLIFactory._start_server()` loop — see §4.6 for the pattern).
+1. Create `oneiric/mcp/server_core.py` with `OneiricMCPServer` class following the legacy server's `run_http_async` pattern (NOT the broken `MCPServerCLIFactory._start_server()` loop — see §4.6 for the pattern).
 
-1.5. **Create `oneiric/settings/oneiric.yaml`** with `mcp: { http_port: 8683, http_host: 127.0.0.1 }` override. The default `OneiricMCPConfig.http_port` is 8000; without this override Phase 1 would bind the wrong port. Verify by `oneiric config show mcp` after the file lands.
+1.5. **Create `oneiric/settings/oneiric.yaml`** with `mcp: { http_port: 8681, http_host: 127.0.0.1 }` override. The default `OneiricMCPConfig.http_port` is 8000; without this override Phase 1 would bind the wrong port. Verify by `oneiric config show mcp` after the file lands.
 
 2. **Wire the Typer sub-app pattern** (oneiric MEDIUM #1 — MCPServerCLIFactory is dead code): in `oneiric/cli/__init__.py:271-278`, add `app.add_typer(mcp_app, name="mcp")` where `mcp_app` is a `typer.Typer` defined in `oneiric/mcp/server_core.py` registering `start|stop|status|health|restart|config` commands that invoke `OneiricMCPServer.run_http_async()`. The unused `MCPServerCLIFactory` (lines 31-162 of `oneiric/core/cli.py`) is left as historical artifact; cleanup deferred to a follow-up refactor.
 
-3. Port the 7 `adapter_registry` tool implementations from `dhara/mcp/adapter_tools.py` (1,301 LOC) into `oneiric/mcp/tools/adapter_registry.py`. Each tool body wraps work in `with observed_span("oneiric.mcp.tool.<name>", component="oneiric.mcp", attributes={"tool.name": ..., "tool.duration_ms": ...}):` per §4.8. **Without this wrapping, OTel spans do not exist at runtime** (observability HIGH #1).
+3. Port the 7 `adapter_registry` tool implementations from the legacy server's `mcp/adapter_tools.py` (1,301 LOC) into `oneiric/mcp/tools/adapter_registry.py`. Each tool body wraps work in `with observed_span("oneiric.mcp.tool.<name>", component="oneiric.mcp", attributes={"tool.name": ..., "tool.duration_ms": ...}):` per §4.8. **Without this wrapping, OTel spans do not exist at runtime** (observability HIGH #1).
 
-4. Wire auth via `mcp_common.auth.middleware` (NOT Dhara's auth fork — Dhara's auth goes away with the server in Phase 8). Also extend `mcp_common.auth.audit.AuditLogger` with `tool_invocation` events (`tool.name`, `caller_id`, `arguments` redacted) per §4.8. Wire write tools (`store_adapter`, `validate_adapter`) to emit `WARN`-level events; read-only tools emit `INFO`.
+4. Wire auth via `mcp_common.auth.middleware` (NOT the legacy server's auth fork — that auth goes away with the server in Phase 8). Also extend `mcp_common.auth.audit.AuditLogger` with `tool_invocation` events (`tool.name`, `caller_id`, `arguments` redacted) per §4.8. Wire write tools (`store_adapter`, `validate_adapter`) to emit `WARN`-level events; read-only tools emit `INFO`.
 
 5. Wire tool profile gating via `mcp_common.tools.dispatch.apply_tool_profile` with explicit `ONEIRIC_TOOL_PROFILE` semantics per §4.6.
 
 6. **Wire each tool to a `HealthFeedState`** (shipped in `mcp_common.health.feed` v0.26.4): each tool instantiates a `HealthFeedState` (or accepts one via DI) and calls `record_success(state)` / `record_error(state)` after each invocation. The aggregator's `is_healthy(state, halflife_seconds)` reads the mutator outputs and emits the per-feed `FeedSnapshot`. The `HealthFeedState` dataclass replaces oneiric's `ComponentHealth`; `record_success`/`record_error` replace `HealthMonitor.record_invocation`; direct attribute assignment (`state.entities_count = N`) replaces `HealthMonitor.set_entities_count(name, n)`. Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_states` — replaces `HealthMonitor.get_feed(name)`. `/health` endpoint returns 503 if any feed's status is `degraded` or `failed` per the §4.8 threshold contract.
 
-7. **Migrate historical `AsyncAdapterRegistry` data** on first Oneiric startup (per §4.10). One-shot read-and-write from Dhara's on-disk file to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install.
+7. **Migrate historical `AsyncAdapterRegistry` data** on first Oneiric startup (per §4.10). One-shot read-and-write from the legacy server's on-disk file to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install.
 
 8. Add `tests/integration/test_<tool>_e2e.py` for each of the 7 tools (per wire-up contract). Each test asserts the tool emits an OTel span and updates the per-feed counters.
 
@@ -553,13 +561,13 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 12. Update `.claude/agents/database-operations-specialist.md` + `architecture-council.md` cross-references.
 
-13. Update `docs/plans/2026-04-26-agent-skill-modernization.md` (lines 275, 685, 1079, 1088) to replace `mcp__dhara__*` with `mcp__oneiric__*` / `mcp__mahavishnu__*` / `mcp__crackerjack__*` / `mcp__akosha__*` per the §4.2 destination table.
+13. Update `docs/plans/2026-04-26-agent-skill-modernization.md` (lines 275, 685, 1079, 1088) to replace `mcp__legacy__*` with `mcp__oneiric__*` / `mcp__mahavishnu__*` / `mcp__crackerjack__*` / `mcp__akosha__*` per the §4.2 destination table.
 
-14. Update `mahavishnu/core/skill_mcp_validator.py:62` to call `mcp__oneiric__get_adapter` instead of `mcp__dhara__get_adapter`.
+14. Update `mahavishnu/core/skill_mcp_validator.py:62` to call `mcp__oneiric__oneiric_get_adapter` instead of `mcp__legacy__get_adapter`.
 
-15. **Update Mahavishnu settings port references** (oneiric MEDIUM #4): in `mahavishnu/settings/mahavishnu.yaml`, update line 304-307 (`oneiric_mcp.base_url: "http://localhost:8683/mcp"` — section title and docstring comment) and line 365-370 (`health.dependencies.dhara: { port: 8683, required: false }` — repurpose to point at Oneiric's new MCP server since Dhara the engine is still a runtime dependency). Verify by `grep -n "8683" settings/mahavishnu.yaml` after the edit returns only the Oneiric references.
+15. **Update Mahavishnu settings port references** (oneiric MEDIUM #4): in `mahavishnu/settings/mahavishnu.yaml`, update line 304-307 (`oneiric_mcp.base_url: "http://localhost:8681/mcp"` — section title and docstring comment) and line 365-370 (`health.dependencies.mcp_state: { port: 8681, required: false }` — repurpose to point at Oneiric's new MCP server since the legacy engine is still a runtime dependency). Verify by `grep -n "8681" settings/mahavishnu.yaml` after the edit returns only the Oneiric references.
 
-16. **Retire Oneiric's `dhara_pusher` adapter** (R6): delete `oneiric/adapters/dhara_pusher.py` (entire file), `tests/test_dhara_pusher_coverage.py` (entire file), remove 6 occurrences in `tests/unit/adapters/test_tracked_settings.py`, remove 4 occurrences in `QUICKSTART.md`, remove `dhara_pusher` entry points from `pyproject.toml` if any. After Phase 1, Oneiric owns its own registry — pushing to a separate Dhara MCP is incoherent.
+16. **Retire Oneiric's registry-pusher adapter** (R6): delete the pusher adapter module (entire file), its coverage test module (entire file), remove 6 occurrences in `tests/unit/adapters/test_tracked_settings.py`, remove 4 occurrences in `QUICKSTART.md`, remove the pusher entry points from `pyproject.toml` if any. After Phase 1, Oneiric owns its own registry — pushing to a separate MCP server is incoherent.
 
 17. **Add OTel trace-context propagation** to `mcp_common.auth.middleware` for cross-MCP-server trace continuity. Phase 1 task 7 commits this; Phase 8 task 17 documents the propagation rules in `docs/runbooks/bodai-mcp-incident.md`.
 
@@ -572,7 +580,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 - **Delete** `mcp__mahavishnu__adapter_list` and `mcp__mahavishnu__adapter_metadata` (Option C of ADR-013). Remove from `mahavishnu/mcp/tool_versions.py:TOOL_VERSIONS` (lines 151-152). **Do NOT add to `DEPRECATED_TOOLS`** — the tools are gone, not deprecated (user decision: no deprecation window).
 - Update `_check_adapter_metadata_contract` in `mahavishnu/core/compatibility.py:200-222` — the check validates `AdapterMetadata` shape (not the MCP tool itself), so the check stays. Only its description text updates to mention "this checks the shape used by `mcp__oneiric__*`."
-- Update `mahavishnu/core/adapter_registry.py:495` docstring: replace "call the dedicated `adapter_list` MCP tool" with "call `mcp__oneiric__list_adapters` via the Oneiric MCP server."
+- Update `mahavishnu/core/adapter_registry.py:495` docstring: replace "call the dedicated `adapter_list` MCP tool" with "call `mcp__oneiric__oneiric_list_adapters` via the Oneiric MCP server."
 - Tests: narrow scope to actual MCP-tool-affected tests only:
   - Delete `tests/unit/test_mcp_adapter_registry_tools.py:85-289` (the MCP-tool-specific tests)
   - Delete `tests/unit/test_mcp_tool_versions.py:58` (the tool-version entry for the deleted tools)
@@ -583,7 +591,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Integration contract (per wire-up contract):**
 
 - **Triggered from:** `oneiric mcp start` (or via launchd plist / systemd unit); agents call `mcp__oneiric__*` via MCP protocol.
-- **Returns to / updates:** The Oneiric adapter registry store (backed by Dhara's `AsyncAdapterRegistry` for now; future: Oneiric's own persistence layer per ADR-017).
+- **Returns to / updates:** The Oneiric adapter registry store (backed by the legacy server's `AsyncAdapterRegistry` for now; future: Oneiric's own persistence layer per ADR-017).
 - **Demonstrable by:** `pytest tests/integration/test_<tool>_e2e.py` (7 files, one per tool) returns exit 0; `oneiric mcp health` returns 200 with 7 healthy feeds; `python scripts/audit_orphans.py --days 14` reports zero new orphans from the Oneiric MCP surface.
 - **Rollback signal:** 503 on `/health`, or 0 `entities_count` on any feed after startup, or any e2e test failure.
 - **Observability added:** OTel span `oneiric.mcp.tool.<name>` with attribute `tool.name`, `tool.duration_ms`. Per-feed signals at `/health`: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` for each of the 7 tools (per `docs/decisions/mcp-backend-wiring-discipline.md`).
@@ -609,7 +617,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 4. **Health probes → `mcp_common.health_tools`**. The 20 implementations (5 tools × 4 components) collapse to a single `mcp_common.health_tools.mount(server)` registration. Each component's `mcp/auth.py` and `mcp/tools/health*.py` files shrink to mount-time imports. **Demonstrable by:** `mcp__<component>__get_liveness` (and 4 siblings × 4 components = 16 total) return consistent envelope shapes; `/health` HTTP endpoint returns 200 / 503 per §4.8 threshold contract. **Rollback signal:** any component's `/health` returns the wrong status code, or a probe returns non-canonical envelope.
 
-5. **`query_local_traces` → `mcp_common.traces.endpoint_resolver`**. The 3 implementations (Mahavishnu, AkoSHA, Crackerjack) collapse to a single `mcp_common.traces.query_local_traces(component_endpoints=...)` factory. Per-component DuckDB paths become env-var-driven (`MAHAVISHNU_TRACES_PATH`, `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `DHARA_TRACES_PATH` if Dhara still emits traces post-Phase-8). **This replaces the hard-coded paths in Phase 5 task 3** (see §5 Phase 5 update below). Demonstrable by: each component's `query_local_traces` reads from its env-var-resolved path; the AkoSHA-side `OtelTracesConfig.component_endpoints` map becomes a default that operators can override. **Rollback signal:** `entities_count == 0` after warmup, or endpoint-resolver raises on any path lookup.
+5. **`query_local_traces` → `mcp_common.traces.endpoint_resolver`**. The 3 implementations (Mahavishnu, AkoSHA, Crackerjack) collapse to a single `mcp_common.traces.query_local_traces(component_endpoints=...)` factory. Per-component DuckDB paths become env-var-driven (`MAHAVISHNU_TRACES_PATH`, `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `LEGACY_MCP_TRACES_PATH` if the legacy server still emits traces post-Phase-8). **This replaces the hard-coded paths in Phase 5 task 3** (see §5 Phase 5 update below). Demonstrable by: each component's `query_local_traces` reads from its env-var-resolved path; the AkoSHA-side `OtelTracesConfig.component_endpoints` map becomes a default that operators can override. **Rollback signal:** `entities_count == 0` after warmup, or endpoint-resolver raises on any path lookup.
 
 **Mahavishnu / AkoSHA / Session-Buddy / Crackerjack changes (in each wrapper-category commit):**
 - Delete the local wrapper file(s); replace with `from mcp_common.<module> import ...; mount(server)`.
@@ -625,19 +633,19 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 ### Phase 2 — Auth consolidation
 
-**Goal:** Complete the auth consolidation by closing out Dhara's row in `2026-04-27-bodai-auth-standardization-design.md`. **Critical correction:** Dhara's auth is **file-based `TokenAuth`** (SHA-256 hashed tokens with per-token `Role` mapping and rate limits — see `dhara/mcp/auth.py:252-436`), NOT JWT. There is no JWT migration. Phase 2 is essentially a no-op for code change because Dhara's auth goes away with the server in Phase 8.
+**Goal:** Complete the auth consolidation by closing out the legacy server's row in `2026-04-27-bodai-auth-standardization-design.md`. **Critical correction:** the legacy server's auth is **file-based `TokenAuth`** (SHA-256 hashed tokens with per-token `Role` mapping and rate limits — see its `mcp/auth.py:252-436`), NOT JWT. There is no JWT migration. Phase 2 is essentially a no-op for code change because that auth goes away with the server in Phase 8.
 
 **Why this is a no-op:**
 
-- Phase 1 builds the Oneiric MCP server using `mcp_common.auth.middleware` directly (not Dhara's auth fork).
-- Phase 8 deletes `dhara/mcp/auth.py`, `dhara/mcp/fastmcp_auth.py`, `dhara/mcp/middleware.py` (1,325 LOC) along with `dhara/mcp/`.
-- No Dhara consumer of `dhara.mcp.auth.*` survives Phase 8 (Dhara has no MCP server, no callers).
+- Phase 1 builds the Oneiric MCP server using `mcp_common.auth.middleware` directly (not the legacy server's auth fork).
+- Phase 8 deletes `mcp/auth.py`, `mcp/fastmcp_auth.py`, `mcp/middleware.py` (1,325 LOC) along with `mcp/`.
+- No consumer of the legacy server's `mcp.auth.*` survives Phase 8 (the package has no MCP server, no callers).
 
 **Tasks (documentation only — no code change in Phase 2 itself):**
 
-1. Update `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — mark Dhara's row in the "per-service status" table as Done (no separate code migration was needed; the spec's pre-existing mcp_common adoption covered all four remaining services).
-2. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it cited Dhara's auth (verify).
-3. Verify by grep: `grep -r "from dhara.mcp.auth" /Users/les/Projects/` returns nothing (already enforced by Phase 1 + Phase 8 deletion, but record the verification step).
+1. Update `docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md` — mark the legacy server's row in the "per-service status" table as Done (no separate code migration was needed; the spec's pre-existing mcp_common adoption covered all four remaining services).
+2. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it cited the legacy server's auth (verify).
+3. Verify by grep: `grep -r "from <legacy pkg>.mcp.auth" /Users/les/Projects/` returns nothing (already enforced by Phase 1 + Phase 8 deletion, but record the verification step).
 
 **Phase 8 owns the actual deletion** (not Phase 2). Phase 2 just closes the audit trail on the auth-standardization spec.
 
@@ -645,27 +653,27 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 - **Triggered from:** None (documentation update only; no runtime feature).
 - **Returns to / updates:** `2026-04-27-bodai-auth-standardization-design.md` § per-service status table.
-- **Demonstrable by:** `grep -rn "dhara" docs/specs/2026-04-27-bodai-auth-standardization-design.md` returns no references to "in-progress" or "pending Dhara migration"; the spec's §5.2 per-service adapter section explicitly lists Dhara as N/A (no MCP server post-Phase-1).
+- **Demonstrable by:** `grep -rn "legacy" docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md` returns no references to "in-progress" or "pending migration" for the legacy server; the spec's §5.2 per-service adapter section explicitly lists the legacy server as N/A (no MCP server post-Phase-1).
 - **Rollback signal:** None (no runtime change).
 - **Observability added:** None (no runtime change).
 
 ### Phase 3 — Move ecosystem_state → Mahavishnu
 
-**Goal:** `mcp__mahavishnu__ecosystem_*` includes 5 new service/event tools. Dhara drops the implementation. Tools use the `ecosystem_*` prefix to cluster with existing `ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness` (control-plane convention: cross-component ecosystem state).
+**Goal:** `mcp__mahavishnu__mahavishnu_*` includes 5 new service/event tools. The legacy MCP server drops the implementation. Tools use the `ecosystem_*` prefix to cluster with existing `ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness` (control-plane convention: cross-component ecosystem state).
 
-**Pre-flight gate:** Confirm no internal caller of `mcp__dhara__upsert_service` / `get_service` / `list_services` / `record_event` / `list_events` outside Dhara. (Grep result from Phase 1 task #0 — none found outside Dhara's own mcp/.)
+**Pre-flight gate:** Confirm no internal caller of `mcp__legacy__upsert_service` / `get_service` / `list_services` / `record_event` / `list_events` outside the legacy MCP server. (Grep result from Phase 1 task #0 — none found outside the legacy server's own mcp/.)
 
 **Tasks:**
 
-1. Port `dhara/mcp/ecosystem_state.py` (232 LOC) to `mahavishnu/mcp/tools/ecosystem_state.py`. Rename functions:
-   - `dhara_upsert_service` → `ecosystem_upsert_service`
-   - `dhara_get_service` → `ecosystem_get_service`
-   - `dhara_list_services` → `ecosystem_list_services`
-   - `dhara_record_event` → `ecosystem_record_event`
-   - `dhara_list_events` → `ecosystem_list_events`
+1. Port the legacy server's `mcp/ecosystem_state.py` (232 LOC) to `mahavishnu/mcp/tools/ecosystem_state.py`. Rename functions:
+   - `legacy_upsert_service` → `mahavishnu_upsert_service`
+   - `legacy_get_service` → `mahavishnu_get_service`
+   - `legacy_list_services` → `mahavishnu_list_services`
+   - `legacy_record_event` → `mahavishnu_record_event`
+   - `legacy_list_events` → `mahavishnu_list_events`
 2. Port the `AsyncEcosystemStateStore` to `mahavishnu/core/ecosystem_state_store.py`.
 3. Register tools with `@server.tool(name="ecosystem_upsert_service")` etc. — explicit names matching the cluster convention.
-4. Wire tool profile gating (`ecosystem_state` group; STANDARD + FULL profiles; `mandatory_groups` includes `ecosystem_state` per picker-parity logic — see Dhara's `dhara/mcp/profiles.py:215-228` for the pattern).
+4. Wire tool profile gating (`ecosystem_state` group; STANDARD + FULL profiles; `mandatory_groups` includes `ecosystem_state` per picker-parity logic — see the legacy server's `mcp/profiles.py:215-228` for the pattern).
 5. Add 5 e2e tests in `tests/integration/test_ecosystem_<tool>_e2e.py`.
 6. Wire per-feed health aggregator: `ecosystem_state` feed exposes `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total`. Counter increments on each tool invocation.
 7. Update `.claude/agents/mahavishnu-specialist.md` to reference the new tools under the `/ecosystem/*` cluster.
@@ -673,36 +681,36 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Hard cutover (no deprecation window, no `DEPRECATED_TOOLS` entries):**
 
-- `mcp__dhara__upsert_service` → `mcp__mahavishnu__ecosystem_upsert_service`
-- `mcp__dhara__get_service` → `mcp__mahavishnu__ecosystem_get_service`
-- `mcp__dhara__list_services` → `mcp__mahavishnu__ecosystem_list_services`
-- `mcp__dhara__record_event` → `mcp__mahavishnu__ecosystem_record_event`
-- `mcp__dhara__list_events` → `mcp__mahavishnu__ecosystem_list_events`
+- `mcp__legacy__upsert_service` → `mcp__mahavishnu__mahavishnu_upsert_service`
+- `mcp__legacy__get_service` → `mcp__mahavishnu__mahavishnu_get_service`
+- `mcp__legacy__list_services` → `mcp__mahavishnu__mahavishnu_list_services`
+- `mcp__legacy__record_event` → `mcp__mahavishnu__mahavishnu_record_event`
+- `mcp__legacy__list_events` → `mcp__mahavishnu__mahavishnu_list_events`
 
 **Integration contract:**
 
-- **Triggered from:** `mahavishnu mcp start`; agents call `mcp__mahavishnu__ecosystem_*` via MCP protocol.
-- **Returns to / updates:** Mahavishnu's ecosystem_state store (replaces Dhara's `AsyncEcosystemStateStore`).
+- **Triggered from:** `mahavishnu mcp start`; agents call `mcp__mahavishnu__mahavishnu_*` via MCP protocol.
+- **Returns to / updates:** Mahavishnu's ecosystem_state store (replaces the legacy server's `AsyncEcosystemStateStore`).
 - **Demonstrable by:** `pytest tests/integration/test_ecosystem_<tool>_e2e.py` returns exit 0; `mahavishnu mcp health` returns 200 with healthy `ecosystem_state` feed; `python scripts/audit_orphans.py --days 14` reports zero new orphans from the ecosystem_state surface.
 - **Rollback signal:** 503 or 0 entities_count on ecosystem_state feed, or any e2e test failure.
 - **Observability added:** OTel span `mahavishnu.mcp.tool.ecosystem_state.<name>`. Per-feed signals: `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `feed.cycles_total` exposed at `mahavishnu mcp health.ecosystem_state`.
 
 ### Phase 4 — Move agent_registry + skill_registry → Crackerjack; signer_feed → mcp-common
 
-**Goal:** Phase 1.5 of the active ACP plan, with split routing per the topology review. The agent/skill catalogs (which are Crackerjack's domain — federation-wide catalogs are quality-tooling's natural neighbor) move to Crackerjack. The signer infrastructure (a cryptographic primitive used by both catalogs) moves to `mcp-common` as cross-cutting infra. LOC breakdown: agent_registry (426) + agent_schema (223) + skill_registry (353) + skill_schema (173) = **1,175 LOC** → Crackerjack; signer_feed (254) + `dhara/skills_signer/` → `mcp-common` (254 LOC + package).
+**Goal:** Phase 1.5 of the active ACP plan, with split routing per the topology review. The agent/skill catalogs (which are Crackerjack's domain — federation-wide catalogs are quality-tooling's natural neighbor) move to Crackerjack. The signer infrastructure (a cryptographic primitive used by both catalogs) moves to `mcp-common` as cross-cutting infra. LOC breakdown: agent_registry (426) + agent_schema (223) + skill_registry (353) + skill_schema (173) = **1,175 LOC** → Crackerjack; signer_feed (254) + the legacy package's `skills_signer/` → `mcp-common` (254 LOC + package).
 
-**Pre-flight gate (resolves OQ #1 + OQ-6):** `dhara/skills_signer/` exists at `/Users/les/Projects/dhara/dhara/skills_signer/`. Move it to `mcp-common` (not Crackerjack) — signer is cross-cutting infra, not a quality-tooling concern. After move, **delete** the Dhara-side directory. The canonical `agent_schema.py` / `skill_schema.py` files (currently sed-replicated across 4 components) move to `mcp-common.canonical_schemas` (this is the Phase 10 commit referenced from Phase 1.5 task 3; Phase 4 ships the Crackerjack-side import from the canonical home).
+**Pre-flight gate (resolves OQ #1 + OQ-6):** the legacy package's `skills_signer/` exists at `/Users/les/Projects/<legacy repo>/skills_signer/`. Move it to `mcp-common` (not Crackerjack) — signer is cross-cutting infra, not a quality-tooling concern. After move, **delete** the legacy-side directory. The canonical `agent_schema.py` / `skill_schema.py` files (currently sed-replicated across 4 components) move to `mcp-common.canonical_schemas` (this is the Phase 10 commit referenced from Phase 1.5 task 3; Phase 4 ships the Crackerjack-side import from the canonical home).
 
 **Tasks:**
 
-1. Port `dhara/mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`. **Imports `agent_schema` from `mcp-common.canonical_schemas`** (not from a local copy).
-2. Port `dhara/mcp/agent_schema.py` (223 LOC) to `mcp-common/mcp_common/canonical_schemas/agent.py` (the canonical home referenced by Phase 1.5 task 3).
-3. Port `dhara/mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`. **Imports `skill_schema` from `mcp-common.canonical_schemas`**.
-4. Port `dhara/mcp/skill_schema.py` (173 LOC) to `mcp-common/mcp_common/canonical_schemas/skill.py`.
-5. **Port `dhara/mcp/signer_feed.py` (254 LOC) to `mcp-common/mcp_common/signing/skills_signer.py`** (cross-cutting crypto primitive, not a Crackerjack-domain concern). **Not exposed as an MCP tool**; consumed by the agent/skill catalogs as a library import. The ed25519 signing is the same primitive Phase 1.5 of the active ACP plan ships through `oneiric.actions.security.SecuritySignatureAction`; Phase 4 consolidates around `mcp-common`'s canonical home.
-6. Move `dhara/skills_signer/` package to `mcp-common/mcp_common/signing/dhara_skills_signer/` (rename optional; preserving the original namespace avoids breaking the import paths the active ACP plan Phase 1.5 already shipped). **Delete the Dhara-side directory after move.**
+1. Port the legacy server's `mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`. **Imports `agent_schema` from `mcp-common.canonical_schemas`** (not from a local copy).
+2. Port the legacy server's `mcp/agent_schema.py` (223 LOC) to `mcp-common/mcp_common/canonical_schemas/agent.py` (the canonical home referenced by Phase 1.5 task 3).
+3. Port the legacy server's `mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`. **Imports `skill_schema` from `mcp-common.canonical_schemas`**.
+4. Port the legacy server's `mcp/skill_schema.py` (173 LOC) to `mcp-common/mcp_common/canonical_schemas/skill.py`.
+5. **Port the legacy server's `mcp/signer_feed.py` (254 LOC) to `mcp-common/mcp_common/signing/skills_signer.py`** (cross-cutting crypto primitive, not a Crackerjack-domain concern). **Not exposed as an MCP tool**; consumed by the agent/skill catalogs as a library import. The ed25519 signing is the same primitive Phase 1.5 of the active ACP plan ships through `oneiric.actions.security.SecuritySignatureAction`; Phase 4 consolidates around `mcp-common`'s canonical home.
+6. Move the legacy package's `skills_signer/` package to `mcp-common/mcp_common/signing/skills_signer/` (rename optional; preserving the original namespace avoids breaking the import paths the active ACP plan Phase 1.5 already shipped). **Delete the legacy-side directory after move.**
 7. Wire auth (RBAC: WRITE permission required for registration; READ for listing).
-8. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic that Dhara documented in `dhara/mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
+8. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic the legacy server documented in `mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
 9. Add 4 e2e tests in `tests/integration/test_<tool>_e2e.py`.
 10. Wire per-feed health aggregator: each tool registers a `HealthFeedState` (mcp-common parlance) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. The aggregator's `aggregate_feed_states` rolls them into the worst-case `HealthSnapshot` consumed by `/health` and emitted to Prometheus via `update_health_metrics`.
 
@@ -712,10 +720,10 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Hard cutover:**
 
-- `mcp__dhara__list_agents` → `mcp__crackerjack__list_agents`
-- `mcp__dhara__get_agent` → `mcp__crackerjack__get_agent`
-- `mcp__dhara__list_skills` → `mcp__crackerjack__list_skills`
-- `mcp__dhara__get_skill` → `mcp__crackerjack__get_skill`
+- `mcp__legacy__list_agents` → `mcp__crackerjack__list_agents`
+- `mcp__legacy__get_agent` → `mcp__crackerjack__get_agent`
+- `mcp__legacy__list_skills` → `mcp__crackerjack__list_skills`
+- `mcp__legacy__get_skill` → `mcp__crackerjack__get_skill`
 
 **Naming note:** Crackerjack already ships its own skill mechanism for skill-managed packaging (`crackerjack-compliant-code`, etc.). The ported Bodai-wide agent/skill catalog lives under the same tool prefix. Document the two namespaces in Phase 4 acceptance criteria: "Crackerjack's own skill management" vs "the federation-wide agent/skill catalog."
 
@@ -729,30 +737,30 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 ### Phase 5 — Move otel_traces → Akosha (single tool, fitness-shaped)
 
-**Goal:** Akosha owns OTel trace queries; Dhara drops the tool + the `akosha>=0.17.1` dep. **Single tool, not two** (user decision 2026-09-14 — pick one name). Pick **`akosha_query_local_traces_fitness`**: drop Akosha's existing `akosha_query_local_traces` (general-purpose, raw conversation rows) and port Dhara's fitness-shaped tool. Reasons: the `_fitness` suffix makes the contract explicit, the Dhara tool is the only documented consumer's actual need (Akosha's fitness analyzer polls cross-component traces for fitness signal computation), and hard cutover means no backward-compat baggage. If a general-purpose raw-trace query is ever needed, ship it later under a different name (e.g. `akosha_query_traces_raw`).
+**Goal:** Akosha owns OTel trace queries; the legacy MCP server drops the tool + the `akosha>=0.17.1` dep. **Single tool, not two** (user decision 2026-09-14 — pick one name). Pick **`akosha_query_local_traces_fitness`**: drop Akosha's existing `akosha_query_local_traces` (general-purpose, raw conversation rows) and port the legacy server's fitness-shaped tool. Reasons: the `_fitness` suffix makes the contract explicit, the legacy tool is the only documented consumer's actual need (Akosha's fitness analyzer polls cross-component traces for fitness signal computation), and hard cutover means no backward-compat baggage. If a general-purpose raw-trace query is ever needed, ship it later under a different name (e.g. `akosha_query_traces_raw`).
 
 **Pre-flight gate (resolves HIGH findings from review):**
 
-- **Signature/scope decision.** Dhara's tool and Akosha's existing tool have different signatures (Dhara: `task_class: str` required, `time_range_minutes: int`, `system_id: str | None`, returns fitness-shaped tuples `outcome`/`duration_ms`/`selector`/`component_name`. Akosha: `system_id: str` required, `start_time`/`end_time` RFC3339, returns raw conversation rows `conversation_id`/`content`/`metadata`). They are NOT byte-clones despite Dhara's docstring claiming so. **Hard cutover to the fitness-shaped signature**; the fitness analyzer is the documented consumer; raw-row queries are not.
+- **Signature/scope decision.** The legacy server's tool and Akosha's existing tool have different signatures (legacy server: `task_class: str` required, `time_range_minutes: int`, `system_id: str | None`, returns fitness-shaped tuples `outcome`/`duration_ms`/`selector`/`component_name`. Akosha: `system_id: str` required, `start_time`/`end_time` RFC3339, returns raw conversation rows `conversation_id`/`content`/`metadata`). They are NOT byte-clones despite the legacy docstring claiming so. **Hard cutover to the fitness-shaped signature**; the fitness analyzer is the documented consumer; raw-row queries are not.
 
 **Tasks:**
 
 1. **Drop Akosha's existing `akosha_query_local_traces`** (`akosha/mcp/tools/otel_tools.py:30-78`). Delete the tool registration. Update `akosha/mcp/tool_versions.py:TOOL_VERSIONS` to remove the entry.
-2. **Port Dhara's `dhara_query_local_traces`** (`dhara/mcp/tools/otel_traces.py:52-187`) to `akosha/mcp/tools/query_local_traces_fitness.py`. Rename to `akosha_query_local_traces_fitness`. Preserve the fitness-shaped signature: `task_class: str`, `time_range_minutes: int = 60`, `system_id: str | None = None`, `limit: int = 100`. Preserve the cross-component polling pattern (opens HotStore against a config-supplied DuckDB file).
-3. **Resolve per-component DuckDB routing** (resolves akosha-specialist HIGH #2). Use **`mcp_common.traces.endpoint_resolver`** (the Phase 1.5 wrapper consolidation lands this helper at `mcp-common/mcp_common/traces/endpoint_resolver.py`). Per-component DuckDB paths are env-var-driven, not hardcoded: `MAHAVISHNU_TRACES_PATH` (default `/Users/les/.local/share/mahavishnu/traces.duckdb`), `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `DHARA_TRACES_PATH` (only set if Dhara still emits traces post-Phase-8). AkoSHA's `OtelTracesConfig.component_endpoints` becomes a **default override layer** that operators can configure when env-vars are insufficient (e.g. for multi-region trace sources). **Demonstrable by:** `akosha mcp health.query_local_traces_fitness` returns 200 with `entities_count > 0` even when one component's DuckDB file is moved (env-var follows it). **Rollback signal:** endpoint_resolver raises on missing path, or `entities_count == 0` after warmup.
-4. **Remove `akosha>=0.17.1` from Dhara's `[dependency-groups].otel-traces`** — Dhara no longer needs it after the port. Verified: the only `import akosha` in Dhara runtime code is `dhara/mcp/tools/otel_traces.py:99` (`from akosha.storage import HotStore`); other matches are docstrings. Do NOT move the dep group to Akosha (Akosha already depends on its own storage in-tree — adding a self-referential group creates circular install hazard).
+2. **Port the legacy server's `query_local_traces`** (its `mcp/tools/otel_traces.py:52-187`) to `akosha/mcp/tools/query_local_traces_fitness.py`. Rename to `akosha_query_local_traces_fitness`. Preserve the fitness-shaped signature: `task_class: str`, `time_range_minutes: int = 60`, `system_id: str | None = None`, `limit: int = 100`. Preserve the cross-component polling pattern (opens HotStore against a config-supplied DuckDB file).
+3. **Resolve per-component DuckDB routing** (resolves akosha-specialist HIGH #2). Use **`mcp_common.traces.endpoint_resolver`** (the Phase 1.5 wrapper consolidation lands this helper at `mcp-common/mcp_common/traces/endpoint_resolver.py`). Per-component DuckDB paths are env-var-driven, not hardcoded: `MAHAVISHNU_TRACES_PATH` (default `/Users/les/.local/share/mahavishnu/traces.duckdb`), `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `LEGACY_MCP_TRACES_PATH` (only set if the legacy server still emits traces post-Phase-8). AkoSHA's `OtelTracesConfig.component_endpoints` becomes a **default override layer** that operators can configure when env-vars are insufficient (e.g. for multi-region trace sources). **Demonstrable by:** `akosha mcp health.query_local_traces_fitness` returns 200 with `entities_count > 0` even when one component's DuckDB file is moved (env-var follows it). **Rollback signal:** endpoint_resolver raises on missing path, or `entities_count == 0` after warmup.
+4. **Remove `akosha>=0.17.1` from the legacy package's `[dependency-groups].otel-traces`** — the legacy package no longer needs it after the port. Verified: the only `import akosha` in the legacy runtime code is `mcp/tools/otel_traces.py:99` (`from akosha.storage import HotStore`); other matches are docstrings. Do NOT move the dep group to Akosha (Akosha already depends on its own storage in-tree — adding a self-referential group creates circular install hazard).
 5. Add e2e test in `tests/integration/test_query_local_traces_fitness_e2e.py` — assert the fitness analyzer can poll all 5 components and compute fitness signals correctly. The e2e test verifies (a) all 5 component DuckDB files exist at startup (proactive check), (b) each file is readable, (c) the fitness analyzer returns fitness-shaped tuples with non-empty `entities_count`.
 6. Update `.claude/agents/akosha-specialist.md` and `architecture-council.md` cross-references.
 7. **Add `traces_endpoints_health` feed** (observability MEDIUM #5 — proactive, not reactive). Each of the 5 component DuckDB files is a separate feed with `feed.entities_count = number_of_reachable_endpoints`. The feed transitions `HEALTHY` → `UNHEALTHY` if any endpoint file is missing or unreadable. Per §4.8 threshold contract: `UNHEALTHY` if `entities_count < 5` after warmup. Rollback signal becomes proactive: "503 or `entities_count < 5` on `traces_endpoints` feed at `/health`, or any e2e test failure." Each tool body wraps work in `with observed_span("akosha.mcp.tool.query_local_traces_fitness", attributes={"tool.name": ..., "tool.duration_ms": ...}):`.
 8. **Replace Mahavishnu's `from akosha.storage import HotStore`** (resolves §4.12 cross-component Postgres coupling + ADR 017 §Implementation evidence line 147). **Both layers lifted 2026-09-15.** The forward reference at `mahavishnu/ingesters/otel_ingester.py:41` (in `TYPE_CHECKING`) becomes `from oneiric.adapters.vector.hot_store import HotStore` — Oneiric's substrate-hosted Protocol (oneiric commit `93f60cd`). The runtime imports at lines 605 and 1334 (which construct the concrete `HotStore`) become `from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore` — Oneiric's substrate-hosted concrete (oneiric commit `198564e`). **Replacement path:** `from oneiric.adapters.vector.hot_store import HotStore` for the type annotation; `from oneiric.adapters.vector.duckdb_hot_store import DuckdbHotStore` for runtime construction. **Never** `from akosha.storage import HotStore`. The dependency arrow flips: Mahavishnu → Oneiric, never Mahavishnu → AkoSHA. **Demonstrable by:** `grep -rn "^from akosha\|^import akosha" mahavishnu/` returns 0 matches; the OTel ingester continues to read/write trace data via the Oneiric adapter; the e2e test from Phase 5 task 5 passes with the new adapter path. **Rollback signal:** trace ingestion returns 0 records, or `pytest mahavishnu/tests/integration/test_otel_ingester_e2e.py` fails.
-9. **Resolve Mahavishnu's `persistence.write_mode: "dual"`** (resolves §4.12 dual-write migration debt + ADR 017 substrate ownership). Mahavishnu currently writes to BOTH Dhara (legacy) AND Postgres (`mahavishnu/settings/mahavishnu.yaml:140`). Dual-write is a migration state, not a steady state. **Phase 5 commits a single-source decision:**
-   - **Option A (Dhara only):** keep Dhara as the substrate; delete Mahavishnu's Postgres write path; remove `mahavishnu/migrations/` Postgres DDL files. Simpler, but loses the serverless-readiness substrate framing in the active plan's Phase 5.
-   - **Option B (Postgres only):** migrate the substrate to Oneiric's `PostgresDatabaseAdapter`; delete Mahavishnu's Dhara write path. Aligns with the active plan's substrate framing.
-   - **Default (per ADR 017 substrate ownership): Option B.** Dhara's MCP server is being retired in Phase 8; Dhara the engine stays (Dhara-as-engine is the user's choice per `dhara` 2026-09-14 decision). Phase 5 picks Option B: substrate lives on Oneiric's `PostgresDatabaseAdapter`; Mahavishnu's `write_mode: "dual"` setting is removed; `persistence.postgres_url` becomes the canonical substrate URL (operator-configurable). **Demonstrable by:** `mahavishnu mcp health.persistence.entities_count > 0` after a single write (proves Postgres is the substrate); `grep -rn "write_mode.*dual" mahavishnu/` returns 0 matches; the Dhara-as-engine connection (`dhara db start --port 8685`) continues to work for operators who use it for non-Mahavishnu state (the engine stays). **Rollback signal:** Postgres write fails on the operator's deployment, or a Dhara-engine consumer of Mahavishnu state reports missing data. Phase 5 documents the Option A fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately.
+9. **Resolve Mahavishnu's `persistence.write_mode: "dual"`** (resolves §4.12 dual-write migration debt + ADR 017 substrate ownership). Mahavishnu currently writes to BOTH the legacy KV substrate AND Postgres (`mahavishnu/settings/mahavishnu.yaml:140`). Dual-write is a migration state, not a steady state. **Phase 5 commits a single-source decision:**
+   - **Option A (legacy substrate only):** keep the legacy substrate; delete Mahavishnu's Postgres write path; remove `mahavishnu/migrations/` Postgres DDL files. Simpler, but loses the serverless-readiness substrate framing in the active plan's Phase 5.
+   - **Option B (Postgres only):** migrate the substrate to Oneiric's `PostgresDatabaseAdapter`; delete Mahavishnu's legacy write path. Aligns with the active plan's substrate framing.
+   - **Default (per ADR 017 substrate ownership): Option B.** The legacy MCP server is being retired in Phase 8; the engine stays (the engine-only choice is the user's per the 2026-09-14 decision). Phase 5 picks Option B: substrate lives on Oneiric's `PostgresDatabaseAdapter`; Mahavishnu's `write_mode: "dual"` setting is removed; `persistence.postgres_url` becomes the canonical substrate URL (operator-configurable). **Demonstrable by:** `mahavishnu mcp health.persistence.entities_count > 0` after a single write (proves Postgres is the substrate); `grep -rn "write_mode.*dual" mahavishnu/` returns 0 matches; the engine-only connection (`db start --port 8685`) continues to work for operators who use it for non-Mahavishnu state (the engine stays). **Rollback signal:** Postgres write fails on the operator's deployment, or an engine consumer of Mahavishnu state reports missing data. Phase 5 documents the Option A fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately.
 
 **Hard cutover:**
 
-- `mcp__dhara__query_local_traces` → `mcp__akosha__query_local_traces_fitness`
+- `mcp__legacy__query_local_traces` → `mcp__akosha__query_local_traces_fitness`
 - `mcp__akosha__query_local_traces` (existing) → **deleted** (not replaced; if raw-row queries are needed later, ship a separate tool)
 
 **Integration contract:**
@@ -819,20 +827,20 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Goal:** Two remaining tool groups resolved. **Hard cutover (no deprecation window).**
 
-**Pre-flight gate:** Both decisions must be ratified by user before Phase 8 retires Dhara's MCP server. If unratified by Phase 8, the spec defaults are: drop `sql_proxy`, wrap `kv_time_series` as Oneiric cache adapter (no MCP tool).
+**Pre-flight gate:** Both decisions must be ratified by user before Phase 8 retires the legacy MCP server. If unratified by Phase 8, the spec defaults are: drop `sql_proxy`, wrap `kv_time_series` as Oneiric cache adapter (no MCP tool).
 
 **Decision matrix (defaults ratified 2026-09-14):**
 
 | Tool group | Default action | Why |
 |------------|----------------|-----|
 | `kv_time_series` (6 tools: `put`, `get`, `list_prefix`, `record_time_series`, `query_time_series`, `aggregate_patterns`) | **Wrap as Oneiric cache adapter** (no MCP tool). The adapter becomes `oneiric.adapters.cache.persistent_kv` and is consumed by Bodai components via the Oneiric resolver, not via MCP. | Akosha's HotStore is a query substrate (not a generic KV). Session-Buddy's `store_reflection` is memory/reflective (not generic KV). Wrapping as a Oneiric adapter keeps each component's surface tight. Consumers that need generic KV access the adapter directly via Oneiric's resolver; no MCP tool needed. |
-| `sql_proxy` (2 tools: `dhara_sql_query`, `dhara_sql_execute`) | **Drop.** | The active plan's Phase 6 already strips similar tools as "off-the-shelf or deleted." DuckDB SQL is reachable through Akosha's trace query tool (which already uses the same DuckDB-backed schema) and through other Bodai surfaces. **Note:** My earlier draft of this spec claimed "AkoSHA already has `aggregate_patterns`" — that claim is false (verified by grep: no such tool exists in `akosha/mcp/tools/`). The decision to drop `sql_proxy` stands on its own merits, not on the (incorrect) duplication rationale. |
+| `sql_proxy` (2 tools: `legacy_sql_query`, `legacy_sql_execute`) | **Drop.** | The active plan's Phase 6 already strips similar tools as "off-the-shelf or deleted." DuckDB SQL is reachable through Akosha's trace query tool (which already uses the same DuckDB-backed schema) and through other Bodai surfaces. **Note:** My earlier draft of this spec claimed "AkoSHA already has `aggregate_patterns`" — that claim is false (verified by grep: no such tool exists in `akosha/mcp/tools/`). The decision to drop `sql_proxy` stands on its own merits, not on the (incorrect) duplication rationale. |
 
 **Tasks:**
 
-1. **Wrap `kv_time_series` as Oneiric cache adapter:** port `dhara/mcp/kv_timeseries.py` (443 LOC) to `oneiric/adapters/cache/persistent_kv.py`. Register with `AdapterMetadata(category="cache", provider="persistent_kv", ...)`. Add entry-point to Oneiric's resolver. **Delete** the Dhara `dhara/mcp/kv_timeseries.py` file (no MCP tool to leave behind).
-2. **Drop `sql_proxy`:** delete `dhara/mcp/tools/sql_proxy.py`. No replacement. Document the removal in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` with rationale.
-3. **Drop `dhara_aggregate_patterns`** along with the other kv_time_series tools (no MCP destination; the Oneiric cache adapter doesn't expose aggregate_patterns as an MCP tool — only via the resolver).
+1. **Wrap `kv_time_series` as Oneiric cache adapter:** port the legacy server's `mcp/kv_timeseries.py` (443 LOC) to `oneiric/adapters/cache/persistent_kv.py`. Register with `AdapterMetadata(category="cache", provider="persistent_kv", ...)`. Add entry-point to Oneiric's resolver. **Delete** the legacy `mcp/kv_timeseries.py` file (no MCP tool to leave behind).
+2. **Drop `sql_proxy`:** delete the legacy `mcp/tools/sql_proxy.py`. No replacement. Document the removal in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` with rationale.
+3. **Drop `legacy_aggregate_patterns`** along with the other kv_time_series tools (no MCP destination; the Oneiric cache adapter doesn't expose aggregate_patterns as an MCP tool — only via the resolver).
 4. Add integration tests:
    - `oneiric/tests/integration/test_persistent_kv_adapter_e2e.py` — assert `oneiric.adapters.cache.persistent_kv.put/get/list_prefix` work end-to-end via the resolver.
    - No replacement test for `sql_proxy` (deletion, not migration).
@@ -850,20 +858,20 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Goal:** The HTTP routes (settings/context/progress) move to Oneiric alongside the new MCP server.
 
-**Pre-flight gate (resolves OQ #2, with re-evaluation point tracked in OQ #5):** substrate_routes' storage layer lives in Oneiric's registry (not Dhara's). The HTTP routes read/write Oneiric's own state. Rationale: Oneiric is the persistence substrate per ADR-017; substrate state is Oneiric's responsibility. **Confirmed 2026-09-14.** No double-storage between Dhara and Oneiric. **Re-evaluation point:** OQ #5 tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation will revisit this).
+**Pre-flight gate (resolves OQ #2, with re-evaluation point tracked in OQ #5):** substrate_routes' storage layer lives in Oneiric's registry (not the legacy server's). The HTTP routes read/write Oneiric's own state. Rationale: Oneiric is the persistence substrate per ADR-017; substrate state is Oneiric's responsibility. **Confirmed 2026-09-14.** No double-storage between the legacy server and Oneiric. **Re-evaluation point:** OQ #5 tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation will revisit this).
 
 **Tasks:**
 
-1. Port `dhara/mcp/substrate_routes.py` (531 LOC) to `oneiric/http/routes/substrate.py`.
+1. Port the legacy server's `mcp/substrate_routes.py` (531 LOC) to `oneiric/http/routes/substrate.py`.
 2. Register with Oneiric's HTTP server. Add `oneiric http start|stop|status` subcommand (analog to `oneiric mcp start|stop|status`).
-3. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it referenced these routes as Dhara's.
+3. Update `docs/decisions/mcp-backend-wiring-discipline.md` if it referenced these routes as the legacy server's.
 4. Add per-route health aggregator: each HTTP route registers a `HealthFeedState` (mcp-common parlance) with `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. `/health` returns 503 if any route is degraded.
 5. Add integration test: `pytest oneiric/tests/integration/test_substrate_routes_e2e.py` — `curl http://localhost:<port>/substrate/settings` returns 200 with non-empty payload; same for `/substrate/context` and `/substrate/progress`.
 
 **Hard cutover:**
 
-- Dhara's `substrate_routes.py` deleted with Phase 8.
-- Any external caller of the old Dhara HTTP API (`http://localhost:8683/substrate/*`) is broken. **Mitigation:** document the URL change in `docs/mcp/MCP_TOOLS_SPECIFICATION.md`; no backward compat.
+- The legacy server's `substrate_routes.py` deleted with Phase 8.
+- Any external caller of the old HTTP API (`http://localhost:8683/substrate/*`) is broken. **Mitigation:** document the URL change in `docs/mcp/MCP_TOOLS_SPECIFICATION.md`; no backward compat.
 
 **Integration contract:**
 
@@ -873,74 +881,74 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 - **Rollback signal:** 5xx on substrate routes, or 0 entities_count on any feed, or any e2e test failure.
 - **Observability added:** OTel span `oneiric.http.route.<name>` with attribute `route.name`, `route.duration_ms`. Per-feed signals at `oneiric http health.<route>`.
 
-### Phase 8 — Retire Dhara MCP server
+### Phase 8 — Retire the legacy MCP server
 
-**Goal:** Delete `dhara/mcp/` entirely. Slim pyproject.toml. Cut Dhara v1.0.0. Provision alerting + migration guide + runbook + ecosystem health.
+**Goal:** Delete the legacy `mcp/` directory entirely. Slim pyproject.toml. Cut the legacy package's v1.0.0. Provision alerting + migration guide + runbook + ecosystem health.
 
 > **Cross-repo coordination (crackerjack-side, separate commit):** every
-> `mcp__dhara__*` consumer in every Bodai repo must be removed or replaced
+> `mcp__legacy__*` consumer in every Bodai repo must be removed or replaced
 > in lockstep with this phase's server deletion (per §4.9 "same commit"
 > rule). The crackerjack-side followup — filed ahead of Phase 8 — is at
-> `crackerjack/docs/followups/2026-09-14-delete-dhara-mcp-client-after-decomposition.md`.
+> `crackerjack/docs/followups/2026-09-14-delete-storage-mcp-client-after-decomposition.md`.
 > It lists 4 files to touch in the crackerjack repo (1 source deletion, 2
-> production callers to rewire to `mcp__mahavishnu__upsert_service` /
-> `mcp__mahavishnu__record_event`, 3 test files to delete or rewrite).
+> production callers to rewire to `mcp__mahavishnu__mahavishnu_upsert_service` /
+> `mcp__mahavishnu__mahavishnu_record_event`, 3 test files to delete or rewrite).
 
 **Tasks:**
 
-1. Delete `dhara/mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
+1. Delete the legacy `mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
    - **`adapter_lookup.py`** — internal lookup helper under `adapter_tools.py:adapter_lookup`; subsumed by Oneiric's `oneiric/mcp/tools/adapter_registry.py` port (Phase 1 task 3). Not exposed as an MCP tool; deletion-with-directory is correct.
    - **`server.py`** — alternative CLI entry point or ASGI host variant; distinct from `server_core.py` (which becomes Oneiric's `oneiric/mcp/server_core.py`). Phase 1 explicitly does NOT use this factory path (see §4.6 for the verified pattern). Deletion-with-directory is correct.
-2. Delete `dhara/skills_signer/` (moved to Crackerjack in Phase 4).
-3. Verify `aiosqlite` usage: if only used by `dhara/mcp/`, drop from `pyproject.toml`. If used by engine code (likely, since `AsyncFileStorage` wraps `AsyncSqliteStorage`), keep it. Decision recorded in pyproject comments.
-4. Update `dhara/__init__.py` to drop MCP imports.
-5. Update `dhara/cli.py` to remove `dhara mcp` subcommands (`dhara mcp start|stop|status|health|restart`).
-6. Slim `dhara/pyproject.toml` per §4.4 (10 deps dropped; `oneiric` preserved).
-7. **Surgical removal in `dhara/CLAUDE.md`** (data-retention MEDIUM #5 — the spec previously said "remove MCP server section" but the file has MCP references across 7+ sites, not one section): line 100 (`dhara mcp stop` example), line 145 (directory tree `├── mcp/`), lines 470-485 (dedicated MCP server section), line 620 (Bodai MCP server /health rule), plus any other `mcp\|MCP` occurrences. Verify by `grep -n "mcp\|MCP" /Users/les/Projects/dhara/CLAUDE.md` returning 0 occurrences after the cutover (or only references to upstream MCP servers like Bodai's `mcp-common`). The directory tree snippet also drops `├── mcp/` and updates the "engine + CLI" surface count.
-8. Update `dhara/CHANGELOG.md` (data-retention HIGH #1 + MEDIUM #7):
+2. Delete the legacy package's `skills_signer/` (moved to Crackerjack in Phase 4).
+3. Verify `aiosqlite` usage: if only used by `mcp/`, drop from `pyproject.toml`. If used by engine code (likely, since `AsyncFileStorage` wraps `AsyncSqliteStorage`), keep it. Decision recorded in pyproject comments.
+4. Update the legacy package's `__init__.py` to drop MCP imports.
+5. Update the legacy package's `cli.py` to remove the `mcp` subcommands (`mcp start|stop|status|health|restart`).
+6. Slim the legacy package's `pyproject.toml` per §4.4 (10 deps dropped; `oneiric` preserved).
+7. **Surgical removal in the legacy package's `CLAUDE.md`** (data-retention MEDIUM #5 — the spec previously said "remove MCP server section" but the file has MCP references across 7+ sites, not one section): line 100 (`mcp stop` example), line 145 (directory tree `├── mcp/`), lines 470-485 (dedicated MCP server section), line 620 (Bodai MCP server /health rule), plus any other `mcp\|MCP` occurrences. Verify by `grep -n "mcp\|MCP" /Users/les/Projects/<legacy repo>/CLAUDE.md` returning 0 occurrences after the cutover (or only references to upstream MCP servers like Bodai's `mcp-common`). The directory tree snippet also drops `├── mcp/` and updates the "engine + CLI" surface count.
+8. Update the legacy package's `CHANGELOG.md` (data-retention HIGH #1 + MEDIUM #7):
    - Fix the stale "MIT License" line at the bottom (line 875 — wrong; pyproject.toml says BSD-3-Clause).
    - **Consolidate both `[Unreleased]` sections** (lines 172 and 676) into the canonical one above `0.19.0`. The second block covers `BodaiCLIBase` → `OneiricCLIBase` rename, `__missing__` support, PyPy compatibility — all of which shipped in 0.18.0 and 0.17.2.
-   - **Add a NEW `[Unreleased]` entry** that records the decomposition: "MCP server retired; 21 tools removed; Dhara becomes engine-only library; v1.0.0 signal."
-   - **Add contextual annotation to the 0.20.0 entry** (which added `Phase 1.5 ed25519 skills_signer infrastructure`): "**Superseded by v1.0.0 (2026-09-14):** This entry's MCP surface was retired one day after release; ed25519 signer moved to Crackerjack (see `2026-09-14-dhara-mcp-decomposition-design.md` Phase 4)."
-9. **Grep Dhara docs for MCP references:** `grep -rn "dhara mcp\|mcp__dhara__\|dhara.*MCP.*server" /Users/les/Projects/dhara/` — update `DHARA_MODES_QUICK_REFERENCE.md`, `QUICKSTART.md`, `README.md`, and any other docs that reference the MCP server.
-10. Update `dhara/tests/unit/test_wiring.py` (golden fixture for `tests/fixtures/{minimal,standard,full}/tool_names.json`) — delete or empty out since Dhara no longer has tool profiles.
-11. Update `dhara/tests/unit/test_profiles.py` for the slimmed profile list (or delete entirely).
-12. Delete `dhara/tests/integration/test_<mcp-tool>_e2e.py` files (no longer applicable).
-13. Verify exit criteria: `python scripts/audit_orphans.py --days 14` reports zero new orphans in Dhara (after the MCP-related symbols are deleted). If the audit flags recently-removed MCP symbols as "orphans" within the lookback window, document the exemption.
-14. Update `BODAI_REPO_REGISTRY.md` — Dhara's role tag shifts from `mcp_server` to `engine`.
-15. **User-controlled publish step:** user runs `crackerjack run -p major` to bump Dhara's version to 1.0.0 and publish to PyPI. Per `feedback-mcp-common-version-bump-is-user` memory: the agent never bumps Bodai versions; the user does.
+   - **Add a NEW `[Unreleased]` entry** that records the decomposition: "MCP server retired; 21 tools removed; the package becomes engine-only; v1.0.0 signal."
+   - **Add contextual annotation to the 0.20.0 entry** (which added `Phase 1.5 ed25519 skills_signer infrastructure`): "**Superseded by v1.0.0 (2026-09-14):** This entry's MCP surface was retired one day after release; ed25519 signer moved to Crackerjack (see `2026-09-14-mcp-decomposition-design.md` Phase 4)."
+9. **Grep the legacy package's docs for MCP references:** `grep -rn "mcp__legacy__\|mcp start\|mcp.*server" /Users/les/Projects/<legacy repo>/` — update `MODES_QUICK_REFERENCE.md`, `QUICKSTART.md`, `README.md`, and any other docs that reference the MCP server.
+10. Update the legacy package's `tests/unit/test_wiring.py` (golden fixture for `tests/fixtures/{minimal,standard,full}/tool_names.json`) — delete or empty out since the legacy package no longer has tool profiles.
+11. Update the legacy package's `tests/unit/test_profiles.py` for the slimmed profile list (or delete entirely).
+12. Delete the legacy package's `tests/integration/test_<mcp-tool>_e2e.py` files (no longer applicable).
+13. Verify exit criteria: `python scripts/audit_orphans.py --days 14` reports zero new orphans in the legacy package (after the MCP-related symbols are deleted). If the audit flags recently-removed MCP symbols as "orphans" within the lookback window, document the exemption.
+14. Update `BODAI_REPO_REGISTRY.md` — the legacy package's role tag shifts from `mcp_server` to `engine`.
+15. **User-controlled publish step:** user runs `crackerjack run -p major` to bump the legacy package's version to 1.0.0 and publish to PyPI. Per `feedback-mcp-common-version-bump-is-user` memory: the agent never bumps Bodai versions; the user does.
 16. **Provision Grafana Alertmanager rules** (observability HIGH #2 / alert routing): create `monitoring/grafana/alertmanager-rules.yaml` with rules covering all 4 Bodai MCP servers. Each rule: alert when `/health` returns 503 sustained for ≥2 minutes; page the Bodai on-call channel. Verify with `amtool check-config monitoring/grafana/alertmanager-rules.yaml`. Commit alongside the Phase 8 retirement.
-17. **Create `docs/runbooks/bodai-mcp-incident.md`** (observability MEDIUM #4): list all 4 `mcp` servers' `/health` URLs (Oneiric:8683, Mahavishnu:8680, Akosha:8682, Crackerjack:8676), the dependency graph (which tool calls which), trace-context propagation rules per §4.8, and incident-response runbook per failure mode.
+17. **Create `docs/runbooks/bodai-mcp-incident.md`** (observability MEDIUM #4): list all 4 `mcp` servers' `/health` URLs (Oneiric:8681, Mahavishnu:8680, Akosha:8682, Crackerjack:8676), the dependency graph (which tool calls which), trace-context propagation rules per §4.8, and incident-response runbook per failure mode.
 18. **Add `mahavishnu mcp ecosystem health`** Typer sub-command (observability MEDIUM #4): fans out to all 4 `/health` endpoints, returns aggregate response, surface-level aggregate status. Demonstrable by `mahavishnu mcp ecosystem health` returning a structured response with per-server status and aggregate.
-19. **Implement `dhara migrate kv-timeseries`** CLI (data-retention MEDIUM #4 / §4.10): bulk-write historical KV/time-series records from Dhara's on-disk file to the Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`. Run once during Dhara uninstall, before upgrading to v1.0.0. Documents the migration in `dhara/MIGRATION.md` "Before upgrading" section.
-20. **Create `dhara/MIGRATION.md`** (data-retention HIGH #2 / §4.9): top-level migration guide with old-name → new-name mapping table, hard-cutover date, notification channels (email `nas-dhara@arctrix.com`, GitHub Discussions pinned issue, PyPI long-description lead), per-consumer migration instructions.
-21. **Update `docs/mcp/MCP_TOOLS_SPECIFICATION.md`** (data-retention HIGH #2): add a top-of-file breadcrumb pointing to `dhara/MIGRATION.md`, and a new section 28 "Migration Guide — Hard Cutover 2026-09-14" with the old-name → new-name mapping (or directly lift from §4.2 + §8 of this spec).
+19. **Implement the legacy package's `migrate kv-timeseries` CLI** (data-retention MEDIUM #4 / §4.10): bulk-write historical KV/time-series records from the legacy server's on-disk file to the Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`. Run once during the legacy package's uninstall, before upgrading to v1.0.0. Documents the migration in the package's `MIGRATION.md` "Before upgrading" section.
+20. **Create the legacy package's `MIGRATION.md`** (data-retention HIGH #2 / §4.9): top-level migration guide with old-name → new-name mapping table, hard-cutover date, notification channels (email `nas-mcp@arctrix.com`, GitHub Discussions pinned issue, PyPI long-description lead), per-consumer migration instructions.
+21. **Update `docs/mcp/MCP_TOOLS_SPECIFICATION.md`** (data-retention HIGH #2): add a top-of-file breadcrumb pointing to the legacy package's `MIGRATION.md`, and a new section 28 "Migration Guide — Hard Cutover 2026-09-14" with the old-name → new-name mapping (or directly lift from §4.2 + §8 of this spec).
 
 **Tests to update (post-deletion):**
 
-- Delete `dhara/tests/integration/test_<mcp-tool>_e2e.py` files.
-- Update `dhara/tests/unit/test_wiring.py` (golden fixture).
-- Update `dhara/tests/unit/test_profiles.py` for the slimmed profile list.
+- Delete the legacy package's `tests/integration/test_<mcp-tool>_e2e.py` files.
+- Update the legacy package's `tests/unit/test_wiring.py` (golden fixture).
+- Update the legacy package's `tests/unit/test_profiles.py` for the slimmed profile list.
 
 **Integration contract:**
 
-- **Triggered from:** `pip install dhara` (no MCP surface; library + CLI only). User runs `crackerjack run -p major` to publish.
-- **Returns to / updates:** Dhara 1.0.0 on PyPI; alert routing live; MIGRATION.md published; runbook live.
-- **Demonstrable by:** `python -c "import dhara; print(dhara.__version__)"` prints `1.0.0`; `dhara db start --port 8685` works; `dhara db client --port 8685` connects; `python scripts/audit_orphans.py --days 14` reports zero orphans; `grep -rn "dhara mcp\|mcp__dhara__" /Users/les/Projects/` returns no references outside `docs/plans/` historical records; `amtool check-config monitoring/grafana/alertmanager-rules.yaml` returns OK; `mahavishnu mcp ecosystem health` returns aggregate response.
+- **Triggered from:** publishing the engine-only package to PyPI (no MCP surface; library + CLI only). User runs `crackerjack run -p major` to publish.
+- **Returns to / updates:** the legacy package's 1.0.0 on PyPI; alert routing live; MIGRATION.md published; runbook live.
+- **Demonstrable by:** `python -c "import <legacy pkg>; print(<legacy pkg>.__version__)"` prints `1.0.0`; the engine's `db start --port 8685` works; the engine's `db client --port 8685` connects; `python scripts/audit_orphans.py --days 14` reports zero orphans; `grep -rn "mcp__legacy__" /Users/les/Projects/` returns no references outside `docs/plans/` historical records; `amtool check-config monitoring/grafana/alertmanager-rules.yaml` returns OK; `mahavishnu mcp ecosystem health` returns aggregate response.
 - **Rollback signal:** None (this is a release, not a runtime feature).
 - **Observability added:** Alertmanager rules live; MIGRATION.md published; runbook live. Per-feed observability for all 4 Bodai MCP servers feeds the alertmanager.
 
 **Tests to update (post-deletion):**
 
-- Delete `dhara/tests/integration/test_<mcp-tool>_e2e.py` files.
-- Update `dhara/tests/unit/test_wiring.py` (golden fixture).
-- Update `dhara/tests/unit/test_profiles.py` for the slimmed profile list.
+- Delete the legacy package's `tests/integration/test_<mcp-tool>_e2e.py` files.
+- Update the legacy package's `tests/unit/test_wiring.py` (golden fixture).
+- Update the legacy package's `tests/unit/test_profiles.py` for the slimmed profile list.
 
 **Integration contract:**
 
-- **Triggered from:** `pip install dhara` (no MCP surface; library + CLI only).
-- **Returns to / updates:** Dhara 1.0.0 on PyPI.
-- **Demonstrable by:** `python -c "import dhara; print(dhara.__version__)"` prints `1.0.0`; `dhara db start --port 8685` works; `dhara db client --port 8685` connects; `python scripts/audit_orphans.py --days 14` reports zero orphans; `grep -rn "dhara mcp\|mcp__dhara__" /Users/les/Projects/` returns no references outside `docs/plans/` historical records.
+- **Triggered from:** publishing the engine-only package to PyPI (no MCP surface; library + CLI only).
+- **Returns to / updates:** the legacy package's 1.0.0 on PyPI.
+- **Demonstrable by:** `python -c "import <legacy pkg>; print(<legacy pkg>.__version__)"` prints `1.0.0`; the engine's `db start --port 8685` works; the engine's `db client --port 8685` connects; `python scripts/audit_orphans.py --days 14` reports zero orphans; `grep -rn "mcp__legacy__" /Users/les/Projects/` returns no references outside `docs/plans/` historical records.
 - **Rollback signal:** None (this is a release, not a runtime feature).
 - **Observability added:** PyPI download count + import-time version check.
 
@@ -951,32 +959,32 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 **Tasks:**
 
 1. **Update `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`** (data-retention MEDIUM #6 — both the description text and the REQ table need updating):
-   - **Phase 4 description** (line 566): add "MCP surface moved per `2026-09-14-dhara-mcp-decomposition-design.md`" alongside the existing goal sentence.
-   - **Phase 4 REQ citations** in §4.5 (lines 467-472): REQ-DHARA-STORAGE's "Target file" column should read `oneiric/mcp/server_core.py:141-148` (per the decomposition spec's table 4.7), not `dhara/dhara/mcp/server_core.py:141-148`.
-   - **Phase 11** (Harness-agnostic enablement): redirect Qwen Code / Claude Code validation tests from `mcp__dhara__*` to the new homes per the explicit tool-name table below.
-2. **Update `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` precondition plan:** add `2026-09-14-dhara-mcp-decomposition-design.md` to the precondition plan's `related:` frontmatter. **Note:** the precondition plan has no Dhara MCP REQs to update (its 14 REQs are all text edits / governance fixes, none touch Dhara MCP code paths) — the previous draft's task 2 was a no-op.
-3. Update cross-references in `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` (Option C amendment — overturning the 2026-09-14 amendment, see §4.7), `docs/adr/017-oneiric-shared-persistence-substrate.md` (clarify that Oneiric now has an MCP server).
+   - **Phase 4 description** (line 566): add "MCP surface moved per `2026-09-14-mcp-decomposition-design.md`" alongside the existing goal sentence.
+   - **Phase 4 REQ citations** in §4.5 (lines 467-472): REQ-MCP-STORAGE's "Target file" column should read `oneiric/mcp/server_core.py:141-148` (per the decomposition spec's table 4.7), not the legacy repo's `mcp/server_core.py:141-148`.
+   - **Phase 11** (Harness-agnostic enablement): redirect Qwen Code / Claude Code validation tests from `mcp__legacy__*` to the new homes per the explicit tool-name table below.
+2. **Update `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` precondition plan:** add `2026-09-14-mcp-decomposition-design.md` to the precondition plan's `related:` frontmatter. **Note:** the precondition plan has no legacy MCP REQs to update (its 14 REQs are all text edits / governance fixes, none touch the legacy MCP code paths) — the previous draft's task 2 was a no-op.
+3. Update cross-references in `docs/adr/013-mahavishnu-adapter-tool-boundary.md` (Option C amendment — overturning the 2026-09-14 amendment, see §4.7), `docs/adr/017-oneiric-shared-persistence-substrate.md` (clarify that Oneiric now has an MCP server).
 4. **If the Phase 1 commit did not include the ADR-013 reversal amendment, apply it now** (covers edge case where Phase 1 shipped without the amendment; Phase 9 is the safety net).
-5. **Pin a GitHub Discussions thread** at `https://github.com/lesleslie/dhara/discussions` with the migration guide and a "subscribe for breaking-change notifications" callout. Update `dhara/CHANGELOG.md` v1.0.0 entry with the discussion URL.
-6. **Email notification** to `nas-dhara@arctrix.com` subscribers (per Dhara's existing contact pattern, line 871): "Dhara v1.0.0 released; 21 `mcp__dhara__*` tools removed; see MIGRATION.md." The user controls this email (not agent-driven) per `feedback-bodai-push-is-user-controlled`.
+5. **Pin a GitHub Discussions thread** on the legacy repo's Discussions page with the migration guide and a "subscribe for breaking-change notifications" callout. Update the legacy package's `CHANGELOG.md` v1.0.0 entry with the discussion URL.
+6. **Email notification** to `nas-mcp@arctrix.com` subscribers (per the legacy package's existing contact pattern, line 871): "v1.0.0 released; 21 `mcp__legacy__*` tools removed; see MIGRATION.md." The user controls this email (not agent-driven) per `feedback-bodai-push-is-user-controlled`.
 
-**Phase 11 explicit tool-name redirect table.** Phase 11's REQ-HARNESS-TEST-MATRIX-QWEN (and Claude Code equivalent) currently validates against `mcp__dhara__*` tools. After Phase 8, those tools are gone. The redirect:
+**Phase 11 explicit tool-name redirect table.** Phase 11's REQ-HARNESS-TEST-MATRIX-QWEN (and Claude Code equivalent) currently validates against `mcp__legacy__*` tools. After Phase 8, those tools are gone. The redirect:
 
 | Was (pre-Phase-8) | Now (post-Phase-8) | Test surface |
 |-------------------|---------------------|--------------|
-| `mcp__dhara__list_adapters` | `mcp__oneiric__list_adapters` | Oneiric adapter discovery |
-| `mcp__dhara__get_adapter` | `mcp__oneiric__get_adapter` | Oneiric adapter lookup |
-| `mcp__dhara__store_adapter` | `mcp__oneiric__store_adapter` | Oneiric adapter registration |
-| `mcp__dhara__upsert_service` | `mcp__mahavishnu__ecosystem_upsert_service` | Mahavishnu ecosystem service registration |
-| `mcp__dhara__list_services` | `mcp__mahavishnu__ecosystem_list_services` | Mahavishnu ecosystem service listing |
-| `mcp__dhara__record_event` | `mcp__mahavishnu__ecosystem_record_event` | Mahavishnu ecosystem event log |
-| `mcp__dhara__list_agents` | `mcp__crackerjack__list_agents` | Crackerjack agent catalog |
-| `mcp__dhara__list_skills` | `mcp__crackerjack__list_skills` | Crackerjack skill catalog |
-| `mcp__dhara__query_local_traces` | `mcp__akosha__query_local_traces_fitness` | Akosha trace query (fitness-shaped) |
-| `mcp__dhara__sql_query` / `dhara_sql_execute` | **deleted** (no replacement) | — |
-| `mcp__dhara__put` / `dhara_get` / `dhara_list_prefix` / `dhara_record_time_series` / `dhara_query_time_series` / `dhara_aggregate_patterns` | **deleted as MCP tools** (replaced by Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`, not exposed as MCP tool) | Oneiric resolver, not MCP |
+| `mcp__legacy__list_adapters` | `mcp__oneiric__oneiric_list_adapters` | Oneiric adapter discovery |
+| `mcp__legacy__get_adapter` | `mcp__oneiric__oneiric_get_adapter` | Oneiric adapter lookup |
+| `mcp__legacy__store_adapter` | `mcp__oneiric__oneiric_store_adapter` | Oneiric adapter registration |
+| `mcp__legacy__upsert_service` | `mcp__mahavishnu__mahavishnu_upsert_service` | Mahavishnu ecosystem service registration |
+| `mcp__legacy__list_services` | `mcp__mahavishnu__mahavishnu_list_services` | Mahavishnu ecosystem service listing |
+| `mcp__legacy__record_event` | `mcp__mahavishnu__mahavishnu_record_event` | Mahavishnu ecosystem event log |
+| `mcp__legacy__list_agents` | `mcp__crackerjack__list_agents` | Crackerjack agent catalog |
+| `mcp__legacy__list_skills` | `mcp__crackerjack__list_skills` | Crackerjack skill catalog |
+| `mcp__legacy__query_local_traces` | `mcp__akosha__query_local_traces_fitness` | Akosha trace query (fitness-shaped) |
+| `mcp__legacy__sql_query` / `mcp__legacy__sql_execute` | **deleted** (no replacement) | — |
+| `mcp__legacy__put` / `mcp__legacy__get` / `mcp__legacy__list_prefix` / `mcp__legacy__record_time_series` / `mcp__legacy__query_time_series` / `mcp__legacy__aggregate_patterns` | **deleted as MCP tools** (replaced by Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`, not exposed as MCP tool) | Oneiric resolver, not MCP |
 
-**Phase 11 name-uniqueness re-verification.** Per §6 R7 (Phase 11 harness-portability checklist must re-verify name uniqueness *after* Dhara MCP is fully retired, not at Phase 11 ship time). The 197-tool Bodai MCP surface must be re-validated for Qwen Code's 63-char name truncation constraint once Dhara's tools are gone.
+**Phase 11 name-uniqueness re-verification.** Per §6 R7 (Phase 11 harness-portability checklist must re-verify name uniqueness *after* the legacy MCP server is fully retired, not at Phase 11 ship time). The 197-tool Bodai MCP surface must be re-validated for Qwen Code's 63-char name truncation constraint once the legacy server's tools are gone.
 
 ### Phase 10 — Postgres consolidation hygiene
 
@@ -993,7 +1001,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 2. **Mahavishnu pgvector path — commit or delete.** Two options:
    - **Option A (commit):** wire `MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING` to a real Postgres URL in `mahavishnu/settings/local.yaml`; fix the Oneiric OTel default URL (task 3 below) so Mahavishnu's stricter validator accepts it; commit `mahavishnu/migrations/` Postgres DDL as the canonical Mahavishnu schema.
    - **Option B (delete):** delete `mahavishnu/adapters/pgvector_adapter.py` (685 LOC) + `mahavishnu/tests/unit/test_adapters_pgvector_adapter.py` + `mahavishnu/examples/otel_pgvector_test.py`; remove `mahavishnu/migrations/` directory (Postgres DDL); remove `OTelStorageConfig` from `mahavishnu/core/config.py:782-918`; remove `OTelIngesterConfig.storage_type` from `mahavishnu/core/config.py:943-995`; simplify `OTelIngester._initialize_pgvector` to `OtelIngester._initialize_duckdb_only` (`mahavishnu/ingesters/otel_ingester.py:611-636`); remove pgvector branch from `_ingest_trace_pgvector` (`mahavishnu/ingesters/otel_ingester.py:754`).
-   - **Default: Option A (commit) — but ONLY if Phase 5 task 9 also commits to Postgres-only persistence** (Option B in Phase 5 task 9). Rationale: keeping pgvector code paths live while committing Postgres-only persistence is incoherent; if we choose Postgres as the substrate, the OTel traces should live there too. **If Phase 5 task 9 chose Option A (Dhara only):** Mahavishnu's pgvector path goes the same way (Option B / delete).
+   - **Default: Option A (commit) — but ONLY if Phase 5 task 9 also commits to Postgres-only persistence** (Option B in Phase 5 task 9). Rationale: keeping pgvector code paths live while committing Postgres-only persistence is incoherent; if we choose Postgres as the substrate, the OTel traces should live there too. **If Phase 5 task 9 chose Option A (legacy substrate only):** Mahavishnu's pgvector path goes the same way (Option B / delete).
 3. **Fix Oneiric's invalid OTel default URL.** `oneiric/adapters/observability/settings.py:7-52` defaults `OTelStorageSettings.connection_string` to `"postgresql://postgres: postgres@localhost: 5432/otel"` — **spaces around the colon** that Mahavishnu's validator (`mahavishnu/core/config.py:880-916`) would reject. Two options:
    - **Option A (fix the default):** change the default to `"postgresql://postgres:postgres@localhost:5432/otel"` (no spaces).
    - **Option B (make Oneiric's `OTelStorageSettings` the canonical model Mahavishnu imports):** Mahavishnu imports `from oneiric.adapters.observability.settings import OTelStorageSettings` instead of redefining the field in `mahavishnu/core/config.py:782-918`. Validator is moved into Oneiric.
@@ -1026,7 +1034,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
    - **Option B (gateway — one process, four libraries):** Mahavishnu becomes the only MCP server process; AkoSHA / Crackerjack / Oneiric expose their tools via `mcp_common.tools.dispatch.register_remote_tools(server, namespace="akosha"|"crackerjack"|"oneiric", tools=[...])` — a generalization of the Phase 1.5 `register_local_namespace` primitive. Single auth surface, single `/health`, single set of launchd plists. Costs: single point of failure, coordinated release for cross-component API changes, larger Mahavishnu binary.
    - **Option C (hybrid — gateway for read-only, direct for stateful):** Mahavishnu gateways read-only wrapper tools (the Phase 1.5 consolidated wrappers); stateful domain tools stay in their own process. Splits the operational complexity cleanly: gateway handles the cross-cutting infra, components handle the stateful work.
 2. **Estimate the cost of each option** with concrete metrics: launchd plist count, /health endpoint count, auth secret env vars, OTel span propagation overhead, cross-component MCP call latency, operator muscle-memory disruption.
-3. **Recommend one option** based on the Phase 10 substrate outcomes (whether Postgres is the substrate or Dhara-as-engine is).
+3. **Recommend one option** based on the Phase 10 substrate outcomes (whether Postgres is the substrate or the engine-only choice is).
 4. **If Option B or C is recommended:** write a follow-up spec (`docs/specs/2026-XX-XX-gateway-pattern-implementation.md`) describing the migration. The follow-up spec gets its own reviews and its own implementation plan.
 
 **Integration contract:**
@@ -1089,65 +1097,65 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 ## 6. Risks & Mitigations
 
-### R1 — Hard cutover breaks internal callers of `mcp__dhara__*` tools
+### R1 — Hard cutover breaks internal callers of `mcp__legacy__*` tools
 
-**Risk:** Code in Mahavishnu, agents, or external repos that calls `mcp__dhara__*` tools fails immediately at the commit boundary. No deprecation window by user decision 2026-09-14.
+**Risk:** Code in Mahavishnu, agents, or external repos that calls `mcp__legacy__*` tools fails immediately at the commit boundary. No deprecation window by user decision 2026-09-14.
 
-**Mitigation:** Phase 1 task #0 enumerates every `mcp__dhara__*` reference across the Bodai ecosystem (86 hits found by grep). Each consumer is updated in the same commit as the tool's deletion. External consumers (outside Bodai) are documented in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` migration guide (§6). 86 hits is a tractable number; verified grep scope at Phase 1 start.
+**Mitigation:** Phase 1 task #0 enumerates every `mcp__legacy__*` reference across the Bodai ecosystem (86 hits found by grep). Each consumer is updated in the same commit as the tool's deletion. External consumers (outside Bodai) are documented in `docs/mcp/MCP_TOOLS_SPECIFICATION.md` migration guide (§6). 86 hits is a tractable number; verified grep scope at Phase 1 start.
 
 ### R2 — Phase 4 (Crackerjack skill signing) requires Crackerjack to grow
 
 **Risk:** Crackerjack's surface area grows by ~1,830 LOC (1,429 LOC code + ~400 LOC tests/scaffolding). The Crackerjack maintainer may not want this scope.
 
-**Mitigation:** Phase 1.5 of the active ACP plan already routes skill distribution through Crackerjack. This spec just delivers what was already designed. If Crackerjack's maintainer objects, defer Phase 4 and leave `mcp__dhara__list_skills` etc. in place longer (delays Phase 8 retirement).
+**Mitigation:** Phase 1.5 of the active ACP plan already routes skill distribution through Crackerjack. This spec just delivers what was already designed. If Crackerjack's maintainer objects, defer Phase 4 and leave `mcp__legacy__list_skills` etc. in place longer (delays Phase 8 retirement).
 
-### R3 — Phase 2 auth audit reveals Dhara-specific auth behavior
+### R3 — Phase 2 auth audit reveals legacy-server-specific auth behavior
 
-**Risk:** If Dhara's `TokenAuth` (file-based SHA-256 with roles) has Dhara-specific semantics that some Bodai consumer relies on, Phase 1's new Oneiric MCP server (using `mcp_common.auth`) might not match.
+**Risk:** If the legacy server's `TokenAuth` (file-based SHA-256 with roles) has server-specific semantics that some Bodai consumer relies on, Phase 1's new Oneiric MCP server (using `mcp_common.auth`) might not match.
 
-**Mitigation:** Phase 1 builds the Oneiric server with `mcp_common.auth.middleware` from day one. **Dhara's auth goes away with the server in Phase 8** — there is no consumer of `dhara.mcp.auth.*` that survives the deletion. If Phase 1's e2e tests fail because of missing auth semantics, the failure surfaces immediately and gets fixed before Phase 8 retires Dhara.
+**Mitigation:** Phase 1 builds the Oneiric server with `mcp_common.auth.middleware` from day one. **The legacy server's auth goes away with the server in Phase 8** — there is no consumer of its `mcp.auth.*` that survives the deletion. If Phase 1's e2e tests fail because of missing auth semantics, the failure surfaces immediately and gets fixed before Phase 8 retires the legacy server.
 
-### R4 — Bodai app registry / launchd plists still reference `mcp_server` role for Dhara
+### R4 — Bodai app registry / launchd plists still reference `mcp_server` role for the legacy package
 
-**Risk:** Dhara's launchd plist on the operator's machine (if any) tries to start `dhara mcp` and fails after Phase 8.
+**Risk:** The legacy package's launchd plist on the operator's machine (if any) tries to start its MCP server and fails after Phase 8.
 
-**Mitigation:** Phase 8 includes updating `BODAI_REPO_REGISTRY.md` and any launchd plists. Document the breaking change in the spec's "What Changes for Operators" section. Oneiric MCP server takes port 8683 (Dhara's old port) — the Dhara launchd plist must be retired entirely.
+**Mitigation:** Phase 8 includes updating `BODAI_REPO_REGISTRY.md` and any launchd plists. Document the breaking change in the spec's "What Changes for Operators" section. The Oneiric MCP server takes port 8681 (the retired server's old port) — the legacy launchd plist must be retired entirely.
 
-### R5 — External consumers (outside Bodai ecosystem) of `mcp__dhara__*` tools
+### R5 — External consumers (outside Bodai ecosystem) of `mcp__legacy__*` tools
 
-**Risk:** Unknown number of consumers use `mcp__dhara__*` directly outside the Bodai ecosystem. Hard cutover (user decision 2026-09-14) means external consumers break immediately at the commit boundary.
+**Risk:** Unknown number of consumers use `mcp__legacy__*` directly outside the Bodai ecosystem. Hard cutover (user decision 2026-09-14) means external consumers break immediately at the commit boundary.
 
 **Mitigation (specific channels, not hand-waved):**
-1. **`dhara/MIGRATION.md`** (top-level, not buried in spec) — created in Phase 8 task 20. Contains the old-name → new-name mapping table, hard-cutover date, and per-consumer migration instructions.
-2. **CHANGELOG header callout** — Dhara's `CHANGELOG.md` v1.0.0 entry leads with "BREAKING: 21 `mcp__dhara__*` tools removed; see https://github.com/lesleslie/dhara/blob/v1.0.0/MIGRATION.md".
-3. **PyPI long-description** — Dhara's README first 200 chars lead with the migration link (above-the-fold on PyPI).
-4. **GitHub Discussions pinned issue** — pinned at `https://github.com/lesleslie/dhara/discussions` (Phase 9 task 5).
-5. **Email** to `nas-dhara@arctrix.com` subscribers (Phase 9 task 6, user-controlled).
+1. **Top-level `MIGRATION.md`** (not buried in spec) — created in Phase 8 task 20. Contains the old-name → new-name mapping table, hard-cutover date, and per-consumer migration instructions.
+2. **CHANGELOG header callout** — the legacy package's `CHANGELOG.md` v1.0.0 entry leads with "BREAKING: 21 `mcp__legacy__*` tools removed; see MIGRATION.md".
+3. **PyPI long-description** — the legacy package's README first 200 chars lead with the migration link (above-the-fold on PyPI).
+4. **GitHub Discussions pinned issue** — pinned on the legacy repo's Discussions page (Phase 9 task 5).
+5. **Email** to `nas-mcp@arctrix.com` subscribers (Phase 9 task 6, user-controlled).
 
-### R6 — Oneiric's `dhara_pusher` adapter and hardcoded Dhara 8683 references
+### R6 — Oneiric's registry-pusher adapter and hardcoded 8683 references to the retired server
 
-**Risk:** Oneiric has 4+ hardcoded references to Dhara on port 8683:
+**Risk:** Oneiric has 4+ hardcoded references to the retired standalone MCP server on port 8683:
 - `oneiric/QUICKSTART.md` (lines 119, 150)
-- `oneiric/adapters/dhara_pusher.py` (lines 55, 214, 253, 263) — defaults to `http://127.0.0.1:8683`
-- `oneiric/tests/test_dhara_pusher_coverage.py` (lines 43, 99)
+- the registry-pusher adapter module (lines 55, 214, 253, 263) — defaults to `http://127.0.0.1:8683`
+- its coverage test module (lines 43, 99)
 - `oneiric/tests/unit/adapters/test_tracked_settings.py` (6 occurrences)
 
-The `dhara_pusher.py` adapter is the most consequential: its purpose is to push adapter metadata *to* Dhara. After Phase 1, the destination changes (Oneiric owns its own registry).
+The registry-pusher adapter is the most consequential: its purpose is to push adapter metadata *to* the retired server. After Phase 1, the destination changes (Oneiric owns its own registry).
 
-**Mitigation:** Phase 1 task 16 retires `dhara_pusher.py` entirely (deletes the file, the tests, the QUICKSTART references, the entry points). No retargeting. The "push to a separate Dhara MCP" pattern is incoherent once Oneiric owns its own registry.
+**Mitigation:** Phase 1 task 16 retires the registry-pusher adapter entirely (deletes the file, the tests, the QUICKSTART references, the entry points). No retargeting. The "push to a separate MCP server" pattern is incoherent once Oneiric owns its own registry.
 
 ### R7 — Phase 11 harness-portability name uniqueness re-verification
 
-**Risk:** Phase 11's REQ-HARNESS-TEST-MATRIX-QWEN validates Qwen Code's 197-tool Bodai MCP surface for name uniqueness (Qwen truncates names >63 chars). If Phase 11 ships during the same window as this spec's earlier phases, the harness's tool-name table will see *both* `mcp__dhara__list_adapters` (still present pre-Phase-8) and `mcp__oneiric__list_adapters` (just added) — two surfaces for the same concept, contradicting the Phase 11 uniqueness claim.
+**Risk:** Phase 11's REQ-HARNESS-TEST-MATRIX-QWEN validates Qwen Code's 197-tool Bodai MCP surface for name uniqueness (Qwen truncates names >63 chars). If Phase 11 ships during the same window as this spec's earlier phases, the harness's tool-name table will see *both* `mcp__legacy__list_adapters` (still present pre-Phase-8) and `mcp__oneiric__oneiric_list_adapters` (just added) — two surfaces for the same concept, contradicting the Phase 11 uniqueness claim.
 
-**Mitigation:** Phase 11's name-uniqueness checklist must re-verify *after* Dhara MCP is fully retired (post-Phase-8), not at Phase 11 ship time. Phase 9 of this spec updates Phase 11's redirect table.
+**Mitigation:** Phase 11's name-uniqueness checklist must re-verify *after* the legacy MCP server is fully retired (post-Phase-8), not at Phase 11 ship time. Phase 9 of this spec updates Phase 11's redirect table.
 
-### R8 — Audit-trail gaps in Dhara's CHANGELOG and CLAUDE.md (data-retention HIGH #1 + MEDIUM #5)
+### R8 — Audit-trail gaps in the legacy package's CHANGELOG and CLAUDE.md (data-retention HIGH #1 + MEDIUM #5)
 
-**Risk:** Dhara's `CHANGELOG.md` has TWO `[Unreleased]` sections (lines 172 and 676) with overlapping content; `dhara/CLAUDE.md` has MCP references across 7+ sites (lines 100, 145, 470-485, 620, plus others). Phase 8 task 7 originally said "remove MCP server section" but the file has MCP references spread across the document, not in a single section. Future contributors grepping for `skills_signer` or `mcp_server` will land on entries that no longer reflect the post-Phase-8 state.
+**Risk:** The legacy package's `CHANGELOG.md` has TWO `[Unreleased]` sections (lines 172 and 676) with overlapping content; its `CLAUDE.md` has MCP references across 7+ sites (lines 100, 145, 470-485, 620, plus others). Phase 8 task 7 originally said "remove MCP server section" but the file has MCP references spread across the document, not in a single section. Future contributors grepping for `skills_signer` or `mcp_server` will land on entries that no longer reflect the post-Phase-8 state.
 
 **Mitigation:**
-- Phase 8 task 7 surgical-removal grep across `dhara/CLAUDE.md` (verify `grep -n "mcp\|MCP"` returns 0 after cutover).
+- Phase 8 task 7 surgical-removal grep across the legacy package's `CLAUDE.md` (verify `grep -n "mcp\|MCP"` returns 0 after cutover).
 - Phase 8 task 8 CHANGELOG consolidation: merge both `[Unreleased]` blocks; add new v1.0.0 entry recording the decomposition; add contextual annotation to the 0.20.0 entry explaining that the MCP surface shipped and retired within 24 hours.
 - Phase 9 task 5 pins a GitHub Discussions thread for long-term migration support.
 
@@ -1165,13 +1173,13 @@ The `dhara_pusher.py` adapter is the most consequential: its purpose is to push 
 
 Carrying dormant pgvector code paths ages badly: the upstream APIs (asyncpg, pgvector extension versions, Oneiric adapter changes) drift; the integration test never runs; the CI never catches the rot. Two components with dormant pgvector also block ADR 017's "Oneiric is the substrate" framing — the substrate is shared, but each component re-implements its own pgvector layer.
 
-**Mitigation:** Phase 10 commits-or-deletes both pgvector paths in the same release. The decisions are coupled to Phase 5 task 9's substrate choice: if Phase 5 picks Option B (Postgres-only substrate), Mahavishnu keeps pgvector live (commit Option A in Phase 10); if Phase 5 picks Option A (Dhara-only substrate), Mahavishnu deletes pgvector (delete Option B in Phase 10). AkoSHA's decision defaults to delete (no production adoption since 0.17.x; ADR 017 explicitly rejected mandate-Postgres). Phase 10's e2e tests + integration tests catch the rot before it ships.
+**Mitigation:** Phase 10 commits-or-deletes both pgvector paths in the same release. The decisions are coupled to Phase 5 task 9's substrate choice: if Phase 5 picks Option B (Postgres-only substrate), Mahavishnu keeps pgvector live (commit Option A in Phase 10); if Phase 5 picks Option A (legacy-substrate only), Mahavishnu deletes pgvector (delete Option B in Phase 10). AkoSHA's decision defaults to delete (no production adoption since 0.17.x; ADR 017 explicitly rejected mandate-Postgres). Phase 10's e2e tests + integration tests catch the rot before it ships.
 
 ### R11 — Mahavishnu dual-write mode (`persistence.write_mode: "dual"`)
 
-**Risk:** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH Dhara (legacy) AND Postgres simultaneously. Dual-write is a migration state, not a steady state. **Without Phase 5 task 9 committing a single-source decision, the spec's "decompose Dhara's MCP" goal is undermined** — Dhara's substrate role is not cleanly retired while Mahavishnu keeps dual-writing to it. Operators who read the spec and try to retire Dhara-as-substrate will find Mahavishnu still writing there.
+**Risk:** `mahavishnu/settings/mahavishnu.yaml:140` shows `persistence.write_mode: "dual"` — Mahavishnu writes to BOTH the legacy KV substrate AND Postgres simultaneously. Dual-write is a migration state, not a steady state. **Without Phase 5 task 9 committing a single-source decision, the spec's "decompose the legacy MCP server's surface" goal is undermined** — the legacy substrate role is not cleanly retired while Mahavishnu keeps dual-writing to it. Operators who read the spec and try to retire the legacy substrate will find Mahavishnu still writing there.
 
-**Mitigation:** Phase 5 task 9 commits to single-source persistence (default Option B = Postgres-only, per ADR 017 substrate ownership). Phase 5 removes `write_mode: "dual"` from `mahavishnu/settings/mahavishnu.yaml:140`; Phase 5 documents the Option A (Dhara-only) fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately. Phase 5's e2e tests + the Dhara-as-engine connection (`dhara db start --port 8685`) demonstrate that the engine stays available for non-Mahavishnu consumers.
+**Mitigation:** Phase 5 task 9 commits to single-source persistence (default Option B = Postgres-only, per ADR 017 substrate ownership). Phase 5 removes `write_mode: "dual"` from `mahavishnu/settings/mahavishnu.yaml:140`; Phase 5 documents the Option A (legacy-substrate only) fallback path in `docs/ops/persistence-modes.md` for operators who cannot migrate to Postgres immediately. Phase 5's e2e tests + the engine-only connection (`db start --port 8685`) demonstrate that the engine stays available for non-Mahavishnu consumers.
 
 ### R12 — Hook migration hard-cutover breaks in-process subscribers (added 2026-09-14)
 
@@ -1183,13 +1191,13 @@ Carrying dormant pgvector code paths ages badly: the upstream APIs (asyncpg, pgv
 
 All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology review:
 
-1. **Dhara's `dhara/skills_signer/` directory fate.** **Resolved: move to `mcp-common` in Phase 4, then delete Dhara's copy.** The ed25519 signer is a cryptographic primitive shared by both agent/skill catalogs; cross-cutting infra lives in `mcp-common`, not in any single application component. Phase 4 task 5 + task 6 implement this.
+1. **The legacy package's `skills_signer/` directory fate.** **Resolved: move to `mcp-common` in Phase 4, then delete the legacy copy.** The ed25519 signer is a cryptographic primitive shared by both agent/skill catalogs; cross-cutting infra lives in `mcp-common`, not in any single application component. Phase 4 task 5 + task 6 implement this.
 
-2. **`dhara/mcp/substrate_routes.py` storage location.** **Resolved: Oneiric owns the storage** (per ADR-017 framing). Oneiric is the persistence substrate; substrate state is Oneiric's responsibility. No double-storage between Dhara and Oneiric. Phase 7 implements this. **Re-evaluation point:** OQ #5 below tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation).
+2. **The legacy server's `mcp/substrate_routes.py` storage location.** **Resolved: Oneiric owns the storage** (per ADR-017 framing). Oneiric is the persistence substrate; substrate state is Oneiric's responsibility. No double-storage between the legacy server and Oneiric. Phase 7 implements this. **Re-evaluation point:** OQ #5 below tracks whether the HTTP gateway should live on Mahavishnu instead (Phase 11 gateway-pattern evaluation).
 
-3. **Oneiric MCP server port.** **Resolved: 8683** (Dhara's old port, reclaimed). Per `BODAI_REPO_REGISTRY.md` port conventions: Akosha=8682, Mahavishnu=8680, Crackerjack=8676, Session-Buddy=8678. 8683 was Dhara's port; reclaiming it preserves operator muscle memory. The Dhara plist on operator machines is retired as part of Phase 8 (R4 mitigation).
+3. **Oneiric MCP server port.** **Resolved: 8681** (the retired server's old port, reclaimed). Per `BODAI_REPO_REGISTRY.md` port conventions: Akosha=8682, Mahavishnu=8680, Crackerjack=8676, Session-Buddy=8678. 8681 was the retired server's port; reclaiming it preserves operator muscle memory. The legacy plist on operator machines is retired as part of Phase 8 (R4 mitigation).
 
-4. **`dhara/mcp/__main__.py` fate.** **Resolved: delete in Phase 8.** No stub release cycle. Hard cutover per user decision. The directory `dhara/mcp/` is deleted whole; no per-file ceremony.
+4. **`mcp/__main__.py` fate.** **Resolved: delete in Phase 8.** No stub release cycle. Hard cutover per user decision. The directory `mcp/` is deleted whole; no per-file ceremony.
 
 5. **`substrate_routes` HTTP gateway location — Oneiric vs Mahavishnu.** **Resolved for Phase 7: Oneiric owns the HTTP gateway** (per OQ #2). **Re-evaluation point for Phase 11:** Phase 11's gateway-pattern evaluation (newly added) revisits whether the HTTP gateway should live on Mahavishnu instead of Oneiric. If Mahavishnu becomes the gateway for read-only wrappers (Phase 11 Option C), it may make sense to also move the substrate routes there for operational consistency. Decision deferred to Phase 11 ADR-018.
 
@@ -1201,49 +1209,49 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 
 | What | Before | After |
 |------|--------|-------|
-| `pip install dhara` | Library + MCP server + CLI | Library + CLI (engine only) |
-| `dhara db start\|client\|pack` | Works | Works (unchanged) |
-| `dhara mcp start\|stop\|status\|health\|restart` | Works | **Dropped** |
-| `oneiric mcp start\|stop\|status\|health\|restart` | Did not exist | **New** — binds port 8683 (Dhara's old port) |
-| `mcp__dhara__list_adapters` | Works | **Replaced by `mcp__oneiric__list_adapters`** |
-| `mcp__dhara__get_adapter` | Works | **Replaced by `mcp__oneiric__get_adapter`** |
-| `mcp__dhara__list_adapter_versions` | Works | **Replaced by `mcp__oneiric__list_adapter_versions`** |
-| `mcp__dhara__validate_adapter` | Works | **Replaced by `mcp__oneiric__validate_adapter`** |
-| `mcp__dhara__get_adapter_health` | Works | **Replaced by `mcp__oneiric__get_adapter_health`** |
-| `mcp__dhara__store_adapter` | Works | **Replaced by `mcp__oneiric__store_adapter`** |
-| `mcp__dhara__get_contract_info` | Works | **Replaced by `mcp__oneiric__get_contract_info`** |
-| `mcp__dhara__upsert_service` | Works | **Replaced by `mcp__mahavishnu__ecosystem_upsert_service`** |
-| `mcp__dhara__get_service` | Works | **Replaced by `mcp__mahavishnu__ecosystem_get_service`** |
-| `mcp__dhara__list_services` | Works | **Replaced by `mcp__mahavishnu__ecosystem_list_services`** |
-| `mcp__dhara__record_event` | Works | **Replaced by `mcp__mahavishnu__ecosystem_record_event`** |
-| `mcp__dhara__list_events` | Works | **Replaced by `mcp__mahavishnu__ecosystem_list_events`** |
-| `mcp__dhara__list_agents` | Works | **Replaced by `mcp__crackerjack__list_agents`** |
-| `mcp__dhara__get_agent` | Works | **Replaced by `mcp__crackerjack__get_agent`** |
-| `mcp__dhara__list_skills` | Works | **Replaced by `mcp__crackerjack__list_skills`** |
-| `mcp__dhara__get_skill` | Works | **Replaced by `mcp__crackerjack__get_skill`** |
-| `mcp__dhara__query_local_traces` | Works | **Replaced by `mcp__akosha__query_local_traces_fitness`** |
+| `pip install <legacy package>` | Library + MCP server + CLI | Library + CLI (engine only) |
+| `db start\|client\|pack` | Works | Works (unchanged) |
+| `mcp start\|stop\|status\|health\|restart` | Works | **Dropped** |
+| `oneiric mcp start\|stop\|status\|health\|restart` | Did not exist | **New** — binds port 8681 (the retired server's old port) |
+| `mcp__legacy__list_adapters` | Works | **Replaced by `mcp__oneiric__oneiric_list_adapters`** |
+| `mcp__legacy__get_adapter` | Works | **Replaced by `mcp__oneiric__oneiric_get_adapter`** |
+| `mcp__legacy__list_adapter_versions` | Works | **Replaced by `mcp__oneiric__oneiric_list_adapter_versions`** |
+| `mcp__legacy__validate_adapter` | Works | **Replaced by `mcp__oneiric__oneiric_validate_adapter`** |
+| `mcp__legacy__get_adapter_health` | Works | **Replaced by `mcp__oneiric__oneiric_get_adapter_health`** |
+| `mcp__legacy__store_adapter` | Works | **Replaced by `mcp__oneiric__oneiric_store_adapter`** |
+| `mcp__legacy__get_contract_info` | Works | **Replaced by `mcp__oneiric__oneiric_get_contract_info`** |
+| `mcp__legacy__upsert_service` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_upsert_service`** |
+| `mcp__legacy__get_service` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_get_service`** |
+| `mcp__legacy__list_services` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_list_services`** |
+| `mcp__legacy__record_event` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_record_event`** |
+| `mcp__legacy__list_events` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_list_events`** |
+| `mcp__legacy__list_agents` | Works | **Replaced by `mcp__crackerjack__list_agents`** |
+| `mcp__legacy__get_agent` | Works | **Replaced by `mcp__crackerjack__get_agent`** |
+| `mcp__legacy__list_skills` | Works | **Replaced by `mcp__crackerjack__list_skills`** |
+| `mcp__legacy__get_skill` | Works | **Replaced by `mcp__crackerjack__get_skill`** |
+| `mcp__legacy__query_local_traces` | Works | **Replaced by `mcp__akosha__query_local_traces_fitness`** |
 | `mcp__akosha__query_local_traces` | Works (general-purpose) | **Dropped** (replaced by `_fitness` variant) |
-| `mcp__dhara__put/get/list_prefix/record_time_series/query_time_series/aggregate_patterns` | Works | **Dropped as MCP tools** (replaced by Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`, not exposed via MCP) |
-| `mcp__dhara__sql_query/sql_execute` | Works | **Dropped** (no replacement) |
+| `mcp__legacy__put/get/list_prefix/record_time_series/query_time_series/aggregate_patterns` | Works | **Dropped as MCP tools** (replaced by Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`, not exposed via MCP; the durable KV put/get surface is now `mcp__mahavishnu__mahavishnu_kv_put` / `mcp__mahavishnu__mahavishnu_kv_get`) |
+| `mcp__legacy__sql_query` / `mcp__legacy__sql_execute` | Works | **Dropped** (no replacement) |
 | `mcp__mahavishnu__adapter_list/adapter_metadata` | Works | **Removed (ADR-013 Option C)** |
-| `from dhara.mcp.auth import ...` | Works (file-based TokenAuth) | **Deleted with Dhara server** (Phase 8); new code uses `from mcp_common.auth import ...` |
-| `oneiric/adapters/dhara_pusher.py` | Pushes to Dhara MCP | **Deleted (Phase 1 task 14)** |
-| `from dhara import Connection, Persistent, PersistentDict, PersistentList, BTree` | Works | Works (unchanged) |
-| Dhara launchd plist (if any) | Runs `dhara mcp start` | **Retired (Phase 8)** — replace with Oneiric MCP launchd plist on port 8683 |
-| Dhara role in `BODAI_REPO_REGISTRY.md` | `mcp_server` | **`engine`** (Phase 8 task 14) |
-| `dhara` version | 0.20.1 | **1.0.0** (after Phase 8; user bumps via `crackerjack run -p major`) |
+| `from <legacy pkg>.mcp.auth import ...` | Works (file-based TokenAuth) | **Deleted with the legacy server** (Phase 8); new code uses `from mcp_common.auth import ...` |
+| the Oneiric registry-pusher adapter | Pushes to the retired MCP server | **Deleted (Phase 1 task 14)** |
+| `from <legacy pkg> import Connection, Persistent, PersistentDict, PersistentList, BTree` | Works | Works (unchanged) |
+| Legacy launchd plist (if any) | Runs the MCP server | **Retired (Phase 8)** — replace with Oneiric MCP launchd plist on port 8681 |
+| Legacy role in `BODAI_REPO_REGISTRY.md` | `mcp_server` | **`engine`** (Phase 8 task 14) |
+| Legacy package version | 0.20.1 | **1.0.0** (after Phase 8; user bumps via `crackerjack run -p major`) |
 
 ## 9. References
 
-- `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` — to be amended (Option B → Option C).
+- `docs/adr/013-mahavishnu-adapter-tool-boundary.md` — to be amended (Option B → Option C).
 - `docs/adr/017-oneiric-shared-persistence-substrate.md` — to be amended (Oneiric now has an MCP server).
 - `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md` — to be amended (Phase 4 description, Phase 11 redirect).
 - `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md` — precondition plan; cross-references need updating.
 - `docs/plans/2026-07-26-mahavishnu-acp-server.md` — Phase 1.5 (skill distribution) routes through Crackerjack per Phase 4 of this spec.
-- `docs/specs/2026-04-27-bodai-auth-standardization-design.md` — Phase 2 of this spec completes Dhara's row.
-- `docs/specs/2026-05-24-dhara-serverless-design.md` — Phase 4 of the active plan (Dhara re-architecture) still applies; this spec decomposes the MCP surface.
-- `docs/ZODB_COMPARISON.md` (in Dhara repo) — documents Dhara's lineage from Durus; informs "Dhara stays the engine" decision.
-- `dhara/NOTICE` — CNRI/Durus attribution preserved under BSD-3-Clause.
+- `docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md` — Phase 2 of this spec completes the legacy server's row.
+- `docs/specs/.archive/2026-05-24-mcp-serverless-design.md` — Phase 4 of the active plan (serverless re-architecture) still applies; this spec decomposes the MCP surface.
+- `docs/ZODB_COMPARISON.md` (in the legacy repo) — documents the engine's lineage from Durus; informs the "engine stays" decision.
+- `NOTICE` (in the legacy repo) — CNRI/Durus attribution preserved under BSD-3-Clause.
 - `docs/decisions/wire-up-contract.md` — Integration Contract pattern used in every phase.
 - `docs/decisions/mcp-backend-wiring-discipline.md` — per-feed health aggregator pattern for new MCP servers.
 - `oneiric/core/cli.py` — `MCPServerBase` + `MCPServerCLIFactory` primitives used to build the Oneiric MCP server.

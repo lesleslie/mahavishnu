@@ -13,7 +13,7 @@ worktree MCP surface into a single `worktree_manage` dispatcher.
 ## 2. Audit Command
 
 ```bash
-rg -n "register_worktree_tools|worktree_tools|create_ecosystem_worktree|remove_ecosystem_worktree|list_ecosystem_worktrees|prune_ecosystem_worktrees|get_worktree_safety_status|get_worktree_provider_health|worktree_manage" /Users/les/Projects/mahavishnu /Users/les/Projects/crackerjack /Users/les/Projects/session-buddy /Users/les/Projects/oneiric /Users/les/Projects/mcp-common /Users/les/Projects/mdinject /Users/les/Projects/akosha /Users/les/Projects/dhara
+rg -n "register_worktree_tools|worktree_tools|create_ecosystem_worktree|remove_ecosystem_worktree|list_ecosystem_worktrees|prune_ecosystem_worktrees|get_worktree_safety_status|get_worktree_provider_health|worktree_manage" /Users/les/Projects/mahavishnu /Users/les/Projects/crackerjack /Users/les/Projects/session-buddy /Users/les/Projects/oneiric /Users/les/Projects/mcp-common /Users/les/Projects/mdinject /Users/les/Projects/akosha /Users/les/Projects/legacy-mcp
 ```
 
 ## 3. Audit Summary

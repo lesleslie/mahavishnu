@@ -81,7 +81,7 @@ effective_limit = worker_count × settings.concurrency_limits.by_category[<categ
 
 ## Per-process limitation disclosure (per ADR 0001)
 
-The niche filter document (`docs/adr/0001-mahavishnu-niche.md`) does not require a per-cluster gate. The per-process gate is consistent with Mahavishnu's positioning as an LLM control plane + repo orchestrator. **A future fix path is a Redis/Dhara-backed shared counter** when cross-pool guarantees are required. This is out of scope for C-9.
+The niche filter document (`docs/adr/0001-mahavishnu-niche.md`) does not require a per-cluster gate. The per-process gate is consistent with Mahavishnu's positioning as an LLM control plane + repo orchestrator. **A future fix path is a Redis/durable-store-backed shared counter** when cross-pool guarantees are required. This is out of scope for C-9.
 
 ## Related
 

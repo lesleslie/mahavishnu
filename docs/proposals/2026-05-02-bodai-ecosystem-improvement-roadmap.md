@@ -11,7 +11,7 @@ The Bodai ecosystem already has the right system boundaries:
 - **Mahavishnu** as the control plane
 - **Session-Buddy** as the session and knowledge layer
 - **Akosha** as the semantic retrieval layer
-- **Dhara** as the durable storage and workflow distribution layer
+- **Oneiric** as the durable storage and workflow distribution layer
 - **Crackerjack** as the quality gate
 - **Oneiric** and `mcp-common` as shared infrastructure
 
@@ -82,7 +82,7 @@ The roadmap assumes the following operating stance:
   - safe to execute
   - execute in degraded mode
   - block execution and surface operator action
-- Normalize service readiness and health reporting across Mahavishnu, Session-Buddy, Akosha, Dhara, and Crackerjack.
+- Normalize service readiness and health reporting across Mahavishnu, Session-Buddy, Akosha, Oneiric, and Crackerjack.
 
 ### Primary Repo Ownership
 
@@ -131,7 +131,7 @@ Without this phase, the ecosystem risks building more advanced automation on top
 - `mahavishnu`
 - `session-buddy`
 - `akosha`
-- `dhara`
+- `oneiric`
 - `crackerjack`
 
 ### Success Criteria
@@ -252,7 +252,7 @@ These should progress throughout all phases instead of being isolated to one win
 - **Mahavishnu**: orchestration, approvals, routing, cross-repo workflow state, operator surface
 - **Session-Buddy**: session durability, memory, code graph, historical workflow context
 - **Akosha**: semantic retrieval, correlation, and discovery across ecosystem artifacts
-- **Dhara**: durable workflow configuration and storage-backed distribution concerns
+- **Oneiric**: durable workflow configuration and storage-backed distribution concerns
 - **Crackerjack**: quality gates, validation results, and enforcement hooks
 - **Oneiric / mcp-common**: configuration, auth primitives, shared contracts, reusable infrastructure
 

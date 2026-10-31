@@ -57,7 +57,7 @@ user can decide whether to wait, cancel, or re-dispatch.
   across two polls, suggest `cancel_workflow` and re-dispatch via
   `mahavishnu-specialist`.
 - **Degraded adapter**: if the adapter reports degraded, the agent
-  flags the underlying adapter (`akosha` / `dhara` / etc.) rather than
+  flags the underlying adapter (`akosha` / `oneiric` / etc.) rather than
   blaming the workflow itself.
 
 ## Related agents

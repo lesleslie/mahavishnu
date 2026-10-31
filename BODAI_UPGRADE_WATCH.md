@@ -17,7 +17,7 @@ during Phase 3 rollout (3.14 migration).
 When 3.15.0 final releases AND all tracked deps have 3.15 wheels:
 
 - Open Phase 4 ADR update (move from Proposed to Accepted) — see `docs/adr/016-phase-4-streaming-tar-evolution.md`
-- Begin the 7-PR sequence: mcp-common → oneiric → dhara → session-buddy → akosha → crackerjack → mahavishnu
+- Begin the 6-PR sequence: mcp-common → oneiric → session-buddy → akosha → crackerjack → mahavishnu
 - 2-week soak between each merge
 - Total window: ~3 months from 3.15.0 GA to mahavishnu on 3.15
 
@@ -27,7 +27,6 @@ Same as Phase 0 (3.14 migration):
 
 1. **mcp-common** — leaf dependency
 1. **oneiric** — adapter framework
-1. **dhara** — curator
 1. **session-buddy** — builder
 1. **akosha** — seer
 1. **crackerjack** — inspector

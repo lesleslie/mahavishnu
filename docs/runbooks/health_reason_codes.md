@@ -193,7 +193,7 @@ either died unexpectedly or was never started by the lifespan.
   error or dependency failure.
 
 **Action to take**: check the lifespan logs (``akosha`` /
-``session-buddy`` / ``mahavishnu`` / ``dhara`` / ``crackerjack``
+``session-buddy`` / ``mahavishnu`` / ``oneiric`` / ``crackerjack``
 startup banner). If the lifespan logs show the producer starting
 and then dying, the traceback is in stderr.
 

@@ -62,7 +62,7 @@ file, OR is empty, the distiller proceeds but emits:
 - A `WARNING` log line via `mahavishnu.distill.reviewer` with the
   reviewer ID.
 - An audit log entry tagged `extra={"audit": True}` for ingestion by
-  the Dhara `audit_log` subscriber.
+  the durable-store `audit_log` subscriber.
 
 Bootstrap mode is the v1 behavior and is acceptable for
 single-tenant / development use only. Operators MUST configure an
@@ -100,7 +100,7 @@ export MAHAVISHNU_PUBLISHER_ALLOWLIST=/etc/mahavishnu/publisher_allowlist.txt
 ### Audit log ingestion
 
 The audit log entries emitted by `emit_audit_log` carry
-`extra={"audit": True, "reviewer_id": ..., "decision_source": ..., "decision_allowed": ...}`. The Dhara `audit_log` subscriber ingests
+`extra={"audit": True, "reviewer_id": ..., "decision_source": ..., "decision_allowed": ...}`. The durable-store `audit_log` subscriber ingests
 these into the event bus; downstream consumers (Akosha anomaly
 detection) can flag unexpected bootstrap-mode publication spikes.
 

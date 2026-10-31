@@ -56,15 +56,19 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__mahavishnu__get_workflow_status",
         "mcp__mahavishnu__index_code_graph",
         "mcp__mahavishnu__search_documentation",
-        # mcp (port 8683)
-        "mcp__dhara__put",
-        "mcp__dhara__get",
-        "mcp__dhara__list_adapters",
-        "mcp__dhara__upsert_service",
-        "mcp__dhara__record_event",
-        "mcp__dhara__get_adapter",
-        "mcp__dhara__store_adapter",
-        "mcp__dhara__aggregate_patterns",
+        # oneiric (port 8681)
+        "mcp__oneiric__oneiric_list_adapters",
+        "mcp__oneiric__oneiric_get_adapter",
+        "mcp__oneiric__oneiric_store_adapter",
+        "mcp__oneiric__read_context",
+        "mcp__oneiric__write_context",
+        "mcp__oneiric__read_progress",
+        "mcp__oneiric__write_progress",
+        # mahavishnu (port 8680) — durable state + service registry
+        "mcp__mahavishnu__mahavishnu_kv_put",
+        "mcp__mahavishnu__mahavishnu_kv_get",
+        "mcp__mahavishnu__mahavishnu_upsert_service",
+        "mcp__mahavishnu__mahavishnu_record_event",
         # context7 (plugin)
         "mcp__plugin_context7_context7__query-docs",
         "mcp__plugin_context7_context7__resolve-library-id",
@@ -94,19 +98,15 @@ KNOWN_TOOLS: frozenset[str] = frozenset(
         "mcp__session-buddy__start",
         "mcp__session-buddy__end",
         "mcp__session-buddy__status",
-        # mcp (port 8683) — additional live tools
-        "mcp__dhara__get_adapter_health",
-        "mcp__dhara__record_time_series",
-        "mcp__dhara__query_time_series",
-        "mcp__dhara__validate_adapter",
-        "mcp__dhara__list_adapter_versions",
-        "mcp__dhara__list_services",
-        "mcp__dhara__get_service",
-        "mcp__dhara__list_events",
-        "mcp__dhara__health_check_all",
-        "mcp__dhara__get_liveness",
-        "mcp__dhara__get_readiness",
-        "mcp__dhara__get_contract_info",
+        # oneiric (port 8681) — additional live tools
+        "mcp__oneiric__oneiric_get_adapter_health",
+        "mcp__oneiric__oneiric_validate_adapter",
+        "mcp__oneiric__oneiric_list_adapter_versions",
+        "mcp__oneiric__oneiric_get_contract_info",
+        # mahavishnu (port 8680) — additional live tools
+        "mcp__mahavishnu__mahavishnu_list_services",
+        "mcp__mahavishnu__mahavishnu_get_service",
+        "mcp__mahavishnu__mahavishnu_list_events",
         # mahavishnu (port 8680) — additional live tools
         "mcp__mahavishnu__pool_scale",
         "mcp__mahavishnu__pool_close",
@@ -139,13 +139,13 @@ KNOWN_PORTS: dict[str, int] = {
     "session-buddy": 8678,
     "session_buddy": 8678,
     "mahavishnu": 8680,
+    "oneiric": 8681,
     "akosha": 8682,
-    "mcp": 8683,
 }
 
 _MCP_REF_RE = re.compile(r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*")
 _PORT_RE = re.compile(
-    r"\b(crackerjack|session[_-]buddy|mahavishnu|akosha|mcp)\b[^.\n]*?\bport\s+(\d{4,5})",
+    r"\b(crackerjack|session[_-]buddy|mahavishnu|oneiric|akosha)\b[^.\n]*?\bport\s+(\d{4,5})",
     re.IGNORECASE,
 )
 

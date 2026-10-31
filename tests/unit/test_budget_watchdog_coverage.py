@@ -309,7 +309,7 @@ class TestSettlePersistence:
     def test_settle_key_format(self) -> None:
         assert settle_key("run-x") == "settle/v1/run-x"
 
-    def test_persist_initial_writes_dead_letter_when_no_dhara(self) -> None:
+    def test_persist_initial_writes_dead_letter_when_no_store(self) -> None:
         record = self._make_record()
         with TemporaryDirectory() as dl_root:
             with patch(
@@ -326,7 +326,7 @@ class TestSettlePersistence:
                 assert loaded is not None
                 assert loaded.run_ref == "run-1"
 
-    def test_persist_initial_async_with_dhara(self) -> None:
+    def test_persist_initial_async_with_store(self) -> None:
         record = self._make_record()
         fake_mcp = MagicMock()
         fake_mcp.put = AsyncMock(return_value=None)
@@ -341,7 +341,7 @@ class TestSettlePersistence:
         finally:
             loop.close()
 
-    def test_persist_transition_with_dhara(self) -> None:
+    def test_persist_transition_with_store(self) -> None:
         record = self._make_record("run-2")
         fake_mcp = MagicMock()
         fake_mcp.put = AsyncMock(return_value=None)

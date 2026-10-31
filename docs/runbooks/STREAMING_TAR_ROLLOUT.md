@@ -204,5 +204,5 @@ When filing, include:
 - S3/GCS request ID for the storage-side leg (if applicable).
 
 For the on-call rotation, see `docs/runbooks/ON_CALL_HANDBOOK.md`.
-For cross-component ripple (Dhara / Session-Buddy / Akosha), see
+For cross-component ripple (Oneiric / Session-Buddy / Akosha), see
 `docs/runbooks/ERROR_BUDGET_ENFORCEMENT.md`.

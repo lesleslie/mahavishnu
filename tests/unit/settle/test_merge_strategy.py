@@ -3,10 +3,10 @@ strategy plumbing.
 
 REQ-SM-007 regression: ``MergeStrategy`` round-trips through plain-string
 serialization (``str(value)``) without leaking the enum repr
-(``"MergeStrategy.SEMANTIC"``) into Dhara payloads. The cross-version
+(``"MergeStrategy.SEMANTIC"``) into persisted payloads. The cross-version
 compatibility of ``SettleRunRecord.bindings[*].merge_strategy`` (Phase 3
 payload) depends on this contract — without the pin, ``str(member)``
-would emit the enum repr and silently break older Dhara records.
+would emit the enum repr and silently break older persisted records.
 
 Also covers the Phase 1 exit-criterion: ``merge_three_way_sync`` is
 removed from ``__all__`` and emits ``DeprecationWarning`` on call.
@@ -49,7 +49,7 @@ from mahavishnu.settle.merge import (
 def test_strategy_roundtrip(strategy: MergeStrategy) -> None:
     """``str(strategy.value)`` -> ``MergeStrategy(raw)`` must equal ``strategy``.
 
-    This is the Dhara persistence contract: ``to_dict`` writes the raw
+    This is the persistence contract: ``to_dict`` writes the raw
     string (e.g. ``"semantic"``) and ``from_dict`` reads it back via
     ``MergeStrategy(raw)``. Without this pin, ``str(MergeStrategy.SEMANTIC)``
     would emit ``"MergeStrategy.SEMANTIC"`` and break cross-version
@@ -76,7 +76,7 @@ def test_strategy_str_returns_value_not_repr() -> None:
     """``str(MergeStrategy.SEMANTIC)`` returns ``"semantic"`` (the value).
 
     Python's ``StrEnum`` (3.11+) overrides ``__str__`` to return the value
-    directly — this is the safe default for Dhara serialization. The
+    directly — this is the safe default for persistence serialization. The
     REQ-SM-007 pin (``str(member.value)``) is defensive: if a future
     maintainer switches to plain ``Enum`` or overrides ``__str__``, the
     pin still produces the cross-version-safe raw string.

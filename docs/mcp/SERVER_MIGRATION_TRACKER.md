@@ -89,7 +89,7 @@ desktop applications, Swift-only clients, libraries without MCP servers, or the 
 | repo | path | status | reason |
 |---|---|---|---|
 | bodai | `bodai/` | out-of-scope | Ecosystem meta-project (`mcp: native`); no standalone MCP server |
-| dhara | `dhara/` | out-of-scope | No MCP server as of 2026-09-26. Revisit if MCP server is reintroduced |
+| legacy-mcp | `legacy-mcp/` | out-of-scope | Standalone MCP server retired 2026-09-20. Revisit if an MCP server is reintroduced |
 | fastblocks | `fastblocks/` | out-of-scope | Web framework library; no MCP server. Will adopt when (and if) it gets one |
 | fastblocks-ui | `fastblocks-ui/` | out-of-scope | fastblocks runtime CSS dep; no MCP server |
 | jinja2-async-environment | `jinja2-async-environment/` | out-of-scope | fastblocks transitive library; no MCP server |

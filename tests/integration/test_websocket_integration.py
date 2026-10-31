@@ -1,11 +1,10 @@
 """Integration tests for WebSocket servers across ecosystem.
 
-Tests all 7 operational WebSocket servers:
+Tests all 6 operational WebSocket servers:
 - session-buddy (8765) - Session management
 - mahavishnu (8690) - Workflow orchestration
 - akosha (8692) - Knowledge graph and insights
 - crackerjack (8686) - Quality control and testing
-- mcp (8693) - Dependency management
 - excalidraw-mcp (3042) - Diagram collaboration
 - fastblocks (8684) - Application building
 
@@ -51,12 +50,6 @@ WEBSOCKET_SERVERS = {
         "module_path": "/Users/les/Projects/crackerjack",
         "class_name": "CrackerjackWebSocketServer",
         "description": "Quality control and CI/CD",
-    },
-    "mcp": {
-        "port": 8693,
-        "module_path": "/Users/les/Projects/mcp",
-        "class_name": "DharaWebSocketServer",
-        "description": "Dependency management",
     },
     "excalidraw-mcp": {
         "port": 3042,
@@ -860,19 +853,18 @@ class TestPoolBroadcasting:
 
 @pytest.mark.integration
 class TestMultiServerConfiguration:
-    """Test configuration for all 7 WebSocket servers."""
+    """Test configuration for all 6 WebSocket servers."""
 
     def test_all_servers_configured(self):
-        """Test that all 7 servers have configurations."""
+        """Test that all 6 servers have configurations."""
         # Assert
-        assert len(WEBSOCKET_SERVERS) == 7
+        assert len(WEBSOCKET_SERVERS) == 6
 
         required_servers = [
             "session-buddy",
             "mahavishnu",
             "akosha",
             "crackerjack",
-            "mcp",
             "excalidraw-mcp",
             "fastblocks",
         ]
@@ -886,7 +878,7 @@ class TestMultiServerConfiguration:
         ports = [config["port"] for config in WEBSOCKET_SERVERS.values()]
 
         # Assert
-        assert len(ports) == 7
+        assert len(ports) == 6
         for port in ports:
             assert isinstance(port, int)
             assert 1000 <= port <= 9999 or port == 3042  # excalidraw uses 3042

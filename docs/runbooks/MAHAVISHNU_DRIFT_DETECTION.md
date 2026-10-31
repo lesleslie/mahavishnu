@@ -36,7 +36,7 @@ fires, you see:
 ## What to check first (≤ 5 minutes)
 
 1. **Is the drift real or transient?** Look at
-   `mahavishnu.observability.metric_samples` (Dhara table) for
+   `mahavishnu.observability.metric_samples` (durable key-value table) for
    the last 60 minutes of the affected metric. A real drift is
    sustained; a transient is a single spike that recovered.
 1. **What is the severity?** (R3-H4 / round-4 L6: thresholds are

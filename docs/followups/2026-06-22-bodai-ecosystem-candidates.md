@@ -109,7 +109,7 @@ ______________________________________________________________________
 **Why it doesn't fit as a pool**:
 
 - Wrong deployment shape — desktop, no headless/server mode, no CI deployment.
-- Single-user, local-first by design — no shared memory (Session-Buddy), no Dhara persistence.
+- Single-user, local-first by design — no shared memory (Session-Buddy), no persistence-substrate persistence.
 - MCP *consumer*, not MCP *server* — integrates with external MCP servers but doesn't expose Mahavishnu's tools.
 - No routing/scaling primitives (no `least_loaded`, no K8s HPA).
 - Electron memory/CPU footprint inappropriate for embedding inside another orchestrator's worker.
@@ -137,7 +137,7 @@ ______________________________________________________________________
 
 - **MIT-licensed core + MCP server.** Zero licensing friction for control-plane-first internal product.
 - **Best-in-class explainability for long-doc QA** — returns explicit page/section references (useful when Crackerjack agents need to cite a regulatory clause).
-- **No vector DB to operate** — tree JSON in Dhara or local FS is enough; one less operational dependency than pgvector.
+- **No vector DB to operate** — tree JSON in the persistence substrate or local FS is enough; one less operational dependency than pgvector.
 - **MCP-first delivery matches our posture** — `pageindex-mcp` is HTTP-transport + Bearer auth, same shape as Akosha/Crackerjack/Session-Buddy.
 - **Tracks with our deferred-crawl4ai decision** — PageIndex also defers content-acquisition complexity (no headless browser needed at query time).
 
@@ -155,7 +155,7 @@ ______________________________________________________________________
 
 - Add `retrieval_mode: vector | tree` config knob. PDFs and EPUBs (where structure exists) get PageIndex tree generation alongside existing embeddings. Akosha stores both representations; `mcp__mahavishnu__ingest_content` returns the union.
 - **Default for long PDFs (>50 pages), regulatory, legal, financial docs.**
-- Tree index stored in **Dhara** (not Akosha — tree JSON is structured state, not memory). Add `tree_index_id` field to `IngestionResult.metadata`.
+- Tree index stored in the **persistence substrate** (not Akosha — tree JSON is structured state, not memory). Add `tree_index_id` field to `IngestionResult.metadata`.
 - Keep vector path as default for non-PDF and short content.
 
 **Effort**: M (10–12 days, one engineer, one PR cycle).

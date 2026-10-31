@@ -82,7 +82,6 @@ EXCLUDED_FROM_STANDALONE: frozenset[str] = frozenset({"www-mcp-servers"})
 OUT_OF_SCOPE_REPOS: frozenset[str] = frozenset(
     {
         "bodai",
-        "dhara",
         "fastblocks",
         "fastblocks-ui",
         "jinja2-async-environment",

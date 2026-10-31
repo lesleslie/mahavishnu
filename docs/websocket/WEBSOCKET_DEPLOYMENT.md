@@ -18,7 +18,6 @@ This guide provides comprehensive instructions for deploying and maintaining Web
 | **mahavishnu** | 8690 | 8680 | Orchestration | Production Ready |
 | **crackerjack** | 8686 | 8676 | Quality control | Production Ready |
 | **akosha** | 8692 | 8682 | Analytics | Production Ready |
-| **dhara** | 8693 | 8683 | Adapter distribution | Production Ready |
 | **excalidraw-mcp** | 3042 | 3032 | Diagram collaboration | Production Ready |
 | **fastblocks** | 8684 | - | UI updates | Production Ready |
 
@@ -80,8 +79,8 @@ brew install python@3.11 openssl redis nginx
 
 **Port Allocation:**
 
-- WebSocket ports: 8600-8800 range (8684, 8686, 8690, 8692, 8693, 8765, 3042)
-- HTTP ports: 8600-8800 range (8678, 8680, 8682, 8683, 8676, 3032)
+- WebSocket ports: 8600-8800 range (8684, 8686, 8690, 8692, 8765, 3042)
+- HTTP ports: 8600-8800 range (8678, 8680, 8682, 8676, 3032)
 - Metrics ports: 9090-9099 (Prometheus metrics)
 
 **Firewall Configuration:**
@@ -92,7 +91,6 @@ sudo ufw allow 8684/tcp  # fastblocks
 sudo ufw allow 8686/tcp  # crackerjack
 sudo ufw allow 8690/tcp  # mahavishnu
 sudo ufw allow 8692/tcp  # akosha
-sudo ufw allow 8693/tcp  # dhara
 sudo ufw allow 8765/tcp  # session-buddy
 sudo ufw allow 3042/tcp  # excalidraw-mcp
 
@@ -114,7 +112,6 @@ ws-session-buddy.example.com.    A    192.0.2.10
 ws-mahavishnu.example.com.       A    192.0.2.10
 ws-crackerjack.example.com.      A    192.0.2.10
 ws-akosha.example.com.          A    192.0.2.10
-ws-dhara.example.com.          A    192.0.2.10
 ws-excalidraw.example.com.       A    192.0.2.10
 ws-fastblocks.example.com.       A    192.0.2.10
 ```
@@ -132,7 +129,6 @@ ______________________________________________________________________
 │   ├── mahavishnu/
 │   ├── crackerjack/
 │   ├── akosha/
-│   ├── dhara/
 │   ├── excalidraw-mcp/
 │   └── fastblocks/
 ├── certificates/
@@ -165,7 +161,6 @@ pip install -e ./services/session-buddy
 pip install -e ./services/mahavishnu
 pip install -e ./services/crackerjack
 pip install -e ./services/akosha
-pip install -e ./services/dhara
 pip install -e ./services/excalidraw-mcp
 pip install -e ./services/fastblocks
 
@@ -187,7 +182,6 @@ export MAHAVISHNU_JWT_SECRET="$(openssl rand -base64 32)"
 export SESSION_BUDDY_JWT_SECRET="$(openssl rand -base64 32)"
 export CRACKERJACK_JWT_SECRET="$(openssl rand -base64 32)"
 export AKOSHA_JWT_SECRET="$(openssl rand -base64 32)"
-export DHARA_JWT_SECRET="$(openssl rand -base64 32)"
 export EXCALIDRAW_JWT_SECRET="$(openssl rand -base64 32)"
 export FASTBLOCKS_JWT_SECRET="$(openssl rand -base64 32)"
 
@@ -243,7 +237,6 @@ sudo certbot certonly --standalone \
     -d ws-session-buddy.example.com \
     -d ws-crackerjack.example.com \
     -d ws-akosha.example.com \
-    -d ws-dhara.example.com \
     -d ws-excalidraw.example.com \
     -d ws-fastblocks.example.com
 
@@ -259,7 +252,7 @@ sudo certbot certonly --standalone \
 sudo mkdir -p /opt/bodhisattva/certificates
 
 # Link Let's Encrypt certificates
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     sudo mkdir -p /opt/bodhisattva/certificates/$service
     sudo ln -s /etc/letsencrypt/live/ws-$service.example.com/fullchain.pem \
               /opt/bodhisattva/certificates/$service/cert.pem
@@ -295,7 +288,7 @@ Create `/opt/bodhisattva/scripts/reload-after-renewal.sh`:
 echo "Reloading services for new certificates..."
 
 # Reload each service
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     echo "Reloading $service..."
     sudo systemctl reload $service-websocket
 done
@@ -494,35 +487,6 @@ logging:
   file: "/opt/bodhisattva/logs/akosha/websocket.log"
 ```
 
-### Dhara Configuration
-
-`/opt/bodhisattva/config/dhara.yaml`:
-
-```yaml
-server_name: "Dhara Curator"
-environment: "production"
-
-websocket:
-  enabled: true
-  host: "0.0.0.0"
-  port: 8693
-  tls_enabled: true
-  cert_file: "/opt/bodhisattva/certificates/dhara/cert.pem"
-  key_file: "/opt/bodhisattva/certificates/dhara/key.pem"
-  require_auth: true
-  max_connections: 200
-  message_rate_limit: 100
-
-# Adapter distribution
-distribution:
-  registry_path: "/opt/bodhisattva/data/dhara/registry"
-  sync_interval: 300
-
-logging:
-  level: "INFO"
-  file: "/opt/bodhisattva/logs/dhara/websocket.log"
-```
-
 ### Excalidraw-MCP Configuration
 
 `/opt/bodhisattva/config/excalidraw.yaml`:
@@ -658,7 +622,7 @@ sudo chown -R $USER:$USER /opt/bodhisattva
 # Create subdirectories
 mkdir -p /opt/bodhisattva/{services,certificates,logs,config,data}
 mkdir -p /opt/bodhisattva/logs/{websocket,metrics}
-mkdir -p /opt/bodhisattva/data/{sessions,akosha,dhara}
+mkdir -p /opt/bodhisattva/data/{sessions,akosha}
 
 # Clone repositories
 cd /opt/bodhisattnu/services
@@ -666,7 +630,6 @@ git clone https://github.com/yourorg/session-buddy.git
 git clone https://github.com/yourorg/mahavishnu.git
 git clone https://github.com/yourorg/crackerjack.git
 git clone https://github.com/yourorg/akosha.git
-git clone https://github.com/yourorg/dhara.git
 git clone https://github.com/yourorg/excalidraw-mcp.git
 git clone https://github.com/yourorg/fastblocks.git
 
@@ -690,7 +653,7 @@ source venv/bin/activate
 pip install --upgrade pip setuptools wheel
 
 # Install all services
-for service in session-buddy mahavishnu crackerjack akosha dhara excalidraw-mcp fastblocks; do
+for service in session-buddy mahavishnu crackerjack akosha excalidraw-mcp fastblocks; do
     echo "Installing $service..."
     cd /opt/bodhisattnu/services/$service
     pip install -e ".[prod]" || pip install -e .
@@ -713,7 +676,6 @@ sudo certbot certonly --standalone \
     -d ws-session-buddy.example.com \
     -d ws-crackerjack.example.com \
     -d ws-akosha.example.com \
-    -d ws-dhara.example.com \
     -d ws-excalidraw.example.com \
     -d ws-fastblocks.example.com \
     --email admin@example.com \
@@ -721,7 +683,7 @@ sudo certbot certonly --standalone \
     --non-interactive
 
 # Link certificates
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     sudo mkdir -p /opt/bodhisattnu/certificates/$service
     sudo ln -s /etc/letsencrypt/live/ws-$service.example.com/fullchain.pem \
               /opt/bodhisattnu/certificates/$service/cert.pem
@@ -740,7 +702,7 @@ done
 
 ```bash
 # Copy configuration files
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     cp /opt/bodhisattnu/services/$service/settings/$service.yaml \
        /opt/bodhisattnu/config/$service.yaml
 done
@@ -755,7 +717,6 @@ export MAHAVISHNU_JWT_SECRET="$(openssl rand -base64 32)"
 export SESSION_BUDDY_JWT_SECRET="$(openssl rand -base64 32)"
 export CRACKERJACK_JWT_SECRET="$(openssl rand -base64 32)"
 export AKOSHA_JWT_SECRET="$(openssl rand -base64 32)"
-export DHARA_JWT_SECRET="$(openssl rand -base64 32)"
 export EXCALIDRAW_JWT_SECRET="$(openssl rand -base64 32)"
 export FASTBLOCKS_JWT_SECRET="$(openssl rand -base64 32)"
 EOF
@@ -809,18 +770,18 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 
 # Enable services (start on boot)
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     sudo systemctl enable ${service}-websocket
 done
 
 # Start services
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     sudo systemctl start ${service}-websocket
     echo "Started $service"
 done
 
 # Check status
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     echo "=== $service status ==="
     sudo systemctl status ${service}-websocket --no-pager
     echo ""
@@ -831,13 +792,13 @@ done
 
 ```bash
 # Check all WebSocket ports
-for port in 8684 8686 8690 8692 8693 8765 3042; do
+for port in 8684 8686 8690 8692 8765 3042; do
     echo "Checking port $port..."
     nc -z localhost $port && echo "✓ Listening" || echo "✗ Not listening"
 done
 
 # Test TLS connections
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     echo "Testing $service WSS connection..."
     openssl s_client -connect localhost:8690 -servername ws-$service.example.com < /dev/null
 done
@@ -970,30 +931,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Dhara WebSocket
-  dhara-ws:
-    build:
-      context: ./services/dhara
-      dockerfile: Dockerfile.websocket
-    ports:
-      - "8693:8693"
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DHARA_JWT_SECRET=${DHARA_JWT_SECRET}
-      - DHARA_CERT_FILE=/certs/cert.pem
-      - DHARA_KEY_FILE=/certs/key.pem
-    volumes:
-      - ./certificates/dhara:/certs:ro
-      - ./config/dhara.yaml:/config/dhara.yaml:ro
-      - ./logs/dhara:/logs
-      - dhara_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-m", "dhara.websocket.health_check"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Excalidraw-MCP WebSocket
   excalidraw-ws:
     build:
@@ -1073,7 +1010,6 @@ volumes:
   redis_data:
   session_data:
   akosha_data:
-  dhara_data:
   prometheus_data:
   grafana_data:
 
@@ -1134,7 +1070,6 @@ MAHAVISHNU_JWT_SECRET=$(openssl rand -base64 32)
 SESSION_BUDDY_JWT_SECRET=$(openssl rand -base64 32)
 CRACKERJACK_JWT_SECRET=$(openssl rand -base64 32)
 AKOSHA_JWT_SECRET=$(openssl rand -base64 32)
-DHARA_JWT_SECRET=$(openssl rand -base64 32)
 EXCALIDRAW_JWT_SECRET=$(openssl rand -base64 32)
 FASTBLOCKS_JWT_SECRET=$(openssl rand -base64 32)
 EOF
@@ -1899,9 +1834,6 @@ rsync -av /opt/bodhisattnu/data/sessions/ /backup/sessions/
 
 # Backup Akosha hotstore
 cp /opt/bodhisattnu/data/akosha/hotstore.duckdb /backup/akosha/
-
-# Backup Dhara registry
-rsync -av /opt/bodhisattnu/data/dhara/ /backup/dhara/
 ```
 
 ### Disaster Recovery
@@ -1924,7 +1856,7 @@ rsync -av /opt/bodhisattnu/data/dhara/ /backup/dhara/
 1. **Restart services:**
 
    ```bash
-   for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+   for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
        sudo systemctl restart ${service}-websocket
    done
    ```
@@ -2098,7 +2030,6 @@ ______________________________________________________________________
 | mahavishnu | 8690 | 8680 | 8680 `/metrics` |
 | crackerjack | 8686 | 8676 | 9092 |
 | akosha | 8692 | 8682 | 9093 |
-| dhara | 8693 | 8683 | 9094 |
 | excalidraw-mcp | 3042 | 3032 | 9095 |
 | fastblocks | 8684 | - | 9096 |
 
@@ -2116,7 +2047,7 @@ ______________________________________________________________________
 
 ```bash
 # Check all WebSocket server status
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     echo "=== $service ==="
     sudo systemctl status ${service}-websocket --no-pager -l
 done
@@ -2125,7 +2056,7 @@ done
 tail -f /opt/bodhisattnu/logs/*/websocket.log
 
 # Restart all WebSocket services
-for service in mahavishnu session-buddy crackerjack akosha dhara excalidraw fastblocks; do
+for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do
     sudo systemctl restart ${service}-websocket
 done
 

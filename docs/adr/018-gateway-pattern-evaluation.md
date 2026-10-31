@@ -6,11 +6,11 @@ date: 2026-09-16
 last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on:
-  - "docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md"
+  - "docs/adr/013-mahavishnu-adapter-tool-boundary.md"
   - "docs/adr/017-oneiric-shared-persistence-substrate.md"
 related:
-  - "docs/specs/2026-09-14-dhara-mcp-decomposition-design.md"
-  - "docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md"
+  - "docs/specs/2026-09-14-mcp-decomposition-design.md"
+  - "docs/plans/.archive/implementation-reports/2026-09-14-mcp-decomposition-implementation.md"
   - "docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md"
 decision_date: 2026-10-18
 topic: mcp-design
@@ -21,10 +21,10 @@ topic: mcp-design
 ## Status
 
 **Proposed** (2026-09-16) — pending review.
-**Ratified 2026-10-18** — Option C (hybrid) adopted. Per-wrapper-group Phase 1.5 commits per `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md` §5. No Phase 2.X consolidation. Re-evaluate in Q1-2027 after Phase 13 / serverless-readiness Phase 8 (EventBridge WAL) produces new telemetry.
+**Ratified 2026-10-18** — Option C (hybrid) adopted. Per-wrapper-group Phase 1.5 commits per `docs/specs/2026-09-14-mcp-decomposition-design.md` §5. No Phase 2.X consolidation. Re-evaluate in Q1-2027 after Phase 13 / serverless-readiness Phase 8 (EventBridge WAL) produces new telemetry.
 
-The Dhara MCP decomposition spec
-(`docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`)
+The MCP decomposition spec
+(`docs/specs/2026-09-14-mcp-decomposition-design.md`)
 introduced `mcp_common.tools.dispatch.register_local_namespace(component=..., tools=[...])`
 (Phase 1.5) and its generalization
 `mcp_common.tools.dispatch.register_remote_tools(server, namespace, tools=...)`
@@ -47,13 +47,13 @@ Five Bodai MCP servers run as separate launchd-managed processes:
 |-----------|---------------|------|------------------|-----------------------------|
 | Mahavishnu | `com.mcp.mahavishnu` | 8680 | `http://127.0.0.1:8680/health` | `MAHAVISHNU_AUTH_SECRET` |
 | Akosha | `com.mcp.akosha` | 8682 | `http://127.0.0.1:8682/health` | `AKOSHA_AUTH_SECRET` |
-| Dhara | `com.mcp.dhara` | 8683 | `http://127.0.0.1:8683/health` | `DHARA_AUTH_SECRET` |
+| Oneiric | `com.mcp.oneiric` | 8681 | `http://127.0.0.1:8681/health` | `ONEIRIC_AUTH_SECRET` |
 | Session-Buddy | `com.mcp.session-buddy` | 8678 | `http://127.0.0.1:8678/health` | `SESSION_BUDDY_AUTH_SECRET` |
 | Crackerjack | `com.mcp.crackerjack` | 8676 | `http://127.0.0.1:8676/health` | `CRACKERJACK_AUTH_SECRET` |
 
 **Counts today:**
 
-- **5 launchd plists** (`~/Library/LaunchAgents/com.mcp.{mahavishnu,akosha,dhara,session-buddy,crackerjack}.plist`).
+- **5 launchd plists** (`~/Library/LaunchAgents/com.mcp.{mahavishnu,akosha,oneiric,session-buddy,crackerjack}.plist`).
 - **5 /health endpoints** (one per process).
 - **5 mcp-common instantiations** (one per process — each server imports
   `mcp_common.auth`, `mcp_common.config`, `mcp_common.tools.dispatch`,
@@ -76,7 +76,7 @@ without committing to it:
 
 1. **ADR 017 (2026-09-14)** establishes **Oneiric as the single
    persistence substrate** for all Bodai components. Cross-component
-   state reads (`mahavishnu → akosha → dhara`) flow through Oneiric
+   state reads (`mahavishnu → akosha → oneiric`) flow through Oneiric
    adapters rather than direct Python imports. This decouples the
    *state* layer from the *process* layer; whether to also collapse
    the process layer is a separate decision.
@@ -88,7 +88,7 @@ without committing to it:
 3. **Phase 12 (Hook Bus Coordination)** ships Redis Streams as the
    cross-component event bus via
    `oneiric.adapters.queue.redis_streams`. Producers (Claude hooks,
-   jot drainers, audit loggers) and consumers (DHARA subscriber,
+   jot drainers, audit loggers) and consumers (durable-store subscriber,
    Mahavishnu aggregator) are now decoupled at the *event* layer; the
    MCP process boundary is no longer load-bearing for hook
    propagation. Phase 12a hard-cutovered the JSON-file queue
@@ -114,8 +114,8 @@ Rationale in §"Recommendation" below. The hybrid split:
   spec §5 Phase 1.5.
 - **Direct surface (stateful domain tools in their own process)**:
   Akosha's `query_local_traces`, `search_all_systems`,
-  `query_knowledge_graph` (state-bearing HotStore reads); Dhara's
-  replacement tools after decomposition; Session-Buddy's
+  `query_knowledge_graph` (state-bearing HotStore reads); the
+  durable-store tools after decomposition; Session-Buddy's
   `store_reflection`, `search_by_concept`; Crackerjack's
   `crackerjack_run_stage`, `search_code`, `search_semantic`. These
   hold an open connection / lock / in-memory index that does not
@@ -153,8 +153,8 @@ limits per component.
   memory limit does not have to cover Akosha's vector-store
   working set. Today each component gets its own
   `HardResourceLimits.Memory = 1073741824`.
-- **Component-specific tool profiles.** Dhara has
-  `DHARA_TOOL_PROFILE=standard`; Mahavishnu has the default `full`.
+- **Component-specific tool profiles.** Oneiric has
+  `ONEIRIC_TOOL_PROFILE=standard`; Mahavishnu has the default `full`.
   Profile isolation is implicit in process isolation.
 
 **Cons:**
@@ -171,7 +171,7 @@ limits per component.
 - **5 sets of mcp-common initialization cost** at startup.
 - **Cross-component correlation requires extra plumbing.** Tool
   invocations that need to span components (e.g. Akosha traces +
-  Dhara storage) currently rely on the bus (Phase 12) or direct MCP
+  durable-store state) currently rely on the bus (Phase 12) or direct MCP
   tool calls. The bus handles events; tool fan-out still pays the
   cost of 5 client connections.
 
@@ -224,7 +224,7 @@ generalization of Phase 1.5's `register_local_namespace` primitive.
   doubles (from 5 × 1 GiB = 5 GiB to ~2-3 GiB for the gateway,
   since not all libraries are warm at once, but with no isolation).
 - **Cross-component imports re-appear.** Phase 5 of the serverless
-  plan eliminated 8 direct Dhara imports + 1 direct Akosha import
+  plan eliminated 8 direct durable-storage imports + 1 direct Akosha import
   from Mahavishnu. Option B reverses this for the gatewayed tools
   (Mahavishnu imports Akosha's tool implementations).
 - **Operator muscle memory is broken.** `akosha mcp status` becomes
@@ -258,7 +258,7 @@ KV, semantic indices).
   `query_knowledge_graph`, `cross_repo_capability_search`,
   `find_function_usage`, `search_code_patterns` — all read from
   HotStore with open DuckDB / pgvector connections.
-- Dhara (post-decomposition): durable object store, time-series
+- Oneiric (post-decomposition): durable object store, time-series
   writes — operationally distinct from read-only catalog.
 - Session-Buddy: `store_reflection`, `search_by_concept`,
   `fingerprint_search`, `apply_pattern`, `trigger_learning` — open
@@ -321,8 +321,8 @@ operational (not code lines).
 
 | Metric | Count | Source |
 |--------|-------|--------|
-| launchd plists | 5 | `com.mcp.{mahavishnu,akosha,dhara,session-buddy,crackerjack}.plist` |
-| /health endpoints | 5 | ports 8680 / 8682 / 8683 / 8678 / 8676 |
+| launchd plists | 5 | `com.mcp.{mahavishnu,akosha,oneiric,session-buddy,crackerjack}.plist` |
+| /health endpoints | 5 | ports 8680 / 8682 / 8681 / 8678 / 8676 |
 | mcp-common instantiations | 5 | one per process at startup |
 | Auth secret env vars | 5 | `MAHAVISHNU_AUTH_SECRET` + 4 sibling names per `2026-04-27-bodai-auth-standardization-design.md` |
 | Start scripts (launch wrappers) | 5 | `launch_with_healthcheck.sh` + 5 per-component scripts |
@@ -359,7 +359,7 @@ operational (not code lines).
 | Auth secret env vars | 5 (unchanged) | 0 |
 | Start scripts | 5 (unchanged) | 0 |
 | Wrapper tool groups gatewayed | ~5 (PyCharm, discover_tools, health, trace catalog, registry) | new |
-| Stateful tool groups direct | ~25-30 (Akosha, Dhara, Session-Buddy, Crackerjack, Mahavishnu own stateful) | 0 |
+| Stateful tool groups direct | ~25-30 (Akosha, Oneiric, Session-Buddy, Crackerjack, Mahavishnu own stateful) | 0 |
 | Latency tax on stateful tools | 0 (unchanged) | 0 |
 | Single point of failure | none new | 0 |
 | Coordinated release overhead | 1 small milestone (the wrappers), not 7 big-bang | improved |
@@ -388,7 +388,7 @@ stateful tools.**
    smaller post-Phase 12 than pre-Phase 12.
 3. **The decomposition spec already designed Option C's surface.**
    Phase 1.5 (`register_local_namespace`) + Phase 11
-   (`register_remote_tools`) of the Dhara MCP decomposition spec
+   (`register_remote_tools`) of the MCP decomposition spec
    is the *exact* primitive Option C needs. We do not have to
    invent a new mechanism; we have to choose to use it.
 4. **Single point of failure risk is asymmetric.** Akosha's vector
@@ -436,7 +436,7 @@ register_remote_tools(
 # Same for "crackerjack", "session_buddy" namespaces
 ```
 
-**Akosha / Crackerjack / Session-Buddy / Dhara (stateful subset):**
+**Akosha / Crackerjack / Session-Buddy / Oneiric (stateful subset):**
 unchanged. Each keeps its own process, its own port, its own
 `mcp status` command.
 
@@ -469,7 +469,7 @@ consolidation. Option C is Option 1.5 + "stop there." Specifically:
   without forcing it. Option C explicitly preserves the
   independent-release cadence that Phase 10 was designed around.
 - **Phase 12**'s Redis Streams bus means producers (hooks,
-  drainers, audit loggers) and consumers (DHARA, Mahavishnu
+  drainers, audit loggers) and consumers (durable store, Mahavishnu
   aggregator) decouple at the event layer. Option C's gateway does
   not have to host producer/consumer logic — that lives in the bus
   consumer pattern, not in the MCP surface.
@@ -490,7 +490,7 @@ If Option C's wrapper consolidation introduces regressions:
    repo. Restart the five launchd plists. Stateful surface returns
    to Option A in <2 minutes.
 4. **No data migration.** Phase 1.5 changes tool *registration*, not
-   tool *data*. HotStore, Dhara, Session-Buddy stores, Crackerjack
+   tool *data*. HotStore, the durable store, Session-Buddy stores, Crackerjack
    indexes — none are touched. Rollback is configuration-only.
 
 **Signals to roll back:**
@@ -511,10 +511,10 @@ If Option C's wrapper consolidation introduces regressions:
 
 ## References
 
-- `docs/specs/2026-09-14-dhara-mcp-decomposition-design.md`
+- `docs/specs/2026-09-14-mcp-decomposition-design.md`
   §5 Phase 1.5 (wrapper consolidation) + §4.6 (Phase 11
   `register_remote_tools` rename).
-- `docs/plans/2026-09-14-dhara-mcp-decomposition-implementation.md`
+- `docs/plans/.archive/implementation-reports/2026-09-14-mcp-decomposition-implementation.md`
   — Phase 1.5 sequencing.
 - `docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`
   — Phase 8 (EventBridge WAL) and Phase 10 (Postgres consolidation
@@ -522,9 +522,9 @@ If Option C's wrapper consolidation introduces regressions:
 - `docs/adr/017-oneiric-shared-persistence-substrate.md` —
   persistence substrate (read *with* this ADR; together they cover
   state and process layers).
-- `docs/adr/013-mahavishnu-dhara-adapter-tool-boundary.md` —
+- `docs/adr/013-mahavishnu-adapter-tool-boundary.md` —
   adapter catalog boundary; Option C respects the same surface.
-- `docs/specs/2026-04-27-bodai-auth-standardization-design.md`
+- `docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md`
   — auth consolidation that gives Option B its "single auth surface"
   benefit (Option C retains per-component auth secrets).
 - `docs/decisions/wire-up-contract.md` and

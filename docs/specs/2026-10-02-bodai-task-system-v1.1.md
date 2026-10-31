@@ -33,7 +33,7 @@ FastMCP, Pydantic v2, `pytest-mock` for the fake publisher fixture.
   to clear XREADGROUP's PEL.
 - `fastmcp.lifespan` — the async startup/shutdown hook pattern. In
   session-buddy it's overridden at
-  `session_buddy/mcp/server.py:_lifespan_with_dhara_cleanup`; in
+  `session_buddy/mcp/server.py:_lifespan_with_substrate_cleanup`; in
   mahavishnu wiring happens in `mahavishnu/mcp/lifecycle.py:start_server()`
   (mirroring the `plan_index` periodic runner pattern at lines 95-158).
 - `RedisStreamsQueueSettings` — the oneiric `BaseSettings` with `stream`,
@@ -330,7 +330,7 @@ async def publish_task_event_raw(
         )
 ```
 
-**Modify** `session_buddy/mcp/server.py` (`_lifespan_with_dhara_cleanup`,
+**Modify** `session_buddy/mcp/server.py` (`_lifespan_with_substrate_cleanup`,
 the documented FastMCP lifespan pattern):
 
 - Inside the `try` block (mirror the existing `init_signer_feed_state`

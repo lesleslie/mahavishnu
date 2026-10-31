@@ -1,15 +1,15 @@
 # Mahavishnu Memory Architecture
 
 > **Status**: Living document. Updated whenever the storage schema, MCP surface, tool-profile gating, or integration contracts change.
-> **Audience**: Bodai ecosystem contributors, Claude Code users, and downstream components (Session-Buddy, Akosha, Dhara, Crackerjack).
+> **Audience**: Bodai ecosystem contributors, Claude Code users, and downstream components (Session-Buddy, Akosha, Oneiric, Crackerjack).
 >
 > **2026-10-12 migration note**: Mahavishnu's local `HybridAdapterRegistry` and its 3 satellite modules
 > (`adapter_discovery.py`, `adapter_persistence.py`, `adapter_registry_tools.py`) were
 > dropped in favor of Oneiric's substrate. The 7 `mcp__mahavishnu__adapter_*` MCP tools
 > (`adapter_list`, `adapter_resolve`, `adapter_metadata`, `adapter_health`,
 > `adapter_enable`, `adapter_discover`, `adapter_cache_invalidate`) are gone;
-> consumers use `mcp__oneiric__list_adapters`, `mcp__oneiric__get_adapter`,
-> `mcp__oneiric__get_adapter_health`. The remaining references to
+> consumers use `mcp__oneiric__oneiric_list_adapters`, `mcp__oneiric__oneiric_get_adapter`,
+> `mcp__oneiric__oneiric_get_adapter_health`. The remaining references to
 > `HybridAdapterRegistry` in the tables and examples below are pre-migration
 > historical context — see
 > `docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md` for the
@@ -31,7 +31,7 @@ ecosystem-status surface** (`ecosystem_status` / `ecosystem_capabilities` /
 control-plane decisions.
 
 It does **not** own long-term memory — that lives in Session-Buddy
-(reflections), Akosha (tiered vector store), Dhara (persistent object graph),
+(reflections), Akosha (tiered vector store), Oneiric (persistent object graph),
 and Crackerjack (skill memory). Mahavishnu's job is to **route** writes and
 reads to those components and to **persist its own operational state** (pool
 state, workflow results, routing decisions, audit dead-letters, tool profiles).
@@ -61,7 +61,7 @@ ______________________________________________________________________
 ## 1. Storage Inventory
 
 Mahavishnu persists state across **eleven logical stores** distributed across
-local XDG-compliant directories, Dhara's persistent object graph, the
+local XDG-compliant directories, the Oneiric shared-persistence substrate, the
 SQLite/PostgreSQL OTel ingester backend, and the in-process pool/worker
 runtimes. The single anchor point for cross-store joins is
 **`workflow_id`** — every operational record carries one and downstream
@@ -70,16 +70,16 @@ on it.
 
 | Store | Location | Format | Owner / Purpose |
 |-------|----------|--------|-----------------|
-| **Workflow-results** | `${Dhara.kv}[workflow-results/{workflow_id}/]` plus on-disk mirror under `DATA_DIR/workflow-results/{workflow_id}/` (lazy fallback) | Dhara JSON envelope `{status, output, error_code, worker_id, caller_kind, parent_session_id}`; on-disk mirror same shape | Per-workflow result records written by `dispatch_to_pool` / `workflow_result` / `pool_route_execute` |
-| **Pool state** | In-process `PoolManager._pools: dict[str, BasePool]` plus periodic snapshot to `${Dhara.kv}[pool-state/{pool_id}/]` (snapshot on close) | Pydantic `PoolMetrics` + `PoolStatus` | Live `pool_id -> PoolConfig`, `active_workers`, `tasks_completed/failed`, `avg_task_duration` |
-| **Worker runtime state** | In-process `WorkerManager._workers: dict[str, Worker]` plus terminal-state snapshot to `${Dhara.kv}[worker-state/{worker_id}/]` | `WorkerStatus` + `WorkerResult` envelope | WorkerID -> last `WorkerResult`, child process PID, runtime_kind |
-| **Routing-fitness signals** | `${Dhara.time_series}[routing_fitness/{task_class}/{selector}]` | `{ts, latency_ms, ok, score, failure_rate, samples}` | Written by `RoutingFitnessReader._flush_buffer`; read by `TaskRouter` to pick the best selector per task class |
+| **Workflow-results** | `${Mahavishnu.kv}[workflow-results/{workflow_id}/]` plus on-disk mirror under `DATA_DIR/workflow-results/{workflow_id}/` (lazy fallback) | Mahavishnu JSON envelope `{status, output, error_code, worker_id, caller_kind, parent_session_id}`; on-disk mirror same shape | Per-workflow result records written by `dispatch_to_pool` / `workflow_result` / `pool_route_execute` |
+| **Pool state** | In-process `PoolManager._pools: dict[str, BasePool]` plus periodic snapshot to `${Mahavishnu.kv}[pool-state/{pool_id}/]` (snapshot on close) | Pydantic `PoolMetrics` + `PoolStatus` | Live `pool_id -> PoolConfig`, `active_workers`, `tasks_completed/failed`, `avg_task_duration` |
+| **Worker runtime state** | In-process `WorkerManager._workers: dict[str, Worker]` plus terminal-state snapshot to `${Mahavishnu.kv}[worker-state/{worker_id}/]` | `WorkerStatus` + `WorkerResult` envelope | WorkerID -> last `WorkerResult`, child process PID, runtime_kind |
+| **Routing-fitness signals** | `${Mahavishnu.time_series}[routing_fitness/{task_class}/{selector}]` | `{ts, latency_ms, ok, score, failure_rate, samples}` | Written by `RoutingFitnessReader._flush_buffer`; read by `TaskRouter` to pick the best selector per task class |
 | **Routing decisions** | In-process ring buffer (`RoutingDecisionBuffer`) plus persistence via `mahavishnu_publisher` to Akosha `pattern.detected` topic | `RoutingDecision` Pydantic model | Per-task-class bounded ring buffer (default 1000) — Prometheus labels are `task_class` + `routing_strategy` only |
 | **WebSocket broadcast log** | In-process `MahavishnuWebSocketServer._history: deque[WebSocketMessage]` | `WebSocketMessage` envelope (type, channel, payload, ts) | Rolling broadcast history for reconnecting clients; default 1000-message cap |
 | **OTel trace storage** | DuckDB (in-memory or `${DATA_DIR}/otel/duck.db`) **or** pgvector via `PgvectorHotStore` | HotStore `conversations` schema (384-dim embedding + JSON metadata) | OTel span ingestion via `otel_ingest_trace`; semantic search via `otel_search_traces` |
-| **Adapter distribution registry** | `${Dhara.adapters}[adapter:{domain}:{key}:{provider}]` via `store_adapter` | `Adapter` Pydantic persistent object | Oneiric adapter factory path + config + version_history |
+| **Adapter distribution registry** | `${Oneiric.adapters}[adapter:{domain}:{key}:{provider}]` via `store_adapter` | `Adapter` Pydantic persistent object | Oneiric adapter factory path + config + version_history |
 | **Oneiric settings (layered)** | `oneiric://defaults` → `${REPO}/settings/mahavishnu.yaml` → `${REPO}/settings/local.yaml` → env vars `MAHAVISHNU_*` | Pydantic `MahavishnuSettings` (nested BaseModels with `extra="forbid"`) | All tool profiles, pool types, LLM routing, WebSocket ports, terminal adapters |
-| **Async dispatch dead-letter** | `~/.mahavishnu/async-dead-letter/{safewid}.json` (per the `~/.mahavishnu/` legacy layout, separate from the XDG state dir) | JSON `{workflow_id, prompt, caller_kind, error, failed_at}` | Dead-letter for `dispatch_to_pool` async path when Dhara put for terminal state fails |
+| **Async dispatch dead-letter** | `~/.mahavishnu/async-dead-letter/{safewid}.json` (per the `~/.mahavishnu/` legacy layout, separate from the XDG state dir) | JSON `{workflow_id, prompt, caller_kind, error, failed_at}` | Dead-letter for `dispatch_to_pool` async path when the Mahavishnu KV put for terminal state fails |
 | **Bodai subscriber state** | `~/.mahavishnu/bodai-event-queue.json` + `~/.mahavishnu/bodai-subscriber-state.json` | JSON arrays of envelopes + offsets | Local event-queue for offline-tolerant Bodai EventBridge publishing (`mahavishnu/core/events/bodai_subscriber.py`) |
 | **Backup catalog** | `mahavishnu/core/backup_recovery.py` (`BackupManager`); CLI under `mahavishnu/backup_cli.py` | Snapshot of `workflow-results/*`, OTel DB, settings | Cron-driven; retention enforced via `BACKUP_POLICY.md` |
 | **Worker spawn templates** | In-process `WorkerRegistry` (`mahavishnu/workers/registry.py`); settings layered via `oneiric://workers` | Python `WorkerTemplate` objects (`command_template`, `env`, `runtime_kind`) | Used by `WorkerManager.spawn` and the durable fast-path allowlist (`_DURABLE_WORKER_TYPES`) |
@@ -93,7 +93,7 @@ local state; the bordered purple nodes are aspirational/aspirational-DLQ.
 
 ```mermaid
 erDiagram
-    %% Workflow-results (Dhara-backed KV + on-disk mirror)
+    %% Workflow-results (Mahavishnu-backed KV + on-disk mirror)
     WorkflowResults ||--|{ WorkflowResult : "workflow-results/{id}"
     WorkflowResult {
         string workflow_id PK
@@ -106,7 +106,7 @@ erDiagram
         string updated_at
     }
 
-    %% Pool state (in-process + Dhara snapshot)
+    %% Pool state (in-process + Mahavishnu snapshot)
     PoolState ||--|{ PoolRecord : "pool-state/{id}"
     PoolRecord {
         string pool_id PK
@@ -130,7 +130,7 @@ erDiagram
         int pid "0 if non-PTY"
     }
 
-    %% Routing fitness (Dhara time-series)
+    %% Routing fitness (Mahavishnu time-series)
     RoutingFitness }o--o{ FitnessSignal : "routing_fitness/{tc}/{selector}"
     FitnessSignal {
         string ts PK
@@ -176,7 +176,7 @@ erDiagram
         string timestamp
     }
 
-    %% Adapter registry (delegated to Dhara via store_adapter)
+    %% Adapter registry (delegated to Oneiric via store_adapter)
     AdapterRegistry ||--|{ AdapterRecord : "adapter:{d}:{k}:{p}"
     AdapterRecord {
         string adapter_id PK
@@ -235,13 +235,13 @@ erDiagram
 | `workflow-results/{workflow_id}/` | `workflow_result(workflow_id=...)` MCP tool; Akosha `query_workflows`; Crackerjack via `get_workflow_statistics` | `dispatch_to_pool` (sync + async paths), `pool_route_execute` async branch, `worker_execute` durable branch | No TTL — operators control via `BackupManager.cleanup_old_workflow_results` |
 | `pool-state/{pool_id}/` | `pool_list`, `pool_health`, `pool_monitor` | `PoolManager.spawn_pool` (open), `PoolManager.close_pool` (final), `pool_scale` (transitions) | Snapshot on pool close; live state in-process until next spawn |
 | `worker-state/{worker_id}/` | `worker_list`, `worker_health`, `worker_monitor` | `WorkerManager.spawn_workers`, `WorkerManager.execute_task` (terminal), `worker_close` | Snapshot on `worker_close_all`; live state in-process |
-| `routing_fitness/{task_class}/{selector}` | `TaskRouter` (selector selection), `routing_alerts`, `routing_metrics_persistence` | `RoutingFitnessReader._flush_buffer` (called after every `route_task`) | Opportunistic prune via `_purge_ts` against Dhara `TimeSeriesRetention(retention_days=60)` default |
+| `routing_fitness/{task_class}/{selector}` | `TaskRouter` (selector selection), `routing_alerts`, `routing_metrics_persistence` | `RoutingFitnessReader._flush_buffer` (called after every `route_task`) | Opportunistic prune via `_purge_ts` against Oneiric `TimeSeriesRetention(retention_days=60)` default |
 | `RoutingDecisionBuffer` | `get_observability_metrics` (last-N), `mahavishnu_publisher` (push to Akosha) | `TaskRouter._record_decision` (every successful routing) | Per-task-class ring buffer `maxlen=1000`; no on-disk persistence |
 | `WSBroadcastLog` | Reconnecting WebSocket clients (catch-up on connect), `pool_monitor` | `MahavishnuWebSocketServer._broadcast` | `deque(maxlen=1000)`; no on-disk persistence |
 | `OTelStore.conversations` | `otel_search_traces`, `otel_get_trace`, `otel_get_stats`, Akosha `query_local_traces` cross-system | `otel_ingest_trace`, `otel_ingester.ingest_trace`, batch via `ingest_otel_traces` | Hot tier ~7 days; migrate-to-warm service NOT yet implemented (see Known Gaps) |
-| `adapter:{d}:{k}:{p}` | `adapter_resolve`, `adapter_list`, `adapter_metadata`, `adapter_health`; every consumer looking up an Oneiric adapter at runtime | `adapter_discover` (publish new version), `store_adapter` (CLI / one-shot), WorkerManager on first cache miss | Bounded by Dhara `AdapterConfig.max_versions_per_adapter` (default 10) |
+| `adapter:{d}:{k}:{p}` | `adapter_resolve`, `adapter_list`, `adapter_metadata`, `adapter_health`; every consumer looking up an Oneiric adapter at runtime | `adapter_discover` (publish new version), `store_adapter` (CLI / one-shot), WorkerManager on first cache miss | Bounded by Oneiric `AdapterConfig.max_versions_per_adapter` (default 10) |
 | `Settings` | One-shot on `MahavishnuSettings` instantiation; `reload_settings` CLI | Layered config writer at startup (YAML + env); manual edits to `settings/local.yaml` | Operator-controlled; no automatic aging |
-| `~/.mahavishnu/async-dead-letter/` | `dispatch_to_pool` recovery path (operator replays); `dump_async_dead_letter` CLI | `dispatch_to_pool` async result-lifecycle handler when Dhara `put` for terminal state fails | No TTL — manual cleanup or replay-then-delete |
+| `~/.mahavishnu/async-dead-letter/` | `dispatch_to_pool` recovery path (operator replays); `dump_async_dead_letter` CLI | `dispatch_to_pool` async result-lifecycle handler when the Mahavishnu KV `put` for terminal state fails | No TTL — manual cleanup or replay-then-delete |
 | `bodai-event-queue.json` | `bodai_subscriber` flush loop | `mahavishnu_publisher.publish_*` | Flushed every 60s when EventBridge reachable; bounded by `_MAX_QUEUE_SIZE=1000` |
 | `BackupManager` | `mahavishnu backup list/restore`, `create_backup` MCP tool | `BackupManager` cron (`backup_scheduler.py`); manual CLI | Cron per `BACKUP_POLICY.md` (full 30d, incremental 7d, differential 14d) |
 
@@ -323,7 +323,7 @@ needs.
 | `search_workflows` / `get_workflow_statistics` / `get_recovery_metrics` | observability | operators | (read) |
 | `create_backup` / `list_backups` / `restore_backup` / `run_disaster_recovery_check` / `heal_workflows` | backup/recovery | operators | Creates snapshots in `BackupManager`; restore restores `workflow-results/*` + settings |
 | `get_monitoring_dashboard` (v2) / `get_active_alerts` / `acknowledge_alert` / `trigger_test_alert` / `flush_metrics` | monitoring | operators, tests | Alerts persist in `${STATE_DIR}/audit/`; `flush_metrics` forces the OTel middleware export |
-| `list_adapters` | adapter | agents | (read — delegates to Dhara `list_adapters`) |
+| `list_adapters` | adapter | agents | (read — delegates to Oneiric `list_adapters`) |
 | `get_health` | health | orchestrators | (read — `EcosystemStatusService.generate_report`) |
 | `get_tool_versions` | discovery | consumers | (read — `TOOL_VERSIONS` registry) |
 | `discover_tools(query=, capability=)` | discovery | agents | (read — FastMCP introspection + version registry; honors `MAHAVISHNU_TOOL_PROFILE`) |
@@ -341,7 +341,7 @@ for the canonical per-tool version registry.
 > in the 2026-10-12 migration (see the note at the top of this document and
 > `docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md`).
 > Adapter resolution now lives in Oneiric's substrate — use
-> `mcp__oneiric__list_adapters` / `oneiric_get_adapter` /
+> `mcp__oneiric__oneiric_list_adapters` / `oneiric_get_adapter` /
 > `oneiric_get_adapter_health`. The absence is **not** a missing or broken
 > registration; do not re-add it.
 
@@ -361,7 +361,7 @@ for the canonical per-tool version registry.
 | `_register_primitive_tools` | STANDARD | `primitive_tools.py` | 2 | Introspection of `mahavishnu/primitives/` (Keystone keystone_show analog) |
 | `_register_otel_tools` | FULL | `otel_tools.py` | 5 | Writes OTel `conversations` rows via `otel_ingester.ingest_trace` |
 | `_register_self_improvement_tools` | FULL | `self_improvement_tools.py` | 7 | `review_and_fix` runs the Crackerjack self-improvement loop; approval queue in `approval_manager` |
-| `_register_clone_tools` | FULL | `clone_tools.py` | 4 | `clone_detect_ecosystem` snapshots repo fingerprints to Dhara `ecosystem_events` |
+| `_register_clone_tools` | FULL | `clone_tools.py` | 4 | `clone_detect_ecosystem` snapshots repo fingerprints to Mahavishnu `ecosystem_events` |
 | `_register_goal_team_tools` | FULL | `goal_team_tools.py` | 3 | Goal parsing + team composition; writes `goal_team_metrics` |
 | `_register_treesitter_tools` | FULL | `treesitter_tools.py` | 7 | AST extraction; caches results in `mahavishnu/workers/capabilities/_cache.py` |
 | `_register_pycharm_tools` | FULL | `pycharm_tools.py` | n/a | Bridges PyCharm MCP actions to Mahavishnu adapters |
@@ -388,7 +388,7 @@ Five side-effect paths write operational state outside the MCP surface:
 | `PoolManager._persist_routing_decision` | After every `route_task` | One `RoutingDecision` to in-process `RoutingDecisionBuffer`; published to Akosha `pattern.detected` topic on flush |
 | `RoutingFitnessReader._flush_buffer` | Every 60s + on demand | Time-series append to `routing_fitness/{task_class}/{selector}` |
 | `MahavishnuWebSocketServer._broadcast` | On every workflow event | Append to `_history` deque + broadcast to subscribers |
-| `dispatch_to_pool` async result-lifecycle | After async dispatch terminal state | `workflow-results/{id}/` Dhara `put`; on failure, dead-letter to `~/.mahavishnu/async-dead-letter/{safewid}.json` |
+| `dispatch_to_pool` async result-lifecycle | After async dispatch terminal state | `workflow-results/{id}/` Mahavishnu KV `put`; on failure, dead-letter to `~/.mahavishnu/async-dead-letter/{safewid}.json` |
 | `bodai_subscriber` flush | Every 60s | Drains `~/.mahavishnu/bodai-event-queue.json` to the Bodai EventBridge |
 
 ### Tool profile gating details
@@ -436,11 +436,11 @@ by access pattern: discovery, state, recall, monitor, health.
 
 | Tool | What it reads | Use when |
 |------|---------------|----------|
-| `list_workflows` / `get_workflow_status` / `search_workflows` | `WorkflowRun` in-process + `workflow-results/{id}/` Dhara KV | Polling async workflows |
-| `workflow_result(workflow_id=, timeout=)` | Single Dhara KV record | Sync read for a finished workflow |
-| `pool_list` / `pool_health` / `pool_monitor` | `PoolManager._pools` + Dhara `pool-state/{id}/` snapshots | Operator dashboard |
+| `list_workflows` / `get_workflow_status` / `search_workflows` | `WorkflowRun` in-process + `workflow-results/{id}/` Mahavishnu KV | Polling async workflows |
+| `workflow_result(workflow_id=, timeout=)` | Single Mahavishnu KV record | Sync read for a finished workflow |
+| `pool_list` / `pool_health` / `pool_monitor` | `PoolManager._pools` + Mahavishnu `pool-state/{id}/` snapshots | Operator dashboard |
 | `pool_search_memory(query=, limit=)` | `MemoryAggregator.cross_pool_search` (queries all pools' embedded memory) | Cross-pool recall via Session-Buddy / Akosha |
-| `worker_list` / `worker_health` / `worker_monitor` | `WorkerManager._workers` + Dhara `worker-state/{id}/` | Worker-level observability |
+| `worker_list` / `worker_health` / `worker_monitor` | `WorkerManager._workers` + Mahavishnu `worker-state/{id}/` | Worker-level observability |
 
 ### Coordination / issues / todos / dependencies
 
@@ -455,7 +455,7 @@ by access pattern: discovery, state, recall, monitor, health.
 
 | Tool | What it reads | Use when |
 |------|---------------|----------|
-| `send_repository_message` / `get_repository_messages` / `acknowledge_repository_message` / `broadcast_repository_message` / `notify_repository_changes` / `notify_workflow_status` / `send_quality_alert` / `list_project_messages` | Inter-repo `MessageBus` + Dhara `ecosystem_events` | Cross-component notifications |
+| `send_repository_message` / `get_repository_messages` / `acknowledge_repository_message` / `broadcast_repository_message` / `notify_repository_changes` / `notify_workflow_status` / `send_quality_alert` / `list_project_messages` | Inter-repo `MessageBus` + Mahavishnu `ecosystem_events` | Cross-component notifications |
 | `search_logs` / `get_log_statistics` | `${LOG_DIR}/*.log` (via Oneiric logger) | Log search |
 | `get_observability_metrics` / `get_workflow_statistics` / `get_recovery_metrics` | Prometheus + in-process counters | Spec §14 success-criteria dashboard |
 | `get_monitoring_dashboard` (v2) / `get_active_alerts` / `trigger_test_alert` | `routing_alerts.py` + `monitoring.py` | Alert routing |
@@ -475,7 +475,7 @@ by access pattern: discovery, state, recall, monitor, health.
 |------|---------------|----------|
 | `treesitter_parse` / `treesitter_extract_symbols` / `treesitter_find_usages` / `treesitter_query` / `treesitter_batch_analyze` / `treesitter_cache_stats` / `treesitter_clear_cache` | AST cache (`mahavishnu/workers/capabilities/_cache.py`) | Code symbol extraction |
 | `pycharm_*` (set) | PyCharm MCP actions via Mahavishnu adapters | IDE bridge |
-| *(removed 2026-10-12)* `adapter_cache_invalidate` / `adapter_discover` / `adapter_enable` / `adapter_health` / `adapter_list` / `adapter_metadata` / `adapter_resolve` | Dhara `adapters` + `health_checks` | **Not available from Mahavishnu.** Use `mcp__oneiric__list_adapters` / `mcp__oneiric__get_adapter` / `mcp__oneiric__get_adapter_health` instead |
+| *(removed 2026-10-12)* `adapter_cache_invalidate` / `adapter_discover` / `adapter_enable` / `adapter_health` / `adapter_list` / `adapter_metadata` / `adapter_resolve` | Oneiric `adapters` + `health_checks` | **Not available from Mahavishnu.** Use `mcp__oneiric__oneiric_list_adapters` / `mcp__oneiric__oneiric_get_adapter` / `mcp__oneiric__oneiric_get_adapter_health` instead |
 
 ### Ecosystem / clone / self-improvement
 
@@ -495,7 +495,7 @@ by access pattern: discovery, state, recall, monitor, health.
 
 | Tool | What it reads | Use when |
 |------|---------------|----------|
-| `health_check` / `health_check_service` / `health_check_all` / `get_liveness` / `get_readiness` / `mcp_list_tools` / `mcp_test_connection` / `mcp_get_metrics` / `wait_for_dependency` / `wait_for_all_dependencies` | mcp-common dependency probes (session_buddy 8678, dhara 8683, akosha 8682, crackerjack 8676) | Boot readiness |
+| `health_check` / `health_check_service` / `health_check_all` / `get_liveness` / `get_readiness` / `mcp_list_tools` / `mcp_test_connection` / `mcp_get_metrics` / `wait_for_dependency` / `wait_for_all_dependencies` | mcp-common dependency probes (session_buddy 8678, shared substrate 8683, akosha 8682, crackerjack 8676) | Boot readiness |
 
 ______________________________________________________________________
 
@@ -508,9 +508,9 @@ Mahavishnu via the Bodai EventBridge).
 
 | Consumer | Surface | Reads from Mahavishnu | Writes to Mahavishnu |
 |----------|---------|-----------------------|----------------------|
-| **Session-Buddy** | MCP `mcp__session-buddy__store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Dhara key (written by SB, not Mahavishnu) |
+| **Session-Buddy** | MCP `mcp__session-buddy__store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Mahavishnu key (written by SB, not Mahavishnu) |
 | **Akosha** | `mcp__mahavishnu__*` for control-plane reads; Akosha `FitnessAnalyzer` polls `routing_fitness/*` keys that **Mahavishnu writes** | `ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`, `pool_health`, `dispatch_to_pool` results | (none — Akosha is read-side from Mahavishnu's perspective) |
-| **Dhara** | `mcp__mahavishnu__*`; Mahavishnu writes `workflow-results/*`, `pool-state/*`, `worker-state/*`, `routing_fitness/*`, `adapters/*` via Dhara MCP | `component_endpoint/*` (other components' URLs); `adapters/*` for Oneiric distribution | **All operational state above**; `component_endpoint/mahavishnu` at Phase 0; `record_time_series` for every routing decision |
+| **Shared persistence substrate** | `mcp__mahavishnu__*`; Mahavishnu writes `workflow-results/*`, `pool-state/*`, `worker-state/*`, `routing_fitness/*`, `adapters/*` via the Mahavishnu MCP tools | `component_endpoint/*` (other components' URLs); `adapters/*` for Oneiric distribution | **All operational state above**; `component_endpoint/mahavishnu` at Phase 0; `record_time_series` for every routing decision |
 | **Crackerjack** | `mahavishnu trigger_workflow(adapter="prefect")`; Mahavishnu reads Crackerjack MCP for `crackerjack_run` / `crackerjack_metrics` / `crackerjack_history` | `crackerjack_skill_names` via `mahavishnu/quality/` (writes `distilled_skills` via SB after successful fix) | Optional heartbeat via `component_endpoint/crackerjack` |
 | **Oneiric** | `oneiric://settings`, `oneiric://adapters`; `oneiric_client.py` factory | Settings (no data); adapter factory paths via `list_adapters` | (config only) |
 | **Claude Code** | MCP client `mcp__mahavishnu__*` + slash command `/mahavishnu:status` | All read tools, all write tools | All write tools; hooks (`mahavishnu-activity-stream.py`) for activity stream |
@@ -530,7 +530,7 @@ ecosystem. Five components coordinate:
 1. **`PeerRouteResolver`** (`mahavishnu/pools/peer_routing.py`): reads
    `pool: <pool_id>` hint from Session-Buddy's `user_models.representation_text`.
 1. **`RoutingFitnessReader`** (`mahavishnu/pools/routing_fitness.py`): reads
-   `routing_fitness/{tc}/{selector}` from Dhara, picks the best selector
+   `routing_fitness/{tc}/{selector}` from the shared KV substrate, picks the best selector
    per task class.
 1. **`PoolManager._enforce_caller_quota`** (`mahavishnu/pools/manager.py`):
    per-`CallerKind` fixed-window quota with `max_per_window=60` (default).
@@ -551,12 +551,12 @@ The contract between Mahavishnu and its consumers is implicit in the
 schema and the MCP surface, but five specific contracts caused real bugs
 and should be made explicit. After the contracts, a "Known gaps"
 subsection flags the planned-but-unimplemented parts of the substrate
-(matching the convention used by Session-Buddy, Akosha, and Dhara).
+(matching the convention used by Session-Buddy, Akosha, and the shared substrate).
 
-### Contract 5.1 — `workflow_id` is spliced into Dhara key paths; caller-supplied IDs MUST match `^[A-Za-z0-9._-]{1,128}$`
+### Contract 5.1 — `workflow_id` is spliced into Mahavishnu KV key paths; caller-supplied IDs MUST match `^[A-Za-z0-9._-]{1,128}$`
 
 **Bug**: `dispatch_to_pool` and `workflow_result` both interpolate the
-caller-supplied `workflow_id` into the Dhara key
+caller-supplied `workflow_id` into the Mahavishnu KV key
 `f"workflow-results/{workflow_id}/"`. A pre-fix version accepted any
 string, allowing a caller to read or write
 `workflow-results/../../etc/passwd/` and walk out of the workflow-results
@@ -565,7 +565,7 @@ namespace.
 **Contract**: `workflow_id` MUST match `^[A-Za-z0-9._-]{1,128}$` (regex
 defined as `_WORKFLOW_ID_PATTERN` in `mahavishnu/mcp/tools/pool_tools.py:55`).
 Callers that send a tainted value get
-`{"workflow_id": ..., "status": "invalid_workflow_id"}` and Dhara is never
+`{"workflow_id": ..., "status": "invalid_workflow_id"}` and the KV store is never
 touched. The validator `_validate_workflow_id(workflow_id)` is the single
 gate both `dispatch_to_pool` and `workflow_result` MUST call before
 splicing.
@@ -575,7 +575,7 @@ splicing.
 (or equivalent; the dispatch flow tests at lines 15-25 enumerate the
 canonical contract surface) exercises the tainted-ID rejection. Add
 `test_dispatch_to_pool_rejects_path_traversal` that sends `workflow_id="../../etc"`
-and asserts the response is `status="invalid_workflow_id"` with no Dhara
+and asserts the response is `status="invalid_workflow_id"` with no KV
 write.
 
 ### Contract 5.2 — `dispatch_to_pool` async path MUST use `asyncio.create_task`, never `await` inline; on terminal-state put failure, write dead-letter to `~/.mahavishnu/async-dead-letter/`
@@ -583,23 +583,23 @@ write.
 **Bug**: A pre-fix version awaited the routing work inline, blocking the
 MCP caller for the full `timeout` window. The async-callback branch was
 introduced to return `workflow_id` immediately, but a follow-on bug left
-the terminal-state `Dhara.put` without a dead-letter fallback — failures
+the terminal-state Mahavishnu KV `put` without a dead-letter fallback — failures
 silently dropped the result and the caller never learned.
 
 **Contract**: The async path (`async_callback=True`) schedules the
 routing work via `asyncio.create_task`, writes `status="running"` before
 awaiting, and persists `status="completed"` / `"failed"` after. If the
-final Dhara `put` fails, a JSON dead-letter file MUST be written to
+final Mahavishnu KV `put` fails, a JSON dead-letter file MUST be written to
 `~/.mahavishnu/async-dead-letter/{safewid}.json` and a
 `status="result_write_failed"` marker persisted via the final put call
 (even though the put itself failed — see
 `mahavishnu/mcp/tools/pool_tools.py:259`). The dead-letter file is the
-recovery path for operators; the dead-letter record and the in-Dhara
+recovery path for operators; the dead-letter record and the in-store
 "result_write_failed" marker are complementary, not redundant.
 
 **Regression test**:
 `tests/integration/test_dispatch_to_pool_flow.py::TestAsyncResultLifecycleResultWriteFailed::test_async_result_lifecycle_result_write_failed`
-asserts that on a forced Dhara put failure, the dead-letter file exists
+asserts that on a forced KV put failure, the dead-letter file exists
 under `~/.mahavishnu/async-dead-letter/{safewid}.json` and the last
 `put` call recorded `status="result_write_failed"`.
 
@@ -686,12 +686,12 @@ effect so the test is deterministic.
 
 ### General contract test policy
 
-- **No mocks on Dhara for round-trip tests**:
+- **No mocks on the KV substrate for round-trip tests**:
   `tests/integration/test_dispatch_to_pool_flow.py::TestAsyncResultLifecycleResultWriteFailed`
-  uses a `FakeDharaStateBackend` that mirrors the async put/commit
+  uses a `FakeStateBackend` that mirrors the async put/commit
   semantics but is NOT a mock — it implements the same protocol as the
   real `AsyncConnection`. Round-trip identity checks (e.g.,
-  `dhara.persist_routing_decision_calls[-1]["workflow_id"] == expected`)
+  `fake_state.persist_routing_decision_calls[-1]["workflow_id"] == expected`)
   are required.
 - **Real Oneiric adapter resolution for `adapter_resolve` tests**:
   `tests/integration/test_oneiric_integration.py` constructs a real
@@ -717,8 +717,8 @@ what's wired today.
 | Gap | Where it's defined | Today's runtime | Regression path / tracker |
 |-----|--------------------|-----------------|---------------------------|
 | **OTel warm-tier aging** | `akosha/storage/aging.py` exists; `mahavishnu/ingesters/otel_ingester.py` does not invoke it | `OTelStore.conversations` accumulates indefinitely; only manual `delete_document` clears rows | Wire `AgingService.migrate_hot_to_warm(cutoff_days=7)` into `OtelIngester.initialize`; see `akosha/mcp/tools/__init__.py` for the Akosha-side hook |
-| **Dhara substrate SQL tables for `workflow-results/*`** | `dhara/migrations/sql/0001_initial.sql` defines `workflows_progress_snapshots`; Mahavishnu's `dispatch_to_pool` writes to `connection.get_root()["kv"]` | Inline KV writes via `MCPThinClient.put` | Track Workstream D; migrate when Dhara promotes the SQL substrate |
-| **Oneiric `parent_hash` chain for adapter versions** | `dhara/mcp/adapter_tools.py` has `Adapter.version_history` (append-only); no parent-hash linking | Caller-supplied semver, no integrity check | Track Workstream D parent-hash migration |
+| **Shared substrate SQL tables for `workflow-results/*`** | the legacy persistence library's `migrations/sql/0001_initial.sql` defines `workflows_progress_snapshots`; Mahavishnu's `dispatch_to_pool` writes to `connection.get_root()["kv"]` | Inline KV writes via `MCPThinClient.put` | Track Workstream D; migrate when the shared substrate promotes the SQL substrate |
+| **Oneiric `parent_hash` chain for adapter versions** | `oneiric/mcp/tools/adapter_registry.py` has `Adapter.version_history` (append-only); no parent-hash linking | Caller-supplied semver, no integrity check | Track Workstream D parent-hash migration |
 | **`PoolSelector.PEER_AFFINITY` ACL provider wiring in production** | `PoolManager.__init__` accepts an `acl_provider`; production wiring defaults to `DEFAULT_ACL_PROVIDER` (deny) | `PEER_AFFINITY` always falls back to `LEAST_LOADED` in production until an ACL provider is wired | Wire `mahavishnu/auth.py::get_peer_models_acl_provider` into `PoolManager`; add `tests/integration/test_pool_routing_peer_affinity.py::test_production_acl_provider_wired` |
 | **`worktree_tools` always-registered** | `register_worktree_tools` is gated by `app.worktree_coordinator is not None`; not by profile | Some deployments see `worktree_manage`; others don't | Track feature flag in `app.worktree_coordinator` initialization; document in `mahavishnu/mcp/tool_versions.py` |
 | **`FULL_GROUPS` documentation drift** | `tool_versions.py` lists ~174 tools; `profiles.py` lists 22 registration entries beyond STANDARD (8 `_register_*` methods + 14 inline `jot_*` keys). The `MINIMAL+STANDARD+FULL` lists in `profiles.py` enumerate registration entries, not individual tools. A tool count of 174 is not directly recoverable from the profile lists | Operators reading `profiles.py` may underestimate the FULL surface | Add a docstring note + an explicit count assertion in `tests/unit/mcp/test_profiles.py` |
@@ -821,7 +821,7 @@ mcp__mahavishnu__workflow_result(workflow_id=workflow_id)
 
 Returns `{"status": "running"}` mid-flight, then
 `{"status": "completed", "output": ...}` or
-`{"status": "failed", "error": ...}`. On terminal-state Dhara put
+`{"status": "failed", "error": ...}`. On terminal-state KV put
 failure, see Contract 5.2 — the dead-letter file is at
 `~/.mahavishnu/async-dead-letter/{safewid}.json`.
 
@@ -856,7 +856,7 @@ mcp__mahavishnu__ecosystem_status(
 
 Returns `EcosystemStatusReport.model_dump()` for the requested sections.
 Useful for dashboards; `services` reports per-component health
-(session_buddy 8678, dhara 8683, akosha 8682, crackerjack 8676),
+(session_buddy 8678, shared substrate 8683, akosha 8682, crackerjack 8676),
 `adapters` reports Oneiric adapter health, `capabilities` enumerates
 which Bodai capabilities are wired.
 
@@ -948,10 +948,10 @@ via `index_document`).
 adapter.
 
 ```python
-mcp__oneiric__get_adapter("cache:redis:default")
+mcp__oneiric__oneiric_get_adapter("cache:redis:default")
 ```
 
-Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters.cache.redis:RedisCacheAdapter", "version": "1.2.0"}`. Delegates to Dhara `adapters[cache:redis:default]`. The old `mcp__mahavishnu__adapter_resolve(domain=..., key=..., provider=...)` entry point was removed in the 2026-10-12 migration — see the note at the top of this document.
+Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters.cache.redis:RedisCacheAdapter", "version": "1.2.0"}`. Delegates to Oneiric `adapters[cache:redis:default]`. The old `mcp__mahavishnu__adapter_resolve(domain=..., key=..., provider=...)` entry point was removed in the 2026-10-12 migration — see the note at the top of this document.
 
 ### Q12 — Self-improvement approval gate
 
@@ -983,7 +983,7 @@ Three diagrams are embedded above and persisted with this document:
    ephemeral in-process / dead-letter; blue = XDG-compliant local state.
 1. **Pool routing flow** (this section) — `sequenceDiagram` showing
    prompt → `PoolManager.route_task` → selector → caller-kind quota →
-   ACL check (ADR-014) → peer resolver → pool → worker → Dhara
+   ACL check (ADR-014) → peer resolver → pool → worker → Mahavishnu KV
    `workflow-results/{id}/` persistence. Captures the five contract
    invariants.
 1. **Tool profile gate** (this section) — `flowchart` of how
@@ -1004,7 +1004,7 @@ sequenceDiagram
     participant PR as PeerRouteResolver
     participant P as MahavishnuPool / SessionBuddyPool / RunPodPool
     participant W as WorkerManager
-    participant DH as Dhara (port 8683)
+    participant DH as Mahavishnu KV (port 8683)
 
     Caller->>MCP: dispatch_to_pool(prompt, selector, caller_kind, async_callback=)
     MCP->>C: coerce_caller_kind(caller_kind)
@@ -1014,7 +1014,7 @@ sequenceDiagram
     alt quota exceeded
         Q-->>Mgr: RateLimitError(retry_after_seconds=N)
         Mgr-->>MCP: {status: "rate_limited"}
-        MCP-->>Caller: return inline (no Dhara write)
+        MCP-->>Caller: return inline (no KV write)
     end
     alt selector == PEER_AFFINITY
         Mgr->>ACL: get_acl(peer_id)
@@ -1040,7 +1040,7 @@ sequenceDiagram
     W-->>P: WorkerResult
     P-->>Mgr: result
     Mgr->>DH: put(workflow-results/{id}/, result + caller_kind)
-    alt Dhara put fails (Contract 5.2)
+    alt KV put fails (Contract 5.2)
         Mgr->>Mgr: write ~/.mahavishnu/async-dead-letter/{safewid}.json
     end
     Mgr->>Mgr: RoutingDecisionBuffer.append(decision)
@@ -1147,9 +1147,9 @@ registered. Downstream consumers must migrate to their replacements
 | Store | Default retention | Source | Aging mechanism |
 |-------|-------------------|--------|-----------------|
 | `workflow-results/*` | No TTL — operator-managed | Manual via `BackupManager.cleanup_old_workflow_results` | Operators run `mahavishnu backup cleanup --type=workflow-results --older-than-days=30` |
-| `pool-state/*` | Snapshot on close | Live in-process otherwise | `PoolManager.close_pool` persists final state to Dhara KV |
+| `pool-state/*` | Snapshot on close | Live in-process otherwise | `PoolManager.close_pool` persists final state to Mahavishnu KV |
 | `worker-state/*` | Snapshot on close | Live in-process otherwise | `WorkerManager.close_all` persists final state |
-| `routing_fitness/*` | 60 days | Dhara `TimeSeriesRetention(retention_days=60)` | `_purge_ts` opportunistic — requires a write to trigger |
+| `routing_fitness/*` | 60 days | Oneiric `TimeSeriesRetention(retention_days=60)` | `_purge_ts` opportunistic — requires a write to trigger |
 | `RoutingDecisionBuffer` | maxlen=1000 per task_class | In-process ring buffer | No on-disk persistence |
 | `WSBroadcastLog` | maxlen=1000 messages | In-process deque | No on-disk persistence; reconnecting clients miss pre-connect events |
 | `OTelStore.conversations` | None — accumulates indefinitely | (no warm-tier migration wired — see Known Gaps) | Manual `delete_document` calls |
@@ -1160,7 +1160,7 @@ registered. Downstream consumers must migrate to their replacements
 ### Backup cadence
 
 `mahavishnu/backup_cli.py` and `mahavishnu/core/backup_recovery.py` define
-the production defaults (mirrors `dhara/backup` policy for consistency):
+the production defaults (mirrors the legacy persistence library's backup policy for consistency):
 
 - Full backup daily at `0 2 * * *` (cron; 02:00 daily)
 - Incremental every 6 hours
@@ -1180,14 +1180,14 @@ CLI under `mahavishnu/backup_cli.py` is the canonical entrypoint.
 | `pool_route_execute` (sync, least_loaded) | 50-200 ms (selector + execute) | Yes |
 | `dispatch_to_pool` (sync) | 50-200 ms + worker execution | Yes |
 | `dispatch_to_pool` (async_callback=True) | \<10 ms (returns workflow_id) | Yes (kickoff) |
-| `workflow_result(workflow_id=)` | 5-20 ms (Dhara KV read) | Yes (poll) |
+| `workflow_result(workflow_id=)` | 5-20 ms (Mahavishnu KV read) | Yes (poll) |
 | `pool_list` / `pool_health` / `pool_monitor` | 10-50 ms (in-process state) | Yes (dashboards) |
 | `discover_tools` | 5-30 ms (FastMCP introspection) | No |
 | `ecosystem_status` | 100-500 ms (per-section collection, default 5s timeout each) | No |
 | `ecosystem_routing_readiness` | 50-200 ms (filtered report) | No |
 | `otel_search_traces` (semantic) | 50-300 ms (DuckDB) / 10-50 ms (pgvector HNSW) | Yes |
 | `hybrid_search` | 100-400 ms | No |
-| `adapter_resolve` | 5-30 ms (Dhara KV + factory import probe) | Yes (cold start) |
+| `adapter_resolve` | 5-30 ms (Mahavishnu KV + factory import probe) | Yes (cold start) |
 | `treesitter_*` (with cache) | 1-20 ms | Yes |
 | `treesitter_*` (cold) | 200-2000 ms per file | No |
 | `clone_detect_ecosystem` | 1-30 s (git fingerprint + similarity) | No |
@@ -1206,13 +1206,13 @@ CLI under `mahavishnu/backup_cli.py` is the canonical entrypoint.
   Contract 5.x on `PgvectorHotStore` for fallback options.
 - **Adapter load failure** (Oneiric): `adapter_resolve` returns
   `{"status": "factory_import_failed", "factory_path": "..."}`; the
-  adapter is marked `health_status="unhealthy"` in Dhara `adapters[id].health_checks`.
-- **Dhara substrate unreachable**: `dispatch_to_pool` writes dead-letter
+  adapter is marked `health_status="unhealthy"` in Oneiric `adapters[id].health_checks`.
+- **Shared KV substrate unreachable**: `dispatch_to_pool` writes dead-letter
   to `~/.mahavishnu/async-dead-letter/` (Contract 5.2). Operators replay
   via `mahavishnu dead-letter replay {workflow_id}`.
 - **Caller-kind quota exceeded**: `dispatch_to_pool` returns
   `{"status": "rate_limited", "caller_kind": ..., "retry_after_seconds": ...}`
-  without touching Dhara or any pool. The `retry_after_seconds` is computed
+  without touching the KV store or any pool. The `retry_after_seconds` is computed
   from the fixed-window state.
 - **WebSocket server down**: `broadcast_workflow_*` calls swallow the
   exception and log ERROR — workflow execution continues without real-time
@@ -1227,7 +1227,7 @@ CLI under `mahavishnu/backup_cli.py` is the canonical entrypoint.
   in-flight `pool_route_execute` calls may read partial state during a
   reload. Operators should restart the MCP server for schema-changing
   config updates.
-- **Phase 0 Dhara write fails** (e.g., `component_endpoint/mahavishnu`
+- **Phase 0 substrate write fails** (e.g., `component_endpoint/mahavishnu`
   cannot register): bounded exponential backoff (5 attempts, ~31s);
   heartbeat retries every 5 minutes. Mahavishnu still starts up —
   `FitnessAnalyzer` simply cannot discover it for cross-component routing.
@@ -1236,11 +1236,12 @@ CLI under `mahavishnu/backup_cli.py` is the canonical entrypoint.
 
 - Daily snapshot: `mahavishnu backup create --type=full` (CLI under
   `mahavishnu/backup_cli.py`); schedule via cron per `BACKUP_POLICY.md`.
-- Cross-component migration: `dhara migrate` (uses `dhara/migrations/runner.py`);
+- Cross-component migration: the legacy persistence library's `migrate` CLI
+  (uses `migrations/runner.py`);
   see `bodai/docs/memory/MIGRATION_GUIDE.md` for the global flow.
-- The `workflow-results` SQL substrate in
-  `dhara/migrations/sql/0001_initial.sql` exists **only** in DDL; the
-  inline Dhara KV writes are the active runtime. Running the migration
+- The `workflow-results` SQL substrate in the legacy persistence library's
+  `migrations/sql/0001_initial.sql` exists **only** in DDL; the
+  inline Mahavishnu KV writes are the active runtime. Running the migration
   now does nothing for live workflow-results — see Known Gaps.
 
 ### Tool profile drift between `profiles.py` and registered tools
@@ -1290,7 +1291,7 @@ ______________________________________________________________________
 - `mahavishnu/mcp/tools/pool_tools.py` — `dispatch_to_pool` / `workflow_result` / `_DURABLE_WORKER_TYPES` / `_WORKFLOW_ID_PATTERN` / dead-letter write path.
 - `mahavishnu/pools/manager.py` — `PoolManager` + `CallerKind` + `coerce_caller_kind` + `_QuotaState` + `PoolSelector`.
 - `mahavishnu/pools/peer_routing.py` — `PeerRouteResolver` + `DEFAULT_ACL_PROVIDER` + `PEER_MODELS_READ_SCOPE` (ADR-014).
-- `mahavishnu/pools/routing_fitness.py` — `RoutingFitnessReader` + `_sanitize_key_component` + Dhara key path sanitization.
+- `mahavishnu/pools/routing_fitness.py` — `RoutingFitnessReader` + `_sanitize_key_component` + Mahavishnu KV key path sanitization.
 - `mahavishnu/pools/memory_aggregator.py` — `MemoryAggregator` + `_CircuitBreaker` for Session-Buddy / Akosha sync.
 - `mahavishnu/websocket/server.py` — `MahavishnuWebSocketServer` (port 8690); broadcast channels and history deque.
 - `mahavishnu/ingesters/otel_ingester.py` — `OtelIngester` (DuckDB or pgvector); `StorageType` and `EmbeddingBackend` enums.

@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Note**: This document references Dhara, which was **decommissioned 2026-09-20** per [the Dhara retirement plan](plans/2026-09-20-delete-all-dhara-named-code.md). Dhara's responsibilities are now handled by Oneiric. Dhara mentions in this doc are kept for historical context; the runtime references (ports, CLI flags, config blocks) are no longer applicable.
+> **Note**: Refreshed on 2026-10-30 after the standalone MCP server component was retired (2026-09-20). Runtime references (ports, CLI flags, config blocks) now describe the current Oneiric-backed substrate.
 
 Configuration uses Oneiric layered loading: defaults → `settings/mahavishnu.yaml` → `settings/local.yaml` → environment variables (`MAHAVISHNU_*`). For nested settings, the environment separator is `__` (for example, `MAHAVISHNU_POOLS__ENABLED`). The examples below use verified configuration field names; nested YAML fields mirror Pydantic models for typed blocks, while the WebSocket integration explicitly reads the documented flat keys.
 
@@ -449,7 +449,7 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 - `retry_base_delay_seconds` / `retry_max_delay_seconds` — `float`, defaults `1.0` / `16.0`; exponential-backoff bounds.
 - `dependencies` — `dict[str, DependencyConfig]`, default `{}`; service dependency map.
 
-Each dependency has `host: str` (`localhost`), `port: int` (`8080`), `required: bool` (`True`), `timeout_seconds: int` (`30`), and `use_tls: bool` (`False`). The committed YAML registers Session-Buddy, Akosha, Crackerjack, and Crow MCP with their service-specific ports and required flags. (Dhara was decommissioned 2026-09-20; its role is now handled by Oneiric.)
+Each dependency has `host: str` (`localhost`), `port: int` (`8080`), `required: bool` (`True`), `timeout_seconds: int` (`30`), and `use_tls: bool` (`False`). The committed YAML registers Session-Buddy, Akosha, Crackerjack, and Crow MCP with their service-specific ports and required flags. (the standalone MCP server was retired 2026-09-20; its role is now handled by Oneiric.)
 
 ### `persistence.*`, `verification.*`, `caller_quota.*`, and `feature_flags.*`
 
@@ -513,7 +513,7 @@ These are storage- and workflow-control YAML compatibility blocks. The values be
 - `endpoint` — `str`, default `""`; optional external ingestion URL.
 - `dry_run` — `bool`, default `True`; logs envelopes without transmitting them.
 
-\*(Removed 2026-10-14: `dhara_state.*` config block was deleted when Dhara was decommissioned 2026-09-20. Durability is now provided by Oneiric.)
+\*(Removed 2026-10-14: the legacy state-persistence config block was deleted when the standalone MCP server was retired 2026-09-20. Durability is now provided by Oneiric.)
 
 ### `integrations.*`, `learning.*`, and `distill.*`
 
