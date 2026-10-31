@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: Namespace → the permission that owns it.
+#: Namespace → the permission that owns **reading** it.
 #:
 #: The store is shared by the substrate facade (the server's own
 #: producers) and these public tools, so a key under one of these
@@ -55,34 +55,77 @@ logger = get_logger(__name__)
 #: Keys outside these namespaces (the ``plan_index/`` lock keys, the
 #: budget records, the envelope addresses) are governed by the base
 #: permission alone.
-_NAMESPACE_PERMISSIONS: tuple[tuple[str, Permission], ...] = (
+_NAMESPACE_READ_PERMISSIONS: tuple[tuple[str, Permission], ...] = (
     ("approval-history/", Permission.READ_APPROVAL),
     ("webhook-ingress/", Permission.READ_WEBHOOK),
     ("workflow-results/", Permission.VIEW_WORKFLOW_STATUS),
 )
 
 
-def _namespace_permission(key: str) -> Permission | None:
-    """Return the permission that owns ``key``'s namespace, if any."""
-    for prefix, permission in _NAMESPACE_PERMISSIONS:
-        if key.startswith(prefix):
+def _owning_permission(key: str) -> Permission | None:
+    """Return the permission that owns the namespace ``key`` lives in.
+
+    Forward direction only: ``key`` is an exact key, so it either sits
+    inside a namespace or it does not.
+    """
+    for namespace, permission in _NAMESPACE_READ_PERMISSIONS:
+        if key.startswith(namespace):
             return permission
     return None
 
 
-async def _authorize_namespace(
+def _implicated_read_permissions(prefix: str) -> set[Permission]:
+    """Every read permission a listing prefix can reach into.
+
+    The store matches keys by prefix, so a prefix reaches a protected
+    namespace in **two** directions, and checking only one of them
+    leaks the namespace:
+
+    * ``prefix.startswith(namespace)`` — the prefix is inside the
+      namespace (``"approval-history/apr-1/"``).
+    * ``namespace.startswith(prefix)`` — the prefix *truncates* the
+      namespace, so the listing still returns its records. The empty
+      prefix truncates every namespace, and so does ``"a"`` for the
+      approval namespace, and ``"approval-history"`` without its
+      trailing separator.
+
+    A listing may implicate several namespaces at once (the empty
+    prefix reaches all of them), and the caller must hold **every**
+    implicated permission.
+    """
+    permissions: set[Permission] = set()
+    for namespace, permission in _NAMESPACE_READ_PERMISSIONS:
+        if namespace.startswith(prefix) or prefix.startswith(namespace):
+            permissions.add(permission)
+    return permissions
+
+
+def _is_write_protected(key: str) -> bool:
+    """Return ``True`` when ``key`` lands inside a domain-owned namespace.
+
+    The domain-owned namespaces are written by the server's **own**
+    producers, in process, through :mod:`mahavishnu.core.substrate`.
+    They are never written through the public KV surface, so a
+    mutation there is denied outright: there is no write permission
+    for those namespaces, and a *read* permission must never authorise
+    a mutation.
+    """
+    return any(key.startswith(namespace) for namespace, _ in _NAMESPACE_READ_PERMISSIONS)
+
+
+async def _authorize_namespaces(
     rbac_manager: Any | None,
     user_id: str | None,
-    key: str,
-    permission: Permission,
+    subject: str,
+    permissions: set[Permission],
 ) -> dict[str, Any] | None:
-    """Check the namespace's permission; return a denial payload or ``None``.
+    """Require **every** permission in ``permissions``; return a denial or ``None``.
 
     ``None`` means "allowed" (or "no check possible", which cannot
     happen in production: the decorator already fails closed when no
     RBAC manager is configured).
     """
-    if rbac_manager is None:
+    if rbac_manager is None or not permissions:
         return None
     principal = await resolved_user_id(user_id)
     if not principal:
@@ -91,22 +134,55 @@ async def _authorize_namespace(
             "error": "Authentication required: user_id parameter missing",
             "error_code": "AUTH_REQUIRED",
         }
-    allowed = await rbac_manager.check_permission(principal, "*", permission)
-    if allowed:
-        return None
-    logger.warning(
-        "kv_namespace_permission_denied",
-        extra={
-            "key": key,
-            "permission": permission.value,
-            "user_id": principal,
-        },
-    )
-    return {
-        "ok": False,
-        "error": f"Permission denied for namespace of key {key!r}",
-        "error_code": "PERMISSION_DENIED",
+    for permission in sorted(permissions, key=lambda item: item.value):
+        allowed = await rbac_manager.check_permission(principal, "*", permission)
+        if allowed:
+            continue
+        logger.warning(
+            "kv_namespace_permission_denied",
+            extra={
+                "subject": subject,
+                "permission": permission.value,
+                "user_id": principal,
+            },
+        )
+        return {
+            "ok": False,
+            "error": f"Permission denied for namespace of {subject!r}",
+            "error_code": "PERMISSION_DENIED",
+        }
+    return None
+
+
+async def _readable_items(
+    rbac_manager: Any | None,
+    user_id: str | None,
+    items: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Drop the items whose owning namespace the caller may not read.
+
+    Defence in depth for the prefix check: even if the prefix logic were
+    wrong, a record cannot leak through a mis-scoped prefix, because
+    every returned key is checked against its own namespace.
+    """
+    if rbac_manager is None:
+        return items
+    principal = await resolved_user_id(user_id)
+    if not principal:
+        return []
+    needed = {permission for key, _value in items if (permission := _owning_permission(key))}
+    if not needed:
+        return items
+    granted = {
+        permission
+        for permission in needed
+        if await rbac_manager.check_permission(principal, "*", permission)
     }
+    return [
+        (key, value)
+        for key, value in items
+        if (permission := _owning_permission(key)) is None or permission in granted
+    ]
 
 
 def _now_ms() -> int:
@@ -142,11 +218,11 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
 
         A key under a namespace owned by another domain (an approval
         history, a webhook receipt, a workflow outcome) additionally
-        requires that domain's permission.
+        requires that domain's read permission.
         """
-        namespace_permission = _namespace_permission(key)
-        if namespace_permission is not None:
-            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
+        owning = _owning_permission(key)
+        if owning is not None:
+            denial = await _authorize_namespaces(rbac_manager, user_id, key, {owning})
             if denial is not None:
                 return denial
         value = kv_store.get(key)
@@ -169,15 +245,21 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         store has no eviction loop. The plan_index's lock keys are
         short-lived (per-cycle) and don't need TTL.
 
-        A key under a namespace owned by another domain (an approval
-        history, a webhook receipt, a workflow outcome) additionally
-        requires that domain's permission.
+        The domain-owned namespaces (an approval history, a webhook
+        receipt, a workflow outcome) are **write-protected**: they are
+        written by the server's own producers, in process, and a read
+        permission must never authorise a mutation of them.
         """
-        namespace_permission = _namespace_permission(key)
-        if namespace_permission is not None:
-            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
-            if denial is not None:
-                return denial
+        if _is_write_protected(key):
+            logger.warning(
+                "kv_namespace_write_denied",
+                extra={"key": key, "user_id": user_id},
+            )
+            return {
+                "ok": False,
+                "error": f"Key {key!r} is in a write-protected namespace",
+                "error_code": "NAMESPACE_WRITE_PROTECTED",
+            }
         kv_store.put(key, value)
         return {"ok": True, "key": key, "stored_at_ms": _now_ms()}
 
@@ -192,16 +274,19 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         Empty prefix matches all keys. The plan_index uses this to
         enumerate claim keys during lock takeover.
 
-        A prefix that reaches into a namespace owned by another domain
-        (an approval history, a webhook receipt, a workflow outcome)
-        additionally requires that domain's permission.
+        A prefix that reaches a namespace owned by another domain (an
+        approval history, a webhook receipt, a workflow outcome)
+        additionally requires that domain's read permission — and a
+        prefix that merely *truncates* a namespace reaches it too, so
+        the empty prefix and ``"a"`` are both covered.
         """
-        namespace_permission = _namespace_permission(prefix)
-        if namespace_permission is not None:
-            denial = await _authorize_namespace(rbac_manager, user_id, prefix, namespace_permission)
+        implicated = _implicated_read_permissions(prefix)
+        if implicated:
+            denial = await _authorize_namespaces(rbac_manager, user_id, prefix, implicated)
             if denial is not None:
                 return denial
-        items = [{"key": k, "value": v} for k, v in kv_store.list_prefix(prefix)]
+        pairs = await _readable_items(rbac_manager, user_id, kv_store.list_prefix(prefix))
+        items = [{"key": k, "value": v} for k, v in pairs]
         return {"ok": True, "items": items, "count": len(items)}
 
     @mcp.tool()
@@ -211,14 +296,20 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     async def mahavishnu_kv_delete(key: str, user_id: str | None = None) -> dict[str, Any]:
         """Delete a string-shape KV record by ``key`` (no-op if absent).
 
-        A key under a namespace owned by another domain (an approval
-        history, a webhook receipt, a workflow outcome) additionally
-        requires that domain's permission.
+        The domain-owned namespaces (an approval history, a webhook
+        receipt, a workflow outcome) are **write-protected**: they are
+        written by the server's own producers, in process, and a read
+        permission must never authorise a mutation of them.
         """
-        namespace_permission = _namespace_permission(key)
-        if namespace_permission is not None:
-            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
-            if denial is not None:
-                return denial
+        if _is_write_protected(key):
+            logger.warning(
+                "kv_namespace_write_denied",
+                extra={"key": key, "user_id": user_id},
+            )
+            return {
+                "ok": False,
+                "error": f"Key {key!r} is in a write-protected namespace",
+                "error_code": "NAMESPACE_WRITE_PROTECTED",
+            }
         kv_store.delete(key)
         return {"ok": True, "key": key}

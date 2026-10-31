@@ -409,10 +409,10 @@ ecosystem registry could thereby read every approval decision, every
 webhook receipt and every workflow outcome.
 
 **Response.** Namespace-scoped permissions. Each domain-owned namespace
-carries the permission that owns it, and the KV tools require **both**
-the base permission and the namespace's:
+carries the permission that owns **reading** it, and the KV tools
+require **both** the base permission and the namespace's:
 
-| Namespace | Owning permission |
+| Namespace | Owning read permission |
 |---|---|
 | `approval-history/` | `READ_APPROVAL` |
 | `webhook-ingress/` | `READ_WEBHOOK` |
@@ -425,6 +425,41 @@ through the `get_context()` contextvar, so the namespace check
 authorizes the same principal the gate did. The internal self-call
 role holds ecosystem-state rights only, so it cannot reach the
 domain-owned namespaces.
+
+Two refinements, both of them real bypasses found by a second review
+of the first implementation:
+
+**The prefix direction.** The store matches keys by prefix, so a
+listing prefix reaches a protected namespace in **two** directions,
+and checking only one of them leaks it:
+
+- `prefix.startswith(namespace)` — the prefix is inside the namespace
+  (`"approval-history/apr-1/"`).
+- `namespace.startswith(prefix)` — the prefix *truncates* the
+  namespace, so the listing still returns its records. The empty
+  prefix truncates every namespace; so does `"a"` for the approval
+  namespace; so does `"approval-history"` without its trailing
+  separator.
+
+The first implementation checked only the forward direction, so
+`mahavishnu_kv_list("")` — which returns *every* key in the store —
+was readable by any principal holding the base permission. The
+scoping now resolves the namespace from the **matched keys**, in both
+directions, and requires *every* implicated permission.
+
+Defence in depth: after the listing, each returned key is checked
+against its own namespace, and an item the caller may not read is
+dropped. A mis-scoped prefix cannot leak a record even if the prefix
+logic is wrong again.
+
+**A read permission must not authorise a mutation.** The domain
+namespaces are written by the server's **own** producers, in process,
+through the substrate facade — never through the public KV surface.
+There is no write permission for them, and `READ_APPROVAL` must not
+stand in for one. `mahavishnu_kv_put` and `mahavishnu_kv_delete`
+therefore **deny** those namespaces outright
+(`NAMESPACE_WRITE_PROTECTED`) rather than authorise the mutation with
+a read permission.
 
 ### 10.2 The approval reader discarded the caller's credential
 

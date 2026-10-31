@@ -5,10 +5,19 @@ and these public tools, so a key under a namespace owned by another
 domain — an approval history, a webhook receipt, a workflow outcome —
 holds records that domain's permission governs.
 
-The regression this file guards: the shared store widened the blast
-radius of a principal holding only ``READ/WRITE_ECOSYSTEM_STATE``. Before
-the namespace scoping, that principal could read and write every
-approval decision, webhook receipt and workflow outcome in the store.
+Two regressions this file guards, both real bypasses of the first
+version of the scoping:
+
+1. **The prefix direction.** The store matches keys by prefix, so a
+   listing prefix reaches a protected namespace in two directions: it
+   can be *inside* the namespace, or it can *truncate* it. Checking
+   only the first let ``""`` (every key), ``"a"`` and
+   ``"approval-history"`` (no trailing separator) read the approval
+   history without holding ``READ_APPROVAL``.
+2. **Read authorising write.** The domain namespaces are written by the
+   server's own producers, in process. A principal that may *read* the
+   approval history must not be able to *write* or *delete* it, so the
+   mutating tools deny those namespaces outright.
 """
 
 from __future__ import annotations
@@ -22,19 +31,27 @@ import pytest
 from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.kv_tools import (
-    _authorize_namespace,
-    _namespace_permission,
+    _authorize_namespaces,
+    _implicated_read_permissions,
+    _is_write_protected,
+    _owning_permission,
     register_kv_tools,
 )
 
 pytestmark = pytest.mark.unit
-
 
 #: The base permission the KV tools' own gate requires. The namespace
 #: permission is the *extra* one under test.
 _BASE: set[Permission] = {
     Permission.READ_ECOSYSTEM_STATE,
     Permission.WRITE_ECOSYSTEM_STATE,
+}
+
+#: Every domain-owned read permission.
+_ALL_DOMAIN_READS: set[Permission] = {
+    Permission.READ_APPROVAL,
+    Permission.READ_WEBHOOK,
+    Permission.VIEW_WORKFLOW_STATUS,
 }
 
 
@@ -82,13 +99,185 @@ async def _call(server: FastMCP, name: str, arguments: dict[str, Any]) -> dict[s
         ("verification/entries", None),
     ],
 )
-def test_namespace_permission_mapping(key: str, expected: Permission | None) -> None:
-    """Only the domain-owned namespaces carry an extra permission."""
-    assert _namespace_permission(key) is expected
+def test_owning_permission(key: str, expected: Permission | None) -> None:
+    """An exact key is owned by a namespace only if it sits inside one."""
+    assert _owning_permission(key) is expected
+
+
+@pytest.mark.parametrize(
+    ("prefix", "expected"),
+    [
+        # Inside the namespace.
+        ("approval-history/apr-1/", {Permission.READ_APPROVAL}),
+        ("webhook-ingress/evt-1/", {Permission.READ_WEBHOOK}),
+        ("workflow-results/wf-1/", {Permission.VIEW_WORKFLOW_STATUS}),
+        # Truncating the namespace — the listing still returns its records.
+        ("approval-history", {Permission.READ_APPROVAL}),
+        ("a", {Permission.READ_APPROVAL}),
+        ("w", {Permission.READ_WEBHOOK, Permission.VIEW_WORKFLOW_STATUS}),
+        ("", _ALL_DOMAIN_READS),
+        # Outside every namespace.
+        ("plan_index/", set()),
+        ("verification/", set()),
+        ("envelopes/", set()),
+    ],
+)
+def test_implicated_read_permissions(prefix: str, expected: set[Permission]) -> None:
+    """A listing prefix implicates a namespace in either direction."""
+    assert _implicated_read_permissions(prefix) == expected
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("approval-history/apr-1/x", True),
+        ("webhook-ingress/evt-1/", True),
+        ("workflow-results/wf-1/", True),
+        ("plan_index/meta/x", False),
+        ("approval-history", False),
+        ("", False),
+    ],
+)
+def test_is_write_protected(key: str, expected: bool) -> None:
+    """Only a key *inside* a domain namespace is write-protected."""
+    assert _is_write_protected(key) is expected
 
 
 # ---------------------------------------------------------------------------
-# Namespace scoping
+# The prefix-direction bypasses
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_empty_prefix_is_denied() -> None:
+    """The empty prefix reaches every namespace, so it needs every permission."""
+    server, rbac = _register(_BASE)
+    kv_store.put("approval-history/apr-1/x", "{}")
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_list",
+        {"prefix": "", "user_id": "alice"},
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "PERMISSION_DENIED"
+    # The check is fail-fast: it stops at the first missing permission.
+    assert Permission.READ_APPROVAL in rbac.checked
+
+
+@pytest.mark.asyncio
+async def test_prefix_truncating_a_namespace_is_denied() -> None:
+    """``"a"`` truncates ``approval-history/`` and reaches its records."""
+    server, rbac = _register(_BASE)
+    kv_store.put("approval-history/apr-1/x", "{}")
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_list",
+        {"prefix": "a", "user_id": "alice"},
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "PERMISSION_DENIED"
+    assert Permission.READ_APPROVAL in rbac.checked
+
+
+@pytest.mark.asyncio
+async def test_prefix_without_the_trailing_separator_is_denied() -> None:
+    """``"approval-history"`` (no slash) still returns the namespace's keys."""
+    server, _rbac = _register(_BASE)
+    kv_store.put("approval-history/apr-1/x", "{}")
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_list",
+        {"prefix": "approval-history", "user_id": "alice"},
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "PERMISSION_DENIED"
+
+
+@pytest.mark.asyncio
+async def test_listing_everything_is_allowed_with_every_permission() -> None:
+    """A principal holding all three domain read permissions may list all."""
+    server, _rbac = _register(_BASE | _ALL_DOMAIN_READS)
+    kv_store.put("approval-history/apr-1/x", "{}")
+    kv_store.put("plan_index/meta/x", "{}")
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_list",
+        {"prefix": "", "user_id": "alice"},
+    )
+
+    assert result["ok"] is True
+    assert result["count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Read authorising write
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_kv_put_cannot_write_a_domain_namespace() -> None:
+    """READ_APPROVAL must not authorise writing the approval history."""
+    server, _rbac = _register(_BASE | {Permission.READ_APPROVAL})
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_put",
+        {"key": "approval-history/apr-1/x", "value": "{}", "user_id": "alice"},
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "NAMESPACE_WRITE_PROTECTED"
+    assert kv_store.get("approval-history/apr-1/x") is None
+
+
+@pytest.mark.asyncio
+async def test_kv_delete_cannot_delete_a_domain_namespace() -> None:
+    """READ_APPROVAL must not authorise deleting the approval history."""
+    server, _rbac = _register(_BASE | {Permission.READ_APPROVAL})
+    kv_store.put("approval-history/apr-1/x", "{}")
+
+    result = await _call(
+        server,
+        "mahavishnu_kv_delete",
+        {"key": "approval-history/apr-1/x", "user_id": "alice"},
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "NAMESPACE_WRITE_PROTECTED"
+    assert kv_store.get("approval-history/apr-1/x") is not None
+
+
+@pytest.mark.asyncio
+async def test_the_approval_cli_cannot_write_the_approval_history() -> None:
+    """The approval reader is a reader: it must not be able to write."""
+    server, _rbac = _register(_BASE | {Permission.READ_APPROVAL})
+
+    put_result = await _call(
+        server,
+        "mahavishnu_kv_put",
+        {"key": "approval-history/apr-1/x", "value": "{}", "user_id": "alice"},
+    )
+    assert put_result["ok"] is False
+    assert put_result["error_code"] == "NAMESPACE_WRITE_PROTECTED"
+
+    delete_result = await _call(
+        server,
+        "mahavishnu_kv_delete",
+        {"key": "approval-history/apr-1/x", "user_id": "alice"},
+    )
+    assert delete_result["ok"] is False
+    assert delete_result["error_code"] == "NAMESPACE_WRITE_PROTECTED"
+
+
+# ---------------------------------------------------------------------------
+# The read scoping
 # ---------------------------------------------------------------------------
 
 
@@ -124,55 +313,6 @@ async def test_kv_get_allows_the_owning_namespace() -> None:
     assert result["ok"] is True
     assert result["value"] == '{"secret": true}'
     assert Permission.READ_APPROVAL in rbac.checked
-
-
-@pytest.mark.asyncio
-async def test_kv_list_denies_a_foreign_namespace_prefix() -> None:
-    """Listing the approval namespace requires READ_APPROVAL."""
-    server, _rbac = _register(_BASE)
-    kv_store.put("approval-history/apr-1/x", "{}")
-
-    result = await _call(
-        server,
-        "mahavishnu_kv_list",
-        {"prefix": "approval-history/apr-1/", "user_id": "alice"},
-    )
-
-    assert result["ok"] is False
-    assert result["error_code"] == "PERMISSION_DENIED"
-
-
-@pytest.mark.asyncio
-async def test_kv_put_denies_a_foreign_namespace() -> None:
-    """Writing into the approval namespace requires READ_APPROVAL."""
-    server, _rbac = _register(_BASE)
-
-    result = await _call(
-        server,
-        "mahavishnu_kv_put",
-        {"key": "approval-history/apr-1/x", "value": "{}", "user_id": "alice"},
-    )
-
-    assert result["ok"] is False
-    assert result["error_code"] == "PERMISSION_DENIED"
-    assert kv_store.get("approval-history/apr-1/x") is None
-
-
-@pytest.mark.asyncio
-async def test_kv_delete_denies_a_foreign_namespace() -> None:
-    """Deleting from the approval namespace requires READ_APPROVAL."""
-    server, _rbac = _register(_BASE)
-    kv_store.put("approval-history/apr-1/x", "{}")
-
-    result = await _call(
-        server,
-        "mahavishnu_kv_delete",
-        {"key": "approval-history/apr-1/x", "user_id": "alice"},
-    )
-
-    assert result["ok"] is False
-    assert result["error_code"] == "PERMISSION_DENIED"
-    assert kv_store.get("approval-history/apr-1/x") is not None
 
 
 @pytest.mark.asyncio
@@ -223,11 +363,11 @@ async def test_internal_role_is_denied_the_approval_namespace() -> None:
     """
     rbac = _RecordingRBAC(_BASE)
 
-    denial = await _authorize_namespace(
+    denial = await _authorize_namespaces(
         rbac,  # ty: ignore[invalid-argument-type]
         "mahavishnu-internal",
         "approval-history/apr-1/x",
-        Permission.READ_APPROVAL,
+        {Permission.READ_APPROVAL},
     )
 
     assert denial is not None

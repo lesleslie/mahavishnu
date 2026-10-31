@@ -24,6 +24,7 @@ replacing it.
 
 from __future__ import annotations
 
+import secrets
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
@@ -38,8 +39,9 @@ from mahavishnu.core.permissions import JWTManager
 if TYPE_CHECKING:
     from mahavishnu.core.config import MahavishnuSettings
 
-#: A 40-character secret — JWTManager requires at least 32.
-TEST_SECRET = "test-secret-for-approval-roundtrip-0123456789abc"
+#: A per-session JWT secret for the tests. Generated rather than
+#: hard-coded so no secret-shaped literal is committed to the repository.
+TEST_SECRET = secrets.token_urlsafe(32)
 
 
 def _settings() -> SimpleNamespace:
