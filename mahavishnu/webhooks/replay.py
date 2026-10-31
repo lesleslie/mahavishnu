@@ -42,13 +42,13 @@ async def webhook_replay(
 
     Args:
         webhook_id: Stable ID of the webhook to read back.
-        token: Optional bearer token. The FastAPI surface is sync at the
-            leaf, so the check is a JWT-shape presence gate (mirrors the
-            ``@require_auth`` contract on the MCP surface): missing or
-            non-JWT-shaped tokens are rejected. Full user→role→permission
-            mapping is enforced at the FastAPI middleware/dependency layer
-            in production; here we block the read before any MCP call
-            so the leaf function can never be exercised without auth.
+        token: Optional bearer token. The check is a JWT-shape presence
+            gate (mirrors the ``@require_auth`` contract on the MCP
+            surface): missing or non-JWT-shaped tokens are rejected. Full
+            user→role→permission mapping is enforced at the FastAPI
+            middleware/dependency layer in production; here we block the
+            read before any substrate call so the leaf function can never
+            be exercised without auth.
 
     Returns:
         The validated :class:`WebhookIngress` instance, or ``None`` when
@@ -66,9 +66,9 @@ async def webhook_replay(
         DURABLE producer/consumer contract relies on it.
     """
     # RBAC gate: READ_WEBHOOK required (multi-agent review HIGH finding).
-    # FastAPI surface is sync at the leaf — JWT-shape presence check is
-    # the local contract; full RBACManager.check_permission runs at the
-    # FastAPI middleware boundary.
+    # JWT-shape presence check is the local contract; full
+    # RBACManager.check_permission runs at the FastAPI middleware
+    # boundary.
     if not token or len(token.split(".")) != 3:
         logger.warning(
             "webhook_replay_skipped",

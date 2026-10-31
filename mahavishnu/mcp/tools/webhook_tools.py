@@ -9,8 +9,9 @@ MCP wrapper only adds the surface-level ``READ_WEBHOOK`` permission
 check that the FastMCP middleware enforces.
 
 Mirrors the sibling :mod:`mahavishnu.mcp.tools.workflow_tools` shape:
-the module-level leaf is ``webhook_replay`` (sync); the FastMCP-registered
-tool is an inline ``async`` wrapper so FastMCP's coroutine contract holds.
+the module-level leaf is ``webhook_replay`` (``async`` — reads were MCP
+tool calls, so they are coroutines); the FastMCP-registered tool is an
+inline ``async`` wrapper that awaits it.
 """
 
 from __future__ import annotations
