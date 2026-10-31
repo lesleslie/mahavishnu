@@ -887,9 +887,9 @@ async def _fetch_mcp_entries(
     except ImportError as exc:
         raise RuntimeError("MCPClient not importable; cannot query MCP") from exc
 
-    client = MCPClient(base_url=mcp_url, timeout=10.0)
+    client = MCPClient(base_url=mcp_url, timeout=10.0, internal=True)
     try:
-        result = await client.call_tool("list_prefix", {"prefix": prefix})
+        pairs = await client.kv_list(prefix)
     except Exception as exc:  # CLI entry point — broad catch is the documented contract
         console.print(f"[red]MCP unreachable at {mcp_url}:[/red] {exc}")
         raise typer.Exit(1) from exc
@@ -897,14 +897,14 @@ async def _fetch_mcp_entries(
         await client.aclose()
 
     entries: list[dict[str, Any]] = []
-    if isinstance(result, list):
-        for item in result:
-            if not isinstance(item, dict) or "key" not in item:
-                continue
-            value_raw = item.get("value", {})
-            entries.append(
-                {"key": str(item["key"]), "value": value_raw if isinstance(value_raw, dict) else {}}
-            )
+    for key, value in pairs:
+        value_raw: Any = {}
+        if value:
+            try:
+                value_raw = json.loads(value)
+            except json.JSONDecodeError, TypeError:
+                value_raw = {}
+        entries.append({"key": key, "value": value_raw if isinstance(value_raw, dict) else {}})
     return entries
 
 

@@ -710,7 +710,7 @@ def _register_capability_block(server: FastMCPServer) -> None:
     # raises TypeError on mcp=None, which is why we cannot default here.
     try:
         mcp_url = resolve_mcp_url(server.app.config)
-        mcp = MCPClient(base_url=mcp_url, timeout=10.0)
+        mcp = MCPClient(base_url=mcp_url, timeout=10.0, internal=True)
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("Skipping get_capability_result registration: %s", exc)
         return
@@ -865,6 +865,17 @@ def _make_a2a_execute_fn(
 # after the block functions so static analyzers (ruff) can see all names
 # resolved. The dispatcher iterates this at call time; Python resolves the
 # registrar names lazily when the module body finishes loading.
+def _register_kv_block(server: FastMCPServer) -> None:
+    """Register the self-hosted KV group (4 tools).
+
+    The KV tools are the plan_index lock store's backend. The plan_index
+    subsystem is started in the server lifespan at **every** profile, so
+    the group has to be installed at every tier — which is why it sits
+    in ``MINIMAL_REGISTRATIONS``.
+    """
+    _register_kv_tools(server)
+
+
 _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] = (
     ("_register_self_improvement_tools", _register_self_improvement_block),
     ("_register_clone_tools", _register_clone_block),
@@ -878,6 +889,9 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     # Ecosystem publish-URL tool — sibling surface for crackerjack's
     # layered publish-URL resolution. Read-only, no auth gate.
     ("_register_ecosystem_publish_url_tool", _register_ecosystem_publish_url_block),
+    # Self-hosted KV — the plan_index lock store's backend. The group is
+    # in MINIMAL_REGISTRATIONS, so it is dispatched at every tier.
+    ("_register_kv_tools", _register_kv_block),
 )
 
 

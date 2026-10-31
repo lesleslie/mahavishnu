@@ -67,7 +67,7 @@ class MCPKvClient:
     """
 
     def __init__(self, base_url: str, config: MCPKvConfig | None = None) -> None:
-        self._client = MCPClient(base_url=base_url)
+        self._client = MCPClient(base_url=base_url, internal=True)
         self._config = config or MCPKvConfig()
 
     async def get(self, key: str) -> str | None:

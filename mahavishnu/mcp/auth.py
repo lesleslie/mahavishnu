@@ -11,6 +11,11 @@ from pydantic import SecretStr
 
 from ..core.auth import AuthenticationError
 from ..core.errors import ConfigurationError
+from .internal_auth import (
+    INTERNAL_PRINCIPAL_STATE_KEY,
+    INTERNAL_SERVICE_USER_ID,
+    internal_principal_verified,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,6 +57,12 @@ def require_mcp_auth(
       :class:`~mahavishnu.core.permissions.RBACManager`.
     * When ``user_id`` is missing from kwargs, the decorator denies with
       ``error_code == "AUTH_REQUIRED"``.
+    * When ``user_id`` names the internal service principal, the decorator
+      requires that the auth middleware verified this process's
+      credential (recorded in Context state under
+      ``mahavishnu.internal_principal``). A caller that supplies the
+      principal's *name* without the credential is denied with
+      ``error_code == "AUTH_INVALID_IDENTITY"``.
     * When ``rbac_manager.check_permission(user_id, repo, perm)`` returns
       ``False``, the decorator denies with
       ``error_code == "PERMISSION_DENIED"``.
@@ -60,9 +71,13 @@ def require_mcp_auth(
 
     ``user_id`` is read from kwargs (caller-controlled). Production
     callers should override this by injecting ``user_id`` from FastMCP
-    session context. The RBAC check still runs and is the binding
-    authority — a spoofed ``user_id`` without the required permission
-    will be denied.
+    session context.
+
+    The RBAC check is **not** by itself an identity proof: it answers
+    "may this user id exercise this permission", and a caller that
+    names an existing user id would pass it. So a privileged principal
+    that must not be claimable by name is gated on a verified credential
+    instead — see the internal service principal above.
 
     The ``repo`` argument to ``check_permission`` is taken from the
     wrapped tool's ``repo`` kwarg when present, otherwise ``"*"``.
@@ -100,17 +115,20 @@ def require_mcp_auth(
 
             # Defense-in-depth user_id resolution (Task 11.9):
             #
-            # 1. Production path: ``AuthContextMiddleware`` reads the
-            #    request's ``Authorization`` header and stores the
-            #    extracted user_id in FastMCP Context state. We prefer
-            #    that trusted channel when ``ctx`` is supplied (FastMCP
+            # 1. Production path: ``AuthContextMiddleware`` resolves the
+            #    caller identity and stores it in FastMCP Context state.
+            #    We prefer that channel when ``ctx`` is supplied (FastMCP
             #    injects Context when the tool type-annotates ``ctx``)
-            #    AND Context state holds a value — a spoofed kwargs
-            #    ``user_id`` cannot bypass the trusted middleware value.
+            #    AND Context state holds a value.
             # 2. Test path: kwargs ``user_id`` is the fallback when
             #    Context state is missing or empty. The existing test
             #    suite (no middleware running) keeps passing.
             # 3. Deny.
+            #
+            # Note that the middleware derives the identity from the
+            # tool-call *arguments*, so neither channel is a proof of
+            # identity on its own. A principal that must not be claimable
+            # by name is gated on a verified credential below.
             user_id = kwargs.get("user_id")
             ctx = kwargs.get("ctx")
             if ctx is not None:
@@ -123,6 +141,55 @@ def require_mcp_auth(
                         "require_mcp_auth: ctx.get_state failed; falling back to kwargs",
                         exc_info=True,
                     )
+
+            if user_id == INTERNAL_SERVICE_USER_ID:
+                # The internal service principal is a credential, not a name.
+                #
+                # ``user_id`` reaches this gate from the tool-call
+                # arguments, which the caller controls. A principal
+                # expressed as a plain name is therefore forgeable: any
+                # client that can reach the server could claim the
+                # internal identity and inherit its ecosystem-state
+                # permissions. So this principal is usable only when the
+                # auth middleware verified this process's credential and
+                # recorded that in Context state.
+                verified = False
+                if ctx is not None:
+                    try:
+                        verified = bool(await ctx.get_state(INTERNAL_PRINCIPAL_STATE_KEY))
+                    except Exception:
+                        logger.debug(
+                            "require_mcp_auth: internal credential state unavailable",
+                            exc_info=True,
+                        )
+                if not verified:
+                    # No tool declares a ``ctx`` parameter, so the contextvar
+                    # is the only channel that reaches the middleware's
+                    # state from inside the gate.
+                    verified = await internal_principal_verified()
+                if not verified:
+                    _audit_logger.emit(
+                        AuthAuditEvent(
+                            timestamp=datetime.now(UTC),
+                            service="mahavishnu",
+                            caller_service="unknown",
+                            caller_id="unknown",
+                            action=cast("Any", func).__name__,
+                            permission=perm,
+                            result="denied",
+                            reason="Internal principal requires a verified credential",
+                            source_ip=None,
+                            token_id=None,
+                        )
+                    )
+                    return {
+                        "status": "error",
+                        "error": (
+                            "Internal service identity requires a verified credential; "
+                            "supplying the principal name is not sufficient"
+                        ),
+                        "error_code": "AUTH_INVALID_IDENTITY",
+                    }
 
             if not user_id:
                 _audit_logger.emit(

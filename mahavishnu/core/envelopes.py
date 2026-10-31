@@ -42,15 +42,19 @@ def _redact(env: CapabilityEnvelope) -> CapabilityEnvelope:
 
 
 async def write_envelope(env: CapabilityEnvelope, *, mcp: MCPClient) -> None:
-    """Persist a (redacted) envelope to MCP. Awaits mcp.put()."""
+    """Persist a (redacted) envelope to the KV store. Awaits mcp.put()."""
     addr = EnvelopeAddress(trace_id=env.trace_id, envelope_id=env.envelope_id)
     scrubbed = _redact(env)
-    await mcp.put(addr.to_key(), scrubbed.model_dump_json().encode())
+    await mcp.put(addr.to_key(), scrubbed.model_dump_json())
 
 
 async def read_envelope(addr: EnvelopeAddress, *, mcp: MCPClient) -> CapabilityEnvelope:
-    """Load an envelope from MCP via call_tool('get', ...). Raises if missing."""
-    raw = await mcp.call_tool("get", {"key": addr.to_key()})
+    """Load an envelope from the KV store. Raises if missing.
+
+    Reads through ``mahavishnu_kv_get``, the tool the KV store actually
+    exposes — the bare ``get`` name belonged to the retired service.
+    """
+    raw = await mcp.kv_get(addr.to_key())
     if raw is None:
         raise MahavishnuError(
             f"envelope not found at {addr.to_key()}",
@@ -67,8 +71,8 @@ async def list_envelopes(trace_id: TraceId, *, mcp: MCPClient) -> list[EnvelopeA
     extras (e.g. a stub that ignores the prefix arg).
     """
     prefix = f"envelopes/{trace_id}/"
-    keys = await mcp.call_tool("list_keys", {"prefix": prefix})
-    return [EnvelopeAddress.from_key(k) for k in keys if k.startswith(prefix)]
+    pairs = await mcp.kv_list(prefix)
+    return [EnvelopeAddress.from_key(k) for k, _value in pairs if k.startswith(prefix)]
 
 
 __all__ = ["list_envelopes", "read_envelope", "write_envelope"]

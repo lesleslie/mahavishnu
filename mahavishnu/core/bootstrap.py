@@ -336,7 +336,7 @@ def _register_component_endpoint(
         # No running event loop — sync fallback using client directly
         from .mcp_adapter import MCPClient
 
-        client = MCPClient(base_url=mcp_state._client._base_url)  # ty: ignore[unresolved-attribute]
+        client = MCPClient(base_url=mcp_state._client._base_url, internal=True)  # ty: ignore[unresolved-attribute]
         try:
             asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
             logger.info(
@@ -888,6 +888,7 @@ def init_terminal_manager(app: Any) -> Any:
         return None
 
 
+# req: REQ-SUB-001
 def resolve_mcp_url(config: Any) -> str:
     """Build the substrate MCP URL from config.
 

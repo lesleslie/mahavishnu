@@ -125,6 +125,11 @@ class MCPBudgetStore:
     case is two replicas running for one poll cycle (no permanent
     damage).
 
+    Reads go through :meth:`MCPClient.kv_get` and key enumeration
+    through :meth:`MCPClient.kv_list` — the ``mahavishnu_kv_*`` tools
+    the KV store actually registers. The bare ``get`` / ``list_keys``
+    names belonged to the retired storage service.
+
     The store is intentionally narrow: it has only the methods the
     watchdog needs, so a unit test can drop in an in-memory fake without
     dragging the rest of MCP along.
@@ -142,11 +147,9 @@ class MCPBudgetStore:
         self._lease_key = lease_key
 
     async def get(self, key: str) -> dict[str, Any] | None:
-        raw = await self._client.call_tool(
-            "get",
-            {"key": key},
-        )
-        # MCP's get returns either a JSON object or None; tests provide both shapes.
+        raw = await self._client.kv_get(key)
+        # The KV store is string-shaped: the value comes back as the JSON
+        # text that ``put`` wrote.
         if raw is None:
             return None
         if isinstance(raw, dict):
@@ -169,32 +172,19 @@ class MCPBudgetStore:
         *,
         ttl_seconds: int | None = None,
     ) -> Any:
-        arguments: dict[str, Any] = {"key": key, "value": value}
-        if ttl_seconds is not None:
-            arguments["ttl"] = ttl_seconds
-        return await self._client.call_tool("put", arguments)
+        return await self._client.put(key, value, ttl=ttl_seconds)
 
     async def list_keys(self, prefix: str) -> list[str]:
         """Return workflow IDs (without the prefix) for all budget records.
 
-        Implementation calls ``list_keys`` via the MCP client and
-        filters to ``prefix``. Test fakes can shortcut to a known set.
+        Reads through ``mahavishnu_kv_list`` — the bare ``list_keys``
+        name belonged to the retired service — and filters to ``prefix``.
         """
-        raw = await self._client.call_tool(
-            "list_keys",
-            {"prefix": prefix},
-        )
+        pairs = await self._client.kv_list(prefix)
         names: list[str] = []
-        if isinstance(raw, list):
-            for entry in raw:
-                if isinstance(entry, str) and entry.startswith(self._record_prefix):
-                    names.append(entry[len(self._record_prefix) :])
-        elif isinstance(raw, dict):
-            keys = raw.get("keys") or []
-            if isinstance(keys, list):
-                for entry in keys:
-                    if isinstance(entry, str) and entry.startswith(self._record_prefix):
-                        names.append(entry[len(self._record_prefix) :])
+        for key, _value in pairs:
+            if key.startswith(self._record_prefix):
+                names.append(key[len(self._record_prefix) :])
         return names
 
     async def try_acquire_lease(
@@ -214,7 +204,7 @@ class MCPBudgetStore:
         window short (one put round-trip); the next poll re-elects
         cleanly.
         """
-        current = await self._client.call_tool("get", {"key": lease_key})
+        current = await self._client.kv_get(lease_key)
         existing_holder = None
         if isinstance(current, dict):
             existing_holder = current.get("holder")
@@ -229,27 +219,30 @@ class MCPBudgetStore:
                 existing_holder = None
         if existing_holder not in (None, "", holder):
             return False
-        await self._client.call_tool(
-            "put",
-            {
-                "key": lease_key,
-                "value": {"holder": holder, "acquired_at": datetime.now(UTC).isoformat()},
-                "ttl": ttl_seconds,
-            },
+        await self._client.put(
+            lease_key,
+            {"holder": holder, "acquired_at": datetime.now(UTC).isoformat()},
+            ttl=ttl_seconds,
         )
         return True
 
     async def release_lease(self, lease_key: str, holder: str) -> None:
-        current = await self._client.call_tool("get", {"key": lease_key})
+        current = await self._client.kv_get(lease_key)
         existing_holder = None
-        if isinstance(current, dict):
+        if isinstance(current, str):
+            import json
+
+            try:
+                parsed = json.loads(current)
+                if isinstance(parsed, dict):
+                    existing_holder = parsed.get("holder")
+            except TypeError, ValueError:
+                existing_holder = None
+        elif isinstance(current, dict):
             existing_holder = current.get("holder")
         if existing_holder == holder:
             # Best-effort: delete the lease by storing a tombstone.
-            await self._client.call_tool(
-                "put",
-                {"key": lease_key, "value": {"holder": "", "released": True}},
-            )
+            await self._client.put(lease_key, {"holder": "", "released": True})
 
 
 # ---------------------------------------------------------------------------

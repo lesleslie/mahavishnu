@@ -108,6 +108,7 @@ class MCPStateConfig:
     max_routing_buffer_age_seconds: int = 3600
 
 
+# req: REQ-SUB-003
 class MCPStateBackend:
     """Durable state backend backed by MCP.
 
@@ -120,7 +121,7 @@ class MCPStateBackend:
     def __init__(self, base_url: str, config: MCPStateConfig | None = None) -> None:
         from mahavishnu.core.mcp_adapter import MCPClient
 
-        self._client = MCPClient(base_url=base_url)
+        self._client = MCPClient(base_url=base_url, internal=True)
         self._config = config or MCPStateConfig()
         self._available = True
         self._consecutive_failures = 0

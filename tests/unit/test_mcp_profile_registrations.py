@@ -18,21 +18,25 @@ class TestProfileEnumValues:
     """Test that each profile level has the correct registration methods."""
 
     def test_minimal_registrations_contains_health_audit_and_signer(self) -> None:
-        """MINIMAL registers exactly the three always-on operational groups.
+        """MINIMAL registers exactly the four always-on operational groups.
 
         ``_register_health_tools``, ``_register_skills_signer_tools`` (Phase 1.5
         plan §10.3.1 -- infrastructure-critical for Phase 2/6 install signing
-        verification) and ``_register_audit_health_tools`` (Phase 2 of the
+        verification), ``_register_audit_health_tools`` (Phase 2 of the
         ``/health`` enrichment -- the monthly operator audit cadence runs
-        against MINIMAL containers too).
+        against MINIMAL containers too) and ``_register_kv_tools`` (the
+        plan_index lock store -- the plan_index subsystem runs in the server
+        lifespan at every profile, so its KV backend must exist at MINIMAL
+        too).
 
         Renamed from ``test_minimal_registrations_contains_only_health_tools``:
-        MINIMAL is three groups, so the old name understated the surface.
+        MINIMAL is four groups, so the old name understated the surface.
         """
         assert MINIMAL_REGISTRATIONS == [
             "_register_health_tools",
             "_register_skills_signer_tools",
             "_register_audit_health_tools",
+            "_register_kv_tools",
         ]
 
     def test_standard_registrations_includes_minimal(self) -> None:
@@ -65,16 +69,18 @@ class TestGetProfileTools:
     """Test that get_profile_tools returns the correct tools for each profile."""
 
     def test_minimal_has_health_audit_and_skills_signer(self) -> None:
-        """MINIMAL maps to the three always-on groups: health, audit, signer.
+        """MINIMAL maps to the four always-on groups: health, audit, signer, KV.
 
         Per Phase 1.5 plan §10.3.1 the skills_signer group MUST be visible
         from MINIMAL upward alongside the health probes (infrastructure-
         critical for Phase 2/6 install signing verification). Phase 2 of the
         ``/health`` enrichment added ``_register_audit_health_tools`` to the
-        same tier.
+        same tier. The substrate rewire added ``_register_kv_tools``: the
+        plan_index subsystem runs in the server lifespan at every profile,
+        so its KV backend must be installed at MINIMAL too.
 
         Renamed from ``test_minimal_has_health_and_skills_signer``: the
-        profile exposes three groups, not two.
+        profile exposes four groups, not two.
         """
         from mcp_common.tools import ToolProfile
 
@@ -84,6 +90,7 @@ class TestGetProfileTools:
             "_register_health_tools",
             "_register_skills_signer_tools",
             "_register_audit_health_tools",
+            "_register_kv_tools",
         ]
 
     def test_standard_has_core_groups(self) -> None:

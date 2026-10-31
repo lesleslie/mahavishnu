@@ -27,8 +27,10 @@ from mahavishnu.core.capabilities import (
 )
 from mahavishnu.core.envelopes import list_envelopes, read_envelope, write_envelope
 
+_DEFAULT_TRACE_ID = TraceId("0" * 32)
 
-def _sample_env(trace_id: TraceId = TraceId("0" * 32)) -> CapabilityEnvelope:
+
+def _sample_env(trace_id: TraceId = _DEFAULT_TRACE_ID) -> CapabilityEnvelope:
     # Valid UUIDv4: third group starts with "4", fourth with 8/9/a/b.
     # The brief's literal "12345678-1234-1234-1234-123456789012" is invalid
     # under the EnvelopeId pattern in capabilities.py — replaced with one
@@ -71,7 +73,7 @@ async def test_write_envelope_redacts_secret_fields(monkeypatch: pytest.MonkeyPa
     mcp = _mcp_stub()
     env = _sample_env()
     await write_envelope(env, mcp=mcp)
-    payload = mcp.put.call_args[0][1].decode()
+    payload = mcp.put.call_args[0][1]
     assert "AKIA..." not in payload
     assert "secret_token" in payload  # the key is preserved (the value is redacted)
     assert "<redacted>" in payload
@@ -79,9 +81,9 @@ async def test_write_envelope_redacts_secret_fields(monkeypatch: pytest.MonkeyPa
 
 @pytest.mark.asyncio
 async def test_read_envelope_roundtrip() -> None:
-    """read_envelope uses mcp.call_tool('get', ...) — NOT mcp.get()."""
+    """read_envelope uses mcp.kv_get() — the live KV tool, not a bare 'get'."""
     mcp = _mcp_stub()
-    mcp.call_tool.return_value = (
+    mcp.kv_get.return_value = (
         '{"envelope_id":"12345678-1234-4234-8234-123456789012",'
         '"capability_id":"worker:bash",'
         '"engine_id":"worker-claude-tui",'
@@ -100,13 +102,13 @@ async def test_read_envelope_roundtrip() -> None:
 
 @pytest.mark.asyncio
 async def test_list_envelopes_filters_by_trace_id() -> None:
-    """list_envelopes uses mcp.call_tool('list_keys', {"prefix": ...}) — NOT mcp.list_keys()."""
+    """list_envelopes uses mcp.kv_list() — the live KV tool, not a bare 'list_keys'."""
     mcp = _mcp_stub()
     trace = TraceId("a" * 32)
     other_trace = TraceId("b" * 32)
-    mcp.call_tool.return_value = [
-        f"envelopes/{trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
-        f"envelopes/{other_trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
+    mcp.kv_list.return_value = [
+        (f"envelopes/{trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}", "{}"),
+        (f"envelopes/{other_trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}", "{}"),
     ]
     addrs = await list_envelopes(trace, mcp=mcp)
     assert len(addrs) == 1

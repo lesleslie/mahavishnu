@@ -39,7 +39,7 @@ class TestProfileConstants:
     """Tests for profile registration lists."""
 
     def test_minimal_registrations_health_audit_and_signer(self):
-        """MINIMAL profile registers the three always-on operational groups.
+        """MINIMAL profile registers the four always-on operational groups.
 
         - ``_register_health_tools`` -- the base health probes.
         - ``_register_skills_signer_tools`` -- infrastructure-critical per
@@ -49,15 +49,19 @@ class TestProfileConstants:
           ``/health`` enrichment (plan §5 Phase 2). The monthly operator
           audit cadence runs against MINIMAL containers too, so the audit
           surface must be reachable from every profile.
+        - ``_register_kv_tools`` -- the plan_index lock store. The
+          plan_index subsystem is started in the server lifespan at every
+          profile, so its KV backend has to exist at MINIMAL too.
 
         The historical name ``test_minimal_registrations_only_health`` no
-        longer described what this asserts; MINIMAL is three groups, not
+        longer described what this asserts; MINIMAL is four groups, not
         one (and not two).
         """
         assert MINIMAL_REGISTRATIONS == [
             "_register_health_tools",
             "_register_skills_signer_tools",
             "_register_audit_health_tools",
+            "_register_kv_tools",
         ]
 
     def test_standard_includes_minimal(self):
@@ -121,7 +125,7 @@ class TestProfileRegistrations:
             assert isinstance(methods, list), f"{profile} should map to a list"
             for method in methods:
                 assert isinstance(method, str)
-                assert method.startswith("_register_") or method.startswith("jot_")
+                assert method.startswith(("_register_", "jot_"))
 
     def test_minimal_registration_maps_correctly(self):
         """MINIMAL profile maps to MINIMAL_REGISTRATIONS list."""

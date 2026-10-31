@@ -28,6 +28,12 @@ from typing import Any
 
 from mcp_common.clients.common_mcp_client import CommonMCPClient
 
+from mahavishnu.mcp.internal_auth import (
+    INTERNAL_SERVICE_USER_ID,
+    get_internal_token,
+    is_loopback_url,
+)
+
 logger = logging.getLogger(__name__)
 
 # req: REQ-SUB-004
@@ -44,20 +50,51 @@ DEFAULT_SUBSTRATE_MCP_URL = "http://localhost:8680/mcp"
 
 #: Identity the in-process substrate client presents on its self-call.
 #:
-#: The KV tools are gated by ``require_mcp_auth``, which denies any call
-#: that carries no ``user_id`` (``error_code == "AUTH_REQUIRED"``). A
-#: self-call has no inbound Authorization header, so it names this
-#: principal explicitly; the RBAC manager registers it with the
-#: ecosystem-state permissions during app bootstrap.
-INTERNAL_SERVICE_USER_ID = "mahavishnu-internal"
+#: The KV tools are gated by ``require_mcp_auth``. A self-call has no
+#: inbound Authorization header, so it presents this principal — but the
+#: name alone is not sufficient: the client must also send the
+#: per-process credential (see ``internal=True`` on :class:`MCPClient`),
+#: and the auth middleware verifies it before the principal is granted.
+#: The RBAC manager registers the principal with the least-privilege
+#: ``internal_service`` role during app bootstrap.
 
 
 class MCPClient:
     """Async MCP client for MCP's tool endpoint via CommonMCPClient."""
 
-    def __init__(self, base_url: str, timeout: float = 30.0, token: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = 30.0,
+        token: str | None = None,
+        internal: bool = False,
+    ) -> None:
+        """Build a client for ``base_url``.
+
+        Args:
+            base_url: The MCP endpoint to call.
+            timeout: Per-request timeout in seconds.
+            token: Explicit bearer token. Use this for third-party servers.
+            internal: When True, present this process's internal self-call
+                credential instead of an anonymous request. Only set it for
+                calls back into **mahavishnu's own** MCP server — the
+                credential is a bearer secret and must never be sent to a
+                third-party endpoint.
+        """
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        if internal and token is None:
+            if is_loopback_url(self.base_url):
+                token = get_internal_token()
+            else:
+                # The credential is a bearer secret: it must never travel
+                # off this host. A non-loopback target means the caller
+                # pointed the substrate somewhere else, so the call goes
+                # out unauthenticated rather than leaking the secret.
+                logger.warning(
+                    "Refusing to send the internal self-call credential to a non-loopback URL: %s",
+                    self.base_url,
+                )
         self._mcp = CommonMCPClient(base_url=self.base_url, timeout=timeout, token=token)
 
     @property
@@ -128,11 +165,54 @@ class MCPClient:
             arguments["ttl"] = ttl
         return await self.call_tool("mahavishnu_kv_put", arguments)
 
+    async def kv_get(self, key: str) -> str | None:
+        """Read a KV record as the raw string that was stored.
+
+        The KV tools are string-shaped: ``mahavishnu_kv_get`` returns
+        ``{"ok": True, "value": "<the stored string>"}``. This unwraps
+        that envelope and returns the string, or ``None`` on a miss.
+        """
+        result = await self.call_tool(
+            "mahavishnu_kv_get",
+            {"key": key, "user_id": INTERNAL_SERVICE_USER_ID},
+        )
+        if not isinstance(result, dict) or not result.get("ok"):
+            return None
+        value = result.get("value")
+        return value if isinstance(value, str) else None
+
+    async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+        """List the ``(key, value)`` pairs whose key starts with ``prefix``.
+
+        ``mahavishnu_kv_list`` returns
+        ``{"ok": True, "items": [{"key": ..., "value": ...}], "count": N}``;
+        this unwraps the envelope into the plain list the callers want.
+        """
+        result = await self.call_tool(
+            "mahavishnu_kv_list",
+            {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID},
+        )
+        if not isinstance(result, dict) or not result.get("ok"):
+            return []
+        items = result.get("items")
+        if not isinstance(items, list):
+            return []
+        pairs: list[tuple[str, str]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            key = item.get("key")
+            value = item.get("value")
+            if isinstance(key, str):
+                pairs.append((key, value if isinstance(value, str) else ""))
+        return pairs
+
     async def aclose(self) -> None:
         """Close the underlying MCP session."""
         await self._mcp.aclose()
 
 
+# req: REQ-SUB-005
 class NoAnalyticsWriterError(RuntimeError):
     """Raised when an analytics series has no writer anywhere in the fleet.
 

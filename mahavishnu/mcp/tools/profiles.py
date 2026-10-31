@@ -88,6 +88,13 @@ MINIMAL_REGISTRATIONS: list[str] = [
     # silent-degraded case (HTTP 200 + degraded body) across the 5
     # Bodai core repos.
     "_register_audit_health_tools",
+    # Self-hosted KV (4 tools). Always-on because the plan_index cron
+    # runs in the server process at every profile and its lock store is
+    # reached over the MCP substrate. Without this group the KV tools
+    # were registered in ``REGISTRATION_MAP`` but never installed by the
+    # startup path, which reads ``PROFILE_REGISTRATIONS`` — the plan_index
+    # lock store silently had no backend at any tier.
+    "_register_kv_tools",
 ]
 
 STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
