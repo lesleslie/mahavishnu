@@ -137,7 +137,8 @@ async def test_mcp_registry_client_happy_path_and_disabled(
     )
     assert len(adapters_1) == 1
     assert adapters_1 == adapters_2
-    assert fake.calls.count(("oneiric_list_adapters", {"domain": "adapter", "category": "workflow"})) == 1
+    expected_call = ("oneiric_list_adapters", {"domain": "adapter", "category": "workflow"})
+    assert fake.calls.count(expected_call) == 1
 
     adapter = await client.get_adapter("adapter:workflow:prefect")
     assert adapter is not None
