@@ -359,6 +359,9 @@ self-call credential is a random per-process token. Verified:
 - `mahavishnu_kv_list("ecosystem-services/")` sees the record the
   ecosystem-state tool wrote — the shared-store property, read through
   the public KV surface a sibling component would use.
+- `mahavishnu_kv_list("approval-history/")` is **denied** for the
+  internal principal: the namespace's owning permission is required, and
+  the internal service role holds ecosystem-state rights only (§ 10.1).
 
 ### The full-suite failures are pre-existing
 
@@ -456,7 +459,6 @@ and warnings are back — they now report a *failed write* rather than an
 *unbound substrate*, but they are the same control.
 
 ### 10.4 Residual gaps (not introduced here, not closed here)
-
 1. The MCP tools' identity is argument-derived for **non-internal**
    principals: `require_mcp_auth` reads the `user_id` argument, and
    `extract_auth_from_request` prefers that argument over the
