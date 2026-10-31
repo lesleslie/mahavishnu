@@ -119,12 +119,25 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
             status_code=status.HTTP_202_ACCEPTED,
         )
 
-    # The substrate is in-process and always bound, so the write always
-    # happens; the "skipped" counter is reserved for the durable-v1
-    # feature flag above.
+    # The substrate is in-process and always bound, so the write is
+    # attempted unconditionally; whether it *landed* is what the counters
+    # and the warning below report.
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
-    substrate.put(f"webhook-ingress/{webhook_id}/", validated)
-    COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    if substrate.put(f"webhook-ingress/{webhook_id}/", validated):
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    else:
+        # The receipt did not land. The HTTP contract is still "accepted"
+        # — the webhook was received and validated — but the missing
+        # record is an audit gap, so it is counted and warned about
+        # rather than reported as a durable success.
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
+        logger.warning(
+            "webhook_persistence_skipped",
+            extra={
+                "reason": "substrate_write_failed",
+                "webhook_id": webhook_id,
+            },
+        )
 
     logger.info(
         "webhook_ingress_recorded",

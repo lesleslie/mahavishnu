@@ -24,7 +24,8 @@ replacing it.
 
 from __future__ import annotations
 
-from typing import Any
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -32,8 +33,39 @@ from mahavishnu.cli.approval_cli import list_approval_history
 from mahavishnu.core.approval.decision_writer import record_approval_decision
 from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.models.persistence import ApprovalLog
+from mahavishnu.core.permissions import JWTManager
 
-_TOKEN = "header.payload.signature"
+if TYPE_CHECKING:
+    from mahavishnu.core.config import MahavishnuSettings
+
+#: A 40-character secret — JWTManager requires at least 32.
+TEST_SECRET = "test-secret-for-approval-roundtrip-0123456789abc"
+
+
+def _settings() -> SimpleNamespace:
+    """Return the settings shape the CLI reads (auth + health + tools)."""
+    return SimpleNamespace(
+        auth=SimpleNamespace(
+            secret=TEST_SECRET,
+            algorithm="HS256",
+            expire_minutes=60,
+        ),
+        health=SimpleNamespace(dependencies={}),
+        tools=SimpleNamespace(mcp_server_url=None),
+    )
+
+
+def _token(user_id: str = "reviewer-1") -> str:
+    """Mint a real, signed access token for ``user_id``.
+
+    The consumer verifies the caller's token before it reads, so the
+    test must present a credential this server signed — a JWT-shaped
+    string is not one.
+    """
+    return JWTManager(cast("MahavishnuSettings", _settings())).create_token(user_id)
+
+
+_TOKEN = _token()
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +85,14 @@ def _server_kv_surface(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self, base_url: str = "", **kwargs: Any) -> None:
             self.base_url = base_url
 
-        async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+        async def kv_list(
+            self,
+            prefix: str,
+            user_id: str | None = None,
+        ) -> list[tuple[str, str]]:
+            # The server would apply the namespace's permission to
+            # ``user_id``; the stub answers the read the caller was
+            # authorized to make.
             return kv_store.list_prefix(prefix)
 
         async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -76,6 +115,7 @@ def _server_kv_surface(monkeypatch: pytest.MonkeyPatch) -> None:
         "resolve_mcp_url",
         lambda _settings: "http://127.0.0.1:8680/mcp",
     )
+    monkeypatch.setattr("mahavishnu.core.config.get_settings", _settings)
 
 
 async def test_approval_log_round_trips_with_struct_equality() -> None:

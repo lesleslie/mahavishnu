@@ -12,6 +12,15 @@ through the server's public KV surface over HTTP, the same way
 facade (:mod:`mahavishnu.core.substrate`) would answer from the CLI's
 own — empty — store.
 
+Authorization: the read is performed **as the caller**, never as the
+internal self-call principal. The caller's bearer token is verified
+locally against the configured JWT secret — signature and expiry — and
+the resulting user id is the principal the server applies RBAC to. A
+JWT-*shaped* string is not a credential: the retired substrate's
+presence check accepted ``"a.b.c"`` from anyone, and reading the
+approval history under the internal principal would have let any caller
+who reached this function read every decision.
+
 The retired substrate applied the ``since`` / ``status`` filters
 server-side. The live KV surface lists by prefix only, so the filters
 are applied here, on the returned payloads.
@@ -53,6 +62,41 @@ def _parse_since(value: str | None) -> datetime | None:
     return parsed
 
 
+def _verify_caller(token: str | None) -> str | None:
+    """Verify the caller's bearer token and return the user id it names.
+
+    The token is verified against the configured JWT secret — signature
+    and expiry — so a forged or expired token yields no identity and the
+    read is refused. This is what separates a credential from a claim:
+    the retired substrate's JWT-shape presence check accepted any
+    three-segment string.
+
+    Returns:
+        The verified ``user_id``, or ``None`` when the token is missing,
+        not a token this server signed, expired, or carries no user id.
+    """
+    if not token:
+        logger.warning("approval_list_skipped", extra={"reason": "missing_token"})
+        return None
+    try:
+        from mahavishnu.core.config import get_settings
+        from mahavishnu.core.permissions import JWTManager
+
+        payload = JWTManager(get_settings()).verify_token(token)
+    except Exception as exc:  # noqa: BLE001 — a bad token is a refusal, not a crash
+        # The exception *type* only — the message can carry the token.
+        logger.warning(
+            "approval_list_skipped",
+            extra={"reason": type(exc).__name__},
+        )
+        return None
+    user_id = payload.get("user_id")
+    if not isinstance(user_id, str) or not user_id:
+        logger.warning("approval_list_skipped", extra={"reason": "token_without_user_id"})
+        return None
+    return user_id
+
+
 # req: REQ-SUBSTR-005
 async def list_approval_history(
     approval_id: str,
@@ -69,34 +113,27 @@ async def list_approval_history(
             only.
         status: Optional status filter, matched against the record's
             ``action``. Applied here for the same reason.
-        token: Optional bearer token. The check is a JWT-shape presence
-            gate (mirrors the ``@require_auth`` contract on the MCP
-            surface): missing or non-JWT-shaped tokens are rejected.
-            Full user→role→permission mapping is enforced at the async
-            dispatch boundary in production; here we block the read
-            before any MCP call so the leaf function can never be
-            exercised without auth.
+        token: Optional bearer token. It is **verified** against the
+            configured JWT secret; the user id it names is the principal
+            the server applies RBAC to, and the read requires that
+            principal to hold the approval-read permission. A missing,
+            malformed, expired or unsigned token is refused.
 
     Returns:
         A list of validated :class:`ApprovalLog` structs. Invalid payloads
         are skipped (partial-failure resilience) rather than raising, so a
         single corrupted record does not mask the rest of the history.
-        Returns an empty list and emits a WARNING when the substrate
-        cannot be reached, when ``approval_id`` fails the path-traversal
-        allowlist check, or when ``token`` is missing or not a
-        JWT-shaped triple.
+        Returns an empty list and emits a WARNING when the token cannot be
+        verified, when the substrate cannot be reached, when
+        ``approval_id`` fails the path-traversal allowlist check, or when
+        the server denies the read.
     """
-    # RBAC gate: READ_APPROVAL required (multi-agent review HIGH finding).
-    # CLI surface is sync — JWT-shape presence check is the local contract;
-    # full RBACManager.check_permission runs at the dispatch boundary.
-    if not token or len(token.split(".")) != 3:
-        logger.warning(
-            "approval_list_skipped",
-            extra={
-                "approval_id": approval_id,
-                "reason": "rbac_denied",
-            },
-        )
+    # Authorization: verify the caller's credential before anything else.
+    # The server denies the read when the principal lacks the permission,
+    # and the empty result is logged distinctly (``approval_list_denied``)
+    # so a refusal is distinguishable from "no history".
+    user_id = _verify_caller(token)
+    if user_id is None:
         return []
 
     # Path-traversal guard: ``approval_id`` is spliced into the MCP key
@@ -117,7 +154,9 @@ async def list_approval_history(
     # Read through the server's public KV surface. This process does not
     # host the substrate — the approval records live in the server's
     # store — so the in-process facade would answer from the CLI's own,
-    # empty, one.
+    # empty, one. The read is performed as the *caller*, not as the
+    # internal self-call principal: the KV tools apply the permission
+    # that owns the ``approval-history/`` namespace.
     from mahavishnu.core.bootstrap import resolve_mcp_url
     from mahavishnu.core.config import get_settings
     from mahavishnu.core.mcp_adapter import MCPClient
@@ -134,9 +173,9 @@ async def list_approval_history(
         )
         return []
 
-    client = MCPClient(base_url=base_url, internal=True)
+    client = MCPClient(base_url=base_url, token=token)
     try:
-        pairs = await client.kv_list(f"approval-history/{approval_id}/")
+        pairs = await client.kv_list(f"approval-history/{approval_id}/", user_id=user_id)
     except Exception as exc:  # noqa: BLE001 — CLI entry point, broad catch is the contract
         logger.warning(
             "approval_list_skipped",
@@ -166,6 +205,17 @@ async def list_approval_history(
                 extra={
                     "approval_id": approval_id,
                     "reason": type(exc).__name__,
+                },
+            )
+            continue
+        # Defence in depth: the record must belong to the approval the
+        # caller asked about, whatever the store says.
+        if record.approval_id != approval_id:
+            logger.warning(
+                "approval_list_entry_skipped",
+                extra={
+                    "approval_id": approval_id,
+                    "reason": "approval_id_mismatch",
                 },
             )
             continue

@@ -27,9 +27,53 @@ logger = logging.getLogger(__name__)
 _audit_logger = AuditLogger()
 _auth_config: AuthConfig | None = None
 
+USER_ID_STATE_KEY = "mahavishnu.user_id"
+"""Context-state key the auth middleware writes the resolved identity to.
+
+Canonical definition lives here so the middleware and
+:func:`resolved_user_id` cannot drift apart on the key name.
+"""
+
 
 def get_audit_logger() -> AuditLogger:
     return _audit_logger
+
+
+async def resolved_user_id(fallback: str | None = None) -> str | None:
+    """Return the identity the auth middleware resolved for this request.
+
+    The auth middleware records the caller's identity in FastMCP Context
+    state under ``"mahavishnu.user_id"`` before the tool body runs. A
+    tool that needs to make its *own* authorization decision — rather
+    than rely on the decorator's single static permission — must ask the
+    same question the decorator asked, or it could authorize against a
+    different principal than the one that was authenticated.
+
+    The middleware's identity is reached through the
+    ``fastmcp.server.dependencies.get_context`` contextvar rather than
+    a ``ctx`` keyword argument, because no tool declares a ``ctx``
+    parameter — FastMCP injects one only when the signature asks for it.
+
+    Args:
+        fallback: The value to use when Context state holds no identity.
+            Pass the tool's own ``user_id`` argument so the test path
+            (no middleware running) behaves like the decorator's.
+
+    Returns:
+        The resolved ``user_id``, or ``fallback`` when the middleware
+        recorded none.
+    """
+    try:
+        from fastmcp.server.dependencies import get_context
+
+        ctx = get_context()
+    except Exception:  # MCP tool error handler — no active context  # noqa: BLE001, RUF100
+        return fallback
+    try:
+        state_user_id = await ctx.get_state(USER_ID_STATE_KEY)
+    except Exception:  # MCP tool error handler — state read failed  # noqa: BLE001, RUF100
+        return fallback
+    return state_user_id or fallback
 
 
 def _get_config() -> AuthConfig:

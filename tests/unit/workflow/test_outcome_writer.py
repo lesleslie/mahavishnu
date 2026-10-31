@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 import json
+from types import SimpleNamespace
 from typing import Any
 
 import msgspec
@@ -84,6 +85,42 @@ def test_flag_helper_explicit_false(monkeypatch: pytest.MonkeyPatch) -> None:
     """WORKFLOW_OUTCOME_V1_ENABLED='false' → False (rollback switch)."""
     monkeypatch.setenv("WORKFLOW_OUTCOME_V1_ENABLED", "false")
     assert outcome_writer._workflow_outcome_v1_enabled() is False
+
+
+def test_producer_reports_a_failed_write_as_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A write that did not land is reported as skipped, never as succeeded.
+
+    The substrate swallows its own write failures so the producer keeps
+    running. That is only safe if the producer *reports* the failure: a
+    workflow-outcome log that silently lost an outcome is an audit gap,
+    so the ``skipped`` counter and the
+    ``workflow_outcome_persistence_skipped`` warning make it detectable.
+    """
+    import mahavishnu.core.workflow.outcome_writer as ow_mod
+
+    monkeypatch.setattr(ow_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False))
+
+    attempted_before = COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+    succeeded_before = COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
+    skipped_before = COUNTERS.skipped.labels(producer=_PRODUCER)._value.get()
+
+    with capture_logs() as logs:
+        record_workflow_outcome(
+            workflow_id="wf-write-fail",
+            status="succeeded",
+            started_at=datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+            finished_at=datetime(2026, 8, 10, 12, 5, 0, tzinfo=UTC),
+        )
+
+    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
+    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
+    assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
+    skipped = [entry for entry in logs if entry["event"] == "workflow_outcome_persistence_skipped"]
+    assert len(skipped) == 1, logs
+    assert skipped[0]["extra"]["reason"] == "substrate_write_failed"
+    assert _stored("workflow-results/wf-write-fail/") is None
 
 
 def test_producer_persists_and_counts_success_when_substrate_bound() -> None:

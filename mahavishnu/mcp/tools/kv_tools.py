@@ -35,12 +35,78 @@ from oneiric.core.logging import get_logger
 
 from mahavishnu.core.kv_store import kv_store  # req: REQ-SUBSTR-002
 from mahavishnu.core.permissions import Permission
-from mahavishnu.mcp.auth import require_mcp_auth
+from mahavishnu.mcp.auth import require_mcp_auth, resolved_user_id
 
 if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
 
 logger = get_logger(__name__)
+
+#: Namespace → the permission that owns it.
+#:
+#: The store is shared by the substrate facade (the server's own
+#: producers) and these public tools, so a key under one of these
+#: namespaces holds records whose owning domain has its own permission.
+#: The base permission the decorator requires is *not* sufficient to
+#: reach them: a principal that may read the ecosystem registry must not
+#: thereby be able to read every approval decision, every webhook
+#: receipt and every workflow outcome.
+#:
+#: Keys outside these namespaces (the ``plan_index/`` lock keys, the
+#: budget records, the envelope addresses) are governed by the base
+#: permission alone.
+_NAMESPACE_PERMISSIONS: tuple[tuple[str, Permission], ...] = (
+    ("approval-history/", Permission.READ_APPROVAL),
+    ("webhook-ingress/", Permission.READ_WEBHOOK),
+    ("workflow-results/", Permission.VIEW_WORKFLOW_STATUS),
+)
+
+
+def _namespace_permission(key: str) -> Permission | None:
+    """Return the permission that owns ``key``'s namespace, if any."""
+    for prefix, permission in _NAMESPACE_PERMISSIONS:
+        if key.startswith(prefix):
+            return permission
+    return None
+
+
+async def _authorize_namespace(
+    rbac_manager: Any | None,
+    user_id: str | None,
+    key: str,
+    permission: Permission,
+) -> dict[str, Any] | None:
+    """Check the namespace's permission; return a denial payload or ``None``.
+
+    ``None`` means "allowed" (or "no check possible", which cannot
+    happen in production: the decorator already fails closed when no
+    RBAC manager is configured).
+    """
+    if rbac_manager is None:
+        return None
+    principal = await resolved_user_id(user_id)
+    if not principal:
+        return {
+            "ok": False,
+            "error": "Authentication required: user_id parameter missing",
+            "error_code": "AUTH_REQUIRED",
+        }
+    allowed = await rbac_manager.check_permission(principal, "*", permission)
+    if allowed:
+        return None
+    logger.warning(
+        "kv_namespace_permission_denied",
+        extra={
+            "key": key,
+            "permission": permission.value,
+            "user_id": principal,
+        },
+    )
+    return {
+        "ok": False,
+        "error": f"Permission denied for namespace of key {key!r}",
+        "error_code": "PERMISSION_DENIED",
+    }
 
 
 def _now_ms() -> int:
@@ -73,7 +139,16 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         "value": null}`` on miss. The ``value`` field is the raw
         string the caller stored (plan_index stores JSON-encoded
         strings and decodes them itself).
+
+        A key under a namespace owned by another domain (an approval
+        history, a webhook receipt, a workflow outcome) additionally
+        requires that domain's permission.
         """
+        namespace_permission = _namespace_permission(key)
+        if namespace_permission is not None:
+            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
+            if denial is not None:
+                return denial
         value = kv_store.get(key)
         return {"ok": True, "value": value}
 
@@ -93,7 +168,16 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         :class:`MCPStateBackend` API but is currently a no-op; the
         store has no eviction loop. The plan_index's lock keys are
         short-lived (per-cycle) and don't need TTL.
+
+        A key under a namespace owned by another domain (an approval
+        history, a webhook receipt, a workflow outcome) additionally
+        requires that domain's permission.
         """
+        namespace_permission = _namespace_permission(key)
+        if namespace_permission is not None:
+            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
+            if denial is not None:
+                return denial
         kv_store.put(key, value)
         return {"ok": True, "key": key, "stored_at_ms": _now_ms()}
 
@@ -107,7 +191,16 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         Returns ``{"ok": True, "items": [{"key", "value"}, ...]}``.
         Empty prefix matches all keys. The plan_index uses this to
         enumerate claim keys during lock takeover.
+
+        A prefix that reaches into a namespace owned by another domain
+        (an approval history, a webhook receipt, a workflow outcome)
+        additionally requires that domain's permission.
         """
+        namespace_permission = _namespace_permission(prefix)
+        if namespace_permission is not None:
+            denial = await _authorize_namespace(rbac_manager, user_id, prefix, namespace_permission)
+            if denial is not None:
+                return denial
         items = [{"key": k, "value": v} for k, v in kv_store.list_prefix(prefix)]
         return {"ok": True, "items": items, "count": len(items)}
 
@@ -116,6 +209,16 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         rbac_manager=rbac_manager, required_permission=Permission.WRITE_ECOSYSTEM_STATE
     )
     async def mahavishnu_kv_delete(key: str, user_id: str | None = None) -> dict[str, Any]:
-        """Delete a string-shape KV record by ``key`` (no-op if absent)."""
+        """Delete a string-shape KV record by ``key`` (no-op if absent).
+
+        A key under a namespace owned by another domain (an approval
+        history, a webhook receipt, a workflow outcome) additionally
+        requires that domain's permission.
+        """
+        namespace_permission = _namespace_permission(key)
+        if namespace_permission is not None:
+            denial = await _authorize_namespace(rbac_manager, user_id, key, namespace_permission)
+            if denial is not None:
+                return denial
         kv_store.delete(key)
         return {"ok": True, "key": key}

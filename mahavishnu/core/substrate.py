@@ -64,13 +64,21 @@ def _decode(raw: str | None) -> Any | None:
         return None
 
 
-def put(key: str, value: Any) -> None:
+def put(key: str, value: Any) -> bool:
     """Persist ``value`` under ``key``.
 
     Synchronous by contract — the producers that call it are sync
     functions. Failures are logged and swallowed: the substrate is
     non-authoritative, so a write failure degrades the producer rather
     than crashing the request that triggered it.
+
+    Returns:
+        ``True`` when the record landed, ``False`` when it did not. The
+        return value is what makes a failed write *detectable*: a
+        producer that counts successes must not report one when the
+        write was swallowed. Swallowing the exception is what keeps the
+        producer alive; returning ``False`` is what keeps the failure
+        visible.
     """
     try:
         kv_store.put(key, _encode(value))
@@ -79,6 +87,8 @@ def put(key: str, value: Any) -> None:
             "substrate_put_failed",
             extra={"key": key, "reason": type(exc).__name__},
         )
+        return False
+    return True
 
 
 async def get(key: str) -> Any | None:

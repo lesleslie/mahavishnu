@@ -388,6 +388,87 @@ to do with this change:
 
 **No failure in the full run is attributable to this change.**
 
+## 10. Security review findings
+
+An automated security review of the committed change raised three
+findings. All three were accepted as valid, and all three are addressed
+below. Two of them were *introduced* by this plan, which is exactly why
+they are worth writing down.
+
+### 10.1 The shared store widened the KV tools' blast radius
+
+**Finding.** The four `mahavishnu_kv_*` tools are gated on
+`READ/WRITE_ECOSYSTEM_STATE` and can now reach **any** key in the
+shared store — including `approval-history/`, `webhook-ingress/` and
+`workflow-results/`. Before the store was shared, their blast radius
+was the plan_index lock keys only. A principal that could read the
+ecosystem registry could thereby read every approval decision, every
+webhook receipt and every workflow outcome.
+
+**Response.** Namespace-scoped permissions. Each domain-owned namespace
+carries the permission that owns it, and the KV tools require **both**
+the base permission and the namespace's:
+
+| Namespace | Owning permission |
+|---|---|
+| `approval-history/` | `READ_APPROVAL` |
+| `webhook-ingress/` | `READ_WEBHOOK` |
+| `workflow-results/` | `VIEW_WORKFLOW_STATUS` |
+| everything else (`plan_index/`, budgets, envelopes, …) | base only |
+
+The tool body asks the same question the decorator asked — via
+`resolved_user_id()`, which reads the middleware's Context state
+through the `get_context()` contextvar, so the namespace check
+authorizes the same principal the gate did. The internal self-call
+role holds ecosystem-state rights only, so it cannot reach the
+domain-owned namespaces.
+
+### 10.2 The approval reader discarded the caller's credential
+
+**Finding.** `list_approval_history` checked that the caller's token
+was JWT-*shaped* (`len(token.split(".")) == 3`), then threw it away and
+read the records under the **internal** self-call credential. Any
+three-segment string therefore passed the gate.
+
+**Response.** The reader now verifies the token against the configured
+JWT secret — signature and expiry, via `JWTManager.verify_token` — and
+reads as the principal that token names. The server applies that
+principal's RBAC, and the namespace check of § 10.1 applies on top.
+A missing, malformed, expired or unsigned token yields no identity and
+the read is refused. The internal credential is no longer used for a
+user-facing read.
+
+Defence in depth: a record whose `approval_id` does not match the
+requested one is skipped rather than returned.
+
+### 10.3 The producers reported success for a write that never landed
+
+**Finding.** `substrate.put` swallowed its own write failures, and
+every producer incremented `succeeded` unconditionally. A missing audit
+record was indistinguishable from a written one — the `*_persistence_skipped`
+counters and warnings that made it detectable had been removed along
+with the "substrate unbound" branch.
+
+**Response.** `substrate.put` returns whether the record landed, and the
+producers report accordingly: `succeeded` only when it did, `skipped`
+and a `*_persistence_skipped` warning when it did not. The counters
+and warnings are back — they now report a *failed write* rather than an
+*unbound substrate*, but they are the same control.
+
+### 10.4 Residual gaps (not introduced here, not closed here)
+
+1. The MCP tools' identity is argument-derived for **non-internal**
+   principals: `require_mcp_auth` reads the `user_id` argument, and
+   `extract_auth_from_request` prefers that argument over the
+   `Authorization` header without verifying a signature. A caller that
+   reaches the server directly can therefore claim any registered user
+   id. Closing this means making the gate prefer the middleware's
+   *verified* identity — a change to the auth model for every tool,
+   well beyond this plan's scope. The internal principal is already
+   credential-gated.
+2. The store is process-local (§ 3, non-goal 1), so the approval,
+   webhook and workflow logs do not survive a restart.
+
 **Follow-ups not in this plan:**
 
 1. The live server was restarted as part of this change so it runs the
@@ -395,14 +476,7 @@ to do with this change:
    registry, the workflow outcome log, the approval decision log and the
    webhook ingress log begin empty — they were being written nowhere
    before, so nothing was lost.
-2. `COUNTERS.skipped` in `mahavishnu/core/_producer_metrics.py` is now
-   incremented by nothing — every producer dropped its "substrate
-   unbound" branch. The counter is retained for future producers that
-   may need a non-authoritative path.
-3. The store is process-local (§ 3, non-goal 1). The durable-state
-   story for these four logs is unchanged by this plan and still
-   needs its own work.
-4. The duplicate test-module basename (`tests/unit/test_config.py` vs
+2. The duplicate test-module basename (`tests/unit/test_config.py` vs
    `tests/unit/test_core/test_config.py`) blocks a default-mode
    full-suite collection. It is pre-existing and out of scope here, but
    it makes `--import-mode=importlib` necessary, and that mode breaks

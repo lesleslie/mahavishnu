@@ -74,8 +74,21 @@ def record_workflow_outcome(  # req: REQ-SUBSTR-003
     # tests can substitute it via `monkeypatch.setattr(
     # "mahavishnu.core.workflow.outcome_writer.substrate", ...)`.
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
-    substrate.put(f"workflow-results/{workflow_id}/", validated)
-    COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    if substrate.put(f"workflow-results/{workflow_id}/", validated):
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    else:
+        # The record did not land. Report it as skipped rather than
+        # succeeded — a workflow-outcome log that silently lost an
+        # outcome is an audit gap, and the counter plus the warning are
+        # what make it detectable.
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
+        logger.warning(
+            "workflow_outcome_persistence_skipped",
+            extra={
+                "workflow_id": workflow_id,
+                "reason": "substrate_write_failed",
+            },
+        )
     logger.info(
         "workflow_outcome_recorded",
         extra={

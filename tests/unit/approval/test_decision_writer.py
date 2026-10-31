@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+from types import SimpleNamespace
 from typing import Any
 
 import msgspec
@@ -104,6 +105,42 @@ def test_record_approval_decision_counts_write_as_succeeded() -> None:
     assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before
     # The "substrate unbound" branch is gone — no skip event is emitted.
     assert [entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"] == []
+
+
+def test_record_approval_decision_reports_a_failed_write_as_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A write that did not land is reported as skipped, never as succeeded.
+
+    The substrate swallows its own write failures so the producer keeps
+    running. That is only safe if the producer *reports* the failure: an
+    approval log that silently lost a decision is an audit gap, so the
+    ``skipped`` counter and the ``approval_log_persistence_skipped``
+    warning are what make it detectable.
+    """
+    import mahavishnu.core.approval.decision_writer as dw_mod
+
+    monkeypatch.setattr(dw_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False))
+
+    attempted_before = COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+    succeeded_before = COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
+    skipped_before = COUNTERS.skipped.labels(producer=_PRODUCER)._value.get()
+
+    with capture_logs() as logs:
+        record_approval_decision(
+            approval_id="apr-write-fail",
+            decision="approved",
+            rationale="Write is going to fail",
+            decided_by="alice",
+        )
+
+    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
+    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
+    assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
+    skipped = [entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"]
+    assert len(skipped) == 1, logs
+    assert skipped[0]["extra"]["reason"] == "substrate_write_failed"
+    assert _stored("approval-history/apr-write-fail/") == []
 
 
 def test_record_approval_decision_emits_log_event(

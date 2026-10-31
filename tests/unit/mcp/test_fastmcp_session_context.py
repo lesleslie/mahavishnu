@@ -26,6 +26,7 @@ import pytest
 from mahavishnu.core.permissions import Permission
 import mahavishnu.mcp.auth as mcp_auth
 from mahavishnu.mcp.auth import require_mcp_auth
+from mahavishnu.mcp.internal_auth import INTERNAL_PRINCIPAL_STATE_KEY
 from mahavishnu.mcp.middleware.auth_context import (
     USER_ID_STATE_KEY,
     AuthContextMiddleware,
@@ -47,9 +48,7 @@ class _FakeRBAC:
         self.allow = allow
         self.calls: list[tuple[str, str, Permission]] = []
 
-    async def check_permission(
-        self, user_id: str, repo: str, permission: Permission
-    ) -> bool:
+    async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
         self.calls.append((user_id, repo, permission))
         return self.allow
 
@@ -226,9 +225,7 @@ class TestRequireMCPAuthContextState:
 
         # kwargs says "intruder"; Context state says "alice".
         # alice has it, intruder doesn't — assert alice was used.
-        result = await sample_tool(
-            arg="x", ctx=fake_ctx, user_id="intruder"
-        )
+        result = await sample_tool(arg="x", ctx=fake_ctx, user_id="intruder")
 
         assert result == {"status": "ok", "arg": "x"}
         assert fake_rbac.calls == [("alice-from-context", "*", Permission.READ_PLAN_INDEX)]
@@ -282,7 +279,12 @@ class TestAuthContextMiddleware:
         # The middleware passes through to call_next unchanged.
         assert result == {"status": "next-ok"}
         # And it persisted the user_id under the namespaced key.
-        assert fake_ctx.set_calls == [(USER_ID_STATE_KEY, "some-jwt-shaped-token")]
+        # The middleware writes the resolved identity AND the
+        # internal-credential verification flag.
+        assert fake_ctx.set_calls == [
+            (USER_ID_STATE_KEY, "some-jwt-shaped-token"),
+            (INTERNAL_PRINCIPAL_STATE_KEY, False),
+        ]
         assert await fake_ctx.get_state(USER_ID_STATE_KEY) == "some-jwt-shaped-token"
 
     @pytest.mark.asyncio
@@ -300,12 +302,16 @@ class TestAuthContextMiddleware:
         assert result == {"status": "next-ok"}
         # State was written (with None), not skipped — the decorator
         # then reads it and fires AUTH_REQUIRED.
-        assert fake_ctx.set_calls == [(USER_ID_STATE_KEY, None)]
+        assert fake_ctx.set_calls == [
+            (USER_ID_STATE_KEY, None),
+            (INTERNAL_PRINCIPAL_STATE_KEY, False),
+        ]
         assert await fake_ctx.get_state(USER_ID_STATE_KEY) is None
 
     @pytest.mark.asyncio
     async def test_middleware_swallows_state_write_errors(self) -> None:
         """A failing ``set_state`` is best-effort — the tool still runs."""
+
         class _BrokenContext(_FakeContext):
             async def set_state(self, key: str, value: Any) -> None:
                 raise RuntimeError("state store down")

@@ -108,8 +108,21 @@ def record_approval_decision(  # req: REQ-SUBSTR-003
     # decision overwrite the first. The namespace prefix is what the
     # reader lists by.
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
-    substrate.put(_history_key(approval_id, validated.at), validated)
-    COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    if substrate.put(_history_key(approval_id, validated.at), validated):
+        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    else:
+        # The record did not land. Report it as skipped rather than
+        # succeeded — an approval log that silently lost a decision is an
+        # audit gap, and the counter plus the warning are what make it
+        # detectable.
+        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
+        logger.warning(
+            "approval_log_persistence_skipped",
+            extra={
+                "approval_id": approval_id,
+                "reason": "substrate_write_failed",
+            },
+        )
 
     logger.info(
         "approval_log_recorded",

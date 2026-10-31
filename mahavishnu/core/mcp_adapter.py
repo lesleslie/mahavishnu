@@ -181,16 +181,27 @@ class MCPClient:
         value = result.get("value")
         return value if isinstance(value, str) else None
 
-    async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+    async def kv_list(
+        self,
+        prefix: str,
+        user_id: str = INTERNAL_SERVICE_USER_ID,
+    ) -> list[tuple[str, str]]:
         """List the ``(key, value)`` pairs whose key starts with ``prefix``.
 
         ``mahavishnu_kv_list`` returns
         ``{"ok": True, "items": [{"key": ..., "value": ...}], "count": N}``;
         this unwraps the envelope into the plain list the callers want.
+
+        ``user_id`` is the principal the read is performed as. It
+        defaults to the internal self-call principal, which is correct
+        for the in-process substrate client. A caller outside the server
+        process must pass the user id it has *verified* — the server
+        applies that principal's permissions, and the KV tools apply the
+        owning namespace's permission on top.
         """
         result = await self.call_tool(
             "mahavishnu_kv_list",
-            {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID},
+            {"prefix": prefix, "user_id": user_id},
         )
         if not isinstance(result, dict) or not result.get("ok"):
             return []

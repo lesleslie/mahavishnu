@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING, Any
 # re-export lets us swap the pinned FastMCP version in one place.
 from mcp_common.fastmcp import Middleware
 
-from mahavishnu.mcp.auth import extract_auth_from_request
+from mahavishnu.mcp.auth import USER_ID_STATE_KEY, extract_auth_from_request
 from mahavishnu.mcp.internal_auth import (
     INTERNAL_PRINCIPAL_STATE_KEY,
     INTERNAL_SERVICE_USER_ID,
@@ -66,8 +66,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-USER_ID_STATE_KEY = "mahavishnu.user_id"
-"""Namespaced Context-state key holding the extracted user_id (or None)."""
+# Re-exported for callers that import the state key from the middleware.
+# The canonical definition lives in ``mahavishnu.mcp.auth`` so the
+# middleware and :func:`mahavishnu.mcp.auth.resolved_user_id` cannot
+# drift apart on the key name.
+__all__ = ["USER_ID_STATE_KEY", "AuthContextMiddleware"]
 
 
 class AuthContextMiddleware(Middleware):
