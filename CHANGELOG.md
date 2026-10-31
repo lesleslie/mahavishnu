@@ -123,7 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Add ADR 019 — Dhara decommissioning from Bodai core fleet
+- Add ADR 019 — retirement of the storage service from the Bodai core fleet
 - architecture: Correct eight tool counts in the registration-group table
 - architecture: Correct the adapter CLI claim
 - Archive 10 completed plans + decision file establishing archive policy (2026-10-18)
@@ -200,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - specs: Bodai OTel substrate v5 (closes 4 P0 + 4 P1 from v4 review)
 - specs: Bodai OTel substrate v6 (closes 7 P0 from v5 review)
 - specs: Bodai OTel substrate v7 (closes 3 P1 + 4 P2 + 1 P3 from v6 akosha review)
-- specs: Flip dhara-mcp-decomposition-design to complete (ADR 019 retired strategic goal)
+- specs: Flip mcp-decomposition-design to complete (ADR 019 retired strategic goal)
 - specs: Flip shared-bodai-substrate-design to complete (active plans own remainder)
 - specs: Flip two stale partial statuses to complete
 - specs: Master plan index + centralized regenerator (round 2)
@@ -302,8 +302,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restore docs/schemas/topic-vocabulary-v1.md from oneiric canonical
 - scripts: Verify_qwen_bifrost_gate.sh — 'pool health' has no --output flag
 - shepherd: Unblock pool_bootstrap with a robust default writable_root
-- tests: Migrate dead Dhara symbol references to MCP (Category 1)
-- tests: Rename FakeDharaState back to FakeMCPState
+- tests: Migrate dead storage symbol references to MCP (Category 1)
+- tests: Rename FakeStorageState back to FakeMCPState
 - worktree: Make SessionBuddy provider health check verify tool registration
 
 ### Documentation
@@ -373,7 +373,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - merge-to-main: Gate recognizes squash-merge via commit subject
 - merge-to-main: Sibling discovery uses parent dir, not cwd basename
 - runbook-refs: Case-match runbook paths to actual lowercase files in main
-- tests: Remove obsolete dhara_client references
+- tests: Remove obsolete storage_client references
 - worktree-provider: Use fastmcp.Client instead of non-existent mcp_client
 
 ### Documentation
@@ -390,10 +390,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ecosystem: Generate MCP_TOOL_PROFILES.md via scripts/generate_tool_profiles_doc.py
 - Fix 12 broken local links in active files
 - Fix 9 broken local links in archive files
-- followup: Dhara runtime scrub + WORKFLOW_DIAGRAMS archive annotations
+- followup: storage runtime scrub + WORKFLOW_DIAGRAMS archive annotations
 - followups: Consumer followup for shared-frontmatter-validator move
 - frontmatter: Resolve 7 validation errors for documentation_cleanup
-- Mark Plans 1, 2 complete (dhara-lock-delete + crackerjack c-wire Task 6)
+- Mark Plans 1, 2 complete (storage-lock-delete + crackerjack c-wire Task 6)
 - Mark Plans 5, 7, 9 complete (RUF100 cleanup + tool profile doc + bodai-maintained wirings)
 - merge-to-main: Cross-link new governance decision in See also
 - Move Plans 3, 6 back to active dir + mark complete
@@ -404,7 +404,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: 2026-10-03-eval-adapter-phase1 — keep draft, refresh last_reviewed
 - plans: Add Phase 1.5 medium-mcp gate + cmux-mcp rename + new bodai-maintained-mcp-promotion plan
 - plans: Add shared-frontmatter-validator move (spec amendment + implementation plan)
-- plans: Archive 2026-06-01-dhara-crackerjack-critical-bug-fixes (Bundle D)
+- plans: Archive 2026-06-01-storage-crackerjack-critical-bug-fixes (Bundle D)
 - plans: Archive per-engine emit-node-dispatch (shipped)
 - plans: Archive pool-tools budget_enforce extract (shipped)
 - plans: BLE001 triage and per-site refactor follow-up
@@ -574,7 +574,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - core: Add capability schema with typed I/O contracts
 - core: Add Oneiric-driven capability loader (grouped by id)
 - core: Conductor with resolve, plan (real edges), emit_node, emit_flow
-- core: Dhara-backed envelope transport with secret redaction
+- core: storage-backed envelope transport with secret redaction
 - crow: Wire terminal tool (single PTY, no concurrency)
 - CrowTerminalAdapter uses session-aware tools
 - decisions: Add worktree-cleanup-policy + 4 back-links
@@ -629,7 +629,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - lifecycle: Add startup reconciliation hook for durable workers
 - List_approval_history returns validated ApprovalLog structs
 - LocalWorktreeProvider streaming create + fetch (Phase 3 / Task C.6)
-- lock-sentinel: Replace dhara.lock with local in-process Lock
+- lock-sentinel: Replace storage.lock with local in-process Lock
 - mahavishnu: /merge-to-main slash command (REQ-004)
 - mahavishnu: 11 Qwen-only event handlers (Phase 12b task 1)
 - mahavishnu: \_decode_envelope accepts v1.1 flat-fields XADD shape
@@ -691,8 +691,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Wire TaskOrphanSweeper into start_server/stop_server + /health
 - mahavishnu: Wire tasks_handoff_to_workflow into MCP server (T18)
 - mcp-profiles: Register 6 drain tool names in FULL + REGISTRATION_MAP
-- mcp/tools: Add 5 ecosystem_state tools (Phase 3 of Dhara decomposition)
-- mcp: Add get_capability_result tool (Dhara envelope reader)
+- mcp/tools: Add 5 ecosystem_state tools (Phase 3 of the storage decomposition)
+- mcp: Add get_capability_result tool (storage envelope reader)
 - mcp: Add mahavishnu_get_publish_url sibling-tool for crackerjack probe
 - mcp: Add worker contract tools and bootstrap registration
 - mcp: Add workflow_result retrieval tool
@@ -733,7 +733,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plan_index: PeriodicTaskRunner + cron_core + lock + DLQ (round-3 BLOCKER fix)
 - plan_index: PlanIndexFeedState with strict 4-signal contract
 - plan_index: PlanIndexRebuilder with normalize_repo_url integration
-- plan_index: PlanIndexStore Dhara-backed CRUD with vitals
+- plan_index: PlanIndexStore storage-backed CRUD with vitals
 - plan_index: PlanRecord frozen dataclass
 - plan_index: Renderer (pure) + Writer (I/O)
 - plan_index: TypedDicts — plan surface types
@@ -767,7 +767,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - skills: Add bodai-worktree-cleanup skill wrapper
 - skills_signer: Phase 1.5 replication to mahavishnu
 - state-backends: Add dag_key/cluster_key/in_flight_key + try_put_with_log_context
-- state_backends: Add DharaKv string-shape adapter for PlanIndexStore
+- state_backends: Add StorageKv string-shape adapter for PlanIndexStore
 - storage_io: Streaming tar.zst rewrite with context manager + staging promote
 - substrate-compat: Extract stamp/calltime pattern into shared helper (task 144)
 - Task 9 — high-level drain primitives (drain_plan, dispatch_jot, retry_dispatch, defer_jot, delete_jot)
@@ -785,7 +785,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - tier1-math: Phase 9 — feature eligibility script + Makefile + followups (REQ-007)
 - w3: Adopt http.fetch + workflow.retry action kits
 - w4: Promote oneiric action kits via decision doc and auto-trigger skill
-- webhooks: Receiver emits validated WebhookIngress via dhara.put
+- webhooks: Receiver emits validated WebhookIngress via storage.put
 - webhooks: Webhook_replay MCP tool — read-back via from_dict
 - Wire outcome_writer into on_workflow_complete + register workflow_get_outcome MCP tool
 - Wire record_approval_decision into decision flow (replaces delete-on-resolve)
@@ -806,10 +806,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workflow_get_outcome MCP tool — read-back via from_dict
 - workflows: Rewrite clone_refactor_workflow.py as git-tree DAG
 - worktree-cli: Add prune-merged subcommand
-- worktree_providers: Add Dhara-backed worktree registry (ADR 015 v4 §11)
+- worktree_providers: Add storage-backed worktree registry (ADR 015 v4 §11)
 - worktree_providers: Add LocalWorktreeProvider + v4 types (ADR 015 v4 §13)
 - worktree_providers: Add pre_migration_discover() for v4 Phase 1.5
-- worktree_providers: RedisLockBackend + Dhara registry security fixes
+- worktree_providers: RedisLockBackend + storage registry security fixes
 - worktree_providers: V4 wiring — LocalWorktreeProvider + RemoteWorktreeProvider + remove_handle + registry resolver + coordinator v4 dispatch (PR-D)
 - worktree_providers: WorktreeCache wrapper + storage_io helpers (PR-C)
 
@@ -834,7 +834,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Continue CLI audit plan + worktree residue after rebase onto origin/main
 - coordinator: Extract preflight safety checks to reduce complexity
 - core: App/health/cli alignment + health CLI test scaffold
-- dhara-schema: Replace dhara.schema.\* imports with local msgspec types
+- storage-schema: Replace storage.schema.\* imports with local msgspec types
 - events: Add trailing newlines to worker_topics files
 - factory: Promote execute_fn settings to real Pydantic fields (Option C)
 - jot-drain: Apply 14 reviewer findings to polish spec
@@ -887,12 +887,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - session-buddy: Mahavishnu seam hardening implementation plan (6 tasks)
 - session_buddy_pool: Extract pool_id/working_dirs/stitch helpers from execute_batch
 - skills_signer: Minor alignment across keys/manifest/verify
-- substrate-compat: Drop stamp_dhara_attr helper
-- substrate-compat: Lazy-load dhara; drop bare 'import dhara' from producers
+- substrate-compat: Drop stamp_storage_attr helper
+- substrate-compat: Lazy-load the storage service; drop bare 'import storage' from producers
 - terminal: Fix import order in manager.py
 - terminal: Remove iTerm2 adapter registry entries
 - terminal: Type grid against adapter ABC
-- Use oneiric.core.ulid directly, drop dhara fallback chain
+- Use oneiric.core.ulid directly, drop the storage fallback chain
 - Wire fail-closed end-to-end + adopt followups lifecycle
 - workers/contract: Add trailing newlines to publisher files
 - workers: Add dedicated factory branches for openhands, a2a, terminal-crow
@@ -966,7 +966,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ecosystem: Quote oneiric nickname to avoid YAML 1.1 boolean coercion
 - ecosystem: Rename nicknames on→oc (oneiric), md→mj (mdinject)
 - engines/agno_adapter: Resolve mypy syntax error at line 169
-- envelopes: Pass arguments dict to dhara.call_tool, not kwargs
+- envelopes: Pass arguments dict to storage.call_tool, not kwargs
 - errors: Redact secret-shaped substrings in exception messages
 - Exit 1 on driver-level scan failures + 4 new CLI tests
 - Fold multi-agent review findings into D-LOCK plan
@@ -1030,7 +1030,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Content_ingester + dependency_waiter + distill + sop + repo_properties — 5 tests
 - mahavishnu: Correct off-by-2 line numbers in findings.md links
 - mahavishnu: Delete yaml_file workaround now that oneiric handles YAML
-- mahavishnu: Dhara-schema-imports — 4 decision_writer tests
+- mahavishnu: storage-schema-imports — 4 decision_writer tests
 - mahavishnu: Drop dead code from pre-hybrid embeddings
 - mahavishnu: Drop invalid --exitcode 0 from crackerjack invocation
 - mahavishnu: Drop non-existent MiniMax-M3-highspeed model name
@@ -1061,10 +1061,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Remove decorative diagram blocks from WORKFLOW_DIAGRAMS (2 removals)
 - mahavishnu: Remove EMBEDDING_ARCHITECTURE.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
 - mahavishnu: Repair YAML frontmatter in 49 tool files
-- mahavishnu: Replace AgentDB/Ollama with Dhara/FastEmbed in ADR-005
+- mahavishnu: Replace AgentDB/Ollama with storage/FastEmbed in ADR-005
 - mahavishnu: Replace EmbeddingService with oneiric hybrid chain
 - mahavishnu: Replace iTerm2/MCPretentious adapters in canonical arch diagram
-- mahavishnu: Replace OpenSearch DLQ with JSON + Dhara KV in VISUAL_GUIDE
+- mahavishnu: Replace OpenSearch DLQ with JSON + storage KV in VISUAL_GUIDE
 - mahavishnu: Replace PoolManager routing and caller_kind in adapter diagrams
 - mahavishnu: Resolve 17 ty errors + 2 creosote issues (comprehensive hooks)
 - mahavishnu: Resolve 3 collection-time import errors (baseline)
@@ -1100,11 +1100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Worktree + prefect + coordination — 5 tests
 - MCP streamable-http handshake + pydantic-settings 2.15 compat + pool auto-spawn
 - mcp/bootstrap: Thread rbac_manager to 4 register\_\*\_tools callsites
-- mcp/lifecycle: Wire DharaKvClient into plan_index, drop synthetic fallback
+- mcp/lifecycle: Wire StorageKvClient into plan_index, drop synthetic fallback
 - mcp: Await list_envelopes in get_capability_result tool
 - mcp: Harden durable-routing fast path against Task 24 security review
 - mcp: Register ecosystem_publish_url on LEGACY CLI path
-- mcp: Workflow_result reads full Dhara key
+- mcp: Workflow_result reads full storage key
 - metrics: Targeted REGISTRY cleanup in production reset helpers
 - Move TYPE_CHECKING-only imports to runtime scope
 - observability: Add severity= and samples= to drift_warning log for parity with drift_detected
@@ -1180,7 +1180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - tests: Align otel_ingester mocks with post-Phase 3 CommonMCPClient API
 - tests: Assert MINIMAL profile registers health + skills_signer
 - tests: Fix 10 more pre-existing failures (TaskType pollution, golden fixture, integration)
-- tests: Migrate DharaThinClient mocks from post() to call_tool()
+- tests: Migrate storage thin-client mocks from post() to call_tool()
 - tests: Migrate test_qc_checker to call_tool AsyncMock
 - tests: Mock MCP call_tool instead of HTTP post in chaos buffer test
 - tests: Mock RBAC manager in session_buddy_tools test fixture
@@ -1188,7 +1188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - tests: Pin crow call site line numbers to current source
 - tests: Re-apply storage_io OSError test patch (built around builtins.open)
 - tests: Regen profile fixtures via production build entry point
-- tests: Rename Dhara-typed fixtures in test_pools.py to MCP
+- tests: Rename storage-typed fixtures in test_pools.py to MCP
 - tests: Resolve 5 more pre-existing failures + harden test plumbing
 - tests: Resolve 66 of 83 pre-existing test failures
 - tests: Resolve 9 more xdist-suite failures via module-reference + targeted REGISTRY cleanup
@@ -1297,7 +1297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - crow: Document concurrent sessions + known limitations
 - decisions: Add component-health-cli-gap decision
 - decisions: Add cross-repo fanout CWD isolation policy
-- decisions: Add dhara-key-prefixes decision
+- decisions: Add storage-key-prefixes decision
 - decisions: Add MCP backend wiring discipline rule
 - decisions: Add v4 cross-references to worktree-autoremove-policy.md
 - decisions: Add workflow decision README and template
@@ -1309,7 +1309,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - decisions: Record SDD bundling defensive pattern (polish item 4)
 - decisions: Slash commands are for multi-call workflows only
 - decisions: Tag 38 decision docs with kind: decision (2026-09-13)
-- Dhara MCP decomposition implementation plan with Phase 12 hook coordination
+- MCP decomposition implementation plan with Phase 12 hook coordination
 - docs+scripts(mahavishnu): plan lifespan health bypass + bodai MCP verify script
 - docs+scripts: Phase 3 streaming tar rollout (D.1-D.6)
 - drift: Migrate 10 task_router refs + retire 2 stale worker trackers + fix pool ASCII
@@ -1338,7 +1338,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full revision of capability-refactor plan (v2)
 - gdpr: Remove 'when designed' leftover in §10 + correct header-access description
 - gdpr: §10 — describe auth posture and Article 32 alignment
-- Implementation plan for plan-index Dhara canonical layer
+- Implementation plan for plan-index storage canonical layer
 - Jot inbox design spec (post six-lens review)
 - jot: Action_proposals docstring + MCP spec sync (polish item 6)
 - jot: Apply all BLOCKERs + HIGHs from multi-subagent review of sub-plan 2
@@ -1425,7 +1425,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: V1.1 spec for Bodai task-system addendum
 - Mark 4 superseded 2026-06-22 plans shipped + cross-link replacements
 - Mark 5 mcp-stub-activation plans active and regenerate PLAN_INDEX
-- Mark Phase 8 dhara retirement plan complete; regenerate PLAN_INDEX
+- Mark Phase 8 storage retirement plan complete; regenerate PLAN_INDEX
 - MCP registrar implementation plan (11 tasks)
 - MCP tool profile adoption implementation plan
 - mcp: Document worker contract tools
@@ -1444,7 +1444,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plan+runbook+audit: Document two-stage warn/confirm architecture (round-5)
 - plan-index: Link constellation tui to companion ACP spec
 - plan-index: Regenerate after auth primitives execution
-- plan-index: Track cross-repo Dhara cache-adapter consolidation plans
+- plan-index: Track cross-repo storage cache-adapter consolidation plans
 - plan: Add Phase 11 harness-agnostic enablement + ACP integration
 - plan: Add phase-1 precondition fixes (14 deferred findings)
 - plan: Add §10.4 cross-server review + update §10.1/§10.2/§11 to 5/5 complete
@@ -1505,7 +1505,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Broaden Phase 3 plan to cover all Bodai-maintained repos
 - plans: Bump target version 0.69.5 → 0.70.0 (MINOR per SemVer)
 - plans: Close routing-feedback-loop-v4 partial — query_local_traces now ships on all 5 Bodai components
-- plans: Commit Phase 8 dhara retirement plan as historical record
+- plans: Commit Phase 8 storage retirement plan as historical record
 - plans: Create plan for migrating 40 no-frontmatter files (2026-09-13)
 - plans: Cross-link TUI/storage clusters; defer flowscape + zsh (2026-09-13)
 - plans: Drop HotStore JSON-path bug caveat — fixed upstream in Akosha 9845c5c
@@ -1518,7 +1518,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Flip 2026-08-24-claude-env-audit-remediation to status: complete
 - plans: Flip 2026-09-10-bodai-math-initiatives-tier1 to status: shipped (finish-partial Phase 4)
 - plans: Flip 2026-09-10-settle-semantic-merge to status: shipped
-- plans: Flip dhara-outstanding-items-plan to status: complete
+- plans: Flip storage-outstanding-items-plan to status: complete
 - plans: Flip finish-partial meta-plan to status: complete
 - plans: Flip track3-toad-tui draft -> active; regen index (2026-09-13)
 - plans: Fourth revision + activate bodai-search-infrastructure-fix
@@ -1537,7 +1537,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Refresh migration plan for +1 file drift (38 -> 39)
 - plans: Regen PLAN_INDEX.md to reflect 2026-09-14 plan state
 - plans: Regenerate PLAN_INDEX after 6 status flips (2026-09-13)
-- plans: Regenerate PLAN_INDEX after dhara-outstanding-items-plan flip to complete
+- plans: Regenerate PLAN_INDEX after storage-outstanding-items-plan flip to complete
 - plans: Regenerate PLAN_INDEX after kind: decision + reflows (2026-09-13)
 - plans: Regenerate PLAN_INDEX.md — includes jot-drain-polish (active)
 - plans: Render kind column + add by-kind section to PLAN_INDEX (2026-09-13)
@@ -1574,7 +1574,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - registry: Add scapy-mcp, archive-org-mcp, medium-mcp
 - registry: Update chat-bridge-mcp row to reflect v0.1.0 status (T34)
 - Relocate stray session PNGs to docs/assets/images/.scratch/
-- Remove Dhara references from CLAUDE.md + README.md (Phase 8 T16)
+- Remove retired-service references from CLAUDE.md + README.md (Phase 8 T16)
 - Rewrite C-WIRE plan with verified APIs + observability
 - runbook: Add healthy drift_warning_total rate heuristic (~30 per 10,080 design point)
 - runbook: Explain detector attribute dual-convention for two-stage warn/confirm spans
@@ -1600,14 +1600,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - spec: Add jot inbox read sub-plan 2 design
 - spec: Add worktree-cleanup-policy design (post 4-agent review)
 - spec: Add §4.13 + Phase 12 hook bus coordination
-- spec: Apply review fixes to Dhara MCP decomposition design
+- spec: Apply review fixes to the MCP decomposition design
 - spec: Apply second-pass review fixes (3 fresh agents)
 - spec: Clone-refactor wire-up + dispatch_to_pool env-failure design (v1)
 - spec: Clone-refactor wire-up design (v2) — multi-reviewer feedback applied
 - spec: Clone-refactor wire-up design (v3) — final-review-pass feedback applied
 - spec: Clone-refactor wire-up design (v4) — sanity-check fixes
 - spec: Collapse Phase C iTerm2 deprecation+removal per user direction
-- spec: Draft Dhara MCP decomposition design
+- spec: Draft MCP decomposition design
 - spec: Draft MCP registrar design — canonical YAML emits .mcp.json + ~/.qwen/settings.json
 - spec: Final review pass — medium tool table, CI correction, probe split
 - spec: Incorporate topology + Postgres consolidation review
@@ -1615,8 +1615,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - spec: MCP stub activation design — archive-org, medium, scapy
 - spec: MCP tool profile adoption across 18 Bodai-ecosystem MCP servers
 - spec: Oneiric action-kit adoption promotion design
-- spec: Plan-index Dhara canonical metadata layer (v2, pentaverate-revised)
-- spec: Plan-index Dhara canonical metadata layer (v3, round-2 fixes)
+- spec: Plan-index storage canonical metadata layer (v2, pentaverate-revised)
+- spec: Plan-index storage canonical metadata layer (v3, round-2 fixes)
 - spec: Review pass — fix kit count, frontmatter, path, rollout gaps
 - spec: Revision 1 — fold 5-reviewer task-force findings + verify Qwen schema via context7
 - spec: Revision 2 — four-lens review applied to MCP stub activation
@@ -1687,9 +1687,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cover MahavishnuApp budget_watchdog lifecycle methods
 - crow: Update 3 pre-existing assertions for current port + opt-in design
 - Delete resurrected test_terminal_manager.py
-- dhara_kv: Cover DharaKvClient contract + cron int(dict) reproducer
+- storage_kv: Cover StorageKvClient contract + cron int(dict) reproducer
 - distill,precommitment: Skip cleanly at collection when duckdb is missing
-- Drop dhara.schema stub machinery from 2 webhook tests; fix stale docstring
+- Drop storage.schema stub machinery from 2 webhook tests; fix stale docstring
 - E2e scaffolds for agents + settle-merge + agent metadata schema
 - Fix collection collisions by renaming, not packaging
 - Fix mypy strict on test_audit_plan_index.py:179 (REQ-PLAN-009)
@@ -1769,7 +1769,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Build
 
-- deps: Drop dhara dep from ecosystem extras (Phase 8 T10)
+- deps: Drop the storage dep from ecosystem extras (Phase 8 T10)
 - deps: Drop editable session-buddy redirect, use published 0.31.0
 - deps: Lift fastmcp pin ceiling from \<4 to \<5
 - deps: Unlock mcp-common to >=0.27.0
@@ -1851,7 +1851,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Bring .gitignore into Bodai canonical conformance
 - mahavishnu: Broken plan links + mdformat/ruff-format hygiene
 - mahavishnu: Consolidate trunk-based workflow + main branch protection
-- mahavishnu: Decommission Dhara from .mcp.json + refresh uv.lock
+- mahavishnu: Decommission the storage service from .mcp.json + refresh uv.lock
 - mahavishnu: Delete archive diagram mirrors (9 files)
 - mahavishnu: Delete old docs/superpowers/{plans,specs}/ paths
 - mahavishnu: Gitignore .superpowers/; untrack scratch state
@@ -1913,7 +1913,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Close coredis async generator in bridge publish
 - mahavishnu: Ignore *.bak.* (timestamped backups slip past \*.bak)
 - mahavishnu: Suppress pre-existing ty errors in events/, drop redundant creosote exclusion
-- tests: Rename Dhara-typed fixtures in test_pools.py to MCP
+- tests: Rename storage-typed fixtures in test_pools.py to MCP
 - tier2-cj: Replace silent pass in bodai_hook_bridge.py; fix broken link in BODAI_REPO_REGISTRY.md
 
 ### Documentation
@@ -2200,7 +2200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - mahavishnu: Bring .gitignore into Bodai canonical conformance
 - mahavishnu: Broken plan links + mdformat/ruff-format hygiene
-- mahavishnu: Decommission Dhara from .mcp.json + refresh uv.lock
+- mahavishnu: Decommission the storage service from .mcp.json + refresh uv.lock
 - MCP launcher migration audit script (REQ-012, REQ-015)
 - MCP server migration tracker (REQ-012, REQ-015)
 
@@ -2369,17 +2369,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- lock-sentinel: Replace dhara.lock with local in-process Lock
-- mcp/tools: Add 5 ecosystem_state tools (Phase 3 of Dhara decomposition)
+- lock-sentinel: Replace storage.lock with local in-process Lock
+- mcp/tools: Add 5 ecosystem_state tools (Phase 3 of the storage decomposition)
 - persistence: Vendor WorkflowOutcome/ApprovalLog/WebhookIngress locally
 
 ### Changed
 
-- dhara-schema: Replace dhara.schema.\* imports with local msgspec types
+- storage-schema: Replace storage.schema.\* imports with local msgspec types
 - mahavishnu: Subclass oneiric's OTelStorageSettings instead of duplicating it
-- substrate-compat: Drop stamp_dhara_attr helper
-- substrate-compat: Lazy-load dhara; drop bare 'import dhara' from producers
-- Use oneiric.core.ulid directly, drop dhara fallback chain
+- substrate-compat: Drop stamp_storage_attr helper
+- substrate-compat: Lazy-load the storage service; drop bare 'import storage' from producers
+- Use oneiric.core.ulid directly, drop the storage fallback chain
 
 ### Fixed
 
@@ -2411,15 +2411,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - adr: Evaluate gateway pattern (Options A/B/C) for Bodai MCP surface
 - flowscape: Enrich plan + spec with Phase 4 proto schema pre-reqs
-- Mark Phase 8 dhara retirement plan complete; regenerate PLAN_INDEX
+- Mark Phase 8 storage retirement plan complete; regenerate PLAN_INDEX
 - MCP registrar implementation plan (11 tasks)
 - plan: Revision 1 — apply 27 findings from 5-agent review
 - plan: Revision 2 — apply 5-agent re-review findings
 - plan: Switch status from draft to active
-- plans: Commit Phase 8 dhara retirement plan as historical record
+- plans: Commit Phase 8 storage retirement plan as historical record
 - registry: Add chat-bridge-mcp to Bodai MCP servers table
 - registry: Update chat-bridge-mcp row to reflect v0.1.0 status (T34)
-- Remove Dhara references from CLAUDE.md + README.md (Phase 8 T16)
+- Remove retired-service references from CLAUDE.md + README.md (Phase 8 T16)
 - spec: Draft MCP registrar design — canonical YAML emits .mcp.json + ~/.qwen/settings.json
 - spec: Revision 1 — fold 5-reviewer task-force findings + verify Qwen schema via context7
 
@@ -2430,7 +2430,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bootstrap: Init signer+plan_index feeds before /health assertion
 - cleanup: Delete test_substrate_compat_enforcement (tests dead helper)
 - cluster-10: Align 7 stale test invariants to current production
-- Drop dhara.schema stub machinery from 2 webhook tests; fix stale docstring
+- Drop storage.schema stub machinery from 2 webhook tests; fix stale docstring
 - fixtures: Regenerate FULL golden fixture to current production
 - lifecycle,wiring: Fix stub + regenerate golden fixtures
 - mcp/tools: Supply fake rbac_manager to capability tool tests (W5 Cluster 1)
@@ -2443,7 +2443,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Build
 
-- deps: Drop dhara dep from ecosystem extras (Phase 8 T10)
+- deps: Drop the storage dep from ecosystem extras (Phase 8 T10)
 - deps: Unlock mcp-common to >=0.27.0
 - uv.lock: Refresh after oneiric dep removal (Phase 8 T10 follow-up)
 
@@ -2561,7 +2561,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plan_index: PeriodicTaskRunner + cron_core + lock + DLQ (round-3 BLOCKER fix)
 - plan_index: PlanIndexFeedState with strict 4-signal contract
 - plan_index: PlanIndexRebuilder with normalize_repo_url integration
-- plan_index: PlanIndexStore Dhara-backed CRUD with vitals
+- plan_index: PlanIndexStore storage-backed CRUD with vitals
 - plan_index: PlanRecord frozen dataclass
 - plan_index: Renderer (pure) + Writer (I/O)
 - plan_index: TypedDicts — plan surface types
@@ -2572,7 +2572,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - scripts: Add migrate_frontmatter migrator (Phase 1 of no-frontmatter migration plan)
 - settle: Register merge.semantic.duration_ms histogram + thread mergiraf path
 - skills_signer: Phase 1.5 replication to mahavishnu
-- state_backends: Add DharaKv string-shape adapter for PlanIndexStore
+- state_backends: Add StorageKv string-shape adapter for PlanIndexStore
 - Task 9 — high-level drain primitives (drain_plan, dispatch_jot, retry_dispatch, defer_jot, delete_jot)
 - tier1-math: Phase 1 — MmcQueue queueing library (REQ-001)
 - tier1-math: Phase 2 — QueueingScorer + PoolManager integration (REQ-002, REQ-003, REQ-008)
@@ -2657,7 +2657,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - audit: Correct changepoint test count to 115 across 8 files (post-F10 dispatch seam test)
 - changepoint: Document warn re-fire updates \_last_warning_result in TwoStageDetector state diagram
 - decisions: Tag 38 decision docs with kind: decision (2026-09-13)
-- Dhara MCP decomposition implementation plan with Phase 12 hook coordination
+- MCP decomposition implementation plan with Phase 12 hook coordination
 - Drop Codex from Phase 11; consolidate ACP with active plan
 - feature-tracking: Cross-link Phase 8 promotion as the two-stage migration window
 - feature-tracking: Document round-7 polish knockouts (10 LOW items + bundle-split recovery)
@@ -2666,7 +2666,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flip 2026-09-13 migrate-no-frontmatter-plans to status: complete
 - followups: Park 11 LOW polish items from changepoint two-stage review (round-7/8)
 - followups: Record HNSW-on-DuckDB bug for akosha code_graphs_feed
-- Implementation plan for plan-index Dhara canonical layer
+- Implementation plan for plan-index storage canonical layer
 - Jot inbox design spec (post six-lens review)
 - jot: Apply all BLOCKERs + HIGHs from multi-subagent review of sub-plan 2
 - jot: Sub-plan 2 (Read) implementation plan
@@ -2707,7 +2707,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Flip 2026-08-24-claude-env-audit-remediation to status: complete
 - plans: Flip 2026-09-10-bodai-math-initiatives-tier1 to status: shipped (finish-partial Phase 4)
 - plans: Flip 2026-09-10-settle-semantic-merge to status: shipped
-- plans: Flip dhara-outstanding-items-plan to status: complete
+- plans: Flip storage-outstanding-items-plan to status: complete
 - plans: Flip finish-partial meta-plan to status: complete
 - plans: Flip track3-toad-tui draft -> active; regen index (2026-09-13)
 - plans: Reflow 9 single-line-after-heading frontmatter blocks (2026-09-13)
@@ -2715,7 +2715,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - plans: Refresh migration plan for +1 file drift (38 -> 39)
 - plans: Regen PLAN_INDEX.md to reflect 2026-09-14 plan state
 - plans: Regenerate PLAN_INDEX after 6 status flips (2026-09-13)
-- plans: Regenerate PLAN_INDEX after dhara-outstanding-items-plan flip to complete
+- plans: Regenerate PLAN_INDEX after storage-outstanding-items-plan flip to complete
 - plans: Regenerate PLAN_INDEX after kind: decision + reflows (2026-09-13)
 - plans: Regenerate PLAN_INDEX.md — includes jot-drain-polish (active)
 - plans: Render kind column + add by-kind section to PLAN_INDEX (2026-09-13)
@@ -2740,12 +2740,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - spec: Add jot inbox drain sub-plan 3 design
 - spec: Add jot inbox read sub-plan 2 design
 - spec: Add §4.13 + Phase 12 hook bus coordination
-- spec: Apply review fixes to Dhara MCP decomposition design
+- spec: Apply review fixes to the MCP decomposition design
 - spec: Apply second-pass review fixes (3 fresh agents)
-- spec: Draft Dhara MCP decomposition design
+- spec: Draft MCP decomposition design
 - spec: Incorporate topology + Postgres consolidation review
-- spec: Plan-index Dhara canonical metadata layer (v2, pentaverate-revised)
-- spec: Plan-index Dhara canonical metadata layer (v3, round-2 fixes)
+- spec: Plan-index storage canonical metadata layer (v2, pentaverate-revised)
+- spec: Plan-index storage canonical metadata layer (v3, round-2 fixes)
 - specs: Flip 2026-05-16-llm-routing-standardization-design to complete+superseded
 - specs: Flip 2026-07-15-constellation-tui-design to complete
 - Update capture plan to reflect post-review implementation
@@ -2763,7 +2763,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - cleanup: Remove contradictory stale_pid test + fix auth test for new fail-fast contract
 - Cover CrossRepoAggregator.get_repos_needing_attention
 - Cover MahavishnuApp budget_watchdog lifecycle methods
-- dhara_kv: Cover MCPKvClient contract + cron int(dict) reproducer
+- storage_kv: Cover MCPKvClient contract + cron int(dict) reproducer
 - distill,precommitment: Skip cleanly at collection when duckdb is missing
 - E2e scaffolds for agents + settle-merge + agent metadata schema
 - Fix mypy strict on test_audit_plan_index.py:179 (REQ-PLAN-009)
@@ -2977,7 +2977,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - core: Add capability schema with typed I/O contracts
 - core: Add Oneiric-driven capability loader (grouped by id)
 - core: Conductor with resolve, plan (real edges), emit_node, emit_flow
-- core: Dhara-backed envelope transport with secret redaction
+- core: storage-backed envelope transport with secret redaction
 - engines: Add load_engine_registrations helper
 - engines: Declare provides: list[Capability] on all 6 adapters
 - mahavishnu: Add audit_cli_inventory script for Core 7 CLI surface audit
@@ -2987,7 +2987,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Phase 1 inventory snapshots for 7 Core 7 repos
 - mahavishnu: Phase 7 diff_inventories.py (Plan Task 7.1)
 - mahavishnu: Pre-commit gate for findings.md (Plan Task 2.2)
-- mcp: Add get_capability_result tool (Dhara envelope reader)
+- mcp: Add get_capability_result tool (storage envelope reader)
 - mcp: Capability resolver/planner/executor tools + profile wiring
 - settings: Add workers.entries block for capability-driven registry
 
@@ -3003,7 +3003,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - config: Anchor MahavishnuSettings yaml_file at package
 - Construct crow MCP client inside init_terminal_manager
 - crow: Replace anyio ClientSession with raw JSON-RPC subprocess
-- envelopes: Pass arguments dict to dhara.call_tool, not kwargs
+- envelopes: Pass arguments dict to storage.call_tool, not kwargs
 - Honor terminal.adapter_preference in MCP bootstrap
 - hooks: Skip post-commit/merge/rewrite indexer in worktrees
 - launcher: Discover venv python relative to script path
@@ -3231,10 +3231,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - storage_io: Streaming tar.zst rewrite with context manager + staging promote
 - tests: Phase 3 streaming tar.zst end-to-end integration test
 - w4: Promote oneiric action kits via decision doc and auto-trigger skill
-- worktree_providers: Add Dhara-backed worktree registry (ADR 015 v4 §11)
+- worktree_providers: Add storage-backed worktree registry (ADR 015 v4 §11)
 - worktree_providers: Add LocalWorktreeProvider + v4 types (ADR 015 v4 §13)
 - worktree_providers: Add pre_migration_discover() for v4 Phase 1.5
-- worktree_providers: RedisLockBackend + Dhara registry security fixes
+- worktree_providers: RedisLockBackend + storage registry security fixes
 - worktree_providers: V4 wiring — LocalWorktreeProvider + RemoteWorktreeProvider + remove_handle + registry resolver + coordinator v4 dispatch (PR-D)
 - worktree_providers: WorktreeCache wrapper + storage_io helpers (PR-C)
 
@@ -3358,7 +3358,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Bootstrap-helper-renames — 49 tests
 - mahavishnu: Cli-output-routing — 11 tests
 - mahavishnu: Content_ingester + dependency_waiter + distill + sop + repo_properties — 5 tests
-- mahavishnu: Dhara-schema-imports — 4 decision_writer tests
+- mahavishnu: storage-schema-imports — 4 decision_writer tests
 - mahavishnu: Drop obsolete terminal-aider from worker registry (was: 9343fc47)
 - mahavishnu: Drop obsolete terminal-goose/gemini/amp worker entries
 - mahavishnu: Gitignores + claude_settings + claudemd + command_palette — 4 tests
@@ -3439,9 +3439,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Remove decorative diagram blocks from VISUAL_GUIDE (13 removals)
 - mahavishnu: Remove decorative diagram blocks from WORKFLOW_DIAGRAMS (2 removals)
 - mahavishnu: Remove EMBEDDING_ARCHITECTURE.md duplicates from README/EMBEDDINGS_SETUP_GUIDE (5 removals)
-- mahavishnu: Replace AgentDB/Ollama with Dhara/FastEmbed in ADR-005
+- mahavishnu: Replace AgentDB/Ollama with storage/FastEmbed in ADR-005
 - mahavishnu: Replace iTerm2/MCPretentious adapters in canonical arch diagram
-- mahavishnu: Replace OpenSearch DLQ with JSON + Dhara KV in VISUAL_GUIDE
+- mahavishnu: Replace OpenSearch DLQ with JSON + storage KV in VISUAL_GUIDE
 - mahavishnu: Replace PoolManager routing and caller_kind in adapter diagrams
 - mahavishnu: Update repo count 9 → 7 in tag-based filtering
 - mahavishnu: Update tool count 49 → 174+ in MCP tools mindmap
@@ -3522,7 +3522,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - precommit: Rewrite HypothesisLock as async D-LOCK backed
 - precommit: Wire CLI with asyncio.run wrappers + update error strings
 - substrate-compat: Extract stamp/calltime pattern into shared helper (task 144)
-- webhooks: Receiver emits validated WebhookIngress via dhara.put
+- webhooks: Receiver emits validated WebhookIngress via storage.put
 - webhooks: Webhook_replay MCP tool — read-back via from_dict
 - Wire outcome_writer into on_workflow_complete + register workflow_get_outcome MCP tool
 - Wire record_approval_decision into decision flow (replaces delete-on-resolve)
@@ -3663,7 +3663,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - errors: Redact secret-shaped substrings in exception messages
 - Honor nested workers.enabled setting in CLI
 - mcp: Harden durable-routing fast path against Task 24 security review
-- mcp: Workflow_result reads full Dhara key
+- mcp: Workflow_result reads full storage key
 - openclaw: Cap auto-restart and surface terminal failure
 - pools: Close fail-open-state-drift in outbox sink and drainer breaker
 - pools: Wire drainer into collect_and_sync + strengthen writer test (whole-branch follow-ups)
@@ -3811,7 +3811,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constellation tui implementation plan (10 tasks, deferred)
 - Cross-reference Phase 8 commit hash in followup
 - decisions: Add component-health-cli-gap decision
-- decisions: Add dhara-key-prefixes decision
+- decisions: Add storage-key-prefixes decision
 - decisions: Add workflow decision README and template
 - Fix Phase 4 commit hash reference (post-amend)
 - followups: Add lifecycle template
@@ -3826,7 +3826,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pair existing wave workflows with decision files
 - Pair remaining unpaired workflows with decision files; rename part2 to match filename
 - plan-index: Link constellation tui to companion ACP spec
-- plan-index: Track cross-repo Dhara cache-adapter consolidation plans
+- plan-index: Track cross-repo storage cache-adapter consolidation plans
 - plans: Add frontmatter to validator-wiring plan
 - plans: Implementation plan for validator wiring + P7 cross-repo expansion
 - plans: Mark oneiric wire standardization shipped
@@ -3916,7 +3916,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - backup_cli: Extract command bodies to reduce C901
-- dhara: Extract \_invoke helpers, drop C901 noqa
+- storage: Extract \_invoke helpers, drop C901 noqa
 - Fix `from __future__ import annotations` placement + ruff line-join
 - Mahavishnu (quality: 69/100) - 2026-06-22 19:47:42
 - Mahavishnu (quality: 69/100) - 2026-06-26 08:09:06
@@ -4257,7 +4257,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Add Dhara persistence layer section to ARCHITECTURE.md
+- Add storage persistence layer section to ARCHITECTURE.md
 - Add LLM routing standardization design spec
 - Close master backlog — P9 delivered, Final Gate complete
 - Correct stale open/closed status across 7 plan documents
@@ -4577,7 +4577,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Disable llamaindex adapter (missing dependencies)
 - Re-enable llamaindex adapter with dependencies
-- Rename Dhruva to Druva and re-enable LlamaIndex
+- Rename the storage service and re-enable LlamaIndex
 
 ## [0.3.2] - 2026-02-26
 

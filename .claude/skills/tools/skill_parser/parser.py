@@ -50,7 +50,7 @@ class SkillMetadata:
     directory: Path
 
     # Classification
-    system: str  # mahavishnu, oneiric, crackerjack, session-buddy, akosha, dhruva, cross-ecosystem
+    system: str  # mahavishnu, oneiric, crackerjack, session-buddy, akosha, cross-ecosystem
     skill_number: int | None = None
 
     # Searchable content
@@ -195,7 +195,6 @@ def _determine_system(skill_path: Path, name: str, description: str) -> str:
         "crackerjack": "crackerjack",
         "session-buddy": "session-buddy",
         "akosha": "akosha",
-        "dhruva": "dhruva",
     }
 
     # Check directory
@@ -212,7 +211,6 @@ def _determine_system(skill_path: Path, name: str, description: str) -> str:
         ("crackerjack", ["crackerjack", "jack"]),
         ("oneiric", ["oneiric"]),
         ("akosha", ["akosha"]),
-        ("dhruva", ["dhruva"]),
     ]
 
     for system, patterns in EXPLICIT_NAME_PATTERNS:
@@ -223,7 +221,6 @@ def _determine_system(skill_path: Path, name: str, description: str) -> str:
     # Count keyword occurrences for each system
     SYSTEM_KEYWORDS = {
         "session-buddy": ["session", "capture", "retention"],
-        "dhruva": ["storage", "backup", "acid", "transaction", "database", "object"],
         "crackerjack": ["coverage", "ratchet", "qc", "quality gate"],
         "mahavishnu": ["orchestrate", "adapter", "pool", "sweep", "workflow", "repository"],
         "oneiric": ["component", "resolve", "layered", "lifecycle"],

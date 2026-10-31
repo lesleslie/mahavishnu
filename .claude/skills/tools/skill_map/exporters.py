@@ -164,7 +164,6 @@ def _get_mermaid_color(system: str) -> str:
         "crackerjack": "#FFE66D",
         "session-buddy": "#95E1D3",
         "akosha": "#DDA0DD",
-        "dhruva": "#FF8C00",
         "cross-ecosystem": "#98D8C8",
     }
     return colors.get(system, "#CCCCCC")
@@ -187,7 +186,6 @@ def _get_graphviz_color(system: str) -> str:
         "crackerjack": "lightyellow",
         "session-buddy": "lightblue",
         "akosha": "plum",
-        "dhruva": "darkorange",
         "cross-ecosystem": "lightteal",
     }
     return colors.get(system, "lightgray")
@@ -210,7 +208,6 @@ def _get_hex_color(system: str) -> str:
         "crackerjack": "#FFE66D",
         "session-buddy": "#95E1D3",
         "akosha": "#DDA0DD",
-        "dhruva": "#FF8C00",
         "cross-ecosystem": "#98D8C8",
     }
     return colors.get(system, "#CCCCCC")

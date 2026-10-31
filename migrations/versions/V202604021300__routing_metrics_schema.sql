@@ -4,7 +4,7 @@
 -- Date: 2026-04-02
 --
 -- This migration creates tables for persisting adaptive routing metrics
--- to PostgreSQL instead of Druva, completing PLAN_INDEX.md item 7.
+-- to PostgreSQL instead of the retired storage service, completing PLAN_INDEX.md item 7.
 
 -- =============================================================================
 -- ROUTING METRICS SCHEMA

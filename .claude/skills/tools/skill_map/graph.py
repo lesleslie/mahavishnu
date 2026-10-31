@@ -55,7 +55,6 @@ def _get_system_color(system: str) -> str:
         "crackerjack": "#FFE66D",  # Yellow
         "session-buddy": "#95E1D3",  # Light blue
         "akosha": "#DDA0DD",  # Plum
-        "dhruva": "#FF8C00",  # Dark orange
         "cross-ecosystem": "#98D8C8",  # Teal
     }
     return colors.get(system, "#CCCCCC")

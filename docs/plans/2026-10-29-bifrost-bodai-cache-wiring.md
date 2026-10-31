@@ -200,10 +200,10 @@ note). Regeneration would also have replaced that launch spec, dropped
 `WorkingDirectory` (the server would have started in `$HOME`, breaking
 `settings/` resolution), and reset the per-service `StartInterval` — the
 live values were hand-tuned (`akosha` runs at 60 s, not the
-priority-derived 10 s). Three servers in the registry (`dhruva`,
-`mermaid`, `n8n`) have neither a checkout nor a running plist, so
-generation would have registered three new launchd jobs against programs
-that do not exist, each crash-looping every 30 s.
+priority-derived 10 s). Three servers in the registry (the retired
+storage service, `mermaid`, `n8n`) have neither a checkout nor a
+running plist, so generation would have registered three new launchd
+jobs against programs that do not exist, each crash-looping every 30 s.
 
 **The fix — two layers.** `generate_plist()` now:
 
