@@ -27,11 +27,13 @@ Persistence model
 * Event index: ``ecosystem-events-index/`` — JSON list of ``{"event_id",
   "timestamp", "event_type", "source_service", "related_service"}`` entries.
 
-The substrate-compat gate (``mcp_calltime``) keeps the substrate an
-optional runtime dep — when unbound, the leaf functions return
-``None`` and the writers log a structured warning. The async store
-itself does not raise on substrate unavailability; it follows the
-existing ``webhook_replay`` / ``outcome_writer`` pattern.
+Persistence goes through the in-process substrate facade
+(:mod:`mahavishnu.core.substrate`): ``put`` is synchronous, ``get`` is
+awaitable, and both land in the server's own process-local KV store
+(:mod:`mahavishnu.core.kv_store`) — the same store the
+``mahavishnu_kv_*`` tools expose. The substrate is therefore always
+bound: there is no optional runtime dependency to degrade against, and
+every write is visible to the next read.
 
 Note: pruning is intentionally in-memory on the index only. The substrate
 itself owns durability and TTL; expired records will eventually fall out
@@ -49,7 +51,7 @@ import uuid
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._mcp_substrate_compat import mcp_calltime
+from mahavishnu.core import substrate  # req: REQ-SUBSTR-001
 from mahavishnu.core.models.persistence import EcosystemEvent, EcosystemService
 
 logger = get_logger(__name__)
@@ -129,7 +131,7 @@ def _load_index(raw: Any, key: str) -> list[dict[str, Any]]:
     return list(raw)
 
 
-class AsyncEcosystemStateStore:
+class AsyncEcosystemStateStore:  # req: REQ-SUBSTR-003
     """Async durable ecosystem state store backed by the Bodai substrate.
 
     Mirrors :class:`mcp.AsyncEcosystemStateStore` signatures so the
@@ -137,12 +139,12 @@ class AsyncEcosystemStateStore:
     group_registers wrappers (``mcp_upsert_service``,
     ``mcp_get_service``, etc.).
 
-    The substrate binding is resolved at call time via
-    :func:`mahavishnu.core._mcp_substrate_compat.mcp_calltime`.
-    When unbound (no host mcp install), all read paths return
-    ``None`` / ``[]`` and write paths log a structured warning then
-    return the validated payload anyway — callers can still construct
-    in-memory views.
+    Persistence goes through the in-process substrate facade
+    (:mod:`mahavishnu.core.substrate`): writes are synchronous
+    (``substrate.put``) and reads are awaited (``await substrate.get``).
+    The facade is always bound, so a read returns the payload that was
+    written — ``None`` / ``[]`` mean "no record", never "substrate
+    unavailable".
     """
 
     def __init__(self, retention: EventRetention | None = None) -> None:
@@ -175,15 +177,13 @@ class AsyncEcosystemStateStore:
 
         Returns:
             The serialized service record as a dict (via
-            :func:`msgspec.to_builtins`). Persists to the substrate when
-            ``mcp.put`` is bound; otherwise returns the validated record
-            with a structured warning log so the caller still gets a
-            well-formed response.
+            :func:`msgspec.to_builtins`). The record is persisted to the
+            substrate under its own key, and the services index is
+            rebuilt so the read path sees it.
         """
         now = _utcnow_iso()
         # Preserve original ``created_at`` when an upsert is over an existing record.
-        get_fn = mcp_calltime("get")
-        existing = await get_fn(_service_key(service_id)) if get_fn is not None else None
+        existing = await substrate.get(_service_key(service_id))
         created_at = existing.get("created_at") if existing else now
 
         record_dict: dict[str, Any] = {
@@ -203,26 +203,16 @@ class AsyncEcosystemStateStore:
         validated: EcosystemService = msgspec.convert(record_dict, EcosystemService)  # ty: ignore[invalid-assignment]
         builtins: dict[str, Any] = msgspec.to_builtins(validated)
 
-        put = mcp_calltime("put")
-        if put is not None:
-            put(_service_key(service_id), builtins)
-            existing_index = await get_fn(_SERVICES_INDEX_KEY) if get_fn is not None else None
-            await self._replace_service_index_entry(
-                current_index=_load_index(existing_index, _SERVICES_INDEX_KEY),
-                service_id=service_id,
-                service_type=service_type,
-                capabilities=list(capabilities or []),
-                status=status,
-                updated_at=now,
-            )
-        else:
-            logger.warning(
-                "ecosystem_state_upsert_skipped",
-                extra={
-                    "reason": "mcp.put_unbound",
-                    "service_id": service_id,
-                },
-            )
+        substrate.put(_service_key(service_id), builtins)
+        existing_index = await substrate.get(_SERVICES_INDEX_KEY)
+        await self._replace_service_index_entry(
+            current_index=_load_index(existing_index, _SERVICES_INDEX_KEY),
+            service_id=service_id,
+            service_type=service_type,
+            capabilities=list(capabilities or []),
+            status=status,
+            updated_at=now,
+        )
         return builtins
 
     async def _replace_service_index_entry(
@@ -240,12 +230,9 @@ class AsyncEcosystemStateStore:
         The index is a JSON list under ``ecosystem-services-index/``. Reads
         + writes are linear (substrate has no native list-prefix); the
         expected cardinality is small (one row per registered service).
-        The caller awaits ``get_fn`` before invoking this helper so the
+        The caller reads the index before invoking this helper so the
         index is already resolved (see ``upsert_service_async``).
         """
-        put = mcp_calltime("put")
-        if put is None:
-            return
         new_entry = {
             "service_id": service_id,
             "service_type": service_type,
@@ -265,26 +252,16 @@ class AsyncEcosystemStateStore:
         if not replaced:
             out.append(new_entry)
         out.sort(key=lambda e: e.get("service_id", ""))
-        put(_SERVICES_INDEX_KEY, out)
+        substrate.put(_SERVICES_INDEX_KEY, out)
 
     async def get_service_async(self, service_id: str) -> dict[str, Any] | None:
         """Fetch a durable ecosystem service record by ``service_id``.
 
-        Returns ``None`` when the substrate is unbound OR when no record
-        exists at the durability key. The returned dict is the raw
-        substrate payload normalized via :class:`EcosystemService`.
+        Returns ``None`` when no record exists at the durability key. The
+        returned dict is the raw substrate payload normalized via
+        :class:`EcosystemService`.
         """
-        get_fn = mcp_calltime("get")
-        if get_fn is None:
-            logger.warning(
-                "ecosystem_state_get_skipped",
-                extra={
-                    "reason": "mcp.get_unbound",
-                    "service_id": service_id,
-                },
-            )
-            return None
-        raw = await get_fn(_service_key(service_id))
+        raw = await substrate.get(_service_key(service_id))
         if raw is None:
             return None
         return msgspec.to_builtins(msgspec.convert(raw, EcosystemService))  # ty: ignore[invalid-return-type]
@@ -301,20 +278,9 @@ class AsyncEcosystemStateStore:
         ``status``; ``capability`` is a single-tag ``in`` membership
         check (caller cannot OR multiple capabilities).
         """
-        get_fn = mcp_calltime("get")
-        if get_fn is None:
-            logger.warning(
-                "ecosystem_state_list_skipped",
-                extra={
-                    "reason": "mcp.get_unbound",
-                    "kind": "services",
-                },
-            )
-            return []
-
         # Iterate the index; for each match, hydrate the full record so the
         # caller gets the canonical payload, not just the index entry.
-        index = _load_index(await get_fn(_SERVICES_INDEX_KEY), _SERVICES_INDEX_KEY)
+        index = _load_index(await substrate.get(_SERVICES_INDEX_KEY), _SERVICES_INDEX_KEY)
         results: list[dict[str, Any]] = []
         for entry in index:
             if service_type and entry.get("service_type") != service_type:
@@ -323,7 +289,7 @@ class AsyncEcosystemStateStore:
                 continue
             if capability and capability not in (entry.get("capabilities") or []):
                 continue
-            full = await get_fn(_service_key(entry["service_id"]))
+            full = await substrate.get(_service_key(entry["service_id"]))
             if full is None:
                 # Index references a missing record — skip silently rather than crashing.
                 continue
@@ -363,28 +329,16 @@ class AsyncEcosystemStateStore:
         validated: EcosystemEvent = msgspec.convert(record_dict, EcosystemEvent)  # ty: ignore[invalid-assignment]
         builtins: dict[str, Any] = msgspec.to_builtins(validated)
 
-        put = mcp_calltime("put")
-        get_fn = mcp_calltime("get")
-        if put is not None and get_fn is not None:
-            put(_event_key(event_id), builtins)
-            existing_index = await get_fn(_EVENTS_INDEX_KEY)
-            await self._append_event_index_entry(
-                current_index=_load_index(existing_index, _EVENTS_INDEX_KEY),
-                event_id=event_id,
-                event_type=event_type,
-                source_service=source_service,
-                related_service=related_service,
-                timestamp=ts,
-            )
-        else:
-            logger.warning(
-                "ecosystem_state_record_skipped",
-                extra={
-                    "reason": "mcp.put_or_get_unbound",
-                    "event_type": event_type,
-                    "source_service": source_service,
-                },
-            )
+        substrate.put(_event_key(event_id), builtins)
+        existing_index = await substrate.get(_EVENTS_INDEX_KEY)
+        await self._append_event_index_entry(
+            current_index=_load_index(existing_index, _EVENTS_INDEX_KEY),
+            event_id=event_id,
+            event_type=event_type,
+            source_service=source_service,
+            related_service=related_service,
+            timestamp=ts,
+        )
         return builtins
 
     async def _append_event_index_entry(
@@ -402,12 +356,9 @@ class AsyncEcosystemStateStore:
         Mirrors MCP's ``_prune_events`` — old entries beyond the
         retention window are dropped from the index here (the substrate
         owns the actual deletion of stale event keys, but the index is
-        the read path so it must stay lean). The caller awaits ``get_fn``
+        the read path so it must stay lean). The caller reads the index
         before invoking this helper so the index is already resolved.
         """
-        put = mcp_calltime("put")
-        if put is None:
-            return
         cutoff = self.retention.cutoff()
         pruned: list[dict[str, Any]] = []
         for entry in current_index:
@@ -425,7 +376,7 @@ class AsyncEcosystemStateStore:
             }
         )
         pruned.sort(key=lambda e: e.get("timestamp", ""))
-        put(_EVENTS_INDEX_KEY, pruned)
+        substrate.put(_EVENTS_INDEX_KEY, pruned)
 
     async def list_events_async(
         self,
@@ -439,18 +390,7 @@ class AsyncEcosystemStateStore:
         Returns up to ``limit`` most-recent matching events (matches
         MCP's ``results[-int(limit):]`` slicing).
         """
-        get_fn = mcp_calltime("get")
-        if get_fn is None:
-            logger.warning(
-                "ecosystem_state_list_skipped",
-                extra={
-                    "reason": "mcp.get_unbound",
-                    "kind": "events",
-                },
-            )
-            return []
-
-        index = _load_index(await get_fn(_EVENTS_INDEX_KEY), _EVENTS_INDEX_KEY)
+        index = _load_index(await substrate.get(_EVENTS_INDEX_KEY), _EVENTS_INDEX_KEY)
         cutoff = self.retention.cutoff()
         results: list[dict[str, Any]] = []
         for entry in index:
@@ -463,7 +403,7 @@ class AsyncEcosystemStateStore:
                 continue
             if related_service and entry.get("related_service") != related_service:
                 continue
-            full = await get_fn(_event_key(entry["event_id"]))
+            full = await substrate.get(_event_key(entry["event_id"]))
             if full is None:
                 continue
             results.append(msgspec.to_builtins(msgspec.convert(full, EcosystemEvent)))

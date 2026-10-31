@@ -3,33 +3,34 @@
 from __future__ import annotations
 
 import datetime as _dt
+import json
 from typing import Any
-from unittest.mock import MagicMock
 
 import msgspec
 import pytest
+from structlog.testing import capture_logs
 
+from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.approval.decision_writer import record_approval_decision
+from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.models.persistence import ApprovalLog
 
-
-@pytest.fixture
-def mcp_storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Stub mcp.put after module import so the substrate-compat guard sees it."""
-    import mcp
-
-    captured: list[tuple[str, Any]] = []
-    mock_put = MagicMock(side_effect=lambda key, value: captured.append((key, value)))
-    # decision_writer uses `_mcp_substrate_compat.mcp_calltime("put")` which
-    # resolves via `getattr(mcp, "put", None)`. Patch the attribute on the
-    # `mcp` module directly so the call-time lookup sees the mock.
-    monkeypatch.setattr(mcp, "put", mock_put, raising=False)
-    return mock_put
+# Producer name used for Prometheus label cardinality (mirrors the writer).
+_PRODUCER = "decision_writer"
 
 
-def test_record_approval_decision_persists_validated_struct(
-    mcp_storage: MagicMock,
-) -> None:
+def _stored(prefix: str) -> list[dict[str, Any]]:
+    """Return every decoded payload the producer wrote under ``prefix``.
+
+    The substrate store holds strings; the facade JSON-encodes structs on
+    write. The lookup is by *prefix* because each decision is written
+    under its own key inside the approval's namespace — the history is
+    append-only, so a namespace can hold many records.
+    """
+    return [json.loads(value) for _key, value in kv_store.list_prefix(prefix)]
+
+
+def test_record_approval_decision_persists_validated_struct() -> None:
     record = record_approval_decision(
         approval_id="apr-001",
         decision="approved",
@@ -42,18 +43,17 @@ def test_record_approval_decision_persists_validated_struct(
     assert record.approval_id == "apr-001"
     assert isinstance(record.at, _dt.datetime)
     assert record.metadata.get("rationale") == "All checks pass"
-    assert mcp_storage.call_count == 1
-    call_args = mcp_storage.call_args
-    assert call_args.args[0] == "approval-history/apr-001/"
-    persisted = call_args.args[1]
-    assert isinstance(persisted, ApprovalLog)
-    assert persisted.action == "approved"
+
+    stored = _stored("approval-history/apr-001/")
+    assert len(stored) == 1
+    assert stored[0]["approval_id"] == "apr-001"
+    assert stored[0]["action"] == "approved"
+    assert stored[0]["actor"] == "alice"
+    assert stored[0]["metadata"]["rationale"] == "All checks pass"
 
 
-def test_record_approval_decision_rejects_invalid_decision(
-    mcp_storage: MagicMock,
-) -> None:
-    """Literal['approved','denied','requested'] enforced by substrate."""
+def test_record_approval_decision_rejects_invalid_decision() -> None:
+    """Literal['approved','denied','requested'] enforced by the substrate."""
     with pytest.raises(msgspec.ValidationError):
         record_approval_decision(
             approval_id="apr-002",
@@ -61,12 +61,10 @@ def test_record_approval_decision_rejects_invalid_decision(
             rationale="Test",
             decided_by="alice",
         )
-    assert mcp_storage.call_count == 0
+    assert _stored("approval-history/apr-002/") == []  # invalid never persisted
 
 
-def test_record_approval_decision_passes_through_metadata(
-    mcp_storage: MagicMock,
-) -> None:
+def test_record_approval_decision_passes_through_metadata() -> None:
     record = record_approval_decision(
         approval_id="apr-003",
         decision="denied",
@@ -76,11 +74,39 @@ def test_record_approval_decision_passes_through_metadata(
     )
     assert record.metadata["ticket"] == "OPS-42"
     assert record.metadata["rationale"] == "Workflow failed"
-    assert mcp_storage.call_count == 1
+    assert _stored("approval-history/apr-003/") != []
+
+
+def test_record_approval_decision_counts_write_as_succeeded() -> None:
+    """The substrate is always bound: the write lands and the counters say so.
+
+    The writer used to resolve ``mcp.put`` through a dynamic module lookup
+    and took a "substrate unbound" branch when that lookup returned
+    ``None``. The substrate is this server's own in-process store now, so
+    there is no unbound state: the write always happens, ``succeeded`` is
+    incremented, ``skipped`` never is, and no skip warning is emitted.
+    """
+    attempted_before = COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+    succeeded_before = COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
+    skipped_before = COUNTERS.skipped.labels(producer=_PRODUCER)._value.get()
+
+    with capture_logs() as logs:
+        record_approval_decision(
+            approval_id="apr-counters",
+            decision="approved",
+            rationale="Counters land",
+            decided_by="alice",
+        )
+
+    assert _stored("approval-history/apr-counters/") != []
+    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
+    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before + 1
+    assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before
+    # The "substrate unbound" branch is gone — no skip event is emitted.
+    assert [entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"] == []
 
 
 def test_record_approval_decision_emits_log_event(
-    mcp_storage: MagicMock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Decision writer emits a structlog INFO event named approval_log_recorded.
@@ -99,7 +125,7 @@ def test_record_approval_decision_emits_log_event(
         lambda event, **kw: captured.append((event, kw)),
     )
 
-    record_approval_decision(
+    record = record_approval_decision(
         approval_id="apr-004",
         decision="requested",
         rationale="Need operator review",
@@ -107,12 +133,38 @@ def test_record_approval_decision_emits_log_event(
     )
 
     matching = [event for event, _ in captured if event == "approval_log_recorded"]
-    assert matching, (
-        f"expected an approval_log_recorded structlog event; got: {captured}"
-    )
+    assert matching, f"expected an approval_log_recorded structlog event; got: {captured}"
     payload = captured[-1][1]
     extra = payload.get("extra", payload)
     assert extra.get("approval_id") == "apr-004"
     assert extra.get("action") == "requested"
     assert extra.get("actor") == "system"
-    assert mcp_storage.call_count == 1
+    assert _stored("approval-history/apr-004/") != []
+    assert record.approval_id == "apr-004"
+
+
+def test_record_approval_decision_appends_rather_than_overwrites() -> None:
+    """The approval history is append-only: a second decision is kept.
+
+    The store holds one value per key, so a shared key would let the
+    second decision overwrite the first. Each decision therefore gets its
+    own key inside the approval's namespace, and the namespace listing
+    returns both.
+    """
+    record_approval_decision(
+        approval_id="apr-append",
+        decision="requested",
+        rationale="Awaiting review",
+        decided_by="alice",
+    )
+    record_approval_decision(
+        approval_id="apr-append",
+        decision="approved",
+        rationale="Approved after review",
+        decided_by="bob",
+    )
+
+    stored = _stored("approval-history/apr-append/")
+    assert len(stored) == 2
+    assert {entry["action"] for entry in stored} == {"requested", "approved"}
+    assert {entry["actor"] for entry in stored} == {"alice", "bob"}

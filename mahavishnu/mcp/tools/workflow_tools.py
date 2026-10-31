@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import msgspec
-from oneiric.core.logging import get_logger
 
-from mahavishnu.core._mcp_substrate_compat import mcp_calltime
+from mahavishnu.core import substrate  # req: REQ-SUBSTR-001
 from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
@@ -16,45 +15,31 @@ from mahavishnu.mcp.tools._workflow_id_guard import validate_workflow_id
 if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
 
-logger = get_logger(__name__)
-
 
 async def workflow_get_outcome(
     workflow_id: str,
-) -> WorkflowOutcome | dict[str, Any] | None:
+) -> WorkflowOutcome | dict[str, Any] | None:  # req: REQ-SUBSTR-003
     """Read back the persisted WorkflowOutcome via from_dict, validating the payload.
 
-    Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``
-    OR when the substrate does not expose ``mcp.get`` (logged WARNING, see
-    the substrate-compat gate below).
+    Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``.
     Returns ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}``
     when ``workflow_id`` is rejected by the conservative path-traversal guard
     (mirrors the sibling parity gate in ``pool_tools.workflow_result``);
-    MCP is never queried in that case.
+    the substrate is never queried in that case.
     """
     # Path-traversal guard: caller-supplied workflow_id is spliced into
     # ``f"workflow-results/{workflow_id}/"`` below, so reject anything
-    # outside the conservative regex BEFORE the MCP read.
+    # outside the conservative regex BEFORE the substrate read.
     if not validate_workflow_id(workflow_id):
         return {"workflow_id": workflow_id, "status": "invalid_workflow_id"}
 
-    # Substrate-compat gate: only read when mcp.get is exposed. Missing
-    # substrate → return None and warn (do not conflate with "no record").
-    # Tests substitute via `monkeypatch.setattr(
-    # "mahavishnu.core._mcp_substrate_compat.mcp_calltime", ...)` —
-    # the call-time resolution routes through whatever is bound on the
-    # ``mcp`` module at the moment of the read.
-    get_fn = mcp_calltime("get")
-    if get_fn is None:
-        logger.warning(
-            "workflow_outcome_read_skipped",
-            extra={
-                "workflow_id": workflow_id,
-                "reason": "mcp.get_unbound",
-            },
-        )
-        return None
-    payload = await get_fn(f"workflow-results/{workflow_id}/")
+    # The substrate is this server's own in-process store, so it is always
+    # bound: there is no "substrate missing" state left to keep distinct
+    # from "no record". A miss (payload is None) is the only absent-record
+    # signal. The module is imported (not the function) so tests can
+    # substitute it via `monkeypatch.setattr(
+    # "mahavishnu.mcp.tools.workflow_tools.substrate", ...)`.
+    payload = await substrate.get(f"workflow-results/{workflow_id}/")
     if payload is None:
         return None
     return msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-return-type]

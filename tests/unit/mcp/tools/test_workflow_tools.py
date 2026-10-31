@@ -1,45 +1,98 @@
 """Verify workflow_get_outcome returns a validated WorkflowOutcome struct.
 
-Phase 8 Task 5 update: the previous tests patched
-``mahavishnu.mcp.tools.workflow_tools.mcp.get`` directly. After Wave A
-the workflow_tools module no longer imports ``mcp``; the patch target
-is now the local ``mcp_calltime`` import. The AsyncMock stub returns
-an awaitable that resolves to the fixture payload.
+The reader binds the substrate facade (:mod:`mahavishnu.core.substrate`)
+directly. The module is imported — not the function — so tests can
+substitute it with ``monkeypatch.setattr(
+"mahavishnu.mcp.tools.workflow_tools.substrate", ...)``.
+
+The facade's ``get`` is awaitable, so a substituted ``get`` must be an
+``AsyncMock`` (or any awaitable). The happy-path tests use the *real*
+facade over the process-local store instead of a mock, so the write →
+read round trip is exercised end to end.
 """
 
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import FastMCP
 import pytest
+from structlog.testing import capture_logs
 
+from mahavishnu.core import substrate
 from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.mcp.tools.workflow_tools import (
     register_workflow_tools,
     workflow_get_outcome,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 pytestmark = pytest.mark.unit
 
 
-def _patch_mcp_get(monkeypatch: pytest.MonkeyPatch, fake_get: Any) -> None:
-    """Replace ``workflow_tools.mcp_calltime`` so calls to ``mcp_calltime("get")`` route to ``fake_get``.
+@pytest.fixture(autouse=True)
+def _isolated_kv_store() -> Iterator[None]:
+    """Drop any record this module leaves in the shared KV store.
 
-    The shim's call-time resolution means ``fake_get`` must be awaitable
-    when the production code does ``await get_fn(...)``. We accept any
-    callable and let the production path drive awaitability.
+    The suite-wide fixture in ``tests/conftest.py`` already clears the
+    shared store around every test; this one keeps the module
+    self-contained so the tests stay correct when run in isolation.
+    """
+    from mahavishnu.core.kv_store import kv_store
+
+    kv_store.clear()
+    yield
+    kv_store.clear()
+
+
+class _StubSubstrate:
+    """Stand-in for :mod:`mahavishnu.core.substrate`.
+
+    Only ``get`` matters to the reader, and the facade's ``get`` is
+    awaitable — hence ``AsyncMock``.
     """
 
-    def fake_calltime(name: str) -> Any:
-        return fake_get if name == "get" else None
+    def __init__(self, payload: Any = None) -> None:
+        self.get = AsyncMock(return_value=payload)
 
+
+def _stub_substrate(monkeypatch: pytest.MonkeyPatch, payload: Any = None) -> _StubSubstrate:
+    """Substitute the reader's substrate with a recording stub.
+
+    Patches the module attribute on ``workflow_tools``, so the stub
+    replaces the facade for this test only.
+    """
+    stub = _StubSubstrate(payload)
     monkeypatch.setattr(
-        "mahavishnu.mcp.tools.workflow_tools.mcp_calltime", fake_calltime,
+        "mahavishnu.mcp.tools.workflow_tools.substrate",
+        stub,
     )
+    return stub
+
+
+def _write_outcome(
+    workflow_id: str,
+    status: Literal["succeeded", "failed", "cancelled"] = "succeeded",
+) -> WorkflowOutcome:
+    """Persist a record through the real substrate facade.
+
+    Mirrors the outcome writer: ``substrate.put`` the validated struct
+    under ``f"workflow-results/{workflow_id}/"``.
+    """
+    outcome = WorkflowOutcome(
+        workflow_id=workflow_id,
+        status=status,
+        started_at=datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+        finished_at=datetime(2026, 8, 10, 12, 5, 0, tzinfo=UTC),
+        metadata={},
+    )
+    substrate.put(f"workflow-results/{workflow_id}/", outcome)
+    return outcome
 
 
 def _fake_rbac_manager() -> Any:
@@ -57,39 +110,57 @@ def _fake_rbac_manager() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_workflow_get_outcome_returns_validated_struct(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    payload = {
-        "workflow_id": "wf-abc",
-        "status": "failed",
-        "started_at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
-        "finished_at": datetime(2026, 8, 10, 12, 5, 0, tzinfo=UTC),
-        "metadata": {},
-    }
+async def test_workflow_get_outcome_returns_validated_struct() -> None:
+    """A record written through the facade reads back as a validated struct."""
+    written = _write_outcome("wf-abc", status="failed")
 
-    async def fake_get(key: str):
-        return payload
-
-    _patch_mcp_get(monkeypatch, fake_get)
     result = await workflow_get_outcome("wf-abc")
+
     assert isinstance(result, WorkflowOutcome)
     assert result.workflow_id == "wf-abc"
     assert result.status == "failed"
+    assert result.started_at == written.started_at
+    assert result.finished_at == written.finished_at
+    assert result.metadata == written.metadata
 
 
 @pytest.mark.asyncio
-async def test_workflow_get_outcome_returns_none_when_missing(
+async def test_workflow_get_outcome_returns_none_when_missing() -> None:
+    """No record under the key → None (a genuine miss, not a missing substrate)."""
+    result = await workflow_get_outcome("wf-never-written")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_workflow_get_outcome_reads_the_workflow_results_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Substrate returns None → consumer returns None (no validation attempted)."""
+    """The reader queries the facade with the documented key layout."""
+    stub = _stub_substrate(monkeypatch, payload=None)
 
-    async def fake_get(key: str):
-        return None
+    await workflow_get_outcome("wf-key-layout")
 
-    _patch_mcp_get(monkeypatch, fake_get)
-    result = await workflow_get_outcome("wf-missing")
+    stub.get.assert_awaited_once_with("workflow-results/wf-key-layout/")
+
+
+@pytest.mark.asyncio
+async def test_workflow_get_outcome_emits_no_unbound_warning() -> None:
+    """The reader has no "substrate unbound" branch — a miss is just a miss.
+
+    The old call-time lookup could leave the substrate unbound, which
+    logged ``workflow_outcome_read_skipped``. The substrate is in-process
+    now, so that warning must never fire again.
+
+    Captured through structlog (the oneiric logger is a structlog proxy),
+    not ``caplog`` — stdlib capture only sees the event when something
+    else routes structlog through the stdlib logging bridge, which makes
+    the assertion order-dependent.
+    """
+    with capture_logs() as logs:
+        result = await workflow_get_outcome("wf-no-warning")
+
     assert result is None
+    assert [entry for entry in logs if entry["event"] == "workflow_outcome_read_skipped"] == []
 
 
 @pytest.mark.asyncio
@@ -108,22 +179,10 @@ async def test_register_workflow_tools_registers_tool() -> None:
 
 
 @pytest.mark.asyncio
-async def test_registered_tool_delegates_to_module_function(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_tool_delegates_to_module_function() -> None:
     """End-to-end: calling the registered MCP tool returns a validated struct."""
-    payload = {
-        "workflow_id": "wf-e2e",
-        "status": "succeeded",
-        "started_at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
-        "finished_at": datetime(2026, 8, 10, 12, 5, 0, tzinfo=UTC),
-        "metadata": {},
-    }
+    _write_outcome("wf-e2e", status="succeeded")
 
-    async def fake_get(key: str):
-        return payload
-
-    _patch_mcp_get(monkeypatch, fake_get)
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
@@ -140,7 +199,9 @@ async def test_workflow_get_outcome_is_coroutine_function() -> None:
 
 
 @pytest.mark.asyncio
-async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_workflow_get_outcome_rejects_path_traversal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Module-level guard: caller-supplied path-traversal workflow_id is refused.
 
     Mirrors the sibling parity gate in ``pool_tools.workflow_result``: when
@@ -149,8 +210,7 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
     the substrate is never queried. Without this gate, a caller could read
     arbitrary keys via ``workflow_id="../../etc/passwd"``.
     """
-    mcp_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, mcp_get)
+    stub = _stub_substrate(monkeypatch)
 
     result = await workflow_get_outcome("../../etc/passwd")
 
@@ -158,7 +218,7 @@ async def test_workflow_get_outcome_rejects_path_traversal(monkeypatch: pytest.M
         "workflow_id": "../../etc/passwd",
         "status": "invalid_workflow_id",
     }
-    mcp_get.assert_not_called()
+    stub.get.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -171,8 +231,7 @@ async def test_registered_tool_rejects_path_traversal(
     guard is wired in the production registration path, not only on the
     module-level coroutine.
     """
-    mcp_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, mcp_get)
+    stub = _stub_substrate(monkeypatch)
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -184,10 +243,12 @@ async def test_registered_tool_rejects_path_traversal(
         "workflow_id": "../../etc/passwd",
         "status": "invalid_workflow_id",
     }
-    mcp_get.assert_not_called()
+    stub.get.assert_not_called()
 
 
-async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
+async def test_workflow_get_outcome_tool_rejects_without_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """@require_mcp_auth wrapper rejects calls missing user_id.
 
     Without user_id the wrapper returns the AUTH_REQUIRED error envelope
@@ -197,8 +258,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
 
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
-    mcp_get = AsyncMock()
-    _patch_mcp_get(monkeypatch, mcp_get)
+    stub = _stub_substrate(monkeypatch)
 
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -209,22 +269,23 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(monkeypatch):
     assert isinstance(result, dict)
     assert result.get("status") == "error"
     assert result.get("error_code") == "AUTH_REQUIRED"
-    mcp_get.assert_not_called()
+    stub.get.assert_not_called()
 
 
-async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
+async def test_workflow_get_outcome_tool_passes_with_user_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """@require_mcp_auth wrapper passes when user_id is supplied.
 
-    With user_id the wrapper falls through to workflow_get_outcome. The
-    substrate-compat gate still returns None when substrate.get returns None
-    — we assert the wrapper did NOT short-circuit on auth.
+    With user_id the wrapper falls through to workflow_get_outcome, which
+    reads the substrate and finds no record — we assert the wrapper did
+    NOT short-circuit on auth.
     """
     from mcp_common.fastmcp import FastMCP
 
     from mahavishnu.mcp.tools.workflow_tools import register_workflow_tools
 
-    mcp_get = AsyncMock(return_value=None)
-    _patch_mcp_get(monkeypatch, mcp_get)
+    stub = _stub_substrate(monkeypatch, payload=None)
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -235,4 +296,4 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(monkeypatch):
     # No AUTH_REQUIRED envelope → wrapper fell through.
     if isinstance(result, dict):
         assert result.get("error_code") != "AUTH_REQUIRED"
-    mcp_get.assert_awaited_once_with("workflow-results/wf-ok/")
+    stub.get.assert_awaited_once_with("workflow-results/wf-ok/")

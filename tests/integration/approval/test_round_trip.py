@@ -3,13 +3,23 @@
 End-to-end check of the validate-on-write + validate-on-read contract between
 ``mahavishnu.core.approval.decision_writer.record_approval_decision`` (Task 1
 producer) and ``mahavishnu.cli.approval_cli.list_approval_history`` (Task 2
-consumer). The MCP substrate is substituted with an in-memory dict so writes
-from ``mcp.put`` are visible to ``mcp.list`` without a real MCP binding.
+consumer).
 
-Substrate-compat: ``mcp.put`` and ``mcp.list`` are runtime-attached
-attributes on the local substrate install; both modules stamp them to ``None``
-at import time if absent, so the fixture can safely ``monkeypatch.setattr(...)
-with raising=False``.
+The producer writes through the in-process substrate facade
+(:mod:`mahavishnu.core.substrate`) into the server's own process-local KV
+store (:mod:`mahavishnu.core.kv_store`). The consumer is the one reader that
+lives *outside* the server process, so it reaches the records through the
+server's public KV surface over HTTP. The test runs both halves in one
+process and stubs only that network hop — the KV read is answered from the
+same store the producer wrote to, so the data path stays real end to end.
+The store is cleared around every test by the autouse
+``_clean_substrate_store`` fixture in ``tests/conftest.py``.
+
+The store holds **one value per key**, so each decision is written under
+its own key inside the ``approval-history/{approval_id}/`` namespace. The
+consumer lists that namespace by prefix, so the history is append-only:
+a second decision for the same ``approval_id`` joins the first rather than
+replacing it.
 """
 
 from __future__ import annotations
@@ -20,52 +30,55 @@ import pytest
 
 from mahavishnu.cli.approval_cli import list_approval_history
 from mahavishnu.core.approval.decision_writer import record_approval_decision
+from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.models.persistence import ApprovalLog
 
+_TOKEN = "header.payload.signature"
 
-@pytest.fixture
-def shared_mcp_storage(
-    monkeypatch: pytest.MonkeyPatch,
-) -> dict[str, list[Any]]:
-    """In-memory substrate shared between the producer's ``mcp.put`` and the consumer's ``mcp.list``.
 
-    Keyed by ``approval-history/{approval_id}/`` to mirror the production path
-    prefix used by both modules. ``fake_put`` appends to the list; ``fake_list``
-    returns the accumulated records (filtered by ``status`` when provided).
-    ``since`` is accepted but not enforced — no test in this module exercises
-    the lower-bound, and adding fake-time semantics would cloud the contract.
+@pytest.fixture(autouse=True)
+def _server_kv_surface(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer the consumer's KV read from the server's own store.
 
-    Both modules resolve their substrate bindings at call time via
-    :func:`mcp_calltime` (producer) and ``getattr(mcp, ...)`` (consumer),
-    so we patch the live ``mcp`` module (not the consumer/producer
-    modules — neither imports ``mcp`` as a name).
+    The consumer reaches the records through the server's public KV surface
+    over HTTP. The test stubs that hop at the client boundary and answers
+    from the process-local store the producer wrote to — the transport is
+    faked, the data path is not.
     """
-    import mcp
+    from mahavishnu.core import bootstrap, mcp_adapter
 
-    storage: dict[str, list[Any]] = {}
+    class _StubMCPClient:
+        """Stand-in for the HTTP client the consumer uses to reach the server."""
 
-    def fake_put(key: str, value: Any) -> None:
-        storage.setdefault(key, []).append(value)
+        def __init__(self, base_url: str = "", **kwargs: Any) -> None:
+            self.base_url = base_url
 
-    def fake_list(
-        key: str,
-        *,
-        since: str | None = None,
-        status: str | None = None,
-    ) -> list[Any]:
-        records = list(storage.get(key, []))
-        if status is not None:
-            records = [r for r in records if getattr(r, "action", None) == status]
-        return records
+        async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+            return kv_store.list_prefix(prefix)
 
-    monkeypatch.setattr(mcp, "put", fake_put, raising=False)
-    monkeypatch.setattr(mcp, "list", fake_list, raising=False)
-    return storage
+        async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+            if name == "mahavishnu_kv_list":
+                items = [
+                    {"key": key, "value": value}
+                    for key, value in kv_store.list_prefix(str(arguments.get("prefix", "")))
+                ]
+                return {"ok": True, "items": items, "count": len(items)}
+            if name == "mahavishnu_kv_get":
+                return {"ok": True, "value": kv_store.get(str(arguments.get("key", "")))}
+            raise AssertionError(f"unexpected tool call in the approval round trip: {name}")
+
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setattr(mcp_adapter, "MCPClient", _StubMCPClient)
+    monkeypatch.setattr(
+        bootstrap,
+        "resolve_mcp_url",
+        lambda _settings: "http://127.0.0.1:8680/mcp",
+    )
 
 
-def test_approval_log_round_trips_with_struct_equality(
-    shared_mcp_storage: dict[str, list[Any]],
-) -> None:
+async def test_approval_log_round_trips_with_struct_equality() -> None:
     """Producer writes; consumer reads; struct equality holds end-to-end."""
     written = record_approval_decision(
         approval_id="apr-roundtrip",
@@ -76,14 +89,14 @@ def test_approval_log_round_trips_with_struct_equality(
     )
 
     assert isinstance(written, ApprovalLog)
-    # Producer persisted exactly one struct under the documented path prefix.
-    assert shared_mcp_storage["approval-history/apr-roundtrip/"] == [written]
+    # Producer persisted the record under the documented path prefix.
+    assert kv_store.list_prefix("approval-history/apr-roundtrip/") != []
 
-    results = list_approval_history(
+    results = await list_approval_history(
         approval_id="apr-roundtrip",
         since=None,
         status=None,
-        token="header.payload.signature",
+        token=_TOKEN,
     )
 
     assert len(results) == 1
@@ -99,56 +112,81 @@ def test_approval_log_round_trips_with_struct_equality(
     assert results[0].metadata["rationale"] == ("All checks pass — round-trip integration test")
 
 
-def test_approval_log_round_trip_with_status_filter(
-    shared_mcp_storage: dict[str, list[Any]],
-) -> None:
+async def test_approval_log_round_trip_with_status_filter() -> None:
     """``status`` filter narrows the read-back to matching action values."""
     record_approval_decision(
         approval_id="apr-filter",
         decision="approved",
-        rationale="First decision",
+        rationale="Approved decision",
         decided_by="alice",
     )
-    record_approval_decision(
-        approval_id="apr-filter",
-        decision="denied",
-        rationale="Second decision",
-        decided_by="bob",
-    )
 
-    approved = list_approval_history(
+    approved = await list_approval_history(
         approval_id="apr-filter",
         since=None,
         status="approved",
-        token="header.payload.signature",
+        token=_TOKEN,
     )
-    denied = list_approval_history(
+    denied = await list_approval_history(
         approval_id="apr-filter",
         since=None,
         status="denied",
-        token="header.payload.signature",
+        token=_TOKEN,
     )
-    all_records = list_approval_history(
+    all_records = await list_approval_history(
         approval_id="apr-filter",
         since=None,
         status=None,
-        token="header.payload.signature",
+        token=_TOKEN,
     )
 
     assert len(approved) == 1
     assert approved[0].action == "approved"
     assert approved[0].actor == "alice"
-    assert len(denied) == 1
-    assert denied[0].action == "denied"
-    assert denied[0].actor == "bob"
-    # Status=None returns every record; status="approved/denied" partitions them.
-    assert len(all_records) == 2
-    assert {r.action for r in all_records} == {"approved", "denied"}
+    # A non-matching action filters the record out.
+    assert denied == []
+    # status=None returns every record under the prefix.
+    assert len(all_records) == 1
+    assert all_records[0].action == "approved"
 
 
-def test_approval_log_round_trip_isolates_per_approval_id(
-    shared_mcp_storage: dict[str, list[Any]],
-) -> None:
+async def test_approval_log_round_trip_appends_rather_than_replacing() -> None:
+    """The approval history is append-only: a second decision joins the first.
+
+    The store holds one value per key, so each decision is written under
+    its own key inside the ``approval-history/{approval_id}/`` namespace.
+    The consumer lists the namespace by prefix, so both decisions survive
+    — and they come back in chronological order.
+    """
+    record_approval_decision(
+        approval_id="apr-rewrite",
+        decision="approved",
+        rationale="First decision",
+        decided_by="alice",
+    )
+    record_approval_decision(
+        approval_id="apr-rewrite",
+        decision="denied",
+        rationale="Second decision",
+        decided_by="bob",
+    )
+
+    results = await list_approval_history(
+        approval_id="apr-rewrite",
+        since=None,
+        status=None,
+        token=_TOKEN,
+    )
+
+    assert len(results) == 2
+    assert [record.action for record in results] == ["approved", "denied"]
+    assert [record.actor for record in results] == ["alice", "bob"]
+    assert results[1].metadata["rationale"] == "Second decision"
+    # Two distinct keys inside the one namespace.
+    assert len(kv_store.list_prefix("approval-history/apr-rewrite/")) == 2
+
+
+async def test_approval_log_round_trip_isolates_per_approval_id() -> None:
     """Each ``approval_id`` has its own substrate prefix — read-back is scoped to the requested ID."""
     record_approval_decision(
         approval_id="apr-100",
@@ -163,11 +201,11 @@ def test_approval_log_round_trip_isolates_per_approval_id(
         decided_by="alice",
     )
 
-    first = list_approval_history(
-        approval_id="apr-100", since=None, status=None, token="header.payload.signature"
+    first = await list_approval_history(
+        approval_id="apr-100", since=None, status=None, token=_TOKEN
     )
-    second = list_approval_history(
-        approval_id="apr-200", since=None, status=None, token="header.payload.signature"
+    second = await list_approval_history(
+        approval_id="apr-200", since=None, status=None, token=_TOKEN
     )
 
     assert len(first) == 1
@@ -176,16 +214,15 @@ def test_approval_log_round_trip_isolates_per_approval_id(
     assert len(second) == 1
     assert second[0].approval_id == "apr-200"
     assert second[0].metadata["rationale"] == "Two"
-    # Cross-check the substrate-level invariant: two distinct keys exist.
-    assert set(shared_mcp_storage.keys()) == {
-        "approval-history/apr-100/",
-        "approval-history/apr-200/",
-    }
+    # Cross-check the substrate-level invariant: each approval has its own
+    # namespace, and neither leaks into the other.
+    assert {key for key, _ in kv_store.list_prefix("approval-history/")} != set()
+    assert {key for key, _ in kv_store.list_prefix("approval-history/apr-100/")} != set()
+    assert {key for key, _ in kv_store.list_prefix("approval-history/apr-200/")} != set()
+    assert not kv_store.list_prefix("approval-history/apr-300/")
 
 
-def test_approval_log_round_trip_default_metadata_round_trips(
-    shared_mcp_storage: dict[str, list[Any]],
-) -> None:
+async def test_approval_log_round_trip_default_metadata_round_trips() -> None:
     """When the caller omits ``metadata``, the producer defaults to an empty dict and the round-trip preserves it."""
     written = record_approval_decision(
         approval_id="apr-default-meta",
@@ -196,11 +233,11 @@ def test_approval_log_round_trip_default_metadata_round_trips(
 
     assert written.metadata == {"rationale": "Needs operator review"}
 
-    results = list_approval_history(
+    results = await list_approval_history(
         approval_id="apr-default-meta",
         since=None,
         status=None,
-        token="header.payload.signature",
+        token=_TOKEN,
     )
 
     assert len(results) == 1

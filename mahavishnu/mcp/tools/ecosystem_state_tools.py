@@ -21,11 +21,11 @@ the WRITE tools (``mahavishnu_upsert_service`` /
 ``Permission.WRITE_ECOSYSTEM_STATE``. The admin role inherits all
 permissions via ``list(Permission)`` in ``RBACManager._init_default_roles``.
 
-Substrate contract: the leaf store uses
-:func:`mahavishnu.core._mcp_substrate_compat.mcp_calltime` so the
-host's mcp binding is resolved lazily. When unbound, the writer logs
-a structured ``ecosystem_state_*_skipped`` warning and returns the
-validated record anyway; the readers return ``None`` / ``[]``.
+Substrate contract: the leaf store writes through
+:mod:`mahavishnu.core.substrate`, the in-process facade over the
+server's own process-local KV store. The substrate is always bound, so
+a write always lands and a read always answers — ``None`` / ``[]``
+means "no record", never "the substrate was unavailable".
 """
 
 from __future__ import annotations
@@ -120,9 +120,9 @@ def register_ecosystem_state_tools(
     ) -> dict[str, Any]:
         """Fetch a durable ecosystem service record by ``service_id``.
 
-        Returns ``{"ok": True, "service": None}`` when no record exists
-        OR the substrate is unbound. The ``service`` field is the
-        serialized :class:`EcosystemService` payload or ``None``.
+        Returns ``{"ok": True, "service": None}`` when no record exists.
+        The ``service`` field is the serialized :class:`EcosystemService`
+        payload or ``None``.
 
         Auth: requires ``user_id`` with ``READ_ECOSYSTEM_STATE`` permission.
         """
@@ -146,7 +146,7 @@ def register_ecosystem_state_tools(
         ``status`` and single-tag ``capability`` membership check.
 
         Returns ``{"ok": True, "count": <n>, "services": [...]}``. An
-        empty list (or unbound substrate) yields ``count == 0``.
+        empty list yields ``count == 0``.
 
         Auth: requires ``user_id`` with ``READ_ECOSYSTEM_STATE`` permission.
         """

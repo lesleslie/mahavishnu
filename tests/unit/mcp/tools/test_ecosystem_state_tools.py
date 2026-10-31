@@ -2,27 +2,36 @@
 
 Mirrors the test shape of ``test_workflow_tools.py`` / ``test_webhook_tools.py``:
 
-* Patch ``mahavishnu.core.ecosystem_state.mcp_calltime`` so a host-supplied
-  fake ``put`` / ``get`` swap routes into the leaf store without booting a real
-  MCP server.
+* Exercise the **real** substrate facade
+  (:mod:`mahavishnu.core.substrate`) over the server's process-local KV
+  store (:mod:`mahavishnu.core.kv_store`). The autouse
+  ``_clean_substrate_store`` fixture in ``tests/conftest.py`` clears that
+  shared store around every test, so each test starts empty and no
+  monkeypatching of a substrate lookup is needed.
 * Verify each tool: registers on the FastMCP server, delegates to the leaf
   ``AsyncEcosystemStateStore`` correctly, and enforces the ``@require_mcp_auth``
   contract via the ``rbac_manager`` argument.
 * The substrate is exercised through the index + record keys so we catch
   regressions in either the writer (upsert / record) or the reader
-  (get / list) paths.
+  (get / list) paths, and so we pin that the write actually landed in the
+  shared store (the regression this file guards: the retired
+  ``mcp_calltime`` lookup always returned ``None``, so every writer took
+  its "substrate not bound" branch and persisted nothing).
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import FastMCP
 import msgspec
 import pytest
+from structlog.testing import capture_logs
 
+from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.models.persistence import EcosystemEvent, EcosystemService
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools import ecosystem_state_tools
@@ -32,64 +41,27 @@ pytestmark = pytest.mark.unit
 
 
 # ---------------------------------------------------------------------------
-# Fakes
+# Helpers — read the shared substrate store directly
 # ---------------------------------------------------------------------------
 
 
-class _FakeSubstrate:
-    """In-memory substrate: ``put`` is sync, ``get`` is awaitable.
+def _raw(key: str) -> str | None:
+    """Return the raw string the substrate wrote into the shared KV store.
 
-    Mirrors the production contract used by ``outcome_writer.py`` /
-    ``webhook_receiver.py`` (sync ``put``) and ``webhook_replay.py`` /
-    ``workflow_tools.py`` (async ``get``).
-
-    The substrate stores records in a plain dict; ``get`` round-trips a
-    copy so the test assertions see the durable form. ``list_prefix``
-    is NOT part of the substrate-compat surface, so listing is driven
-    off the index keys (``ecosystem-services-index/``,
-    ``ecosystem-events-index/``) which the writer updates atomically.
+    ``None`` means the key was never written (a genuine miss).
     """
-
-    def __init__(self) -> None:
-        self.records: dict[str, Any] = {}
-
-    def put(self, key: str, value: Any) -> None:
-        # msgspec.to_builtins already returned plain dicts at the writer
-        # boundary, so this is a direct assignment.
-        self.records[key] = value
-
-    async def get(self, key: str) -> Any:
-        value = self.records.get(key)
-        if value is None:
-            return None
-        # Return a shallow copy so the writer can mutate its own views.
-        if isinstance(value, list):
-            return [dict(item) for item in value]
-        return dict(value)
-
-    def clear(self) -> None:
-        self.records.clear()
+    return kv_store.get(key)
 
 
-def _patch_substrate(monkeypatch: pytest.MonkeyPatch, substrate: _FakeSubstrate) -> None:
-    """Swap the lazy ``mcp_calltime`` resolver on the ecosystem_state module.
+def _stored(key: str) -> Any:
+    """Return the decoded payload the substrate wrote into the shared KV store.
 
-    The substrate-compat shim is imported by name in
-    :mod:`mahavishnu.core.ecosystem_state`; monkeypatch the symbol
-    there so the writer resolves ``put`` / ``get`` to our fake without
-    spinning up a host mcp install.
+    The substrate JSON-encodes on write and decodes on read, so the raw
+    store value is a JSON string.
     """
-
-    def fake_calltime(name: str) -> Any:
-        if name == "put":
-            return substrate.put
-        if name == "get":
-            return substrate.get
-        return None
-
-    monkeypatch.setattr(
-        "mahavishnu.core.ecosystem_state.mcp_calltime", fake_calltime,
-    )
+    raw = kv_store.get(key)
+    assert raw is not None, f"expected {key!r} in the shared substrate store"
+    return json.loads(raw)
 
 
 def _fake_rbac_manager(*, allow: bool = True) -> Any:
@@ -105,13 +77,8 @@ def _fake_rbac_manager(*, allow: bool = True) -> Any:
 
 
 @pytest.mark.asyncio
-async def test_upsert_service_persists_and_returns_record(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_upsert_service_persists_and_returns_record() -> None:
     """Leaf: ``upsert_service`` writes the record + updates the index."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
@@ -132,26 +99,20 @@ async def test_upsert_service_persists_and_returns_record(
     assert record["created_at"] is not None
     assert record["updated_at"] is not None
 
-    # Both the service record AND the index entry are persisted.
-    assert substrate.records["ecosystem-services/svc-1/"]["service_id"] == "svc-1"
-    index = substrate.records["ecosystem-services-index/"]
+    # Both the service record AND the index entry are persisted, under the
+    # documented key layout.
+    assert _stored("ecosystem-services/svc-1/")["service_id"] == "svc-1"
+    index = _stored("ecosystem-services-index/")
     assert any(entry["service_id"] == "svc-1" for entry in index)
 
 
 @pytest.mark.asyncio
-async def test_upsert_service_preserves_created_at_on_re_upsert(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_upsert_service_preserves_created_at_on_re_upsert() -> None:
     """Leaf: re-upserting a service preserves the original ``created_at``."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
-    first = await store.upsert_service_async(
-        service_id="svc-2", service_type="mcp", status="ok"
-    )
+    first = await store.upsert_service_async(service_id="svc-2", service_type="mcp", status="ok")
     original_created = first["created_at"]
     second = await store.upsert_service_async(
         service_id="svc-2", service_type="mcp", status="degraded"
@@ -160,21 +121,18 @@ async def test_upsert_service_preserves_created_at_on_re_upsert(
     assert second["status"] == "degraded"
     assert second["updated_at"] >= original_created
 
+    # The re-upsert replaced the record rather than adding a second one.
+    index = _stored("ecosystem-services-index/")
+    assert [entry["service_id"] for entry in index] == ["svc-2"]
+
 
 @pytest.mark.asyncio
-async def test_get_service_returns_record(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_get_service_returns_record() -> None:
     """Leaf: ``get_service`` reads back the durable record."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
-    await store.upsert_service_async(
-        service_id="svc-3", service_type="worker_pool", status="ok"
-    )
+    await store.upsert_service_async(service_id="svc-3", service_type="worker_pool", status="ok")
 
     fetched = await store.get_service_async("svc-3")
     assert isinstance(fetched, dict)
@@ -183,16 +141,13 @@ async def test_get_service_returns_record(
 
     missing = await store.get_service_async("nope")
     assert missing is None
+    # A miss is a genuine absence in the store, not a degraded substrate.
+    assert _raw("ecosystem-services/nope/") is None
 
 
 @pytest.mark.asyncio
-async def test_list_services_filters(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_list_services_filters() -> None:
     """Leaf: ``list_services`` respects service_type / status / capability filters."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
@@ -220,13 +175,8 @@ async def test_list_services_filters(
 
 
 @pytest.mark.asyncio
-async def test_record_and_list_events(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_record_and_list_events() -> None:
     """Leaf: events round-trip through substrate with retention pruning."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
@@ -251,6 +201,10 @@ async def test_record_and_list_events(
     )
     assert second["related_service"] == "svc-a"
     assert second["timestamp"] == "2099-01-01T00:00:00+00:00"
+
+    # Both event records are persisted under the documented key layout.
+    assert _stored(f"ecosystem-events/{first['event_id']}/")["event_id"] == first["event_id"]
+    assert _stored(f"ecosystem-events/{second['event_id']}/")["event_id"] == second["event_id"]
 
     # List with no filter → both events (sliced to the most recent `limit`).
     events = await store.list_events_async()
@@ -304,13 +258,8 @@ async def test_register_ecosystem_state_tools_registers_all_five() -> None:
 
 
 @pytest.mark.asyncio
-async def test_registered_upsert_tool_delegates_to_leaf_store(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_upsert_tool_delegates_to_leaf_store() -> None:
     """End-to-end: the registered ``mahavishnu_upsert_service`` writes via the leaf store."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     mcp = FastMCP(name="test-ecosystem-state-tools-upsert")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service")
@@ -323,17 +272,12 @@ async def test_registered_upsert_tool_delegates_to_leaf_store(
     )
 
     assert result["service_id"] == "e2e-svc"
-    assert substrate.records["ecosystem-services/e2e-svc/"]["service_type"] == "mcp"
+    assert _stored("ecosystem-services/e2e-svc/")["service_type"] == "mcp"
 
 
 @pytest.mark.asyncio
-async def test_registered_get_tool_returns_envelope(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_get_tool_returns_envelope() -> None:
     """End-to-end: ``mahavishnu_get_service`` returns ``{"ok": True, "service": ...}``."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
@@ -352,13 +296,8 @@ async def test_registered_get_tool_returns_envelope(
 
 
 @pytest.mark.asyncio
-async def test_registered_list_tools_return_envelope(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_list_tools_return_envelope() -> None:
     """End-to-end: list tools return ``{"ok": True, "count": N, ...}``."""
-    substrate = _FakeSubstrate()
-    _patch_substrate(monkeypatch, substrate)
-
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
@@ -368,12 +307,8 @@ async def test_registered_list_tools_return_envelope(
 
     mcp = FastMCP(name="test-ecosystem-state-tools-list")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
-    services_tool = next(
-        t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services"
-    )
-    events_tool = next(
-        t for t in await mcp.list_tools() if t.name == "mahavishnu_list_events"
-    )
+    services_tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services")
+    events_tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_list_events")
 
     services = await services_tool.fn(user_id="alice")
     assert services["ok"] is True
@@ -395,7 +330,7 @@ async def test_write_tool_rejects_without_user_id() -> None:
     """@require_mcp_auth wrapper rejects calls missing ``user_id``.
 
     Without ``user_id`` the wrapper returns the AUTH_REQUIRED error envelope
-    BEFORE the leaf store runs. The substrate-compat gate is not touched.
+    BEFORE the leaf store runs, so nothing is persisted.
     """
     mcp = FastMCP(name="test-ecosystem-state-tools-auth-write")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -406,6 +341,7 @@ async def test_write_tool_rejects_without_user_id() -> None:
     assert isinstance(result, dict)
     assert result["status"] == "error"
     assert result["error_code"] == "AUTH_REQUIRED"
+    assert _raw("ecosystem-services/auth-svc/") is None
 
 
 @pytest.mark.asyncio
@@ -435,6 +371,8 @@ async def test_write_tool_intruder_returns_permission_denied() -> None:
     assert isinstance(result, dict)
     assert result["status"] == "error"
     assert result["error_code"] == "PERMISSION_DENIED"
+    # A denied write must not reach the substrate.
+    assert _raw("ecosystem-services/x/") is None
     # WRITE gate forwarded the correct permission enum.
     call_args = rbac.check_permission.await_args_list
     assert any(
@@ -480,38 +418,96 @@ async def test_no_rbac_returns_auth_not_configured() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Substrate-unbound behavior (smoke check that the leaf never crashes)
+# Substrate-bound behavior (the substrate is always bound)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_leaf_store_handles_unbound_substrate() -> None:
-    """Substrate-unbound reads return ``None`` / ``[]``, writes warn + return the record."""
+async def test_leaf_store_persists_to_the_shared_store() -> None:
+    """The substrate is always bound: writes land in the shared KV store.
 
-    def calltime_returns_none(name: str) -> Any:
-        return None
+    Regression guard for the retired ``mcp_calltime`` lookup. It resolved
+    ``mcp.<name>`` against the MCP Python SDK, so it always returned
+    ``None``: every writer took its "substrate not bound" branch, logged a
+    ``*_skipped`` warning and persisted nothing — while still reporting
+    success to the caller. Reads against an empty store are a genuine
+    miss, and writes are visible to the next read.
+    """
+    from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
-    from mahavishnu.core import ecosystem_state
+    store = AsyncEcosystemStateStore()
 
-    prev = ecosystem_state.mcp_calltime
-    ecosystem_state.mcp_calltime = calltime_returns_none  # type: ignore[assignment]
-    try:
-        store = ecosystem_state.AsyncEcosystemStateStore()
-        # Reads → None / []
-        assert await store.get_service_async("x") is None
-        assert await store.list_services_async() == []
-        assert await store.list_events_async() == []
-        # Writes → record still constructed, persisted skipped with a warning log.
-        upserted = await store.upsert_service_async(
-            service_id="unbound-svc", service_type="mcp", status="ok"
-        )
-        assert upserted["service_id"] == "unbound-svc"
-        recorded = await store.record_event_async(
-            event_type="e", source_service="unbound-svc"
-        )
-        assert recorded["event_type"] == "e"
-    finally:
-        ecosystem_state.mcp_calltime = prev  # type: ignore[assignment]
+    # Reads against an empty store → None / [] (a genuine miss).
+    assert await store.get_service_async("x") is None
+    assert await store.list_services_async() == []
+    assert await store.list_events_async() == []
+
+    # Writes → the record is persisted, not merely returned.
+    upserted = await store.upsert_service_async(
+        service_id="bound-svc", service_type="mcp", status="ok"
+    )
+    assert upserted["service_id"] == "bound-svc"
+    assert _stored("ecosystem-services/bound-svc/")["service_id"] == "bound-svc"
+
+    recorded = await store.record_event_async(event_type="e", source_service="bound-svc")
+    assert recorded["event_type"] == "e"
+    assert _stored(f"ecosystem-events/{recorded['event_id']}/")["event_type"] == "e"
+
+    # The written record is readable back through the leaf store.
+    fetched = await store.get_service_async("bound-svc")
+    assert fetched is not None
+    assert fetched["service_id"] == "bound-svc"
+
+    # And the indexes were rebuilt, so the list paths see them.
+    assert len(await store.list_services_async()) == 1
+    assert len(await store.list_events_async()) == 1
+
+
+@pytest.mark.asyncio
+async def test_service_record_is_visible_to_the_public_kv_surface() -> None:
+    """A sibling component reading the raw KV store sees what the server wrote.
+
+    The substrate facade and the ``mahavishnu_kv_*`` tools share one store
+    instance, so the durable ecosystem registry is discoverable through
+    the public KV surface — the mechanism by which a sibling component
+    resolves a registered service.
+    """
+    from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
+
+    store = AsyncEcosystemStateStore()
+    await store.upsert_service_async(service_id="kv-visible", service_type="mcp", status="ok")
+
+    raw = _raw("ecosystem-services/kv-visible/")
+    assert raw is not None
+    # The store holds strings; the substrate JSON-encodes the payload.
+    assert isinstance(raw, str)
+    assert json.loads(raw)["service_id"] == "kv-visible"
+
+
+@pytest.mark.asyncio
+async def test_writes_emit_no_substrate_skipped_warning() -> None:
+    """The ``*_skipped`` warnings are gone — their absence is the signal.
+
+    While the lookup was dead, every write logged
+    ``ecosystem_state_upsert_skipped`` / ``ecosystem_state_record_skipped``
+    and persisted nothing. The branch no longer exists.
+
+    The capture uses structlog's native ``capture_logs`` rather than
+    pytest's ``caplog``: the project logger is a structlog
+    ``BoundLoggerLazyProxy``, not a stdlib logger, so ``caplog`` only
+    sees these events when structlog happens to be routed through stdlib
+    — which makes a ``caplog`` assertion order-dependent (it passes in a
+    full-suite run and fails when this file runs alone).
+    """
+    from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
+
+    store = AsyncEcosystemStateStore()
+    with capture_logs() as logs:
+        await store.upsert_service_async(service_id="no-skip", service_type="mcp", status="ok")
+        await store.record_event_async(event_type="e", source_service="no-skip")
+
+    skipped = [entry for entry in logs if str(entry.get("event", "")).endswith("_skipped")]
+    assert not skipped, f"unexpected substrate-skipped warnings: {skipped}"
 
 
 # ---------------------------------------------------------------------------

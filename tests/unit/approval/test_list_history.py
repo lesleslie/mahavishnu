@@ -1,67 +1,119 @@
-"""Verify list_approval_history reads MCP payloads and returns typed ApprovalLog structs."""
+"""Verify list_approval_history reads MCP payloads and returns typed ApprovalLog structs.
+
+The reader is the one substrate call site that runs **outside** the
+server process, so it reads through the server's public KV surface over
+HTTP rather than the in-process facade (which would answer from the
+CLI's own, empty, store). The tests stub the MCP client the CLI builds.
+"""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
-import logging
+import json
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
+from structlog.testing import capture_logs
 
 from mahavishnu.cli.approval_cli import list_approval_history
 from mahavishnu.core.models.persistence import ApprovalLog
 
+TOKEN = "header.payload.signature"
+
+
+class _FakeMCPClient:
+    """Stand-in for ``mahavishnu.core.mcp_adapter.MCPClient``.
+
+    The CLI imports the client lazily inside the function, so patching
+    the attribute on the source module reaches it.
+    """
+
+    def __init__(
+        self, base_url: str, timeout: float = 30.0, token: str | None = None, internal: bool = False
+    ) -> None:
+        self.base_url = base_url
+        self.internal = internal
+        self.kv_list_prefixes: list[str] = []
+        self.closed = False
+        self.items: list[tuple[str, str]] = []
+        self.raise_on_list: Exception | None = None
+
+    async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+        self.kv_list_prefixes.append(prefix)
+        if self.raise_on_list is not None:
+            raise self.raise_on_list
+        return list(self.items)
+
+    async def aclose(self) -> None:
+        self.closed = True
+
 
 @pytest.fixture
-def substrate_list(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Stub the substrate-compat shim's list-resolution with a capture mock.
+def fake_client(monkeypatch: pytest.MonkeyPatch) -> _FakeMCPClient:
+    """Patch the MCP client the CLI builds; return the instance it will use.
 
-    Phase 8 Task 5 update: the previous fixture patched
-    ``mahavishnu.cli.approval_cli.mcp.list``. After Wave A the
-    approval_cli module no longer imports ``mcp`` directly; the patch
-    target is now the local ``mcp_calltime`` import.
+    The client is constructed lazily *inside* ``list_approval_history``,
+    so the fixture pre-creates the instance and hands the factory a
+    closure that returns it. Tests can then seed ``.items`` before the
+    call.
     """
-    mock_list = MagicMock(return_value=[])
+    instance = _FakeMCPClient(base_url="http://localhost:8680/mcp")
 
-    def fake_calltime(name: str) -> Any:
-        return mock_list if name == "list" else None
+    def factory(
+        base_url: str, timeout: float = 30.0, token: str | None = None, internal: bool = False
+    ) -> _FakeMCPClient:
+        instance.base_url = base_url
+        instance.internal = internal
+        return instance
 
-    monkeypatch.setattr(
-        "mahavishnu.cli.approval_cli.mcp_calltime", fake_calltime,
-    )
-    return mock_list
+    monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", factory)
+    return instance
 
 
-def _make_payload(
+def _payload(
     approval_id: str,
     *,
     action: str = "approved",
     actor: str = "alice",
     metadata: dict[str, Any] | None = None,
+    at: datetime | None = None,
 ) -> dict[str, Any]:
+    """Build the JSON payload the KV store holds for an approval record."""
     return {
         "approval_id": approval_id,
         "action": action,
         "actor": actor,
-        "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
+        "at": (at or datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC)).isoformat(),
         "metadata": metadata or {"rationale": f"reason for {approval_id}"},
     }
 
 
-def test_list_approval_history_returns_validated_structs(
-    substrate_list: MagicMock,
-) -> None:
-    substrate_list.return_value = [
-        _make_payload("apr-001", action="approved", actor="alice"),
-        _make_payload("apr-002", action="denied", actor="bob"),
-    ]
+def _store(pairs: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, str]]:
+    return [(key, json.dumps(value)) for key, value in pairs]
 
-    results = list_approval_history(
+
+@pytest.mark.asyncio
+async def test_list_approval_history_returns_validated_structs(
+    fake_client: _FakeMCPClient,
+) -> None:
+    fake_client.items = _store(
+        [
+            (
+                "approval-history/apr-001/20260810T120000000000Z-aaaa1111",
+                _payload("apr-001", action="approved", actor="alice"),
+            ),
+            (
+                "approval-history/apr-002/20260811T120000000000Z-bbbb2222",
+                _payload("apr-002", action="denied", actor="bob"),
+            ),
+        ]
+    )
+
+    results = await list_approval_history(
         approval_id="apr-stream",
         since=None,
         status=None,
-    token="header.payload.signature",
+        token=TOKEN,
     )
 
     assert isinstance(results, list)
@@ -74,87 +126,94 @@ def test_list_approval_history_returns_validated_structs(
     assert results[1].action == "denied"
     assert results[1].actor == "bob"
 
-    substrate_list.assert_called_once_with(
-        "approval-history/apr-stream/",
-        since=None,
-        status=None,
+    assert fake_client.kv_list_prefixes == ["approval-history/apr-stream/"]
+    assert fake_client.closed
+
+
+@pytest.mark.asyncio
+async def test_list_approval_history_filters_by_since_and_status(
+    fake_client: _FakeMCPClient,
+) -> None:
+    """The live KV surface lists by prefix only, so the filters are local."""
+    fake_client.items = _store(
+        [
+            (
+                "approval-history/apr-old/20260701T000000000000Z-cccc3333",
+                _payload("apr-old", action="approved", at=datetime(2026, 7, 1, tzinfo=UTC)),
+            ),
+            (
+                "approval-history/apr-new/20260901T000000000000Z-dddd4444",
+                _payload("apr-new", action="approved", at=datetime(2026, 9, 1, tzinfo=UTC)),
+            ),
+            (
+                "approval-history/apr-denied/20260901T000000000000Z-eeee5555",
+                _payload("apr-denied", action="denied", at=datetime(2026, 9, 1, tzinfo=UTC)),
+            ),
+        ]
     )
 
-
-def test_list_approval_history_passes_since_and_status(
-    substrate_list: MagicMock,
-) -> None:
-    substrate_list.return_value = [_make_payload("apr-003")]
-
-    list_approval_history(
+    results = await list_approval_history(
         approval_id="apr-stream",
         since="2026-08-01",
         status="approved",
-    token="header.payload.signature",
+        token=TOKEN,
     )
 
-    substrate_list.assert_called_once_with(
-        "approval-history/apr-stream/",
-        since="2026-08-01",
-        status="approved",
-    )
+    assert [r.approval_id for r in results] == ["apr-new"]
 
 
-def test_list_approval_history_returns_empty_when_mcp_unbound(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
+@pytest.mark.asyncio
+async def test_list_approval_history_returns_empty_when_substrate_unreachable(
+    fake_client: _FakeMCPClient,
 ) -> None:
-    """When the substrate-compat shim's list-resolution returns None, return [] and warn."""
-    import mahavishnu.cli.approval_cli as cli
+    """A substrate that cannot be reached returns [] and warns."""
+    fake_client.raise_on_list = RuntimeError("connection refused")
 
-    # Force the substrate-unbound path even if a prior test monkeypatched it.
-    monkeypatch.setattr(cli, "mcp_calltime", lambda _name: None)
-
-    with caplog.at_level(logging.WARNING, logger="mahavishnu.cli.approval_cli"):
-        results = list_approval_history(
+    with capture_logs() as logs:
+        results = await list_approval_history(
             approval_id="apr-stream",
             since=None,
             status=None,
-        token="header.payload.signature",
+            token=TOKEN,
         )
 
     assert results == []
-    skip_records = [rec for rec in caplog.records if "approval_list_skipped" in rec.message]
-    assert len(skip_records) == 1, [rec.message for rec in caplog.records]
-    rec = skip_records[0]
-    assert rec.levelno == logging.WARNING
-    # Structured extras: Oneiric renders `extra={...}` into the formatted
-    # message rather than attaching attributes. Parse for the expected keys
-    # and values to confirm the structured payload is correct (and that no
-    # exception text leaked into the WARNING per observability rule).
-    msg = rec.message
-    assert "'approval_id': 'apr-stream'" in msg, msg
-    assert "'reason': 'mcp.list_unbound'" in msg, msg
-    # Sanity: the WARNING must NOT carry exception text in the extras payload.
-    assert "Traceback" not in msg
-    assert "ValidationError" not in msg.split("extra=", 1)[-1]
+    skipped = [entry for entry in logs if entry["event"] == "approval_list_skipped"]
+    assert len(skipped) == 1, logs
+    assert skipped[0]["extra"]["approval_id"] == "apr-stream"
+    # The WARNING must not carry exception text.
+    assert "Traceback" not in json.dumps(skipped[0]["extra"])
 
 
-def test_list_approval_history_skips_invalid_payloads(
-    substrate_list: MagicMock,
+@pytest.mark.asyncio
+async def test_list_approval_history_skips_invalid_payloads(
+    fake_client: _FakeMCPClient,
 ) -> None:
-    """One valid + one invalid payload -> returns only the valid struct (partial-failure resilience)."""
-    substrate_list.return_value = [
-        _make_payload("apr-good", action="approved", actor="alice"),
-        {
-            "approval_id": "apr-bad",
-            "action": "not_a_real_action",  # fails Literal validation
-            "actor": "carol",
-            "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
-            "metadata": {},
-        },
-    ]
+    """One valid + one invalid payload -> returns only the valid struct."""
+    fake_client.items = _store(
+        [
+            (
+                "approval-history/apr-good/20260810T120000000000Z-ffff6666",
+                _payload("apr-good", action="approved", actor="alice"),
+            ),
+            (
+                "approval-history/apr-bad/20260810T120000000000Z-9999aaaa",
+                {
+                    "approval_id": "apr-bad",
+                    "action": "not_a_real_action",  # fails Literal validation
+                    "actor": "carol",
+                    "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC).isoformat(),
+                    "metadata": {},
+                },
+            ),
+        ]
+    )
 
-    results = list_approval_history(
+    results = await list_approval_history(
         approval_id="apr-stream",
         since=None,
         status=None,
-    token="header.payload.signature",
+        token=TOKEN,
     )
 
     assert len(results) == 1
@@ -162,9 +221,9 @@ def test_list_approval_history_skips_invalid_payloads(
     assert results[0].approval_id == "apr-good"
 
 
-def test_list_entry_skipped_log_carries_bound_exception_type(
-    substrate_list: MagicMock,
-    caplog: pytest.LogCaptureFixture,
+@pytest.mark.asyncio
+async def test_list_entry_skipped_log_carries_bound_exception_type(
+    fake_client: _FakeMCPClient,
 ) -> None:
     """`approval_list_entry_skipped` log carries the bound exc type, not a constant string.
 
@@ -172,69 +231,51 @@ def test_list_entry_skipped_log_carries_bound_exception_type(
     `type(msgspec.ValidationError).__name__` evaluates to the literal
     string "ValidationError" because the surrounding `except` already
     narrowed the type. The fix binds the exception as ``exc`` and logs
-    ``type(exc).__name__``. We trigger a real `msgspec.ValidationError`
-    via an invalid `action` Literal (same shape as
-    `test_list_approval_history_skips_invalid_payloads`) and assert the
-    structured log carries the bound-exception class name.
+    ``type(exc).__name__``.
     """
-    substrate_list.return_value = [
-        {
-            "approval_id": "apr-bad",
-            "action": "not_a_real_action",  # fails Literal validation
-            "actor": "carol",
-            "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC),
-            "metadata": {},
-        },
-    ]
+    fake_client.items = _store(
+        [
+            (
+                "approval-history/apr-bad/20260810T120000000000Z-9999aaaa",
+                {
+                    "approval_id": "apr-bad",
+                    "action": "not_a_real_action",  # fails Literal validation
+                    "actor": "carol",
+                    "at": datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC).isoformat(),
+                    "metadata": {},
+                },
+            ),
+        ]
+    )
 
-    with caplog.at_level(logging.WARNING, logger="mahavishnu.cli.approval_cli"):
-        results = list_approval_history(
+    with capture_logs() as logs:
+        results = await list_approval_history(
             approval_id="apr-stream",
             since=None,
             status=None,
-        token="header.payload.signature",
+            token=TOKEN,
         )
 
     # Partial-failure resilience still holds.
     assert results == []
 
-    # Find the structured skip log. Use substring match (the existing
-    # `_list_skipped` test at line 109 follows the same pattern) so we
-    # don't trip over trailing ANSI escapes or formatter padding.
-    skip_records = [
-        rec
-        for rec in caplog.records
-        if "approval_list_entry_skipped" in rec.message
-    ]
-    assert len(skip_records) == 1, [rec.message for rec in caplog.records]
-    rec = skip_records[0]
-
-    # Oneiric renders `extra={...}` into the formatted message; parse for
-    # the `reason` field and assert it's the bound-exception class name.
-    msg = rec.message
-    assert "'reason': 'ValidationError'" in msg, (
-        f"Expected bound-exception type name, got: {msg!r}"
-    )
-    # No exception text leaked into the structured payload.
-    assert "Traceback" not in msg
+    skipped = [entry for entry in logs if entry["event"] == "approval_list_entry_skipped"]
+    assert len(skipped) == 1, logs
+    assert skipped[0]["extra"]["reason"] == "ValidationError"
+    assert "Traceback" not in json.dumps(skipped[0]["extra"])
 
 
-def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
+@pytest.mark.asyncio
+async def test_list_approval_history_rejects_missing_token(
+    fake_client: _FakeMCPClient,
+) -> None:
     """RBAC gate: missing token returns [] before any MCP call.
 
     Multi-agent review flagged HIGH-severity missing auth on this read
-    path. The new gate must short-circuit before list_fn is invoked.
+    path. The gate must short-circuit before the substrate is queried.
     """
-    from mahavishnu.cli import approval_cli
-
-    list_fn = MagicMock(return_value=[{"approval_id": "apr-1"}])
-    monkeypatch.setattr(
-        approval_cli, "mcp_calltime",
-        lambda _name, _fn=list_fn: _fn,
-    )
-
-    with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
-        result = approval_cli.list_approval_history(
+    with capture_logs() as logs:
+        result = await list_approval_history(
             approval_id="apr-1",
             since=None,
             status=None,
@@ -242,65 +283,55 @@ def test_list_approval_history_rejects_missing_token(monkeypatch, caplog):
         )
 
     assert result == []
-    list_fn.assert_not_called()
-    skip_records = [r for r in caplog.records if "approval_list_skipped" in r.message]
-    assert skip_records, [r.message for r in caplog.records]
-    assert "'reason': 'rbac_denied'" in skip_records[-1].message
+    assert not fake_client.kv_list_prefixes
+    skipped = [entry for entry in logs if entry["event"] == "approval_list_skipped"]
+    assert skipped, logs
+    assert skipped[-1]["extra"]["reason"] == "rbac_denied"
 
 
-def test_list_approval_history_rejects_non_jwt_token(monkeypatch, caplog):
+@pytest.mark.asyncio
+async def test_list_approval_history_rejects_non_jwt_token(
+    fake_client: _FakeMCPClient,
+) -> None:
     """RBAC gate: a non-JWT-shaped token is rejected as malformed.
 
-    The CLI surface is sync, so the check is JWT-shape presence (three
-    dot-separated segments). A single-segment string looks like a token
-    but is not a JWT — must be rejected.
+    The check is JWT-shape presence (three dot-separated segments). A
+    single-segment string looks like a token but is not a JWT — must be
+    rejected.
     """
-    from mahavishnu.cli import approval_cli
-
-    list_fn = MagicMock(return_value=[])
-    monkeypatch.setattr(
-        approval_cli, "mcp_calltime",
-        lambda _name, _fn=list_fn: _fn,
+    result = await list_approval_history(
+        approval_id="apr-2",
+        since=None,
+        status=None,
+        token="not-a-jwt",
     )
-
-    with caplog.at_level("WARNING", logger="mahavishnu.cli.approval_cli"):
-        result = approval_cli.list_approval_history(
-            approval_id="apr-2",
-            since=None,
-            status=None,
-            token="not-a-jwt",
-        )
 
     assert result == []
-    list_fn.assert_not_called()
+    assert not fake_client.kv_list_prefixes
 
 
-def test_list_approval_history_passes_with_jwt_shaped_token(monkeypatch):
-    """With a JWT-shaped token the RBAC gate passes and the substrate is queried.
-
-    The substrate is monkeypatched to return a valid ApprovalLog payload,
-    so the function returns the validated record. Confirms the gate only
-    blocks on missing/malformed tokens.
-    """
-    from mahavishnu.cli import approval_cli
-
-    payload = _make_payload("apr-3", action="approved", actor="reviewer-1")
-    list_fn = MagicMock(return_value=[payload])
-    monkeypatch.setattr(
-        approval_cli, "mcp_calltime",
-        lambda _name, _fn=list_fn: _fn,
+@pytest.mark.asyncio
+async def test_list_approval_history_passes_with_jwt_shaped_token(
+    fake_client: _FakeMCPClient,
+) -> None:
+    """With a JWT-shaped token the RBAC gate passes and the substrate is queried."""
+    fake_client.items = _store(
+        [
+            (
+                "approval-history/apr-3/20260810T120000000000Z-bbbb7777",
+                _payload("apr-3", action="approved", actor="reviewer-1"),
+            )
+        ]
     )
 
-    token = "header.payload.signature"
-
-    result = approval_cli.list_approval_history(
+    result = await list_approval_history(
         approval_id="apr-3",
         since=None,
         status=None,
-        token=token,
+        token=TOKEN,
     )
 
-    list_fn.assert_called_once()
+    assert fake_client.kv_list_prefixes == ["approval-history/apr-3/"]
     assert isinstance(result, list)
     assert len(result) == 1
     assert isinstance(result[0], ApprovalLog)

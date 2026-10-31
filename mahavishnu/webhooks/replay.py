@@ -5,15 +5,18 @@ records persisted by :mod:`mahavishnu.webhooks.receiver` and returns
 validated typed structs via :func:`msgspec.convert`. The
 consumer/producer contract is
 the persistence key ``f"webhook-ingress/{webhook_id}/"`` — producers
-write here via :func:`mcp.put`, consumers read here via
-:func:`mcp.get`.
+write here via :func:`mahavishnu.core.substrate.put`, consumers read
+here via :func:`mahavishnu.core.substrate.get`.
 
 This module is intentionally separate from
 :mod:`mahavishnu.webhooks.receiver` — the receiver is an HTTP producer
 that validates inbound payloads; this module is a leaf consumer that
-reads them back. Mirrors the producer's substrate-compat guard pattern
-so a host mcp install that has not injected a ``mcp.get`` binding
-returns ``None`` instead of raising ``AttributeError``.
+reads them back.
+
+The read is awaitable because the substrate's read half is: reads were
+MCP tool calls, so they were coroutines. The sibling readers
+(:mod:`mahavishnu.core.ecosystem_state` and
+:mod:`mahavishnu.mcp.tools.workflow_tools`) await the same call.
 """
 
 from __future__ import annotations
@@ -21,14 +24,17 @@ from __future__ import annotations
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._mcp_substrate_compat import mcp_calltime
+# req: REQ-SUBSTR-001
+from mahavishnu.core import substrate
 from mahavishnu.core.models.persistence import WebhookIngress
 from mahavishnu.mcp.tools._workflow_id_guard import validate_webhook_id
 
 logger = get_logger(__name__)
 
 
-def webhook_replay(
+# req: REQ-SUBSTR-003
+# req: REQ-SUBSTR-004
+async def webhook_replay(
     webhook_id: str,
     token: str | None = None,
 ) -> WebhookIngress | None:
@@ -46,13 +52,12 @@ def webhook_replay(
 
     Returns:
         The validated :class:`WebhookIngress` instance, or ``None`` when
-        no record exists at the durability key, the substrate is
-        unbound, ``webhook_id`` fails the path-traversal allowlist
-        check, or ``token`` is missing or not a JWT-shaped triple.
-        A missing-record read emits no log line; a substrate-unbound,
-        invalid-id, or RBAC-denied read emits a structured
-        ``webhook_replay_skipped`` warning so operators can disambiguate
-        the failure mode.
+        no record exists at the durability key, ``webhook_id`` fails the
+        path-traversal allowlist check, or ``token`` is missing or not a
+        JWT-shaped triple.
+        A missing-record read emits no log line; an invalid-id or
+        RBAC-denied read emits a structured ``webhook_replay_skipped``
+        warning so operators can disambiguate the failure mode.
 
     Notes:
         The persistence key format
@@ -74,11 +79,10 @@ def webhook_replay(
         )
         return None
 
-    # Path-traversal guard: ``webhook_id`` is spliced into the MCP key
-    # ``f"webhook-ingress/{webhook_id}/"`` below. Reject caller-supplied
-    # values that contain traversal characters BEFORE the substrate sees
-    # them. Matches the existing convention for the substrate-unbound
-    # case (log warning, return None) so callers see a single error shape.
+    # Path-traversal guard: ``webhook_id`` is spliced into the substrate
+    # key ``f"webhook-ingress/{webhook_id}/"`` below. Reject
+    # caller-supplied values that contain traversal characters BEFORE the
+    # substrate sees them, so callers see a single error shape.
     if not validate_webhook_id(webhook_id):
         logger.warning(
             "webhook_replay_skipped",
@@ -89,18 +93,7 @@ def webhook_replay(
         )
         return None
 
-    get = mcp_calltime("get")
-    if get is None:
-        logger.warning(
-            "webhook_replay_skipped",
-            extra={
-                "reason": "mcp.get_unbound",
-                "webhook_id": webhook_id,
-            },
-        )
-        return None
-
-    payload = get(f"webhook-ingress/{webhook_id}/")
+    payload = await substrate.get(f"webhook-ingress/{webhook_id}/")
     if payload is None:
         return None
 

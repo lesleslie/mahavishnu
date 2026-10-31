@@ -1,17 +1,18 @@
 """Round-trip integration test for the workflow outcome pipeline.
 
-Writer (Task 1 ``record_workflow_outcome``) and consumer (Task 3
-``workflow_get_outcome``) are exercised against a shared in-memory MCP
-substrate. Both sides monkeypatch the same substrate-compat binding on the
-``mcp`` module — ``mcp.put`` (writer) and ``mcp.get`` (consumer) —
-so the writer's persisted payload is the consumer's read-back payload.
+Writer (``record_workflow_outcome``) and consumer (``workflow_get_outcome``)
+are exercised against the server's own process-local substrate store. Both
+sides go through the in-process facade (:mod:`mahavishnu.core.substrate`),
+so the writer's persisted payload is the consumer's read-back payload —
+there is no stub between them. The store is cleared around every test by
+the autouse ``_clean_substrate_store`` fixture in ``tests/conftest.py``.
 
 This locks the end-to-end contract:
 
   1. ``record_workflow_outcome`` validates against the substrate schema and
      persists a typed ``WorkflowOutcome``.
   2. ``workflow_get_outcome`` reads the same payload back via
-     ``mcp.get(key)`` and re-validates via ``from_dict``.
+     ``await substrate.get(key)`` and re-validates via ``msgspec.convert``.
   3. Struct equality holds across the boundary — same ``workflow_id``,
      ``status``, ``started_at``, ``finished_at``, ``metadata``.
 
@@ -21,9 +22,8 @@ Failure modes caught by this gate:
     read ``None`` and return ``None``.
   - Producer payload drift (e.g. omitting ``metadata``) — consumer would
     either crash on validation or return a partially populated struct.
-  - Status mapping drift at the boundary — Task 3 maps
-    ``{"completed": "succeeded", "partial": "cancelled"}``; a mismatch
-    here would propagate to the consumer and break downstream tooling.
+  - Status mapping drift at the boundary — a mismatch here would propagate
+    to the consumer and break downstream tooling.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from mahavishnu.core.kv_store import kv_store
 from mahavishnu.core.models.persistence import WorkflowOutcome
 from mahavishnu.core.workflow.outcome_writer import record_workflow_outcome
 from mahavishnu.mcp.tools.workflow_tools import workflow_get_outcome
@@ -39,35 +40,8 @@ from mahavishnu.mcp.tools.workflow_tools import workflow_get_outcome
 pytestmark = pytest.mark.unit
 
 
-@pytest.fixture
-def shared_mcp(monkeypatch: pytest.MonkeyPatch) -> dict[str, object]:
-    """Patch both producer and consumer to share an in-memory dict.
-
-    Both modules' ``mcp.put`` / ``mcp.get`` resolve at call time via
-    :func:`mcp_calltime` / direct ``getattr(mcp, ...)`` on the live
-    ``mcp`` module. Patch the live module (NOT the producer/consumer
-    modules — neither imports ``mcp`` as a name anymore) so the writer's
-    persisted payload lands in the same dict the consumer reads. Keys are
-    formatted ``f"workflow-results/{workflow_id}/"`` to match the producer
-    key format exactly.
-    """
-    import mcp
-
-    store: dict[str, object] = {}
-
-    def put(key: str, value: object) -> None:
-        store[key] = value
-
-    async def get(key: str) -> object | None:
-        return store.get(key)
-
-    monkeypatch.setattr(mcp, "put", put, raising=False)
-    monkeypatch.setattr(mcp, "get", get, raising=False)
-    return store
-
-
 @pytest.mark.asyncio
-async def test_round_trip_succeeded_outcome_round_trips(shared_mcp: dict[str, object]) -> None:
+async def test_round_trip_succeeded_outcome_round_trips() -> None:
     """Write a 'succeeded' outcome, read it back, assert struct equality."""
     workflow_id = "wf-round-trip-success"
     started_at = datetime(2026, 8, 10, 12, 0, 0, tzinfo=UTC)
@@ -90,7 +64,7 @@ async def test_round_trip_succeeded_outcome_round_trips(shared_mcp: dict[str, ob
     assert written.metadata == metadata
 
     # Substrate-side key matches producer contract
-    assert f"workflow-results/{workflow_id}/" in shared_mcp
+    assert kv_store.get(f"workflow-results/{workflow_id}/") is not None
 
     # Consumer reads back via from_dict validation
     read_back = await workflow_get_outcome(workflow_id)
@@ -104,7 +78,7 @@ async def test_round_trip_succeeded_outcome_round_trips(shared_mcp: dict[str, ob
 
 
 @pytest.mark.asyncio
-async def test_round_trip_failed_outcome_round_trips(shared_mcp: dict[str, object]) -> None:
+async def test_round_trip_failed_outcome_round_trips() -> None:
     """Failed status survives the validate-on-write + validate-on-read boundary."""
     workflow_id = "wf-round-trip-failed"
     started_at = datetime(2026, 8, 10, 13, 0, 0, tzinfo=UTC)
@@ -125,7 +99,7 @@ async def test_round_trip_failed_outcome_round_trips(shared_mcp: dict[str, objec
 
 
 @pytest.mark.asyncio
-async def test_round_trip_cancelled_outcome_round_trips(shared_mcp: dict[str, object]) -> None:
+async def test_round_trip_cancelled_outcome_round_trips() -> None:
     """Cancelled status survives the validate-on-write + validate-on-read boundary."""
     workflow_id = "wf-round-trip-cancelled"
     started_at = datetime(2026, 8, 10, 14, 0, 0, tzinfo=UTC)
@@ -146,7 +120,7 @@ async def test_round_trip_cancelled_outcome_round_trips(shared_mcp: dict[str, ob
 
 
 @pytest.mark.asyncio
-async def test_round_trip_default_metadata_round_trips(shared_mcp: dict[str, object]) -> None:
+async def test_round_trip_default_metadata_round_trips() -> None:
     """Default empty metadata dict survives producer and consumer."""
     workflow_id = "wf-round-trip-no-meta"
     started_at = datetime(2026, 8, 10, 15, 0, 0, tzinfo=UTC)
@@ -169,9 +143,7 @@ async def test_round_trip_default_metadata_round_trips(shared_mcp: dict[str, obj
 
 
 @pytest.mark.asyncio
-async def test_round_trip_consumer_returns_none_when_writer_missing(
-    shared_mcp: dict[str, object],
-) -> None:
+async def test_round_trip_consumer_returns_none_when_writer_missing() -> None:
     """Consumer returns None when no record exists — round-trip pre-condition.
 
     Confirms the consumer side of the round-trip is wired correctly even

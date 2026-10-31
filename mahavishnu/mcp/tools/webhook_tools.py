@@ -63,9 +63,9 @@ def register_webhook_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> Non
         Returns the serialized ``WebhookIngress`` as a dict via
         ``record.to_dict()`` (mirrors the
         ``mahavishnu.core.adapter_persistence`` pattern), or ``None``
-        when no record exists, the substrate is unbound, the
-        ``webhook_id`` fails the path-traversal guard, or ``token``
-        is missing or not JWT-shaped.
+        when no record exists, the ``webhook_id`` fails the
+        path-traversal guard, or ``token`` is missing or not
+        JWT-shaped.
 
         Auth: requires ``user_id`` with ``READ_WEBHOOK`` permission
         (mirror of the ``@require_mcp_auth`` contract). Without
@@ -75,7 +75,7 @@ def register_webhook_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> Non
         passed through to :func:`webhook_replay` which performs a
         JWT-shape presence gate as the leaf-level RBAC contract.
         """
-        record = webhook_replay(webhook_id, token=token)
+        record = await webhook_replay(webhook_id, token=token)
         if record is None:
             return None
         # msgspec.Struct → dict via msgspec.to_builtins, matching the

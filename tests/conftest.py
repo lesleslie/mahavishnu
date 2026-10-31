@@ -152,6 +152,23 @@ def pytest_collection_modifyitems(items, config):
 # tests/fixtures/*.py (workflow_fixtures, shell_fixtures, conftest fixtures).
 
 
+@pytest.fixture(autouse=True)
+def _clean_substrate_store():
+    """Clear the process-local KV store around every test.
+
+    The store is a module-level singleton shared by the substrate facade
+    (``mahavishnu.core.substrate``) and the ``mahavishnu_kv_*`` MCP
+    tools. Without this, a test that writes a record would leak it into
+    every later test in the same process — the substrate facade and the
+    tools are the *same* store by design.
+    """
+    from mahavishnu.core.kv_store import kv_store
+
+    kv_store.clear()
+    yield
+    kv_store.clear()
+
+
 @pytest.fixture
 def fake_workflow_substrate(monkeypatch):
     """Fake ``_mcp_trigger_workflow`` + ``_mcp_get_workflow_status``.

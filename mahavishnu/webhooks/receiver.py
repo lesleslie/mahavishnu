@@ -27,7 +27,8 @@ from fastapi.responses import JSONResponse
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._mcp_substrate_compat import mcp_calltime
+# req: REQ-SUBSTR-001
+from mahavishnu.core import substrate
 from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.models.persistence import WebhookIngress
 
@@ -118,26 +119,12 @@ def receive_webhook(payload: dict[str, object]) -> JSONResponse | dict[str, str]
             status_code=status.HTTP_202_ACCEPTED,
         )
 
-    # Substrate-compat gate: only persist when mcp.put is exposed.
-    put = mcp_calltime("put")
+    # The substrate is in-process and always bound, so the write always
+    # happens; the "skipped" counter is reserved for the durable-v1
+    # feature flag above.
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
-    if put is not None:
-        put(f"webhook-ingress/{webhook_id}/", validated)
-        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
-    else:
-        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
-        logger.warning(
-            "webhook_persistence_skipped",
-            extra={
-                "reason": "mcp.put_unbound",
-                "webhook_id": webhook_id,
-                "v1_enabled": _webhook_durable_v1_enabled(),
-            },
-        )
-        return JSONResponse(
-            {"status": "accepted_in_memory_only"},
-            status_code=status.HTTP_202_ACCEPTED,
-        )
+    substrate.put(f"webhook-ingress/{webhook_id}/", validated)
+    COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
 
     logger.info(
         "webhook_ingress_recorded",

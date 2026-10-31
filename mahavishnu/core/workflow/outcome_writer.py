@@ -1,14 +1,18 @@
 """Workflow outcome writer — validate-on-write at completion boundary.
 
-Persists ``workflow_outcome`` records to the Bodai MCP substrate at
+Persists ``workflow_outcome`` records to the in-process substrate at
 ``workflow-results/{workflow_id}/``. Validation happens at the completion
 boundary so bad payloads never reach the durable store.
 
-Substrate contract: ``mcp.put(...)`` is synchronous at the call boundary.
-The substrate's internal handling (MemoryOutbox queue, async flush) is
-opaque to callers. This producer is sync by design — see
-``mcp/docs/specs/2026-08-10-substrate-call-boundary-contract.md``
-for the cross-portfolio rationale.
+Substrate contract: writes go through the in-process substrate facade
+(:mod:`mahavishnu.core.substrate`), whose ``put`` is synchronous because
+this producer is a sync function — a sync write cannot be an HTTP
+round-trip without blocking the event loop. The facade lands the payload
+in the server's own process-local KV store
+(:mod:`mahavishnu.core.kv_store`), the same store the
+``mahavishnu_kv_*`` tools expose, so a sibling component reading the key
+sees the record. The facade is always bound: there is no optional
+dependency to degrade against, so every write lands.
 
 Feature flag: ``WORKFLOW_OUTCOME_V1_ENABLED`` (default True). When False, the
 caller is expected to skip ``record_workflow_outcome`` entirely and fall
@@ -23,7 +27,7 @@ from typing import TYPE_CHECKING
 import msgspec
 from oneiric.core.logging import get_logger
 
-from mahavishnu.core._mcp_substrate_compat import mcp_calltime
+from mahavishnu.core import substrate  # req: REQ-SUBSTR-001
 from mahavishnu.core._producer_metrics import COUNTERS
 from mahavishnu.core.models.persistence import WorkflowOutcome
 
@@ -47,14 +51,14 @@ def _workflow_outcome_v1_enabled() -> bool:
     return os.environ.get("WORKFLOW_OUTCOME_V1_ENABLED", "true").lower() != "false"
 
 
-def record_workflow_outcome(
+def record_workflow_outcome(  # req: REQ-SUBSTR-003
     workflow_id: str,
     status: str,
     started_at: datetime,
     finished_at: datetime,
     metadata: dict[str, object] | None = None,
 ) -> WorkflowOutcome:
-    """Validate the outcome payload, persist via mcp.put, return the typed struct."""
+    """Validate the outcome payload, persist via the substrate, return the typed struct."""
     payload = {
         "workflow_id": workflow_id,
         "status": status,
@@ -64,28 +68,20 @@ def record_workflow_outcome(
     }
     validated: WorkflowOutcome = msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-assignment]
 
-    # Substrate-compat gate: only persist when mcp.put is exposed.
-    put = mcp_calltime("put")
+    # The substrate is this server's own in-process store, so it is always
+    # bound: there is no "substrate missing" state left to keep distinct
+    # from "not written". The module is imported (not the function) so
+    # tests can substitute it via `monkeypatch.setattr(
+    # "mahavishnu.core.workflow.outcome_writer.substrate", ...)`.
     COUNTERS.attempted.labels(producer=_PRODUCER_NAME).inc()
-    if put is not None:
-        put(f"workflow-results/{workflow_id}/", validated)
-        COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
-        logger.info(
-            "workflow_outcome_recorded",
-            extra={
-                "workflow_id": workflow_id,
-                "status": validated.status,
-                "v1_enabled": os.environ.get("WORKFLOW_OUTCOME_V1_ENABLED", "true"),
-            },
-        )
-    else:
-        COUNTERS.skipped.labels(producer=_PRODUCER_NAME).inc()
-        logger.warning(
-            "workflow_outcome_persistence_skipped",
-            extra={
-                "workflow_id": workflow_id,
-                "reason": "mcp.put_unbound",
-                "v1_enabled": os.environ.get("WORKFLOW_OUTCOME_V1_ENABLED", "true"),
-            },
-        )
+    substrate.put(f"workflow-results/{workflow_id}/", validated)
+    COUNTERS.succeeded.labels(producer=_PRODUCER_NAME).inc()
+    logger.info(
+        "workflow_outcome_recorded",
+        extra={
+            "workflow_id": workflow_id,
+            "status": validated.status,
+            "v1_enabled": os.environ.get("WORKFLOW_OUTCOME_V1_ENABLED", "true"),
+        },
+    )
     return validated

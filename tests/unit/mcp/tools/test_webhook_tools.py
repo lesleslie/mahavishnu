@@ -6,11 +6,9 @@ the registered tools via ``mcp.list_tools()``, and exercise both the
 happy path (read returns a dict) and the AUTH_REQUIRED gate
 (@require_mcp_auth rejects missing ``user_id``).
 
-The tests patch ``mahavishnu.webhooks.replay.mcp_calltime`` so the
-leaf :func:`webhook_replay` reads from a controlled fake without
-touching the real MCP substrate. webhook_replay reads
-``mcp_calltime("get")`` at call time, so the patch is picked up on
-every invocation.
+The tests use the REAL substrate facade: the store is process-local and
+``tests/conftest.py`` clears it around every test, so the record written
+here is the record the tool reads back.
 """
 
 from __future__ import annotations
@@ -23,9 +21,9 @@ from unittest.mock import AsyncMock, MagicMock
 from fastmcp import FastMCP
 import pytest
 
-from mahavishnu.mcp.tools import webhook_tools
+from mahavishnu.core import substrate
+from mahavishnu.core.kv_store import kv_store
 from mahavishnu.mcp.tools.webhook_tools import register_webhook_tools
-from mahavishnu.webhooks import replay as replay_module
 
 pytestmark = pytest.mark.unit
 
@@ -44,19 +42,6 @@ def _fake_rbac_manager() -> Any:
     return rbac
 
 
-def _patch_mcp_calltime(monkeypatch: pytest.MonkeyPatch, *, get: object | None) -> None:
-    """Replace ``replay.mcp_calltime`` with a routing stub.
-
-    Returns ``get`` when the leaf asks for ``"get"``; returns ``None``
-    for everything else. Mirrors the pattern in
-    ``tests/unit/channel/test_state_writer.py``.
-    """
-    def fake(name: str) -> object | None:
-        return get if name == "get" else None
-
-    monkeypatch.setattr(replay_module, "mcp_calltime", fake)
-
-
 @pytest.mark.asyncio
 async def test_register_webhook_tools_registers_tool() -> None:
     """register_webhook_tools registers webhook_replay_tool as an MCP tool."""
@@ -73,14 +58,10 @@ async def test_register_webhook_tools_registers_tool() -> None:
 
 
 @pytest.mark.asyncio
-async def test_registered_tool_returns_dict_for_known_webhook(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_tool_returns_dict_for_known_webhook() -> None:
     """End-to-end: calling the registered MCP tool returns the persisted dict.
 
-    The leaf ``webhook_replay`` calls ``mcp_calltime("get")`` at
-    function-call time; we patch the source-module binding so the leaf
-    sees the fake without needing a real MCP substrate. The
+    The leaf ``webhook_replay`` reads through the substrate facade; the
     msgspec.Struct round-trip then rebuilds ``WebhookIngress`` from the
     payload, and the wrapper calls ``msgspec.to_builtins()``.
     """
@@ -91,9 +72,7 @@ async def test_registered_tool_returns_dict_for_known_webhook(
         "payload_hash": "sha256:deadbeef",
         "metadata": {"hello": "world"},
     }
-
-    fake_get = MagicMock(return_value=payload)
-    _patch_mcp_calltime(monkeypatch, get=fake_get)
+    substrate.put("webhook-ingress/wh-abc/", payload)
 
     mcp = FastMCP(name="test-webhook-tools-roundtrip")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
@@ -112,13 +91,8 @@ async def test_registered_tool_returns_dict_for_known_webhook(
 
 
 @pytest.mark.asyncio
-async def test_registered_tool_returns_none_when_record_missing(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """End-to-end: when the substrate returns ``None``, the tool returns ``None``."""
-    fake_get = MagicMock(return_value=None)
-    _patch_mcp_calltime(monkeypatch, get=fake_get)
-
+async def test_registered_tool_returns_none_when_record_missing() -> None:
+    """End-to-end: when no record exists, the tool returns ``None``."""
     mcp = FastMCP(name="test-webhook-tools-missing")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
@@ -133,9 +107,7 @@ async def test_registered_tool_returns_none_when_record_missing(
 
 
 @pytest.mark.asyncio
-async def test_registered_tool_rejects_without_user_id(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_registered_tool_rejects_without_user_id() -> None:
     """@require_mcp_auth wrapper rejects calls missing ``user_id``.
 
     Without ``user_id`` the wrapper returns the AUTH_REQUIRED error
@@ -143,9 +115,6 @@ async def test_registered_tool_rejects_without_user_id(
     substrate is never touched. Mirrors the brief's
     "rejection without permission" contract.
     """
-    fake_get = MagicMock()
-    _patch_mcp_calltime(monkeypatch, get=fake_get)
-
     mcp = FastMCP(name="test-webhook-tools-auth")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
@@ -155,17 +124,12 @@ async def test_registered_tool_rejects_without_user_id(
     assert isinstance(result, dict)
     assert result.get("status") == "error"
     assert result.get("error_code") == "AUTH_REQUIRED"
-    fake_get.assert_not_called()
+    assert not kv_store.list_prefix("")
 
 
 @pytest.mark.asyncio
-async def test_registered_tool_rejects_path_traversal(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Path-traversal webhook_id is refused by the leaf guard before the MCP store is touched."""
-    fake_get = MagicMock()
-    _patch_mcp_calltime(monkeypatch, get=fake_get)
-
+async def test_registered_tool_rejects_path_traversal() -> None:
+    """Path-traversal webhook_id is refused by the leaf guard before the store is touched."""
     mcp = FastMCP(name="test-webhook-tools-traversal")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
@@ -178,11 +142,11 @@ async def test_registered_tool_rejects_path_traversal(
 
     # The leaf returns None when the path-traversal guard rejects the id.
     assert result is None
-    fake_get.assert_not_called()
+    assert not kv_store.list_prefix("")
 
 
 # NOTE: A FastAPI mount integration test (``mount_durable_webhooks`` + TestClient +
 # POST /durable-webhooks/webhook) is exercised by
 # ``tests/unit/test_webhooks_mount.py`` (separate fixture using the same
-# receiver.mcp_calltime patching pattern). The 5 tests above cover the
+# receiver substrate-patching pattern). The 5 tests above cover the
 # MCP tool surface; the mount coverage lives in the sibling file.

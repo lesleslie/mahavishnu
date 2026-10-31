@@ -18,16 +18,22 @@ default. The store intentionally has no TTL eviction because the
 plan_index only writes short-lived lock keys; if future callers need
 TTL, expose ``mahavishnu_kv_put``'s ``ttl`` parameter (it is accepted
 but currently a no-op).
+
+The store itself lives in :mod:`mahavishnu.core.kv_store` so the
+server's own producers — which write through
+:mod:`mahavishnu.core.substrate` — and these public tools share one
+instance. A sibling component reading ``ecosystem-services/…`` through
+``mahavishnu_kv_get`` therefore sees what the server wrote.
 """
 
 from __future__ import annotations
 
-import threading
 import time
 from typing import TYPE_CHECKING, Any
 
 from oneiric.core.logging import get_logger
 
+from mahavishnu.core.kv_store import kv_store  # req: REQ-SUBSTR-002
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.auth import require_mcp_auth
 
@@ -35,45 +41,6 @@ if TYPE_CHECKING:
     from mcp_common.fastmcp import FastMCP
 
 logger = get_logger(__name__)
-
-
-class _ProcessLocalKV:
-    """Thread-safe string-shape KV for self-hosted MCP tools.
-
-    The MCP server is single-process; multiple concurrent tool calls
-    run in the same event loop. A plain ``dict`` is safe under CPython's
-    GIL for individual operations, but a ``threading.Lock`` makes the
-    read-modify-write patterns in ``list_prefix`` race-free. The lock
-    is held only across the in-memory mutation, not across any await,
-    so it never blocks the event loop.
-    """
-
-    def __init__(self) -> None:
-        self._data: dict[str, str] = {}
-        self._lock = threading.Lock()
-
-    def get(self, key: str) -> str | None:
-        with self._lock:
-            return self._data.get(key)
-
-    def put(self, key: str, value: str) -> None:
-        with self._lock:
-            self._data[key] = value
-
-    def delete(self, key: str) -> None:
-        with self._lock:
-            self._data.pop(key, None)
-
-    def list_prefix(self, prefix: str) -> list[tuple[str, str]]:
-        with self._lock:
-            return [(k, v) for k, v in self._data.items() if k.startswith(prefix)]
-
-
-#: Module-level singleton — one per process. The lifespan refactor
-#: (commit f6f2976f) runs the plan_index init in the same process as
-#: the MCP server, so this is the canonical store for that cycle's
-#: lock keys.
-_kv_store = _ProcessLocalKV()
 
 
 def _now_ms() -> int:
@@ -107,7 +74,7 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         string the caller stored (plan_index stores JSON-encoded
         strings and decodes them itself).
         """
-        value = _kv_store.get(key)
+        value = kv_store.get(key)
         return {"ok": True, "value": value}
 
     @mcp.tool()
@@ -127,7 +94,7 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         store has no eviction loop. The plan_index's lock keys are
         short-lived (per-cycle) and don't need TTL.
         """
-        _kv_store.put(key, value)
+        kv_store.put(key, value)
         return {"ok": True, "key": key, "stored_at_ms": _now_ms()}
 
     @mcp.tool()
@@ -141,7 +108,7 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         Empty prefix matches all keys. The plan_index uses this to
         enumerate claim keys during lock takeover.
         """
-        items = [{"key": k, "value": v} for k, v in _kv_store.list_prefix(prefix)]
+        items = [{"key": k, "value": v} for k, v in kv_store.list_prefix(prefix)]
         return {"ok": True, "items": items, "count": len(items)}
 
     @mcp.tool()
@@ -150,5 +117,5 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     )
     async def mahavishnu_kv_delete(key: str, user_id: str | None = None) -> dict[str, Any]:
         """Delete a string-shape KV record by ``key`` (no-op if absent)."""
-        _kv_store.delete(key)
+        kv_store.delete(key)
         return {"ok": True, "key": key}
