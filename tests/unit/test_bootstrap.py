@@ -340,7 +340,10 @@ class TestComponentEndpointRegistration:
                 self.put_calls.append((key, value))
 
         fake_client = FakeClient("http://mcp")
-        monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", lambda base_url: fake_client)
+        monkeypatch.setattr(
+            "mahavishnu.core.mcp_adapter.MCPClient",
+            lambda base_url, internal=False: fake_client,
+        )
 
         def fake_run(coro):
             loop = asyncio.new_event_loop()
@@ -425,7 +428,7 @@ class TestBootstrapDeepHelpers:
         fake_module = types.ModuleType("mahavishnu.core.mcp_adapter")
 
         class FakeMCPClient:
-            def __init__(self, base_url):
+            def __init__(self, base_url, internal=False):
                 self.base_url = base_url
 
             async def put(self, key, value):
