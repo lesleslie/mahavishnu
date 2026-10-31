@@ -362,6 +362,12 @@ self-call credential is a random per-process token. Verified:
 - `mahavishnu_kv_list("approval-history/")` is **denied** for the
   internal principal: the namespace's owning permission is required, and
   the internal service role holds ecosystem-state rights only (§ 10.1).
+- `mahavishnu_kv_list("")` and `mahavishnu_kv_list("a")` are **denied**:
+  both reach every (or the approval) namespace, so they need the
+  corresponding read permissions (§ 10.1, "the prefix direction").
+- `mahavishnu_kv_put("approval-history/…")` is **denied**: the domain
+  namespaces are write-protected (§ 10.1, "a read permission must not
+  authorise a mutation").
 
 ### The full-suite failures are pre-existing
 
