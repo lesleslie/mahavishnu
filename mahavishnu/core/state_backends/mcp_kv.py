@@ -39,7 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from mahavishnu.core.mcp_adapter import MCPClient
+from mahavishnu.core.mcp_adapter import INTERNAL_SERVICE_USER_ID, MCPClient
 
 
 @dataclass
@@ -74,7 +74,9 @@ class MCPKvClient:
         if not self._config.enabled:
             return None
         try:
-            envelope = await self._client.call_tool("mahavishnu_kv_get", {"key": key})
+            envelope = await self._client.call_tool(
+                "mahavishnu_kv_get", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return None
         if not isinstance(envelope, dict):
@@ -94,7 +96,8 @@ class MCPKvClient:
             return
         try:
             await self._client.call_tool(
-                "mahavishnu_kv_put", {"key": key, "value": value, "ttl": ttl}
+                "mahavishnu_kv_put",
+                {"key": key, "value": value, "ttl": ttl, "user_id": INTERNAL_SERVICE_USER_ID},
             )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return
@@ -103,7 +106,9 @@ class MCPKvClient:
         if not self._config.enabled:
             return []
         try:
-            envelope = await self._client.call_tool("mahavishnu_kv_list", {"prefix": prefix})
+            envelope = await self._client.call_tool(
+                "mahavishnu_kv_list", {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return []
         if not isinstance(envelope, dict):
@@ -136,7 +141,9 @@ class MCPKvClient:
         if not self._config.enabled:
             return
         try:
-            await self._client.call_tool("mahavishnu_kv_delete", {"key": key})
+            await self._client.call_tool(
+                "mahavishnu_kv_delete", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return
 

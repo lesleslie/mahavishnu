@@ -19,6 +19,7 @@ from .config import (
     _merge_env_overlay,
 )
 from .errors import ConfigurationError
+from .mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
 
 if TYPE_CHECKING:
     from .state_backends.mcp import MCPStateBackend
@@ -664,6 +665,7 @@ def initialize_runtime_services(app: Any) -> None:
         app._learning_pipeline = app._init_learning_pipeline()
 
     app.rbac_manager = RBACManager(app.config)
+    _register_internal_service_user(app.rbac_manager)
     app.opensearch_integration = OpenSearchIntegration(app.config)
 
     app._mcp_state = _init_mcp_state(app)
@@ -887,13 +889,53 @@ def init_terminal_manager(app: Any) -> Any:
 
 
 def resolve_mcp_url(config: Any) -> str:
-    """Build the MCP MCP URL from health dependency config."""
-    dependency = config.health.dependencies.get("mcp")
-    if dependency is None:
-        return "http://localhost:8683/mcp"
+    """Build the substrate MCP URL from config.
 
-    scheme = "https" if dependency.use_tls else "http"
-    return f"{scheme}://{dependency.host}:{dependency.port}/mcp"
+    Implements: REQ-SUB-001
+
+    Resolution order: the ``health.dependencies.mcp`` override, then
+    ``tools.mcp_server_url`` (mahavishnu's own MCP server), then
+    :data:`~mahavishnu.core.mcp_adapter.DEFAULT_SUBSTRATE_MCP_URL`.
+
+    The substrate is mahavishnu's **own** server: the KV and
+    durable-state tools it speaks (``mahavishnu_kv_*``) are registered
+    there. A previous default pointed at a decommissioned service's port
+    — and that service's tool API (``put``, ``get``,
+    ``query_time_series``) exists on no live server in the fleet.
+    """
+    dependency = config.health.dependencies.get("mcp")
+    if dependency is not None:
+        scheme = "https" if dependency.use_tls else "http"
+        return f"{scheme}://{dependency.host}:{dependency.port}/mcp"
+
+    tools = getattr(config, "tools", None)
+    own_url = getattr(tools, "mcp_server_url", None)
+    if own_url:
+        return str(own_url).rstrip("/")
+
+    return DEFAULT_SUBSTRATE_MCP_URL
+
+
+def _register_internal_service_user(rbac_manager: Any) -> None:
+    """Register the identity the in-process substrate client uses.
+
+    Implements: REQ-SUB-004
+
+    The KV tools are gated by ``require_mcp_auth``, which denies any
+    call without a ``user_id``. The self-call carries no inbound
+    Authorization header, so it names this principal explicitly. The
+    principal carries the ``internal_service`` role — exactly the
+    ecosystem-state permissions the KV tools gate on, and nothing more.
+    It is created once and left in place across restarts.
+    """
+    from mahavishnu.core.mcp_adapter import INTERNAL_SERVICE_USER_ID
+
+    if INTERNAL_SERVICE_USER_ID in getattr(rbac_manager, "users", {}):
+        return
+    try:
+        rbac_manager.create_user_sync(INTERNAL_SERVICE_USER_ID, roles=["internal_service"])
+    except Exception as exc:  # RBAC bootstrap — a missing principal must not stop the app  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("Could not register the internal service principal: %s", exc)
 
 
 def init_pool_manager(app: Any) -> Any:

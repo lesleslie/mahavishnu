@@ -178,7 +178,7 @@ def get_default_tenant_id() -> str:
 #
 #     import httpx
 #     async with httpx.AsyncClient(
-#         base_url=os.environ.get("MAHAVISHNU_MCP_URL", "http://localhost:8683"),
+#         base_url=os.environ.get("MAHAVISHNU_MCP_URL", "http://localhost:8680"),
 #         timeout=httpx.Timeout(5.0),
 #     ) as client:
 #         resp = await client.post(

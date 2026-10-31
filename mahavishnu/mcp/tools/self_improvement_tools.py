@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 from typing import TYPE_CHECKING, Any
 
+from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
 from mahavishnu.core.verification import (
     Consensus,
     Proposal,
@@ -473,7 +474,7 @@ class SelfImprovementTools:
         )
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
+                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 
@@ -525,7 +526,7 @@ class SelfImprovementTools:
         logger.info("self_improvement_generate: fingerprint=%s", fingerprint[:16])
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
+                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 
@@ -613,7 +614,7 @@ class SelfImprovementTools:
         logger.info("self_improvement_status: limit=%d", limit)
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", "http://localhost:8683"
+                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 

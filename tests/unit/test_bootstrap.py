@@ -340,9 +340,7 @@ class TestComponentEndpointRegistration:
                 self.put_calls.append((key, value))
 
         fake_client = FakeClient("http://mcp")
-        monkeypatch.setattr(
-            "mahavishnu.core.mcp_adapter.MCPClient", lambda base_url: fake_client
-        )
+        monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", lambda base_url: fake_client)
 
         def fake_run(coro):
             loop = asyncio.new_event_loop()
@@ -610,8 +608,17 @@ class TestBootstrapDeepHelpers:
         assert bootstrap.init_terminal_manager(SimpleNamespace()) is None
 
     def test_resolve_mcp_url_default_and_tls(self):
+        # The substrate is mahavishnu's own MCP server — the host of the
+        # `mahavishnu_kv_*` tools. It used to default to a decommissioned
+        # service's port.
         default_config = SimpleNamespace(health=SimpleNamespace(dependencies={}))
-        assert bootstrap.resolve_mcp_url(default_config) == "http://localhost:8683/mcp"
+        assert bootstrap.resolve_mcp_url(default_config) == "http://localhost:8680/mcp"
+
+        own_config = SimpleNamespace(
+            health=SimpleNamespace(dependencies={}),
+            tools=SimpleNamespace(mcp_server_url="http://localhost:8680/mcp"),
+        )
+        assert bootstrap.resolve_mcp_url(own_config) == "http://localhost:8680/mcp"
 
         dependency = SimpleNamespace(use_tls=True, host="mcp.example", port=9443)
         custom_config = SimpleNamespace(health=SimpleNamespace(dependencies={"mcp": dependency}))
@@ -744,9 +751,7 @@ class TestBootstrapDeepHelpers:
                 list_prefix=AsyncMock(return_value=[{"id": "a"}]),
             ),
             active_workflows=set(),
-            approval_manager=SimpleNamespace(
-                restore_from_mcp_entries=lambda entries: len(entries)
-            ),
+            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
         )
 
         with caplog.at_level(logging.INFO):
@@ -873,9 +878,7 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install(
-            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
-        )
+        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
 
         routing_metrics_module = types.ModuleType("mahavishnu.core.routing_metrics")
 
@@ -984,9 +987,7 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.task_router", StateManager=_NoOp)
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install(
-            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
-        )
+        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_Boom)
 
         monkeypatch.setitem(sys.modules, "mahavishnu.core.routing_metrics", None)
@@ -1024,9 +1025,7 @@ class TestBootstrapDeepHelpers:
             adapters={},
             mcp_url="http://mcp",
             active_workflows=set(),
-            approval_manager=SimpleNamespace(
-                restore_from_mcp_entries=lambda entries: len(entries)
-            ),
+            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 
@@ -1078,9 +1077,7 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install(
-            "mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp
-        )
+        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
         install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_NoOp)
 
         routing_metrics_module = install(
@@ -1121,9 +1118,7 @@ class TestBootstrapDeepHelpers:
             adapters={},
             mcp_url=None,
             active_workflows=set(),
-            approval_manager=SimpleNamespace(
-                restore_from_mcp_entries=lambda entries: len(entries)
-            ),
+            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 

@@ -1,5 +1,6 @@
 [
   "acknowledge_alert",
+  "audit_health",
   "cancel_workflow",
   "check_permission",
   "create_backup",
@@ -31,6 +32,10 @@
   "mahavishnu_get_agent",
   "mahavishnu_get_service",
   "mahavishnu_get_skill",
+  "mahavishnu_kv_delete",
+  "mahavishnu_kv_get",
+  "mahavishnu_kv_list",
+  "mahavishnu_kv_put",
   "mahavishnu_list_agents",
   "mahavishnu_list_events",
   "mahavishnu_list_services",

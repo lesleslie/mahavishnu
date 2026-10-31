@@ -8,6 +8,12 @@ raw string value the store actually persisted. See state_backends/mcp_kv.py.
 Tests cover: get/put round-trip, list_prefix tuple shape, delete no-op,
 disabled-mode short-circuit, and the contract that wires the MCP wire
 envelope ``{"ok": True, "key": K, "value": V}`` to ``str | None``.
+
+The adapter calls the self-hosted KV tools (``mahavishnu_kv_get`` /
+``_put`` / ``_list`` / ``_delete``) on mahavishnu's own MCP server. Those
+tools are gated by ``require_mcp_auth``, so every call carries the
+internal service identity — see
+``mahavishnu.core.mcp_adapter.INTERNAL_SERVICE_USER_ID``.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mahavishnu.core.mcp_adapter import INTERNAL_SERVICE_USER_ID
 from mahavishnu.core.state_backends.mcp_kv import MCPKvClient, MCPKvConfig
 
 
@@ -23,17 +30,19 @@ def _make_client(
     enabled: bool = True,
     *,
     call_tool: AsyncMock | None = None,
-    put: AsyncMock | None = None,
 ) -> MCPKvClient:
-    """Build a MCPKvClient with a mocked MCPClient."""
+    """Build a MCPKvClient with a mocked MCPClient.
+
+    ``call_tool`` is the seam every KV operation goes through — the
+    adapter never calls ``MCPClient.put``.
+    """
     mock_client = MagicMock()
-    mock_client.put = put or AsyncMock()
     mock_client.call_tool = call_tool or AsyncMock()
     mock_client.aclose = AsyncMock()
 
     cfg = MCPKvConfig(enabled=enabled)
     with patch("mahavishnu.core.mcp_adapter.MCPClient", return_value=mock_client):
-        client = MCPKvClient(base_url="http://localhost:8683/mcp", config=cfg)
+        client = MCPKvClient(base_url="http://localhost:8680/mcp", config=cfg)
     client._client = mock_client  # belt-and-braces
     return client
 
@@ -81,31 +90,37 @@ class TestMCPKvClientGet:
 class TestMCPKvClientPut:
     @pytest.mark.asyncio
     async def test_put_passes_through_to_mcp_client(self):
-        mock_put = AsyncMock()
-        client = _make_client(put=mock_put)
+        mock_call_tool = AsyncMock()
+        client = _make_client(call_tool=mock_call_tool)
 
         await client.put("plan_index/meta/cycles_total", "42", ttl=86400)
 
-        mock_put.assert_awaited_once_with(
-            "plan_index/meta/cycles_total", "42", ttl=86400
+        mock_call_tool.assert_awaited_once_with(
+            "mahavishnu_kv_put",
+            {
+                "key": "plan_index/meta/cycles_total",
+                "value": "42",
+                "ttl": 86400,
+                "user_id": INTERNAL_SERVICE_USER_ID,
+            },
         )
 
     @pytest.mark.asyncio
     async def test_put_returns_none_on_error(self):
-        mock_put = AsyncMock(side_effect=RuntimeError("write fail"))
-        client = _make_client(put=mock_put)
+        mock_call_tool = AsyncMock(side_effect=RuntimeError("write fail"))
+        client = _make_client(call_tool=mock_call_tool)
 
         # Should swallow — caller never blocks on persistence.
         await client.put("k", "v")  # must not raise
 
-        mock_put.assert_awaited_once()
+        mock_call_tool.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_put_is_noop_when_disabled(self):
-        mock_put = AsyncMock()
-        client = _make_client(enabled=False, put=mock_put)
+        mock_call_tool = AsyncMock()
+        client = _make_client(enabled=False, call_tool=mock_call_tool)
         await client.put("k", "v")
-        mock_put.assert_not_called()
+        mock_call_tool.assert_not_called()
 
 
 class TestMCPKvClientListPrefix:
@@ -148,7 +163,11 @@ class TestMCPKvClientDelete:
         await client.delete("plan_index/meta/rebuild_lock/holder")
 
         mock_call_tool.assert_awaited_once_with(
-            "delete", {"key": "plan_index/meta/rebuild_lock/holder"}
+            "mahavishnu_kv_delete",
+            {
+                "key": "plan_index/meta/rebuild_lock/holder",
+                "user_id": INTERNAL_SERVICE_USER_ID,
+            },
         )
 
     @pytest.mark.asyncio
@@ -205,8 +224,7 @@ class TestMCPKvClientCronCoreIntBug:
         import json
 
         recent_raw = (
-            '[{"ts_ms": 1234, "op": "upsert", "err": "see ctx", '
-            '"ctx": {"path_hash": "abc"}}]'
+            '[{"ts_ms": 1234, "op": "upsert", "err": "see ctx", "ctx": {"path_hash": "abc"}}]'
         )
         envelope = {
             "ok": True,

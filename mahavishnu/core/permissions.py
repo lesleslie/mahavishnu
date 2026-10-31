@@ -112,10 +112,44 @@ class RBACManager:
         )
         self.roles["viewer"] = viewer_role
 
+        # Internal service role — the identity mahavishnu's own substrate
+        # client presents on its self-call to the KV tools
+        # (``mahavishnu_kv_*``). Granted exactly the ecosystem-state
+        # permissions those tools gate on and nothing more: the self-call
+        # reads and writes the substrate, it does not administer the
+        # fleet. `allowed_repos=None` because the substrate is not
+        # repo-scoped.
+        internal_service_role = Role(
+            name="internal_service",
+            permissions=[
+                Permission.READ_ECOSYSTEM_STATE,
+                Permission.WRITE_ECOSYSTEM_STATE,
+            ],
+            allowed_repos=None,
+        )
+        self.roles["internal_service"] = internal_service_role
+
     async def create_user(
         self, user_id: str, roles: list[str], allowed_repos: list[str] | None = None
     ) -> User:
         """Create a new user with specified roles."""
+        return self._build_user(user_id, roles, allowed_repos)
+
+    def create_user_sync(
+        self, user_id: str, roles: list[str], allowed_repos: list[str] | None = None
+    ) -> User:
+        """Synchronous :meth:`create_user`.
+
+        ``create_user`` is async by interface convention but performs no
+        awaiting, so a caller that runs outside an event loop (the app
+        bootstrap, which registers the internal service principal) needs
+        a way to register a principal without one. Both paths share
+        :meth:`_build_user`, so there is one implementation.
+        """
+        return self._build_user(user_id, roles, allowed_repos)
+
+    def _build_user(self, user_id: str, roles: list[str], allowed_repos: list[str] | None) -> User:
+        """Build and record a user from its role names."""
         role_objects = []
         for role_name in roles:
             if role_name in self.roles:

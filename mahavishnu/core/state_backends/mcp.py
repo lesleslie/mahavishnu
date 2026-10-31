@@ -4,6 +4,13 @@ Provides a thin coordination layer over MCPClient that implements
 degraded-boot mode and circuit-breaker protection. All writes are
 fire-and-forget — callers never block on persistence.
 
+The substrate is **mahavishnu's own MCP server**: the four KV tools it
+speaks (``mahavishnu_kv_get`` / ``_put`` / ``_list`` / ``_delete``) are
+registered there by :mod:`mahavishnu.mcp.tools.kv_tools`, backed by a
+process-local thread-safe dict. The tools take string values, so
+structured payloads are JSON-encoded on the write path and decoded back
+into the dict shape callers expect on the read path.
+
 Key schema (see addendum doc):
   workflow/v1/{execution_id}
   pool/v1/{pool_id}
@@ -16,10 +23,38 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
 import logging
 from typing import Any
 
+from mahavishnu.core.mcp_adapter import INTERNAL_SERVICE_USER_ID
+
 logger = logging.getLogger(__name__)
+
+
+def _decode_payload(value: Any) -> Any:
+    """Decode a KV payload back into the shape callers expect.
+
+    The KV store holds strings, so a structured payload arrives as a
+    JSON document. A payload that is already a dict (a store that
+    predates the string shape) passes through unchanged.
+
+    A payload that decodes to a **non-dict** keeps that type — the
+    ``recover_*`` helpers filter on ``isinstance(value, dict)``, so
+    flattening a non-dict into ``{}`` here would silently promote a
+    corrupt record into a valid-looking one. A payload that does not
+    decode at all becomes an empty mapping: the substrate is
+    non-authoritative, so a corrupt record must not raise.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError, ValueError:
+            return {}
+    return {}
+
 
 _MCP_FAILURE_THRESHOLD = 3
 _MCP_RECOVERY_SECONDS = 30.0
@@ -174,7 +209,9 @@ class MCPStateBackend:
         self._available = True
 
     async def put(self, key: str, value: dict[str, Any], ttl: int | None = None) -> None:
-        """Persist key/value to MCP. No-op when unavailable or circuit open."""
+        """Persist key/value to MCP. No-op when unavailable or circuit open.
+
+        Implements: REQ-SUB-003"""
         if not self._config.enabled or self._circuit_is_open():
             return
         try:
@@ -309,14 +346,17 @@ class MCPStateBackend:
         return [value for _key, value in entries if isinstance(value, dict)]
 
     async def get(self, key: str) -> dict[str, Any] | None:
-        """Retrieve a value from MCP. Returns None when unavailable."""
+        """Retrieve a value from the substrate. Returns None when unavailable."""
         if not self._config.enabled or self._circuit_is_open():
             return None
         try:
-            result = await self._client.call_tool("get", {"key": key})
+            result = await self._client.call_tool(
+                "mahavishnu_kv_get", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
             self._record_success()
-            if isinstance(result, dict):
-                return result
+            if isinstance(result, dict) and result.get("ok"):
+                payload = _decode_payload(result.get("value"))
+                return payload if isinstance(payload, dict) else None
             return None
         except Exception as exc:  # circuit-breaker sink for get(): substrate failure → return None  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
@@ -324,11 +364,13 @@ class MCPStateBackend:
             return None
 
     async def delete(self, key: str) -> None:
-        """Delete a key from MCP. No-op when unavailable."""
+        """Delete a key from the substrate. No-op when unavailable."""
         if not self._config.enabled or self._circuit_is_open():
             return
         try:
-            await self._client.call_tool("delete", {"key": key})
+            await self._client.call_tool(
+                "mahavishnu_kv_delete", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
             self._record_success()
         except Exception as exc:  # circuit-breaker sink for delete(): substrate failure → no-op  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
@@ -339,11 +381,18 @@ class MCPStateBackend:
         if not self._config.enabled or self._circuit_is_open():
             return []
         try:
-            result = await self._client.call_tool("list_prefix", {"prefix": prefix})
+            result = await self._client.call_tool(
+                "mahavishnu_kv_list", {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID}
+            )
             self._record_success()
-            if isinstance(result, list):
-                return [(item["key"], item.get("value", {})) for item in result if "key" in item]
-            return []
+            items = result.get("items") if isinstance(result, dict) else None
+            if not isinstance(items, list):
+                return []
+            return [
+                (item["key"], _decode_payload(item.get("value")))
+                for item in items
+                if isinstance(item, dict) and isinstance(item.get("key"), str)
+            ]
         except Exception as exc:  # circuit-breaker sink for list_prefix(): substrate failure → []  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._record_failure()
             logger.debug("MCP list_prefix(%r) failed: %s", prefix, exc)
@@ -358,9 +407,11 @@ class MCPStateBackend:
         asyncio.create_task(self.delete(key))
 
     async def probe(self) -> bool:
-        """Check if MCP is reachable. Updates availability flag."""
+        """Check if the substrate is reachable. Updates availability flag."""
         try:
-            await self._client.call_tool("get", {"key": "__probe__"})
+            await self._client.call_tool(
+                "mahavishnu_kv_get", {"key": "__probe__", "user_id": INTERNAL_SERVICE_USER_ID}
+            )
             self._available = True
             self._consecutive_failures = 0
             return True

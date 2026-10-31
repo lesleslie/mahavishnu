@@ -24,6 +24,8 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
+from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
+
 # Create metrics app
 metrics_app = typer.Typer(help="Metrics collection and reporting for the Mahavishnu ecosystem")
 console = Console()
@@ -838,7 +840,8 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
 
     Mirrors :func:`mahavishnu.core.bootstrap.resolve_mcp_url` but uses the
     *health.dependencies.mcp* host:port pair rather than the legacy MCP URL.
-    Falls back to ``http://localhost:8683`` when no configuration is present.
+    Falls back to mahavishnu's own MCP server — the substrate that hosts
+    the KV tools — when no configuration is present.
     """
     if explicit_url:
         return explicit_url.rstrip("/")
@@ -859,7 +862,7 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
             mcp = deps.get("mcp") if isinstance(deps, dict) else None  # type: ignore[var-annotated]
             if isinstance(mcp, dict):
                 host = mcp.get("host", "localhost")
-                port = mcp.get("port", 8683)
+                port = mcp.get("port", 8680)
                 scheme = "https" if mcp.get("use_tls") else "http"
                 return f"{scheme}://{host}:{port}".rstrip("/")
         except (  # CLI entry point — broad catch is the documented contract
@@ -867,7 +870,7 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
         ) as e:
             logger.debug("MCP URL resolution skipped: %s", e)
 
-    return "http://localhost:8683"
+    return DEFAULT_SUBSTRATE_MCP_URL
 
 
 async def _fetch_mcp_entries(
@@ -1114,12 +1117,12 @@ def verification_metrics(
     most recent 20 verdicts.
 
     Precedence for the MCP URL: ``--mcp-url`` > ``MAHAVISHNU_MCP_URL`` >
-    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8683``.
+    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8680``.
 
     Examples:
         mahavishnu metrics verification
         mahavishnu metrics verification --since 7d --output json
-        mahavishnu metrics verification --mcp-url http://mcp.internal:8683
+        mahavishnu metrics verification --mcp-url http://mcp.internal:8680
     """
     effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
@@ -1266,12 +1269,12 @@ def dispatch_metrics(
     20 dispatches.
 
     Precedence for the MCP URL: ``--mcp-url`` > ``MAHAVISHNU_MCP_URL`` >
-    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8683``.
+    ``settings/mahavishnu.yaml -> health.dependencies.mcp`` > ``localhost:8680``.
 
     Examples:
         mahavishnu metrics dispatch
         mahavishnu metrics dispatch --since 7d --output json
-        mahavishnu metrics dispatch --mcp-url http://mcp.internal:8683
+        mahavishnu metrics dispatch --mcp-url http://mcp.internal:8680
     """
     effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)

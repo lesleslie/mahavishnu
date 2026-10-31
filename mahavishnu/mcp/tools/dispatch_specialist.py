@@ -58,7 +58,6 @@ _DEFAULT_SERVER_URLS: dict[str, str] = {
     "mahavishnu": "http://localhost:8680/mcp",
     "session-buddy": "http://localhost:8678/mcp",
     "session_buddy": "http://localhost:8678/mcp",  # R-5 underscore alias
-    "mcp": "http://localhost:8683/mcp",
     "crackerjack": "http://localhost:8676/mcp",
 }
 
@@ -254,8 +253,10 @@ def register_dispatch_specialist(mcp: FastMCP) -> None:
         - ``agent.description`` substring match (case-insensitive)
 
         Args:
-            server: server_key (e.g. ``mcp``, ``session_buddy``,
-                ``crackerjack``, ``akosha``, ``mahavishnu``).
+            server: server_key (e.g. ``session_buddy``, ``crackerjack``,
+                ``akosha``, ``mahavishnu``). The retired storage
+                service's server key was removed with the service; its
+                specialists no longer exist anywhere in the fleet.
             task_type: free-form category or hint that selects the
                 specialist. Examples: ``"storage"`` ->
                 ``mcp-specialist``, ``"quality gates"`` ->

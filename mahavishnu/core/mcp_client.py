@@ -61,7 +61,7 @@ class MCPThinClient:
     Parameters
     ----------
     base_url:
-        Root URL of the MCP MCP server (e.g. ``http://localhost:8683``).
+        Root URL of the MCP MCP server (e.g. ``http://localhost:8680``).
     timeout:
         Per-request timeout in seconds. Defaults to 30s.
     adapter:

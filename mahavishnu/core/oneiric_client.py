@@ -19,9 +19,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .mcp_adapter import MCPClient
 
+from .mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
+
 logger = logging.getLogger(__name__)
 _mcp_clients: dict[tuple[str, str | None], MCPClient] = {}
-_default_mcp_base_url = "http://localhost:8683/mcp"
+# The generic key-value substrate is mahavishnu's own MCP server (the
+# ``mahavishnu_kv_*`` tools). The previous default pointed at a
+# decommissioned service's port.
+_default_mcp_base_url = DEFAULT_SUBSTRATE_MCP_URL
 
 # The Oneiric MCP server is the live home of the adapter registry. The
 # adapter-registry client targets it explicitly so it never falls back to

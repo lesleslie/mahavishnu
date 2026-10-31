@@ -316,11 +316,18 @@ MAHAVISHNU_MANDATORY_GROUPS: set[str] = {
     "_register_agents_tools",
     # Phase 3 task #5 — dispatcher is the entry point that workflows
     # invoke to resolve a category-named specialist (e.g.
-    # ``mahavishnu_dispatch_specialist("mcp", "storage")``). Without
+    # ``mahavishnu_dispatch_specialist("akosha", "pattern")``). Without
     # this dispatcher the 3 new specialists (mcp-specialist,
     # crackerjack-specialist, session-buddy-specialist) become
     # orphans: discoverable but never invoked from a workflow.
     "_register_dispatch_specialist_tools",
+    # The self-hosted KV is the substrate for the plan_index rebuild's
+    # req: REQ-SUB-002
+    # distributed lock, and the cron runs at every profile tier — so the
+    # tools must be reachable at every tier too. Without this the KV
+    # tools were registered in ``REGISTRATION_MAP`` but never actually
+    # installed, and the plan_index lock store silently had no backend.
+    "_register_kv_tools",
 }
 
 

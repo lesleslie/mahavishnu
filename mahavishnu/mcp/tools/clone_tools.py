@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from mahavishnu.core.loop_helpers import detect_until_dry as _detect_until_dry
+from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
 from mahavishnu.core.state_backends.mcp import MCPStateBackend, MCPStateConfig
 from mahavishnu.core.verification import (
     Consensus,
@@ -64,9 +65,9 @@ def _build_mcp_backend(app: Any | None = None) -> MCPStateBackend:
     Tests monkeypatch the resulting `mcp_backend` module attribute.
     """
     url = (
-        getattr(app, "mcp_url", "http://localhost:8683")
+        getattr(app, "mcp_url", DEFAULT_SUBSTRATE_MCP_URL)
         if app is not None
-        else "http://localhost:8683"
+        else DEFAULT_SUBSTRATE_MCP_URL
     )
     settings = getattr(app, "settings", None) if app is not None else None
     mcp_state_cfg = getattr(settings, "mcp_state", None) if settings is not None else None

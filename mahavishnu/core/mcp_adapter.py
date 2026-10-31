@@ -1,8 +1,18 @@
 """Minimal MCP MCP client and analytics adapter.
 
 This module provides a small async MCP client for MCP's HTTP transport.
-Mahavishnu uses it for health persistence and git analytics until a richer
-service-specific SDK exists.
+Mahavishnu uses it for the substrate (durable state + KV) and for
+analytics.
+
+**The substrate half** talks to mahavishnu's own MCP server and the
+``mahavishnu_kv_*`` tools it registers. **The analytics half** has no
+provider: the retired storage service's time-series API was the only
+place the git-velocity, repository-health, fix-failure and
+improvement-record series were ever written, nothing in the fleet writes
+them now, and the matching reader (``analyze_changepoints``) was removed
+from Akosha on 2026-09-26. :class:`NoAnalyticsWriterError` says so
+explicitly rather than returning an empty series that would read as
+"no data yet".
 
 Phase 3 (REQ-004) of the common-mcp-client transport unification plan:
 rewired to :class:`mcp_common.clients.common_mcp_client.CommonMCPClient`,
@@ -19,6 +29,27 @@ from typing import Any
 from mcp_common.clients.common_mcp_client import CommonMCPClient
 
 logger = logging.getLogger(__name__)
+
+# req: REQ-SUB-004
+#: The substrate MCP server is mahavishnu's **own** MCP server: the KV and
+#: durable-state tools it speaks (``mahavishnu_kv_get`` / ``_put`` /
+#: ``_list`` / ``_delete``) are registered there by
+#: :mod:`mahavishnu.mcp.tools.kv_tools`, backed by a process-local
+#: thread-safe dict.
+#:
+#: The previous default pointed at a decommissioned service's port, whose
+#: tool API (``put``, ``get``, ``query_time_series``) exists on no live
+#: server in the fleet.
+DEFAULT_SUBSTRATE_MCP_URL = "http://localhost:8680/mcp"
+
+#: Identity the in-process substrate client presents on its self-call.
+#:
+#: The KV tools are gated by ``require_mcp_auth``, which denies any call
+#: that carries no ``user_id`` (``error_code == "AUTH_REQUIRED"``). A
+#: self-call has no inbound Authorization header, so it names this
+#: principal explicitly; the RBAC manager registers it with the
+#: ecosystem-state permissions during app bootstrap.
+INTERNAL_SERVICE_USER_ID = "mahavishnu-internal"
 
 
 class MCPClient:
@@ -80,22 +111,52 @@ class MCPClient:
         return None
 
     async def put(self, key: str, value: Any, ttl: int | None = None) -> Any:
-        """Persist a key/value record if the server exposes a storage tool."""
+        """Persist a key/value record via the self-hosted KV tool.
+
+        ``mahavishnu_kv_put`` takes a **string** value, so structured
+        payloads are JSON-encoded here and decoded on the read path by
+        :func:`mahavishnu.core.state_backends.mcp._decode_payload`.
+        """
+        import json
+
         arguments: dict[str, Any] = {
             "key": key,
-            "value": value,
+            "value": value if isinstance(value, str) else json.dumps(value, separators=(",", ":")),
+            "user_id": INTERNAL_SERVICE_USER_ID,
         }
         if ttl is not None:
             arguments["ttl"] = ttl
-        return await self.call_tool("put", arguments)
+        return await self.call_tool("mahavishnu_kv_put", arguments)
 
     async def aclose(self) -> None:
         """Close the underlying MCP session."""
         await self._mcp.aclose()
 
 
+class NoAnalyticsWriterError(RuntimeError):
+    """Raised when an analytics series has no writer anywhere in the fleet.
+
+    Implements: REQ-SUB-005
+
+    The retired storage service was the only writer and reader of the
+    ``git_velocity``, ``repository_health``, ``fix-failures`` and
+    ``improvement-records`` series, and of the aggregated pattern feed.
+    Nothing writes them now — and Akosha's matching reader
+    (``analyze_changepoints``) was removed on 2026-09-26 — so a query
+    could only ever come back empty. Returning an empty list would read
+    as "the series exists but has no data", which is a different (and
+    wrong) statement. Callers surface this message to the operator.
+    """
+
+
 class MCPAdapter:
-    """Thin analytics adapter used by MCP tools."""
+    """Analytics adapter for the metric series mahavishnu used to read.
+
+    Retained as the seam the MCP tools call, but every query now raises
+    :class:`NoAnalyticsWriterError`: the series have no writer in the
+    fleet. When a component starts writing one of them again, this class
+    is where the reader goes.
+    """
 
     def __init__(self, base_url: str, timeout: float = 30.0) -> None:
         self.client = MCPClient(base_url=base_url, timeout=timeout)
@@ -107,46 +168,36 @@ class MCPAdapter:
         start_date: str | None = None,
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Query time-series metrics from MCP."""
-        arguments: dict[str, Any] = {
-            "metric_type": metric_type,
-            "entity_id": entity_id,
-        }
-        if start_date is not None:
-            arguments["start_date"] = start_date
-        if limit is not None:
-            arguments["limit"] = limit
-        result = await self.client.call_tool("query_time_series", arguments)
-        if isinstance(result, list):
-            return result
-        if isinstance(result, dict):
-            records = result.get("records") or result.get("items") or result.get("result")
-            if isinstance(records, list):
-                return records
-        logger.debug("Unexpected MCP time-series response shape: %r", result)
-        return []
+        """Query time-series metrics.
+
+        Raises:
+            NoAnalyticsWriterError: no component in the fleet writes
+                this metric series.
+        """
+        raise NoAnalyticsWriterError(
+            f"No data source for the {metric_type!r} series: no component "
+            "in the fleet writes it, and the retired storage service that "
+            "used to is gone. The metric needs a writer before it can be "
+            "read."
+        )
 
     async def aggregate_patterns(
         self,
         start_date: str,
         min_occurrences: int = 2,
     ) -> list[dict[str, Any]]:
-        """Query aggregated patterns from MCP."""
-        result = await self.client.call_tool(
-            "aggregate_patterns",
-            {
-                "start_date": start_date,
-                "min_occurrences": min_occurrences,
-            },
+        """Query aggregated patterns.
+
+        Raises:
+            NoAnalyticsWriterError: no component in the fleet writes
+                the aggregated pattern feed.
+        """
+        raise NoAnalyticsWriterError(
+            "No data source for the aggregated pattern feed: no component "
+            "in the fleet writes it, and the retired storage service that "
+            "used to is gone. The feed needs a writer before it can be "
+            "read."
         )
-        if isinstance(result, list):
-            return result
-        if isinstance(result, dict):
-            patterns = result.get("patterns") or result.get("result")
-            if isinstance(patterns, list):
-                return patterns
-        logger.debug("Unexpected MCP pattern response shape: %r", result)
-        return []
 
 
 __all__ = ["MCPAdapter", "MCPClient"]

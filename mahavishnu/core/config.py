@@ -2450,7 +2450,7 @@ class DependencyConfig(BaseModel):
             timeout_seconds: 30
           mcp:
             host: "localhost"
-            port: 8683
+            port: 8680
             required: false
             timeout_seconds: 10
 
@@ -2509,7 +2509,7 @@ class HealthConfig(BaseModel):
               required: false
             mcp:
               host: "localhost"
-              port: 8683
+              port: 8680
               required: false
 
     Example Environment Variables:

@@ -47,6 +47,8 @@ from typing import TYPE_CHECKING, Any, Literal
 from oneiric.core.logging import get_logger
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
+
 if TYPE_CHECKING:
     from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
@@ -92,7 +94,7 @@ def build_default_store(app: Any) -> VerificationStore | None:
     ``verification`` field is still populated from the in-memory result.
     """
     try:
-        mcp_url = getattr(getattr(app, "settings", None), "mcp_url", "http://localhost:8683")
+        mcp_url = getattr(getattr(app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL)
         from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
         backend = MCPStateBackend(base_url=mcp_url)

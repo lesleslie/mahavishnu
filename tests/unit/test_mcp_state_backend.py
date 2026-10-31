@@ -4,10 +4,12 @@ Tests cover: put/get no-ops in degraded mode, circuit-breaker trip/recovery,
 schedule_put fire-and-forget, probe behavior, and config-disabled no-op.
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mahavishnu.core.mcp_adapter import INTERNAL_SERVICE_USER_ID
 from mahavishnu.core.state_backends.mcp import (
     _MCP_FAILURE_THRESHOLD,
     MCPStateBackend,
@@ -101,11 +103,28 @@ class TestMCPStateBackendGet:
     @pytest.mark.asyncio
     async def test_get_returns_dict_on_success(self):
         backend = _make_backend()
-        backend._client.call_tool = AsyncMock(return_value={"key": "k", "value": "v"})
+        backend._client.call_tool = AsyncMock(
+            return_value={"ok": True, "value": json.dumps({"status": "ok"})}
+        )
 
         result = await backend.get("workflow/v1/abc")
 
-        assert result == {"key": "k", "value": "v"}
+        assert result == {"status": "ok"}
+
+    @pytest.mark.asyncio
+    async def test_get_calls_the_live_kv_tool(self):
+        """The substrate call names the tool that actually exists."""
+        backend = _make_backend()
+        backend._client.call_tool = AsyncMock(
+            return_value={"ok": True, "value": json.dumps({"status": "ok"})}
+        )
+
+        await backend.get("workflow/v1/abc")
+
+        name, args = backend._client.call_tool.call_args[0]
+        assert name == "mahavishnu_kv_get"
+        assert args["key"] == "workflow/v1/abc"
+        assert args["user_id"] == INTERNAL_SERVICE_USER_ID
 
     @pytest.mark.asyncio
     async def test_get_returns_none_when_disabled(self):
@@ -191,10 +210,14 @@ class TestMCPStateBackendConvenienceMethods:
     async def test_recover_helpers_filter_dict_values(self):
         backend = _make_backend()
         backend._client.call_tool = AsyncMock(
-            return_value=[
-                {"key": "pool/v1/pool-1", "value": {"pool_id": "pool-1"}},
-                {"key": "pool/v1/pool-2", "value": "not-a-dict"},
-            ]
+            return_value={
+                "ok": True,
+                "count": 2,
+                "items": [
+                    {"key": "pool/v1/pool-1", "value": json.dumps({"pool_id": "pool-1"})},
+                    {"key": "pool/v1/pool-2", "value": json.dumps("not-a-dict")},
+                ],
+            }
         )
 
         pools = await backend.recover_pools()
@@ -205,13 +228,17 @@ class TestMCPStateBackendConvenienceMethods:
     async def test_recover_routing_decisions_filters_dict_values(self):
         backend = _make_backend()
         backend._client.call_tool = AsyncMock(
-            return_value=[
-                {
-                    "key": "routing/v1/workflow/1",
-                    "value": {"task_class": "workflow", "pool_id": "pool-1"},
-                },
-                {"key": "routing/v1/workflow/2", "value": "not-a-dict"},
-            ]
+            return_value={
+                "ok": True,
+                "count": 2,
+                "items": [
+                    {
+                        "key": "routing/v1/workflow/1",
+                        "value": json.dumps({"task_class": "workflow", "pool_id": "pool-1"}),
+                    },
+                    {"key": "routing/v1/workflow/2", "value": json.dumps("not-a-dict")},
+                ],
+            }
         )
 
         decisions = await backend.recover_routing_decisions()
@@ -318,17 +345,14 @@ class TestTryPutWithLogContext:
         # REQ-CLONE-014: structured log fires AND carries dag_id/step_name/files_touched
         # SF-M3: assert against the structured payload, not just the message string.
         record = next(
-            r for r in caplog.records
-            if "clone_refactor.substrate_silent_write" in r.message
+            r for r in caplog.records if "clone_refactor.substrate_silent_write" in r.message
         )
         record_dict = vars(record)
         assert record_dict.get("dag_id") == "d1"
         assert record_dict.get("step_name") == "detect"
         assert record_dict.get("files_touched") == ["a.py"]
 
-    async def test_never_raises_on_logging_failure(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_never_raises_on_logging_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # SF-m2: enforce "NEVER raises" contract even when logger.warning raises.
         backend = MCPStateBackend(base_url="http://x")
 
@@ -366,20 +390,18 @@ class TestTryPutWithLogContext:
             )
         assert result is False
         record = next(
-            r for r in caplog.records
-            if "clone_refactor.substrate_silent_write" in r.message
+            r for r in caplog.records if "clone_refactor.substrate_silent_write" in r.message
         )
         # dag_id survives; reserved attrs were filtered
         assert vars(record).get("dag_id") == "ok"
         # "message" must NOT appear as a LogRecord attribute (would shadow the log message)
-        assert "message" not in (
-            k for k in vars(record) if k not in ("message",)
-        ) or vars(record).get("message") != "x"
+        assert (
+            "message" not in (k for k in vars(record) if k not in ("message",))
+            or vars(record).get("message") != "x"
+        )
 
     async def test_returns_false_when_disabled(self) -> None:
-        backend = MCPStateBackend(
-            base_url="http://x", config=MCPStateConfig(enabled=False)
-        )
+        backend = MCPStateBackend(base_url="http://x", config=MCPStateConfig(enabled=False))
         result = await backend.try_put_with_log_context("k", {"v": 1})
         assert result is False
 
@@ -417,11 +439,15 @@ class TestListPrefixReturnShape:
         # The actual MCPClient exposes list_prefix via call_tool; mock that
         # interface (not _client.list, which doesn't exist).
         async def fake_call_tool(name: str, args: dict):
-            assert name == "list_prefix"
-            return [
-                {"key": "workflow/v1/aaa", "value": {"status": "queued"}},
-                {"key": "workflow/v1/bbb", "value": {"status": "completed"}},
-            ]
+            assert name == "mahavishnu_kv_list"
+            return {
+                "ok": True,
+                "count": 2,
+                "items": [
+                    {"key": "workflow/v1/aaa", "value": json.dumps({"status": "queued"})},
+                    {"key": "workflow/v1/bbb", "value": json.dumps({"status": "completed"})},
+                ],
+            }
 
         monkeypatch.setattr(backend._client, "call_tool", fake_call_tool)
         result = await backend.list_prefix("workflow/v1/")

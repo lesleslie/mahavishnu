@@ -2,15 +2,27 @@
 
 Phase 3 (REQ-004): mocked at the CommonMCPClient.call_tool boundary
 instead of httpx2.AsyncClient.post.
+
+``MCPClient.put`` writes through the self-hosted ``mahavishnu_kv_put``
+tool on mahavishnu's own MCP server, with the internal service identity.
+``MCPAdapter`` — the analytics seam — has no provider: the metric series
+it used to read have no writer in the fleet, so every query raises
+``NoAnalyticsWriterError`` naming the series.
 """
 
+import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from mcp.types import CallToolResult, TextContent
 import pytest
 
-from mahavishnu.core.mcp_adapter import MCPAdapter, MCPClient
+from mahavishnu.core.mcp_adapter import (
+    INTERNAL_SERVICE_USER_ID,
+    MCPAdapter,
+    MCPClient,
+    NoAnalyticsWriterError,
+)
 
 # ---------------------------------------------------------------------------
 # MCPClient
@@ -69,9 +81,7 @@ class TestMCPClientCallTool:
     async def test_call_tool_returns_result(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(
-            return_value=_envelope(structured={"key": "value"})
-        )
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(structured={"key": "value"}))
 
         result = await client.call_tool("get", {"key": "test"})
         assert result == {"key": "value"}
@@ -81,9 +91,7 @@ class TestMCPClientCallTool:
         """The wrapper passes the tool's payload through unchanged."""
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(
-            return_value=_envelope(structured={"data": [1, 2, 3]})
-        )
+        client._mcp.call_tool = AsyncMock(return_value=_envelope(structured={"data": [1, 2, 3]}))
 
         result = await client.call_tool("list", {})
         assert result == {"data": [1, 2, 3]}
@@ -137,10 +145,13 @@ class TestMCPClientPut:
         assert result == "ok"
 
         call_kwargs = client._mcp.call_tool.await_args
-        assert call_kwargs.args[0] == "put"
+        assert call_kwargs.args[0] == "mahavishnu_kv_put"
         args = call_kwargs.args[1]
         assert args["key"] == "mykey"
-        assert args["value"] == {"data": 42}
+        # The KV tool takes a string value, so a structured payload is
+        # JSON-encoded on the way out.
+        assert json.loads(args["value"]) == {"data": 42}
+        assert args["user_id"] == INTERNAL_SERVICE_USER_ID
         assert "ttl" not in args
 
     async def test_put_with_ttl(self):
@@ -151,9 +162,10 @@ class TestMCPClientPut:
         await client.put("key", "val", ttl=3600)
 
         call_args = client._mcp.call_tool.await_args
-        assert call_args.args[0] == "put"
+        assert call_args.args[0] == "mahavishnu_kv_put"
         args = call_args.args[1]
         assert args["ttl"] == 3600
+        assert args["user_id"] == INTERNAL_SERVICE_USER_ID
 
 
 @pytest.mark.asyncio
@@ -173,110 +185,55 @@ class TestMCPClientClose:
 
 class TestMCPAdapterInit:
     def test_creates_client(self):
-        adapter = MCPAdapter("http://localhost:8683", timeout=5.0)
+        adapter = MCPAdapter("http://localhost:8680", timeout=5.0)
         assert isinstance(adapter.client, MCPClient)
-        assert adapter.client.base_url == "http://localhost:8683"
+        assert adapter.client.base_url == "http://localhost:8680"
         assert adapter.client.timeout == 5.0
 
 
 @pytest.mark.asyncio
 class TestMCPAdapterQueryTimeSeries:
-    async def test_returns_list_result(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value=[{"ts": "2026-01-01", "value": 42}])
+    """The analytics series have no writer, so a query must say so.
 
-        result = await adapter.query_time_series("commits", "repo1")
-        assert len(result) == 1
-        assert result[0]["value"] == 42
+    Returning an empty list would read as "the series exists but has no
+    data yet" — a different, and wrong, statement.
+    """
 
-    async def test_returns_records_from_dict(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value={"records": [{"ts": "2026-01-01"}]})
+    async def test_raises_naming_the_metric(self):
+        adapter = MCPAdapter("http://localhost:8680")
 
-        result = await adapter.query_time_series("commits", "repo1")
-        assert len(result) == 1
+        with pytest.raises(NoAnalyticsWriterError) as excinfo:
+            await adapter.query_time_series("git_velocity", "repo1")
 
-    async def test_returns_items_from_dict(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value={"items": [{"ts": "2026-01-01"}]})
+        assert "git_velocity" in str(excinfo.value)
 
-        result = await adapter.query_time_series("commits", "repo1")
-        assert len(result) == 1
-
-    async def test_returns_result_key_from_dict(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value={"result": [{"ts": "2026-01-01"}]})
-
-        result = await adapter.query_time_series("commits", "repo1")
-        assert len(result) == 1
-
-    async def test_returns_empty_on_unexpected_shape(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value="unexpected string")
-
-        result = await adapter.query_time_series("commits", "repo1")
-        assert result == []
-
-    async def test_passes_optional_params(self):
-        adapter = MCPAdapter("http://localhost")
+    async def test_does_not_call_the_substrate(self):
+        adapter = MCPAdapter("http://localhost:8680")
         adapter.client.call_tool = AsyncMock(return_value=[])
 
-        await adapter.query_time_series("commits", "repo1", start_date="2026-01-01", limit=50)
+        with pytest.raises(NoAnalyticsWriterError):
+            await adapter.query_time_series("commits", "repo1")
 
-        call_args = adapter.client.call_tool.call_args
-        args = call_args[1] if call_args[1] else call_args[0][1]
-        assert args["start_date"] == "2026-01-01"
-        assert args["limit"] == 50
-
-    async def test_omits_optional_params_when_none(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value=[])
-
-        await adapter.query_time_series("commits", "repo1")
-
-        call_args = adapter.client.call_tool.call_args
-        args = call_args[0][1]
-        assert "start_date" not in args
-        assert "limit" not in args
+        adapter.client.call_tool.assert_not_called()
 
 
 @pytest.mark.asyncio
 class TestMCPAdapterAggregatePatterns:
-    async def test_returns_list_result(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value=[{"pattern": "test", "count": 5}])
+    """Same for the aggregated pattern feed."""
 
-        result = await adapter.aggregate_patterns("2026-01-01", min_occurrences=3)
-        assert len(result) == 1
+    async def test_raises(self):
+        adapter = MCPAdapter("http://localhost:8680")
 
-    async def test_returns_patterns_from_dict(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value={"patterns": [{"pattern": "test"}]})
+        with pytest.raises(NoAnalyticsWriterError) as excinfo:
+            await adapter.aggregate_patterns("2026-01-01", min_occurrences=3)
 
-        result = await adapter.aggregate_patterns("2026-01-01")
-        assert len(result) == 1
+        assert "pattern" in str(excinfo.value)
 
-    async def test_returns_result_from_dict(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value={"result": [{"pattern": "test"}]})
-
-        result = await adapter.aggregate_patterns("2026-01-01")
-        assert len(result) == 1
-
-    async def test_returns_empty_on_unexpected_shape(self):
-        adapter = MCPAdapter("http://localhost")
-        adapter.client.call_tool = AsyncMock(return_value=42)
-
-        result = await adapter.aggregate_patterns("2026-01-01")
-        assert result == []
-
-    async def test_passes_min_occurrences(self):
-        adapter = MCPAdapter("http://localhost")
+    async def test_does_not_call_the_substrate(self):
+        adapter = MCPAdapter("http://localhost:8680")
         adapter.client.call_tool = AsyncMock(return_value=[])
 
-        await adapter.aggregate_patterns("2026-01-01", min_occurrences=5)
+        with pytest.raises(NoAnalyticsWriterError):
+            await adapter.aggregate_patterns("2026-01-01")
 
-        call_args = adapter.client.call_tool.call_args
-        args = call_args[0][1]
-        assert args["min_occurrences"] == 5
-        assert args["start_date"] == "2026-01-01"
+        adapter.client.call_tool.assert_not_called()
