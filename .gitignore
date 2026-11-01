@@ -167,6 +167,15 @@ docs/assets/images/.scratch/**
 # Archived test/debug scripts
 tests/archived/
 
+# Provider-specific CI is not used in this repo — Crackerjack is the sole
+# quality gate (AGENTS.md "MCP & Ecosystem Notes"; see also
+# `feedback-bodai-no-provider-specific-ci`). Two GitHub Actions workflows
+# (audit_requirements_advisory.yml, audit_requirements_gate.yml) were
+# removed 2026-11-01 after the monthly gate began emailing failure notices
+# from a cron that the project does not use. This rule keeps a stray
+# workflow from being tracked again. `.github/FUNDING.yml` is unaffected.
+.github/workflows/
+
 # ============================================================================
 # Claude Code Project-Specific Data
 # ============================================================================

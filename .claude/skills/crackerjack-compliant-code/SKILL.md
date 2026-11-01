@@ -47,9 +47,10 @@ Code references them via one of:
 - **Test marker**: `@pytest.mark.req(["REQ-001"])` — registered in `pyproject.toml [tool.pytest] markers`
 
 Audit: `python scripts/audit_requirements.py [--json]`. Exit codes: 0 clean / 1
-orphans or phantoms / 2 missing root / 3 internal error. CI: weekly advisory
-run in `.github/workflows/audit-requirements-weekly.yml` (hard gate promoted
-after 30 days per the traceable-specs plan).
+orphans or phantoms / 2 missing root / 3 internal error. Enforcement is
+Crackerjack-only: `crackerjack run` runs the pytest suite, which includes
+`tests/integration/test_audit_requirements.py` asserting a clean exit. This
+repo has no provider-specific CI — do not add `.github/workflows/*`.
 
 ## Type checker specifics (ty, since Phase I)
 

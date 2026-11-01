@@ -4,9 +4,9 @@ Runs ``scripts/audit_requirements.py`` against the real tree and asserts:
 - The script exits with code 0 (no orphans or phantoms).
 - The JSON output is valid and contains expected top-level keys.
 
-This test is gated by ``@pytest.mark.integration`` and runs in the weekly
-advisory cron (``.github/workflows/audit-requirements-weekly.yml``). It is
-NOT a PR-blocking gate for the first 30 days (per the D2 promotion criteria).
+This test is gated by ``@pytest.mark.integration`` and runs as part of the
+Crackerjack quality gate (``crackerjack run``). This repo uses no
+provider-specific CI — there is no GitHub Actions workflow behind it.
 """
 
 from __future__ import annotations
