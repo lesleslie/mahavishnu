@@ -52,7 +52,6 @@ line); the canonical prefix is `ONEIRIC_BIFROST_`.
 | `mahavishnu/terminal/manager.py:72` | Anthropic | Injects `ANTHROPIC_BASE_URL=<gateway>/anthropic` into spawned `terminal-claude` workers |
 | `mahavishnu/terminal/manager.py:81` | OpenAI | Injects `OPENAI_BASE_URL=<gateway>/v1` into spawned `terminal-qwen` workers |
 | `mahavishnu/workers/cloud_worker.py:93` | OpenAI | Resolves the base URL for the MiniMax OpenAI-compatible worker (replaces the legacy `BifrostClient` literal) |
-| `mahavishnu/health.py:493` | n/a | `/health.bifrost.config` probe — reads `get_router()._settings.model_dump()` (the oneiric override excludes `auth_env` by default) |
 | `mahavishnu/core/health.py:1314, 1334, 1337` | n/a | `_probe_bifrost_state` + `_probe_local_provider_state` — read `get_router()._settings.{base_url, local_provider_enabled, local_provider_url}` |
 
 ### session-buddy

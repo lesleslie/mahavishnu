@@ -45,6 +45,7 @@ from mahavishnu.core.health import (
     HealthEndpoint,
     HealthStatus,
     ServiceInfo,
+    aggregate_readiness,
 )
 from monitoring.metrics import expose_metrics, get_metrics_registry
 
@@ -414,7 +415,6 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         """Get readiness status for this service."""
         _warn_deprecated_tool("get_readiness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
-        from mahavishnu.health import get_readiness as worker_get_readiness
 
         settings = MahavishnuSettings()
         config = settings.health
@@ -430,8 +430,12 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         # Fold the worker capability component into the response so the
         # MCP surface matches the ``/ready`` HTTP endpoint.
+        # ``aggregate_readiness`` is the single source of truth for the
+        # worker component; it used to be reached through a wrapper in
+        # ``mahavishnu/health.py``, which existed only to host a FastAPI
+        # app on port 8080 that nothing started.
         try:
-            payload["workers"] = await worker_get_readiness()
+            payload["workers"] = await aggregate_readiness(settings=settings)
         except Exception:
             logger.exception("readiness worker aggregation failed")
             payload["workers"] = {"status": "unhealthy"}

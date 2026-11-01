@@ -199,7 +199,7 @@ class TestHealthChecker:
             assert checker._extract_service_name("bad://url") == "bad://url"
 
     def test_check_message_bus_uses_canonical_transport(self, monkeypatch):
-        import mahavishnu.health as health_module
+        from mahavishnu.core import health_aggregator
 
         class _FakeTransport:
             def __init__(self) -> None:
@@ -210,7 +210,9 @@ class TestHealthChecker:
             _FakeTransport,
         )
 
-        assert health_module._check_message_bus() is True
+        state = health_aggregator._probe_message_bus_state()
+        assert state.ingester_running is True
+        assert state.errors_total == 0
 
 
 class TestDependencyWaiter:

@@ -26,9 +26,10 @@ Design constraints (per ``docs/decisions/mcp-backend-wiring-discipline.md``):
   reset to ``0`` so PromQL ``max by (feed) (mahavishnu_health_feed_status)
   == 1`` matches the current status.
 
-The HTTP ``/metrics`` route in :mod:`mahavishnu.health` re-exposes
-this registry's text-format content alongside the OTel-derived
-metrics and the mcp-common ``health_feed_status`` series.
+The HTTP ``/metrics`` route on the MCP server (registered in
+:mod:`mahavishnu.mcp.bootstrap`) re-exposes this registry's
+text-format content alongside the OTel-derived metrics and the
+mcp-common ``health_feed_status`` series.
 """
 
 from __future__ import annotations

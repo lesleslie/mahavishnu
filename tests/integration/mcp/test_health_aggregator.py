@@ -32,6 +32,43 @@ if TYPE_CHECKING:
     from mcp_common.health.aggregator import HealthSnapshot
 
 
+@pytest.fixture
+def mcp_server() -> Any:
+    """A FastMCPServer exposing the live ``/health`` and ``/metrics`` routes.
+
+    The aggregator used to be exercised through ``mahavishnu.health``'s
+    FastAPI app on port 8080 -- a surface nothing started. These tests
+    now drive the routes the fleet actually polls and scrapes.
+    """
+    from unittest.mock import MagicMock
+
+    from mahavishnu.core.app import MahavishnuApp
+    from mahavishnu.core.config import MahavishnuSettings
+    from mahavishnu.mcp.server_core import FastMCPServer
+
+    app = MagicMock(spec=MahavishnuApp)
+    app.config = MahavishnuSettings(
+        server_name="mahavishnu",
+        observability_enabled=False,
+        terminal_enabled=False,
+        pools={"enabled": False},
+        workers={"enabled": False},
+        otel_storage={"enabled": False},
+    )
+    app.get_repos = MagicMock(return_value=[])
+    app.is_healthy = MagicMock(return_value=True)
+    app.adapters = {}
+    app.workflow_state_manager = MagicMock()
+    app.rbac_manager = MagicMock()
+    app.observability = MagicMock()
+    app.opensearch_integration = MagicMock()
+    app.error_recovery_manager = MagicMock()
+    app.monitoring_service = MagicMock()
+    app.pool_manager = None
+    app.worktree_coordinator = None
+    return FastMCPServer(app=app)
+
+
 def test_mahavishnu_health_aggregator_module_exists() -> None:
     """The ``mahavishnu.core.health_aggregator`` module imports cleanly.
 
@@ -63,9 +100,7 @@ def test_aggregate_mahavishnu_health_returns_verdict() -> None:
         aggregate_mahavishnu_health,
     )
 
-    verdict: MahavishnuHealthVerdict = aggregate_mahavishnu_health(
-        repo="mahavishnu-test"
-    )
+    verdict: MahavishnuHealthVerdict = aggregate_mahavishnu_health(repo="mahavishnu-test")
 
     # Verdict shape
     assert isinstance(verdict, MahavishnuHealthVerdict)
@@ -88,10 +123,15 @@ def test_aggregate_mahavishnu_health_returns_verdict() -> None:
     assert set(snap["checks"].keys()) == {"storage", "message_bus", "adapters"}
 
     # HTTP mapping: healthy/warming_up → 200, degraded/failed → 503
-    expected_http = 200 if verdict.worst_status in (
-        StatusValue.HEALTHY,
-        StatusValue.WARMING_UP,
-    ) else 503
+    expected_http = (
+        200
+        if verdict.worst_status
+        in (
+            StatusValue.HEALTHY,
+            StatusValue.WARMING_UP,
+        )
+        else 503
+    )
     assert verdict.http_status == expected_http
 
 
@@ -115,7 +155,7 @@ def test_metrics_registry_is_isolated_from_global() -> None:
     assert registry is not prometheus_client.REGISTRY
 
 
-def test_metrics_endpoint_renders_text_format() -> None:
+def test_metrics_endpoint_renders_text_format(mcp_server: Any) -> None:
     """The ``/metrics`` endpoint exposes the four PromQL metrics
     in ``text/plain; version=0.0.4`` exposition format.
 
@@ -132,16 +172,11 @@ def test_metrics_endpoint_renders_text_format() -> None:
 
     health_aggregator.reset_health_metrics_registry_for_tests()
 
-    # Re-import health to pick up the cleared registry's first
-    # emission lazily. The aggregator creates the metric instances
-    # on first call, so we force one call here to populate the
-    # registry before rendering.
+    # The aggregator creates the metric instances on first call, so we
+    # force one call here to populate the registry before rendering.
     health_aggregator.aggregate_mahavishnu_health(repo="mahavishnu-metrics-test")
 
-    from mahavishnu.health import create_health_app
-
-    app = create_health_app(server_name="mahavishnu-metrics-test")
-    client = TestClient(app)
+    client = TestClient(mcp_server.server.http_app())
 
     response = client.get("/metrics")
     assert response.status_code == 200
@@ -158,16 +193,16 @@ def test_metrics_endpoint_renders_text_format() -> None:
         "mcp_common_health_aggregate_duration_ms",
     )
     for metric_name in expected_metrics:
-        assert (
-            metric_name in body
-        ), f"PromQL metric {metric_name!r} missing from /metrics exposition; "
+        assert metric_name in body, (
+            f"PromQL metric {metric_name!r} missing from /metrics exposition; "
+        )
         "alerts in config/prometheus/health_aggregator_alerts.yml cannot fire. "
         f"Got:\n{body[:2000]}"
     # Repo label pinned to the metric instances.
     assert 'repo="mahavishnu-metrics-test"' in body
 
 
-def test_health_endpoint_returns_200_on_warm_startup() -> None:
+def test_health_endpoint_returns_200_on_warm_startup(mcp_server: Any) -> None:
     """The ``/health`` endpoint returns 200 with the augmented
     HealthResponse shape (worst_status + feed_states +
     reason_codes + aggregate_duration_ms) on a healthy startup.
@@ -179,10 +214,7 @@ def test_health_endpoint_returns_200_on_warm_startup() -> None:
     """
     from fastapi.testclient import TestClient
 
-    from mahavishnu.health import create_health_app
-
-    app = create_health_app(server_name="mahavishnu-health-test")
-    client = TestClient(app)
+    client = TestClient(mcp_server.server.http_app())
 
     response = client.get("/health")
     # Either 200 (healthy/warming_up) or 503 (degraded/failed).
@@ -194,8 +226,8 @@ def test_health_endpoint_returns_200_on_warm_startup() -> None:
     body: dict[str, Any] = response.json()
 
     # Legacy fields preserved.
-    assert body["service"] == "mahavishnu-health-test"
-    assert body["status"] in ("ok", "degraded", "unhealthy")
+    assert body["service"] == "mahavishnu"
+    assert body["status"] in ("healthy", "degraded", "unhealthy")
     assert "version" in body
     assert "uptime_seconds" in body
     assert "timestamp" in body
@@ -283,7 +315,9 @@ PLAN_EXPECTED_FIELDS = (
 )
 
 
-def test_health_endpoint_body_carries_four_plan_fields_per_feed() -> None:
+def test_health_endpoint_body_carries_four_plan_fields_per_feed(
+    mcp_server: Any,
+) -> None:
     """The live ``/health`` HTTP body carries the 4 plan-§6.5 fields per
     feed — the contract that ``curl /health | jq .feeds`` depends on
     (per Plan 2 Phase E2 §10 demonstration).
@@ -297,9 +331,7 @@ def test_health_endpoint_body_carries_four_plan_fields_per_feed() -> None:
     from mcp_common.health.feed import HealthFeedState
 
     # Probe the aggregator to detect the new shape (skip if absent).
-    snap = aggregate_feed_states(
-        {"storage": HealthFeedState(entities_count=1, cycles_total=1)}
-    )
+    snap = aggregate_feed_states({"storage": HealthFeedState(entities_count=1, cycles_total=1)})
     if "entities_count" not in snap["checks"]["storage"]:
         pytest.skip(
             "mcp_common aggregator does not yet expose the 4 plan-§6.5 "
@@ -309,16 +341,13 @@ def test_health_endpoint_body_carries_four_plan_fields_per_feed() -> None:
 
     from fastapi.testclient import TestClient
 
-    from mahavishnu.health import create_health_app
-
     try:
-        app = create_health_app(server_name="mahavishnu-plan2-task5-test")
-        client = TestClient(app)
+        client = TestClient(mcp_server.server.http_app())
         response = client.get("/health")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         pytest.skip(
-            f"create_health_app()/TestClient setup failed in test env "
-            f"(the aggregator-level tests above still pin the contract): {exc}"
+            f"the MCP server's health route could not be exercised in this "
+            f"test env (the aggregator-level tests above still pin the contract): {exc}"
         )
     # 200 (healthy/warming_up) or 503 (degraded/failed) — both valid.
     assert response.status_code in (200, 503)
@@ -330,9 +359,7 @@ def test_health_endpoint_body_carries_four_plan_fields_per_feed() -> None:
     assert set(feed_states.keys()) == expected_feeds
 
     for feed_name, feed_dict in feed_states.items():
-        assert isinstance(feed_dict, dict), (
-            f"feed {feed_name} is not a dict: {type(feed_dict)}"
-        )
+        assert isinstance(feed_dict, dict), f"feed {feed_name} is not a dict: {type(feed_dict)}"
         for field in PLAN_EXPECTED_FIELDS:
             assert field in feed_dict, (
                 f"/health body dropped {field} from {feed_name} "

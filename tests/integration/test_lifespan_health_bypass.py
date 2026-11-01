@@ -242,7 +242,11 @@ async def test_health_responds_while_runtime_init_blocks(slow_init_server):
             )
 
             payload = response.json()
-            assert payload["status"] == "ok"
+            # The /health body speaks the same status vocabulary as the
+            # MCP ``get_health`` tool ("healthy" / "degraded" /
+            # "unhealthy"), so the two surfaces cannot disagree. The
+            # /healthz route keeps its own "ok".
+            assert payload["status"] == "healthy"
             assert payload["service"] == "mahavishnu"
             assert payload["version"]
 
@@ -273,7 +277,7 @@ async def test_health_still_responds_after_runtime_init_completes(slow_init_serv
             healthz = await client.get("/healthz", timeout=HEALTH_DEADLINE_SECONDS)
 
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response.json()["status"] == "healthy"
     assert healthz.status_code == 200
     assert healthz.json()["status"] == "ok"
 
@@ -281,9 +285,11 @@ async def test_health_still_responds_after_runtime_init_completes(slow_init_serv
 async def test_ready_route_absent_from_mcp_surface(slow_init_server):
     """Pin the current MCP surface: ``/ready`` is not served on this app.
 
-    ``/ready`` exists only on the separate FastAPI worker health app
-    (``mahavishnu.health.create_health_app``), not on the MCP ASGI app that
-    launchd polls. Phase 1 of the plan deliberately shipped without the
+    The MCP ASGI app that launchd polls serves ``/health``, ``/healthz``
+    and ``/metrics`` — not ``/ready``. The standalone FastAPI worker
+    health app that used to carry a ``/ready`` route was removed; the
+    MCP ``get_readiness`` tool is the remaining readiness surface.
+    Phase 1 of the plan deliberately shipped without the
     ``_ready_flag`` / ``/ready`` warming-up semantics. If that work lands
     later, this test should be replaced with real warming-up assertions.
     """
