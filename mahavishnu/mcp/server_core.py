@@ -80,20 +80,10 @@ def _unwrap_call_tool_result(call_result: Any) -> Any:
     return call_result
 
 
-# Phase 1.1 (B2 refuter-review fix): map mcp-common ``StatusValue``
-# to the legacy v1 health status strings so the canonical
-# aggregator's verdict stays JSON-native on the wire. The mapping
-# mirrors ``mahavishnu.health._WORST_STATUS_TO_LEGACY`` (used by the
-# HTTP ``/health`` route) so MCP and HTTP consumers parse the same
-# shape. Per the M1 refuter-review fix, ``WARMING_UP`` does NOT map
-# to ``degraded`` — the orchestrator is operational while producers
-# fill their feeds.
-_STATUS_TO_LEGACY: dict[str, str] = {
-    "healthy": "healthy",
-    "warming_up": "healthy",
-    "degraded": "degraded",
-    "failed": "unhealthy",
-}
+# The legacy v1 status mapping (``_STATUS_TO_LEGACY``) is gone: the
+# health body now carries the canonical mcp-common ``StatusValue``
+# vocabulary directly, and ``core.health_aggregator`` owns the single
+# mapping for every surface.
 
 
 class FastMCPServer:
@@ -1347,87 +1337,41 @@ class FastMCPServer:
         async def get_health() -> dict[str, Any]:
             """Get overall health status of the system.
 
-            Phase 1.1 (B2 refuter-review fix): this tool now delegates
-            to :func:`mahavishnu.core.health_aggregator.aggregate_mahavishnu_health`
-            so the MCP ``get_health()`` and the HTTP ``/health`` route
-            route through the same canonical mcp-common aggregator.
-            Per ``mcp-backend-wiring-discipline.md``, disagreement
-            between the two surfaces is a bug. The body now mirrors
-            the canonical ``HealthSnapshot`` envelope
-            (``status``/``checks``/``reason_codes``) so MCP clients
-            and ``/health`` consumers parse the same shape.
+            The body comes from
+            :func:`mahavishnu.core.health_aggregator.build_mahavishnu_health_body`
+            -- the same builder the HTTP ``GET /health`` route uses -- so
+            the MCP ``get_health()`` tool and the HTTP route cannot
+            disagree. Per ``mcp-backend-wiring-discipline.md``,
+            disagreement between the two surfaces is a bug; before this
+            the route hand-rolled its own check set and never called the
+            canonical aggregator, so one process answered HTTP 200
+            ``"ok"`` and MCP 503 ``"degraded"`` at the same instant.
 
             Returns:
-                Dict with two surface shapes (legacy + canonical):
-
-                - **Canonical** (Phase 1.1): ``status``
-                  (``healthy``/``warming_up``/``degraded``/``failed``),
-                  ``checks`` (per-feed ``status``/``healthy``/``reason_codes``),
-                  ``reason_codes`` (worst-feed deduped union),
-                  ``aggregate_duration_ms``, ``http_status``.
-                - **Legacy**: ``status`` (``healthy``/``degraded``/``unhealthy``),
-                  ``service``, ``version``, ``uptime_seconds``,
-                  ``timestamp`` — preserved for v1 API consumers.
+                The canonical health body: ``status``
+                (``healthy``/``warming_up``/``degraded``/``failed``),
+                ``checks`` (every feed -- the canonical subsystem feeds
+                plus the MCP-local signer / plan-index / sweeper
+                feeds), ``canonical_checks``, ``reason_codes``,
+                ``aggregate_duration_ms``, ``http_status``, plus the
+                legacy ``service``/``version``/``uptime_seconds``/
+                ``timestamp`` fields v1 API consumers read.
             """
-            from ..core.health_aggregator import aggregate_mahavishnu_health
+            from ..core.health_aggregator import build_mahavishnu_health_body
+            from .bootstrap import collect_component_checks
 
             try:
-                # ``_server_name`` is a local helper defined inside
-                # ``_register_tools`` (mirrors the pattern in
-                # ``_update_registered_tool_metrics``); the closest
-                # scope here is the class — read from ``self.app.config``.
-                server_name = getattr(self.app.config, "server_name", "mahavishnu")
-                if not isinstance(server_name, str) or not server_name:
-                    server_name = "mahavishnu"
-
-                verdict = aggregate_mahavishnu_health(repo=server_name)
+                component_checks = await collect_component_checks(self)
                 uptime = (datetime.now(UTC) - self._startup_time).total_seconds()
 
-                # Canonical HealthSnapshot envelope (B2 fix).
-                # Per-feed FeedSnapshot dicts: cast StatusValue → str,
-                # ReasonCode → str so the body stays JSON-native.
-                canonical_checks: dict[str, dict[str, object]] = {
-                    feed_name: {
-                        "status": feed_snapshot["status"].value,
-                        "healthy": feed_snapshot["healthy"],
-                        "reason_codes": [rc.value for rc in feed_snapshot["reason_codes"]],
-                    }
-                    for feed_name, feed_snapshot in verdict.snapshot["checks"].items()
-                }
-                canonical_reason_codes: list[str] = [
-                    rc.value for rc in verdict.snapshot["reason_codes"]
-                ]
-                canonical_status_str = verdict.worst_status.value
-
-                # Legacy status mapping for v1 API consumers. The
-                # aggregator's ``StatusValue.HEALTHY``/``WARMING_UP`` map
-                # to ``healthy``; ``DEGRADED``/``FAILED`` to
-                # ``degraded``/``unhealthy`` (per spec §4.8 contract;
-                # M1 refuter-review fix: warming_up does NOT map to
-                # ``degraded`` — the orchestrator is operational while
-                # producers fill their feeds).
-                legacy_status = _STATUS_TO_LEGACY.get(
-                    verdict.worst_status.value,
-                    "unhealthy",
+                body, _status_code = build_mahavishnu_health_body(
+                    repo="mahavishnu",
+                    service_name="mahavishnu",
+                    version=__version__,
+                    uptime_seconds=uptime,
+                    component_checks=component_checks,
                 )
-
-                return {
-                    # Legacy fields (v1 API consumers)
-                    "status": legacy_status,
-                    "service": server_name,
-                    "version": __version__,
-                    "uptime_seconds": uptime,
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    # Canonical HealthSnapshot envelope (Phase 1.1,
-                    # B2 refuter-review fix). The two surfaces now
-                    # share the same source of truth
-                    # (aggregate_mahavishnu_health).
-                    "canonical_status": canonical_status_str,
-                    "canonical_checks": canonical_checks,
-                    "canonical_reason_codes": canonical_reason_codes,
-                    "aggregate_duration_ms": verdict.duration_ms,
-                    "http_status": verdict.http_status,
-                }
+                return body
             except (
                 Exception
             ) as e:  # MCP tool error handler — broad catch is the documented contract

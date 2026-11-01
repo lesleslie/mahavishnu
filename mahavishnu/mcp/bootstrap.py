@@ -7,7 +7,6 @@ import datetime as dt
 import shutil
 from typing import TYPE_CHECKING, Any, cast
 
-import mcp_common
 from oneiric.core.logging import get_logger
 from starlette.responses import JSONResponse
 
@@ -272,87 +271,110 @@ def _register_dispatch_specialist_tools(server: FastMCPServer) -> None:
     )
 
 
+async def collect_component_checks(server: FastMCPServer) -> dict[str, dict[str, Any]]:
+    """Collect the MCP-local feed checks the canonical aggregator does not own.
+
+    The canonical aggregator covers the three subsystem feeds (storage,
+    message_bus, adapters). The signer, plan-index and orphan-sweeper
+    feeds are owned by this module, so they are collected here and
+    merged into the shared body by
+    :func:`mahavishnu.core.health_aggregator.build_mahavishnu_health_body`.
+
+    Both the HTTP ``GET /health`` route and the MCP ``get_health`` tool
+    call this, so the two surfaces report the same component checks.
+
+    During the warm-up window before ``start()`` completes
+    ``init_signer_feed_state()``, a feed that has not been constructed
+    yet reports ``ok: True`` with a "warming up" status (not a degraded
+    error) so the launchd healthcheck wrapper
+    (``launch_with_healthcheck.sh``) does not kill the process during
+    the slow Akosha round-trips that complete the warm-up.
+    """
+    from mahavishnu.mcp.signer_feed import get_signer_feed_state
+    from mahavishnu.plan_index.health import get_plan_index_feed_state
+
+    checks: dict[str, dict[str, Any]] = {}
+
+    # Phase 1.5 — the skills_signer feed (per plan §10.3.3). Mirrors the
+    # signer_feed.SignerFeedState ``warm``-flag contract: cold = always
+    # ok, hot = feed invariant.
+    state = get_signer_feed_state()
+    if state is None:
+        checks["skills_signer"] = {
+            "ok": True,
+            "status": "warming_up",
+            "feed": "skills_signer",
+        }
+    else:
+        checks["skills_signer"] = dict(state.as_dict())
+
+    # Task 13 — plan_index feed (mcp-backend-wiring-discipline 4-signal
+    # contract). None means no rebuild cycle has run on this process
+    # yet, so report "warming up" rather than degraded.
+    plan_state = get_plan_index_feed_state()
+    if plan_state is None:
+        checks["plan_index"] = {
+            "ok": True,
+            "status": "warming_up",
+            "feed": "plan_index",
+        }
+    else:
+        checks["plan_index"] = dict(plan_state.as_dict())
+
+    # Task 10 — task_orphan_sweeper feed. The sweeper is wired in
+    # ``mahavishnu.mcp.lifecycle.start_server``; ``server._task_orphan_sweeper``
+    # is only present when start_server ran to the spawn point. When
+    # absent, report "warming up" so a test that constructs the server
+    # by hand does not flip /health to degraded before the sweeper gets
+    # attached. When present, evaluate ``health()`` (a coroutine that
+    # returns False after 3 consecutive read failures).
+    sweeper = getattr(server, "_task_orphan_sweeper", None)
+    if sweeper is None:
+        checks["task_orphan_sweeper"] = {
+            "ok": True,
+            "status": "warming_up",
+            "feed": "task_orphan_sweeper",
+        }
+    else:
+        sweeper_ok = await sweeper.health()
+        checks["task_orphan_sweeper"] = {
+            "ok": bool(sweeper_ok),
+            "status": "healthy" if sweeper_ok else "degraded",
+            "feed": "task_orphan_sweeper",
+        }
+
+    return checks
+
+
 def register_health_endpoint(server: FastMCPServer, version: str) -> None:
     """Register HTTP health endpoints on the FastMCP server."""
 
     @server.server.custom_route("/health", methods=["GET"])
     async def health_check(request=None) -> JSONResponse:
-        # Phase 1.5 — extend the static body with the skills_signer feed
-        # (per plan §10.3.3). During the warm-up window before start()
-        # completes init_signer_feed_state(), report ``ok: True`` with a
-        # "warming up" status (not a degraded error) so the launchd
-        # healthcheck wrapper (``launch_with_healthcheck.sh``) doesn't
-        # kill the process during the slow Akosha round-trips that
-        # complete the warm-up. Mirrors the signer_feed.SignerFeedState
-        # ``warm``-flag contract: cold = always ok, hot = feed invariant.
-        from mahavishnu.mcp.signer_feed import get_signer_feed_state
-        from mahavishnu.plan_index.health import get_plan_index_feed_state
+        # The body comes from the shared builder so this route and the
+        # MCP ``get_health`` tool cannot disagree. Before this, the
+        # route hand-rolled its own check set and never called the
+        # canonical aggregator — one process answered HTTP 200 "ok"
+        # and MCP 503 "degraded" at the same instant.
+        from mahavishnu.core.health_aggregator import build_mahavishnu_health_body
 
-        checks: dict[str, dict[str, object]] = {}
-        state = get_signer_feed_state()
-        if state is None:
-            # State hasn't been constructed yet — still warming up.
-            # Treating this as ``ok: True`` is the chicken-and-egg fix
-            # that lets the launchd wrapper wait through the full
-            # startup window (now ~3 minutes due to Akosha round-trips).
-            checks["skills_signer"] = {
-                "ok": True,
-                "status": "warming_up",
-                "feed": "skills_signer",
-            }
-        else:
-            checks["skills_signer"] = state.as_dict()
+        component_checks = await collect_component_checks(server)
 
-        # Task 13 — plan_index feed (mcp-backend-wiring-discipline 4-signal
-        # contract). None means no rebuild cycle has run on this process
-        # yet, so report "warming up" rather than degraded. Same fix
-        # as the skills_signer branch above.
-        plan_state = get_plan_index_feed_state()
-        if plan_state is None:
-            checks["plan_index"] = {
-                "ok": True,
-                "status": "warming_up",
-                "feed": "plan_index",
-            }
-        else:
-            plan_check: dict[str, object] = dict(plan_state.as_dict())
-            checks["plan_index"] = plan_check
+        startup_time = getattr(server, "_startup_time", None)
+        uptime = (
+            (dt.datetime.now(dt.UTC) - startup_time).total_seconds()
+            if startup_time is not None
+            else 0.0
+        )
 
-        # Task 10 — task_orphan_sweeper feed. The sweeper is wired in
-        # ``mahavishnu.mcp.lifecycle.start_server``; ``server._task_orphan_sweeper``
-        # is only present when start_server ran to the spawn point.
-        # When absent, report "warming up" (matches the skills_signer
-        # + plan_index branches) so a test that constructs the server
-        # by hand does not flip /health to degraded before the sweeper
-        # gets attached. When present, evaluate ``health()`` (a coroutine
-        # that returns False after 3 consecutive read failures).
-        sweeper = getattr(server, "_task_orphan_sweeper", None)
-        if sweeper is None:
-            checks["task_orphan_sweeper"] = {
-                "ok": True,
-                "status": "warming_up",
-                "feed": "task_orphan_sweeper",
-            }
-        else:
-            sweeper_ok = await sweeper.health()
-            checks["task_orphan_sweeper"] = {
-                "ok": bool(sweeper_ok),
-                "status": "ok" if sweeper_ok else "degraded",
-                "feed": "task_orphan_sweeper",
-            }
-
-        all_ok = all(bool(c.get("ok")) for c in checks.values())
-        body = {
-            "status": "ok" if all_ok else "degraded",
-            "service": "mahavishnu",
-            "version": version,
-            # REQ-005 — launcher version field for incident triage (e.g.
-            # `mcp_common.server.launcher@0.28.0`). Read at request time so
-            # editable-install version drift doesn't lie.
-            "launcher": f"mcp_common.server.launcher@{mcp_common.__version__}",
-            "checks": checks,
-        }
-        return JSONResponse(body, status_code=200 if all_ok else 503)
+        body, status_code = build_mahavishnu_health_body(
+            repo="mahavishnu",
+            service_name="mahavishnu",
+            version=version,
+            uptime_seconds=uptime,
+            component_checks=component_checks,
+        )
+        return JSONResponse(body, status_code=status_code)
 
     @server.server.custom_route("/healthz", methods=["GET"])
     async def healthz_check(request=None) -> JSONResponse:

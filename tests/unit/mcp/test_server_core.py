@@ -1203,14 +1203,6 @@ class TestMonitoringTools:
 # =============================================================================
 
 
-class _BoomRoles:
-    """RBAC double whose ``roles`` property raises on access."""
-
-    @property
-    def roles(self) -> dict[str, Any]:
-        raise RuntimeError("rbac registry corrupt")
-
-
 class TestAdapterAndHealthTools:
     """``list_adapters`` feature tagging and ``get_health`` aggregation."""
 
@@ -1257,81 +1249,90 @@ class TestAdapterAndHealthTools:
         assert "adapter offline" in info["health"]["error"]
         assert info["features"] == []
 
-    @staticmethod
-    def _make_healthy_app(mock_app: MagicMock) -> None:
-        """Wire the app so every ``get_health`` sub-probe reports healthy."""
-        mock_app.is_healthy = AsyncMock(return_value=True)
-        mock_app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
-        mock_app.rbac_manager.roles = {"admin": MagicMock()}
-        mock_app.opensearch_integration.health_check = AsyncMock(return_value={"status": "healthy"})
-
-    async def test_get_health_all_healthy(
+    async def test_get_health_reports_the_canonical_feed_states(
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
-        """With every sub-probe healthy the aggregate status is healthy."""
-        self._make_healthy_app(mock_app)
+        """The body carries the aggregator's per-feed verdicts.
 
+        ``get_health`` reports the canonical feed states (storage,
+        message_bus, adapters). The per-adapter detail it used to
+        report lives in the ``list_adapters`` tool.
+        """
+        fn = await tool("get_health")
+        result = await fn()
+
+        assert set(result["canonical_checks"]) == {
+            "storage",
+            "message_bus",
+            "adapters",
+        }
+        for feed in result["canonical_checks"].values():
+            assert feed["status"] in {"healthy", "warming_up", "degraded", "failed"}
+            assert isinstance(feed["healthy"], bool)
+        assert result["http_status"] in {200, 503}
+
+    async def test_get_health_status_is_healthy_when_every_feed_is_healthy(
+        self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
+    ) -> None:
+        """With every canonical feed healthy the aggregate is healthy."""
         fn = await tool("get_health")
         result = await fn()
 
         assert result["status"] == "healthy"
-        assert result["rbac_healthy"] is True
-        assert result["opensearch_healthy"] is True
+        assert result["canonical_status"] in {"healthy", "warming_up"}
+        assert result["http_status"] == 200
 
-    async def test_get_health_degraded_when_adapter_degraded(
-        self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
+    async def test_get_health_degrades_when_a_canonical_feed_degrades(
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        mock_app: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A degraded adapter downgrades the aggregate to 'degraded'."""
-        self._make_healthy_app(mock_app)
-        adapter = MagicMock()
-        adapter.get_health = AsyncMock(return_value={"status": "degraded"})
-        mock_app.adapters = {"agno": adapter}
+        """A degraded feed degrades the aggregate and flips the HTTP code.
+
+        The adapters feed reports whether any adapter is enabled per
+        configuration. A feed that has failed reports degraded, and the
+        worst-case roll-up must say so on both surfaces.
+        """
+        from mcp_common.health.feed import HealthFeedState
+
+        from mahavishnu.core import health_aggregator
+
+        def _degraded() -> HealthFeedState:
+            return HealthFeedState(
+                entities_count=0,
+                last_updated_timestamp=None,
+                cycles_total=0,
+                errors_total=1,
+                last_error_at=dt.datetime.now(dt.UTC).timestamp(),
+                ingester_running=False,
+            )
+
+        monkeypatch.setattr(health_aggregator, "_probe_adapters_state", _degraded)
 
         fn = await tool("get_health")
         result = await fn()
 
         assert result["status"] == "degraded"
-
-    async def test_get_health_unhealthy_when_adapter_probe_raises(
-        self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
-    ) -> None:
-        """An adapter probe exception marks that adapter — and the whole — unhealthy."""
-        self._make_healthy_app(mock_app)
-        adapter = MagicMock()
-        adapter.get_health = _Boom("adapter exploded")
-        mock_app.adapters = {"prefect": adapter}
-
-        fn = await tool("get_health")
-        result = await fn()
-
-        assert result["status"] == "unhealthy"
-        assert result["adapter_health"]["prefect"]["status"] == "unhealthy"
-
-    async def test_get_health_reports_unhealthy_subsystems(
-        self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
-    ) -> None:
-        """Each sub-probe failure is captured independently in the response."""
-        mock_app.is_healthy = AsyncMock(return_value=True)
-        mock_app.workflow_state_manager.list_workflows = _Boom("wf store down")
-        mock_app.rbac_manager = _BoomRoles()
-        mock_app.opensearch_integration.health_check = _Boom("os down")
-
-        fn = await tool("get_health")
-        result = await fn()
-
-        assert result["status"] == "unhealthy"
-        assert result["workflow_state_healthy"] is False
-        assert result["rbac_healthy"] is False
-        assert result["opensearch_healthy"] is False
-        assert "wf store down" in result["workflow_state_info"]["error"]
-        assert "rbac registry corrupt" in result["rbac_info"]["error"]
-        assert "os down" in result["opensearch_info"]["error"]
+        assert result["canonical_status"] == "degraded"
+        assert result["http_status"] == 503
+        assert result["canonical_checks"]["adapters"]["healthy"] is False
 
     async def test_get_health_wraps_top_level_failure(
-        self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        mock_app: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A failure in ``is_healthy`` short-circuits to an unhealthy envelope."""
-        mock_app.is_healthy = _Boom("app probe exploded")
+        """A failure in the aggregator short-circuits to an unhealthy envelope."""
+        from mahavishnu.core import health_aggregator
+
+        def _explode(**_kwargs: Any) -> Any:
+            raise RuntimeError("app probe exploded")
+
+        monkeypatch.setattr(health_aggregator, "build_mahavishnu_health_body", _explode)
 
         fn = await tool("get_health")
         result = await fn()

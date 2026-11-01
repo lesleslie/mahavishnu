@@ -45,14 +45,19 @@ re-exposure in ``mahavishnu/health.py:create_health_app``).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
 import os
 import time
+from typing import TYPE_CHECKING, Any
 
 from mcp_common.health.aggregator import HealthSnapshot, aggregate_feed_states
 from mcp_common.health.feed import HealthFeedState, StatusValue
 from mcp_common.health.metrics import update_health_metrics
 import prometheus_client
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -90,21 +95,33 @@ class MahavishnuHealthVerdict:
 def _probe_storage_state() -> HealthFeedState:
     """Construct a ``HealthFeedState`` for the storage subsystem.
 
-    Mirrors ``mahavishnu/health.py:_check_database``: EncryptedSQLite
-    import + construct. The probe is sync (smoke test for the import
-    path); connection-level liveness is delegated to the canonical
-    storage health check.
+    The substrate was rewired off the decommissioned ``EncryptedSQLite``
+    onto the server's own process-local KV
+    (:mod:`mahavishnu.core.kv_store`), which backs the
+    ``mahavishnu_kv_*`` MCP tools and the substrate facade that the
+    server's own producers — the ecosystem registry, the workflow
+    outcome log, the approval decision log, the webhook ingress log —
+    write through.
+
+    Probing ``EncryptedSQLite`` instead made the whole service report
+    degraded on any host that did not set ``SQLCIPHER_KEY`` — a key
+    the running server never needs, because the class it guarded has
+    no production consumer left.
+
+    The probe reads the live singleton and counts its records, so
+    ``entities_count`` describes the feed rather than the probe.
     """
     try:
-        from mahavishnu.storage.encrypted_sqlite import EncryptedSQLite
+        from mahavishnu.core.kv_store import kv_store
 
-        instance = EncryptedSQLite(":memory:")
-        healthy = instance is not None
+        entities = kv_store.count()
+        healthy = True
     except Exception:
         logger.exception("health_aggregator: storage probe failed")
+        entities = 0
         healthy = False
     return HealthFeedState(
-        entities_count=1 if healthy else 0,
+        entities_count=entities if healthy else 0,
         last_updated_timestamp=time.time() if healthy else None,
         cycles_total=1 if healthy else 0,
         errors_total=0 if healthy else 1,
@@ -345,9 +362,167 @@ def aggregate_mahavishnu_health(*, repo: str = "mahavishnu") -> MahavishnuHealth
     )
 
 
+# ---------------------------------------------------------------------------
+# The one /health body
+# ---------------------------------------------------------------------------
+
+#: Severity order for the canonical status enum. Used to fold a
+#: component check's failure into the overall verdict without losing
+#: the aggregator's own worst status.
+_STATUS_SEVERITY: dict[str, int] = {
+    StatusValue.HEALTHY.value: 0,
+    StatusValue.WARMING_UP.value: 1,
+    StatusValue.DEGRADED.value: 2,
+    StatusValue.FAILED.value: 3,
+}
+
+#: Canonical status -> the legacy v1 status string the health body's
+#: ``status`` field has always carried. ``warming_up`` folds into
+#: ``healthy`` because the orchestrator is operational while its
+#: producers fill their feeds -- that distinction lives in
+#: ``canonical_status`` / ``worst_status``, which keep the precise
+#: canonical value. The MCP ``get_health`` tool's contract depends on
+#: this mapping, so it is preserved here rather than folded away.
+_STATUS_TO_LEGACY: dict[str, str] = {
+    StatusValue.HEALTHY.value: "healthy",
+    StatusValue.WARMING_UP.value: "healthy",
+    StatusValue.DEGRADED.value: "degraded",
+    StatusValue.FAILED.value: "unhealthy",
+}
+
+
+def _normalise_component_check(check: Mapping[str, Any]) -> dict[str, Any]:
+    """Give a component check the same field vocabulary as a data feed.
+
+    The canonical ``FeedSnapshot`` carries ``status`` / ``healthy`` /
+    ``reason_codes``; the MCP-local checks (skills_signer, plan_index,
+    task_orphan_sweeper) carry ``ok`` / ``status``. Merging them into
+    one ``checks`` dict only reads well if every entry answers the same
+    three questions, so the missing ones are filled in here.
+    """
+    normalised: dict[str, Any] = dict(check)
+    ok = bool(normalised.get("ok", True))
+    raw_status = str(normalised.get("status", ""))
+    if raw_status in _STATUS_SEVERITY:
+        status = raw_status
+    else:
+        # The MCP-local feeds speak the ``ok`` boolean plus the 4-signal
+        # ``feed_*`` contract; they carry no canonical status string.
+        status = StatusValue.HEALTHY.value if ok else StatusValue.DEGRADED.value
+    normalised["ok"] = ok
+    normalised["status"] = status
+    normalised["healthy"] = ok
+    normalised.setdefault("reason_codes", [])
+    return normalised
+
+
+def build_mahavishnu_health_body(
+    *,
+    repo: str = "mahavishnu",
+    service_name: str = "mahavishnu",
+    version: str = "unknown",
+    uptime_seconds: float = 0.0,
+    component_checks: Mapping[str, Mapping[str, Any]] | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Build the one ``/health`` body every surface serves.
+
+    This is the single source of truth behind the HTTP ``GET /health``
+    route on the MCP server's port and the MCP ``get_health`` tool.
+    Both surfaces used to be independent implementations: the route
+    hand-rolled a check set from the signer / plan-index / sweeper
+    feeds and never called the canonical aggregator, while the tool
+    called :func:`aggregate_mahavishnu_health`. One process could
+    therefore answer HTTP 200 ``"ok"`` and MCP 503 ``"degraded"`` at
+    the same instant. Per
+    ``docs/decisions/mcp-backend-wiring-discipline.md`` that
+    disagreement is a bug.
+
+    The canonical aggregator owns the three subsystem feeds (storage,
+    message_bus, adapters). ``component_checks`` carries the
+    MCP-local feeds the aggregator does not own; they are merged into
+    the same ``checks`` dict, and a failing component check escalates
+    the overall verdict to ``degraded``.
+
+    Args:
+        repo: Label for the emitted PromQL metrics. Stable component
+            name (``"mahavishnu"``), matching the fleet convention —
+            not a display name from settings.
+        service_name: Value of the body's ``service`` field.
+        version: Value of the body's ``version`` field.
+        uptime_seconds: Seconds since process start.
+        component_checks: MCP-local feed checks to merge in.
+
+    Returns:
+        ``(body, http_status)``. The HTTP status is 200 for
+        ``healthy``/``warming_up`` and 503 for ``degraded``/``failed``.
+    """
+    verdict = aggregate_mahavishnu_health(repo=repo)
+
+    canonical_checks: dict[str, dict[str, Any]] = {
+        feed_name: {
+            "status": feed_snapshot["status"].value,
+            "healthy": feed_snapshot["healthy"],
+            "reason_codes": [rc.value for rc in feed_snapshot["reason_codes"]],
+            "entities_count": feed_snapshot["entities_count"],
+            "last_updated_timestamp": feed_snapshot["last_updated_timestamp"],
+            "cycles_total": feed_snapshot["cycles_total"],
+            "errors_total": feed_snapshot["errors_total"],
+        }
+        for feed_name, feed_snapshot in verdict.snapshot["checks"].items()
+    }
+    reason_codes = [rc.value for rc in verdict.snapshot["reason_codes"]]
+    canonical_status = verdict.worst_status.value
+
+    checks: dict[str, dict[str, Any]] = dict(canonical_checks)
+    overall = canonical_status
+    for name, raw in (component_checks or {}).items():
+        normalised = _normalise_component_check(raw)
+        checks[name] = normalised
+        if not normalised["ok"]:
+            # A failing component check degrades the verdict, but never
+            # softens one the aggregator already reached.
+            if _STATUS_SEVERITY.get(overall, 0) < _STATUS_SEVERITY[StatusValue.DEGRADED.value]:
+                overall = StatusValue.DEGRADED.value
+
+    http_status = _status_to_http(StatusValue(overall))
+
+    body: dict[str, Any] = {
+        # The legacy v1 status string, unchanged for the consumers that
+        # already read it. ``canonical_status`` / ``worst_status`` carry
+        # the precise canonical verdict -- the worst case across every
+        # feed, canonical and MCP-local alike, so nothing in the body
+        # contradicts anything else in it.
+        "status": _STATUS_TO_LEGACY.get(overall, "unhealthy"),
+        "canonical_status": overall,
+        "service": service_name,
+        "version": version,
+        "uptime_seconds": uptime_seconds,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "launcher": _launcher_stamp(),
+        # Every feed, canonical and MCP-local, in one dict.
+        "checks": checks,
+        "canonical_checks": canonical_checks,
+        "canonical_reason_codes": reason_codes,
+        "reason_codes": reason_codes,
+        "worst_status": overall,
+        "feed_states": canonical_checks,
+        "aggregate_duration_ms": verdict.duration_ms,
+        "http_status": http_status,
+    }
+    return body, http_status
+
+
+def _launcher_stamp() -> str:
+    """The launcher identity operators grep for during an incident."""
+    import mcp_common
+
+    return f"mcp_common.server.launcher@{mcp_common.__version__}"
+
+
 __all__ = [
     "MahavishnuHealthVerdict",
     "aggregate_mahavishnu_health",
+    "build_mahavishnu_health_body",
     "get_health_metrics_registry",
     "reset_health_metrics_registry_for_tests",
 ]

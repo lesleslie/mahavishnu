@@ -55,6 +55,16 @@ class ProcessLocalKV:
         with self._lock:
             return [(k, v) for k, v in self._data.items() if k.startswith(prefix)]
 
+    def count(self) -> int:
+        """Number of records currently stored.
+
+        O(1). The storage health probe reports this as the feed's
+        ``entities_count`` on every ``/health`` call, so it must not
+        copy the mapping the way ``list_prefix("")`` would.
+        """
+        with self._lock:
+            return len(self._data)
+
     def clear(self) -> None:
         """Remove every record.
 
