@@ -689,6 +689,11 @@ def register_tasks_handoff_tools(
                 )
             raise
 
+    # The tool is registered. Returning ``True`` is the contract the caller
+    # checks; without it the function falls off the end and implicitly
+    # returns ``None``, which is not assignable to the declared ``bool``.
+    return True
+
 
 def _raise_rate_limited(exc: RateLimitError) -> None:
     """Log + re-raise :class:`RateLimitError`.

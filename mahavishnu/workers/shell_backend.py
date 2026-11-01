@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from .base import BaseWorker, WorkerResult, WorkerStatus
-from .registry import PERMISSION_MODES, PROMPT_ENV_VAR
+from .registry import PERMISSION_MODES, PROMPT_ENV_VAR, PROMPT_FILE_ENV_VAR
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
@@ -133,7 +133,12 @@ def resolve_permission_mode(
     return mode
 
 
-def render_command(config: WorkerConfig, permission_mode: str | None) -> str:
+def render_command(
+    config: WorkerConfig,
+    permission_mode: str | None,
+    *,
+    prompt_file: bool = False,
+) -> str:
     """Render the registry command with the resolved permission mode.
 
     The prompt is deliberately *not* substituted here. It reaches the CLI as
@@ -144,6 +149,18 @@ def render_command(config: WorkerConfig, permission_mode: str | None) -> str:
     vector: the command reaches tmux as one string that tmux runs via
     ``/bin/sh -c``, so a prompt containing ``;`` or ``$(...)`` would execute.
     The prompt is data and must travel as data.
+
+    When ``prompt_file`` is set, the prompt rides in a FILE and only the
+    file's path travels in the environment -- tmux reads the environment
+    out of its own argv, and its command limit is far below the size a
+    prompt routinely reaches (measured: 16 KB launched, 24 KB failed with
+    "command too long"). The prologue reads the file back into
+    ``MAHAVISHNU_PROMPT`` before the CLI starts, so the registry commands
+    keep their single, quoted reference to the prompt.
+
+    The file's content is captured by command substitution into a variable
+    and expanded quoted: it is never re-parsed as shell text, so this
+    keeps the injection property the env-var delivery had.
     """
     command = config.command
     if "{permission_mode}" in command:
@@ -159,6 +176,11 @@ def render_command(config: WorkerConfig, permission_mode: str | None) -> str:
             f"worker {config.worker_type!r} still carries a {{prompt}} placeholder; "
             "the prompt must be passed as data (MAHAVISHNU_PROMPT), never "
             "interpolated into the command"
+        )
+    if prompt_file:
+        command = (
+            f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; '
+            f"export {PROMPT_ENV_VAR}; {command}"
         )
     return command
 
@@ -226,7 +248,32 @@ def _strip_markers(pane: str, markers: list[str]) -> str:
     text = pane
     for marker in markers:
         text = text.replace(marker, "")
-    return text.strip()
+    # The status the marker carries is the shell's bookkeeping, not
+    # something the CLI produced.
+    return _EXIT_CODE_RE.sub("", text).strip()
+
+
+#: The completion marker may carry the CLI's exit status, so a run that
+#: failed is reported as a failure rather than as a success.
+_EXIT_CODE_RE = re.compile(r"\brc=(\d+)")
+
+
+def _parse_exit_code(pane: str) -> int | None:
+    """Return the CLI's exit status from the completion marker.
+
+    The one-shot commands print the marker with the status the CLI
+    exited with: ``__MAHAVISHNU_DONE__ rc=0``. Without that status the
+    marker only says "the CLI exited" -- and the CLI can exit in a
+    fraction of a second having done nothing at all, so a marker alone
+    is not evidence of a successful run.
+
+    Returns ``None`` when the marker carries no status (a command
+    written before the status was added).
+    """
+    match = _EXIT_CODE_RE.search(pane)
+    if match is None:
+        return None
+    return int(match.group(1))
 
 
 def _output_since(before: str, pane: str, marker: str) -> str:
@@ -291,6 +338,10 @@ class ShellWorker(BaseWorker):
         # The private stderr file for this invocation, when the command
         # redirects stderr. Drained and removed when the run finishes.
         self._stderr_path: str | None = None
+        # The file holding the prompt for this invocation, when the prompt
+        # was delivered with the launch command. Removed when the run
+        # finishes or the worker is stopped.
+        self._prompt_file: str | None = None
 
     async def start(self, *, prompt: str | None = None) -> str:
         if self._terminal_manager is None:
@@ -305,20 +356,29 @@ class ShellWorker(BaseWorker):
         # configured bifrost.routing flags. We don't need to
         # know about that here; it's the terminal manager's job.
         mode = resolve_permission_mode(self.config, self._permission_mode)
-        command = render_command(self.config, mode)
 
         # The prompt is data, so it travels as an environment variable that
         # the command reads as "$MAHAVISHNU_PROMPT". It is never
         # interpolated into the command string: the command reaches tmux as
         # a single string that tmux runs via /bin/sh -c, so an interpolated
         # prompt containing ";" or "$(...)" would execute.
+        #
+        # It travels in a FILE, though, not in the variable itself: the
+        # session is launched by handing tmux "-e KEY=VALUE" pairs, so tmux
+        # reads the prompt out of its own argv -- and tmux caps that
+        # command at roughly 16-24 KB (measured on this host: 16 KB
+        # launched, 24 KB failed with "command too long"). A prompt that
+        # big is ordinary, and the failure it produced named neither the
+        # prompt nor the limit.
         env_overrides: dict[str, str] = {}
         if prompt is not None:
-            env_overrides[PROMPT_ENV_VAR] = prompt
+            env_overrides[PROMPT_FILE_ENV_VAR] = self._write_prompt_file(prompt)
             # The prompt went out with the launch command, so the CLI is
             # already running it. ``execute()`` must not type it again --
             # it waits for the CLI to finish instead.
             self._prompt_delivered = True
+
+        command = render_command(self.config, mode, prompt_file=prompt is not None)
 
         # The one-shot commands send the CLI's stderr to a file rather
         # than to the pane, where the MCP servers' startup noise would sit
@@ -447,6 +507,36 @@ class ShellWorker(BaseWorker):
             metadata={"session_id": self._session_id, "sentinel": marker, "timed_out": True},
         )
 
+    def _write_prompt_file(self, prompt: str) -> str:
+        """Write the prompt to a private file and return its path.
+
+        The file is created with ``mkstemp`` (O_EXCL, mode 0600) so the
+        name is unique per invocation and cannot be pre-created by
+        another process on the machine -- a fixed pathname in a shared
+        directory is a symlink target. The path is the only thing that
+        rides the environment; the prompt itself never becomes an argv
+        entry, which is what tmux's command limit would reject.
+        """
+        fd, path = tempfile.mkstemp(prefix="mahavishnu-worker-prompt-", suffix=".txt")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(prompt)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                Path(path).unlink()
+            raise
+        self._prompt_file = path
+        return path
+
+    def _cleanup_prompt_file(self) -> None:
+        """Remove the prompt file, if this invocation wrote one."""
+        path = self._prompt_file
+        self._prompt_file = None
+        if path is None:
+            return
+        with contextlib.suppress(OSError):
+            Path(path).unlink()
+
     def _drain_stderr(self, limit: int = 2000) -> str:
         """Read this invocation's stderr tail and remove the file.
 
@@ -499,11 +589,37 @@ class ShellWorker(BaseWorker):
             pane = await manager.capture_output(session_id)
             if any(marker in pane for marker in markers):
                 stderr_tail = self._drain_stderr()
+                # The shell read the prompt file at startup, long before
+                # the CLI ran, so it is safe to remove it now.
+                self._cleanup_prompt_file()
+                exit_code = _parse_exit_code(pane)
+                if exit_code not in (None, 0):
+                    # The CLI exited non-zero: it failed. Reporting this
+                    # as a success is how a dispatch "went green in
+                    # 0.187s with empty output while Bifrost logged
+                    # nothing at all" -- the marker alone only says the
+                    # process ended, not that it did the work.
+                    return WorkerResult(
+                        worker_id=session_id,
+                        status=WorkerStatus.FAILED,
+                        output=_strip_markers(pane, markers),
+                        error=(
+                            f"CLI exited with status {exit_code}"
+                            + (f"; the CLI's stderr: {stderr_tail}" if stderr_tail else "")
+                        ),
+                        exit_code=exit_code,
+                        duration_seconds=timeout_s - (deadline - time.monotonic()),
+                        metadata={
+                            "session_id": session_id,
+                            "completion_markers": markers,
+                            "stderr_tail": stderr_tail,
+                        },
+                    )
                 return WorkerResult(
                     worker_id=session_id,
                     status=WorkerStatus.COMPLETED,
                     output=_strip_markers(pane, markers),
-                    exit_code=0,
+                    exit_code=exit_code,
                     duration_seconds=timeout_s - (deadline - time.monotonic()),
                     metadata={
                         "session_id": session_id,
@@ -515,6 +631,7 @@ class ShellWorker(BaseWorker):
                 break
 
         stderr_tail = self._drain_stderr()
+        self._cleanup_prompt_file()
         return WorkerResult(
             worker_id=session_id,
             status=WorkerStatus.TIMEOUT,
@@ -551,6 +668,7 @@ class ShellWorker(BaseWorker):
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
 
     async def stop(self) -> None:
+        self._cleanup_prompt_file()
         if self._session_id and self._terminal_manager is not None:
             try:
                 # TerminalManager exposes close_session (singular); close_sessions

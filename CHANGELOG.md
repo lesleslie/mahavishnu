@@ -5,6 +5,104 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0] - 2026-11-01
+
+### Added
+
+- Add `demo all` sweep and fix 12 defects it surfaced
+- agno: Per-call provider failover, gateway model id, Pi pool credential
+- agno: Route LLM calls MiniMax-first with llama-server as fallback
+- bifrost: Give Claude Code its own cache bucket
+- bifrost: Route Qwen Code to the Anthropic-native provider with its own bucket
+- bifrost: Wire the gateway virtual key and cache_mode into the Bodai path
+- tasks: Make the task -> workflow back-link real, end to end
+
+### Changed
+
+- Apply ruff format to the demo sweep changes
+- bifrost: Apply the formatter to the cache-header changes
+- Remove every Dhara reference from mahavishnu
+- Remove the FastAPI health app nothing started
+- Resolve runtime data paths through XDG instead of ~/.claude/data
+- skills: Drop the retired service's older names from the skill tooling
+
+### Fixed
+
+- Address security review findings from the demo sweep
+- agents: Repair mdformat-mangled YAML frontmatter across 59 files
+- agents: Repoint helm-specialist and vitest-specialist at the haiku alias
+- agno: Keep search_code's contract while closing the path hole
+- alerts: Point the health aggregator rules at labels that exist
+- auth: Close the KV prefix-direction bypass and the read/write mismatch
+- auth: Gate the internal principal on a verified credential
+- auth: Scope the KV namespaces, verify the CLI token, report failed writes
+- bifrost: Clear a stranded credential instead of reporting a no-op
+- bifrost: Close the cache-isolation gaps the security review found
+- bifrost: Derive the cache bucket instead of sharing one bucket
+- bifrost: Remove the caller's ability to choose the cache bucket
+- bifrost: Route Claude Code to MiniMax with genuine Anthropic responses
+- demo: Scope the agno task, give hatchet an engine, fix the runpod payload
+- Give the pi demos PiPool's 120s task budget
+- llamaindex: Scope retrieval before synthesis, not after
+- Make the two health surfaces agree, and stop probing a dead store
+- Rewire the MCP substrate off the decommissioned service
+- substrate: Bind the call sites to the server's own store
+- tasks: Make the skipped-edge log say what actually happened
+- tasks: Refuse a blank repo scope instead of dispatching unscoped
+- tests: Stop asserting frozen counts of the installed skills
+
+### Performance
+
+- Skip Mypy import traversal in the refurb hook
+
+### Documentation
+
+- bifrost: Correct the cache-bucket risk to the post-fix state
+- bifrost: Record the shared-cache-bucket exposure and the "off" read gap
+- Correct the tool-count and profile-group claims
+- decisions: Add the correctness and generalist findings
+- decisions: Record why the learning-pipeline tools did not merge
+- demo: Record the sweep re-verified against the committed tree
+- Index the parked oneiric resolver plans
+- plan: Record the credential design and the registration drift
+- plan: Record the final full-suite comparison
+- plan: Record the live namespace-scoping check
+- plan: Record the live prefix-direction and write-protection checks
+- plans: Correct the plan-index drift diagnosis's fleet scope
+- plans: Index the demo sweep report and correct the log-write section
+- plans: Note the Hatchet precondition in the demo sweep report
+- plans: Record the operator decision to defer Bifrost's store repair
+- plans: Record the operator steps the back-link edge needs
+- plans: Record the regression evidence and the type-gate correction
+- plans: Regenerate PLAN_INDEX.md with the authoritative script
+- plans: Regenerate the plan index
+- plans: Resolve the plan-index store drift and guard the tool path
+- Record the 18-demo re-verification sweep
+- refurb: Correct what --follow-imports=skip does and does not preserve
+- refurb: Use the warm-cache measurement for the scan cost
+- specs: Settle the task -> workflow back-link contract
+- substrate: Correct the stale "sync leaf" notes
+
+### Testing
+
+- bootstrap: Accept the internal flag on the MCPClient fakes
+- oneiric: Keep the adapter-registry call assertion within 100 columns
+
+### Build
+
+- deps: Raise the session-buddy floor to 0.38.0
+
+### CI/CD
+
+- Remove the GitHub Actions audit workflows
+
+### Internal
+
+- changelog: Apply the gate's markdown escaping
+- demo: Drop the unused SKIPPED verdict and document log permissions
+- deps: Refresh uv.lock
+- gitignore: Sync the shared bodai ignore patterns
+
 ## [0.37.0] - 2026-10-28
 
 ### Added

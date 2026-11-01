@@ -211,14 +211,23 @@ async def _dispatch_internal(
     parent_session_id: str | None,
     auto_spawn: bool | None,
     pool_manager: Any,
+    timeout: float | None = None,
 ):
     """Internal dispatch helper used when a worktree path is active.
 
     Mirrors the inline dispatch in ``pool_route_execute`` so the worktree
     finally-block can wrap it cleanly. Returns the same ``dict`` shape as
     ``pool_manager.route_task``.
+
+    ``timeout`` is forwarded into the task dict because the worker's
+    own execute timeout is read from ``task["timeout"]``. Without it the
+    worker's default (300s) applies regardless of what the caller asked
+    for, so a long-running task is killed mid-flight while the caller
+    believes it was given a larger budget.
     """
     task = {"prompt": prompt}
+    if timeout is not None:
+        task["timeout"] = timeout
     return await pool_manager.route_task(
         task=task,
         pool_selector=pool_selector,
@@ -971,6 +980,7 @@ def register_pool_tools(
                     parent_session_id=parent_session_id,
                     auto_spawn=auto_spawn,
                     pool_manager=pool_manager,
+                    timeout=timeout,
                 )
 
                 if (

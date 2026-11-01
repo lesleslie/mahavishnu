@@ -156,6 +156,23 @@ PERMISSION_MODES: dict[str, frozenset[str]] = {
 #: ``/bin/sh -c``, so a prompt containing ``;`` or ``$(...)`` would execute.
 PROMPT_ENV_VAR = "MAHAVISHNU_PROMPT"
 
+#: Environment variable carrying the *path* of the file holding the prompt.
+#:
+#: The prompt cannot travel in ``PROMPT_ENV_VAR`` directly: the session is
+#: launched by passing the environment to ``tmux new-session -e KEY=VALUE``,
+#: so tmux reads the value out of its own **argv**. tmux caps that command
+#: at roughly 16-24 KB -- measured on this host, 16 KB succeeded and 24 KB
+#: failed with "command too long" -- and a prompt that big is entirely
+#: ordinary (a task brief plus a couple of file contents). The session then
+#: never starts and the dispatch fails with a message that says nothing
+#: about the prompt.
+#:
+#: So the prompt is written to a file and only its *path* rides the argv.
+#: The rendered command reads the file back into ``PROMPT_ENV_VAR`` before
+#: the CLI starts. The content still never reaches a shell as text: it is
+#: captured by command substitution into a variable and expanded quoted.
+PROMPT_FILE_ENV_VAR = "MAHAVISHNU_PROMPT_FILE"
+
 
 # Worker type registry - all available workers
 WORKER_REGISTRY: dict[str, WorkerConfig] = {
@@ -170,7 +187,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         # which the tmux keystroke path got wrong.
         command=(
             "sh -lc 'qwen -o stream-json --approval-mode {permission_mode} "
-            '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__ rc=%s\\n" "$?"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Fast local AI coding assistant with Qwen model",
@@ -189,11 +206,24 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-claude",
         # One-shot, like terminal-qwen: the prompt rides the command line
         # and the shell prints the completion marker when the CLI exits.
+        #
+        # ``-p`` (print mode) is what makes that true. Without it the
+        # CLI starts an INTERACTIVE session (its own help says "starts an
+        # interactive session by default, use -p/--print for
+        # non-interactive output") and ignores the prompt it was handed
+        # on the command line -- it waits for a human to type one. The
+        # worker then had to type the prompt into the TUI over tmux
+        # keystrokes, which depends on the CLI being ready to read it
+        # and on its Enter semantics: both of which the tmux keystroke
+        # path got wrong, leaving the prompt sitting unsubmitted in the
+        # input buffer until the dispatch timed out. ``-p`` removes the
+        # TUI from the contract entirely -- the CLI reads the prompt,
+        # runs it, and exits, and the shell prints the marker.
         command=(
-            "sh -lc 'claude --output-format stream-json "
+            "sh -lc 'claude -p --verbose --output-format stream-json "
             '--permission-mode {permission_mode} "$MAHAVISHNU_PROMPT" '
             '2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; '
-            'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            'printf "\\n__MAHAVISHNU_DONE__ rc=%s\\n" "$?"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Claude Code CLI for complex reasoning and coding",
@@ -212,7 +242,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-codex",
         command=(
             "sh -lc 'codex exec --json --sandbox {permission_mode} "
-            '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '"$MAHAVISHNU_PROMPT" 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__ rc=%s\\n" "$?"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="Codex CLI one-shot execution with marker-based completion",
@@ -231,7 +261,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         worker_type="terminal-deepagents",
         command=(
             'sh -lc \'deepagents-cli --non-interactive "$MAHAVISHNU_PROMPT" '
-            '--quiet --no-stream 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            '--quiet --no-stream 2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; printf "\\n__MAHAVISHNU_DONE__ rc=%s\\n" "$?"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="DeepAgents CLI one-shot execution with marker-based completion",
@@ -250,7 +280,7 @@ WORKER_REGISTRY: dict[str, WorkerConfig] = {
         command=(
             'sh -lc \'clai --no-stream "$MAHAVISHNU_PROMPT" '
             '2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; '
-            'printf "\\n__MAHAVISHNU_DONE__\\n"; read -r _\''
+            'printf "\\n__MAHAVISHNU_DONE__ rc=%s\\n" "$?"; read -r _\''
         ),
         category=WorkerCategory.AI_ASSISTANT,
         description="CLAI one-shot execution with marker-based completion",

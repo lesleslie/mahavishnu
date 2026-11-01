@@ -296,7 +296,7 @@ class WorkerManager:
             fix_hint = (
                 "Set MAHAVISHNU_NO_EXTRA_PATH=1 to skip PATH augmentation, "
                 "or rely on the PATH bootstrap in scripts/launch_mcp.py to "
-                "prepend ~/.local/bin before launching the subprocess."
+                "append ~/.local/bin to the server's PATH before it starts."
             )
             raise MahavishnuError(
                 f"Worker {worker_type!r} requires tool {required_tool!r} "

@@ -58,7 +58,7 @@ import httpx2 as httpx
 import typer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
 
 # Module-level Typer app. ``_main_cli.py`` wires it as ``mahavishnu demo ...``.
@@ -430,7 +430,7 @@ def _deployment_entrypoint(module_dotted: str, attr_name: str) -> str:
 
 
 @contextmanager
-def _pi_scratch_workspace(pool_name: str) -> Iterator[Path]:
+def _pi_scratch_workspace(pool_name: str) -> Generator[Path]:
     """Run a PiPool agent inside an isolated scratch directory.
 
     The ``pi-coding-agent`` subprocess inherits the parent's working
@@ -480,6 +480,36 @@ def _default_demo_repos() -> list[str]:
     false success that hid the real failure.
     """
     return [str(Path(__file__).resolve().parents[2])]
+
+
+async def _collect_flow_results(state: Any, is_completed: bool) -> list[Any]:
+    """Fetch a completed flow run's results, tolerating a missing result.
+
+    ``State.result`` is ``@async_dispatch(aresult)``: inside a running
+    event loop it hands back the coroutine rather than the value, so
+    the sync call left an un-awaited coroutine behind and
+    ``len(results)`` raised ``TypeError: object of type 'coroutine' has
+    no len()``. ``aresult`` is the explicitly-async entry point.
+    ``raise_on_failure=False`` keeps a crashed run's exception as a
+    value instead of raising it out of the demo.
+
+    Result persistence is not guaranteed: Prefect's local SQLite setup
+    does not always retain state data, and Prefect then raises
+    ``MissingResult``. The run's *state* is the signal that matters --
+    a COMPLETED run means the flow executed -- so a missing result
+    yields an empty list rather than an error.
+    """
+    if not is_completed:
+        return []
+    try:
+        fetched = await state.aresult(raise_on_failure=False)
+    except Exception:  # a missing result must not fail the demo  # noqa: BLE001, RUF100
+        fetched = None
+    if isinstance(fetched, list):
+        return fetched
+    if fetched is not None:
+        return [fetched]
+    return []
 
 
 async def _run_prefect_demo(
@@ -643,29 +673,7 @@ async def _run_prefect_demo(
             polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
             state = polled_run.state
             is_completed = bool(state and state.is_completed())
-            # ``State.result`` is ``@async_dispatch(aresult)``: inside a
-            # running event loop it hands back the coroutine rather than
-            # the value, so the sync call left an un-awaited coroutine
-            # behind and ``len(results)`` raised ``TypeError: object of
-            # type 'coroutine' has no len()``. ``aresult`` is the
-            # explicitly-async entry point. ``raise_on_failure=False``
-            # keeps a crashed run's exception as a value instead of
-            # raising it out of the demo.
-            results: list[Any] = []
-            if is_completed:
-                try:
-                    fetched = await state.aresult(raise_on_failure=False)
-                except Exception:  # CLI entry point — a missing result must not fail the demo  # noqa: BLE001, RUF100
-                    # Result persistence is not guaranteed: Prefect's
-                    # local SQLite setup does not always retain state
-                    # data, and Prefect then raises ``MissingResult``.
-                    # The run's *state* is the signal that matters --
-                    # a COMPLETED run means the flow executed.
-                    fetched = None
-                if isinstance(fetched, list):
-                    results = fetched
-                elif fetched is not None:
-                    results = [fetched]
+            results: list[Any] = await _collect_flow_results(state, is_completed)
 
     return {
         "flow_run_id": str(flow_run_id),
@@ -4483,7 +4491,7 @@ def _write_sweep_log(path: Path, content: str) -> None:
         os.replace(tmp_name, path)
     except BaseException:
         try:
-            os.unlink(tmp_name)
+            Path(tmp_name).unlink()
         except OSError:
             pass
         raise

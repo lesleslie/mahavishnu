@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from mahavishnu.workers import shell_backend
-from mahavishnu.workers.registry import PROMPT_ENV_VAR
+from mahavishnu.workers.registry import PROMPT_ENV_VAR, PROMPT_FILE_ENV_VAR
 from mahavishnu.workers.shell_backend import STDERR_PATH_ENV_VAR, ShellWorker
 
 
@@ -356,13 +356,20 @@ def _one_shot_config(**overrides: Any) -> Any:
 
 
 async def test_one_shot_prompt_travels_with_the_launch_command() -> None:
-    """The prompt rides the command line, so it must reach the session env."""
+    """The prompt rides the launch, so it must reach the session.
+
+    It travels in a FILE whose path is the only thing in the
+    environment: the session is launched by handing tmux "-e KEY=VALUE"
+    pairs, so tmux reads the environment out of its own argv -- and its
+    command limit is far below the size a prompt routinely reaches.
+    """
     manager = _OneShotManager()
     worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
 
     await worker.start(prompt="do the thing")
 
-    assert manager.env_overrides[PROMPT_ENV_VAR] == "do the thing"
+    prompt_path = manager.env_overrides[PROMPT_FILE_ENV_VAR]
+    assert pathlib.Path(prompt_path).read_text() == "do the thing"
     assert manager.sent == [], "a one-shot worker must not type anything"
 
 

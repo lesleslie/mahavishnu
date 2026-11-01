@@ -31,6 +31,9 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from llama_index.core import Document as _DocumentT
     from llama_index.core import VectorStoreIndex as _VectorStoreIndexT
+    from llama_index.core.postprocessor.types import (
+        BaseNodePostprocessor as _BaseNodePostprocessorT,
+    )
     from opentelemetry.trace import StatusCode as _StatusCodeT
 
 try:
@@ -200,6 +203,34 @@ def _node_belongs_to_repo(node: Any, repo_root: str) -> bool:
         return False
     root = repo_root.rstrip("/")
     return resolved == root or resolved.startswith(f"{root}/")
+
+
+#: Metadata keys copied onto a reported source entry when the node
+#: carries them. The code graph and the symbol lists are optional
+#: enrichment; a chunk without them reports neither, rather than an
+#: empty value that reads as "no symbols found".
+_SOURCE_ENRICHMENT_KEYS = ("code_graph", "functions", "classes", "related_files")
+
+
+def _build_source_entries(scoped_nodes: list[Any]) -> list[dict[str, Any]]:
+    """Build the reported source entries, with code-graph context attached.
+
+    ``scoped_nodes`` must already be filtered to the requested
+    repository -- see :func:`_node_belongs_to_repo`. This function only
+    shapes the reporting; it does no scoping of its own.
+    """
+    sources: list[dict[str, Any]] = []
+    for source in scoped_nodes:
+        source_info: dict[str, Any] = {
+            "file": source.metadata.get("file_name", "unknown"),
+            "content": source.node.get_content(),
+            "score": getattr(source, "score", None),  # Similarity score if available
+        }
+        for key in _SOURCE_ENRICHMENT_KEYS:
+            if key in source.metadata:
+                source_info[key] = source.metadata[key]
+        sources.append(source_info)
+    return sources
 
 
 class LlamaIndexIngestionError(AdapterError):
@@ -1383,7 +1414,17 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 )
                 query_engine = RetrieverQueryEngine.from_args(
                     retriever,
-                    node_postprocessors=[_RepoScopePostprocessor(repo_root=repo_root)],
+                    # ``_RepoScopePostprocessor`` is deliberately duck-typed
+                    # (see its docstring), but ``from_args`` declares the
+                    # parameter as a concrete ``list[BaseNodePostprocessor]``.
+                    # The cast states the contract the engine actually
+                    # relies on -- it only calls ``postprocess_nodes`` on
+                    # each entry -- without importing the base class at
+                    # runtime, which the test suite patches out.
+                    node_postprocessors=cast(
+                        "list[_BaseNodePostprocessorT]",
+                        [_RepoScopePostprocessor(repo_root=repo_root)],
+                    ),
                 )
 
                 # Execute query
@@ -1406,28 +1447,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 )
 
                 # Process sources with enhanced code graph context
-                sources = []
-                for source in scoped_nodes:
-                    source_info = {
-                        "file": source.metadata.get("file_name", "unknown"),
-                        "content": source.node.get_content(),
-                        "score": getattr(source, "score", None),  # Similarity score if available
-                    }
-
-                    # Add code graph context if available
-                    if "code_graph" in source.metadata:
-                        source_info["code_graph"] = source.metadata["code_graph"]
-
-                    if "functions" in source.metadata:
-                        source_info["functions"] = source.metadata["functions"]
-
-                    if "classes" in source.metadata:
-                        source_info["classes"] = source.metadata["classes"]
-
-                    if "related_files" in source.metadata:
-                        source_info["related_files"] = source.metadata["related_files"]
-
-                    sources.append(source_info)
+                sources = _build_source_entries(scoped_nodes)
 
                 # Record metrics
                 duration = time.time() - start_time

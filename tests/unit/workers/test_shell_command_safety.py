@@ -15,6 +15,7 @@ Two properties, both about what reaches a shell:
 
 from __future__ import annotations
 
+import pathlib
 from typing import Any
 
 import pytest
@@ -23,6 +24,7 @@ from mahavishnu.workers import shell_backend
 from mahavishnu.workers.registry import (
     PERMISSION_MODES,
     PROMPT_ENV_VAR,
+    PROMPT_FILE_ENV_VAR,
     WORKER_REGISTRY,
     WorkerConfig,
 )
@@ -93,14 +95,29 @@ def test_prompt_reaches_the_session_as_environment_data(worker_type: str) -> Non
     )
     asyncio.run(worker.start(prompt=HOSTILE_PROMPT))
 
-    assert captured["env"][PROMPT_ENV_VAR] == HOSTILE_PROMPT
+    # The prompt travels in a FILE; only its path is in the environment,
+    # because tmux reads the environment out of its own argv.
+    prompt_path = captured["env"][PROMPT_FILE_ENV_VAR]
+    assert pathlib.Path(prompt_path).read_text() == HOSTILE_PROMPT
+
+    # The generated prologue reads the prompt file back into the variable
+    # before the CLI starts. It is mahavishnu's own text, so it is
+    # stripped before the injection checks below -- which are about the
+    # REGISTRY's command, not about the prologue.
+    prologue = (
+        f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; export {PROMPT_ENV_VAR}; '
+    )
+    command = captured["command"]
+    assert command.startswith(prologue)
+    command = command[len(prologue) :]
+
     # Check the dangerous substring, not the exact prompt: an implementation
     # that quoted it would hide the literal while still executing it.
-    assert "touch /tmp/pwned" not in captured["command"]
+    assert "touch /tmp/pwned" not in command
     # The only shell separators the registry's own commands use are the
     # completion-marker printf and the blocking read that keeps the pane
     # alive. Anything else would be an injection seam.
-    without_known_separators = captured["command"].replace("; printf", "").replace("; read -r _", "")
+    without_known_separators = command.replace("; printf", "").replace("; read -r _", "")
     assert ";" not in without_known_separators
 
 

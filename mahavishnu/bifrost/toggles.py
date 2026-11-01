@@ -590,6 +590,46 @@ def _warn_no_virtual_key(harness: HarnessDescriptor) -> None:
     )
 
 
+def _prepare_bifrost_backup(
+    harness: HarnessDescriptor,
+    settings: dict[str, Any],
+    url: str,
+    existing: str | None,
+    virtual_key: str | None,
+    dry_run: bool,
+    force: bool,
+) -> None:
+    """Record the pre-toggle upstream, refusing to strand a credential.
+
+    The backup holds the endpoint ``direct`` restores. On a host that is
+    already pointed at Bifrost, ``existing`` *is* the Bifrost URL:
+    recording it would make ``direct`` put the harness back on the
+    gateway instead of the upstream it came from. Keep whatever the
+    first toggle recorded instead.
+
+    This toggle never persists credentials to the backup, so an existing
+    ``x-bf-vk`` header cannot be restored by ``direct``. Overwriting it
+    would therefore strand a secret in a block that sends it to
+    whatever endpoint an unmatched model uses -- hence the refusal
+    unless ``--force`` is given.
+    """
+    if existing != url or virtual_key:
+        existing_key = _read_credential(settings, harness)
+        if existing_key and existing_key != virtual_key and not force:
+            typer.echo(
+                f"refusing to overwrite an existing {VIRTUAL_KEY_HEADER} header on "
+                f"{harness.label}: this toggle never persists credentials to "
+                f"{harness.backup_path}, so the old value could not be restored. "
+                f"Re-run with --force to discard it, or remove the header first.",
+                err=True,
+            )
+            raise typer.Exit(EXIT_ERROR)
+        prior_url = existing
+        if existing == url:
+            prior_url = _load_backup(harness).get("url")
+        _save_backup(harness, prior_url, existing_key is not None, dry_run)
+
+
 def _action_bifrost(
     harness: HarnessDescriptor,
     host: str,
@@ -678,26 +718,15 @@ def _action_bifrost(
         typer.echo(f"note: {harness.restart_note}")
         return
 
-    if existing != url or virtual_key:
-        existing_key = _read_credential(settings, harness)
-        if existing_key and existing_key != virtual_key and not force:
-            typer.echo(
-                f"refusing to overwrite an existing {VIRTUAL_KEY_HEADER} header on "
-                f"{harness.label}: this toggle never persists credentials to "
-                f"{harness.backup_path}, so the old value could not be restored. "
-                f"Re-run with --force to discard it, or remove the header first.",
-                err=True,
-            )
-            raise typer.Exit(EXIT_ERROR)
-        # The backup records the endpoint `direct` restores. On a host that
-        # is already pointed at Bifrost, `existing` *is* the Bifrost URL:
-        # recording it would make `direct` put the harness back on the
-        # gateway instead of the upstream it came from. Keep whatever the
-        # first toggle recorded instead.
-        prior_url = existing
-        if existing == url:
-            prior_url = _load_backup(harness).get("url")
-        _save_backup(harness, prior_url, existing_key is not None, dry_run)
+    _prepare_bifrost_backup(
+        harness,
+        settings,
+        url,
+        existing,
+        virtual_key,
+        dry_run,
+        force,
+    )
 
     _set_url(settings, harness, url)
     if virtual_key:

@@ -20,12 +20,30 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from ..workers.manager import WorkerManager
+from ..workers.registry import RuntimeKind, get_worker_config
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
 
 if TYPE_CHECKING:
     from ..terminal.manager import TerminalManager
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_settings() -> Any:
+    """Return the project settings, or ``None`` when they cannot be loaded.
+
+    The settings carry ``workers.enabled``, which the worker capability
+    check reads before it will spawn anything. Loading them is best
+    effort: a pool that cannot read the settings still runs, and the
+    capability check then reports what it can.
+    """
+    from ..core.config import get_settings
+
+    try:
+        return get_settings()
+    except Exception as exc:  # MCP tool error handler — settings load is best-effort, never fatal  # noqa: BLE001, RUF100
+        logger.warning(f"Could not load settings for the pool: {exc}")
+        return None
 
 
 class MahavishnuPool(BasePool):
@@ -71,6 +89,7 @@ class MahavishnuPool(BasePool):
         config: PoolConfig,
         terminal_manager: TerminalManager,
         session_buddy_client: Any = None,
+        settings: Any = None,
     ):
         """Initialize MahavishnuPool.
 
@@ -78,10 +97,37 @@ class MahavishnuPool(BasePool):
             config: Pool configuration
             terminal_manager: TerminalManager for terminal control
             session_buddy_client: Optional Session-Buddy MCP client
+            settings: Settings used for the worker capability check.
+                Resolved from the project when not supplied.
         """
         super().__init__(config)
         self.terminal_manager = terminal_manager
         self.session_buddy_client = session_buddy_client
+
+        # The WorkerManager evaluates a worker's capability against the
+        # settings before it will spawn one, and the first thing it reads
+        # is ``workers.enabled``. With no settings object at all that
+        # lookup resolves to None, which reads as False -- so every
+        # dispatch was refused with "workers disabled by config" and
+        # "missing_requirements: workers.enabled", whatever the YAML
+        # actually said.
+        if settings is None:
+            settings = _resolve_settings()
+        self.settings = settings
+        # A one-shot CLI harness takes its prompt with the launch command
+        # and the CLI exits when it is done, so the pool launches one
+        # session per task instead of holding a pool of idle sessions.
+        #
+        # Only the SHELL-runtime one-shot workers qualify. The other
+        # one-shot types (shepherd, container, openhands, ...) are
+        # isolated workers with their own lifecycle, and they do not
+        # consume a prompt at all -- they take a command or a task ref.
+        worker_config = get_worker_config(config.worker_type)
+        self._is_one_shot = bool(
+            worker_config
+            and worker_config.one_shot
+            and worker_config.runtime_kind is RuntimeKind.SHELL
+        )
 
         # Resolve writable_root for ShepherdBackendWorker (the post-2026-09-24
         # default worker substrate; see docs/decisions/2026-09-24-
@@ -144,6 +190,7 @@ class MahavishnuPool(BasePool):
             max_concurrent=config.max_workers,
             session_buddy_client=session_buddy_client,
             writable_root=self.writable_root,
+            settings=self.settings,
         )
 
         # Track task statistics for metrics
@@ -204,16 +251,26 @@ class MahavishnuPool(BasePool):
         # Spawn minimum workers (writable_root is the ShepherdBackendWorker's
         # required kwarg; we set it on WorkerManager.__init__ above, but pass
         # per-call here so future per-spawn overrides are easy to add).
-        worker_ids = await self.worker_manager.spawn_workers(
-            worker_type=self.config.worker_type,
-            count=self.config.min_workers,
-            writable_root=self.writable_root,
-        )
-
-        self._workers = {wid: f"worker_{wid}" for wid in worker_ids}
+        #
+        # A one-shot CLI is the exception: it reads its prompt from the
+        # launch command, so a session spawned now would have no prompt
+        # and the CLI would exit immediately. Those sessions are launched
+        # per task instead -- see ``_execute_one_shot_task``.
+        if self._is_one_shot:
+            self._workers = {}
+        else:
+            worker_ids = await self.worker_manager.spawn_workers(
+                worker_type=self.config.worker_type,
+                count=self.config.min_workers,
+                writable_root=self.writable_root,
+            )
+            self._workers = {wid: f"worker_{wid}" for wid in worker_ids}
         self._status = PoolStatus.RUNNING
 
-        logger.info(f"MahavishnuPool {self.pool_id} started with {len(worker_ids)} workers")
+        logger.info(
+            f"MahavishnuPool {self.pool_id} started with {len(self._workers)} "
+            f"pre-spawned workers (one_shot={self._is_one_shot})"
+        )
 
         return self.pool_id
 
@@ -227,6 +284,9 @@ class MahavishnuPool(BasePool):
         Returns:
             Execution result with worker_id, output, status
         """
+        if self._is_one_shot:
+            return await self._execute_one_shot_task(task)
+
         # Get first available worker
         if not self._workers:
             raise RuntimeError("No workers available in pool")
@@ -238,6 +298,61 @@ class MahavishnuPool(BasePool):
         duration = time.time() - start_time
 
         # Track statistics
+        if result.status.value == "completed":
+            self._tasks_completed += 1
+        else:
+            self._tasks_failed += 1
+        self._task_durations.append(duration)
+
+        return {
+            "pool_id": self.pool_id,
+            "worker_id": result.worker_id,
+            "status": result.status.value,
+            "output": result.output,
+            "error": result.error,
+            "duration": duration,
+        }
+
+    async def _execute_one_shot_task(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Run one task on a freshly launched one-shot worker.
+
+        A one-shot CLI takes its prompt with the launch command -- it
+        rides the command line as ``MAHAVISHNU_PROMPT`` -- so the session
+        has to be started *after* the prompt is known. A pool that
+        pre-spawned workers could only deliver the prompt by typing it
+        into the CLI's TUI over tmux keystrokes, which depends on the
+        CLI being ready to read it and on its Enter semantics: both are
+        outside this codebase's control, and both have gone wrong. The
+        prompt sat unsubmitted in the input buffer and the dispatch ran
+        out its timeout with the CLI idle.
+
+        Launching per task costs one session per dispatch, which is the
+        price of the contract: the session exists to run one prompt, and
+        the CLI exits when it is done.
+        """
+        prompt = task.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError(
+                f"Pool {self.pool_id!r} runs the one-shot worker "
+                f"{self.config.worker_type!r}, which needs a non-empty 'prompt'."
+            )
+
+        start_time = time.time()
+        worker_ids = await self.worker_manager.submit_workers(
+            self.config.worker_type,
+            [prompt],
+        )
+        worker_id = worker_ids[0]
+        try:
+            results = await self.worker_manager.execute_batch(worker_ids, [task])
+        finally:
+            await self.worker_manager.close_worker(worker_id)
+
+        result = results.get(worker_id)
+        if result is None:
+            raise RuntimeError(f"Pool {self.pool_id!r}: worker {worker_id} produced no result")
+
+        duration = time.time() - start_time
         if result.status.value == "completed":
             self._tasks_completed += 1
         else:

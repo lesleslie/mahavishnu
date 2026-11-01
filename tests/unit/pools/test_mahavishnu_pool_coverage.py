@@ -16,15 +16,25 @@ from mahavishnu.workers.base import WorkerResult
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def pool_config() -> PoolConfig:
-    """PoolConfig with non-trivial min/max so scale() can exercise both branches."""
+@pytest.fixture(params=["general", "one-shot"])
+def pool_config(request: pytest.FixtureRequest) -> PoolConfig:
+    """PoolConfig with non-trivial min/max so scale() can exercise both branches.
+
+    Parametrized over the two pool shapes a SHELL worker type can take:
+
+    - ``general`` -- a worker that keeps its session, so the pool holds a
+      set of idle workers and dispatches into one of them.
+    - ``one-shot`` -- a CLI harness (``terminal-claude``) that reads its
+      prompt from the launch command and exits when it is done, so the
+      pool launches one session per task instead.
+    """
+    worker_type = "terminal-claude" if request.param == "one-shot" else "terminal-shell"
     return PoolConfig(
         name="coverage-mahavishnu",
         pool_type="mahavishnu",
         min_workers=2,
         max_workers=6,
-        worker_type="terminal-claude",
+        worker_type=worker_type,
     )
 
 
@@ -48,6 +58,7 @@ def _build_mock_worker_manager(
     mock.spawn_workers = AsyncMock(return_value=spawn_workers or ["worker-1", "worker-2"])
     mock.execute_task = AsyncMock()
     mock.execute_batch = AsyncMock(return_value={})
+    mock.submit_workers = AsyncMock(return_value=["worker-1"])
     mock.close_worker = AsyncMock()
     mock.close_all = AsyncMock()
     mock.collect_results = AsyncMock(return_value={})
@@ -107,7 +118,7 @@ async def test_execute_task_status_outcomes(
 ) -> None:
     """execute_task records completed vs. failed counters for each terminal status."""
     mock_wm = _build_mock_worker_manager()
-    mock_wm.execute_task.return_value = WorkerResult(
+    worker_result = WorkerResult(
         worker_id="worker-1",
         status=status,
         output="ok",
@@ -115,6 +126,8 @@ async def test_execute_task_status_outcomes(
         exit_code=0 if status is WorkerStatus.COMPLETED else 1,
         duration_seconds=0.25,
     )
+    mock_wm.execute_task.return_value = worker_result
+    mock_wm.execute_batch.return_value = {"worker-1": worker_result}
     pool = _make_pool(pool_config, mock_terminal_manager, mock_wm)
     _seed_workers(pool, ["worker-1"])
 
@@ -140,6 +153,7 @@ async def test_execute_task_propagates_worker_manager_exceptions(
     """execute_task does NOT swallow WorkerManager exceptions; it lets them bubble."""
     mock_wm = _build_mock_worker_manager()
     mock_wm.execute_task.side_effect = side_effect
+    mock_wm.execute_batch.side_effect = side_effect
     pool = _make_pool(pool_config, mock_terminal_manager, mock_wm)
     _seed_workers(pool, ["worker-1"])
 
@@ -328,3 +342,169 @@ async def test_get_metrics_with_durations(
     assert metrics.tasks_completed == 3
     assert metrics.avg_task_duration == pytest.approx(2.0)
     assert metrics.memory_usage_mb == 0.0
+
+
+# ---------------------------------------------------------------------------
+# one-shot CLI pools: one session per task, launched with the prompt
+# ---------------------------------------------------------------------------
+#
+# A one-shot CLI harness (terminal-claude and friends) reads its prompt
+# from the launch command and exits when it is done, so the pool cannot
+# pre-spawn a set of idle sessions and type into them later. Each task
+# gets its own session, launched with the prompt already in place.
+
+
+@pytest.fixture
+def one_shot_pool_config() -> PoolConfig:
+    """A pool over a CLI harness, which is one-shot."""
+    return PoolConfig(
+        name="coverage-one-shot",
+        pool_type="mahavishnu",
+        min_workers=1,
+        max_workers=2,
+        worker_type="terminal-claude",
+    )
+
+
+async def test_one_shot_pool_launches_a_session_per_task(
+    one_shot_pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """The prompt is handed to the launch, not typed into a live session."""
+    mock_wm = _build_mock_worker_manager()
+    mock_wm.execute_batch.return_value = {
+        "worker-1": WorkerResult(
+            worker_id="worker-1",
+            status=WorkerStatus.COMPLETED,
+            output="done",
+            error=None,
+            exit_code=0,
+            duration_seconds=0.1,
+        )
+    }
+    pool = _make_pool(one_shot_pool_config, mock_terminal_manager, mock_wm)
+
+    result = await pool.execute_task({"prompt": "do the thing"})
+
+    mock_wm.submit_workers.assert_awaited_once_with(
+        "terminal-claude",
+        ["do the thing"],
+    )
+    mock_wm.execute_batch.assert_awaited_once()
+    # The session exists to run one prompt; it is torn down after.
+    mock_wm.close_worker.assert_awaited_once_with("worker-1")
+    assert result["status"] == "completed"
+    assert result["output"] == "done"
+
+
+async def test_one_shot_pool_requires_a_prompt(
+    one_shot_pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """A one-shot launch with no prompt would start a CLI that exits at once."""
+    mock_wm = _build_mock_worker_manager()
+    pool = _make_pool(one_shot_pool_config, mock_terminal_manager, mock_wm)
+
+    with pytest.raises(ValueError, match="prompt"):
+        await pool.execute_task({})
+
+    mock_wm.submit_workers.assert_not_awaited()
+
+
+async def test_one_shot_pool_closes_the_session_even_when_the_run_fails(
+    one_shot_pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """A failed run must not leak the session it launched."""
+    mock_wm = _build_mock_worker_manager()
+    mock_wm.execute_batch.side_effect = RuntimeError("boom")
+    pool = _make_pool(one_shot_pool_config, mock_terminal_manager, mock_wm)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await pool.execute_task({"prompt": "do the thing"})
+
+    mock_wm.close_worker.assert_awaited_once_with("worker-1")
+
+
+async def test_one_shot_pool_start_pre_spawns_nothing(
+    one_shot_pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """A one-shot CLI launched without a prompt exits at once.
+
+    So the pool must not hold idle sessions for it: every session is
+    launched per task, with the prompt already in place.
+    """
+    mock_wm = _build_mock_worker_manager()
+    pool = _make_pool(one_shot_pool_config, mock_terminal_manager, mock_wm)
+
+    await pool.start()
+
+    mock_wm.spawn_workers.assert_not_awaited()
+    assert pool._workers == {}
+    assert pool._status == PoolStatus.RUNNING
+
+
+async def test_general_pool_start_pre_spawns_its_workers(
+    pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """A worker that keeps its session is spawned once, at pool start."""
+    mock_wm = _build_mock_worker_manager()
+    pool = _make_pool(pool_config, mock_terminal_manager, mock_wm)
+
+    await pool.start()
+
+    if pool._is_one_shot:
+        mock_wm.spawn_workers.assert_not_awaited()
+    else:
+        mock_wm.spawn_workers.assert_awaited_once()
+        assert len(pool._workers) == 2
+
+
+# ---------------------------------------------------------------------------
+# the capability check needs settings
+# ---------------------------------------------------------------------------
+#
+# WorkerManager evaluates a worker's capability before spawning it, and
+# the first thing it reads is ``workers.enabled``. With no settings
+# object at all that lookup resolves to None, which reads as False --
+# so EVERY dispatch was refused with "workers disabled by config" and
+# "missing_requirements: workers.enabled", whatever the YAML said.
+
+
+def test_the_pool_resolves_settings_for_the_capability_check() -> None:
+    """The pool must hand its WorkerManager a usable settings object."""
+    from mahavishnu.pools import mahavishnu_pool
+
+    settings = mahavishnu_pool._resolve_settings()
+
+    assert settings is not None, "the pool could not load the project settings"
+    assert settings.workers.enabled is True
+
+
+def test_a_terminal_claude_worker_is_ready_once_settings_are_wired() -> None:
+    """With settings, the CLI harness passes the capability check."""
+    from mahavishnu.pools import mahavishnu_pool
+    from mahavishnu.workers.capabilities import evaluate_worker_capabilities
+    from mahavishnu.workers.capabilities._states import WorkerCapabilityState
+
+    report = evaluate_worker_capabilities(
+        "terminal-claude",
+        settings=mahavishnu_pool._resolve_settings(),
+    )
+
+    assert report.state is WorkerCapabilityState.READY, (
+        f"terminal-claude is not routable: {report.safe_reason}"
+    )
+
+
+def test_without_settings_the_capability_check_refuses_everything() -> None:
+    """The trap this pins: no settings reads as 'workers disabled'."""
+    from mahavishnu.workers.capabilities import evaluate_worker_capabilities
+    from mahavishnu.workers.capabilities._states import WorkerCapabilityState
+
+    report = evaluate_worker_capabilities("terminal-claude", settings=None)
+
+    assert report.state is WorkerCapabilityState.CONFIGURED
+    assert report.missing_requirements == ["workers.enabled"]

@@ -7,7 +7,7 @@ packages = ["mahavishnu"]
 
 [project]
 name = "mahavishnu"
-version = "0.37.0"
+version = "0.38.0"
 description = "Global orchestrator package for development workflows"
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
@@ -683,6 +683,15 @@ exclude_deps = [
     # Residuals: runtime deps kept in [project].dependencies but never imported
     # directly. Creosote would otherwise flag them as unreferenced.
     "starlette-context",  # lifecycle hook injection; FastMCP/Starlette transitive
+    # uvicorn: the ASGI server behind the MCP server's HTTP transport.
+    # `fastmcp/server/mixins/transport.py` does a module-level
+    # `import uvicorn`, and `run_async(transport="http", ...)` -- the
+    # path `scripts/launch_mcp.py` takes -- lives in that same module.
+    # Neither fastmcp nor mcp-common declares uvicorn as a requirement,
+    # so this project's own declaration is the only thing providing it.
+    # Creosote scans paths = ["mahavishnu"], so it cannot see the
+    # transitive import and flags the dependency as unused.
+    "uvicorn",
     "ty",  # used as an external CLI, not imported
     "tomli",  # py3.13 stdlib tomllib replacement; transitive on older resolvers
     "gitpython",  # used via `subprocess`-style wrappers and git CLI fallback

@@ -22,9 +22,62 @@ the historical context.
 
 from __future__ import annotations
 
+import os
 import site
 import sys
 from pathlib import Path
+
+# PATH augmentation for the user-level CLI directory.
+#
+# launchd gives a service ONLY the EnvironmentVariables declared in its
+# plist -- it never sources ~/.zshenv, ~/.zshrc or ~/.profile. The
+# generated plists therefore hand this process a PATH that omits
+# ~/.local/bin, where the user-level CLIs live (claude, codex,
+# deepagents, clai, crow-mcp).
+#
+# Two failures follow from that gap:
+#   1. WorkerManager._validate_required_tool calls shutil.which() on the
+#      worker's requires_tool. With "claude" absent it raised
+#      "Worker 'terminal-claude' requires tool 'claude' which is not on
+#      PATH" -- the check that blocked every pool spawn.
+#   2. The spawned worker command is `sh -lc 'claude ...'`. A login
+#      shell reads ~/.profile but NOT ~/.zshenv, so it could not resolve
+#      the binary either, even though the operator's interactive shell
+#      could.
+#
+# Putting ~/.local/bin on this process's PATH fixes both: shutil.which()
+# resolves against os.environ, and the tmux worker session inherits the
+# server's PATH, so the spawned command finds the binary too.
+#
+# ~/.local/bin is APPENDED rather than prepended so a Homebrew-installed
+# binary of the same name (uv, uvx, docker) still wins -- matching the
+# precedence the operator's own login shell resolves.
+#
+# Set MAHAVISHNU_NO_EXTRA_PATH=1 to skip this; the worker-manager error
+# message already advertises that opt-out to operators.
+_LOCAL_BIN_NAME = ".local/bin"
+
+
+def augment_path() -> None:
+    """Append ``~/.local/bin`` to ``os.environ["PATH"]`` if it is missing.
+
+    No-op when the directory does not exist, when the entry is already
+    present, or when ``MAHAVISHNU_NO_EXTRA_PATH`` is set. Idempotent.
+    """
+    if os.environ.get("MAHAVISHNU_NO_EXTRA_PATH"):
+        return
+
+    local_bin = Path.home() / _LOCAL_BIN_NAME
+    if not local_bin.is_dir():
+        return
+
+    entry = str(local_bin)
+    current = os.environ.get("PATH", "")
+    if entry in current.split(os.pathsep):
+        return
+
+    os.environ["PATH"] = f"{current}{os.pathsep}{entry}" if current else entry
+
 
 # Venv bootstrap: the wrapper's shebang (`#!/usr/bin/env python3`) resolves to
 # whatever python3 is in launchd's $PATH — typically Homebrew's system python
@@ -134,6 +187,11 @@ def main() -> int:
     # cooperative shutdown. See launcher-cookbook.md "Failure modes" row for
     # why this is load-bearing for incident-response scripts.
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+
+    # Must run BEFORE the server starts: the worker-manager PATH check
+    # (shutil.which) and the tmux worker sessions both read this
+    # process's environment.
+    augment_path()
 
     asyncio.run(
         launch(
