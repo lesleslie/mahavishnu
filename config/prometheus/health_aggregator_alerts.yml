@@ -17,16 +17,29 @@
 # includes a ``runbook_url`` so operators triage via the canonical
 # ReasonCode action guidance.
 #
-# NOTE on metric sources:
-# - ``probe_http_status_code`` (blackbox_exporter) and ``probe_success``
-#   fire today — they read the /health HTTP status code that each
-#   Bodai MCP server publishes.
-# - ``mcp_common_health_halflife_seconds{repo}`` and
-#   ``health.feed.errors_within_window{repo, feed}`` are the OTel
-#   metrics named in plan §4 Integration Contract Observability.
-#   These land when the OTel exporter wiring ships in a followup
-#   commit; alerts that depend on them are kept as forward-looking
-#   targets so the rule files are complete on day one.
+# NOTE on metric sources and label conventions:
+# - The fleet runs NO blackbox_exporter. ``probe_success`` and
+#   ``probe_http_status_code`` have no source in any Prometheus config,
+#   so rules that read them could never fire. The service-down signal
+#   comes from Prometheus's own ``up`` series on the
+#   ``bodai-ecosystem`` scrape job instead, and the service-degraded
+#   signal comes from the health aggregator's own verdict series.
+# - ``health_feed_status{feed, repo, status}``,
+#   ``health_feed_errors_within_window{feed, repo}`` and
+#   ``mcp_common_health_halflife_seconds{repo}`` are emitted by
+#   mcp-common's health aggregator and ARE scraped today (verified
+#   against the live Prometheus). They are the metrics these rules read.
+# - Label convention: ``repo`` is the plain component name ("mahavishnu",
+#   "session-buddy", "akosha", ...) — both the file_sd target label in
+#   monitoring/file_sd/verified_metrics_targets.yml and the label the
+#   aggregator stamps on its own series. The earlier
+#   ``repo=~"bodai-mcp-.*"`` selector came from the 2026-08-20 MCP
+#   surface standardization plan, where "bodai-mcp-*" names a server's
+#   baseline tool identity; it never became a Prometheus label, so every
+#   rule using it matched zero series. These rules deliberately carry
+#   NO repo filter: the aggregator metrics exist only on Bodai
+#   components, so filtering would only risk drifting out of sync with
+#   the fleet's membership.
 
 groups:
   - name: bodai-health-aggregator
@@ -34,57 +47,58 @@ groups:
     rules:
 
       # ------------------------------------------------------------------
-      # /health HTTP 5xx (always actionable)
+      # Service-level health (always actionable)
       # ------------------------------------------------------------------
+      # The fleet runs no blackbox_exporter, so there is no probe_* series
+      # to read the /health HTTP status code from. Two equivalent signals
+      # exist: Prometheus's own ``up`` series says whether the server is
+      # scrapeable at all, and the health aggregator's verdict series says
+      # what /health would answer (the /health route returns 503 exactly
+      # when the aggregate verdict is degraded or failed).
 
       - alert: BodaiMCPServerHealthDown
         expr: |
-          probe_success{job=~"bodai-mcp-.*"} == 0
+          up{job="bodai-ecosystem"} == 0
         for: 2m
         labels:
           severity: critical
           component: health-aggregator
-          bodai_repo: "{{ $labels.job }}"
+          bodai_repo: "{{ $labels.repo }}"
         annotations:
-          summary: "{{ $labels.job }} /health returning 5xx for 2m+"
+          summary: "{{ $labels.repo }} is not scrapeable for 2m+"
           description: |
-            The /health endpoint for {{ $labels.job }} has been returning
-            non-2xx for at least 2 minutes. Per plan §5 Phase 4 contract,
-            200 = healthy/warming_up, 503 = degraded/failed.
-            Check the per-feed status + reason_codes in /health body.
+            Prometheus cannot scrape {{ $labels.repo }}
+            ({{ $labels.instance }}). The server is down, restarting, or
+            its /metrics route is not answering. Check
+            `mcp-ctl status {{ $labels.repo }}` and the launchd logs.
           runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
 
       - alert: BodaiMCPServerHealthDegraded
         expr: |
-          probe_http_status_code{job=~"bodai-mcp-.*"} == 503
+          max by (repo) (health_feed_status{status=~"degraded|failed"}) > 0
         for: 5m
         labels:
           severity: warning
           component: health-aggregator
-          bodai_repo: "{{ $labels.job }}"
+          bodai_repo: "{{ $labels.repo }}"
         annotations:
-          summary: "{{ $labels.job }} /health degraded for 5m+"
+          summary: "{{ $labels.repo }} /health degraded for 5m+"
           description: |
-            The /health endpoint for {{ $labels.job }} has been returning
-            503 for 5+ minutes. The aggregator's worst-case status is
-            degraded or failed. Read the JSON body's ``checks`` map for
-            per-feed verdicts and reason_codes.
+            The health aggregator's worst-case verdict for
+            {{ $labels.repo }} has been degraded or failed for 5+ minutes,
+            which is what makes /health answer 503. Read the JSON body's
+            ``checks`` map for per-feed verdicts and reason_codes.
           runbook_url: "https://github.com/lesleslie/mahavishnu/blob/main/docs/runbooks/HEALTH_REASON_CODES.md"
 
       # ------------------------------------------------------------------
-      # /health body-level alerts (forward-looking — needs OTel wiring)
+      # /health body-level alerts (per feed)
       # ------------------------------------------------------------------
-      # These alerts read the OTel metrics named in plan §4 Integration
-      # Contract Observability. The metrics are emitted by
-      # ``aggregate_feed_states`` in mcp-common once the OTel wiring
-      # ships; until then these rules silently produce no data. Kept
-      # here so the rule files are complete on day one — operators can
-      # ``promtool check rules`` the file today and the alerts become
-      # live once the metrics land.
+      # These read the aggregator's per-feed series, which are emitted by
+      # ``aggregate_feed_states`` in mcp-common and scraped today.
 
       - alert: BodaiFeedRecentErrorWithinHalflife
         expr: |
-          health_feed_errors_within_window{repo=~"bodai-mcp-.*"} > 0
+          health_feed_errors_within_window > 0
         for: 5m
         labels:
           severity: warning
@@ -102,7 +116,7 @@ groups:
 
       - alert: BodaiFeedNeverPopulated
         expr: |
-          health_feed_status{repo=~"bodai-mcp-.*",status="degraded"} > 0
+          health_feed_status{status="degraded"} > 0
         for: 10m
         labels:
           severity: critical
@@ -123,7 +137,7 @@ groups:
 
       - alert: BodaiFeedFailedIngesterNotRunning
         expr: |
-          health_feed_status{repo=~"bodai-mcp-.*",status="failed"} > 0
+          health_feed_status{status="failed"} > 0
         for: 5m
         labels:
           severity: critical
@@ -152,7 +166,7 @@ groups:
 
       - alert: BodaiHealthDecayDisabled
         expr: |
-          mcp_common_health_halflife_seconds{repo=~"bodai-mcp-.*"} == 0
+          mcp_common_health_halflife_seconds == 0
         for: 5m
         labels:
           severity: warning
