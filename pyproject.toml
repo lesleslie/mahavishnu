@@ -209,7 +209,12 @@ cache = [
 ecosystem = [
     "akosha>=0.23.1",
     "crackerjack>=0.89.2",
-    "session-buddy>=0.33.1",
+    # 0.38.0 is the first release carrying ``tasks_link_workflow`` — the
+    # only channel that writes ``Task.workflow_id`` — and the shared
+    # ``HandoffResult`` envelope whose ``status`` default mahavishnu's
+    # ``tasks_handoff_gate`` compares field-by-field. A lower floor
+    # resolves to a session-buddy that cannot satisfy the handoff edge.
+    "session-buddy>=0.38.0",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).

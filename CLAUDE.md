@@ -70,12 +70,14 @@ Mahavishnu owns the **dispatch edge** in the Bodai task system: `mcp__mahavishnu
 This is PR #2. It depends on PR #1 (session-buddy):
 
 - PR #1 ships `tasks_create`, `tasks_get`, `tasks_update` in session-buddy
-- PR #2 ships `tasks_handoff_to_workflow` in mahavishnu — the two-call flow (lookup → dispatch → back-link) calls session-buddy's `tasks_get` and `tasks_update`
-- **PR #2 cannot merge before PR #1 is tagged.** Once PR #1 is tagged, the operator manually bumps the `session-buddy>=0.30.0` pin in this repo's `pyproject.toml` (per `feedback-mcp-common-version-bump-is-user`).
+- PR #2 ships `tasks_handoff_to_workflow` in mahavishnu — the two-call flow (lookup → dispatch → back-link) calls session-buddy's `tasks_get` and `tasks_link_workflow`
+- **PR #2 cannot merge before PR #1 is tagged.** The pin is `session-buddy>=0.38.0` in this repo's `pyproject.toml` — 0.38.0 is the first release carrying `tasks_link_workflow`, the only channel that writes `Task.workflow_id` (per `feedback-mcp-common-version-bump-is-user`, the pin is bumped by the operator).
 
 ### Feature-flag fallback
 
-`mahavishnu/mcp/tools/tasks_handoff_gate.py:tasks_handoff_to_workflow_available()` lets the registration code in `server_core.py:_register_tools()` activate the tool only when session-buddy 0.30+ is installed. Pre-PR #1 systems see a `logger.warning(...)` instead of an exception — server startup stays clean.
+`mahavishnu/mcp/tools/tasks_handoff_gate.py:tasks_handoff_to_workflow_available()` lets the registration code in `server_core.py:_register_tools()` activate the tool only when session-buddy's shared envelope matches mahavishnu's inline copy. The check compares field names, requiredness, and **defaults** — a mismatch returns False, the tool is skipped, and the server logs a `logger.warning(...)` instead of raising: server startup stays clean.
+
+The gate is a shape check, not a version check, so it can fail on a session-buddy that is new enough by version number. The envelope's `status` default had to be reconciled in session-buddy before its 0.38.0 release for the same reason.
 
 ## Key Architecture
 
