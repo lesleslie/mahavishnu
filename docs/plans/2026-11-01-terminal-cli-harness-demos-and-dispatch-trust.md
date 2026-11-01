@@ -57,6 +57,13 @@ mahavishnu demo terminal-codex      # on a limited account
    until the CLI has demonstrably received the prompt.
 5. Verify the prompt the CLI read against a digest the worker wrote,
    and fail the dispatch on a mismatch.
+6. Add a demo that composes an **engine adapter with a terminal
+   worker** in one workflow — the composition no demo currently
+   exercises, and the one the `workflow-pool-worker-terminal`
+   docstring already promises.
+7. Correct the `workflow-pool-worker-terminal` docstring, which
+   advertises a "Prefect -> pool -> worker -> terminal" E2E that its
+   implementation does not contain.
 
 ## 3. Non-Goals
 
@@ -173,6 +180,52 @@ layer must be *trustworthy on its own terms*, because it is not backed
 by an engine's state tracking. That is precisely the gap the three
 adopted capabilities close.
 
+**No demo composes an engine adapter with a terminal worker, and no
+code path executes a sequence of adapters.** The evidence:
+
+| Demo | Composes | Engine leg? |
+|---|---|---|
+| `prefect`, `agno`, `llamaindex`, `pydantic_ai`, `hatchet` | one engine adapter | ✅ but no worker |
+| `workflow-pool-worker-terminal` | pool → worker → terminal (3 stages) | ❌ |
+| `workflow-multi-pool-handoff` | two pools | ❌ |
+| `workflow-adapter-swap` | pool twice, swapping the **terminal** adapter (mock ↔ tmux) | ❌ |
+| `workflow-pi-cascade`, `workflow-pi-then-local` | PiPool + local path | ❌ |
+| `crow` | the crow **terminal adapter** — not a terminal *worker* | ❌ |
+
+The `workflow-pool-worker-terminal` docstring says *"For the
+operator-facing E2E (Prefect -> pool -> worker -> terminal), use
+`mahavishnu demo workflow-pool-worker-terminal` instead."* — but its
+implementation is three stages with **no Prefect leg**. The docstring
+advertises exactly the composition this plan adds, and it is not
+there.
+
+The mechanism is a **fallback, not a sequence**. `TaskRouter`'s chains
+are AGNO / LLAMAINDEX / PREFECT, and `execute_workflow_with_fallback`
+(`mahavishnu/core/workflow_execution.py:647`) tries each until one
+succeeds. `AdapterType.WORKER` is in **no** chain, so the router
+structurally cannot produce an engine→worker composition. The two
+substrates meet only at the MCP tool surface (`pool_route_execute`
+vs an engine's `execute`).
+
+Two costs of that gap, both concrete:
+
+- **No unified execution.** An engine run gets an `execution_id` and a
+  cost rollup through `mahavishnu/core/cost_optimizer.py`
+  (`ADAPTER_COSTS` per adapter, `record_cost`). A pool dispatch has
+  **no cost accounting at all** — `PoolMetrics` carries
+  `tasks_completed`, `tasks_failed`, `avg_task_duration`, and no cost.
+  A composition therefore has two cost accounts and no rollup.
+- **No unified observability.** The two legs have separate execution
+  ids and separate span trees, so "what did this workflow cost, end to
+  end" has no answer today.
+
+Making that a *product* capability rather than a demo is option B, and
+it is scoped separately in
+`docs/plans/2026-11-01-adapter-composition-executor.md`. This plan
+delivers only the **demo-level** composition (option A), because the
+executor is an architectural change to the control plane and does not
+belong inside a dispatch-trustworthiness plan.
+
 ### 4.4 What to take from Claude Code's daemon — and what not to
 
 Claude Code's background workers use a daemon plus a rendezvous socket
@@ -229,6 +282,10 @@ requirements:
     title: "A one-shot dispatch waits for an explicit readiness signal before it is reported as running"
   - id: REQ-008
     title: "The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the dispatch"
+  - id: REQ-009
+    title: "A demo composes an engine adapter with a terminal worker in one workflow and shows both legs settling"
+  - id: REQ-010
+    title: "The workflow-pool-worker-terminal docstring describes the stages its implementation actually contains"
 ```
 
 Marker placement (the `scripts/audit_requirements.py` gate reads these):
@@ -271,16 +328,36 @@ drives a real dispatch and asserts the CLI's answer.
 5. **Register the demos in the demo index** and add them to
    `demo all` only if the skip logic makes that safe — `demo all` must
    not go red because one account is exhausted.
+6. **Add the engine + worker composition demo** (REQ-009):
+   `demo workflow-engine-and-worker`. It runs an engine adapter leg
+   (Prefect by default) to produce a task, then hands the result to a
+   `terminal-claude` pool to execute it, and narrates both legs as
+   stages. It is the composition no demo currently exercises.
+   - The composition is written **in the demo**, not in the engine: the
+     demo calls the engine adapter and then the pool explicitly. It
+     does not require a chain executor (option B, scoped separately).
+   - It is **slow** — a CLI-harness leg is ~115 s for a trivial prompt
+     (the CLI's own startup and repo-context load dominate), so the
+     demo carries a generous default timeout and is **not** added to
+     `demo all`.
+   - It reuses the Phase 1 skip logic for the harness leg.
+7. **Fix the stale docstring** on `workflow-pool-worker-terminal`
+   (REQ-010): it currently claims to be the "Prefect -> pool -> worker
+   -> terminal" E2E while implementing three stages with no Prefect
+   leg. Either implement the Prefect leg or correct the text — this
+   plan corrects the text and points at the new composition demo.
 
 **Exit criteria:** all three demos run; claude and qwen print
 `DISPATCH-OK`; codex prints a skip reason on this host; a demo run on
-a machine with no `qwen` skips rather than fails.
+a machine with no `qwen` skips rather than fails; the composition
+demo shows both legs settling.
 
 #### Integration Contract
 
 - **Triggered from:** `mahavishnu demo terminal-claude` (Typer command
   `demo_terminal_claude` in `mahavishnu/cli/demo_cli.py`), also
-  reachable as `mahavishnu demo all`.
+  reachable as `mahavishnu demo all`. The composition demo is
+  `mahavishnu demo workflow-engine-and-worker`.
 - **Returns to / updates:** mutates nothing persistent. The demo spawns
   and tears down a pool in-process; the pool's `tasks_completed` /
   `tasks_failed` counters and the dispatch state are in-process only.
@@ -291,7 +368,9 @@ a machine with no `qwen` skips rather than fails.
   cannot drive its own harness is noise, and `demo all` goes red.
 - **Observability added:** structured log lines
   `demo.terminal_harness.started` / `.settled` / `.skipped` carrying
-  `worker_type`, `status`, `duration_seconds`, `skip_reason`.
+  `worker_type`, `status`, `duration_seconds`, `skip_reason`; and for
+  the composition demo, `demo.composition.stage_settled` carrying
+  `stage`, `engine`, `worker_type`, `status`, `duration_seconds`.
 
 ### Phase 2: The pool owns the dispatch state machine
 
@@ -455,8 +534,12 @@ visibly marked unverified.
 **`mahavishnu/cli/`**
 - [ ] `demo_cli.py` — `_run_terminal_harness_demo` helper, the three
       demo commands, the skip logic.
+- [ ] `demo_cli.py` — the engine + worker composition demo
+      (`workflow-engine-and-worker`) and the corrected
+      `workflow-pool-worker-terminal` docstring.
 - [ ] `demo_cli.py` — `# req: REQ-001`, `# req: REQ-002`,
-      `# req: REQ-003`, `# req: REQ-004`.
+      `# req: REQ-003`, `# req: REQ-004`, `# req: REQ-009`,
+      `# req: REQ-010`.
 
 **`settings/`**
 - [ ] `mahavishnu.yaml` — mirror the codex invocation change (the
@@ -482,6 +565,7 @@ visibly marked unverified.
 | `mahavishnu demo terminal-claude` | `status: completed`, `answer: DISPATCH-OK` | terminal output |
 | `mahavishnu demo terminal-qwen` | `status: completed`, `answer: DISPATCH-OK` | terminal output |
 | `mahavishnu demo terminal-codex` | `status: skipped` (account limited) or `completed` | terminal output |
+| `mahavishnu demo workflow-engine-and-worker` | both legs settle; the harness leg's answer is shown | terminal output |
 | `pytest tests/unit/cli/test_demo_terminal_harnesses.py` | pass | pytest |
 | `pytest tests/unit/pools/test_dispatch_states.py` | pass | pytest |
 | `pytest tests/unit/workers/test_shell_launcher.py` | pass | pytest |
@@ -502,6 +586,7 @@ visibly marked unverified.
 | Hashing is unavailable in some launch environment | medium | `integrity: "unverified"` is recorded and logged, never silently passed |
 | The pool-owned state machine conflicts with the legacy `WorkerOrchestratorAdapter` path | medium | Phase 2 changes the pool only; the adapter keeps its own contract until it is migrated, and the adapter is already covered by `test_submit_workers_runs_one_shot_lifecycle` |
 | Adding three demos lengthens `demo all` | low | the demos skip fast when the CLI is absent; `demo all` treats a skip as a skip |
+| The engine + worker composition demo is very slow (a CLI-harness leg is ~115 s) and nobody runs it | medium | it is excluded from `demo all`; it carries a generous timeout; its value is also as a CI nightly, not a per-commit gate |
 | The state machine duplicates `WorkerStatus` | medium | `DispatchState` is the *pool's* view of a dispatch; `WorkerStatus` stays the *worker's* view. The mapping is explicit and tested |
 
 ## 9. Decision Rule
@@ -538,6 +623,9 @@ can still be reported as a success.
   the spawn-time allowlist contract.
 - `docs/plans/2026-10-03-agent-reviewed-trunk-based-dev.md` — the
   review workflow a delivery of this plan goes through.
+- `docs/plans/2026-11-01-adapter-composition-executor.md` — the
+  separately-scoped plan for making the engine→worker composition a
+  product capability (option B) rather than a demo.
 - `mahavishnu/workers/shell_backend.py` — the launcher, readiness, and
   integrity code.
 - `mahavishnu/pools/mahavishnu_pool.py` — the dispatch state machine.
