@@ -491,8 +491,14 @@ class TestGatewayOpenAIBaseUrl:
     root, and both used to append ``/v1`` unconditionally. That was
     right until oneiric changed its router default to include the
     suffix (cd59122, 2026-10-19), after which both produced
-    ``http://127.0.0.1:8471/v1/v1`` -- a path that 404s at the
-    gateway.
+    ``http://127.0.0.1:8471/v1/v1`` -- a path the gateway does not
+    serve.
+
+    Measured against the running gateway on 2026-11-02: a ``POST`` to
+    the doubled path returns ``405 Method Not Allowed``. A ``GET`` would
+    not have shown the problem -- Bifrost's dashboard serves its SPA
+    fallback for *any* unmatched path, so every unmatched ``GET``
+    returns ``200`` with the dashboard HTML.
     """
 
     @pytest.mark.parametrize(

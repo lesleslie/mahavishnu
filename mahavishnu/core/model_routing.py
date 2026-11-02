@@ -349,9 +349,17 @@ def gateway_openai_base_url(resolved: str) -> str:
     ``http://127.0.0.1:8471/v1`` (oneiric cd59122, 2026-10-19), but it
     used to be the bare gateway root, and an operator may override it
     with either form. Appending unconditionally produced
-    ``http://127.0.0.1:8471/v1/v1`` -- a path that 404s at the gateway
-    -- so the check is "does it already end in /v1?" rather than
+    ``http://127.0.0.1:8471/v1/v1`` -- a path the gateway does not
+    serve, so the check is "does it already end in /v1?" rather than
     "assume it does not".
+
+    Measured against the running gateway on 2026-11-02: a ``POST`` to
+    the doubled path returns ``405 Method Not Allowed``. A ``GET`` would
+    not have shown the problem -- Bifrost's dashboard serves its SPA
+    fallback for *any* unmatched path, so every unmatched ``GET``
+    returns ``200`` with the dashboard HTML. That is why the original
+    bug survived a probe: nothing about the doubled path looks broken
+    unless the request is the one an LLM client actually makes.
 
     Args:
         resolved: The URL the router resolved, with or without a

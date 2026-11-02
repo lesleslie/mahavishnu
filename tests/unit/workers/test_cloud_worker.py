@@ -97,8 +97,9 @@ class TestResolveMinimaxBaseUrl:
         """The suffix is added only when it is missing.
 
         Appending unconditionally produced ``/v1/v1`` once oneiric
-        changed its router default to include ``/v1`` -- a path that
-        404s at the gateway. The helper has to accept both forms.
+        changed its router default to include ``/v1`` -- a path the
+        gateway does not serve (``POST`` returns 405 Method Not
+        Allowed). The helper has to accept both forms.
         """
         import oneiric.adapters.llm.bifrost as bifrost_mod
 

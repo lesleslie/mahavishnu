@@ -73,8 +73,9 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
     elif worker_type == "terminal-qwen":
         if RouteKind.QWEN_ROUTE in router._settings.routes:
             # The OpenAI-compatible client (Qwen CLI's SDK) expects
-            # the URL with the ``/v1`` suffix — the bare gateway
-            # URL would 404 on ``/chat/completions``. Same shape the
+            # the URL with the ``/v1`` suffix — the bare gateway URL
+            # is unrouted for ``/chat/completions`` (405 Method Not
+            # Allowed). Same shape the
             # old ``gateway_api_base(ProtocolFamily.OPENAI, ...)``
             # produced; the ``rstrip("/")`` handles the Pydantic
             # ``HttpUrl`` trailing-slash quirk.
@@ -82,7 +83,9 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
             # The suffix is added only when absent: ``ONEIRIC_BIFROST_BASE_URL``
             # is conventionally configured *with* ``/v1`` already present
             # (``http://127.0.0.1:8471/v1``), so appending unconditionally
-            # produced ``/v1/v1`` and 404'd every Qwen chat completion.
+            # produced ``/v1/v1`` -- a path the gateway does not serve
+            # (``POST`` returns 405 Method Not Allowed), which broke every
+            # Qwen chat completion.
             base = str(router._settings.base_url).rstrip("/")
             if not base.endswith("/v1"):
                 base += "/v1"

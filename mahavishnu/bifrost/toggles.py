@@ -36,8 +36,9 @@ CC_CUSTOM_HEADERS_VAR = "ANTHROPIC_CUSTOM_HEADERS"
 
 #: Bifrost serves each wire protocol at a distinct path. A Qwen model bound
 #: to the ``anthropic`` provider must be pointed at the Anthropic-compatible
-#: endpoint, not the OpenAI-compatible one -- the two are not interchangeable
-#: and a mismatch 404s every completion.
+#: endpoint, not the OpenAI-compatible one -- the two are not interchangeable,
+#: and a mismatch fails every completion: a ``POST`` to an unrouted path gets
+#: ``405 Method Not Allowed``.
 _BIFROST_PATH_BY_PROVIDER: dict[str, str] = {"anthropic": "/anthropic", "openai": "/v1"}
 
 #: Upstream each provider entry pointed at before the toggle ran, restored on

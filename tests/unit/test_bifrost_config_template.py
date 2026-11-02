@@ -276,7 +276,7 @@ def test_the_anthropic_native_provider_allows_count_tokens() -> None:
     ``count_tokens``, the gateway answers "operation not allowed" instead of
     a token count. The path override matters too: MiniMax's Anthropic
     surface lives under ``/anthropic/``, so the default Anthropic path
-    would 404.
+    is unrouted and the gateway answers ``405 Method Not Allowed``.
     """
     cpc = _providers()["minimax-anthropic"]["custom_provider_config"]
 

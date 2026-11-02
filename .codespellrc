@@ -9,4 +9,6 @@
 [codespell]
 # ND = Neighbor Discovery (IPv6 protocol, used in scapy/MCP packet tooling).
 # iTerm = Apple terminal app proper noun.
-ignore-words-list = iTerm, ND
+# retuned = "tuned again" -- the correct word for adjusting a setting to a
+# new value. codespell maps it to "returned", which reverses the meaning.
+ignore-words-list = iTerm, ND, retuned
