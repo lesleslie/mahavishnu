@@ -2189,6 +2189,17 @@ inferred from a process exit.
      placeholder reappears (`shell_backend.py:172-179`), and
      `resolve_permission_mode` bounds the substituted mode against the
      per-CLI allowlist (`shell_backend.py:105-133`);
+   - **`render_command`'s current contract is hardcoded and
+     two-placeholder**: it substitutes `{permission_mode}` and *raises*
+     on `{prompt}` (`shell_backend.py:136-185`) — there is no general
+     placeholder mechanism, and the prompt deliberately does **not**
+     ride as one (it rides as `MAHAVISHNU_PROMPT`, referenced by the
+     command as `"$MAHAVISHNU_PROMPT"`). **Phase 7 must not silently
+     grow a third placeholder**: a per-dispatch value belongs in an
+     env var, following the prompt, so the launcher's contract stays
+     "the prompt file path, the validated registry command, and the
+     environment" — not "the registry command, plus whatever the last
+     change wanted to interpolate";
    - containing **no caller-supplied text** — only the prompt file path
      and the validated registry command;
    - with the *"no `;` outside the known separators"* assertion from
