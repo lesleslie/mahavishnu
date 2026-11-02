@@ -307,6 +307,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-02-worker-tool-output-compaction.md`](2026-11-02-worker-tool-output-compaction.md) | 2026-11-02 | `draft` | `implementation` |  | `worker-output-compaction` | Worker tool-output compaction — RTK-style savings without a second gateway |
 | [`docs/plans/2026-11-01-adapter-composition-executor.md`](2026-11-01-adapter-composition-executor.md) | 2026-11-01 | `superseded` | `historical` |  | `adapter-composition` | Adapter composition — making engine and worker substrates compose as one workflow |
 | [`docs/plans/2026-11-01-bifrost-cache-eviction-and-threshold.md`](2026-11-01-bifrost-cache-eviction-and-threshold.md) | 2026-11-01 | `active` | `canonical` |  | `bifrost-cache-eviction-and-threshold` | Plan — Bifrost cache eviction sweep and cache-tuning retune |
 | [`docs/plans/2026-11-01-control-plane-consolidation.md`](2026-11-01-control-plane-consolidation.md) | 2026-11-01 | `draft` | `canonical` |  | `control-plane-consolidation` | Control-plane consolidation — one registry, one envelope, one workflow lane |
@@ -454,7 +455,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (162 entries)
+### `plan` (163 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -467,9 +468,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 8 | 51 | 1 | 1 | 14 | **75** |
-| `implementation` | 3 | 7 | 2 | 5 | 17 | **34** |
+| `implementation` | 4 | 7 | 2 | 5 | 17 | **35** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 32 | **32** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **11** | **58** | **3** | **6** | **70** | **148** |
+| **Total** | **12** | **58** | **3** | **6** | **70** | **149** |

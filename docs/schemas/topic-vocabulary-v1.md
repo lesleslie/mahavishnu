@@ -3,7 +3,7 @@ title: Oneiric Topic Vocabulary
 status: active
 role: canonical
 topic: lifecycle
-last_reviewed: 2026-09-09
+last_reviewed: 2026-11-02
 ---
 
 # Topic Vocabulary v1
@@ -39,6 +39,7 @@ contribution workflow below.
 | `saga-pattern` | Saga coordinator for distributed transactions (ADR 007). |
 | `zero-downtime-migration` | Zero-downtime SQLite-to-PostgreSQL migration (ADR 008). |
 | `terminal` | iTerm2, MockTerminal, CrowTerminal, GenericShellWorker, workers/protocol.py. |
+| `worker-output-compaction` | Tool-output compaction for LLM worker sessions — RTK-style output filters, the context-composition measurement that sizes the lever, and the agent hook seam that keeps compacted bytes in the cached request prefix. |
 | `routing-composition` | Two-router composition, fitness feedback loop, peer affinity (ADR 011 / ADR 014). |
 | `honcho-routing` | Honcho peer-model routing precedence (ADR 014). |
 | `learning-pipeline` | Skill distillation, conscious agent, pattern library (ADR 012). |
