@@ -343,21 +343,36 @@ $ PATH="$SHIM:$PATH" sh -lc 'export PATH="$SHIM:$PATH"; command -v pytest'
 
 `/etc/profile:3-4` runs `eval \`/usr/libexec/path_helper -s\``, which
 **prepends** the system directories to `PATH` and demotes everything
-inherited below them. Measured with a marker directory:
+inherited below them. Measured as a *set* — the whole path, not a
+prefix — before and after the login shell:
 
 ```
-$ PATH="/tmp/marker:$PATH" sh -c  'echo $PATH' | tr ':' '\n' | grep -n marker
-1:/tmp/marker
-$ PATH="/tmp/marker:$PATH" sh -lc 'echo $PATH' | tr ':' '\n' | grep -n marker
-14:/tmp/marker
+$ sh -c  'echo $PATH' | tr ':' '\n' | sed '/^$/d' | sort -u | wc -l
+26
+$ sh -lc 'echo $PATH' | tr ':' '\n' | sed '/^$/d' | sort -u | wc -l
+26
+absent from the login PATH:    (none)
+present only in the login PATH: (none)
 ```
 
-The inherited `PATH` is **preserved, not replaced** — it is demoted
-behind the system directories. A marker directory that does not exist
-is preserved too, so a probe that puts a non-existent directory at the
-front of `PATH` and reports it "gone" has misread a demotion as a
-replacement. The conclusion is the same either way; the mechanism is
-not, and the mechanism is what any future fix has to work against.
+The inherited `PATH` is **preserved, not replaced** — it is reordered
+behind the system directories, and duplicate entries are collapsed
+(raw entries 30 → 26: the inherited path holds `~/.local/bin` twice,
+`/usr/local/bin` three times and `/usr/local/sbin` twice; one of each
+survives). A directory that does not exist is preserved too.
+
+So the mechanism is **reorder, not replacement**, and the consequence
+is **resolution, not membership**: every directory that was reachable
+stays reachable, but the system directories now come first, so they
+win the lookup. `/usr/local/bin` moves from position 12 to position 1,
+and the repository's `.venv/bin` is pushed behind it.
+
+**Read the whole path and compare it as a set.** A probe that inspects
+only the front of `PATH` — or that truncates it — sees the inherited
+entries "gone" and concludes they were replaced. They were moved. Both
+readings give the same answer about the *outcome*, but only one is
+true about the *mechanism*, and the mechanism is what any future fix
+has to work against.
 
 **The fallback's real coverage is narrower than "bare command names"
 suggests.** The inherited-`PATH` variant of the shim is reachable only
@@ -852,17 +867,17 @@ the fail-open path, before writing production code.
    therefore a one-line check, not a coordination item: the variable is
    present in the pane and expands to a real path.
 
-   **The login shell rebuilds `PATH` and nothing else.** The registry
-   command is `sh -lc '…'`, and `/etc/profile` rebuilds `PATH` inside
-   it — so it was worth checking that the rebuild does not also disturb
-   the environment this seam depends on. It does not:
+   **The login shell rewrites `PATH` and nothing else.** The registry
+   command is `sh -lc '…'`, and `/etc/profile` reorders `PATH` inside
+   it (§4.4) — so it was worth checking that the rewrite does not also
+   disturb the environment this seam depends on. It does not:
 
    ```sh
    FOO=bar sh -lc 'echo $FOO'      # -> bar
    ```
 
    Every exported variable crosses the login shell intact; `PATH` is
-   the only thing it rewrites. The seam is therefore safe from the
+   the only thing it touches. The seam is therefore safe from the
    login shell, and the reason is recorded rather than assumed.
 
 **Exit criteria:** a decision record naming the chosen mechanism, the
