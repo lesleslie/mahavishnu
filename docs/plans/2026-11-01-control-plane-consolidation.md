@@ -192,6 +192,28 @@ must then be kept in sync.
 9. **Not** deciding the Oneiric adapter-bridge migration's shape. That
    is owned by `docs/plans/2026-10-14-decision-adapter-category.md`
    (§4.13); this plan must route *around* it, not duplicate it.
+10. **No backwards compatibility.** This plan is **forward-only**
+    (the repo's recorded pre-1.0 policy: *replace, not extend*). Where
+    a shape, a key, a config field or a module changes, it changes —
+    there is **no deprecation window, no alias, no re-export shim, and
+    no migration of old data**. Concretely, this plan therefore:
+    - **deletes** rather than deprecates (`core/routing.py`,
+      `core/workflow_state.py`, `AdapterRegistryConfig`,
+      `core/unified_orchestrator.py`, the `adapter_registry:` and
+      `feature_flags:` YAML blocks);
+    - **renames** rather than aliases
+      (`integrations.pydantic_ai_enabled` → `adapters.pydantic_ai_enabled`,
+      with its one consumer `cli/demo_cli.py:1280` repointed);
+    - **prunes** rather than migrates the 469 stored workflow records
+      (Phase 3 task 6b);
+    - **bumps** tool versions straight through, with no
+      `DEPRECATED_TOOLS` entry and no translation shim — so the
+      ADR-015 deprecation machinery the first draft was about to
+      inherit is **deliberately not used**. The version numbers stay
+      honest about *what breaks*, which is the part that matters.
+    This removes the first draft's biggest source of accidental
+    complexity: three of round 2's findings were about compatibility
+    surfaces that do not need to exist.
 
 ## 4. Current Findings
 
@@ -234,16 +256,18 @@ Each row names a **winner** — the single place that owns the concept.
 
 | # | Concept | Duplicated in | Winner | Why |
 |---|---|---|---|---|
-| 1 | **Adapter registry** | five listings: `app.adapters` (`core/app.py:254`), `task_router.AdapterManager.adapters` (`core/task_router.py:127`), `_ENGINE_LOCATIONS` (`engines/__init__.py:104`), `settings.worker_registry.entries`, and `AdapterRegistryConfig` (config-only ghost) | `app.adapters` as the single **dispatch** registry | `AdapterManager.register_adapter` is called **only from test modules** — in production that registry is always empty. The other listings have distinct jobs (capability discovery, capability metadata) and are not duplicates of it |
+| 1 | **Adapter registry** | **seven** listings: `app.adapters` (`core/app.py:254`), `task_router.AdapterManager.adapters` (`core/task_router.py:127`), `_ENGINE_LOCATIONS` (`engines/__init__.py:104`), `settings.worker_registry.entries`, `AdapterRegistryConfig` (config-only ghost), the **Oneiric entry-point group** `pyproject.toml:140-143` (`[project.entry-points."oneiric.adapters"]` = prefect, agno, worker), and the hardcoded `_import_adapter_class` if/elif chain (`core/bootstrap.py:356-381`) that populates `app.adapters` | `app.adapters` as the single **dispatch** registry | `AdapterManager.register_adapter` is called **only from test modules** — in production that registry is always empty. The other listings have distinct jobs (capability discovery, capability metadata) and are not duplicates of it |
 | 2 | **Router** | `core/routing.py:TaskRouter` (chains, live) vs `core/task_router.py:TaskRouter` (registry + stats + `CapabilityRouter`) | **`core/task_router.py` survives**; `core/routing.py`'s chains fold into it | **reversed from the first draft.** `docs/decisions/2026-10-14-decision-adapter-category.md` rule 3 is a hard sequencing rule: the `task_router.py` migration to Oneiric's `AdapterBridge` must complete, and `core/routing.py`'s router is not part of that migration |
 | 3 | **Orchestration entry point** | `workflow_execution.execute_workflow_with_fallback` vs `task_router.execute_with_fallback` vs `UnifiedOrchestrator.execute_workflow` | `workflow_execution`, **porting** what `UnifiedOrchestrator` had | `UnifiedOrchestrator` has zero production callers, but it is the only implementation of *N independent tasks each with its own fallback chain*, and the only implementation of **cancellation** — `workflow_execution` has no cancel path at all. Deleting it is an undeclared scope loss |
 | 4 | **Worker registry** | legacy `WORKER_REGISTRY` (`workers/registry.py:178`, **43** entries) vs `settings.worker_registry.entries` (`core/config.py:1890`, **16** entries) | **the legacy dict for dispatch**; the settings entries for capability metadata and validation | **reversed from the first draft**, which had it backwards. The YAML is a strict *subset* — 27 types exist only in code, including `shepherd` (the pool's default worker type) and `openhands`. `MahavishnuSettings()` bare does **not** read YAML (`get_settings()` → 16 entries; bare → 0), so the legacy dict is the only unconditionally-populated registry. The two are also **different schemas**: `WorkerEntry` has no `permission_mode`, `category`, `endpoint`, `mcp_server`, or `error_markers`, and has `provides`, which `WorkerConfig` cannot express |
 | 5 | **Worker substrate** | `WorkerManager` + `ShellWorker` (one-shot; vocabulary `WorkerStatus`) vs `DurableWorkerManager` + `WorkerLifecycleState` (interactive tmux + settle) vs `SettleState` | decided in Phase 3, as an *execution* vocabulary in `core/status.py` | three vocabularies, not two. `WorkerLifecycleState` has no `TIMEOUT`/`CANCELLED` and legally allows `COMPLETED → READY → RUNNING` — so adopting it unchanged would silently defeat Phase 7's "settled is final" |
-| 6 | **Workflow state store** | **four** persistence trails: `app.workflow_state_manager` — which **is** a `task_router.StateManager` instance (`core/bootstrap.py:620,633`), file JSON at `data/workflow_state/workflows.json`; `WorkflowOutcome` → `ProcessLocalKV` (`core/kv_store.py:27`); `workflow/v1/{execution_id}` → the durable MCP KV (`core/repository_surface.py:72`, a **disjoint id namespace** — a bare uuid4, not `wf_*`); and `workflow-results/{workflow_id}/` (the KV path the shared id-guard was written for, `mcp/tools/_workflow_id_guard.py:4`) | one durable store; `StateManager` relocates out of `task_router.py` first | **the first draft counted these as three stores; they are four.** The two `StateManager` instances are the same class writing the same file; `ProcessLocalKV` is **process-local**; and the `workflow/v1/` trail uses a **different id shape** — `get_workflow_status` reads only `app.workflow_state_manager` (`mcp/server_core.py:583`), so a `workflow/v1/`-only record is invisible to it |
+| 6 | **Workflow state store** | **two backing stores, five key namespaces** — not four trails. *Store A:* file JSON `data/workflow_state/workflows.json` (`app.workflow_state_manager`, which **is** a `task_router.StateManager` instance, `core/bootstrap.py:620,633`). *Store B:* the **process-local** KV (`core/kv_store.py:87`), holding `workflow-results/{workflow_id}/` (`core/workflow/outcome_writer.py:77`), `workflow/v1/{execution_id}/` (`core/repository_surface.py:72`), `routing/v1/{task_class}/{ts}/` (`core/state_backends/mcp.py:141-145`, written by `core/pools/manager.py:284`), and the approval/webhook/ecosystem namespaces | one store protocol per concern: a `WorkflowStore` for the file store, a per-key `KVBackend` for the substrate; `StateManager` relocates out of `task_router.py` first | **rewritten by round 2.** The first draft called this "four persistence trails" and called one of them "the durable MCP KV". **Both were wrong.** Trails 2 and 4 are the *same* key namespace in the *same* store; trail 3 is the *same process-local dict* — `core/state_backends/mcp.py`'s own docstring says so (*"backed by a process-local thread-safe dict"*; *"All writes are fire-and-forget"*), so it is an HTTP self-call, not a durable store. The trail the inventory **omitted** is the pool lane's own — `routing/v1/`, which Phase 5 touches most. |
 | 7 | **Worker wrapper** | `WorkerOrchestratorAdapter` (wraps `WorkerManager`) vs `MahavishnuPool` (wraps the same `WorkerManager`) | the adapter keeps the orchestrator-facing port; the pool keeps its leaf-wrapper rule | `pools/mahavishnu_pool.py:5-12` explicitly warns against inverting the layering ("Do NOT rewrite `execute_task` to call `pool_manager.route_task`"). The fix is a narrow `PoolRouter` port, not the adapter wrapping the pool |
 | 8 | **Lifecycle vocabulary** | **14** enum names across **11** modules encode "where is this execution" | one **execution** lifecycle in `core/status.py` — **not** a 14-way superset | `core/status.py` is already the declared home ("Consolidated status enums for Mahavishnu… Issue: MHV-008 - Status Enum Consolidation"). `PoolStatus` (a resource), `PlanStatus` (a document), `WorkerCapabilityState` (a probe), and `SettleState` (a merge run) are **not** execution lifecycles and must stay separate — merging them yields a union where most members are invalid for most subjects |
-| 9 | **Adapter/task enums** | `AdapterType` in `core/adapters/base.py:10` (**6** members) vs `AdapterType` in `core/metrics_schema.py:34` (**3**); `TaskType` in `core/metrics_schema.py:42` (**6**) vs `TaskType` in `core/task_router.py:82` (**5**, no `CRITICAL_TASK`) | the `core/adapters/base.py` pair | **the most consequential duplication, and the first draft missed it.** `core/routing.py:25`, `core/workflow_execution.py:24` and `core/cost_optimizer.py:31` all import the **3-member** `metrics_schema` enum — so the router literally cannot name `worker`, and the plan's Phase 2 and Phase 4 instructions were `AttributeError`s as written |
+| 9 | **Adapter/task enums** | `AdapterType` in `core/adapters/base.py:10` (**6** members) vs `AdapterType` in `core/metrics_schema.py:34` (**3**); `TaskType` in `core/metrics_schema.py:42` (**6**) vs `TaskType` in `core/task_router.py:82` (**5**, no `CRITICAL_TASK`) | `core/adapters/base.py:AdapterType` (6 members) for the adapter enum, and `core/metrics_schema.py:TaskType` (6 members) for the task enum — **two different homes, stated separately** | **the most consequential duplication, and the first draft missed it.** `core/routing.py:25`, `core/workflow_execution.py:24` and `core/cost_optimizer.py:31` all import the **3-member** `metrics_schema` enum — so the router literally cannot name `worker`, and the plan's Phase 2 and Phase 4 instructions were `AttributeError`s as written |
 | 10 | **`AdapterRegistryConfig`** | `core/config.py:2000-2051` + the `adapter_registry:` YAML block + an untyped `feature_flags:` YAML block | **remove** | a config-only ghost. `HybridAdapterRegistry` was deleted in commit `db06fc87`; the config model outlived its implementation. `settings.adapter_registry` is read by no runtime code, and there is no `core/adapter_registry.py` |
+| 11 | **Repository allowlist** | **four** implementations of one concept with **three** different fallbacks, two of them hardcoding a personal path: `core/repository_surface.py:26` `validate_path` (fallback `[cwd, home]`), `core/bootstrap.py:197` `_validate_path` (fallback `[cwd, tmpdir]` — a line-for-line near-duplicate), `core/config.py:3044` `allowed_repo_paths` (default **`["/Users/les/Projects"]`**), and `engines/agno_tools/file_tools.py:120` `DEFAULT_ALLOWED_BASE_DIRS` (**`Path("/Users/les/Projects")`** + tmp + cwd) | `config.allowed_repo_paths`, with a **non-personal default**; `bootstrap._validate_path` deleted in favour of `repository_surface.validate_path`; agno's list derived from the same field | **new in round 2, and it is security-relevant.** `allowed_repo_paths` is set in **no** settings YAML — not `settings/mahavishnu.yaml`, not the gitignored `settings/local.yaml`. So the engine lane's repository boundary is the hardcoded `["/Users/les/Projects"]`: on any other host `validate_path` rejects **every** repository and `execute_workflow_parallel` fails before an adapter runs. Phase 5 task 5 wants to bring the pool lane *inside* this boundary — the boundary must be fixed first, or the pool lane is joined to a placeholder. |
+| 12 | **The caller-controlled `task_type`** | one string plays **four** roles: adapter-behaviour selector (`task["type"]`), routing classification (`TaskType`), workflow-id suffix (`core/workflow_execution.py:42`), and Prometheus label (`core/workflow_execution.py:51`) | **split it**: a bounded `routing_type` for routing/labels/ids, and a free-form `operation` for the adapters | **new in round 2.** `trigger_workflow`'s `task_type` is a required, **unvalidated** `str` (`mcp/server_core.py:412`) that reaches a **Prometheus label** and is spliced into the **workflow id** — unbounded metric cardinality from an untrusted input, and an id that can be minted invalid (§4.11). The `TaskType` enum is a *routing* classification (`workflow`/`ai_task`/`rag_query`/…); the adapters branch on `code_sweep`/`quality_check`/`focused_review`/`ingest`/`query` — **zero overlap**. |
 
 **A fourth adapter listing, not a fifth.** `_ENGINE_LOCATIONS`
 (`engines/__init__.py:104`) lists the same engines plus `pydantic_ai`.
@@ -295,7 +319,8 @@ trigger_workflow builds task = {"type": task_type, "params": params, "id": ...}
 |---|---|
 | `mcp/server_core.py:477` (`trigger_workflow`) | `{"type", "params", "id"}` |
 | `mahavishnu/_main_cli.py:373` and `:638` | `{"task", "id"}` — **wrong key** |
-| `core/task_router.py:842` (`execute_with_fallback`) | `{"task_type", "prompt", "repos"}` |
+| `core/task_router.py:842` (`execute_with_fallback`) | `{"task_type", "prompt", "repos"}` — and it **silently drops the caller's `params`**, so `agents/mahavishnu_agent.py:283-286` reaches Agno with `params == {}` |
+| **`mcp/server_core.py:1554-1562`** (`_dispatch_task_workflow`) | `{"type": "ai_task", "id", "params"}` — **the builder round 1 and round 2 both missed.** It is the only path from a session-buddy task to a running workflow, and the only producer of a value written into another repo's record (`Task.workflow_id`). Its `type` is hard-coded `"ai_task"`, so its id shape does **not** change — but it must still build the envelope |
 
 | Consumer | Reads |
 |---|---|
@@ -331,10 +356,29 @@ all — which Agno reads.
   mutation, **unlocked** and **non-atomically**, under a
   **CWD-relative** path (`:189`). Measured on this host:
   `data/workflow_state/workflows.json` is **5.2 MB** holding **469**
-  records, of which **77 are permanently stuck in `running`** — no
-  pruning, no recovery. Two concurrent workflows can lose each other's
-  records, and a server started from a different working directory
+  records, of which **77 are stuck in `running`** — 75 of them more than
+  an hour old. A server started from a different working directory
   writes a *different* file.
+
+  **Two corrections round 2 made to this bullet.** First, *"no recovery"*
+  was wrong: a reaper exists — `_check_stuck_workflows`
+  (`core/resilience.py:969`) marks running workflows stale by >1 h as
+  failed, and is reachable today through the `heal_workflows` MCP tool
+  (`mcp/server_core.py:1120-1128`). What never runs is its **scheduler**:
+  `ResiliencePatterns.start_monitoring_service`
+  (`core/resilience.py:1057`) has **zero callers**. So the 77 are
+  *unreaped*, not unreapable — and if anyone calls `heal_workflows` today
+  it performs up to 75 sequential `update()` calls, each a full 5.2 MB
+  rewrite: **~390 MB of writes**.
+
+  Second, the real data-loss vector is **two concurrent _processes_, not
+  two concurrent workflows**. The running MCP server and any CLI that
+  constructs a `MahavishnuApp()` (`_main_cli.py:362` → `core/app.py:296`
+  → `core/bootstrap.py:633`) each hold their own 5.2 MB snapshot and
+  rewrite the whole file, dropping each other's records. Phase 1 makes
+  the CLI a first-class workflow producer (it fixes the `{"task": …}` key
+  bug so CLI sweeps mint correct ids *and write records*), so **this plan
+  increases that exposure**.
 
 ### 4.14 Requirements index
 
@@ -455,7 +499,7 @@ it** — including the cost figure. The predecessor plan wanted to invent
 a result-envelope parser; the SDK already returns one.
 
 **The wire protocol already exists: ACP** (Agent Client Protocol) — 50+
-implementors, with third-party CLI adapters for `claude`, `codex`,
+implementers, with third-party CLI adapters for `claude`, `codex`,
 `gemini-cli`, `opencode`, and `qwen-code`, implemented by both Sortie and
 OpenHands' `ACPAgent`.
 
@@ -525,6 +569,12 @@ Marker placement:
 
 ### 4.11 The envelope is a trust boundary
 
+**Round 2 revised this section twice.** The first draft's prescription —
+constrain `task["type"]` to the `TaskType` enum — was itself a defect:
+it would have rejected the task types the fleet actually uses (§4.2
+row 12). The corrected boundary separates **four** things the plan's
+first draft conflated into one string.
+
 The task envelope is where caller input becomes control input. Three
 independent review lenses converged on this, and the evidence is
 concrete: `core/adapters/worker.py:206-211` reads **top-level**
@@ -542,7 +592,11 @@ they hand any `trigger_workflow` caller three selectors at once.
 | `worker_type` | `resolve_worker_type` (`workers/registry.py:896`) returns it unchanged; `_create_worker` (`workers/manager.py:483`) rejects *unknown* names, so **every registered type is selectable** — including interactive shells, database clients with credential-shaped command templates (`registry.py:410-425`), and `terminal-qwen`, whose default `permission_mode` is `yolo` (`registry.py:202`) against `terminal-claude`'s `acceptEdits` (`registry.py:238`) | an **allowlist of one-shot agent CLIs only** — `terminal-claude`, `terminal-qwen`, `terminal-codex` |
 | `count` | `worker.py:217` checks only `count < 1`; the repo's own precedent at `mcp/tools/worker_tools.py:67` bounds it to **1..50** | `Field(ge=1, le=50)` |
 | `timeout` | `_resolve_timeout` (`shell_backend.py:188`) — `float("inf") > 0` passes | `Field(gt=0, le=cap)`, finite `float` |
-| `type` | `TaskType(task.get("type", "ai_task"))` is an **unguarded enum cast** (`workflow_execution.py:644`) that raises a bare `ValueError`; the string also lands in a Prometheus label (`workflow_execution.py:48-52`) and a workflow id (`:42`) | constrained to `TaskType` members; the **validated** value used for both |
+| `type` | `TaskType(task.get("type", "ai_task"))` is an **unguarded enum cast** (`workflow_execution.py:644`) that raises a bare `ValueError`; the string also lands in a Prometheus label (`workflow_execution.py:48-52`) and a workflow id (`:42`) | **split into two fields** — see below |
+| `task_type` (as a *Prometheus label*) | `mahavishnu_workflows_total.labels(task_type=task.get("type", "unknown"))` (`workflow_execution.py:51`) — the caller-supplied string lands **directly in a metric label**, with **no bound on cardinality**. Every distinct value a caller passes creates a permanent new time series, in three label sets (`:381-391`) | the label carries the **bounded** `routing_type` only. The free-form operation never reaches a metric label |
+| `task_type` (as a *workflow id*) | the same string is spliced into the id: `workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type','default')}"` (`workflow_execution.py:42`). `trigger_workflow`'s `task_type` is a required, **unvalidated** `str` (`mcp/server_core.py:412`), so a caller can mint an id containing `/` or a dot-segment. The **write** path does not validate it (`core/workflow/outcome_writer.py:77`); only the **read** path does (`mcp/tools/workflow_tools.py:36-38`). So the outcome is written and **permanently unreadable** — a silent loss, and a `..` segment in a key path that is inert today only because the backing store is a flat `dict` | the id suffix comes from the **bounded** `routing_type`; and the outcome writer **validates the id before writing it** (`validate_workflow_id`), so write and read agree |
+| `params` (the free-form bag) | `params` is `dict[str, Any]` (`mcp/server_core.py:413`) and reaches the adapters **unchanged**. Adapters read eleven live keys from it — `query`, `index_id`, `top_k`, `file_types`, `exclude_patterns`, `id` (llamaindex); `focus`, `standards`, `target` (agno) — plus `scope` (the tool's own docstring) and `param1` (the repo's own test) | `TaskParams` keeps `extra="allow"` and a passthrough map, so **nothing is dropped**; and it is handed to the adapters as a **plain `dict`**, because agno and llamaindex call `.get()` on it |
+| `count` (its *default*) | `worker.py:207` — `count = task.get("count", len(repos))`: one worker **per repo**. The plan's first draft defaulted it to **1**, silently changing a worker dispatch over N repos into a single worker | the default is preserved as `len(repos)`, resolved at dispatch time (the envelope cannot know `repos` when it is built) |
 
 There is no command injection from an arbitrary `worker_type` — an
 unregistered name fails loudly before a command is built. The exposure
@@ -551,6 +605,35 @@ many*. The envelope therefore must be a **Pydantic model with
 separated namespaces**: `TaskEnvelope(type: TaskType, id: str,
 params: TaskParams)`, where `type` and `id` are **not** members of
 `TaskParams`, so caller data cannot shadow a control field.
+
+**The corrected split.** One string today plays four roles: the
+adapter-behaviour selector (`task["type"]`), the routing classification
+(`TaskType`), the workflow-id suffix, and the Prometheus label. Round 2
+found that the plan's first draft tried to constrain *the wrong one*:
+`TaskType` is a **routing** classification (`workflow`, `ai_task`,
+`rag_query`, `batch_task`, `critical_task`, `interactive_task`) while the
+adapters branch on `code_sweep`, `quality_check`, `focused_review`,
+`ingest`, `query` and `ingest_and_query` — **zero overlap**. Three
+lenses found this independently, and it would have broken `llamaindex`'s
+query path, `agno`'s task-type selection, `prefect`'s `quality_check`
+operation, the shipped `mahavishnu workflow quality-check` CLI command,
+the `jot_dispatch` lane, and two live tests.
+
+The envelope therefore carries **two** task-type fields:
+
+- **`routing_type: TaskType`** — enum-constrained and bounded. It is the
+  router's key, the workflow-id suffix, and the metric label. It is
+  *server-derived*, never caller-supplied.
+- **`operation: str`** — free-form, length-capped. It is the adapter's
+  behaviour selector and lands in `task["type"]` for agno, llamaindex,
+  prefect and hatchet. It **never** reaches a metric label and **never**
+  enters a workflow id.
+
+`trigger_workflow`'s public `task_type` argument keeps its current
+free-form meaning (the operation) — so **the request contract does not
+change**, and the plan's "MINOR" classification holds *for the corrected
+design*. Implementing the first draft's sketch literally would have been
+a MAJOR change, and a breaking one.
 
 The same discipline applies to the composition (Phase 6): stage-one
 output is **untrusted data**. The reference implementation already
@@ -572,9 +655,13 @@ nobody reads it as an authenticity guarantee.
 
 ### 4.12 Cross-plan integration
 
-Nineteen other plans are live. Three of them collide with this plan;
+Seventeen other plans are live. Three of them collide with this plan;
 the rest do not. The collision audit is a **prerequisite** — Phase 1
 cannot be written correctly without knowing who owns what.
+
+(Round 1 counted nineteen; the plan's own supersession of two
+predecessors is what changed the number. The count is a moving target
+by construction, so it is stated with its date.)
 
 #### 4.12.1 `2026-10-14-decision-adapter-category.md` — hard collision
 
@@ -626,6 +713,9 @@ point. Measured overlap with this plan's surfaces:
 | `core/task_router.py`, `core/routing.py`, `core/workflow_execution.py`, `engines/__init__.py` | **none** |
 | `pools/base.py` / `BasePool` | shared — the eval plan adds a pool type; this plan does not modify `pools/base.py` (the predecessor plan's `DispatchState` proposal is withdrawn, §4.2 row 5) |
 | `core/config.py` | shared — the eval plan adds a nested `eval` settings field; this plan's Phase 2 adds `adapters.pydantic_ai_enabled` and Phase 3 touches the worker-registry schema. Different fields; no conflict |
+| `mahavishnu/pools/manager.py` (`:429` — *Modify: `spawn_pool`*) | **shared, and missed by round 1** — this is Phase 5's file |
+| `mahavishnu/mcp/bootstrap.py` (`:425-426`, `:491` — `_register_eval_tools` + a health-feed block) | **shared, and missed by round 1** — this is Phase 5's registration path |
+| `mahavishnu/core/observability.py` (`:406` — `@observe(span_name="eval.run_suite")`) | **shared, and missed by round 1** — this is Phase 4's file |
 | Oneiric entry-point registration | shared *mechanism* — the eval plan, the decision plan, and this plan's capability layer all register through it. **One registry, one owner** (§4.2 row 1) |
 
 **Verdict: largely orthogonal.** The eval plan can proceed in parallel;
@@ -659,9 +749,18 @@ failover repairs, ruff/BLE001 cleanup, the zsh modernization — do not
 touch this plan's surfaces. Two need a note:
 
 - **`2026-10-30-task-workflow-backlink.md`** binds tasks to workflows.
-  It touches workflow-id semantics and the task dict — the same surface
-  as §4.1 and §4.4. It must be sequenced **after** Phase 1's envelope
-  lands, or it will bind to a task shape that no longer exists.
+  **Round 1's sequencing rule for it was unfounded.** The plan is
+  **already implemented** — its §8 "Implementation status (2026-10-30)"
+  records Phase 1 **DONE**, Phase 2 **DONE**, Phase 3 **DONE**, Phase 4
+  **PARTIAL** — and its *own* Phase 2 already moved step 2 off
+  `pool_route_execute` and onto `dispatch_workflow_async`
+  (`core/workflow_execution.py:574-632`), which returns a
+  `workflow_id`. Its remaining blocker is an **operator publish step**
+  (publish session-buddy, re-sync mahavishnu's venv), not this plan.
+  It binds through a dedicated typed channel (`tasks_link_workflow`),
+  not through the workflow task envelope, and its §3 Non-Goal 4
+  explicitly excludes *"Changing the pool router's contract or
+  `pool_route_execute`."* **No sequencing constraint.**
 - **`2026-10-27-bodai-producer-span-reporting.md`** and
   **`2026-10-27-otel-metrics-service.md`** own spans and metrics. Phase
   4 makes mahavishnu the creator of the *workflow* span; those plans
@@ -690,6 +789,56 @@ Naming that rule dissolves most of the ambiguity in the composition
 design, and it is the single sentence that makes the peer-adapter
 assumption safe.
 
+### 4.15 The composition executor already exists
+
+**Round 2's largest historical finding.** Phase 6 of the first draft
+said the sequence executor *"is the piece that does not exist"* and
+*"mahavishnu does not need its own DAG engine."* **Both are false.**
+The repo **shipped** a DAG composition executor:
+
+| Module | What it does |
+|---|---|
+| `mahavishnu/core/conductor.py` (317 lines) | `plan()` (`:109`) builds an `ExecutionDAG` with `DAGEdge`s; `emit_node()` (`:165`) dispatches a node to its engine; `_dispatch_dag_waves()` (`:205`) does level-by-level wave dispatch across edges with `asyncio.gather`; `emit_flow()` (`:260`) compiles the DAG into a Prefect flow using `task.submit(..., wait_for=[upstream_future])` — **dependency-ordered data flow across adapters** |
+| `mahavishnu/core/capabilities.py` | `CapabilityEnvelope` (`:153`), `DAGNode`, `DAGEdge`, `ExecutionDAG` |
+| `mahavishnu/core/conductor_types.py` | `NodeSpec`, `NodeHandle` |
+| `mahavishnu/engines/emit_node_dispatch.py` | five per-engine dispatchers |
+| `tests/integration/conductor/` | end-to-end DAG tests |
+
+Two shipped plans built it: `docs/plans/.archive/2026-08-29-worker-registry-capability-refactor.md`
+(Stage 3a — *"add an engine composition layer where tasks declare required
+capabilities and the system picks engines + composes them into a DAG"*)
+and `docs/plans/.archive/2026-10-12-per-engine-emit-node-dispatch.md`
+(commit `b25876ab`).
+
+**The gap is real, but it is a one-line stub, not a missing capability.**
+`mcp/tools/capability_tools.py:362` `execute_capability` still returns
+`status="planned"`; its own docstring says *"Actual dispatch lands in
+Phase 4 (per-engine dispatch modules) — until then, `status='planned'`
+is returned once the DAG compiles."* The conductor's downstream prompt
+synthesis is likewise an explicit placeholder (`core/conductor.py:222-227`).
+
+So Phase 6 must **not** build a second executor. It must **extend the
+conductor**: add a worker leg to `emit_node`, flip
+`execute_capability`'s `status="planned"` to a real dispatch, and give
+the DAG the identity and span-tree the control plane owns. The
+conductor's DAG is engine-legs-only today, and the *composition* this
+plan wants is exactly "a worker leg in the same DAG" — not a new
+executor.
+
+**The same history explains the rest of §4.2.** The enum consolidation
+was attempted in `docs/plans/.archive/2026-02-20-status-enum-consolidation.md`
+(`status: shipped`) — but only **Phase 1** shipped; the 24→4 base-class
+design was abandoned, which is why §4.2 row 8 still counts 14 enums
+across 11 modules. The prior control-plane convergence program is
+`docs/plans/.archive/2026-05-10-bodai-control-plane-convergence-plan.md`
+(`status: shipped`), and its C2 "durable operational state" is the
+JSON-file `StateManager` this plan calls "not a store". And
+`docs/plans/.archive/2026-05-11-remaining-work-execution-order.md`
+records the move this plan now **reverses**: *"TaskRouter.StateManager
+now owns the live workflow coordination surface"* — which is why Phase 3
+task 0 must state its reason explicitly rather than silently undoing a
+shipped consolidation.
+
 ## 5. Implementation Phases
 
 ### Phase 1: One task envelope
@@ -703,40 +852,85 @@ the trust boundary it is now (§4.11).
 1. **Define the envelope as a Pydantic model** — `core/task_envelope.py`
    — with **separated namespaces**:
    ```python
-   class TaskParams(BaseModel):
-       """Caller-supplied parameters. Control fields are NOT members."""
-       prompt: str = ""
-       count: int = Field(default=1, ge=1, le=50)
+   class TaskControlParams(BaseModel):
+       """Server-side control fields. NEVER sourced from the caller's bag."""
+       model_config = ConfigDict(extra="forbid")
+       count: int | None = Field(default=None, ge=1, le=50)  # None -> len(repos)
        timeout: float = Field(default=300, gt=0, le=MAX_TIMEOUT)
-       worker_type: str | None = None      # allowlist-checked in TaskEnvelope
-       task_type: str = "general"
+       worker_type: str | None = None       # allowlist-checked in TaskEnvelope
+       preference_order: list[str] | None = None   # router control
+
+   class TaskParams(BaseModel):
+       """Caller-supplied parameters. Control fields are NOT members.
+       Unknown keys are PRESERVED: adapters read them by name."""
+       model_config = ConfigDict(extra="allow")
+       prompt: str = ""
+       operation: str = "general"           # free-form; adapters' behaviour selector
        repos: list[str] = Field(default_factory=list)
 
    class TaskEnvelope(BaseModel):
-       type: TaskType                       # the ROUTING field, constrained
+       routing_type: TaskType                # the ROUTING field, constrained
        id: str
        params: TaskParams = Field(default_factory=TaskParams)
+       control: TaskControlParams = Field(default_factory=TaskControlParams)
    ```
-   `type` and `id` are **not** members of `TaskParams`, so caller data
-   cannot shadow a control field (§4.11).
-   - `type` is constrained to the `TaskType` members, replacing the
-     unguarded `TaskType(task.get("type", "ai_task"))` cast at
-     `core/workflow_execution.py:644` with a `ValidationError`.
+   **Round 2 rewrote this sketch.** The first draft had one `type`
+   field constrained to `TaskType` and a closed six-field `TaskParams`.
+   Both were defects — see §4.11 and §4.2 row 12. The corrections:
+   - **`routing_type` and `operation` are separate fields** (§4.11).
+     `routing_type` is server-derived, enum-constrained, bounded; it is
+     the router's key, the workflow-id suffix and the metric label.
+     `operation` is free-form and length-capped; it is the adapter's
+     behaviour selector and lands in `task["type"]`. `trigger_workflow`'s
+     public `task_type` argument keeps its current free-form meaning, so
+     **the request contract does not change**.
+   - **`TaskParams` keeps `extra="allow"`**, so the eleven live keys
+     the adapters read (`query`, `index_id`, `top_k`, `file_types`,
+     `exclude_patterns`, `id`, `focus`, `standards`, `target`, `scope`,
+     `param1`) are **preserved**. The first draft's closed model would
+     have silently dropped them: llamaindex's query path dies with
+     *"Query text not provided in task_params"*
+     (`engines/llamaindex_adapter_impl.py:1320`) and agno's
+     `code_sweep` brief degrades to the generic default
+     (`engines/agno_adapter_impl.py:2019-2060`).
+   - **The projection hands adapters a plain `dict`**, not the model:
+     agno and llamaindex call `.get()` on `params`
+     (`agno_adapter_impl.py:2017`, `llamaindex_adapter_impl.py:1548`),
+     and a Pydantic instance has no `.get()`.
+   - **Control fields live in their own namespace**, so `params` cannot
+     shadow them. `preference_order` in particular is a **router
+     control** (`core/task_router.py:849`) and must not sit in the
+     caller-supplied bag — a caller passing
+     `params={"preference_order": ["worker"]}` would otherwise steer
+     the router, which §4.11 explicitly forbids.
    - `worker_type` is validated against an **allowlist of one-shot agent
      CLIs only** — `terminal-claude`, `terminal-qwen`, `terminal-codex`.
      Everything else is rejected at the boundary, so the registry
      membership check at `workers/manager.py:483` becomes a backstop
-     rather than the only guard.
+     rather than the only guard. A `None` substitutes the adapter's own
+     default (`"terminal-claude"`, `core/adapters/worker.py:206`) — a
+     bare `None` reaches `resolve_worker_type` and dies with
+     `ValueError("Unknown worker type: None")`.
    - `count` is bounded 1..50, matching the existing precedent at
-     `mcp/tools/worker_tools.py:67`.
+     `mcp/tools/worker_tools.py:67`. **Its default stays `len(repos)`**
+     (`core/adapters/worker.py:207`) — one worker per repo — and is
+     resolved at dispatch time, because the envelope cannot know
+     `repos` when it is built.
    - `timeout` is a bounded finite `float` — `"inf"` is rejected.
    - `prompt` is length-capped, following the pattern in
-     `core/task_models.py`.
+     `core/task_models.py`. The cap must be set from the pydantic-ai
+     precedent (`MAX_PROMPT_LENGTH = 100000`,
+     `adapters/ai/pydantic_ai_adapter.py:55`) rather than invented, and
+     must not truncate the repo contents the pool lane legitimately
+     carries.
 
    **The envelope must also carry the keys adapters read today**:
    `workflow_name` (`engines/hatchet_adapter_impl.py:232`), `single_repo`
-   (injected by `core/workflow_execution.py:198`), and `preference_order`
-   (`core/task_router.py:849`).
+   (injected by `core/workflow_execution.py:198`), and — **missed by the
+   first draft** — `system_prompt`, `output_type` and `tools`
+   (`adapters/ai/pydantic_ai_adapter.py:415`, `:972-975`). `output_type`
+   is a `type[BaseModel]`, so it is **adapter-owned** and must never be a
+   caller-supplied envelope field.
 
 2. **Change `trigger_workflow` (`mcp/server_core.py:477`) to build the
    envelope.** The caller's dict goes into `params` and is validated as
@@ -744,11 +938,22 @@ the trust boundary it is now (§4.11).
    The first draft of this plan flattened it, which would have put
    caller-controlled values directly into the worker's control namespace
    (§4.11).
-   - There are **three** workflow-record creation points, not one:
+   - There are **four** envelope builders, not three (§4.4): the MCP
+     tool (`mcp/server_core.py:477`), the CLI (`_main_cli.py:373`,
+     `:638`), the router (`core/task_router.py:842`), and **the task →
+     workflow handoff** (`mcp/server_core.py:1554-1562`,
+     `_dispatch_task_workflow`). The handoff is the only path from a
+     session-buddy task to a running workflow and the only writer of a
+     cross-repo record; its `type` is hard-coded `"ai_task"`, so its id
+     shape does not change, but it must still build the envelope.
+     There are additionally **three workflow-record creation points**:
      `initialize_workflow_state` (`core/workflow_execution.py:36`),
      `trigger_workflow`'s timeout branch (`mcp/server_core.py:524`, id
      `wf_timeout_<hex>_<type>`), and its exception branch (`:556`, id
-     `wf_error_<hex>_<type>`). All three must build the envelope.
+     `wf_error_<hex>_<type>`). All must build the envelope.
+   - **The handoff's id shape is pinned**: it must remain
+     `^wf_[0-9a-f]{8}_ai_task$`, because that value is written into
+     session-buddy's `Task.workflow_id`.
    - `adapter` **stays a `str`** — a static enum would advertise
      adapters the running server may not have registered (`hatchet` is
      off by default; `pydantic_ai` is never registered). The docstring
@@ -757,7 +962,32 @@ the trust boundary it is now (§4.11).
      a structured error naming the runtime-available adapters rather
      than letting `prepare_execution` raise deep in the call.
    - Bump `tool_versions.py` `"trigger_workflow"` from `1.1.0` to
-     `1.2.0` (MINOR — additive new top-level keys).
+     `1.2.0` — **MINOR, because the request contract does not
+     change.** Round 2 reclassified this twice. The first draft called
+     it MINOR on the grounds that it was *"additive new top-level
+     keys"*, which was factually wrong: the envelope's key set is
+     identical to today's `task` dict, and the keys the plan called
+     *new* (`workflow_name`, `single_repo`, `preference_order`) are
+     internal — the MCP caller never sees them. What changed was the
+     **semantics** of `params` and `task_type`, which under
+     `mcp/tool_versions.py:8-10` ("MAJOR: Breaking change (removed
+     field, changed type, different semantics)") is MAJOR — *if the
+     first draft's sketch is implemented literally*. With the corrected
+     design above (two task-type fields, `extra="allow"` passthrough,
+     the caller's `task_type` keeping its meaning) the request is
+     unchanged and MINOR is correct.
+     **The classification therefore depends on the design, which is why
+     this task must state the design.**
+   - **The repo's own MAJOR-bump machinery is not optional.** Round 2
+     found the precedent the plan never consulted:
+     `docs/adr/015-worktree-and-cache-storage-v4.md:487-490` — bump to
+     2.0.0, add a `DEPRECATED_TOOLS` entry (v1 callable for 2 minor
+     releases), add a translation shim, and update `discover_tools()` to
+     return `deprecated: true` + `sunset_version`. Plus
+     `docs/reports/deprecation-migration.md:12-13`: *"No tools will be
+     removed without a migration path."* **The plan's first draft
+     contained the word "deprecat" zero times.** Phase 4 task 6 is
+     where that machinery has to appear.
 
 3. **Fix `_main_cli.py:373` and `:638`:** `{"task": task_type, ...}` →
    `{"type": task_type, ...}`. Because
@@ -854,12 +1084,54 @@ real conversation against the current SDK.
    `adapters.pydantic_ai_enabled` flag, tolerating the optional `ai`
    PEP-735 group being absent. Reconcile the existing
    `integrations.pydantic_ai_enabled` (`core/config.py:2603`) with the
-   new flag — one of them should die.
+   new flag — **one of them should die. Round 2 named the survivor and
+   the alias**: `integrations.pydantic_ai_enabled` is **live** today —
+   `cli/demo_cli.py:1280` reads it as the `demo pydantic_ai`
+   precondition, and `settings/local.yaml:81` sets it `true` on this
+   host. So `adapters.pydantic_ai_enabled` becomes the survivor, and
+   `integrations.pydantic_ai_enabled` stays as a **one-release alias**
+   the loader resolves. Deleting it outright would silently drop the
+   operator's setting (the loader drops unknown sub-keys before
+   validation, `core/config.py:3560-3563`) and flip `demo pydantic_ai`
+   to "skipped" with **no error anywhere**.
+   - **`_instantiate_adapters` must be changed too, or the server will
+     not boot.** `core/bootstrap.py:403-407` passes `app.config` to
+     every adapter except `hatchet`; `PydanticAIAdapter.__init__` wants
+     a `PydanticAISettings`
+     (`adapters/ai/pydantic_ai_adapter.py:286-297`, model at `:166`), and
+     `core/bootstrap.py:414-424` re-raises the resulting `AttributeError`
+     as `ConfigurationError`. `pydantic_ai` must get its own settings
+     object, exactly as `hatchet` does.
 
-2. **Add `AdapterType.WORKER` and `AdapterType.HATCHET` to the
-   routing chains** — in `core/task_router.py`, which survives per
-   §4.12.1, not `core/routing.py`. The worker needs a **new
-   `TaskType.CLI_TASK`** (or equivalent). It must **not** be put ahead
+2. **Add `AdapterType.WORKER` and `AdapterType.HATCHET` to the routing
+   chains — in BOTH tables, and the live one is `core/routing.py`.**
+   **Round 2 corrected the file.** The first draft said to edit
+   `core/task_router.py` and *"not `core/routing.py`"*. That table is
+   **dead in production**:
+   - `core/task_router.py` has **no chain-building method at all**.
+     Its five public methods all live in `core/routing.py`
+     (`classify_intent` `:190`, `generate_fallback_chain` `:241`,
+     `get_adapter_scores` `:291`, `select_adapter` `:404`,
+     `get_routing_info` `:467`). Line `:729` — which the first draft's
+     Integration Contract cited — is `def _default_preference_order`.
+   - The **live** router is `core/routing.py`'s:
+     `core/workflow_execution.py:27` imports it, `:647` calls
+     `generate_fallback_chain`, `:707` calls `select_adapter`.
+   - `core/task_router.py`'s `TASK_PREFERENCE_ORDERS` *is* consulted by
+     its own `route()` (`:793`) and `execute_with_fallback()` (`:859`),
+     but both resolve the adapter through
+     `self.adapter_registry.get_adapter(...)`, and `AdapterManager`'s
+     `register_adapter` is called **only from test modules** — in
+     production that registry is always empty, so the loop skips every
+     adapter.
+   ⇒ Adding WORKER to `core/task_router.py` alone has **zero**
+   production effect, and **REQ-C01 would be false the day Phase 2
+   lands**. Phase 2 must therefore edit **`core/routing.py`'s
+   `DEFAULT_FALLBACK_CHAINS` (`:138-169`)** — which §6 already lists —
+   *and* `core/task_router.py`'s preference orders, so Phase 3's fold
+   carries the change across. The fold's *direction* is unchanged
+   (§4.12.1): `core/routing.py` folds **into** `core/task_router.py`.
+   The worker needs a **new `TaskType.CLI_TASK`** (or equivalent). It must **not** be put ahead
    of a model-driven engine for `AI_TASK`: the worker's contract is a
    *command plus a prompt* (`core/adapters/worker.py:206-211`), not a
    model-shaped call, so routing an LLM-shaped task to it removes the
@@ -892,16 +1164,65 @@ real conversation against the current SDK.
 6. **Extend the `adapters` health feed.**
    `core/health_aggregator.py:153-175` computes
    `any_enabled = prefect_enabled or llamaindex_enabled or agno_enabled`
-   and reports `entities_count` as a boolean `0/1`. A **worker-only**
-   deployment (engines off, `workers.enabled: true`) would get
-   `errors_total=1` → `/health` returns **503 degraded** even though the
-   worker adapter is healthy. Include the worker flag and
-   `hatchet_enabled`, and make `entities_count` the **count** of enabled
-   adapters.
+   and reports `entities_count` as a boolean `0/1`.
+   **Round 2 corrected the premise.** The probe builds a **bare**
+   `MahavishnuSettings()` (`:162`), and a bare settings has all three
+   engine flags at their **defaults** — verified at runtime:
+   `prefect_enabled=True, llamaindex_enabled=True, agno_enabled=True`
+   (and `hatchet_enabled=False`, against `get_settings()`'s `True` on
+   this host). So `any_enabled` is `True` on essentially every host and
+   the feed **never** reports degraded. The first draft's claim — *"a
+   worker-only deployment would get `errors_total=1` → `/health` returns
+   503"* — **cannot occur through the YAML**, and its rollback signal
+   (*"/health returning 503 on a worker-only deployment"*) **can never
+   fire**. The fix must therefore start with `get_settings()` (or
+   `app.config`), not with the flags: read the *resolved* settings, then
+   include the worker and hatchet flags, and make `entities_count` the
+   **count** of enabled adapters. Until the probe reads resolved
+   settings, its rollback signal is unobservable and must be replaced
+   with one that is not.
+
+7. **Separate *registration* from *routability*, and give the operator
+   a kill-switch.** Round 2 found that the plan conflated two things an
+   operator opts into separately.
+   - **Registration** is what the operator's flags control.
+     `core/bootstrap.py:388-389` builds `app.adapters` from
+     `adapters.hatchet_enabled` and `workers.enabled`.
+   - **Routability** is what changes production traffic — and the
+     chains are **static ClassVars** (`core/task_router.py:609-641`,
+     `core/routing.py:138-169`). Nothing filters a chain by what is
+     registered at runtime.
+   ⇒ On a fleet that has not enabled Hatchet, every WORKFLOW-type
+   routing attempt tries Hatchet, `prepare_execution` raises
+   `ValidationError("Adapter not found: hatchet")`
+   (`core/workflow_execution.py:103-111`), the fallback loop swallows it
+   (`:654-672`), and the workflow's `errors` list gains a **permanent
+   phantom entry** that `trigger_workflow` returns verbatim. On **this**
+   host — where `settings/local.yaml:71` already sets
+   `adapters.hatchet_enabled: true` and `:81` sets
+   `integrations.pydantic_ai_enabled: true` — Phase 2 makes both
+   **routable for real production traffic with no configuration change**.
+   The operator opted into an *adapter*; they did not opt into a new
+   *production substrate*.
+   **The fix:** build the chain from `app.adapters` at runtime
+   (filtering unregistered members), and add an explicit routability
+   flag so an operator can withdraw a substrate without unregistering
+   it. Phase 2 task 4's test must be rewritten accordingly — it
+   currently asserts that *an unregistered chain member is a defect*,
+   which is the opposite of what the runtime needs.
+   **The kill-switch problem:** `workers.enabled: false` is the only
+   knob an operator has, and it is **destructive** — it removes the
+   worker from `app.adapters`, which makes `app._worker_manager` `None`
+   (`core/bootstrap.py:434-437`), which makes `mcp/bootstrap.py` skip
+   **`register_worker_tools`** — **nine worker MCP tools silently
+   vanish behind one `logger.warning`**. There must be a way to make the
+   worker unroutable without removing nine tools from the server.
 
 **Exit criteria:** every registered adapter is selectable and named in
 the MCP tool's documentation; no chain member lacks a registration path;
-`/health` does not report degraded on a worker-only deployment.
+`/health` does not report degraded on a worker-only deployment;
+**an operator can withdraw a substrate from the routing chain without
+unregistering it and without losing MCP tools.**
 
 #### Integration Contract
 
@@ -962,7 +1283,39 @@ the MCP tool's documentation; no chain member lacks a registration path;
    `classify_intent` / `generate_fallback_chain` / `get_adapter_scores`
    / `select_adapter` / `get_routing_info`), so the fold is an
    *addition* of five public methods, not a move — and the four other
-   production importers of `core/task_router.py` must be repointed:
+   production importers of `core/task_router.py` must be repointed.
+   **Round 2 added what the first draft left unsaid**, because the fold
+   has **name collisions** and §7's own acceptance check
+   (`grep -rn "class TaskRouter" mahavishnu/` → *"one production
+   class"*) is otherwise unsatisfiable:
+   - `TaskRouter` — **both** classes define that name.
+   - `TaskType` — `core/routing.py` *imports* it (from
+     `core.metrics_schema`); `core/task_router.py` *defines* it
+     (5 members, `:82`). A textual merge shadows one with the other.
+   - `AdapterType` — imported from two modules (resolved by Phase 2
+     task 0).
+   - `RoutingStrategy` — imported by `core/app.py:143`,
+     `core/workflow_execution.py:27`, `agents/mahavishnu_agent.py:40`.
+   - `logger` — both modules define it.
+   - Two singletons — `get_task_router()` / `reset_task_router()`.
+   **The task must therefore state:** (a) `core/routing.py` is
+   **deleted** — no re-export shim (§3 non-goal 10) — with
+   `RoutingStrategy` and the five methods moved into
+   `core/task_router.py`, and `core/app.py` /
+   `core/workflow_execution.py` / `agents/mahavishnu_agent.py` /
+   `webhooks/router.py` repointed (all four go in §6); (b) the merged
+   `__init__` must accept **both** signatures — routing's
+   `(fallback_chains=None, default_strategy=RoutingStrategy.BALANCED)`
+   (`:171-183`) and task_router's `(adapter_registry=None,
+   state_manager=None, router_mode=…, metrics=None)` (`:643-656`) — and
+   `self.default_strategy` must survive, because `select_adapter` reads
+   it at `:430`; (c) **which chain table the merged
+   `generate_fallback_chain` reads**, because they disagree —
+   `core/routing.py:164-169` gives
+   `INTERACTIVE_TASK = [AGNO, LLAMAINDEX, PREFECT]` and
+   `core/task_router.py:630-634` gives `[AGNO, PREFECT, LLAMAINDEX]`;
+   and (d) that `INTENT_PATTERNS` (`core/routing.py:47`) is re-typed
+   to the winning `TaskType`.
    `core/task_requirements.py:26` (`TaskType`, live, feeding
    `TASK_CAPABILITY_REQUIREMENTS`), `core/bootstrap.py:620`,
    `_main_cli.py:469` (a dead helper whose import is pinned by
@@ -976,11 +1329,36 @@ the MCP tool's documentation; no chain member lacks a registration path;
    `core/workflow_execution.py` as `execute_workflow_batch(tasks:
    list[TaskEnvelope])` — one fallback chain per task, one shared
    workflow id — reusing `app.adapters` instead of the orphan
-   `AdapterManager`. Port `cancel_workflow` too: `workflow_execution`
-   has **no cancel path at all**, and the adapters already declare
-   `can_cancel_workflows=True`. `get_adapter_health` comes free from
-   `app.adapters`. `UnifiedOrchestrator` then dies as a *module* with
-   its capability preserved.
+   `AdapterManager`. Port `cancel_workflow` too — but **correct the
+   justification**. `workflow_execution` has no cancel path, but the
+   first draft's reason was wrong: `can_cancel_workflows=True`
+   (`core/adapters/worker.py:137`) is a **capability flag, not an
+   implementation**. **No adapter implements `cancel_workflow`** —
+   `grep -rn "def cancel_workflow" mahavishnu/` returns exactly two
+   hits, `core/unified_orchestrator.py:194` and the MCP tool
+   `mcp/server_core.py:709`, and the former's loop
+   (`if adapter and hasattr(adapter, "cancel_workflow")`) is always
+   False. The MCP tool only flips the state record to `"cancelled"`; it
+   does not stop running work. So the port must either (a) add a real
+   `OrchestratorAdapter.cancel_workflow` — an ABI addition this plan
+   does not price — or (b) record cancellation as **not** a preserved
+   capability. The plan must say which.
+   **Also:** `AdapterManager` is the router's *only* adapter lookup
+   (`TaskRouter.route` `:793`, `execute_with_fallback` `:859`), and
+   **three of its four construction sites have no `app`**
+   (`agents/mahavishnu_agent.py:190`, `webhooks/router.py:188,273`,
+   `core/unified_orchestrator.py:56`) — so "point the surviving router
+   at `app.adapters`" needs a mechanism (a provider, or a lazily
+   supplied adapter mapping). And `get_adapter_health` does **not** come
+   free: `UnifiedOrchestrator.get_adapter_health` (`:236-258`) reads the
+   orphan registry, and `TaskRouter.get_health` (`:942-953`) reads
+   `len(self.adapter_registry.adapters)` — **0** in production.
+   **And:** `execute_workflow_batch` must mint **one** id for N tasks
+   (the source's behaviour: `core/unified_orchestrator.py:81-93` mints
+   one id, one state, and records per-task results under it), or say
+   why not — `initialize_workflow_state` mints a new id per call, so a
+   batch that calls it N times produces N records and N "started"
+   increments.
 
 4. **Worker registry (§4.2 row 4) — winner reversed.** Do **not**
    retire the legacy `WORKER_REGISTRY`. It is the **dispatch** source
@@ -1019,17 +1397,87 @@ the MCP tool's documentation; no chain member lacks a registration path;
    - `PoolStatus` (a resource), `PlanStatus` (a document),
      `WorkerCapabilityState` (a probe) and `SettleState` (a merge run)
      are **not** execution lifecycles and stay separate.
+   - **Round 2 added the value the first draft missed and two it got
+     wrong.** The store writes **`partial`** today —
+     `core/workflow_execution.py:346`:
+     `"completed" if not errors else ("partial" if successful_results
+     else "failed")` — and `partial` is in **none** of the five source
+     enums. It must be in the superset.
+     Worse, a naive *union* would also pull in `success`
+     (`ExecutionStatus`) and `failure` alongside `completed` and
+     `failed` (`WorkerStatus`) — and the store filters on **exact
+     string equality** (`core/task_router.py:315-326`). A record
+     written as `"completed"` would then be invisible to a filter for
+     `"success"`. The superset must therefore **pin the four
+     surviving store strings** (`running`, `pending`, `completed`,
+     `failed`) as the *store's* vocabulary, and treat `success` /
+     `failure` / `partial` as **outcome-trail** vocabulary that Phase 4
+     task 4's mapping table owns.
+   - The union also changes the *type* of `list_workflows`'s `status`
+     parameter — today `core/status.py:118-129` `WorkflowStatus`, which
+     **eight live modules import** (`core/task_router.py:54`,
+     `core/monitoring.py:21` and `:506`, `core/repository_surface.py:238`,
+     `core/resilience.py:17`, `shell/adapter.py:9`,
+     `shell/shell_commands.py:8`, `shell/formatters.py:17`,
+     `mcp/server_core.py:653`) — and **none of them is in §6**. The
+     deprecated re-export module they import from
+     (`core/workflow_state.py:5-8`, documented as *"DEPRECATED … No live
+     code path should import this module"*) is **deleted**, and the
+     eight importers repointed at `core/status.py`.
 
-6. **Workflow state store (§4.2 row 6).** One durable store, and a
+6. **Workflow state store (§4.2 row 6).** One store per concern, and a
    **store interface** rather than a file swap. `StateManager._persist`
    (`core/task_router.py:217`) rewrites the **entire** JSON file on
    every mutation, **unlocked**, under a **CWD-relative** path
    (`_DEFAULT_STATE_DIR = Path("data/workflow_state")`, `:189`) — so a
    server started from a different directory writes a different
-   `workflows.json`, and two concurrent workflows can lose each other's
-   records. Introduce a `WorkflowStore` protocol with the file-JSON
-   implementation behind it; the repo already has
-   `core/state_backends/mcp.py` to build on.
+   `workflows.json`, and two concurrent **processes** can lose each
+   other's records (§4.5).
+   **Round 2 corrected two claims in the first draft.**
+   - **`core/state_backends/mcp.py` is not a durable backend to build
+     on.** Its own docstring says the substrate it speaks to is
+     *"backed by a process-local thread-safe dict"* and that *"All
+     writes are fire-and-forget"* — and it is **mahavishnu's own MCP
+     server** (`core/bootstrap.py:892-915`). It is an **HTTP self-call
+     into the same in-memory dict**: no durability, plus an event-loop
+     HTTP hop on the path §2.1 is trying to make faster.
+   - **The durable store the repo already has is `core/event_store.py:317`**
+     (`EventStore`, PostgreSQL-backed — `core/database.py:28`
+     `import asyncpg`, `:194` `asyncpg.create_pool`), and the pool
+     lane's own idempotency path already uses it:
+     `core/idempotency.py:81` `class IdempotencyStore: def __init__(self, event_store: EventStore)`.
+     So the durability work is **not blocked on another plan**.
+   - **The substrate has no backend seam to put anything behind.**
+     `core/substrate.py:35` imports the `kv_store` **module-level
+     singleton** directly, and `put` (`:67`) is **synchronous by
+     contract** (`:70-73`) — *"a sync write cannot be an HTTP
+     round-trip without blocking the event loop."* Its caller
+     `record_workflow_outcome` is likewise sync
+     (`core/workflow/outcome_writer.py:54`), called synchronously from
+     the async `finalize_workflow_execution`
+     (`core/workflow_execution.py:410`). A network-backed store therefore
+     **cannot** go behind that facade without changing the contract:
+     either `record_workflow_outcome` becomes async and is awaited, or
+     the facade grows a background-flush queue with a durability
+     acknowledgement. **The task must specify which.**
+   **The `WorkflowStore` protocol must be specified, not just named.**
+   The operations are: `create`, `update`, `get`, `list_workflows`,
+   `delete`, `update_progress`, `get_completed_count`, `add_result`,
+   `add_error`. Two live semantic ambiguities have to be settled:
+   - **`update` is a merge in one caller and a whole-record replace in
+     another** — `core/workflow_execution.py:349-354` passes four
+     fields; `core/backup_recovery.py:311` passes `**workflow`, the
+     entire backed-up record. `core/task_router.py:306` does
+     `record.update(updates)`. The protocol must say which it is; if it
+     is a merge, the restore path must be rewritten, because it relies
+     on replace semantics to restore `results` / `errors` /
+     `adapter_states`.
+   - **`list_workflows` applies `limit` before the caller counts.**
+     `core/task_router.py:320-326` returns `workflows[:limit]`, and
+     `core/monitoring.py:1012-1020` calls it once per status with
+     **`limit=1`** and then does `counts[status.value] = len(workflows)`
+     — so **every workflow count in the health feed is 0 or 1**. A
+     protocol that freezes that signature freezes the bug.
    **Do NOT move the outcome writer off the substrate.** The
    `2026-10-31-substrate-calltime-rewire` plan deliberately rebound
    `core/workflow/outcome_writer.py` to the substrate facade
@@ -1037,9 +1485,37 @@ the MCP tool's documentation; no chain member lacks a registration path;
    `workflow-results/{workflow_id}/` through the `mahavishnu_kv_*` tools
    sees the record — a cross-component contract, not a private store.
    The gap is that the substrate's current backend is process-local
-   (`core/kv_store.py:27`), so outcomes do not survive a restart. The
-   fix is a **durable backend behind the substrate facade**, not a
-   relocation; and it belongs to the substrate plan's owners.
+   (`core/kv_store.py:87`), so outcomes do not survive a restart.
+
+6b. **Prune the store; do not migrate it.** **Round 2 added this task,
+   and it is the cheapest fix in the plan.** The store holds **469**
+   records (5.2 MB, ten of them ~390 KB each), of which **77** are
+   stuck `running` and **56** carry the `_default` suffix from the CLI
+   key bug — plus **six** leaked test-fixture ids
+   (`test_integration_workflow`, `backup_integration_test`, …) sitting
+   in the *production* file. Because this plan is **forward-only**
+   (§3 non-goal 10), those records need no migration: **delete them.**
+   That takes the file from 5.2 MB to near-empty and removes the store's
+   worst pathology — the 10 × 390 KB blobs that make every whole-file
+   rewrite expensive. The task must also:
+   - **Prune before the store-hardening lands**, because the pruning
+     write is itself a full-file rewrite.
+   - **Repoint the reaper**, or the 77 stay invisible forever:
+     `_check_stuck_workflows` (`core/resilience.py:969`) filters on
+     `status=WorkflowStatus.RUNNING` (`:974`) and
+     `core/monitoring.py:513` does too, and Phase 3 task 5 changes the
+     enum those filters use.
+   - **Batch the reaper.** If anyone calls the `heal_workflows` MCP tool
+     today it performs up to 75 sequential `update()` calls, each a
+     full-file rewrite — **~390 MB of writes**. A batched reaper (one
+     persist for N records) is a precondition for enabling it.
+   - **Pin the store's canonical path.** The CWD-relative
+     `data/workflow_state` is the ground of
+     `docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`
+     (CWD inheritance is a recorded failure mode), and the repo has a
+     canonical XDG path convention (`core/xdg_paths.py`). The store
+     must move to it — this is the only place the plan's own
+     "CWD-relative" finding gets fixed rather than merely noted.
 
 7. **Remove the `AdapterRegistryConfig` ghost (§4.2 row 10):** delete
    `core/config.py:2000-2051`, the `adapter_registry` field (`:3337`),
@@ -1134,12 +1610,29 @@ absorbing terminals; workflow outcomes survive a process restart.
      at the substrate layer. The execution envelope composes the error
      envelope; it does not replace either.
 
-2. Have all six adapters return it — or, lower-risk, have the control
-   plane convert at the boundary via
-   `ExecutionEnvelope.from_adapter_result(adapter_type, raw)`. Pick
-   one and say so; the first draft's "wrap rather than rewrite" left
-   REQ-C04 false at the type level, since
-   `OrchestratorAdapter.execute` is declared `-> dict[str, Any]`.
+2. **Round 2 picks: the boundary converter.** The two options were
+   "have all six adapters return it" or "convert at the boundary via
+   `ExecutionEnvelope.from_adapter_result(adapter_type, raw)`". The
+   first is rejected because it breaks the state store —
+   `StateManager.create` does `record["task"] = dict(task)`
+   (`core/task_router.py:280`) and `add_result` does `dict(result)`
+   (`:342-348`), and **`dict()` on a Pydantic model raises
+   `TypeError`**. Changing `OrchestratorAdapter.execute`'s return type
+   is an ABI change to a base class with five implementations, and it
+   would have to be a *breaking* one.
+   **But the converter must be honest, and it cannot be uniform.** The
+   six adapters report **six different status vocabularies**
+   (`completed` / `failed`; `completed` / `timeout` / `error`;
+   `completed`; `completed`; `AgentStatus`; `completed` / `partial`),
+   and **five of six have no exit code at all**. The worker adapter
+   *has* one (`WorkerResult.exit_code`, `workers/base.py:36`) but
+   `core/adapters/worker.py:290-300` **drops it** on the way out — so
+   the fix is to carry it through, and to make `exit_code` honestly
+   `None` for the five engines that cannot report one. §4.8's rule
+   applies: *a success subtype with a missing structured payload is a
+   failure* — so the envelope must distinguish "exit code 0" from
+   "no exit code", and the plan must **name the adapters the converter
+   cannot honestly convert** rather than guessing.
 
 3. **The control plane creates the span — and propagates the context.**
    The first draft said the workflow span is opened "around the repo
@@ -1159,9 +1652,16 @@ absorbing terminals; workflow outcomes survive a process restart.
    `core/observability.py:441-461` calls `start_as_current_span` with
    no carrier. Without propagation there is no tree, only adjacent
    spans. So:
-   - inject `TRACEPARENT` / `TRACESTATE` into the **Phase 7 launcher's
-     environment** — that launcher already "reads the prompt into
-     `MAHAVISHNU_PROMPT` and exports it", so this is free;
+   - inject `TRACEPARENT` / `TRACESTATE` into the **worker launch
+     environment** — `workers/shell_backend.py:399-404` already passes
+     `env_overrides` into `terminal_manager.launch_sessions(...)`, so
+     this is free **in Phase 4**. The first draft named the *Phase 7
+     launcher* as the injection point, but Phase 4 lands before Phase 7
+     and the launcher does not exist yet; the launcher will simply
+     inherit the variables it already passes through for the prompt.
+     `core/observability.py:441-461` `start_workflow_trace` calls
+     `start_as_current_span` with **no carrier and no `context=`
+     parameter**, so the signature must gain one;
    - inject the same context into **each engine's submission path**
      (the Prefect deployment run, the Hatchet run, the Agno agent call)
      — per engine, since each owns its own tracer;
@@ -1197,7 +1697,24 @@ absorbing terminals; workflow outcomes survive a process restart.
 6. **Decide the envelope's position** in `trigger_workflow`'s tool
    return. The existing `"result": result` key means the envelope would
    otherwise be duplicated at two depths; removing it is a MAJOR shape
-   change (`1.1.0 → 2.0.0` per `mcp/tool_versions.py:8-10`).
+   change. **Round 2 corrected the arithmetic and dropped the
+   deprecation machinery.** The first draft said `1.1.0 → 2.0.0`; but
+   Phase 1 already moves the version (`1.1.0 → 1.2.0`), so Phase 4's
+   bump is `1.2.0 → 2.0.0`. And because this plan is **forward-only**
+   (§3 non-goal 10), there is **no** `DEPRECATED_TOOLS` entry, **no**
+   translation shim, and **no** deprecation window — the key is
+   removed and the version says so.
+   **Round 2 also found a cheaper shape that avoids the break
+   entirely.** The response already carries `workflow_id`, `status`,
+   `repos_processed`, `successful_repos`, `failed_repos`,
+   `execution_time` and `errors` at the top level
+   (`mcp/server_core.py:507-516`) — and the envelope's fields are
+   essentially those. So the envelope's fields can be added **at the
+   top level** and the `"result"` key dropped in the same change, with
+   **no** duplicated shape at two depths. That is the design this task
+   should pick; the alternative (keeping `"result"` as a duplicate) is
+   what the first draft was arguing against, and with no
+   compatibility window the duplication buys nothing.
 
 **Exit criteria:** every execution reaches the caller as one envelope;
 one span tree covers the fan-out; the three terminal-state vocabularies
@@ -1234,23 +1751,61 @@ observability as an engine dispatch.
 
 **Tasks:**
 
-0. **Make the state store safe for the hot path first** (§2.1).
-   `StateManager._persist` rewrites the whole JSON file on every
-   mutation, unlocked. Either the pool lane writes its workflow record
-   **once at completion** (as `finalize_workflow_execution` does today),
-   or the store gets a lock + atomic replace before the lane joins it.
+0. **Put the pool lane's record somewhere that is not the
+   whole-document store.** **Round 2 replaced both of the first
+   draft's options, because neither satisfies §2.1.** The first draft
+   offered *"write the record once at completion"* or *"the store gets
+   a lock + atomic replace"*. But `StateManager._persist` rewrites the
+   **entire** file on **every** mutation — so "once at completion" is
+   still a 5.2 MB rewrite per dispatch, and "lock + atomic replace"
+   only makes that *safe*, not *cheap*. **Neither option satisfies the
+   criterion the plan itself calls "the one that bites".**
+   **The option the first draft missed:** the substrate already
+   supports **per-record keys with O(1) writes** —
+   `substrate.put(f"<namespace>/{key}/", payload)` is a single dict
+   insert (`core/kv_store.py:46-48`). A pool dispatch can write
+   `pool-dispatch/v1/{workflow_id}/` — **one dict insert, no file
+   rewrite, no lock, no contention** — and `get_workflow_status` gains
+   a **fallback read** (state store first, substrate second). That
+   single change satisfies §2.1, makes the "lock + atomic replace"
+   option unnecessary *for the hot path*, and leaves the file store for
+   the engine lane.
+   **The store-hardening work is still needed** — for the engine lane,
+   and for the two-process data-loss vector (§4.5) — but it is no
+   longer on the pool lane's critical path. It must specify: a
+   **unique temp name** in the same directory (the repo's own rule: a
+   fixed-name `.tmp` is a symlink target), `os.replace`, `fsync` on
+   file and directory, and an **inter-process** lock (`fcntl.flock`) —
+   a `threading.Lock` is useless when the MCP server and a CLI are the
+   two writers.
    `pool_route_execute` is the path `CLAUDE.md` § Tool Preferences tells
    every agent to use; adding a full-file-rewrite write to it would
    regress the documented ~200–500 ms routing overhead.
 
 1. **Mint the workflow id before the selector gate**, so it exists on
-   **every** return path. `pool_route_execute` has ~10 distinct return
-   paths (`mcp/tools/pool_tools.py:790, 797, 846, 862, 884, 900, 955,
-   1010` and the outer handler); nine return a bare status dict, so a
-   client doing `result["workflow_id"]` gets a `KeyError` on the
+   **every** return path. **Round 2 replaced the first draft's
+   inventory, which was wrong.** AST enumeration of `pool_route_execute`
+   (`mcp/tools/pool_tools.py:737-1115`) yields **14** returns — L783,
+   L788, L839, L860, L869, L884, L895, L946, L1049, L1081, L1087,
+   L1089, L1100, L1105 — of which **13** are bare status dicts (only
+   L1049 returns the dispatch result). The first draft cited
+   "790, 797, 846, 862, 884, 900, 955, 1010", of which only **884** is
+   a return; 797 is a `try:`, 846 a comment, 900 and 955 `raise`s, and
+   1010 a dict key inside a `logger.exception`. It also **missed
+   L946** — `{"status": "worktree_conflict", ...}` — the one path where
+   the dispatch never ran. The e2e test the plan drives would have been
+   written from those numbers and **silently skipped the
+   worktree-conflict path**.
+   So a client doing `result["workflow_id"]` gets a `KeyError` on the
    rate-limited and invalid-selector paths. The idempotency-duplicate
-   path (`{"status": "duplicate", "result": cached}`) must return the
-   **original** id, surfaced at the top level.
+   path (`{"status": "duplicate", "result": cached}`, `:884`) must
+   return the **original** id, surfaced at the top level.
+   **And the rejection paths must not write a record.** Minting an id
+   is free; *writing* one is the expensive part (Phase 5 task 0). A
+   dispatch that was rejected before it started must answer
+   `get_workflow_status` with a **terminal, non-`not_found`** status
+   (e.g. `{"status": "rejected", "reason": "rate_limited"}`) — not
+   `not_found`, which reads as "never existed".
 
 2. **Give the pool workflow record the fields
    `get_workflow_status` reads** (`mcp/server_core.py:609-621`): set
@@ -1259,15 +1814,39 @@ observability as an engine dispatch.
    "passes" while reporting `task_type: "unknown"`,
    `repos_processed: 0`, `results_count: 0` — the surface-health
    illusion.
+   **Round 2 found that Phase 5 cannot write a record at all without
+   a wiring change the first draft omitted.** `get_workflow_status`
+   reads `self.app.workflow_state_manager.get(workflow_id)`
+   (`mcp/server_core.py:585`), but the pool tool block has **no path**
+   to that store: `register_pool_tools(mcp, pool_manager)`
+   (`mcp/tools/pool_tools.py:278-281`) takes only the server and the
+   `PoolManager`, and `PoolManager.__init__`
+   (`pools/manager.py:146`) takes no app and no store. So the task must
+   include threading the store (or the Phase 3 `WorkflowStore`) into
+   `register_pool_tools` / `PoolManager` and into `mcp/bootstrap.py`'s
+   `_register_pool_block`. **The `workflow_id` must be minted in the
+   orchestration layer** — the plan's own §9 Temporal model — and
+   passed down as an opaque correlation id for the substrate to echo.
+   Also: setting `task["type"] = "pool_dispatch"` changes the
+   routing-decision audit's `task_class` from `"unknown"`
+   (`pools/manager.py:262-268`) — a behaviour change the first draft
+   did not mention.
 
 3. **Persist a redacted summary, not the prompt.** The pool task is
    `{"prompt": prompt, "timeout": timeout}`
    (`mcp/tools/pool_tools.py:804-806`), and the prompt routinely carries
    repo contents, diffs and file bodies. `StateManager.create` stores
-   `dict(task)` verbatim (`core/task_router.py:273`) and
-   `core/task_audit.py` has a redaction helper the store does not use.
-   Persist a summary — prompt length, digest, task class, caller kind —
-   or pass it through the existing helper.
+   `dict(task)` verbatim (`core/task_router.py:280`).
+   **Round 2 removed the first draft's alternative, because it would
+   have written the prompt to disk in full.** The fallback was *"or
+   pass it through the existing helper"* — but
+   `core/task_audit.py`'s `SENSITIVE_FIELDS` (`:79`) is
+   `{"description", "metadata", "tags"}` and its `SENSITIVE_KEYS`
+   (`:86`) are credential names; **the string `prompt` appears
+   nowhere in that file**. Passing `{"prompt": "…"}` through it
+   returns the prompt verbatim — the exact outcome the task exists to
+   prevent. **Persist a summary — prompt length, digest, task class,
+   caller kind — and that is the only option.**
 
 4. **Surface the id in `pool_monitor`.** `pool_monitor` returns
    `pool_manager.aggregate_results(pool_ids)`
@@ -1285,7 +1864,7 @@ observability as an engine dispatch.
    a defensible position. Either state the boundary and why, or add the
    check.
 
-5. **Do not repoint `tasks_handoff_to_workflow` onto the pool lane.**
+6. **Do not repoint `tasks_handoff_to_workflow` onto the pool lane.**
    The handoff is bound to the **workflow** lane's semantics —
    `mcp/server_core.py:1516` binds
    `workflow_dispatch_fn=self._dispatch_task_workflow`, and the typed
@@ -1298,7 +1877,7 @@ observability as an engine dispatch.
    same change — it already mis-describes step 2 as
    `pool_route_execute(prompt=task.content)`.
 
-5a. **The workflow id must satisfy the shared two-repo pattern.**
+7. **The workflow id must satisfy the shared two-repo pattern.**
    `mcp/tools/_workflow_id_guard.py:21` defines
    `^[A-Za-z0-9._-]{1,128}$`, and session-buddy mirrors it byte-for-byte
    with the comment that *"the two repos must agree on what a workflow
@@ -1309,25 +1888,52 @@ observability as an engine dispatch.
    (`wf_<hex>_terminal`, `wf_<hex>_composition`) are pattern-safe —
    but any shape change requires a **coordinated session-buddy change**.
 
-5b. **Decide the pool lane's identity vs the existing
+8. **Decide the pool lane's identity vs the existing
    `execution_id`.** `pool_tools.py:919` mints an `execution_id` that
    is not surfaced in the response; the worktree branch is named
    `f"feature/{execution_id}-{uuid4().hex[:8]}"`. State whether
    `workflow_id` replaces or derives from it, and surface it under a
    distinct key if it stays distinct.
 
-7. **Keep the routing semantics untouched.** The decision-adapter
+9. **Keep the routing semantics untouched.** The decision-adapter
    plan's Phase 1 makes this tool route live through the `decision`
    category, gated on a **7-day disagreement test**
    (§4.12.1). This plan adds identity, not routing — and must not
    schedule against a moving target.
 
-8. **Register `pool_route_execute` in `TOOL_VERSIONS`.** It is
+10. **Register `pool_route_execute` in `TOOL_VERSIONS`.** It is
    **absent** (`mcp/tool_versions.py:71-78` registers the other seven
    pool tools but not this one), so it has no version to bump and is
    invisible to `discover_tools` — it appears in neither
    `loaded_tools` nor `not_loaded_tools`. Add it (and `pool_spawn` /
    `pool_bootstrap`, the same class of gap) while here.
+   **Round 2 widened the class from three tools to nine.** The
+   registered-but-unversioned tools are `pool_route_execute`,
+   `pool_spawn`, `pool_bootstrap`, **`tasks_handoff_to_workflow`**,
+   `audit_health`, `cross_repo_search`,
+   `mahavishnu_dispatch_specialist`, `mahavishnu_list_specialists` and
+   `mahavishnu_get_publish_url`. `tasks_handoff_to_workflow` is the
+   task system's **only** dispatch edge (CLAUDE.md § "Task System
+   (Bodai)") and is invisible to the fleet's discovery tool. Register
+   all nine, and add a **registry-parity test** that fails when a
+   registered tool has no `TOOL_VERSIONS` entry — so the class cannot
+   grow again.
+   **The version number:** because the tool has been shipping
+   **unversioned** and this plan is forward-only (§3 non-goal 10),
+   there is no shipped contract to record — so register it at
+   **`1.0.0` in the same change that adds the `workflow_id`**, and
+   `2.0.0` if the response shape also loses a field. The first draft
+   put this task *last*, after the shape had already changed, which
+   would have left the registry describing a shape that never shipped.
+   **Two other facts about the tool's surface the first draft
+   omitted:** its `"Returns:"` docstring (`pool_tools.py:765-775`)
+   documents **5** status values while the wire carries **8** —
+   `error`, `duplicate` and `worktree_conflict` are undocumented — and
+   the tool is **STANDARD-tier**, not always-on
+   (`mcp/tools/profiles.py:102`, `:124`; absent from
+   `MINIMAL_REGISTRATIONS` `:78-98`), so a MINIMAL deployment has no
+   dispatch lane at all. The docstring must be rewritten to the full
+   status set, and the tier stated.
 
 **Exit criteria:** every `pool_route_execute` response carries a
 `workflow_id`; `get_workflow_status` resolves it and reports real
@@ -1360,15 +1966,34 @@ has not regressed.
 
 **Tasks:**
 
-1. Add a **sequence** entry point beside
-   `execute_workflow_with_fallback` (`core/workflow_execution.py:635`):
-   stages run **in order**, each consuming the previous one's output.
-   This is the piece that does not exist — the fallback chain is
-   priority order, not data flow, and conflating them is a rejected
-   design. This is **distinct** from the multi-task batch loop ported
-   from `UnifiedOrchestrator` in Phase 3: a batch runs N independent
-   tasks, each with its own fallback; a sequence threads one into the
-   next.
+1. **Extend the conductor — do not build a second executor. Round 2
+   overturned this task.** The first draft said *"This is the piece
+   that does not exist"* and *"mahavishnu does not need its own DAG
+   engine."* **Both are false**: the repo **shipped** a DAG composition
+   executor (§4.15) — `core/conductor.py`'s `plan()` / `emit_node()` /
+   `_dispatch_dag_waves()` / `emit_flow()`, backed by
+   `core/capabilities.py`, `core/conductor_types.py`,
+   `engines/emit_node_dispatch.py` and
+   `tests/integration/conductor/`. `emit_flow()` compiles the DAG into
+   a Prefect flow with `task.submit(..., wait_for=[upstream_future])` —
+   **dependency-ordered data flow across adapters**, which is exactly
+   what the first draft proposed to invent.
+   **The real gap is precise:** the conductor's DAG threads **engine
+   legs only**, its downstream prompt synthesis is an explicit
+   placeholder (`core/conductor.py:222-227`), and its MCP entry point
+   is a **one-line stub** — `execute_capability`
+   (`mcp/tools/capability_tools.py:362`) returns `status="planned"`,
+   with its own docstring saying *"Actual dispatch lands in Phase 4
+   (per-engine dispatch modules)"*.
+   So the task is: **add a worker leg to `emit_node`, flip
+   `execute_capability`'s `status="planned"` to a real dispatch, and
+   give the DAG the workflow identity and span tree the control plane
+   owns.** The fallback chain is still not data flow — that observation
+   stands, and it is why the conductor's DAG is the right home rather
+   than the fallback chain.
+   This remains **distinct** from the multi-task batch loop ported from
+   `UnifiedOrchestrator` in Phase 3: a batch runs N independent tasks,
+   each with its own fallback; a DAG threads one into the next.
 
 2. **Each stage names its adapter explicitly; the router is not
    consulted inside a stage.** The router selects *within* a stage
@@ -1381,7 +2006,7 @@ has not regressed.
    workflow reports **which** stage broke. `stage_index` and
    `stage_count` go into the envelope's identity fields.
 
-2. **Reuse the threading** from `demo workflow-pi-then-local`
+4. **Reuse the threading** from `demo workflow-pi-then-local`
    (`cli/demo_cli.py:4098-4108`), where stage one's output is folded
    into stage two's prompt — but promote it **with its discipline**.
    The demo's threading is a **string splice, not a data-flow
@@ -1392,7 +2017,7 @@ has not regressed.
    be required**: missing or non-string output ⇒ stage 1 fails ⇒ stage
    2 does not run.
 
-2a. **A sequence is a linear list of stages: no branching, no fan-out,
+4a. **A sequence is a linear list of stages: no branching, no fan-out,
    no cycles.** State it as an invariant and pin it with a test —
    otherwise "a sequence, not a second DAG" is unenforceable, and the
    executor grows a DAG the moment someone needs a conditional.
@@ -1407,12 +2032,36 @@ has not regressed.
      reuses the pool's existing env-var / `shlex.quote` delivery;
    - run stage two with a **reduced permission mode** whenever its
      input is derived, unless the operator opts in — and record the
-     opt-in;
+     opt-in. **Round 2 found that this control is unimplementable as
+     written**, so it needs an explicit plumbing task: there is **no
+     per-dispatch permission-mode path** today.
+     `workers/manager.py:412-433` `_resolve_permission_mode` reads
+     **settings only**, and `:500-506` constructs
+     `ShellWorker(..., permission_mode=...)` while **ignoring
+     `kwargs`**. `submit_workers`' `runtime_kwargs` (`:320-326`,
+     `:349`) is forwarded only into the **Shepherd** branch (`:507`) —
+     so `submit_workers(..., runtime_kwargs={"permission_mode":
+     "plan"})` is **silently dropped** for `terminal-claude`.
+     The leaf is ready (`ShellWorker.__init__(permission_mode=…)`,
+     `resolve_permission_mode(config, override)`); the plumbing is not.
+     The task must therefore add: (a) the SHELL branch of
+     `_create_worker` forwards `permission_mode`; (b) the envelope
+     carries a per-task `permission_mode`; and (c) the "record the
+     opt-in" has a named destination (the Phase 4 envelope and the
+     Phase 4 span/metric labels). **Without this, the exit criterion
+     below is unmeetable** — and a "reduced permission mode" that
+     silently does nothing is worse than no such control, because the
+     plan would be claiming it.
    - mark the second leg's input as **derived** in the span and metric
      labels, so an operator can tell an injected leg from a direct one.
 
-5. **Keep the executor a *sequence*, not a second DAG.** Prefect is
-   already in the stack; mahavishnu does not need its own DAG engine.
+5. **Keep the executor *one* DAG, not two.** The first draft said
+   *"mahavishnu does not need its own DAG engine"* — but the repo
+   already has one, and it is the right one (§4.15). The corrected
+   rule is the opposite: **there is exactly one DAG engine
+   (`core/conductor.py`), and Phase 6 extends it.** Prefect's presence
+   in the stack is a *reason* the conductor should compile to a Prefect
+   flow, not a reason to avoid the conductor.
 
 6. Add `demo workflow-engine-and-worker`: an engine leg (prefect by
    default) produces a task, a `terminal-claude` pool executes it, both
@@ -1450,14 +2099,29 @@ inferred from a process exit.
 
 **Tasks:**
 
-1. **Settled is final.** The pool is the single writer of a dispatch's
-   state; a worker reports an *outcome* and the pool decides the
-   *state*. A later poll — the worker's progress callback, a
-   `pool_monitor` read — may not move a settled dispatch back to
-   running. The rule is enforced at the **aggregate layer**
-   (`pool_manager.aggregate_results`, `pools/manager.py`), not only at
-   the dispatch record. This is the "a stale poll can assert a
-   completed" hole.
+1. **Introduce a pool-owned dispatch record, then make settled final.**
+   **Round 2 split this task, because the first draft's version has
+   nothing to enforce on.** `pool_manager.aggregate_results`
+   (`pools/manager.py:1343-1399`) returns
+   `{pool_id: {"memory_count": int, "status": PoolStatus.value}}` —
+   **per pool, not per dispatch**. There is no dispatch id, no dispatch
+   state, and nothing persisted: the pool's per-dispatch result is a
+   **transient dict** returned by `MahavishnuPool.execute_task`
+   (`pools/mahavishnu_pool.py:307-314`), and the only persistent pool
+   trace is the routing-decision audit (`pools/manager.py:246-290`),
+   which has no dispatch id and no state field. `route_task` is
+   **synchronous** (`pools/manager.py:836`) — there is no "dispatched"
+   interval at all.
+   So the task is two tasks: **(1a)** introduce a pool-owned dispatch
+   record (`dispatch_id`, `state`, `terminal_state`, `settled_at`)
+   written by the pool, and surface per-dispatch states so the rule is
+   enforceable and testable; **(1b)** enforce settled-is-final at the
+   aggregate layer.
+   The plan also asserts *"the pool is the single writer of a
+   dispatch's state"* — **today the worker writes its own status**
+   (`workers/shell_backend.py:411` `self._status = WorkerStatus.RUNNING`;
+   `:683` `CANCELLED`). Moving that ownership is exactly what §4.13's
+   state-ownership rule requires, and it is what (1a) does.
 
 2. **Parse the CLI's own result envelope rather than trusting the exit
    code alone.** Claude's `stream-json` ends with
@@ -1482,6 +2146,20 @@ inferred from a process exit.
      the default umask would make it world-readable);
    - invoked as `sh <launcher>`, not executed, so it need not carry the
      execute bit;
+   - **the stderr decision must be made against the *registry*
+     command, not the rendered string.** Today
+     `workers/shell_backend.py:393` checks
+     `if STDERR_PATH_ENV_VAR in command:` on the **rendered** command,
+     and that is the *only* trigger for creating the per-invocation
+     stderr file (`:394-396`). With the launcher, the string handed to
+     `terminal_manager.launch_sessions` becomes `sh <launcher>` — which
+     does **not** contain `MAHAVISHNU_STDERR_PATH` — so the file would
+     never be created, the CLI's stderr would silently go to
+     `/dev/null`, and the failure diagnostic at `:591` / `:607-610`
+     would be lost. `tests/unit/workers/test_shell_command_safety.py:334-343`
+     asserts `STDERR_PATH_ENV_VAR in command` and would fail. The
+     check must move to `self.config.command` (the registry entry)
+     rather than the rendered string;
    - generated **only** via `render_command()` +
      `resolve_permission_mode()`, never by string-formatting the
      registry command — `render_command` raises if a `{prompt}`
@@ -1580,8 +2258,33 @@ system rather than bypass it.
    different meaning. It also runs `validate_pre_execution_qc` and
    `create_session_checkpoint` (`:551-552`), so **every demo run would
    write a session checkpoint into Session-Buddy** — a cross-ecosystem
-   side effect of the demo surface. Accept it explicitly or add a
-   demo-mode flag that skips `create_session_checkpoint`.
+   side effect of the demo surface.
+   **Round 2 corrected the first draft's remedy.** The first draft
+   offered *"accept it explicitly or add a demo-mode flag that skips
+   `create_session_checkpoint`"*. **A skip flag is the wrong answer**,
+   for two reasons:
+   - **The write is not demo-only.** `execute_workflow_parallel` already
+     does it for **every** `trigger_workflow` today
+     (`core/workflow_execution.py:551-552` → `core/session/checkpoint.py:59-79`).
+     A demo-only flag hides a pre-existing per-workflow side effect
+     rather than fixing it — and it would make the demo lane
+     observably *different* from the operator lane, which REQ-C11
+     explicitly wants to eliminate.
+   - **The write is unattributable.** `core/session/checkpoint.py:66-72`
+     sends only `{"checkpoint_type": "workflow"}` — no `workflow_id`,
+     no `task`, no `adapter`, no `repos`. So every workflow (and every
+     demo) produces an indistinguishable snapshot of the *operator's
+     session context*, and `demo_all` over the demo set adds one per
+     demo to session-buddy's searchable corpus.
+   **The fix is a two-repo contract change**: session-buddy's
+   `store_conversation_checkpoint` accepts a `workflow_id` (and the
+   workflow state), and mahavishnu passes it from
+   `create_session_checkpoint` / `update_checkpoint`
+   (`core/session/checkpoint.py:81-117`). The session-buddy side is an
+   **operator-owned publish** (the `session-buddy>=0.38.0` pin is
+   bumped by the operator, not by this change).
+   **Until that lands, the demo lane keeps the checkpoint.** The demo
+   must exercise the operator's path.
 2. **Fix the `prefect` demo to exercise the adapter.** It currently uses
    Prefect's raw client (`get_client`, `run_deployment`,
    `flow.from_source(...).deploy()`) and never calls
@@ -1649,10 +2352,12 @@ The cookbook is the *worked-example layer* — the only place a reader
 learns what a workflow actually looks like end to end. It is currently
 **not** covered by any automated check: `grep -rn "cookbook" tests/`
 returns nothing, so a recipe can describe a command that no longer
-exists and nothing fails. That drift is the same failure mode as the
+exists and nothing fails. (That grep becomes non-empty once this plan
+lands `tests/unit/cli/test_cookbook_parity.py` — so this sentence is a
+statement about the *pre-plan* state, not a permanent claim.) That drift is the same failure mode as the
 dark adapters, one layer down, so this phase closes it.
 
-15. **Recipe 1 — PiPool → MahavishnuPool handoff** (`docs/cookbook/workflows.md:27`).
+17. **Recipe 1 — PiPool → MahavishnuPool handoff** (`docs/cookbook/workflows.md:27`).
     Its documented output (`{"workflow": "pi-then-local", "pi": {...},
     "local": {...}}`) is a bespoke JSON shape no other demo produces.
     Update:
@@ -1673,14 +2378,14 @@ dark adapters, one layer down, so this phase closes it.
     Phase 1 envelope change does not otherwise touch them. Recipe 1
     changes because its *implementation* is promoted onto the Phase 6
     sequence executor.
-16. **Recipe 2 — PiPool 2-turn cascade** (`:122`). Same treatment: it
+18. **Recipe 2 — PiPool 2-turn cascade** (`:122`). Same treatment: it
     gains the `workflow_id` from Phase 5. This recipe is *already* a
     sequence — two ordered turns on one pool — so it is a second
     candidate for the Phase 6 executor alongside Recipe 1. Its closing
     cross-reference ("For a true multi-pool handoff (source → target),
     use `workflow-multi-pool-handoff` instead") must also point at the
     new `workflow-engine-and-worker` recipe.
-17. **Add a recipe for each new demo** (task 7 and 8 above), following
+19. **Add a recipe for each new demo** (task 7 and 8 above), following
     the file's existing structure (Goal, Substrates exercised,
     Prerequisites, The command, What you'll see, Troubleshooting, Notes)
     and adding a row to the recipe index with its flavor:
@@ -1690,7 +2395,7 @@ dark adapters, one layer down, so this phase closes it.
       usage-limited; and how to read the completion marker.
     - **`workflow-engine-and-worker`** — the composition: one
       `workflow_id`, two legs, one span tree, and the stage narration.
-18. **Add a recipe for the newly-reachable adapters.** Phase 2 makes
+20. **Add a recipe for the newly-reachable adapters.** Phase 2 makes
     `worker`, `hatchet`, and `pydantic_ai` selectable through
     `trigger_workflow`. The cookbook is where a reader would look for
     "how do I actually run a workflow on a terminal worker", and today
@@ -1698,7 +2403,7 @@ dark adapters, one layer down, so this phase closes it.
     `mcp__mahavishnu__trigger_workflow(adapter="worker", …)` end to end
     — including the repositories to scope to, and what the result
     envelope looks like — is the missing worked example.
-19. **Update the "How to add a new recipe" procedure itself.** It is
+21. **Update the "How to add a new recipe" procedure itself.** It is
     the mechanism by which workflows are generated today (§4.1), so it
     must describe the consolidated system:
     - step 1 currently says to build `_run_workflow_<name>_demo` that
@@ -1717,8 +2422,8 @@ dark adapters, one layer down, so this phase closes it.
       envelope, so a recipe written from the template cannot document
       a pre-consolidation shape;
     - it must also require a cookbook recipe for every new workflow
-      demo — that is the parity rule in task 20.
-20. **Add a cookbook↔demo parity test** (REQ-C15). A new test in
+      demo — that is the parity rule in task 22.
+22. **Add a cookbook↔demo parity test** (REQ-C15). A new test in
     `tests/unit/cli/test_demo_workflow_preconditions.py` (or a sibling)
     that parses `docs/cookbook/workflows.md` and asserts:
     - every `mahavishnu demo <name>` command appearing in a recipe
@@ -1729,15 +2434,51 @@ dark adapters, one layer down, so this phase closes it.
     until now. It is small, deterministic, and it is the difference
     between a cookbook that is maintained and a cookbook that is
     archaeology.
-21. **Fix the demo docstring that points at the cookbook.**
+23. **Fix the demo docstring that points at the cookbook.**
     `cli/demo_cli.py:4056` says "Demo-recipe flavor (paired with
     `docs/cookbook/workflows.md`)" — if a recipe is renamed, this
     cross-reference must move with it.
 
+**Tasks — the agent-facing surfaces (round 2 added these):**
+
+24. **Fix the published skill that contradicts Phase 5.**
+    `mahavishnu/mcp/skills_catalog/workflow-status.md:66-68` says:
+    *"For a synchronous single-task dispatch that has already returned,
+    use `mcp__mahavishnu__pool_route_execute` directly — **there is no
+    workflow_id to poll.**"* After Phase 5 that is **false**, and the
+    file is served to agents over MCP
+    (`mcp/tools/skill_tools.py:66`) and materialized into
+    `~/.claude/skills/` by the `ecosystem-skill-loader`. Its sibling
+    `mahavishnu/mcp/skills_catalog/pool-route.md:94-95` already
+    promises a workflow id — Phase 5 makes that true. Both must move
+    together.
+25. **Fix the published specialist agent body.**
+    `mahavishnu/mcp/agents/mahavishnu-specialist.md` names a tool that
+    **does not exist** (`mcp__mahavishnu__dispatch_to_pool` — the only
+    hits are docstrings) and gives `trigger_workflow`'s second
+    parameter as `name` when it is `task_type`
+    (`mcp/server_core.py:410-417`). It is also the natural home for
+    Phase 5's new `workflow_id` field — and the file the
+    `ecosystem-agent-loader` materializes into `~/.claude/agents/`.
+26. **Fix the second MCP-tools inventory.** `docs/mcp/MCP_TOOLS_REFERENCE.md`
+    documents `trigger_workflow` with the same signature and omits the
+    same three pool tools — and `README.md:514` names it as *"the
+    detailed inventory"*. Fixing `MCP_TOOLS_SPECIFICATION.md` and not
+    this one leaves the fleet with two half-drifted inventories. **Phase 4
+    has no documentation task at all for `trigger_workflow`'s response
+    shape**; that gap closes here.
+27. **Fix `docs/CONFIGURATION.md`.** `:456-470` documents the
+    `feature_flags.*` block Phase 3 deletes
+    (`use_hybrid_registry`, `use_capability_routing`,
+    `fallback_to_legacy`). Operators will keep setting three flags that
+    do nothing. (The *typed* `FeatureFlagsConfig` model and its
+    `goal_teams.feature_flags` block are a different thing and stay.)
+
 **Exit criteria:** every demo produces a workflow id; `demo --help`
 lists every demo; the `DEMO SUB-COMMANDS` count matches the shipped set;
-the cookbook and CLI reference describe what the demos actually do; and
-the cookbook↔demo parity test passes in both directions.
+the cookbook and CLI reference describe what the demos actually do; the
+cookbook↔demo parity test passes in both directions; **and no published
+skill or agent body contradicts the tool's actual surface.**
 
 #### Integration Contract
 
@@ -1777,8 +2518,8 @@ the cookbook↔demo parity test passes in both directions.
 - [ ] `mahavishnu/core/workflow/state.py` — **new**: `StateManager` relocated out of `core/task_router.py`
 - [ ] `mahavishnu/core/workflow/outcome_writer.py` — the substrate contract (Phase 3 task 6)
 - [ ] `mahavishnu/core/substrate.py`, `mahavishnu/core/kv_store.py` — the durable-backend seam
-- [ ] `mahavishnu/core/health_aggregator.py` — the `adapters` feed (§4.12, Phase 2 task 6)
-- [ ] `mahavishnu/core/models/persistence.py` — `WorkflowOutcome.status` literal (§4.12, Phase 4 task 4)
+- [ ] `mahavishnu/core/health_aggregator.py` — the `adapters` feed (§4.5, Phase 2 task 6)
+- [ ] `mahavishnu/core/models/persistence.py` — `WorkflowOutcome.status` literal (§4.11, Phase 4 task 4)
 - [ ] `mahavishnu/core/config.py` — `adapters.pydantic_ai_enabled`; the `AdapterRegistryConfig` removal
 - [ ] `mahavishnu/core/oneiric_client.py` — reconcile the two `OneiricMCPConfig` classes
 - [ ] `mahavishnu/engines/__init__.py` — `_ENGINE_LOCATIONS` vs `app.adapters`
@@ -1824,6 +2565,37 @@ the cookbook↔demo parity test passes in both directions.
 - [ ] `tests/unit/cli/test_cli_wireup_invariants.py` — extended
 - [ ] `tests/unit/cli/test_demo_workflow_preconditions.py` — extended
 - [ ] `tests/unit/cli/test_cookbook_parity.py` — **new** (REQ-C15)
+- [ ] `mahavishnu/core/conductor.py` — the **existing** DAG executor: add a worker leg (Phase 6)
+- [ ] `mahavishnu/core/capabilities.py` — `CapabilityEnvelope`, `DAGNode`, `DAGEdge`, `ExecutionDAG`
+- [ ] `mahavishnu/core/conductor_types.py` — `NodeSpec`, `NodeHandle`
+- [ ] `mahavishnu/engines/emit_node_dispatch.py` — the per-engine dispatch tables
+- [ ] `mahavishnu/mcp/tools/capability_tools.py` — flip `execute_capability` from `status="planned"` to a real dispatch (Phase 6); the duplicate worker registration
+- [ ] `mahavishnu/core/workflow_state.py` — **delete** (the deprecated re-export; 8 live modules import it against its own docstring)
+- [ ] `mahavishnu/core/app.py` — repoint `from .routing import RoutingStrategy` (`:143`)
+- [ ] `mahavishnu/agents/mahavishnu_agent.py` — repoint `from .routing import ...` (`:40`)
+- [ ] `mahavishnu/webhooks/router.py` — repoint `from .routing import ...` (`:27`)
+- [ ] `mahavishnu/core/task_audit.py` — the redaction field set (Phase 5 task 3)
+- [ ] `mahavishnu/engines/agno_tools/file_tools.py` — derive the allowlist from `config.allowed_repo_paths` (§4.2 row 11)
+- [ ] `mahavishnu/mcp/skills_catalog/workflow-status.md` — *"there is no workflow_id to poll"* is **false** after Phase 5
+- [ ] `mahavishnu/mcp/skills_catalog/pool-route.md` — the workflow-id promise it already makes
+- [ ] `mahavishnu/mcp/agents/mahavishnu-specialist.md` — names a nonexistent `dispatch_to_pool` and the wrong parameter name
+- [ ] `docs/mcp/MCP_TOOLS_REFERENCE.md` — the **second** MCP-tools inventory (README names it canonical); also omits the three pool tools
+- [ ] `docs/CONFIGURATION.md` — documents the `feature_flags.*` block Phase 3 deletes
+- [ ] `docs/adr/017-oneiric-shared-persistence-substrate.md` — **amendment** (Phase 3 task 6 introduces a repo-local state path, the shape ADR 017 supersedes)
+- [ ] `docs/adr/009-hybrid-adapter-registry.md` — **amendment** (its supersession chain makes the Oneiric entry-point group canonical, which §4.2 row 1 now counts)
+- [ ] `docs/decisions/2026-09-25-langgraph-as-engine-adapter.md` — **the successor** to the settle-vs-langgraph decision Phase 4 currently cites; it records the pool-lane workflow-id failure
+- [ ] `docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md` — the **prior failure** of exactly Phase 5's shape (a pool workflow_id that could not be read back)
+- [ ] `docs/plans/.archive/2026-08-29-worker-registry-capability-refactor.md`, `docs/plans/.archive/2026-10-12-per-engine-emit-node-dispatch.md` — **cite** in §4.2/Phase 6; they built the conductor
+- [ ] `docs/plans/.archive/2026-02-20-status-enum-consolidation.md` — **cite** in §4.2 row 8; the enum consolidation's prior, partial attempt
+- [ ] `docs/plans/.archive/2026-05-10-bodai-control-plane-convergence-plan.md`, `docs/plans/.archive/2026-05-11-remaining-work-execution-order.md` — **cite**; the prior convergence program and the `StateManager` move Phase 3 task 0 reverses
+- [ ] `tests/unit/test_utility_modules.py` — pins `get_tool_version("trigger_workflow") == "1.1.0"`
+- [ ] `tests/unit/mcp/test_server_core.py` — asserts `result["result"]["error"]` (`:257`) and `result["workflow_id"].endswith("_review")` (`:235`)
+- [ ] `tests/unit/test_workflow_execution.py` — asserts `"code_review" in workflow_id` (`:140`)
+- [ ] `tests/unit/test_mcp_server.py` — the `params={"param1": ...}` (`:337`) and `params={"focus": ...}` (`:424`) calls
+- [ ] `tests/unit/test_mahavishnu_config.py` — `:926-933` (the typed `FeatureFlagsConfig`), `:993`, `:1009-1011`, `:1093`
+- [ ] `tests/unit/test_config_source_resolution.py` — `:63` (`adapter_registry`), `:74` (`integrations.pydantic_ai_enabled`)
+- [ ] `tests/unit/test_config.py` — `:626` (`cfg.pydantic_ai_enabled is False`)
+- [ ] `tests/unit/workers/test_shell_command_safety.py` — the `STDERR_PATH_ENV_VAR in command` assertion (`:334-343`) moves to the registry command
 - [ ] `tests/unit/workers/test_registry_lookup.py` — extended (key-set assertion)
 - [ ] `tests/integration/test_trigger_workflow_e2e.py` — **new** (wiring discipline §4)
 - [ ] `tests/integration/test_pool_route_execute_e2e.py` — **new** (wiring discipline §4)
@@ -1839,16 +2611,23 @@ the cookbook↔demo parity test passes in both directions.
 | `mahavishnu demo terminal-codex` | `status: skipped` with a reason, not a failure | terminal output |
 | `mahavishnu demo workflow-engine-and-worker` | one `workflow_id`, one span tree, both legs settle | terminal output |
 | `mahavishnu workflow sweep --tag <tag>` | workflow id names the task type | terminal output |
-| `grep -rn "class TaskRouter" mahavishnu/` | one production class | command output |
+| `grep -rn "class TaskRouter" mahavishnu/` | **one** production class — `core/routing.py` is deleted in Phase 3, so this is satisfiable | command output |
+| `grep -rn "AdapterType.WORKER" mahavishnu/core/routing.py` | **non-zero after Phase 2** — this is the *live* chain table; the first draft pointed at the dead one | command output |
+| `pytest tests/unit/core/test_execution_envelope.py` | the converter's `exit_code` is honestly `None` for the five engines that cannot report one | test output |
+| `grep -rn "class TaskRouter" mahavishnu/` **after** Phase 3 | exactly one; `core/routing.py` is gone | command output |
+| a boot-time count of registered worker tools | **9** | test output |
 | `grep -rn "UnifiedOrchestrator" mahavishnu/` | no production caller | command output |
 | `python scripts/audit_orphans.py` | no new orphans | command output |
-| `python scripts/audit_requirements.py` | orphans 0, phantoms 0 once markers land | command output |
 | `crackerjack run -v -f` | all fast hooks pass | command output |
-| `python scripts/audit_requirements.py` | orphans 0, phantoms 0 once markers land | command output |
+| `grep -rn "workflow-results/" mahavishnu/core/workflow/outcome_writer.py` | the write path **validates** the id before splicing it | command output |
+| `grep -rn "MAX_TIMEOUT" mahavishnu/` | non-zero — the first draft used a constant that does not exist | command output |
 | `pytest tests/unit/workers/test_registry_lookup.py` | the YAML registry stays a subset of the code registry | test output |
 | `pytest tests/integration/test_trigger_workflow_e2e.py` | each newly reachable adapter resolves and returns non-empty | test output |
 | `pytest tests/integration/test_pool_route_execute_e2e.py` | every return path carries a `workflow_id` that resolves | test output |
 | the two-leg composition demo, asserting **one `trace_id`** | the engine span and the worker span share a trace — the only check that makes REQ-C05 real | demo output |
+| `pytest tests/integration/test_pool_route_execute_e2e.py` | **every one of the 14 return paths** carries a `workflow_id` — including the `worktree_conflict` path at `pool_tools.py:946`, which the first draft's inventory missed | test output |
+| `pytest tests/unit/cli/test_cli_wireup_invariants.py` | the boot-time count of registered worker tools is **9** | test output |
+| a registry-parity test | every registered MCP tool has a `TOOL_VERSIONS` entry — **9** were missing, including `tasks_handoff_to_workflow` | test output |
 | a boot-time count of registered worker tools | **9** — the regression that would catch Phase 3 task 8 silently dropping them | test output |
 | `grep -rn "traceparent" mahavishnu/` | non-zero after Phase 4 — context propagation exists | command output |
 
@@ -1863,6 +2642,11 @@ the cookbook↔demo parity test passes in both directions.
 | The demos grow past a usable length — the harness leg alone is ~115 s | medium | keep the harness demos out of `demo_all`; they are a nightly/CI job |
 | Consolidating makes the plan XL and it never ships | medium | §9's decision rule exists to cut scope, not to justify delay; the cut order is documented below |
 | `enable_cost_tracking` proves harder to wire than it looks — the cost model has never run | medium | Phase 4 makes it live for one adapter first and measures before extending |
+| **Phase 2 makes a substrate routable that an operator only enabled as an *adapter*** — Hatchet and Pydantic-AI are already enabled on this host, and the chains are static | **high** | Phase 2 task 7: build the chain from `app.adapters` at runtime, add an explicit routability flag, and give the operator a kill-switch that does **not** unregister the adapter (unregistering the worker silently drops nine MCP tools) |
+| **Two processes write the workflow-state file** — the running server and any CLI that constructs a `MahavishnuApp()` — each holding its own snapshot and rewriting the whole file | **high** | Phase 3 task 6b prunes the file to near-empty and Phase 3 task 6 specifies an **inter-process** lock (`fcntl.flock`), a unique temp name, `os.replace` and `fsync`. Phase 1 *increases* this exposure by making the CLI a first-class workflow producer |
+| **Phase 6 collides with the conductor that already exists** — a second composition executor, a second envelope contract, a second data-flow model | **high** | Phase 6 task 1 was rewritten: extend `core/conductor.py`, don't build a second one. Phase 3 deletes `core/unified_orchestrator.py`, which was the *other* orphan in that space |
+| **The plan's own §7 acceptance checks were unsatisfiable** — "one production `TaskRouter`" while §6 listed `core/routing.py` for editing; Phase 4 injecting into a Phase 7 artifact | medium | fixed in this revision: `core/routing.py` is deleted in Phase 3, and Phase 4 injects into the worker launch environment that already exists |
+| **Every phase carried a "Rollback signal" but no "Rollback action"** — and three of the eight signals described behaviour that was already true, or impossible to observe, before the phase landed | medium | each phase's Integration Contract now needs an actionable signal: a commit to revert, a flag to flip, or a surface to disable — not a symptom description |
 
 ### Cut order
 
@@ -1946,11 +2730,25 @@ satisfies the plan's own §4.8 prior art.
    router.** That is owned by the decision-adapter plan (§4.12.1);
    this plan routes around it.
 
-**And one decision this plan makes, which the review forced:** cost
-accounting is **out of scope** (§3 non-goal 8). The plan's goal is a working
-control plane, and the cost model has never run — turning it on is a
-separate piece of work with its own risk. Time and efficiency carry the
-optimization load for now (§2.1).
+**And two decisions this plan makes, which the reviews forced:**
+
+**Cost accounting is out of scope** (§3 non-goal 8). The plan's goal is a
+working control plane, and the cost model has never run — turning it on
+is a separate piece of work with its own risk. Time and efficiency carry
+the optimization load for now (§2.1).
+
+**This plan is forward-only** (§3 non-goal 10). No deprecation window, no
+alias, no re-export shim, no migration of old data. Where a shape, key,
+config field or module changes, it changes. This is the repo's recorded
+pre-1.0 policy (*replace, not extend*), and it is what makes several
+of round 2's corrections cheap rather than expensive: pruning the
+469 stored workflow records instead of migrating them, deleting
+`core/routing.py` instead of keeping a shim, and renaming
+`integrations.pydantic_ai_enabled` instead of aliasing it.
+
+**And the one this plan still does not decide:** whether the Oneiric
+adapter-bridge migration should shape the router. That is owned by the
+decision-adapter plan (§4.12.1); this plan routes around it.
 
 ## 10. Supersedes
 
@@ -2135,12 +2933,155 @@ sound and its **prescriptions** were not. That is what §4.2, §4.11,
 
 ### 11.4 Round 2
 
-Round 1 ran nine lenses; round 2 runs the lenses round 1 did not
-cover: persistence and store semantics, deployment and operational
-safety, ecosystem-consumer impact, platform API surface, a
-"does this actually work" implementation pass, and a historical-patterns
-sweep over prior decisions and plans. Round 2 runs against this
-revision.
+Round 1 ran **ten** lenses (the table above lists ten rows; the
+cross-plan collision audit was the tenth). Round 2 ran **six** lenses
+chosen to be *different in kind* from round 1's: persistence and store
+semantics, deployment and operational safety, ecosystem-consumer impact,
+platform API surface, a "does this actually work" implementation pass,
+and a historical-patterns sweep.
+
+**Round 2's own audit corrected its scope claim.** The first draft of
+this section asserted that all six were "the lenses round 1 did not
+cover". That is **wrong for five of six** — round 1's reliability lens
+already produced §2.1's third criterion and §4.5's store findings;
+round 1's architecture council was the cross-ecosystem lens; round 1's
+MCP lens was the platform-API lens; round 1's code-grounding and
+Python lenses were the implementation lenses. **Only the
+historical-patterns sweep was genuinely uncovered.** Round 2's value was
+therefore not *new ground* but **depth and adversarial intent**: the same
+concerns, re-asked against a materially revised plan, by lenses that
+knew what round 1 had already found and were told to look past it.
+That intent is visible in the results — round 2 found the plan's
+*corrections* were themselves wrong in eight places, which round 1,
+checking the first draft's findings, could not have done.
+
+Round 2's findings are recorded in §11.7.
+
+### 11.7 Round 2 — six lenses, and what they overturned
+
+Round 2 ran six lenses against this revision. Every BLOCKING claim was
+verified against the live code before acceptance — several were
+re-verified by hand after the lens reported them, and the lens's own
+citations were checked line by line.
+
+| Lens | Agent | Verdict |
+|---|---|---|
+| Persistence and store semantics | `database-operations-specialist` | 8 BLOCKING, 9 IMPORTANT, 3 MINOR — measured the live store (5,222,377 bytes / 469 records / 77 stuck / 10 × 390 KB blobs) |
+| Deployment and operational safety | `deployment-engineer` | 5 BLOCKING, 7 IMPORTANT, 6 MINOR — *conditional approve* |
+| Ecosystem-consumer impact | `general-purpose` | 2 BLOCKING, 5 IMPORTANT, 4 MINOR — read session-buddy, crackerjack, mcp-common and `~/.claude` |
+| Platform API surface | `mycelium-core:platform-engineer` | 5 BLOCKING, 7 IMPORTANT, 5 MINOR |
+| "Does this actually work" (implementation) | `feature-dev:code-architect` | 12 BLOCKING, 11 IMPORTANT, 9 MINOR — *revise before executing* |
+| Historical patterns | `Explore` | 4 BLOCKING, 6 IMPORTANT, 8 MINOR — swept 47 decisions, 24 ADRs, 30 live plans, ~250 archived plans |
+
+**Round 2's cross-reviewer BLOCKERs (3+ lenses agreed):**
+
+**R-B1 — the envelope conflated two `type` semantics.** Lenses 2, 3, 4
+and 5 found it independently, and it is the load-bearing error of the
+whole plan: `TaskType` is a *routing* classification
+(`workflow`/`ai_task`/`rag_query`/…) while the adapters branch on
+`code_sweep`/`quality_check`/`focused_review`/`ingest`/`query` —
+**zero overlap**. Constraining `task["type"]` to the enum would have
+broken llamaindex's query path, agno's task-type selection, prefect's
+`quality_check` operation, the shipped `mahavishnu workflow
+quality-check` command, the `jot_dispatch` lane, the tool's own
+documented example, and two live tests. **Fix:** §4.11, §4.2 row 12,
+Phase 1 task 1 — the envelope carries `routing_type` (bounded,
+server-derived) and `operation` (free-form, adapter-facing).
+
+**R-B2 — `TaskParams` as a closed model silently dropped eleven live
+adapter keys.** Lenses 2, 4 and 5 agreed, with lens 5 adding that the
+adapters call `.get()` on `params`, so it must also be handed over as a
+**plain dict**. **Fix:** Phase 1 task 1 — `extra="allow"` plus an
+explicit passthrough, and the projection emits a dict.
+
+**R-B3 — both version classifications were wrong.** Lenses 2 and 4
+agreed, against the repo's own policy at `mcp/tool_versions.py:8-10`.
+Phase 1's request change is not "additive new top-level keys" — the
+envelope's key set is unchanged and what changed is the *semantics* of
+`params` and `task_type`. Phase 4's arithmetic was also internally
+contradictory (`1.1.0 → 2.0.0` while Phase 1 sets `1.2.0`). **Fix:**
+Phase 1 task 2 and Phase 4 task 6 — and with the corrected envelope
+design the Phase 1 change really is MINOR, so the classification now
+follows from the design rather than being asserted.
+
+**R-B4 — Phase 2 pointed at a chain table that is dead in production.**
+Lens 5 found it; it is the finding that would have made **REQ-C01 false
+on the day Phase 2 landed**. `core/task_router.py` has no
+`generate_fallback_chain` at all — the live table is
+`core/routing.py:DEFAULT_FALLBACK_CHAINS`, and `task_router.py`'s own
+preference orders resolve adapters through an `AdapterManager` that is
+**always empty in production**. **Fix:** Phase 2 task 2 — both tables,
+with the live one named; and §6's `core/routing.py` line reconciled with
+it.
+
+**R-B5 — Phase 6 would have built a second composition executor.** Lens
+6 found it against the repo's own history: `core/conductor.py` **is** a
+shipped DAG composition executor with dependency-ordered data flow
+across adapters, built by two shipped plans, with integration tests —
+and the plan asserted twice that "the piece does not exist". The real
+gap is a **one-line stub** (`execute_capability` returns
+`status="planned"`). **Fix:** §4.15, Phase 6 task 1 — extend the
+conductor.
+
+**R-B6 — the store inventory was wrong in a way that drove everything
+downstream.** Lens 1 found that the plan's "four persistence trails" are
+**two backing stores and five key namespaces**, that the trail the plan
+called "the durable MCP KV" is the same process-local dict
+(`core/state_backends/mcp.py`'s own docstring says so), and that the
+trail the inventory omitted is the pool lane's own (`routing/v1/`). The
+durable store the repo already has is `core/event_store.py` (PostgreSQL),
+already used by the pool lane's idempotency path. **Fix:** §4.2 row 6,
+Phase 3 tasks 6 and 6b.
+
+**R-B7 — the pool lane's workflow record had nowhere to live.** Lens 1
+found that Phase 5 task 0's two options both violate §2.1 (even one
+write to the whole-document store is a 5.2 MB rewrite) and that the
+missed option — per-key substrate records with a `get_workflow_status`
+fallback — is the only one that satisfies it. Lens 5 separately found
+that `register_pool_tools(mcp, pool_manager)` has **no store access at
+all**, so Phase 5 could not write a record as written. **Fix:** Phase 5
+tasks 0 and 2.
+
+**R-B8 — Phase 5 repeats a documented 2026-08 failure.** Lens 6 found
+`docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`: a
+pool-lane `workflow_id` that could not be read back, with the cause
+recorded as *"durable key-value persistence not configured for
+`workflow-results/{workflow_id}/`"*, and
+`docs/decisions/2026-09-25-langgraph-as-engine-adapter.md` calling that
+prerequisite *"more load-bearing than it appeared"*. **Fix:** Phase 5
+depends on the store landing, and the read-back assertion is added to
+its Integration Contract.
+
+**Round 2's single-lens BLOCKERs** — the remaining findings are recorded
+in the phases they affect: the repository allowlist's four
+implementations and hardcoded `/Users/les/Projects` (§4.2 row 11,
+Phase 5 task 5); the caller-controlled `task_type` reaching a Prometheus
+label and the workflow id (§4.11); the write/read validation asymmetry
+in the outcome writer (§4.11, Phase 3 task 6); `cancel_workflow` being
+a no-op in every adapter (Phase 3 task 3); the missing `PARTIAL` in the
+lifecycle superset (Phase 3 task 5); the health feed's bare-settings
+probe making its own rollback signal unreachable (Phase 2 task 6); the
+missing routability kill-switch (Phase 2 task 7); `pydantic_ai`'s boot
+failure (Phase 2 task 1); the unenforced reduced-permission-mode
+control (Phase 6 task 4); the launcher's stderr loss (Phase 7 task 3);
+the absent dispatch record (Phase 7 task 1); the fourth envelope
+builder (§4.4); the unversioned-tool class being nine wide, not three
+(Phase 5 task 8); the false cross-plan claims about the backlink plan
+(§4.12.4, §11.6); and the task-numbering ambiguities (Phases 5, 6, 8).
+
+**What round 2 did *not* overturn.** The §4.2 duplication table's
+*diagnoses* — all ten original rows still name the right duplications,
+and two more were added. The §4.11 trust-boundary analysis. The §9
+Temporal-shaped model. The §4.5 store measurement. The §4.8 prior-art
+convergence. The decision that cost accounting is deferred. And the
+core claim of the plan — that the control plane should own workflow
+identity and dispatch substrate-obliviously — which no lens disputed.
+
+**Round 2's own caution, recorded for the next reviewer.** Two of the
+six lenses re-raised `except TypeError, ValueError:` as a Python 2
+syntax error across ~45 files. It is **not** a defect: **PEP 758**
+allows unparenthesized multi-exception `except` in **Python 3.14**,
+which is this repo's target. Verified by import. No action.
 
 ## References
 
