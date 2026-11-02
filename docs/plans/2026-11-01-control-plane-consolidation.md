@@ -2210,17 +2210,25 @@ inferred from a process exit.
    must not inherit silently.** The registry commands are **login
    shells** (`sh -lc '…'`), and a login shell reads `/etc/profile`,
    which on macOS runs `eval \`/usr/libexec/path_helper -s\``
-   (`/etc/profile:3-4`). `path_helper` **rebuilds** `PATH` with
-   `/usr/local/bin` and `/usr/bin` first and the inherited entries
-   **demoted** behind them (it drops entries that do not exist; it does
-   not drop the inherited tail wholesale). Measured on this host: the
-   repository's `.venv/bin` is **present** in the login `PATH`, at
-   position ~17, while `/usr/local/bin` is at position 1. So a worker
-   dispatch resolves `pytest` and `ruff` to **`/usr/local/bin/*`** —
-   the system copies — while the repository's own gate
+   (`/etc/profile:3-4`). `path_helper` **reorders** `PATH`: the system
+   directories (`/usr/local/bin`, `/usr/bin`, …) move to the front and
+   the inherited entries are **demoted** behind them. Measured on this
+   host, the **set** of directories is unchanged — 26 before, 26 after,
+   none absent and none added, and entries that **do not exist** are
+   preserved exactly like existing ones. The only changes are the
+   **order** and the collapse of duplicate entries.
+   The consequence is therefore **resolution, not membership**: the
+   repository's `.venv/bin` is still on the `PATH`, but it now sits
+   well behind `/usr/local/bin` (position 16 here; the position depends
+   on the inherited `PATH`, so do not pin the number). So a worker
+   dispatch resolves `pytest` and `ruff` to **`/usr/local/bin/*`** — the
+   system copies — while the repository's own gate
    (`crackerjack run -v -f`) resolves them to the pinned `.venv/bin/*`.
    The two disagree, and the direction is not uniform: the system
    `ruff` is *newer* than the pinned one.
+   **A probe that inspects only the front of `PATH` will conclude the
+   inherited entries were "replaced"** — they were merely reordered.
+   Read the whole path, not a prefix, and compare as a *set*.
    **Exported environment variables are unaffected** — `PATH` is the
    only thing the login shell rebuilds, so the prompt and any other
    `MAHAVISHNU_*` variable cross the `exec` intact. That is what makes
