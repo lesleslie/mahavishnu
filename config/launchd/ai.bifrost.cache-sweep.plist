@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.bifrost.cache-sweep</string>
+
+    <!-- Reclaims expired entries from the Bifrost cache store.
+         Bifrost enforces the cache TTL in band (each entry carries an
+         "expires_at" field; the Redis key TTL is never set), so expired
+         entries are skipped rather than deleted, and the plugin's
+         cleanup_on_shutdown only fires when the gateway exits. The
+         gateway is a KeepAlive job, so it may run for weeks. This timer
+         is what keeps the store bounded.
+         See docs/plans/2026-11-01-bifrost-cache-eviction-and-threshold.md. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/les/Projects/mahavishnu/.venv/bin/mahavishnu</string>
+        <string>bifrost</string>
+        <string>cache-sweep</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/les/Projects/mahavishnu</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>/Users/les</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>LimitLoadToSessionType</key>
+    <array>
+        <string>Aqua</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/les/.local/state/mcp/logs/bifrost-cache-sweep.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/les/.local/state/mcp/logs/bifrost-cache-sweep.err</string>
+</dict>
+</plist>

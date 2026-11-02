@@ -623,3 +623,26 @@ def test_demo_stub_loop_no_longer_registers_workflow_pi_then_local() -> None:
         "loop will shadow the live callback. Remove the entry from "
         "_STUB_COSTS and from the registration loop tuple."
     )
+
+
+def test_bifrost_cache_sweep_command_is_registered() -> None:
+    """``mahavishnu bifrost cache-sweep`` must be reachable.
+
+    req: REQ-BIFROST-042
+
+    The launchd timer in ``config/launchd/ai.bifrost.cache-sweep.plist``
+    invokes this command. If the registration is dropped, the timer
+    starts failing silently — the store grows unbounded again, which is
+    exactly the failure the sweep exists to prevent.
+    """
+    from click.testing import CliRunner
+
+    from mahavishnu._main_cli import app
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["bifrost", "cache-sweep", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--dry-run" in result.output, (
+        "bifrost cache-sweep is missing --dry-run; the operator can no "
+        "longer inspect the backlog without deleting it."
+    )

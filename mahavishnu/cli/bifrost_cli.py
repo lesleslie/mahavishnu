@@ -27,6 +27,7 @@ from pathlib import Path  # noqa: TC003 -- Typer resolves annotations at runtime
 import typer
 
 from ..bifrost import gateway, lifecycle, verify
+from ..bifrost.cache_eviction import sweep_from_gateway_config
 from ..bifrost.lifecycle import TARGET_PLIST
 from ..bifrost.models import VIRTUAL_KEY_ENV, resolve_harness
 from ..bifrost.paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
@@ -193,3 +194,51 @@ def bifrost_verify_gate(
     code = verify.run_gate(timeout)
     if code:
         raise typer.Exit(code)
+
+
+# --- cache eviction (req: REQ-BIFROST-042, REQ-BIFROST-043) ---
+
+
+@bifrost_app.command("install-sweep-agent")
+def bifrost_install_sweep_agent() -> None:
+    """Install and load the periodic cache-eviction sweep agent.
+
+    The sweep reclaims expired entries from the Bifrost cache store.
+    Bifrost enforces the cache TTL in band, so expired entries are
+    skipped rather than deleted, and the gateway's own cleanup only
+    fires when it exits -- which, as a KeepAlive job, may be weeks.
+    """
+    lifecycle.start_cache_sweep()
+    typer.echo(f"installed {lifecycle.TARGET_CACHE_SWEEP_PLIST}")
+    typer.echo("the sweep runs every 15 minutes; logs in ~/.local/state/mcp/logs/")
+
+
+@bifrost_app.command("uninstall-sweep-agent")
+def bifrost_uninstall_sweep_agent() -> None:
+    """Unload the cache-eviction sweep agent and remove its plist."""
+    lifecycle.stop_cache_sweep()
+    typer.echo("removed the cache-sweep agent")
+
+
+@bifrost_app.command("cache-sweep")
+def bifrost_cache_sweep(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Classify the entries but delete nothing.",
+    ),
+) -> None:
+    """Reclaim expired entries from the Bifrost cache store.
+
+    Bifrost enforces the cache TTL in band -- each entry carries an
+    ``expires_at`` field and the Redis key TTL is never set -- so expired
+    entries are skipped rather than removed. This sweep removes them.
+    """
+    result = sweep_from_gateway_config(dry_run=dry_run)
+    typer.echo(
+        f"scanned={result.scanned} live={result.live} expired={result.expired} "
+        f"deleted={result.deleted} unknown_expiry={result.unknown_expiry} "
+        f"errors={result.errors} elapsed={result.elapsed_seconds:.3f}s"
+    )
+    if result.errors:
+        raise typer.Exit(1)

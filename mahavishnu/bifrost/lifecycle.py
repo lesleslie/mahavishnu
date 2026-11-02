@@ -46,6 +46,17 @@ TARGET_PLIST = Path.home() / "Library" / "LaunchAgents" / f"{LAUNCHD_LABEL}.plis
 SOURCE_CONFIG = REPO_ROOT / "config" / "bifrost" / "config.template.json"
 TARGET_CONFIG = BIFROST_CONFIG_DIR / "config.json"
 
+#: The periodic cache-eviction sweep.
+#:
+#: Bifrost enforces the semantic cache's TTL in band, so an expired entry
+#: is skipped rather than deleted, and the plugin's
+#: ``cleanup_on_shutdown`` fires only when the gateway exits. The gateway
+#: is a ``KeepAlive`` job, so the store grows without bound unless
+#: something sweeps it. This label is that something.
+CACHE_SWEEP_LABEL = "ai.bifrost.cache-sweep"
+SOURCE_CACHE_SWEEP_PLIST = REPO_ROOT / "config" / "launchd" / f"{CACHE_SWEEP_LABEL}.plist"
+TARGET_CACHE_SWEEP_PLIST = Path.home() / "Library" / "LaunchAgents" / f"{CACHE_SWEEP_LABEL}.plist"
+
 #: Budget for the ready file to appear after a launch.
 #:
 #: It has to exceed the gateway's own bind timeout: the supervisor writes
@@ -83,6 +94,53 @@ def install_plist() -> None:
 
 def bootstrap() -> None:
     _run(["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_PLIST)])
+
+
+def install_cache_sweep_plist() -> None:
+    """Install the cache-eviction sweep agent into ~/Library/LaunchAgents.
+
+    Separate from :func:`install_plist` because the sweep is a timer,
+    not the gateway: it has its own label, its own log files, and a
+    ``StartInterval`` instead of ``KeepAlive``. Installing it is
+    idempotent -- the file is overwritten and the agent reloaded.
+    """
+    TARGET_CACHE_SWEEP_PLIST.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(SOURCE_CACHE_SWEEP_PLIST, TARGET_CACHE_SWEEP_PLIST)
+    with TARGET_CACHE_SWEEP_PLIST.open("rb") as fh:
+        plistlib.load(fh)  # validate before launchd ever sees it
+
+
+def bootout_cache_sweep() -> None:
+    """Unload the cache-eviction sweep agent."""
+    _run(["launchctl", "bootout", f"{GUI_DOMAIN}/{CACHE_SWEEP_LABEL}"])
+    _run(["launchctl", "bootout", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)])
+
+
+def start_cache_sweep() -> None:
+    """Install and load the cache-eviction sweep agent.
+
+    ``launchctl bootstrap`` can fail with ``EIO`` immediately after a
+    ``bootout`` -- launchd has not finished releasing the label. Retry
+    once after a short pause before giving up.
+    """
+    install_cache_sweep_plist()
+    bootout_cache_sweep()
+    result = _run(["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)])
+    if result.returncode != 0:
+        time.sleep(2)
+        result = _run(["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)])
+    if result.returncode != 0:
+        typer.echo(
+            f"WARNING: could not load {CACHE_SWEEP_LABEL}: {result.stderr.strip()}\n"
+            "  the cache store will grow unbounded until this succeeds",
+            err=True,
+        )
+
+
+def stop_cache_sweep() -> None:
+    """Unload the cache-eviction sweep agent and remove its plist."""
+    bootout_cache_sweep()
+    TARGET_CACHE_SWEEP_PLIST.unlink(missing_ok=True)
 
 
 def bootout() -> None:

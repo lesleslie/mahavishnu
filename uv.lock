@@ -3302,6 +3302,7 @@ automation-vision = [
     { name = "pytesseract" },
 ]
 cache = [
+    { name = "anyio" },
     { name = "coredis" },
 ]
 compression = [
@@ -3317,6 +3318,7 @@ content-ingest = [
 ]
 dev = [
     { name = "aiosqlite" },
+    { name = "anyio" },
     { name = "bandit" },
     { name = "complexipy" },
     { name = "coredis" },
@@ -3425,7 +3427,10 @@ automation-vision = [
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "pytesseract", specifier = ">=0.3.13" },
 ]
-cache = [{ name = "coredis", specifier = ">=6.9.0" }]
+cache = [
+    { name = "anyio", specifier = ">=4.11.0" },
+    { name = "coredis", specifier = ">=6.9.0" },
+]
 compression = [{ name = "turboquant-pro", specifier = ">=1.9.1" }]
 compression-zstd = [{ name = "zstandard", specifier = ">=0.25.0" }]
 content-ingest = [
@@ -3435,6 +3440,7 @@ content-ingest = [
 ]
 dev = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "anyio", specifier = ">=4.11.0" },
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "complexipy", specifier = ">=8.0.1" },
     { name = "coredis", specifier = ">=6.9.0" },

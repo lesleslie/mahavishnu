@@ -203,6 +203,11 @@ dev = [
 # publish without a silent ImportError on first use.
 cache = [
     "coredis>=6.9.0",
+    # coredis drives its per-connection reader/writer tasks inside an
+    # anyio task group and documents ``anyio.run(...)`` as the entry
+    # point. The Bifrost cache eviction sweep imports it directly, so it
+    # is declared rather than relied on as a transitive dependency.
+    "anyio>=4.11.0",
 ]
 
 # Bodai ecosystem integrations
