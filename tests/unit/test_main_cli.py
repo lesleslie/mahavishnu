@@ -1846,6 +1846,38 @@ class TestPoolRoute:
     @patch("mahavishnu.core.conductor.resolve")
     @patch("mahavishnu.engines.load_engine_registrations")
     @patch("mahavishnu._main_cli.MahavishnuApp")
+    def test_pool_route_reports_model_per_dispatch(
+        self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
+    ):
+        """Each planned dispatch reports the model it was routed to."""
+        from mahavishnu.core.capabilities import DAGNode, ExecutionDAG, TypeSchema
+
+        mock_app = _make_mock_app()
+        mock_app_cls.return_value = mock_app
+        mock_load_engines.return_value = []
+        mock_resolve.return_value = []
+        mock_plan.return_value = ExecutionDAG(
+            trace_id="0" * 32,
+            nodes=[
+                DAGNode(
+                    node_id="n0",
+                    engine_id="prefect",
+                    capability_id="engine:durable-flow",
+                    inputs=TypeSchema(),
+                    outputs=TypeSchema(),
+                )
+            ],
+            edges=[],
+        )
+
+        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "write python code"])
+        assert result.exit_code == 0
+        assert "model=MiniMax-M3" in result.output
+
+    @patch("mahavishnu.core.conductor.plan")
+    @patch("mahavishnu.core.conductor.resolve")
+    @patch("mahavishnu.engines.load_engine_registrations")
+    @patch("mahavishnu._main_cli.MahavishnuApp")
     def test_pool_route_no_legacy_pool_manager_used(
         self, mock_app_cls, mock_load_engines, mock_resolve, mock_plan
     ):

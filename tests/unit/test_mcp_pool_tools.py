@@ -1,5 +1,6 @@
 """Comprehensive tests for MCP pool management tools."""
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -475,6 +476,17 @@ class TestPoolRouteExecuteTool:
         assert call_kwargs["task"] == {"prompt": "write a haiku"}
         assert call_kwargs["pool_affinity"] is None
         assert call_kwargs["auto_spawn"] is False
+
+    @pytest.mark.asyncio
+    async def test_pool_route_execute_logs_routed_model(self, mock_pool_manager, caplog):
+        """The dispatch records which model the prompt was routed to."""
+        execute = _capture_pool_route_execute(mock_pool_manager)
+
+        with caplog.at_level(logging.INFO, logger="mahavishnu.mcp.tools.pool_tools"):
+            await execute(prompt="write a haiku")
+
+        messages = [record.getMessage() for record in caplog.records]
+        assert any("MiniMax-M3" in message for message in messages)
 
     @pytest.mark.asyncio
     async def test_pool_route_execute_rate_limit_envelope(self, mock_pool_manager):

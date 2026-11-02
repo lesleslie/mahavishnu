@@ -2367,6 +2367,7 @@ def pool_route(
     async def _route():
         from mahavishnu.core.capabilities import CapabilitySpec
         from mahavishnu.core.conductor import plan, resolve
+        from mahavishnu.core.model_routing import classify_task, resolve_model_id
         from mahavishnu.engines import load_engine_registrations
 
         maha_app = MahavishnuApp()
@@ -2381,11 +2382,20 @@ def pool_route(
             candidates = resolve(spec, engines)
             dag = plan(spec, candidates, trace_id=spec.trace_id or "0" * 32)
 
+            # Report the model each dispatch is routed to, so an operator
+            # can see which model will serve a pool route without reading
+            # the worker logs.
+            category = classify_task(prompt)
+            model = resolve_model_id(category)
+
             typer.echo(f"✅ Planned DAG (selector={selector}, timeout={timeout}s)")
             typer.echo(f"   Nodes: {len(dag.nodes)}")
             typer.echo(f"   Edges: {len(dag.edges)}")
             for n in dag.nodes:
-                typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
+                typer.echo(
+                    f"   • {n.node_id} → engine={n.engine_id} "
+                    f"capability={n.capability_id} model={model}"
+                )
 
         except (
             Exception  # noqa: BLE001

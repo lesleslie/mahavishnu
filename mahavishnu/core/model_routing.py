@@ -16,9 +16,12 @@ from collections import deque
 from dataclasses import dataclass, field
 from enum import StrEnum
 import logging
+from pathlib import Path
 import re
 import time
-from typing import Any
+from typing import Any, Final, cast
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +263,21 @@ DEFAULT_RUNPOD_PUBLIC_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
     TaskCategory, "endpoint-default"
 )
 
+#: Model id the cloud worker falls back to when a task category has no
+#: routing entry. Mirrors ``CloudWorkerConfig.model`` so the resolver and
+#: the worker agree on the same default.
+DEFAULT_WORKER_MODEL: Final[str] = "MiniMax-M3"
+
+#: Operator-facing model routing configuration.
+#:
+#: ``settings/models.yaml`` mirrors the in-code ``DEFAULT_*_ROUTING``
+#: tables; ``tests/unit/test_task_router.py::TestYAMLRoutingSync`` pins
+#: the two together. The resolver reads this file to confirm that a
+#: resolved model id is one the operator actually configured.
+MODELS_CONFIG_PATH: Final[Path] = (
+    Path(__file__).resolve().parent.parent.parent / "settings" / "models.yaml"
+)
+
 
 def routing_to_task_map(routing: dict[TaskCategory, str]) -> dict[str, str]:
     """Convert a TaskCategory→model dict to the string-keyed format FallbackChain expects."""
@@ -338,6 +356,75 @@ def get_model_for_task(
     return model, category
 
 
+def _configured_model_ids(config_path: Path) -> set[str] | None:
+    """Return every model id named by a ``task_routing`` block.
+
+    Args:
+        config_path: The routing configuration file to read.
+
+    Returns:
+        The set of configured model ids, or ``None`` when the file could
+        not be read or parsed. "Unknown" is not the same as "not
+        configured", so a read failure must not be reported as drift.
+    """
+    try:
+        data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        logger.warning("Could not read model routing config %s: %s", config_path, exc)
+        return None
+    if data is None:
+        return set()
+    if not isinstance(data, dict):
+        logger.warning("Model routing config %s is not a mapping", config_path)
+        return None
+    providers = cast("dict[str, Any]", data)
+    model_ids: set[str] = set()
+    for provider in providers.values():
+        if not isinstance(provider, dict):
+            continue
+        routing = cast("dict[str, Any]", provider).get("task_routing")
+        if not isinstance(routing, dict):
+            continue
+        model_ids.update(str(model) for model in cast("dict[str, str]", routing).values())
+    return model_ids
+
+
+def resolve_model_id(
+    category: TaskCategory,
+    config_path: Path | None = None,
+) -> str:
+    """Return the model id the worker should use for a task category.
+
+    The worker routes on the in-code ``DEFAULT_MINIMAX_ROUTING`` table (the
+    runtime truth; ``settings/models.yaml`` mirrors it). The cloud worker's
+    own lookup (``CloudWorkerConfig.get_model_for_category``) uses the same
+    table unless a caller overrides ``model_routing``. The resolved id is
+    cross-checked against the model ids the operator configured in
+    ``settings/models.yaml``: a model id no provider block names cannot be
+    served, so the mismatch is logged as a warning — the routing decision
+    itself still stands.
+
+    Args:
+        category: The classified task category.
+        config_path: Override for the routing configuration file. Defaults
+            to ``settings/models.yaml`` beside the installed package.
+
+    Returns:
+        The model id the worker should use for ``category``.
+    """
+    path = config_path if config_path is not None else MODELS_CONFIG_PATH
+    model = DEFAULT_MINIMAX_ROUTING.get(category, DEFAULT_WORKER_MODEL)
+    configured = _configured_model_ids(path)
+    if configured is not None and model not in configured:
+        logger.warning(
+            "Model %r for task category %s is not present in the routing configured in %s",
+            model,
+            category.value,
+            path,
+        )
+    return model
+
+
 def gateway_openai_base_url(resolved: str) -> str:
     """The gateway base URL for an OpenAI-compatible client.
 
@@ -378,6 +465,8 @@ __all__ = [
     "DEFAULT_LLAMA_SERVER_ROUTING",
     "DEFAULT_MINIMAX_ROUTING",
     "DEFAULT_RUNPOD_PUBLIC_ROUTING",
+    "DEFAULT_WORKER_MODEL",
+    "MODELS_CONFIG_PATH",
     "TASK_PATTERNS",
     "RateLimitConfig",
     "RateLimiter",
@@ -387,5 +476,6 @@ __all__ = [
     "gateway_openai_base_url",
     "get_model_for_task",
     "get_rate_limiter",
+    "resolve_model_id",
     "routing_to_task_map",
 ]

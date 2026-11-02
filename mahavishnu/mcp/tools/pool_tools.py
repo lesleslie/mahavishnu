@@ -12,6 +12,10 @@ if TYPE_CHECKING:
 
     from mcp_common.fastmcp import FastMCP
 
+    # The runtime ``TaskCategory`` name below is a possibly-None sentinel
+    # (defensive import), so annotations must reference the real class.
+    from mahavishnu.core.model_routing import TaskCategory as TaskCategoryType
+
 try:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 except Exception:  # pragma: no cover - optional import for test patching  # module-level import fallback for test patching  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -38,12 +42,13 @@ try:
     # Defensive import so test patching can inject a sentinel gate.
     from mahavishnu.core.concurrency_gate import ConcurrencyGate
     from mahavishnu.core.config import get_settings
-    from mahavishnu.core.model_routing import TaskCategory, classify_task
+    from mahavishnu.core.model_routing import TaskCategory, classify_task, resolve_model_id
     from mahavishnu.core.rate_limit import _estimate_retry
 except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
     ConcurrencyGate = None
     TaskCategory = None
     classify_task = None
+    resolve_model_id = None
     _estimate_retry = None
     get_settings = None
 
@@ -811,7 +816,7 @@ def register_pool_tools(
         # Specs without an explicit limit are pass-through; failure here
         # surfaces as RateLimitError and is caught by the envelope handler
         # below (fail-closed per REQ-013).
-        task_category: TaskCategory | None = None
+        task_category: TaskCategoryType | None = None
         if classify_task is not None:
             try:
                 task_category = classify_task(prompt)
@@ -971,6 +976,12 @@ def register_pool_tools(
             )
 
             try:
+                if resolve_model_id is not None and task_category is not None:
+                    logger.info(
+                        "pool_route_execute: dispatch routed to model %s (category=%s)",
+                        resolve_model_id(task_category),
+                        task_category.value,
+                    )
                 result = await _dispatch_internal(
                     prompt=prompt,
                     pool_selector=selector_enum,
