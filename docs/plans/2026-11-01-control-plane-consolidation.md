@@ -2160,6 +2160,33 @@ inferred from a process exit.
    count, then `exec`s the registry command. The dispatch stays
    `DISPATCHED` until READY arrives, then becomes `RUNNING`. A
    readiness timeout is a **failure**, not a hang.
+   **The launcher inherits the session environment; it does not scrub
+   it.** Round 2 recorded this explicitly because another plan depends
+   on it: a per-dispatch variable reaches the CLI through the *session*
+   environment, and the launcher must pass that environment through to
+   the command it `exec`s. The existing mechanism already does this and
+   needs no new allowlist:
+   - `mahavishnu/terminal/manager.py:366-367` — `env = {**env,
+     **env_overrides}`: an **overlay** on the inherited environment, not
+     a replacement and not an allowlist.
+   - `mahavishnu/workers/contract/tmux_adapter.py:97-117`
+     `_build_env_args` — the per-dispatch variables become
+     `tmux new-session -e KEY=VAL` pairs, which **add** to the session
+     environment. The only policy on the name is a **shape regex**,
+     `re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key)` — not a list of
+     permitted variables — so any `MAHAVISHNU_*` name passes without a
+     code change.
+   - `MAHAVISHNU_PROMPT_FILE` already rides this exact path today
+     (`workers/shell_backend.py:375`), so the launcher inherits it
+     unless it explicitly clears the environment — which it must not.
+   **A per-dispatch value belongs in an environment variable, not in a
+   command-template placeholder.** The template's `{prompt}` placeholder
+   is the one that raises
+   (`workers/shell_backend.py:172-179`); an *unrecognised* placeholder
+   would not raise, it would fall through **unsubstituted** and reach
+   the CLI as literal text — a silent failure on the dispatch path.
+   `render_command` has no general placeholder mechanism, so a new
+   placeholder would require growing one; an env var requires nothing.
    The launcher is a new artifact on the trust path, so it must be
    held to the same standard as the prompt file:
    - created with `tempfile.mkstemp` (**O_EXCL**, mode **0600**) in the
