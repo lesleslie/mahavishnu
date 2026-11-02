@@ -274,7 +274,8 @@ def test_mahavishnu_app_is_constructable() -> None:
 
     Skipped if the ``oneiric`` dependency is missing in the test venv
     (e.g. a thin install without the bootstrap extras). ``MahavishnuApp``
-    triggers full application bootstrap which requires ``oneiric.logging``.
+    triggers full application bootstrap which requires
+    ``oneiric.core.logging``.
     """
     try:
         from mahavishnu.core.app import MahavishnuApp
