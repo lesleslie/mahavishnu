@@ -72,6 +72,29 @@ requirements:
 > two-stage composition is already in the demo layer. §4 records the
 > corrections with evidence.
 
+## Policy: No backwards compatibility / legacy support
+
+**This plan is forward-only.** Where a shape, a key, a config field, a
+module or a stored record changes, it changes — there is **no
+deprecation window, no alias, no re-export shim, and no migration of
+old data**. Bodai is pre-1.0; no external consumer depends on the
+current surface, so defensive scaffolding buys nothing and costs
+merge-conflict surface for free.
+
+Concretely, this plan **deletes** rather than deprecates
+(`core/routing.py`, `core/workflow_state.py`, `AdapterRegistryConfig`,
+`core/unified_orchestrator.py`, the `adapter_registry:` and
+`feature_flags:` YAML blocks); **renames** rather than aliases
+(`integrations.pydantic_ai_enabled` → `adapters.pydantic_ai_enabled`,
+with its one consumer `cli/demo_cli.py:1280` repointed); **prunes**
+rather than migrates the 469 stored workflow records (Phase 3 task 6b);
+and **bumps** tool versions straight through, with no `DEPRECATED_TOOLS`
+entry and no translation shim — the ADR-015 deprecation machinery is
+**deliberately not used**. Version numbers stay honest about *what
+breaks*, which is the part that matters.
+
+§3 non-goal 10 restates this as a scope boundary.
+
 ## 1. Outcome
 
 **Every adapter mahavishnu ships is reachable, returns the same shape,
