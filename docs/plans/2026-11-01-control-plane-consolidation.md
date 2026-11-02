@@ -2219,16 +2219,22 @@ inferred from a process exit.
    **order** and the collapse of duplicate entries.
    The consequence is therefore **resolution, not membership**: the
    repository's `.venv/bin` is still on the `PATH`, but it now sits
-   well behind `/usr/local/bin` (position 16 here; the position depends
-   on the inherited `PATH`, so do not pin the number). So a worker
+   far behind `/usr/local/bin` — position 16 in the measured session.
+   The exact position depends on the inherited `PATH`; what is
+   invariant is that the system directories come first. So a worker
    dispatch resolves `pytest` and `ruff` to **`/usr/local/bin/*`** — the
    system copies — while the repository's own gate
    (`crackerjack run -v -f`) resolves them to the pinned `.venv/bin/*`.
    The two disagree, and the direction is not uniform: the system
    `ruff` is *newer* than the pinned one.
-   **A probe that inspects only the front of `PATH` will conclude the
-   inherited entries were "replaced"** — they were merely reordered.
-   Read the whole path, not a prefix, and compare as a *set*.
+   **The trap in measuring this is checking membership instead of
+   order.** "Is my directory still on `PATH`?" answers yes for every
+   inherited entry, so a membership check cannot detect the problem at
+   all — the whole failure is invisible to it, which is exactly why
+   *resolution* rather than *membership* is the consequence worth
+   naming. A probe that inspects only the front of the path makes the
+   same mistake visible but misdiagnoses it ("replaced" rather than
+   "reordered"). Read the whole path, and compare as a *set*.
    **Exported environment variables are unaffected** — `PATH` is the
    only thing the login shell rebuilds, so the prompt and any other
    `MAHAVISHNU_*` variable cross the `exec` intact. That is what makes
