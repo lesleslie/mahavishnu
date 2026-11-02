@@ -192,6 +192,59 @@ alone and replaces only the *result*, so the worker's behavior is
 byte-identical by construction. Same token saving, strictly smaller
 failure surface.
 
+#### 4.3.1 The seam rides an environment variable, not a placeholder
+
+The `--settings` path has to reach the CLI, and there are two ways to do
+that. **Only one of them is safe here**, and the reason is worth
+recording because the other one looks perfectly reasonable.
+
+`render_command` (`mahavishnu/workers/shell_backend.py:136-185`) has a
+**hardcoded two-placeholder contract**: it substitutes `{permission_mode}`,
+and it *raises* on `{prompt}`. There is no general placeholder
+mechanism. A `{settings}` placeholder in a registry command template
+would therefore need `render_command` to learn a third placeholder — and
+`render_command` is exactly the function the consolidation plan's Phase 7
+rewrites. Worse, the failure mode is **silent**: only `{prompt}` raises,
+so an unrecognized `{settings}` would fall through *unsubstituted* and
+reach the CLI as literal text. A third placeholder is a collision with
+Phase 7 *and* a silent-failure hazard.
+
+The prompt already solved this. The prompt does not ride as a
+placeholder — it rides as an environment variable, and the command
+references `"$MAHAVISHNU_PROMPT"`. The settings path should ride the
+same way:
+
+```text
+command='sh -lc \'claude -p --verbose --output-format stream-json \
+  --permission-mode {permission_mode} --settings "$MAHAVISHNU_SETTINGS" \
+  "$MAHAVISHNU_PROMPT" ...\''
+```
+
+That needs **no `render_command` change at all**, and the injection
+rides `env_overrides` at `shell_backend.py:373-403` — the same mechanism
+the prompt file path already uses. The path is short, so it rides
+directly in the environment; it does not need the prompt's two-step
+file-plus-prologue dance, which exists only because tmux caps its argv.
+
+**One wrinkle, and its resolution.** If `MAHAVISHNU_SETTINGS` is unset
+(`mode=off`), `"$MAHAVISHNU_SETTINGS"` expands to empty and
+`claude --settings ""` is a bad flag. Making the flag conditional needs
+a conditional template — which needs `render_command` to change, which
+is the collision. The resolution is to make the template
+**unconditional** and always create a settings file: an empty-hooks one
+in `mode=off`, the hook-bearing one in `measure`/`apply`. The template
+stays static, `render_command` stays untouched, and the only
+`shell_backend.py` touch is one env var and one temp file.
+
+The cost of that bargain, stated plainly: **every dispatch of an
+affected worker type now carries one more flag and one more temp file,
+even with the compaction disabled.** That is a small, permanent change
+to the dispatch path, bought with the removal of a coordination
+dependency. Phase 2 measures it; if it is not small, the conditional
+template is reconsidered — but only *after* consolidation Phase 7, and
+with agreement that `render_command` grows a third placeholder then,
+not before.
+
 ### 4.4 The PATH route is closed, and the reason is macOS-specific
 
 The obvious agent-agnostic mechanism is a shim directory on `PATH`
@@ -358,19 +411,46 @@ Seventeen other plans are live. Two collide; the rest do not.
 
 #### 4.11.1 `2026-11-01-control-plane-consolidation.md` — hard sequencing
 
-The concurrent session's plan (draft, canonical, 2,466 lines with 344
-insertions pending in the working tree). It owns the two files this
-plan's Phase 3 would touch.
+The concurrent session's plan (draft, canonical). The revision this
+plan is written against is **committed** — `e29b966f` (round-2 review
+findings) + `38f757e5` (the policy section), **3,131 lines**, tree
+clean. An earlier draft of this section quoted an in-flight
+working-tree snapshot; the numbers below are the committed revision.
+
+Its Phase 7 was materially revised in ways that matter here, and this
+plan has been **re-read against the revision** rather than patched
+against the old text:
+
+- **Phase 7 task 3 replaces the launch protocol with a generated
+  launcher.** The string handed to `terminal_manager.launch_sessions`
+  becomes `sh <launcher>`, where the launcher reads the prompt file into
+  `MAHAVISHNU_PROMPT`, exports it, emits `__MAHAVISHNU_READY__` with
+  the prompt's byte count, and then `exec`s the registry command. Our
+  `--settings "$MAHAVISHNU_SETTINGS"` reference lives in the **registry
+  command**, which the launcher `exec`s — so it survives the rewrite —
+  but it depends on that launcher **preserving the session
+  environment**. If the launcher scrubs or allowlists the environment,
+  our variable must be added to its allowlist. That is a named
+  dependency, not a hope.
+- **The envelope split (`routing_type` vs `operation`)**, the store
+  findings, and Phase 5's per-key record option do not reach this plan:
+  it touches no envelope, writes no workflow record, and reads no store.
+- **The plan is forward-only.** It carries a top-level
+  `## Policy: No backwards compatibility / legacy support` section: no
+  deprecation windows, no aliases, no re-export shims, no migration of
+  old data. **This plan therefore assumes no compatibility surface from
+  it.** The compaction ships as a new setting with a kill switch, and
+  nothing here depends on an alias or a transition period existing.
 
 | Consolidation phase | Owns | Consequence for this plan |
 |---|---|---|
-| Phase 3 — worker-registry schema | `mahavishnu/workers/registry.py` | Our registry edit **lands after** consolidation Phase 3. |
+| Phase 3 — worker-registry schema | `mahavishnu/workers/registry.py` | Its touch is one line (`_legacy_config_to_entry`'s `command_argv` shape). It **keeps** `env_vars` and `stream_format`, so our refusal to build on `env_vars` and our use of `stream_format` as the analyzer's input contract both survive. Our registry edit lands after it. |
 | Phase 4 — one execution envelope, owned spans | `mahavishnu/core/observability.py` | We add **no span**. Our signal is a structured log (§4.11.3). |
 | Phase 5 — pool lane joins the workflow lane | `mahavishnu/pools/manager.py` | We touch no pool file. |
 | Phase 6 — composition | `mahavishnu/core/conductor.py` | No interaction — the compaction is inside the worker session, upstream of the conductor. |
-| Phase 7 — dispatch trustworthiness | `mahavishnu/workers/shell_backend.py` | Our dispatch-time wiring lands **after** consolidation Phase 7. REQ-C10's prompt digest is unaffected (L1 does not touch prompt bytes). |
+| Phase 7 — dispatch trustworthiness | `mahavishnu/workers/shell_backend.py` | A real restructure, not a one-liner: the launch protocol moves into a generated launcher. **Our dispatch-time wiring lands as one change with Phase 7, not as a later separate change** — the settings file is part of that path's blast radius. REQ-C10's prompt digest is unaffected (L1 does not touch prompt bytes). |
 
-Four rules this plan takes on, from its §4.13 and §2.1:
+Six rules this plan takes on, from its §4.13, §2.1, and Phase 7:
 
 1. **One transition, one owner.** The compaction does not settle,
    report, or transition anything. It transforms a tool result inside
@@ -386,6 +466,17 @@ Four rules this plan takes on, from its §4.13 and §2.1:
 4. **Cost accounting is not duplicated.** The consolidation plan
    defers cost accounting (non-goal 8); we produce local measurements,
    not a fleet cost model, and we do not touch `ADAPTER_COSTS`.
+5. **Temp-file hygiene.** Our settings file is held to the same
+   standard the launcher is: `tempfile.mkstemp` (**O_EXCL**, mode
+   **0600**), the same private directory as the prompt file, removed
+   with it at teardown. A fixed pathname in a shared directory is a
+   symlink target, and the default umask would make it world-readable.
+6. **`render_command` does not grow a placeholder.** Our seam is an
+   environment variable (§4.3.1). If anyone later "fixes" the
+   `--settings` reference into a `{settings}` placeholder, they
+   re-introduce the collision with Phase 7 *and* the silent
+   pass-through hazard. Both plans should record that the reference is
+   an env var, so the next reader does not "tidy" it.
 
 #### 4.11.2 `2026-10-29-bifrost-bodai-cache-wiring.md` — ordering
 
@@ -507,24 +598,46 @@ the fail-open path, before writing production code.
 2. **Prove fail-open (REQ-COMP-03).** Break the handler three ways —
    missing binary, non-zero exit, malformed JSON on stdin — and
    confirm the original tool result reaches the model in each case.
-3. **Bound the handler.** The consolidation plan holds the worker
+3. **Prove `--settings` does not suppress the user's own settings.**
+   This is the risk the flag carries and it is not obvious from the
+   docs. `--settings` "applies it above your user, project, and local
+   files" — that reads as a *merge*, but a fleet worker runs the same
+   `claude` binary as the user's interactive sessions, so if the flag
+   *replaced* the settings stack, every dispatch would silently lose
+   the user's MCP servers, permissions, and hooks. The spike must
+   dispatch with `--settings` pointing at a settings file that defines
+   only a hook, and confirm that (a) the user's
+   `~/.claude/settings.json` still applies — a marker permission or an
+   MCP server the user configured is still visible to the worker — and
+   (b) the hook in the `--settings` file still fires. **If the stack is
+   replaced rather than merged, this plan has no seam** and stops.
+4. **Bound the handler.** The consolidation plan holds the worker
    wall-clock in view (§4.11.1 rule 3). Give the handler a hard
    timeout and measure its overhead per tool call against RTK's
    "<10 ms" claim, which is the number to beat or match.
-4. **Decide the filter set** from Phase 1's per-tool byte table —
+5. **Decide the filter set** from Phase 1's per-tool byte table —
    only the tools that actually carry bytes earn a filter. Start with
    the catalogue in §4.6 (pytest, git diff/status/log, ruff, ls/tree,
    grep/rg).
-5. **Decide the deployment shape.** The handler runs *inside the
+6. **Decide the deployment shape.** The handler runs *inside the
    worker session*, on the worker's host. Options: a per-dispatch
    temp file in the existing `mkstemp` pattern
    (`shell_backend.py:_write_prompt_file`), or a stable installed
    script. The temp-file pattern matches the existing prompt-file and
    stderr-file handling and needs no install on delegated or cloud
-   hosts; the trade-off is a per-dispatch Python start-up.
-6. **Confirm the `sh -lc` interaction.** The handler runs under the
+   hosts; the trade-off is a per-dispatch Python start-up. The settings
+   file follows the same pattern and the same hygiene rules as the
+   prompt file (§4.11.1 rule 5).
+7. **Confirm the `sh -lc` interaction.** The handler runs under the
    worker's shell; a handler written in Python must not depend on the
    demoted `PATH` (§4.4).
+8. **Confirm the launcher preserves the environment.** After the
+   consolidation plan's Phase 7, the session command is `sh <launcher>`
+   and the registry command is `exec`'d from it. The settings path
+   rides in the session environment as `MAHAVISHNU_SETTINGS`, so the
+   launcher must preserve it. If the launcher scrubs or allowlists the
+   environment, our variable must be added to its allowlist — a
+   one-line coordination item, not a redesign (§4.11.1).
 
 **Exit criteria:** a decision record naming the chosen mechanism, the
 filter set, the deployment shape, and the measured per-call overhead —
@@ -564,11 +677,18 @@ with a fail-open demonstration attached.
    for the tool that produced the result, returns `updatedToolOutput`.
    Any failure returns exit 0 with no output, which Claude Code treats
    as "no decision" (REQ-COMP-03).
-3. **The wiring** — the dispatch path injects a `--settings` argument
-   carrying the hooks block, built per dispatch in the same
-   `mkstemp` pattern as the prompt file. **Lands after the control-plane
-   consolidation plan's Phase 7 and after
-   `2026-10-29-bifrost-bodai-cache-wiring`'s Phase 5** (§4.11).
+3. **The wiring** — the registry command template for the affected
+   worker types gains `--settings "$MAHAVISHNU_SETTINGS"`, a literal
+   environment-variable reference in the same shape as the existing
+   `"$MAHAVISHNU_PROMPT"` (§4.3.1). **`render_command` is not
+   modified**, and the settings file is **always** created — an
+   empty-hooks one in `mode=off`, the hook-bearing one in
+   `measure`/`apply` — so the template stays static and no flag is
+   ever conditional. The path rides in `env_overrides`, beside
+   `MAHAVISHNU_PROMPT_FILE` and `MAHAVISHNU_STDERR_PATH`.
+   **Lands as one change with the control-plane consolidation plan's
+   Phase 7**, not as a later separate change (§4.11.1), and after
+   `2026-10-29-bifrost-bodai-cache-wiring`'s Phase 5.
 4. **The switch** — `workers.output_compaction.enabled` (default
    `false`), `workers.output_compaction.mode`
    (`off` | `measure` | `apply`), and
@@ -581,7 +701,10 @@ with a fail-open demonstration attached.
    `bytes_before`, `bytes_after`, `filter`, `duration_ms`. A
    oneiric structured log, **not an OTel span** (§4.11.3).
 6. **The kill switch** — `mode=off` restores baseline behavior with no
-   code change and no redeploy of anything else.
+   code change and no redeploy of anything else. Note the residual
+   cost recorded in §4.3.1: an affected worker type still carries one
+   more flag and one more temp file per dispatch, because the template
+   is unconditional.
 
 **Exit criteria:** the mechanism ships disabled; `mode=measure`
 produces a per-dispatch report; `mode=apply` produces the same report
@@ -661,8 +784,8 @@ mahavishnu/workers/output_compaction/
     filters.py               # one pure filter per tool (pytest, git, ruff, ...)
     handler.py               # the hook handler: stdin JSON -> updatedToolOutput
     measure.py               # measure-mode accounting
-mahavishnu/workers/shell_backend.py   # MODIFY: dispatch-time settings injection
-mahavishnu/workers/registry.py        # MODIFY: --settings placeholder in the command template
+mahavishnu/workers/shell_backend.py   # MODIFY: dispatch-time settings injection (env var + temp file)
+mahavishnu/workers/registry.py        # MODIFY: --settings "$MAHAVISHNU_SETTINGS" in the command template (an env reference, NOT a placeholder)
 mahavishnu/core/config.py              # MODIFY: workers.output_compaction settings model
 settings/mahavishnu.yaml               # MODIFY: workers.output_compaction block (disabled)
 settings/local.yaml                    # MODIFY: operator overrides
@@ -675,8 +798,10 @@ docs/decisions/2026-11-02-worker-output-compaction-mechanism.md  # NEW (Phase 2)
 
 Deliberately **not** touched: `mahavishnu/core/observability.py` (the
 otel-metrics plan owns it), `mahavishnu/core/conductor.py`,
-`mahavishnu/pools/manager.py`, `mahavishnu/bifrost/`, and
-`WorkerConfig.env_vars` (§4.9).
+`mahavishnu/pools/manager.py`, `mahavishnu/bifrost/`,
+`WorkerConfig.env_vars` (§4.9), and — importantly —
+**`render_command` in `mahavishnu/workers/shell_backend.py`**, which
+must not grow a third placeholder (§4.3.1).
 
 ## 7. Validation Matrix
 
@@ -685,6 +810,7 @@ otel-metrics plan owns it), `mahavishnu/core/conductor.py`,
 | `mahavishnu workers analyze-context --input <sample>` | per-tool byte breakdown + compounded token estimate | stdout; report under `~/.local/state/mahavishnu/worker-context/` |
 | `scripts/analyze_worker_context.py --corpus tasks/worker-bench-v1` | tool-output share of billed input tokens | Phase 1 report |
 | Spike: `terminal-claude` dispatch with the `--settings` hook | handler fires; command and exit status unchanged | `tests/fixtures/compaction/` |
+| Spike: dispatch with `--settings` while the user has `~/.claude/settings.json` | the user's MCP servers, permissions, and hooks still apply — the settings stack is **merged**, not replaced | `tests/fixtures/compaction/` |
 | Spike: handler missing / non-zero exit / malformed stdin | original tool result reaches the model, in all three cases | `tests/fixtures/compaction/` |
 | `mahavishnu workers compaction-report --corpus tasks/worker-bench-v1` | before/after input tokens, task-success delta, cache-hit-rate delta | Phase 4 report |
 | `pytest tests/unit/workers/test_output_compaction.py` | filters preserve every signal they claim to preserve | test run |
@@ -699,7 +825,10 @@ otel-metrics plan owns it), `mahavishnu/core/conductor.py`,
 | The tool-output share is small, so the mechanism is not worth its complexity | **medium** | Phase 1 exists to find out. A small number is a *successful* outcome of this plan: the mechanism does not get built (§4.12). |
 | A filter drops a signal the model needed, and the task fails quietly | medium | Every filter ships with a test asserting it preserves the failure detail it claims to preserve; Phase 4's task-success delta is the backstop; `mode=measure` lets an operator preview before applying. |
 | The hook breaks the dispatch | low | Fail-open at three levels (REQ-COMP-03); the handler returns exit 0 on any failure; the kill switch needs no redeploy. |
-| The mechanism collides with the concurrent consolidation plan | **medium** | §4.11.1 sequences us after its Phases 3 and 7. We touch only the command template and the dispatch-time env; we add no envelope, no span, no state transition. |
+| The mechanism collides with the concurrent consolidation plan | **medium** | §4.11.1 sequences us after its Phases 3 and 7, and our wiring lands as one change with Phase 7 rather than a second change to the same path. We touch only the command template and the dispatch-time env; we add no envelope, no span, no state transition, and `render_command` gains no placeholder. |
+| `--settings` replaces rather than merges the settings stack, so every dispatch silently loses the user's MCP servers, permissions, and hooks | **low, but high blast radius** | Phase 2 task 3 proves it empirically before anything ships: dispatch with `--settings` and confirm the user's own `~/.claude/settings.json` still applies. If the stack is replaced, this plan has no seam and stops. |
+| The post-Phase-7 launcher scrubs the session environment, so `$MAHAVISHNU_SETTINGS` never expands | low | Phase 2 task 8 verifies it against the real launcher. If the launcher allowlists the environment, our variable is one line on that allowlist (§4.11.1). |
+| An unknown `{settings}` placeholder is silently passed through to the CLI | **low** | We never introduce one: the seam is an env var, and §4.11.1 rule 6 records why, so a later "tidying" does not reintroduce it. |
 | Cache hit ratio drops because the compaction changes the prefix | **low** | §4.7: the compacted bytes are what enter the prefix, so the prefix is smaller and stable. Phase 4 measures it anyway, because "low likelihood" is not "verified." |
 | A Rust binary (RTK) becomes a per-host deployment dependency | medium | We do not vendor RTK. The mechanism is ours, in Python, in the worker path. |
 | The filter catalogue drifts from what our workers actually run | medium | Phase 1's per-tool byte table decides the filter set; filters for tools with no bytes are not built. |
