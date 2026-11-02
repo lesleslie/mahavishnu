@@ -282,7 +282,7 @@ Each row names a **winner** — the single place that owns the concept.
 | 1 | **Adapter registry** | **seven** listings: `app.adapters` (`core/app.py:254`), `task_router.AdapterManager.adapters` (`core/task_router.py:127`), `_ENGINE_LOCATIONS` (`engines/__init__.py:104`), `settings.worker_registry.entries`, `AdapterRegistryConfig` (config-only ghost), the **Oneiric entry-point group** `pyproject.toml:140-143` (`[project.entry-points."oneiric.adapters"]` = prefect, agno, worker), and the hardcoded `_import_adapter_class` if/elif chain (`core/bootstrap.py:356-381`) that populates `app.adapters` | `app.adapters` as the single **dispatch** registry | `AdapterManager.register_adapter` is called **only from test modules** — in production that registry is always empty. The other listings have distinct jobs (capability discovery, capability metadata) and are not duplicates of it |
 | 2 | **Router** | `core/routing.py:TaskRouter` (chains, live) vs `core/task_router.py:TaskRouter` (registry + stats + `CapabilityRouter`) | **`core/task_router.py` survives**; `core/routing.py`'s chains fold into it | **reversed from the first draft.** `docs/decisions/2026-10-14-decision-adapter-category.md` rule 3 is a hard sequencing rule: the `task_router.py` migration to Oneiric's `AdapterBridge` must complete, and `core/routing.py`'s router is not part of that migration |
 | 3 | **Orchestration entry point** | `workflow_execution.execute_workflow_with_fallback` vs `task_router.execute_with_fallback` vs `UnifiedOrchestrator.execute_workflow` | `workflow_execution`, **porting** what `UnifiedOrchestrator` had | `UnifiedOrchestrator` has zero production callers, but it is the only implementation of *N independent tasks each with its own fallback chain*, and the only implementation of **cancellation** — `workflow_execution` has no cancel path at all. Deleting it is an undeclared scope loss |
-| 4 | **Worker registry** | legacy `WORKER_REGISTRY` (`workers/registry.py:178`, **43** entries) vs `settings.worker_registry.entries` (`core/config.py:1890`, **16** entries) | **the legacy dict for dispatch**; the settings entries for capability metadata and validation | **reversed from the first draft**, which had it backwards. The YAML is a strict *subset* — 27 types exist only in code, including `shepherd` (the pool's default worker type) and `openhands`. `MahavishnuSettings()` bare does **not** read YAML (`get_settings()` → 16 entries; bare → 0), so the legacy dict is the only unconditionally-populated registry. The two are also **different schemas**: `WorkerEntry` has no `permission_mode`, `category`, `endpoint`, `mcp_server`, or `error_markers`, and has `provides`, which `WorkerConfig` cannot express |
+| 4 | **Worker registry** | legacy `WORKER_REGISTRY` (`workers/registry.py:178`, **43** entries) vs `settings.worker_registry.entries` (`core/config.py:1890`, **16** entries) | **the legacy dict for dispatch**; the settings entries for capability metadata and validation | **reversed from the first draft**, which had it backwards. The YAML is a strict *subset* — 27 types exist only in code, including `shepherd` (the pool's default worker type) and `openhands`. `MahavishnuSettings()` bare does **not** read YAML (`get_settings()` → 16 entries; bare → 0), so the legacy dict is the only unconditionally-populated registry. The two are also **different schemas**: `WorkerEntry` has no `permission_mode`, `category`, `endpoint`, `mcp_server`, or `error_markers`, and has `provides`, which `WorkerConfig` cannot express. `WorkerConfig.env_vars` (`:104`) is read by nobody and is removed in Phase 3 task 4 |
 | 5 | **Worker substrate** | `WorkerManager` + `ShellWorker` (one-shot; vocabulary `WorkerStatus`) vs `DurableWorkerManager` + `WorkerLifecycleState` (interactive tmux + settle) vs `SettleState` | decided in Phase 3, as an *execution* vocabulary in `core/status.py` | three vocabularies, not two. `WorkerLifecycleState` has no `TIMEOUT`/`CANCELLED` and legally allows `COMPLETED → READY → RUNNING` — so adopting it unchanged would silently defeat Phase 7's "settled is final" |
 | 6 | **Workflow state store** | **two backing stores, five key namespaces** — not four trails. *Store A:* file JSON `data/workflow_state/workflows.json` (`app.workflow_state_manager`, which **is** a `task_router.StateManager` instance, `core/bootstrap.py:620,633`). *Store B:* the **process-local** KV (`core/kv_store.py:87`), holding `workflow-results/{workflow_id}/` (`core/workflow/outcome_writer.py:77`), `workflow/v1/{execution_id}/` (`core/repository_surface.py:72`), `routing/v1/{task_class}/{ts}/` (`core/state_backends/mcp.py:141-145`, written by `core/pools/manager.py:284`), and the approval/webhook/ecosystem namespaces | one store protocol per concern: a `WorkflowStore` for the file store, a per-key `KVBackend` for the substrate; `StateManager` relocates out of `task_router.py` first | **rewritten by round 2.** The first draft called this "four persistence trails" and called one of them "the durable MCP KV". **Both were wrong.** Trails 2 and 4 are the *same* key namespace in the *same* store; trail 3 is the *same process-local dict* — `core/state_backends/mcp.py`'s own docstring says so (*"backed by a process-local thread-safe dict"*; *"All writes are fire-and-forget"*), so it is an HTTP self-call, not a durable store. The trail the inventory **omitted** is the pool lane's own — `routing/v1/`, which Phase 5 touches most. |
 | 7 | **Worker wrapper** | `WorkerOrchestratorAdapter` (wraps `WorkerManager`) vs `MahavishnuPool` (wraps the same `WorkerManager`) | the adapter keeps the orchestrator-facing port; the pool keeps its leaf-wrapper rule | `pools/mahavishnu_pool.py:5-12` explicitly warns against inverting the layering ("Do NOT rewrite `execute_task` to call `pool_manager.route_task`"). The fix is a narrow `PoolRouter` port, not the adapter wrapping the pool |
@@ -1399,6 +1399,19 @@ unregistering it and without losing MCP tools.**
    one-element list holding the whole shell string, against the YAML's
    three-element `["sh", "-lc", "<script>"]`). A single source is a
    larger project, not a Phase-3 task.
+   - **Remove the dead `WorkerConfig.env_vars` field** (`:104`, with
+     its docstring at `:77`). It has **no consumer anywhere**: the
+     YAML-side `WorkerEntry` (`core/config.py:1851`) has no such field
+     (`model_config = ConfigDict(extra="forbid")`), and the only
+     references in the repository are three test files that assert the
+     field exists — `tests/unit/test_workers_registry_coverage.py`
+     (`:103`, `:120`, `:130`, and the whole
+     `test_env_vars_default_factory_unique` at `:148-152`) and
+     `tests/unit/test_worker_registry.py` (`:74`, `:91`, `:102`). The
+     historical consumer, the Kubernetes manifest generator, was removed
+     in `8d3668af` as dead code. `WorkerConfig.stream_format` (`:101`)
+     **stays** — it is equally unread today, but it is a live input
+     contract for the worker tool-output compaction plan.
 
 5. **Worker substrate + lifecycle vocabulary (§4.2 rows 5, 8).** Put
    **one execution lifecycle** in `core/status.py` — which is already
@@ -2179,6 +2192,20 @@ inferred from a process exit.
    - `MAHAVISHNU_PROMPT_FILE` already rides this exact path today
      (`workers/shell_backend.py:375`), so the launcher inherits it
      unless it explicitly clears the environment — which it must not.
+   **What the launcher must export, and what it may merely inherit.**
+   A variable the launcher **creates** (assigns in the script) must be
+   `export`ed, because a plain shell assignment does not cross the
+   `exec` boundary. A variable the launcher **inherits** from the
+   session environment needs no `export` at all — it is already in the
+   environment, and therefore already marked for export. Verified:
+   an inherited variable survives `exec` unchanged, while a shell
+   assignment without `export` does not. So `MAHAVISHNU_PROMPT` is
+   exported (the launcher creates it, from the prompt file), and any
+   other `MAHAVISHNU_*` variable the launcher does not create is
+   inherited and passes through for free. This is a deliberate rule, not
+   an accident of the current implementation — another plan's
+   per-dispatch variable depends on it.
+
    **A per-dispatch value belongs in an environment variable, not in a
    command-template placeholder.** The template's `{prompt}` placeholder
    is the one that raises
@@ -2596,7 +2623,7 @@ skill or agent body contradicts the tool's actual surface.**
 - [ ] `mahavishnu/workers/contract/state.py` — the chosen vocabulary's home
 - [ ] `mahavishnu/workers/shell_backend.py` — launcher, readiness, integrity
 - [ ] `mahavishnu/workers/openhands.py` — current SDK contract
-- [ ] `mahavishnu/workers/registry.py` — legacy registry retired
+- [ ] `mahavishnu/workers/registry.py` — **the legacy registry is NOT retired** (Phase 3 task 4 reversed that); the action is the `command_argv` shape fix at `:1061` and the `env_vars` field removal
 - [ ] `mahavishnu/pools/mahavishnu_pool.py` — dispatch state ownership
 - [ ] `mahavishnu/pools/manager.py` — workflow identity for pool dispatches
 - [ ] `mahavishnu/mcp/server_core.py` — envelope; adapter documentation
@@ -2658,6 +2685,8 @@ skill or agent body contradicts the tool's actual surface.**
 - [ ] `tests/unit/test_config.py` — `:626` (`cfg.pydantic_ai_enabled is False`)
 - [ ] `tests/unit/workers/test_shell_command_safety.py` — the `STDERR_PATH_ENV_VAR in command` assertion (`:334-343`) moves to the registry command
 - [ ] `tests/unit/workers/test_registry_lookup.py` — extended (key-set assertion)
+- [ ] `tests/unit/test_workers_registry_coverage.py` — the `env_vars` assertions removed (Phase 3 task 4)
+- [ ] `tests/unit/test_worker_registry.py` — the `env_vars` assertions removed (Phase 3 task 4)
 - [ ] `tests/integration/test_trigger_workflow_e2e.py` — **new** (wiring discipline §4)
 - [ ] `tests/integration/test_pool_route_execute_e2e.py` — **new** (wiring discipline §4)
 
