@@ -245,12 +245,98 @@ template is reconsidered — but only *after* consolidation Phase 7, and
 with agreement that `render_command` grows a third placeholder then,
 not before.
 
-### 4.4 The PATH route is closed, and the reason is macOS-specific
+There is a second half to that cost, and it is easy to miss because it
+is not a file or a flag: **the `--settings` layer is loaded on every
+dispatch of that worker type, in every mode.** `mode=off` is a no-op
+with respect to *compaction*, but it is not a no-op with respect to
+*settings layering* — the CLI still reads our file and still applies
+whatever precedence that implies. So `mode=off` does not restore
+baseline settings behavior, only baseline compaction behavior. The
+granularity assertion in §4.3.2 therefore has to hold in `off` mode as
+well.
+
+#### 4.3.2 `--settings` is additive, and the user's own hooks are the risk surface
+
+Two facts about the flag, both from the binary and the docs rather than
+from inference.
+
+**`--settings` is additive, and it is its own layer.** From
+`claude --help` on 2.1.316 — the binary the workers run:
+
+```text
+--settings <file-or-json>   Path to a settings JSON file or a JSON
+                            string to load additional settings from
+```
+
+"additional" is the operative word. And the `--restricted` entry is
+the decisive one, because it names the layers explicitly:
+
+```text
+--restricted   ... and ignores user, project and local settings files
+               (managed settings and --settings still apply; add
+               --strict-mcp-config to skip MCP servers too).
+```
+
+`--settings` survives a mode that ignores the *entire* user/project/local
+stack. It is not a member of that stack; it is a separate layer.
+
+**Hook entries merge across settings levels.** The hooks documentation
+is explicit: *"Hook entries merge across settings levels rather than
+replacing each other: user, project, and local settings add their own
+hooks without removing managed ones."* And: *"If you define the same
+handler in more than one settings file, it runs once."* So a
+`--settings` file defining one `hooks.PostToolUse` entry is **added**
+to the user's, not substituted for it.
+
+**But the blast radius if that is wrong is this fleet's whole CLI
+behavior, and on this host it is not hypothetical.** The settings that
+would be displaced are real and large:
+
+| Settings file | `hooks` events defined |
+|---|---|
+| `~/.claude/settings.json` | Notification, PermissionRequest, PostToolUse, PreToolUse, SessionEnd, SessionStart, Stop, StopFailure, SubagentStop, UserPromptSubmit |
+| `~/.claude/settings.local.json` | PostToolUse, PreCompact, SessionEnd, SessionStart, Stop |
+| `<repo>/.claude/settings.json` | PostToolUse, SessionEnd, SessionStart, UserPromptSubmit |
+
+And the repo's `.claude/hooks/` directory is not decorative — it holds
+the Bodai activity-stream hook, the jot capture hook, and the
+`agent-merge-on-end` SessionEnd hook that drives the merge pipeline.
+A whole-`hooks`-block replacement would silently disable all of them
+for every worker dispatch, with nothing in our code having changed and
+no error anywhere. The symptom would read as "the merge pipeline
+stopped running" or "MCP servers vanished from workers".
+
+So the assertion Phase 2 makes is **not** "a merge happens". It is
+**per-event survival**: a `--settings` file defining only
+`hooks.PostToolUse` leaves the user's other hooks — `PreToolUse`,
+`SessionStart`, `Stop`, `SessionEnd`, `PermissionRequest` — and their
+MCP servers intact, **and** the user's own `PostToolUse` entries still
+fire alongside ours. The documentation says this is the behavior; the
+spike confirms the binary does it. The cost of the spike is one
+dispatch; the cost of being wrong is the fleet's hooks.
+
+If the assertion fails, the fallback is the **PATH-shim seam** (§4.4):
+it never touches the settings stack, so it cannot displace anything.
+Its cost is that it alters the command path rather than the result,
+and that it only catches bare command names (`pytest`, not
+`python -m pytest`) — a narrower blast radius on our side, a broader
+one on the agent's. `--setting-sources <sources>` is the other lever,
+if the failure turns out to be per-key replacement and the damage
+needs scoping.
+
+### 4.4 The PATH route is closed as a primary mechanism, and the reason is macOS-specific
 
 The obvious agent-agnostic mechanism is a shim directory on `PATH`
 that intercepts `pytest`, `git`, `ruff` and friends. It does not work
 as inherited, and the reason is worth recording because it will
 otherwise be re-litigated.
+
+It remains **live as the fallback** if Phase 2 task 3 shows that the
+`--settings` layer displaces the user's hooks (§4.3.2): the shim never
+touches the settings stack, so it cannot displace anything. Its costs
+are different — it alters the command path rather than the result,
+and it only catches bare command names, not `python -m pytest`. Those
+are why it is the fallback and not the first choice.
 
 Measured on this host:
 
@@ -380,6 +466,12 @@ worker-registry schema, and reviving a dead field there collides with
 its likely removal. The compaction's configuration is a settings key
 plus an env var set at dispatch time, not a registry field.
 
+With the Kubernetes manifest generator gone (8d3668af), `env_vars` has
+**no remaining consumer anywhere** — not in the dataclass, not in the
+YAML `worker_registry:` entries. It is therefore scheduled for removal
+in the consolidation plan's Phase 3 task 4 rather than left dead, which
+is the outcome this plan wants anyway.
+
 The *positive* use of `stream_format` is as the analyzer's input
 contract — Phase 1's parser should honor it, which turns a dead field
 into a consumed one without changing the registry schema.
@@ -413,9 +505,11 @@ Seventeen other plans are live. Two collide; the rest do not.
 
 The concurrent session's plan (draft, canonical). The revision this
 plan is written against is **committed** — `e29b966f` (round-2 review
-findings) + `38f757e5` (the policy section), **3,131 lines**, tree
-clean. An earlier draft of this section quoted an in-flight
-working-tree snapshot; the numbers below are the committed revision.
+findings) + `38f757e5` (the policy section) + `9095c236` +
+`4ead8df8` (the environment contract and the placeholder constraint),
+**3,171 lines**, tree clean. An earlier draft of this section quoted
+an in-flight working-tree snapshot; the numbers below are the committed
+revision.
 
 Its Phase 7 was materially revised in ways that matter here, and this
 plan has been **re-read against the revision** rather than patched
@@ -427,11 +521,14 @@ against the old text:
   `MAHAVISHNU_PROMPT`, exports it, emits `__MAHAVISHNU_READY__` with
   the prompt's byte count, and then `exec`s the registry command. Our
   `--settings "$MAHAVISHNU_SETTINGS"` reference lives in the **registry
-  command**, which the launcher `exec`s — so it survives the rewrite —
-  but it depends on that launcher **preserving the session
-  environment**. If the launcher scrubs or allowlists the environment,
-  our variable must be added to its allowlist. That is a named
-  dependency, not a hope.
+  command**, which the launcher `exec`s — so it survives the rewrite.
+  The environment contract is now recorded in that plan (Phase 7 task 3:
+  the launcher **inherits the session environment and must not scrub
+  it**, and a per-dispatch value belongs in an env var rather than a
+  template placeholder). The code path already satisfies it — the env
+  is an overlay, the tmux adapter's only policy on a variable name is a
+  shape regex, and `MAHAVISHNU_PROMPT_FILE` rides the identical path
+  today (§4.3.2, Phase 2 task 8).
 - **The envelope split (`routing_type` vs `operation`)**, the store
   findings, and Phase 5's per-key record option do not reach this plan:
   it touches no envelope, writes no workflow record, and reads no store.
@@ -475,8 +572,9 @@ Six rules this plan takes on, from its §4.13, §2.1, and Phase 7:
    environment variable (§4.3.1). If anyone later "fixes" the
    `--settings` reference into a `{settings}` placeholder, they
    re-introduce the collision with Phase 7 *and* the silent
-   pass-through hazard. Both plans should record that the reference is
-   an env var, so the next reader does not "tidy" it.
+   pass-through hazard. Both plans now record this — the anchor is the
+   consolidation plan's **Phase 7 task 3, environment bullet** — so
+   the next reader does not "tidy" it.
 
 #### 4.11.2 `2026-10-29-bifrost-bodai-cache-wiring.md` — ordering
 
@@ -598,19 +696,21 @@ the fail-open path, before writing production code.
 2. **Prove fail-open (REQ-COMP-03).** Break the handler three ways —
    missing binary, non-zero exit, malformed JSON on stdin — and
    confirm the original tool result reaches the model in each case.
-3. **Prove `--settings` does not suppress the user's own settings.**
-   This is the risk the flag carries and it is not obvious from the
-   docs. `--settings` "applies it above your user, project, and local
-   files" — that reads as a *merge*, but a fleet worker runs the same
-   `claude` binary as the user's interactive sessions, so if the flag
-   *replaced* the settings stack, every dispatch would silently lose
-   the user's MCP servers, permissions, and hooks. The spike must
-   dispatch with `--settings` pointing at a settings file that defines
-   only a hook, and confirm that (a) the user's
-   `~/.claude/settings.json` still applies — a marker permission or an
-   MCP server the user configured is still visible to the worker — and
-   (b) the hook in the `--settings` file still fires. **If the stack is
-   replaced rather than merged, this plan has no seam** and stops.
+3. **Prove per-event hook survival.** The flag carries a settings
+   layer, and a fleet worker runs the same `claude` binary as the
+   user's interactive sessions — so whatever the layer does, it does to
+   *their* configuration too. The documented behavior is additive
+   ("hook entries merge across settings levels rather than replacing
+   each other"), and `--settings` is a separate layer that even
+   `--restricted` does not ignore (§4.3.2). The spike confirms the
+   binary does it: dispatch with `--settings` pointing at a file that
+   defines only `hooks.PostToolUse`, and assert that (a) the user's
+   `PreToolUse`, `SessionStart`, `Stop`, `SessionEnd`, and
+   `PermissionRequest` hooks still fire, (b) the user's own
+   `PostToolUse` entries still fire **alongside** ours, (c) their MCP
+   servers and permissions still apply, and (d) our hook fires. **If
+   the user's hooks are displaced, the hook seam is unusable** and
+   Phase 2 falls back to the PATH-shim seam (§4.4).
 4. **Bound the handler.** The consolidation plan holds the worker
    wall-clock in view (§4.11.1 rule 3). Give the handler a hard
    timeout and measure its overhead per tool call against RTK's
@@ -631,13 +731,19 @@ the fail-open path, before writing production code.
 7. **Confirm the `sh -lc` interaction.** The handler runs under the
    worker's shell; a handler written in Python must not depend on the
    demoted `PATH` (§4.4).
-8. **Confirm the launcher preserves the environment.** After the
+8. **Assert the settings variable arrives in the pane.** After the
    consolidation plan's Phase 7, the session command is `sh <launcher>`
-   and the registry command is `exec`'d from it. The settings path
-   rides in the session environment as `MAHAVISHNU_SETTINGS`, so the
-   launcher must preserve it. If the launcher scrubs or allowlists the
-   environment, our variable must be added to its allowlist — a
-   one-line coordination item, not a redesign (§4.11.1).
+   and the registry command is `exec`'d from it, so the settings path
+   rides in the session environment as `MAHAVISHNU_SETTINGS` and must
+   survive the hop. There is **no allowlist to join**: the env path is
+   an overlay (`terminal/manager.py:365-367` — `env = {**env,
+   **env_overrides}`), the tmux adapter's only policy on a variable name
+   is a shape regex (`workers/contract/tmux_adapter.py:114` —
+   `re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key)`), and
+   `MAHAVISHNU_PROMPT_FILE` already rides the identical path today
+   (`workers/shell_backend.py:375`). The assertion is therefore a
+   one-line check, not a coordination item: the variable is present in
+   the pane and expands to a real path.
 
 **Exit criteria:** a decision record naming the chosen mechanism, the
 filter set, the deployment shape, and the measured per-call overhead —
@@ -810,7 +916,7 @@ must not grow a third placeholder (§4.3.1).
 | `mahavishnu workers analyze-context --input <sample>` | per-tool byte breakdown + compounded token estimate | stdout; report under `~/.local/state/mahavishnu/worker-context/` |
 | `scripts/analyze_worker_context.py --corpus tasks/worker-bench-v1` | tool-output share of billed input tokens | Phase 1 report |
 | Spike: `terminal-claude` dispatch with the `--settings` hook | handler fires; command and exit status unchanged | `tests/fixtures/compaction/` |
-| Spike: dispatch with `--settings` while the user has `~/.claude/settings.json` | the user's MCP servers, permissions, and hooks still apply — the settings stack is **merged**, not replaced | `tests/fixtures/compaction/` |
+| Spike: dispatch with `--settings` while the user has `~/.claude/settings.json` | **per-event survival**: the user's `PreToolUse` / `SessionStart` / `Stop` / `SessionEnd` / `PermissionRequest` hooks still fire, their own `PostToolUse` entries fire alongside ours, and their MCP servers and permissions still apply | `tests/fixtures/compaction/` |
 | Spike: handler missing / non-zero exit / malformed stdin | original tool result reaches the model, in all three cases | `tests/fixtures/compaction/` |
 | `mahavishnu workers compaction-report --corpus tasks/worker-bench-v1` | before/after input tokens, task-success delta, cache-hit-rate delta | Phase 4 report |
 | `pytest tests/unit/workers/test_output_compaction.py` | filters preserve every signal they claim to preserve | test run |
@@ -826,8 +932,8 @@ must not grow a third placeholder (§4.3.1).
 | A filter drops a signal the model needed, and the task fails quietly | medium | Every filter ships with a test asserting it preserves the failure detail it claims to preserve; Phase 4's task-success delta is the backstop; `mode=measure` lets an operator preview before applying. |
 | The hook breaks the dispatch | low | Fail-open at three levels (REQ-COMP-03); the handler returns exit 0 on any failure; the kill switch needs no redeploy. |
 | The mechanism collides with the concurrent consolidation plan | **medium** | §4.11.1 sequences us after its Phases 3 and 7, and our wiring lands as one change with Phase 7 rather than a second change to the same path. We touch only the command template and the dispatch-time env; we add no envelope, no span, no state transition, and `render_command` gains no placeholder. |
-| `--settings` replaces rather than merges the settings stack, so every dispatch silently loses the user's MCP servers, permissions, and hooks | **low, but high blast radius** | Phase 2 task 3 proves it empirically before anything ships: dispatch with `--settings` and confirm the user's own `~/.claude/settings.json` still applies. If the stack is replaced, this plan has no seam and stops. |
-| The post-Phase-7 launcher scrubs the session environment, so `$MAHAVISHNU_SETTINGS` never expands | low | Phase 2 task 8 verifies it against the real launcher. If the launcher allowlists the environment, our variable is one line on that allowlist (§4.11.1). |
+| The `--settings` layer displaces the user's own `hooks` block, so every dispatch silently loses their hooks, MCP servers, and permissions | **low per the docs, high blast radius — and live on this host** | The docs say hook entries merge across settings levels, and `--settings` is a layer even `--restricted` does not ignore (§4.3.2). But the displaced configuration is real and large here: 10 hook events at user level, 5 local, 4 project, including the activity-stream, jot-capture, and `agent-merge-on-end` hooks. Phase 2 task 3 asserts **per-event survival** before anything ships; if it fails, the hook seam is unusable and Phase 2 falls back to the PATH-shim seam (§4.4), which never touches the settings stack. |
+| The post-Phase-7 launcher scrubs the session environment, so `$MAHAVISHNU_SETTINGS` never expands | **none — ruled out** | There is no allowlist and no scrubbing: the env is an overlay (`terminal/manager.py:365-367`), the tmux adapter's only policy on a name is a shape regex (`tmux_adapter.py:114`), and `MAHAVISHNU_PROMPT_FILE` rides the same path today. Phase 2 task 8 reduces to a one-line assertion. |
 | An unknown `{settings}` placeholder is silently passed through to the CLI | **low** | We never introduce one: the seam is an env var, and §4.11.1 rule 6 records why, so a later "tidying" does not reintroduce it. |
 | Cache hit ratio drops because the compaction changes the prefix | **low** | §4.7: the compacted bytes are what enter the prefix, so the prefix is smaller and stable. Phase 4 measures it anyway, because "low likelihood" is not "verified." |
 | A Rust binary (RTK) becomes a per-host deployment dependency | medium | We do not vendor RTK. The mechanism is ours, in Python, in the worker path. |
@@ -878,5 +984,9 @@ sequencing behind the consolidation plan.
 - `microsoft/TokenEconomizer` — the cold-start-only prefix-mutation
   rule and the cache-priced cost accounting (§4.7, §4.8)
 - `StarTrail-org/LEANN` — the ContextBench harness discipline (§4.8)
-- Claude Code docs, "Hooks" and "Settings" — `--settings` precedence
-  and the `PostToolUse.updatedToolOutput` contract (§4.3)
+- Claude Code docs, "Hooks" and "Settings" — `--settings` precedence,
+  the `PostToolUse.updatedToolOutput` contract, and the
+  "hook entries merge across settings levels" rule (§4.3, §4.3.2)
+- `claude --help` on 2.1.316 — `--settings`, `--restricted`,
+  `--setting-sources`: the flag is additive and is its own settings
+  layer (§4.3.2)
