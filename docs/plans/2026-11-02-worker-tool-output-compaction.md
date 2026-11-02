@@ -342,8 +342,22 @@ $ PATH="$SHIM:$PATH" sh -lc 'export PATH="$SHIM:$PATH"; command -v pytest'
 ```
 
 `/etc/profile:3-4` runs `eval \`/usr/libexec/path_helper -s\``, which
-**rebuilds** `PATH` with the system directories first and demotes
-everything inherited below them.
+**prepends** the system directories to `PATH` and demotes everything
+inherited below them. Measured with a marker directory:
+
+```
+$ PATH="/tmp/marker:$PATH" sh -c  'echo $PATH' | tr ':' '\n' | grep -n marker
+1:/tmp/marker
+$ PATH="/tmp/marker:$PATH" sh -lc 'echo $PATH' | tr ':' '\n' | grep -n marker
+14:/tmp/marker
+```
+
+The inherited `PATH` is **preserved, not replaced** — it is demoted
+behind the system directories. A marker directory that does not exist
+is preserved too, so a probe that puts a non-existent directory at the
+front of `PATH` and reports it "gone" has misread a demotion as a
+replacement. The conclusion is the same either way; the mechanism is
+not, and the mechanism is what any future fix has to work against.
 
 **The fallback's real coverage is narrower than "bare command names"
 suggests.** The inherited-`PATH` variant of the shim is reachable only
@@ -378,9 +392,13 @@ The `path_helper` rebuild has a second effect that is **not** about the
 shim, and it is worth recording because it changes what a worker
 dispatch actually runs.
 
-`path_helper` puts `/usr/local/bin` and `/usr/bin` first and drops
-the inherited tail — including the repository's virtualenv — below
-them. So under the worker's `sh -lc` wrapper:
+`path_helper` puts `/usr/local/bin` and `/usr/bin` first and demotes
+the inherited tail below them. The repository's virtualenv is
+**demoted, not dropped**: under `sh -lc` it survives near the tail of
+`PATH` — position 16 in the measured session, behind `/usr/local/bin`
+at position 1. (The exact position depends on the inherited `PATH`;
+what is invariant is that the system directories come first.) So under
+the worker's `sh -lc` wrapper:
 
 | Tool | Resolves to | Version | The repo pins |
 |---|---|---|---|
@@ -393,15 +411,29 @@ versions.** The quality gate (`crackerjack run -v -f`) runs the venv's
 differs per tool — the system `ruff` is *newer* than the pinned one,
 so this is not a uniform "older tools" story.
 
+**Where a fix would live — and the natural first guess is a no-op.**
+The obvious place is the launch protocol the consolidation plan is
+rewriting. It is not. That plan's launcher is invoked as
+`sh <launcher>` — *not* a login shell — so it never reads `/etc/profile`
+on its own. But it `exec`s the registry command, which **is**
+`sh -lc '…'` (`mahavishnu/workers/registry.py:222-227`), so the login
+shell still runs *inside* the launcher and the rebuild still happens
+there. ⇒ Making the launcher non-login fixes nothing. The lever is the
+**`-l` on the registry command**, or an explicit `PATH` in the
+launcher.
+
 This is **pre-existing and orthogonal to compaction** — it predates
 this plan and is not caused by anything here. It matters to this plan
-in two ways: the Phase 1 byte table is per tool *and* per version, so
-the measurement must record which binary produced the output; and the
-observation belongs to whoever owns the dispatch path, because the
-consolidation plan's Phase 7 rewrites the launch protocol and is the
-natural place to decide whether a worker dispatch should run the
-repository's pinned tools at all. **This plan does not change it** — it
-records it.
+in one way: the Phase 1 byte table is per tool *and* per version, so
+the measurement must record which binary produced the output.
+
+**This plan does not change it — it records it and points at the
+owner.** The consolidation plan carries the specification: the
+measurement in its Phase 7 task 3, a risk row in its §8, and a fourth
+deferral in its §9 naming the three defensible answers (keep the login
+shell; drop the `-l`; set `PATH` explicitly in the launcher). That is
+the better home — it lands where the implementer has to choose, rather
+than in a footnote here or in a 31st live plan.
 
 ### 4.5 Two levers, measured separately
 
@@ -556,10 +588,11 @@ The concurrent session's plan (draft, canonical). The revision this
 plan is written against is **committed** — `e29b966f` (round-2 review
 findings) + `38f757e5` (the policy section) + `9095c236` +
 `4ead8df8` (the environment contract and the placeholder constraint) +
-`a13d5f66` (the `env_vars` removal and the export-vs-inherit rule),
-**3,198 lines**, tree clean. An earlier draft of this section quoted
-an in-flight working-tree snapshot; the numbers below are the committed
-revision.
+`a13d5f66` (the `env_vars` removal and the export-vs-inherit rule) +
+`3afd43ca` (the launch protocol's `PATH` behaviour, recorded and
+deferred), **3,198 lines**, tree clean. An earlier draft of this
+section quoted an in-flight working-tree snapshot; the numbers below
+are the committed revision.
 
 Its Phase 7 was materially revised in ways that matter here, and this
 plan has been **re-read against the revision** rather than patched
@@ -579,6 +612,12 @@ against the old text:
   is an overlay, the tmux adapter's only policy on a variable name is a
   shape regex, and `MAHAVISHNU_PROMPT_FILE` rides the identical path
   today (§4.3.2, Phase 2 task 8).
+- **Phase 7 task 3 also owns the `PATH` finding** (§4.4.1). That plan
+  now carries the measurement, a §8 risk row, and a §9 deferral naming
+  the three options for the login shell. This plan keeps only the two
+  consequences that are its own: the Phase 1 byte table is per
+  *version*, and the lever is the `-l` on the registry command rather
+  than the launcher.
 - **The envelope split (`routing_type` vs `operation`)**, the store
   findings, and Phase 5's per-key record option do not reach this plan:
   it touches no envelope, writes no workflow record, and reads no store.
@@ -812,6 +851,19 @@ the fail-open path, before writing production code.
    file; ours is inherited, so it rides free. The assertion is
    therefore a one-line check, not a coordination item: the variable is
    present in the pane and expands to a real path.
+
+   **The login shell rebuilds `PATH` and nothing else.** The registry
+   command is `sh -lc '…'`, and `/etc/profile` rebuilds `PATH` inside
+   it — so it was worth checking that the rebuild does not also disturb
+   the environment this seam depends on. It does not:
+
+   ```sh
+   FOO=bar sh -lc 'echo $FOO'      # -> bar
+   ```
+
+   Every exported variable crosses the login shell intact; `PATH` is
+   the only thing it rewrites. The seam is therefore safe from the
+   login shell, and the reason is recorded rather than assumed.
 
 **Exit criteria:** a decision record naming the chosen mechanism, the
 filter set, the deployment shape, and the measured per-call overhead —
