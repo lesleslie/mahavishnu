@@ -1,7 +1,8 @@
 ---
 name: crackerjack-compliant-code
 description: >-
-  Use when writing Python code that should pass quality gates on the first run.
+  Use when writing or modifying Python code, when a change looks
+  over-engineered or bloated, or when a quality gate fails on the first run.
 ---
 
 # Crackerjack-Compliant Code
@@ -9,6 +10,60 @@ description: >-
 ## Overview
 
 Use these rules before writing or modifying Python code so it passes the main quality gates without a fix loop.
+
+Climb the Solution Ladder first: it finds the smallest change that still
+passes every gate below.
+
+## Solution Ladder (smallest change that passes the gates)
+
+Before writing new code, climb and stop at the first rung that holds:
+
+1. **Does this need to exist at all?** If the task did not ask for it, do not
+   build it. Extra features are not scope.
+2. **Does this repo already have it?** `mahavishnu/core/` holds 169 modules
+   and the package holds 618 — the odds a "new helper" duplicates one are
+   high. Check before you write:
+   - `core/errors.py` — typed exceptions (`ValidationError`,
+     `ConfigurationError`, `TaskNotFoundError`, …); use one instead of
+     inventing a class or raising bare `Exception`.
+   - `core/model_routing.py` — `TaskCategory`, `get_model_for_task`,
+     `routing_to_task_map`, and the `DEFAULT_*_ROUTING` tables. Those
+     in-code tables are the runtime truth; `settings/models.yaml` mirrors
+     them and `tests/unit/test_task_router.py::TestYAMLRoutingSync` pins
+     them together. No production code parses that YAML.
+   - `core/unified_config.py` — cross-file schema validation for all five
+     YAML config files. It validates; it does not return parsed config.
+   - `core/config.py` — `MahavishnuSettings`.
+   - `core/` also has `atomic.py`, `circuit_breaker.py`, `retry_policy.py`,
+     `validators.py`, `config_validator.py`, `secure_logging.py`,
+     `paths.py`, `rate_limit.py`, `idempotency.py`.
+   - `pools/manager.py` — `PoolSelector`, `route_task`, `execute_on_pool`.
+   - `oneiric.actions` — `security.SecuritySignatureAction` (HMAC),
+     `http.HttpFetchAction`, `data.DataSanitizeAction`,
+     `data.DataTransformAction`, plus `compression`, `serialization` and
+     `payloads`. See `oneiric/docs/action-kits.md`.
+   - `mcp/tools/` — 180 registered tools; check before adding one.
+3. **Does the stdlib do it?** `pathlib`, `enum`, `dataclasses`, `itertools`,
+   `contextlib`.
+4. **Does an already-installed dependency do it?** `pydantic`, `httpx`,
+   `structlog`, `pyyaml`. Never add a dependency for a few lines.
+5. **Can it be one line a reader gets at a glance?** One line.
+6. **Otherwise: the minimum that passes `crackerjack run`.**
+
+The ladder runs **after** you understand the problem, not instead of it. Read
+the code the change touches and trace the real flow first. A small diff you
+do not understand is not efficiency — it is a bug you have not found yet.
+
+**Never cut** — the floor is not negotiable: input validation at trust
+boundaries (Pydantic models, per `CLAUDE.md`); the `core/errors.py` exception
+hierarchy; `logger.exception(...)` inside `except` blocks; strict typing
+(`ty`, mypy and pyright all clean); the 89% coverage floor — new branches
+need tests; anything the user explicitly asked for.
+
+Rung 6 is the floor, not the goal. "Smallest" means *smallest that passes
+every gate above*. A one-line change that skips validation, error handling
+or a test is a defect, not a shorter solution. Deletion beats addition, but
+never delete a gate.
 
 ## Core Rules
 

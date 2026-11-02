@@ -881,7 +881,9 @@ Default command sequence:
 - **No `Any` in tool inputs or orchestration state.** Use `TYPE_CHECKING` and a typed protocol to escape. **Enforcement gap**: mypy warns on `Any` returns but not on `Any` parameters.
 - **In `except` blocks, use `logger.exception(...)`**, never `logger.error(..., exc_info=True)`.
 - **All I/O in the orchestration layer is async.** No blocking calls (`time.sleep`, `requests`, sync file I/O) inside async functions — use `httpx`, `aiofiles`, or `loop.run_in_executor`. Sync code only at worker boundaries and CLI entry points.
-- **Use the Oneiric logger** (`oneiric.logging`) — not stdlib `logging`, not `print()`.
+- **Never `print()` in library code — use a logger.** Two flavors are in use:
+  - `logging.getLogger(__name__)` — house style in `mahavishnu/core/` (104 of 169 modules). The codebase calls this the "oneiric.logging style".
+  - `oneiric.core.logging.get_logger(__name__)` — the structlog-backed Oneiric logger (12 modules). There is **no** `oneiric.logging` module: that phrase is a style name, not an import path.
 - **Remove unused imports and dead code immediately** (Ruff F401 / UP).
 
 ### Test conventions
