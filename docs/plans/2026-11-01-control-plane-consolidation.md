@@ -2206,6 +2206,30 @@ inferred from a process exit.
    an accident of the current implementation — another plan's
    per-dispatch variable depends on it.
 
+   **What the launch protocol does to `PATH` — a behaviour the rewrite
+   must not inherit silently.** The registry commands are **login
+   shells** (`sh -lc '…'`), and a login shell reads `/etc/profile`,
+   which on macOS runs `eval \`/usr/libexec/path_helper -s\``
+   (`/etc/profile:3-4`). `path_helper` **rebuilds** `PATH` with
+   `/usr/local/bin` and `/usr/bin` first and the inherited entries
+   **demoted** behind them (it drops entries that do not exist; it does
+   not drop the inherited tail wholesale). Measured on this host: the
+   repository's `.venv/bin` is **present** in the login `PATH`, at
+   position ~17, while `/usr/local/bin` is at position 1. So a worker
+   dispatch resolves `pytest` and `ruff` to **`/usr/local/bin/*`** —
+   the system copies — while the repository's own gate
+   (`crackerjack run -v -f`) resolves them to the pinned `.venv/bin/*`.
+   The two disagree, and the direction is not uniform: the system
+   `ruff` is *newer* than the pinned one.
+   **Exported environment variables are unaffected** — `PATH` is the
+   only thing the login shell rebuilds, so the prompt and any other
+   `MAHAVISHNU_*` variable cross the `exec` intact. That is what makes
+   the env-var contract above safe.
+   Phase 7 rewrites this protocol, so it must **state** which
+   resolution it preserves rather than inherit one silently. The three
+   options are named in §9; this plan does not choose (§9's fourth
+   deferral).
+
    **A per-dispatch value belongs in an environment variable, not in a
    command-template placeholder.** The template's `{prompt}` placeholder
    is the one that raises
@@ -2736,6 +2760,7 @@ skill or agent body contradicts the tool's actual surface.**
 | **Two processes write the workflow-state file** — the running server and any CLI that constructs a `MahavishnuApp()` — each holding its own snapshot and rewriting the whole file | **high** | Phase 3 task 6b prunes the file to near-empty and Phase 3 task 6 specifies an **inter-process** lock (`fcntl.flock`), a unique temp name, `os.replace` and `fsync`. Phase 1 *increases* this exposure by making the CLI a first-class workflow producer |
 | **Phase 6 collides with the conductor that already exists** — a second composition executor, a second envelope contract, a second data-flow model | **high** | Phase 6 task 1 was rewritten: extend `core/conductor.py`, don't build a second one. Phase 3 deletes `core/unified_orchestrator.py`, which was the *other* orphan in that space |
 | **The plan's own §7 acceptance checks were unsatisfiable** — "one production `TaskRouter`" while §6 listed `core/routing.py` for editing; Phase 4 injecting into a Phase 7 artifact | medium | fixed in this revision: `core/routing.py` is deleted in Phase 3, and Phase 4 injects into the worker launch environment that already exists |
+| **A worker dispatch runs a different toolchain than the repository's own gate** — the registry commands are login shells, and `path_helper` demotes the inherited `PATH` below `/usr/local/bin`, so `pytest`/`ruff` resolve to the system copies rather than the pinned `.venv/bin` ones (Phase 7 task 3) | **high** — it is pre-existing, but it means a worker's findings can disagree with the gate that verifies them, in both directions | **recorded, not changed** — see §9's fourth deferral. Phase 7 must at minimum state which resolution the rewritten launch protocol preserves, so the behaviour is documented rather than incidental |
 | **Every phase carried a "Rollback signal" but no "Rollback action"** — and three of the eight signals described behaviour that was already true, or impossible to observe, before the phase landed | medium | each phase's Integration Contract now needs an actionable signal: a commit to revert, a flag to flip, or a surface to disable — not a symptom description |
 
 ### Cut order
@@ -2819,6 +2844,26 @@ satisfies the plan's own §4.8 prior art.
 3. **How the Oneiric adapter-bridge migration should shape the
    router.** That is owned by the decision-adapter plan (§4.12.1);
    this plan routes around it.
+4. **Which toolchain a worker dispatch runs.** Phase 7 rewrites the
+   launch protocol, and the current protocol is a *login shell*
+   (`sh -lc`), so `path_helper` demotes the inherited `PATH` below
+   `/usr/local/bin` and `/usr/bin` — a dispatch resolves `pytest` and
+   `ruff` to the system copies while the repository's gate resolves
+   them to the pinned `.venv/bin` ones (Phase 7 task 3). Three
+   defensible answers, and the choice changes every dispatch:
+   - **Keep the login shell** — today's behaviour, documented, and
+     workers keep running the system tools.
+   - **Drop the `-l`** (`sh -c`) — the pane's `PATH` is preserved
+     exactly, which restores the ordering *the pane* had. The pane's
+     `PATH` comes from the tmux server, so this is not a guarantee.
+   - **Set `PATH` explicitly in the launcher** — deterministic, but
+     the launcher does not know which repository it is in, so it needs
+     a rule for when a `.venv` applies.
+   **This plan does not choose**, because the answer changes the
+   behaviour of every dispatch in the fleet and belongs to whoever owns
+   the launch protocol's policy — not to a consolidation whose job is
+   to make the existing surfaces uniform. Phase 7 must make the
+   behaviour **explicit** either way.
 
 **And two decisions this plan makes, which the reviews forced:**
 
