@@ -206,8 +206,14 @@ result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Analyze code"})
 
 KubernetesPool was removed as part of the serverless-only pivot. The
 project now relies on managed serverless (Cloud Run) and RunPod for
-cloud GPU workloads. K8s manifests remain in `mahavishnu/core/k8s_manifests.py`
-for deployment documentation only; the pool implementation is gone.
+cloud GPU workloads.
+
+The Kubernetes manifest generator that once accompanied it
+(`mahavishnu/core/k8s_manifests.py`) was removed on 2026-11-02. It had
+no production callers — nothing invoked it to generate documentation,
+and no generated manifest was committed — so it was dead weight kept
+alive only by its own test file. The pool implementation and the
+manifest generator are both gone.
 ├───────────────────────┤
 │ Namespace: mahavishnu│
 │ • Jobs │
