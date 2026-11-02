@@ -1,13 +1,24 @@
 ---
-status: draft
-role: canonical
+status: superseded
+role: historical
 kind: plan
 date: 2026-11-01
 last_reviewed: 2026-11-01
-superseded_by: null
+superseded_by: docs/plans/2026-11-01-control-plane-consolidation.md
 topic: worker-dispatch-trustworthiness
 title: "Terminal CLI harness demos and a trustworthy one-shot dispatch protocol"
 ---
+
+> **SUPERSEDED (2026-11-01)** by
+> `docs/plans/2026-11-01-control-plane-consolidation.md`. This plan is
+> retained for traceability only. Its Phase 1 and Phases 3-4 become that
+> plan's Phase 7 and Phase 8; its Phase 2 is replaced by reuse of
+> `WorkerLifecycleState`; its REQ-009 becomes that plan's Phase 6; its
+> REQ-010 becomes that plan's Phase 8. Two of its claims are corrected
+> there: the worker adapter already existed and was already registered
+> in `app.adapters`, and no substrate — engine or worker — is costed,
+> because `enable_cost_tracking` is a dead parameter and `CostOptimizer`
+> has no production caller.
 
 # Terminal CLI harness demos and a trustworthy one-shot dispatch protocol
 

@@ -1,13 +1,25 @@
 ---
-status: draft
-role: canonical
+status: superseded
+role: historical
 kind: plan
 date: 2026-11-01
 last_reviewed: 2026-11-01
-superseded_by: null
+superseded_by: docs/plans/2026-11-01-control-plane-consolidation.md
 topic: adapter-composition
 title: "Adapter composition — making engine and worker substrates compose as one workflow"
 ---
+
+> **SUPERSEDED (2026-11-01)** by
+> `docs/plans/2026-11-01-control-plane-consolidation.md`. Retained for
+> traceability only. Its Option 3 ("worker as a first-class adapter plus
+> a sequence executor") becomes that plan's Phase 2 (reachability) plus
+> Phase 6 (sequence) — the adapter already existed and was already
+> registered in `app.adapters`, so the build it priced was mostly done.
+> Its Option 2 (the interop primitive) becomes that plan's Phase 4's
+> result envelope. Its Option 1 ("do not build B, ship the demo") is
+> what Phase 6 delivers. One of its claims is corrected: the engine leg
+> is not costed either — `enable_cost_tracking` is a dead parameter and
+> `CostOptimizer` has no production caller.
 
 # Adapter composition — making engine and worker substrates compose as one workflow
 
