@@ -331,13 +331,6 @@ that intercepts `pytest`, `git`, `ruff` and friends. It does not work
 as inherited, and the reason is worth recording because it will
 otherwise be re-litigated.
 
-It remains **live as the fallback** if Phase 2 task 3 shows that the
-`--settings` layer displaces the user's hooks (§4.3.2): the shim never
-touches the settings stack, so it cannot displace anything. Its costs
-are different — it alters the command path rather than the result,
-and it only catches bare command names, not `python -m pytest`. Those
-are why it is the fallback and not the first choice.
-
 Measured on this host:
 
 ```
@@ -349,19 +342,66 @@ $ PATH="$SHIM:$PATH" sh -lc 'export PATH="$SHIM:$PATH"; command -v pytest'
 ```
 
 `/etc/profile:3-4` runs `eval \`/usr/libexec/path_helper -s\``, which
-**rebuilds** `PATH` and demotes anything inherited below the system
-directories. Every command we would want to intercept (`pytest`,
-`ruff`, `git`, `ls`) has a system copy that wins the lookup. The
-inherited `PATH` from `tmux new-session -e` therefore cannot deliver a
-shim.
+**rebuilds** `PATH` with the system directories first and demotes
+everything inherited below them.
 
-The inner `export` does work — but it lives inside the `sh -lc`
-payload, which is the registry's command template
-(`mahavishnu/workers/registry.py:222-227`). So the PATH route needs
-the same registry edit that the hook route needs, while being
-agent-*specific* in what it intercepts. **The hook route dominates it.**
-The PATH finding is retained here as a closed question, not a
-fallback.
+**The fallback's real coverage is narrower than "bare command names"
+suggests.** The inherited-`PATH` variant of the shim is reachable only
+for tools that appear in *none* of the directories ahead of it — and
+the directories that win first are large:
+
+| Directory | Entries | Contains |
+|---|---|---|
+| `/usr/local/bin` | 1,372 | `pytest`, `ruff`, `uv`, `uvx` |
+| `/usr/bin` | system base | `git`, `ls`, `grep` |
+| `~/.local/bin` | 67 | `uv`, `uvx` (where `pipx`/`uv tool` land) |
+
+So the inherited variant catches very little — not just
+`python -m pytest`, but every tool that already has a system copy,
+which is most of a developer's toolchain. The inner `export` is what
+makes the shim broadly effective, and it lives inside the `sh -lc`
+payload — the registry's command template
+(`mahavishnu/workers/registry.py:222-227`). **The PATH route therefore
+needs the same registry edit the hook route needs**, while being
+agent-*specific* in what it intercepts.
+
+It remains **live as the fallback** if Phase 2 task 3 shows that the
+`--settings` layer displaces the user's hooks (§4.3.2): the shim never
+touches the settings stack, so it cannot displace anything. Its costs
+are different — it alters the command path rather than the result, and
+its coverage depends on which of the two variants it uses. That is why
+it is the fallback and not the first choice.
+
+#### 4.4.1 A consequence of the same `path_helper` rebuild
+
+The `path_helper` rebuild has a second effect that is **not** about the
+shim, and it is worth recording because it changes what a worker
+dispatch actually runs.
+
+`path_helper` puts `/usr/local/bin` and `/usr/bin` first and drops
+the inherited tail — including the repository's virtualenv — below
+them. So under the worker's `sh -lc` wrapper:
+
+| Tool | Resolves to | Version | The repo pins |
+|---|---|---|---|
+| `pytest` | `/usr/local/bin/pytest` | 9.0.2 | 9.2.0 (`.venv/bin`) |
+| `ruff` | `/usr/local/bin/ruff` | **0.17.2** | 0.16.0 (`.venv/bin`) |
+
+**A worker dispatch does not run the repository's pinned tool
+versions.** The quality gate (`crackerjack run -v -f`) runs the venv's
+`ruff`; a worker running `ruff` runs the system's. Note the direction
+differs per tool — the system `ruff` is *newer* than the pinned one,
+so this is not a uniform "older tools" story.
+
+This is **pre-existing and orthogonal to compaction** — it predates
+this plan and is not caused by anything here. It matters to this plan
+in two ways: the Phase 1 byte table is per tool *and* per version, so
+the measurement must record which binary produced the output; and the
+observation belongs to whoever owns the dispatch path, because the
+consolidation plan's Phase 7 rewrites the launch protocol and is the
+natural place to decide whether a worker dispatch should run the
+repository's pinned tools at all. **This plan does not change it** — it
+records it.
 
 ### 4.5 Two levers, measured separately
 
@@ -467,10 +507,19 @@ its likely removal. The compaction's configuration is a settings key
 plus an env var set at dispatch time, not a registry field.
 
 With the Kubernetes manifest generator gone (8d3668af), `env_vars` has
-**no remaining consumer anywhere** — not in the dataclass, not in the
-YAML `worker_registry:` entries. It is therefore scheduled for removal
-in the consolidation plan's Phase 3 task 4 rather than left dead, which
-is the outcome this plan wants anyway.
+**no remaining consumer anywhere** — not in the dataclass, and not in
+the YAML-side `WorkerEntry` (`core/config.py:1851`, which is
+`extra="forbid"`). The consolidation plan now removes it in its Phase 3
+task 4 (`a13d5f66`), together with the three test files that reference
+it (`tests/unit/test_workers_registry_coverage.py`,
+`tests/unit/test_worker_registry.py`). Deleted rather than left dead —
+which is what this plan wanted anyway, since it refuses to build on the
+field.
+
+`stream_format` **stays**, and the consolidation plan records it as
+*kept for a consumer* rather than accidentally untouched. That is this
+plan's Phase 1 analyzer: the field becomes read, and the registry
+gains a live purpose for it.
 
 The *positive* use of `stream_format` is as the analyzer's input
 contract — Phase 1's parser should honor it, which turns a dead field
@@ -506,8 +555,9 @@ Seventeen other plans are live. Two collide; the rest do not.
 The concurrent session's plan (draft, canonical). The revision this
 plan is written against is **committed** — `e29b966f` (round-2 review
 findings) + `38f757e5` (the policy section) + `9095c236` +
-`4ead8df8` (the environment contract and the placeholder constraint),
-**3,171 lines**, tree clean. An earlier draft of this section quoted
+`4ead8df8` (the environment contract and the placeholder constraint) +
+`a13d5f66` (the `env_vars` removal and the export-vs-inherit rule),
+**3,198 lines**, tree clean. An earlier draft of this section quoted
 an in-flight working-tree snapshot; the numbers below are the committed
 revision.
 
@@ -574,7 +624,10 @@ Six rules this plan takes on, from its §4.13, §2.1, and Phase 7:
    re-introduce the collision with Phase 7 *and* the silent
    pass-through hazard. Both plans now record this — the anchor is the
    consolidation plan's **Phase 7 task 3, environment bullet** — so
-   the next reader does not "tidy" it.
+   the next reader does not "tidy" it. The same bullet now also states
+   the export rule: a variable the launcher **creates** must be
+   exported; a variable it **inherits** needs no export. Ours is
+   inherited, so it rides free (Phase 2 task 8).
 
 #### 4.11.2 `2026-10-29-bifrost-bodai-cache-wiring.md` — ordering
 
@@ -735,15 +788,30 @@ the fail-open path, before writing production code.
    consolidation plan's Phase 7, the session command is `sh <launcher>`
    and the registry command is `exec`'d from it, so the settings path
    rides in the session environment as `MAHAVISHNU_SETTINGS` and must
-   survive the hop. There is **no allowlist to join**: the env path is
-   an overlay (`terminal/manager.py:365-367` — `env = {**env,
-   **env_overrides}`), the tmux adapter's only policy on a variable name
-   is a shape regex (`workers/contract/tmux_adapter.py:114` —
+   survive the hop. There is **no allowlist to join** and **no export
+   to add**: the env path is an overlay (`terminal/manager.py:365-367` —
+   `env = {**env, **env_overrides}`), the tmux adapter's only policy on
+   a variable name is a shape regex
+   (`workers/contract/tmux_adapter.py:114` —
    `re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key)`), and
    `MAHAVISHNU_PROMPT_FILE` already rides the identical path today
-   (`workers/shell_backend.py:375`). The assertion is therefore a
-   one-line check, not a coordination item: the variable is present in
-   the pane and expands to a real path.
+   (`workers/shell_backend.py:375`). The shell rule, verified by
+   experiment rather than inferred:
+
+   ```sh
+   MAHAVISHNU_SETTINGS=/tmp/x.json sh -c 'exec env' | grep -c '^MAHAVISHNU_SETTINGS='   # 1
+   sh -c 'MAHAVISHNU_PROMPT=hi; exec env' | grep -c '^MAHAVISHNU_PROMPT='               # 0
+   sh -c 'MAHAVISHNU_PROMPT=hi; export MAHAVISHNU_PROMPT; exec env' | grep -c '^MAHAVISHNU_PROMPT='  # 1
+   ```
+
+   **A variable the launcher CREATES must be exported; a variable it
+   INHERITS needs no export at all** — an inherited variable is already
+   in the environment and therefore already marked for export, so `exec`
+   carries it through for free. The launcher exports
+   `MAHAVISHNU_PROMPT` because it *creates* that one, from the prompt
+   file; ours is inherited, so it rides free. The assertion is
+   therefore a one-line check, not a coordination item: the variable is
+   present in the pane and expands to a real path.
 
 **Exit criteria:** a decision record naming the chosen mechanism, the
 filter set, the deployment shape, and the measured per-call overhead —
