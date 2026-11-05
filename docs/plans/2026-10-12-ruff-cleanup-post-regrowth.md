@@ -265,8 +265,8 @@ patterns to either:
 
 **Tasks:**
 - For each finding, decide (a) vs (b).
-- When (a): use `oneiric.logging.get_logger(__name__)` per project
-  convention (`from oneiric.logging import get_logger`).
+- When (a): use `oneiric.core.logging.get_logger(__name__)` per project
+  convention (`from oneiric.core.logging import get_logger`).
 - When (b): justification must explain what *behavioural* signal the
   caller relies on (typically: "subprocess is best-effort, the caller
   checks the return code explicitly").

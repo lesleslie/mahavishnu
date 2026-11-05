@@ -395,7 +395,7 @@ $ pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v \
 - OTel event `mcp_common.client.session.reconnect` on 401/410.
 - Structured log line `mcp_common.client.{tool}` at INFO with
   `outcome, duration_ms` keys; WARNING if timeout; ERROR on 5xx.
-  Destination: Oneiric logger (`oneiric.logging`, configured in
+  Destination: Oneiric logger (`oneiric.core.logging`, configured in
   `settings/mahavishnu.yaml`) → stdout in dev / Loki in prod.
 - Standalone smoke scripts in `mcp-common/scripts/`:
   - `smoke_common_mcp_client.py` (CLI: `--target URL --tool NAME`).
