@@ -526,3 +526,8 @@ and warnings are back — they now report a *failed write* rather than an
    the `multiprocessing`-spawn tests via the `site-packages/tests`
    shadow. Worth fixing separately (add `__init__.py` files, or
    rename one of the two).
+   **Resolved 2026-11-05:** `tests/unit/test_core/` is now a package, so
+   its `test_config.py` resolves to `test_core.test_config` and no longer
+   collides. Default-mode collection now succeeds with 0 errors, and the
+   `multiprocessing`-spawn tests pass in that mode.
+   `scripts/audit_test_module_names.py` guards the invariant.
