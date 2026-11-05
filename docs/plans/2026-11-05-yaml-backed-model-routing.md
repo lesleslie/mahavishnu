@@ -1,5 +1,5 @@
 ---
-status: draft
+status: shipped
 role: implementation
 kind: plan
 date: 2026-11-05
@@ -312,3 +312,55 @@ precedence; and `audit_requirements.py` and `audit_orphans.py` are both
 clean. If the coverage guard proves impossible to make reliable, cut to
 Phase 1 + Phase 4 and ship the loader with the operator config advisory
 rather than authoritative.
+
+## 10. Completion — 2026-11-05
+
+Shipped in `9c2f11b1` (`feat(routing): make settings/models.yaml the live
+source of task routing`).
+
+| Phase | Outcome |
+|---|---|
+| 1 — loader and effective tables | `_operator_routing_for` / `_operator_routing` / `resolve_*_routing()` in `core/model_routing.py`. The parse is cached per (path, change-detector), so an operator's edit lands on the next dispatch with no restart. |
+| 2 — coverage gap and guard | The four missing entries added to `settings/models.yaml` (now 16/16 for every provider). `TestYAMLRoutingSync` replaced by `TestRoutingCoverage`, which requires the operator config to name every `TaskCategory` for every provider. `tests/unit/test_model_routing_config.py` adds 9 precedence and degradation tests. |
+| 3 — wiring and the dead key | All four `cloud_worker.py` call sites resolve through the effective tables. `models_path` removed from `settings/mahavishnu.yaml`. |
+| 4 — documentation | `CLAUDE.md`, `docs/CONFIGURATION.md`, `docs/FILE_REFERENCE.md`, `settings/README.md`, `docs/architecture/MEMORY_ARCHITECTURE.md`. The stale Bifrost-spec claim about `FallbackChain` loading the YAML is left alone — it is a historical record. |
+
+### Deviations from the plan
+
+1. **The operator config is deliberately not shipped in the wheel.** The plan
+   listed packaging as a dependency; implementing it would have created a
+   second copy of the file free to drift from the repo one — the exact
+   failure this plan removes. Installed deployments use the built-in table
+   or point `MAHAVISHNU_MODELS_PATH` at their own file.
+2. **`reset_routing_cache()` became private and mtime-driven.** The plan
+   assumed a public reset function, but a CLI reload cannot work: the cache
+   lives in the *running* process, not in a new one. The loader instead
+   re-parses when the file's `(st_mtime_ns, st_size)` moves, which needs no
+   command at all and satisfies the plan's "pick the change up without a
+   restart" goal directly.
+3. **The provider chain was not moved into `models.yaml`.** The plan's
+   non-goals left it alone, and the dead `default_provider` key is now
+   documented as never having been read.
+
+### Verification
+
+- 943 tests pass across the routing, worker, pool, CLI and MCP-tool suites.
+- `ruff check`, `ruff format --check` and `ty check` clean on every changed
+  file.
+- `audit_requirements.py`: 0 orphans, 0 phantoms. `audit_orphans.py`: none
+  of the new symbols flagged.
+- End-to-end: editing `settings/models.yaml` changed the resolved model with
+  no restart and no cache clear; restoring the file changed it back.
+
+### Known follow-ups
+
+1. `docs/specs/2026-10-15-bifrost-gateway-wiring-design.md:41` still claims
+   `models.yaml` is "loaded via `FallbackChain`/`model_routing`".
+   `class FallbackChain` no longer exists in `mahavishnu/` — the chain moved
+   to `mcp_common.llm`. Left as a historical record; worth a footnote if
+   that spec is ever treated as current.
+2. `docs/plans/2026-10-29-agno-llm-provider-chain.md` (status: complete)
+   names `TestYAMLRoutingSync` in its validation matrix. That class is
+   renamed, so the command in that matrix no longer resolves.
+3. The wheel does not ship `settings/models.yaml`. A deployment that wants
+   an editable registry must supply one and set `MAHAVISHNU_MODELS_PATH`.
