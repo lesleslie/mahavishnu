@@ -48,7 +48,7 @@ After this spec lands:
 | Provider model set | `MiniMax-M3` primary, `MiniMax-M3.1-Flash` fallback, `qwen3-8b-q4_k_m` local | `config/bifrost/config.template.json:169-268`, `settings/models.yaml:29-56` |
 | `audit_bifrost_callers.py` | ready; exits 0 today (every LLM caller is oneiric-routed or local-allowlisted per the v1.5 spec) | `scripts/audit_bifrost_callers.py` |
 | `verify_qwen_bifrost_gate.sh` | ready; gates the Phase D Qwen cutover | `scripts/verify_qwen_bifrost_gate.sh` |
-| `TestYAMLRoutingSync` guard | green; `DEFAULT_MINIMAX_ROUTING` and `settings/models.yaml` are pinned in sync | `tests/unit/test_task_router.py::TestYAMLRoutingSync` per `CLAUDE.md` |
+| `TestRoutingCoverage` guard | green; the operator config names every `TaskCategory` (the in-code `DEFAULT_*_ROUTING` tables are the built-in fallback) | `tests/unit/test_task_router.py::TestRoutingCoverage` per `CLAUDE.md` |
 
 ## 3. Today's safety answer
 

@@ -2,7 +2,7 @@
 status: complete
 role: implementation
 date: 2026-10-29
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-05
 superseded_by: null
 topic: agno-llm-routing
 title: "Agno LLM provider chain — MiniMax primary, llama-server as fallback"
@@ -54,7 +54,8 @@ string) in single-digit seconds.
    filename `Qwen3-8B-Q4_K_M.gguf`. See §4.4.
 1. **Not** adding a `settings/models.yaml` loader. The repo's established
    pattern is in-code constants in `core/model_routing.py`, pinned to the
-   YAML by `tests/unit/test_task_router.py::TestYAMLRoutingSync`.
+   YAML by `tests/unit/test_task_router.py::TestRoutingCoverage`.
+   *(Superseded 2026-11-05 — see §10.7.)*
 1. **Not** touching `settings/local.yaml` in version control — it is
    gitignored operator-local state.
 
@@ -308,8 +309,9 @@ tests.
   `tests/unit/test_agno_adapter_impl.py`.
 - **Demonstrable by:** `pytest tests/unit/test_agno_adapter_impl.py -v`.
 - **Rollback signal:** the CI guard test
-  `tests/unit/test_task_router.py::TestYAMLRoutingSync` failing — the
-  in-code routing drifted from `settings/models.yaml`.
+  `tests/unit/test_task_router.py::TestRoutingCoverage` failing — the
+  operator config no longer names every `TaskCategory`.
+  *(Guard semantics changed 2026-11-05 — see §10.7.)*
 - **Observability added:** none (test/config only).
 
 ## 6. Required Code Changes
@@ -331,7 +333,7 @@ tests.
 |---|---|---|
 | `python -c "from mahavishnu.core.config import MahavishnuSettings; print(MahavishnuSettings().agno.llm.provider)"` | `minimax` | stdout |
 | `pytest tests/unit/test_agno_adapter_impl.py -v` | all pass | stdout |
-| `pytest tests/unit/test_task_router.py::TestYAMLRoutingSync -v` | pass (no routing drift) | stdout |
+| `pytest tests/unit/test_task_router.py::TestRoutingCoverage -v` | pass (config covers every category) | stdout |
 | `crackerjack run -v -f` | pass | crackerjack output |
 | `python scripts/audit_orphans.py` | no newly-orphaned symbols | stdout |
 
@@ -418,3 +420,32 @@ in files this plan does not touch.
 only in the two dated `docs/analysis/HIVE_*.md` records (2026-02-21, one
 marked SUPERSEDED) and in this plan, where it is quoted as the defect
 being fixed.
+
+### 10.7 Correction — 2026-11-05
+
+Three references in this plan named
+`tests/unit/test_task_router.py::TestYAMLRoutingSync`, a guard class that no
+longer exists, so the command in §7's validation matrix and the rollback
+signal in §5 Phase 3 no longer resolved. They now name
+`TestRoutingCoverage`.
+
+The guard's **semantics** changed at the same time, which matters more than
+the rename:
+
+| | Before (2026-10-29) | After (2026-11-05) |
+|---|---|---|
+| Guard | `TestYAMLRoutingSync` | `TestRoutingCoverage` |
+| Asserts | the YAML and the in-code table agree, key for key | the operator config names every `TaskCategory`, for every provider |
+| A failure means | the two sources drifted | a category would lose its route |
+| Source of truth | the in-code `DEFAULT_*_ROUTING` tables | `settings/models.yaml` |
+
+The drift-equality assertion was removed deliberately. Once the YAML is
+authoritative, an operator edit that changes a model id breaks the equality
+check — so that check cannot outlive the change it was written for.
+
+This plan's §3 non-goal "**Not** adding a `settings/models.yaml` loader" is
+**superseded**: `mahavishnu/core/model_routing.py` now loads
+`settings/models.yaml` and treats its `task_routing` blocks as authoritative,
+with the in-code `DEFAULT_*_ROUTING` tables as the built-in fallback for
+deployments that do not ship the file. See
+`docs/plans/2026-11-05-yaml-backed-model-routing.md`.

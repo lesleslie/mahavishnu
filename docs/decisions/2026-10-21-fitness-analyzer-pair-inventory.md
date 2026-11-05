@@ -86,8 +86,9 @@ going wrong.
 §5.7 treats the missing mapping as the blocker. Both axes are already governed:
 
 - **`task_class`** — `TaskCategory` StrEnum, 15 values,
-  `mahavishnu/core/model_routing.py:94-112`, already CI-pinned to
-  `settings/models.yaml` by `tests/unit/test_task_router.py::TestYAMLRoutingSync`.
+  `mahavishnu/core/model_routing.py:94-112`, CI-guarded for full coverage by
+  `tests/unit/test_task_router.py::TestRoutingCoverage` (which requires the
+  operator config in `settings/models.yaml` to name every `TaskCategory`).
 - **`selector`** — 5 values in use: `least_loaded`, `round_robin`, `random`,
   `affinity`, `peer_affinity`.
 

@@ -119,8 +119,8 @@ Score ≥ 2 = pass. The judge call uses **frozen parameters** —
 `MiniMax-M3[1m]` (cloud) or local `qwen3.5`. Activation selects one
 and freezes the choice in the eval config. Model version is **version-stamped**
 in the test logs to prevent silent model upgrades from breaking
-reproducibility (analogous to `TestYAMLRoutingSync` at
-`tests/unit/test_task_router.py:279-343`).
+reproducibility (analogous to `TestRoutingCoverage` at
+`tests/unit/test_task_router.py:288-425`).
 
 ### Rubric prompt structure (template, frozen)
 

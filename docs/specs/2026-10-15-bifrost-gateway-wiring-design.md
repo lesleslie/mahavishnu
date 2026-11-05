@@ -3,7 +3,7 @@ status: active
 role: canonical
 kind: spec
 date: 2026-10-15
-last_reviewed: 2026-10-16
+last_reviewed: 2026-11-05
 topic: bifrost-gateway-wiring
 revision: v1.5
 owner: platform-team
@@ -13,6 +13,23 @@ title: "Bifrost Gateway Wiring - Design v1.5"
 ---
 
 # Bifrost Gateway Wiring - Design v1.5
+
+> **Correction (2026-11-05)**: the §1 bullet on the `settings/models.yaml`
+> `bifrost:` block originally read "`models.yaml` is loaded outside
+> `MahavishnuSettings` envelope (via `FallbackChain`/`model_routing`)". Two
+> things in that parenthetical were wrong. **First**, `class FallbackChain` no
+> longer exists in `mahavishnu/` — it moved to `mcp_common/llm/fallback.py:54`
+> when the chain moved to `mcp-common`. **Second**, until 2026-11-05 *no* code
+> loaded `settings/models.yaml` at all: the file was inert, and its only live
+> consumer was a CI guard asserting that it agreed with the in-code routing
+> tables. As of `docs/plans/2026-11-05-yaml-backed-model-routing.md` it is
+> loaded for real — `mahavishnu/core/model_routing.py` reads its `task_routing`
+> blocks and treats them as authoritative, with the in-code `DEFAULT_*_ROUTING`
+> tables as the built-in fallback for deployments that do not ship the file. The
+> `bifrost:` block itself is genuinely gone from `settings/models.yaml` (the
+> deletion this spec called for did happen), replaced by the
+> `settings/mahavishnu.yaml` `bifrost:` block as designed. No design change
+> follows from this correction; the revision stays at v1.5.
 
 > **v1.5 amendment (2026-10-16)**: **Local llama-server provider as a first-class Bifrost target.** Operator decision: keep llama-server (port 8081) and add it to the Bifrost gateway alongside the cloud LLMs; ollama is being removed from the ecosystem in a separate session. The previous "Routing llama-server or ollama through Bifrost" non-goal is dropped; the previous "Bifrost provider additions" non-goal is dropped for llama-server specifically (other providers remain operator-managed). **New `route-classify` rule + updated `route-background` rule**: cheap / background / high-throughput tasks prefer `llama-server/qwen3-8b-q4_k_m` first, fall back to `minimax-openai/MiniMax-M3` on local failure. Reasoning-class rules (`route-think`, `route-long-context`, `route-web-search`, `route-image`) stay cloud-only — local models are not appropriate for high-reasoning or 100K+ context tasks. **Phase G added**: the `llama-server` provider block, the updated routing rules, the launchd plist fix, the model download, and the e2e gate that catches a future regression (broken plist or missing model). The launchd plist at `~/Library/LaunchAgents/com.bodai.llama-server.plist` is in a crash-loop on the user's machine today: argv mis-shape (`-fa` is being parsed with `-tb` as its value, the arg parser rejects it) and the model path doesn't exist (`/usr/local/bin/models/Qwen3-8B-8.2B-Q4_K_M.gguf` — `models` is a symlink to a Homebrew formula binary, not a directory of GGUF files). Phase G corrects both, downloads a real model (Qwen3-8B Q4_K_M, ~4.5GB, from Hugging Face `Qwen/Qwen3-8B-GGUF` repo), unloads + reloads the plist, and adds a `curl http://127.0.0.1:8081/health` e2e check. **The local provider is gated by `bifrost.local_provider_enabled: bool` (new field, default `True`)** — operators who don't want local inference can set it `False` and the e2e test passes with a documented local-unreachable expectation. **REQ-007** declared in the plan frontmatter.
 >
@@ -38,7 +55,7 @@ After this design ships:
 - **`mahavishnu/llm_gateway/` package becomes the implementation surface.** `build_gateway_envelope()` is the single entry point for constructing base URL + path + route headers + cache headers. Agno + provider-probe consumers import it; nothing builds Bifrost headers ad hoc.
 - **Claude Code Anthropic base URL stays direct-to-MiniMax by default** (`https://api.minimax.io/anthropic` via the `minimax-coding-plan` MCP server). A new field `bifrost.route_claude_code: bool` (default `false`) lets operators opt in to env-injecting `ANTHROPIC_BASE_URL=http://127.0.0.1:8471/anthropic` into Mahavishnu-spawned `terminal-claude` workers. **Scope clarification**: this affects Mahavishnu-spawned `terminal-claude` worker subprocesses only; the *host* Claude Code session's MCP transport (`~/.mcp.json:minimax-coding-plan-mcp`, `MINIMAX_API_HOST=https://api.minimax.io`) is independent and out of scope (tracked as a follow-up).
 - **Qwen CLI base URL stays direct by default.** `bifrost.route_qwen_code: bool` (default `false`) opts in to env-injecting the variable named by `bifrost.qwen_env_var` (default `OPENAI_BASE_URL` — OpenAI-compatible convention; verified in Phase D) pointing at `gateway_api_base(OPENAI, bifrost.base_url)` (= `http://127.0.0.1:8471/v1`) into `terminal-qwen` workers via `tmux set-environment`. Phase D ships with `route_qwen_code: false` until the env-var name is verified end-to-end (silent-failure guard); the field is a config-tunable for forward-compat.
-- **`settings/models.yaml` `bifrost:` block deleted** — `models.yaml` is loaded outside `MahavishnuSettings` envelope (via `FallbackChain`/`model_routing`); the `bifrost:` block was structurally misplaced from day one and is replaced by `settings/mahavishnu.yaml` `bifrost:` block. `BIFROST_BASE_URL` env var deleted — replaced by `MAHAVISHNU_BIFROST__BASE_URL` pydantic-settings env-prefix override per `feedback-no-backwards-compat-pre-1.0.md`.
+- **`settings/models.yaml` `bifrost:` block deleted** — `models.yaml` is loaded outside the `MahavishnuSettings` envelope (by the operator-config loader in `mahavishnu/core/model_routing.py`); the `bifrost:` block was structurally misplaced from day one and is replaced by `settings/mahavishnu.yaml` `bifrost:` block. `BIFROST_BASE_URL` env var deleted — replaced by `MAHAVISHNU_BIFROST__BASE_URL` pydantic-settings env-prefix override per `feedback-no-backwards-compat-pre-1.0.md`. *(Corrected 2026-11-05 — see the correction note at the top of this document.)*
 - **`local.yaml` opt-in**: `bifrost: { enabled: true, route_claude_code: false, route_qwen_code: false }`.
 - **Per-Phase Integration Contracts** (one block per Phase A-G) per `docs/decisions/wire-up-contract.md`.
 - **Observability discipline per `mcp-backend-wiring-discipline.md`**: counters/histograms registered directly with `prometheus_client` against the per-server `CollectorRegistry` (no allowlist gate exists or is needed); Bifrost surfaces under `/health.bifrost.config` (config block) and `/health.bifrost.reachable` (boolean — not a `HealthFeedState` because Bifrost is a single upstream dependency, not a feed-of-things); alerting backend (`config/prometheus/bifrost_alerts.yml`); CLI subcommand `mahavishnu metrics bifrost` as Phase E sub-deliverable.
