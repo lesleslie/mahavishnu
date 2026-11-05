@@ -45,9 +45,9 @@ The `docs/plans/.archive/` directory is matched by the fleet-wide recursive
 `.archive/` gitignore pattern (`crackerjack/templates/GITIGNORE_BODAI.md`),
 so the archived plan is preserved on local disk for operator reference but
 is untracked. This matches the `archive-dir-canonical` decision's convention:
-`docs/.archive/` (untracked bulk-provenance) and `docs/plans/.archive/`
-(per-document) are both untracked in practice; the distinction is path
-semantics, not git tracking.
+`docs/.archive/` (untracked bulk-provenance), `docs/plans/.archive/`
+(per-document) and `docs/specs/.archive/` (per-document) are all untracked
+in practice; the distinction is path semantics, not git tracking.
 
 **4. Cross-references to archived plans must be updated in the same commit.**
 
