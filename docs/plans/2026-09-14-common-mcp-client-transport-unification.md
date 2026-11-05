@@ -4,7 +4,10 @@ role: umbrella
 kind: plan
 date: 2026-09-14
 last_reviewed: 2026-10-17
-superseded_by: docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
+# `superseded_by` is document-level only (see the schema). This umbrella is
+# complete, not superseded — it was Phase 4 alone that was superseded, by
+# docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md.
+superseded_by: null
 topic: mcpserver-settings-convention
 revision: 2
 title: "CommonMCPClient Transport Unification Across Bodai (v2)"

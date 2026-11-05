@@ -30,9 +30,11 @@ Five values, applied to the `role` field. A file carries exactly one role. Role 
 
 ## Vocabulary — Kind
 
-Five values, applied to the optional `kind` field. `kind` is **orthogonal to `status` and `role`**: it describes *what kind of document this is*, while `status` describes its lifecycle stage and `role` describes its disposition. When `kind` is omitted, the document is treated as `plan` (the default). The field exists so scaffolding documents (templates, READMEs, audit reports) can be distinguished from real plans without abusing `status:` or `role:` values.
+Seven values, applied to the optional `kind` field. `kind` is **orthogonal to `status` and `role`**: it describes *what kind of document this is*, while `status` describes its lifecycle stage and `role` describes its disposition. When `kind` is omitted, the document is treated as `plan` (the default). The field exists so scaffolding documents (templates, READMEs, audit reports) can be distinguished from real plans without abusing `status:` or `role:` values.
 
 - **`plan`** (default) — A plan to be implemented; the document describes work to be done.
+- **`spec`** — A design specification that drives implementation. Distinguished from `plan` because the work it describes is a design, not a schedule of tasks.
+- **`followup`** — A dated follow-up note in `docs/followups/`: a bug or task paired with its investigation and (when closed) its resolution.
 - **`template`** — A template document used to scaffold new files (e.g., `TEMPLATE.md` files in the plan stores). Permanent fixtures; never a work item.
 - **`reference`** — A reference document for reading, not for execution (e.g., `README.md` index pages, design specs whose purpose is to inform).
 - **`audit`** — An audit, analysis, or retrospective report. Describes work that has already happened; the document itself is not a work item.
@@ -60,7 +62,7 @@ id: 014-honcho-peer-model-routing-precedence
 |---|---|---|---|
 | `status` | yes | one of the five lifecycle values | |
 | `role` | yes | one of the five role values | |
-| `kind` | optional | one of the five kind values | Orthogonal to `status` and `role`. When omitted, defaults to `plan`. Used to distinguish templates, reference docs, audits, and other non-plan files from real plans. |
+| `kind` | optional | one of the seven kind values | Orthogonal to `status` and `role`. When omitted, defaults to `plan`. Used to distinguish templates, reference docs, audits, and other non-plan files from real plans. |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` | The document's authoring or last substantive update date. |
 | `last_reviewed` | yes | ISO-8601 `YYYY-MM-DD` | When the frontmatter was last verified accurate. |
 | `superseded_by` | when `role: superseded` | repo-relative path or `ext:<id>` | Resolves to an existing file at validation time. |
@@ -155,6 +157,7 @@ Two open questions were resolved before migration began. Both are binding for Ph
 
 - **2026-07-16** — v1. Initial schema covering the 178 in-scope files across six stores; full and lite variants; legacy mapping table.
 - **2026-09-13** — v1.1. Added optional `kind` field (orthogonal to `status` and `role`) with five-value vocabulary: `plan | template | reference | audit | decision`. Defaults to `plan` when omitted (backward compatible). Resolves the overloading of `status: active` for scaffolding documents (TEMPLATE.md, README.md, audit reports).
+- **2026-11-05** — v1.2. Widened the `kind` vocabulary to seven values by adding `spec` (a design specification that drives implementation) and `followup` (a dated follow-up note in `docs/followups/`). Both were already used consistently by the corpus — 6 files carried `kind: spec` and 7 carried `kind: followup` — so the per-kind section of `PLAN_INDEX.md` was filing them under an "unknown kinds" bucket instead of a named one. `scripts/regenerate_plan_index.py:KIND_VALUES` carries the same list. No document's `status` or `role` changed.
 
 ## Crackerjack Surface
 

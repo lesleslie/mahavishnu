@@ -1,7 +1,10 @@
 ---
 status: active
+role: canonical
+kind: decision
 date: 2026-10-14
-last_reviewed: 2026-10-14
+last_reviewed: 2026-11-05
+superseded_by: null
 topic: parallel-sessions-vs-bypass-gate
 ---
 

@@ -1,6 +1,6 @@
 ---
-status: superseded
-role: historical
+status: complete
+role: superseded
 kind: plan
 date: 2026-11-01
 last_reviewed: 2026-11-01

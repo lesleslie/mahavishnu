@@ -133,3 +133,17 @@ class TestHookContent:
         assert '[ -f "scripts/audit_no_secrets_in_mcp.py" ]' in pre_commit
         # Audit's non-zero exit must propagate (otherwise the if swallows it)
         assert "|| exit 1" in pre_commit
+
+    def test_pre_commit_invokes_doc_frontmatter_audit(self) -> None:
+        """pre-commit hook validates doc frontmatter conformance.
+
+        The plan-index renderer silently skips a file whose frontmatter is
+        absent or unparsable, so a decision could vanish from
+        PLAN_INDEX.md with no error anywhere. The gate is guarded with -f
+        so repos without the audit script can still install, and the
+        audit's exit code must propagate via `|| exit 1`.
+        """
+        pre_commit = _HOOK_TEMPLATES["pre-commit"]
+        assert "scripts/audit_doc_frontmatter.py" in pre_commit
+        assert '[ -f "scripts/audit_doc_frontmatter.py" ]' in pre_commit
+        assert "|| exit 1" in pre_commit

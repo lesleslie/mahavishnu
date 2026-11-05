@@ -1,8 +1,26 @@
+---
+status: complete
+role: historical
+kind: followup
+date: 2026-08-29
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: error-handling
+---
 # Fix: `dispatch_to_pool(async_callback=True)` → `workflow_result(not_found)`
 
 **Outcome #1 of** `docs/plans/2026-08-29-orchestrator-research-synthesis.md`
 **Filed**: 2026-08-29
-**Status**: Diagnosed, fix designed, awaiting worker-registry-2026-08-28 merge to main
+**Status**: Resolved (2026-11-05). The two coordinated `pool_tools.py` changes
+designed below did not land as written — `pool_tools.py` has since been
+rewritten. The underlying concern is closed by re-architecture rather than
+by that patch: workflow outcomes are now written by
+`mahavishnu/core/workflow/outcome_writer.py`, whose substrate facade is
+always bound, so "the durable backend was unavailable and the record went
+to a dead-letter the read path never consulted" is no longer a state the
+code can reach. A failed write is now reported as *skipped* with a warning
+and a counter, rather than swallowed. The original reproduction and fix
+design are retained below as the historical record.
 
 ## Bug repro (this session, verified)
 

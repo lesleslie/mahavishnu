@@ -1,7 +1,18 @@
 ---
-name: runpod-status-truth
-description: ``mahavishnu.pools.RunPodPool`` uses ``req.output()`` as the terminal oracle for job status; ``req.status()`` is a non-blocking snapshot and is NEVER used to infer terminal state.
+status: complete
+role: canonical
+kind: decision
+date: 2026-10-17
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: runpod-status-truth
 ---
+
+# RunPod Status Truth — `req.output()` is the terminal oracle
+
+> `mahavishnu.pools.RunPodPool` uses `req.output()` as the terminal oracle for
+> job status; `req.status()` is a non-blocking snapshot and is NEVER used to
+> infer terminal state.
 
 **Context (2026-10-17):** A post-merge security review of the runpod SDK 2.0 migration (PR landed as `e71221ed`) found two related defects in `mahavishnu.pools.RunPodPool.execute_task`:
 

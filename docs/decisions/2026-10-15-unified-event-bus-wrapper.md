@@ -1,11 +1,13 @@
 ---
-date: 2026-10-15
-title: "Bodai EventBus — Wrapper-Layer Adoption of Oneiric EventBridge"
-topic: unified-event-bus
 status: active
+role: canonical
 kind: decision
+date: 2026-10-15
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: unified-event-bus
+title: "Bodai EventBus — Wrapper-Layer Adoption of Oneiric EventBridge"
 supersedes_plan: 2026-05-09-unified-event-bus-spec.md
-decision_date: 2026-10-15
 ---
 
 # ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge

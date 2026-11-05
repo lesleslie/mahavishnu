@@ -1,8 +1,11 @@
 ---
-status: deferred
+status: draft
+role: canonical
+kind: decision
 date: 2026-09-25
-updated: 2026-09-25
-supersedes: (none)
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: adapter-architecture
 related: docs/decisions/2026-08-29-settle-vs-langgraph.md (predecessor); .claude/plans/nifty-gliding-stallman.md v3 (planning context); docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md (same-day audit refresh)
 ---
 

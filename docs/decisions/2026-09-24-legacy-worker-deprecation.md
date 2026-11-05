@@ -1,7 +1,11 @@
 ---
-status: accepted
+status: complete
+role: canonical
+kind: decision
 date: 2026-09-25
-supersedes: (none)
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: worker-deprecation
 related: .claude/plans/nifty-gliding-stallman.md v3, Phase 4 + 4.5b + Phase 1m
 ---
 

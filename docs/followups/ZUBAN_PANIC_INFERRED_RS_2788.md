@@ -1,3 +1,12 @@
+---
+status: active
+role: implementation
+kind: followup
+date: 2026-10-14
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: type-checking
+---
 # zuban 0.8.0 panic at `inferred.rs:2788` on session-buddy
 
 ## Summary

@@ -84,8 +84,14 @@ ROLE_VALUES: tuple[str, ...] = (
 # Vocabulary added in schema v1.1 (2026-09-13). `plan` is the default and
 # is omitted from the registry table to keep the column readable — the
 # per-kind section below surfaces it explicitly.
+# `spec` and `followup` were added in schema v1.2 (2026-11-05) because the
+# corpus already used them consistently (`docs/specs/` design documents and
+# `docs/followups/` notes) and the renderer's per-kind section was filing
+# them under an "unknown kinds" bucket.
 KIND_VALUES: tuple[str, ...] = (
     "plan",
+    "spec",
+    "followup",
     "template",
     "reference",
     "audit",

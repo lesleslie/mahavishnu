@@ -1,11 +1,11 @@
 ---
 status: complete
 role: implementation
+kind: decision
 date: 2026-10-17
 last_reviewed: 2026-10-18
 superseded_by: null
 blocks_on: []
-kind: migration-design
 topic: runpod-sdk-2
 title: "2026-10-17 — Migrate `runpod-flash` to merged `runpod` SDK 2.0 (RunPodPool becomes a thin client)"
 ---

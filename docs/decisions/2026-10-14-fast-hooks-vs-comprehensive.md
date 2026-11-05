@@ -1,7 +1,11 @@
 ---
-status: accepted
+status: active
+role: canonical
+kind: decision
 date: 2026-10-14
-supersedes: (none)
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: merge-gate
 related: docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md §4.1, REQ-013
 ---
 

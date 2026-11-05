@@ -43,6 +43,14 @@ fi
 if [ -f "scripts/audit_type_checking_runtime_refs.py" ]; then
     python3 scripts/audit_type_checking_runtime_refs.py "$(pwd)" || exit 1
 fi
+# Doc frontmatter gate (2026-11-05). The plan-index renderer silently skips
+# a file whose frontmatter is absent or unparsable, so a decision could
+# vanish from PLAN_INDEX.md with no error anywhere. This audit validates the
+# schema-governed stores (docs/schemas/document-frontmatter-v1.md).
+# Skipped when the audit script isn't present (other repos).
+if [ -f "scripts/audit_doc_frontmatter.py" ]; then
+    python3 scripts/audit_doc_frontmatter.py --repo-root "$(pwd)" || exit 1
+fi
 # Phase 2 gate: findings.md ≤ 250 lines + validate_findings.py
 if [ -f "docs/audit-inventory/findings.md" ] && [ -f "scripts/validate_findings.py" ]; then
     test "$(wc -l < docs/audit-inventory/findings.md)" -le 250 || { echo "findings.md exceeds 250-line budget"; exit 1; }

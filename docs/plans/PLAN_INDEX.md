@@ -186,12 +186,13 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/decisions/2026-10-21-otel-substrate-port-ownership.md`](../../docs/decisions/2026-10-21-otel-substrate-port-ownership.md) | 2026-10-21 | `active` | `canonical` |  | `otel-port-ownership` | OTel substrate owns the canonical OTLP ports |
 | [`docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md`](../../docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md) | 2026-10-19 | `complete` | `historical` | `decision` | `adapter-architecture` | Prefect demo `flow=fn` ad-hoc pattern fails against Prefect 3.x process worker pools |
 | [`docs/decisions/2026-10-18-archive-completed-plans.md`](../../docs/decisions/2026-10-18-archive-completed-plans.md) | 2026-10-18 | `active` | `canonical` | `decision` | `archive-completed-plans` | Archive Policy for Completed Plans |
-| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | 2026-10-17 | `complete` | `implementation` | `migration-design` | `runpod-sdk-2` | 2026 10 17 runpod flash to sdk 2 |
+| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | 2026-10-17 | `complete` | `implementation` | `decision` | `runpod-sdk-2` | 2026 10 17 runpod flash to sdk 2 |
+| [`docs/decisions/2026-10-17-runpod-status-truth.md`](../../docs/decisions/2026-10-17-runpod-status-truth.md) | 2026-10-17 | `complete` | `canonical` | `decision` | `runpod-status-truth` | RunPod Status Truth — `req.output()` is the terminal oracle |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | `active` | `canonical` | `decision` | `archive-dir-canonical` | Archive directory canonical path: `docs/.archive/` (top-level) |
-| [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | `active` | `unknown` | `decision` | `unified-event-bus` | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
-| [`docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md`](../../docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md) | 2026-10-14 | `active` | `unknown` |  | `parallel-sessions-vs-bypass-gate` | 2026-10-14 — `--no-consolidation-gate` and parallel sessions |
+| [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | `active` | `canonical` | `decision` | `unified-event-bus` | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
+| [`docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md`](../../docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md) | 2026-10-14 | `active` | `canonical` | `decision` | `parallel-sessions-vs-bypass-gate` | 2026-10-14 — `--no-consolidation-gate` and parallel sessions |
 | [`docs/decisions/2026-10-14-decision-adapter-category.md`](../../docs/decisions/2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `canonical` | `decision` | `adapter-architecture` | 2026-10-14-decision-adapter-category.md |
-| [`docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md`](../../docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md) | 2026-10-14 | `accepted` | `unknown` |  | `—` | 2026-10-14 — Split the Crackerjack merge gate: fast_hooks per-merge, comprehensive at publish-stage only |
+| [`docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md`](../../docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md) | 2026-10-14 | `active` | `canonical` | `decision` | `merge-gate` | 2026-10-14 — Split the Crackerjack merge gate: fast_hooks per-merge, comprehensive at publish-stage only |
 | [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | `active` | `canonical` | `decision` | `prepush-consolidation-gate` | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
 | [`docs/decisions/2026-10-13-worktree-policy.md`](../../docs/decisions/2026-10-13-worktree-policy.md) | 2026-10-13 | `active` | `canonical` | `decision` | `worktree-management` | Worktree Policy (consolidated) |
 | [`docs/decisions/2026-10-11-prefect-demo-cli-launchd.md`](../../docs/decisions/2026-10-11-prefect-demo-cli-launchd.md) | 2026-10-11 | `shipped` | `canonical` | `decision` | `adapter-architecture` | 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework |
@@ -201,10 +202,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/decisions/2026-10-03-plans-specs-canonical-paths.md`](../../docs/decisions/2026-10-03-plans-specs-canonical-paths.md) | 2026-10-03 | `active` | `canonical` | `decision` | `plans-specs-canonical-paths` | Plans and specs canonical paths (`docs/plans/`, `docs/specs/`) |
 | [`docs/decisions/2026-10-03-trunk-based-agent-review.md`](../../docs/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | `active` | `canonical` | `decision` | `trunk-based-agent-review` | Trunk-Based Agent-Reviewed Dev Workflow |
 | [`docs/decisions/tool-description-rubric.md`](../../docs/decisions/tool-description-rubric.md) | 2026-09-27 | `active` | `canonical` | `decision` | `mcp-tool-design` | MCP Tool Description Rubric |
-| [`docs/decisions/2026-09-26-mcp-launcher-migration.md`](../../docs/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `complete` | `implementation` | `migration-design` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
-| [`docs/decisions/deployability-discipline.md`](../../docs/decisions/deployability-discipline.md) | 2026-09-26 | `active` | `canonical` |  | `deployability-discipline` | deployability discipline |
-| [`docs/decisions/2026-09-24-legacy-worker-deprecation.md`](../../docs/decisions/2026-09-24-legacy-worker-deprecation.md) | 2026-09-25 | `accepted` | `unknown` |  | `—` | 2026-09-25 — Retire the legacy isolated-worker surface (`apple_container`, `e2b_sandbox`); keep `shepherd_backend` |
-| [`docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`](../../docs/decisions/2026-09-25-langgraph-as-engine-adapter.md) | 2026-09-25 | `deferred` | `unknown` |  | `—` | 2026-09-25 — Re-evaluation of LangGraph as a Bodai engine adapter |
+| [`docs/decisions/2026-09-26-mcp-launcher-migration.md`](../../docs/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | `complete` | `superseded` | `decision` | `mcp-launcher-migration` | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
+| [`docs/decisions/deployability-discipline.md`](../../docs/decisions/deployability-discipline.md) | 2026-09-26 | `active` | `canonical` | `decision` | `deployability-discipline` | deployability discipline |
+| [`docs/decisions/2026-09-24-legacy-worker-deprecation.md`](../../docs/decisions/2026-09-24-legacy-worker-deprecation.md) | 2026-09-25 | `complete` | `canonical` | `decision` | `worker-deprecation` | 2026-09-25 — Retire the legacy isolated-worker surface (`apple_container`, `e2b_sandbox`); keep `shepherd_backend` |
+| [`docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`](../../docs/decisions/2026-09-25-langgraph-as-engine-adapter.md) | 2026-09-25 | `draft` | `canonical` | `decision` | `adapter-architecture` | 2026-09-25 — Re-evaluation of LangGraph as a Bodai engine adapter |
 | [`docs/decisions/sdd-bundling-defensive-pattern.md`](../../docs/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | `active` | `canonical` | `decision` | `sdd-bundling-defensive-pattern` | SDD Bundling Defensive Pattern |
 | [`docs/decisions/mcp-backend-wiring-discipline.md`](../../docs/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` | `decision` | `bodai-mcp-surface-standardization` | MCP Backend Wiring Discipline |
 | [`docs/decisions/2026-08-29-settle-vs-langgraph.md`](../../docs/decisions/2026-08-29-settle-vs-langgraph.md) | 2026-08-29 | `active` | `canonical` | `decision` | `persistence` | 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state |
@@ -258,6 +259,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../../docs/followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | `complete` | `implementation` | `followup` | `shared-frontmatter-validator` | Followup — Consumer-repo followup for the frontmatter-validator move |
+| [`docs/followups/ZUBAN_PANIC_INFERRED_RS_2788.md`](../../docs/followups/ZUBAN_PANIC_INFERRED_RS_2788.md) | 2026-10-14 | `active` | `implementation` | `followup` | `type-checking` | zuban 0.8.0 panic at `inferred.rs:2788` on session-buddy |
 | [`docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md`](../../docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md) | 2026-10-09 | `complete` | `implementation` |  | `cli-deprecation-drift` | `mahavishnu pool spawn` — Stale Worker-Type Allowlist (post 2026-09-24 deprecation) |
 | [`docs/followups/2026-09-19-sb-subagent-lockfile-producer.md`](../../docs/followups/2026-09-19-sb-subagent-lockfile-producer.md) | 2026-09-19 | `complete` | `canonical` |  | `persistence` | Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup |
 | [`docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md`](../../docs/followups/2026-09-14-merge-semantic-duration-ms-instrumentation.md) | 2026-09-14 | `complete` | `implementation` |  | `merge-semantic-duration-instrumentation` | Followup — `merge.semantic.duration_ms` OTel histogram |
@@ -277,6 +279,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/followups/2026-09-05-terminal-fixes-batch.md`](../../docs/followups/2026-09-05-terminal-fixes-batch.md) | 2026-09-05 | `complete` | `implementation` |  | `terminal` | Terminal Fixes Batch (consolidated) |
 | [`docs/followups/2026-09-05-websocket-broadcaster-default.md`](../../docs/followups/2026-09-05-websocket-broadcaster-default.md) | 2026-09-05 | `complete` | `historical` |  | `websocket-broadcaster-default` | `websocket/integration.py` — settings default + `WebSocketBroadcaster` positional arg |
 | [`docs/followups/2026-09-05-worker-status-isoformat-crash.md`](../../docs/followups/2026-09-05-worker-status-isoformat-crash.md) | 2026-09-05 | `complete` | `historical` |  | `worker-status-isoformat-crash` | `worker_status` isoformat crash on malformed `last_seen_at` |
+| [`docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md`](../../docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md) | 2026-08-29 | `complete` | `historical` | `followup` | `error-handling` | Fix: `dispatch_to_pool(async_callback=True)` → `workflow_result(not_found)` |
 | [`docs/followups/2026-08-12-mcpretentious-removed.md`](../../docs/followups/2026-08-12-mcpretentious-removed.md) | 2026-08-12 | `complete` | `historical` |  | `mcpretentious-removed` | Mcpretentious Terminal Adapter Removed — Bootstrap Followup |
 | [`docs/followups/2026-07-27-acp-v15-followups.md`](../../docs/followups/2026-07-27-acp-v15-followups.md) | 2026-07-27 | `partial` | `canonical` |  | `acp-v15-followups` | 2026-07-27-acp-v15-followups — followup |
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | `active` | `canonical` | `template` | `lifecycle` | YYYY-MM-DD-<name> — followup |
@@ -314,12 +317,13 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-05-config-that-nobody-reads.md`](2026-11-05-config-that-nobody-reads.md) | 2026-11-05 | `draft` | `implementation` |  | `config-that-nobody-reads` | Config that nobody reads — a `settings/` sweep for the dead-knob pattern |
 | [`docs/plans/2026-11-05-yaml-backed-model-routing.md`](2026-11-05-yaml-backed-model-routing.md) | 2026-11-05 | `shipped` | `implementation` |  | `yaml-backed-model-routing` | Make `settings/models.yaml` the live source of task-to-model routing |
 | [`docs/plans/2026-11-02-worker-tool-output-compaction.md`](2026-11-02-worker-tool-output-compaction.md) | 2026-11-02 | `draft` | `implementation` |  | `worker-output-compaction` | Worker tool-output compaction — RTK-style savings without a second gateway |
-| [`docs/plans/2026-11-01-adapter-composition-executor.md`](2026-11-01-adapter-composition-executor.md) | 2026-11-01 | `superseded` | `historical` |  | `adapter-composition` | Adapter composition — making engine and worker substrates compose as one workflow |
+| [`docs/plans/2026-11-01-adapter-composition-executor.md`](2026-11-01-adapter-composition-executor.md) | 2026-11-01 | `complete` | `superseded` |  | `adapter-composition` | Adapter composition — making engine and worker substrates compose as one workflow |
 | [`docs/plans/2026-11-01-bifrost-cache-eviction-and-threshold.md`](2026-11-01-bifrost-cache-eviction-and-threshold.md) | 2026-11-01 | `active` | `canonical` |  | `bifrost-cache-eviction-and-threshold` | Plan — Bifrost cache eviction sweep and cache-tuning retune |
 | [`docs/plans/2026-11-01-control-plane-consolidation.md`](2026-11-01-control-plane-consolidation.md) | 2026-11-01 | `draft` | `canonical` |  | `control-plane-consolidation` | Control-plane consolidation — one registry, one envelope, one workflow lane |
-| [`docs/plans/2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md`](2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md) | 2026-11-01 | `superseded` | `historical` |  | `worker-dispatch-trustworthiness` | Terminal CLI harness demos and a trustworthy one-shot dispatch protocol |
+| [`docs/plans/2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md`](2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md) | 2026-11-01 | `complete` | `superseded` |  | `worker-dispatch-trustworthiness` | Terminal CLI harness demos and a trustworthy one-shot dispatch protocol |
 | [`docs/plans/2026-10-31-mcp-substrate-rewire.md`](2026-10-31-mcp-substrate-rewire.md) | 2026-10-31 | `active` | `canonical` |  | `mcp-substrate-rewire` | Rewire the MCP substrate from the decommissioned service to the live owners |
 | [`docs/plans/2026-10-31-substrate-calltime-rewire.md`](2026-10-31-substrate-calltime-rewire.md) | 2026-10-31 | `active` | `canonical` |  | `substrate-calltime-rewire` | Bind the substrate call sites to the live store instead of a dead module lookup |
 | [`docs/plans/2026-10-30-task-workflow-backlink.md`](2026-10-30-task-workflow-backlink.md) | 2026-10-30 | `active` | `implementation` |  | `task-workflow-backlink` | Task → Workflow Back-Link — typed channel, durable dispatch, and wiring |
@@ -341,7 +345,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-09-20-delete-all-legacy-named-code.md`](2026-09-20-delete-all-legacy-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-legacy-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
-| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | Verified complete 2026-10-17 (cross-repo audit): |
+| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | `superseded_by` is document-level only (see the schema). This umbrella is |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `complete` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
@@ -390,6 +394,33 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 Documents grouped by their `kind:` value. Templates, references, and audits appear here even if their `status:` is `active` — they are scaffolding or analysis documents, not work items. Use this section when answering 'is this an active plan to be done?'
 
+### `spec` (6 entries)
+
+
+
+| Path | Date | Title |
+|---|---|---|
+| [`docs/specs/2026-10-30-task-workflow-backlink-design.md`](../../docs/specs/2026-10-30-task-workflow-backlink-design.md) | 2026-10-30 | Task → Workflow Back-Link Contract (design) |
+| [`docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md`](../../docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md) | 2026-10-20 | Bifrost ↔ Claude Code ANTHROPIC_BASE_URL cutover — Spec v0.1 |
+| [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../../docs/specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | Bifrost Gateway Wiring - Design v1.5 |
+| [`docs/specs/2026-10-02-bodai-task-system-v1.1.md`](../../docs/specs/2026-10-02-bodai-task-system-v1.1.md) | 2026-10-02 | Bodai Task System — v1.1 (deferred items) |
+| [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../../docs/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | Shared Oneiric Substrate - Design v5 |
+| [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../../docs/specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
+
+### `followup` (7 entries)
+
+
+
+| Path | Date | Title |
+|---|---|---|
+| [`docs/followups/2026-10-14-validator-move-consumer-followup.md`](../../docs/followups/2026-10-14-validator-move-consumer-followup.md) | 2026-10-14 | Followup — Consumer-repo followup for the frontmatter-validator move |
+| [`docs/followups/ZUBAN_PANIC_INFERRED_RS_2788.md`](../../docs/followups/ZUBAN_PANIC_INFERRED_RS_2788.md) | 2026-10-14 | zuban 0.8.0 panic at `inferred.rs:2788` on session-buddy |
+| [`docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md`](../../docs/followups/2026-09-10-tier2-hyperbolic-embeddings.md) | 2026-09-10 | Tier 2 Follow-up: Hyperbolic Embeddings for Session-Buddy Code Graphs |
+| [`docs/followups/2026-09-10-tier2-multi-metric-drift.md`](../../docs/followups/2026-09-10-tier2-multi-metric-drift.md) | 2026-09-10 | Tier 2 Follow-up: Multi-Metric Drift Detection |
+| [`docs/followups/2026-09-10-tier2-optimal-transport.md`](../../docs/followups/2026-09-10-tier2-optimal-transport.md) | 2026-09-10 | Tier 2 Follow-up: Optimal Transport for Akosha Pattern Comparison |
+| [`docs/followups/2026-09-10-tier2-phase-d-cross-repo.md`](../../docs/followups/2026-09-10-tier2-phase-d-cross-repo.md) | 2026-09-10 | Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring |
+| [`docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md`](../../docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md) | 2026-08-29 | Fix: `dispatch_to_pool(async_callback=True)` → `workflow_result(not_found)` |
+
 ### `template` (3 entries)
 
 Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.
@@ -413,7 +444,7 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | Event Envelope Specification |
 | [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | Prometheus Metrics Inventory |
 
-### `decision` (57 entries)
+### `decision` (65 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
@@ -425,9 +456,13 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md`](../../docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md) | 2026-10-19 | Prefect demo `flow=fn` ad-hoc pattern fails against Prefect 3.x process worker pools |
 | [`docs/decisions/2026-10-18-archive-completed-plans.md`](../../docs/decisions/2026-10-18-archive-completed-plans.md) | 2026-10-18 | Archive Policy for Completed Plans |
 | [`docs/adr/019-legacy-mcp-server-decommissioning.md`](../../docs/adr/019-legacy-mcp-server-decommissioning.md) | 2026-10-17 | ADR 019: Legacy Standalone MCP Server Decommissioning from Bodai Core Fleet |
+| [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | 2026-10-17 | 2026 10 17 runpod flash to sdk 2 |
+| [`docs/decisions/2026-10-17-runpod-status-truth.md`](../../docs/decisions/2026-10-17-runpod-status-truth.md) | 2026-10-17 | RunPod Status Truth — `req.output()` is the terminal oracle |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | Archive directory canonical path: `docs/.archive/` (top-level) |
 | [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
+| [`docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md`](../../docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md) | 2026-10-14 | 2026-10-14 — `--no-consolidation-gate` and parallel sessions |
 | [`docs/decisions/2026-10-14-decision-adapter-category.md`](../../docs/decisions/2026-10-14-decision-adapter-category.md) | 2026-10-14 | 2026-10-14-decision-adapter-category.md |
+| [`docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md`](../../docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md) | 2026-10-14 | 2026-10-14 — Split the Crackerjack merge gate: fast_hooks per-merge, comprehensive at publish-stage only |
 | [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
 | [`docs/decisions/2026-10-13-worktree-policy.md`](../../docs/decisions/2026-10-13-worktree-policy.md) | 2026-10-13 | Worktree Policy (consolidated) |
 | [`docs/decisions/2026-10-11-prefect-demo-cli-launchd.md`](../../docs/decisions/2026-10-11-prefect-demo-cli-launchd.md) | 2026-10-11 | 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework |
@@ -438,6 +473,10 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/2026-10-03-trunk-based-agent-review.md`](../../docs/decisions/2026-10-03-trunk-based-agent-review.md) | 2026-10-03 | Trunk-Based Agent-Reviewed Dev Workflow |
 | [`docs/decisions/tool-description-rubric.md`](../../docs/decisions/tool-description-rubric.md) | 2026-09-27 | MCP Tool Description Rubric |
 | [`docs/adr/0001-mahavishnu-niche.md`](../../docs/adr/0001-mahavishnu-niche.md) | 2026-09-26 | ADR 0001: Mahavishnu's Niche — LLM Control Plane + Repo Orchestrator |
+| [`docs/decisions/2026-09-26-mcp-launcher-migration.md`](../../docs/decisions/2026-09-26-mcp-launcher-migration.md) | 2026-09-26 | Vishnu (Mahavishnu) MCP Launcher Migration — Phase 4a Design Note |
+| [`docs/decisions/deployability-discipline.md`](../../docs/decisions/deployability-discipline.md) | 2026-09-26 | deployability discipline |
+| [`docs/decisions/2026-09-24-legacy-worker-deprecation.md`](../../docs/decisions/2026-09-24-legacy-worker-deprecation.md) | 2026-09-25 | 2026-09-25 — Retire the legacy isolated-worker surface (`apple_container`, `e2b_sandbox`); keep `shepherd_backend` |
+| [`docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`](../../docs/decisions/2026-09-25-langgraph-as-engine-adapter.md) | 2026-09-25 | 2026-09-25 — Re-evaluation of LangGraph as a Bodai engine adapter |
 | [`docs/decisions/sdd-bundling-defensive-pattern.md`](../../docs/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | SDD Bundling Defensive Pattern |
 | [`docs/adr/018-gateway-pattern-evaluation.md`](../../docs/adr/018-gateway-pattern-evaluation.md) | 2026-09-16 | ADR 018: MCP Gateway Pattern — Options A (status quo), B (full gateway), C (hybrid) |
 | [`docs/adr/017-oneiric-shared-persistence-substrate.md`](../../docs/adr/017-oneiric-shared-persistence-substrate.md) | 2026-09-14 | ADR 017: Oneiric as the shared persistence substrate for Bodai |
@@ -477,7 +516,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (165 entries)
+### `plan` (161 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -489,10 +528,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 8 | 54 | 2 | 2 | 15 | **81** |
-| `implementation` | 6 | 8 | 2 | 7 | 17 | **40** |
+| `canonical` | 9 | 57 | 2 | 2 | 17 | **87** |
+| `implementation` | 7 | 9 | 2 | 7 | 16 | **41** |
 | `umbrella` | · | · | · | · | 1 | **1** |
-| `historical` | · | · | · | · | 33 | **33** |
-| `superseded` | · | · | · | · | 6 | **6** |
+| `historical` | · | · | · | · | 34 | **34** |
+| `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **14** | **62** | **4** | **9** | **72** | **161** |
+| **Total** | **16** | **66** | **4** | **9** | **77** | **172** |

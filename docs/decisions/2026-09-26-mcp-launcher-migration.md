@@ -1,7 +1,7 @@
 ---
 status: complete
-role: implementation
-kind: migration-design
+role: superseded
+kind: decision
 date: 2026-09-26
 last_reviewed: 2026-10-04
 superseded_by: docs/specs/2026-10-04-mcp-lifespan-plan-index-init.md

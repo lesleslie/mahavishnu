@@ -16,6 +16,10 @@ All inter-component events in Mahavishnu use a typed, versioned envelope
 (`EventEnvelope`) to guarantee identity, schema compatibility, causal tracing,
 and deterministic serialization.
 
+Verified 2026-11-05 against the live model at
+`mahavishnu/core/events/envelope.py:114` — the nine fields below match
+`EventEnvelope` exactly.
+
 ## Standard Envelope Schema
 
 ```
@@ -26,6 +30,7 @@ EventEnvelope (Pydantic BaseModel, frozen)
 ├── timestamp: datetime     — UTC, auto-set on creation
 ├── source: str             — producing component, e.g. "code_index_service"
 ├── correlation_id: UUID?   — for cross-service tracing (optional)
+├── causation_id: UUID?     — for tracing event lineage (optional)
 ├── payload: dict           — domain-specific data (validated by schema registry)
 └── metadata: dict          — tracing, audit, system metadata
 ```
@@ -40,8 +45,9 @@ EventEnvelope (Pydantic BaseModel, frozen)
 | timestamp | datetime | yes | UTC, auto-generated |
 | source | str | yes | 1–128 chars, non-blank |
 | correlation_id| UUID? | no | for distributed tracing |
-| payload | dict | yes | validated per schema |
-| metadata | dict | yes | defaults to empty dict |
+| causation_id | UUID? | no | for tracing event lineage |
+| payload | dict | no | validated per schema when present; defaults to empty dict |
+| metadata | dict | no | defaults to empty dict |
 
 ## Versioning Policy
 
