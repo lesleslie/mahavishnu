@@ -25,11 +25,11 @@ from mahavishnu.core.config import (
 )
 from mahavishnu.core.event_store import EventStore
 from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database, not a Path
+from mahavishnu.pools import PoolManager
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Iterator
     from mahavishnu.core.worktree_manager import WorktreeManager  # FIX round-6: real module is worktree_manager, not worktree
-    from mahavishnu.pools import PoolManager
 
 
 @pytest_asyncio.fixture

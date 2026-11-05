@@ -521,13 +521,16 @@ def _scan_file(path: Path) -> FileResult:
         if id(node) in binding_ids:
             continue
 
-        # Determine what name(s) to check on this node.
-        candidate_name: str | None = None
-        if isinstance(node, ast.Name):
-            candidate_name = node.id
-        elif isinstance(node, ast.Attribute):
-            candidate_name = node.attr
-        if candidate_name is None or candidate_name not in name_to_import:
+        # Only a bare ``ast.Name`` can reference a local binding. An
+        # ``ast.Attribute`` such as ``paths.Path`` reads the attribute
+        # ``Path`` off its base object; it never looks the name up in the
+        # local scope, so it is NOT a runtime reference to the
+        # TYPE_CHECKING import. Flagging it also contradicts Ruff's TC003,
+        # which wants the same import kept in the type-checking block.
+        if not isinstance(node, ast.Name):
+            continue
+        candidate_name = node.id
+        if candidate_name not in name_to_import:
             continue
 
         result.violations.append(

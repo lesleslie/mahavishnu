@@ -233,6 +233,45 @@ def test_isinstance_reference_violates(tmp_path):
     assert result.violations[0].name == "Bar"
 
 
+def test_qualified_attribute_access_is_not_a_violation(tmp_path):
+    """``mod.Bar`` reads the attribute off ``mod``; it never looks up ``Bar``.
+
+    A TYPE_CHECKING import named ``Bar`` is not referenced by ``mod.Bar``,
+    so this is not a runtime reference to the import. Flagging it also
+    contradicts Ruff's TC003, which wants the same import kept inside the
+    type-checking block.
+    """
+    src = """
+        from __future__ import annotations
+        from typing import TYPE_CHECKING
+        import mod
+        if TYPE_CHECKING:
+            from pathlib import Path
+        def use() -> str:
+            return mod.Path
+    """
+    path = write_source(tmp_path, "qualified.py", src)
+    result = _scan_file(path)
+    assert result.violations == []
+
+
+def test_qualified_attribute_access_still_flags_bare_name(tmp_path):
+    """The same file DOES violate when the name is used bare."""
+    src = """
+        from __future__ import annotations
+        from typing import TYPE_CHECKING
+        import mod
+        if TYPE_CHECKING:
+            from pathlib import Path
+        def use() -> str:
+            return str(Path)
+    """
+    path = write_source(tmp_path, "qualified_bare.py", src)
+    result = _scan_file(path)
+    assert len(result.violations) == 1
+    assert result.violations[0].name == "Path"
+
+
 def test_annotation_only_reference_is_safe_with_future(tmp_path):
     """Under future-annotations, the name in `def f() -> Bar` is safe."""
     src = """
