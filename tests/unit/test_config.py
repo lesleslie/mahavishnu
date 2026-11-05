@@ -133,18 +133,24 @@ def test_models_yaml_defaults_to_minimax() -> None:
     assert data["fallback_chain"] == ["minimax", "llama_server"]
     assert data["minimax"]["api_key"] == "${MINIMAX_API_KEY}"
     assert data["minimax"]["base_url"] == "https://api.minimax.io/v1"
-    assert data["minimax"]["task_routing"]["CODE_GENERATION"] == "MiniMax-M3"
-    # SWARM/QUICK/AGENT_LOOP/CREATIVE/GENERAL all route to MiniMax-M3 —
-    # minimax's API does not expose a distinct MiniMax-M3-highspeed variant
-    # (verified 2026-09-16; minimax returns error 2013 "unknown model").
-    # For a real speed differential, override these via settings/local.yaml.
-    # Latency-sensitive bucket moved to MiniMax-M3.1-Flash on 2026-10-19.
-    # settings/models.yaml is the authoritative routing; the in-code
-    # DEFAULT_MINIMAX_ROUTING is the built-in fallback.
-    # tests/unit/test_task_router.py::TestRoutingCoverage guards that the
-    # YAML covers every TaskCategory.
-    assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M3.1-Flash"
-    assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M3.1-Flash"
+    # The task_routing *values* are deliberately not pinned here. This file
+    # is the authoritative routing, so pinning a model id would make an
+    # operator edit -- the entire point of the config -- a CI failure. The
+    # routing is covered by three guards instead:
+    #   tests/unit/test_task_router.py::TestRoutingCoverage -- the config
+    #     names every TaskCategory, for every provider.
+    #   tests/unit/test_model_resolution.py::TestResolveModelId -- the
+    #     latency bucket routes to the flash model, pinned against the
+    #     in-code DEFAULT_MINIMAX_ROUTING built-in table.
+    #   tests/unit/test_model_resolution.py::test_shipped_config_does_not_
+    #     warn -- every resolved id is one a provider block actually names,
+    #     so a typo'd model id is still caught.
+    # Historical note: minimax's API does not expose a distinct
+    # MiniMax-M3-highspeed variant (verified 2026-09-16; minimax returns
+    # error 2013 "unknown model"), so the latency bucket moved to
+    # MiniMax-M3.1-Flash on 2026-10-19. For a real speed differential,
+    # point MAHAVISHNU_MODELS_PATH at a file that routes them elsewhere --
+    # there is no settings/local.yaml overlay for models.yaml.
 
 
 def test_config_validation_bounds():

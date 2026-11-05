@@ -11,15 +11,42 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import pytest
+
 from mahavishnu.core.model_routing import (
     DEFAULT_MINIMAX_ROUTING,
     MODELS_CONFIG_PATH,
+    MODELS_CONFIG_PATH_ENV,
     TaskCategory,
+    _reset_routing_cache,
+    resolve_minimax_routing,
     resolve_model_id,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_routing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Pin the effective routing to the built-in table.
+
+    The operator config is authoritative, so ``resolve_model_id`` follows
+    whatever ``settings/models.yaml`` -- or ``MAHAVISHNU_MODELS_PATH`` --
+    says. These tests assert against the *built-in* table, so point the
+    loader at a missing file: that makes the effective table the built-in
+    one, independent of both the ambient environment and the contents of
+    the repo's own config. Otherwise an operator edit, or an inherited
+    env var, silently breaks a test that is not about operator config.
+    """
+    monkeypatch.delenv(MODELS_CONFIG_PATH_ENV, raising=False)
+    monkeypatch.setattr(
+        "mahavishnu.core.model_routing.MODELS_CONFIG_PATH",
+        tmp_path / "absent.yaml",
+    )
+    _reset_routing_cache()
+    yield
+    _reset_routing_cache()
 
 #: A models.yaml whose only configured model is the flash model — the
 #: stable "MiniMax-M3" is deliberately absent so the drift check fires.
@@ -56,13 +83,28 @@ class TestResolveModelId:
     """The resolved id must match the worker's routing table."""
 
     def test_returns_model_from_routing_table(self):
-        """A category with an entry resolves to that entry's model id."""
-        assert resolve_model_id(TaskCategory.CODE_GENERATION) == "MiniMax-M3"
+        """A category with an entry resolves to that entry's model id.
+
+        Asserted against the *effective* table rather than a literal model
+        id. The operator config is authoritative, so pinning a literal here
+        would fail the moment an operator edited `settings/models.yaml` --
+        which is the thing that config exists to let them do.
+        """
+        table = resolve_minimax_routing()
+        assert (
+            resolve_model_id(TaskCategory.CODE_GENERATION)
+            == table[TaskCategory.CODE_GENERATION]
+        )
 
     def test_latency_categories_resolve_to_flash_model(self):
-        """Latency-sensitive categories resolve to the flash model."""
-        assert resolve_model_id(TaskCategory.SWARM) == "MiniMax-M3.1-Flash"
-        assert resolve_model_id(TaskCategory.QUICK) == "MiniMax-M3.1-Flash"
+        """Latency-sensitive categories are routed to the flash model.
+
+        Asserted against the built-in table: the flash-model choice is the
+        repo's routing design, and it is independent of whatever an
+        operator has set in `settings/models.yaml`.
+        """
+        assert DEFAULT_MINIMAX_ROUTING[TaskCategory.SWARM] == "MiniMax-M3.1-Flash"
+        assert DEFAULT_MINIMAX_ROUTING[TaskCategory.QUICK] == "MiniMax-M3.1-Flash"
 
     def test_every_category_resolves_to_a_model(self):
         """No category resolves to an empty model id."""
