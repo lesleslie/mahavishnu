@@ -882,8 +882,10 @@ Default command sequence:
 - **In `except` blocks, use `logger.exception(...)`**, never `logger.error(..., exc_info=True)`.
 - **All I/O in the orchestration layer is async.** No blocking calls (`time.sleep`, `requests`, sync file I/O) inside async functions — use `httpx`, `aiofiles`, or `loop.run_in_executor`. Sync code only at worker boundaries and CLI entry points.
 - **Never `print()` in library code — use a logger.** Two flavors are in use:
-  - `logging.getLogger(__name__)` — house style in `mahavishnu/core/` (104 of 169 modules). The codebase calls this the "oneiric.logging style".
-  - `oneiric.core.logging.get_logger(__name__)` — the structlog-backed Oneiric logger (12 modules). There is **no** `oneiric.logging` module: that phrase is a style name, not an import path.
+  - `logging.getLogger(__name__)` — house style in `mahavishnu/core/`. The codebase calls this the "oneiric.logging style".
+  - `oneiric.core.logging.get_logger(__name__)` — the structlog-backed Oneiric logger, used in a minority of modules. There is **no** `oneiric.logging` module: that phrase is a style name, not an import path.
+  - **Follow the surrounding module** — the two are not interchangeable at the call site. `logger.info("msg", key="value")` is the structlog spelling; on a stdlib logger it raises `TypeError: Logger._log() got an unexpected keyword argument 'key'`, and the stdlib root is set to INFO by `bootstrap.configure_logging`, so that is the default outcome. At root WARNING the same call is accepted and silently logs nothing instead, because `Logger.info` short-circuits on `isEnabledFor(INFO)` before reaching `_log`.
+  - The `extra={"key": value}` spelling lands the field in a different place per flavor: stdlib puts it flat in `record.__dict__`, structlog nests it as `entry["extra"]["key"]` — the form the structlog modules here read. Code that must accept both uses `payload.get("extra", payload)`.
 - **Remove unused imports and dead code immediately** (Ruff F401 / UP).
 
 ### Test conventions
