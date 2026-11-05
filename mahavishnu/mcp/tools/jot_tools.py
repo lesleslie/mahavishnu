@@ -76,12 +76,17 @@ def _emit(
     text: str,
     ctx: dict[str, str] | None = None,
     event_id: str | None = None,
-) -> None:
-    """Append one event to the log.
+) -> str:
+    """Append one event to the log. Returns the event id.
 
     ``event_id`` defaults to a fresh uuid (used by ``capture``). Edit/done/
     reopen callers MUST pass the parent jot's id so the fold can associate
     the new event with the existing JotSummary state (R3, R9 — fold by id).
+
+    The returned id lets the caller re-resolve *its own* jot after the
+    write. Do not infer it from the folded state list: ``build_states``
+    sorts states by ``last_modified_ms`` DESC, so positional access picks
+    the oldest jot, not the one just written.
     """
     path = _log_path()
     last = read_tail_hlc(path)
@@ -104,6 +109,7 @@ def _emit(
         os.write(fd, line.encode("utf-8"))
     finally:
         os.close(fd)
+    return ev.id
 
 
 def _detail_dict(s: JotSummary, events: list[JotEvent]) -> JotDetailDict:
@@ -149,10 +155,10 @@ def jot_show(handle: str) -> JotDetailDict:
 
 def jot_add(text: str) -> JotDetailDict:
     """Manually create a jot (alternative to ',,' capture). Writes capture event."""
-    _emit("capture", text, ctx={"cwd": str(Path.cwd())})
+    new_id = _emit("capture", text, ctx={"cwd": str(Path.cwd())})
     events = _read_events()
     result = build_states(events, enrich=False)
-    s = result.states[-1]  # the just-added jot is newest
+    s = resolve_handle(result.states, new_id)
     return _detail_dict(s, events)
 
 
@@ -167,7 +173,7 @@ def jot_edit(handle: str, new_text: str) -> JotDetailDict:
     _emit("edit", new_text, event_id=s.id)
     events = _read_events()
     result = build_states(events, enrich=False)
-    s = result.states[-1]
+    s = resolve_handle(result.states, s.id)
     return _detail_dict(s, events)
 
 
@@ -183,7 +189,7 @@ def jot_done(handle: str) -> JotDetailDict:
         _emit("done", "", event_id=s.id)
         events = _read_events()
         result = build_states(events, enrich=False)
-        s = result.states[-1]
+        s = resolve_handle(result.states, s.id)
     return _detail_dict(s, events)
 
 
@@ -199,7 +205,7 @@ def jot_reopen(handle: str) -> JotDetailDict:
         _emit("reopen", "", event_id=s.id)
         events = _read_events()
         result = build_states(events, enrich=False)
-        s = result.states[-1]
+        s = resolve_handle(result.states, s.id)
     return _detail_dict(s, events)
 
 
