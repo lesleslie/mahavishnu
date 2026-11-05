@@ -2,10 +2,11 @@
 status: active
 role: canonical
 date: 2026-07-26
-last_reviewed: 2026-10-14
+last_reviewed: 2026-11-05
 backfilled: 2026-10-14 (2026-10-14-decision-adapter-category, 2026-10-14-fast-hooks-vs-comprehensive)
 topic: decision-index
 ---
+
 # `docs/decisions/` index
 
 One-line summary: the directory holds repo-local decisions and
@@ -20,6 +21,7 @@ the topic, the third is the most recent state.
 | File | Topic | Status |
 |------|-------|--------|
 | `README.md` | This file — index of repo-local decisions and follow-up trackers. | Active. |
+| `2026-11-05-terminal-codex-worker-and-bifrost-routing.md` | The **terminal-codex worker already exists** and is registered (`workers/registry.py:240-258`) — the question is not "should we add one" but "should we use it, and should its traffic be governed". Decides: codex **joins the Bifrost gateway** with a gateway **virtual key** (not its ChatGPT subscription), because `RouteKind` has no `CODEX_ROUTE` to switch on and the manager has no `terminal-codex` branch, so codex's traffic is currently invisible to all four `mahavishnu_bifrost_*` series. The gateway **can** carry codex — Bifrost serves the OpenAI Responses API (`"request_type": "responses"`). But the worker is registered and still **broken**: two smoke-tested defects (stdin must be closed; `--skip-git-repo-check` required) are still absent from the registry command. Prerequisites are ordered — fix the invocation, then make the worker layer **actually parse the JSON it already collects** (`stream_format` is a dead field; the worker layer has no JSON parsing at all, so claude's and qwen's structured output is collected as opaque text too), then pin the model, then route the gateway. Not settled here: the toolchain (`PATH`) question, and codex's `--worktree` versus the repo's `~/.local/state/mahavishnu/worktrees/` convention. | Active (proposed; not implemented; the gateway half is cross-repo — oneiric owns `RouteKind`). |
 | `2026-10-29-learning-pipeline-tools-authz-block.md` | The `feat/wire-learning-pipeline` branch is **not merged**: the ensemble review found `require_mcp_auth` authenticates nothing, because the identity it binds on is a caller-supplied tool argument (`user_id`) that the tool schema exposes, and the "trusted" middleware fallback reads the same argument rather than the transport's `Authorization` header. The branch is the first to put a content-bearing surface (other sessions' goals/observations, skill draft bodies) behind that pre-existing pattern. Also finds that the branch registers its five tools at *every* tool profile, contradicting its own FULL-tier declaration. The complete fix changes authentication behaviour for every tool in the fleet, so it is deliberately **not** bundled into a feature merge — it needs its own branch, review and sign-off. Branch left intact, not deleted. | Active. |
 | `2026-10-21-fitness-analyzer-pair-inventory.md` | Resolves read-path spec §5.7 / Q1: the `fitness_analyzer` pair set is a **declared inventory** union'd with **observed** pairs, with the difference carried as report output. Rejects `SELECT DISTINCT` outright (it re-derives the inventory from the data, reintroducing the fan-out's core defect at the substrate layer) and rejects a bare static list (cannot see drift). Both axes are already canonical (`TaskCategory`, five pool-selector values), so the inventory is one new curated table — never the 15×5 cross product. Records that the HTTP fan-out being replaced is **already dead**. Unblocks plan R-6 Step 1; does not unblock R-6 itself. | Active. |
 | `2026-10-21-otel-substrate-port-ownership.md` | The canonical OTLP ports (`:4317`/`:4318`) belong to the Akosha substrate; Grafana Alloy (the real port owner, not `config/otel-collector-config.yaml` as v7 §13.1 assumed) moves to `:14317`/`:14318` for metrics. Alloy's trace pipeline is a `debug` exporter — every span sent there today is discarded. Corrects spec §13.1, adds `receiver_grpc_port`/`receiver_http_port` settings keys, and flags `bifrost-http` as an unverifiable cutover consumer. | Active. |

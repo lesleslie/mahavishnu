@@ -179,6 +179,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | `active` | `canonical` | `decision` | `terminal-codex-worker` | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | `active` | `canonical` | `decision` | `learning-pipeline-tools-authz-block` | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
 | [`docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md`](../../docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md) | 2026-10-21 | `active` | `canonical` |  | `fitness-analyzer-pair-inventory` | Fitness analyzer pair inventory: declared ∪ observed |
 | [`docs/decisions/2026-10-21-otel-substrate-port-ownership.md`](../../docs/decisions/2026-10-21-otel-substrate-port-ownership.md) | 2026-10-21 | `active` | `canonical` |  | `otel-port-ownership` | OTel substrate owns the canonical OTLP ports |
@@ -307,6 +308,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-05-yaml-backed-model-routing.md`](2026-11-05-yaml-backed-model-routing.md) | 2026-11-05 | `draft` | `implementation` |  | `yaml-backed-model-routing` | Make settings/models.yaml the live source of task-to-model routing |
 | [`docs/plans/2026-11-02-worker-tool-output-compaction.md`](2026-11-02-worker-tool-output-compaction.md) | 2026-11-02 | `draft` | `implementation` |  | `worker-output-compaction` | Worker tool-output compaction — RTK-style savings without a second gateway |
 | [`docs/plans/2026-11-01-adapter-composition-executor.md`](2026-11-01-adapter-composition-executor.md) | 2026-11-01 | `superseded` | `historical` |  | `adapter-composition` | Adapter composition — making engine and worker substrates compose as one workflow |
 | [`docs/plans/2026-11-01-bifrost-cache-eviction-and-threshold.md`](2026-11-01-bifrost-cache-eviction-and-threshold.md) | 2026-11-01 | `active` | `canonical` |  | `bifrost-cache-eviction-and-threshold` | Plan — Bifrost cache eviction sweep and cache-tuning retune |
