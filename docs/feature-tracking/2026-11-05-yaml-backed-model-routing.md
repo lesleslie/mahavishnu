@@ -66,7 +66,13 @@ yes.
   `mahavishnu pool route -p "write a function"` — the reported model id
   changes with no restart and no redeploy. Executed 2026-11-05: the
   resolved model moved to the edited id and back when the file was
-  restored.
+  restored. **Caveat, found 2026-11-05 after the fact**: the *loader*
+  re-parses the file on change, so every live read sees the edit — but a
+  cloud worker snapshots the routing into its provider chain when it
+  starts (`cloud_worker.py:161`), and `mcp_common/llm/provider.py:75`
+  reads that snapshot, never the file. A worker that is already running
+  therefore keeps the pre-edit routing until it restarts. The check above
+  exercises the resolver, not a running worker's chain.
 - **Observability**: `Model routing: loaded N provider table(s) from <path>`
   at INFO on load; `Could not read model routing config <path>: <reason>`
   at WARNING on a broken config;

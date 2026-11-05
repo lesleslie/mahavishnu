@@ -320,7 +320,7 @@ source of task routing`).
 
 | Phase | Outcome |
 |---|---|
-| 1 — loader and effective tables | `_operator_routing_for` / `_operator_routing` / `resolve_*_routing()` in `core/model_routing.py`. The parse is cached per (path, change-detector), so an operator's edit lands on the next dispatch with no restart. |
+| 1 — loader and effective tables | `_operator_routing_for` / `_operator_routing` / `resolve_*_routing()` in `core/model_routing.py`. The parse is cached per (path, change-detector), so a live read sees an operator's edit with no restart. |
 | 2 — coverage gap and guard | The four missing entries added to `settings/models.yaml` (now 16/16 for every provider). `TestYAMLRoutingSync` replaced by `TestRoutingCoverage`, which requires the operator config to name every `TaskCategory` for every provider. `tests/unit/test_model_routing_config.py` adds 9 precedence and degradation tests. |
 | 3 — wiring and the dead key | All four `cloud_worker.py` call sites resolve through the effective tables. `models_path` removed from `settings/mahavishnu.yaml`. |
 | 4 — documentation | `CLAUDE.md`, `docs/CONFIGURATION.md`, `docs/FILE_REFERENCE.md`, `settings/README.md`, `docs/architecture/MEMORY_ARCHITECTURE.md`. The stale Bifrost-spec claim about `FallbackChain` loading the YAML is left alone — it is a historical record. |
@@ -364,3 +364,16 @@ source of task routing`).
    renamed, so the command in that matrix no longer resolves.
 3. The wheel does not ship `settings/models.yaml`. A deployment that wants
    an editable registry must supply one and set `MAHAVISHNU_MODELS_PATH`.
+4. **A running cloud worker keeps the pre-edit routing until it restarts.**
+   Found 2026-11-05, after this plan shipped. The *loader* re-parses the
+   file when it changes, so every live read sees the operator's edit — but
+   `cloud_worker.py:161` stores `task_routing` as a **dict snapshot** in the
+   provider config, and `mcp_common/llm/provider.py:75` reads that stored
+   dict, never the file. `_build_fallback_chain` is called once, from
+   `CloudWorker.start()`. So "no restart" was true of the resolver and
+   false of the dispatch path for a worker that is already running.
+   `CLAUDE.md`, `docs/CONFIGURATION.md`, `settings/models.yaml` and the
+   `crackerjack-compliant-code` skill were corrected to say so. Making the
+   chain re-read the config per call would remove the caveat, at the cost
+   of a file read on every LLM call — or the chain could take a callable
+   instead of a dict. Neither was done here; both are open.

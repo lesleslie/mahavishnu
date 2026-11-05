@@ -2,8 +2,10 @@
 # Updated: 2026-11-05 (task_routing is now the live source of routing)
 #
 # `task_routing` under each provider IS the routing the cloud worker uses.
-# Edit it here and the next dispatch routes to the model you named -- no
-# code change, no redeploy. The in-code tables in
+# Edit it here and the routing resolves to the model you named -- no code
+# change, no redeploy. (A cloud worker snapshots the routing into its
+# provider chain when it starts, so a worker that is already running keeps
+# the pre-edit routing until it restarts.) The in-code tables in
 # `mahavishnu/core/model_routing.py` (DEFAULT_MINIMAX_ROUTING and friends)
 # are the built-in fallback: they serve a deployment that does not ship
 # this file, and they fill in any category this file omits. See

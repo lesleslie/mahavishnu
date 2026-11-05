@@ -29,10 +29,12 @@ Before writing new code, climb and stop at the first rung that holds:
    - `core/model_routing.py` — `TaskCategory`, `get_model_for_task`,
      `routing_to_task_map`, the `DEFAULT_*_ROUTING` tables (the built-in
      fallback), and the operator-config loader. `settings/models.yaml` is
-     the live source of task routing: its `task_routing` blocks win, an
-     edit is picked up with no restart, and
+     the live source of task routing: its `task_routing` blocks win, the
+     loader re-parses the file when it changes, and
      `tests/unit/test_task_router.py::TestRoutingCoverage` requires the
-     config to name every `TaskCategory`.
+     config to name every `TaskCategory`. A cloud worker snapshots the
+     routing into its provider chain when it starts, so a worker that is
+     already running keeps the pre-edit routing until it restarts.
    - `core/unified_config.py` — cross-file schema validation for all five
      YAML config files. It validates; it does not return parsed config.
    - `core/config.py` — `MahavishnuSettings`.
