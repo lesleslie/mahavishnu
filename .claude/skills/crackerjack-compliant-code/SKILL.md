@@ -27,10 +27,12 @@ Before writing new code, climb and stop at the first rung that holds:
      `ConfigurationError`, `TaskNotFoundError`, …); use one instead of
      inventing a class or raising bare `Exception`.
    - `core/model_routing.py` — `TaskCategory`, `get_model_for_task`,
-     `routing_to_task_map`, and the `DEFAULT_*_ROUTING` tables. Those
-     in-code tables are the runtime truth; `settings/models.yaml` mirrors
-     them and `tests/unit/test_task_router.py::TestYAMLRoutingSync` pins
-     them together. No production code parses that YAML.
+     `routing_to_task_map`, the `DEFAULT_*_ROUTING` tables (the built-in
+     fallback), and the operator-config loader. `settings/models.yaml` is
+     the live source of task routing: its `task_routing` blocks win, an
+     edit is picked up with no restart, and
+     `tests/unit/test_task_router.py::TestRoutingCoverage` requires the
+     config to name every `TaskCategory`.
    - `core/unified_config.py` — cross-file schema validation for all five
      YAML config files. It validates; it does not return parsed config.
    - `core/config.py` — `MahavishnuSettings`.
