@@ -188,7 +188,7 @@ from __future__ import annotations
 import time
 from typing import Awaitable, Callable
 
-from oneiric.logging import get_logger
+from oneiric.core.logging import get_logger
 from prometheus_client import Counter
 
 from mahavishnu.core.heal.protocol import (
