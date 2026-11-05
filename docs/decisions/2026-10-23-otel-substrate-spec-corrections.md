@@ -1,3 +1,12 @@
+---
+status: partial
+role: canonical
+kind: decision
+date: 2026-10-23
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: observability
+---
 # Spec corrections found while building the OTLP receiver
 
 **Date:** 2026-10-23

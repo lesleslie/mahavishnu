@@ -1,3 +1,12 @@
+---
+status: shipped
+role: canonical
+kind: decision
+date: 2026-10-11
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: adapter-architecture
+---
 # 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework
 
 ## Decision rule

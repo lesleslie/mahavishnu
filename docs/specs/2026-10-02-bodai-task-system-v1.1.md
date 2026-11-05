@@ -1,3 +1,13 @@
+---
+status: shipped
+role: implementation
+kind: spec
+date: 2026-10-02
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: bodai-task-system-v1-1
+title: Bodai Task System — v1.1 (deferred items)
+---
 # Bodai Task System — v1.1 (deferred items)
 
 > **Spec addendum to**: `2026-09-29-task-system-design.md` (the original v1 spec).

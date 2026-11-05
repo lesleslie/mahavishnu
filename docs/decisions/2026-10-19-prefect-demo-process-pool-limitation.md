@@ -1,3 +1,12 @@
+---
+status: complete
+role: historical
+kind: decision
+date: 2026-10-19
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: adapter-architecture
+---
 # Prefect demo `flow=fn` ad-hoc pattern fails against Prefect 3.x process worker pools
 
 Status: open (informational — final finding below)

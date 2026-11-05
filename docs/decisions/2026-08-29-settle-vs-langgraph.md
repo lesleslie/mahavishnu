@@ -1,3 +1,12 @@
+---
+status: active
+role: canonical
+kind: decision
+date: 2026-08-29
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: persistence
+---
 # 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state
 
 > **SUPERSEDED CONTEXT (2026-09-25):** the "second persistence substrate alongside

@@ -181,16 +181,20 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|---|
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | `active` | `canonical` | `decision` | `terminal-codex-worker` | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | `active` | `canonical` | `decision` | `learning-pipeline-tools-authz-block` | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
+| [`docs/decisions/2026-10-23-otel-substrate-spec-corrections.md`](../../docs/decisions/2026-10-23-otel-substrate-spec-corrections.md) | 2026-10-23 | `partial` | `canonical` | `decision` | `observability` | Spec corrections found while building the OTLP receiver |
 | [`docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md`](../../docs/decisions/2026-10-21-fitness-analyzer-pair-inventory.md) | 2026-10-21 | `active` | `canonical` |  | `fitness-analyzer-pair-inventory` | Fitness analyzer pair inventory: declared ∪ observed |
 | [`docs/decisions/2026-10-21-otel-substrate-port-ownership.md`](../../docs/decisions/2026-10-21-otel-substrate-port-ownership.md) | 2026-10-21 | `active` | `canonical` |  | `otel-port-ownership` | OTel substrate owns the canonical OTLP ports |
+| [`docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md`](../../docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md) | 2026-10-19 | `complete` | `historical` | `decision` | `adapter-architecture` | Prefect demo `flow=fn` ad-hoc pattern fails against Prefect 3.x process worker pools |
 | [`docs/decisions/2026-10-18-archive-completed-plans.md`](../../docs/decisions/2026-10-18-archive-completed-plans.md) | 2026-10-18 | `active` | `canonical` | `decision` | `archive-completed-plans` | Archive Policy for Completed Plans |
 | [`docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md`](../../docs/decisions/2026-10-17-runpod-flash-to-sdk-2.md) | 2026-10-17 | `complete` | `implementation` | `migration-design` | `runpod-sdk-2` | 2026 10 17 runpod flash to sdk 2 |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | `active` | `canonical` | `decision` | `archive-dir-canonical` | Archive directory canonical path: `docs/.archive/` (top-level) |
 | [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | `active` | `unknown` | `decision` | `unified-event-bus` | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
 | [`docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md`](../../docs/decisions/2026-10-14-bypass-gate-parallel-sessions.md) | 2026-10-14 | `active` | `unknown` |  | `parallel-sessions-vs-bypass-gate` | 2026-10-14 — `--no-consolidation-gate` and parallel sessions |
+| [`docs/decisions/2026-10-14-decision-adapter-category.md`](../../docs/decisions/2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `canonical` | `decision` | `adapter-architecture` | 2026-10-14-decision-adapter-category.md |
 | [`docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md`](../../docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md) | 2026-10-14 | `accepted` | `unknown` |  | `—` | 2026-10-14 — Split the Crackerjack merge gate: fast_hooks per-merge, comprehensive at publish-stage only |
 | [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | `active` | `canonical` | `decision` | `prepush-consolidation-gate` | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
 | [`docs/decisions/2026-10-13-worktree-policy.md`](../../docs/decisions/2026-10-13-worktree-policy.md) | 2026-10-13 | `active` | `canonical` | `decision` | `worktree-management` | Worktree Policy (consolidated) |
+| [`docs/decisions/2026-10-11-prefect-demo-cli-launchd.md`](../../docs/decisions/2026-10-11-prefect-demo-cli-launchd.md) | 2026-10-11 | `shipped` | `canonical` | `decision` | `adapter-architecture` | 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework |
 | [`docs/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../docs/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | `active` | `canonical` | `decision` | `slash-commands-multi-call-only` | Slash Commands Are for Multi-Call Workflows Only |
 | [`docs/decisions/2026-10-03-main-branch-protection.md`](../../docs/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | `active` | `canonical` | `decision` | `main-branch-protection` | GitHub branch protection on `main` across the Bodai core-6 |
 | [`docs/decisions/2026-10-03-mainautopush.md`](../../docs/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | `active` | `canonical` | `decision` | `mainautopush` | Main auto-push — narrow exception to user-controlled push |
@@ -203,6 +207,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/decisions/2026-09-25-langgraph-as-engine-adapter.md`](../../docs/decisions/2026-09-25-langgraph-as-engine-adapter.md) | 2026-09-25 | `deferred` | `unknown` |  | `—` | 2026-09-25 — Re-evaluation of LangGraph as a Bodai engine adapter |
 | [`docs/decisions/sdd-bundling-defensive-pattern.md`](../../docs/decisions/sdd-bundling-defensive-pattern.md) | 2026-09-19 | `active` | `canonical` | `decision` | `sdd-bundling-defensive-pattern` | SDD Bundling Defensive Pattern |
 | [`docs/decisions/mcp-backend-wiring-discipline.md`](../../docs/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | `active` | `canonical` | `decision` | `bodai-mcp-surface-standardization` | MCP Backend Wiring Discipline |
+| [`docs/decisions/2026-08-29-settle-vs-langgraph.md`](../../docs/decisions/2026-08-29-settle-vs-langgraph.md) | 2026-08-29 | `active` | `canonical` | `decision` | `persistence` | 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state |
 | [`docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | `active` | `canonical` | `decision` | `session-worktree-isolation` | Cross-repo fanout CWD isolation |
 | [`docs/decisions/2026-08-25-bodai-tui-contract.md`](../../docs/decisions/2026-08-25-bodai-tui-contract.md) | 2026-08-25 | `active` | `canonical` |  | `bodai-tui-contract` | Bodai TUI Contract |
 | [`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | `active` | `canonical` | `decision` | `mcp-routing` | Bodai MCP and agent routing pattern |
@@ -348,17 +353,22 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/specs/2026-10-30-task-workflow-backlink-design.md`](../../docs/specs/2026-10-30-task-workflow-backlink-design.md) | 2026-10-30 | `active` | `implementation` | `spec` | `task-workflow-backlink` | Task → Workflow Back-Link Contract (design) |
 | [`docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md`](../../docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md) | 2026-10-20 | `draft` | `implementation` | `spec` | `bifrost-anthropic-baseurl-cutover` | Bifrost ↔ Claude Code ANTHROPIC_BASE_URL cutover — Spec v0.1 |
 | [`docs/specs/2026-10-20-bodai-otel-substrate-read-path.md`](../../docs/specs/2026-10-20-bodai-otel-substrate-read-path.md) | 2026-10-20 | `draft` | `canonical` |  | `substrate-otel` | Bodai OTel Substrate — Read Path |
 | [`docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md`](../../docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md) | 2026-10-19 | `draft` | `canonical` |  | `event-sourced-otel` | Bodai Event-Sourced OTel Architecture |
 | [`docs/specs/2026-10-19-bodai-substrate-otel-v7.md`](../../docs/specs/2026-10-19-bodai-substrate-otel-v7.md) | 2026-10-19 | `draft` | `canonical` |  | `substrate-otel` | Bodai OTel Substrate — v7 |
 | [`docs/specs/2026-10-15-bifrost-gateway-wiring-design.md`](../../docs/specs/2026-10-15-bifrost-gateway-wiring-design.md) | 2026-10-15 | `active` | `canonical` | `spec` | `bifrost-gateway-wiring` | Bifrost Gateway Wiring - Design v1.5 |
 | [`docs/specs/2026-10-14-decision-adapter-category-design.md`](../../docs/specs/2026-10-14-decision-adapter-category-design.md) | 2026-10-14 | `draft` | `canonical` |  | `decision-adapter-category` | Decision Adapter Category — Design Spec |
+| [`docs/specs/2026-10-02-bodai-task-system-v1.1.md`](../../docs/specs/2026-10-02-bodai-task-system-v1.1.md) | 2026-10-02 | `shipped` | `implementation` | `spec` | `bodai-task-system-v1-1` | Bodai Task System — v1.1 (deferred items) |
 | [`docs/specs/2026-09-27-shared-bodai-substrate-design.md`](../../docs/specs/2026-09-27-shared-bodai-substrate-design.md) | 2026-09-27 | `complete` | `canonical` | `spec` | `shared-oneiric-substrate` | Shared Oneiric Substrate - Design v5 |
 | [`docs/specs/2026-09-25-clone-refactor-wireup-design.md`](../../docs/specs/2026-09-25-clone-refactor-wireup-design.md) | 2026-09-25 | `complete` | `canonical` | `spec` | `clone-refactor-wireup` | Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design |
 | [`docs/specs/2026-09-14-mcp-decomposition-design.md`](../../docs/specs/2026-09-14-mcp-decomposition-design.md) | 2026-09-14 | `complete` | `implementation` |  | `mcp-substrate-implementation` | MCP Decomposition — Design Specification |
 | [`docs/specs/2026-09-09-jot-read-design.md`](../../docs/specs/2026-09-09-jot-read-design.md) | 2026-09-09 | `complete` | `implementation` |  | `jot-read` | Jot Inbox: Read Sub-Plan Design |
 | [`docs/specs/2026-08-31-zsh-modernization-design.md`](../../docs/specs/2026-08-31-zsh-modernization-design.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
+| [`docs/specs/content-quality-dataset.md`](../../docs/specs/content-quality-dataset.md) | 2026-04-06 | `draft` | `implementation` | `reference` | `content-quality` | Content Quality Dataset & Evaluation Rubric |
+| [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | `complete` | `canonical` | `reference` | `mcp-design` | Event Envelope Specification |
+| [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | `draft` | `implementation` | `reference` | `observability` | Prometheus Metrics Inventory |
 
 ### Agents (`mahavishnu/mcp/agents/`)
 
@@ -390,7 +400,7 @@ Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — followup |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | Plan Template — Integration-Contract Required |
 
-### `reference` (3 entries)
+### `reference` (6 entries)
 
 Index pages or reference docs (README files). Permanent fixtures; never a work item.
 
@@ -399,8 +409,11 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/decisions/workflows/README.md`](../../docs/decisions/workflows/README.md) | 2026-10-11 | Workflow decisions |
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
+| [`docs/specs/content-quality-dataset.md`](../../docs/specs/content-quality-dataset.md) | 2026-04-06 | Content Quality Dataset & Evaluation Rubric |
+| [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | Event Envelope Specification |
+| [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | Prometheus Metrics Inventory |
 
-### `decision` (52 entries)
+### `decision` (57 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
@@ -408,12 +421,16 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 |---|---|---|
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
+| [`docs/decisions/2026-10-23-otel-substrate-spec-corrections.md`](../../docs/decisions/2026-10-23-otel-substrate-spec-corrections.md) | 2026-10-23 | Spec corrections found while building the OTLP receiver |
+| [`docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md`](../../docs/decisions/2026-10-19-prefect-demo-process-pool-limitation.md) | 2026-10-19 | Prefect demo `flow=fn` ad-hoc pattern fails against Prefect 3.x process worker pools |
 | [`docs/decisions/2026-10-18-archive-completed-plans.md`](../../docs/decisions/2026-10-18-archive-completed-plans.md) | 2026-10-18 | Archive Policy for Completed Plans |
 | [`docs/adr/019-legacy-mcp-server-decommissioning.md`](../../docs/adr/019-legacy-mcp-server-decommissioning.md) | 2026-10-17 | ADR 019: Legacy Standalone MCP Server Decommissioning from Bodai Core Fleet |
 | [`docs/decisions/2026-10-15-archive-dir-canonical.md`](../../docs/decisions/2026-10-15-archive-dir-canonical.md) | 2026-10-15 | Archive directory canonical path: `docs/.archive/` (top-level) |
 | [`docs/decisions/2026-10-15-unified-event-bus-wrapper.md`](../../docs/decisions/2026-10-15-unified-event-bus-wrapper.md) | 2026-10-15 | ADR — Bodai EventBus: Wrapper-Layer Adoption of Oneiric EventBridge |
+| [`docs/decisions/2026-10-14-decision-adapter-category.md`](../../docs/decisions/2026-10-14-decision-adapter-category.md) | 2026-10-14 | 2026-10-14-decision-adapter-category.md |
 | [`docs/decisions/2026-10-13-prepushconsolidationgate.md`](../../docs/decisions/2026-10-13-prepushconsolidationgate.md) | 2026-10-13 | Pre-push Consolidation Gate — further narrowing of the auto-push exception |
 | [`docs/decisions/2026-10-13-worktree-policy.md`](../../docs/decisions/2026-10-13-worktree-policy.md) | 2026-10-13 | Worktree Policy (consolidated) |
+| [`docs/decisions/2026-10-11-prefect-demo-cli-launchd.md`](../../docs/decisions/2026-10-11-prefect-demo-cli-launchd.md) | 2026-10-11 | 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework |
 | [`docs/decisions/2026-10-09-slash-commands-multi-call-only.md`](../../docs/decisions/2026-10-09-slash-commands-multi-call-only.md) | 2026-10-09 | Slash Commands Are for Multi-Call Workflows Only |
 | [`docs/decisions/2026-10-03-main-branch-protection.md`](../../docs/decisions/2026-10-03-main-branch-protection.md) | 2026-10-03 | GitHub branch protection on `main` across the Bodai core-6 |
 | [`docs/decisions/2026-10-03-mainautopush.md`](../../docs/decisions/2026-10-03-mainautopush.md) | 2026-10-03 | Main auto-push — narrow exception to user-controlled push |
@@ -427,6 +444,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/adr/0016-multi-agent-review.md`](../../docs/adr/0016-multi-agent-review.md) | 2026-09-06 | ADR 0016 Multi-Agent Review — Findings |
 | [`docs/adr/0016-scapy-mcp-integration.md`](../../docs/adr/0016-scapy-mcp-integration.md) | 2026-09-06 | ADR 0016 scapy-mcp Client-Mode Enrichment Integration |
 | [`docs/decisions/mcp-backend-wiring-discipline.md`](../../docs/decisions/mcp-backend-wiring-discipline.md) | 2026-09-05 | MCP Backend Wiring Discipline |
+| [`docs/decisions/2026-08-29-settle-vs-langgraph.md`](../../docs/decisions/2026-08-29-settle-vs-langgraph.md) | 2026-08-29 | 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state |
 | [`docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md`](../../docs/decisions/2026-08-28-cross-repo-fanout-cwd-isolation.md) | 2026-08-28 | Cross-repo fanout CWD isolation |
 | [`docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md`](../../docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md) | 2026-08-24 | Bodai MCP and agent routing pattern |
 | [`docs/adr/015-multi-agent-review.md`](../../docs/adr/015-multi-agent-review.md) | 2026-08-23 | ADR 015 Multi-Agent Review — Findings |
@@ -471,10 +489,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 8 | 52 | 1 | 1 | 14 | **76** |
-| `implementation` | 4 | 7 | 2 | 6 | 17 | **36** |
+| `canonical` | 8 | 54 | 2 | 2 | 15 | **81** |
+| `implementation` | 6 | 8 | 2 | 7 | 17 | **40** |
 | `umbrella` | · | · | · | · | 1 | **1** |
-| `historical` | · | · | · | · | 32 | **32** |
+| `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 6 | **6** |
 
-| **Total** | **12** | **59** | **3** | **7** | **70** | **151** |
+| **Total** | **14** | **62** | **4** | **9** | **72** | **161** |

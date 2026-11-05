@@ -1,3 +1,13 @@
+---
+status: active
+role: implementation
+kind: spec
+date: 2026-10-30
+last_reviewed: 2026-11-05
+superseded_by: null
+topic: task-workflow-backlink
+title: Task → Workflow Back-Link Contract (design)
+---
 # Task → Workflow Back-Link Contract (design)
 
 **Date:** 2026-10-30
