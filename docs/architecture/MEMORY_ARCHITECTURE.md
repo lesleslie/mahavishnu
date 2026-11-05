@@ -288,7 +288,7 @@ Top-level config groups (each `extra="forbid"`):
 | `websocket` | Broadcast server | `enabled`, `host`, `port` (default 8690) |
 | `pools_enabled` / `default_pool_type` | Multi-pool layer | `pools_enabled`, `default_pool_type` (mahavishnu/session_buddy/runpod), `pool_routing_strategy` |
 | `agno` | Agno adapter config | `llm`, `memory`, `tools`, `adapter` (full nested Pydantic) |
-| `model_routing` | Cloud/local model selection | See `settings/models.yaml` + `tests/unit/test_task_router.py::TestYAMLRoutingSync` for sync guard |
+| `model_routing` | Cloud/local model selection | `settings/models.yaml` `task_routing` is authoritative; `tests/unit/test_task_router.py::TestRoutingCoverage` guards that it covers every `TaskCategory` |
 | `auth` | Multi-auth (Claude Code sub / Qwen / custom JWT) | `enabled`, `algorithm`, `expire_minutes` |
 | `ingestion` | Content + OTel ingest | `enabled`, `quality_threshold` |
 | `tool_profile` | MCP tool registration gate | `MINIMAL` / `STANDARD` / `FULL` (default FULL) |

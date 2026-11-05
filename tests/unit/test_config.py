@@ -139,8 +139,10 @@ def test_models_yaml_defaults_to_minimax() -> None:
     # (verified 2026-09-16; minimax returns error 2013 "unknown model").
     # For a real speed differential, override these via settings/local.yaml.
     # Latency-sensitive bucket moved to MiniMax-M3.1-Flash on 2026-10-19.
-    # Kept in sync with settings/models.yaml; TestYAMLRoutingSync pins the
-    # YAML against the in-code DEFAULT_MINIMAX_ROUTING.
+    # settings/models.yaml is the authoritative routing; the in-code
+    # DEFAULT_MINIMAX_ROUTING is the built-in fallback.
+    # tests/unit/test_task_router.py::TestRoutingCoverage guards that the
+    # YAML covers every TaskCategory.
     assert data["minimax"]["task_routing"]["SWARM"] == "MiniMax-M3.1-Flash"
     assert data["minimax"]["task_routing"]["QUICK"] == "MiniMax-M3.1-Flash"
 

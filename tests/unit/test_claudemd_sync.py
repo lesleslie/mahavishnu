@@ -5,8 +5,8 @@ If the 'Hard limits' table in `CLAUDE.md` and the live config in
 picture of what the gate enforces. The rules also tell the gate to
 fail on these limits, so a stale doc means a surprise on the next PR.
 
-The pattern mirrors `tests/unit/test_task_router.py::TestYAMLRoutingSync`,
-which guards the YAML ↔ in-code MiniMax routing.
+The pattern mirrors `tests/unit/test_task_router.py::TestRoutingCoverage`,
+which guards that the operator routing config covers every TaskCategory.
 """
 
 from __future__ import annotations
@@ -103,9 +103,7 @@ def _lookup(config: dict, dotted_key: tuple[str, ...]) -> int:
             )
         cursor = cursor[part]
     if not isinstance(cursor, int):
-        raise TypeError(
-            f"pyproject.toml '{'.'.join(dotted_key)}' = {cursor!r} is not an integer"
-        )
+        raise TypeError(f"pyproject.toml '{'.'.join(dotted_key)}' = {cursor!r} is not an integer")
     return cursor
 
 

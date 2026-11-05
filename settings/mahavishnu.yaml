@@ -17,9 +17,6 @@ log_level: INFO
 # Repository manifest path (falls back to settings/repos.yaml if not found)
 repos_path: settings/ecosystem.yaml
 
-# LLM model registry path
-models_path: settings/models.yaml
-
 # Concurrency settings
 max_concurrent_workflows: 10
 

@@ -335,7 +335,7 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. The repo no
   - `MiniMax-M3.1-Flash` — latency-sensitive bucket (SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL), moved off `MiniMax-M3` on 2026-10-19: 1M context + multimodal preview model, verified on the MiniMax API; also the final fallback when M3 is unavailable (replaced `MiniMax-M2.7` / `MiniMax-M2.7-highspeed` on 2026-10-29 — MiniMax closed the M2.x line to new users on 2026-10-19 and retires it on 2026-11-18)
 - **Optional compatibility provider**: `zai` (OpenAI-compatible API at `https://api.z.ai/api/coding/paas/v4`) when explicitly configured
 - **Auth env var**: `MINIMAX_API_KEY` (in the parent shell) is required by both the cloud worker and the `minimax-coding-plan` MCP server in `.mcp.json` — export it in your shell rc, never inline the literal. Region selector `MINIMAX_API_HOST` is already pinned to `https://api.minimax.io` in `.mcp.json`.
-- **Task-based routing**: `TaskRouter` in `mahavishnu/core/model_routing.py` maps task categories to optimal models; the in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml` are pinned in sync by a CI guard test (`tests/unit/test_task_router.py::TestYAMLRoutingSync`). Phase 3b (Plan v3) atomically migrated the routing primitives from `mahavishnu/workers/task_router.py` to `mahavishnu/core/model_routing.py` so the legacy worker surface can drain without breaking the model-routing CI guard.
+- **Task-based routing**: `TaskRouter` in `mahavishnu/core/model_routing.py` maps task categories to optimal models. `settings/models.yaml` is the **authoritative** source for that mapping — edit `task_routing` under a provider and the next dispatch routes to the model you named, with no code change and no restart (the loader re-parses when the file changes). The in-code `DEFAULT_*_ROUTING` tables are the built-in fallback: they serve a deployment that does not ship the file (a wheel install) and fill in any category the file omits. `MAHAVISHNU_MODELS_PATH` points the loader at a non-default file. Phase 3b (Plan v3) atomically migrated the routing primitives from `mahavishnu/workers/task_router.py` to `mahavishnu/core/model_routing.py`. Plan: `docs/plans/2026-11-05-yaml-backed-model-routing.md`.
 
 **Task-to-Model Mapping (MiniMax cloud)**:
 
@@ -344,7 +344,8 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. The repo no
 | CODE_GENERATION, CODE_REVIEW, DEBUGGING, REFACTORING, TESTING, REASONING, ANALYSIS, DOCUMENTATION, VISION, EMBEDDING, ML_INFERENCE | `MiniMax-M3` |
 | SWARM, QUICK, AGENT_LOOP, CREATIVE, GENERAL | `MiniMax-M3.1-Flash` |
 
-For local fallback (`llama_server`), see `settings/models.yaml`.
+For local fallback (`llama_server`), see `settings/models.yaml` — the
+`llama_server.task_routing` block is live like the others.
 
 **Agno adapter provider chain** (added 2026-10-29): the Agno adapter uses the
 same MiniMax-first ordering as the cloud worker. `agno.llm.provider` defaults
@@ -371,11 +372,16 @@ Plan: `docs/plans/2026-10-29-agno-llm-provider-chain.md`.
 **Key files**:
 
 - `mahavishnu/workers/cloud_worker.py` — OpenAI-compatible worker for MiniMax
-- `mahavishnu/core/model_routing.py` — `TaskCategory` enum, model routing (Phase 3b atomic migration from `mahavishnu/workers/`)
-- `settings/models.yaml` — YAML-driven provider and model configuration
-- `tests/unit/test_task_router.py::TestYAMLRoutingSync` — guard test pinning YAML ↔ in-code routing
+- `mahavishnu/core/model_routing.py` — `TaskCategory` enum, model routing (Phase 3b atomic migration from `mahavishnu/workers/`), the operator-config loader, and the `resolve_*_routing()` accessors
+- `settings/models.yaml` — provider and model configuration; its `task_routing` blocks are the live routing
+- `tests/unit/test_task_router.py::TestRoutingCoverage` — guard test requiring the operator config to cover every `TaskCategory`
+- `tests/unit/test_model_routing_config.py` — precedence and degradation tests for the loader
 
-If MiniMax becomes unavailable, operators can temporarily restore `zai` as an optional non-default provider by reintroducing the compatibility settings in `settings/models.yaml` and setting `default_provider` back to `zai` only for the affected environment.
+If MiniMax becomes unavailable, change the routing in `settings/models.yaml`
+(or point `MAHAVISHNU_MODELS_PATH` at another file). The provider chain
+itself — which provider is tried, and in what order — is configured on the
+`MahavishnuSettings` path (`settings/mahavishnu.yaml`), **not** in
+`settings/models.yaml`: `default_provider` there was never read by any code.
 
 See `docs/plans/.archive/2026-05-10-minimax27-provider-migration.md` for the M2.7 → M3 migration history and `docs/adr/` for the full Architecture Decision Records.
 
@@ -906,7 +912,7 @@ Default command sequence:
 | Statements | 55 ceiling — practical target 30 | `[tool.ruff.lint.pylint] max-statements` |
 | Coverage | 89% | `[tool.pytest] addopts --cov-fail-under` |
 
-If the gate is passing but this table disagrees, trust the gate. A sync test (analogous to `tests/unit/test_task_router.py::TestYAMLRoutingSync`) is worth adding to pin them.
+If the gate is passing but this table disagrees, trust the gate. A sync test (analogous to `tests/unit/test_task_router.py::TestRoutingCoverage`) is worth adding to pin them.
 
 ### Lint configuration (Ruff)
 

@@ -107,7 +107,7 @@ For the full design rationale and tradeoffs, see `docs/followups/2026-07-16-sess
 
 - `settings/repos.yaml` — Repository manifest with tags and metadata.
 - `settings/embeddings.yaml` — Embedding model configuration used by content-ingestion components.
-- `settings/models.yaml` — LLM provider and task-routing model registry.
+- `settings/models.yaml` — LLM provider and task-routing model registry. Its `task_routing` blocks are the **live** routing: edit one and the next dispatch uses it.
 - `oneiric.yaml` — Legacy Oneiric config (backward compatible).
 
 ## Key Environment Variables
@@ -564,7 +564,9 @@ See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH 
 
 See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M3.1-Flash is the fallback model (M2.7/M2.7-highspeed retired 2026-11-18). Local `llama_server` (qwen3.5) remains a secondary fallback.
 
-Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`); the YAML and in-code routing are intentionally pinned together.
+Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`). The `task_routing` block under each provider in `settings/models.yaml` is the **authoritative** source: edit it and the next dispatch routes to the model you named — no code change, no restart. The in-code `DEFAULT_*_ROUTING` tables are the built-in fallback, serving deployments that do not ship the file and filling in any category the file omits. Set `MAHAVISHNU_MODELS_PATH` to route the loader at a different file.
+
+Note that `settings/models.yaml` does **not** configure the provider chain — which provider is tried, and in what order. That lives on the `MahavishnuSettings` path (`settings/mahavishnu.yaml`); the `default_provider` key in `models.yaml` was never read by any code.
 
 ## C-1 Config Sections
 

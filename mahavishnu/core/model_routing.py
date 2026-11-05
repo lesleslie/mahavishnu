@@ -15,7 +15,9 @@ import asyncio
 from collections import deque
 from dataclasses import dataclass, field
 from enum import StrEnum
+from functools import lru_cache
 import logging
+import os
 from pathlib import Path
 import re
 import time
@@ -256,9 +258,9 @@ DEFAULT_MINIMAX_ROUTING: dict[TaskCategory, str] = {
 # Kimi family, ``granite-4-0-h-small`` is Granite 4 H Small) — the routing
 # layer can't change the model on the endpoint side, so the placeholder
 # ``"endpoint-default"`` is treated as "use whatever the endpoint
-# serves" by the FallbackChain. CI guard
-# (``tests/unit/test_task_router.py::TestYAMLRoutingSync``) keeps this
-# dict in lock-step with ``settings/models.yaml::runpod_public.task_routing``.
+# serves" by the FallbackChain. This is the built-in fallback;
+# ``settings/models.yaml::runpod_public.task_routing`` is authoritative
+# when present.
 DEFAULT_RUNPOD_PUBLIC_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
     TaskCategory, "endpoint-default"
 )
@@ -268,15 +270,196 @@ DEFAULT_RUNPOD_PUBLIC_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
 #: the worker agree on the same default.
 DEFAULT_WORKER_MODEL: Final[str] = "MiniMax-M3"
 
-#: Operator-facing model routing configuration.
+#: Environment variable that overrides the operator routing config path.
+MODELS_CONFIG_PATH_ENV: Final[str] = "MAHAVISHNU_MODELS_PATH"
+
+#: Default operator routing config, beside the installed package.
 #:
-#: ``settings/models.yaml`` mirrors the in-code ``DEFAULT_*_ROUTING``
-#: tables; ``tests/unit/test_task_router.py::TestYAMLRoutingSync`` pins
-#: the two together. The resolver reads this file to confirm that a
-#: resolved model id is one the operator actually configured.
+#: ``settings/models.yaml`` is the operator's source of truth for
+#: task-to-model routing whenever the file is present. The
+#: ``DEFAULT_*_ROUTING`` tables above are the built-in fallback: they serve
+#: deployments that do not ship the file (a wheel install) and they fill
+#: in any category the operator config omits.
+#:
+#: Exactly one copy of the operator config exists. It is deliberately not
+#: shipped in the wheel -- a packaged copy would be a second file free to
+#: drift from the repo one, which is the failure this design removes.
+#:
+#: req: REQ-YAML-006, REQ-YAML-008
 MODELS_CONFIG_PATH: Final[Path] = (
     Path(__file__).resolve().parent.parent.parent / "settings" / "models.yaml"
 )
+
+
+def _resolve_models_config_path() -> Path | None:
+    """Locate the operator routing config, or ``None`` when there is none.
+
+    ``MAHAVISHNU_MODELS_PATH`` wins when set. Otherwise the repo-relative
+    ``settings/models.yaml`` is used. ``None`` means "no operator config",
+    which is a supported deployment -- the built-in tables serve unchanged.
+
+    req: REQ-YAML-004
+    """
+    override = os.environ.get(MODELS_CONFIG_PATH_ENV)
+    if override:
+        candidate = Path(override).expanduser()
+        if candidate.is_file():
+            return candidate
+        logger.warning(
+            "%s=%s does not name a readable file; using built-in model routing",
+            MODELS_CONFIG_PATH_ENV,
+            candidate,
+        )
+        return None
+    if MODELS_CONFIG_PATH.is_file():
+        return MODELS_CONFIG_PATH
+    logger.debug(
+        "No operator model routing config at %s; using built-in tables",
+        MODELS_CONFIG_PATH,
+    )
+    return None
+
+
+def _task_category_for_key(key: str) -> TaskCategory | None:
+    """Map an operator config key onto a :class:`TaskCategory`.
+
+    The operator config uses enum *names* (``CODE_GENERATION``) while the
+    enum's *values* are lowercase (``code_generation``); both spellings are
+    accepted so an operator can write either. Operator meta-keys such as
+    ``FALLBACK`` name no category and return ``None``.
+    """
+    candidate = key.strip()
+    try:
+        return TaskCategory[candidate.upper()]
+    except KeyError:
+        pass
+    try:
+        return TaskCategory(candidate.lower())
+    except ValueError:
+        return None
+
+
+def _config_stamp(path: Path | None) -> tuple[int, int] | None:
+    """Return a cheap change-detector for the operator config.
+
+    ``(st_mtime_ns, st_size)`` changes whenever the operator edits the
+    file. It is what lets an edit take effect on the next dispatch without
+    a restart, without re-parsing the YAML on every call.
+    """
+    if path is None:
+        return None
+    try:
+        stat_result = path.stat()
+    except OSError:
+        return None
+    return (stat_result.st_mtime_ns, stat_result.st_size)
+
+
+@lru_cache(maxsize=4)
+def _operator_routing_for(
+    path_str: str | None,
+    stamp: tuple[int, int] | None,
+) -> dict[str, dict[TaskCategory, str]]:
+    """Parse the operator config. Cached per (path, change-detector).
+
+    The cache key carries the change-detector, so editing the file
+    produces a new entry and the next call re-parses. ``path_str`` is
+    ``None`` when there is no operator config at all.
+
+    req: REQ-YAML-003
+    """
+    if path_str is None:
+        return {}
+    path = Path(path_str)
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        logger.warning("Could not read model routing config %s: %s", path, exc)
+        return {}
+    if not isinstance(data, dict):
+        logger.warning("Model routing config %s is not a mapping", path)
+        return {}
+    tables: dict[str, dict[TaskCategory, str]] = {}
+    for provider, block in cast("dict[str, Any]", data).items():
+        if not isinstance(block, dict):
+            continue
+        routing = cast("dict[str, Any]", block).get("task_routing")
+        if not isinstance(routing, dict):
+            continue
+        table: dict[TaskCategory, str] = {}
+        for key, model in cast("dict[str, Any]", routing).items():
+            category = _task_category_for_key(str(key))
+            if category is None:
+                continue
+            if not isinstance(model, str) or not model:
+                logger.warning(
+                    "Model routing config %s: provider %r category %r has an empty "
+                    "or non-string model id; ignoring that entry",
+                    path,
+                    provider,
+                    key,
+                )
+                continue
+            table[category] = model
+        if table:
+            tables[provider] = table
+    logger.info("Model routing: loaded %d provider table(s) from %s", len(tables), path)
+    return tables
+
+
+def _operator_routing() -> dict[str, dict[TaskCategory, str]]:
+    """Read the operator routing config into per-provider tables.
+
+    The parse is cached per (path, change-detector), so an operator who
+    edits ``settings/models.yaml`` sees the change on the next dispatch
+    without restarting the process.
+    """
+    path = _resolve_models_config_path()
+    return _operator_routing_for(str(path) if path else None, _config_stamp(path))
+
+
+def _effective_routing(
+    provider: str,
+    builtin: dict[TaskCategory, str],
+) -> dict[TaskCategory, str]:
+    """Overlay the operator config on the built-in routing table.
+
+    The operator config wins per category; a category the operator omits
+    keeps its built-in route, so an incomplete config never silently drops
+    routing.
+
+    req: REQ-YAML-001, REQ-YAML-002
+    """
+    operator = _operator_routing().get(provider)
+    if not operator:
+        return dict(builtin)
+    merged = dict(builtin)
+    merged.update(operator)
+    return merged
+
+
+def resolve_minimax_routing() -> dict[TaskCategory, str]:
+    """Effective MiniMax routing: operator config over the built-in table."""
+    return _effective_routing("minimax", DEFAULT_MINIMAX_ROUTING)
+
+
+def resolve_llama_server_routing() -> dict[TaskCategory, str]:
+    """Effective llama-server routing: operator config over the built-in table."""
+    return _effective_routing("llama_server", DEFAULT_LLAMA_SERVER_ROUTING)
+
+
+def resolve_runpod_public_routing() -> dict[TaskCategory, str]:
+    """Effective RunPod Public routing: operator config over the built-in table."""
+    return _effective_routing("runpod_public", DEFAULT_RUNPOD_PUBLIC_ROUTING)
+
+
+def _reset_routing_cache() -> None:
+    """Drop the parsed operator config.
+
+    The config re-parses itself when the file changes; this exists so the
+    test suite can start from a deterministic cache.
+    """
+    _operator_routing_for.cache_clear()
 
 
 def routing_to_task_map(routing: dict[TaskCategory, str]) -> dict[str, str]:
@@ -395,25 +578,27 @@ def resolve_model_id(
 ) -> str:
     """Return the model id the worker should use for a task category.
 
-    The worker routes on the in-code ``DEFAULT_MINIMAX_ROUTING`` table (the
-    runtime truth; ``settings/models.yaml`` mirrors it). The cloud worker's
-    own lookup (``CloudWorkerConfig.get_model_for_category``) uses the same
+    The worker routes on the *effective* MiniMax routing table -- the
+    operator's ``settings/models.yaml`` when that file is present, the
+    built-in ``DEFAULT_MINIMAX_ROUTING`` otherwise. The cloud worker's own
+    lookup (``CloudWorkerConfig.get_model_for_category``) resolves the same
     table unless a caller overrides ``model_routing``. The resolved id is
-    cross-checked against the model ids the operator configured in
-    ``settings/models.yaml``: a model id no provider block names cannot be
-    served, so the mismatch is logged as a warning — the routing decision
-    itself still stands.
+    cross-checked against the model ids some provider block names: a model
+    id no provider names cannot be served, so the mismatch is logged as a
+    warning -- the routing decision itself still stands.
 
     Args:
         category: The classified task category.
         config_path: Override for the routing configuration file. Defaults
-            to ``settings/models.yaml`` beside the installed package.
+            to the operator config beside the installed package.
 
     Returns:
         The model id the worker should use for ``category``.
     """
-    path = config_path if config_path is not None else MODELS_CONFIG_PATH
-    model = DEFAULT_MINIMAX_ROUTING.get(category, DEFAULT_WORKER_MODEL)
+    model = resolve_minimax_routing().get(category, DEFAULT_WORKER_MODEL)
+    path = config_path if config_path is not None else _resolve_models_config_path()
+    if path is None:
+        return model
     configured = _configured_model_ids(path)
     if configured is not None and model not in configured:
         logger.warning(

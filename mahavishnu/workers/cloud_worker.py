@@ -27,13 +27,13 @@ from ..bifrost.cache_headers import (
     build_gateway_headers,
 )
 from ..core.model_routing import (
-    DEFAULT_LLAMA_SERVER_ROUTING,
-    DEFAULT_MINIMAX_ROUTING,
-    DEFAULT_RUNPOD_PUBLIC_ROUTING,
     TaskCategory,
     classify_task,
     gateway_openai_base_url,
     get_rate_limiter,
+    resolve_llama_server_routing,
+    resolve_minimax_routing,
+    resolve_runpod_public_routing,
     routing_to_task_map,
 )
 from .base import BaseWorker, WorkerResult
@@ -80,7 +80,7 @@ class CloudWorkerConfig:
 
     def get_model_for_category(self, category: TaskCategory) -> str:
         """Get the MiniMax model for a task category (used for rate limiting)."""
-        routing = self.model_routing or DEFAULT_MINIMAX_ROUTING
+        routing = self.model_routing or resolve_minimax_routing()
         return routing.get(category, self.model)
 
 
@@ -115,7 +115,7 @@ def _resolve_minimax_endpoint(config: CloudWorkerConfig) -> tuple[str, bool]:
 
 
 def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
-    minimax_routing = routing_to_task_map(config.model_routing or DEFAULT_MINIMAX_ROUTING)
+    minimax_routing = routing_to_task_map(config.model_routing or resolve_minimax_routing())
     minimax_base_url, via_gateway = _resolve_minimax_endpoint(config)
     # req: REQ-BIFROST-035
     #
@@ -165,7 +165,7 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
             "name": "llama_server",
             "base_url": config.llama_server_url,
             "require_auth": False,
-            "task_routing": routing_to_task_map(DEFAULT_LLAMA_SERVER_ROUTING),
+            "task_routing": routing_to_task_map(resolve_llama_server_routing()),
             "timeout_seconds": config.timeout,
         },
     }
@@ -184,7 +184,7 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
             "base_url": (f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"),
             "api_key": "${RUNPOD_API_KEY}",
             "require_auth": True,
-            "task_routing": routing_to_task_map(DEFAULT_RUNPOD_PUBLIC_ROUTING),
+            "task_routing": routing_to_task_map(resolve_runpod_public_routing()),
             "timeout_seconds": config.timeout,
         }
         fallback_order.append("runpod_public")

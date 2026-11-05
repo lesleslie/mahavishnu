@@ -8,7 +8,10 @@ guard identity; only the import targets changed.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
+import yaml
 
 from mahavishnu.core.model_routing import (
     DEFAULT_LLAMA_SERVER_ROUTING,
@@ -22,6 +25,9 @@ from mahavishnu.core.model_routing import (
     gateway_openai_base_url,
     get_model_for_task,
     get_rate_limiter,
+    resolve_llama_server_routing,
+    resolve_minimax_routing,
+    resolve_runpod_public_routing,
     routing_to_task_map,
 )
 
@@ -275,70 +281,94 @@ class TestRoutingToTaskMap:
 
 
 # =========================================================================
-# YAML ↔ DEFAULT_MINIMAX_ROUTING sync guard
+# Operator-config routing guards
 # =========================================================================
 
 
-class TestYAMLRoutingSync:
-    """Guard against drift between settings/models.yaml and DEFAULT_MINIMAX_ROUTING.
+class TestRoutingCoverage:
+    """Guard the *coverage* of the operator routing config.
 
-    These two sources of truth must agree on what model each task category
-    routes to. If they drift, the in-process tests pass (they use the Python
-    constant) but production traffic silently uses the YAML value (or vice
-    versa) — exactly the kind of bug that escaped detection in the
-    2026-06-02 M3 → M2.7 sync gap.
+    ``settings/models.yaml`` is the operator's source of truth for
+    task-to-model routing; the in-code ``DEFAULT_*_ROUTING`` tables are the
+    built-in fallback. This guard makes sure neither side can drop a
+    category on the floor.
+
+    It deliberately does NOT assert that the two sides agree on model ids.
+    They are allowed to differ -- that is the operator exercising the
+    config. What must hold is that every category resolves to a model in
+    every table.
     """
 
     @staticmethod
-    def _load_raw_yaml_routing() -> dict[str, str]:
-        """Load the raw MiniMax task_routing from settings/models.yaml.
-
-        Includes the FALLBACK / FALLBACK_HIGHSPEED meta-keys, which the
-        in-code constant does not carry.
-        """
-        from pathlib import Path
-
-        import yaml
-
-        yaml_path = Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
-        raw = yaml.safe_load(yaml_path.read_text())["minimax"]["task_routing"]
-        return dict(raw)
+    def _settings_path(name: str) -> Path:
+        return Path(__file__).resolve().parents[2] / "settings" / name
 
     @classmethod
-    def _load_yaml_routing(cls) -> dict[str, str]:
-        """Load and normalize the MiniMax task_routing from settings/models.yaml.
+    def _load_yaml_provider_routing(cls, provider_name: str) -> dict[str, str]:
+        """Load ``provider_name.task_routing`` from settings/models.yaml."""
+        raw = yaml.safe_load(cls._settings_path("models.yaml").read_text()) or {}
+        block = raw.get(provider_name)
+        if not isinstance(block, dict):
+            return {}
+        routing = block.get("task_routing")
+        return dict(routing) if isinstance(routing, dict) else {}
 
-        FALLBACK / FALLBACK_HIGHSPEED are operator-facing meta-keys that the
-        in-code constant doesn't carry, so they are stripped for comparison.
+    @pytest.mark.req(["REQ-YAML-005"])
+    @pytest.mark.parametrize("provider", ["minimax", "llama_server", "runpod_public"])
+    def test_operator_config_covers_every_category(self, provider: str) -> None:
+        """Every TaskCategory must be named by the operator config.
+
+        A category missing here falls back to the built-in table, so the
+        route survives -- but the operator's config is then not describing
+        the system. That is how the EMBEDDING and llama_server gaps
+        survived the original sync guard: it only checked the YAML-to-code
+        direction, so a category absent from the YAML was invisible.
         """
-        return {
-            k: v for k, v in cls._load_raw_yaml_routing().items() if not k.startswith("FALLBACK")
+        routing = self._load_yaml_provider_routing(provider)
+        assert routing, f"settings/models.yaml must declare a {provider} block"
+
+        named = {key.upper() for key in routing}
+        missing = {category.name for category in TaskCategory} - named
+        assert not missing, (
+            f"{provider}.task_routing in settings/models.yaml does not cover "
+            f"{sorted(missing)}; the operator config must name every TaskCategory"
+        )
+
+    @pytest.mark.parametrize(
+        "table",
+        [DEFAULT_MINIMAX_ROUTING, DEFAULT_LLAMA_SERVER_ROUTING, DEFAULT_RUNPOD_PUBLIC_ROUTING],
+    )
+    def test_builtin_tables_cover_every_category(self, table) -> None:
+        """The built-in fallback must route every category.
+
+        It is the only table a deployment without the operator config has.
+        """
+        missing = {category.name for category in TaskCategory} - {
+            category.name for category in table
         }
+        assert not missing, f"built-in routing table is missing {sorted(missing)}"
 
-    def test_yaml_entries_match_code_constant(self):
-        """Every category defined in the YAML must match DEFAULT_MINIMAX_ROUTING."""
-        yaml_routing = self._load_yaml_routing()
-        code_routing = {cat.value: model for cat, model in DEFAULT_MINIMAX_ROUTING.items()}
-
-        for cat, yaml_model in yaml_routing.items():
-            cat_key = cat.lower()
-            assert cat_key in code_routing, (
-                f"YAML defines {cat} but DEFAULT_MINIMAX_ROUTING is missing it"
-            )
-            assert code_routing[cat_key] == yaml_model, (
-                f"Model drift for {cat}: YAML={yaml_model!r} vs CODE={code_routing[cat_key]!r}"
-            )
+    @pytest.mark.parametrize(
+        "resolver",
+        [resolve_minimax_routing, resolve_llama_server_routing, resolve_runpod_public_routing],
+    )
+    def test_effective_tables_cover_every_category(self, resolver) -> None:
+        """The effective table must route every category."""
+        table = resolver()
+        missing = {category.name for category in TaskCategory} - {
+            category.name for category in table
+        }
+        assert not missing, f"effective routing table is missing {sorted(missing)}"
 
     def test_fallback_keys_avoid_retired_models(self):
         """The FALLBACK meta-keys must not point at a retired MiniMax model.
 
         MiniMax closes M2.7/M2.5 to new users on 2026-10-19 and retires them
         on 2026-11-18, so a fallback entry naming an M2.x model is a routing
-        dead end waiting to happen. Nothing else catches it: the in-code
-        constant does not carry these meta-keys, so the sync guard above
-        never sees them.
+        dead end waiting to happen. Nothing else catches it: the built-in
+        table does not carry these meta-keys.
         """
-        raw = self._load_raw_yaml_routing()
+        raw = self._load_yaml_provider_routing("minimax")
         fallbacks = {k: v for k, v in raw.items() if k.startswith("FALLBACK")}
 
         assert fallbacks, "the FALLBACK meta-keys must still be present"
@@ -352,13 +382,13 @@ class TestYAMLRoutingSync:
         assert fallbacks["FALLBACK_HIGHSPEED"] == "MiniMax-M3.1-Flash"
 
     def test_yaml_covers_high_traffic_categories(self):
-        """YAML must cover the categories every prompt hits.
+        """The operator config must cover the categories every prompt hits.
 
-        If a category is missing from the YAML, requests fall through to the
-        in-code default — fine for niche categories (EMBEDDING) but a quality
-        hazard for high-traffic ones. The CI guard enforces the floor.
+        A category missing from the config falls through to the built-in
+        default -- fine for niche categories but a quality hazard for
+        high-traffic ones. The CI guard enforces the floor.
         """
-        yaml_routing = self._load_yaml_routing()
+        yaml_routing = self._load_yaml_provider_routing("minimax")
 
         required = {
             "CODE_GENERATION",
@@ -378,46 +408,19 @@ class TestYAMLRoutingSync:
         missing = required - set(yaml_routing.keys())
         assert not missing, f"YAML must cover high-traffic categories: {sorted(missing)}"
 
-    @staticmethod
-    def _load_yaml_provider_routing(provider_name: str) -> dict[str, str]:
-        """Load ``provider_name.task_routing`` from settings/models.yaml.
+    @pytest.mark.req(["REQ-YAML-007"])
+    def test_no_dead_models_path_key(self) -> None:
+        """``settings/mahavishnu.yaml`` must not declare an unread ``models_path``.
 
-        Mirrors ``_load_yaml_routing`` but parameterized over the
-        provider block so the same sync guard covers all routed
-        providers (minimax, llama_server, runpod_public).
+        The key was accepted by ``MahavishnuSettings`` (``extra="allow"``)
+        and read by nothing, so it looked like a live knob. The override is
+        ``MAHAVISHNU_MODELS_PATH``; the default path needs no key.
         """
-        from pathlib import Path
-
-        import yaml
-
-        yaml_path = Path(__file__).resolve().parents[2] / "settings" / "models.yaml"
-        block = yaml.safe_load(yaml_path.read_text()).get(provider_name)
-        if block is None or "task_routing" not in block:
-            return {}
-        return dict(block["task_routing"])
-
-    def test_runpod_public_routing_in_sync(self):
-        """DEFAULT_RUNPOD_PUBLIC_ROUTING must agree with ``runpod_public.task_routing``.
-
-        Sister guard to ``test_yaml_entries_match_code_constant``.
-        The public-endpoint surface treats each endpoint as a
-        single-model host and uses the ``endpoint-default`` sentinel
-        here, so this guard mostly ensures the YAML block declares
-        the full category set rather than detecting model drift.
-        """
-        yaml_routing = self._load_yaml_provider_routing("runpod_public")
-        code_routing = {cat.value: model for cat, model in DEFAULT_RUNPOD_PUBLIC_ROUTING.items()}
-
-        assert yaml_routing, "settings/models.yaml must declare a runpod_public block"
-
-        for cat, yaml_model in yaml_routing.items():
-            cat_key = cat.lower()
-            assert cat_key in code_routing, (
-                f"YAML defines {cat} but DEFAULT_RUNPOD_PUBLIC_ROUTING is missing it"
-            )
-            assert code_routing[cat_key] == yaml_model, (
-                f"Model drift for {cat}: YAML={yaml_model!r} vs CODE={code_routing[cat_key]!r}"
-            )
+        raw = yaml.safe_load(self._settings_path("mahavishnu.yaml").read_text()) or {}
+        assert "models_path" not in raw, (
+            "settings/mahavishnu.yaml declares models_path, which no code reads; "
+            "use MAHAVISHNU_MODELS_PATH or delete the key"
+        )
 
 
 class TestRateLimiter:

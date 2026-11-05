@@ -9,7 +9,7 @@ Run `mahavishnu config validate --strict` to verify all files against the Pydant
 |------|---------|-----------|
 | `mahavishnu.yaml` | Main application config — all `MahavishnuSettings` fields | Yes |
 | `local.yaml` | Local overrides (gitignored) — same structure as `mahavishnu.yaml` | No |
-| `models.yaml` | LLM provider and model configuration | Yes |
+| `models.yaml` | LLM provider and model configuration — its `task_routing` blocks are the live routing | Yes |
 | `embeddings.yaml` | Embedding model configuration for content ingestion | Yes |
 | `repos.yaml` | Repository manifest (legacy; prefer `ecosystem.yaml`) | No (see `repos.yaml.example`) |
 | `ecosystem.yaml` | Canonical repository manifest with roles, tags, and descriptions | No (see `ecosystem.yaml.example`; required on first install) |

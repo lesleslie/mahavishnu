@@ -68,7 +68,7 @@
 - `settings/repos.yaml` — Repository manifest
 - `settings/mahavishnu.yaml` — Main configuration (committed)
 - `settings/local.yaml` — Local overrides (gitignored)
-- `settings/models.yaml` — LLM provider routing
+- `settings/models.yaml` — LLM provider routing (its `task_routing` blocks are live)
 - `docs/adr/` — Architecture Decision Records
 - `docs/plans/` — Implementation plans
 

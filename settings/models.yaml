@@ -1,11 +1,20 @@
 # Mahavishnu - LLM Model Configuration
-# Updated: 2026-10-16 (two-tier provider chain: minimax → llama_server)
+# Updated: 2026-11-05 (task_routing is now the live source of routing)
+#
+# `task_routing` under each provider IS the routing the cloud worker uses.
+# Edit it here and the next dispatch routes to the model you named -- no
+# code change, no redeploy. The in-code tables in
+# `mahavishnu/core/model_routing.py` (DEFAULT_MINIMAX_ROUTING and friends)
+# are the built-in fallback: they serve a deployment that does not ship
+# this file, and they fill in any category this file omits. See
+# `docs/plans/2026-11-05-yaml-backed-model-routing.md`.
 #
 # Provider chain:
 #   1. minimax  - MiniMax M3 (primary cloud, API key required)
 #   2. llama_server - llama.cpp server with qwen3.5 (local, no auth)
 #
 # Related files:
+#   - mahavishnu/core/model_routing.py - routing tables and the loader
 #   - mahavishnu/engines/agno_adapter_impl.py - Agno LLMProviderFactory
 #   - config/bifrost/config.template.json - Bifrost gateway config
 
@@ -45,9 +54,10 @@ minimax:
     GENERAL: "MiniMax-M3.1-Flash"
     VISION: "MiniMax-M3"
     ML_INFERENCE: "MiniMax-M3"
+    EMBEDDING: "MiniMax-M3"
     # Fallback mappings. These are operator-facing meta-keys, not
-    # TaskCategory members -- the in-code DEFAULT_MINIMAX_ROUTING does not
-    # carry them, and TestYAMLRoutingSync strips them before comparing.
+    # TaskCategory members -- the built-in DEFAULT_MINIMAX_ROUTING does not
+    # carry them, and the loader ignores any key that names no category.
     #   FALLBACK          -> the stable model
     #   FALLBACK_HIGHSPEED -> the fast model
     # The last resort is the local llama_server provider; see fallback_chain
@@ -81,6 +91,9 @@ llama_server:
     QUICK: "qwen3.5"
     ML_INFERENCE: "qwen3.5"
     AGENT_LOOP: "qwen3.5"
+    CREATIVE: "qwen3.5"
+    EMBEDDING: "qwen3.5"
+    VISION: "qwen3.5"
 
 # =============================================================================
 # CLOUD PUBLIC-ENDPOINT PROVIDERS (RunPod Public Endpoints REST substrate)
@@ -95,9 +108,9 @@ llama_server:
 # opts in by setting the endpoint id env var. Routing uses the
 # ``endpoint-default`` sentinel — the endpoint hosts a single model,
 # so per-category routing on the local side is a no-op.
-# Kept in sync with ``DEFAULT_RUNPOD_PUBLIC_ROUTING`` in
-# ``mahavishnu/core/model_routing.py`` (verified by
-# ``tests/unit/test_task_router.py::TestYAMLRoutingSync``).
+# The built-in ``DEFAULT_RUNPOD_PUBLIC_ROUTING`` in
+# ``mahavishnu/core/model_routing.py`` is the fallback for deployments
+# that do not ship this file.
 runpod_public:
   enabled: true
   require_auth: true
