@@ -80,7 +80,7 @@ Detect patterns across all repositories in the ecosystem.
 
 ### `ecosystem_status` ✅
 
-**Signature:** `async def ecosystem_status(sections: list[str] | None, include_details: bool, timeout_per_section_ms: int)`
+**Signature:** `async def ecosystem_status(sections: list[str] | None, timeout_per_section_ms: int)`
 
 **Source:** `ecosystem_tools.py:30`
 

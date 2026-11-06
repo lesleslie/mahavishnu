@@ -5,13 +5,19 @@ canonical-status FastMCP tools. All three tools lazily import
 ``get_app_from_context`` and ``EcosystemStatusService`` at call time, so
 the tests monkeypatch those source modules with fakes that return
 hand-crafted ``EcosystemStatusReport``-shaped data.
+
+The public *contract* of the tools (their published input schema and
+their Python signature) is pinned separately against a real FastMCP
+server, because that is the surface an MCP client actually sees.
 """
 
 from __future__ import annotations
 
+import inspect
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+from mcp_common.fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.ecosystem_status import EcosystemStatusReport
@@ -126,6 +132,34 @@ def test_register_attaches_three_tools(stub_mcp: _StubMCP) -> None:
     }
     # Module export
     assert "register_ecosystem_tools" in et_module.__all__
+
+
+async def test_ecosystem_status_contract_drops_include_details() -> None:
+    """The published contract must not advertise the dead ``include_details``.
+
+    ``include_details`` was declared on the tool but never read by the
+    body — ``EcosystemStatusService.generate_report()`` has no matching
+    option, so the flag was a no-op that lied to callers. It was removed
+    rather than wired, so neither the MCP input schema nor the Python
+    signature nor the docstring may carry it any more.
+    """
+    server = FastMCP("ecosystem-tools-schema-test")
+    register_ecosystem_tools(server)
+
+    tool = await server.get_tool("ecosystem_status")
+
+    # The wire contract: the schema every MCP client validates against.
+    properties = tool.parameters.get("properties", {})
+    assert "include_details" not in properties
+    assert set(properties) == {"sections", "timeout_per_section_ms"}
+
+    # The Python-level contract.
+    signature_params = inspect.signature(tool.fn).parameters
+    assert "include_details" not in signature_params
+    assert set(signature_params) == {"sections", "timeout_per_section_ms"}
+
+    # The advertised documentation.
+    assert "include_details" not in (tool.fn.__doc__ or "")
 
 
 async def test_ecosystem_status_returns_full_report(

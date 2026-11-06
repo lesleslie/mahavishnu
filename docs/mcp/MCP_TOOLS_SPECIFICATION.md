@@ -61,7 +61,7 @@ _7 tool(s)_
 
 #### `ecosystem_status`
 
-**Signature:** `async def ecosystem_status(sections: list[str] | None, include_details: bool, timeout_per_section_ms: int)`
+**Signature:** `async def ecosystem_status(sections: list[str] | None, timeout_per_section_ms: int)`
 
 **Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:30`
 

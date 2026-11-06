@@ -43,7 +43,6 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     async def ecosystem_status(
         sections: list[str] | None = None,
-        include_details: bool = False,
         timeout_per_section_ms: int = 5000,
     ) -> dict[str, Any]:
         """Get canonical ecosystem health status across all services and adapters.
@@ -60,8 +59,6 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
                       reported under ``invalid_sections`` alongside the
                       canonical ``available_sections`` list, so the caller
                       can correct itself.
-            include_details: Include detailed status information for each
-                             component.
             timeout_per_section_ms: Per-section collection timeout in
                                     milliseconds.
         """

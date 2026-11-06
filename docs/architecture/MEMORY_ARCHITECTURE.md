@@ -428,7 +428,7 @@ by access pattern: discovery, state, recall, monitor, health.
 |------|---------------|----------|
 | `discover_tools(query=, capability=)` | FastMCP 3.x `server.list_tools()` + `TOOL_VERSIONS` registry | Caller wants to know what is registered under the active profile |
 | `get_tool_versions(tool_name=)` | `TOOL_VERSIONS` dict (174+ entries) | Consumer compatibility check before invoking a tool |
-| `ecosystem_status(sections=, include_details=)` | `EcosystemStatusService.generate_report` (per-section timeout 5s) | Canonical control-plane status (services / adapters / capabilities / workflows / alerts) |
+| `ecosystem_status(sections=)` | `EcosystemStatusService.generate_report` (per-section timeout 5s) | Canonical control-plane status (services / adapters / capabilities / workflows / alerts) |
 | `ecosystem_capabilities(capability=)` | Same report, `capabilities` section | "What can the ecosystem do for `code_review`?" |
 | `ecosystem_routing_readiness(task_class=)` | Same report, filtered to `task_class` adapters | "Which adapters are healthy for `AI_TASK`?" |
 
@@ -849,7 +849,6 @@ The `routable_workers` field reflects runtime state via
 ```python
 mcp__mahavishnu__ecosystem_status(
     sections=["services", "adapters", "capabilities"],
-    include_details=True,
     timeout_per_section_ms=3000,
 )
 ```
