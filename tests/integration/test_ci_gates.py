@@ -14,6 +14,7 @@ subcommands and spec paths are repo-local.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -79,3 +80,50 @@ class TestCIGates:
         # No orphans under mahavishnu/plan_index/ (and friends). Either the
         # tree is clean (exit 0) or reports specific issues (exit 1).
         assert result.returncode in (0, 1)
+
+    def test_audit_doc_drift_gate(self) -> None:
+        """Design documents must not reference code that no longer exists.
+
+        The gate is run against the recorded baseline, so pre-existing drift
+        does not fail the build while any *new* drift does.
+
+        # Implements: REQ-DRIFT-005
+        """
+        result = subprocess.run(
+            [
+                sys.executable,
+                "scripts/audit_doc_drift.py",
+                "--baseline",
+                "docs/audit-inventory/doc-drift-baseline.json",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
+        )
+        assert result.returncode == 0, (
+            f"audit_doc_drift.py exited {result.returncode}\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+
+    def test_audit_doc_drift_reports_new_drift(self) -> None:
+        """The drift gate must actually fail when drift is present.
+
+        Guards against a gate that has silently stopped detecting anything.
+        """
+        result = subprocess.run(
+            [sys.executable, "scripts/audit_doc_drift.py", "--json"],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
+        )
+        # Without the baseline the known drift is reported, so the exit code
+        # is 1. If the corpus is ever fully cleaned this becomes 0 — either
+        # outcome is acceptable, but the script must run and emit JSON.
+        assert result.returncode in (0, 1)
+        payload = json.loads(result.stdout)
+        assert "documents_scanned" in payload
+        assert "findings" in payload

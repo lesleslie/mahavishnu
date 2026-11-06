@@ -22,6 +22,7 @@ Audit, harden, and verify API surface for OWASP API Top 10 conformance and zero-
 - Inventory trust boundaries (public, internal, service-to-service) before reviewing flows.
 - Apply OWASP API Top 10 checks ASVS-style with concrete test cases per finding.
 - Verify every authenticated path via real token roundtrip, not just signature validation.
+- Run every finding through the `security-finding-gate` skill before reporting or dismissing it — a dismissal needs recorded evidence, and the output states true/false-positive counts.
 
 ## What I produce
 - Severity-ranked finding list mapped to OWASP API categories and CWE numbers.

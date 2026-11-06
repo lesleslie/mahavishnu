@@ -8,6 +8,25 @@ superseded_by: null
 blocks_on: []
 topic: convergence-control-plane
 title: "Port — External Agent-Skill Patterns into Repo-Native Gates"
+requirements:
+  - id: REQ-DRIFT-001
+    title: "Doc-drift script reports unresolved file references in design docs"
+  - id: REQ-DRIFT-002
+    title: "Doc-drift script reports unresolved symbol references in design docs"
+  - id: REQ-DRIFT-003
+    title: "Doc-drift severity is derived from document lifecycle status"
+  - id: REQ-DRIFT-004
+    title: "Doc-drift script emits JSON and markdown output"
+  - id: REQ-DRIFT-005
+    title: "Doc-drift gate is exercised by the CI gate integration test"
+  - id: REQ-DRIFT-006
+    title: "Docs needing semantic review are listed as an explicit worklist"
+  - id: REQ-FIND-001
+    title: "Security finding dismissal requires recorded evidence"
+  - id: REQ-FIND-002
+    title: "Security finding output reports true-positive and false-positive counts"
+  - id: REQ-FIND-003
+    title: "Security finding gate is referenced by a project agent and a workflow"
 ---
 
 # Port — External Agent-Skill Patterns into Repo-Native Gates
@@ -105,27 +124,27 @@ least one project agent and one workflow.
 
 ## 4.5 Requirements
 
-```yaml
-requirements:
-  - id: REQ-DRIFT-001
-    title: "Doc-drift script reports unresolved file references in design docs"
-  - id: REQ-DRIFT-002
-    title: "Doc-drift script reports unresolved symbol references in design docs"
-  - id: REQ-DRIFT-003
-    title: "Doc-drift severity is derived from document lifecycle status"
-  - id: REQ-DRIFT-004
-    title: "Doc-drift script emits JSON and markdown output"
-  - id: REQ-DRIFT-005
-    title: "Doc-drift gate is exercised by the CI gate integration test"
-  - id: REQ-DRIFT-006
-    title: "Docs needing semantic review are listed as an explicit worklist"
-  - id: REQ-FIND-001
-    title: "Security finding dismissal requires recorded evidence"
-  - id: REQ-FIND-002
-    title: "Security finding output reports true-positive and false-positive counts"
-  - id: REQ-FIND-003
-    title: "Security finding gate is referenced by a project agent and a workflow"
-```
+The requirement IDs this plan introduces are declared in the **frontmatter**
+`requirements:` block, not in the body — `scripts/audit_requirements.py` reads
+declarations from frontmatter only.
+
+Traceability is enforced: a declared ID must appear in code via
+`# req: REQ-NNN` (inline comment), `# Implements: REQ-NNN` (docstring), or
+`@pytest.mark.req(["REQ-NNN"])` (test marker), or the audit reports it as an
+orphan. Every Phase's Integration Contract block links back to the
+requirement IDs it fulfils.
+
+| Requirement | Phase | Satisfied by |
+|---|---|---|
+| REQ-DRIFT-001 | 1 | `scripts/audit_doc_drift.py` path resolution |
+| REQ-DRIFT-002 | 1 | `scripts/audit_doc_drift.py` symbol resolution |
+| REQ-DRIFT-003 | 1 | `scripts/audit_doc_drift.py` status ladder |
+| REQ-DRIFT-004 | 1 | `scripts/audit_doc_drift.py` JSON/markdown output |
+| REQ-DRIFT-005 | 1 | `tests/integration/test_ci_gates.py` |
+| REQ-DRIFT-006 | 1 | `scripts/audit_doc_drift.py` semantic worklist |
+| REQ-FIND-001 | 2 | `.claude/skills/security-finding-gate/SKILL.md` |
+| REQ-FIND-002 | 2 | `.claude/skills/security-finding-gate/SKILL.md` |
+| REQ-FIND-003 | 2 | agent + workflow references |
 
 ## 5. Implementation Phases
 

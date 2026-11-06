@@ -179,6 +179,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-11-05-external-skill-pattern-port.md`](../../docs/decisions/2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `active` | `canonical` |  | `convergence-control-plane` | Decision: Absorb External Agent-Skill Patterns; Do Not Install the Packs |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | `active` | `canonical` | `decision` | `per-component-cold-storage-buckets` | Per-component cold-storage buckets |
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | `active` | `canonical` | `decision` | `terminal-codex-worker` | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | `active` | `canonical` | `decision` | `learning-pipeline-tools-authz-block` | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
@@ -239,6 +240,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/feature-tracking/2026-11-05-external-skill-pattern-port.md`](../../docs/feature-tracking/2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `wired` | `canonical` |  | `—` | Feature: external-skill-pattern-port |
 | [`docs/feature-tracking/2026-11-05-yaml-backed-model-routing.md`](../../docs/feature-tracking/2026-11-05-yaml-backed-model-routing.md) | 2026-11-05 | `wired` | `canonical` |  | `—` | Feature: yaml-backed-model-routing |
 | [`docs/feature-tracking/2026-09-25-cloud-worker-decision.md`](../../docs/feature-tracking/2026-09-25-cloud-worker-decision.md) | 2026-09-25 | `complete` | `decision` |  | `—` | CloudWorker Retirement Decision (Plan §10 #3) |
 | [`docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`](../../docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md) | 2026-09-25 | `complete` | `audit` |  | `—` | Pool + Worker MCP Tool Audit (Plan v3 §10 follow-ups) |
@@ -519,7 +521,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (162 entries)
+### `plan` (164 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -531,10 +533,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 9 | 58 | 2 | 2 | 17 | **88** |
+| `canonical` | 9 | 59 | 2 | 2 | 17 | **89** |
 | `implementation` | 7 | 10 | 2 | 7 | 16 | **42** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **16** | **68** | **4** | **9** | **77** | **174** |
+| **Total** | **16** | **69** | **4** | **9** | **77** | **175** |

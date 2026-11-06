@@ -20,7 +20,7 @@ Use this workflow for deep review of security, performance, tests, and documenta
 
 ## Workflow
 
-1. Run a security review first.
+1. Run a security review first, applying the `security-finding-gate` skill so every finding carries its evidence and the phase reports true/false-positive counts.
 1. Check performance and resource concerns.
 1. Verify tests cover the changed behavior.
 1. Review public docs and API clarity.
@@ -30,4 +30,5 @@ Use this workflow for deep review of security, performance, tests, and documenta
 
 - Combined review summary
 - Severity-ranked findings
+- True/false-positive counts from the security phase
 - Recommended next steps
