@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-10-27
-last_reviewed: 2026-10-27
+last_reviewed: 2026-11-06
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -258,6 +258,44 @@ the test) in the phase that delivers it.
 DuckDB file and the table survives a reopen; the table is created
 idempotently.
 
+**Delivered 2026-11-06** — oneiric `f869951` on branch
+`feat/metrics-substrate` (not pushed). Four deviations from the plan
+text, recorded here so Phase 2 builds against reality:
+
+1. **`buckets_json` column added.** The plan's column list carries a
+   histogram's summary statistics but not its bucket boundaries, and the
+   statistics do not determine the boundaries — a stored histogram would
+   not be reconstructible. The column is nullable and unused by every
+   type but `histogram`/`exponential_histogram`.
+2. **Counter names carry the `oneiric_` prefix.** The plan named them
+   `metrics_substrate_rows_inserted_total`; oneiric's other 25
+   instruments are all prefixed, and these share a registry with the
+   substrate's metrics in Phase 2, where an unprefixed name could
+   collide.
+3. **The test file is `tests/adapters/test_duckdb_hot_store_metrics.py`**,
+   not `test_metrics_substrate.py` — it sits beside its sibling
+   `test_duckdb_hot_store_spans.py`, and this repo names substrate tests
+   after the module under test.
+4. **Identity is `(service_name, service_namespace, scope_name,
+   metric_name, ts, attributes)` with canonicalized attribute JSON**, and
+   the insert counts come from the statement's `RETURNING` rows rather
+   than from a pre-insert existence probe. Both are forced by DuckDB
+   behaviour verified on the pinned 2.1.0-dev build: a JSON column inside
+   a UNIQUE constraint is compared **as text** (`{"a":1,"b":2}` and
+   `{"b":2,"a":1}` are two rows), and `executemany` reports no per-row
+   outcome while a single multi-row `VALUES` statement can.
+
+   **Phase 2 consequence:** the akosha receiver must let the substrate
+   canonicalize the attributes. It must not pre-serialize them in a
+   different key order and expect the identity to hold.
+
+Evidence: 25 new tests plus the 24 existing span-substrate tests pass;
+`ruff check`, `ruff format --check`, and `ty check` are clean on the
+changed files; the full oneiric suite reaches 93.87% coverage against
+its 78.75% floor. The 18 failures in that run are pre-existing and
+unrelated (auth, MCP registration signatures, health-envelope shape,
+UUID7/ULID, version stamps, and a Bifrost env-var leak).
+
 #### Integration Contract ← REQUIRED
 
 - **Triggered from:** `akosha.storage.hot_store.HotStore` inherits the
@@ -271,9 +309,11 @@ idempotently.
 - **Rollback signal:** `oneiric` logs `metrics_substrate_create_failed` at
   ERROR; the trace path is unaffected and keeps working, so the rollback is
   "stop sending metrics" rather than "revert a shared store".
-- **Observability added:** `oneiric` counter
-  `metrics_substrate_rows_inserted_total` and
-  `metrics_substrate_insert_failed_total`.
+- **Observability added:** `oneiric` counters
+  `oneiric_metrics_substrate_rows_inserted_total` and
+  `oneiric_metrics_substrate_insert_failed_total` (the `oneiric_` prefix
+  matches every other instrument in the repo — these share a registry
+  with the substrate's metrics once Phase 2 lands).
 
 ### Phase 2: akosha — MetricsService servicer, ingestion, exposure
 
@@ -419,11 +459,12 @@ injected drift moves it.
 ## 6. Required Code Changes
 
 **oneiric** (`/Users/les/Projects/oneiric`)
-- [ ] `oneiric/adapters/vector/duckdb_hot_store.py` — `metrics_substrate`
+- [x] `oneiric/adapters/vector/duckdb_hot_store.py` — `metrics_substrate`
       DDL, `insert_metrics_substrate`, `metrics_substrate_table`
-- [ ] oneiric lifespan hook — idempotent `metrics_substrate` creation
-- [ ] oneiric tests — `test_metrics_substrate.py`
-- [ ] **no change** to `oneiric/adapters/monitoring/otlp.py` — the adapter's
+- [x] oneiric lifespan hook — idempotent `metrics_substrate` creation
+- [x] oneiric tests — `tests/adapters/test_duckdb_hot_store_metrics.py`
+      (named for the module under test, beside its span sibling)
+- [x] **no change** to `oneiric/adapters/monitoring/otlp.py` — the adapter's
       single endpoint works against a receiver that implements both services
       (NG6, REQ-M07)
 

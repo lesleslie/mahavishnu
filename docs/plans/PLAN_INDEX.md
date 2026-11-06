@@ -102,6 +102,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`.claude/agents/grpc-specialist.md`](../../.claude/agents/grpc-specialist.md) | — | `unknown` | `unknown` |  | `—` | grpc specialist |
 | [`.claude/agents/helm-specialist.md`](../../.claude/agents/helm-specialist.md) | — | `unknown` | `unknown` |  | `—` | helm specialist |
 | [`.claude/agents/jinja2-template-designer.md`](../../.claude/agents/jinja2-template-designer.md) | — | `unknown` | `unknown` |  | `—` | Jinja2 Template Designer |
+| [`.claude/agents/mahavishnu-orchestrator.md`](../../.claude/agents/mahavishnu-orchestrator.md) | — | `active` | `unknown` |  | `—` | Mahavishnu Orchestrator |
 | [`.claude/agents/mahavishnu-specialist.md`](../../.claude/agents/mahavishnu-specialist.md) | — | `unknown` | `unknown` |  | `—` | Mahavishnu Specialist |
 | [`.claude/agents/mcp-integration-expert.md`](../../.claude/agents/mcp-integration-expert.md) | — | `unknown` | `unknown` |  | `—` | MCP Integration Expert |
 | [`.claude/agents/mermaid-expert.md`](../../.claude/agents/mermaid-expert.md) | — | `unknown` | `unknown` |  | `—` | Mermaid Expert |
@@ -340,7 +341,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-29-oneiric-resolver-plans.md`](2026-10-29-oneiric-resolver-plans.md) | 2026-10-29 | `active` | `implementation` |  | `resolver` | Oneiric Resolver — Precedence Contract and Scope Deferrals |
 | [`docs/plans/2026-10-28-registry-root-relative-paths.md`](2026-10-28-registry-root-relative-paths.md) | 2026-10-28 | `complete` | `implementation` |  | `registry-paths` | Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md` |
 | [`docs/plans/2026-10-27-bodai-producer-span-reporting.md`](2026-10-27-bodai-producer-span-reporting.md) | 2026-10-27 | `active` | `canonical` |  | `otel-producer-reporting` | Producer Span Reporting — make the heartbeat roster mean something |
-| [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `draft` | `implementation` |  | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
+| [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `active` | `implementation` |  | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
 | [`docs/plans/2026-10-21-bifrost-cli-consolidation.md`](2026-10-21-bifrost-cli-consolidation.md) | 2026-10-21 | `draft` | `implementation` |  | `bifrost-cli-consolidation` | 2026 10 21 bifrost cli consolidation |
 | [`docs/plans/2026-10-19-bifrost-mcp-skills-aggregation.md`](2026-10-19-bifrost-mcp-skills-aggregation.md) | 2026-10-19 | `active` | `implementation` |  | `bifrost-mcp-skills-aggregation` | Bifrost MCP aggregation + Skills distribution — local single-VK plan |
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `complete` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
@@ -523,7 +524,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (164 entries)
+### `plan` (165 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -536,9 +537,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 9 | 60 | 2 | 2 | 17 | **90** |
-| `implementation` | 7 | 9 | 3 | 7 | 16 | **42** |
+| `implementation` | 6 | 10 | 3 | 7 | 16 | **42** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **16** | **69** | **5** | **9** | **77** | **176** |
+| **Total** | **15** | **70** | **5** | **9** | **77** | **176** |
