@@ -54,6 +54,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+import json
 import logging
 from typing import Any, Protocol
 import uuid
@@ -110,20 +111,98 @@ class BudgetStore(Protocol):
         Implementations are expected to be idempotent — a holder
         re-acquiring their own lease returns ``True`` and refreshes
         the TTL.
+
+        An **expired** lease must be acquirable by any holder. The
+        expiry is read from the lease record's own ``expires_at``
+        stamp, not from whether the backing store has evicted it: a
+        mutual-exclusion primitive cannot depend on the store to
+        reclaim a record left behind by a replica that died holding it.
         """
 
     async def release_lease(self, lease_key: str, holder: str) -> None:
-        """Release the lease if (and only if) we still own it."""
+        """Release the lease if (and only if) we still own it.
+
+        A lease that has already expired is not ours to release — the
+        same ``expires_at`` rule as :meth:`try_acquire_lease` applies.
+        """
+
+
+def _decode_record(raw: Any) -> dict[str, Any]:
+    """Return the mapping a stored KV payload carries, or ``{}``.
+
+    The KV store is string-shaped, so a record written by ``put`` comes
+    back as the JSON text that was written. A payload that is not a
+    mapping — or is not JSON at all — decodes to ``{}``.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except TypeError, ValueError:
+            return {}
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _parse_expires_at(raw: Any) -> datetime | None:
+    """Parse a stored ``expires_at`` stamp, or ``None`` when unusable.
+
+    A naive stamp is read as UTC — every stamp this module writes is
+    timezone-aware, so a naive one can only have come from elsewhere.
+    """
+    if not isinstance(raw, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _lease_is_expired(record: dict[str, Any], now: datetime) -> bool:
+    """``True`` when ``record``'s lease window has closed.
+
+    Mirrors :meth:`InMemoryBudgetStore.try_acquire_lease` exactly: a
+    record with no usable ``expires_at`` is treated as **live** (never
+    expired), so a malformed lease blocks a takeover rather than
+    granting one. Failing closed is the right direction for a
+    mutual-exclusion primitive — the cost of a wrongly-held lease is one
+    skipped cycle, while the cost of a wrongly-granted one is two
+    replicas enforcing the same budget.
+    """
+    expires_at = _parse_expires_at(record.get("expires_at"))
+    if expires_at is None:
+        return False
+    return expires_at <= now
 
 
 class MCPBudgetStore:
     """Adapter over the Mahavishnu MCP client for budget persistence.
 
     Uses :meth:`MCPClient.put` for record writes and the same for
-    lease writes (MCP honors ``ttl_seconds``). Lease acquisition is
-    get-then-cas — safe enough for a 60s watchdog because the worst
-    case is two replicas running for one poll cycle (no permanent
-    damage).
+    lease writes. Lease acquisition is get-then-cas — safe enough for a
+    60s watchdog because the worst case is two replicas running for one
+    poll cycle (no permanent damage).
+
+    The lease is expiry-correct on **both** sides:
+
+    * the KV substrate honours the ``ttl`` it is handed, so a lapsed
+      lease record is evicted from the store; and
+    * the lease record itself carries an ``expires_at`` stamp, and
+      :meth:`try_acquire_lease` reads that stamp before deciding that a
+      foreign holder still holds the lease.
+
+    The second one is the load-bearing half. A mutual-exclusion
+    primitive must not depend on the store to evict a record: a replica
+    that dies holding the lease would otherwise disable budget
+    enforcement for every other replica, permanently, because the
+    dead replica's holder stamp would still be sitting in the store.
+    Reading ``expires_at`` makes the lease self-releasing even when
+    the store has not evicted anything yet.
 
     Reads go through :meth:`MCPClient.kv_get` and key enumeration
     through :meth:`MCPClient.kv_list` — the ``mahavishnu_kv_*`` tools
@@ -141,10 +220,12 @@ class MCPBudgetStore:
         *,
         record_prefix: str = "mahavishni://budgets/",
         lease_key: str = "mahavishni://budgets/lease.json",
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self._client = mcp_client
         self._record_prefix = record_prefix
         self._lease_key = lease_key
+        self._now = now or (lambda: datetime.now(UTC))
 
     async def get(self, key: str) -> dict[str, Any] | None:
         raw = await self._client.kv_get(key)
@@ -155,8 +236,6 @@ class MCPBudgetStore:
         if isinstance(raw, dict):
             return raw
         if isinstance(raw, str):
-            import json
-
             try:
                 parsed = json.loads(raw)
                 if isinstance(parsed, dict):
@@ -203,46 +282,62 @@ class MCPBudgetStore:
         two replicas can both acquire on first poll. The TTL keeps that
         window short (one put round-trip); the next poll re-elects
         cleanly.
-        """
-        current = await self._client.kv_get(lease_key)
-        existing_holder = None
-        if isinstance(current, dict):
-            existing_holder = current.get("holder")
-        elif isinstance(current, str):
-            import json
 
-            try:
-                parsed = json.loads(current)
-                if isinstance(parsed, dict):
-                    existing_holder = parsed.get("holder")
-            except TypeError, ValueError:
-                existing_holder = None
+        "Expired" is decided **client-side**, from the ``expires_at``
+        stamp the record carries — not from whether the store has
+        evicted it. That is what makes the lease recoverable: a replica
+        that dies holding the lease leaves its stamp behind, and the
+        stamp says when the lease lapsed. Once that moment passes, any
+        replica may take over even though the stale record is still
+        sitting in the store.
+        """
+        now = self._now()
+        current = await self._client.kv_get(lease_key)
+        record = _decode_record(current)
+        existing_holder = record.get("holder")
         if existing_holder not in (None, "", holder):
-            return False
+            # A foreign holder blocks the takeover only while its lease
+            # is live. A lapsed lease is free for the taking.
+            if not _lease_is_expired(record, now):
+                return False
         await self._client.put(
             lease_key,
-            {"holder": holder, "acquired_at": datetime.now(UTC).isoformat()},
+            {
+                "holder": holder,
+                "acquired_at": now.isoformat(),
+                "expires_at": (now + timedelta(seconds=ttl_seconds)).isoformat(),
+            },
             ttl=ttl_seconds,
         )
         return True
 
     async def release_lease(self, lease_key: str, holder: str) -> None:
-        current = await self._client.kv_get(lease_key)
-        existing_holder = None
-        if isinstance(current, str):
-            import json
+        """Release the lease, but only if it is still ours and still live.
 
-            try:
-                parsed = json.loads(current)
-                if isinstance(parsed, dict):
-                    existing_holder = parsed.get("holder")
-            except TypeError, ValueError:
-                existing_holder = None
-        elif isinstance(current, dict):
-            existing_holder = current.get("holder")
-        if existing_holder == holder:
-            # Best-effort: delete the lease by storing a tombstone.
-            await self._client.put(lease_key, {"holder": "", "released": True})
+        An **expired** lease is not ours to release: another replica may
+        already have taken it over, and the tombstone would clobber
+        their fresh lease. The same reasoning as in
+        :meth:`try_acquire_lease` applies in reverse.
+        """
+        now = self._now()
+        current = await self._client.kv_get(lease_key)
+        record = _decode_record(current)
+        if record.get("holder") != holder:
+            return
+        if _lease_is_expired(record, now):
+            return
+        expires_at = _parse_expires_at(record.get("expires_at"))
+        remaining: int | None = None
+        if expires_at is not None:
+            remaining = max(1, int((expires_at - now).total_seconds()))
+        # Best-effort: delete the lease by storing a tombstone. The
+        # tombstone carries the lease's remaining lifetime so it does
+        # not outlive the window it was standing in for.
+        await self._client.put(
+            lease_key,
+            {"holder": "", "released": True},
+            ttl=remaining,
+        )
 
 
 # ---------------------------------------------------------------------------

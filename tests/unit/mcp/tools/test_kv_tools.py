@@ -28,7 +28,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastmcp import FastMCP
 import pytest
 
-from mahavishnu.core.kv_store import kv_store
+from mahavishnu.core.kv_store import ProcessLocalKV, kv_store
 from mahavishnu.core.permissions import Permission
 from mahavishnu.mcp.tools.kv_tools import (
     _authorize_namespaces,
@@ -396,3 +396,104 @@ async def test_base_permission_is_still_required() -> None:
 
     assert result["status"] == "error"
     assert result["error_code"] == "PERMISSION_DENIED"
+
+
+# ---------------------------------------------------------------------------
+# The TTL is forwarded into the store
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_kv_put_forwards_the_ttl_into_the_store(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The TTL must reach the store.
+
+    Dropping it is what made every TTL-bearing record immortal — and
+    with it the budget watchdog's mutual-exclusion lease, whose
+    recovery depended on the lease record expiring.
+    """
+    captured: list[tuple[str, int | None]] = []
+    original_put = ProcessLocalKV.put
+
+    def _spy(
+        self: ProcessLocalKV, key: str, value: str, ttl: int | None = None
+    ) -> None:
+        captured.append((key, ttl))
+        original_put(self, key, value, ttl=ttl)
+
+    monkeypatch.setattr(ProcessLocalKV, "put", _spy)
+
+    server, _rbac = _register(_BASE)
+    result = await _call(
+        server,
+        "mahavishnu_kv_put",
+        {
+            "key": "plan_index/meta/ttl-probe",
+            "value": "v",
+            "ttl": 123,
+            "user_id": "alice",
+        },
+    )
+
+    assert result["ok"] is True
+    assert captured == [("plan_index/meta/ttl-probe", 123)]
+
+
+@pytest.mark.asyncio
+async def test_kv_put_without_a_ttl_sends_no_ttl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A record written without a TTL must not be given one."""
+    captured: list[tuple[str, int | None]] = []
+    original_put = ProcessLocalKV.put
+
+    def _spy(
+        self: ProcessLocalKV, key: str, value: str, ttl: int | None = None
+    ) -> None:
+        captured.append((key, ttl))
+        original_put(self, key, value, ttl=ttl)
+
+    monkeypatch.setattr(ProcessLocalKV, "put", _spy)
+
+    server, _rbac = _register(_BASE)
+    result = await _call(
+        server,
+        "mahavishnu_kv_put",
+        {"key": "plan_index/meta/no-ttl", "value": "v", "user_id": "alice"},
+    )
+
+    assert result["ok"] is True
+    assert captured == [("plan_index/meta/no-ttl", None)]
+    assert kv_store.get("plan_index/meta/no-ttl") == "v"
+
+
+@pytest.mark.asyncio
+async def test_kv_put_with_a_ttl_expires_the_record() -> None:
+    """The forwarded TTL is enforced by the store.
+
+    A zero-second TTL expires the record at once — enough to prove the
+    store received the TTL without waiting on a clock.
+    """
+    server, _rbac = _register(_BASE)
+    result = await _call(
+        server,
+        "mahavishnu_kv_put",
+        {
+            "key": "plan_index/meta/ttl-expired",
+            "value": "v",
+            "ttl": 0,
+            "user_id": "alice",
+        },
+    )
+
+    assert result["ok"] is True
+    assert kv_store.get("plan_index/meta/ttl-expired") is None
+
+    fetched = await _call(
+        server,
+        "mahavishnu_kv_get",
+        {"key": "plan_index/meta/ttl-expired", "user_id": "alice"},
+    )
+    assert fetched["ok"] is True
+    assert fetched["value"] is None

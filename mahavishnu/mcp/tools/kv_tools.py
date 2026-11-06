@@ -14,10 +14,9 @@ backed by a process-local thread-safe dict. The plan_index runs in the
 same process as the server (lifespan refactor, commit f6f2976f), so
 process-local is sufficient for the lock keys — they are short-lived
 (per-cycle) and a fresh acquisition after a restart is the safe
-default. The store intentionally has no TTL eviction because the
-plan_index only writes short-lived lock keys; if future callers need
-TTL, expose ``mahavishnu_kv_put``'s ``ttl`` parameter (it is accepted
-but currently a no-op).
+default. The store **does** honour a per-entry TTL: ``mahavishnu_kv_put``'s
+``ttl`` parameter is forwarded to it, and an expired entry reads as
+absent (see :mod:`mahavishnu.core.kv_store` for the expiry semantics).
 
 The store itself lives in :mod:`mahavishnu.core.kv_store` so the
 server's own producers — which write through
@@ -200,8 +199,8 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     READ requires ``Permission.READ_ECOSYSTEM_STATE``; WRITE requires
     ``Permission.WRITE_ECOSYSTEM_STATE``.
 
-    The ``ttl`` parameter on ``put`` is accepted for forward
-    compatibility but is currently a no-op (no eviction loop).
+    The ``ttl`` parameter on ``put`` sets the lifetime of the record in
+    **seconds**; it is forwarded to the store, which enforces it.
     """
 
     @mcp.tool()
@@ -240,10 +239,12 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     ) -> dict[str, Any]:
         """Persist a string-shape KV record.
 
-        ``ttl`` is accepted for forward compatibility with the original
-        :class:`MCPStateBackend` API but is currently a no-op; the
-        store has no eviction loop. The plan_index's lock keys are
-        short-lived (per-cycle) and don't need TTL.
+        ``ttl`` is the record's lifetime in **seconds**. ``None`` (the
+        default) stores the record with no expiry. A non-``None`` TTL is
+        forwarded to the store, which records the deadline and enforces
+        it: once the deadline passes the record reads as absent — a
+        later ``mahavishnu_kv_get`` returns ``null``, and the record no
+        longer appears in ``mahavishnu_kv_list``.
 
         The domain-owned namespaces (an approval history, a webhook
         receipt, a workflow outcome) are **write-protected**: they are
@@ -260,7 +261,7 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
                 "error": f"Key {key!r} is in a write-protected namespace",
                 "error_code": "NAMESPACE_WRITE_PROTECTED",
             }
-        kv_store.put(key, value)
+        kv_store.put(key, value, ttl=ttl)
         return {"ok": True, "key": key, "stored_at_ms": _now_ms()}
 
     @mcp.tool()

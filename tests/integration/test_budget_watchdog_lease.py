@@ -8,19 +8,29 @@ Focus areas (matching the v2 plan's Phase 3 exit criteria):
   the watchdog within one cycle.
 * ``budget_enforce`` (the MCP-facing tool) round-trips a record to
   the store and exposes the new state.
+* A lease whose holder died **expires** — against the real store, not
+  only against the in-memory double.
 
-The store under test is :class:`InMemoryBudgetStore` — a deliberately
-narrow surface that mimics the real budget store's
-behavior closely enough to exercise the lease, list, and read paths.
+Two stores are exercised. :class:`InMemoryBudgetStore` is a deliberately
+narrow surface that mimics the real budget store's behavior closely
+enough to exercise the lease, list, and read paths. It is not, however,
+the store production runs on: it implemented lease expiry correctly
+while :class:`MCPBudgetStore` did not, so a suite that only exercised
+the double proved nothing about the class that is actually wired in.
+The ``TestRealStoreLease`` class below therefore drives
+:class:`MCPBudgetStore` over the **real** registered KV tools and the
+real process-local store.
 """
 
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-from typing import Any
+import json
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock
 
+from fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.budget import (
@@ -32,11 +42,16 @@ from mahavishnu.core.budget import (
 )
 from mahavishnu.core.budget_watchdog import (
     InMemoryBudgetStore,
+    MCPBudgetStore,
     WatchdogConfig,
     WatchdogMetrics,
     run_watchdog,
     run_watchdog_cycle,
 )
+from mahavishnu.mcp.tools.kv_tools import register_kv_tools
+
+if TYPE_CHECKING:
+    from mahavishnu.core.permissions import Permission
 
 pytestmark = pytest.mark.integration
 
@@ -499,3 +514,249 @@ class TestBudgetEnforceTool:
         result = await fn(workflow_id="wf-empty")
         assert result["status"] == "failed"
         assert "at least one dimension" in result["error"]
+
+
+# =============================================================================
+# The lease against the REAL store — not the in-memory double
+# =============================================================================
+
+
+class _Clock:
+    """A manually advanced UTC clock (no ``time.sleep`` in a test)."""
+
+    def __init__(self, start: datetime | None = None) -> None:
+        self.now = start or datetime.now(UTC)
+
+    def __call__(self) -> datetime:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now = self.now + timedelta(seconds=seconds)
+
+
+class _AllowAllRBAC:
+    """RBAC manager that grants every permission to every principal."""
+
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
+        return True
+
+
+class _RealKVClient:
+    """Drives the **real** registered KV tools over the real store.
+
+    Not a mock: the tool functions ``register_kv_tools`` installs are
+    called directly, so the whole chain — tool → ``kv_store.put`` → TTL
+    enforcement — is exercised. The only substitution is the transport
+    (an in-process call instead of an HTTP round-trip).
+    """
+
+    def __init__(self, server: FastMCP, user_id: str = "watchdog-replica") -> None:
+        self._server = server
+        self._user_id = user_id
+        self._tools: dict[str, Any] = {}
+
+    async def _call(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        if not self._tools:
+            for tool in await self._server.list_tools():
+                self._tools[tool.name] = tool.fn
+        result = await self._tools[name](**arguments)
+        return result if isinstance(result, dict) else {}
+
+    async def put(self, key: str, value: Any, ttl: int | None = None) -> Any:
+        """Mirror :meth:`MCPClient.put` — structured values are JSON-encoded."""
+        text = (
+            value
+            if isinstance(value, str)
+            else json.dumps(value, separators=(",", ":"))
+        )
+        arguments: dict[str, Any] = {
+            "key": key,
+            "value": text,
+            "user_id": self._user_id,
+        }
+        if ttl is not None:
+            arguments["ttl"] = ttl
+        return await self._call("mahavishnu_kv_put", arguments)
+
+    async def kv_get(self, key: str) -> str | None:
+        result = await self._call(
+            "mahavishnu_kv_get", {"key": key, "user_id": self._user_id}
+        )
+        if not result.get("ok"):
+            return None
+        value = result.get("value")
+        return value if isinstance(value, str) else None
+
+    async def kv_list(self, prefix: str) -> list[tuple[str, str]]:
+        result = await self._call(
+            "mahavishnu_kv_list", {"prefix": prefix, "user_id": self._user_id}
+        )
+        if not result.get("ok"):
+            return []
+        return [
+            (item["key"], item["value"])
+            for item in result.get("items", [])
+            if isinstance(item, dict) and isinstance(item.get("key"), str)
+        ]
+
+
+@pytest.fixture
+def real_kv_client() -> _RealKVClient:
+    """A client bound to the real KV tools over the process-local store."""
+    server = FastMCP(name="budget-lease-real-store")
+    register_kv_tools(server, _AllowAllRBAC())
+    return _RealKVClient(server)
+
+
+class TestRealStoreLease:
+    """The lease must expire against the store the watchdog actually uses.
+
+    ``InMemoryBudgetStore`` implemented lease expiry correctly while
+    ``MCPBudgetStore`` did not, so the double hid the defect: the real
+    store never evicted a lease record and the real client never read
+    the expiry, which meant a replica that died holding the lease
+    disabled budget enforcement for every other replica, permanently.
+    """
+
+    async def test_a_live_foreign_lease_blocks_a_takeover(self, real_kv_client) -> None:
+        """Mutual exclusion still holds while the lease is live."""
+        clock = _Clock()
+        store = MCPBudgetStore(real_kv_client, now=clock)
+        lease_key = "mahavishni://budgets/lease.json"
+
+        assert (
+            await store.try_acquire_lease(lease_key, "replica-a", ttl_seconds=60)
+            is True
+        )
+        assert (
+            await store.try_acquire_lease(lease_key, "replica-b", ttl_seconds=60)
+            is False
+        )
+
+    async def test_an_expired_foreign_lease_is_re_acquirable(
+        self, real_kv_client
+    ) -> None:
+        """The regression this file exists for.
+
+        The dead replica's record is still physically in the store, but
+        its lease has lapsed — so another replica must be able to take
+        over. The expiry is decided from the record's own ``expires_at``
+        stamp, not from the store having evicted it.
+        """
+        clock = _Clock()
+        store = MCPBudgetStore(real_kv_client, now=clock)
+        lease_key = "mahavishni://budgets/lease.json"
+
+        assert (
+            await store.try_acquire_lease(lease_key, "replica-a", ttl_seconds=60)
+            is True
+        )
+
+        clock.advance(61)
+
+        # The stale record is still there …
+        assert await real_kv_client.kv_get(lease_key) is not None
+        # … but it no longer locks anybody out.
+        assert (
+            await store.try_acquire_lease(lease_key, "replica-b", ttl_seconds=60)
+            is True
+        )
+
+    async def test_the_lease_record_carries_its_own_expiry(
+        self, real_kv_client
+    ) -> None:
+        """The lease is self-describing: it says when it lapses."""
+        clock = _Clock()
+        store = MCPBudgetStore(real_kv_client, now=clock)
+        lease_key = "mahavishni://budgets/lease.json"
+
+        await store.try_acquire_lease(lease_key, "replica-a", ttl_seconds=60)
+
+        raw = await real_kv_client.kv_get(lease_key)
+        assert raw is not None
+        record = json.loads(raw)
+        assert record["holder"] == "replica-a"
+        assert record["expires_at"] == (clock.now + timedelta(seconds=60)).isoformat()
+
+    async def test_releasing_an_expired_lease_does_not_clobber_the_new_holder(
+        self, real_kv_client
+    ) -> None:
+        """A lapsed lease is not ours to release."""
+        clock = _Clock()
+        store = MCPBudgetStore(real_kv_client, now=clock)
+        lease_key = "mahavishni://budgets/lease.json"
+
+        await store.try_acquire_lease(lease_key, "replica-a", ttl_seconds=60)
+        clock.advance(61)
+        assert (
+            await store.try_acquire_lease(lease_key, "replica-b", ttl_seconds=60)
+            is True
+        )
+
+        # The dead replica tries to release its lapsed lease.
+        await store.release_lease(lease_key, "replica-a")
+
+        raw = await real_kv_client.kv_get(lease_key)
+        assert raw is not None
+        assert json.loads(raw)["holder"] == "replica-b"
+
+    async def test_the_store_evicts_a_lease_written_with_a_zero_ttl(
+        self, real_kv_client
+    ) -> None:
+        """The substrate's own TTL is live through the real tool path."""
+        lease_key = "mahavishni://budgets/lease.json"
+        await real_kv_client.put(lease_key, {"holder": "replica-a"}, ttl=0)
+        assert await real_kv_client.kv_get(lease_key) is None
+
+    async def test_a_dead_replica_does_not_disable_budget_enforcement(
+        self, real_kv_client
+    ) -> None:
+        """The consequence the defect produced, end to end.
+
+        A replica that dies holding the lease used to disable budget
+        enforcement for every other replica, permanently.
+        """
+        clock = _Clock()
+        store = MCPBudgetStore(real_kv_client, now=clock)
+        record = BudgetRecord(
+            workflow_id="wf-1",
+            spec=BudgetSpec(budget_tokens=100),
+            state=BudgetState.ACTIVE,
+            started_at=datetime.now(UTC),
+        )
+        await store.put("mahavishni://budgets/wf-1.json", record.to_dict())
+
+        # replica-a takes the lease … and dies.
+        assert (
+            await store.try_acquire_lease(
+                "mahavishni://budgets/lease.json", "replica-a", ttl_seconds=60
+            )
+            is True
+        )
+
+        # While the lease is live, replica-b cannot enforce.
+        blocked = await run_watchdog_cycle(
+            store=store,
+            holder="replica-b",
+            lease_ttl_seconds=60,
+            usage_source=_static(BudgetUsage(tokens_used=500)),
+        )
+        assert blocked.lease_acquired is False
+        assert blocked.records_transitioned == 0
+
+        # The lease lapses — enforcement must resume.
+        clock.advance(61)
+        resumed = await run_watchdog_cycle(
+            store=store,
+            holder="replica-b",
+            lease_ttl_seconds=60,
+            usage_source=_static(BudgetUsage(tokens_used=500)),
+        )
+        assert resumed.lease_acquired is True
+        assert resumed.records_transitioned == 1
+
+        persisted = await store.get("mahavishni://budgets/wf-1.json")
+        assert persisted is not None
+        assert BudgetRecord.from_dict(persisted).state is BudgetState.EXCEEDED
