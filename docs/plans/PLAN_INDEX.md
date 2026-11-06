@@ -181,6 +181,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 |---|---|---|---|---|---|---|
 | [`docs/decisions/2026-11-05-external-skill-pattern-port.md`](../../docs/decisions/2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `active` | `canonical` |  | `convergence-control-plane` | Decision: Absorb External Agent-Skill Patterns; Do Not Install the Packs |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | `active` | `canonical` | `decision` | `per-component-cold-storage-buckets` | Per-component cold-storage buckets |
+| [`docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md`](../../docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md) | 2026-11-05 | `active` | `canonical` | `decision` | `simdjson-abi-bump-breaks-node` | `simdjson` ABI bump breaks `node` — pin it, and rebuild node against it |
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | `active` | `canonical` | `decision` | `terminal-codex-worker` | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | `active` | `canonical` | `decision` | `learning-pipeline-tools-authz-block` | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
 | [`docs/decisions/2026-10-23-otel-substrate-spec-corrections.md`](../../docs/decisions/2026-10-23-otel-substrate-spec-corrections.md) | 2026-10-23 | `partial` | `canonical` | `decision` | `observability` | Spec corrections found while building the OTLP receiver |
@@ -321,7 +322,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-11-05-config-that-nobody-reads.md`](2026-11-05-config-that-nobody-reads.md) | 2026-11-05 | `draft` | `implementation` |  | `config-that-nobody-reads` | Config that nobody reads — a `settings/` sweep for the dead-knob pattern |
-| [`docs/plans/2026-11-05-external-skill-pattern-port.md`](2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `active` | `implementation` |  | `convergence-control-plane` | Port — External Agent-Skill Patterns into Repo-Native Gates |
+| [`docs/plans/2026-11-05-external-skill-pattern-port.md`](2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `partial` | `implementation` |  | `convergence-control-plane` | Port — External Agent-Skill Patterns into Repo-Native Gates |
 | [`docs/plans/2026-11-05-yaml-backed-model-routing.md`](2026-11-05-yaml-backed-model-routing.md) | 2026-11-05 | `shipped` | `implementation` |  | `yaml-backed-model-routing` | Make `settings/models.yaml` the live source of task-to-model routing |
 | [`docs/plans/2026-11-02-worker-tool-output-compaction.md`](2026-11-02-worker-tool-output-compaction.md) | 2026-11-02 | `draft` | `implementation` |  | `worker-output-compaction` | Worker tool-output compaction — RTK-style savings without a second gateway |
 | [`docs/plans/2026-11-01-adapter-composition-executor.md`](2026-11-01-adapter-composition-executor.md) | 2026-11-01 | `complete` | `superseded` |  | `adapter-composition` | Adapter composition — making engine and worker substrates compose as one workflow |
@@ -448,13 +449,14 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | Event Envelope Specification |
 | [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | Prometheus Metrics Inventory |
 
-### `decision` (66 entries)
+### `decision` (67 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | Per-component cold-storage buckets |
+| [`docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md`](../../docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md) | 2026-11-05 | `simdjson` ABI bump breaks `node` — pin it, and rebuild node against it |
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | The terminal-codex worker stays, and codex joins the Bifrost gateway |
 | [`docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`](../../docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md) | 2026-10-29 | Learning-pipeline MCP tools — blocked on an authentication-identity gap |
 | [`docs/decisions/2026-10-23-otel-substrate-spec-corrections.md`](../../docs/decisions/2026-10-23-otel-substrate-spec-corrections.md) | 2026-10-23 | Spec corrections found while building the OTLP receiver |
@@ -533,10 +535,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 9 | 59 | 2 | 2 | 17 | **89** |
-| `implementation` | 7 | 10 | 2 | 7 | 16 | **42** |
+| `canonical` | 9 | 60 | 2 | 2 | 17 | **90** |
+| `implementation` | 7 | 9 | 3 | 7 | 16 | **42** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **16** | **69** | **4** | **9** | **77** | **175** |
+| **Total** | **16** | **69** | **5** | **9** | **77** | **176** |

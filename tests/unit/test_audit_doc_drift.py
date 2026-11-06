@@ -210,7 +210,9 @@ class TestEndToEndScan:
 
 
 class TestBaselineRatchet:
-    def test_baseline_absorbs_known_findings(self, sample_repo: Path, tmp_path: Path, capsys) -> None:
+    def test_baseline_absorbs_known_findings(
+        self, sample_repo: Path, tmp_path: Path, capsys
+    ) -> None:
         baseline_path = tmp_path / "baseline.json"
         main(
             [
@@ -240,7 +242,9 @@ class TestBaselineRatchet:
         assert payload["baseline_known"] > 0
         assert exit_code == 0
 
-    def test_new_drift_still_fails_with_a_baseline(self, sample_repo: Path, tmp_path: Path, capsys) -> None:
+    def test_new_drift_still_fails_with_a_baseline(
+        self, sample_repo: Path, tmp_path: Path, capsys
+    ) -> None:
         baseline_path = tmp_path / "baseline.json"
         main(
             [

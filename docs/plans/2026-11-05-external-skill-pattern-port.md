@@ -1,5 +1,5 @@
 ---
-status: active
+status: partial
 role: implementation
 kind: plan
 date: 2026-11-05
@@ -293,12 +293,28 @@ one-line test.
 
 ## 9. Decision Rule
 
-This plan is done when: Phase 1 and Phase 2 both satisfy their Integration
-Contracts end-to-end, `scripts/audit_requirements.py` reports no orphan or
+This plan reaches `complete` when every phase satisfies its Integration
+Contract end-to-end, `scripts/audit_requirements.py` reports no orphan or
 phantom requirement ids, `scripts/audit_orphans.py` reports no new orphans,
 and `docs/decisions/2026-11-05-external-skill-pattern-port.md` records the
-provenance of every absorbed pattern. Phases 3-5 may be cut without
-invalidating this plan — they are separate improvements, not prerequisites.
+provenance of every absorbed pattern.
+
+**Current state: `partial`.** Phases 1 and 2 are implemented, wired and
+independently adoptable — the drift gate passes against the live tree and
+the finding gate is reachable from an agent and a workflow. Phases 3 to 5
+are documented but not implemented; they are separate improvements rather
+than prerequisites, so each may be cut without invalidating what has
+already shipped.
+
+Phases 1 and 2 additionally satisfy these conditions, which is why they
+were adoptable before the rest of the plan was done:
+
+- `scripts/audit_requirements.py --json` → 0 orphans, 0 phantoms.
+- `scripts/audit_orphans.py` → no new orphans.
+- `scripts/audit_doc_drift.py --baseline docs/audit-inventory/doc-drift-baseline.json --json`
+  → exit 0.
+- `tests/unit/test_audit_doc_drift.py`, `tests/unit/test_security_finding_gate.py`,
+  `tests/integration/test_ci_gates.py` → pass.
 
 ## References
 
