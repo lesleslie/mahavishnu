@@ -80,7 +80,7 @@ never delete a gate.
 
 ## Quality Limits
 
-- Line length: 100 chars
+- Line length: 88 chars
 - Function complexity: 15
 - Parameters: 10
 - Return points: 6

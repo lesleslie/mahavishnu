@@ -345,7 +345,7 @@ storage-pg = [
 allow-direct-references = true
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 target-version = "py314"
 
 [tool.ruff.lint]
@@ -654,7 +654,7 @@ disable = [
 ]
 
 [tool.pylint.format]
-max-line-length = 100
+max-line-length = 88
 
 [tool.ruff.lint.mccabe]
 # Align ruff C901 with [tool.ruff.lint.pylint] max-branches = 15.

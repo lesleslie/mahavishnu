@@ -84,15 +84,32 @@ class TestStripFencedCode:
 
 class TestClassifyToken:
     def test_classifies_path(self, tmp_path: Path) -> None:
-        assert classify_token("pkg/mod.py", tmp_path) == ("path", "pkg/mod.py", None, False)
+        assert classify_token("pkg/mod.py", tmp_path) == (
+            "path",
+            "pkg/mod.py",
+            None,
+            False,
+        )
 
     def test_classifies_path_with_symbol(self, tmp_path: Path) -> None:
-        assert classify_token("pkg/mod.py::Bar", tmp_path) == ("path", "pkg/mod.py", "Bar", False)
+        assert classify_token("pkg/mod.py::Bar", tmp_path) == (
+            "path",
+            "pkg/mod.py",
+            "Bar",
+            False,
+        )
 
     def test_classifies_bare_filename(self, tmp_path: Path) -> None:
-        assert classify_token("README.md", tmp_path) == ("path", "README.md", None, True)
+        assert classify_token("README.md", tmp_path) == (
+            "path",
+            "README.md",
+            None,
+            True,
+        )
 
-    def test_classifies_dotted_module_only_for_real_packages(self, tmp_path: Path) -> None:
+    def test_classifies_dotted_module_only_for_real_packages(
+        self, tmp_path: Path
+    ) -> None:
         (tmp_path / "pkg").mkdir()
         assert classify_token("pkg.mod", tmp_path) == ("module", "pkg.mod", None, False)
         assert classify_token("nosuchpkg.mod", tmp_path) is None
@@ -104,7 +121,12 @@ class TestClassifyToken:
         assert classify_token("pkg/<name>.py", tmp_path) is None
 
     def test_strips_trailing_call_and_colon(self, tmp_path: Path) -> None:
-        assert classify_token("pkg/mod.py:foo()", tmp_path) == ("path", "pkg/mod.py", "foo", False)
+        assert classify_token("pkg/mod.py:foo()", tmp_path) == (
+            "path",
+            "pkg/mod.py",
+            "foo",
+            False,
+        )
         assert classify_token("settings/models.yaml:bifrost:", tmp_path) == (
             "path",
             "settings/models.yaml",
@@ -113,8 +135,18 @@ class TestClassifyToken:
         )
 
     def test_line_numbers_are_not_symbols(self, tmp_path: Path) -> None:
-        assert classify_token("pkg/mod.py:120", tmp_path) == ("path", "pkg/mod.py", None, False)
-        assert classify_token("pkg/mod.py:20-30", tmp_path) == ("path", "pkg/mod.py", None, False)
+        assert classify_token("pkg/mod.py:120", tmp_path) == (
+            "path",
+            "pkg/mod.py",
+            None,
+            False,
+        )
+        assert classify_token("pkg/mod.py:20-30", tmp_path) == (
+            "path",
+            "pkg/mod.py",
+            None,
+            False,
+        )
 
 
 class TestLooksLikeConfigKey:
@@ -128,7 +160,9 @@ class TestLooksLikeConfigKey:
 
 
 class TestCollectSymbols:
-    def test_collects_functions_classes_methods_and_aliases(self, tmp_path: Path) -> None:
+    def test_collects_functions_classes_methods_and_aliases(
+        self, tmp_path: Path
+    ) -> None:
         target = tmp_path / "mod.py"
         target.write_text(
             "def foo():\n    pass\n\n\n"
@@ -198,12 +232,16 @@ class TestEndToEndScan:
             "---\nstatus: draft\n---\n\nPlanned file `pkg/not_yet.py`.\n",
             encoding="utf-8",
         )
-        exit_code = main(["--repo-root", str(tmp_path), "--docs", "docs/specs", "--json"])
+        exit_code = main(
+            ["--repo-root", str(tmp_path), "--docs", "docs/specs", "--json"]
+        )
         payload = json.loads(capsys.readouterr().out)
         assert payload["errors"] == 0
         assert exit_code == 0
 
-    def test_semantic_claims_are_listed_for_review(self, sample_repo: Path, capsys) -> None:
+    def test_semantic_claims_are_listed_for_review(
+        self, sample_repo: Path, capsys
+    ) -> None:
         main(["--repo-root", str(sample_repo), "--docs", "docs/specs", "--json"])
         payload = json.loads(capsys.readouterr().out)
         assert "semantic_review_items" in payload
@@ -279,7 +317,9 @@ class TestBaselineRatchet:
         assert payload["errors"] == 1
         assert exit_code == 1
 
-    def test_baseline_round_trips(self, sample_repo: Path, tmp_path: Path, capsys) -> None:
+    def test_baseline_round_trips(
+        self, sample_repo: Path, tmp_path: Path, capsys
+    ) -> None:
         baseline_path = tmp_path / "baseline.json"
         main(
             [

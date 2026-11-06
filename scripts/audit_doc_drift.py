@@ -39,7 +39,8 @@ realises for the deterministically-checkable subset.
 Usage:
     python scripts/audit_doc_drift.py
     python scripts/audit_doc_drift.py --json
-    python scripts/audit_doc_drift.py --docs docs/specs docs/plans --out reports/doc_drift.md
+    python scripts/audit_doc_drift.py --docs docs/specs docs/plans \
+        --out reports/doc_drift.md
     python scripts/audit_doc_drift.py --warn-only
 """
 
@@ -211,7 +212,9 @@ class Baseline:
         if not path.is_file():
             return cls()
         payload = json.loads(path.read_text(encoding="utf-8"))
-        entries = payload.get("findings", payload) if isinstance(payload, dict) else payload
+        entries = (
+            payload.get("findings", payload) if isinstance(payload, dict) else payload
+        )
         known: set[tuple[str, str, str]] = set()
         for entry in entries:
             if isinstance(entry, dict):
@@ -335,7 +338,9 @@ def strip_fenced_code(text: str) -> str:
 
 
 def _is_placeholder(token: str) -> bool:
-    return any(ch in PLACEHOLDER_CHARS for ch in token) or bool(PLACEHOLDER_RE.search(token))
+    return any(ch in PLACEHOLDER_CHARS for ch in token) or bool(
+        PLACEHOLDER_RE.search(token)
+    )
 
 
 def looks_like_config_key(token: str) -> bool:
@@ -365,7 +370,9 @@ def _split_symbol_suffix(token: str) -> tuple[str, str | None]:
             tail = tail.strip()
             if not tail or tail.isdigit():
                 return head, None
-            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", tail):
+            if re.fullmatch(
+                r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", tail
+            ):
                 return head, tail
             return head, None
     return token, None
@@ -430,7 +437,9 @@ def extract_references(text: str, root: Path) -> list[Reference]:
             return
         seen.add(key)
         refs.append(
-            Reference(kind=kind, target=target, symbol=symbol, raw=raw, line=line, bare=bare)
+            Reference(
+                kind=kind, target=target, symbol=symbol, raw=raw, line=line, bare=bare
+            )
         )
 
     for line_no, line in enumerate(body.splitlines(), start=1):
@@ -492,7 +501,7 @@ def collect_symbols(path: Path) -> set[str] | None:
     try:
         source = path.read_text(encoding="utf-8", errors="replace")
         tree = ast.parse(source)
-    except (OSError, SyntaxError, ValueError):
+    except OSError, SyntaxError, ValueError:
         return None
 
     names: set[str] = set()
@@ -623,7 +632,9 @@ def path_candidates(
             add(root / package_prefix, target[len(own_repo) + 1 :])
 
     # A document that was archived still exists; the reference is not broken.
-    archived = [candidate.parent / ".archive" / candidate.name for candidate in candidates]
+    archived = [
+        candidate.parent / ".archive" / candidate.name for candidate in candidates
+    ]
     return candidates + archived
 
 
@@ -750,7 +761,9 @@ def scan_document(
     resolved_tokens: set[str] = set()
     refs = extract_references(text, root)
 
-    def record(category: str, message: str, ref: Reference, sev: str | None = None) -> None:
+    def record(
+        category: str, message: str, ref: Reference, sev: str | None = None
+    ) -> None:
         if severity == "expected":
             return
         findings.append(
@@ -933,8 +946,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Package root for package-relative paths (default: auto-detect).",
     )
-    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    parser.add_argument("--out", type=Path, help="Write the markdown report to this path.")
+    parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON."
+    )
+    parser.add_argument(
+        "--out", type=Path, help="Write the markdown report to this path."
+    )
     parser.add_argument(
         "--baseline",
         type=Path,
@@ -989,7 +1006,8 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(payload, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Wrote {len(payload['findings'])} baseline entries to {args.write_baseline}")
+        count = len(payload["findings"])
+        print(f"Wrote {count} baseline entries to {args.write_baseline}")
         return 0
 
     if args.baseline is not None:

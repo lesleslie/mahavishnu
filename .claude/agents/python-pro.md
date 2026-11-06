@@ -19,9 +19,9 @@ these rules before writing; verify with `mcp__crackerjack__crackerjack_run` afte
 from __future__ import annotations
 ```
 
-### Formatting (ruff format, line-length = 100)
+### Formatting (ruff format, line-length = 88)
 
-- Max line length: **100 chars**
+- Max line length: **88 chars**
 - String quotes: **double quotes**
 - Indent: **4 spaces**
 - Trailing comma required on multi-line structures

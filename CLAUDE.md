@@ -905,7 +905,7 @@ Default command sequence:
 
 | Limit | Value | Config key |
 |---|---|---|
-| Line length | 100 chars | `[tool.ruff] line-length` |
+| Line length | 88 chars | `[tool.ruff] line-length` |
 | Function args | 10 (excludes `self`, `cls`, `*args`, `**kwargs`) | `[tool.ruff.lint.pylint] max-args` |
 | Branches | 15 | `[tool.ruff.lint.pylint] max-branches` |
 | Returns | 6 | `[tool.ruff.lint.pylint] max-returns` |

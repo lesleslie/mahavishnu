@@ -18,7 +18,9 @@ import re
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_PATH = REPO_ROOT / ".claude" / "skills" / "security-finding-gate" / "SKILL.md"
 AGENT_PATH = REPO_ROOT / ".claude" / "agents" / "api-security-specialist.md"
-WORKFLOW_PATH = REPO_ROOT / ".claude" / "commands" / "workflows" / "multi-stage-code-review.md"
+WORKFLOW_PATH = (
+    REPO_ROOT / ".claude" / "commands" / "workflows" / "multi-stage-code-review.md"
+)
 
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 
@@ -45,7 +47,9 @@ class TestSkillFile:
 
     def test_frontmatter_declares_name_and_description(self) -> None:
         frontmatter = _frontmatter()
-        assert re.search(r"^name:\s*security-finding-gate\s*$", frontmatter, re.MULTILINE)
+        assert re.search(
+            r"^name:\s*security-finding-gate\s*$", frontmatter, re.MULTILINE
+        )
         assert re.search(r"^description:", frontmatter, re.MULTILINE)
 
     def test_description_is_scoped_to_finding_triage(self) -> None:
@@ -53,7 +57,14 @@ class TestSkillFile:
         general instruction to act on the filesystem or the network."""
         frontmatter = _frontmatter()
         lowered = frontmatter.lower()
-        for forbidden in ("rm -", "curl ", "http://", "https://", "delete the", "push to"):
+        for forbidden in (
+            "rm -",
+            "curl ",
+            "http://",
+            "https://",
+            "delete the",
+            "push to",
+        ):
             assert forbidden not in lowered, f"description mentions {forbidden!r}"
 
 
