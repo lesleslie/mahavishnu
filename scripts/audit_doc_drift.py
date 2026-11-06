@@ -48,10 +48,11 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 # --- REQ-DRIFT-001 -----------------------------------------------------------
 # The script resolves every code reference made by a design document and
@@ -569,6 +570,26 @@ class TreeIndex:
         return matches[0] if matches else None
 
 
+def contain_within(candidate: Path, root: Path) -> Path | None:
+    """Return the canonical candidate when it resolves inside ``root``.
+
+    A reference is text taken from a document, so it is untrusted input once
+    a hostile document reaches a scanned store. This script *parses* the
+    Python files it resolves, so a path that escapes the repository -- via
+    ``..`` or through a symlink -- must never be followed: an out-of-tree
+    file is not this repository's business.
+    """
+    try:
+        real_candidate = Path(os.path.realpath(candidate))
+        real_root = Path(os.path.realpath(root))
+        real_candidate.relative_to(real_root)
+    except ValueError:
+        return None
+    except OSError:
+        return None
+    return real_candidate
+
+
 def path_candidates(
     target: str,
     root: Path,
@@ -585,8 +606,13 @@ def path_candidates(
     candidates: list[Path] = []
 
     def add(base: Path, rel: str) -> None:
-        if rel and not rel.startswith("/"):
-            candidates.append(base / rel)
+        if not rel or rel.startswith("/"):
+            return
+        # ``..`` would walk out of the repository and name a file this
+        # script would then read.
+        if ".." in PurePosixPath(rel).parts:
+            return
+        candidates.append(base / rel)
 
     add(root, target)
     if own_repo and target.startswith(f"{own_repo}/"):
@@ -624,18 +650,22 @@ def resolve_path(
         return None, False
 
     for candidate in path_candidates(target, root, package_prefix, own_repo):
-        if candidate.exists():
-            return candidate, True
+        contained = contain_within(candidate, root)
+        if contained is not None and contained.exists():
+            return contained, True
 
     # A bare filename may live anywhere in the tree.
     if "/" not in target:
         found = index.find_by_basename(target)
         if found is not None:
-            return found, True
+            contained = contain_within(found, root)
+            if contained is not None:
+                return contained, True
         for store in DOC_SEARCH_STORES:
             candidate = root / store / target
-            if candidate.exists():
-                return candidate, True
+            contained = contain_within(candidate, root)
+            if contained is not None and contained.exists():
+                return contained, True
 
     in_scope = (root / first).exists()
     if not in_scope and package_prefix and first != package_prefix:
