@@ -320,6 +320,117 @@ UUID7/ULID, version stamps, and a Bifrost env-var leak).
 **Goal:** akosha accepts OTLP metrics on `:4317` and exposes them on
 `:8682/metrics`.
 
+**Prerequisite — the oneiric publish gate (added 2026-11-06).** Phase 2's
+persistence step calls `HotStore.insert_metrics_substrate()`, which is
+inherited from oneiric's `DuckdbHotStore`. That primitive exists only on
+oneiric's **local, unpushed** `main` (commit `f869951`); the published
+`oneiric` 0.34.0 that akosha's `oneiric>=0.33` pin resolves to has **no**
+`insert_metrics_substrate` and **no** `metrics_substrate_table`. The
+implementation therefore develops against a local editable oneiric, and
+**cannot ship until oneiric publishes a release carrying Phase 1**. The
+version bump and the publish are operator actions — they are not part of
+this plan and were not performed.
+
+**Decisions taken in Phase 2 that the plan did not specify:**
+- **`ts` is epoch nanoseconds**, from the data point's `time_unix_nano`.
+  Phase 1 stores `ts` as a raw `BIGINT` and constrains nothing, but
+  `spans_substrate` keeps nanosecond timestamps (`start_time_unix_nano`)
+  in the *same* DuckDB file. Two time units in one substrate would be a
+  silent trap for every future reader.
+- **The exposed Prometheus series are namespaced by the resource's
+  `service.name`.** REQ-M07's two producers are indistinguishable at the
+  wire level, and the shared `CollectorRegistry` has no other way to keep
+  mahavishnu's and oneiric's instruments from colliding.
+- **The substrate's `resource` column is not part of the point's
+  identity** — the UNIQUE constraint covers
+  `(service_name, service_namespace, scope_name, metric_name, ts,
+  attributes)`. Two producers that share a service identity but differ in
+  their resource attributes are the same point.
+
+**Implemented 2026-11-06 — in ensemble review, uncommitted.** The work
+lives on akosha branch `feat/otlp-metrics-service` (base `main` @ `f7353ca`),
+in the worktree
+`~/.local/state/mahavishnu/worktrees/akosha/feat-otlp-metrics-service`.
+Four files, ~2,300 added lines: `akosha/observability/otlp_receiver.py`
+(+771), `akosha/observability/otlp_metrics.py` (+96), the new
+`akosha/observability/otlp_prometheus_bridge.py` (722), and the new
+`tests/unit/observability/test_otlp_metrics_receiver.py` (754, 23 tests).
+**Not committed** — the operator has not authorised a commit in akosha.
+
+Twelve deviations from the plan text, recorded so Phase 3 and the operator
+build against reality:
+
+1. **`service.namespace` is NOT required for a metric point.** oneiric's
+   `OTLPObservabilityAdapter` builds its resource with `service.name`,
+   `deployment.environment` and optionally `service.version` — **and no
+   namespace at all**. Requiring one would quarantine every metric oneiric
+   sends, breaking REQ-M07's second producer while reporting "accepted,
+   zero points stored". The namespace is stored as `""` — "not declared", a
+   different fact from "unknown" — to satisfy the substrate's NOT NULL.
+   **For the same reason the span path's namespace allowlist is NOT applied
+   to metrics:** it would reject oneiric's empty namespace outright.
+2. **`ts` is epoch nanoseconds**, from the point's `time_unix_nano`
+   (falling back to `start_time_unix_nano`). A point with no timestamp is
+   rejected (`ts`/`not_positive`) rather than stored at `ts=0`, where it
+   would collide with every other `ts=0` point.
+3. **`attributes` and `resource` are passed as dicts**, never pre-serialized
+   — the substrate canonicalizes them itself, and DuckDB compares a JSON
+   column in a UNIQUE constraint as text.
+4. **The bridge lives in a new module**, `otlp_prometheus_bridge.py`, rather
+   than in `prometheus_metrics.py` as §6's checklist says.
+   `prometheus_metrics.py` is akosha's own application metrics and has no
+   OTLP/protobuf knowledge; `otlp_metrics.py` is the receiver's *static*
+   counter module. The dynamic-instrument machinery (temporality, bucket
+   writes, cardinality) got its own module.
+5. **The service-name prefix is skipped when the metric name already starts
+   with the service name.** A naive `<service>_<metric>` would render
+   mahavishnu's instruments as `mahavishnu_mahavishnu_observability_…`, and
+   this plan's own acceptance check (`grep mahavishnu_observability`) would
+   find nothing.
+6. **Exposure drops are counted separately** — `akosha_otlp_metrics_exposure_dropped_total{reason}` —
+   and not in `rejected_data_points`. The risk table said "drop the excess
+   into the DLQ count", but the point *is* in the substrate, so counting it
+   as rejected would tell a producer its data was thrown away when it was
+   not. The cardinality cap is **100 distinct label-value combinations per
+   metric family** (the plan asked for a cap but named no number).
+7. **No bind-time assertion that `metrics_substrate` exists.** The trace
+   receiver asserts `spans_substrate_table`; the metrics receiver does not,
+   because failing the receiver's boot would take the *trace* path down
+   with it. The table is created by oneiric's `DuckdbHotStore.initialize()`,
+   which akosha's `HotStore.initialize()` calls, so it is always there; a
+   missing table shows up as `akosha_otlp_metrics_insert_failed_total`.
+8. **`value_sum_of_squares` is always NULL.** OTLP does not carry it and it
+   cannot be derived from bucket boundaries without guessing where inside
+   each bucket the observations fell. NULL says "not known"; a fabricated
+   number would poison every variance computed over the column.
+9. **Scope version and scope attributes have no column** in Phase 1's
+   schema, so they ride in the substrate's `resource` JSON under
+   `otel.scope` (`resource` is explicitly not part of the point's identity).
+   Summary **quantiles are dropped entirely** — `prometheus_client`'s
+   `Summary` has no quantile support, and `buckets_json` is reserved for
+   the two histogram types.
+10. **Histogram buckets are written through `prometheus_client`'s bucket
+    values (private API)** — there is no public API for importing
+    pre-aggregated bucket counts, and `observe()` would corrupt the sum.
+    Cumulative values are converted to deltas per series, with a backwards
+    jump treated as a producer restart (the counter-reset convention).
+11. **Exponential histograms with negative buckets are stored but not
+    exposed** — a Prometheus histogram's bounds would have to start below
+    zero, and `prometheus_client` then omits the `_count` and `_sum`
+    samples. Positive-only exponential histograms are exposed with bounds
+    derived from `scale`/`offset`.
+12. **The counters are `akosha_otlp_metrics_*`**, following the receiver's
+    existing `akosha_otlp_spans_*` convention, rather than the plan's
+    shorthand `otlp_metrics_*`.
+
+**Known gap — `/v1/metrics` on the HTTP listener is NOT implemented.** gRPC
+is the required path and it is served; the HTTP listener still exposes only
+`/v1/traces`. oneiric's adapter chooses its exporter by *config*
+(`OTLPObservabilitySettings.protocol`, default `"grpc"` — there is no
+automatic runtime fallback), so the default configuration works, but an
+operator who sets `protocol: "http/protobuf"` would get 404s. This is the
+remaining half of REQ-M07 for that configuration.
+
 **Tasks:**
 - Add `_MetricsServiceServicer` next to `_TraceServiceServicer`
   (`akosha/observability/otlp_receiver.py:692`), returning
