@@ -73,7 +73,9 @@ def test_resolve_path_does_not_resolve_outside_the_repository(tmp_path: Path) ->
     assert resolved is None
 
 
-def test_resolve_path_still_resolves_a_file_inside_the_repository(tmp_path: Path) -> None:
+def test_resolve_path_still_resolves_a_file_inside_the_repository(
+    tmp_path: Path,
+) -> None:
     root = _repo(tmp_path)
     (root / "docs" / "specs").mkdir(parents=True)
     spec = root / "docs" / "specs" / "a.md"
