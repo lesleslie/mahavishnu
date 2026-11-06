@@ -86,11 +86,11 @@ async def test_get_capability_result_returns_pending_when_no_envelopes() -> None
 async def test_get_capability_result_fails_loudly_when_mcp_call_raises() -> None:
     """MCP-unavailable must surface as an exception, NOT silently return pending.
 
-    Regression guard for the v0.19.0 contract: the deprecated
-    ``dispatch_to_pool``/``workflow_result`` pair had a silent-no-op
+    Regression guard for the v0.19.0 contract: the removed
+    ``workflow_result`` tool had a silent-no-op
     fallback that returned ``not_found`` whenever the MCP store was unavailable,
     breaking the read-back contract (see
-    ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``).
+    ``docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``).
     The new ``get_capability_result`` must NOT regress to a silent ``pending``
     on MCP failure — operators must see the failure.
     """

@@ -582,8 +582,8 @@ async def worker_run_with_settle(
     )
 
     # Persistence BEFORE any worker file write. Mirrors the
-    # ``dispatch_to_pool`` "persist before file write" contract from
-    # ``docs/fixes/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``.
+    # "persist before file write" contract from
+    # ``docs/followups/2026-08-29-dispatch-to-pool-dead-letter-fallback.md``.
     await persist_initial_async(record, mcp=_settle_mcp)
 
     # REQ-CLEAN-006: announce the proposed transition so subscribers on

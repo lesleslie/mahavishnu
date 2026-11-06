@@ -24,7 +24,7 @@ async def workflow_get_outcome(
     Returns ``None`` when no record exists at ``workflow-results/{workflow_id}/``.
     Returns ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}``
     when ``workflow_id`` is rejected by the conservative path-traversal guard
-    (mirrors the sibling parity gate in ``pool_tools.workflow_result``);
+    (mirrors the shared guard in ``mahavishnu.mcp.tools._workflow_id_guard``);
     the substrate is never queried in that case.
     """
     # Path-traversal guard: caller-supplied workflow_id is spliced into

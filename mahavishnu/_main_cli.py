@@ -1916,7 +1916,7 @@ app.add_typer(executions_app, name="executions")
 # drift cannot recur silently — see
 # docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md.
 # Non-isolated workloads are routed via `mahavishnu/pools/` instead
-# (`pool_route_execute`, `dispatch_to_pool`).
+# (`pool_route_execute`).
 SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset({"shepherd", "gateway-openclaw"})
 
 SPAWN_WORKER_TYPE_ERROR_HINT: str = (
@@ -1926,8 +1926,7 @@ SPAWN_WORKER_TYPE_ERROR_HINT: str = (
     "docs/decisions/2026-09-24-legacy-worker-deprecation.md and "
     "docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md. "
     "For non-isolated workloads use the `mahavishnu/pools/` "
-    "orchestration surface (`pool_route_execute`, `dispatch_to_pool`) "
-    "instead."
+    "orchestration surface (`pool_route_execute`) instead."
 )
 
 

@@ -1,9 +1,10 @@
 """Conservative path-traversal guard for caller-supplied workflow IDs.
 
 Caller-provided ``workflow_id`` is spliced into
-``f"workflow-results/{workflow_id}/"`` for both ``dispatch_to_pool`` and
-``workflow_result``, so it MUST match a conservative identifier pattern
-before touching MCP. On mismatch, callers should return
+``f"workflow-results/{workflow_id}/"`` by the workflow-outcome reader
+(``mahavishnu.mcp.tools.workflow_tools.workflow_get_outcome``), so it
+MUST match a conservative identifier pattern before touching MCP. On
+mismatch, callers should return
 ``{"workflow_id": workflow_id, "status": "invalid_workflow_id"}`` so MCP
 callers see a consistent error shape and MCP is never touched with a
 tainted key.

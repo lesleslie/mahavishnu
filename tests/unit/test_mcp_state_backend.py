@@ -275,8 +275,8 @@ class TestKeyConstructors:
         assert MCPStateBackend.in_flight_key("cluster-abc") == "cluster/v1/cluster-abc/in_flight"
 
     def test_workflow_key_unchanged(self) -> None:
-        # §6.4: do NOT redeclare workflow_key. Existing callers (dispatch_to_pool,
-        # clone_refactor_status line 282) depend on this exact signature.
+        # §6.4: do NOT redeclare workflow_key. Existing callers
+        # (clone_refactor_status line 282) depend on this exact signature.
         assert MCPStateBackend.workflow_key("exec-1") == "workflow/v1/exec-1"
 
     def test_pool_key_unchanged(self) -> None:

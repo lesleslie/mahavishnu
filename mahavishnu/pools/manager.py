@@ -596,8 +596,8 @@ class PoolManager:
         """
         # Quota enforcement happens at the MCP tool boundary (see
         # ``_authorize_durable_fast_path`` in pool_tools.py for the
-        # dispatch_to_pool / pool_route_execute paths, and the
-        # ``pool_execute`` tool for the direct path). Calling
+        # pool_route_execute path, and the ``pool_execute`` tool for the
+        # direct path). Calling
         # ``_enforce_caller_quota`` here would double-count quota because
         # ``route_task`` already delegates through ``execute_on_pool``.
         # Coercion still happens here so callers using ``execute_on_pool``

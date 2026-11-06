@@ -432,16 +432,19 @@ mcp__mahavishnu__pool_route_execute(
 )
 ```
 
-For long-running or async work:
+For long-running or durable work:
 
 ```python
-mcp__mahavishnu__dispatch_to_pool(
-    prompt="<task>",
-    caller_kind="claude_code",
-    parent_session_id="<session-id>",  # for traceability
-    async_callback=True,  # returns workflow_id immediately
+mcp__mahavishnu__trigger_workflow(
+    adapter="prefect",  # or "llamaindex" / "agno"
+    task_type="<task-type>",
+    params={"prompt": "<task>"},
+    timeout=300,
 )
 ```
+
+`trigger_workflow` starts a durable workflow and returns its `workflow_id`;
+poll `mcp__mahavishnu__get_workflow_status` for the outcome.
 
 ### When to use local tools (Bash, Edit, Read, Write)
 

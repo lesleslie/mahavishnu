@@ -19,7 +19,7 @@ Run, route, and diagnose work on the Mahavishnu orchestration platform.
 
 ## How I work
 - Confirm pool health and selector policy (`least_loaded` / `affinity`).
-- Use `dispatch_to_pool` for async callbacks and `trigger_workflow` for durable flows.
+- Use `pool_route_execute` for single-task dispatch and `trigger_workflow` for durable flows.
 - Capture `workflow_id` so callers can poll outcomes.
 
 ## What I produce

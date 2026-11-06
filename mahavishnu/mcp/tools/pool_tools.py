@@ -759,8 +759,8 @@ def register_pool_tools(
 
         Anti-bug guard (memory rule ``mahavishnu-dispatch-prompt-mangling``):
         Implementation MUST call ``await pool_manager.route_task(...)``
-        directly. Do NOT route through ``dispatch_to_pool()`` — that path
-        wraps in ``sh -lc`` and re-introduces the prompt-mangling bug.
+        directly. Do NOT wrap the prompt in a shell (``sh -lc``) — that
+        re-introduces the prompt-mangling bug.
 
         ADR 014 (Honcho/ACL composition contract): ``caller_pool_allowlist``
         is set server-side via ``PoolManager``, not exposed to wire callers.

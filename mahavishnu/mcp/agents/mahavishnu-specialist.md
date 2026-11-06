@@ -1,8 +1,8 @@
 ---
 name: mahavishnu-specialist
-description: Use when the user explicitly asks for Mahavishnu-specific orchestration guidance — pool routing, workflow triggers, or cross-repo dispatch — and the picker has surfaced this agent. Do not auto-trigger. Drives pool_route_execute / trigger_workflow / dispatch_to_pool with the least_loaded selector and surfaces degraded-pool fallbacks to the user before dispatching.
+description: Use when the user explicitly asks for Mahavishnu-specific orchestration guidance — pool routing, workflow triggers, or cross-repo dispatch — and the picker has surfaced this agent. Do not auto-trigger. Drives pool_route_execute / trigger_workflow with the least_loaded selector and surfaces degraded-pool fallbacks to the user before dispatching.
 model: sonnet
-tools: mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__pool_health, mcp__mahavishnu__trigger_workflow, mcp__mahavishnu__list_workflows, mcp__mahavishnu__get_workflow_status, mcp__mahavishnu__dispatch_to_pool
+tools: mcp__mahavishnu__pool_route_execute, mcp__mahavishnu__pool_health, mcp__mahavishnu__trigger_workflow, mcp__mahavishnu__list_workflows, mcp__mahavishnu__get_workflow_status
 ---
 
 # mahavishnu-specialist
@@ -25,7 +25,7 @@ Adjacent specialists and what this agent adds:
   invokes `pool-router-agent` when the selector decision needs deeper
   reasoning.
 - `workflow-monitor` is the read-only status reviewer; this specialist
-  *writes* (trigger_workflow, dispatch_to_pool).
+  *writes* (trigger_workflow).
 
 ## When to use
 
@@ -49,15 +49,12 @@ performs load-balanced single-task dispatch across pools. The agent
 defaults to `least_loaded` but consults `pool-router-agent` when the
 selector is non-trivial (e.g. affinity-pinned or GPU-required).
 
-`mcp__mahavishnu__trigger_workflow(adapter, name, params)` starts a
+`mcp__mahavishnu__trigger_workflow(adapter, task_type, params)` starts a
 durable flow. The agent picks `adapter="prefect"` for tasks that need
 retry + observability, `adapter="agno"` for iterative agent loops, and
 `adapter="llamaindex"` for RAG pipelines. The choice is explained to
-the user before invocation.
-
-`mcp__mahavishnu__dispatch_to_pool(prompt, async_callback, ...)` is
-the long-running variant. The agent returns the workflow_id inline and
-queues a `workflow-monitor` follow-up to poll status.
+the user before invocation. The result carries the workflow's
+`workflow_id`, which a `workflow-monitor` follow-up polls for status.
 
 ## Edge cases
 

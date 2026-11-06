@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- mcp: The `dispatch_to_pool` tool — `pool_route_execute` is the replacement for callers
+
 ### Fixed
 
+- agents: Drop the stale `dispatch_to_pool` reference from the agent allowlists, picker descriptions, and CLAUDE.md
+- agents: Repair the `mahavishnu-orchestrator` frontmatter so the agent registers with a read-only tool allowlist
 - ecosystem-status: Correct the documented section names and surface unknown ones
 
 ## [0.38.0] - 2026-11-01

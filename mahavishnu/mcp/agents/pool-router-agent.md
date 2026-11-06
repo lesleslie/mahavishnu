@@ -12,7 +12,7 @@ tools: mcp__mahavishnu__pool_health, mcp__mahavishnu__pool_list, Read
 This agent owns the **selector strategy decision** for the Mahavishnu
 pool router. It does NOT dispatch — `mahavishnu-specialist` and
 `workflow-monitor` invoke this agent to get a selector recommendation,
-then they execute via `pool_route_execute` or `dispatch_to_pool`.
+then they execute via `pool_route_execute`.
 
 Adjacent specialists and what this agent adds:
 

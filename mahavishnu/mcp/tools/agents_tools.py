@@ -90,9 +90,8 @@ _STATIC_AGENTS: list[dict[str, Any]] = [
             "orchestration guidance — pool routing, workflow triggers, "
             "or cross-repo dispatch — and the picker has surfaced this "
             "agent. Do not auto-trigger. Drives pool_route_execute / "
-            "trigger_workflow / dispatch_to_pool with the least_loaded "
-            "selector and surfaces degraded-pool fallbacks to the user "
-            "before dispatching."
+            "trigger_workflow with the least_loaded selector and surfaces "
+            "degraded-pool fallbacks to the user before dispatching."
         ),
         "model": "sonnet",
         "tools": [
@@ -101,13 +100,11 @@ _STATIC_AGENTS: list[dict[str, Any]] = [
             "mcp__mahavishnu__trigger_workflow",
             "mcp__mahavishnu__list_workflows",
             "mcp__mahavishnu__get_workflow_status",
-            "mcp__mahavishnu__dispatch_to_pool",
         ],
         "tool_refs": [
             "mcp__mahavishnu__pool_route_execute",
             "mcp__mahavishnu__pool_health",
             "mcp__mahavishnu__trigger_workflow",
-            "mcp__mahavishnu__dispatch_to_pool",
         ],
         "dependencies": ["pool-router-agent", "workflow-monitor"],
         "category": "orchestration",
