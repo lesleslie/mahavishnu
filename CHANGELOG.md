@@ -10,12 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - mcp: The `dispatch_to_pool` tool — `pool_route_execute` is the replacement for callers
+- ecosystem-status: The dead `include_details` parameter on the `ecosystem_status` tool — it was never read by the tool body, and `EcosystemStatusService.generate_report()` has no matching option
+- mcp: The `backup_id` parameter on the `create_backup` tool — it was accepted and silently discarded, so a caller that supplied one got a different id back; the backup manager assigns the id and returns it in the response (tool version bumped to `2.0.0`)
+- mcp: The `include_docs` parameter on the `index_code_graph` tool — it has been a no-op since the tool's first version and was never wired to anything
 
 ### Fixed
 
 - agents: Drop the stale `dispatch_to_pool` reference from the agent allowlists, picker descriptions, and CLAUDE.md
 - agents: Repair the `mahavishnu-orchestrator` frontmatter so the agent registers with a read-only tool allowlist
 - ecosystem-status: Correct the documented section names and surface unknown ones
+- terminal: Report the durable-envelope sink's topic from `event_type`, and correct its no-op documentation
+- events: Convert the envelope to the canonical Oneiric shape inside `safe_publish` — the EventBridge publisher was handed a Mahavishnu envelope, so every publish raised `AttributeError` and was swallowed
+- events: Label `mahavishnu_eventbridge_publish_total` with the real topic; the constant `"unknown"` fallback hid the wrong-envelope defect
+- budget-watchdog: Expire the enforcement lease on its own `expires_at` stamp, so a replica that dies holding the lease no longer disables budget enforcement for every other replica
+- kv: Honour the `ttl` parameter — `mahavishnu_kv_put` forwards it and the store expires entries on read, in listings, and in counts
 
 ## [0.38.0] - 2026-11-01
 

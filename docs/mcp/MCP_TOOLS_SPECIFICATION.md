@@ -63,7 +63,7 @@ _7 tool(s)_
 
 **Signature:** `async def ecosystem_status(sections: list[str] | None, timeout_per_section_ms: int)`
 
-**Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:30`
+**Source:** `mahavishnu/mcp/tools/ecosystem_tools.py:44`
 
 **Description:** Get canonical ecosystem health status across all services and adapters.
 
@@ -517,9 +517,9 @@ _9 tool(s)_
 
 #### `index_code_graph`
 
-**Signature:** `async def index_code_graph(project_path: str, include_docs: bool, user_id: str | None)`
+**Signature:** `async def index_code_graph(project_path: str, user_id: str | None)`
 
-**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:61`
+**Source:** `mahavishnu/mcp/tools/session_buddy_tools.py:62`
 
 **Description:** Index codebase structure for better context in Session Buddy.
 
@@ -1617,9 +1617,9 @@ _15 tool(s)_
 
 #### `create_backup`
 
-**Signature:** `async def create_backup(backup_type: str, backup_id: str | None)`
+**Signature:** `async def create_backup(backup_type: str = "full")`
 
-**Source:** `mahavishnu/mcp/server_core.py:804`
+**Source:** `mahavishnu/mcp/server_core.py:1017`
 
 **Description:** Create a backup of the system.
 

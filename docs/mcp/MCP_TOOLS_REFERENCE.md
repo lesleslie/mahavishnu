@@ -82,7 +82,7 @@ Detect patterns across all repositories in the ecosystem.
 
 **Signature:** `async def ecosystem_status(sections: list[str] | None, timeout_per_section_ms: int)`
 
-**Source:** `ecosystem_tools.py:30`
+**Source:** `ecosystem_tools.py:44`
 
 Get canonical ecosystem health status across all services and adapters.
 
@@ -536,9 +536,9 @@ ______________________________________________________________________
 
 ### `index_code_graph` ✅
 
-**Signature:** `async def index_code_graph(project_path: str, include_docs: bool, user_id: str | None)`
+**Signature:** `async def index_code_graph(project_path: str, user_id: str | None)`
 
-**Source:** `session_buddy_tools.py:61`
+**Source:** `session_buddy_tools.py:62`
 
 Index codebase structure for better context in Session Buddy.
 
@@ -1636,9 +1636,9 @@ Manually trigger healing of failed workflows.
 
 ### `create_backup` ✅
 
-**Signature:** `async def create_backup(backup_type: str, backup_id: str | None)`
+**Signature:** `async def create_backup(backup_type: str = "full")`
 
-**Source:** `server_core.py:804`
+**Source:** `server_core.py:1017`
 
 Create a backup of the system.
 
