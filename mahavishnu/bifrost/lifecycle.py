@@ -54,19 +54,33 @@ TARGET_CONFIG = BIFROST_CONFIG_DIR / "config.json"
 #: is a ``KeepAlive`` job, so the store grows without bound unless
 #: something sweeps it. This label is that something.
 CACHE_SWEEP_LABEL = "ai.bifrost.cache-sweep"
-SOURCE_CACHE_SWEEP_PLIST = REPO_ROOT / "config" / "launchd" / f"{CACHE_SWEEP_LABEL}.plist"
-TARGET_CACHE_SWEEP_PLIST = Path.home() / "Library" / "LaunchAgents" / f"{CACHE_SWEEP_LABEL}.plist"
+SOURCE_CACHE_SWEEP_PLIST = (
+    REPO_ROOT / "config" / "launchd" / f"{CACHE_SWEEP_LABEL}.plist"
+)
+TARGET_CACHE_SWEEP_PLIST = (
+    Path.home() / "Library" / "LaunchAgents" / f"{CACHE_SWEEP_LABEL}.plist"
+)
 
 #: Budget for the ready file to appear after a launch.
 #:
 #: It has to exceed the gateway's own bind timeout: the supervisor writes
 #: the ready file only *after* the child has bound the port, and Bifrost
 #: >= 2.3.0 syncs its MCP library catalog at startup, so a cold cache can
-#: take 60-180s. A budget at the low end of that window made the gate give
-#: up on a gateway that was about to come up -- the failure is safe (the
-#: client is left alone rather than pointed at a dead port) but it leaves a
-#: perfectly healthy gateway unreported.
-READY_BUDGET_SECONDS = READY_TIMEOUT_SECONDS + 30
+#: take 180-600s on this fleet. A budget at the low end of that window made
+#: the gate give up on a gateway that was about to come up -- the failure is
+#: safe (the client is left alone rather than pointed at a dead port) but it
+#: leaves a perfectly healthy gateway unreported.
+#:
+#: The margin over :data:`gateway.READY_TIMEOUT_SECONDS` covers the ready
+#: file write plus the independent port re-check that follows it.
+READY_BUDGET_SECONDS = READY_TIMEOUT_SECONDS + 60
+
+#: How often the readiness wait reports progress.
+#:
+#: The budget is deliberately generous, so an unannounced wait can run for
+#: minutes. A periodic line keeps a long, quiet ``start`` from reading as a
+#: hang.
+REPORT_INTERVAL_SECONDS = 30
 
 READY_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -79,7 +93,9 @@ READY_FILE.parent.mkdir(parents=True, exist_ok=True)
 def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     """Run a launchctl/lsof command, tolerating a non-zero exit."""
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30, check=False
+        )
     except OSError, subprocess.SubprocessError:
         return subprocess.CompletedProcess(cmd, 1, "", "")
 
@@ -128,7 +144,9 @@ def start_cache_sweep() -> None:
     result = _run(["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)])
     if result.returncode != 0:
         time.sleep(2)
-        result = _run(["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)])
+        result = _run(
+            ["launchctl", "bootstrap", GUI_DOMAIN, str(TARGET_CACHE_SWEEP_PLIST)]
+        )
     if result.returncode != 0:
         typer.echo(
             f"WARNING: could not load {CACHE_SWEEP_LABEL}: {result.stderr.strip()}\n"
@@ -163,11 +181,23 @@ def kill_listener() -> None:
 
 
 def wait_for_ready_file(timeout: int = READY_BUDGET_SECONDS) -> bool:
-    """Poll for the ready file the gateway wrapper writes on bind."""
+    """Poll for the ready file the gateway wrapper writes on bind.
+
+    The budget is deliberately generous (see :data:`READY_BUDGET_SECONDS`),
+    so the wait can run for minutes on a loaded host. A periodic line keeps
+    a long, quiet wait from reading as a hang.
+    """
     deadline = time.monotonic() + timeout
+    next_report = time.monotonic() + REPORT_INTERVAL_SECONDS
     while time.monotonic() < deadline:
         if READY_FILE.exists():
             return True
+        now = time.monotonic()
+        if now >= next_report:
+            typer.echo(
+                f"waiting for {READY_FILE.name} ({int(deadline - now)}s of budget left)"
+            )
+            next_report = now + REPORT_INTERVAL_SECONDS
         time.sleep(1)
     return False
 
@@ -245,7 +275,8 @@ def sync_config(drop_db: bool = False) -> None:
     shutil.copy(SOURCE_CONFIG, TARGET_CONFIG)
 
     db_files = [
-        BIFROST_CONFIG_DIR / name for name in ("config.db", "config.db-shm", "config.db-wal")
+        BIFROST_CONFIG_DIR / name
+        for name in ("config.db", "config.db-shm", "config.db-wal")
     ]
     present = [path for path in db_files if path.exists()]
     if not present:
@@ -306,7 +337,9 @@ def _after_ready(action: str) -> None:
         )
         return
     if not port_is_listening(PORT):
-        typer.echo(f"warning: port {PORT} is not listening; leaving client URL(s) untouched")
+        typer.echo(
+            f"warning: port {PORT} is not listening; leaving client URL(s) untouched"
+        )
         return
     repoint_harnesses(action)
 

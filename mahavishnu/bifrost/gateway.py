@@ -38,12 +38,16 @@ HOST: str = os.environ.get("BIFROST_HOST", "127.0.0.1")
 PORT: int = int(os.environ.get("BIFROST_PORT", "8471"))
 LOG_LEVEL: str = os.environ.get("BIFROST_LOG_LEVEL", "info")
 LOG_STYLE: str = os.environ.get("BIFROST_LOG_STYLE", "json")
-APP_DIR: Path = Path(os.environ.get("BIFROST_APP_DIR", f"{Path.home()}/.config/bifrost"))
+APP_DIR: Path = Path(
+    os.environ.get("BIFROST_APP_DIR", f"{Path.home()}/.config/bifrost")
+)
 
 #: Transport version handed to the launcher. Pinned rather than tracking
 #: ``latest`` so an upstream release cannot change the binary under a running
 #: deployment; override to roll back to a known-good build.
-TRANSPORT_VERSION: str = os.environ.get("BIFROST_TRANSPORT_VERSION", BIFROST_TRANSPORT_VERSION)
+TRANSPORT_VERSION: str = os.environ.get(
+    "BIFROST_TRANSPORT_VERSION", BIFROST_TRANSPORT_VERSION
+)
 
 #: Repo root, resolved from this file rather than ``__file__`` of a script in
 #: ``scripts/`` -- the module now lives in the package.
@@ -98,7 +102,22 @@ SECRETS_ENV_KEYS: tuple[str, ...] = (
 
 _ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
 
-READY_TIMEOUT_SECONDS: int = 180
+#: How long the supervisor waits for the transport binary to bind the port
+#: before it gives up on the child and kills it.
+#:
+#: The window has to clear the **worst** observed cold start, not the typical
+#: one. Measured on 2026-11-06: 5m29s (329s) from launchd spawn to the UI
+#: accepting connections, on a host whose load average peaked at 131 while the
+#: rest of the MCP fleet was starting. A warm boot is ~26s, but the boot that
+#: matters is the one where the gateway is launched *alongside* the fleet --
+#: exactly the conditions that produced the 5m29s figure.
+#:
+#: The previous 180s came from the upstream 60-180s guidance, which does not
+#: hold on this host. A budget shorter than the real cold start makes the
+#: supervisor kill a healthy gateway mid-boot, and the dashboard never comes
+#: up at all.
+# req: REQ-BIFROST-045
+READY_TIMEOUT_SECONDS: int = 600
 
 
 def load_secrets_env(keys: tuple[str, ...] = SECRETS_ENV_KEYS) -> dict[str, str]:
@@ -123,7 +142,11 @@ def load_secrets_env(keys: tuple[str, ...] = SECRETS_ENV_KEYS) -> dict[str, str]
         name, value = match.group(1), match.group(2)
         if name in keys:
             unquoted = value.strip()
-            if len(unquoted) >= 2 and unquoted[0] == unquoted[-1] and unquoted[0] in "\"'":
+            if (
+                len(unquoted) >= 2
+                and unquoted[0] == unquoted[-1]
+                and unquoted[0] in "\"'"
+            ):
                 unquoted = unquoted[1:-1]
             if unquoted:
                 found[name] = unquoted
@@ -158,7 +181,9 @@ def _launcher_version(launcher: Path) -> tuple[int, ...]:
     in the ``package.json`` next to the launcher.
     """
     try:
-        data = json.loads((launcher.parent / "package.json").read_text(encoding="utf-8"))
+        data = json.loads(
+            (launcher.parent / "package.json").read_text(encoding="utf-8")
+        )
         version = str(data["version"])
     except OSError, ValueError, KeyError, TypeError:
         return ()
@@ -292,7 +317,9 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
         return subprocess.Popen(cmd, cwd=APP_DIR, stdout=stdout_log, stderr=stderr_log)
 
 
-def wait_for_ready(proc: subprocess.Popen[bytes], timeout: int = READY_TIMEOUT_SECONDS) -> bool:
+def wait_for_ready(
+    proc: subprocess.Popen[bytes], timeout: int = READY_TIMEOUT_SECONDS
+) -> bool:
     """Poll until the gateway binds its port, then write the ready file.
 
     Propagates failure if the child exits before binding rather than timing
@@ -337,9 +364,13 @@ def serve() -> int:
     # setup token is set").
     for key, value in load_secrets_env().items():
         os.environ.setdefault(key, value)
+    # The clock starts *before* the spawn. ``launch_bifrost`` forks a large
+    # interpreter and execs a launcher that can stall on its own network
+    # fetch; none of that time counts if the deadline is anchored after it.
+    deadline = time.monotonic() + READY_TIMEOUT_SECONDS
     proc = launch_bifrost()
     try:
-        if not wait_for_ready(proc):
+        if not wait_for_ready(proc, timeout=max(1, int(deadline - time.monotonic()))):
             return_code = proc.returncode if proc.poll() is not None else 1
             print(
                 f"bifrost did not bind port {PORT} within {READY_TIMEOUT_SECONDS}s; "
