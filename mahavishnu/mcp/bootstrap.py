@@ -54,12 +54,16 @@ def _build_tmux_adapter() -> TerminalAdapter:
     import pathlib
 
     from ..terminal.adapters.tmux import TmuxTerminalAdapter
-    from ..terminal.manager import _enqueue_to_eventbridge, _ManagerEventPublisher
+    from ..terminal.manager import _enqueue_to_eventbridge
     from ..workers.contract.manager import DurableWorkerManager
+    from ..workers.contract.publisher import CanonicalEnvelopePublisher
     from ..workers.contract.store import WorkerRecordStore
 
     store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
-    publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+    publisher = CanonicalEnvelopePublisher(
+        source="mahavishnu.terminal",
+        sink=_enqueue_to_eventbridge,
+    )
     manager = DurableWorkerManager(
         store=store,
         publisher=publisher,
@@ -512,22 +516,26 @@ def _try_build_durable_worker_manager() -> Any:
     hosts with tmux on PATH get a real manager wired into the
     worker-contract tool surface.
 
-    The publisher adapts the contract's ``EventPublisher.emit(payload, topic)``
-    signature to the canonical ``EventEnvelope`` shape via the bridge
-    defined in :mod:`mahavishnu.terminal.manager` (FIX-FIRST #2 of the
-    durable-local-workers review).
+    The publisher is the contract's canonical implementation
+    (:class:`mahavishnu.workers.contract.publisher.CanonicalEnvelopePublisher`),
+    which already speaks the ``EventPublisher.emit(payload, topic)``
+    signature and builds the canonical ``EventEnvelope`` shape.
     """
     if shutil.which("tmux") is None:
         return None
     try:
         import pathlib
 
-        from ..terminal.manager import _enqueue_to_eventbridge, _ManagerEventPublisher
+        from ..terminal.manager import _enqueue_to_eventbridge
         from ..workers.contract.manager import DurableWorkerManager
+        from ..workers.contract.publisher import CanonicalEnvelopePublisher
         from ..workers.contract.store import WorkerRecordStore
 
         store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
-        publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+        publisher = CanonicalEnvelopePublisher(
+            source="mahavishnu.terminal",
+            sink=_enqueue_to_eventbridge,
+        )
         return DurableWorkerManager(
             store=store,
             publisher=publisher,

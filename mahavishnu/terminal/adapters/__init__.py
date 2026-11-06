@@ -105,15 +105,19 @@ def _build_tmux_adapter(
     import pathlib
 
     from ...workers.contract.manager import DurableWorkerManager
+    from ...workers.contract.publisher import CanonicalEnvelopePublisher
     from ...workers.contract.store import WorkerRecordStore
 
     # Imported lazily to avoid a circular dependency at module load
     # (terminal.manager imports from terminal.adapters).
-    from ..manager import _enqueue_to_eventbridge, _ManagerEventPublisher
+    from ..manager import _enqueue_to_eventbridge
     from .tmux import TmuxTerminalAdapter
 
     store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
-    publisher = _ManagerEventPublisher(_enqueue_to_eventbridge)
+    publisher = CanonicalEnvelopePublisher(
+        source="mahavishnu.terminal",
+        sink=_enqueue_to_eventbridge,
+    )
     manager = DurableWorkerManager(
         store=store,
         publisher=publisher,

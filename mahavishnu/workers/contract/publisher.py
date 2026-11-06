@@ -5,16 +5,30 @@ from typing import TYPE_CHECKING, Any
 import uuid
 
 from mahavishnu.core.events.envelope import EventEnvelope
+from mahavishnu.core.events.worker_topics import is_worker_topic
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
 class CanonicalEnvelopePublisher:
-    """Wraps a sink as the contract's EventPublisher.
+    """Publish canonical ``EventEnvelope`` instances for the worker contract.
+
+    This is the single implementation of
+    :class:`mahavishnu.workers.contract.manager.EventPublisher`: the
+    contract's ``emit(payload, topic)`` parameter order is the canonical
+    form, and this publisher matches it exactly.
 
     Produces canonical Mahavishnu ``EventEnvelope`` instances so the
-    existing EventBridge pipeline consumes them unchanged.
+    existing EventBridge pipeline consumes them unchanged. Only the
+    canonical ``worker.*`` topics are published — any other topic is
+    dropped, because the durable-worker event stream carries worker
+    topics only.
+
+    Args:
+        source: Producer identifier written to ``EventEnvelope.source``.
+        sink: Callable that receives each built envelope.
+        now: Clock used for ``EventEnvelope.timestamp`` (injectable).
     """
 
     def __init__(
@@ -28,7 +42,10 @@ class CanonicalEnvelopePublisher:
         self._sink = sink
         self._now = now
 
-    def emit(self, topic: str, payload: dict[str, Any]) -> None:
+    def emit(self, payload: dict[str, Any], topic: str) -> None:
+        """Publish *payload* on *topic* as a canonical envelope."""
+        if not is_worker_topic(topic):
+            return
         envelope = EventEnvelope(
             event_id=uuid.uuid4(),
             event_type=topic,

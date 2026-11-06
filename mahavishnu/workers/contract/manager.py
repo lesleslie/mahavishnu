@@ -24,6 +24,14 @@ if TYPE_CHECKING:
 
 
 class EventPublisher(Protocol):
+    """Sink for the durable worker's canonical events.
+
+    The parameter order is ``(payload, topic)`` — the payload first — and
+    is the canonical order for this contract. Implementations must match
+    it exactly; a swapped order silently builds an envelope whose
+    ``event_type`` is the payload and whose ``payload`` is the topic.
+    """
+
     def emit(self, payload: dict[str, Any], topic: str) -> None: ...
 
 

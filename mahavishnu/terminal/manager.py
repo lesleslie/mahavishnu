@@ -94,10 +94,10 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
 
 
 # Spec §9.4 (Phase B): the durable-worker contract emits canonical
-# Oneiric envelopes on worker.* topics. Task 13 will replace the
-# no-op `_enqueue_to_eventbridge` sink with a real EventBridge
-# producer; for now the bridge is a thin shim that hands the
-# envelope to the existing eventbus (or drops it if no bus is wired).
+# envelopes on worker.* topics. Task 13 will replace the no-op
+# `_enqueue_to_eventbridge` sink with a real EventBridge producer; for
+# now the sink is a thin shim that hands the envelope to the existing
+# eventbus (or drops it if no bus is wired).
 def _enqueue_to_eventbridge(envelope: Any) -> None:
     """Forward a canonical envelope to the EventBridge.
 
@@ -108,34 +108,6 @@ def _enqueue_to_eventbridge(envelope: Any) -> None:
         getattr(envelope, "topic", "?"),
         getattr(envelope, "source", "?"),
     )
-
-
-class _ManagerEventPublisher:
-    """Adapt the contract's EventPublisher Protocol to a sink callable.
-
-    The contract's ``EventPublisher.emit(payload, topic)`` signature
-    (per Task 5 / Task 6) is the inverse of the canonical
-    ``CanonicalEnvelopePublisher.emit(topic, payload)``. The
-    manager's internal calls all go through this bridge so the
-    argument-order mismatch is contained to one place.
-    """
-
-    def __init__(self, sink: Callable[[Any], None]) -> None:
-        self._sink = sink
-
-    def emit(self, payload: dict[str, Any], topic: str) -> None:
-        from ..core.events.envelope import EventEnvelope
-        from ..core.events.worker_topics import is_worker_topic
-
-        if not is_worker_topic(topic):
-            # Non-worker topics are out of scope for Phase B; pass through.
-            return
-        envelope = EventEnvelope(
-            event_type=topic,
-            source="mahavishnu.terminal",
-            payload=payload,
-        )
-        self._sink(envelope)
 
 
 class TerminalManager:

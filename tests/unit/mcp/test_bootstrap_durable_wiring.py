@@ -155,18 +155,16 @@ def test_try_build_durable_worker_manager_returns_none_when_tmux_missing(
     assert result is None
 
 
-def test_try_build_durable_worker_manager_uses_canonical_publisher_bridge(
+def test_try_build_durable_worker_manager_uses_canonical_publisher(
     monkeypatch,
 ) -> None:
     """``_try_build_durable_worker_manager`` constructs a manager whose
-    publisher adapts ``EventPublisher.emit(payload, topic)`` to the
-    canonical ``EventEnvelope`` shape (FIX-FIRST #2 verification).
+    publisher is the contract's canonical ``CanonicalEnvelopePublisher``.
 
-    The bridge in :mod:`mahavishnu.terminal.manager` already handles the
-    argument-order drift between
-    ``mahavishnu.workers.contract.manager.EventPublisher`` and
-    ``CanonicalEnvelopePublisher``; the bootstrap path reuses it so the
-    mismatch is contained to one place.
+    The canonical publisher speaks the contract's
+    ``EventPublisher.emit(payload, topic)`` signature and builds the
+    canonical ``EventEnvelope`` shape, so the bootstrap path needs no
+    argument-order bridge.
     """
     fake_manager = MagicMock(name="DurableWorkerManager")
     captured: dict[str, object] = {}
@@ -180,20 +178,26 @@ def test_try_build_durable_worker_manager_uses_canonical_publisher_bridge(
         "mahavishnu.workers.contract.manager.DurableWorkerManager", _fake_constructor
     )
 
-    # Stub the bridge so we don't pull in the real EventEnvelope import
-    # path; the contract test is that the bridge is *invoked* with the
-    # canonical sink, not that the sink itself is wired.
-    class _FakeBridge:
-        def __init__(self, sink):
-            captured["bridge_sink"] = sink
+    # Stub the publisher so we don't pull in the real EventEnvelope import
+    # path; the contract test is that the publisher is *constructed* with
+    # the canonical sink, not that the sink itself is wired.
+    class _FakePublisher:
+        def __init__(self, *, source, sink):
+            captured["publisher_source"] = source
+            captured["publisher_sink"] = sink
 
-    monkeypatch.setattr("mahavishnu.terminal.manager._ManagerEventPublisher", _FakeBridge)
+    monkeypatch.setattr(
+        "mahavishnu.workers.contract.publisher.CanonicalEnvelopePublisher",
+        _FakePublisher,
+    )
 
     result = bootstrap._try_build_durable_worker_manager()
 
     assert result is fake_manager
-    # The bridge was constructed with the canonical ``_enqueue_to_eventbridge``
-    # sink (no-op until Task 13 wires the real producer, per
-    # ``terminal/manager.py``).
-    assert "bridge_sink" in captured
-    assert callable(captured["bridge_sink"])
+    # The canonical publisher was constructed with the canonical
+    # ``_enqueue_to_eventbridge`` sink (no-op until Task 13 wires the real
+    # producer, per ``terminal/manager.py``).
+    assert captured["publisher_source"] == "mahavishnu.terminal"
+    assert callable(captured["publisher_sink"])
+    # ...and that publisher is what the manager was handed.
+    assert isinstance(captured["publisher"], _FakePublisher)
