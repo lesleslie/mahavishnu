@@ -459,7 +459,7 @@ Mahavishnu has Session-Buddy integration tools:
 
 ```python
 @mcp.tool()
-async def index_code_graph(project_path: str, include_docs: bool = True) -> dict[str, Any]:
+async def index_code_graph(project_path: str) -> dict[str, Any]:
     """Index codebase structure for better context in Session Buddy."""
 
 @mcp.tool()

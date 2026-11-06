@@ -175,14 +175,12 @@ def register_session_buddy_tools(
     )
     async def index_code_graph(
         project_path: str,
-        include_docs: bool = True,
         user_id: str | None = None
     ) -> dict[str, Any]:
         """Index codebase structure for better context.
 
         Args:
             project_path: Path to the project to analyze
-            include_docs: Whether to include documentation indexing
             user_id: Authenticated user ID (injected by @require_mcp_auth)
 
         Returns:
@@ -619,8 +617,7 @@ class AuditLogger:
   "user_id": "user@example.com",
   "tool_name": "index_code_graph",
   "params": {
-    "project_path": "/path/to/repo",
-    "include_docs": true
+    "project_path": "/path/to/repo"
   },
   "result": "success",
   "error": null

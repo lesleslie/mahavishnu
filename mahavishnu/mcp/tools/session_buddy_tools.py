@@ -60,7 +60,7 @@ def register_session_buddy_tools(
         require_repo_param="project_path",
     )
     async def index_code_graph(
-        project_path: str, include_docs: bool = True, user_id: str | None = None
+        project_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Index codebase structure for better context in Session Buddy.
 
@@ -69,10 +69,6 @@ def register_session_buddy_tools(
         upserts the code graph to Session-Buddy via
         ``store_code_graph_from_mahavishnu``, and falls back to a local
         filesystem queue if Session-Buddy is unavailable.
-
-        ``include_docs`` is accepted for backward compatibility with the
-        deprecation shim contract but the indexer always includes
-        documentation, so it is currently ignored.
         """
         _warn_code_intel_deprecation("index_code_graph", "code_index.index_repo")
         try:

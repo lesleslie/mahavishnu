@@ -30,8 +30,11 @@ from __future__ import annotations
 import asyncio
 import inspect
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from fastmcp import FastMCP
+from fastmcp.exceptions import ValidationError
 import pytest
 
 from mahavishnu.mcp.tools.session_buddy_tools import register_session_buddy_tools
@@ -62,6 +65,23 @@ class _StubMCP:
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+def _advertised_input_schema(tool: Any) -> dict[str, Any]:
+    """Return the JSON schema an MCP client validates arguments against.
+
+    ``FunctionTool.parameters`` is FastMCP's view of the schema; the MCP
+    SDK wire object carries the same payload under ``input_schema``
+    (SDK v2) or ``inputSchema`` (SDK v1). We read the wire object so the
+    assertion is against what a client actually receives over the
+    protocol, not against the Python signature.
+    """
+    mcp_tool = tool.to_mcp_tool()
+    schema = getattr(mcp_tool, "input_schema", None)
+    if schema is None:  # MCP SDK v1 spelling
+        schema = getattr(mcp_tool, "inputSchema", None)
+    assert isinstance(schema, dict), "could not read the advertised input schema"
+    return schema
 
 
 # =============================================================================
@@ -201,3 +221,87 @@ class TestIndexCodeGraphMcpToolDelegatesToIndexer:
             "index_code_graph still references the dead SessionBuddyIntegration. "
             "Route to indexer.index_repo instead."
         )
+
+
+class TestIndexCodeGraphSchemaDropsIncludeDocs:
+    """``index_code_graph`` must not advertise the dead ``include_docs``
+    parameter.
+
+    ``include_docs`` was a no-op from its first commit: the tool body
+    never read it, and it could not even be threaded through, because
+    ``index_repo`` is invoked positionally as ``(project_path,
+    "manual")``. The docstring that justified it was false on both
+    counts — the indexer parses ``.py`` files only
+    (``PARSABLE_EXTENSIONS`` in ``core/code_index/parser.py``), so
+    documentation *files* are never indexed, and the deprecation
+    registry (``DEPRECATED_TOOLS`` in ``mcp/tool_versions.py``) maps
+    tool names to replacement tool names, carrying no parameter shape
+    to be compatible with.
+
+    The parameter has been removed. These tests pin the advertised MCP
+    input schema — the schema a client validates against — so it cannot
+    creep back in.
+    """
+
+    @staticmethod
+    def _registered_tool() -> Any:
+        """Register the Session-Buddy tools on a real FastMCP server.
+
+        A stub cannot answer this question: only a real FastMCP server
+        builds the JSON schema that is advertised to clients. The RBAC
+        manager is left unset: the advertised schema comes from the tool
+        signature, which the auth decorator does not change, and the
+        rejection assertion below happens during argument validation —
+        before the tool body (and its auth gate) ever runs.
+        """
+        mcp = FastMCP(name="test-index-code-graph-schema")
+        register_session_buddy_tools(
+            mcp,
+            session_manager=MagicMock(),
+            mcp_client=MagicMock(),
+        )
+        tools = _run(mcp.list_tools())
+        return next(t for t in tools if t.name == "index_code_graph")
+
+    def test_advertised_input_schema_does_not_expose_include_docs(self):
+        """The advertised schema must not list the removed parameter."""
+        schema = _advertised_input_schema(self._registered_tool())
+        properties = schema.get("properties", {})
+
+        assert "include_docs" not in properties, (
+            "index_code_graph must not advertise include_docs — it has been a "
+            "no-op since birth. Advertised properties: "
+            f"{sorted(properties)}"
+        )
+
+    def test_advertised_input_schema_still_exposes_the_live_parameters(self):
+        """Removing the dead parameter must not disturb the real ones."""
+        schema = _advertised_input_schema(self._registered_tool())
+        properties = schema.get("properties", {})
+
+        assert set(properties) == {"project_path", "user_id"}, (
+            "index_code_graph must advertise exactly its live parameters; "
+            f"got {sorted(properties)}"
+        )
+        assert schema.get("required") == ["project_path"], (
+            f"project_path must stay required; got {schema.get('required')!r}"
+        )
+
+    def test_client_call_carrying_include_docs_is_rejected(self):
+        """The removal is real at the protocol level, not silently ignored.
+
+        A client that still sends the old parameter must get a
+        validation error rather than a silently-accepted no-op.
+        """
+        tool = self._registered_tool()
+
+        with pytest.raises(ValidationError, match="include_docs"):
+            _run(
+                tool.run(
+                    {
+                        "project_path": "/tmp/repo",
+                        "user_id": "test-user",
+                        "include_docs": True,
+                    }
+                )
+            )
