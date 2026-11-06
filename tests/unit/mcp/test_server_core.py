@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import inspect
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -104,6 +105,26 @@ def tool(server: FastMCPServer) -> Callable[[str], Any]:
         return found.fn
 
     return _lookup
+
+
+@pytest.fixture
+def schema_server(
+    mock_app: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> FastMCPServer:
+    """A FastMCPServer whose registered tool schemas can be inspected.
+
+    ``tasks_handoff_to_workflow_available`` imports the installed
+    session-buddy to compare the shared envelope; that import fails on
+    hosts whose session-buddy settings carry keys the installed package
+    rejects. Stubbing the gate keeps schema assertions independent of the
+    session-buddy install.
+    """
+    monkeypatch.setattr(
+        "mahavishnu.mcp.tools.tasks_handoff_gate.tasks_handoff_to_workflow_available",
+        lambda: False,
+    )
+    with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
+        return FastMCPServer(app=mock_app)
 
 
 # =============================================================================
@@ -864,6 +885,23 @@ class TestBackupTools:
         assert result["backup_id"] == "bk-42"
         assert result["size_bytes"] == 2048
         assert result["timestamp"].startswith("2026-02-02")
+
+    async def test_create_backup_schema_omits_backup_id(
+        self, schema_server: FastMCPServer
+    ) -> None:
+        """The advertised input schema must not expose ``backup_id``.
+
+        The parameter was accepted and then silently discarded, so a
+        caller that supplied one got a different id back with no error.
+        The id is assigned by the backup manager and returned in the
+        response instead.
+        """
+        found = await schema_server.server.get_tool("create_backup")
+        properties = found.to_mcp_tool().input_schema["properties"]
+
+        assert "backup_type" in properties
+        assert "backup_id" not in properties
+        assert "backup_id" not in inspect.signature(found.fn).parameters
 
     async def test_create_backup_wraps_failure(
         self,

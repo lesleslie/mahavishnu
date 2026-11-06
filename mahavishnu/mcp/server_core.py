@@ -1014,10 +1014,23 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def create_backup(
-            backup_type: str = "full", backup_id: str | None = None
-        ) -> dict[str, Any]:
-            """Create a backup of the system."""
+        async def create_backup(backup_type: str = "full") -> dict[str, Any]:
+            """Create a backup of the system.
+
+            The backup id is assigned by the backup manager and returned in
+            the response — callers cannot choose it. Use the returned id
+            with `restore_backup`.
+
+            Args:
+                backup_type: Type of backup to create (e.g. `full`).
+
+            Returns:
+                `{"status": "success", "backup_id": "...", "location": "...",
+                "size_bytes": ..., "timestamp": "...", "message": "..."}`.
+
+            Side effect: writes a new backup archive to the configured
+            backup directory.
+            """
             try:
                 from ..core.backup_recovery import BackupManager
 

@@ -41,7 +41,7 @@ TOOL_VERSIONS: dict[str, str] = {
     "get_log_statistics": "1.0.0",
     "get_recovery_metrics": "1.0.0",
     # Backup / recovery
-    "create_backup": "1.0.0",
+    "create_backup": "2.0.0",
     "list_backups": "1.0.0",
     "restore_backup": "1.0.0",
     "run_disaster_recovery_check": "1.0.0",
