@@ -11,7 +11,7 @@ Wire at app boot via ``set_publisher()`` in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 try:
     from oneiric.core.logging import get_logger
@@ -25,14 +25,19 @@ except ImportError:
     )
 
 from mahavishnu.core._producer_metrics import EVENTBRIDGE_PUBLISH_TOTAL
+from mahavishnu.core.errors import EventEnvelopeConversionError
 
 if TYPE_CHECKING:
+    from oneiric.runtime.events import EventEnvelope as OneiricEventEnvelope
+
+    from mahavishnu.core.events.envelope import EventEnvelope as MahavishnuEventEnvelope
     from mahavishnu.core.events.eventbridge_adapter import EventBridgePublisher
 
 
 _publisher: EventBridgePublisher | None = None
-# C-2 wire-up scaffolding uses this to capture envelopes per-test. Production
-# code never reads it; the real singleton lives in ``_publisher``.
+# Test seam only: integration tests monkeypatch this module-level list to
+# capture the envelopes they publish. No production code appends to it and
+# no production code reads it -- the real singleton lives in ``_publisher``.
 _capture_singleton: list[Any] = []
 logger = get_logger(__name__)
 
@@ -56,11 +61,74 @@ def get_publisher() -> EventBridgePublisher | None:
     return _publisher
 
 
-async def safe_publish(envelope: Any) -> bool:
+def _envelope_topic(envelope: object) -> str:
+    """Return the canonical topic carried by ``envelope``.
+
+    A Oneiric envelope names the topic ``topic``; a Mahavishnu envelope
+    names it ``event_type``, which
+    :func:`mahavishnu.core.events.canonical.to_oneiric_envelope` maps
+    onto the Oneiric ``topic``.
+
+    Returns ``""`` when the envelope carries neither field. An empty
+    label is honest about "no topic"; the previous ``"unknown"``
+    fallback advertised a topic dimension that never held information,
+    which is how the wrong-envelope-type defect stayed invisible.
+    """
+    for attribute in ("topic", "event_type"):
+        value = getattr(envelope, attribute, None)
+        if isinstance(value, str) and value:
+            return value
+    return ""
+
+
+def _to_canonical_envelope(
+    envelope: MahavishnuEventEnvelope | OneiricEventEnvelope,
+) -> OneiricEventEnvelope:
+    """Return the canonical Oneiric envelope for ``envelope``.
+
+    The publisher protocol
+    (:class:`mahavishnu.core.events.canonical.OneiricEventPublisherProtocol`)
+    only accepts the Oneiric shape, so the conversion belongs here rather
+    than at each call site.
+
+    - An envelope that already carries the Oneiric wire shape (``topic``)
+      is passed through unchanged.
+    - A Mahavishnu envelope is converted via
+      :func:`mahavishnu.core.events.canonical.to_oneiric_envelope`.
+
+    The ``canonical`` import is deferred to call time: this module must
+    stay importable when ``oneiric`` is unavailable (see
+    ``tests/unit/core/events/test_package_init_lazy_canonical.py``).
+    """
+    if isinstance(getattr(envelope, "topic", None), str):
+        return cast("OneiricEventEnvelope", envelope)
+    if not isinstance(getattr(envelope, "event_type", None), str):
+        raise EventEnvelopeConversionError(
+            direction="mahavishnu_to_oneiric",
+            reason="unknown_envelope_shape",
+            details={"type": type(envelope).__name__},
+        )
+    from mahavishnu.core.events.canonical import to_oneiric_envelope
+
+    return to_oneiric_envelope(cast("MahavishnuEventEnvelope", envelope))
+
+
+async def safe_publish(
+    envelope: MahavishnuEventEnvelope | OneiricEventEnvelope,
+) -> bool:
     """Fire-and-forget publish. Returns True if published, False otherwise.
+
+    Accepts either envelope shape:
+
+    - ``MahavishnuEventEnvelope`` -- converted to the canonical Oneiric
+      envelope before it reaches the publisher. The Mahavishnu
+      ``event_type`` becomes the Oneiric ``topic``.
+    - ``OneiricEventEnvelope`` -- already canonical, passed through
+      unchanged.
 
     Returns ``False`` when:
     - no publisher is configured (counts as ``result="skip"``)
+    - the envelope could not be converted (counts as ``result="error"``)
     - the publisher raised (counts as ``result="error"``)
 
     NEVER raises — observability must never block the dispatch path.
@@ -69,26 +137,39 @@ async def safe_publish(envelope: Any) -> bool:
     contract.
     """
     publisher = get_publisher()
+    topic = _envelope_topic(envelope)
     if publisher is None:
         EVENTBRIDGE_PUBLISH_TOTAL.labels(
-            envelope_topic=getattr(envelope, "topic", "unknown"),
+            envelope_topic=topic,
             result="skip",
         ).inc()
         return False
     try:
-        await publisher.publish(envelope)
+        canonical = _to_canonical_envelope(envelope)
     except Exception:
         EVENTBRIDGE_PUBLISH_TOTAL.labels(
-            envelope_topic=getattr(envelope, "topic", "unknown"),
+            envelope_topic=topic,
+            result="error",
+        ).inc()
+        logger.exception(
+            "EventBridge envelope conversion failed",
+            extra={"envelope_topic": topic},
+        )
+        return False
+    try:
+        await publisher.publish(canonical)
+    except Exception:
+        EVENTBRIDGE_PUBLISH_TOTAL.labels(
+            envelope_topic=topic,
             result="error",
         ).inc()
         logger.exception(
             "EventBridge publish failed",
-            extra={"envelope_topic": getattr(envelope, "topic", None)},
+            extra={"envelope_topic": topic},
         )
         return False
     EVENTBRIDGE_PUBLISH_TOTAL.labels(
-        envelope_topic=getattr(envelope, "topic", "unknown"),
+        envelope_topic=topic,
         result="success",
     ).inc()
     return True
