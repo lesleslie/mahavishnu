@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from mahavishnu.core.ecosystem_status import EcosystemStatusReport
 import mahavishnu.mcp.tools.ecosystem_tools as et_module
 from mahavishnu.mcp.tools.ecosystem_tools import register_ecosystem_tools
 
@@ -73,6 +74,7 @@ def _make_report(
                 n: {"name": n, "status": c.status.value} for n, c in (capabilities or {}).items()
             },
             "workflows": {"active": 0},
+            "recovery": {"mcp_available": False},
             "alerts": {"total": 0},
             "recommendations": [],
             "errors": [],
@@ -163,7 +165,7 @@ async def test_ecosystem_status_filters_sections(
     assert "capabilities" not in result
 
 
-async def test_ecosystem_status_filters_unknown_sections_silently(
+async def test_ecosystem_status_reports_unknown_sections(
     stub_mcp: _StubMCP,
     monkeypatch: pytest.MonkeyPatch,
     fake_report: MagicMock,
@@ -173,10 +175,64 @@ async def test_ecosystem_status_filters_unknown_sections_silently(
     fn = stub_mcp.tools["ecosystem_status"]
 
     result = await fn(sections=["nope", "missing"])
-    # None of the unknown keys land in the result, but envelope is preserved
+    # Unknown names are surfaced, never silently dropped. A caller that
+    # asked for a section that does not exist would otherwise read a
+    # well-formed but empty report as "everything is fine".
+    assert result["invalid_sections"] == ["nope", "missing"]
+    assert result["available_sections"] == [
+        "services",
+        "adapters",
+        "workflows",
+        "recovery",
+        "alerts",
+        "capabilities",
+        "recommendations",
+        "errors",
+    ]
+    # The aggregate health verdict is not clobbered by the section error.
+    assert result["status"] == "ok"
+    assert result["schema_version"] == "1.0"
+    # Unknown names never appear as sections.
     assert "nope" not in result
     assert "missing" not in result
-    assert result["status"] == "ok"
+
+
+async def test_ecosystem_status_returns_valid_sections_alongside_unknown(
+    stub_mcp: _StubMCP,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_report: MagicMock,
+) -> None:
+    _patch_service(monkeypatch, fake_report)
+    register_ecosystem_tools(stub_mcp)
+    fn = stub_mcp.tools["ecosystem_status"]
+
+    result = await fn(sections=["adapters", "pools"])
+    # The valid half is delivered...
+    assert result["adapters"]
+    # ...and the invalid half is named.
+    assert result["invalid_sections"] == ["pools"]
+    assert "pools" not in result
+
+
+async def test_ecosystem_status_omits_diagnostics_when_all_sections_valid(
+    stub_mcp: _StubMCP,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_report: MagicMock,
+) -> None:
+    _patch_service(monkeypatch, fake_report)
+    register_ecosystem_tools(stub_mcp)
+    fn = stub_mcp.tools["ecosystem_status"]
+
+    result = await fn(sections=["adapters", "alerts"])
+    assert "invalid_sections" not in result
+    assert "available_sections" not in result
+
+
+def test_section_names_track_the_report_model() -> None:
+    """The advertised section list must not drift from the report model."""
+    envelope = {"schema_version", "status", "generated_at", "duration_ms", "request_id"}
+    model_sections = set(EcosystemStatusReport.model_fields) - envelope
+    assert set(et_module._SECTION_NAMES) == model_sections
 
 
 async def test_ecosystem_status_passes_timeout_to_service(

@@ -1,6 +1,6 @@
 ---
 name: ecosystem-status
-description: Use ONLY when the user explicitly types `/mahavishnu:ecosystem-status` or selects this Skill from the picker to render a cross-component health snapshot of the Bodai ecosystem from Mahavishnu's vantage point. Do not auto-trigger. Routes through `mcp__mahavishnu__ecosystem_status` and explains the `sections` parameter plus the degraded-adapter flag so the user can interpret a partial report correctly.
+description: Use ONLY when the user explicitly types `/mahavishnu:ecosystem-status` or selects this Skill from the picker to render a cross-component health snapshot of the Bodai ecosystem from Mahavishnu's vantage point. Do not auto-trigger. Routes through `mcp__mahavishnu__ecosystem_status` and explains the `sections` parameter plus the aggregate status so the user can interpret a partial report correctly.
 allowed-tools: mcp__mahavishnu__ecosystem_status, mcp__mahavishnu__get_health, mcp__mahavishnu__list_adapters, Read, Bash(echo:*)
 ---
 
@@ -15,55 +15,76 @@ publishes. Common cases:
 
 - "Give me the Bodai ecosystem status."
 - "Is Akosha reachable from here? Is Oneiric responding?"
-- "Show only the workflow + pool sections of the ecosystem report."
-- "Surface the degraded adapters in the current ecosystem."
+- "Show only the workflow and adapter sections of the ecosystem report."
+- "Surface the degraded components in the current ecosystem."
 
 The Skill uses `mcp__mahavishnu__ecosystem_status` as the primary entry
 point. The tool's `sections` parameter accepts a list of section
-names so the user can request a focused slice (`["workflows", "pools"]`)
+names so the user can request a focused slice (`["workflows", "alerts"]`)
 or the full snapshot (`sections=None`).
 
 ## What the tool does
 
 `mcp__mahavishnu__ecosystem_status(sections=None)` aggregates per-
-component state across the Bodai fleet:
+component state across the Bodai fleet into a single report.
 
+The report always carries four envelope fields — `schema_version`,
+`status`, `generated_at`, `duration_ms` — and then one key per
+section. The eight sections are:
+
+- **services** — per-dependency health for each ecosystem component
+  (Mahavishnu, Akosha, Session-Buddy, ...): `status`, `liveness`,
+  `readiness`, `last_check`, `capacity_pct`, `required`,
+  `degradation_mode`, `latency_ms`.
 - **adapters** — Mahavishnu's own adapter health (prefect, llamaindex,
-  agno). Includes each adapter's `health.status` and the per-adapter
-  `features` list (RAG, Workflow Orchestration, AI Agents, etc.).
-- **workflows** — counts of running, queued, completed, and failed
-  workflows surfaced from the workflow_state_manager.
-- **pools** — per-pool worker counts, health, and capacity. Reflects
-  the current `least_loaded` / `round_robin` / `random` / `affinity`
-  selectors available for `pool_route_execute`.
-- **observability** — Prometheus metrics summary, recent log
-  highlights, and any active alerts surfaced via `get_active_alerts`.
-- **session_buddy** — Session-Buddy endpoint reachability and the
-  most recent in-process state sync.
-- **repositories** — count of repos registered in `repos.yaml` and
-  per-tag breakdown.
+  agno). Includes each adapter's `status` and the per-adapter
+  `capabilities` list (RAG, Workflow Orchestration, AI Agents, etc.),
+  plus `degradation_trend` and `preference_score`.
+- **workflows** — counts of active, recent, and failed workflows, plus
+  `last_completed_at`.
+- **recovery** — durable recovery state: how many workflows, approvals,
+  pools, and routing decisions were recovered, and whether the MCP
+  recovery substrate is available.
+- **alerts** — active alert counts broken down by severity, plus the
+  top alerts.
+- **capabilities** — per-capability health across the ecosystem:
+  `status`, which components `provided_by` it, its `category`, and
+  `last_verified`.
+- **recommendations** — deterministic operator guidance derived from the
+  current state; each entry carries a `severity`, `component`,
+  `message`, and often a `suggested_command` and `runbook_url`.
+- **errors** — sections that could not be collected. Each entry names
+  the `section`, the `message`, and the `original_exception`.
 
-The response includes a `degraded` flag at the top level. When any
-section reports `status: degraded` (e.g. an OTel collector is down
-or a pool is unreachable), the Skill surfaces the degraded section
-names verbatim and explains the impact on the user's downstream calls.
+The top-level `status` field is the aggregate verdict — one of `ok`,
+`degraded`, `unhealthy`, `unknown`, or `disabled`. There is no separate
+`degraded` boolean. When the aggregate is `degraded`, read the
+per-section `status` values to find which components are responsible
+and surface those component names verbatim.
 
 ## Sections parameter — focus vs full
 
 The `sections` parameter is a list of section names from the canonical
-set. Common focused slices:
+set above. Common focused slices:
 
 - `["adapters"]` — just the adapter health snapshot. Use this when
   the user is debugging a specific adapter (e.g. "is Prefect up?").
-- `["workflows", "pools"]` — fleet routing snapshot. Use this when
-  the user is planning a dispatch and wants to know capacity.
-- `["observability", "session_buddy"]` — observability substrate
-  snapshot. Use this when the user is debugging telemetry gaps.
+- `["workflows", "alerts"]` — execution and alerting snapshot. Use this
+  when the user is planning a dispatch and wants to know whether work
+  is failing.
+- `["services", "capabilities"]` — fleet reachability and capability
+  coverage. Use this when the user is debugging a telemetry gap.
+- `["recovery", "recommendations"]` — what the platform already healed,
+  and what it suggests doing next.
 - `None` (the default) — full snapshot. Use this when the user asks
   for "the whole thing" or "the complete status."
 
-When the user specifies an unknown section name, the Skill surfaces
-the canonical section list so the user can pick from it.
+When the user specifies an unknown section name, the tool does not drop
+it silently. The response carries the unrecognized names under
+`invalid_sections` and the canonical list under `available_sections`,
+so the Skill should read those, tell the user which name was not
+recognized, and re-issue the request with a valid name from
+`available_sections`.
 
 ## When NOT to use
 
@@ -94,8 +115,10 @@ explains the impact in plain language:
 ## Inputs the Skill expects
 
 - Optional `sections` list — when the user says "just the adapters"
-  or "show me pools only", the Skill translates that phrasing into
-  the right `sections` value.
+  or "show me alerts only", the Skill translates that phrasing into
+  the right `sections` value. Use only names from the canonical set
+  above; a name that is not in that set comes back under
+  `invalid_sections`.
 - Optional user signal about degraded-handling — "ignore the
   degraded adapters", "explain what they mean", "skip LlamaIndex
   entirely". The Skill honors the explicit instruction.
@@ -103,8 +126,8 @@ explains the impact in plain language:
 ## Outputs the Skill returns
 
 A bulleted summary of the requested sections with the per-section
-status (healthy / degraded / unavailable), the canonical
-`degraded` flag, and a one-paragraph recommendation for the next
+status (ok / degraded / unhealthy / unknown / disabled), the aggregate
+`status` verdict, and a one-paragraph recommendation for the next
 action (proceed, defer, reroute, or escalate). Long section
 payloads (e.g. workflow lists) are summarized to top-three with
 counts; the user can re-query with a focused `sections` list to

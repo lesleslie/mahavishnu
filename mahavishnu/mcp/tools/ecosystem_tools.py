@@ -18,6 +18,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: Report sections selectable via the ``sections`` parameter. Envelope
+#: metadata (``schema_version``, ``status``, ``generated_at``,
+#: ``duration_ms``, ``request_id``) is always present and is not a section.
+_SECTION_NAMES: tuple[str, ...] = (
+    "services",
+    "adapters",
+    "workflows",
+    "recovery",
+    "alerts",
+    "capabilities",
+    "recommendations",
+    "errors",
+)
+
 
 def register_ecosystem_tools(mcp: FastMCP) -> None:
     """Register canonical ecosystem status tools.
@@ -35,13 +49,17 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
         """Get canonical ecosystem health status across all services and adapters.
 
         Returns a unified status report with schema_version, overall status,
-        per-section data (services, adapters, capabilities, workflows, alerts),
-        and optional operational recommendations.
+        per-section data (services, adapters, workflows, recovery, alerts,
+        capabilities), and optional operational recommendations.
 
         Args:
             sections: Optional list of sections to include
-                      (services, adapters, capabilities, workflows, alerts,
-                      recommendations). None = all.
+                      (services, adapters, workflows, recovery, alerts,
+                      capabilities, recommendations, errors). None = all.
+                      An unrecognized name is never dropped silently: it is
+                      reported under ``invalid_sections`` alongside the
+                      canonical ``available_sections`` list, so the caller
+                      can correct itself.
             include_details: Include detailed status information for each
                              component.
             timeout_per_section_ms: Per-section collection timeout in
@@ -65,9 +83,20 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
                 "generated_at": data["generated_at"],
                 "duration_ms": data["duration_ms"],
             }
+            invalid: list[str] = []
             for s in sections:
-                if s in data:
+                if s in _SECTION_NAMES and s in data:
                     filtered[s] = data[s]
+                elif s not in invalid:
+                    invalid.append(s)
+            if invalid:
+                # A caller that asked for a section that does not exist
+                # would otherwise receive a well-formed but empty report
+                # and read it as "everything is fine". Surface the bad
+                # names and the canonical list instead. The overall health
+                # verdict in ``status`` is deliberately left untouched.
+                filtered["invalid_sections"] = invalid
+                filtered["available_sections"] = list(_SECTION_NAMES)
             return filtered
 
         return data
