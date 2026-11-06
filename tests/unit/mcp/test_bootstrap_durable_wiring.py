@@ -195,8 +195,8 @@ def test_try_build_durable_worker_manager_uses_canonical_publisher(
 
     assert result is fake_manager
     # The canonical publisher was constructed with the canonical
-    # ``_enqueue_to_eventbridge`` sink (no-op until Task 13 wires the real
-    # producer, per ``terminal/manager.py``).
+    # ``_enqueue_to_eventbridge`` sink (a no-op that only logs the
+    # envelope, per ``terminal/manager.py``).
     assert captured["publisher_source"] == "mahavishnu.terminal"
     assert callable(captured["publisher_sink"])
     # ...and that publisher is what the manager was handed.

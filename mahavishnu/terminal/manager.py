@@ -93,19 +93,31 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
     return env
 
 
-# Spec §9.4 (Phase B): the durable-worker contract emits canonical
-# envelopes on worker.* topics. Task 13 will replace the no-op
-# `_enqueue_to_eventbridge` sink with a real EventBridge producer; for
-# now the sink is a thin shim that hands the envelope to the existing
-# eventbus (or drops it if no bus is wired).
+# The durable-worker contract emits canonical ``EventEnvelope`` instances
+# on the ``worker.*`` topics (``mahavishnu/core/events/worker_topics.py``).
+# ``CanonicalEnvelopePublisher.emit`` maps the topic onto the envelope's
+# ``event_type`` field — ``EventEnvelope`` has no ``topic`` attribute.
+#
+# This sink is a NO-OP: it logs the envelope and drops it. It does not
+# publish to an eventbus, an EventBridge, or any other transport —
+# ``mahavishnu/core/events/transport.py`` only decodes envelopes.
+#
+# The producer that would make it real is the module-global
+# ``EventBridgePublisher`` singleton in
+# ``mahavishnu/core/events/publisher.py`` (``get_publisher()`` /
+# ``safe_publish()``), documented in
+# ``docs/decisions/2026-10-15-unified-event-bus-wrapper.md``. No current
+# plan task owns wiring this sink to it.
 def _enqueue_to_eventbridge(envelope: Any) -> None:
-    """Forward a canonical envelope to the EventBridge.
+    """Log a canonical envelope and drop it.
 
-    No-op until Task 13 wires the real producer.
+    Publishes nothing — the DEBUG record is the only effect. The worker
+    topic is carried by ``EventEnvelope.event_type`` (the envelope has
+    no ``topic`` field), so the debug line below reports ``event_type``.
     """
     logger.debug(
-        "tmux worker envelope queued (no-op bridge): topic=%s source=%s",
-        getattr(envelope, "topic", "?"),
+        "tmux worker envelope (no-op sink): event_type=%s source=%s",
+        getattr(envelope, "event_type", "?"),
         getattr(envelope, "source", "?"),
     )
 
