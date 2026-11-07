@@ -22,16 +22,19 @@ dependencies = [
     # CLI
     "typer>=0.27.3",
     # Oneiric ecosystem
-    # Floor is 0.33.2 (resolves 0.33.3), NOT 0.33. The ">=0.33" floor was
-    # re-resolving to the MINIMUM on every `uv sync --upgrade`, so 0.33.0 was
-    # what actually got installed -- and 0.33.0's OTelStorageSettings is
-    # extra="forbid" with no metrics_enabled field. Since oneiric's project
-    # settings share the MAHAVISHNU_ env prefix, a top-level `observability`
-    # key (or MAHAVISHNU_OBSERVABILITY__* env var) then makes the loader
-    # raise and EVERY CLI command fails with MHV-001.
+    # Floor is 0.34.0 (the latest published release), NOT 0.33. The
+    # ">=0.33" floor was re-resolving to the MINIMUM on every
+    # `uv sync --upgrade`, so 0.33.0 was what actually got installed --
+    # and 0.33.0's OTelStorageSettings is extra="forbid" with no
+    # metrics_enabled field. Since oneiric's project settings share the
+    # MAHAVISHNU_ env prefix, a top-level `observability` key (or
+    # MAHAVISHNU_OBSERVABILITY__* env var) then makes the loader raise and
+    # EVERY CLI command fails with MHV-001.
     #
-    # The 0.33.2 floor is what makes the "observability" key usable again:
-    # OTelStorageSettings became extra="allow" there.
+    # 0.33.2 was the floor that made the "observability" key usable again
+    # (OTelStorageSettings became extra="allow" there); 0.34.0 is where
+    # that floor has settled, and pinning the actual latest stops the
+    # minimum-re-resolution drift from ever selecting an older release.
     #
     # This required dropping the "gpu" dependency group (runpod). The
     # conflict is on boto3, not aioboto3: oneiric 0.33.2 needs
@@ -41,7 +44,7 @@ dependencies = [
     # dependency group, so the group has to leave the project entirely --
     # un- including it from "dev" is not enough. Operators who want the
     # RunPod provider install it themselves: `uv pip install runpod`.
-    "oneiric>=0.33.2",
+    "oneiric>=0.34.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -219,7 +222,16 @@ ecosystem = [
     # ``HandoffResult`` envelope whose ``status`` default mahavishnu's
     # ``tasks_handoff_gate`` compares field-by-field. A lower floor
     # resolves to a session-buddy that cannot satisfy the handoff edge.
-    "session-buddy>=0.38.0",
+    #
+    # The floor is 0.38.1, not 0.38.0: 0.38.0's ``SessionBuddySettings``
+    # rejected operator-supplied ``cloud_sync`` credentials and raised
+    # ``pydantic.ValidationError`` at import time, which killed the
+    # mahavishnu MCP server before it bound port 8680 (28 launchd
+    # restarts on 2026-11-06). The gate now degrades instead of dying,
+    # but the floor should still exclude the broken release — a lower
+    # floor re-resolves to the MINIMUM on every ``uv sync --upgrade``,
+    # which is how 0.38.0 came back in the first place.
+    "session-buddy>=0.38.1",
 ]
 
 # mcp-common sub-features (formerly `mcp-common[treesitter,llm]` extras).

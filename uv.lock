@@ -3393,7 +3393,7 @@ requires-dist = [
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.33.1" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
-    { name = "oneiric", specifier = ">=0.33.2" },
+    { name = "oneiric", specifier = ">=0.34.0" },
     { name = "opentelemetry-api", specifier = ">=1.45.1" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.45.1" },
     { name = "opentelemetry-instrumentation", specifier = ">=0.66b1" },
@@ -3473,7 +3473,7 @@ dev = [
 ecosystem = [
     { name = "akosha", specifier = ">=0.23.1" },
     { name = "crackerjack", specifier = ">=0.89.2" },
-    { name = "session-buddy", specifier = ">=0.38.0" },
+    { name = "session-buddy", specifier = ">=0.38.1" },
 ]
 gpu = []
 hatchet = [{ name = "hatchet-sdk", specifier = ">=1.42.1,<2" }]
@@ -6327,7 +6327,7 @@ wheels = [
 
 [[package]]
 name = "session-buddy"
-version = "0.38.0"
+version = "0.38.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -6354,9 +6354,9 @@ dependencies = [
     { name = "typer" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ad/fe/7bfe30945d058d26b965c40251d011fb71082eab890ff929edd3847018d6/session_buddy-0.38.0.tar.gz", hash = "sha256:8e14b7461f6f7db71c4f05c6ae5356892c4da2e6e8d9a907ecae252e820e31f1", size = 3812120, upload-time = "2026-11-01T06:57:51.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/44/7ab48722d19df7ba85a6eb1bdd082d13663101216ca61e8ecf06a2638db9/session_buddy-0.38.1.tar.gz", hash = "sha256:73af09906f4520b98bfa3f5ab228d04236ceb405e22996f7bbca0a0de7e818df", size = 3887542, upload-time = "2026-11-06T17:42:45.342Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/07/be4eee72af9ebca7f0ce99b925cfba8e8b0f67fbed7f97d74a69f2a890db/session_buddy-0.38.0-py3-none-any.whl", hash = "sha256:74a9da77f1ae5127f4311da3c48824c9ca45fd7d2f552cccc379dc4a16a85f6a", size = 1271145, upload-time = "2026-11-01T06:57:49.909Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/28/7c5f95ab1c33d751aabd8f5ab1026bc08aed34101d9f5b5e3508aabb4656/session_buddy-0.38.1-py3-none-any.whl", hash = "sha256:f2f857e98cf8eb0c4312fb9eec553be8c3f1b4e2706ea136b7a80aa0a3d99050", size = 1271552, upload-time = "2026-11-06T17:42:42.984Z" },
 ]
 
 [[package]]
