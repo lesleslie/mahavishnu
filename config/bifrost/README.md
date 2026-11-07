@@ -526,9 +526,9 @@ Current task mappings:
 
 - `think` -> `minimax-openai/MiniMax-M3`
 - `long_context` or `longContext` -> `minimax-openai/MiniMax-M3`
-- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3`
-- `image` -> deferred until a supported MiniMax multimodal route exists
-- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3`
+- `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3.1-Flash`
+- `image` -> `minimax-openai/MiniMax-M3.1-Flash`
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `llama-server/qwen3-8b-q4_k_m`)
 - `x-bf-route: anthropic_native` -> provider `minimax-anthropic`, model as sent by the caller (fallback `minimax-anthropic/MiniMax-M3.1-Flash`)
 
 The `anthropic_native` route is the **only one that can currently fire**.
@@ -551,7 +551,22 @@ Notes:
 - these rules are intentionally header-driven for now
 - they are meant to reproduce the useful routing buckets from CCR without introducing a second router
 - all M3 fallbacks are M3.1-Flash (same generation); the M2.x line is retired upstream (2026-11-18) and no longer referenced
-- the `image` route is currently disabled in the template until the gateway has a supported multimodal adapter
+- the `image` route is **enabled**: MiniMax-M3 and M3.1-Flash both accept image
+  input on the OpenAI-compatible surface, and both were verified live against
+  this gateway on 2026-11-06 (a chart image read correctly, including a
+  non-obvious axis value). It was disabled from 2026-05-13 until then with the
+  note "Deferred until a supported MiniMax multimodal adapter exists" — a
+  deferral written three weeks *before* MiniMax-M3 shipped (2026-06-01), and
+  one the gateway never needed: Bifrost's `base_provider_type: openai` passes
+  `image_url` blocks straight through to `/v1/chat/completions`
+- the `anthropic_native` target must pin the **provider only** — leave `model`
+  unset. A pinned model overrides the caller's, which silently downgrades
+  Claude Code's `MiniMax-M3[1m]` (1M context) to `MiniMax-M3` (512K) and
+  `MiniMax-M3.1-Flash` to `MiniMax-M3`. Verified live 2026-11-06
+- the `llama-server-local` key allowlists **both** `qwen3-8b-q4_k_m` and the
+  repo-wide `qwen3.5` label. The gateway resolves a request against the key's
+  allowlist *before* the call, so a label llama.cpp would ignore is still a
+  400 at the gateway if the allowlist omits it
 - **prerequisite for routing Claude Code through the gateway**: Claude Code
   must not share the semantic cache's shared `default` bucket. Its system
   prompt carries the date, working directory and environment, and it used to
@@ -615,6 +630,61 @@ the gateway. The config store is **kept** (it is authoritative for providers,
 keys, governance config, and virtual keys) and is backed up first, under
 `~/.config/bifrost/.bak/`. Pass `--drop-db` only if you deliberately want to
 discard it.
+
+## Guard: Anthropic First-Party Tools vs. the Gateway
+
+Claude Code ships bundled skills under
+`bundled-skills/<version>/<hash>/`. The `claude-api` skill's
+`drop_block_probe.py` probes Anthropic's *preserved thinking* controls
+(`thinking-binding-controls-2026-08-01`, `block_binding`). It is stdlib-only,
+authenticates with `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`, and takes its
+endpoint from `--base-url` — defaulting to `$ANTHROPIC_BASE_URL`.
+
+When Claude Code is routed through this gateway, the session environment sets
+`ANTHROPIC_BASE_URL=http://127.0.0.1:8471/anthropic`. The probe inherits it,
+asks a MiniMax-backed provider for a Claude model id, and fails with
+`no keys found that support model: claude-opus-5-5` — a 400 that reads like a
+gateway fault and is not one. Observed on 2026-11-06: 242 `claude-opus-5-5`
+and 30 `claude-sonnet-4-6` requests, all 0% success, from
+`user_agent: Python-urllib/3.13` on the `bodai-pi-pool` virtual key.
+
+The probe is **first-party only** by its own documentation ("it authenticates
+against `/v1/messages` with `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`").
+MiniMax implements none of the controls it measures, so it cannot produce a
+meaningful result against this gateway on any model id — it would report
+`NOT WIRED` and exit 1 by design.
+
+`.claude/hooks/bifrost-anthropic-probe-guard.py` is a `PreToolUse` guard that
+denies the combination: Anthropic's tooling **and** an effective base URL of
+this gateway. It never blocks ordinary Bash work, and it never second-guesses
+an explicit choice:
+
+| Command shape | Result |
+|---|---|
+| no `--base-url`, session env points at the gateway | **denied** (exit 2) |
+| `--base-url <anything>` | allowed — the operator chose the endpoint |
+| `env -u ANTHROPIC_BASE_URL …` / `unset ANTHROPIC_BASE_URL` | allowed — scrubbed |
+| inline `ANTHROPIC_BASE_URL=…` | resolved from the command, then judged |
+
+To run the probe against Anthropic:
+
+```bash
+env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_CUSTOM_HEADERS \
+  ANTHROPIC_API_KEY=sk-ant-... \
+  python3 <script> --self-test --model claude-opus-5-5 --yes \
+  --base-url https://api.anthropic.com
+```
+
+The guard lives in this repo (source of truth, with unit tests in
+`tests/unit/hooks/test_bifrost_anthropic_probe_guard.py`). It is registered
+per-harness, because the hazard is machine-wide rather than repo-scoped:
+
+```bash
+# repo-scoped (this repo's sessions)
+#   .claude/settings.json -> hooks.PreToolUse, matcher "Bash"
+# user-scoped (every session on this machine)
+#   ~/.claude/settings.json -> hooks.PreToolUse, matcher "Bash"
+```
 
 ## Semantic Cache
 
