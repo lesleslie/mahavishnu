@@ -19,6 +19,7 @@ from pathlib import Path
 import time
 from typing import TYPE_CHECKING, Any
 
+from ..workers import validate_command
 from ..workers.manager import WorkerManager
 from ..workers.registry import RuntimeKind, get_worker_config
 from .base import BasePool, PoolConfig, PoolMetrics, PoolStatus
@@ -180,6 +181,12 @@ class MahavishnuPool(BasePool):
             worker_config
             and worker_config.one_shot
             and worker_config.runtime_kind is RuntimeKind.SHELL
+        )
+        # Remembered for the task-shape adapter in ``execute_task``: a SHELL
+        # worker consumes a prompt, an isolated worker does not. The
+        # comment above says so; this attribute lets the pool act on it.
+        self._worker_runtime_kind = (
+            worker_config.runtime_kind if worker_config is not None else None
         )
 
         # Resolve writable_root for ShepherdBackendWorker (the post-2026-09-24
@@ -362,6 +369,63 @@ class MahavishnuPool(BasePool):
 
         return self.pool_id
 
+    def _adapt_task_for_worker(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Map the pool-level task shape onto the worker's own contract.
+
+        The pool-level protocol is prompt-shaped -- ``{"prompt": ...}`` --
+        and it is what every caller in the ecosystem builds:
+        ``pool_route_execute``, the coordination executor, the fix
+        orchestrator, and ``docs/pools/POOL_ARCHITECTURE.md`` all use it.
+        Worker families disagree about what they accept:
+
+        - a **SHELL** worker types the prompt into a live session, so it
+          reads ``prompt`` (``workers/shell_backend.py``);
+        - an **isolated** worker runs a bodyless ``task_ref`` XOR a
+          ``command`` inside the jail and has no prompt channel at all
+          (``workers/shepherd_backend.py``).
+
+        The pool owns its workers, so the pool is where the two shapes
+        meet. Without this adapter the prompt-shaped task reached the
+        isolated worker unchanged and every dispatch died with
+        ``ValueError: Task must specify 'task_ref' or 'command'`` --
+        before the task ever reached the substrate.
+
+        A task that names ``task_ref`` is already substrate-shaped and
+        passes through untouched. Otherwise the task's text is the
+        command for a MahavishnuPool -- the same reading
+        ``cli/demo_cli.py::_task_payload`` applies on the caller side.
+
+        **The command is validated here, at the boundary that creates the
+        shell-text interpretation, and the pool fails closed.** The
+        isolated substrate executes commands inside an OS-level jail, and
+        ``workers/_exec_guard.py`` is the policy for what may run there.
+        The pool must not hand the substrate a command that policy has not
+        approved -- reinterpreting caller-supplied data as executable text
+        is exactly the step that needs the guard's verdict *before* the
+        value travels, not only after it arrives.
+
+        The other task keys (``timeout`` and friends) are preserved: the
+        worker manager reads ``timeout`` off the task it is handed.
+        """
+        if self._worker_runtime_kind is RuntimeKind.SHELL:
+            return task
+        if "task_ref" in task:
+            return task
+        command = task.get("command")
+        if command is None:
+            prompt = task.get("prompt")
+            if not isinstance(prompt, str) or not prompt.strip():
+                return task
+            command = prompt
+        try:
+            validate_command(command)
+        except ValueError as exc:
+            raise ValueError(
+                f"Pool {self.pool_id!r} (worker_type "
+                f"{self.config.worker_type!r}) refused the task: {exc}"
+            ) from exc
+        return {**task, "command": command}
+
     async def execute_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Execute task on available worker (auto-select).
 
@@ -382,7 +446,9 @@ class MahavishnuPool(BasePool):
         worker_id = next(iter(self._workers.keys()))
 
         start_time = time.time()
-        result = await self.worker_manager.execute_task(worker_id, task)
+        result = await self.worker_manager.execute_task(
+            worker_id, self._adapt_task_for_worker(task)
+        )
         duration = time.time() - start_time
 
         # Track statistics

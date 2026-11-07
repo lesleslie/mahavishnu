@@ -130,6 +130,31 @@ pool_id = await pool_mgr.spawn_pool("mahavishnu", config)
 result = await pool_mgr.execute_on_pool(pool_id, {"prompt": "Write code"})
 ```
 
+**The task shape is prompt-shaped; the pool maps it to the worker's
+contract.** `{"prompt": ...}` is the pool-level protocol — every caller
+builds it (`pool_route_execute`, the coordination executor, the fix
+orchestrator). Worker families disagree about what they accept:
+
+| Worker family | Reads | Mechanism |
+|---|---|---|
+| SHELL (`terminal-claude`, `terminal-shell`, …) | `prompt` | typed into a live session (`workers/shell_backend.py`) |
+| isolated (`shepherd`) | `task_ref` XOR `command` | a bodyless task or an allowlisted shell command inside the jail (`workers/shepherd_backend.py`) |
+
+`MahavishnuPool.execute_task` performs that mapping at the pool
+boundary (`_adapt_task_for_worker`), because the pool owns its workers.
+For an isolated worker the task's text **is** the command — and the pool
+**fails closed**: it applies the exec guard
+(`mahavishnu.workers.validate_command`) to any command it is about to
+hand the substrate, whether it derived the command from a prompt or the
+caller supplied it. A prompt whose first word is not on the allowlist is
+refused at the pool and never reaches the worker, so the guarantee is
+*"no unapproved command leaves the pool"*.
+
+Consequence worth knowing: a **natural-language** prompt is not a
+command. Prose dispatched to an isolated worker is refused by the guard
+with *"Command 'write' is not in the allowed list"*. Prose runs on a
+SHELL worker, whose prompt channel is a session, not a command line.
+
 **Architecture**:
 
 ```

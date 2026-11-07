@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 role: canonical
 kind: plan
 date: 2026-11-01
@@ -920,6 +920,81 @@ records the move this plan now **reverses**: *"TaskRouter.StateManager
 now owns the live workflow coordination surface"* — which is why Phase 3
 task 0 must state its reason explicitly rather than silently undoing a
 shipped consolidation.
+
+### 4.16 A verified pool-lane defect, fixed out of band (2026-11-07)
+
+Found while fixing an unrelated pyscn gate failure. **Not** a Phase 1/5
+deliverable — Phase 1 unifies the *envelope*; this is the *worker-leg
+payload* inside it, and it was broken in a way that made **every**
+natural-language pool dispatch fail.
+
+**The defect.** The pool-level task protocol is prompt-shaped
+(`{"prompt": ...}`) — `pool_route_execute`, the coordination executor, the
+fix orchestrator, and `docs/pools/POOL_ARCHITECTURE.md` all build it. But
+worker families disagree about what they accept:
+
+- a **SHELL** worker types the prompt into a live session, so it reads
+  `prompt` (`workers/shell_backend.py`);
+- an **isolated** worker (`shepherd`) runs a bodyless `task_ref` XOR a
+  `command` inside the jail and has **no prompt channel at all**
+  (`workers/shepherd_backend.py`).
+
+`MahavishnuPool.execute_task` forwarded the prompt-shaped task to the
+worker unchanged. Since `shepherd` is the pool's **default** worker type
+(`pools/manager.py:350`), every dispatch died with
+`ValueError: Task must specify 'task_ref' or 'command'` — before the task
+ever reached the substrate. The pool's own comment already stated the
+contract (*"isolated workers … do not consume a prompt at all — they take
+a command or a task ref"*), and `cli/demo_cli.py::_task_payload` already
+applied the translation on the **caller** side; the pool itself never
+acted on either.
+
+**The fix** (`pools/mahavishnu_pool.py`): the pool now maps the task onto
+its worker's contract at the boundary it owns. A task that names
+`task_ref` passes through untouched; otherwise the task's text is the
+command for a MahavishnuPool; a SHELL worker keeps its prompt. Other
+keys (`timeout`) survive the mapping.
+
+**The pool fails closed, and that is the security property.** The pool is
+the component that reinterprets caller-supplied data as executable text,
+so it obtains the exec guard's verdict **before** the value travels —
+`workers/_exec_guard.py::validate_command` is now exported as
+`mahavishnu.workers.validate_command` because two layers now share the
+policy. A prompt whose first word is not on the allowlist is refused at
+the pool boundary and never reaches the worker, so the guarantee is
+*"no unapproved command leaves the pool"*, not *"the worker eventually
+rejects it"*. A caller-chosen `command` is guarded at the pool on the
+same terms.
+
+**Measured, before and after, against the real substrate** — a real
+`ShepherdBackendWorker`, the real jail, the real provisioned workspace:
+
+| | `status` | `error` |
+|---|---|---|
+| before | `failed` | `Task must specify 'task_ref' or 'command'` |
+| after | `completed` | `None` |
+
+**What this does NOT fix.** The isolated substrate executes **commands**,
+and the exec guard allowlists what a command may be
+(`workers/_exec_guard.py`). A *natural-language* prompt is not a command,
+so prose dispatched to a shepherd-backed pool is refused by the pool with
+*"Command 'write' is not in the allowed list"* — accurate and actionable,
+but still a refusal. Prose runs on a **SHELL** worker
+(`terminal-claude` / `terminal-qwen` / `terminal-codex`), whose prompt
+channel already works. Which worker type a pool uses is an operator
+decision (`MAHAVISHNU__POOLS__WORKER_TYPE`).
+
+**Relationship to this plan.** This is the pool lane's *payload* defect,
+not its *envelope* defect. Phase 1 (one typed envelope) and Phase 5 (the
+pool lane joins the workflow lane) still own the envelope, the workflow
+id, and the dispatch record. **Phase 7's rule — "deliver it as a prompt,
+never as a command" — is not satisfied by this fix**, and Phase 7 still
+has to decide how a prose prompt reaches an isolated substrate: the
+`input=`/`target=` task-kwarg channel documented in
+`docs/SHEPHERD_BACKEND.md` is **not implemented**
+(`ShepherdBackendWorker._invoke_task` forwards only `repo`, `placement`
+and `runtime`), and the repo has no prompt-consuming task body — the only
+registered body is `_shell_task.run_shell_command`, the command path.
 
 ## 5. Implementation Phases
 

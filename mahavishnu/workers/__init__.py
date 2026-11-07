@@ -28,6 +28,7 @@ Routing notes:
       OPENCLAW_GATEWAY_URL is configured.
 """
 
+from mahavishnu.workers._exec_guard import validate_command
 from mahavishnu.workers.base import BaseWorker, WorkerResult, WorkerStatus
 from mahavishnu.workers.cloud_worker import CloudWorker, CloudWorkerConfig
 from mahavishnu.workers.manager import WorkerManager
@@ -70,5 +71,6 @@ __all__ = [
     "list_worker_types",
     "probe_host_capability",
     "resolve_worker_type",
+    "validate_command",
     "validate_worker_dependencies",
 ]
