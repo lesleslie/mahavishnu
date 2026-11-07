@@ -5,6 +5,138 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.0] - 2026-11-07
+
+### Added
+
+- bifrost: Activate the complexity router with session-aware routing
+- bifrost: Alias Claude model ids onto MiniMax for first-party plugins
+- bifrost: Price the complexity router and watch the session binding
+- bifrost: Reclaim expired cache entries and retune the cache gates
+- gates: Add doc-drift detector and security finding gate
+- hooks: Guard Anthropic first-party tools from the Bifrost gateway
+- Make settings/models.yaml the live source of task routing
+- observability: Retire the interim metrics split and point metrics at the substrate
+- routing: Log the resolved model on every pool dispatch
+
+### Changed
+
+- Chore/ruff-format-repo-wide -> main
+- config: Move the line length to the fleet standard of 88
+- Feat/eval-adapter-phase1 -> main
+- Feature/agent-curation-dot-dir-guard -> main
+- Fix/consolidation-gate-push-range -> main
+- Fix/eval-engine-redact-exception-text -> main
+- Fix/mcp-startup-crash-2026-11-06 -> main
+- Fix/pool-task-shape-adapter -> main
+- Fix/pyscn-complexity-refactor -> main
+- Fix/ty-ignore-suppression-relocation -> main
+- Fix/ty-rule-rename -> main
+- T-01a1b73b70d3-wire-merge-workflow-gaps -> main
+- tests: Rewrap the doc-drift containment test to 88 columns
+
+### Fixed
+
+- agents: Drop the stale dispatch_to_pool reference
+- bifrost: Make the readiness budget clear the observed cold start
+- bifrost: Map the sonnet alias to the concise model so the review fallback lands
+- bifrost: Sync the gateway template with the live store, refresh stale model ids
+- ecosystem-status: Correct the documented sections and surface unknown ones
+- ecosystem-status: Remove the dead include_details parameter
+- events: Convert the envelope to the canonical Oneiric shape in safe_publish
+- gitignore: Restore the .ua/ rule and ignore the session-buddy local store
+- hooks: Require execution, not mention, in the bifrost probe guard
+- kv: Honour TTLs and make the budget-watchdog lease expiry-correct
+- launchd: Bound the health poll by a wall-clock deadline
+- launchd: Treat any HTTP response as "the server is up"
+- mcp: Address the ensemble review findings on the handoff-gate fix
+- mcp: Drop the dead `backup_id` parameter from `create_backup`
+- mcp: Remove the no-op include_docs parameter from index_code_graph
+- observability: Address the three-lens ensemble review of the Phase 3 change
+- observability: Make the §7 stage-1 gate reachable, and queryable
+- observability: Read the changepoint settings through the layered loader
+- pools: Initialize the Shepherd workspace when the pool creates one
+- Return the jot the MCP tool acted on
+- scripts: Contain doc-drift path resolution to the repo root
+- scripts: Stop the TYPE_CHECKING audit flagging qualified attribute access
+- terminal: Report the worker topic from the envelope's event_type
+- tests: Resolve the duplicate test-module name that aborted collection
+- workers: Align CanonicalEnvelopePublisher with the EventPublisher protocol
+
+### Documentation
+
+- Add external agent-skill pattern port plan
+- Add terminal CLI harness demos and dispatch-trust plan
+- Backfill schema frontmatter on 5 decisions and 5 specs
+- bifrost: Correct the "404s at the gateway" path claims
+- bifrost: Correct the [1m] retirement note -- the fallback serves it
+- bifrost: Record the live-store verification of the complexity router
+- bifrost: Record the measured complexity-router behaviour
+- claude: Correct the oneiric logger import path and the flavor guidance
+- Close out the YAML-backed routing plan as shipped
+- Consolidate the control plane into one registry, envelope, and lane
+- cookbook: Point sp init at the pool workspace, not its parent
+- Correct the oneiric logger import path in two plans
+- Correct the oneiric logging import path in a test docstring
+- Correct the stale routing-guard references
+- Correct the stale snob-lib blocker claims
+- decision: Codex joins the Bifrost gateway; the worker stays
+- decision: Per-component cold-storage buckets
+- decision: Pin simdjson and rebuild node against its new ABI
+- Fold round 2's six-lens review into the consolidation plan
+- Fold the engine+worker demo into the dispatch plan; add the composition-executor analysis
+- Fold the three-lens final review into the consolidation plan
+- frontmatter: Validate every schema-governed store, and repair what it found
+- mcp: Consolidate the changelog and reconcile the removed tool parameters
+- observability: Note that the trace half of flush_metrics blocks
+- plan: Assert per-event hook survival, not merely a settings merge
+- plan: Correct the PATH mechanism and defer the toolchain finding
+- plan: Correct the path_helper mechanism in the PATH finding
+- plan: Correct two claims the Phase 2 review disproved
+- plan: Finish the review fold-in — sinks, deferrals, matrix, risks
+- plan: Make settings/models.yaml the live source of task routing
+- plan: Make the transport guard's description protocol-accurate
+- plan: Mark the skill-pattern port partial and index the decision
+- plan: Measure the PATH mechanism as a set, not as a prefix
+- plan: Narrow the PATH fallback, and record what workers actually run
+- plan: Record Phase 1 of the substrate metrics service as delivered
+- plan: Record Phase 2 as delivered, with the ensemble review's findings
+- plan: Record Phase 2 of the substrate metrics service as implemented
+- plan: Record Phase 3's live verification and the fork-safety issue it found
+- plan: Record render_command's placeholder contract in Phase 7
+- plan: Record the launch protocol's PATH behaviour and defer the choice
+- plan: Record the plaintext-egress guard on the OTLP transport
+- plan: Record the settings/ sweep for the dead-knob pattern
+- plan: Remove the dead env_vars field and settle the export rule
+- plan: Scope an RTK-style worker tool-output compaction
+- plan: Sharpen the path_helper probe trap and keep a qualified position
+- plan: State the launcher's environment contract in Phase 7
+- plan: State the no-backwards-compat policy as a top-level section
+- plan: Take the env-var seam for the compaction settings file
+- plans: Regenerate the plan index
+- routing: Qualify the 'no restart' claim for running cloud workers
+- skill: Add the Solution Ladder to crackerjack-compliant-code
+- skill: Correct the ladder's routing bullet in crackerjack-compliant-code
+- specs: Correct the oneiric logger import path in an archived design
+- Untrack the six archived specs still tracked in docs/specs/.archive/
+- Untrack the six archived specs still tracked in docs/specs/.archive/
+
+### Testing
+
+- routing: Stop pinning the operator's model ids in CI
+
+### Build
+
+- deps: Raise the session-buddy and oneiric floors to the safe releases
+- deps: Refresh the locked dependency graph (43 version bumps)
+
+### Internal
+
+- bifrost: Retire the MiniMax-M3[1m] spelling
+- core: Remove the dead Kubernetes manifest generator
+- gitignore: Ignore the Understand-Anything knowledge graph
+- lock: Restamp the project version to 0.38.0
+
 ## [Unreleased]
 
 ### Removed
