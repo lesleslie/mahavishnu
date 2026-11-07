@@ -14,11 +14,15 @@ probe inherits it, asks a MiniMax-backed provider for a Claude model id, and
 fails with ``no keys found that support model: claude-opus-5-5`` — a 400 that
 looks like a gateway problem and is not one.
 
-This hook blocks that combination. It fires only when *both* hold:
+This hook blocks that combination. It fires only when *all three* hold:
 
-1. the command references Anthropic's first-party tooling (the
-   ``claude-api`` bundled skill), and
+1. the command would actually *execute* Anthropic's first-party tooling (the
+   ``claude-api`` bundled skill), not merely mention it, and
 2. the effective Anthropic base URL is the Bifrost gateway.
+
+Requiring execution rather than a mention matters: reading or grepping the
+probe's source cannot reach the network, and blocking those calls would make
+the guard a nuisance rather than a safeguard.
 
 An explicit ``--base-url`` counts as the operator having chosen the endpoint
 on purpose and is always allowed — including when that choice is the gateway.
@@ -32,13 +36,13 @@ Exit codes:
 
 Never raises: an unhandled exception must not block ordinary Bash work.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import re
 import sys
-from typing import Any
 from urllib.parse import urlparse
 
 #: Script names that identify Anthropic's first-party tooling in a command
@@ -52,6 +56,15 @@ BUNDLED_SKILL_MARKER = "bundled-skills/"
 
 #: The bundled skill directory that holds Anthropic-first-party tooling.
 ANTHROPIC_SKILL_MARKER = "claude-api"
+
+#: A token that runs Python. Requiring the interpreter — not just the file
+#: name — is what keeps read-only commands (``grep``, ``cat``, ``ls``) out of
+#: the guard's way: they name the tool but cannot reach the network.
+_PYTHON_RE = re.compile(r"(?:^|[\s/])python(?:\d+(?:\.\d+)?)?(?:\s|$)")
+
+#: A leading ``VAR=value`` assignment — an environment prefix, not the
+#: command being run. ``P=/path/probe.py`` must not read as an invocation.
+_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 #: Default Bifrost gateway port; overridable so a relocated gateway is caught.
 DEFAULT_GATEWAY_PORT = 8471
@@ -109,8 +122,8 @@ def _strip_quotes(value: str) -> str:
     return value
 
 
-def references_anthropic_tooling(command: str) -> bool:
-    """Whether ``command`` invokes Anthropic's first-party tooling.
+def mentions_anthropic_tooling(command: str) -> bool:
+    """Whether ``command`` names Anthropic's first-party tooling at all.
 
     Two ways to match:
 
@@ -124,6 +137,32 @@ def references_anthropic_tooling(command: str) -> bool:
     if any(marker in command for marker in PROBE_SCRIPT_MARKERS):
         return True
     return ANTHROPIC_SKILL_MARKER in command and BUNDLED_SKILL_MARKER in command
+
+
+def invokes_anthropic_tooling(command: str) -> bool:
+    """Whether ``command`` would actually execute Anthropic's first-party tooling.
+
+    Naming the tool is not enough — reading or grepping its source cannot
+    reach the network. The command must also run Python (any interpreter
+    spelling: ``python``, ``python3``, ``python3.13``, an absolute path, a
+    venv interpreter), or name the script as the executable it runs.
+    """
+    if not mentions_anthropic_tooling(command):
+        return False
+
+    if _PYTHON_RE.search(command):
+        return True
+
+    tokens = command.split()
+    while tokens and _ASSIGNMENT_RE.match(tokens[0]):
+        tokens.pop(0)
+    if not tokens:
+        return False
+    first = tokens[0]
+    return first.endswith(".py") and (
+        "drop_block_probe" in first
+        or (BUNDLED_SKILL_MARKER in first and ANTHROPIC_SKILL_MARKER in first)
+    )
 
 
 def effective_base_url(command: str, env: dict[str, str]) -> tuple[str, bool]:
@@ -175,8 +214,11 @@ def _deny_message(url: str, script_hint: str) -> str:
 def _script_hint(command: str) -> str:
     """Best-effort script path to echo back in the deny message."""
     for token in command.split():
-        if token.endswith(".py") and ("/" in token or "drop_block_probe" in token):
-            return _strip_quotes(token)
+        candidate = token.split("=", 1)[-1] if _ASSIGNMENT_RE.match(token) else token
+        if candidate.endswith(".py") and (
+            "/" in candidate or "drop_block_probe" in candidate
+        ):
+            return _strip_quotes(candidate)
     return "<script>"
 
 
@@ -191,7 +233,7 @@ def evaluate(command: str, env: dict[str, str]) -> str | None:
         The explanation to show the model when the call must be blocked, or
         None when the call may proceed.
     """
-    if not references_anthropic_tooling(command):
+    if not invokes_anthropic_tooling(command):
         return None
 
     url, explicit = effective_base_url(command, env)
